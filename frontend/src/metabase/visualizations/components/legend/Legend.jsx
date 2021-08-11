@@ -1,6 +1,11 @@
 import React from "react";
 import PropTypes from "prop-types";
-import { LegendButtonGroup, LegendRoot } from "./Legend.styled";
+import {
+  LegendButtonContainer,
+  LegendLink,
+  LegendLinkContainer,
+  LegendRoot,
+} from "./Legend.styled";
 import LegendItem from "./LegendItem";
 
 const propTypes = {
@@ -8,6 +13,7 @@ const propTypes = {
   labels: PropTypes.array.isRequired,
   colors: PropTypes.array.isRequired,
   hovered: PropTypes.object,
+  overflowCount: PropTypes.number,
   actionButtons: PropTypes.node,
   isNarrow: PropTypes.bool,
   isVertical: PropTypes.bool,
@@ -15,6 +21,7 @@ const propTypes = {
   onAddSeries: PropTypes.func,
   onSelectSeries: PropTypes.func,
   onRemoveSeries: PropTypes.func,
+  onShowOverflow: PropTypes.func,
 };
 
 const Legend = ({
@@ -22,12 +29,14 @@ const Legend = ({
   labels,
   colors,
   hovered,
+  overflowCount,
   actionButtons,
   isNarrow,
   isVertical,
   onHoverChange,
   onSelectSeries,
   onRemoveSeries,
+  onShowOverflow,
 }) => {
   return (
     <LegendRoot className={className} isVertical={isVertical}>
@@ -45,10 +54,17 @@ const Legend = ({
           onRemoveSeries={onRemoveSeries}
         />
       ))}
+      {overflowCount > 0 && (
+        <LegendLinkContainer isVertical={isVertical}>
+          <LegendLink onClick={onShowOverflow}>
+            And {overflowCount} more
+          </LegendLink>
+        </LegendLinkContainer>
+      )}
       {actionButtons && (
-        <LegendButtonGroup isVertical={isVertical}>
+        <LegendButtonContainer isVertical={isVertical}>
           {actionButtons}
-        </LegendButtonGroup>
+        </LegendButtonContainer>
       )}
     </LegendRoot>
   );

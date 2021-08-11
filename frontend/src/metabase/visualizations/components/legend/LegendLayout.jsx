@@ -41,7 +41,8 @@ const LegendLayout = ({
   onRemoveSeries,
 }) => {
   const isNarrow = labels.length * MIN_ITEM_WIDTH > width;
-  const isVertical = false;
+  const isVertical = true;
+  const overflowCount = 2;
 
   return (
     <LegendLayoutRoot className={className} isVertical={isVertical}>
@@ -51,6 +52,7 @@ const LegendLayout = ({
             labels={labels}
             colors={colors}
             hovered={hovered}
+            overflowCount={overflowCount}
             actionButtons={actionButtons}
             isNarrow={isNarrow}
             isVertical={isVertical}
