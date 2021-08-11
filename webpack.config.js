@@ -29,7 +29,7 @@ const devMode = NODE_ENV !== "production";
 
 // Babel:
 const BABEL_CONFIG = {
-  cacheDirectory: process.env.BABEL_DISABLE_CACHE ? null : ".babel_cache",
+  cacheDirectory: process.env.BABEL_DISABLE_CACHE ? false : ".babel_cache",
 };
 
 const CSS_CONFIG = {
@@ -259,6 +259,12 @@ if (NODE_ENV !== "production") {
     }),
   );
 } else {
+
+  // Don't bother with ESLint for CI/production (we catch linting errors with another CI run)
+  config.module.rules = config.module.rules.filter(rule => {
+    return Array.isArray(rule.use) ? rule.use[0].loader != "eslint-loader" : true
+  });
+
   config.plugins.push(
     new TerserPlugin({ parallel: true, test: /\.jsx?($|\?)/i }),
   );

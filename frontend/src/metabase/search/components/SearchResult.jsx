@@ -12,13 +12,17 @@ import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import Text from "metabase/components/type/Text";
 
-import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
+import {
+  PLUGIN_COLLECTION_COMPONENTS,
+  PLUGIN_MODERATION,
+} from "metabase/plugins";
 
 import Schema from "metabase/entities/schemas";
 import Database from "metabase/entities/databases";
 import Table from "metabase/entities/tables";
 
 const { CollectionAuthorityLevelIcon } = PLUGIN_COLLECTION_COMPONENTS;
+const { ModerationStatusIcon } = PLUGIN_MODERATION;
 
 function getColorForIconWrapper(props) {
   if (props.item.collection_position) {
@@ -87,6 +91,12 @@ const ResultLink = styled(Link)`
   .Icon-info {
     color: ${color("text-light")};
   }
+`;
+
+const TitleWrapper = styled.div`
+  display: flex;
+  grid-gap: 0.25rem;
+  align-items: center;
 `;
 
 function ItemIcon({ item, type }) {
@@ -253,7 +263,10 @@ export default function SearchResult({ result, compact }) {
       <Flex align="start">
         <ItemIcon item={result} type={result.model} />
         <Box>
-          <Title>{result.name}</Title>
+          <TitleWrapper>
+            <Title>{result.name}</Title>
+            <ModerationStatusIcon status={result.moderated_status} size={12} />
+          </TitleWrapper>
           <Text>
             <InfoText result={result} />
           </Text>

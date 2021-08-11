@@ -99,12 +99,14 @@ jobs:
           path: ~/.cache/yarn
           key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
 
-      - run: ./bin/build version
-
       - uses: actions/download-artifact@v2
         name: Retrieve uberjar artifact
         with:
           name: metabase-oss-uberjar
+      - name: Get the version info
+        run: |
+          jar xf target/uberjar/metabase.jar version.properties
+          mv version.properties resources/
 
       - name: Percy Test
         uses: percy/exec-action@v0.3.1

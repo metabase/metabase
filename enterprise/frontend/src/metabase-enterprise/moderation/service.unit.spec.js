@@ -6,7 +6,7 @@ import {
   getTextForReviewBanner,
   isItemVerified,
   getLatestModerationReview,
-  getStatusIconForReviews,
+  getStatusIconForQuestion,
 } from "./service";
 
 jest.mock("metabase/services", () => ({
@@ -61,8 +61,8 @@ describe("moderation/service", () => {
   describe("getVerifiedIcon", () => {
     it("should return verified icon name/color", () => {
       expect(getVerifiedIcon()).toEqual({
-        icon: "verified",
-        iconColor: "brand",
+        name: "verified",
+        color: "brand",
       });
     });
   });
@@ -172,25 +172,46 @@ describe("moderation/service", () => {
   });
 });
 
-describe("getStatusIconForReviews", () => {
+describe("getStatusIconForQuestion", () => {
   it('should return the status icon for the most recent "real" review', () => {
-    const reviews = [
-      { id: 1, status: "verified" },
-      { id: 2, status: "verified", most_recent: true },
-      { id: 3, status: null },
-    ];
+    const questionWithReviews = {
+      getModerationReviews: () => [
+        { id: 1, status: "verified" },
+        { id: 2, status: "verified", most_recent: true },
+        { id: 3, status: null },
+      ],
+    };
 
-    expect(getStatusIconForReviews(reviews)).toEqual(getVerifiedIcon());
+    expect(getStatusIconForQuestion(questionWithReviews)).toEqual(
+      getVerifiedIcon(),
+    );
   });
 
-  it("should return undefined for no review", () => {
-    const reviews = [
-      { id: 1, status: "verified" },
-      { id: 2, status: "verified" },
-      { id: 3, status: null, most_recent: true },
-    ];
+  it("should return undefined vals for no review", () => {
+    const questionWithNoMostRecentReview = {
+      getModerationReviews: () => [
+        { id: 1, status: "verified" },
+        { id: 2, status: "verified" },
+        { id: 3, status: null, most_recent: true },
+      ],
+    };
 
-    expect(getLatestModerationReview(reviews)).toEqual(undefined);
-    expect(getLatestModerationReview([])).toEqual(undefined);
+    const questionWithNoReviews = {
+      getModerationReviews: () => [],
+    };
+
+    const questionWithUndefinedReviews = {
+      getModerationReviews: () => undefined,
+    };
+
+    const noIcon = { name: undefined, color: undefined };
+
+    expect(getStatusIconForQuestion(questionWithNoMostRecentReview)).toEqual(
+      noIcon,
+    );
+    expect(getStatusIconForQuestion(questionWithNoReviews)).toEqual(noIcon);
+    expect(getStatusIconForQuestion(questionWithUndefinedReviews)).toEqual(
+      noIcon,
+    );
   });
 });

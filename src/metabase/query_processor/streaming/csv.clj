@@ -8,12 +8,15 @@
            java.nio.charset.StandardCharsets))
 
 (defmethod i/stream-options :csv
-  [_]
-  {:content-type              "text/csv"
-   :status                    200
-   :headers                   {"Content-Disposition" (format "attachment; filename=\"query_result_%s.csv\""
-                                                             (u.date/format (t/zoned-date-time)))}
-   :write-keepalive-newlines? false})
+  ([_]
+   (i/stream-options :csv "query_result"))
+  ([_ filename-prefix]
+   {:content-type              "text/csv"
+    :status                    200
+    :headers                   {"Content-Disposition" (format "attachment; filename=\"%s_%s.csv\""
+                                                              (or filename-prefix "query_result")
+                                                              (u.date/format (t/zoned-date-time)))}
+    :write-keepalive-newlines? false}))
 
 (defmethod i/streaming-results-writer :csv
   [_ ^OutputStream os]
