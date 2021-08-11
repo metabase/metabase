@@ -215,13 +215,15 @@
        (list table-body))}))
 
 (s/defmethod render :bar :- common/RenderedPulseCard
-  [_ render-type _timezone-id :- (s/maybe s/Str) card {:keys [_cols] :as data}]
+  [_ render-type _timezone-id :- (s/maybe s/Str) card {:keys [cols] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
         rows                        (common/non-nil-rows x-axis-rowfn y-axis-rowfn (:rows data))
         image-bundle (image-bundle/make-image-bundle
                       render-type
                       (js-svg/timelineseries-bar
-                       (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)))]
+                       (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)
+                       {:bottom (-> cols x-axis-rowfn :display_name)
+                        :left   (-> cols y-axis-rowfn :display_name)}))]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))
@@ -311,17 +313,21 @@
         @error-rendered-info))))
 
 (s/defmethod render :sparkline :- common/RenderedPulseCard
-  [_ render-type timezone-id card {:keys [rows cols] :as data}]
+  [_ render-type timezone-id card {:keys [_rows cols] :as data}]
   (let [[x-axis-rowfn
          y-axis-rowfn] (common/graphing-column-row-fns card data)
         rows           (sparkline/cleaned-rows timezone-id card data)
         last-rows      (reverse (take-last 2 rows))
         values         (for [row last-rows]
                          (some-> row y-axis-rowfn common/format-number))
-        labels         (datetime/format-temporal-string-pair timezone-id (map x-axis-rowfn last-rows) (x-axis-rowfn cols))
+        labels         (datetime/format-temporal-string-pair timezone-id
+                                                             (map x-axis-rowfn last-rows)
+                                                             (x-axis-rowfn cols))
         image-bundle   (image-bundle/make-image-bundle
                         render-type
-                        (js-svg/timelineseries-line (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)))]
+                        (js-svg/timelineseries-line (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)
+                                                    {:bottom (-> cols x-axis-rowfn :display_name)
+                                                     :left   (-> cols y-axis-rowfn :display_name)}))]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))
