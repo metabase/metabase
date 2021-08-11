@@ -619,23 +619,25 @@
              context     :question
              qp-runner   qp/process-query-and-save-execution!}}]
   {:pre [(u/maybe? sequential? parameters)]}
-  (let [run       (or run
-                      ;; param `run` can be used to control how the query is ran, e.g. if you need to
-                      ;; customize the `context` passed to the QP
-                      (^:once fn* [query info]
-                       (qp.streaming/streaming-response [context export-format (u/slugify (:card-name info))]
-                         (binding [qp.perms/*card-id* card-id]
-                           (qp-runner query info context)))))
-        card      (api/read-check (db/select-one [Card :name :dataset_query :cache_ttl :collection_id] :id card-id))
-        query     (-> (assoc (query-for-card card parameters constraints middleware)
-                             :async? true)
-                      (update :middleware merge {:js-int-to-string?      true
-                                                 :ignore-cached-results? ignore_cache}))
-        info      {:executed-by  api/*current-user-id*
-                   :context      context
-                   :card-id      card-id
-                   :card-name    (:name card)
-                   :dashboard-id dashboard-id}]
+  (let [run   (or run
+                  ;; param `run` can be used to control how the query is ran, e.g. if you need to
+                  ;; customize the `context` passed to the QP
+                  (^:once fn* [query info]
+                   (qp.streaming/streaming-response [context export-format (u/slugify (:card-name info))]
+                     (binding [qp.perms/*card-id* card-id]
+                       (qp-runner query info context)))))
+        card  (api/read-check (db/select-one [Card :name :dataset_query :cache_ttl :collection_id] :id card-id))
+        query (-> (assoc (query-for-card card parameters constraints middleware)
+                         :async? true)
+                  (update :middleware (fn [middleware]
+                                        (merge
+                                         {:js-int-to-string? true :ignore-cached-results? ignore_cache}
+                                         middleware))))
+        info  {:executed-by  api/*current-user-id*
+               :context      context
+               :card-id      card-id
+               :card-name    (:name card)
+               :dashboard-id dashboard-id}]
     (api/check-not-archived card)
     (run query info)))
 
@@ -643,7 +645,11 @@
   "Run the query associated with a Card."
   [card-id :as {{:keys [parameters ignore_cache], :or {ignore_cache false}} :body}]
   {ignore_cache (s/maybe s/Bool)}
-  (run-query-for-card-async card-id :api, :parameters parameters, :ignore_cache ignore_cache))
+  (run-query-for-card-async
+   card-id :api
+   :parameters parameters,
+   :ignore_cache ignore_cache
+   :middleware {:process-viz-settings? false}))
 
 (api/defendpoint ^:streaming POST "/:card-id/query/:export-format"
   "Run the query associated with a Card, and return its results as a file in the specified format. Note that this
@@ -656,7 +662,8 @@
    :parameters  (json/parse-string parameters keyword)
    :constraints nil
    :context     (dataset-api/export-format->context export-format)
-   :middleware  {:skip-results-metadata? true
+   :middleware  {:process-viz-settings?  true
+                 :skip-results-metadata? true
                  :ignore-cached-results? true
                  :format-rows?           false
                  :js-int-to-string?      false}))

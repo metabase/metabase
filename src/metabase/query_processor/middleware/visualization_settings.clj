@@ -28,9 +28,6 @@
       (when-let [card-id (-> query :info :card-id)]
         (mb.viz/db->norm (db/select-one-field :visualization_settings Card :id card-id)))))
 
-(def ^:private non-api-export-contexts
-  #{:json-download :csv-download :xlsx-download})
-
 (defn update-viz-settings
   "Middleware for fetching and processing a table's visualization settings so that they can be incorporated
   into an export.
@@ -43,8 +40,8 @@
 
   Processed viz settings are added to the metadata under the key :viz-settings."
   [qp]
-  (fn [query rff context]
-    (if (non-api-export-contexts (-> query :info :context))
+  (fn [{{:keys [process-viz-settings?]} :middleware, :as query} rff context]
+    (if process-viz-settings?
       (let [card-viz-settings           (viz-settings query)
             column-viz-settings         (::mb.viz/column-settings card-viz-settings)
             fields                      (or (-> query :query :fields)
@@ -54,6 +51,7 @@
                                           (update-card-viz-settings column-viz-settings field-ids)
                                           column-viz-settings)
             updated-card-viz-settings   (assoc card-viz-settings ::mb.viz/column-settings updated-column-viz-settings)
-            rff' (fn [metadata] (rff (assoc metadata :viz-settings updated-card-viz-settings)))]
-        (qp query rff' context))
+            query'                      (dissoc query :viz-settings)
+            rff'                        (fn [metadata] (rff (assoc metadata :viz-settings updated-card-viz-settings)))]
+        (qp query' rff' context))
       (qp query rff context))))
