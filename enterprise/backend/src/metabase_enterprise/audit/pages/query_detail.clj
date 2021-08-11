@@ -18,6 +18,11 @@
                :limit  1})
    :xform (map #(update (vec %) 0 json/parse-string))})
 
+(s/defn ^:internal-query-fn dash-cards
+  "DashboardCard objects corresponding to given card"
+  [card-id :- su/IntGreaterThanZero]
+  {})
+
 (s/defn ^:internal-query-fn bad-details
   "For the modal view drilling down into a bad question"
   [card-id :- su/IntGreaterThanZero]
@@ -27,7 +32,7 @@
               [:collection_name {:display_name "Collection",      :base_type :type/Text}]
               [:database_id     {:display_name "Database ID",     :base_type :type/Integer}]
               [:database_name   {:display_name "Database",        :base_type :type/Text}]
-              [:dashboard_cards {:display_name "Dashboard Cards", :base_type :type/*}]
+              [:dashboard_id    {:display_name "Dashboard Id",    :base_type :type/Integer}]
               [:card_query      {:display_name "Query",           :base_type :type/*}]
               [:table_id        {:display_name "Table ID",        :base_type :type/Integer}] 
               [:table_name      {:display_name "Table",           :base_type :type/Text}]
@@ -41,15 +46,18 @@
                            [:coll.name :collection_name]
                            :card.database_id
                            [:db.name :database_name]
+                           :dash_card.database_id
+                           :card.dataset_query
                            :card.table_id
                            [:t.name :table_name]
                            [:card.creator_id :user_id]
                            [(common/user-full-name :u) :user_name]
                            [:qe.error :error]]
                :from      [[:report_card :card]]
-               :left-join [[:collection :coll]      [:= :card.collection_id :coll.id]
-                           [:metabase_database :db] [:= :card.database_id :db.id]
-                           [:metabase_table :t]     [:= :card.table_id :t.id]
-                           [:core_user :u]          [:= :card.creator_id :u.id]
-                           [:query_execution :qe]   [:= :card.id :qe.id]]
+               :left-join [[:collection :coll]                [:= :card.collection_id :coll.id]
+                           [:metabase_database :db]           [:= :card.database_id :db.id]
+                           [:metabase_table :t]               [:= :card.table_id :t.id]
+                           [:core_user :u]                    [:= :card.creator_id :u.id]
+                           [:query_execution :qe]             [:= :card.id :qe.id]
+                           [:report_dashboardcard :dash_card] [:= :card.id :dash_card.card_id]]
                :where     [:= :card.id card-id]})})
