@@ -59,7 +59,11 @@ const LegendItem = ({
   );
 
   return (
-    <LegendItemRoot isVertical={isVertical} data-testid="legend-item">
+    <LegendItemRoot
+      isNarrow={isNarrow}
+      isVertical={isVertical}
+      data-testid="legend-item"
+    >
       <Tooltip tooltip={label}>
         <LegendItemLabel
           isMuted={isMuted}

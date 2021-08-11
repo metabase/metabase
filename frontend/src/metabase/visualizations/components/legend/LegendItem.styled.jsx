@@ -10,7 +10,8 @@ export const LegendItemRoot = styled.div`
 
   &:not(:first-child) {
     margin-top: ${({ isVertical }) => (isVertical ? "0.5rem" : "")};
-    margin-left: ${({ isVertical }) => (isVertical ? "" : "0.75rem")};
+    margin-left: ${({ isNarrow, isVertical }) =>
+      !isVertical ? (!isNarrow ? "0.75rem" : "0.25rem") : ""};
   }
 `;
 
