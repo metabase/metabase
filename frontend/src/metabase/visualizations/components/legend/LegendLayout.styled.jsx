@@ -8,6 +8,8 @@ export const LegendLayoutRoot = styled.div`
 
 export const LegendContainer = styled.div`
   flex: 0 0 auto;
+  max-width: ${({ isVertical }) => (isVertical ? "25%" : "")};
+  max-width: ${({ isVertical }) => (isVertical ? "min(25%, 20rem)" : "")};
   margin-right: ${({ isVertical }) => (isVertical ? "0.5rem" : "")};
   margin-bottom: ${({ isVertical }) => (isVertical ? "" : "0.5rem")};
 `;
