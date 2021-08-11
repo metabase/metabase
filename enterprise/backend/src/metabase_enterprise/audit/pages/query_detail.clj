@@ -18,11 +18,6 @@
                :limit  1})
    :xform (map #(update (vec %) 0 json/parse-string))})
 
-(s/defn ^:internal-query-fn dash-cards
-  "DashboardCard objects corresponding to given card"
-  [card-id :- su/IntGreaterThanZero]
-  {})
-
 (s/defn ^:internal-query-fn bad-details
   "For the modal view drilling down into a bad question"
   [card-id :- su/IntGreaterThanZero]
@@ -46,7 +41,7 @@
                            [:coll.name :collection_name]
                            :card.database_id
                            [:db.name :database_name]
-                           :dash_card.database_id
+                           :dash_card.dashboard_id
                            :card.dataset_query
                            :card.table_id
                            [:t.name :table_name]
