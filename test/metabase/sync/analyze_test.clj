@@ -1,6 +1,5 @@
 (ns metabase.sync.analyze-test
   (:require [clojure.test :refer :all]
-            [metabase.api.table :as table-api]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :as field :refer [Field]]
             [metabase.models.table :refer [Table]]
