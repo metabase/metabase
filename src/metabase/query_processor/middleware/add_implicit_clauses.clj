@@ -19,7 +19,7 @@
 ;;; |                                              Add Implicit Fields                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- table->sorted-fields
+(defn table->sorted-fields
   [table-id]
   (db/select [Field :id :base_type :effective_type :coercion_strategy :semantic_type]
     :table_id        table-id

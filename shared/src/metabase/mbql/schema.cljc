@@ -315,7 +315,8 @@
    (complement :strategy)
    "Found :binning keys at the top level of :field options. binning-related options belong under the :binning key."))
 
-(def ^:private FieldOptions
+(def FieldOptions
+  "Schema for the options map for a `:field` clause."
   (-> {(s/optional-key :base-type)     (s/maybe helpers/FieldType)
        ;;
        ;; replaces `fk->`
@@ -350,7 +351,8 @@
        ;;
        s/Keyword                       s/Any}
       validate-temporal-unit
-      no-binning-options-at-top-level))
+      no-binning-options-at-top-level
+      helpers/non-empty))
 
 (defn- require-base-type-for-field-name [schema]
   (s/constrained
@@ -361,11 +363,15 @@
        true))
    ":field clauses using a string field name must specify :base-type."))
 
+(def IDOrName
+  "Schema for either a positive integer ID or a non-blank String."
+  (s/cond-pre helpers/IntGreaterThanZero helpers/NonBlankString))
+
 (def ^{:clause-name :field, :added "0.39.0"} field
   "Schema for a `:field` clause."
   (-> (helpers/clause
        :field
-       "id-or-name" (s/cond-pre helpers/IntGreaterThanZero helpers/NonBlankString)
+       "id-or-name" IDOrName
        "options"    (s/maybe (s/recursive #'FieldOptions)))
       require-base-type-for-field-name))
 

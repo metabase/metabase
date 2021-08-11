@@ -36,6 +36,7 @@
                               (p.types/def-abstract-type '(1 (:defn)))
                               (p.types/deftype+ '(2 nil nil (:defn)))
                               (p/def-map-type '(2 nil nil (:defn)))
+                              (p/defrecord+ '(2 nil nil (:defn)))
                               (p.types/defrecord+ '(2 nil nil (:defn)))
                               (qp.streaming/streaming-response 1)
                               (prop/for-all 1)
