@@ -15,7 +15,7 @@
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            [org.apache.poi.ss.usermodel Cell DataFormat DateUtil Workbook]
            org.apache.poi.ss.util.CellRangeAddress
-           [org.apache.poi.xssf.streaming SXSSFSheet SXSSFRow SXSSFWorkbook]))
+           [org.apache.poi.xssf.streaming SXSSFRow SXSSFSheet SXSSFWorkbook]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Format string generation                                               |
@@ -414,10 +414,10 @@
 (defn- autosize-columns!
   "Adjusts each column to fit its largest value, plus a constant amount of extra padding."
   [sheet]
-  (doseq [i (.getTrackedColumnsForAutoSizing sheet)]
+  (doseq [i (.getTrackedColumnsForAutoSizing ^SXSSFSheet sheet)]
     (.autoSizeColumn ^SXSSFSheet sheet i)
     (.setColumnWidth ^SXSSFSheet sheet i (+ (.getColumnWidth ^SXSSFSheet sheet i) extra-column-width))
-    (.untrackColumnForAutoSizing sheet i)))
+    (.untrackColumnForAutoSizing ^SXSSFSheet sheet i)))
 
 (defn- setup-header-row!
   "Turns on auto-filter for the header row, which adds a button to each header cell that allows columns to be
@@ -434,7 +434,7 @@
     (reify i/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols]} :data} {col-settings ::mb.viz/column-settings}]
         (doseq [i (range (count ordered-cols))]
-          (.trackColumnForAutoSizing sheet i))
+          (.trackColumnForAutoSizing ^SXSSFSheet sheet i))
         (setup-header-row! sheet (count ordered-cols))
         (spreadsheet/add-row! sheet (column-titles ordered-cols col-settings)))
 

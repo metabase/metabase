@@ -426,20 +426,22 @@
 
 (deftest auto-sizing-test
   (testing "Columns in export are autosized to fit their content"
-    (is (= [2336 8001]
-           (second (xlsx-export [{:id 0, :name "Col1"} {:id 1, :name "Col2"}]
-                                {}
-                                [["a" "abcdefghijklmnopqrstuvwxyz"]]
-                                parse-column-width)))))
+    (let [[col1-width col2-width] (second (xlsx-export [{:id 0, :name "Col1"} {:id 1, :name "Col2"}]
+                                                       {}
+                                                       [["a" "abcdefghijklmnopqrstuvwxyz"]]
+                                                       parse-column-width))]
+      ;; Provide a marign for error since width measurements end up being slightly different on CI
+      (is (<= 2300 col1-width 2400))
+      (is (<= 7950 col2-width 8200))))
   (testing "Auto-sizing works when the number of rows is at or above the auto-sizing threshold"
     (binding [xlsx/*auto-sizing-threshold* 2]
-      (is (= [2815]
-             (second (xlsx-export [{:id 0, :name "Col1"}]
-                                  {}
-                                  [["abcdef"] ["abcedf"]]
-                                  parse-column-width))))
-      (is (= [2815]
-             (second (xlsx-export [{:id 0, :name "Col1"}]
-                                  {}
-                                  [["abcdef"] ["abcdef"] ["abcdef"]]
-                                  parse-column-width)))))))
+      (let [[col-width] (second (xlsx-export [{:id 0, :name "Col1"}]
+                                             {}
+                                             [["abcdef"] ["abcedf"]]
+                                             parse-column-width))]
+        (is (<= 2800 col-width 2850)))
+      (let [[col-width] (second (xlsx-export [{:id 0, :name "Col1"}]
+                                             {}
+                                             [["abcdef"] ["abcedf"] ["abcdef"]]
+                                             parse-column-width))]
+        (is (<= 2800 col-width 2850))))))
