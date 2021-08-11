@@ -5,6 +5,7 @@
             [metabase.api.field :as field-api]
             [metabase.driver.util :as driver.u]
             [metabase.models :refer [Database Field FieldValues Table]]
+            [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.timeseries-query-processor-test.util :as tqp.test]
@@ -76,6 +77,11 @@
 (defn simple-field-details [field]
   (select-keys field [:name :display_name :description :visibility_type :semantic_type :fk_target_field_id]))
 
+(mt/defdataset integer-coerceable
+  [["t" [{:field-name "f"
+          :base-type  :type/Integer}]
+    [[100000] [200000] [300000]]]])
+
 (deftest update-field-test
   (testing "PUT /api/field/:id"
     (testing "test that we can do basic field update work, including unsetting some fields such as semantic-type"
@@ -133,7 +139,24 @@
                  ((juxt :effective_type :coercion_strategy)
                   (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id)
                                         ;; unix is an integer->Temporal conversion
-                                        {:coercion_strategy :Coercion/UNIXMicroSeconds->DateTime})))))))))
+                                        {:coercion_strategy :Coercion/UNIXMicroSeconds->DateTime}))))))
+      (testing "Refingerprints field when updated"
+        (with-redefs [metabase.sync.concurrent/submit-task (fn [task] (task))]
+          (mt/dataset integer-coerceable
+            (sync/sync-database! (Database (mt/id)))
+            (let [field-id      (mt/id :t :f)
+                  set-strategy! (fn [strategy]
+                                  (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id)
+                                                        {:coercion_strategy strategy}))]
+              ;; ensure that there is no coercion strategy from previous tests
+              (set-strategy! nil)
+              (let [field (Field field-id)]
+                (is (= :type/Integer (:effective_type field)))
+                (is (contains? (get-in field [:fingerprint :type]) :type/Number)))
+              (set-strategy! :Coercion/UNIXSeconds->DateTime)
+              (let [field (Field field-id)]
+                (is (= :type/Instant (:effective_type field)))
+                (is (contains? (get-in field [:fingerprint :type]) :type/DateTime))))))))))
 
 (deftest remove-fk-semantic-type-test
   (testing "PUT /api/field/:id"

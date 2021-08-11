@@ -25,6 +25,7 @@
                               (mbql.match/match 1)
                               (mt/test-drivers 1)
                               (mt/query 1)
+                              (mt/dataset 1)
                               (mbql.match/match-one 1)
                               (mbql.match/replace 1)
                               (mbql.match/replace-in 2)
