@@ -41,9 +41,10 @@ const LegendLayout = ({
   onRemoveSeries,
 }) => {
   const isNarrow = labels.length * MIN_ITEM_WIDTH > width;
+  const isVertical = false;
 
   return (
-    <LegendLayoutRoot className={className}>
+    <LegendLayoutRoot className={className} isVertical={isVertical}>
       {hasLegend && (
         <LegendContainer>
           <Legend
@@ -52,6 +53,7 @@ const LegendLayout = ({
             hovered={hovered}
             actionButtons={actionButtons}
             isNarrow={isNarrow}
+            isVertical={isVertical}
             onHoverChange={onHoverChange}
             onAddSeries={onAddSeries}
             onSelectSeries={onSelectSeries}
