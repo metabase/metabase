@@ -279,7 +279,7 @@ export default class LineAreaBarChart extends Component {
 
     const rawSeries = series._raw || series;
     const cardIds = new Set(rawSeries.map(s => s.card.id));
-    const hasTitle = showTitle && title;
+    const hasTitle = showTitle && settings["card.title"];
     const hasBreakout = card._breakoutColumn != null;
     const canSelectTitle = cardIds.size === 1 && onChangeCardAndRun;
     const hasMultipleSeries = series.length > 1;
