@@ -83,4 +83,5 @@ export const PLUGIN_MODERATION = {
   QuestionModerationSection: PluginPlaceholder,
   ModerationStatusIcon: PluginPlaceholder,
   getStatusIconForQuestion: object,
+  getStatusIcon: object,
 };

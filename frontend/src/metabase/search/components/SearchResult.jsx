@@ -22,7 +22,6 @@ import Database from "metabase/entities/databases";
 import Table from "metabase/entities/tables";
 
 const { CollectionAuthorityLevelIcon } = PLUGIN_COLLECTION_COMPONENTS;
-const { ModerationStatusIcon } = PLUGIN_MODERATION;
 
 function getColorForIconWrapper(props) {
   if (props.item.collection_position) {
@@ -265,7 +264,10 @@ export default function SearchResult({ result, compact }) {
         <Box>
           <TitleWrapper>
             <Title>{result.name}</Title>
-            <ModerationStatusIcon status={result.moderated_status} size={12} />
+            <PLUGIN_MODERATION.ModerationStatusIcon
+              status={result.moderated_status}
+              size={12}
+            />
           </TitleWrapper>
           <Text>
             <InfoText result={result} />

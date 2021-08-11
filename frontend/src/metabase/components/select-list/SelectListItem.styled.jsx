@@ -11,8 +11,7 @@ export const ItemTitle = styled(Label)`
 `;
 
 export const ItemIcon = styled(Icon)`
-  color: ${props =>
-    props.isHighlighted ? color(props.color) : color("text-light")};
+  color: ${props => color(props.color) || color("text-light")};
 `;
 
 const activeItemCss = css`
