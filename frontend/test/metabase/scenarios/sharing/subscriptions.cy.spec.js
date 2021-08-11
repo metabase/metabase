@@ -433,7 +433,7 @@ function mockSlackConfigured() {
         name: "Email",
         allows_recipients: false,
         recipients: ["user", "email"],
-        schedules: ["daily", "weekly", "monthly"],
+        schedules: ["hourly", "daily", "weekly", "monthly"],
         configured: false,
       },
       slack: {
