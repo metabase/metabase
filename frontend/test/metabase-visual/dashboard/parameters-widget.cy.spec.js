@@ -14,7 +14,7 @@ const filter = {
   type: "category",
 };
 
-describe("visual tests > dashboard > fullscreen", () => {
+describe("visual tests > dashboard > parameters widget", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -52,7 +52,7 @@ describe("visual tests > dashboard > fullscreen", () => {
     );
   });
 
-  it("renders in day mode and night mode", () => {
+  it("is sticky in view mode", () => {
     cy.scrollTo(0, 400);
 
     cy.percySnapshot();
