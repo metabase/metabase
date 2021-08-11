@@ -7,9 +7,12 @@ import { iconPropTypes } from "metabase/components/Icon";
 
 import CardRenderer from "./CardRenderer";
 import LegendHeader from "./LegendHeader";
-import LegendCaption from "./legend/LegendCaption";
 
 import "./LineAreaBarChart.css";
+import {
+  LineAreaBarChartRoot,
+  ChartLegendCaption,
+} from "./LineAreaBarChart.styled";
 
 import {
   isNumeric,
@@ -276,12 +279,13 @@ export default class LineAreaBarChart extends Component {
     const cardIds = new Set(data.map(s => s.card.id));
     const hasTitle = showTitle && title;
     const canSelectTitle = cardIds.size === 1 && onChangeCardAndRun;
+    const onSelectTitle = canSelectTitle ? this.onSelectTitle : undefined;
 
     return {
       title,
       description,
       hasTitle,
-      canSelectTitle,
+      onSelectTitle,
     };
   }
 
@@ -314,7 +318,7 @@ export default class LineAreaBarChart extends Component {
       title,
       description,
       hasTitle,
-      canSelectTitle,
+      onSelectTitle,
     } = this.getLegendSettings();
 
     const settings = this.getSettings();
@@ -335,21 +339,20 @@ export default class LineAreaBarChart extends Component {
     ];
 
     return (
-      <div
+      <LineAreaBarChartRoot
         className={cx(
-          "LineAreaBarChart flex flex-column p1",
+          "LineAreaBarChart",
           this.getHoverClasses(),
           this.props.className,
         )}
       >
         {hasTitle && (
-          <LegendCaption
-            className="mx1 flex-no-shrink"
+          <ChartLegendCaption
             title={title}
             description={description}
             icon={headerIcon}
             actionButtons={actionButtons}
-            onSelectTitle={canSelectTitle ? this.onSelectTitle : undefined}
+            onSelectTitle={onSelectTitle}
           />
         )}
         {hasMultiSeriesHeaderSeries || (!hasTitle && actionButtons) ? ( // always show action buttons if we have them
@@ -376,7 +379,7 @@ export default class LineAreaBarChart extends Component {
           maxSeries={MAX_SERIES}
           renderer={this.constructor.renderer}
         />
-      </div>
+      </LineAreaBarChartRoot>
     );
   }
 }
