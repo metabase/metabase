@@ -6,10 +6,13 @@ import { t } from "ttag";
 import { iconPropTypes } from "metabase/components/Icon";
 
 import CardRenderer from "./CardRenderer";
-import LegendCaption from "./legend/LegendCaption";
 import LegendLayout from "./legend/LegendLayout";
 
 import "./LineAreaBarChart.css";
+import {
+  LineAreaBarChartRoot,
+  ChartLegendCaption,
+} from "./LineAreaBarChart.styled";
 
 import {
   isNumeric,
@@ -283,6 +286,8 @@ export default class LineAreaBarChart extends Component {
     const hasTitle = showTitle && settings["card.title"];
     const hasBreakout = card._breakoutColumn != null;
     const canSelectTitle = cardIds.size === 1 && onChangeCardAndRun;
+    const onSelectTitle = canSelectTitle ? this.onSelectTitle : undefined;
+
     const hasMultipleSeries = series.length > 1;
     const canChangeSeries = onAddSeries || onEditSeries || onRemoveSeries;
     const hasLegendButtons = !hasTitle && actionButtons;
@@ -305,7 +310,7 @@ export default class LineAreaBarChart extends Component {
       hasTitle,
       hasLegend,
       hasBreakout,
-      canSelectTitle,
+      onSelectTitle,
     };
   }
 
@@ -367,25 +372,24 @@ export default class LineAreaBarChart extends Component {
       hasTitle,
       hasLegend,
       hasBreakout,
-      canSelectTitle,
+      onSelectTitle,
     } = this.getLegendSettings();
 
     return (
-      <div
+      <LineAreaBarChartRoot
         className={cx(
-          "LineAreaBarChart flex flex-column px2 py1",
+          "LineAreaBarChart",
           this.getHoverClasses(),
           this.props.className,
         )}
       >
         {hasTitle && (
-          <LegendCaption
-            className="pb1"
+          <ChartLegendCaption
             title={title}
             description={description}
             icon={headerIcon}
             actionButtons={actionButtons}
-            onSelectTitle={canSelectTitle ? this.onSelectTitle : undefined}
+            onSelectTitle={onSelectTitle}
           />
         )}
         <LegendLayout
@@ -408,7 +412,7 @@ export default class LineAreaBarChart extends Component {
             renderer={this.constructor.renderer}
           />
         </LegendLayout>
-      </div>
+      </LineAreaBarChartRoot>
     );
   }
 }
