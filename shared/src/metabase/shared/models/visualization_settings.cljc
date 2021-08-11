@@ -27,8 +27,7 @@
                   [medley.core :as m]
                   [metabase.mbql.normalize :as mbql.normalize])]
        :cljs
-       [(:require [cljs.js :as js]
-                  [clojure.set :as set]
+       [(:require [clojure.set :as set]
                   [clojure.spec.alpha :as s]
                   [medley.core :as m]
                   [metabase.mbql.normalize :as mbql.normalize])]))
@@ -77,7 +76,8 @@
 (s/def ::column-title string?)
 (s/def ::date-style #{"M/D/YYYY" "D/M/YYYY" "YYYY/M/D" "MMMM D, YYYY" "D MMMM, YYYY" "dddd, MMMM D, YYYY"})
 (s/def ::date-abbreviate boolean?)
-(s/def ::time-style #{"h:mm A" "k:mm" "h A"})
+(s/def ::date-separator #{"/" "-" "."})
+(s/def ::time-style #{"HH:mm" "h:mm A" "h A"})
 (s/def ::time-enabled #{nil "minutes" "seconds" "milliseconds"})
 (s/def ::decimals pos-int?)
 (s/def ::number-separators #(or nil? (and string? (= 2 (count %)))))
@@ -150,7 +150,7 @@
   Clojure vector, which itself can contain a fully qualified name for serialization"
   {:added "0.40.0"}
   [kw]
-  (str (if-let [kw-ns (namespace kw)] (str kw-ns "/")) (name kw)))
+  (str (when-let [kw-ns (namespace kw)] (str kw-ns "/")) (name kw)))
 
 (s/fdef keyname
   :args (s/cat :kw keyword?)
@@ -527,12 +527,17 @@
     :click_behavior (assoc m ::click-behavior (db->norm-click-behavior v))
     (assoc m (db->norm-column-settings-keys k) v)))
 
+(defn db->norm-column-settings-entries
+  "Converts the DB form of a map of :column_settings entries to its normalized form."
+  [entries]
+  (reduce-kv db->norm-column-settings-entry {} entries))
+
 (defn db->norm-column-settings
   "Converts a :column_settings DB form to its normalized form."
   [settings]
   (m/map-kv (fn [k v]
               (let [k1 (parse-db-column-ref k)
-                    v1 (reduce-kv db->norm-column-settings-entry {} v)]
+                    v1 (db->norm-column-settings-entries v)]
                 [k1 v1]))
             settings))
 
