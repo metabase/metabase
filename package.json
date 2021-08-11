@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@visx/axis": "1.8.0",
+    "@visx/geo": "^1.17.1",
     "@visx/grid": "1.16.0",
     "@visx/group": "1.7.0",
     "@visx/scale": "1.7.0",
@@ -90,6 +91,7 @@
     "styled-components": "3.2.6",
     "styled-system": "2.2.5",
     "tether": "^1.2.0",
+    "topojson-client": "^3.1.0",
     "ttag": "1.7.15",
     "underscore": "^1.8.3",
     "yarn.lock": "^0.0.1-security",

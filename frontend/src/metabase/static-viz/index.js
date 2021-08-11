@@ -2,6 +2,7 @@ import ReactDOMServer from "react-dom/server";
 
 import { TimeseriesBar, TimeseriesLine } from "metabase/static-viz/timeseries/";
 import { Donut } from "metabase/static-viz/categorical/";
+import USMap from "./maps/us";
 
 const DEFAULTS = {
   width: 540,
@@ -25,6 +26,7 @@ const DEFAULTS = {
 const TIMESERIES_BAR = "timeseries/bar";
 const TIMESERIES_LINE = "timeseries/line";
 const CATEGORICAL_DONUT = "categorical/donut";
+const US_MAP = "map/us";
 
 export function RenderChart(type, logic, layout = DEFAULTS) {
   // TODO - rename as innerWidth / innerHeight
@@ -41,6 +43,9 @@ export function RenderChart(type, logic, layout = DEFAULTS) {
       break;
     case CATEGORICAL_DONUT:
       chart = Donut(logic, { ...layout, height: 540, xMax, yMax });
+      break;
+    case US_MAP:
+      chart = USMap(logic, { ...layout, xMax, yMax });
       break;
   }
 
