@@ -2,7 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 import ExplicitSize from "metabase/components/ExplicitSize";
-import Legend from "./Legend";
+import LegendTree from "./LegendTree";
 import {
   ChartContainer,
   LegendContainer,
@@ -42,17 +42,16 @@ const LegendLayout = ({
 }) => {
   const isNarrow = labels.length * MIN_ITEM_WIDTH > width;
   const isVertical = true;
-  const overflowCount = 2;
 
   return (
     <LegendLayoutRoot className={className} isVertical={isVertical}>
       {hasLegend && (
         <LegendContainer isVertical={isVertical}>
-          <Legend
+          <LegendTree
             labels={labels}
             colors={colors}
             hovered={hovered}
-            overflowCount={overflowCount}
+            visibleCount={1}
             actionButtons={actionButtons}
             isNarrow={isNarrow}
             isVertical={isVertical}

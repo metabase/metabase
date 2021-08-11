@@ -21,7 +21,7 @@ const propTypes = {
   onAddSeries: PropTypes.func,
   onSelectSeries: PropTypes.func,
   onRemoveSeries: PropTypes.func,
-  onShowOverflow: PropTypes.func,
+  onOpenOverflow: PropTypes.func,
 };
 
 const Legend = ({
@@ -36,7 +36,7 @@ const Legend = ({
   onHoverChange,
   onSelectSeries,
   onRemoveSeries,
-  onShowOverflow,
+  onOpenOverflow,
 }) => {
   return (
     <LegendRoot className={className} isVertical={isVertical}>
@@ -56,7 +56,7 @@ const Legend = ({
       ))}
       {overflowCount > 0 && (
         <LegendLinkContainer isVertical={isVertical}>
-          <LegendLink onClick={onShowOverflow}>
+          <LegendLink onClick={onOpenOverflow}>
             And {overflowCount} more
           </LegendLink>
         </LegendLinkContainer>
