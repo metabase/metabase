@@ -42,8 +42,8 @@ const LegendLayout = ({
   onSelectSeries,
   onRemoveSeries,
 }) => {
-  const isNarrow = false;
-  const isVertical = true;
+  const isNarrow = labels.length * MIN_ITEM_WIDTH > width;
+  const isVertical = false;
 
   return (
     <LegendLayoutRoot className={className} isVertical={isVertical}>
