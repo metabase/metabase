@@ -14,8 +14,8 @@ const propTypes = {
   labels: PropTypes.array.isRequired,
   colors: PropTypes.array.isRequired,
   hovered: PropTypes.object,
-  sliceIndex: PropTypes.number,
-  sliceLength: PropTypes.number,
+  visibleIndex: PropTypes.number,
+  visibleLength: PropTypes.number,
   actionButtons: PropTypes.node,
   isNarrow: PropTypes.bool,
   isVertical: PropTypes.bool,
@@ -30,8 +30,8 @@ const Legend = ({
   labels,
   colors,
   hovered,
-  sliceIndex = 0,
-  sliceLength = labels.length,
+  visibleIndex = 0,
+  visibleLength = labels.length,
   actionButtons,
   isNarrow,
   isVertical,
@@ -40,8 +40,8 @@ const Legend = ({
   onRemoveSeries,
 }) => {
   const [target, setTarget] = useState(null);
-  const overflowIndex = sliceIndex + sliceLength;
-  const visibleLabels = labels.slice(sliceIndex, overflowIndex);
+  const overflowIndex = visibleIndex + visibleLength;
+  const visibleLabels = labels.slice(visibleIndex, overflowIndex);
   const overflowLength = labels.length - overflowIndex;
 
   const handleOpenPopover = useCallback(event => {
@@ -55,7 +55,7 @@ const Legend = ({
   return (
     <LegendRoot className={className} isVertical={isVertical}>
       {visibleLabels.map((label, index) => {
-        const itemIndex = index + sliceIndex;
+        const itemIndex = index + visibleIndex;
 
         return (
           <LegendItem
@@ -85,8 +85,8 @@ const Legend = ({
             labels={labels}
             colors={colors}
             hovered={hovered}
-            sliceIndex={overflowIndex}
-            sliceLength={overflowLength}
+            visibleIndex={overflowIndex}
+            visibleLength={overflowLength}
             isNarrow={isNarrow}
             isVertical={isVertical}
             onHoverChange={onHoverChange}

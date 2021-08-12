@@ -42,7 +42,7 @@ const LegendLayout = ({
 }) => {
   const isNarrow = labels.length * MIN_ITEM_WIDTH > width;
   const isVertical = false;
-  const sliceLength = labels.length;
+  const visibleLength = labels.length;
 
   return (
     <LegendLayoutRoot className={className} isVertical={isVertical}>
@@ -52,7 +52,7 @@ const LegendLayout = ({
             labels={labels}
             colors={colors}
             hovered={hovered}
-            sliceLength={sliceLength}
+            visibleLength={visibleLength}
             actionButtons={actionButtons}
             isNarrow={isNarrow}
             isVertical={isVertical}
