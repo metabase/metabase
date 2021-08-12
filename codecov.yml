@@ -10,7 +10,15 @@ coverage:
         target: 78%
         # Whole-project test coverage is allowed to drop up to 5%. (For situtations where we delete code with full coverage)
         threshold: 5%
+
+      front-end:
+        target: 35%
+        threshold: 5%
+
     patch:
       default:
         # Changes must have at least 75% test coverage (by line)
         target: 75%
+
+      front-end:
+        target: 35%
