@@ -6,7 +6,6 @@ import { Box } from "grid-styled";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import Schemas from "metabase/entities/schemas";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/constants";
-import { SelectList } from "metabase/components/select-list";
 import EmptyState from "metabase/components/EmptyState";
 import { generateSchemaId } from "metabase/schema";
 
