@@ -6,7 +6,7 @@
             [metabase.mbql.normalize :as normalize]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.collection :as collection]
-            [metabase.models.dependency :as dependency]
+            [metabase.models.dependency :as dependency :refer [Dependency]]
             [metabase.models.field-values :as field-values]
             [metabase.models.interface :as i]
             [metabase.models.params :as params]
@@ -199,7 +199,8 @@
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (defn- pre-delete [{:keys [id]}]
-  (db/delete! 'Revision :model "Card", :model_id id))
+  (db/delete! 'Revision :model "Card", :model_id id)
+  (db/delete! 'Dependency :model "Card", :model_id id))
 
 (defn- result-metadata-out
   "Transform the Card result metadata as it comes out of the DB. Convert columns to keywords where appropriate."
