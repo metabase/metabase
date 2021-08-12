@@ -254,7 +254,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       cy.findAllByRole("button", { name: "Done" }).should("not.be.disabled");
     });
 
-    it.skip("should have 'Send to Slack now' button (metabase#14515)", () => {
+    it("should have 'Send to Slack now' button (metabase#14515)", () => {
       cy.findAllByRole("button", { name: "Send to Slack now" }).should(
         "be.disabled",
       );

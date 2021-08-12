@@ -325,7 +325,7 @@ function _AddEditSlackSidebar({
             channel={channel}
             pulse={pulse}
             testPulse={testPulse}
-            normalText={t`Send Slack now`}
+            normalText={t`Send to Slack now`}
             successText={t`Slack sent`}
           />
         </div>

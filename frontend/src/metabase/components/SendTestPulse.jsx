@@ -32,7 +32,7 @@ export default class SendTestPulse extends Component {
     return (
       <ActionButton
         actionFn={this.onTestPulseChannel}
-        disabled={ disabled }
+        disabled={disabled}
         normalText={normalText}
         activeText={t`Sending…`}
         failedText={t`Sending failed`}
