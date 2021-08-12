@@ -19,6 +19,7 @@ const propTypes = {
     }),
   ]),
   size: PropTypes.oneOf(["small", "medium"]),
+  className: PropTypes.string,
 };
 
 export function SelectListItem({
@@ -30,6 +31,7 @@ export function SelectListItem({
   isSelected = false,
   rightIcon,
   size = "medium",
+  className,
 }) {
   const ref = useScrollOnMount();
 
@@ -46,6 +48,7 @@ export function SelectListItem({
       size={size}
       onClick={() => onSelect(id)}
       onKeyDown={e => e.key === "Enter" && onSelect(id)}
+      className={className}
     >
       <ItemIcon name={icon} color={iconColor} />
       <ItemTitle>{name}</ItemTitle>

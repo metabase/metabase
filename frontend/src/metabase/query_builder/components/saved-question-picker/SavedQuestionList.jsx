@@ -10,7 +10,10 @@ import { SelectList } from "metabase/components/select-list";
 import EmptyState from "metabase/components/EmptyState";
 import { generateSchemaId } from "metabase/schema";
 
-import { SavedQuestionListRoot } from "./SavedQuestionList.styled";
+import {
+  SavedQuestionListRoot,
+  SavedQuestionListItem,
+} from "./SavedQuestionList.styled";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 
 const propTypes = {
@@ -58,7 +61,7 @@ export default function SavedQuestionList({
             return (
               <React.Fragment>
                 {tables.map(t => (
-                  <SelectList.Item
+                  <SavedQuestionListItem
                     id={t.id}
                     isSelected={selectedId === t.id}
                     key={t.id}

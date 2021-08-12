@@ -8,7 +8,7 @@ import EmptyState from "metabase/components/EmptyState";
 import Search from "metabase/entities/search";
 import { SelectList } from "metabase/components/select-list";
 
-import { EmptyStateContainer } from "./QuestionList.styled";
+import { EmptyStateContainer, QuestionListItem } from "./QuestionList.styled";
 
 QuestionList.propTypes = {
   searchText: PropTypes.string,
@@ -58,7 +58,7 @@ export function QuestionList({
         return (
           <SelectList>
             {list.map(item => (
-              <SelectList.Item
+              <QuestionListItem
                 key={item.id}
                 id={item.id}
                 name={item.getName()}
