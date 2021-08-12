@@ -1,6 +1,6 @@
 import { restore, popover } from "__support__/e2e/cypress";
 
-describe("visual tests > dashboard > filter sidebar", () => {
+describe("visual tests > notebook > major UI elements", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
