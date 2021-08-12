@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import {
   LegendButtonContainer,
@@ -39,18 +39,14 @@ const Legend = ({
   onSelectSeries,
   onRemoveSeries,
 }) => {
-  const [target, setTarget] = useState(null);
+  const targetRef = useRef();
+  const [isOpened, setIsOpened] = useState(null);
+  const handleOpenPopover = useCallback(() => setIsOpened(true), []);
+  const handleClosePopover = useCallback(() => setIsOpened(false), []);
+
   const overflowIndex = visibleIndex + visibleLength;
   const visibleLabels = labels.slice(visibleIndex, overflowIndex);
   const overflowLength = labels.length - overflowIndex;
-
-  const handleOpenPopover = useCallback(event => {
-    setTarget(event.target);
-  }, []);
-
-  const handleClosePopover = useCallback(() => {
-    setTarget(null);
-  }, []);
 
   return (
     <LegendRoot className={className} isVertical={isVertical}>
@@ -74,13 +70,13 @@ const Legend = ({
       })}
       {overflowLength > 0 && (
         <LegendLinkContainer isVertical={isVertical}>
-          <LegendLink onClick={handleOpenPopover}>
+          <LegendLink innerRef={targetRef} onClick={handleOpenPopover}>
             And {overflowLength} more
           </LegendLink>
         </LegendLinkContainer>
       )}
-      {target && (
-        <Popover target={target} onClose={handleClosePopover}>
+      {isOpened && (
+        <Popover target={targetRef.current} onClose={handleClosePopover}>
           <Legend
             labels={labels}
             colors={colors}
