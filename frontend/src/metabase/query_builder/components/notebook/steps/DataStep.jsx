@@ -7,15 +7,28 @@ import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/compo
 import { getDatabasesList } from "metabase/query_builder/selectors";
 
 import { NotebookCell, NotebookCellItem } from "../NotebookCell";
+import { FieldsPickerIcon, FIELDS_PICKER_STYLES } from "../FieldsPickerIcon";
 import FieldsPicker from "./FieldsPicker";
 
 function DataStep({ color, query, updateQuery }) {
   const table = query.table();
+  const canSelectTableColumns = table && query.isRaw();
   return (
     <NotebookCell color={color}>
       <NotebookCellItem
         color={color}
         inactive={!table}
+        right={
+          canSelectTableColumns && (
+            <DataFieldsPicker
+              query={query}
+              updateQuery={updateQuery}
+              triggerStyle={FIELDS_PICKER_STYLES.trigger}
+              triggerElement={<FieldsPickerIcon />}
+            />
+          )
+        }
+        rightContainerStyle={FIELDS_PICKER_STYLES.notebookItemContainer}
         data-testid="data-step-cell"
       >
         <DatabaseSchemaAndTableDataSelector
@@ -35,13 +48,6 @@ function DataStep({ color, query, updateQuery }) {
           }
         />
       </NotebookCellItem>
-      {table && query.isRaw() && (
-        <DataFieldsPicker
-          className="ml-auto text-bold"
-          query={query}
-          updateQuery={updateQuery}
-        />
-      )}
     </NotebookCell>
   );
 }
@@ -50,14 +56,14 @@ export default connect(state => ({ databases: getDatabasesList(state) }))(
   DataStep,
 );
 
-const DataFieldsPicker = ({ className, query, updateQuery }) => {
+const DataFieldsPicker = ({ query, updateQuery, ...props }) => {
   const dimensions = query.tableDimensions();
   const selectedDimensions = query.columnDimensions();
   const selected = new Set(selectedDimensions.map(d => d.key()));
   const fields = query.fields();
   return (
     <FieldsPicker
-      className={className}
+      {...props}
       dimensions={dimensions}
       selectedDimensions={selectedDimensions}
       isAll={!fields || fields.length === 0}

@@ -16,3 +16,13 @@ export function FieldsPickerIcon() {
     </Tooltip>
   );
 }
+
+export const FIELDS_PICKER_STYLES = {
+  notebookItemContainer: {
+    width: 33,
+    height: 33,
+  },
+  trigger: {
+    marginTop: 1,
+  },
+};
