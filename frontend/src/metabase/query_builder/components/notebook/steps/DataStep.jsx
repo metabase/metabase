@@ -4,9 +4,10 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
-import { NotebookCell, NotebookCellItem } from "../NotebookCell";
-
 import { getDatabasesList } from "metabase/query_builder/selectors";
+
+import { NotebookCell, NotebookCellItem } from "../NotebookCell";
+import FieldsPicker from "./FieldsPicker";
 
 function DataStep({ color, query, databases, updateQuery }) {
   const table = query.table();
@@ -50,8 +51,6 @@ function DataStep({ color, query, databases, updateQuery }) {
 export default connect(state => ({ databases: getDatabasesList(state) }))(
   DataStep,
 );
-
-import FieldsPicker from "./FieldsPicker";
 
 const DataFieldsPicker = ({ className, query, updateQuery }) => {
   const dimensions = query.tableDimensions();
