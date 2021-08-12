@@ -1,10 +1,13 @@
 import { restore, popover } from "__support__/e2e/cypress";
 
 describe("visual tests > notebook > major UI elements", () => {
+  const VIEWPORT_WIDTH = 2200;
+  const VIEWPORT_HEIGHT = 1200;
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.viewport(2200, 1200);
+    cy.viewport(VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
   });
 
   it("renders correctly", () => {
@@ -34,7 +37,12 @@ describe("visual tests > notebook > major UI elements", () => {
     addSorting({ field: "Average of Quantity" });
     setRowLimit(500);
 
-    cy.percySnapshot();
+    cy.percySnapshot(
+      "visual tests > notebook > major UI elements renders correctly",
+      {
+        minHeight: VIEWPORT_HEIGHT,
+      },
+    );
   });
 });
 
