@@ -125,7 +125,11 @@
       (letfn [(rff* [metadata]
                 (add-and-save-execution-info-xform! execution-info (rff metadata)))
               (raisef* [^Throwable e context]
-                (save-failed-query-execution! execution-info (.. e getCause getMessage))
+                (save-failed-query-execution!
+                  execution-info
+                  (or
+                    (some-> e (.getCause) (.getMessage))
+                    (.getMessage e)))
                 (raisef (ex-info (.getMessage e)
                           {:query-execution execution-info}
                           e)
