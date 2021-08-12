@@ -18,6 +18,7 @@ export const ChartContainer = styled.div`
   display: flex;
   flex: 1 0 auto;
   flex-direction: column;
-  padding: ${({ isVertical }) =>
-    isVertical ? "0.5rem 0.5rem 0.5rem 0" : "0 0.5rem 0.5rem"};
+  padding: 0.5rem;
+  padding-top: ${({ isVertical }) => (isVertical ? "0.5rem" : "0")};
+  padding-left: ${({ isVertical }) => (isVertical ? "0" : "0.5rem")};
 `;
