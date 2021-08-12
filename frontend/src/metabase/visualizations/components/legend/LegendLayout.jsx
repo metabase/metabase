@@ -2,7 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 import ExplicitSize from "metabase/components/ExplicitSize";
-import LegendTree from "./LegendTree";
+import Legend from "./Legend";
 import {
   ChartContainer,
   LegendContainer,
@@ -41,17 +41,18 @@ const LegendLayout = ({
   onRemoveSeries,
 }) => {
   const isNarrow = labels.length * MIN_ITEM_WIDTH > width;
-  const isVertical = true;
+  const isVertical = false;
+  const sliceLength = labels.length;
 
   return (
     <LegendLayoutRoot className={className} isVertical={isVertical}>
       {hasLegend && (
         <LegendContainer isVertical={isVertical}>
-          <LegendTree
+          <Legend
             labels={labels}
             colors={colors}
             hovered={hovered}
-            visibleCount={1}
+            sliceLength={sliceLength}
             actionButtons={actionButtons}
             isNarrow={isNarrow}
             isVertical={isVertical}
