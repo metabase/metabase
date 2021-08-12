@@ -3,13 +3,13 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Legend from "./Legend";
+import LegendActions from "./LegendActions";
 import {
   ChartContainer,
   LegendContainer,
   LegendLayoutRoot,
   MainContainer,
 } from "./LegendLayout.styled";
-import LegendActions from "metabase/visualizations/components/legend/LegendActions";
 
 const MIN_ITEM_WIDTH = 100;
 const MIN_ITEM_HEIGHT = 25;
