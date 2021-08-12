@@ -19,6 +19,8 @@ import DashboardGrid from "../DashboardGrid";
 import ParametersWidget from "./ParametersWidget/ParametersWidget";
 import DashboardEmptyState from "./DashboardEmptyState/DashboardEmptyState";
 
+const SCROLL_THROTTLE_INTERVAL = 1000 / 24;
+
 // NOTE: move DashboardControls HoC to container
 @DashboardControls
 export default class Dashboard extends Component {
@@ -85,10 +87,15 @@ export default class Dashboard extends Component {
   componentDidMount() {
     this.loadDashboard(this.props.dashboardId);
 
-    window.addEventListener("scroll", this.updateParametersWidgetStickiness, {
+    const throttleParameterWidgetStickiness = _.throttle(
+      this.updateParametersWidgetStickiness,
+      SCROLL_THROTTLE_INTERVAL,
+    );
+
+    window.addEventListener("scroll", throttleParameterWidgetStickiness, {
       passive: true,
     });
-    window.addEventListener("resize", this.updateParametersWidgetStickiness, {
+    window.addEventListener("resize", throttleParameterWidgetStickiness, {
       passive: true,
     });
   }
