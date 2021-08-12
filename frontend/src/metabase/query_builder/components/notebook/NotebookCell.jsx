@@ -2,7 +2,7 @@
 import React from "react";
 
 import { Flex } from "grid-styled";
-import styled from "styled-components";
+import styled, { css } from "styled-components";
 
 import Icon from "metabase/components/Icon";
 
@@ -24,31 +24,100 @@ NotebookCell.defaultProps = {
 
 NotebookCell.displayName = "NotebookCell";
 
-export const NotebookCellItem = styled(Flex).attrs({
-  align: "center",
-})`
+const NotebookCellItemContainer = styled(Flex).attrs({ align: "center" })`
   font-weight: bold;
-  border: 2px solid transparent;
-  border-radius: 6px;
   color: ${props => (props.inactive ? props.color : "white")};
-  background-color: ${props => (props.inactive ? "transparent" : props.color)};
+  border-radius: 6px;
+
+  border: 2px solid transparent;
   border-color: ${props =>
     props.inactive ? alpha(props.color, 0.25) : "transparent"};
+
   &:hover {
-    background-color: ${props => !props.inactive && alpha(props.color, 0.8)};
     border-color: ${props => props.inactive && alpha(props.color, 0.8)};
   }
-  transition: background 300ms linear, border 300ms linear;
+
+  transition: border 300ms linear;
+
   > .Icon {
     opacity: 0.6;
   }
 `;
 
-NotebookCellItem.defaultProps = {
-  p: 1,
+NotebookCellItemContainer.defaultProps = {
   mr: 1,
   mb: 1,
 };
+
+const NotebookCellItemContentContainer = styled.div`
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  background-color: ${props => (props.inactive ? "transparent" : props.color)};
+
+  &:hover {
+    background-color: ${props => !props.inactive && alpha(props.color, 0.8)};
+  }
+
+  ${props =>
+    !!props.border &&
+    css`
+    border-${props.border}: 1px solid ${alpha("white", 0.25)};
+  `}
+
+  ${props =>
+    props.roundedCorners.includes("left") &&
+    css`
+      border-top-left-radius: 6px;
+      border-bottom-left-radius: 6px;
+    `}
+
+  ${props =>
+    props.roundedCorners.includes("right") &&
+    css`
+      border-top-right-radius: 6px;
+      border-bottom-right-radius: 6px;
+    `}
+
+  transition: background 300ms linear;
+`;
+
+export function NotebookCellItem({
+  inactive,
+  color,
+  right,
+  rightContainerStyle,
+  children,
+  ...props
+}) {
+  const hasRightSide = React.isValidElement(right);
+  const mainContentRoundedCorners = ["left"];
+  if (!hasRightSide) {
+    mainContentRoundedCorners.push("right");
+  }
+  return (
+    <NotebookCellItemContainer inactive={inactive} color={color} {...props}>
+      <NotebookCellItemContentContainer
+        inactive={inactive}
+        color={color}
+        roundedCorners={mainContentRoundedCorners}
+      >
+        {children}
+      </NotebookCellItemContentContainer>
+      {hasRightSide && (
+        <NotebookCellItemContentContainer
+          inactive={inactive}
+          color={color}
+          border="left"
+          roundedCorners={["right"]}
+          style={rightContainerStyle}
+        >
+          {right}
+        </NotebookCellItemContentContainer>
+      )}
+    </NotebookCellItemContainer>
+  );
+}
 
 NotebookCellItem.displayName = "NotebookCellItem";
 
