@@ -81,9 +81,9 @@ const Legend = ({
       {isOpened && (
         <Popover
           target={targetRef.current}
+          targetOffsetX={9}
           horizontalAttachments={["left"]}
           verticalAttachments={["top", "bottom"]}
-          targetOffsetX={9}
           sizeToFit
           onClose={handleClose}
         >
