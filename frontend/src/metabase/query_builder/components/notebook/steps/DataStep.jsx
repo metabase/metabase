@@ -9,7 +9,7 @@ import { getDatabasesList } from "metabase/query_builder/selectors";
 import { NotebookCell, NotebookCellItem } from "../NotebookCell";
 import FieldsPicker from "./FieldsPicker";
 
-function DataStep({ color, query, databases, updateQuery }) {
+function DataStep({ color, query, updateQuery }) {
   const table = query.table();
   return (
     <NotebookCell color={color}>
