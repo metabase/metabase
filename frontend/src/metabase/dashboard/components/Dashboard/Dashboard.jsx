@@ -4,6 +4,9 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
+import DashboardControls from "../../hoc/DashboardControls";
+import { DashboardSidebars } from "../DashboardSidebars";
+import DashboardHeader from "../DashboardHeader";
 import {
   DashboardStyled,
   DashboardLoadingAndErrorWrapper,
@@ -12,13 +15,9 @@ import {
   ParametersAndCardsContainer,
   ParametersWidgetContainer,
 } from "./Dashboard.styled";
-import DashboardHeader from "../DashboardHeader";
 import DashboardGrid from "../DashboardGrid";
 import ParametersWidget from "./ParametersWidget/ParametersWidget";
 import DashboardEmptyState from "./DashboardEmptyState/DashboardEmptyState";
-import { DashboardSidebars } from "../DashboardSidebars";
-
-import DashboardControls from "../../hoc/DashboardControls";
 
 // NOTE: move DashboardControls HoC to container
 @DashboardControls
