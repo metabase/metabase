@@ -1,6 +1,6 @@
 import styled from "styled-components";
 
-export const PreventOverflowHeight = styled.div`
+export const Container = styled.div`
   height: 100%;
   overflow-y: auto;
   display: flex;

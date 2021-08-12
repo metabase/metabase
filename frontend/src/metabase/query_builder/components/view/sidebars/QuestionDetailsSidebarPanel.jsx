@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import QuestionActionButtons from "metabase/query_builder/components/QuestionActionButtons";
 import { ClampedDescription } from "metabase/query_builder/components/ClampedDescription";
 import {
-  PreventOverflowHeight,
+  Container,
   SidebarPaddedContent,
 } from "./QuestionDetailsSidebarPanel.styled";
 import QuestionActivityTimeline from "metabase/query_builder/components/QuestionActivityTimeline";
@@ -34,7 +34,7 @@ function QuestionDetailsSidebarPanel({
     : undefined;
 
   return (
-    <PreventOverflowHeight>
+    <Container>
       <SidebarPaddedContent>
         <QuestionActionButtons canWrite={canWrite} onOpenModal={onOpenModal} />
         <ClampedDescription
@@ -46,6 +46,6 @@ function QuestionDetailsSidebarPanel({
         <PLUGIN_MODERATION.QuestionModerationSection question={question} />
       </SidebarPaddedContent>
       <QuestionActivityTimeline question={question} />
-    </PreventOverflowHeight>
+    </Container>
   );
 }
