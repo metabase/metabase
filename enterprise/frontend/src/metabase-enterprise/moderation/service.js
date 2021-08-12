@@ -21,18 +21,22 @@ export function removeReview({ itemId, itemType }) {
   });
 }
 
-const defaultIcon = {};
-export function getStatusIcon(status) {
+const noIcon = {};
+export function getStatusIcon(status, { enableNull = false } = {}) {
+  if (status === null && !enableNull) {
+    return noIcon;
+  }
+
   const action = ACTIONS[status] || {};
-  return action.icon || defaultIcon;
+  return action.icon || noIcon;
 }
 
 export function getVerifiedIcon() {
   return getStatusIcon("verified");
 }
 
-export function getIconForReview(review) {
-  return getStatusIcon(review?.status);
+export function getIconForReview(review, options) {
+  return getStatusIcon(review?.status, options);
 }
 
 export function getTextForReviewBanner(
@@ -105,7 +109,7 @@ export function getModerationTimelineEvents(reviews, usersById, currentUser) {
       currentUser,
     );
     const text = getModerationReviewEventText(review, moderatorDisplayName);
-    const icon = getIconForReview(review);
+    const icon = getIconForReview(review, { enableNull: true });
 
     return {
       timestamp: new Date(review.created_at).valueOf(),

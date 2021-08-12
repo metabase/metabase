@@ -8,7 +8,9 @@ export const ACTIONS = {
   },
   null: {
     type: "null",
-    icon: "close",
-    color: "text-light",
+    icon: {
+      name: "close",
+      color: "text-light",
+    },
   },
 };
