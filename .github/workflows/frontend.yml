@@ -12,6 +12,7 @@ on:
     - 'docs/**'
     - '**/package.json'
     - '**/yarn.lock'
+    - '**/.eslintrc'
     - '.github/workflows/**'
 
 jobs:
