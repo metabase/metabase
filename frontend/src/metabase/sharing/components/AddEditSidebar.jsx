@@ -131,6 +131,7 @@ function _AddEditEmailSidebar({
             testPulse={testPulse}
             normalText={t`Send email now`}
             successText={t`Email sent`}
+            disabled={channel.recipients.length === 0}
           />
         </div>
         {PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component ? (
@@ -327,6 +328,7 @@ function _AddEditSlackSidebar({
             testPulse={testPulse}
             normalText={t`Send to Slack now`}
             successText={t`Slack sent`}
+            disabled={channel.details.channel === undefined}
           />
         </div>
         {PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component ? (

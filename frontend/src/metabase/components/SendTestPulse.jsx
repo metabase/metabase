@@ -9,6 +9,7 @@ export default class SendTestPulse extends Component {
     channel: PropTypes.object.isRequired,
     pulse: PropTypes.object.isRequired,
     testPulse: PropTypes.func.isRequired,
+    disabled: PropTypes.bool.isRequired,
     normalText: PropTypes.string.isRequired,
     successText: PropTypes.string.isRequired,
   };
@@ -20,14 +21,7 @@ export default class SendTestPulse extends Component {
   };
 
   render() {
-    const { channel, normalText, successText } = this.props;
-
-    let disabled;
-    if (channel.channel_type === "email") {
-      disabled = channel.recipients.length === 0;
-    } else if (channel.channel_type === "slack") {
-      disabled = channel.details.channel === undefined;
-    }
+    const { disabled, normalText, successText } = this.props;
 
     return (
       <ActionButton
