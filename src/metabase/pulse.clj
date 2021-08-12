@@ -102,8 +102,8 @@
 (defn execute-dashboard
   "Execute all the cards in a dashboard for a Pulse"
   [{pulse-creator-id :creator_id, :as pulse} dashboard-or-id & {:as options}]
-  (let [dashboard-id (u/the-id dashboard-or-id)
-        dashboard (Dashboard :id dashboard-id)
+  (let [dashboard-id      (u/the-id dashboard-or-id)
+        dashboard         (Dashboard :id dashboard-id)
         dashcards         (db/select DashboardCard :dashboard_id dashboard-id, :card_id [:not= nil])
         ordered-dashcards (sort dashcard-comparator dashcards)]
     (for [dashcard ordered-dashcards]
