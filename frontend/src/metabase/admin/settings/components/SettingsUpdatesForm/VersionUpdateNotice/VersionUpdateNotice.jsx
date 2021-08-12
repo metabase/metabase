@@ -120,8 +120,8 @@ function HostingCTA() {
       <Flex>
         <Flex
           className="circular bg-medium align-center justify-center ml1 mr2"
-          h={32}
-          w={52}
+          width={52}
+          height={32}
         >
           <Icon name="cloud" size={24} />
         </Flex>

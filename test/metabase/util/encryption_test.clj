@@ -47,7 +47,7 @@
     (is (not= (encryption/encrypt secret "Hello!")
               (encryption/encrypt secret "Hello!")))))
 
-(deftest decrypt-test
+(deftest  decrypt-test
   (testing "test that we can decrypt something"
     (is (= "Hello!"
            (encryption/decrypt secret (encryption/encrypt secret "Hello!"))))))

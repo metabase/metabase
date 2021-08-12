@@ -84,19 +84,29 @@
                     :context       :pulse ; TODO - we should support for `:dashboard-subscription` and use that to differentiate the two
                     :export-format :api
                     :parameters    params
-                    :run (fn [query & args]
-                           (apply qp/process-query-and-save-with-max-results-constraints! (assoc query :async? false) args))))]
+                    :run (fn [query info]
+                           (qp/process-query-and-save-with-max-results-constraints! (assoc query :async? false) info))))]
       {:card card
        :result result})
     (catch Throwable e
         (log/warn e (trs "Error running query for Card {0}" card-or-id)))))
 
+(defn- dashcard-comparator
+  "Comparator that determines which of two dashcards comes first in the layout order used for pulses.
+  This is the same order used on the frontend for the mobile layout. Orders cards left-to-right, then top-to-bottom"
+  [dashcard-1 dashcard-2]
+  (if-not (= (:row dashcard-1) (:row dashcard-2))
+    (compare (:row dashcard-1) (:row dashcard-2))
+    (compare (:col dashcard-1) (:col dashcard-2))))
+
 (defn execute-dashboard
   "Execute all the cards in a dashboard for a Pulse"
   [{pulse-creator-id :creator_id, :as pulse} dashboard-or-id & {:as options}]
-  (let [dashboard-id (u/the-id dashboard-or-id)
-        dashboard (Dashboard :id dashboard-id)]
-    (for [dashcard (db/select DashboardCard :dashboard_id dashboard-id, :card_id [:not= nil])]
+  (let [dashboard-id      (u/the-id dashboard-or-id)
+        dashboard         (Dashboard :id dashboard-id)
+        dashcards         (db/select DashboardCard :dashboard_id dashboard-id, :card_id [:not= nil])
+        ordered-dashcards (sort dashcard-comparator dashcards)]
+    (for [dashcard ordered-dashcards]
       (execute-dashboard-subscription-card pulse-creator-id dashboard dashcard (:card_id dashcard) (i/the-parameters parameters-impl pulse dashboard)))))
 
 (defn- database-id [card]

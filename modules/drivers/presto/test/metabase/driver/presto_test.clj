@@ -118,7 +118,7 @@
            (driver/describe-table :presto (mt/db) (db/select-one 'Table :id (mt/id :venues)))))))
 
 (deftest table-rows-sample-test
-  (mt/test-driver :prestor
+  (mt/test-driver :presto
     (is (= [["Red Medicine"]
             ["Stout Burgers & Beers"]
             ["The Apple Pan"]

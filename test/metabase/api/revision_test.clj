@@ -15,7 +15,8 @@
 (use-fixtures :once (fixtures/initialize :db :test-users :web-server))
 
 (def ^:private rasta-revision-info
-  {:id (test-users/user->id :rasta), :common_name "Rasta Toucan", :first_name "Rasta", :last_name "Toucan"})
+  (delay
+    {:id (test-users/user->id :rasta), :common_name "Rasta Toucan", :first_name "Rasta", :last_name "Toucan"}))
 
 (defn- get-revisions [entity object-id]
   (for [revision (mt/user-http-request :rasta :get "revision" :entity entity, :id object-id)]
@@ -57,7 +58,7 @@
     (is (= [{:is_reversion false
              :is_creation  true
              :message      nil
-             :user         rasta-revision-info
+             :user         @rasta-revision-info
              :diff         nil
              :description  nil}]
            (tt/with-temp Card [{:keys [id] :as card}]
@@ -71,21 +72,21 @@
       (is (= [{:is_reversion true
                :is_creation  false
                :message      "because i wanted to"
-               :user         rasta-revision-info
+               :user         @rasta-revision-info
                :diff         {:before {:name "something else"}
                               :after  {:name name}}
                :description  (format "renamed this Card from \"something else\" to \"%s\"." name)}
               {:is_reversion false
                :is_creation  false
                :message      nil
-               :user         rasta-revision-info
+               :user         @rasta-revision-info
                :diff         {:before {:name name}
                               :after  {:name "something else"}}
                :description  (format "renamed this Card from \"%s\" to \"something else\"." name)}
               {:is_reversion false
                :is_creation  true
                :message      nil
-               :user         rasta-revision-info
+               :user         @rasta-revision-info
                :diff         nil
                :description  nil}]
              (do
@@ -114,28 +115,28 @@
       (is (= [{:is_reversion true
                :is_creation  false
                :message      nil
-               :user         rasta-revision-info
+               :user         @rasta-revision-info
                :diff         {:before {:cards nil}
                               :after  {:cards [{:sizeX 2, :sizeY 2, :row 0, :col 0, :card_id card-id, :series []}]}}
                :description  "added a card."}
               {:is_reversion false
                :is_creation  false
                :message      nil
-               :user         rasta-revision-info
+               :user         @rasta-revision-info
                :diff         {:before {:cards [{:sizeX 2, :sizeY 2, :row 0, :col 0, :card_id card-id, :series []}]}
                               :after  {:cards nil}}
                :description "removed a card."}
               {:is_reversion false
                :is_creation  false
                :message      nil
-               :user         rasta-revision-info
+               :user         @rasta-revision-info
                :diff         {:before {:cards nil}
                               :after  {:cards [{:sizeX 2, :sizeY 2, :row 0, :col 0, :card_id card-id, :series []}]}}
                :description "added a card."}
               {:is_reversion false
                :is_creation  true
                :message      nil
-               :user         rasta-revision-info
+               :user         @rasta-revision-info
                :diff         nil
                :description  nil}]
              (do

@@ -1,10 +1,5 @@
 /* eslint-env node */
 /* eslint-disable import/no-commonjs */
-
-require("babel-register");
-require("core-js/stable");
-require("regenerator-runtime/runtime");
-
 const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 
 const webpack = require("webpack");
@@ -34,7 +29,7 @@ const devMode = NODE_ENV !== "production";
 
 // Babel:
 const BABEL_CONFIG = {
-  cacheDirectory: process.env.BABEL_DISABLE_CACHE ? null : ".babel_cache",
+  cacheDirectory: process.env.BABEL_DISABLE_CACHE ? false : ".babel_cache",
 };
 
 const CSS_CONFIG = {
@@ -179,6 +174,7 @@ const config = (module.exports = {
 });
 
 if (NODE_ENV === "hot") {
+  config.target = "web";
   // suffixing with ".hot" allows us to run both `yarn run build-hot` and `yarn run test` or `yarn run test-watch` simultaneously
   config.output.filename = "[name].hot.bundle.js?[contenthash]";
 
@@ -263,6 +259,12 @@ if (NODE_ENV !== "production") {
     }),
   );
 } else {
+
+  // Don't bother with ESLint for CI/production (we catch linting errors with another CI run)
+  config.module.rules = config.module.rules.filter(rule => {
+    return Array.isArray(rule.use) ? rule.use[0].loader != "eslint-loader" : true
+  });
+
   config.plugins.push(
     new TerserPlugin({ parallel: true, test: /\.jsx?($|\?)/i }),
   );

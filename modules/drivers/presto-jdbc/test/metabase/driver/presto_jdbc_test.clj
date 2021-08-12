@@ -4,6 +4,7 @@
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
             [java-time :as t]
+            [metabase.api.database :as database-api]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
             [metabase.driver.presto-jdbc :as presto-jdbc]
@@ -190,3 +191,12 @@
                    (map #(select-keys % [:name :schema :db_id]) (db/select Table :db_id (mt/id)))))))
         (execute-ddl! [(format "DROP TABLE %s.%s" s t)
                        (format "DROP SCHEMA %s" s)])))))
+
+(deftest test-database-connection-test
+  (mt/test-driver :presto-jdbc
+    (testing "can-test-database-connection works properly"
+      ;; for whatever reason, :let-user-control-scheduling is the only "always available" option that goes into details
+      ;; the others (ex: :auto_run_queries and :refingerprint) are one level up (fields in the model, not in the details
+      ;; JSON blob)
+      (let [db-details (assoc (:details (mt/db)) :let-user-control-scheduling false)]
+        (is (nil? (database-api/test-database-connection :presto-jdbc db-details)))))))

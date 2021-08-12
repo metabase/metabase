@@ -160,9 +160,12 @@ export const ExploreOption = ({ option }: { option: Candidate }) => (
     <Flex
       align="center"
       justify="center"
-      bg={color("accent4")}
-      w="42px"
-      style={{ borderRadius: 6, height: 42 }}
+      style={{
+        backgroundColor: color("accent4"),
+        borderRadius: 6,
+        width: 42,
+        height: 42,
+      }}
       mr={1}
     >
       <Icon name="bolt" size={20} className="flex-no-shrink text-white" />

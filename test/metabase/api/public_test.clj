@@ -1034,7 +1034,7 @@
 ;; Pivot tables
 
 (deftest pivot-public-card-test
-  (mt/test-drivers pivots/applicable-drivers
+  (mt/test-drivers (pivots/applicable-drivers)
     (mt/dataset sample-dataset
       (testing "GET /api/public/pivot/card/:uuid/query"
         (mt/with-temporary-setting-values [enable-public-sharing true]
@@ -1056,7 +1056,7 @@
   (str "public/pivot/dashboard/" (:public_uuid dash) "/card/" (u/the-id card)))
 
 (deftest pivot-public-dashcard-test
-  (mt/test-drivers pivots/applicable-drivers
+  (mt/test-drivers (pivots/applicable-drivers)
     (mt/dataset sample-dataset
       (let [dashboard-defaults {:parameters [{:id      "_STATE_"
                                               :name    "State"

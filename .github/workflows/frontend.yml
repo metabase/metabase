@@ -4,12 +4,6 @@ on:
   pull_request:
   push:
     branches:
-      - master
-      - 'release**'
-      - 'feature**'
-      - 'fix**'
-      - 'ci**'
-    tags:
       - '**'
     paths:
     - 'frontend/**'

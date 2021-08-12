@@ -8,24 +8,31 @@
            java.nio.charset.StandardCharsets))
 
 (defmethod i/stream-options :csv
-  [_]
-  {:content-type              "text/csv"
-   :status                    200
-   :headers                   {"Content-Disposition" (format "attachment; filename=\"query_result_%s.csv\""
-                                                             (u.date/format (t/zoned-date-time)))}
-   :write-keepalive-newlines? false})
+  ([_]
+   (i/stream-options :csv "query_result"))
+  ([_ filename-prefix]
+   {:content-type              "text/csv"
+    :status                    200
+    :headers                   {"Content-Disposition" (format "attachment; filename=\"%s_%s.csv\""
+                                                              (or filename-prefix "query_result")
+                                                              (u.date/format (t/zoned-date-time)))}
+    :write-keepalive-newlines? false}))
 
 (defmethod i/streaming-results-writer :csv
   [_ ^OutputStream os]
   (let [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
     (reify i/StreamingResultsWriter
-      (begin! [_ {{:keys [cols]} :data}]
-        (csv/write-csv writer [(map (some-fn :display_name :name) cols)])
+      (begin! [_ {{:keys [ordered-cols]} :data} _]
+        (csv/write-csv writer [(map (some-fn :display_name :name) ordered-cols)])
         (.flush writer))
 
-      (write-row! [_ row row-num]
-        (csv/write-csv writer [(map common/format-value row)])
-        (.flush writer))
+      (write-row! [_ row row-num _ {:keys [output-order]}]
+        (let [ordered-row (if output-order
+                            (let [row-v (into [] row)]
+                              (for [i output-order] (row-v i)))
+                            row)]
+          (csv/write-csv writer [(map common/format-value ordered-row)])
+          (.flush writer)))
 
       (finish! [_ _]
          ;; TODO -- not sure we need to flush both

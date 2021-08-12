@@ -167,7 +167,7 @@
 (defmethod post-process-collection-children :pulse
   [_ rows]
   (for [row rows]
-    (dissoc row :description :display :authority_level)))
+    (dissoc row :description :display :authority_level :moderated_status)))
 
 (defmethod collection-children-query :snippet
   [_ collection {:keys [archived? pinned-state]}]
@@ -180,14 +180,25 @@
 (defmethod post-process-collection-children :snippet
   [_ rows]
   (for [row rows]
-    (dissoc row :description :collection_position :display :authority_level)))
+    (dissoc row :description :collection_position :display :authority_level :moderated_status)))
 
 (defmethod collection-children-query :card
   [_ collection {:keys [archived? pinned-state]}]
   (-> {:select    [:c.id :c.name :c.description :c.collection_position :c.display [(hx/literal "card") :model]
                    [:u.id :last_edit_user] [:u.email :last_edit_email]
                    [:u.first_name :last_edit_first_name] [:u.last_name :last_edit_last_name]
-                   [:r.timestamp :last_edit_timestamp]]
+                   [:r.timestamp :last_edit_timestamp]
+                   [{:select [:status]
+                     :from [:moderation_review]
+                     :where [:and
+                             [:= :moderated_item_type "card"]
+                             [:= :moderated_item_id :c.id]
+                             [:= :most_recent true]]
+                     ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
+                     ;; protecting against potential bugs
+                     :order-by [[:id :desc]]
+                     :limit 1}
+                    :moderated_status]]
        :from      [[Card :c]]
        ;; todo: should there be a flag, or a realized view?
        :left-join [[{:select [:r1.*]
@@ -235,7 +246,7 @@
 
 (defmethod post-process-collection-children :dashboard
   [_ rows]
-  (hydrate (map #(dissoc % :display :authority_level) rows) :favorite))
+  (hydrate (map #(dissoc % :display :authority_level :moderated_status) rows) :favorite))
 
 (defmethod collection-children-query :collection
   [_ collection {:keys [archived? collection-namespace pinned-state]}]
@@ -260,7 +271,7 @@
     ;; don't get models back from ulterior over-query
     ;; Previous examination with logging to DB says that there's no N+1 query for this.
     ;; However, this was only tested on H2 and Postgres
-    (assoc (dissoc row :collection_position :display)
+    (assoc (dissoc row :collection_position :display :moderated_status)
            :can_write
            (mi/can-write? Collection (:id row)))))
 
@@ -319,7 +330,7 @@
   are optional (not id, but last_edit_user for example) must have a type so that the union-all can unify the nil with
   the correct column type."
   [:id :name :description :display :model :collection_position :authority_level
-   :last_edit_email :last_edit_first_name :last_edit_last_name
+   :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp]])
 
 (defn- add-missing-columns
@@ -410,7 +421,10 @@
                      :order-by sql-order}
         ;; We didn't implement collection pagination for snippets namespace for root/items
         ;; Rip out the limit for now and put it back in when we want it
-        limit-query (if (= (:collection-namespace options) "snippets")
+        limit-query (if (or
+                          (nil? offset-paging/*limit*)
+                          (nil? offset-paging/*offset*)
+                          (= (:collection-namespace options) "snippets"))
                       rows-query
                       (assoc rows-query
                              :limit  offset-paging/*limit*

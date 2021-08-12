@@ -112,3 +112,36 @@ export const DASHBOARD_TEXT_FILTERS = {
     representativeResult: "47.68",
   },
 };
+
+export const DASHBOARD_SQL_TEXT_FILTERS = {
+  Dropdown: {
+    sqlFilter: "string/=",
+    value: "Gizmo",
+    representativeResult: "Rustic Paper Wallet",
+  },
+  "Is not": {
+    sqlFilter: "string/!=",
+    value: "Gadget",
+    representativeResult: "Rustic Paper Wallet",
+  },
+  Contains: {
+    sqlFilter: "string/contains",
+    value: "oo",
+    representativeResult: "Small Marble Shoes",
+  },
+  "Does not contain": {
+    sqlFilter: "string/does-not-contain",
+    value: "oo",
+    representativeResult: "Rustic Paper Wallet",
+  },
+  "Starts with": {
+    sqlFilter: "string/starts-with",
+    value: "G",
+    representativeResult: "Rustic Paper Wallet",
+  },
+  "Ends with": {
+    sqlFilter: "string/ends-with",
+    value: "y",
+    representativeResult: "Small Marble Shoes",
+  },
+};

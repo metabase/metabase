@@ -10,7 +10,6 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 import { clearGoogleAuthCredentials } from "metabase/lib/auth";
 
 import { refreshSiteSettings } from "metabase/redux/settings";
-import { refreshCurrentUser } from "metabase/redux/user";
 
 import { SessionApi } from "metabase/services";
 
@@ -23,6 +22,10 @@ export const login = createThunkAction(
     await SessionApi.create(credentials);
 
     MetabaseAnalytics.trackEvent("Auth", "Login");
+
+    // unable to use a top-level `import` here because of a circular dependency
+    const { refreshCurrentUser } = require("metabase/redux/user");
+
     await Promise.all([
       dispatch(refreshCurrentUser()),
       dispatch(refreshSiteSettings()),
@@ -45,6 +48,9 @@ export const loginGoogle = createThunkAction(LOGIN_GOOGLE, function(
       });
 
       MetabaseAnalytics.trackEvent("Auth", "Google Auth Login");
+
+      // unable to use a top-level `import` here because of a circular dependency
+      const { refreshCurrentUser } = require("metabase/redux/user");
 
       await Promise.all([
         dispatch(refreshCurrentUser()),
