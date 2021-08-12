@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 import ExplicitSize from "metabase/components/ExplicitSize";
@@ -40,6 +40,7 @@ const LegendLayout = ({
   onSelectSeries,
   onRemoveSeries,
 }) => {
+  const constraintRef = useRef();
   const isNarrow = labels.length * MIN_ITEM_WIDTH > width;
   const isVertical = false;
   const visibleLength = labels.length;
@@ -47,13 +48,14 @@ const LegendLayout = ({
   return (
     <LegendLayoutRoot className={className} isVertical={isVertical}>
       {hasLegend && (
-        <LegendContainer isVertical={isVertical}>
+        <LegendContainer innerRef={constraintRef} isVertical={isVertical}>
           <Legend
             labels={labels}
             colors={colors}
             hovered={hovered}
-            visibleLength={visibleLength}
             actionButtons={actionButtons}
+            visibleLength={visibleLength}
+            constraintRef={constraintRef}
             isNarrow={isNarrow}
             isVertical={isVertical}
             onHoverChange={onHoverChange}

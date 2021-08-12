@@ -1,5 +1,6 @@
 import React, { useCallback, useRef, useState } from "react";
 import PropTypes from "prop-types";
+import Popover from "metabase/components/Popover";
 import {
   LegendButtonContainer,
   LegendLink,
@@ -7,16 +8,16 @@ import {
   LegendRoot,
 } from "./Legend.styled";
 import LegendItem from "./LegendItem";
-import Popover from "metabase/components/Popover";
 
 const propTypes = {
   className: PropTypes.string,
   labels: PropTypes.array.isRequired,
   colors: PropTypes.array.isRequired,
   hovered: PropTypes.object,
+  actionButtons: PropTypes.node,
   visibleIndex: PropTypes.number,
   visibleLength: PropTypes.number,
-  actionButtons: PropTypes.node,
+  constraintRef: PropTypes.object,
   isNarrow: PropTypes.bool,
   isVertical: PropTypes.bool,
   onHoverChange: PropTypes.func,
@@ -30,9 +31,10 @@ const Legend = ({
   labels,
   colors,
   hovered,
+  actionButtons,
   visibleIndex = 0,
   visibleLength = labels.length,
-  actionButtons,
+  constraintRef,
   isNarrow,
   isVertical,
   onHoverChange,
@@ -41,8 +43,8 @@ const Legend = ({
 }) => {
   const targetRef = useRef();
   const [isOpened, setIsOpened] = useState(null);
-  const handleOpenPopover = useCallback(() => setIsOpened(true), []);
-  const handleClosePopover = useCallback(() => setIsOpened(false), []);
+  const handleOpen = useCallback(() => setIsOpened(true), []);
+  const handleClose = useCallback(() => setIsOpened(false), []);
 
   const overflowIndex = visibleIndex + visibleLength;
   const visibleLabels = labels.slice(visibleIndex, overflowIndex);
@@ -69,14 +71,18 @@ const Legend = ({
         );
       })}
       {overflowLength > 0 && (
-        <LegendLinkContainer isVertical={isVertical}>
-          <LegendLink innerRef={targetRef} onClick={handleOpenPopover}>
+        <LegendLinkContainer innerRef={targetRef} isVertical={isVertical}>
+          <LegendLink onClick={handleOpen}>
             And {overflowLength} more
           </LegendLink>
         </LegendLinkContainer>
       )}
       {isOpened && (
-        <Popover target={targetRef.current} onClose={handleClosePopover}>
+        <Popover
+          target={targetRef.current}
+          tetherOptions={getTetherOptions(constraintRef)}
+          onClose={handleClose}
+        >
           <Legend
             labels={labels}
             colors={colors}
@@ -101,5 +107,18 @@ const Legend = ({
 };
 
 Legend.propTypes = propTypes;
+
+const getTetherOptions = constraintRef => {
+  return {
+    attachment: "bottom left",
+    targetAttachment: "top left",
+    constraints: [
+      {
+        to: constraintRef.current,
+        attachment: "together",
+      },
+    ],
+  };
+};
 
 export default Legend;
