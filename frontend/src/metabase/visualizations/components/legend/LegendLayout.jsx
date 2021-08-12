@@ -7,7 +7,9 @@ import {
   ChartContainer,
   LegendContainer,
   LegendLayoutRoot,
+  MainContainer,
 } from "./LegendLayout.styled";
+import LegendActions from "metabase/visualizations/components/legend/LegendActions";
 
 const MIN_ITEM_WIDTH = 100;
 
@@ -40,8 +42,8 @@ const LegendLayout = ({
   onSelectSeries,
   onRemoveSeries,
 }) => {
-  const isNarrow = labels.length * MIN_ITEM_WIDTH > width;
-  const isVertical = false;
+  const isNarrow = false;
+  const isVertical = true;
 
   return (
     <LegendLayoutRoot className={className} isVertical={isVertical}>
@@ -59,9 +61,17 @@ const LegendLayout = ({
             onSelectSeries={onSelectSeries}
             onRemoveSeries={onRemoveSeries}
           />
+          {!isVertical && actionButtons && (
+            <LegendActions>{actionButtons}</LegendActions>
+          )}
         </LegendContainer>
       )}
-      <ChartContainer>{children}</ChartContainer>
+      <MainContainer>
+        {isVertical && actionButtons && (
+          <LegendActions>{actionButtons}</LegendActions>
+        )}
+        <ChartContainer>{children}</ChartContainer>
+      </MainContainer>
     </LegendLayoutRoot>
   );
 };
