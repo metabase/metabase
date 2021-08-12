@@ -3,12 +3,12 @@ import PropTypes from "prop-types";
 import { iconPropTypes } from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import Ellipsified from "metabase/components/Ellipsified";
+import LegendActions from "./LegendActions";
 import {
-  LegendButtonGroup,
-  LegendLabelIcon,
+  LegendCaptionRoot,
   LegendDescriptionIcon,
   LegendLabel,
-  LegendCaptionRoot,
+  LegendLabelIcon,
 } from "./LegendCaption.styled";
 
 const propTypes = {
@@ -39,7 +39,7 @@ const LegendCaption = ({
           <LegendDescriptionIcon />
         </Tooltip>
       )}
-      {actionButtons && <LegendButtonGroup>{actionButtons}</LegendButtonGroup>}
+      {actionButtons && <LegendActions>{actionButtons}</LegendActions>}
     </LegendCaptionRoot>
   );
 };

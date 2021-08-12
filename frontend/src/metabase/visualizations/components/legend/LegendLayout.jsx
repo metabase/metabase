@@ -7,7 +7,9 @@ import {
   ChartContainer,
   LegendContainer,
   LegendLayoutRoot,
+  MainContainer,
 } from "./LegendLayout.styled";
+import LegendActions from "metabase/visualizations/components/legend/LegendActions";
 
 const MIN_ITEM_WIDTH = 100;
 const MIN_ITEM_HEIGHT = 25;
@@ -67,9 +69,17 @@ const LegendLayout = ({
             onSelectSeries={onSelectSeries}
             onRemoveSeries={onRemoveSeries}
           />
+          {!isVertical && actionButtons && (
+            <LegendActions>{actionButtons}</LegendActions>
+          )}
         </LegendContainer>
       )}
-      <ChartContainer>{children}</ChartContainer>
+      <MainContainer>
+        {isVertical && actionButtons && (
+          <LegendActions>{actionButtons}</LegendActions>
+        )}
+        <ChartContainer>{children}</ChartContainer>
+      </MainContainer>
     </LegendLayoutRoot>
   );
 };

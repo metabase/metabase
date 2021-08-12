@@ -7,6 +7,12 @@ export const LegendLayoutRoot = styled.div`
   overflow: hidden;
 `;
 
+export const MainContainer = styled.div`
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+`;
+
 export const LegendContainer = styled.div`
   max-width: ${({ isVertical }) => (isVertical ? "25%" : "")};
   max-width: ${({ isVertical }) => (isVertical ? "min(25%, 20rem)" : "")};
