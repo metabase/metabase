@@ -13,30 +13,28 @@ function DataStep({ color, query, updateQuery }) {
   const table = query.table();
   return (
     <NotebookCell color={color}>
-      <DatabaseSchemaAndTableDataSelector
-        hasTableSearch
-        databaseQuery={{ saved: true }}
-        selectedDatabaseId={query.databaseId()}
-        selectedTableId={query.tableId()}
-        setSourceTableFn={tableId =>
-          query
-            .setTableId(tableId)
-            .setDefaultQuery()
-            .update(updateQuery)
-        }
-        isInitiallyOpen={!query.tableId()}
-        triggerElement={
-          !query.tableId() ? (
-            <NotebookCellItem color={color} inactive>
-              {t`Pick your starting data`}
-            </NotebookCellItem>
-          ) : (
-            <NotebookCellItem color={color} data-testid="data-step-cell">
-              {table && table.displayName()}
-            </NotebookCellItem>
-          )
-        }
-      />
+      <NotebookCellItem
+        color={color}
+        inactive={!table}
+        data-testid="data-step-cell"
+      >
+        <DatabaseSchemaAndTableDataSelector
+          hasTableSearch
+          databaseQuery={{ saved: true }}
+          selectedDatabaseId={query.databaseId()}
+          selectedTableId={query.tableId()}
+          setSourceTableFn={tableId =>
+            query
+              .setTableId(tableId)
+              .setDefaultQuery()
+              .update(updateQuery)
+          }
+          isInitiallyOpen={!query.tableId()}
+          triggerElement={
+            table ? table.displayName() : t`Pick your starting data`
+          }
+        />
+      </NotebookCellItem>
       {table && query.isRaw() && (
         <DataFieldsPicker
           className="ml-auto text-bold"
