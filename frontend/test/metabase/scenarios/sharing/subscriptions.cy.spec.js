@@ -127,7 +127,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       assignRecipient();
       cy.findByText("To:").click();
       cy.get(".AdminSelect")
-        .contains("Daily")
+        .contains("Hourly")
         .click();
       cy.findByText("Monthly").click();
       cy.get(".AdminSelect")
