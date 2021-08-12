@@ -1,5 +1,6 @@
 import React, { useCallback, useRef, useState } from "react";
 import PropTypes from "prop-types";
+import { t } from "ttag";
 import Popover from "metabase/components/Popover";
 import {
   LegendButtonContainer,
@@ -73,7 +74,7 @@ const Legend = ({
       {overflowLength > 0 && (
         <LegendLinkContainer innerRef={targetRef} isVertical={isVertical}>
           <LegendLink onMouseDown={handleOpen}>
-            And {overflowLength} more
+            {t`And ${overflowLength} more`}
           </LegendLink>
         </LegendLinkContainer>
       )}
