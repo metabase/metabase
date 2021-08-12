@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 import ExplicitSize from "metabase/components/ExplicitSize";
@@ -33,8 +33,8 @@ const LegendLayout = ({
   labels,
   colors,
   hovered,
-  width,
-  height,
+  width = 0,
+  height = 0,
   hasLegend,
   actionButtons,
   children,
@@ -45,10 +45,11 @@ const LegendLayout = ({
 }) => {
   const maxXItems = Math.floor(width / MIN_ITEM_WIDTH);
   const maxYItems = Math.floor(height / MIN_ITEM_HEIGHT);
-  const minYItems = labels.length > maxYItems ? maxYItems - 1 : labels.length;
+  const maxYLabels = Math.max(maxYItems - 1, 0);
+  const minYLabels = labels.length > maxYItems ? maxYLabels : labels.length;
 
   const isVertical = maxXItems < labels.length;
-  const visibleLength = isVertical ? minYItems : labels.length;
+  const visibleLength = isVertical ? minYLabels : labels.length;
 
   return (
     <LegendLayoutRoot className={className} isVertical={isVertical}>
