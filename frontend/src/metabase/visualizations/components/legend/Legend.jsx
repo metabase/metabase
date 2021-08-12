@@ -10,7 +10,9 @@ import {
 } from "./Legend.styled";
 import LegendItem from "./LegendItem";
 
-const POPOVER_OFFSET = 17;
+const POPOVER_BORDER = 1;
+const POPOVER_PADDING = 8;
+const POPOVER_OFFSET = POPOVER_BORDER + POPOVER_PADDING;
 
 const propTypes = {
   className: PropTypes.string,
@@ -73,7 +75,7 @@ const Legend = ({
       })}
       {overflowLength > 0 && (
         <LegendLinkContainer innerRef={targetRef} isVertical={isVertical}>
-          <LegendLink onClick={handleOpen}>
+          <LegendLink onMouseDown={handleOpen}>
             And {overflowLength} more
           </LegendLink>
         </LegendLinkContainer>

@@ -27,5 +27,5 @@ export const LegendButtonContainer = styled.span`
 `;
 
 export const LegendPopoverContainer = styled.div`
-  padding: 0.5rem 1rem;
+  padding: 0.5rem;
 `;
