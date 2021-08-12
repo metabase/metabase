@@ -1,3 +1,7 @@
+export const MODERATION_STATUS = {
+  verified: "verified",
+};
+
 export const ACTIONS = {
   verified: {
     type: "verified",

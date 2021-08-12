@@ -4,6 +4,8 @@ import _ from "underscore";
 import { ModerationReviewApi } from "metabase/services";
 import { ACTIONS } from "./constants";
 
+export { MODERATION_STATUS } from "./constants";
+
 export function verifyItem({ text, itemId, itemType }) {
   return ModerationReviewApi.create({
     status: "verified",
@@ -23,7 +25,7 @@ export function removeReview({ itemId, itemType }) {
 
 const noIcon = {};
 export function getStatusIcon(status, { enableNull = false } = {}) {
-  if (status === null && !enableNull) {
+  if (String(status) === "null" && !enableNull) {
     return noIcon;
   }
 
@@ -31,12 +33,25 @@ export function getStatusIcon(status, { enableNull = false } = {}) {
   return action.icon || noIcon;
 }
 
-export function getVerifiedIcon() {
-  return getStatusIcon("verified");
-}
-
 export function getIconForReview(review, options) {
   return getStatusIcon(review?.status, options);
+}
+
+export function getLatestModerationReview(reviews) {
+  const review = _.findWhere(reviews, {
+    most_recent: true,
+  });
+
+  // since we can't delete reviews, consider a most recent review with a status of null to mean there is no review
+  if (!isNullStatus(review?.status)) {
+    return review;
+  }
+}
+
+export function getStatusIconForQuestion(question) {
+  const reviews = question.getModerationReviews();
+  const review = getLatestModerationReview(reviews);
+  return getIconForReview(review);
 }
 
 export function getTextForReviewBanner(
@@ -69,25 +84,12 @@ function getModeratorDisplayName(user, currentUser) {
   }
 }
 
+export function isNullStatus(status) {
+  return String(status) === "null";
+}
+
 export function isItemVerified(review) {
   return review != null && review.status === "verified";
-}
-
-export function getLatestModerationReview(reviews) {
-  const review = _.findWhere(reviews, {
-    most_recent: true,
-  });
-
-  // since we can't delete reviews, consider a most recent review with a status of null to mean there is no review
-  if (review && review.status !== null) {
-    return review;
-  }
-}
-
-export function getStatusIconForQuestion(question) {
-  const reviews = question.getModerationReviews();
-  const review = getLatestModerationReview(reviews);
-  return getIconForReview(review);
 }
 
 function getModerationReviewEventText(review, moderatorDisplayName) {

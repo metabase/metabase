@@ -1,7 +1,6 @@
 import {
   verifyItem,
   removeReview,
-  getVerifiedIcon,
   getIconForReview,
   getTextForReviewBanner,
   isItemVerified,
@@ -60,11 +59,27 @@ describe("moderation/service", () => {
     });
   });
 
-  describe("getVerifiedIcon", () => {
-    it("should return verified icon name/color", () => {
-      expect(getVerifiedIcon()).toEqual({
+  describe("getStatusIcon", () => {
+    it("should return an empty icon if there is no matching status", () => {
+      expect(getStatusIcon("foo")).toEqual({});
+    });
+
+    it("should return an icon if there is a matching status", () => {
+      expect(getStatusIcon("verified")).toEqual({
         name: "verified",
         color: "brand",
+      });
+    });
+
+    it("should not return an icon for a status of null", () => {
+      expect(getStatusIcon(null)).toEqual({});
+      expect(getStatusIcon("null")).toEqual({});
+    });
+
+    it("should return an icon for a status of null is `enableNull` is passed in the config object arg", () => {
+      expect(getStatusIcon("null", { enableNull: true })).toEqual({
+        name: "close",
+        color: "text-light",
       });
     });
   });
@@ -72,7 +87,7 @@ describe("moderation/service", () => {
   describe("getIconForReview", () => {
     it("should return icon name/color for given review", () => {
       expect(getIconForReview({ status: "verified" })).toEqual(
-        getVerifiedIcon(),
+        getStatusIcon("verified"),
       );
     });
   });
@@ -180,7 +195,7 @@ describe("moderation/service", () => {
       };
 
       expect(getStatusIconForQuestion(questionWithReviews)).toEqual(
-        getVerifiedIcon(),
+        getStatusIcon("verified"),
       );
     });
 
@@ -244,7 +259,7 @@ describe("moderation/service", () => {
         },
         {
           timestamp: expect.any(Number),
-          icon: getStatusIcon(null),
+          icon: getStatusIcon(null, { enableNull: true }),
           title: "A moderator removed verification",
         },
       ]);
