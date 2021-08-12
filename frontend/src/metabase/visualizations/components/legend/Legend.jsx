@@ -22,7 +22,6 @@ const propTypes = {
   actionButtons: PropTypes.node,
   visibleIndex: PropTypes.number,
   visibleLength: PropTypes.number,
-  isNarrow: PropTypes.bool,
   isVertical: PropTypes.bool,
   onHoverChange: PropTypes.func,
   onAddSeries: PropTypes.func,
@@ -38,7 +37,6 @@ const Legend = ({
   actionButtons,
   visibleIndex = 0,
   visibleLength = labels.length,
-  isNarrow,
   isVertical,
   onHoverChange,
   onSelectSeries,
@@ -65,7 +63,6 @@ const Legend = ({
             index={itemIndex}
             color={colors[itemIndex % colors.length]}
             isMuted={hovered && itemIndex !== hovered.index}
-            isNarrow={isNarrow}
             isVertical={isVertical}
             onHoverChange={onHoverChange}
             onSelectSeries={onSelectSeries}
@@ -96,7 +93,6 @@ const Legend = ({
               hovered={hovered}
               visibleIndex={overflowIndex}
               visibleLength={overflowLength}
-              isNarrow={isNarrow}
               isVertical={isVertical}
               onHoverChange={onHoverChange}
               onSelectSeries={onSelectSeries}
