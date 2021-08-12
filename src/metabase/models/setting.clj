@@ -89,11 +89,10 @@
    :visibility  Visibility       ; where this setting should be visible (default: :admin)
    :cache?      s/Bool           ; should the getter always fetch this value "fresh" from the DB? (default: false)
 
-  ;; called whenever setting value changes, whether from update-setting! or a cache refresh. used to handle cases
-  ;; where a change to the cache necessitates a change to some value outside the cache, like when a change the
-  ;; `:site-locale` setting requires a call to `java.util.Locale/setDefault`
-  :on-change   (s/maybe clojure.lang.IFn)})
-
+   ;; called whenever setting value changes, whether from update-setting! or a cache refresh. used to handle cases
+   ;; where a change to the cache necessitates a change to some value outside the cache, like when a change the
+   ;; `:site-locale` setting requires a call to `java.util.Locale/setDefault`
+   :on-change   (s/maybe clojure.lang.IFn)})
 
 (defonce ^:private registered-settings
   (atom {}))
@@ -390,7 +389,7 @@
   (set-string! setting-definition-or-name (when new-value
                                             (assert (or (number? new-value)
                                                         (and (string? new-value)
-                                                             (re-matches #"[+-]?([0-9]*[.])?[0-9]+" new-value) )))
+                                                             (re-matches #"[+-]?([0-9]*[.])?[0-9]+" new-value))))
                                             (str new-value))))
 
 (defn set-json!
@@ -669,8 +668,8 @@
         unparsed-value                                                (get-string k)
         parsed-value                                                  (getter k)
         ;; `default` and `env-var-value` are probably still in serialized form so compare
-        value-is-default?                                             (= unparsed-value default)
-        value-is-from-env-var?                                        (= unparsed-value (env-var-value setting))]
+        value-is-default?                                             (= parsed-value default)
+        value-is-from-env-var?                                        (some-> (env-var-value setting) (= unparsed-value))]
     (cond
       ;; TODO - Settings set via an env var aren't returned for security purposes. It is an open question whether we
       ;; should obfuscate them and still show the last two characters like we do for sensitive values that are set via
