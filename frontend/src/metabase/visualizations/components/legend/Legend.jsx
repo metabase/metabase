@@ -5,6 +5,7 @@ import {
   LegendButtonContainer,
   LegendLink,
   LegendLinkContainer,
+  LegendPopoverContainer,
   LegendRoot,
 } from "./Legend.styled";
 import LegendItem from "./LegendItem";
@@ -80,21 +81,26 @@ const Legend = ({
       {isOpened && (
         <Popover
           target={targetRef.current}
-          tetherOptions={getTetherOptions(constraintRef)}
+          horizontalAttachments={["left"]}
+          verticalAttachments={["top"]}
+          targetOffsetX={9}
+          sizeToFit
           onClose={handleClose}
         >
-          <Legend
-            labels={labels}
-            colors={colors}
-            hovered={hovered}
-            visibleIndex={overflowIndex}
-            visibleLength={overflowLength}
-            isNarrow={isNarrow}
-            isVertical={isVertical}
-            onHoverChange={onHoverChange}
-            onSelectSeries={onSelectSeries}
-            onRemoveSeries={onRemoveSeries}
-          />
+          <LegendPopoverContainer>
+            <Legend
+              labels={labels}
+              colors={colors}
+              hovered={hovered}
+              visibleIndex={overflowIndex}
+              visibleLength={overflowLength}
+              isNarrow={isNarrow}
+              isVertical={isVertical}
+              onHoverChange={onHoverChange}
+              onSelectSeries={onSelectSeries}
+              onRemoveSeries={onRemoveSeries}
+            />
+          </LegendPopoverContainer>
         </Popover>
       )}
       {actionButtons && (
@@ -107,18 +113,5 @@ const Legend = ({
 };
 
 Legend.propTypes = propTypes;
-
-const getTetherOptions = constraintRef => {
-  return {
-    attachment: "bottom left",
-    targetAttachment: "top left",
-    constraints: [
-      {
-        to: constraintRef.current,
-        attachment: "together",
-      },
-    ],
-  };
-};
 
 export default Legend;

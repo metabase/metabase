@@ -26,3 +26,7 @@ export const LegendButtonContainer = styled.span`
   position: relative;
   margin-left: ${({ isVertical }) => (isVertical ? "" : "auto")};
 `;
+
+export const LegendPopoverContainer = styled.div`
+  padding: 0.5rem;
+`;
