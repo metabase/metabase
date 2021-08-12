@@ -4,7 +4,7 @@ export const LegendLayoutRoot = styled.div`
   display: flex;
   flex: 1 1 auto;
   flex-direction: ${({ isVertical }) => (isVertical ? "row" : "column")};
-  min-height: 0;
+  overflow: hidden;
 `;
 
 export const LegendContainer = styled.div`
