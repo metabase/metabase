@@ -10,6 +10,8 @@ import {
 } from "./Legend.styled";
 import LegendItem from "./LegendItem";
 
+const POPOVER_OFFSET = 17;
+
 const propTypes = {
   className: PropTypes.string,
   labels: PropTypes.array.isRequired,
@@ -79,7 +81,7 @@ const Legend = ({
       {isOpened && (
         <Popover
           target={targetRef.current}
-          targetOffsetX={9}
+          targetOffsetX={POPOVER_OFFSET}
           horizontalAttachments={["left"]}
           verticalAttachments={["top", "bottom"]}
           sizeToFit
