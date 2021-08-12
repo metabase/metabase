@@ -65,7 +65,7 @@ const LegendLayout = ({
           />
         </LegendContainer>
       )}
-      <ChartContainer>{children}</ChartContainer>
+      <ChartContainer isVertical={isVertical}>{children}</ChartContainer>
     </LegendLayoutRoot>
   );
 };
