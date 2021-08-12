@@ -6,7 +6,7 @@
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase-enterprise.serialization.names :as names :refer [fully-qualified-name->context]]
-            [metabase-enterprise.serialization.upsert :refer [maybe-fixup-card-template-ids! maybe-upsert-many!]]
+            [metabase-enterprise.serialization.upsert :refer [maybe-upsert-many!]]
             [metabase.config :as config]
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.util :as mbql.util]
@@ -640,16 +640,8 @@
                             {::revisit [] ::revisit-index #{} ::process []}
                             (vec resolved-cards))
         dummy-insert-cards (not-empty (::revisit grouped-cards))
-        process-cards      (::process grouped-cards)
-        touched-card-ids   (maybe-upsert-many!
-                            context Card
-                            process-cards)]
-    (maybe-fixup-card-template-ids!
-     (assoc context :mode :update)
-     Card
-     (for [card (slurp-many paths)] (resolve-card card (assoc context :mode :update)))
-     touched-card-ids)
-
+        process-cards      (::process grouped-cards)]
+    (maybe-upsert-many! context Card process-cards)
     (when dummy-insert-cards
       (let [dummy-inserted-ids (maybe-upsert-many!
                                 context

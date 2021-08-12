@@ -155,14 +155,3 @@
                      [id position])))
          (sort-by second)
          (map first))))
-
-(defn maybe-fixup-card-template-ids!
-  "Upserts `entities` that are in `selected-ids`. Cards with template-tags that refer to other cards need a second pass
-  of fixing the card-ids. To not overwrite cards that were skipped in previous step, classify entities and validate
-  against the ones that were just modified."
-  [context model entities selected-ids]
-  (let [{:keys [update _ _]} (group-by-action context model entities)
-        id-set (set selected-ids)
-        final-ents (filter #(id-set (:id (nth % 2))) update)]
-    (maybe-upsert-many! context model
-                        (map second final-ents))))
