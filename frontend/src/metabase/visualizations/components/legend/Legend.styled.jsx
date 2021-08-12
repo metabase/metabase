@@ -18,7 +18,6 @@ export const LegendLink = styled.div`
 
 export const LegendLinkContainer = styled.div`
   margin-top: ${({ isVertical }) => (isVertical ? "0.5rem" : "")};
-  padding-left: ${({ isVertical }) => (isVertical ? "1.25rem" : "0.75rem")};
 `;
 
 export const LegendButtonContainer = styled.span`
