@@ -61,7 +61,6 @@ const LegendLayout = ({
             labels={labels}
             colors={colors}
             hovered={hovered}
-            actionButtons={actionButtons}
             visibleLength={visibleLength}
             isVertical={isVertical}
             onHoverChange={onHoverChange}

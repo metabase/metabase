@@ -3,7 +3,6 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import Popover from "metabase/components/Popover";
 import {
-  LegendButtonContainer,
   LegendLink,
   LegendLinkContainer,
   LegendPopoverContainer,
@@ -20,7 +19,6 @@ const propTypes = {
   labels: PropTypes.array.isRequired,
   colors: PropTypes.array.isRequired,
   hovered: PropTypes.object,
-  actionButtons: PropTypes.node,
   visibleIndex: PropTypes.number,
   visibleLength: PropTypes.number,
   isVertical: PropTypes.bool,
@@ -35,7 +33,6 @@ const Legend = ({
   labels,
   colors,
   hovered,
-  actionButtons,
   visibleIndex = 0,
   visibleLength = labels.length,
   isVertical,
@@ -110,11 +107,6 @@ const Legend = ({
             />
           </LegendPopoverContainer>
         </Popover>
-      )}
-      {actionButtons && (
-        <LegendButtonContainer isVertical={isVertical}>
-          {actionButtons}
-        </LegendButtonContainer>
       )}
     </LegendRoot>
   );
