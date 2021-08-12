@@ -45,8 +45,17 @@ const Legend = ({
 }) => {
   const targetRef = useRef();
   const [isOpened, setIsOpened] = useState(null);
-  const handleOpen = useCallback(() => setIsOpened(true), []);
-  const handleClose = useCallback(() => setIsOpened(false), []);
+  const [maxWidth, setMaxWidth] = useState(0);
+
+  const handleOpen = useCallback(() => {
+    setIsOpened(true);
+    setMaxWidth(targetRef.current.offsetWidth);
+  }, []);
+
+  const handleClose = useCallback(() => {
+    setIsOpened(false);
+    setMaxWidth(0);
+  }, []);
 
   const overflowIndex = visibleIndex + visibleLength;
   const visibleLabels = labels.slice(visibleIndex, overflowIndex);
@@ -87,7 +96,7 @@ const Legend = ({
           sizeToFit
           onClose={handleClose}
         >
-          <LegendPopoverContainer>
+          <LegendPopoverContainer style={{ maxWidth }}>
             <Legend
               labels={labels}
               colors={colors}
