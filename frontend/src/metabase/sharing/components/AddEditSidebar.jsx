@@ -15,7 +15,7 @@ import Text from "metabase/components/type/Text";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import RecipientPicker from "metabase/pulse/components/RecipientPicker";
 import SchedulePicker from "metabase/components/SchedulePicker";
-import SendTestEmail from "metabase/components/SendTestEmail";
+import SendTestPulse from "metabase/components/SendTestPulse";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import Toggle from "metabase/components/Toggle";
 import Select, { Option } from "metabase/components/Select";
@@ -125,10 +125,12 @@ function _AddEditEmailSidebar({
           }
         />
         <div className="pt2 pb1">
-          <SendTestEmail
+          <SendTestPulse
             channel={channel}
             pulse={pulse}
             testPulse={testPulse}
+            normalText={t`Send email now`}
+            successText={t`Email sent`}
           />
         </div>
         {PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component ? (
@@ -276,6 +278,7 @@ function _AddEditSlackSidebar({
   onCancel,
   onChannelPropertyChange,
   onChannelScheduleChange,
+  testPulse,
   toggleSkipIfEmpty,
   handleArchive,
   setPulseParameters,
@@ -317,6 +320,15 @@ function _AddEditSlackSidebar({
             onChannelScheduleChange(newSchedule, changedProp)
           }
         />
+        <div className="pt2 pb1">
+          <SendTestPulse
+            channel={channel}
+            pulse={pulse}
+            testPulse={testPulse}
+            normalText={t`Send Slack now`}
+            successText={t`Slack sent`}
+          />
+        </div>
         {PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component ? (
           <PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component
             className="py3 mt2 border-top"
@@ -364,6 +376,7 @@ _AddEditSlackSidebar.propTypes = {
   onCancel: PropTypes.func.isRequired,
   onChannelPropertyChange: PropTypes.func.isRequired,
   onChannelScheduleChange: PropTypes.func.isRequired,
+  testPulse: PropTypes.func.isRequired,
   toggleSkipIfEmpty: PropTypes.func.isRequired,
   handleArchive: PropTypes.func.isRequired,
   setPulseParameters: PropTypes.func.isRequired,
