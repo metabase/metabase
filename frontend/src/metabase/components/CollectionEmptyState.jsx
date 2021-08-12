@@ -21,17 +21,19 @@ const Element = ({
     className="bg-white rounded"
     align="center"
     p={2}
-    w={"300px"}
     mb={1}
-    style={{ boxShadow: `0 1px 4px 1px rgba(0, 0, 0, 0.08)` }}
+    style={{ width: 300, boxShadow: `0 1px 4px 1px rgba(0, 0, 0, 0.08)` }}
   >
     <IconWrapper borderRadius={"99px"} bg={iconBackgroundColor} p={1} mr={1}>
       <Icon name={iconName} color="white" />
     </IconWrapper>
     <Box
-      w={textWidth}
-      bg={color("brand-light")}
-      style={{ height: 8, borderRadius: 99 }}
+      style={{
+        width: textWidth,
+        height: 8,
+        borderRadius: 99,
+        backgroundColor: color("brand-light"),
+      }}
     />
   </Flex>
 );
