@@ -208,7 +208,7 @@ describe("scenarios > question > new", () => {
         cy.findByText("Orders, Count").click();
 
         // Try to choose a different saved question
-        cy.get("[icon=table2]").click();
+        cy.findByTestId("data-step-cell").click();
 
         cy.findByText("Our analytics");
         cy.findByText("Orders");
