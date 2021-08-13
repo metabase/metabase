@@ -4,12 +4,11 @@
             [clojure.string :as str]))
 
 (defn- hickory->mrkdwn
-  [{:keys [tag content]}]
-  (let [resolved-content (if (string? content)
-                           content
-                           (map #(if (string? %) %
-                                     (hickory->mrkdwn %))
-                                content))
+  [{:keys [tag attrs content]}]
+  (let [resolved-content (if (string? content) content
+                             (map #(if (string? %) %
+                                       (hickory->mrkdwn %))
+                                  content))
         joined-content   (str/join resolved-content)]
     (cond
       (contains? #{:strong :b :h1 :h2 :h3 :h4 :h5 :h6} tag)
@@ -23,6 +22,24 @@
         ;; Use codeblock formatting if content contains newlines, since both are parsed to HTML :code tags
         (str "```" joined-content "```")
         (str "`" joined-content "`"))
+
+      (= tag :blockquote)
+      (str ">" joined-content)
+
+      (= tag :a)
+      (str "<" (:href attrs) "|" joined-content ">")
+
+      (= tag :li)
+      (let [subtag (get-in content [1 :tag])]
+        (if (or (= subtag :ul) (= subtag :ol))
+          (str (first resolved-content) "\n" (str/join "\n" (map #(str "    " %) (str/split-lines (second resolved-content)))))
+          joined-content))
+
+      (= tag :ul)
+      (str/join "\n" (map #(str "• " %) resolved-content))
+
+      (= tag :ol)
+      (str/join "\n" (map-indexed #(str (inc %1) ". " %2) resolved-content))
 
       :else
       joined-content)))
