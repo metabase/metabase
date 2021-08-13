@@ -1,18 +1,14 @@
 import React from "react";
 import PropTypes from "prop-types";
 
+import { iconPropTypes } from "metabase/components/Icon";
+
 import { BadgeIcon, MaybeLink } from "./Badge.styled";
 
 const propTypes = {
   name: PropTypes.string.isRequired,
   to: PropTypes.string,
-  icon: PropTypes.shape({
-    name: PropTypes.string.isRequired,
-    color: PropTypes.string,
-    width: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
-    height: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
-    size: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
-  }),
+  icon: PropTypes.shape(iconPropTypes),
   activeColor: PropTypes.string,
   onClick: PropTypes.func,
   children: PropTypes.node,
