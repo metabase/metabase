@@ -1,7 +1,5 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-
-import { Flex } from "grid-styled";
 import _ from "underscore";
 import { t } from "ttag";
 
@@ -26,6 +24,7 @@ import {
   JoinTypeSelectRoot,
   JoinTypeOptionRoot,
   JoinTypeIcon,
+  JoinedTableControlRoot,
 } from "./JoinStep.styled";
 
 export default function JoinStep({
@@ -112,7 +111,7 @@ class JoinClause extends React.Component {
         />
 
         {joinedTable && (
-          <Flex align="center">
+          <JoinedTableControlRoot>
             <span className="text-medium text-bold ml1 mr2">where</span>
 
             <JoinDimensionPicker
@@ -148,7 +147,7 @@ class JoinClause extends React.Component {
               }}
               ref={ref => (this._joinDimensionPicker = ref)}
             />
-          </Flex>
+          </JoinedTableControlRoot>
         )}
 
         {join.isValid() && (

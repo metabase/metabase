@@ -53,3 +53,8 @@ export const JoinTypeIcon = styled(Icon).attrs({ size: 24 })`
   margin-right: ${space(1)};
   color: ${props => (props.isSelected ? color("text-white") : color("brand"))};
 `;
+
+export const JoinedTableControlRoot = styled.div`
+  display: flex;
+  align-items: center;
+`;
