@@ -58,3 +58,16 @@ export const JoinedTableControlRoot = styled.div`
   display: flex;
   align-items: center;
 `;
+
+export const JoinWhereConditionLabel = styled.span.attrs({ children: "where" })`
+  color: ${color("text-medium")};
+  font-weight: bold;
+  margin-left: ${space(1)};
+  margin-right: ${space(2)};
+`;
+
+export const JoinOnConditionLabel = styled.span.attrs({ children: "=" })`
+  font-weight: bold;
+  color: ${color("text-medium")};
+  margin-right: 8px;
+`;

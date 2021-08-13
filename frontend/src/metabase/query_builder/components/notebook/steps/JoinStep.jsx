@@ -25,6 +25,8 @@ import {
   JoinTypeOptionRoot,
   JoinTypeIcon,
   JoinedTableControlRoot,
+  JoinWhereConditionLabel,
+  JoinOnConditionLabel,
 } from "./JoinStep.styled";
 
 export default function JoinStep({
@@ -112,7 +114,7 @@ class JoinClause extends React.Component {
 
         {joinedTable && (
           <JoinedTableControlRoot>
-            <span className="text-medium text-bold ml1 mr2">where</span>
+            <JoinWhereConditionLabel />
 
             <JoinDimensionPicker
               color={color}
@@ -132,7 +134,7 @@ class JoinClause extends React.Component {
               ref={ref => (this._parentDimensionPicker = ref)}
             />
 
-            <span className="text-medium text-bold mr1">=</span>
+            <JoinOnConditionLabel />
 
             <JoinDimensionPicker
               color={color}
