@@ -37,8 +37,10 @@ flags:
       - enterprise/backend
       - shared/src
       - src/metabase
+    carryforward: true
 
   front-end:
     paths:
       - enterprise/frontend
       - frontend
+    carryforward: true
