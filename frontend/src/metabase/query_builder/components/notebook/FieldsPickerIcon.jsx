@@ -19,8 +19,8 @@ export function FieldsPickerIcon() {
 
 export const FIELDS_PICKER_STYLES = {
   notebookItemContainer: {
-    width: 33,
-    height: 33,
+    width: 37,
+    height: 37,
   },
   trigger: {
     marginTop: 1,
