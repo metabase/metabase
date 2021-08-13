@@ -103,39 +103,12 @@ class JoinClause extends React.Component {
 
         <JoinTypePicker join={join} color={color} updateQuery={updateQuery} />
 
-        <DatabaseSchemaAndTableDataSelector
-          hasTableSearch
-          canChangeDatabase={false}
-          databases={[
-            query.database(),
-            query.database().savedQuestionsDatabase(),
-          ].filter(d => d)}
-          tableFilter={table => table.db_id === query.database().id}
-          selectedDatabaseId={query.databaseId()}
-          selectedTableId={join.joinSourceTableId()}
-          setSourceTableFn={tableId => {
-            const newJoin = join
-              .setJoinSourceTableId(tableId)
-              .setDefaultCondition()
-              .setDefaultAlias();
-            newJoin.parent().update(updateQuery);
-            // _parentDimensionPicker won't be rendered until next update
-            if (!newJoin.parentDimension()) {
-              setTimeout(() => {
-                this._parentDimensionPicker.open();
-              });
-            }
-          }}
-          isInitiallyOpen={join.joinSourceTableId() == null}
-          triggerElement={
-            <NotebookCellItem
-              color={color}
-              icon="table2"
-              inactive={!joinedTable}
-            >
-              {joinedTable ? joinedTable.displayName() : t`Pick a table...`}
-            </NotebookCellItem>
-          }
+        <JoinTablePicker
+          join={join}
+          query={query}
+          joinedTable={joinedTable}
+          color={color}
+          updateQuery={updateQuery}
         />
 
         {joinedTable && (
@@ -197,6 +170,41 @@ class JoinClause extends React.Component {
       </JoinClauseRoot>
     );
   }
+}
+
+function JoinTablePicker({ join, query, joinedTable, color, updateQuery }) {
+  return (
+    <NotebookCellItem color={color} icon="table2" inactive={!joinedTable}>
+      <DatabaseSchemaAndTableDataSelector
+        hasTableSearch
+        canChangeDatabase={false}
+        databases={[
+          query.database(),
+          query.database().savedQuestionsDatabase(),
+        ].filter(d => d)}
+        tableFilter={table => table.db_id === query.database().id}
+        selectedDatabaseId={query.databaseId()}
+        selectedTableId={join.joinSourceTableId()}
+        setSourceTableFn={tableId => {
+          const newJoin = join
+            .setJoinSourceTableId(tableId)
+            .setDefaultCondition()
+            .setDefaultAlias();
+          newJoin.parent().update(updateQuery);
+          // _parentDimensionPicker won't be rendered until next update
+          if (!newJoin.parentDimension()) {
+            setTimeout(() => {
+              this._parentDimensionPicker.open();
+            });
+          }
+        }}
+        isInitiallyOpen={join.joinSourceTableId() == null}
+        triggerElement={
+          joinedTable ? joinedTable.displayName() : t`Pick a table...`
+        }
+      />
+    </NotebookCellItem>
+  );
 }
 
 function JoinTypePicker({ join, color, updateQuery }) {
