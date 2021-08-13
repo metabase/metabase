@@ -19,7 +19,11 @@ import {
   NotebookCellAdd,
 } from "../NotebookCell";
 import FieldsPicker from "./FieldsPicker";
-import { JoinClausesContainer } from "./JoinStep.styled";
+import {
+  JoinClausesContainer,
+  JoinClauseContainer,
+  JoinClauseRoot,
+} from "./JoinStep.styled";
 
 export default function JoinStep({
   color,
@@ -41,17 +45,20 @@ export default function JoinStep({
   return (
     <NotebookCell color={color} flexWrap="nowrap">
       <JoinClausesContainer>
-        {joins.map((join, index) => (
-          <JoinClause
-            mb={index === joins.length - 1 ? 0 : 2}
-            key={index}
-            color={color}
-            join={join}
-            showRemove={joins.length > 1}
-            updateQuery={updateQuery}
-            isLastOpened={isLastOpened && index === join.length - 1}
-          />
-        ))}
+        {joins.map((join, index) => {
+          const isLast = index === joins.length - 1;
+          return (
+            <JoinClauseContainer key={index} isLast={isLast}>
+              <JoinClause
+                join={join}
+                color={color}
+                showRemove={joins.length > 1}
+                updateQuery={updateQuery}
+                isLastOpened={isLastOpened && isLast}
+              />
+            </JoinClauseContainer>
+          );
+        })}
       </JoinClausesContainer>
       {!isSingleJoinStep && valid && (
         <NotebookCellAdd
@@ -68,7 +75,7 @@ export default function JoinStep({
 
 class JoinClause extends React.Component {
   render() {
-    const { color, join, updateQuery, showRemove, ...props } = this.props;
+    const { color, join, updateQuery, showRemove } = this.props;
     const query = join.query();
     if (!query) {
       return null;
@@ -87,7 +94,7 @@ class JoinClause extends React.Component {
     const joinedTable = join.joinedTable();
     const strategyOption = join.strategyOption();
     return (
-      <Flex align="center" flex="1 1 auto" {...props}>
+      <JoinClauseRoot>
         <NotebookCellItem color={color} icon="table2">
           {(lhsTable && lhsTable.displayName()) || `Previous results`}
         </NotebookCellItem>
@@ -214,7 +221,7 @@ class JoinClause extends React.Component {
             onClick={() => join.remove().update(updateQuery)}
           />
         )}
-      </Flex>
+      </JoinClauseRoot>
     );
   }
 }
