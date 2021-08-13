@@ -1014,7 +1014,8 @@ workflows:
           after-steps:
             - run:
                 name: Upload code coverage to codecov.io
-                command: bash <(curl -s https://codecov.io/bash)
+                command: bash <(curl -s https://codecov.io/bash) -F back-end
+
           skip-when-no-change: true
 
       - test-driver:
