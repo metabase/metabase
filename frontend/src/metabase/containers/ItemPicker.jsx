@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 import cx from "classnames";
 
 import { t } from "ttag";
+import _ from "underscore";
 import { Flex, Box } from "grid-styled";
 import Icon from "metabase/components/Icon";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
@@ -209,7 +210,7 @@ export default class ItemPicker extends React.Component {
                       item={collection}
                       name={collection.name}
                       color={color(icon.color) || COLLECTION_ICON_COLOR}
-                      icon={icon.name}
+                      icon={icon}
                       selected={canSelect && isSelected(collection)}
                       canSelect={canSelect}
                       hasChildren={hasChildren}
@@ -286,41 +287,44 @@ const Item = ({
   hasChildren,
   onChange,
   onChangeParentId,
-}) => (
-  <Box
-    mt={1}
-    p={1}
-    onClick={
-      canSelect
-        ? () => onChange(item)
-        : hasChildren
-        ? () => onChangeParentId(item.id)
-        : null
-    }
-    className={cx("rounded", {
-      "bg-brand text-white": selected,
-      "bg-brand-hover text-white-hover cursor-pointer":
-        canSelect || hasChildren,
-    })}
-  >
-    <Flex align="center">
-      <Icon name={icon} color={selected ? "white" : color} size={22} />
-      <h4 className="mx1">{name}</h4>
-      {hasChildren && (
-        <Icon
-          name="chevronright"
-          className={cx(
-            "p1 ml-auto circular text-light border-grey-2 bordered bg-white-hover cursor-pointer",
-            {
-              "bg-brand-hover": !canSelect,
-            },
-          )}
-          onClick={e => {
-            e.stopPropagation();
-            onChangeParentId(item.id);
-          }}
-        />
-      )}
-    </Flex>
-  </Box>
-);
+}) => {
+  const iconProps = _.isObject(icon) ? icon : { name: icon };
+  return (
+    <Box
+      mt={1}
+      p={1}
+      onClick={
+        canSelect
+          ? () => onChange(item)
+          : hasChildren
+          ? () => onChangeParentId(item.id)
+          : null
+      }
+      className={cx("rounded", {
+        "bg-brand text-white": selected,
+        "bg-brand-hover text-white-hover cursor-pointer":
+          canSelect || hasChildren,
+      })}
+    >
+      <Flex align="center">
+        <Icon size={22} {...iconProps} color={selected ? "white" : color} />
+        <h4 className="mx1">{name}</h4>
+        {hasChildren && (
+          <Icon
+            name="chevronright"
+            className={cx(
+              "p1 ml-auto circular text-light border-grey-2 bordered bg-white-hover cursor-pointer",
+              {
+                "bg-brand-hover": !canSelect,
+              },
+            )}
+            onClick={e => {
+              e.stopPropagation();
+              onChangeParentId(item.id);
+            }}
+          />
+        )}
+      </Flex>
+    </Box>
+  );
+};
