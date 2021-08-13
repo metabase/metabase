@@ -17,21 +17,14 @@ function CollectionBadge({ collection, analyticsContext, className }) {
     return null;
   }
   const isRegular = PLUGIN_COLLECTIONS.isRegularCollection(collection);
-  const icon = collection.getIcon();
-  const iconProps = {
-    name: icon.name,
-    color: icon.color,
+  const icon = {
+    ...collection.getIcon(),
+    ...(isRegular ? { size: 12 } : { width: 14, height: 16 }),
   };
-  if (!isRegular) {
-    iconProps.width = 14;
-    iconProps.height = 16;
-  } else {
-    iconProps.size = 12;
-  }
   return (
     <Badge
       to={collection.getUrl()}
-      icon={iconProps}
+      icon={icon}
       activeColor={icon.color}
       className={className}
       data-metabase-event={`${analyticsContext};Collection Badge Click`}
