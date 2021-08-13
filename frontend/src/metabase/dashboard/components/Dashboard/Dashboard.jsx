@@ -18,6 +18,7 @@ import {
 import DashboardGrid from "../DashboardGrid";
 import ParametersWidget from "./ParametersWidget/ParametersWidget";
 import DashboardEmptyState from "./DashboardEmptyState/DashboardEmptyState";
+import { updateParametersWidgetStickiness } from "./stickyParameters";
 
 const SCROLL_THROTTLE_INTERVAL = 1000 / 24;
 
@@ -88,7 +89,7 @@ export default class Dashboard extends Component {
     this.loadDashboard(this.props.dashboardId);
 
     const throttleParameterWidgetStickiness = _.throttle(
-      this.updateParametersWidgetStickiness,
+      () => updateParametersWidgetStickiness(this),
       SCROLL_THROTTLE_INTERVAL,
     );
 
@@ -114,47 +115,9 @@ export default class Dashboard extends Component {
   componentWillUnmount() {
     this.props.cancelFetchDashboardCardData();
 
-    window.removeEventListener("scroll", this.updateParametersWidgetStickiness);
-    window.addEventListener("resize", this.updateParametersWidgetStickiness);
+    window.removeEventListener("scroll", updateParametersWidgetStickiness);
+    window.removeEventListener("resize", updateParametersWidgetStickiness);
   }
-
-  updateParametersWidgetStickiness = () => {
-    const { isParametersWidgetSticky } = this.state;
-
-    if (!this.state.parametersWidgetOffsetTop) {
-      this.setState({
-        parametersWidgetOffsetTop: this.parametersWidgetRef.offsetTop,
-      });
-    }
-
-    const shouldParametersWidgetBeSticky = this.checkIfParametersWidgetShouldBeSticky();
-
-    if (shouldParametersWidgetBeSticky === isParametersWidgetSticky) {
-      return;
-    }
-
-    this.updateParametersAndCardsContainerStyle(shouldParametersWidgetBeSticky);
-
-    this.setState({ isParametersWidgetSticky: shouldParametersWidgetBeSticky });
-  };
-
-  checkIfParametersWidgetShouldBeSticky = () => {
-    const offsetTop =
-      this.state.parametersWidgetOffsetTop ||
-      this.parametersWidgetRef.offsetTop;
-
-    return window.scrollY >= offsetTop;
-  };
-
-  updateParametersAndCardsContainerStyle = shouldParametersWidgetBeSticky => {
-    const { offsetHeight } = this.parametersWidgetRef;
-
-    const parametersAndCardsContainerPaddingTop = shouldParametersWidgetBeSticky
-      ? offsetHeight + "px"
-      : "0";
-
-    this.parametersAndCardsContainerRef.style.paddingTop = parametersAndCardsContainerPaddingTop;
-  };
 
   async loadDashboard(dashboardId) {
     const {
