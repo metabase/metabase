@@ -39,7 +39,7 @@ const NotebookCellItemContainer = styled(Flex).attrs({ align: "center" })`
 
   transition: border 300ms linear;
 
-  > .Icon {
+  .Icon-close {
     opacity: 0.6;
   }
 `;
@@ -126,11 +126,7 @@ export const NotebookCellAdd = styled(NotebookCellItem).attrs({
   // eslint-disable-next-line react/display-name
   children: ({ initialAddText }) =>
     initialAddText || <Icon name="add" className="text-white" />,
-})`
-  > .Icon {
-    opacity: 1;
-  }
-`;
+})``;
 
 NotebookCellAdd.defaultProps = {
   mb: 1,
