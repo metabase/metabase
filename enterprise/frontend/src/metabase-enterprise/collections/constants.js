@@ -13,6 +13,7 @@ export const OFFICIAL_COLLECTION = {
   color: "saturated-yellow",
   tooltips: {
     default: t`Official collection`,
+    belonging: t`Belongs to an Official collection`,
   },
 };
 

@@ -239,7 +239,12 @@ export default class DashboardGrid extends Component {
     if (isRegularDashboard && !isRegularQuestion) {
       const authorityLevel = dashCard.collection_authority_level;
       const opts = PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[authorityLevel];
-      return { name: opts.icon, color: color(opts.color), size: 14 };
+      return {
+        name: opts.icon,
+        color: color(opts.color),
+        tooltip: opts.tooltips?.belonging,
+        size: 14,
+      };
     }
   };
 

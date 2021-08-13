@@ -68,6 +68,7 @@ type Props = {
     name: string,
     color?: string,
     size?: Number,
+    tooltip?: string,
   },
 
   actionButtons: React.Element<any>,
