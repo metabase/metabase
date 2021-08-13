@@ -127,11 +127,7 @@ export default class Dashboard extends Component {
       });
     }
 
-    const offsetTop =
-      this.state.parametersWidgetOffsetTop ||
-      this.parametersWidgetRef.offsetTop;
-
-    const shouldParametersWidgetBeSticky = window.scrollY >= offsetTop;
+    const shouldParametersWidgetBeSticky = this.checkIfParametersWidgetShouldBeSticky();
 
     if (shouldParametersWidgetBeSticky === isParametersWidgetSticky) {
       return;
@@ -140,6 +136,14 @@ export default class Dashboard extends Component {
     this.updateParametersAndCardsContainerStyle(shouldParametersWidgetBeSticky);
 
     this.setState({ isParametersWidgetSticky: shouldParametersWidgetBeSticky });
+  };
+
+  checkIfParametersWidgetShouldBeSticky = () => {
+    const offsetTop =
+      this.state.parametersWidgetOffsetTop ||
+      this.parametersWidgetRef.offsetTop;
+
+    return window.scrollY >= offsetTop;
   };
 
   updateParametersAndCardsContainerStyle = shouldParametersWidgetBeSticky => {
