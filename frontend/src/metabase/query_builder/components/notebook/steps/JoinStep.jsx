@@ -2,7 +2,6 @@
 import React from "react";
 
 import { Flex } from "grid-styled";
-import cx from "classnames";
 import _ from "underscore";
 import { t } from "ttag";
 
@@ -23,6 +22,10 @@ import {
   JoinClausesContainer,
   JoinClauseContainer,
   JoinClauseRoot,
+  JoinStrategyIcon,
+  JoinTypeSelectRoot,
+  JoinTypeOptionRoot,
+  JoinTypeIcon,
 } from "./JoinStep.styled";
 
 export default function JoinStep({
@@ -202,11 +205,9 @@ function JoinTypePicker({ join, color, updateQuery }) {
     <PopoverWithTrigger
       triggerElement={
         strategyOption ? (
-          <Icon
+          <JoinStrategyIcon
             tooltip={t`Change join type`}
-            className="text-brand mr1"
             name={strategyOption.icon}
-            size={32}
           />
         ) : (
           <NotebookCellItem color={color}>
@@ -234,7 +235,7 @@ function JoinTypePicker({ join, color, updateQuery }) {
 
 function JoinTypeSelect({ value, onChange, options }) {
   return (
-    <div className="px1 pt1">
+    <JoinTypeSelectRoot>
       {options.map(option => (
         <JoinTypeOption
           {...option}
@@ -243,29 +244,16 @@ function JoinTypeSelect({ value, onChange, options }) {
           onChange={onChange}
         />
       ))}
-    </div>
+    </JoinTypeSelectRoot>
   );
 }
 
 function JoinTypeOption({ name, value, icon, selected, onChange }) {
   return (
-    <Flex
-      align="center"
-      className={cx(
-        "p1 mb1 rounded cursor-pointer text-white-hover bg-brand-hover",
-        {
-          "bg-brand text-white": selected,
-        },
-      )}
-      onClick={() => onChange(value)}
-    >
-      <Icon
-        className={cx("mr1", { "text-brand": !selected })}
-        name={icon}
-        size={24}
-      />
+    <JoinTypeOptionRoot isSelected={selected} onClick={() => onChange(value)}>
+      <JoinTypeIcon name={icon} isSelected={selected} />
       {name}
-    </Flex>
+    </JoinTypeOptionRoot>
   );
 }
 
