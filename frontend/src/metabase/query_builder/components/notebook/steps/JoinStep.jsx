@@ -19,6 +19,7 @@ import {
   NotebookCellAdd,
 } from "../NotebookCell";
 import FieldsPicker from "./FieldsPicker";
+import { JoinClausesContainer } from "./JoinStep.styled";
 
 export default function JoinStep({
   color,
@@ -26,7 +27,6 @@ export default function JoinStep({
   step,
   updateQuery,
   isLastOpened,
-  ...props
 }) {
   const isSingleJoinStep = step.itemIndex != null;
   let joins = query.joins();
@@ -40,7 +40,7 @@ export default function JoinStep({
   const valid = _.all(joins, join => join.isValid());
   return (
     <NotebookCell color={color} flexWrap="nowrap">
-      <Flex flexDirection="column" className="flex-full">
+      <JoinClausesContainer>
         {joins.map((join, index) => (
           <JoinClause
             mb={index === joins.length - 1 ? 0 : 2}
@@ -52,7 +52,7 @@ export default function JoinStep({
             isLastOpened={isLastOpened && index === join.length - 1}
           />
         ))}
-      </Flex>
+      </JoinClausesContainer>
       {!isSingleJoinStep && valid && (
         <NotebookCellAdd
           color={color}
