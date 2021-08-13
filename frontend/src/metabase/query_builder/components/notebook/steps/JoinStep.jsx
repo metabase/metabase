@@ -6,18 +6,19 @@ import cx from "classnames";
 import _ from "underscore";
 import { t } from "ttag";
 
-import {
-  NotebookCell,
-  NotebookCellItem,
-  NotebookCellAdd,
-} from "../NotebookCell";
-
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 import FieldList from "metabase/query_builder/components/FieldList";
 import Join from "metabase-lib/lib/queries/structured/Join";
+
+import {
+  NotebookCell,
+  NotebookCellItem,
+  NotebookCellAdd,
+} from "../NotebookCell";
+import FieldsPicker from "./FieldsPicker";
 
 export default function JoinStep({
   color,
@@ -291,8 +292,6 @@ class JoinDimensionPicker extends React.Component {
     );
   }
 }
-
-import FieldsPicker from "./FieldsPicker";
 
 const JoinFieldsPicker = ({ className, join, updateQuery }) => {
   const dimensions = join.joinedDimensions();
