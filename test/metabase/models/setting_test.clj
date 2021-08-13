@@ -45,7 +45,7 @@
   "Test setting - this only shows up in dev (6)"
   :visibility :internal
   :type :csv
-  :default "A,B,C")
+  :default ["A" "B" "C"])
 
 (defsetting test-env-setting
   "Test setting - this only shows up in dev (7)"
@@ -302,8 +302,9 @@
 
   (testing "if value isn't true / false"
     (testing "getter should throw exception"
-      (is (thrown?
+      (is (thrown-with-msg?
            Exception
+           #"Invalid value for string: must be either \"true\" or \"false\" \(case-insensitive\)"
            (test-boolean-setting "X"))))
 
     (testing "user-facing info should just return `nil` instead of failing entirely"

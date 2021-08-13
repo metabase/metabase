@@ -29,21 +29,22 @@
   (deferred-tru "SMTP password.")
   :sensitive? true)
 
-;; TODO - smtp-port should be switched to type :integer
 (defsetting email-smtp-port
-  (deferred-tru "The port your SMTP server uses for outgoing emails."))
+  (deferred-tru "The port your SMTP server uses for outgoing emails.")
+  :type :integer)
 
 (defsetting email-smtp-security
   (deferred-tru "SMTP secure connection protocol. (tls, ssl, starttls, or none)")
-  :default (deferred-tru "none")
+  :type    :keyword
+  :default :none
   :setter  (fn [new-value]
              (when (some? new-value)
-               (assert (contains? #{"tls" "ssl" "none" "starttls"} new-value)))
-             (setting/set-string! :email-smtp-security new-value)))
+               (assert (#{:tls :ssl :none :starttls} (keyword new-value))))
+             (setting/set-keyword! :email-smtp-security new-value)))
 
 ;; ## PUBLIC INTERFACE
 
-(def ^{:arglists '([smtp-credentials email-details]), :style/indent 1} send-email!
+(def ^{:arglists '([smtp-credentials email-details])} send-email!
   "Internal function used to send messages. Should take 2 args - a map of SMTP credentials, and a map of email details.
    Provided so you can swap this out with an \"inbox\" for test purposes."
   postal/send-message)
@@ -69,7 +70,7 @@
   (-> {:host (email-smtp-host)
        :user (email-smtp-username)
        :pass (email-smtp-password)
-       :port (Integer/parseInt (email-smtp-port))}
+       :port (email-smtp-port)}
       (add-ssl-settings (email-smtp-security))))
 
 (def ^:private EmailMessage

@@ -16,8 +16,8 @@
 
 (def ^:private default-email-settings
   {:email-smtp-host     "foobar"
-   :email-smtp-port     "789"
-   :email-smtp-security "tls"
+   :email-smtp-port     789
+   :email-smtp-security :tls
    :email-smtp-username "munchkin"
    :email-smtp-password "gobble gobble"
    :email-from-address  "eating@hungry.com"})
@@ -28,8 +28,9 @@
     (tu/discard-setting-changes [email-smtp-host email-smtp-port email-smtp-security email-smtp-username
                                  email-smtp-password email-from-address]
       (with-redefs [email/test-smtp-connection (constantly {:error :SUCCESS})]
-        (is (= (assoc default-email-settings
-                      :with-corrections {})
+        (is (= (-> default-email-settings
+                   (assoc :with-corrections {})
+                   (update :email-smtp-security name))
                (mt/user-http-request :crowberto :put 200 "email" default-email-settings)))
         (is (= default-email-settings
                (email-settings)))))))
@@ -39,8 +40,9 @@
     (tu/discard-setting-changes [email-smtp-host email-smtp-port email-smtp-security email-smtp-username
                                  email-smtp-password email-from-address]
       (with-redefs [email/test-smtp-connection (constantly {:error :SUCCESS})]
-        (is (= (assoc default-email-settings
-                      :with-corrections {})
+        (is (= (-> default-email-settings
+                   (assoc :with-corrections {})
+                   (update :email-smtp-security name))
                (mt/user-http-request :crowberto :put 200 "email" default-email-settings)))
         (let [new-email-settings (email-settings)]
           (is (nil? (mt/user-http-request :crowberto :delete 204 "email")))
@@ -48,7 +50,7 @@
                  new-email-settings))
           (is (= {:email-smtp-host     nil
                   :email-smtp-port     nil
-                  :email-smtp-security "none"
+                  :email-smtp-security :none
                   :email-smtp-username nil
                   :email-smtp-password nil
                   :email-from-address  "notifications@metabase.com"}

@@ -67,7 +67,7 @@
   (with-redefs [metabase.email/send-email! fake-inbox-email-fn]
     (reset-inbox!)
     (tu/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
-                                       email-smtp-port "587"]
+                                       email-smtp-port 587]
       (f))))
 
 (defmacro with-fake-inbox
@@ -159,8 +159,8 @@
                                      email-smtp-host    "smtp.metabase.com"
                                      email-smtp-username "lucky"
                                      email-smtp-password "d1nner3scapee!"
-                                     email-smtp-port     "1025"
-                                     email-smtp-security "none"]
+                                     email-smtp-port     1025
+                                     email-smtp-security :none]
     (testing "basic sending"
       (is (=
            [{:from    (email/email-from-address)

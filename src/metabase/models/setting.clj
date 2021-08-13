@@ -45,8 +45,9 @@
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.models :as models])
-  (:import clojure.lang.Symbol
-           java.io.StringWriter))
+  (:import [clojure.lang Keyword Symbol]
+           java.io.StringWriter
+           java.time.temporal.Temporal))
 
 (models/defmodel Setting
   "The model that underlies `defsetting`."
@@ -72,8 +73,37 @@
    :boolean   `Boolean
    :integer   `Long
    :double    `Double
-   :timestamp 'java.time.temporal.Temporal
-   :keyword   'Keyword})
+   :timestamp `Temporal
+   :keyword   `Keyword})
+
+(defn- assert-valid-default-value-for-type
+  "Check whether the `:default` value of a Setting (if provided) agrees with the Setting's `:type` and its `:tag` (which
+  usually comes from [[default-tag-for-type]])."
+  [{setting-type :type, setting-name :name, :keys [tag default], :as setting-definition}]
+  ;; the errors below don't need to be i18n'ed since they're definition-time errors rather than user-facing
+  (try
+    (when (some? tag)
+      (assert ((some-fn symbol? string?) tag) (format "Setting :tag should be a symbol or string, got: ^%s %s"
+                                                      (.getCanonicalName (class tag))
+                                                      (pr-str tag))))
+    (when (and (some? default)
+               (some? tag))
+      (let [klass (if (string? tag)
+                    (Class/forName tag)
+                    (resolve tag))]
+        (when-not (class? klass)
+          (throw (ex-info (format "Cannot resolve :tag %s to a class. Is it fully qualified?" (pr-str tag))
+                          {:tag klass})))
+        (when-not (instance? klass default)
+          (throw (ex-info (format "Wrong :default type: got ^%s %s, but expected a %s"
+                                  (.getCanonicalName (class default))
+                                  (pr-str default)
+                                  (.getCanonicalName ^Class klass))
+                          {:tag klass})))))
+    (catch Throwable e
+      (throw (ex-info (format "Invalid :default value for Setting %s: %s" setting-name (ex-message e))
+                      (or setting-definition {})
+                      e)))))
 
 (def ^:private SettingDefinition
   {:name        s/Keyword
@@ -185,25 +215,37 @@
       (cache/restore-cache-if-needed!)
       (clojure.core/get (cache/cache) (setting-name setting-definition-or-name)))))
 
+(defn default-value
+  "Get the `:default` value of `setting-definition-or-name` if one was specified. With optional arg `pred`, only returns
+  default value if `(some-> default pred)` is truthy."
+  ([setting-definition-or-name]
+   (default-value setting-definition-or-name nil))
+  ([setting-definition-or-name pred]
+   (let [{:keys [default]} (resolve-setting setting-definition-or-name)]
+     (if pred
+       (when (some-> default pred)
+         default)
+       default))))
+
 (defn get-string
-  "Get string value of `setting-definition-or-name`. This is the default getter for `String` settings; value is fetched
+  "Get string value of `setting-definition-or-name`. This is the default getter for `:string` settings. Value is fetched
   as follows:
 
-   1.  From corresponding env var, if any;
-   2.  From the database (i.e., set via the admin panel), if a value is present;
-   3.  The default value, if one was specified.
+  1.  From corresponding env var, if any;
+  2.  From the database (i.e., set via the admin panel), if a value is present;
+  3.  The default value, if one was specified, if it is a string.
 
-   If the fetched value is an empty string it is considered to be unset and this function returns `nil`."
+  If the fetched value is an empty string it is considered to be unset and this function returns `nil`."
   ^String [setting-definition-or-name]
   (let [v (or (env-var-value setting-definition-or-name)
               (db-or-cache-value setting-definition-or-name)
-              (str (:default (resolve-setting setting-definition-or-name))))]
+              (default-value setting-definition-or-name string?))]
     (when (seq v)
       v)))
 
-(defn string->boolean
+(s/defn string->boolean :- (s/maybe s/Bool)
   "Interpret a `string-value` of a Setting as a boolean."
-  [string-value]
+  [string-value :- (s/maybe s/Str)]
   (when (seq string-value)
     (case (str/lower-case string-value)
       "true"  true
@@ -215,35 +257,63 @@
   "Get boolean value of (presumably `:boolean`) `setting-definition-or-name`. This is the default getter for `:boolean`
   settings. Returns one of the following values:
 
-   *  `nil`   if string value of `setting-definition-or-name` is unset (or empty)
-   *  `true`  if *lowercased* string value of `setting-definition-or-name` is `true`
-   *  `false` if *lowercased* string value of `setting-definition-or-name` is `false`."
+  * `nil`   if string value of `setting-definition-or-name` is unset (or empty)
+  * `true`  if *lowercased* string value of `setting-definition-or-name` is `true`
+  * `false` if *lowercased* string value of `setting-definition-or-name` is `false`.
+
+  This is the default getter for `:boolean` settings. Value is fetched as follows:
+
+  1.  From corresponding env var, if any;
+  2.  From the database (i.e., set via the admin panel), if a value is present;
+  3.  The default value, if one was specified, if it is a boolean."
   ^Boolean [setting-definition-or-name]
-  (string->boolean (get-string setting-definition-or-name)))
+  (if-let [s (get-string setting-definition-or-name)]
+    (string->boolean s)
+    (default-value setting-definition-or-name boolean?)))
 
 (defn get-integer
   "Get integer value of (presumably `:integer`) `setting-definition-or-name`. This is the default getter for `:integer`
-  settings."
-  ^Integer [setting-definition-or-name]
-  (some-> (get-string setting-definition-or-name) Integer/parseInt))
+  settings. Value is fetched as follows:
+
+  1.  From corresponding env var, if any;
+  2.  From the database (i.e., set via the admin panel), if a value is present;
+  3.  The default value, if one was specified, if it is an integer."
+  ^Long [setting-definition-or-name]
+  (if-let [s (get-string setting-definition-or-name)]
+    (Long/parseLong s)
+    (default-value setting-definition-or-name integer?)))
 
 (defn get-double
   "Get double value of (presumably `:double`) `setting-definition-or-name`. This is the default getter for `:double`
-  settings."
+  settings. Value is fetched as follows:
+
+  1.  From corresponding env var, if any;
+  2.  From the database (i.e., set via the admin panel), if a value is present;
+  3.  The default value, if one was specified, if it is a double."
   ^Double [setting-definition-or-name]
-  (some-> (get-string setting-definition-or-name) Double/parseDouble))
+  (if-let [s (get-string setting-definition-or-name)]
+    (Double/parseDouble s)
+    (default-value setting-definition-or-name double?)))
 
 (defn get-keyword
   "Get value of (presumably `:string`) `setting-definition-or-name` as keyword. This is the default getter for
-  `:keyword` settings."
+  `:keyword` settings. Value is fetched as follows:
+
+  1.  From corresponding env var, if any;
+  2.  From the database (i.e., set via the admin panel), if a value is present;
+  3.  The default value, if one was specified, if it is a keyword."
   ^clojure.lang.Keyword [setting-definition-or-name]
-  (some-> setting-definition-or-name get-string keyword))
+  (if-let [s (get-string setting-definition-or-name)]
+    (keyword s)
+    (default-value setting-definition-or-name keyword?)))
 
 (defn get-json
   "Get the string value of `setting-definition-or-name` and parse it as JSON."
   [setting-definition-or-name]
   (try
-    (json/parse-string (get-string setting-definition-or-name) keyword)
+    (if-let [s (get-string setting-definition-or-name)]
+      (json/parse-string s keyword)
+      (default-value setting-definition-or-name coll?))
     (catch Throwable e
       (let [{setting-name :name} (resolve-setting setting-definition-or-name)]
         (throw (ex-info (tru "Error parsing JSON setting {0}: {1}" setting-name (ex-message e))
@@ -252,14 +322,18 @@
 
 (defn get-timestamp
   "Get the string value of `setting-definition-or-name` and parse it as an ISO-8601-formatted string, returning a
-  Timestamp."
-  [setting-definition-or-name]
-  (u.date/parse (get-string setting-definition-or-name)))
+  [[java.time.temporal.Temporal]] of some sort (e.g. a [[java.time.OffsetDateTime]]."
+  ^Temporal [setting-definition-or-name]
+  (if-let [s (get-string setting-definition-or-name)]
+    (u.date/parse s)
+    (default-value setting-definition-or-name (partial instance? Temporal))))
 
 (defn get-csv
   "Get the string value of `setting-definition-or-name` and parse it as CSV, returning a sequence of exploded strings."
   [setting-definition-or-name]
-  (some-> (get-string setting-definition-or-name) csv/read-csv first))
+  (if-let [s (get-string setting-definition-or-name)]
+    (some-> s csv/read-csv first)
+    (default-value setting-definition-or-name sequential?)))
 
 (def ^:private default-getter-for-type
   {:string    get-string
@@ -478,6 +552,7 @@
                  :cache?      true}
                 (dissoc setting :name :type :default)))
       (s/validate SettingDefinition <>)
+      (assert-valid-default-value-for-type <>)
       ;; eastwood complains about (setting-name @registered-settings) for shadowing the function `setting-name`
       (when-let [registered-setting (clojure.core/get @registered-settings setting-name)]
         (when (not= setting-ns (:namespace registered-setting))
@@ -521,9 +596,7 @@
           ""
           (format "    (%s nil)"                                            (setting-name setting))
           ""
-          (format "Its default value is `%s`."                              (if (nil? default) "nil" default))])})
-
-
+          (format "Its default value is `%s`."                              (pr-str default))])})
 
 (defn setting-fn
   "Create the automatically defined getter/setter function for settings defined by `defsetting`."
@@ -579,7 +652,8 @@
 
    You may optionally pass any of the OPTIONS below:
 
-   *  `:default`    - The default value of the setting. (default: `nil`)
+   *  `:default`    - The default value of the setting. This must be of the same type as the Setting type, e.g. the
+                      default for an `:integer` setting must be some sort of integer. (default: `nil`)
 
    *  `:type`       - `:string` (default), `:boolean`, `:integer`, `:json`, `:double`, or `:timestamp`. Non-`:string`
                       Settings have special default getters and setters that automatically coerce values to the correct
@@ -669,8 +743,8 @@
         unparsed-value                                                (get-string k)
         parsed-value                                                  (getter k)
         ;; `default` and `env-var-value` are probably still in serialized form so compare
-        value-is-default?                                             (= unparsed-value default)
-        value-is-from-env-var?                                        (= unparsed-value (env-var-value setting))]
+        value-is-default?                                             (= parsed-value default)
+        value-is-from-env-var?                                        (some-> (env-var-value setting) (= unparsed-value))]
     (cond
       ;; TODO - Settings set via an env var aren't returned for security purposes. It is an open question whether we
       ;; should obfuscate them and still show the last two characters like we do for sensitive values that are set via

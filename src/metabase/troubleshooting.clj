@@ -3,7 +3,7 @@
             [clojure.java.jmx :as jmx]
             [metabase.config :as mc]
             [metabase.db :as mdb]
-            [metabase.models.setting :as setting]
+            [metabase.driver :as driver]
             [metabase.util.stats :as mus]
             [toucan.db :as db])
   (:import javax.management.ObjectName))
@@ -38,7 +38,7 @@
                                                   :version (.getDriverVersion metadata)}})
    :run-mode                     (mc/config-kw :mb-run-mode)
    :version                      mc/mb-version-info
-   :settings                     {:report-timezone (setting/get :report-timezone)}})
+   :settings                     {:report-timezone (driver/report-timezone)}})
 
 (defn- conn-pool-bean-diag-info [acc ^ObjectName jmx-bean]
   (let [bean-id   (.getCanonicalName jmx-bean)

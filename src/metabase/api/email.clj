@@ -70,7 +70,7 @@
   (api/check-superuser)
   (let [email-settings             (select-keys settings (keys mb-to-smtp-settings))
         smtp-settings              (-> (set/rename-keys email-settings mb-to-smtp-settings)
-                                       (assoc :port (some-> (:email-smtp-port settings) Integer/parseInt)))
+                                       (assoc :port (:email-smtp-port settings)))
         response                   (email/test-smtp-connection smtp-settings)
         tested-settings            (merge settings (select-keys response [:port :security]))
         [_ corrections _]          (data/diff settings tested-settings)
