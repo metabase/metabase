@@ -55,6 +55,13 @@
   "Name for the Metabase Toucan mascot."
   :visibility :internal)
 
+(setting/defsetting test-setting-calculated-getter
+  "Test setting - this only shows up in dev (8)"
+  :type       :boolean
+  :setter     :none
+  :getter     (fn []
+                true))
+
 ;; ## HELPER FUNCTIONS
 
 (defn db-fetch-setting
@@ -81,12 +88,18 @@
   (testing "Test getting a default value -- if you clear the value of a Setting it should revert to returning the default value"
     (test-setting-2 nil)
     (is (= "[Default Value]"
-           (test-setting-2))))
+           (test-setting-2)))))
 
+(deftest user-facing-value-test
   (testing "`user-facing-value` should return `nil` for a Setting that is using the default value"
     (test-setting-2 nil)
     (is (= nil
-           (setting/user-facing-value :test-setting-2)))))
+           (setting/user-facing-value :test-setting-2))))
+  (testing "`user-facing-value` should work correctly for calculated Settings (no underlying value)"
+    (is (= true
+           (test-setting-calculated-getter)))
+    (is (= true
+           (setting/user-facing-value :test-setting-calculated-getter)))))
 
 (deftest defsetting-setter-fn-test
   (test-setting-2 "FANCY NEW VALUE <3")
@@ -600,3 +613,41 @@
   (testing "Removes characters not-compliant with shells"
     (is (= "aa1aa-b2b_cc3c"
            (#'setting/munge-setting-name "aa1'aa@#?-b2@b_cc'3?c?")))))
+
+(deftest validate-default-value-for-type-test
+  (letfn [(validate [tag default]
+            (@#'setting/validate-default-value-for-type
+             {:tag tag, :default default, :name :a-setting, :type :fake-type}))]
+    (testing "No default value"
+      (is (nil? (validate `String nil))))
+    (testing "No tag"
+      (is (nil? (validate nil "abc"))))
+    (testing "tag is not a symbol or string"
+      (is (thrown-with-msg?
+           AssertionError
+           #"Setting :tag should be a symbol or string, got: \^clojure\.lang\.Keyword :string"
+           (validate :string "Green Friend"))))
+    (doseq [[tag valid-tag?]     {"String"           false
+                                  "java.lang.String" true
+                                  'STRING            false
+                                  `str               false
+                                  `String            true}
+            [value valid-value?] {"Green Friend" true
+                                  :green-friend  false}]
+      (testing (format "Tag = %s (valid = %b)" (pr-str tag) valid-tag?)
+        (testing (format "Value = %s (valid = %b)" (pr-str value) valid-value?)
+          (cond
+            (and valid-tag? valid-value?)
+            (is (nil? (validate tag value)))
+
+            (not valid-tag?)
+            (is (thrown-with-msg?
+                 Exception
+                 #"Cannot resolve :tag .+ to a class"
+                 (validate tag value)))
+
+            (not valid-value?)
+            (is (thrown-with-msg?
+                 Exception
+                 #"Wrong :default type: got \^clojure\.lang\.Keyword :green-friend, but expected a java\.lang\.String"
+                 (validate tag value)))))))))

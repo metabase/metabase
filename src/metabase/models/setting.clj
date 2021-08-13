@@ -76,34 +76,33 @@
    :timestamp `Temporal
    :keyword   `Keyword})
 
-(defn- assert-valid-default-value-for-type
+(defn- validate-default-value-for-type
   "Check whether the `:default` value of a Setting (if provided) agrees with the Setting's `:type` and its `:tag` (which
   usually comes from [[default-tag-for-type]])."
   [{setting-type :type, setting-name :name, :keys [tag default], :as setting-definition}]
   ;; the errors below don't need to be i18n'ed since they're definition-time errors rather than user-facing
-  (try
-    (when (some? tag)
-      (assert ((some-fn symbol? string?) tag) (format "Setting :tag should be a symbol or string, got: ^%s %s"
-                                                      (.getCanonicalName (class tag))
-                                                      (pr-str tag))))
-    (when (and (some? default)
-               (some? tag))
-      (let [klass (if (string? tag)
+  (when (some? tag)
+    (assert ((some-fn symbol? string?) tag) (format "Setting :tag should be a symbol or string, got: ^%s %s"
+                                                    (.getCanonicalName (class tag))
+                                                    (pr-str tag))))
+  (when (and (some? default)
+             (some? tag))
+    (let [klass (if (string? tag)
+                  (try
                     (Class/forName tag)
-                    (resolve tag))]
-        (when-not (class? klass)
-          (throw (ex-info (format "Cannot resolve :tag %s to a class. Is it fully qualified?" (pr-str tag))
-                          {:tag klass})))
-        (when-not (instance? klass default)
-          (throw (ex-info (format "Wrong :default type: got ^%s %s, but expected a %s"
-                                  (.getCanonicalName (class default))
-                                  (pr-str default)
-                                  (.getCanonicalName ^Class klass))
-                          {:tag klass})))))
-    (catch Throwable e
-      (throw (ex-info (format "Invalid :default value for Setting %s: %s" setting-name (ex-message e))
-                      (or setting-definition {})
-                      e)))))
+                    (catch Throwable e
+                      e))
+                  (resolve tag))]
+      (when-not (class? klass)
+        (throw (ex-info (format "Cannot resolve :tag %s to a class. Is it fully qualified?" (pr-str tag))
+                        {:tag klass}
+                        (when (instance? Throwable klass) klass))))
+      (when-not (instance? klass default)
+        (throw (ex-info (format "Wrong :default type: got ^%s %s, but expected a %s"
+                                (.getCanonicalName (class default))
+                                (pr-str default)
+                                (.getCanonicalName ^Class klass))
+                        {:tag klass}))))))
 
 (def ^:private SettingDefinition
   {:name        s/Keyword
@@ -557,7 +556,7 @@
                  :cache?      true}
                 (dissoc setting :name :type :default)))
       (s/validate SettingDefinition <>)
-      (assert-valid-default-value-for-type <>)
+      (validate-default-value-for-type <>)
       ;; eastwood complains about (setting-name @registered-settings) for shadowing the function `setting-name`
       (when-let [registered-setting (clojure.core/get @registered-settings setting-name)]
         (when (not= setting-ns (:namespace registered-setting))
