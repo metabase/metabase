@@ -71,3 +71,12 @@ export const JoinOnConditionLabel = styled.span.attrs({ children: "=" })`
   color: ${color("text-medium")};
   margin-right: 8px;
 `;
+
+export const RemoveJoinIcon = styled(Icon).attrs({ name: "close", size: 18 })`
+  cursor: pointer;
+  color: ${color("text-light")};
+
+  :hover {
+    color: ${color("text-medium")};
+  }
+`;

@@ -3,7 +3,6 @@ import React from "react";
 import _ from "underscore";
 import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
@@ -27,6 +26,7 @@ import {
   JoinedTableControlRoot,
   JoinWhereConditionLabel,
   JoinOnConditionLabel,
+  RemoveJoinIcon,
 } from "./JoinStep.styled";
 
 export default function JoinStep({
@@ -161,12 +161,7 @@ class JoinClause extends React.Component {
         )}
 
         {showRemove && (
-          <Icon
-            name="close"
-            size={18}
-            className="cursor-pointer text-light text-medium-hover"
-            onClick={() => join.remove().update(updateQuery)}
-          />
+          <RemoveJoinIcon onClick={() => join.remove().update(updateQuery)} />
         )}
       </JoinClauseRoot>
     );
