@@ -88,7 +88,7 @@ const SubHeadBreadcrumbs = ({ parts, className, ...props }) => (
   <span {...props} className={className}>
     <span className="flex align-center flex-wrap mbn1">
       {parts.map(({ name, icon, href }, index) => (
-        <Badge key={index} className="mr2 mb1" icon={icon} to={href}>
+        <Badge key={index} className="mr2 mb1" icon={{ name: icon }} to={href}>
           {name}
         </Badge>
       ))}
