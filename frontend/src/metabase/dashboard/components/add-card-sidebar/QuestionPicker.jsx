@@ -86,13 +86,14 @@ function QuestionPicker({
               const icon = getCollectionIcon(collection);
               return (
                 <SelectList.Item
-                  hasRightArrow
+                  rightIcon="chevronright"
                   key={collection.id}
                   id={collection.id}
                   name={collection.name}
                   icon={icon.name}
-                  iconColor={icon.color}
-                  isHighlighted={!isRegularCollection(collection)}
+                  iconColor={
+                    isRegularCollection(collection) ? "text-light" : icon.color
+                  }
                   onSelect={collectionId =>
                     setCurrentCollectionId(collectionId)
                   }
