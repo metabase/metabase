@@ -92,43 +92,13 @@ class JoinClause extends React.Component {
     }
 
     const joinedTable = join.joinedTable();
-    const strategyOption = join.strategyOption();
     return (
       <JoinClauseRoot>
         <NotebookCellItem color={color} icon="table2">
           {(lhsTable && lhsTable.displayName()) || `Previous results`}
         </NotebookCellItem>
 
-        <PopoverWithTrigger
-          triggerElement={
-            strategyOption ? (
-              <Icon
-                tooltip={t`Change join type`}
-                className="text-brand mr1"
-                name={strategyOption.icon}
-                size={32}
-              />
-            ) : (
-              <NotebookCellItem color={color}>
-                {`Choose a join type`}
-              </NotebookCellItem>
-            )
-          }
-        >
-          {({ onClose }) => (
-            <JoinTypeSelect
-              value={strategyOption && strategyOption.value}
-              onChange={strategy => {
-                join
-                  .setStrategy(strategy)
-                  .parent()
-                  .update(updateQuery);
-                onClose();
-              }}
-              options={join.strategyOptions()}
-            />
-          )}
-        </PopoverWithTrigger>
+        <JoinTypePicker join={join} color={color} updateQuery={updateQuery} />
 
         <DatabaseSchemaAndTableDataSelector
           hasTableSearch
@@ -224,6 +194,42 @@ class JoinClause extends React.Component {
       </JoinClauseRoot>
     );
   }
+}
+
+function JoinTypePicker({ join, color, updateQuery }) {
+  const strategyOption = join.strategyOption();
+  return (
+    <PopoverWithTrigger
+      triggerElement={
+        strategyOption ? (
+          <Icon
+            tooltip={t`Change join type`}
+            className="text-brand mr1"
+            name={strategyOption.icon}
+            size={32}
+          />
+        ) : (
+          <NotebookCellItem color={color}>
+            {`Choose a join type`}
+          </NotebookCellItem>
+        )
+      }
+    >
+      {({ onClose }) => (
+        <JoinTypeSelect
+          value={strategyOption && strategyOption.value}
+          onChange={strategy => {
+            join
+              .setStrategy(strategy)
+              .parent()
+              .update(updateQuery);
+            onClose();
+          }}
+          options={join.strategyOptions()}
+        />
+      )}
+    </PopoverWithTrigger>
+  );
 }
 
 function JoinTypeSelect({ value, onChange, options }) {
