@@ -12,6 +12,7 @@
             [metabase.models.pulse :as pulse :refer [Pulse]]
             [metabase.plugins.classloader :as classloader]
             [metabase.pulse.interface :as i]
+            [metabase.pulse.markdown :as markdown]
             [metabase.pulse.render :as render]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -100,14 +101,17 @@
     (compare (:col dashcard-1) (:col dashcard-2))))
 
 (defn execute-dashboard
-  "Execute all the cards in a dashboard for a Pulse"
+  "Fetch all the dashcards in a dashboard for a Pulse, and execute non-text cards"
   [{pulse-creator-id :creator_id, :as pulse} dashboard-or-id & {:as options}]
   (let [dashboard-id      (u/the-id dashboard-or-id)
         dashboard         (Dashboard :id dashboard-id)
-        dashcards         (db/select DashboardCard :dashboard_id dashboard-id, :card_id [:not= nil])
+        dashcards         (db/select DashboardCard :dashboard_id dashboard-id)
         ordered-dashcards (sort dashcard-comparator dashcards)]
     (for [dashcard ordered-dashcards]
-      (execute-dashboard-subscription-card pulse-creator-id dashboard dashcard (:card_id dashcard) (i/the-parameters parameters-impl pulse dashboard)))))
+      (if (-> dashcard :visualization_settings :virtual_card)
+        ;; For virtual cards, return the viz settings map directly
+        (-> dashcard :visualization_settings)
+        (execute-dashboard-subscription-card pulse-creator-id dashboard dashcard (:card_id dashcard) (i/the-parameters parameters-impl pulse dashboard))))))
 
 (defn- database-id [card]
   (or (:database_id card)
@@ -132,13 +136,16 @@
   "Returns a seq of slack attachment data structures, used in `create-and-upload-slack-attachments!`"
   [card-results]
   (let [{channel-id :id} (slack/files-channel)]
-    (for [{{card-id :id, card-name :name, :as card} :card, result :result} card-results]
-      {:title           card-name
-       :rendered-info   (render/render-pulse-card :inline (defaulted-timezone card) card result)
-       :title_link      (urls/card-url card-id)
-       :attachment-name "image.png"
-       :channel-id      channel-id
-       :fallback        card-name})))
+    (for [card-result card-results]
+      (if (:virtual_card card-result)
+        {:blocks [{:type "section" :text {:type "mrkdwn" :text (:text card-result)}}]}
+        (let [{{card-id :id, card-name :name, :as card} :card, result :result} card-result]
+          {:title           card-name
+           :rendered-info   (render/render-pulse-card :inline (defaulted-timezone card) card result)
+           :title_link      (urls/card-url card-id)
+           :attachment-name "image.png"
+           :channel-id      channel-id
+           :fallback        card-name})))))
 
 (defn create-and-upload-slack-attachments!
   "Create an attachment in Slack for a given Card by rendering its result into an image and uploading
@@ -146,26 +153,34 @@
   returns an image url, defaulting to slack/upload-file!."
   ([attachments] (create-and-upload-slack-attachments! attachments slack/upload-file!))
   ([attachments slack-attachment-uploader]
+   ;; TODO refactor the logic here
    (letfn [(f [a] (select-keys a [:title :title_link :fallback]))]
-     (reduce (fn [processed {:keys [rendered-info attachment-name channel-id] :as attachment-data}]
-               (conj processed (if (:render/text rendered-info)
-                                 (-> (f attachment-data)
-                                     (assoc :text (:render/text rendered-info)))
-                                 (let [image-bytes (render/png-from-render-info rendered-info)
-                                       image-url (slack-attachment-uploader image-bytes attachment-name channel-id)]
+     (reduce (fn [processed {:keys [blocks rendered-info attachment-name channel-id] :as attachment-data}]
+               (conj processed (if blocks
+                                 (update-in attachment-data
+                                            [:blocks 0 :text :text]
+                                            markdown/process-markdown
+                                            :slack)
+                                 (if (:render/text rendered-info)
                                    (-> (f attachment-data)
-                                       (assoc :image_url image-url))))))
+                                       (assoc :text (:render/text rendered-info)))
+                                   (let [image-bytes (render/png-from-render-info rendered-info)
+                                         image-url (slack-attachment-uploader image-bytes attachment-name channel-id)]
+                                     (-> (f attachment-data)
+                                         (assoc :image_url image-url)))))))
              []
              attachments))))
 
 (defn- is-card-empty?
   "Check if the card is empty"
   [card]
-  (let [result (:result card)]
+  (if-let [result (:result card)]
     (or (zero? (-> result :row_count))
         ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
         (= [[nil]]
-           (-> result :data :rows)))))
+           (-> result :data :rows)))
+    ;; Text cards have no result; treat as empty
+    true))
 
 (defn- are-all-cards-empty?
   "Do none of the cards have any results?"
