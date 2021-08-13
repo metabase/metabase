@@ -1,5 +1,5 @@
-/* eslint-disable react/prop-types */
 import React from "react";
+import PropTypes from "prop-types";
 import _ from "underscore";
 import { t } from "ttag";
 
@@ -28,6 +28,31 @@ import {
   JoinOnConditionLabel,
   RemoveJoinIcon,
 } from "./JoinStep.styled";
+
+const stepShape = {
+  id: PropTypes.string,
+  type: PropTypes.string,
+  query: PropTypes.object,
+  previewQuery: PropTypes.object,
+  valid: PropTypes.bool,
+  visible: PropTypes.bool,
+  stageIndex: PropTypes.number,
+  itemIndex: PropTypes.number,
+  update: PropTypes.func,
+  revert: PropTypes.func,
+  clean: PropTypes.func,
+
+  previous: stepShape,
+  next: stepShape,
+};
+
+const joinStepPropTypes = {
+  query: PropTypes.object.isRequired,
+  step: PropTypes.shape(stepShape).isRequired,
+  color: PropTypes.string,
+  isLastOpened: PropTypes.bool,
+  updateQuery: PropTypes.func.isRequired,
+};
 
 export default function JoinStep({
   color,
@@ -76,6 +101,15 @@ export default function JoinStep({
     </NotebookCell>
   );
 }
+
+JoinStep.propTypes = joinStepPropTypes;
+
+const joinClausePropTypes = {
+  color: PropTypes.string,
+  join: PropTypes.object,
+  updateQuery: PropTypes.func,
+  showRemove: PropTypes.bool,
+};
 
 class JoinClause extends React.Component {
   render() {
@@ -168,6 +202,16 @@ class JoinClause extends React.Component {
   }
 }
 
+JoinClause.propTypes = joinClausePropTypes;
+
+const joinTablePickerPropTypes = {
+  join: PropTypes.object,
+  query: PropTypes.object,
+  joinedTable: PropTypes.object,
+  color: PropTypes.string,
+  updateQuery: PropTypes.func,
+};
+
 function JoinTablePicker({ join, query, joinedTable, color, updateQuery }) {
   return (
     <NotebookCellItem color={color} icon="table2" inactive={!joinedTable}>
@@ -203,6 +247,14 @@ function JoinTablePicker({ join, query, joinedTable, color, updateQuery }) {
   );
 }
 
+JoinTablePicker.propTypes = joinTablePickerPropTypes;
+
+const joinTypePickerPropTypes = {
+  join: PropTypes.object,
+  color: PropTypes.string,
+  updateQuery: PropTypes.func,
+};
+
 function JoinTypePicker({ join, color, updateQuery }) {
   const strategyOption = join.strategyOption();
   return (
@@ -237,6 +289,21 @@ function JoinTypePicker({ join, color, updateQuery }) {
   );
 }
 
+JoinTypePicker.propTypes = joinTypePickerPropTypes;
+
+const joinStrategyOptionShape = {
+  name: PropTypes.string.isRequired,
+  value: PropTypes.string.isRequired,
+  icon: PropTypes.string.isRequired,
+};
+
+const joinTypeSelectPropTypes = {
+  value: PropTypes.string,
+  onChange: PropTypes.func.isRequired,
+  options: PropTypes.arrayOf(PropTypes.shape(joinStrategyOptionShape))
+    .isRequired,
+};
+
 function JoinTypeSelect({ value, onChange, options }) {
   return (
     <JoinTypeSelectRoot>
@@ -252,6 +319,14 @@ function JoinTypeSelect({ value, onChange, options }) {
   );
 }
 
+JoinTypeSelect.propTypes = joinTypeSelectPropTypes;
+
+const joinTypeOptionPropTypes = {
+  ...joinStrategyOptionShape,
+  selected: PropTypes.bool.isRequired,
+  onChange: PropTypes.func.isRequired,
+};
+
 function JoinTypeOption({ name, value, icon, selected, onChange }) {
   return (
     <JoinTypeOptionRoot isSelected={selected} onClick={() => onChange(value)}>
@@ -260,6 +335,20 @@ function JoinTypeOption({ name, value, icon, selected, onChange }) {
     </JoinTypeOptionRoot>
   );
 }
+
+JoinTypeOption.propTypes = joinTypeOptionPropTypes;
+
+const joinDimensionPickerPropTypes = {
+  dimension: PropTypes.object.isRequired,
+  onChange: PropTypes.func.isRequired,
+  options: PropTypes.shape({
+    count: PropTypes.number.isRequired,
+    fks: PropTypes.array.isRequired,
+    dimensions: PropTypes.arrayOf(PropTypes.object).isRequired,
+  }).isRequired,
+  query: PropTypes.object.isRequired,
+  color: PropTypes.string,
+};
 
 class JoinDimensionPicker extends React.Component {
   open() {
@@ -297,6 +386,14 @@ class JoinDimensionPicker extends React.Component {
     );
   }
 }
+
+JoinDimensionPicker.propTypes = joinDimensionPickerPropTypes;
+
+const joinFieldsPickerPropTypes = {
+  join: PropTypes.object.isRequired,
+  updateQuery: PropTypes.func.isRequired,
+  className: PropTypes.string,
+};
 
 const JoinFieldsPicker = ({ className, join, updateQuery }) => {
   const dimensions = join.joinedDimensions();
@@ -340,3 +437,5 @@ const JoinFieldsPicker = ({ className, join, updateQuery }) => {
     />
   );
 };
+
+JoinFieldsPicker.propTypes = joinFieldsPickerPropTypes;
