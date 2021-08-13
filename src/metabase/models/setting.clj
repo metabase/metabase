@@ -185,8 +185,7 @@
   (str/replace (name setting-nm) #"[^a-zA-Z0-9_-]*" ""))
 
 (defn- env-var-name
-  "Get the env var corresponding to `setting-definition-or-name`.
-   (This is used primarily for documentation purposes)."
+  "Get the env var corresponding to `setting-definition-or-name`. (This is used primarily for documentation purposes)."
   ^String [setting-definition-or-name]
   (str "MB_" (-> (setting-name setting-definition-or-name)
                  munge-setting-name
@@ -231,9 +230,9 @@
   "Get string value of `setting-definition-or-name`. This is the default getter for `:string` settings. Value is fetched
   as follows:
 
-  1.  From corresponding env var, if any;
-  2.  From the database (i.e., set via the admin panel), if a value is present;
-  3.  The default value, if one was specified, if it is a string.
+  1. From corresponding env var, if any;
+  2. From the database (i.e., set via the admin panel), if a value is present;
+  3. The default value, if one was specified, *if* it is a string.
 
   If the fetched value is an empty string it is considered to be unset and this function returns `nil`."
   ^String [setting-definition-or-name]
@@ -254,61 +253,59 @@
               (tru "Invalid value for string: must be either \"true\" or \"false\" (case-insensitive)."))))))
 
 (defn get-boolean
-  "Get boolean value of (presumably `:boolean`) `setting-definition-or-name`. This is the default getter for `:boolean`
-  settings. Returns one of the following values:
+  "Get the value of `setting-definition-or-name` as a boolean. Default getter for `:boolean` Settings.
 
-  * `nil`   if string value of `setting-definition-or-name` is unset (or empty)
-  * `true`  if *lowercased* string value of `setting-definition-or-name` is `true`
-  * `false` if *lowercased* string value of `setting-definition-or-name` is `false`.
+  Calls [[get-string]] to get the underlying string value from the DB or env var. If a string value is found, parses
+  it as a boolean using the rules below; if not, returns the [[default-value]] directly if it it is a boolean.
 
-  This is the default getter for `:boolean` settings. Value is fetched as follows:
+  Strings are parsed as follows:
 
-  1.  From corresponding env var, if any;
-  2.  From the database (i.e., set via the admin panel), if a value is present;
-  3.  The default value, if one was specified, if it is a boolean."
+  * `true`  if *lowercased* string value is `true`
+  * `false` if *lowercased* string value is `false`.
+  * Otherwise, throw an Exception."
   ^Boolean [setting-definition-or-name]
   (if-let [s (get-string setting-definition-or-name)]
     (string->boolean s)
     (default-value setting-definition-or-name boolean?)))
 
 (defn get-integer
-  "Get integer value of (presumably `:integer`) `setting-definition-or-name`. This is the default getter for `:integer`
-  settings. Value is fetched as follows:
+  "Get the value of `setting-definition-or-name` as a long. Default getter for `:integer` Settings.
 
-  1.  From corresponding env var, if any;
-  2.  From the database (i.e., set via the admin panel), if a value is present;
-  3.  The default value, if one was specified, if it is an integer."
+  Calls [[get-string]] to get the underlying string value from the DB or env var. If a string value is found, converts
+  it to a keyword with [[java.lang.Long/parseLong]]; if not, returns the [[default-value]] directly if it it is an
+  integer."
   ^Long [setting-definition-or-name]
   (if-let [s (get-string setting-definition-or-name)]
     (Long/parseLong s)
-    (default-value setting-definition-or-name integer?)))
+    ;; if default is actually `Integer` or something make sure we return an instance of `Long`.
+    (some-> (default-value setting-definition-or-name integer?) long)))
 
 (defn get-double
-  "Get double value of (presumably `:double`) `setting-definition-or-name`. This is the default getter for `:double`
-  settings. Value is fetched as follows:
+  "Get the value of `setting-definition-or-name` as a double. Default getter for `:double` Settings.
 
-  1.  From corresponding env var, if any;
-  2.  From the database (i.e., set via the admin panel), if a value is present;
-  3.  The default value, if one was specified, if it is a double."
+  Calls [[get-string]] to get the underlying string value from the DB or env var. If a string value is found, converts
+  it to a keyword with [[java.lang.Double/parseDouble]]; if not, returns the [[default-value]] directly if it it is a
+  double."
   ^Double [setting-definition-or-name]
   (if-let [s (get-string setting-definition-or-name)]
     (Double/parseDouble s)
     (default-value setting-definition-or-name double?)))
 
 (defn get-keyword
-  "Get value of (presumably `:string`) `setting-definition-or-name` as keyword. This is the default getter for
-  `:keyword` settings. Value is fetched as follows:
+  "Get the value of `setting-definition-or-name` as a keyword. Default getter for `:keyword` Settings.
 
-  1.  From corresponding env var, if any;
-  2.  From the database (i.e., set via the admin panel), if a value is present;
-  3.  The default value, if one was specified, if it is a keyword."
+  Calls [[get-string]] to get the underlying string value from the DB or env var. If a string value is found, converts
+  it to a keyword with [[keyword]]; if not, returns the [[default-value]] directly if it it is a keyword."
   ^clojure.lang.Keyword [setting-definition-or-name]
   (if-let [s (get-string setting-definition-or-name)]
     (keyword s)
     (default-value setting-definition-or-name keyword?)))
 
 (defn get-json
-  "Get the string value of `setting-definition-or-name` and parse it as JSON."
+  "Get the value of `setting-definition-or-name` as parsed JSON. Default getter for `:json` Settings.
+
+  Calls [[get-string]] to get the underlying string value from the DB or env var. If a string value is found, parses
+  it with [[cheshire.core/parse-string]]; if not, returns the [[default-value]] directly if it it is a collection."
   [setting-definition-or-name]
   (try
     (if-let [s (get-string setting-definition-or-name)]
@@ -321,15 +318,23 @@
                         e))))))
 
 (defn get-timestamp
-  "Get the string value of `setting-definition-or-name` and parse it as an ISO-8601-formatted string, returning a
-  [[java.time.temporal.Temporal]] of some sort (e.g. a [[java.time.OffsetDateTime]]."
+  "Get the value of `setting-definition-or-name` as a [[java.time.temporal.Temporal]] of some sort (e.g.
+  a [[java.time.OffsetDateTime]]. Default getter for `:timestamp` Settings.
+
+  Calls [[get-string]] to get the underlying string value from the DB or env var. If a string value is found, parses
+  it with [[metabase.util.date-2/parse]]; if not, returns the [[default-value]] directly if it it is an instance
+  of [[java.time.temporal.Temporal]]."
   ^Temporal [setting-definition-or-name]
   (if-let [s (get-string setting-definition-or-name)]
     (u.date/parse s)
     (default-value setting-definition-or-name (partial instance? Temporal))))
 
 (defn get-csv
-  "Get the string value of `setting-definition-or-name` and parse it as CSV, returning a sequence of exploded strings."
+  "Get the value of `setting-definition-or-name` as a sequence of exploded strings. Default getter for `:csv`
+  Settings.
+
+  Calls [[get-string]] to get the underlying string value from the DB or env var. If a string value is found, parses
+  it with [[clojure.data.csv/read-csv]]; if not, returns the [[default-value]] directly if it it is sequential."
   [setting-definition-or-name]
   (if-let [s (get-string setting-definition-or-name)]
     (some-> s csv/read-csv first)
