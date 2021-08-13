@@ -40,4 +40,5 @@ flags:
 
   front-end:
     paths:
+      - enterprise/frontend
       - frontend
