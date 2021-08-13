@@ -120,6 +120,7 @@ export default class Dashboard extends Component {
 
   updateParametersWidgetStickiness = () => {
     const { offsetHeight } = this.parametersWidgetRef;
+    const { isParametersWidgetSticky } = this.state;
 
     if (!this.state.parametersWidgetOffsetTop) {
       this.setState({
@@ -131,13 +132,17 @@ export default class Dashboard extends Component {
       this.state.parametersWidgetOffsetTop ||
       this.parametersWidgetRef.offsetTop;
 
-    const isParametersWidgetSticky = window.scrollY >= offsetTop;
+    const shouldParametersWidgetBeSticky = window.scrollY >= offsetTop;
 
-    const parametersAndCardsContainerPaddingTop = isParametersWidgetSticky
+    if (shouldParametersWidgetBeSticky === isParametersWidgetSticky) {
+      return;
+    }
+
+    const parametersAndCardsContainerPaddingTop = shouldParametersWidgetBeSticky
       ? offsetHeight + "px"
       : "0";
 
-    this.setState({ isParametersWidgetSticky });
+    this.setState({ isParametersWidgetSticky: shouldParametersWidgetBeSticky });
 
     this.parametersAndCardsContainerRef.style.paddingTop = parametersAndCardsContainerPaddingTop;
   };
