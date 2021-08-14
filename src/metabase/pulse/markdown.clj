@@ -4,50 +4,68 @@
             [markdown.transformers :as md.transformers]
             [clojure.string :as str]))
 
+(defn- escape-markdown
+  "Insert zero-width characters before and after certain characters that are escaped in the Markdown,
+  to prevent them from being parsed as formatting in Slack."
+  [string]
+  (str/escape string
+              {\*  "\u00ad*\u00ad"
+               \_  "\u00ad_\u00ad"
+               \`  "\u00ad`\u00ad"
+               ;; Escaped backticks are converted to curly quotes for HTML, so let's change them back
+               \‘  "\u00ad`\u00ad"}))
+
 (defn- hickory->mrkdwn
   [{:keys [tag attrs content]}]
-  (let [resolved-content (if (string? content) content
-                             (map #(if (string? %) %
-                                       (hickory->mrkdwn %))
-                                  content))
+  (let [resolved-content (if (string? content)
+                           (escape-markdown content)
+                           (map #(if (string? %)
+                                   (escape-markdown %)
+                                   (hickory->mrkdwn %))
+                                content))
         joined-content   (str/join resolved-content)]
-    (cond
-      (contains? #{:strong :b :h1 :h2 :h3 :h4 :h5 :h6} tag)
+    (case tag
+      ; (contains? #{:strong :b :h1 :h2 :h3 :h4 :h5 :h6} tag)
+      (:strong :b :h1 :h2 :h3 :h4 :h5 :h6)
       (str "*" joined-content "*")
 
-      (contains? #{:em :i} tag)
+      ; (contains? #{:em :i} tag)
+      (:em :i)
       (str "_" joined-content "_")
 
-      (= tag :code)
+      :code
       (if (str/includes? joined-content "\n")
-        ;; Use codeblock formatting if content contains newlines, since both are parsed to HTML :code tags
-        (str "```" joined-content "```")
+        ;; Use codeblock formatting if content contains newlines, since both are parsed to HTML :code tags.
+        ;; Add a newline before content since markdown-clj removes it.
+        (str "```\n" joined-content "```")
         (str "`" joined-content "`"))
 
-      (= tag :blockquote)
+      :blockquote
       (str ">" joined-content)
 
-      (= tag :footer)
+      :footer
       (str "\n>• " joined-content)
 
-      (= tag :a)
+      :a
       (str "<" (:href attrs) "|" joined-content ">")
 
       ;; li tags might have nested lists or other elements, which should have their indentation level increased
-      (= tag :li)
-      (let [to-indent  (str/join (map #(if (str/blank? %) "\n" %) (rest resolved-content)))
-            indented   (str/join "\n" (map #(str "    " %) (str/split-lines to-indent)))]
-        (if-not (= (str/trim indented) "")
+      :li
+      (let [to-indent (str/join (map #(if (str/blank? %) "\n" %) (rest resolved-content)))
+            indented  (str/join "\n" (map #(str "    " %) (str/split-lines to-indent)))]
+        (if-not (str/blank? indented)
           (str (first resolved-content) "\n" indented)
           joined-content))
 
-      (= tag :ul)
+      :ul
       (str/join "\n" (map #(str "• " %) resolved-content))
 
-      (= tag :ol)
+      :ol
       (str/join "\n" (map-indexed #(str (inc %1) ". " %2) resolved-content))
 
-      :else
+      :br
+      (str "\n" (str/triml joined-content))
+
       joined-content)))
 
 (defn- escape-html
@@ -76,7 +94,8 @@
   ;; Converts a markdown string from a virtual card on a dashboard into mrkdwn, the limited markdown dialect
   ;; used by Slack. The original markdown is converted to HTML and then to Hickory, which is used as an
   ;; intermediate representation that is then converted to mrkdwn.
-  ;; e.g.
+  ;;
+  ;; For example, a Markdown header is converted to bold text for Slack:
   ;; Markdown: # header
   ;; HTML:     <h1>header</h1>
   ;; Hickory:  {:type :element, :attrs nil, :tag :h1, :content ["header"]}

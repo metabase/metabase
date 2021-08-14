@@ -23,7 +23,8 @@
             [metabase.util.ui-logic :as ui]
             [metabase.util.urls :as urls]
             [schema.core :as s]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [clojure.string :as str])
   (:import metabase.models.card.CardInstance))
 
 
@@ -136,16 +137,17 @@
   "Returns a seq of slack attachment data structures, used in `create-and-upload-slack-attachments!`"
   [card-results]
   (let [{channel-id :id} (slack/files-channel)]
-    (for [card-result card-results]
-      (if (:virtual_card card-result)
-        {:blocks [{:type "section" :text {:type "mrkdwn" :text (:text card-result)}}]}
-        (let [{{card-id :id, card-name :name, :as card} :card, result :result} card-result]
-          {:title           card-name
-           :rendered-info   (render/render-pulse-card :inline (defaulted-timezone card) card result)
-           :title_link      (urls/card-url card-id)
-           :attachment-name "image.png"
-           :channel-id      channel-id
-           :fallback        card-name})))))
+    (remove nil?
+            (for [card-result card-results]
+              (if (:virtual_card card-result)
+                {:blocks [{:type "section" :text {:type "mrkdwn" :text (:text card-result)}}]}
+                (let [{{card-id :id, card-name :name, :as card} :card, result :result} card-result]
+                  {:title           card-name
+                   :rendered-info   (render/render-pulse-card :inline (defaulted-timezone card) card result)
+                   :title_link      (urls/card-url card-id)
+                   :attachment-name "image.png"
+                   :channel-id      channel-id
+                   :fallback        card-name}))))))
 
 (defn create-and-upload-slack-attachments!
   "Create an attachment in Slack for a given Card by rendering its result into an image and uploading
@@ -157,6 +159,7 @@
    (letfn [(f [a] (select-keys a [:title :title_link :fallback]))]
      (reduce (fn [processed {:keys [blocks rendered-info attachment-name channel-id] :as attachment-data}]
                (conj processed (if blocks
+                                 ;; TODO skip block if markdown renders to emptyt  string
                                  (update-in attachment-data
                                             [:blocks 0 :text :text]
                                             markdown/process-markdown
