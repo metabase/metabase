@@ -1,6 +1,7 @@
 (ns metabase.pulse.markdown
   (:require [hickory.core :as hickory]
             [markdown.core :as md]
+            [markdown.transformers :as md.transformers]
             [clojure.string :as str]))
 
 (defn- hickory->mrkdwn
@@ -49,6 +50,23 @@
       :else
       joined-content)))
 
+(defn- escape-html
+  "Change special characters into HTML character entities."
+  [text state]
+  [(if-not (or (:code state) (:codeblock state))
+     (clojure.string/escape text {\& "&amp;"
+                                  \< "&lt;"
+                                  \> "&gt;"
+                                  \" "&quot;"
+                                  \' "&#39;"})
+     text)
+   state])
+
+(defn- markdown-to-html
+  [markdown]
+  (md/md-to-html-string markdown
+                        :replacement-transformers (into [escape-html] md.transformers/transformer-vector)))
+
 (defmulti process-markdown
   "Converts a markdown string from a virtual card into a form that can be sent to the provided channel type
   (mrkdwn for Slack; HTML for email)."
@@ -65,7 +83,7 @@
   ;; mrkdwn:   *header*
   [markdown _]
   (->> markdown
-       md/md-to-html-string
+       markdown-to-html
        hickory/parse-fragment
        (map hickory/as-hickory)
        (map hickory->mrkdwn)
