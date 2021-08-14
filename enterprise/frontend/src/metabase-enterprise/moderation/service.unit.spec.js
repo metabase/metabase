@@ -8,6 +8,7 @@ import {
   getStatusIconForQuestion,
   getModerationTimelineEvents,
   getStatusIcon,
+  getRemovedReviewStatusIcon,
 } from "./service";
 
 jest.mock("metabase/services", () => ({
@@ -71,13 +72,19 @@ describe("moderation/service", () => {
       });
     });
 
-    it("should not return an icon for a status of null", () => {
-      expect(getStatusIcon(null)).toEqual({});
-      expect(getStatusIcon("null")).toEqual({});
+    it("should not return an icon for a status of null, which represents the removal of a review and is a special case", () => {
+      const removedReviewStatus = null;
+      const accidentallyStringCoercedRemvovedReviewStatus = "null";
+      expect(getStatusIcon(removedReviewStatus)).toEqual({});
+      expect(
+        getStatusIcon(accidentallyStringCoercedRemvovedReviewStatus),
+      ).toEqual({});
     });
+  });
 
-    it("should return an icon for a status of null is `enableNull` is passed in the config object arg", () => {
-      expect(getStatusIcon("null", { enableNull: true })).toEqual({
+  describe("getRemovedReviewStatusIcon", () => {
+    it("should return an icon for a removed review", () => {
+      expect(getRemovedReviewStatusIcon()).toEqual({
         name: "close",
         color: "text-light",
       });
@@ -259,7 +266,7 @@ describe("moderation/service", () => {
         },
         {
           timestamp: expect.any(Number),
-          icon: getStatusIcon(null, { enableNull: true }),
+          icon: getRemovedReviewStatusIcon(),
           title: "A moderator removed verification",
         },
       ]);

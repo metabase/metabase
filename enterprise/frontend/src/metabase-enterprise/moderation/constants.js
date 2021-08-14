@@ -2,19 +2,13 @@ export const MODERATION_STATUS = {
   verified: "verified",
 };
 
-export const ACTIONS = {
+export const MODERATION_STATUS_ICONS = {
   verified: {
-    type: "verified",
-    icon: {
-      name: "verified",
-      color: "brand",
-    },
+    name: "verified",
+    color: "brand",
   },
   null: {
-    type: "null",
-    icon: {
-      name: "close",
-      color: "text-light",
-    },
+    name: "close",
+    color: "text-light",
   },
 };

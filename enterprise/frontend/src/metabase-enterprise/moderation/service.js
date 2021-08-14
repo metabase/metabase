@@ -2,7 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { ModerationReviewApi } from "metabase/services";
-import { ACTIONS } from "./constants";
+import { MODERATION_STATUS_ICONS } from "./constants";
 
 export { MODERATION_STATUS } from "./constants";
 
@@ -24,28 +24,31 @@ export function removeReview({ itemId, itemType }) {
 }
 
 const noIcon = {};
-export function getStatusIcon(status, { enableNull = false } = {}) {
-  if (String(status) === "null" && !enableNull) {
+export function getStatusIcon(status) {
+  if (isRemovedReviewStatus(status)) {
     return noIcon;
   }
 
-  const action = ACTIONS[status] || {};
-  return action.icon || noIcon;
+  return MODERATION_STATUS_ICONS[status] || noIcon;
 }
 
 export function getIconForReview(review, options) {
   return getStatusIcon(review?.status, options);
 }
 
+// we only want the icon that represents the removal of a review in special cases,
+// so you must ask for the icon explicitly
+export function getRemovedReviewStatusIcon() {
+  return MODERATION_STATUS_ICONS[null];
+}
+
 export function getLatestModerationReview(reviews) {
-  const review = _.findWhere(reviews, {
+  const maybeReview = _.findWhere(reviews, {
     most_recent: true,
   });
 
   // since we can't delete reviews, consider a most recent review with a status of null to mean there is no review
-  if (!isNullStatus(review?.status)) {
-    return review;
-  }
+  return isRemovedReviewStatus(maybeReview?.status) ? undefined : maybeReview;
 }
 
 export function getStatusIconForQuestion(question) {
@@ -84,7 +87,8 @@ function getModeratorDisplayName(user, currentUser) {
   }
 }
 
-export function isNullStatus(status) {
+// a `status` of `null` represents the removal of a review, since we can't delete reviews
+export function isRemovedReviewStatus(status) {
   return String(status) === "null";
 }
 
@@ -111,7 +115,9 @@ export function getModerationTimelineEvents(reviews, usersById, currentUser) {
       currentUser,
     );
     const text = getModerationReviewEventText(review, moderatorDisplayName);
-    const icon = getIconForReview(review, { enableNull: true });
+    const icon = isRemovedReviewStatus(review.status)
+      ? getRemovedReviewStatusIcon()
+      : getIconForReview(review);
 
     return {
       timestamp: new Date(review.created_at).valueOf(),
