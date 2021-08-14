@@ -26,13 +26,18 @@
       (= tag :blockquote)
       (str ">" joined-content)
 
+      (= tag :footer)
+      (str "\n>• " joined-content)
+
       (= tag :a)
       (str "<" (:href attrs) "|" joined-content ">")
 
+      ;; li tags might have nested lists or other elements, which should have their indentation level increased
       (= tag :li)
-      (let [subtag (get-in content [1 :tag])]
-        (if (or (= subtag :ul) (= subtag :ol))
-          (str (first resolved-content) "\n" (str/join "\n" (map #(str "    " %) (str/split-lines (second resolved-content)))))
+      (let [to-indent  (str/join (map #(if (str/blank? %) "\n" %) (rest resolved-content)))
+            indented   (str/join "\n" (map #(str "    " %) (str/split-lines to-indent)))]
+        (if-not (= (str/trim indented) "")
+          (str (first resolved-content) "\n" indented)
           joined-content))
 
       (= tag :ul)
