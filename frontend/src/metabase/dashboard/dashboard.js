@@ -31,7 +31,10 @@ import {
   setParameterDefaultValue as setParamDefaultValue,
 } from "metabase/meta/Dashboard";
 import { applyParameters, questionUrlWithParameters } from "metabase/meta/Card";
-import { getParametersBySlug } from "metabase/meta/Parameter";
+import {
+  getParameterValuesBySlug,
+  getParameterValuesByIdFromQueryParams,
+} from "metabase/meta/Parameter";
 import * as Urls from "metabase/lib/urls";
 
 import type {
@@ -378,7 +381,7 @@ export const saveDashboardAndCards = createThunkAction(
               parameter_mappings &&
               parameter_mappings.filter(
                 mapping =>
-                  // filter out mappings for deleted paramters
+                  // filter out mappings for deleted parameters
                   _.findWhere(dashboard.parameters, {
                     id: mapping.parameter_id,
                   }) &&
@@ -593,7 +596,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
             token: dashcard.dashboard_id,
             dashcardId: dashcard.id,
             cardId: card.id,
-            ...getParametersBySlug(dashboard.parameters, parameterValues),
+            ...getParameterValuesBySlug(dashboard.parameters, parameterValues),
             ignore_cache: ignoreCache,
           },
           queryOptions,
@@ -712,17 +715,6 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
       result = await DashboardApi.get({ dashId: dashId });
     }
 
-    const parameterValues = {};
-    if (result.parameters) {
-      for (const parameter of result.parameters) {
-        if (queryParams && queryParams[parameter.slug] != null) {
-          parameterValues[parameter.id] = queryParams[parameter.slug];
-        } else if (enableDefaultParameters && parameter.default != null) {
-          parameterValues[parameter.id] = parameter.default;
-        }
-      }
-    }
-
     if (dashboardType === "normal" || dashboardType === "transient") {
       dispatch(loadMetadataForDashboard(result.ordered_cards));
     }
@@ -744,10 +736,15 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
       dispatch(addFields(result.param_fields));
     }
 
+    const parameterValuesById = getParameterValuesByIdFromQueryParams(
+      result.parameters,
+      queryParams,
+    );
+
     return {
       ...normalize(result, dashboard), // includes `result` and `entities`
       dashboardId: dashId,
-      parameterValues: parameterValues,
+      parameterValues: parameterValuesById,
     };
   };
 });
@@ -920,9 +917,12 @@ export const setParameterValue = createThunkAction(
   },
 );
 
-export const setOrUnsetParameterValues = pairs => (dispatch, getState) => {
+export const setOrUnsetParameterValues = parameterIdValuePairs => (
+  dispatch,
+  getState,
+) => {
   const parameterValues = getParameterValues(getState());
-  pairs
+  parameterIdValuePairs
     .map(([id, value]) =>
       setParameterValue(id, value === parameterValues[id] ? null : value),
     )

@@ -8,6 +8,7 @@ import cx from "classnames";
 import title from "metabase/hoc/Title";
 import withToast from "metabase/hoc/Toast";
 import DashboardData from "metabase/dashboard/hoc/DashboardData";
+import { getValuePopulatedParameters } from "metabase/meta/Parameter";
 
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/components/Button";
@@ -144,10 +145,10 @@ class AutomaticDashboardApp extends React.Component {
             {parameters && parameters.length > 0 && (
               <div className="px1 pt1">
                 <Parameters
-                  parameters={parameters.map(p => ({
-                    ...p,
-                    value: parameterValues && parameterValues[p.id],
-                  }))}
+                  parameters={getValuePopulatedParameters(
+                    parameters,
+                    parameterValues,
+                  )}
                   query={location.query}
                   setParameterValue={setParameterValue}
                   syncQueryString

@@ -13,7 +13,6 @@ import type {
   ParameterTarget,
   ParameterValue,
   ParameterValueOrArray,
-  ParameterValues,
 } from "metabase-types/types/Parameter";
 import type { FieldId } from "metabase-types/types/Field";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
@@ -371,19 +370,6 @@ export function getTemplateTagParameters(tags: TemplateTag[]): Parameter[] {
     });
 }
 
-export const getParametersBySlug = (
-  parameters: Parameter[],
-  parameterValues: ParameterValues,
-): { [key: string]: string } => {
-  const result = {};
-  for (const parameter of parameters) {
-    if (parameterValues[parameter.id] != null) {
-      result[parameter.slug] = parameterValues[parameter.id];
-    }
-  }
-  return result;
-};
-
 /** Returns the field ID that this parameter target points to, or null if it's not a dimension target. */
 export function getParameterTargetFieldId(
   target: ?ParameterTarget,
@@ -619,15 +605,17 @@ function splitType(parameterOrType) {
   return parameterType.split("/");
 }
 
-export function collateParametersWithValues(parameters, parameterValues) {
-  if (parameterValues) {
-    return parameters.map(p => ({
-      ...p,
-      value: parameterValues[p.id],
-    }));
-  } else {
-    return parameters;
-  }
+export function getValuePopulatedParameters(parameters, parameterValues) {
+  return parameterValues
+    ? parameters.map(parameter => {
+        return parameter.id in parameterValues
+          ? {
+              ...parameter,
+              value: parameterValues[parameter.id],
+            }
+          : parameter;
+      })
+    : parameters;
 }
 
 export function hasDefaultParameterValue(parameter) {
@@ -636,4 +624,54 @@ export function hasDefaultParameterValue(parameter) {
 
 export function hasParameterValue(parameter) {
   return parameter && parameter.value != null;
+}
+
+export function getParameterValueFromQueryParams(parameter, queryParams) {
+  queryParams = queryParams || {};
+  const maybeParameterValue = queryParams[parameter.slug];
+  return maybeParameterValue == null ? parameter.default : maybeParameterValue;
+}
+
+export function getParameterValuePairsFromQueryParams(parameters, queryParams) {
+  return parameters
+    .map(parameter => [
+      parameter,
+      getParameterValueFromQueryParams(parameter, queryParams),
+    ])
+    .filter(([, value]) => value != null);
+}
+
+export function getParameterValuesByIdFromQueryParams(parameters, queryParams) {
+  const idValuePairs = getParameterValuePairsFromQueryParams(
+    parameters,
+    queryParams,
+  ).map(([parameter, value]) => [parameter.id, value]);
+
+  return Object.fromEntries(idValuePairs);
+}
+
+export function getParameterValuesBySlug(parameters, parameterValuesById) {
+  parameterValuesById = parameterValuesById || {};
+  const slugValuePairs = parameters
+    .map(parameter => [
+      parameter.slug,
+      parameter.value || parameterValuesById[parameter.id],
+    ])
+    .filter(([, value]) => value != null);
+
+  return Object.fromEntries(slugValuePairs);
+}
+
+export function buildHiddenParametersSlugSet(hiddenParameterSlugs) {
+  return _.isString(hiddenParameterSlugs)
+    ? new Set(hiddenParameterSlugs.split(","))
+    : new Set();
+}
+
+export function getVisibleParameters(parameters, hiddenParameterSlugs) {
+  const hiddenParametersSlugSet = buildHiddenParametersSlugSet(
+    hiddenParameterSlugs,
+  );
+
+  return parameters.filter(p => !hiddenParametersSlugSet.has(p.slug));
 }

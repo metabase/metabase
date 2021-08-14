@@ -1,4 +1,8 @@
 import Dimension from "metabase-lib/lib/Dimension";
+import {
+  getParameterValueFromQueryParams,
+  getParameterValuePairsFromQueryParams,
+} from "metabase/meta/Parameter";
 
 export const syncQueryParamsWithURL = props => {
   props.commitImmediately
@@ -13,15 +17,18 @@ const syncForInternalQuestion = props => {
     return;
   }
 
-  for (const parameter of parameters) {
-    const queryParam = query && query[parameter.slug];
+  parameters.forEach(parameter => {
+    const parameterValue = getParameterValueFromQueryParams(parameter, query);
 
-    if (queryParam != null || parameter.default != null) {
-      const parsedParam = parseQueryParams(queryParam, parameter, metadata);
-
-      setParameterValue(parameter.id, parsedParam);
+    if (parameterValue != null) {
+      const parsedParameterValue = parseQueryParams(
+        parameterValue,
+        parameter,
+        metadata,
+      );
+      setParameterValue(parameter.id, parsedParameterValue);
     }
-  }
+  });
 };
 
 const syncForPublicQuestion = props => {
@@ -31,17 +38,17 @@ const syncForPublicQuestion = props => {
     return;
   }
 
-  const parameterValues = parameters.reduce((acc, parameter) => {
-    const queryParam = query && query[parameter.slug];
+  const parameterIdValuePairs = getParameterValuePairsFromQueryParams(
+    parameters,
+    query,
+  ).map(([parameter, value]) => [
+    parameter.id,
+    parseQueryParams(value, parameter, metadata),
+  ]);
 
-    if (queryParam != null || parameter.default != null) {
-      acc[parameter.id] = parseQueryParams(queryParam, parameter, metadata);
-    }
+  const parameterValuesById = Object.fromEntries(parameterIdValuePairs);
 
-    return acc;
-  }, {});
-
-  setMultipleParameterValues(parameterValues);
+  setMultipleParameterValues(parameterValuesById);
 };
 
 const parseQueryParams = (queryParam, parameter, metadata) => {
