@@ -27,6 +27,7 @@ import Dimension from "metabase-lib/lib/Dimension";
 
 import _ from "underscore";
 import { jt, t } from "ttag";
+import { getParentPath } from "metabase/hoc/ModalRoute";
 
 const mapStateToProps = () => ({});
 const mapDispatchToProps = {
@@ -91,15 +92,8 @@ export default class GTAPModal extends React.Component {
   }
 
   close = () => {
-    const {
-      push,
-      params: { databaseId, schemaName },
-    } = this.props;
-    push(
-      `/admin/permissions/databases/${databaseId}` +
-        (schemaName ? `/schemas/${encodeURIComponent(schemaName)}` : ``) +
-        `/tables`,
-    );
+    const { push, route, location } = this.props;
+    return push(getParentPath(route, location));
   };
 
   _getCanonicalGTAP() {
