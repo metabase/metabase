@@ -625,26 +625,37 @@ describe("smoketest > admin_setup", () => {
 
       // Data access permissions (table)
 
-      cy.findByText("View tables").click();
+      cy.findByText("All Users").click();
 
-      cy.findByText("Products");
+      cy.findByText("Sample Dataset").click();
+
+      cy.findByText("PRODUCTS");
       cy.findByText("SQL Queries").should("not.exist");
 
       // Turn on data access for all users to Test Table
       cy.icon("close")
-        .eq(6)
+        .eq(2)
         .click();
-      cy.findByText("Grant unrestricted access").click();
+
+      cy.findAllByRole("option")
+        .contains("Allowed")
+        .click();
 
       cy.findByText("Change access to this database to limited?");
 
       cy.findByText("Change").click();
 
+      cy.findByText("Marketing").click();
+
+      cy.findByText("Sample Dataset").click();
+
       // Turn on data access for Marketing users to Products
       cy.icon("close")
-        .eq(2)
+        .eq(1)
         .click();
-      cy.findByText("Grant unrestricted access").click();
+      cy.findAllByRole("option")
+        .contains("Allowed")
+        .click();
 
       cy.findByText("Are you sure you want to do this?");
 
@@ -665,10 +676,11 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Data permissions").click();
 
-      cy.icon("sql")
-        .last()
+      cy.findByText("data").click();
+      cy.icon("check")
+        .eq(1)
         .click();
-      cy.findByText("Revoke access").click();
+      cy.findByText("No access").click();
 
       cy.findByText("Save Changes").click();
 

@@ -90,11 +90,13 @@ describe("scenarios > question > view", () => {
   describe("apply filters without data permissions", () => {
     beforeEach(() => {
       // All users upgraded to collection view access
-      cy.visit("/admin/permissions/collections");
+      cy.visit("/admin/permissions/collections/root");
       cy.icon("close")
         .first()
         .click();
-      cy.findByText("View collection").click();
+      cy.findAllByRole("option")
+        .contains("View")
+        .click();
       cy.findByText("Save Changes").click();
       cy.findByText("Yes").click();
 

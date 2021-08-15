@@ -8,11 +8,13 @@ describe("scenarios > admin > permissions", () => {
 
   it("should display error on failed save", () => {
     // revoke some permissions
-    cy.visit("/admin/permissions/databases");
-    cy.icon("sql")
-      .last()
+    cy.visit("/admin/permissions/data/group/1");
+    cy.icon("close")
+      .first()
       .click();
-    cy.contains("Revoke access").click();
+    cy.findAllByRole("option")
+      .contains("Allowed")
+      .click();
 
     // stub out the PUT and save
     cy.server();
