@@ -1,57 +1,43 @@
-/* eslint-disable react/prop-types */
 import React from "react";
 import { Route } from "metabase/hoc/Title";
-import { IndexRedirect, IndexRoute } from "react-router";
+import { IndexRedirect } from "react-router";
 import { t } from "ttag";
-import DataPermissionsApp from "./containers/DataPermissionsApp";
-import DatabasesPermissionsApp from "./containers/DatabasesPermissionsApp";
-import SchemasPermissionsApp from "./containers/SchemasPermissionsApp";
-import TablesPermissionsApp from "./containers/TablesPermissionsApp";
-import CollectionPermissions from "./containers/CollectionsPermissionsApp";
 
-import { PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES } from "metabase/plugins";
+import CollectionPermissionsPage from "./pages/CollectionPermissionsPage/CollectionPermissionsPage";
+import DatabasesPermissionsPage from "./pages/DatabasePermissionsPage/DatabasesPermissionsPage";
+import GroupsPermissionsPage from "./pages/GroupDataPermissionsPage/GroupsPermissionsPage";
+import DataPermissionsPage from "./pages/DataPermissionsPage/DataPermissionsPage";
+import {
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES,
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES,
+} from "metabase/plugins";
 
-const getRoutes = store => (
+const getRoutes = () => (
   <Route title={t`Permissions`} path="permissions">
-    <IndexRedirect to="databases" />
+    <IndexRedirect to="data" />
 
-    {/* "DATABASES" a.k.a. "data" section */}
-    <Route path="databases" component={DataPermissionsApp}>
-      {/* DATABASES */}
-      <IndexRoute component={DatabasesPermissionsApp} />
+    <Route path="data" component={DataPermissionsPage}>
+      <IndexRedirect to="group" />
 
-      {/* SCHEMAS */}
-      <Route path=":databaseId/schemas" component={SchemasPermissionsApp} />
-
-      {/* TABLES */}
       <Route
-        path=":databaseId/schemas/:schemaName/tables"
-        component={TablesPermissionsApp}
+        path="database(/:databaseId)(/schema/:schemaName)(/table/:tableId)"
+        component={DatabasesPermissionsPage}
       >
-        {PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES}
+        {PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES}
       </Route>
 
-      {/* TABLES NO SCHEMA */}
-      {/* NOTE: this route is to support null schemas */}
       <Route
-        path=":databaseId/tables"
-        component={(
-          props, // eslint-disable-line react/display-name
-        ) => (
-          <TablesPermissionsApp
-            {...props}
-            params={{ ...props.params, schemaName: null }}
-          />
-        )}
+        path="group(/:groupId)(/database/:databaseId)(/schema/:schemaName)"
+        component={GroupsPermissionsPage}
       >
         {PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES}
       </Route>
     </Route>
 
-    {/* "COLLECTIONS" section */}
-    <Route path="collections" component={CollectionPermissions}>
-      <Route path=":collectionId" />
-    </Route>
+    <Route
+      path="collections(/:collectionId)"
+      component={CollectionPermissionsPage}
+    />
   </Route>
 );
 
