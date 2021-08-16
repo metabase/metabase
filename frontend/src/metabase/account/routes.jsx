@@ -2,8 +2,9 @@ import React from "react";
 import { t } from "ttag";
 import { IndexRedirect } from "react-router";
 import { Route } from "metabase/hoc/Title";
-import UserProfileApp from "./profile/containers/UserProfileApp";
 import AccountSettingsApp from "./settings/containers/AccountSettingsApp";
+import UserProfileApp from "./profile/containers/UserProfileApp";
+import LoginHistoryApp from "./login-history/containers/LoginHistoryApp";
 
 const getRoutes = () => {
   return (
@@ -14,6 +15,7 @@ const getRoutes = () => {
     >
       <IndexRedirect to="profile" />
       <Route path="profile" component={UserProfileApp} />
+      <Route path="login-history" component={LoginHistoryApp} />
     </Route>
   );
 };
