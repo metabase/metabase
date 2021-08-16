@@ -188,14 +188,7 @@ describe("scenarios > admin > databases > add", () => {
     it("should let you upload the service account json from a file", () => {
       cy.visit("/admin/databases/create");
 
-      // select BigQuery
-      cy.contains("Database type")
-        .parents(".Form-field")
-        .find(".AdminSelect")
-        .click();
-      popover()
-        .contains("BigQuery")
-        .click({ force: true });
+      chooseDatabase("BigQuery");
 
       // enter text
       typeField("Name", "bq db");
@@ -261,13 +254,7 @@ describe("scenarios > admin > databases > add", () => {
   describe("Google Analytics ", () => {
     it("should generate well-formed external auth URLs", () => {
       cy.visit("/admin/databases/create");
-      cy.contains("Database type")
-        .parents(".Form-field")
-        .find(".AdminSelect")
-        .click();
-      popover()
-        .contains("Google Analytics")
-        .click({ force: true });
+      chooseDatabase("Google Analytics");
 
       typeField("Client ID", "   999  ");
 
