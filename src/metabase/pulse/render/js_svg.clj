@@ -79,11 +79,16 @@ function categorical_donut (rows, colors) {
     (js/load-resource bundle-path)
     (js/load-js-string src-api "src call")))
 
+(defn- static-viz-context
+  "Load the static viz js bundle into a new graal js context."
+  []
+  (load-viz-bundle (js/context)))
+
 (def ^:private ^Context context
   "Javascript context suitable for evaluating the charts. It has the chart bundle and the above `src-api` in its
   environment suitable for creating charts."
   ;; todo is this thread safe? Should we have a resource pool on top of this? Or create them fresh for each invocation
-  (delay (load-viz-bundle (js/make-context))))
+  (delay (static-viz-context)))
 
 (defn post-process
   "Mutate in place the elements of the svg document. Remove the fill=transparent attribute in favor of
