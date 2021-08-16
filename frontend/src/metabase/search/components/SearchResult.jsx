@@ -106,7 +106,7 @@ function TableIcon() {
 
 function CollectionIcon({ item }) {
   const iconProps = { ...item.getIcon() };
-  const isRegular = PLUGIN_COLLECTIONS.isRegularCollection(item);
+  const isRegular = PLUGIN_COLLECTIONS.isRegularCollection(item.collection);
   if (isRegular) {
     iconProps.size = DEFAULT_ICON_SIZE;
   } else {

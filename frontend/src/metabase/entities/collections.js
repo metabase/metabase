@@ -83,7 +83,10 @@ const Collections = createEntity({
   objectSelectors: {
     getName: collection => collection && collection.name,
     getUrl: collection => Urls.collection(collection),
-    getIcon: getCollectionIcon,
+    getIcon: (collection, opts) => {
+      const wrappedCollection = collection.collection;
+      return getCollectionIcon(wrappedCollection || collection, opts);
+    },
   },
 
   selectors: {
