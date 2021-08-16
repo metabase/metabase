@@ -10,7 +10,8 @@
            [org.apache.batik.anim.dom SAXSVGDocumentFactory SVGOMDocument]
            [org.apache.batik.transcoder TranscoderInput TranscoderOutput]
            org.apache.batik.transcoder.image.PNGTranscoder
-           org.graalvm.polyglot.Context))
+           org.graalvm.polyglot.Context
+           [org.w3c.dom Node Element]))
 
 (def ^:private bundle-path
   "frontend_client/app/dist/lib-static-viz.bundle.js")
@@ -84,10 +85,34 @@ function categorical_donut (rows, colors) {
   ;; todo is this thread safe? Should we have a resource pool on top of this? Or create them fresh for each invocation
   (delay (load-viz-bundle (js/make-context))))
 
+(defn post-process
+  "Mutate in place the elements of the svg document. Remove the fill=transparent attribute in favor of
+  fill-opacity=0.0. Our svg image renderer only understands the latter. Mutation is unfortunately necessary as the
+  underlying tree of nodes is inherently mutable"
+  [^SVGOMDocument svg-document & post-fns]
+  (loop [s [(.getDocumentElement svg-document)]]
+    (when-let [^Node node (peek s)]
+      (let [s' (let [nodelist (.getChildNodes node)
+                     length   (.getLength nodelist)]
+                 (apply conj (pop s)
+                        ;; reverse the nodes for the stack so it goes down first child first
+                        (map #(.item nodelist %) (reverse (range length)))))]
+        (reduce (fn [node f] (f node)) node post-fns)
+        (recur s'))))
+  svg-document)
+
+(defn fix-fill [^Node node]
+  (letfn [(element? [x] (instance? Element x))]
+    (if (and (element? node)
+             (.hasAttribute ^Element node "fill")
+             (= (.getAttribute ^Element node "fill") "transparent"))
+      (doto ^Element node
+        (.removeAttribute "fill")
+        (.setAttribute "fill-opacity" "0.0"))
+      node)))
+
 (defn- parse-svg-string [^String s]
-  (let [s       (-> s
-                    (str/replace  #"<svg " "<svg xmlns=\"http://www.w3.org/2000/svg\" ")
-                    (str/replace #"fill=\"transparent\"" "fill-opacity=\"0.0\""))
+  (let [s       (str/replace s #"<svg " "<svg xmlns=\"http://www.w3.org/2000/svg\" ")
         factory (SAXSVGDocumentFactory. "org.apache.xerces.parsers.SAXParser")]
     (with-open [is (ByteArrayInputStream. (.getBytes s StandardCharsets/UTF_8))]
       (.createDocument factory "file:///fake.svg" is))))
@@ -95,9 +120,10 @@ function categorical_donut (rows, colors) {
 (defn- render-svg
   ^bytes [^SVGOMDocument svg-document]
   (with-open [os (ByteArrayOutputStream.)]
-    (let [in         (TranscoderInput. svg-document)
-          out        (TranscoderOutput. os)
-          transcoder (PNGTranscoder.)]
+    (let [^SVGOMDocument fixed-svg-doc (post-process svg-document fix-fill)
+          in                           (TranscoderInput. fixed-svg-doc)
+          out                          (TranscoderOutput. os)
+          transcoder                   (PNGTranscoder.)]
       (.addTranscodingHint transcoder PNGTranscoder/KEY_WIDTH (float 1200))
       (.transcode transcoder in out))
     (.toByteArray os)))
