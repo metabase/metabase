@@ -114,6 +114,7 @@ export const getDatabasesSidebar = createSelector(
         name: schema.name,
         databaseId: databaseId,
         type: "schema",
+        isHiddenFromSearch: true,
         children: schema.tables.map(table => ({
           id: getTableId(table.id),
           originalId: table.id,

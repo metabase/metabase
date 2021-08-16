@@ -1,6 +1,7 @@
 export const searchItems = (items, filter) => {
-  const matchingItems = items.filter(item =>
-    item.name.toLowerCase().includes(filter),
+  const matchingItems = items.filter(
+    item =>
+      !item.isHiddenFromSearch && item.name.toLowerCase().includes(filter),
   );
 
   const children = items
@@ -11,5 +12,7 @@ export const searchItems = (items, filter) => {
   const childrenMatches =
     children.length > 0 ? searchItems(children, filter) : [];
 
-  return [...matchingItems, ...childrenMatches];
+  return [...matchingItems, ...childrenMatches].map(
+    ({ children, ...item }) => item,
+  );
 };
