@@ -72,6 +72,11 @@ export default function JoinStep({
     joins = [new Join({ fields: "all" }, query.joins().length, query)];
   }
   const valid = _.all(joins, join => join.isValid());
+
+  function addNewJoinClause() {
+    query.join(new Join({ fields: "all" })).update(updateQuery);
+  }
+
   return (
     <NotebookCell color={color} flexWrap="nowrap">
       <JoinClausesContainer>
@@ -94,9 +99,7 @@ export default function JoinStep({
         <NotebookCellAdd
           color={color}
           className="cursor-pointer ml-auto"
-          onClick={() => {
-            query.join(new Join({ fields: "all" })).update(updateQuery);
-          }}
+          onClick={addNewJoinClause}
         />
       )}
     </NotebookCell>
@@ -132,6 +135,37 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
   }
 
   const joinedTable = join.joinedTable();
+
+  function onSourceTableSet(newJoin) {
+    if (!newJoin.parentDimension()) {
+      setTimeout(() => {
+        parentDimensionPickerRef.current.open();
+      });
+    }
+  }
+
+  function onParentDimensionChange(fieldRef) {
+    join
+      .setParentDimension(fieldRef)
+      .setDefaultAlias()
+      .parent()
+      .update(updateQuery);
+    if (!join.joinDimension()) {
+      joinDimensionPickerRef.current.open();
+    }
+  }
+
+  function onJoinDimensionChange(fieldRef) {
+    join
+      .setJoinDimension(fieldRef)
+      .parent()
+      .update(updateQuery);
+  }
+
+  function removeJoin() {
+    join.remove().update(updateQuery);
+  }
+
   return (
     <JoinClauseRoot>
       <NotebookCellItem color={color} icon="table2">
@@ -146,13 +180,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
         joinedTable={joinedTable}
         color={color}
         updateQuery={updateQuery}
-        onSourceTableSet={newJoin => {
-          if (!newJoin.parentDimension()) {
-            setTimeout(() => {
-              parentDimensionPickerRef.current.open();
-            });
-          }
-        }}
+        onSourceTableSet={onSourceTableSet}
       />
 
       {joinedTable && (
@@ -164,16 +192,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
             query={query}
             dimension={join.parentDimension()}
             options={join.parentDimensionOptions()}
-            onChange={fieldRef => {
-              join
-                .setParentDimension(fieldRef)
-                .setDefaultAlias()
-                .parent()
-                .update(updateQuery);
-              if (!join.joinDimension()) {
-                joinDimensionPickerRef.current.open();
-              }
-            }}
+            onChange={onParentDimensionChange}
             ref={parentDimensionPickerRef}
           />
 
@@ -184,12 +203,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
             query={query}
             dimension={join.joinDimension()}
             options={join.joinDimensionOptions()}
-            onChange={fieldRef => {
-              join
-                .setJoinDimension(fieldRef)
-                .parent()
-                .update(updateQuery);
-            }}
+            onChange={onJoinDimensionChange}
             ref={joinDimensionPickerRef}
           />
         </JoinedTableControlRoot>
@@ -203,9 +217,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
         />
       )}
 
-      {showRemove && (
-        <RemoveJoinIcon onClick={() => join.remove().update(updateQuery)} />
-      )}
+      {showRemove && <RemoveJoinIcon onClick={removeJoin} />}
     </JoinClauseRoot>
   );
 }
@@ -229,26 +241,30 @@ function JoinTablePicker({
   updateQuery,
   onSourceTableSet,
 }) {
+  const databases = [
+    query.database(),
+    query.database().savedQuestionsDatabase(),
+  ].filter(Boolean);
+
+  function onChange(tableId) {
+    const newJoin = join
+      .setJoinSourceTableId(tableId)
+      .setDefaultCondition()
+      .setDefaultAlias();
+    newJoin.parent().update(updateQuery);
+    onSourceTableSet(newJoin);
+  }
+
   return (
     <NotebookCellItem color={color} icon="table2" inactive={!joinedTable}>
       <DatabaseSchemaAndTableDataSelector
         hasTableSearch
         canChangeDatabase={false}
-        databases={[
-          query.database(),
-          query.database().savedQuestionsDatabase(),
-        ].filter(d => d)}
+        databases={databases}
         tableFilter={table => table.db_id === query.database().id}
         selectedDatabaseId={query.databaseId()}
         selectedTableId={join.joinSourceTableId()}
-        setSourceTableFn={tableId => {
-          const newJoin = join
-            .setJoinSourceTableId(tableId)
-            .setDefaultCondition()
-            .setDefaultAlias();
-          newJoin.parent().update(updateQuery);
-          onSourceTableSet(newJoin);
-        }}
+        setSourceTableFn={onChange}
         isInitiallyOpen={join.joinSourceTableId() == null}
         triggerElement={
           joinedTable ? joinedTable.displayName() : t`Pick a table...`
@@ -268,6 +284,14 @@ const joinTypePickerPropTypes = {
 
 function JoinTypePicker({ join, color, updateQuery }) {
   const strategyOption = join.strategyOption();
+
+  function onChange(strategy) {
+    join
+      .setStrategy(strategy)
+      .parent()
+      .update(updateQuery);
+  }
+
   return (
     <PopoverWithTrigger
       triggerElement={
@@ -287,10 +311,7 @@ function JoinTypePicker({ join, color, updateQuery }) {
         <JoinTypeSelect
           value={strategyOption && strategyOption.value}
           onChange={strategy => {
-            join
-              .setStrategy(strategy)
-              .parent()
-              .update(updateQuery);
+            onChange(strategy);
             onClose();
           }}
           options={join.strategyOptions()}
@@ -410,6 +431,38 @@ const JoinFieldsPicker = ({ className, join, updateQuery }) => {
   const dimensions = join.joinedDimensions();
   const selectedDimensions = join.fieldsDimensions();
   const selected = new Set(selectedDimensions.map(d => d.key()));
+
+  function onSelectAll() {
+    join
+      .setFields("all")
+      .parent()
+      .update(updateQuery);
+  }
+
+  function onSelectNone() {
+    join
+      .setFields("none")
+      .parent()
+      .update(updateQuery);
+  }
+
+  function onToggleDimension(dimension) {
+    join
+      .setFields(
+        dimensions
+          .filter(d => {
+            if (d === dimension) {
+              return !selected.has(d.key());
+            } else {
+              return selected.has(d.key());
+            }
+          })
+          .map(d => d.mbql()),
+      )
+      .parent()
+      .update(updateQuery);
+  }
+
   return (
     <FieldsPicker
       className={className}
@@ -417,34 +470,9 @@ const JoinFieldsPicker = ({ className, join, updateQuery }) => {
       selectedDimensions={selectedDimensions}
       isAll={join.fields === "all"}
       isNone={join.fields === "none"}
-      onSelectAll={() =>
-        join
-          .setFields("all")
-          .parent()
-          .update(updateQuery)
-      }
-      onSelectNone={() =>
-        join
-          .setFields("none")
-          .parent()
-          .update(updateQuery)
-      }
-      onToggleDimension={(dimension, enable) => {
-        join
-          .setFields(
-            dimensions
-              .filter(d => {
-                if (d === dimension) {
-                  return !selected.has(d.key());
-                } else {
-                  return selected.has(d.key());
-                }
-              })
-              .map(d => d.mbql()),
-          )
-          .parent()
-          .update(updateQuery);
-      }}
+      onSelectAll={onSelectAll}
+      onSelectNone={onSelectNone}
+      onToggleDimension={onToggleDimension}
     />
   );
 };
