@@ -1,12 +1,8 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { Box, Flex } from "grid-styled";
-
 import _ from "underscore";
 import moment from "moment";
-
-import LoginHistory from "metabase/entities/loginHistory";
-
 import Card from "metabase/components/Card";
 import Label from "metabase/components/type/Label";
 import Text from "metabase/components/type/Text";
