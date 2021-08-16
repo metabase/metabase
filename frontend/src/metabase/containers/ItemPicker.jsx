@@ -53,7 +53,7 @@ export default class ItemPicker extends React.Component {
     // number = non-root collection id
     value: PropTypes.number,
     types: PropTypes.array,
-    showSearch: PropTypes.boolean,
+    showSearch: PropTypes.bool,
   };
 
   // returns a list of "crumbs" starting with the "root" collection
