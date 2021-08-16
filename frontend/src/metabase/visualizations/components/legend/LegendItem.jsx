@@ -11,9 +11,9 @@ import Ellipsified from "metabase/components/Ellipsified";
 import Tooltip from "metabase/components/Tooltip";
 
 const propTypes = {
-  label: PropTypes.string,
-  index: PropTypes.number,
-  color: PropTypes.string,
+  label: PropTypes.string.isRequired,
+  index: PropTypes.number.isRequired,
+  color: PropTypes.string.isRequired,
   isMuted: PropTypes.bool,
   isNarrow: PropTypes.bool,
   isVertical: PropTypes.bool,
