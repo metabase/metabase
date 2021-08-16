@@ -19,6 +19,7 @@
 /*.trace.db
 /.babel_cache
 /.env
+/.lein-env
 /.lein-failures
 /.lein-plugins
 /.lein-repl-history
