@@ -4,7 +4,6 @@ Cypress.Commands.add("createQuestion", (questionDetails, customOptions) => {
   throwIfNotPresent(query);
 
   logAction("Create a QB question", name);
-
   question("query", questionDetails, customOptions);
 });
 
@@ -16,11 +15,28 @@ Cypress.Commands.add(
     throwIfNotPresent(native);
 
     logAction("Create a native question", name);
-
     question("native", questionDetails, customOptions);
   },
 );
 
+/**
+ *
+ * @param {("query"|"native")} type
+ *
+ * @param {object} questionDetails
+ * @param {string} [questionDetails.name="test question"]
+ * @param {object} questionDetails.native
+ * @param {object} questionDetails.query
+ * @param {number} [questionDetails.database=1]
+ * @param {string} [questionDetails.display="table"]
+ * @param {object} [questionDetails.visualization_settings={}]
+ * @param {number} [questionDetails.collection_id] - Parent collection in which to store this question.
+ * @param {number} [questionDetails.collection_position] - used on the frontend to determine whether the question is pinned or not.
+ *
+ * @param {object} customOptions
+ * @param {boolean} customOptions.loadMetadata - Whether to visit the question in order to load its metadata.
+ * @param {boolean} customOptions.visitQuestion - Whether to visit the question after the creation or not.
+ */
 function question(
   type,
   {
@@ -63,8 +79,14 @@ function throwIfNotPresent(param) {
   }
 }
 
-function logAction(string, name) {
-  const message = name ? `${string}: ${name}` : string;
+/**
+ *
+ * @param {string} title - A title used to log the Cypress action/request that follows it.
+ * @param {string} [questionName] - Optional question name.
+ */
+function logAction(title, questionName) {
+  const fullTitle = `${title}: ${questionName}`;
+  const message = questionName ? fullTitle : title;
 
   cy.log(message);
 }
