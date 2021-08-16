@@ -13,6 +13,7 @@ import {
 
 const MIN_ITEM_WIDTH = 100;
 const MIN_ITEM_HEIGHT = 25;
+const MIN_LEGEND_WIDTH = 400;
 
 const propTypes = {
   className: PropTypes.string,
@@ -50,12 +51,14 @@ const LegendLayout = ({
   const maxYLabels = Math.max(maxYItems - 1, 0);
   const minYLabels = labels.length > maxYItems ? maxYLabels : labels.length;
 
+  const isNarrow = width < MIN_LEGEND_WIDTH;
   const isVertical = maxXItems < labels.length;
+  const isVisible = hasLegend && !(isVertical && isNarrow);
   const visibleLength = isVertical ? minYLabels : labels.length;
 
   return (
     <LegendLayoutRoot className={className} isVertical={isVertical}>
-      {hasLegend && (
+      {isVisible && (
         <LegendContainer isVertical={isVertical}>
           <Legend
             labels={labels}
