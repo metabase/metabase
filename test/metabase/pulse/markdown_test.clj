@@ -40,14 +40,23 @@
     (is (= "```\ncode\nblock\n```" (mrkdwn "```lang\ncode\nblock\n```"))))
     ;; (is (= "```\ncode\nblock\n```" (mrkdwn "~~~\ncode\nblock\n~~~"))))
 
-  (testing "Links use Slack's syntax, and tooltips are dropped"
+  (testing "Blockquotes are preserved"
+    (is (= ">block "              (mrkdwn ">block")))
+    (is (= "> block "             (mrkdwn "> block")))
+    (is (= ">block quote "        (mrkdwn ">block\n>quote")))
+    (is (= ">block quote "        (mrkdwn ">block\n>quote")))
+    (is (= ">quote \n>• footer" (mrkdwn ">quote\n>- footer"))))
+
+  (testing "Links use Slack's syntax, tooltips are dropped, and link formatting is preserved"
     (is (= "<metabase.com|Metabase>" (mrkdwn "[Metabase](metabase.com)")))
     (is (= "<metabase.com|Metabase>" (mrkdwn "[Metabase](metabase.com tooltip)")))
     (is (= "<metabase.com>"          (mrkdwn "<metabase.com>")))
-    (is (= "<metabase.com>"          (mrkdwn "<metabase.com>"))))
-    ; (is (= "_<metabase.com|Metabase>_" (mrkdwn "[*Metabase*](metabase.com)")))
-    ; (is (= "*<metabase.com|Metabase>*" (mrkdwn "[**Metabase**](metabase.com)")))
-    ; (is (= "`<metabase.com|Metabase>`" (mrkdwn "[`Metabase`](metabase.com)"))))
+    (is (= "<metabase.com>"          (mrkdwn "<metabase.com>")))
+    (is (= "<metabase.com|_Metabase_>" (mrkdwn "[*Metabase*](metabase.com)")))
+    (is (= "<metabase.com|_Metabase_>" (mrkdwn "[_Metabase_](metabase.com)")))
+    (is (= "<metabase.com|*Metabase*>" (mrkdwn "[**Metabase**](metabase.com)")))
+    (is (= "<metabase.com|*Metabase*>" (mrkdwn "[__Metabase__](metabase.com)")))
+    (is (= "<metabase.com|`Metabase`>" (mrkdwn "[`Metabase`](metabase.com)"))))
 
   (testing "Lists are rendered correctly using raw text"
     (is (= "• foo\n• bar"   (mrkdwn "* foo\n* bar")))
@@ -74,5 +83,6 @@
     (is (= "\u00ad_\u00adfoo\u00ad_\u00ad" (mrkdwn "\\_foo\\_")))
     (is (= "\u00ad`\u00adfoo\u00ad`\u00ad" (mrkdwn "\\`foo\\`"))))
 
-  (testing "Images in Markdown are dropped"
-    (is (= "" (mrkdwn "![alt-text](image.png)")))))
+  (testing "Images in Markdown are converted to links, with alt text preserved"
+    (is (= "<image.png|[Image]>"           (mrkdwn "![](image.png)")))
+    (is (= "<image.png|[Image: alt-text]>" (mrkdwn "![alt-text](image.png)")))))

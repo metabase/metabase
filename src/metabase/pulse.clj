@@ -23,8 +23,7 @@
             [metabase.util.ui-logic :as ui]
             [metabase.util.urls :as urls]
             [schema.core :as s]
-            [toucan.db :as db]
-            [clojure.string :as str])
+            [toucan.db :as db])
   (:import metabase.models.card.CardInstance))
 
 

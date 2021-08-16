@@ -1,8 +1,8 @@
 (ns metabase.pulse.markdown
-  (:require [hickory.core :as hickory]
+  (:require [clojure.string :as str]
+            [hickory.core :as hickory]
             [markdown.core :as md]
-            [markdown.transformers :as md.transformers]
-            [clojure.string :as str]))
+            [markdown.transformers :as md.transformers]))
 
 (defn- escape-markdown
   "Insert zero-width characters before and after certain characters that are escaped in the Markdown,
@@ -25,11 +25,9 @@
                                 content))
         joined-content   (str/join resolved-content)]
     (case tag
-      ; (contains? #{:strong :b :h1 :h2 :h3 :h4 :h5 :h6} tag)
       (:strong :b :h1 :h2 :h3 :h4 :h5 :h6)
       (str "*" joined-content "*")
 
-      ; (contains? #{:em :i} tag)
       (:em :i)
       (str "_" joined-content "_")
 
@@ -44,17 +42,21 @@
       (str ">" joined-content)
 
       :footer
-      (str "\n>• " joined-content)
+      (str "\n>•" joined-content)
 
       :a
       (str "<" (:href attrs) "|" joined-content ">")
 
       ;; li tags might have nested lists or other elements, which should have their indentation level increased
       :li
-      (let [to-indent (str/join (map #(if (str/blank? %) "\n" %) (rest resolved-content)))
-            indented  (str/join "\n" (map #(str "    " %) (str/split-lines to-indent)))]
-        (if-not (str/blank? indented)
-          (str (first resolved-content) "\n" indented)
+      (let [content-to-indent (rest resolved-content)
+            lines-to-indent   (str/split-lines
+                               ;; Treat blank sub-elements as newlines
+                               (str/join (map #(if (str/blank? %) "\n" %)
+                                              content-to-indent)))
+            indented-content  (str/join "\n" (map #(str "    " %) lines-to-indent))]
+        (if-not (str/blank? indented-content)
+          (str (first resolved-content) "\n" indented-content)
           joined-content))
 
       :ul
@@ -66,15 +68,21 @@
       :br
       (str "\n" (str/triml joined-content))
 
+      :img
+      ;; Replace images with links, including alt text
+      (let [{:keys [src alt]} attrs]
+        (if (str/blank? alt)
+          (str "<" src "|[Image]>")
+          (str "<" src "|[Image: " alt "]>")))
+
       joined-content)))
 
 (defn- escape-html
-  "Change special characters into HTML character entities."
+  "Change special characters into HTML character entities. '>' is not escaped to preserve blockquote parsing."
   [text state]
   [(if-not (or (:code state) (:codeblock state))
      (clojure.string/escape text {\& "&amp;"
                                   \< "&lt;"
-                                  \> "&gt;"
                                   \" "&quot;"
                                   \' "&#39;"})
      text)
