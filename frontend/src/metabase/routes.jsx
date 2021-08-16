@@ -43,7 +43,6 @@ import UserCollectionList from "metabase/containers/UserCollectionList";
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp";
 import SetupApp from "metabase/setup/containers/SetupApp";
 import PostSetupApp from "metabase/setup/containers/PostSetupApp";
-import UserSettingsApp from "metabase/user/containers/UserSettingsApp";
 // new question
 import NewQueryOptions from "metabase/new_query/containers/NewQueryOptions";
 
@@ -322,7 +321,6 @@ export const getRoutes = store => (
       </Route>
 
       {/* ACCOUNT */}
-      <Route path="/user/edit_current" component={UserSettingsApp} />
       {getAccountRoutes()}
 
       {/* ADMIN */}
