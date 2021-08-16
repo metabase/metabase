@@ -71,6 +71,7 @@ export const updateDataPermission = createThunkAction(
         const action = permission.postActions?.[value]?.(params, view);
         if (action) {
           dispatch(action);
+          return null;
         }
       }
 
@@ -164,6 +165,10 @@ const dataPermissions = handleActions(
     [SAVE_DATA_PERMISSIONS]: { next: (_state, { payload }) => payload.groups },
     [UPDATE_DATA_PERMISSION]: {
       next: (state, { payload }) => {
+        if (payload == null) {
+          return state;
+        }
+
         const { value, groupId, entityId, metadata, permission } = payload;
 
         if (entityId.tableId != null) {

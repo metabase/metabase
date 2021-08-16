@@ -1,5 +1,6 @@
 import React, { useCallback } from "react";
 import PropTypes from "prop-types";
+import { bindActionCreators } from "redux";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -155,26 +156,32 @@ GroupsPermissionsPage.propTypes = propTypes;
 
 const BASE_PATH = `/admin/permissions/data/group`;
 
-const mapDispatchToProps = {
-  updateDataPermission,
-  switchView: entityType => push(`/admin/permissions/data/${entityType}/`),
-  navigateToItem: item => push(`${BASE_PATH}/${item.id}`),
-  navigateToDatabase: (params, databaseId) =>
-    push(`${BASE_PATH}/${params.groupId}/database/${databaseId}`),
-  navigateToTableItem: (item, { groupId, databaseId }) => {
-    if (item.type === "database") {
-      return item.schemas.length > 1
-        ? push(`${BASE_PATH}/${groupId}/database/${item.id}`)
-        : push(
-            `${BASE_PATH}/${groupId}/database/${item.id}/schema/${item.schemas[0].name}`,
+const mapDispatchToProps = dispatch => ({
+  dispatch,
+  ...bindActionCreators(
+    {
+      updateDataPermission,
+      switchView: entityType => push(`/admin/permissions/data/${entityType}/`),
+      navigateToItem: item => push(`${BASE_PATH}/${item.id}`),
+      navigateToDatabase: (params, databaseId) =>
+        push(`${BASE_PATH}/${params.groupId}/database/${databaseId}`),
+      navigateToTableItem: (item, { groupId, databaseId }) => {
+        if (item.type === "database") {
+          return item.schemas.length > 1
+            ? push(`${BASE_PATH}/${groupId}/database/${item.id}`)
+            : push(
+                `${BASE_PATH}/${groupId}/database/${item.id}/schema/${item.schemas[0].name}`,
+              );
+        } else if (item.type === "schema") {
+          return push(
+            `${BASE_PATH}/${groupId}/database/${databaseId}/schema/${item.name}`,
           );
-    } else if (item.type === "schema") {
-      return push(
-        `${BASE_PATH}/${groupId}/database/${databaseId}/schema/${item.name}`,
-      );
-    }
-  },
-};
+        }
+      },
+    },
+    dispatch,
+  ),
+});
 
 const mapStateToProps = (state, props) => {
   return {

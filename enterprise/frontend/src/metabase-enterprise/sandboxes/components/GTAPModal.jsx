@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-
+import _ from "underscore";
+import { jt, t } from "ttag";
 import { withRouter } from "react-router";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
@@ -25,13 +26,13 @@ import QuestionLoader from "metabase/containers/QuestionLoader";
 
 import Dimension from "metabase-lib/lib/Dimension";
 
-import _ from "underscore";
-import { jt, t } from "ttag";
 import { getParentPath } from "metabase/hoc/ModalRoute";
+import { updateTableSandboxingPermission } from "../actions";
 
 const mapStateToProps = () => ({});
 const mapDispatchToProps = {
   push,
+  updateTableSandboxingPermission,
 };
 
 type GTAP = {
@@ -122,6 +123,8 @@ export default class GTAPModal extends React.Component {
       } else {
         await GTAPApi.create(gtap);
       }
+      this.props.updateTableSandboxingPermission(this.props.params);
+      this.close();
     } catch (error) {
       console.error("Error saving GTAP", error);
       const message = error
@@ -132,7 +135,6 @@ export default class GTAPModal extends React.Component {
       this.setState({ error: message });
       throw new Error(message);
     }
-    this.close();
   };
 
   isValid() {

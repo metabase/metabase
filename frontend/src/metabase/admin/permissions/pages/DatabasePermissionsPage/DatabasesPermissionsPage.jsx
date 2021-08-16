@@ -1,5 +1,6 @@
 import React, { useCallback } from "react";
 import PropTypes from "prop-types";
+import { bindActionCreators } from "redux";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -106,25 +107,31 @@ DatabasesPermissionsPage.propTypes = propTypes;
 
 const BASE_PATH = `/admin/permissions/data/database/`;
 
-const mapDispatchToProps = {
-  updateDataPermission,
-  switchView: entityType => push(`/admin/permissions/data/${entityType}`),
-  navigateToDatabaseList: () => push(BASE_PATH),
-  navigateToItem: item => {
-    switch (item.type) {
-      case "database":
-        return push(`${BASE_PATH}${item.id}`);
-      case "schema":
-        return push(`${BASE_PATH}${item.databaseId}/schema/${item.name}`);
-      case "table":
-        return push(
-          `${BASE_PATH}${item.databaseId}/schema/${item.schemaName}/table/${item.originalId}`,
-        );
-    }
+const mapDispatchToProps = dispatch => ({
+  dispatch,
+  ...bindActionCreators(
+    {
+      updateDataPermission,
+      switchView: entityType => push(`/admin/permissions/data/${entityType}`),
+      navigateToDatabaseList: () => push(BASE_PATH),
+      navigateToItem: item => {
+        switch (item.type) {
+          case "database":
+            return push(`${BASE_PATH}${item.id}`);
+          case "schema":
+            return push(`${BASE_PATH}${item.databaseId}/schema/${item.name}`);
+          case "table":
+            return push(
+              `${BASE_PATH}${item.databaseId}/schema/${item.schemaName}/table/${item.originalId}`,
+            );
+        }
 
-    return push(BASE_PATH);
-  },
-};
+        return push(BASE_PATH);
+      },
+    },
+    dispatch,
+  ),
+});
 
 const mapStateToProps = (state, props) => {
   return {
