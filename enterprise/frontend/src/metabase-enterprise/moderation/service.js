@@ -21,9 +21,10 @@ export function removeReview({ itemId, itemType }) {
   });
 }
 
+const defaultIcon = {};
 export function getStatusIcon(status) {
-  const { icon, color } = ACTIONS[status] || {};
-  return { name: icon, color };
+  const action = ACTIONS[status] || {};
+  return action.icon || defaultIcon;
 }
 
 export function getVerifiedIcon() {

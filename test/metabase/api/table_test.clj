@@ -41,7 +41,7 @@
     :description                 nil
     :caveats                     nil
     :points_of_interest          nil
-    :features                    (mapv u/qualified-name (driver.u/features :h2))
+    :features                    (mapv u/qualified-name (driver.u/features :h2 (mt/db)))
     :cache_field_values_schedule "0 50 0 * * ? *"
     :metadata_sync_schedule      "0 50 * * * ? *"
     :options                     nil

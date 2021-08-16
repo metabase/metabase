@@ -10,8 +10,6 @@ import {
 } from "./QuestionDetailsSidebarPanel.styled";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 
-const { QuestionModerationSection } = PLUGIN_MODERATION;
-
 export default QuestionDetailsSidebarPanel;
 
 QuestionDetailsSidebarPanel.propTypes = {
@@ -44,7 +42,7 @@ function QuestionDetailsSidebarPanel({
           description={description}
           onEdit={onDescriptionEdit}
         />
-        <QuestionModerationSection question={question} />
+        <PLUGIN_MODERATION.QuestionModerationSection question={question} />
         <BorderedQuestionActivityTimeline question={question} />
       </SidebarContentContainer>
     </SidebarContent>

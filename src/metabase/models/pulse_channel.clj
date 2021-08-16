@@ -84,7 +84,7 @@
            :name              "Email"
            :allows_recipients true
            :recipients        ["user", "email"]
-           :schedules         [:daily :weekly :monthly]}
+           :schedules         [:hourly :daily :weekly :monthly]}
    :slack {:type              "slack"
            :name              "Slack"
            :allows_recipients false

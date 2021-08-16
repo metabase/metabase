@@ -169,6 +169,7 @@ export const uiControls = handleActions(
     [SHOW_CHART_SETTINGS]: {
       next: (state, { payload }) => ({
         ...state,
+        ...UI_CONTROLS_SIDEBAR_DEFAULTS,
         isShowingChartSettingsSidebar: true,
         initialChartSetting: payload,
       }),

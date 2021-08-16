@@ -11,6 +11,7 @@
             eftest.runner
             [environ.core :as env]
             [metabase.config :as config]
+            [metabase.test-runner.effects :as effects]
             [metabase.test-runner.init :as init]
             [metabase.test-runner.junit :as junit]
             [metabase.test-runner.parallel :as parallel]
@@ -23,7 +24,8 @@
 
 ;; Load redefinitions of stuff like `tt/with-temp` and `with-redefs` that throw an Exception when they are used inside
 ;; parallel tests.
-(comment metabase.test.redefs/keep-me)
+(comment metabase.test.redefs/keep-me
+         effects/keep-me)
 
 ;;;; Finding tests
 
