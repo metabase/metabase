@@ -14,14 +14,6 @@ You have told Metabase to send email notifications, but:
 2. Verify that the email is delivered to the test account.
 3. If the message is not sent or an error message is displayed in Metabase, try to use the same account credentials in another email program and see if they work. If they do, you may have found a---please [report it][bugs].
 
-## Is the HOSTNAME of the Metabase server set correctly?
-
-**Root cause:** Some email delivery services, such as GMail, will report errors when the mail sender's HOSTNAME doesn't match the actual host's name. In particular, by default EC2 instances of Metabase set the hostname to the local IP address unless configured otherwise.
-
-**Steps to take:**
-
-1. Make sure that the HOSTNAME is being set correctly. FIXME where and how to do this? It doesn't seem to be in our docs.
-
 ## Is the mail server actually sending the message?
 
 **Root cause:** Some email delivery services have very specific rules regarding valid "from" addresses, or have test modes that restrict delivery.
