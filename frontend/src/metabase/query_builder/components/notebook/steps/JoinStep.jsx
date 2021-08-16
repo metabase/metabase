@@ -30,17 +30,18 @@ import {
 } from "./JoinStep.styled";
 
 const stepShape = {
-  id: PropTypes.string,
-  type: PropTypes.string,
-  query: PropTypes.object,
+  id: PropTypes.string.isRequired,
+  type: PropTypes.string.isRequired,
+  query: PropTypes.object.isRequired,
   previewQuery: PropTypes.object,
-  valid: PropTypes.bool,
-  visible: PropTypes.bool,
-  stageIndex: PropTypes.number,
-  itemIndex: PropTypes.number,
-  update: PropTypes.func,
-  revert: PropTypes.func,
-  clean: PropTypes.func,
+  valid: PropTypes.bool.isRequired,
+  visible: PropTypes.bool.isRequired,
+  stageIndex: PropTypes.number.isRequired,
+  itemIndex: PropTypes.number.isRequired,
+  update: PropTypes.func.isRequired,
+  revert: PropTypes.func.isRequired,
+  clean: PropTypes.func.isRequired,
+  actions: PropTypes.array.isRequired,
 
   previous: stepShape,
   next: stepShape,
