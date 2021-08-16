@@ -40,13 +40,6 @@ import type { FieldValues } from "metabase-types/types/Field";
  * Wrapper class for field metadata objects. Belongs to a Table.
  */
 export default class Field extends Base {
-  name: string;
-  display_name: string;
-  description: string;
-
-  table: Table;
-  name_field: ?Field;
-
   parent() {
     return this.metadata ? this.metadata.field(this.parent_id) : null;
   }
@@ -336,5 +329,33 @@ export default class Field extends Base {
    */
   foreign(foreignField: Field): Dimension {
     return this.dimension().foreign(foreignField.dimension());
+  }
+
+  /**
+   * @private
+   * @param {number} id
+   * @param {string} name
+   * @param {string} display_name
+   * @param {string} description
+   * @param {Table} table
+   * @param {?Field} name_field
+   * @param {Metadata} metadata
+   */
+  _constructor(
+    id,
+    name,
+    display_name,
+    description,
+    table,
+    name_field,
+    metadata,
+  ) {
+    this.id = id;
+    this.name = name;
+    this.display_name = display_name;
+    this.description = description;
+    this.table = table;
+    this.name_field = name_field;
+    this.metadata = metadata;
   }
 }

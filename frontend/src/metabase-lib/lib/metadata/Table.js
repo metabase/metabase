@@ -20,18 +20,6 @@ type EntityType = string; // TODO: move somewhere central
 /** This is the primary way people interact with tables */
 export default class Table extends Base {
 
-  description: string;
-
-  db: Database;
-
-  schema: ?Schema;
-  // @deprecated: use schema.name (all tables should have a schema object, in theory)
-  schema_name: ?SchemaName;
-
-  fields: Field[];
-
-  entity_type: ?EntityType;
-
   hasSchema() {
     return (this.schema_name && this.db && this.db.schemas.length > 1) || false;
   }
@@ -130,5 +118,23 @@ export default class Table extends Base {
   // @deprecated: use fieldsLookup
   get fields_lookup() {
     return this.fieldsLookup();
+  }
+
+  /**
+   * @private
+   * @param {string} description
+   * @param {Database} db
+   * @param {?Schema} schema
+   * @param {?SchemaName} schema_name - Deprecated: use schema.name
+   * @param {Field[]} fields
+   * @param {EntityType} entity_type
+   */
+  _constructor(description, db, schema, schema_name, fields, entity_type) {
+    this.description = description;
+    this.db = db;
+    this.schema = schema;
+    this.schema_name = schema_name;
+    this.fields = fields;
+    this.entity_type = entity_type;
   }
 }

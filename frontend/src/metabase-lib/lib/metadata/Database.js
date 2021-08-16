@@ -21,14 +21,6 @@ type VirtualDatabaseFeature = "join";
 export default class Database extends Base {
   // TODO Atte Keinänen 6/11/17: List all fields here (currently only in types/Database)
 
-  name: string;
-  description: ?string;
-
-  tables: Table[];
-  schemas: Schema[];
-
-  auto_run_queries: boolean;
-
   displayName(): string {
     return this.name;
   }
@@ -119,5 +111,33 @@ export default class Database extends Base {
   /** Returns a database containing only the saved questions from the same database, if any */
   savedQuestionsDatabase(): ?Database {
     return this.metadata.databasesList().find(db => db.is_saved_questions);
+  }
+
+  /**
+   * @private
+   * @param {number} id
+   * @param {string} name
+   * @param {?string} description
+   * @param {Table[]} tables
+   * @param {Schema[]} schemas
+   * @param {Metadata} metadata
+   * @param {boolean} auto_run_queries
+   */
+  _constructor(
+    id,
+    name,
+    description,
+    tables,
+    schemas,
+    metadata,
+    auto_run_queries,
+  ) {
+    this.id = id;
+    this.name = name;
+    this.description = description;
+    this.tables = tables;
+    this.schemas = schemas;
+    this.metadata = metadata;
+    this.auto_run_queries = auto_run_queries;
   }
 }
