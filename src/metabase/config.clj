@@ -1,6 +1,7 @@
 (ns metabase.config
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [environ.core :as environ]
             [metabase.plugins.classloader :as classloader])
   (:import clojure.lang.Keyword
@@ -127,3 +128,18 @@
 (def ^Keyword mb-session-cookie-samesite
   "Value for session cookie's `SameSite` directive. Must be one of \"none\", \"lax\", or \"strict\" (case insensitive)."
   (mb-session-cookie-samesite*))
+
+;; In 0.40.0 we switched from Leiningen to deps.edn. This warning here to keep people from being bitten in the ass by
+;; the little gotcha described below.
+;;
+;; TODO -- after we've shipped 0.42.0, remove this warning. At that point, the last three shipped major releases will
+;; all be deps.edn based.
+(when-not is-prod?
+  (when (.exists (io/file ".lein-env"))
+    ;; don't need to i18n since this is a dev-only warning.
+    (log/warn
+     (str "Found .lein-env in the project root directory.\n"
+          "This file was previously created automatically by the Leiningen lein-env plugin.\n"
+          "Environ will use values from it in preference to env var or Java system properties you've specified.\n"
+          "You should delete it; it will be recreated as needed when switching to a branch still using Leinigen.\n"
+          "See https://github.com/metabase/metabase/wiki/Migrating-from-Leiningen-to-tools.deps#custom-env-var-values for more details."))))
