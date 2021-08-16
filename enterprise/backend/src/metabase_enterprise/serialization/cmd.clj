@@ -55,7 +55,7 @@
                           (load/load-settings path context)
                           (load/load-dependencies path context)]
               reload-fns (filter fn? all-res)]
-          (when-not (empty? reload-fns)
+          (when (seq reload-fns)
             (log/info (trs "Finished first pass of load; now performing second pass"))
             (doseq [reload-fn reload-fns]
               (reload-fn)))
