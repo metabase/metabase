@@ -443,10 +443,15 @@
          db-ids      (db/select-ids 'Database)]
      {:revision (perms-revision/latest-id)
       :groups   (permissions->groups permissions db-ids)}))
-  ([group-id]
-   (let [permissions (db/select [Permissions :group_id :object],
-                                :group_id [:= group-id])
-         db-ids      (db/select-ids 'Database)]
+  ([{:keys [group-id, db-id] :as options}]
+   (let [permissions-args (if group-id
+                            [[Permissions :group_id :object] :group_id [:= group-id]]
+                            [[Permissions :group_id :object]])
+         permissions      (apply db/select permissions-args)
+         db-id-args       (if db-id
+                            ['Database :id [:= db-id]]
+                            ['Database])
+         db-ids           (apply db/select-ids db-id-args)]
      {:revision (perms-revision/latest-id)
       :groups   (permissions->groups permissions db-ids)})))
 

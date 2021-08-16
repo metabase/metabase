@@ -23,12 +23,13 @@
 
 (api/defendpoint GET "/graph"
   "Fetch a graph of all Permissions."
-  [group_id]
-  {group_id (s/maybe su/IntGreaterThanZero)}
+  [group_id, db_id]
+  {group_id (s/maybe su/IntGreaterThanZero)
+   db_id    (s/maybe su/IntGreaterThanZero)}
   (api/check-superuser)
-  (if (some? group_id)
-    (perms/graph group_id)
-    (perms/graph)))
+  (let [options {:group-id group_id
+                 :db-id    db_id}]
+    (perms/graph options)))
 
 (api/defendpoint PUT "/graph"
   "Do a batch update of Permissions by passing in a modified graph. This should return the same graph, in the same
