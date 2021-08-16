@@ -104,7 +104,7 @@ function DatabasesPermissionsPage({
 
 DatabasesPermissionsPage.propTypes = propTypes;
 
-const BASE_PATH = `/admin/permissions/data/database`;
+const BASE_PATH = `/admin/permissions/data/database/`;
 
 const mapDispatchToProps = {
   updateDataPermission,
