@@ -17,7 +17,7 @@ RawMaybeLink.propTypes = propTypes;
 
 const hoverStyle = css`
   cursor: pointer;
-  color: ${color("brand")};
+  color: ${props => color(props.activeColor)};
 `;
 
 export const MaybeLink = styled(RawMaybeLink)`
@@ -32,6 +32,6 @@ export const MaybeLink = styled(RawMaybeLink)`
   }
 `;
 
-export const BadgeIcon = styled(Icon).attrs({ size: 12 })`
+export const BadgeIcon = styled(Icon)`
   margin-right: ${props => (props.hasMargin ? "5px" : 0)};
 `;
