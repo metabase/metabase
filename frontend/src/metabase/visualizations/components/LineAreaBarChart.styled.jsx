@@ -5,6 +5,7 @@ export const LineAreaBarChartRoot = styled.div`
   display: flex;
   flex-direction: column;
   padding: 0.5rem 1rem;
+  overflow: hidden;
 `;
 
 export const ChartLegendCaption = styled(LegendCaption)`

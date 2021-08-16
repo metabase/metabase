@@ -8,14 +8,12 @@ import {
   LegendItemTitle,
 } from "./LegendItem.styled";
 import Ellipsified from "metabase/components/Ellipsified";
-import Tooltip from "metabase/components/Tooltip";
 
 const propTypes = {
-  label: PropTypes.string.isRequired,
-  index: PropTypes.number.isRequired,
-  color: PropTypes.string.isRequired,
+  label: PropTypes.string,
+  index: PropTypes.number,
+  color: PropTypes.string,
   isMuted: PropTypes.bool,
-  isNarrow: PropTypes.bool,
   isVertical: PropTypes.bool,
   onHoverChange: PropTypes.func,
   onSelectSeries: PropTypes.func,
@@ -27,7 +25,6 @@ const LegendItem = ({
   index,
   color,
   isMuted,
-  isNarrow,
   isVertical,
   onHoverChange,
   onSelectSeries,
@@ -50,26 +47,18 @@ const LegendItem = ({
   };
 
   return (
-    <LegendItemRoot
-      isNarrow={isNarrow}
-      isVertical={isVertical}
-      data-testid="legend-item"
-    >
-      <Tooltip tooltip={label}>
-        <LegendItemLabel
-          isMuted={isMuted}
-          onClick={onSelectSeries && handleItemClick}
-          onMouseEnter={onHoverChange && handleItemMouseEnter}
-          onMouseLeave={onHoverChange && handleItemMouseLeave}
-        >
-          <LegendItemDot color={color} />
-          {!isNarrow && (
-            <LegendItemTitle>
-              <Ellipsified>{label}</Ellipsified>
-            </LegendItemTitle>
-          )}
-        </LegendItemLabel>
-      </Tooltip>
+    <LegendItemRoot isVertical={isVertical} data-testid="legend-item">
+      <LegendItemLabel
+        isMuted={isMuted}
+        onClick={onSelectSeries && handleItemClick}
+        onMouseEnter={onHoverChange && handleItemMouseEnter}
+        onMouseLeave={onHoverChange && handleItemMouseLeave}
+      >
+        <LegendItemDot color={color} />
+        <LegendItemTitle>
+          <Ellipsified>{label}</Ellipsified>
+        </LegendItemTitle>
+      </LegendItemLabel>
       {onRemoveSeries && <LegendItemRemoveIcon onClick={handleRemoveClick} />}
     </LegendItemRoot>
   );

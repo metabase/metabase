@@ -12,6 +12,8 @@ import {
 } from "./LegendLayout.styled";
 
 const MIN_ITEM_WIDTH = 100;
+const MIN_ITEM_HEIGHT = 25;
+const MIN_LEGEND_WIDTH = 400;
 
 const propTypes = {
   className: PropTypes.string,
@@ -19,6 +21,7 @@ const propTypes = {
   colors: PropTypes.array.isRequired,
   hovered: PropTypes.object,
   width: PropTypes.number,
+  height: PropTypes.number,
   hasLegend: PropTypes.bool,
   actionButtons: PropTypes.node,
   children: PropTypes.node,
@@ -33,7 +36,8 @@ const LegendLayout = ({
   labels,
   colors,
   hovered,
-  width,
+  width = 0,
+  height = 0,
   hasLegend,
   actionButtons,
   children,
@@ -42,18 +46,25 @@ const LegendLayout = ({
   onSelectSeries,
   onRemoveSeries,
 }) => {
-  const isNarrow = labels.length * MIN_ITEM_WIDTH > width;
-  const isVertical = false;
+  const maxXItems = Math.floor(width / MIN_ITEM_WIDTH);
+  const maxYItems = Math.floor(height / MIN_ITEM_HEIGHT);
+  const maxYLabels = Math.max(maxYItems - 1, 0);
+  const minYLabels = labels.length > maxYItems ? maxYLabels : labels.length;
+
+  const isNarrow = width < MIN_LEGEND_WIDTH;
+  const isVertical = maxXItems < labels.length;
+  const isVisible = hasLegend && !(isVertical && isNarrow);
+  const visibleLength = isVertical ? minYLabels : labels.length;
 
   return (
     <LegendLayoutRoot className={className} isVertical={isVertical}>
-      {hasLegend && (
+      {isVisible && (
         <LegendContainer isVertical={isVertical}>
           <Legend
             labels={labels}
             colors={colors}
             hovered={hovered}
-            isNarrow={isNarrow}
+            visibleLength={visibleLength}
             isVertical={isVertical}
             onHoverChange={onHoverChange}
             onAddSeries={onAddSeries}
