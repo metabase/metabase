@@ -2,7 +2,7 @@ import React from "react";
 import styled from "styled-components";
 import _ from "underscore";
 import Icon from "metabase/components/Icon";
-import { color } from "metabase/lib/colors";
+import { color, darken } from "metabase/lib/colors";
 
 const BORDER_RADIUS = "8px";
 
@@ -11,11 +11,22 @@ export const SegmentedList = styled.ul`
   width: ${props => (props.fullWidth ? 1 : 0)};
 `;
 
+function getSegmentedItemColor(props, fallbackColor) {
+  if (props.variant === "fill-text") {
+    return fallbackColor;
+  }
+  return props.isSelected ? color(props.selectedColor) : fallbackColor;
+}
+
 export const SegmentedItem = styled.li`
   display: flex;
   flex-grow: ${props => (props.fullWidth ? 1 : 0)};
 
-  border: 1px solid ${color("border")};
+  background-color: ${props => getSegmentedItemColor(props, "transparent")};
+
+  border: 1px solid
+    ${props => getSegmentedItemColor(props, darken(color("border"), 0.1))};
+
   border-right-width: ${props => (props.isLast ? "1px" : 0)};
   border-top-left-radius: ${props => (props.isFirst ? BORDER_RADIUS : 0)};
   border-bottom-left-radius: ${props => (props.isFirst ? BORDER_RADIUS : 0)};
@@ -30,8 +41,12 @@ export const SegmentedItemLabel = styled.label`
   justify-content: center;
   position: relative;
   font-weight: bold;
-  color: ${props =>
-    props.isSelected ? color(props.selectedColor) : color(props.inactiveColor)};
+  color: ${props => {
+    const selectedColor = color(
+      props.variant === "fill-text" ? props.selectedColor : "white",
+    );
+    return props.isSelected ? selectedColor : color(props.inactiveColor);
+  }};
   padding: ${props => (props.compact ? "8px" : "8px 12px")};
   cursor: pointer;
 

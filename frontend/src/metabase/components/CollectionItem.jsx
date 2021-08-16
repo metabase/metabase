@@ -24,7 +24,7 @@ const CollectionItem = ({ collection, event }) => {
     <ItemLink to={collection.getUrl()} data-metabase-event={event}>
       <Card hoverable>
         <CardContent>
-          <IconContainer>
+          <IconContainer color={icon.color}>
             <CollectionIcon name={icon.name} />
           </IconContainer>
           <h4 className="overflow-hidden">

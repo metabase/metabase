@@ -4,11 +4,14 @@ import { t } from "ttag";
 
 import ActionButton from "metabase/components/ActionButton";
 
-export default class SendTestEmail extends Component {
+export default class SendTestPulse extends Component {
   static propTypes = {
     channel: PropTypes.object.isRequired,
     pulse: PropTypes.object.isRequired,
     testPulse: PropTypes.func.isRequired,
+    disabled: PropTypes.bool.isRequired,
+    normalText: PropTypes.string.isRequired,
+    successText: PropTypes.string.isRequired,
   };
   static defaultProps = {};
 
@@ -18,17 +21,16 @@ export default class SendTestEmail extends Component {
   };
 
   render() {
-    const { channel } = this.props;
+    const { disabled, normalText, successText } = this.props;
+
     return (
       <ActionButton
         actionFn={this.onTestPulseChannel}
-        disabled={
-          channel.channel_type === "email" && channel.recipients.length === 0
-        }
-        normalText={t`Send email now`}
+        disabled={disabled}
+        normalText={normalText}
         activeText={t`Sending…`}
         failedText={t`Sending failed`}
-        successText={t`Email sent`}
+        successText={successText}
         forceActiveStyle={true}
       />
     );

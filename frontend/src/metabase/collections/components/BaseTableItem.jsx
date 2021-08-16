@@ -19,8 +19,6 @@ import {
   TableItemSecondaryField,
 } from "./BaseItemsTable.styled";
 
-const { ModerationStatusIcon } = PLUGIN_MODERATION;
-
 BaseTableItem.propTypes = {
   item: PropTypes.object,
   draggable: PropTypes.bool,
@@ -102,7 +100,9 @@ export function BaseTableItem({
         <td data-testid={`${testId}-name`}>
           <ItemLink {...linkProps} to={item.getUrl()}>
             <EntityItem.Name name={item.name} />
-            <ModerationStatusIcon status={item.moderated_status} />
+            <PLUGIN_MODERATION.ModerationStatusIcon
+              status={item.moderated_status}
+            />
           </ItemLink>
         </td>
         <td data-testid={`${testId}-last-edited-by`}>
