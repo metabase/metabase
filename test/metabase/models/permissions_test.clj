@@ -551,15 +551,21 @@
         (is (= {(mt/id :categories) :all, (mt/id :venues) :all}
                (test-data-graph group)))))))
 
-(deftest graph-groupid-test
-  (testing "groupid filter works for groups"
+(deftest graph-filters-test
+  (testing "groupid and dbid filter works for groups"
     (mt/with-temp* [PermissionsGroup [group1]
                     PermissionsGroup [group2]
-                    Database         [database]
-                    Table            [table    {:db_id (u/the-id database)}]]
-      (perms/update-graph! [(u/the-id group1) (u/the-id database) :schemas] {"" {(u/the-id table) :all}})
-      (perms/update-graph! [(u/the-id group2) (u/the-id database) :schemas] {"" {(u/the-id table) :all}})
-      (is (= 1 (count (:groups (perms/graph (u/the-id group2)))))))))
+                    Database         [db1]
+                    Database         [db2]
+                    Table            [table1    {:db_id (u/the-id db1)}]
+                    Table            [table2    {:db_id (u/the-id db2)}]]
+      (perms/update-graph! [(u/the-id group1) (u/the-id db1) :schemas] {"" {(u/the-id table1) :all}})
+      (perms/update-graph! [(u/the-id group2) (u/the-id db1) :schemas] {"" {(u/the-id table1) :all}})
+      (perms/update-graph! [(u/the-id group1) (u/the-id db2) :schemas] {"" {(u/the-id table2) :all}})
+      (perms/update-graph! [(u/the-id group2) (u/the-id db2) :schemas] {"" {(u/the-id table2) :all}})
+      (is (= :all
+             (get-in (perms/graph {:graph-id (u/the-id group2) :db-id (u/the-id db1)})
+                     [:groups (u/the-id group2) (u/the-id db1) :schemas "" (u/the-id table1)]))))))
 
 (deftest graph-for-tables-without-schemas-test
   (testing "Make sure that the graph functions work correctly for DBs with no schemas (#4000)"
