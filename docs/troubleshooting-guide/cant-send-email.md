@@ -25,15 +25,6 @@ You have told Metabase to send email notifications, but:
 3. Check the mail server's logs for any error messages.
 4. If you have access to your email delivery service's outbound queue or a dashboard, check that for errors as well. 
 
-## Has the email address you're trying to send to been claimed by another account?
-
-**Root cause:** When you create accounts directly in Metabase (as opposed to using third-party authentication), you must specify an email address. If you have created an account using an email address and deleted it, that address might still be marked as "claimed".
-
-**Steps to take:**
-
-1. Check other accounts you have created in Metabase itself to see if any of them are using the email address you're trying to use.
-2. FIXME what then?
-
 ## Is the mail being sent but not arriving?
 
 **Root cause:** The message is being sent correctly, but isn't being received (at least, not where you expect it to be).
