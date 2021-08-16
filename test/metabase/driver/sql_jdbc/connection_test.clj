@@ -65,11 +65,13 @@
 (deftest c3p0-datasource-name-test
   (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
     (testing "The dataSourceName c3p0 property is set properly for a database"
-      (let [db       (mt/db)
-            props    (sql-jdbc.conn/data-warehouse-connection-pool-properties driver/*driver* db)
-            expected (format "db-%d-%s-%s" (u/the-id db) (name driver/*driver*) (-> db :details :db))]
-        (is (= expected
-               (get props "dataSourceName")))))))
+      (let [db         (mt/db)
+            props      (sql-jdbc.conn/data-warehouse-connection-pool-properties driver/*driver* db)
+            [_ db-nm]  (re-matches (re-pattern (format "^db-%d-%s-(.*)$" (u/the-id db) (name driver/*driver*)))
+                                   (get props "dataSourceName"))]
+        (is (some? db-nm))
+        ;; ensure that, for any sql-jdbc drier anyway, we found *some* DB name to use in this String
+        (is (not= db-nm "null"))))))
 
 (deftest connection-pool-invalidated-on-details-change
   (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
