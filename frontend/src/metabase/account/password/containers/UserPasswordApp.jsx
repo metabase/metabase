@@ -7,10 +7,10 @@ const mapStateToProps = state => ({
   user: getUser(state),
 });
 
-const mapDispatchToProps = () => ({
+const mapDispatchToProps = {
   validatePassword,
   updatePassword,
-});
+};
 
 export default connect(
   mapStateToProps,

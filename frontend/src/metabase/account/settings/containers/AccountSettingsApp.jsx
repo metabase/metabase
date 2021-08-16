@@ -9,9 +9,9 @@ const mapStateToProps = (state, props) => ({
   path: getPath(state, props),
 });
 
-const mapDispatchToProps = () => ({
+const mapDispatchToProps = {
   onChangeLocation: push,
-});
+};
 
 export default connect(
   mapStateToProps,
