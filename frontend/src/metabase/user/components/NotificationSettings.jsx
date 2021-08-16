@@ -2,7 +2,7 @@ import React from "react";
 import { t } from "ttag";
 import { EmptyIcon, EmptyMessage, EmptyRoot } from "./NotificationList.styled";
 
-const NotificationList = () => {
+const NotificationSettings = () => {
   return <NotificationEmptyState />;
 };
 
@@ -18,4 +18,4 @@ const NotificationEmptyState = () => {
   );
 };
 
-export default NotificationList;
+export default NotificationSettings;

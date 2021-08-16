@@ -11,7 +11,7 @@ import Radio from "metabase/components/Radio";
 import UserAvatar from "metabase/components/UserAvatar";
 
 import LoginHistoryList from "./LoginHistoryList";
-import NotificationList from "./NotificationList";
+import NotificationSettings from "./NotificationSettings";
 import SetUserPassword from "./SetUserPassword";
 
 import { PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS } from "metabase/plugins";
@@ -90,7 +90,7 @@ export default class UserSettings extends Component {
           ) : tab === "loginHistory" ? (
             <LoginHistoryList />
           ) : tab === "notifications" ? (
-            <NotificationList />
+            <NotificationSettings />
           ) : null}
         </Box>
       </Box>
