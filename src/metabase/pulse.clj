@@ -130,7 +130,9 @@
        :channel-id      channel-id
        :fallback        card-name})))
 
-(def slack-width 1200)
+(def slack-width
+  "Width of the rendered png of html to be sent to slack."
+  1200)
 
 (defn create-and-upload-slack-attachments!
   "Create an attachment in Slack for a given Card by rendering its result into an image and uploading
