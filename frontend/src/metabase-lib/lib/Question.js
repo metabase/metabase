@@ -240,11 +240,11 @@ export default class Question {
     throw new Error("Unknown query type: " + datasetQuery.type);
   }
 
-  isNative(): boolean {
+  isNative() {
     return this.query() instanceof NativeQuery;
   }
 
-  isStructured(): boolean {
+  isStructured() {
     return this.query() instanceof StructuredQuery;
   }
 
@@ -297,7 +297,7 @@ export default class Question {
   setDisplayIsLocked(locked: boolean): Question {
     return this.setCard(assoc(this.card(), "displayIsLocked", locked));
   }
-  displayIsLocked(): boolean {
+  displayIsLocked() {
     return this._card && this._card.displayIsLocked;
   }
 
@@ -427,21 +427,21 @@ export default class Question {
     return this.datasetQuery().type;
   }
 
-  isEmpty(): boolean {
+  isEmpty() {
     return this.query().isEmpty();
   }
   /**
    * Question is valid (as far as we know) and can be executed
    */
-  canRun(): boolean {
+  canRun() {
     return this.query().canRun();
   }
 
-  canWrite(): boolean {
+  canWrite() {
     return this._card && this._card.can_write;
   }
 
-  canAutoRun(): boolean {
+  canAutoRun() {
     const db = this.database();
     return (db && db.auto_run_queries) || false;
   }
@@ -703,7 +703,7 @@ export default class Question {
     return Mode.forQuestion(this);
   }
 
-  isObjectDetail(): boolean {
+  isObjectDetail() {
     const mode = this.mode();
     return mode ? mode.name() === "object" : false;
   }
@@ -754,7 +754,7 @@ export default class Question {
     return this._card && this._card["last-edit-info"];
   }
 
-  isSaved(): boolean {
+  isSaved() {
     return !!this.id();
   }
 
