@@ -1,4 +1,4 @@
-import React, { memo, useCallback } from "react";
+import React, { memo } from "react";
 import PropTypes from "prop-types";
 import {
   LegendItemDot,
@@ -30,30 +30,21 @@ const LegendItem = ({
   onSelectSeries,
   onRemoveSeries,
 }) => {
-  const handleItemClick = useCallback(
-    event => {
-      onSelectSeries && onSelectSeries(event, index);
-    },
-    [index, onSelectSeries],
-  );
+  const handleItemClick = event => {
+    onSelectSeries && onSelectSeries(event, index);
+  };
 
-  const handleItemMouseEnter = useCallback(
-    event => {
-      onHoverChange && onHoverChange({ index, element: event.currentTarget });
-    },
-    [index, onHoverChange],
-  );
+  const handleItemMouseEnter = event => {
+    onHoverChange && onHoverChange({ index, element: event.currentTarget });
+  };
 
-  const handleItemMouseLeave = useCallback(() => {
+  const handleItemMouseLeave = () => {
     onHoverChange && onHoverChange();
-  }, [onHoverChange]);
+  };
 
-  const handleRemoveClick = useCallback(
-    event => {
-      onRemoveSeries && onRemoveSeries(event, index);
-    },
-    [index, onRemoveSeries],
-  );
+  const handleRemoveClick = event => {
+    onRemoveSeries && onRemoveSeries(event, index);
+  };
 
   return (
     <LegendItemRoot isVertical={isVertical} data-testid="legend-item">
