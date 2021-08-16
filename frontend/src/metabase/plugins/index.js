@@ -3,6 +3,7 @@ import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 
 // Plugin integration points. All exports must be objects or arrays so they can be mutated by plugins.
 const object = () => ({});
+const array = () => [];
 
 // functions called when the application is started
 export const PLUGIN_APP_INIT_FUCTIONS = [];
@@ -81,5 +82,8 @@ export const PLUGIN_COLLECTION_COMPONENTS = {
 
 export const PLUGIN_MODERATION = {
   QuestionModerationSection: PluginPlaceholder,
-  getStatusIconForReviews: object,
+  ModerationStatusIcon: PluginPlaceholder,
+  getStatusIconForQuestion: object,
+  getStatusIcon: object,
+  getModerationTimelineEvents: array,
 };

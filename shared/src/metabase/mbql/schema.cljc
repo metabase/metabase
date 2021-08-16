@@ -1116,6 +1116,11 @@
    (s/optional-key :add-default-userland-constraints?)
    (s/maybe s/Bool)
 
+   ;; Whether to process a question's visualization settings and include them in the result metadata so that they can
+   ;; incorporated into an export. Used by `metabase.query-processor.middleware.visualization-settings`; default `false`.
+   (s/optional-key :process-viz-settings?)
+   (s/maybe s/Bool)
+
    ;; other middleware options might be used somewhere, but I don't know about them. Add them if you come across them
    ;; for documentation purposes
    s/Keyword
@@ -1155,6 +1160,7 @@
    (s/optional-key :context)      (s/maybe Context)
    (s/optional-key :executed-by)  (s/maybe helpers/IntGreaterThanZero)
    (s/optional-key :card-id)      (s/maybe helpers/IntGreaterThanZero)
+   (s/optional-key :card-name)    (s/maybe helpers/NonBlankString)
    (s/optional-key :dashboard-id) (s/maybe helpers/IntGreaterThanZero)
    (s/optional-key :pulse-id)     (s/maybe helpers/IntGreaterThanZero)
    (s/optional-key :nested?)      (s/maybe s/Bool)

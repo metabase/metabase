@@ -7,48 +7,48 @@
 
 set_up_env_vars () {
     # /opt/elasticbeanstalk/bin/get-config environment | jq -r 'to_entries | .[] | "export \(.key)=\"\(.value)\""' > /etc/profile.d/sh.local
-    if grep -q "Amazon Linux 2" /etc/os-release; then 
-        if [ ! -z "$RDS_HOSTNAME" ]; then 
+    if grep -q "Amazon Linux 2" /etc/os-release; then
+        if [ ! -z "$RDS_HOSTNAME" ]; then
             # sed -i 's/RDS_HOSTNAME/MB_DB_HOST/' /etc/profile.d/sh.local
             sed -i 's/RDS_HOSTNAME/MB_DB_HOST/' /opt/elasticbeanstalk/deployment/env.list
             # sed -i 's/RDS_USERNAME/MB_DB_USER/' /etc/profile.d/sh.local
             sed -i 's/RDS_USERNAME/MB_DB_USER/' /opt/elasticbeanstalk/deployment/env.list
             # sed -i 's/RDS_PASSWORD/MB_DB_PASS/' /etc/profile.d/sh.local
             sed -i 's/RDS_PASSWORD/MB_DB_PASS/' /opt/elasticbeanstalk/deployment/env.list
-            # sed -i 's/RDS_PORT/MB_DB_PORT/' /etc/profile.d/sh.local 
+            # sed -i 's/RDS_PORT/MB_DB_PORT/' /etc/profile.d/sh.local
             sed -i 's/RDS_PORT/MB_DB_PORT/' /opt/elasticbeanstalk/deployment/env.list
-            # sed -i 's/RDS_DB_NAME/MB_DB_DBNAME/' /etc/profile.d/sh.local 
+            # sed -i 's/RDS_DB_NAME/MB_DB_DBNAME/' /etc/profile.d/sh.local
             sed -i 's/RDS_DB_NAME/MB_DB_DBNAME/' /opt/elasticbeanstalk/deployment/env.list
-            if [ "$RDS_PORT" == "3306" ]; then 
+            if [ "$RDS_PORT" == "3306" ]; then
                 # echo 'export MB_DB_TYPE="mysql"' >> /etc/profile.d/sh.local
                 echo 'MB_DB_TYPE=mysql' >> /opt/elasticbeanstalk/deployment/env.list
-            else 
+            else
                 # echo 'export MB_DB_TYPE="postgres"' >> /etc/profile.d/sh.local
                 echo 'MB_DB_TYPE=postgres' >> /opt/elasticbeanstalk/deployment/env.list
-            fi 
+            fi
         fi
     else
-        if [ ! -z "$RDS_HOSTNAME" ]; then 
+        if [ ! -z "$RDS_HOSTNAME" ]; then
             # sed -i 's/RDS_HOSTNAME/MB_DB_HOST/' /etc/profile.d/sh.local
             sed -i 's/RDS_HOSTNAME/MB_DB_HOST/' /opt/elasticbeanstalk/deploy/configuration/containerconfiguration
             # sed -i 's/RDS_USERNAME/MB_DB_USER/' /etc/profile.d/sh.local
             sed -i 's/RDS_USERNAME/MB_DB_USER/' /opt/elasticbeanstalk/deploy/configuration/containerconfiguration
             # sed -i 's/RDS_PASSWORD/MB_DB_PASS/' /etc/profile.d/sh.local
             sed -i 's/RDS_PASSWORD/MB_DB_PASS/' /opt/elasticbeanstalk/deploy/configuration/containerconfiguration
-            # sed -i 's/RDS_PORT/MB_DB_PORT/' /etc/profile.d/sh.local 
+            # sed -i 's/RDS_PORT/MB_DB_PORT/' /etc/profile.d/sh.local
             sed -i 's/RDS_PORT/MB_DB_PORT/' /opt/elasticbeanstalk/deploy/configuration/containerconfiguration
-            # sed -i 's/RDS_DB_NAME/MB_DB_DBNAME/' /etc/profile.d/sh.local 
+            # sed -i 's/RDS_DB_NAME/MB_DB_DBNAME/' /etc/profile.d/sh.local
             sed -i 's/RDS_DB_NAME/MB_DB_DBNAME/' /opt/elasticbeanstalk/deploy/configuration/containerconfiguration
-            if [ "$RDS_PORT" == "3306" ]; then 
+            if [ "$RDS_PORT" == "3306" ]; then
                 # echo 'export MB_DB_TYPE="mysql"' >> /etc/profile.d/sh.local
                 sed -i 's/}}}}/,"MB_DB_TYPE":"mysql"}}}}/' /opt/elasticbeanstalk/deploy/configuration/containerconfiguration
-            else 
+            else
                 # echo 'export MB_DB_TYPE="postgres"' >> /etc/profile.d/sh.local
                 sed -i 's/}}}}/,"MB_DB_TYPE":"postgres"}}}}/' /opt/elasticbeanstalk/deploy/configuration/containerconfiguration
-            fi 
+            fi
         fi
     fi
-    
+
 }
 
 # add files to papertrail
