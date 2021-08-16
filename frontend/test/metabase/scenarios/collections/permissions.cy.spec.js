@@ -528,7 +528,7 @@ describe("collection permissions", () => {
                 });
                 cy.url().should("match", /\/dashboard\/\d+-foo$/);
                 saveDashboard();
-                cy.get(".DashboardHeader").findByText(personalCollection);
+                cy.get(".QueryBuilder-section").findByText(personalCollection);
               });
 
               it("should not offer a user the ability to update or clone the question", () => {

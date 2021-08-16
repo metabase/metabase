@@ -398,11 +398,13 @@
     ;; Does the driver support percentile calculations (including median)
     :percentile-aggregations})
 
-(defmulti supports?
+(defmulti ^:deprecated supports?
   "Does this driver support a certain `feature`? (A feature is a keyword, and can be any of the ones listed above in
-  `driver-features`.)
+  [[driver-features]].)
 
-    (supports? :postgres :set-timezone) ; -> true"
+    (supports? :postgres :set-timezone) ; -> true
+
+  deprecated — [[database-supports?]] is intended to replace this method. However, it driver authors should continue _implementing_ `supports?` for the time being until we get a chance to migrate all our usages."
   {:arglists '([driver feature])}
   (fn [driver feature]
     (when-not (driver-features feature)
@@ -414,6 +416,32 @@
 
 (defmethod supports? [::driver :basic-aggregations] [_ _] true)
 (defmethod supports? [::driver :case-sensitivity-string-filter-options] [_ _] true)
+
+(defmulti database-supports?
+  "Does this driver and specific instance of a database support a certain `feature`?
+  (A feature is a keyword, and can be any of the ones listed above in `driver-features`.
+  Note that it's the same set of `driver-features` with respect to
+  both database-supports? and [[supports?]])
+
+  Database is guaranteed to be a Database instance.
+
+  Most drivers can always return true or always return false for a given feature
+  (e.g., :left-join is not supported by any version of Mongo DB).
+
+  In some cases, a feature may only be supported by certain versions of the database engine.
+  In this case, after implementing `:version` in `describe-database` for the driver,
+  you can check in `(get-in db [:details :version])` and determine
+  whether a feature is supported for this particular database.
+
+    (database-supports? :mongo :set-timezone mongo-db) ; -> true"
+  {:arglists '([driver feature database])}
+  (fn [driver feature database]
+    (when-not (driver-features feature)
+      (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
+    [(dispatch-on-initialized-driver driver) feature])
+  :hierarchy #'hierarchy)
+
+(defmethod database-supports? :default [driver feature _] (supports? driver feature))
 
 (defmulti ^:deprecated format-custom-field-name
   "Prior to Metabase 0.33.0, you could specifiy custom names for aggregations in MBQL by wrapping the clause in a
@@ -553,8 +581,8 @@
   "Return the current time and timezone from the perspective of `database`. You can use
   `metabase.driver.common/current-db-time` to implement this. This should return a Joda-Time `DateTime`.
 
-  DEPRECATED — the only thing this method is ultimately used for is to determine the DB's system timezone.
-  `db-default-timezone` has been introduced as an intended replacement for this method; implement it instead. This
+  deprecated — the only thing this method is ultimately used for is to determine the db's system timezone.
+  `db-default-timezone` has been introduced as an intended replacement for this method; implement it instead. this
   method will be removed in a future release."
   {:deprecated "0.34.0", :arglists '(^org.joda.time.DateTime [driver database])}
   dispatch-on-initialized-driver

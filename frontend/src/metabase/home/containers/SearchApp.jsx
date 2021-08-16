@@ -97,7 +97,7 @@ export default function SearchApp({ location }) {
           {({ list, metadata }) => {
             if (list.length === 0) {
               return (
-                <Box w={2 / 3}>
+                <Box width={2 / 3}>
                   <Card>
                     <EmptyState
                       title={t`Didn't find anything`}
@@ -117,7 +117,7 @@ export default function SearchApp({ location }) {
 
             return (
               <Flex align="top">
-                <Box w={2 / 3}>
+                <Box width={2 / 3}>
                   <React.Fragment>
                     <SearchResultSection items={list} />
                     <div className="flex justify-end my2">
