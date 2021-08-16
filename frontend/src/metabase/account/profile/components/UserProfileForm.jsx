@@ -4,10 +4,9 @@ import User from "metabase/entities/users";
 
 const propTypes = {
   user: PropTypes.object,
-  updateUser: PropTypes.func,
 };
 
-const UserProfile = ({ user, updateUser }) => {
+const UserProfileForm = ({ user }) => {
   const handleSaved = useCallback(
     ({ locale }) => {
       if (locale !== user.locale) {
@@ -17,16 +16,9 @@ const UserProfile = ({ user, updateUser }) => {
     [user],
   );
 
-  return (
-    <User.Form
-      user={user}
-      form={User.forms.user}
-      updateUser={updateUser}
-      onSaved={handleSaved}
-    />
-  );
+  return <User.Form user={user} form={User.forms.user} onSaved={handleSaved} />;
 };
 
-UserProfile.propTypes = propTypes;
+UserProfileForm.propTypes = propTypes;
 
-export default UserProfile;
+export default UserProfileForm;
