@@ -29,13 +29,13 @@ export default class Table extends Base {
     return this.db;
   }
 
-  newQuestion(): Question {
+  newQuestion() {
     return this.question()
       .setDefaultQuery()
       .setDefaultDisplay();
   }
 
-  question(): Question {
+  question() {
     return Question.create({
       databaseId: this.db && this.db.id,
       tableId: this.id,
@@ -61,7 +61,7 @@ export default class Table extends Base {
       .updateQuery(q => ({ ...q, ...query }));
   }
 
-  dimensions(): Dimension[] {
+  dimensions() {
     return this.fields.map(field => field.dimension());
   }
 
@@ -81,7 +81,7 @@ export default class Table extends Base {
     return singularize(this.displayName());
   }
 
-  dateFields(): Field[] {
+  dateFields() {
     return this.fields.filter(field => field.isDate());
   }
 
