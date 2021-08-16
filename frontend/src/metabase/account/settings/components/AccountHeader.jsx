@@ -13,10 +13,10 @@ import {
 const propTypes = {
   tab: PropTypes.string,
   user: PropTypes.object,
-  onTabChange: PropTypes.func,
+  onChangeTab: PropTypes.func,
 };
 
-const AccountHeader = ({ tab, user, onTabChange }) => {
+const AccountHeader = ({ tab, user, onChangeTab }) => {
   const hasPasswordChange = useMemo(
     () => PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS.every(f => f(user)),
     [user],
@@ -41,7 +41,7 @@ const AccountHeader = ({ tab, user, onTabChange }) => {
         value={tab}
         variant="underlined"
         options={tabs}
-        onChange={onTabChange}
+        onChange={onChangeTab}
       />
     </AccountHeaderRoot>
   );

@@ -1,4 +1,6 @@
 import styled from "styled-components";
+import colors from "metabase/lib/colors";
+
 import {
   breakpointMinMedium,
   breakpointMinSmall,
@@ -12,6 +14,8 @@ export const AccountHeaderRoot = styled.div`
   justify-content: center;
   align-items: center;
   padding-top: ${space(1)};
+  border-bottom: 1px solid ${colors["border"]};
+  background-color: ${colors["white"]};
 
   ${breakpointMinSmall} {
     padding-top: ${space(2)};
@@ -34,18 +38,18 @@ export const HeaderTitle = styled.h2`
 `;
 
 export const HeaderAvatar = styled(UserAvatar)`
-  width: 3rem;
-  height: 3rem;
+  width: 3em;
+  height: 3em;
   margin-bottom: ${space(1)};
 
   ${breakpointMinSmall} {
-    width: 4rem;
-    height: 4rem;
+    width: 4em;
+    height: 4em;
     margin-bottom: ${space(2)};
   }
 
   ${breakpointMinMedium} {
-    width: 5rem;
-    height: 5rem;
+    width: 5em;
+    height: 5em;
   }
 `;
