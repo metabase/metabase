@@ -51,7 +51,7 @@
     (mt/object-defaults Database)
     (select-keys db [:created_at :id :details :updated_at :timezone :name])
     {:engine   (u/qualified-name (:engine db))
-     :features (map u/qualified-name (driver.u/features driver))})))
+     :features (map u/qualified-name (driver.u/features driver db))})))
 
 (defn- table-details [table]
   (-> (merge (mt/obj->json->obj (mt/object-defaults Table))
@@ -62,7 +62,7 @@
 
 (defn- expected-tables [db-or-id]
   (map table-details (db/select Table
-                       :db_id (u/the-id db-or-id), :active true
+                       :db_id (u/the-id db-or-id), :active true, :visibility_type nil
                        {:order-by [[:%lower.schema :asc] [:%lower.display_name :asc]]})))
 
 (defn- field-details [field]
@@ -73,17 +73,6 @@
     (select-keys
      field
      [:updated_at :id :created_at :last_analyzed :fingerprint :fingerprint_version :fk_target_field_id :position]))))
-
-(defn- add-schedules [db]
-  (assoc db :schedules {:cache_field_values {:schedule_day   nil
-                                             :schedule_frame nil
-                                             :schedule_hour  0
-                                             :schedule_type  "daily"}
-                        :metadata_sync      {:schedule_day    nil
-                                             :schedule_frame  nil
-                                             :schedule_hour   nil
-                                             :schedule_type   "hourly"
-                                             :schedule_minute 50}}))
 
 (deftest get-database-test
   (testing "GET /api/database/:id"
@@ -159,7 +148,7 @@
                      :details    (s/eq {:db "my_db"})
                      :updated_at java.time.temporal.Temporal
                      :name       su/NonBlankString
-                     :features   (s/eq (driver.u/features ::test-driver))})
+                     :features   (s/eq (driver.u/features ::test-driver (mt/db)))})
                    (create-db-via-api!))))
 
     (testing "can we set `is_full_sync` to `false` when we create the Database?"
@@ -208,12 +197,14 @@
             (with-redefs [driver/can-connect? (constantly true)]
               (is (= nil
                      (:valid (update! 200))))
-              (is (= {:details      {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}
+              (let [curr-db (db/select-one [Database :name :engine :details :is_full_sync], :id db-id)]
+                (is (=
+                     {:details      {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}
                       :engine       :h2
                       :name         "Cam's Awesome Toucan Database"
                       :is_full_sync false
-                      :features     (driver.u/features :h2)}
-                     (into {} (db/select-one [Database :name :engine :details :is_full_sync], :id db-id)))))))))
+                      :features     (driver.u/features :h2 curr-db)}
+                     (into {} curr-db)))))))))
 
     (mt/with-log-level :info
                            (testing "should be able to set `auto_run_queries`"
@@ -233,7 +224,7 @@
                   (select-keys (mt/db) [:created_at :id :updated_at :timezone])
                   {:engine        "h2"
                    :name          "test-data"
-                   :features      (map u/qualified-name (driver.u/features :h2))
+                   :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))
                    :tables        [(merge
                                     (mt/obj->json->obj (mt/object-defaults Table))
                                     (db/select-one [Table :created_at :updated_at] :id (mt/id :categories))
@@ -324,20 +315,14 @@
                    :type     :query
                    :query    inner-query-clauses}})
 
-(defn- saved-questions-virtual-db {:style/indent 0} [& card-tables]
-  {:name               "Saved Questions"
-   :id                 mbql.s/saved-questions-virtual-database-id
-   :features           ["basic-aggregations"]
-   :tables             card-tables
-   :is_saved_questions true})
-
 (defn- virtual-table-for-card [card & {:as kvs}]
   (merge
-   {:id           (format "card__%d" (u/the-id card))
-    :db_id        (:database_id card)
-    :display_name (:name card)
-    :schema       "Everything else"
-    :description  nil}
+   {:id               (format "card__%d" (u/the-id card))
+    :db_id            (:database_id card)
+    :display_name     (:name card)
+    :schema           "Everything else"
+    :moderated_status nil
+    :description      nil}
    kvs))
 
 (driver/register! ::no-nested-query-support
@@ -360,17 +345,13 @@
           (doseq [db (:data ((mt/user->client :rasta) :get 200 "database"))]
             (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
               (is (= expected-keys
-                     (set (keys db)))))))))
+                     (set (keys db))))))))
+      (testing "Make sure databases don't paginate"
+        (mt/with-temp* [Database [{db-id-1 :id} {:engine ::test-driver}]
+                        Database [{db-id-2 :id} {:engine ::test-driver}]
+                        Database [{db-id-3 :id} {:engine ::test-driver}]]
+          (is (< 1 (count (:data ((mt/user->client :rasta) :get 200 "database" :limit 1 :offset 0))))))))
 
-    (doseq [query-param ["?limit=2"
-                         "?limit=2&offset=1"]]
-      (testing query-param
-        (mt/with-temp*
-          [Database [{db-id :id1, db-name :name1} {:engine (u/qualified-name ::test-driver)}]
-           Database [{db-id :id2, db-name :name2} {:engine (u/qualified-name ::test-driver)}]]
-
-          (let [db (:data ((mt/user->client :rasta) :get 200 (str "database" query-param)))]
-            (is (= 2 (count db)))))))
 
     ;; ?include=tables and ?include_tables=true mean the same thing so test them both the same way
     (doseq [query-param ["?include_tables=true"
@@ -394,9 +375,9 @@
                (last (:data ((mt/user->client :lucky) :get 200 "database?saved=true")))))))
 
     (testing "We should not include the saved questions virtual DB if there aren't any cards"
-      (not-any?
-       :is_saved_questions
-       ((mt/user->client :lucky) :get 200 "database?saved=true")))
+      (is (not-any?
+           :is_saved_questions
+           ((mt/user->client :lucky) :get 200 "database?saved=true"))))
     (testing "Omit virtual DB if nested queries are disabled"
       (tu/with-temporary-setting-values [enable-nested-queries false]
         (every? some? (:data ((mt/user->client :lucky) :get 200 "database?saved=true")))))))
@@ -420,11 +401,12 @@
    :id                 (s/eq -1337)
    :features           (s/eq ["basic-aggregations"])
    :is_saved_questions (s/eq true)
-   :tables             [{:id           #"^card__\d+$"
-                         :db_id        s/Int
-                         :display_name s/Str
-                         :schema       s/Str ; collection name
-                         :description  (s/maybe s/Str)}]})
+   :tables             [{:id               #"^card__\d+$"
+                         :db_id            s/Int
+                         :display_name     s/Str
+                         :moderated_status (s/enum nil "verified")
+                         :schema           s/Str ; collection name
+                         :description      (s/maybe s/Str)}]})
 
 (defn- check-tables-included [response & tables]
   (let [response-tables (set (:tables response))]
@@ -543,12 +525,13 @@
                       :id                 (s/eq -1337)
                       :is_saved_questions (s/eq true)
                       :features           (s/eq ["basic-aggregations"])
-                      :tables             [{:id           #"^card__\d+$"
-                                            :db_id        s/Int
-                                            :display_name s/Str
-                                            :schema       s/Str ; collection name
-                                            :description  (s/maybe s/Str)
-                                            :fields       [su/Map]}]}
+                      :tables             [{:id               #"^card__\d+$"
+                                            :db_id            s/Int
+                                            :display_name     s/Str
+                                            :moderated_status (s/enum nil "verified")
+                                            :schema           s/Str ; collection name
+                                            :description      (s/maybe s/Str)
+                                            :fields           [su/Map]}]}
                      response))
         (check-tables-included
          response
@@ -829,9 +812,9 @@
         ;; run the cards to populate their result_metadata columns
         (doseq [card [card-1 card-2]]
           ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/the-id card))))
-        (is (= ["Everything else"
-                "My Collection"]
-               ((mt/user->client :lucky) :get 200 (format "database/%d/schemas" mbql.s/saved-questions-virtual-database-id))))))
+        (let [schemas (set ((mt/user->client :lucky) :get 200 (format "database/%d/schemas" mbql.s/saved-questions-virtual-database-id)))]
+          (is (contains? schemas "Everything else"))
+          (is (contains? schemas "My Collection")))))
 
     (testing "null and empty schemas should both come back as blank strings"
       (mt/with-temp* [Database [{db-id :id}]
@@ -936,29 +919,32 @@
         (doseq [card [card-1 card-2]]
           ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/the-id card))))
         (testing "Should be able to get saved questions in a specific collection"
-          (is (= [{:id           (format "card__%d" (:id card-1))
-                   :db_id        (mt/id)
-                   :display_name "Card 1"
-                   :schema       "My Collection"
-                   :description  nil}]
+          (is (= [{:id               (format "card__%d" (:id card-1))
+                   :db_id            (mt/id)
+                   :moderated_status nil
+                   :display_name     "Card 1"
+                   :schema           "My Collection"
+                   :description      nil}]
                  ((mt/user->client :lucky) :get 200
                   (format "database/%d/schema/My Collection" mbql.s/saved-questions-virtual-database-id)))))
 
         (testing "Should be able to get saved questions in the root collection"
           (let [response ((mt/user->client :lucky) :get 200
                           (format "database/%d/schema/%s" mbql.s/saved-questions-virtual-database-id (table-api/root-collection-schema-name)))]
-            (is (schema= [{:id           #"^card__\d+$"
-                           :db_id        s/Int
-                           :display_name s/Str
-                           :schema       (s/eq (table-api/root-collection-schema-name))
-                           :description  (s/maybe s/Str)}]
+            (is (schema= [{:id               #"^card__\d+$"
+                           :db_id            s/Int
+                           :display_name     s/Str
+                           :moderated_status (s/enum nil "verified")
+                           :schema           (s/eq (table-api/root-collection-schema-name))
+                           :description      (s/maybe s/Str)}]
                          response))
             (is (contains? (set response)
-                           {:id           (format "card__%d" (:id card-2))
-                            :db_id        (mt/id)
-                            :display_name "Card 2"
-                            :schema       (table-api/root-collection-schema-name)
-                            :description  nil}))))
+                           {:id               (format "card__%d" (:id card-2))
+                            :db_id            (mt/id)
+                            :display_name     "Card 2"
+                            :moderated_status nil
+                            :schema           (table-api/root-collection-schema-name)
+                            :description      nil}))))
 
         (testing "Should throw 404 if the schema/Collection doesn't exist"
           (is (= "Not found."

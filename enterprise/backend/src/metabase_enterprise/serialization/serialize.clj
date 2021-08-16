@@ -208,7 +208,8 @@
   [card]
   (-> card
       (m/update-existing :table_id (partial fully-qualified-name Table))
-      (update :database_id (partial fully-qualified-name Database))))
+      (update :database_id (partial fully-qualified-name Database))
+      (m/update-existing :visualization_settings convert-viz-settings)))
 
 (defmethod serialize-one (type Pulse)
   [pulse]

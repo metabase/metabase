@@ -55,6 +55,7 @@
             [metabase.query-processor.middleware.upgrade-field-literals :as upgrade-field-literals]
             [metabase.query-processor.middleware.validate :as validate]
             [metabase.query-processor.middleware.validate-temporal-bucketing :as validate-temporal-bucketing]
+            [metabase.query-processor.middleware.visualization-settings :as viz-settings]
             [metabase.query-processor.middleware.wrap-value-literals :as wrap-value-literals]
             [metabase.query-processor.reducible :as qp.reducible]
             [metabase.query-processor.store :as qp.store]
@@ -89,6 +90,7 @@
    #'cumulative-ags/handle-cumulative-aggregations
    ;; yes, this is called a second time, because we need to handle any joins that got added
    (resolve 'ee.sandbox.rows/apply-row-level-permissions)
+   #'viz-settings/update-viz-settings
    #'resolve-joined-fields/resolve-joined-fields
    #'resolve-joins/resolve-joins
    #'add-implicit-joins/add-implicit-joins
@@ -154,8 +156,6 @@
 (def ^:private ^:dynamic *preprocessing-level* 1)
 
 (def ^:private ^:const max-preprocessing-level 20)
-
-(def ^:private ^:const preprocessing-timeout-ms 10000)
 
 (defn- preprocess-query [query context]
   (binding [*preprocessing-level* (inc *preprocessing-level*)]

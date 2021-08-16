@@ -13,6 +13,7 @@ import {
   SET_MODAL_SNIPPET,
   SET_SNIPPET_COLLECTION_ID,
   CLOSE_QB_NEWB_MODAL,
+  SOFT_RELOAD_CARD,
   RELOAD_CARD,
   API_CREATE_QUESTION,
   API_UPDATE_QUESTION,
@@ -44,6 +45,10 @@ import {
   onOpenChartType,
   onCloseChartType,
   onCloseSidebars,
+  onOpenQuestionDetails,
+  onCloseQuestionDetails,
+  onOpenQuestionHistory,
+  onCloseQuestionHistory,
 } from "./actions";
 
 const DEFAULT_UI_CONTROLS = {
@@ -56,6 +61,7 @@ const DEFAULT_UI_CONTROLS = {
   isShowingFilterSidebar: false,
   isShowingChartTypeSidebar: false,
   isShowingChartSettingsSidebar: false,
+  isShowingQuestionDetailsSidebar: false,
   initialChartSetting: null,
   isPreviewing: true, // sql preview mode
   isShowingRawTable: false, // table/viz toggle
@@ -68,13 +74,15 @@ const UI_CONTROLS_SIDEBAR_DEFAULTS = {
   isShowingFilterSidebar: false,
   isShowingChartSettingsSidebar: false,
   isShowingChartTypeSidebar: false,
+  isShowingQuestionDetailsSidebar: false,
 };
 
-// this is used to close toher sidebar when one is updated
+// this is used to close other sidebar when one is updated
 const CLOSED_NATIVE_EDITOR_SIDEBARS = {
   isShowingTemplateTagsEditor: false,
   isShowingSnippetSidebar: false,
   isShowingDataReference: false,
+  isShowingQuestionDetailsSidebar: false,
 };
 
 // various ui state options
@@ -163,6 +171,7 @@ export const uiControls = handleActions(
     [SHOW_CHART_SETTINGS]: {
       next: (state, { payload }) => ({
         ...state,
+        ...UI_CONTROLS_SIDEBAR_DEFAULTS,
         isShowingChartSettingsSidebar: true,
         initialChartSetting: payload,
       }),
@@ -205,6 +214,29 @@ export const uiControls = handleActions(
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
     }),
+    [onOpenQuestionDetails]: state => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+      isShowingQuestionDetailsSidebar: true,
+      questionDetailsTimelineDrawerState: undefined,
+    }),
+    [onCloseQuestionDetails]: state => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+      questionDetailsTimelineDrawerState: undefined,
+    }),
+    [onOpenQuestionHistory]: state => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+      isShowingQuestionDetailsSidebar: true,
+      questionDetailsTimelineDrawerState: "open",
+    }),
+    [onCloseQuestionHistory]: state => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+      isShowingQuestionDetailsSidebar: true,
+      questionDetailsTimelineDrawerState: "closed",
+    }),
     [onCloseSidebars]: state => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
@@ -220,6 +252,7 @@ export const card = handleActions(
     [INITIALIZE_QB]: {
       next: (state, { payload }) => (payload ? payload.card : null),
     },
+    [SOFT_RELOAD_CARD]: { next: (state, { payload }) => payload },
     [RELOAD_CARD]: { next: (state, { payload }) => payload },
     [SET_CARD_AND_RUN]: { next: (state, { payload }) => payload.card },
     [API_CREATE_QUESTION]: { next: (state, { payload }) => payload },

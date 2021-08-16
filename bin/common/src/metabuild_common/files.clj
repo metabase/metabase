@@ -98,17 +98,17 @@
 
 (def ^String project-root-directory
   "Root directory of the Metabase repo, e.g. `/users/cam/metabase`. Determined by finding the directory that has
-  `project.clj` in it."
+  `.git` in it."
   (loop [^File dir (File. ^String (env/env :user-dir))]
     (cond
-      (file-exists? (filename (.getAbsolutePath dir) "project.clj"))
+      (file-exists? (filename (.getAbsolutePath dir) "package.json"))
       (.getAbsolutePath dir)
 
       (.getParentFile dir)
       (recur (.getParentFile dir))
 
       :else
-      (throw (ex-info (format "Can't find project root directory: no parent directory of %s has a project.clj file"
+      (throw (ex-info (format "Can't find project root directory: no parent directory of %s has a .git directory"
                               (env/env :user-dir))
                       {:dir (env/env :user-dir)})))))
 

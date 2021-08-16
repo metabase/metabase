@@ -5,9 +5,7 @@
     "^promise-loader\\?global\\!metabase\\/lib\\/ga-metadata$": "<rootDir>/frontend/src/metabase/lib/ga-metadata.js"
   },
   "testPathIgnorePatterns": ["<rootDir>/frontend/test/.*/.*.tz.unit.spec.js"],
-  "testMatch": [
-    "<rootDir>/**/*.unit.spec.js"
-  ],
+  "testMatch": ["<rootDir>/**/*.unit.spec.js"],
   "modulePaths": [
     "<rootDir>/frontend/test",
     "<rootDir>/frontend/src",
@@ -19,17 +17,21 @@
     "<rootDir>/frontend/test/metabase-bootstrap.js",
     "<rootDir>/frontend/test/register-visualizations.js"
   ],
+  "setupFilesAfterEnv": ["@testing-library/jest-dom/extend-expect"],
   "globals": {
     "ace": {},
     "ga": {},
     "document": {}
   },
-  "coverageDirectory": "./",
-  "coverageReporters": ["text", "json-summary"],
+  "coverageDirectory": "./coverage",
+  "coverageReporters": ["text", "html", "lcov"],
   "collectCoverageFrom": ["frontend/src/**/*.js", "frontend/src/**/*.jsx"],
   "coveragePathIgnorePatterns": [
     "/node_modules/",
     "/frontend/src/metabase/visualizations/lib/errors.js",
-    "/frontend/src/cljs/"
-  ]
+    "/frontend/src/cljs/",
+    "/frontend/src/metabase/internal/",
+    "/frontend/test/"
+  ],
+  "testEnvironment": "jsdom"
 }

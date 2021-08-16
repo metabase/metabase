@@ -22,7 +22,7 @@
     (normalized-locale-string \"EN-US\") ;-> \"en_US\"
 
   Returns `nil` for invalid strings -- you can use this to check whether a String is valid."
-  [s]
+  ^String [s]
   {:pre [((some-fn nil? string?) s)]}
   (when (string? s)
     (when-let [[_ language country] (re-matches #"^(\w{2})(?:[-_](\w{2}))?$" s)]
@@ -40,7 +40,7 @@
 
   String
   (locale [^String s]
-    (LocaleUtils/toLocale (normalized-locale-string s)))
+    (some-> (normalized-locale-string s) LocaleUtils/toLocale))
 
   ;; Support namespaced keywords like `:en/US` and `:en/UK` because we can
   clojure.lang.Keyword

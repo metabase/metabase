@@ -45,6 +45,7 @@
             [metabase.util.i18n :refer [deferred-tru]]))
 
 (u/ignore-exceptions (classloader/require '[metabase-enterprise.sandbox.api.routes :as ee.sandbox.routes]))
+(u/ignore-exceptions (classloader/require '[metabase-enterprise.moderation.api.review :as ee.moderation.review]))
 
 (def ^:private +generic-exceptions
   "Wrap `routes` so any Exception thrown is just returned as a generic 400, to prevent details from leaking in public
@@ -84,6 +85,9 @@
   (context "/login-history"        [] (+auth login-history/routes))
   (context "/metastore"            [] (+auth metastore/routes))
   (context "/metric"               [] (+auth metric/routes))
+  (if-some [moderation-routes (some-> (resolve 'ee.moderation.review/routes) var-get)]
+    (context "/moderation-review"  [] (+auth moderation-routes))
+    (fn [_ respond _] (respond nil)))
   (context "/native-query-snippet" [] (+auth native-query-snippet/routes))
   (context "/notify"               [] (+apikey notify/routes))
   (context "/permissions"          [] (+auth permissions/routes))

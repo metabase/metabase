@@ -20,7 +20,7 @@ const ActiveSearchColor = lighten(color("nav"), 0.1);
 
 import Search from "metabase/entities/search";
 
-const SearchWrapper = Flex.extend`
+const SearchWrapper = styled(Flex)`
   position: relative;
   background-color: ${props =>
     props.active ? ActiveSearchColor : DefaultSearchColor};
@@ -52,6 +52,7 @@ const SearchInput = styled.input`
 `;
 
 const ALLOWED_SEARCH_FOCUS_ELEMENTS = new Set(["BODY", "A"]);
+const SEARCH_LIMIT = 50;
 
 export default class SearchBar extends React.Component {
   state = {
@@ -152,13 +153,17 @@ export default class SearchBar extends React.Component {
                   py={1}
                 >
                   <Search.ListLoader
-                    query={{ q: searchText.trim() }}
+                    query={{ q: searchText.trim(), limit: SEARCH_LIMIT }}
                     wrapped
                     reload
                     debounced
                   >
                     {({ list }) => {
-                      return <ol>{this.renderResults(list)}</ol>;
+                      return (
+                        <ol data-testid="search-results-list">
+                          {this.renderResults(list)}
+                        </ol>
+                      );
                     }}
                   </Search.ListLoader>
                 </Card>

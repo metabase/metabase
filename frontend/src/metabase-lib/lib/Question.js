@@ -1,5 +1,5 @@
 import _ from "underscore";
-import { chain, assoc, dissoc, assocIn } from "icepick";
+import { chain, assoc, dissoc, assocIn, getIn } from "icepick";
 
 // NOTE: the order of these matters due to circular dependency issues
 import StructuredQuery, {
@@ -624,8 +624,11 @@ export default class Question {
 
     const validVizSettings = vizSettings.filter(colSetting => {
       const hasColumn = findColumnIndexForColumnSetting(cols, colSetting) >= 0;
-      return hasColumn;
+      const isMutatingColumn =
+        findColumnIndexForColumnSetting(addedColumns, colSetting) >= 0;
+      return hasColumn && !isMutatingColumn;
     });
+
     const noColumnsRemoved = validVizSettings.length === vizSettings.length;
 
     if (noColumnsRemoved && addedColumns.length === 0) {
@@ -645,7 +648,8 @@ export default class Question {
 
   syncColumnsAndSettings(previous, queryResults) {
     const query = this.query();
-    if (query instanceof NativeQuery && queryResults) {
+    const isQueryResultValid = queryResults && !queryResults.error;
+    if (query instanceof NativeQuery && isQueryResultValid) {
       return this._syncNativeQuerySettings(queryResults);
     }
     const previousQuery = previous && previous.query();
@@ -1040,6 +1044,10 @@ export default class Question {
       : this.markDirty(); // forces use of serialized question url
     const query = this.isNative() ? this._parameterValues : undefined;
     return question.getUrl({ originalQuestion: this, query });
+  }
+
+  getModerationReviews() {
+    return getIn(this, ["_card", "moderation_reviews"]) || [];
   }
 }
 

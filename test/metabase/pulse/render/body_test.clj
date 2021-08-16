@@ -279,19 +279,42 @@
                                          :semantic_type nil}]
                                  :rows [["2014-04-01T08:30:00.0000"]]}))))
   (testing "Includes raw text"
-    (let [results {:cols [{:name         "stringvalue",
-                           :display_name "STRINGVALUE",
-                           :base_type    :type/Text
-                           :semantic_type nil}]
-                   :rows [["foo"]]}]
-      (is (= "foo"
-             (:render/text (body/render :scalar nil pacific-tz nil results))))
-      (is (schema= {:attachments (s/eq nil)
-                    :content     [(s/one (s/eq :div) "div tag")
-                                  (s/one {:style s/Str} "style map")
-                              (s/one (s/eq "foo") "content")]
-                    :render/text (s/eq "foo")}
-                   (body/render :scalar nil pacific-tz nil results))))))
+    (testing "for scalars"
+      (let [results {:cols [{:name         "stringvalue",
+                             :display_name "STRINGVALUE",
+                             :base_type    :type/Text
+                             :semantic_type nil}]
+                     :rows [["foo"]]}]
+        (is (= "foo"
+               (:render/text (body/render :scalar nil pacific-tz nil results))))
+        (is (schema= {:attachments (s/eq nil)
+                      :content     [(s/one (s/eq :div) "div tag")
+                                    (s/one {:style s/Str} "style map")
+                                    (s/one (s/eq "foo") "content")]
+                      :render/text (s/eq "foo")}
+                     (body/render :scalar nil pacific-tz nil results)))))
+    (testing "for smartscalars"
+      (let [results {:cols [{:name         "value",
+                             :display_name "VALUE",
+                             :base_type    :type/Decimal}
+                            {:name           "time",
+                             :display_name   "TIME",
+                             :base_type      :type/DateTime
+                             :effective_type :type/DateTime}]
+                     :rows [[40.0 :this-month]
+                            [30.0 :last-month]
+                            [20.0 :month-before]]
+                     :insights [{:previous-value 30.0
+                                 :unit :month
+                                 :last-change 1.333333
+                                 :col "value"
+                                 :last-value 40.0}]}]
+        (is (= "40.00\nUp 133.33%. Was 30.00 last month"
+               (:render/text (body/render :smartscalar nil pacific-tz nil results))))
+        (is (schema= {:attachments (s/eq nil)
+                      :content     (s/pred vector? "hiccup vector")
+                      :render/text (s/eq "40.00\nUp 133.33%. Was 30.00 last month")}
+                     (body/render :smartscalar nil pacific-tz nil results)))))))
 
 (defn- replace-style-maps [hiccup-map]
   (walk/postwalk (fn [maybe-map]

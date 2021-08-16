@@ -50,7 +50,7 @@ export default class ArchiveApp extends Component {
         <Box mt={2} py={2}>
           <PageHeading>{t`Archive`}</PageHeading>
         </Box>
-        <Box w={2 / 3}>
+        <Box width={2 / 3}>
           <Card
             style={{
               height: list.length > 0 ? ROW_HEIGHT * list.length : "auto",
@@ -64,7 +64,7 @@ export default class ArchiveApp extends Component {
                   <ArchivedItem
                     type={item.type}
                     name={item.getName()}
-                    icon={item.getIcon()}
+                    icon={item.getIcon().name}
                     color={item.getColor()}
                     isAdmin={isAdmin}
                     onUnarchive={

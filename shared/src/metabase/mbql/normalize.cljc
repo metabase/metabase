@@ -279,7 +279,8 @@
                      :joins           {::sequence normalize-join}}
    :parameters      {::sequence normalize-query-parameter}
    :context         #(some-> % maybe-normalize-token)
-   :source-metadata {::sequence normalize-source-metadata}})
+   :source-metadata {::sequence normalize-source-metadata}
+   :viz-settings    maybe-normalize-token})
 
 (defn normalize-tokens
   "Recursively normalize tokens in `x`.
@@ -754,7 +755,8 @@
 (def ^:private path->special-remove-empty-clauses-fn
   {:native identity
    :query  {:source-query remove-empty-clauses-in-source-query
-            :joins        {::sequence remove-empty-clauses-in-join}}})
+            :joins        {::sequence remove-empty-clauses-in-join}}
+   :viz-settings identity})
 
 (defn- remove-empty-clauses
   "Remove any empty or `nil` clauses in a query."

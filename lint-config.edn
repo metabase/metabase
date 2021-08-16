@@ -2,7 +2,7 @@
 {:linters {:missing-else-branch          {:level :warn}
            :misplaced-docstring          {:level :warn}
            :missing-body-in-when         {:level :warn}
-           :missing-docstring            {:level :warn}
+           :missing-docstring            {:level :warning}
            :refer-all                    {:level   :warn
                                           :exclude [clojure.test]}
            :unsorted-required-namespaces {:level :warn}

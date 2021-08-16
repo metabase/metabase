@@ -33,8 +33,8 @@
    (testing "with pagination"
      (let [pages-retrieved (atom 0)
            page-callback   (fn [] (swap! pages-retrieved inc))]
-       (with-bindings {#'bigquery/max-results-per-page 25
-                       #'bigquery/page-callback        page-callback}
+       (binding [bigquery/*max-results-per-page* 25
+                 bigquery/*page-callback*        page-callback]
          (let [actual (->> (metadata-queries/table-rows-sample (Table (mt/id :venues))
                              [(Field (mt/id :venues :id))
                               (Field (mt/id :venues :name))]

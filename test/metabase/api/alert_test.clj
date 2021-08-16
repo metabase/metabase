@@ -364,7 +364,7 @@
 ;;; |                                               PUT /api/alert/:id                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest put-alert-test
+(deftest put-alert-test-2
   (is (= {:errors {:alert_condition "value may be nil, or if non-nil, value must be one of: `goal`, `rows`."}}
          ((user->client :rasta) :put 400 "alert/1" {:alert_condition "not rows"})))
 
@@ -740,7 +740,7 @@
                                 (assoc-in (default-alert-req card pc-1) [:channels 0 :enabled] false)))
                              (api:alert-question-count :crowberto card))
                   :emails  (et/regex-email-bodies #"https://metabase.com/testmb"
-                                                  #"letting you know that Crowberto Corv" ))))))))
+                                                  #"letting you know that Crowberto Corv"))))))))
 
   (testing "Re-enabling email should send users a subscribe notification"
     (is (= {:count-1 1
@@ -764,7 +764,7 @@
                                 (assoc-in (default-alert-req card pc-1) [:channels 0 :enabled] true)))
                              (api:alert-question-count :crowberto card))
                   :emails  (et/regex-email-bodies #"https://metabase.com/testmb"
-                                                  #"now getting alerts about .*Foo" ))))))))
+                                                  #"now getting alerts about .*Foo"))))))))
 
   (testing "Alert should not be deleted if the unsubscriber isn't the creator"
     (is (= {:count-1 1

@@ -65,6 +65,7 @@ function EntityItemMenu({
   onMove,
   onCopy,
   onArchive,
+  className,
   analyticsContext,
 }) {
   const actions = useMemo(
@@ -105,7 +106,7 @@ function EntityItemMenu({
   }
   return (
     <EntityMenu
-      className="ml1 hover-child"
+      className={cx(className, "hover-child")}
       triggerIcon="ellipsis"
       items={actions}
     />
@@ -182,6 +183,7 @@ const EntityItem = ({
           onMove={onMove}
           onCopy={onCopy}
           onArchive={onArchive}
+          className="ml1"
           analyticsContext={analyticsContext}
         />
       </Flex>

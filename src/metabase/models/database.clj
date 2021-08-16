@@ -49,9 +49,14 @@
     (schedule-tasks! database)))
 
 (defn- post-select [{driver :engine, :as database}]
-  ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
   (cond-> database
-    (driver/initialized? driver) (assoc :features (driver.u/features driver))))
+    (driver/initialized? driver)
+    ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
+    (as-> db* ; database from outer cond->
+        (assoc db* :features (driver.u/features driver database))
+        (if (:details db*)
+          (driver/normalize-db-details driver db*)
+          db*))))
 
 (defn- pre-delete [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)

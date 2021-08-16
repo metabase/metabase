@@ -11,7 +11,7 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 
 import BulkActions from "metabase/collections/components/BulkActions";
 import CollectionEmptyState from "metabase/components/CollectionEmptyState";
-import Header from "metabase/collections/components/Header/Header";
+import Header from "metabase/collections/components/CollectionHeader/CollectionHeader";
 import ItemsTable from "metabase/collections/components/ItemsTable";
 import PinnedItemsTable from "metabase/collections/components/PinnedItemsTable";
 import { isPersonalCollectionChild } from "metabase/collections/utils";

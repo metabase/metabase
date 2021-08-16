@@ -75,10 +75,10 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn features
-  "Return a set of all features supported by `driver`."
-  [driver]
+  "Return a set of all features supported by `driver` with respect to `database`."
+  [driver database]
   (set (for [feature driver/driver-features
-             :when (driver/supports? driver feature)]
+             :when (driver/database-supports? driver feature database)]
          feature)))
 
 (defn available-drivers
@@ -100,7 +100,8 @@
                  :when  props]
              ;; TODO - maybe we should rename `details-fields` -> `connection-properties` on the FE as well?
              [driver {:details-fields props
-                      :driver-name    (driver/display-name driver)}])))
+                      :driver-name    (driver/display-name driver)
+                      :superseded-by  (driver/superseded-by driver)}])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             TLS Helpers                                                        |

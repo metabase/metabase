@@ -6,8 +6,11 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 
 import Modal from "metabase/components/Modal";
 
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+
 import { getVisualizationRaw } from "metabase/visualizations";
 import MetabaseAnalytics from "metabase/lib/analytics";
+import { color } from "metabase/lib/colors";
 
 import {
   GRID_WIDTH,
@@ -166,6 +169,18 @@ export default class DashboardGrid extends Component {
     return { desktop, mobile };
   }
 
+  getRowHeight() {
+    const { width } = this.props;
+
+    const hasScroll = window.innerWidth > document.documentElement.offsetWidth;
+    const aspectHeight = width / GRID_WIDTH / GRID_ASPECT_RATIO;
+    const actualHeight = Math.max(aspectHeight, MIN_ROW_HEIGHT);
+
+    // prevent infinite re-rendering when the scroll bar appears/disappears
+    // https://github.com/metabase/metabase/issues/17229
+    return hasScroll ? Math.ceil(actualHeight) : Math.floor(actualHeight);
+  }
+
   renderRemoveModal() {
     // can't use PopoverWithTrigger due to strange interaction with ReactGridLayout
     const isOpen = this.state.removeModalDashCard != null;
@@ -224,10 +239,27 @@ export default class DashboardGrid extends Component {
     this.setState({ addSeriesModalDashCard: dc });
   }
 
+  getDashboardCardIcon = dashCard => {
+    const { isRegularCollection } = PLUGIN_COLLECTIONS;
+    const { dashboard } = this.props;
+    const isRegularQuestion = isRegularCollection({
+      authority_level: dashCard.collection_authority_level,
+    });
+    const isRegularDashboard = isRegularCollection({
+      authority_level: dashboard.collection_authority_level,
+    });
+    if (isRegularDashboard && !isRegularQuestion) {
+      const authorityLevel = dashCard.collection_authority_level;
+      const opts = PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[authorityLevel];
+      return { name: opts.icon, color: color(opts.color), size: 14 };
+    }
+  };
+
   renderDashCard(dc, { isMobile, gridItemWidth }) {
     return (
       <DashCard
         dashcard={dc}
+        headerIcon={this.getDashboardCardIcon(dc)}
         dashcardData={this.props.dashcardData}
         parameterValues={this.props.parameterValues}
         slowCards={this.props.slowCards}
@@ -284,10 +316,7 @@ export default class DashboardGrid extends Component {
   renderGrid() {
     const { dashboard, width } = this.props;
     const { layouts } = this.state;
-    const rowHeight = Math.max(
-      Math.floor(width / GRID_WIDTH / GRID_ASPECT_RATIO),
-      MIN_ROW_HEIGHT,
-    );
+    const rowHeight = this.getRowHeight();
     return (
       <GridLayout
         className={cx("DashboardGrid", {

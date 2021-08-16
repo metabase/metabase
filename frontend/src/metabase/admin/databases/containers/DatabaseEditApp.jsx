@@ -15,6 +15,7 @@ import ActionButton from "metabase/components/ActionButton";
 import AddDatabaseHelpCard from "metabase/components/AddDatabaseHelpCard";
 import Button from "metabase/components/Button";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
+import DriverWarning from "metabase/components/DriverWarning";
 import Radio from "metabase/components/Radio";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 
@@ -172,7 +173,7 @@ export default class DatabaseEditApp extends Component {
                 </div>
               )}
               <Flex>
-                <Box w={620}>
+                <Box width={620}>
                   <LoadingAndErrorWrapper
                     loading={!database}
                     error={initializeError}
@@ -210,22 +211,27 @@ export default class DatabaseEditApp extends Component {
                     )}
                   </LoadingAndErrorWrapper>
                 </Box>
-                {addingNewDatabase && (
-                  <Box>
+                <Box>
+                  <DriverWarning
+                    engine={selectedEngine}
+                    ml={26}
+                    data-testid="database-setup-driver-warning"
+                  />
+                  {addingNewDatabase && (
                     <AddDatabaseHelpCard
                       engine={selectedEngine}
                       ml={26}
                       data-testid="database-setup-help-card"
                     />
-                  </Box>
-                )}
+                  )}
+                </Box>
               </Flex>
             </div>
           </Box>
 
           {/* Sidebar Actions */}
           {editingExistingDatabase && (
-            <Box ml={[2, 3]} w={420}>
+            <Box ml={[2, 3]} width={420}>
               <div className="Actions bg-light rounded p3">
                 <div className="Actions-group">
                   <label className="Actions-groupLabel block text-bold">{t`Actions`}</label>

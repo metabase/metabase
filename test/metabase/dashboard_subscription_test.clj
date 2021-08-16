@@ -1,7 +1,5 @@
 (ns metabase.dashboard-subscription-test
   (:require [clojure.test :refer :all]
-            [clojure.walk :as walk]
-            [metabase.integrations.slack :as slack]
             [metabase.models :refer [Card Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient User]]
             [metabase.models.pulse :as models.pulse]
             [metabase.pulse :as pulse]
@@ -9,8 +7,7 @@
             [metabase.pulse.test-util :refer :all]
             [metabase.test :as mt]
             [metabase.util :as u]
-            [schema.core :as s]
-            [toucan.db :as db]))
+            [schema.core :as s]))
 
 (defn- do-with-dashboard-sub-for-card
   "Creates a Pulse, Dashboard, and other relevant rows for a `card` (using `pulse` and `pulse-card` properties if
@@ -137,7 +134,19 @@
         (is (= (count result) 2))
         (is (schema= [{:card   (s/pred map?)
                        :result (s/pred map?)}]
-                     result))))))
+                     result)))))
+  (testing "dashboard cards are ordered correctly -- by rows, and then by columns (#17419)"
+    (mt/with-temp* [Card          [{card-id-1 :id}]
+                    Card          [{card-id-2 :id}]
+                    Card          [{card-id-3 :id}]
+                    Dashboard     [{dashboard-id :id} {:name "Birdfeed Usage"}]
+                    DashboardCard [dashcard-1 {:dashboard_id dashboard-id :card_id card-id-1 :row 1 :col 0}]
+                    DashboardCard [dashcard-2 {:dashboard_id dashboard-id :card_id card-id-2 :row 0 :col 1}]
+                    DashboardCard [dashcard-3 {:dashboard_id dashboard-id :card_id card-id-3 :row 0 :col 0}]
+                    User [{user-id :id}]]
+      (let [result (pulse/execute-dashboard {:creator_id user-id} dashboard-id)]
+        (is (= [card-id-3 card-id-2 card-id-1]
+               (map #(-> % :card :id) result)))))))
 
 (deftest basic-table-test
   (tests {:pulse {:skip_if_empty false}}

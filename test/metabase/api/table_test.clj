@@ -41,7 +41,7 @@
     :description                 nil
     :caveats                     nil
     :points_of_interest          nil
-    :features                    (mapv u/qualified-name (driver.u/features :h2))
+    :features                    (mapv u/qualified-name (driver.u/features :h2 (mt/db)))
     :cache_field_values_schedule "0 50 0 * * ? *"
     :metadata_sync_schedule      "0 50 * * * ? *"
     :options                     nil
@@ -461,6 +461,7 @@
                   :schema            "Everything else"
                   :db_id             (:database_id card)
                   :id                card-virtual-table-id
+                  :moderated_status  nil
                   :description       nil
                   :dimension_options (default-dimension-options)
                   :fields            (map (comp #(merge (default-card-field-for-venues card-virtual-table-id) %)
@@ -516,6 +517,7 @@
                     :db_id             (:database_id card)
                     :id                card-virtual-table-id
                     :description       nil
+                    :moderated_status  nil
                     :dimension_options (default-dimension-options)
                     :fields            [{:name                     "NAME"
                                          :display_name             "NAME"

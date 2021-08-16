@@ -1,36 +1,38 @@
 import React, { useMemo } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
-import styled from "styled-components";
-import moment from "moment";
+import { getRelativeTime } from "metabase/lib/time";
 
-import { color } from "metabase/lib/colors";
+import {
+  TimelineContainer,
+  TimelineItem,
+  Border,
+  ItemIcon,
+  ItemBody,
+  ItemHeader,
+  Timestamp,
+  ItemFooter,
+} from "./Timeline.styled";
 
-import Icon from "metabase/components/Icon";
+Timeline.propTypes = {
+  className: PropTypes.string,
+  items: PropTypes.arrayOf(
+    PropTypes.shape({
+      timestamp: PropTypes.number.isRequired,
+      icon: PropTypes.oneOfType([PropTypes.string, PropTypes.object])
+        .isRequired,
+      title: PropTypes.string.isRequired,
+      description: PropTypes.string,
+      renderFooter: PropTypes.bool,
+    }),
+  ),
+  renderFooter: PropTypes.func,
+};
 
-const TimelineContainer = styled.div`
-  position: relative;
-  margin-left: ${props => props.leftShift}px;
-  margin-bottom: ${props => props.bottomShift}px;
-`;
+export default Timeline;
 
-const TimelineItem = styled.div`
-  transform: translateX(-${props => props.leftShift}px);
-  white-space: pre-line;
-`;
-
-// shift the border down slightly so that it doesn't appear above the top-most icon
-const Border = styled.div`
-  position: absolute;
-  top: ${props => props.borderShift}px;
-  left: 0;
-  right: 0;
-  bottom: -${props => props.borderShift}px;
-  border-left: 1px solid ${color("border")};
-`;
-
-const Timeline = ({ className, items = [], renderFooter }) => {
-  const iconSize = 20;
+function Timeline({ className, items = [], renderFooter }) {
+  const iconSize = 16;
   const halfIconSize = iconSize / 2;
 
   const sortedFormattedItems = useMemo(() => {
@@ -39,7 +41,7 @@ const Timeline = ({ className, items = [], renderFooter }) => {
       .map(item => {
         return {
           ...item,
-          formattedTimestamp: moment(item.timestamp).fromNow(),
+          formattedTimestamp: getRelativeTime(item.timestamp),
         };
       });
   }, [items]);
@@ -50,35 +52,37 @@ const Timeline = ({ className, items = [], renderFooter }) => {
       bottomShift={halfIconSize}
       className={className}
     >
-      <Border borderShift={halfIconSize} />
       {sortedFormattedItems.map((item, index) => {
-        const { icon, title, description, formattedTimestamp } = item;
+        const {
+          icon,
+          title,
+          description,
+          timestamp,
+          formattedTimestamp,
+        } = item;
         const key = item.key == null ? index : item.key;
+        const isNotLastEvent = index !== sortedFormattedItems.length - 1;
+        const iconProps = _.isObject(icon)
+          ? icon
+          : {
+              name: icon,
+            };
 
         return (
-          <TimelineItem
-            key={key}
-            leftShift={halfIconSize}
-            className="flex align-start justify-start mb2"
-          >
-            <Icon className="text-light" name={icon} size={iconSize} />
-            <div className="ml1">
-              <div className="text-bold">{title}</div>
-              <div className="text-medium text-small">{formattedTimestamp}</div>
+          <TimelineItem key={key} leftShift={halfIconSize}>
+            {isNotLastEvent && <Border borderShift={halfIconSize} />}
+            <ItemIcon {...iconProps} size={iconSize} />
+            <ItemBody>
+              <ItemHeader>{title}</ItemHeader>
+              <Timestamp datetime={timestamp}>{formattedTimestamp}</Timestamp>
               <div>{description}</div>
-              {_.isFunction(renderFooter) && <div>{renderFooter(item)}</div>}
-            </div>
+              {_.isFunction(renderFooter) && (
+                <ItemFooter>{renderFooter(item)}</ItemFooter>
+              )}
+            </ItemBody>
           </TimelineItem>
         );
       })}
     </TimelineContainer>
   );
-};
-
-Timeline.propTypes = {
-  className: PropTypes.string,
-  items: PropTypes.array,
-  renderFooter: PropTypes.func,
-};
-
-export default Timeline;
+}

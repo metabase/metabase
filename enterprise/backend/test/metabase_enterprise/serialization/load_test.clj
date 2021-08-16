@@ -2,15 +2,13 @@
   (:refer-clojure :exclude [load])
   (:require [clojure.data :as diff]
             [clojure.java.io :as io]
+            [clojure.string :as str]
             [clojure.test :refer [deftest is testing use-fixtures]]
             [metabase-enterprise.serialization.cmd :refer [dump load]]
             [metabase-enterprise.serialization.test-util :as ts]
             [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database Dependency
                                      Dimension Field FieldValues Metric NativeQuerySnippet Pulse PulseCard PulseChannel
                                      Segment Table User]]
-            [metabase.test.data.users :as test-users]
-            [metabase.util :as u]
-            [toucan.db :as db]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.query-processor.store :as qp.store]
@@ -18,8 +16,11 @@
             [metabase.shared.models.visualization-settings-test :as mb.viz-test]
             [metabase.shared.util.log :as log]
             [metabase.test :as mt]
+            [metabase.test.data.users :as test-users]
             [metabase.test.fixtures :as fixtures]
-            [metabase.util.i18n :refer [deferred-trs trs]])
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [trs]]
+            [toucan.db :as db])
   (:import org.apache.commons.io.FileUtils))
 
 (use-fixtures :once
@@ -110,12 +111,36 @@
     (type entity)))
 
 (defmethod assert-loaded-entity (type Card)
-  [card {:keys [query-results collections]}]
-  (query-res-match query-results card)
-  (collection-names-match collections card))
+  [{card-name :name :as card} {:keys [query-results collections]}]
+  (testing (format "Card: %s" card-name)
+    (query-res-match query-results card)
+    (collection-names-match collections card)
+    (when (= "My Nested Card" card-name)
+      (testing "Visualization settings for a Card were persisted correctly"
+        (let [vs (:visualization_settings card)
+              col (-> (:column_settings vs)
+                      first)
+              [col-key col-val] col
+              col-ref (mb.viz/parse-db-column-ref col-key)
+              {:keys [::mb.viz/field-id]} col-ref
+              [{col-name :name col-field-ref :fieldRef col-enabled :enabled :as tbl-col} & _] (:table.columns vs)
+              [_ col-field-id _] col-field-ref]
+          (is (some? (:table.columns vs)))
+          (is (some? (:column_settings vs)))
+          (is (integer? field-id))
+          (is (= "latitude" (-> (db/select-one-field :name Field :id field-id)
+                              str/lower-case)))
+          (is (= {:show_mini_bar true
+                  :column_title "Parallel"} col-val))
+          (is (= "Venue Category" col-name))
+          (is (true? col-enabled))
+          (is (integer? col-field-id) "fieldRef within table.columns was properly serialized and loaded")
+          (is (= "category_id" (-> (db/select-one-field :name Field :id col-field-id)
+                                   str/lower-case))))))
+    card))
 
 (defn- collection-parent-name [collection]
-  (let [[_ parent-id] (re-matches #".*/(\d+)/$" (:location collection))]
+  (let [[_ ^String parent-id] (re-matches #".*/(\d+)/$" (:location collection))]
     (db/select-one-field :name Collection :id (Integer. parent-id))))
 
 (defmethod assert-loaded-entity (type Collection)
@@ -130,8 +155,10 @@
                                                (collection-parent-name collection)))
     "Deeply Nested Personal Collection" (is (= "Nested Personal Collection"
                                                (collection-parent-name collection)))
-    "Felicia's Personal Collection"     (is false "Should not have loaded different user's PC")
-    "Felicia's Nested Collection"       (is false "Should not have loaded different user's PC"))
+    "Felicia's Personal Collection"     (is (nil? (:name collection))
+                                            "Should not have loaded different user's PC")
+    "Felicia's Nested Collection"       (is (nil? (:name collection))
+                                            "Should not have loaded different user's PC"))
   collection)
 
 (defmethod assert-loaded-entity (type NativeQuerySnippet)
@@ -175,12 +202,12 @@
           ;; check that the linked :card_id matches the expected name for each in the series
           ;; based on the entities declared in test_util.clj
           (let [series-pos    (:position series)
-                expected-name (case series-pos
+                expected-name (case (int series-pos)
                                 0 "My Card"
                                 1 "My Nested Card"
                                 2 ts/root-card-name)]
             (is (= expected-name (db/select-one-field :name Card :id (:card_id series))))
-            (case series-pos
+            (case (int series-pos)
               1
               (testing "Top level click action was preserved for dashboard card"
                 (let [viz-settings (:visualization_settings dashcard)
@@ -235,12 +262,12 @@
   [entity _]
   entity)
 
-(deftest dump-load-entities-test
+(deftest dump-load-entities-testw
   (try
     ;; in case it already exists
     (u/ignore-exceptions
       (delete-directory! dump-dir))
-    (mt/test-drivers (-> (mt/normal-drivers-with-feature :basic-aggregations :binning :expressions)
+    (mt/test-drivers (-> (mt/normal-drivers-with-feature :basic-aggregations :binning :expressions :foreign-keys)
                          ;; We will run this roundtrip test against any database supporting these features ^ except
                          ;; certain ones for specific reasons, outlined below.
                          ;;

@@ -1,10 +1,29 @@
 import styled from "styled-components";
 
 import { color } from "metabase/lib/colors";
+import { breakpointMaxMedium } from "metabase/styled-components/theme/media-queries";
 
 import EntityItem from "metabase/components/EntityItem";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
+
+const LAST_EDITED_BY_INDEX = 3;
+const LAST_EDITED_AT_INDEX = 4;
+
+export const Table = styled.table.attrs({ className: "ContentTable" })`
+  table-layout: fixed;
+
+  ${breakpointMaxMedium} {
+    & td:nth-child(${LAST_EDITED_BY_INDEX}),
+    th:nth-child(${LAST_EDITED_BY_INDEX}),
+    col:nth-child(${LAST_EDITED_BY_INDEX}),
+    td:nth-child(${LAST_EDITED_AT_INDEX}),
+    th:nth-child(${LAST_EDITED_AT_INDEX}),
+    col:nth-child(${LAST_EDITED_AT_INDEX}) {
+      display: none;
+    }
+  }
+`;
 
 export const ColumnHeader = styled.th`
   font-weight: bold;
@@ -17,6 +36,10 @@ export const EntityIconCheckBox = styled(EntityItem.IconCheckBox)`
 `;
 
 export const ItemLink = styled(Link)`
+  display: flex;
+  grid-gap: 0.5rem;
+  align-items: center;
+
   &:hover {
     color: ${color("brand")};
   }

@@ -39,11 +39,6 @@ export const field_semantic_types = [
     section: t`Common`,
   },
   {
-    id: TYPE.Number,
-    name: t`Number`,
-    section: t`Common`,
-  },
-  {
     id: TYPE.Title,
     name: t`Title`,
     section: t`Common`,

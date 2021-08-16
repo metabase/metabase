@@ -1,0 +1,39 @@
+info:
+  name: Metabase Presto JDBC Driver
+  version: 1.0.0-350-SNAPSHOT
+  description: Allows Metabase to connect to Presto databases using the Presto JDBC driver
+dependencies:
+  - plugin: Presto Common Driver
+driver:
+  name: presto-jdbc
+  display-name: Presto
+  lazy-load: true
+  parent: presto-common
+  connection-properties:
+    - host
+    - merge:
+        - port
+        - default: 8080
+    - merge:
+        - dbname
+        - name: catalog
+          placeholder: hive
+          display-name: Catalog
+          required: false
+    - name: schema
+      display-name: Schema (optional)
+      required: false
+    - user
+    - password
+    - ssl
+    - merge:
+        - additional-options
+        - placeholder: "trustServerCertificate=false"
+init:
+  - step: load-namespace
+    namespace: metabase.driver.presto-common
+  - step: load-namespace
+    namespace: metabase.driver.presto-jdbc
+  - step: register-jdbc-driver
+    class: com.facebook.presto.jdbc.PrestoDriver
+

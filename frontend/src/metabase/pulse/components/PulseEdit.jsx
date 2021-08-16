@@ -146,7 +146,7 @@ export default class PulseEdit extends Component {
     const link = (
       <a
         className="link"
-        href={MetabaseSettings.docsUrl("users-guide/07-dashboards")}
+        href={MetabaseSettings.docsUrl("users-guide/dashboard-subscriptions")}
       >{t`dashboard subscriptions`}</a>
     );
     return (

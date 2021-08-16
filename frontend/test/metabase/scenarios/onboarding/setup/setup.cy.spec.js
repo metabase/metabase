@@ -1,4 +1,3 @@
-import path from "path";
 import { restore, popover } from "__support__/e2e/cypress";
 
 // we're testing for one known (en) and one unknown (xx) locale
@@ -129,10 +128,8 @@ describe("scenarios > setup", () => {
         .closest("button")
         .should("be.disabled");
 
-      const dbPath = path.resolve(
-        Cypress.config("fileServerFolder"),
-        "frontend/test/__runner__/empty.db",
-      );
+      const dbFilename = "frontend/test/__runner__/empty.db";
+      const dbPath = Cypress.config("fileServerFolder") + "/" + dbFilename;
       cy.findByLabelText("Connection String").type(`file:${dbPath}`);
       cy.findByText("Next")
         .closest("button")

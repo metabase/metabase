@@ -79,7 +79,16 @@ describe("scenarios > dashboard > subscriptions", () => {
     describe("with no existing subscriptions", () => {
       it("should allow creation of a new email subscription", () => {
         createEmailSubscription();
-        cy.findByText("Emailed daily at 8:00 AM");
+        cy.findByText("Emailed hourly");
+      });
+
+      it("should not render people dropdown outside of the borders of the screen (metabase#17186)", () => {
+        openDashboardSubscriptions();
+
+        cy.findByText("Email it").click();
+        cy.findByPlaceholderText("Enter user names or email addresses").click();
+
+        popover().isRenderedWithinViewport();
       });
     });
 
@@ -87,7 +96,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       beforeEach(createEmailSubscription);
       it("should show existing dashboard subscriptions", () => {
         openDashboardSubscriptions();
-        cy.findByText("Emailed daily at 8:00 AM");
+        cy.findByText("Emailed hourly");
       });
     });
 
@@ -104,7 +113,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       cy.findByText("Questions to attach").click();
       clickButton("Done");
       cy.findByText("Subscriptions");
-      cy.findByText("Emailed daily at 8:00 AM").click();
+      cy.findByText("Emailed hourly").click();
       cy.findByText("Delete this subscription").scrollIntoView();
       cy.findByText("Questions to attach");
       cy.findAllByRole("listitem")
@@ -118,7 +127,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       assignRecipient();
       cy.findByText("To:").click();
       cy.get(".AdminSelect")
-        .contains("Daily")
+        .contains("Hourly")
         .click();
       cy.findByText("Monthly").click();
       cy.get(".AdminSelect")
@@ -245,7 +254,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       cy.findAllByRole("button", { name: "Done" }).should("not.be.disabled");
     });
 
-    it.skip("should have 'Send to Slack now' button (metabase#14515)", () => {
+    it("should have 'Send to Slack now' button (metabase#14515)", () => {
       cy.findAllByRole("button", { name: "Send to Slack now" }).should(
         "be.disabled",
       );
@@ -310,7 +319,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         assignRecipient();
         clickButton("Done");
 
-        cy.findByText("Emailed daily at 8:00 AM").click();
+        cy.findByText("Emailed hourly").click();
 
         cy.findAllByText("Corbin Mertz")
           .last()
@@ -424,7 +433,7 @@ function mockSlackConfigured() {
         name: "Email",
         allows_recipients: false,
         recipients: ["user", "email"],
-        schedules: ["daily", "weekly", "monthly"],
+        schedules: ["hourly", "daily", "weekly", "monthly"],
         configured: false,
       },
       slack: {

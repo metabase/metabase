@@ -6,11 +6,11 @@
             [medley.core :as m]
             [metabase.query-processor :as qp]
             [metabase.query-processor.streaming :as qp.streaming]
+            [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.test :as mt]
             [metabase.util :as u]
             [toucan.db :as db])
-  (:import [java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream InputStream
-            InputStreamReader]))
+  (:import [java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream InputStream InputStreamReader]))
 
 (defmulti ^:private parse-result*
   {:arglists '([export-format ^InputStream input-stream column-names])}
@@ -121,7 +121,7 @@
 (defn- basic-actual-results* [export-format query]
   (maybe-remove-checksum (process-query-basic-streaming export-format query)))
 
-(deftest basic-streaming-test []
+(deftest basic-streaming-test
   (testing "Test that the underlying qp.streaming context logic itself works correctly. Not an end-to-end test!"
     (let [query (mt/mbql-query venues
                   {:order-by [[:asc $id]]
@@ -267,3 +267,72 @@
                   :time           #inst "1899-12-31T00:23:18.000-00:00"
                   :time-ltz       #inst "1899-12-31T23:23:18.000-00:00"
                   :time-tz        #inst "1899-12-31T23:23:18.000-00:00"})))))))))
+
+(deftest export-column-order-test
+  (testing "basic correlation of columns between cols and table-columns by index"
+    (is (= [0 1]
+           (@#'qp.streaming/export-column-order
+            [{:id 0, :name "Col1"}, {:id 1, :name "Col2"}]
+            [{::mb.viz/table-column-field-ref ["field" 0 nil], ::mb.viz/table-column-enabled true}
+             {::mb.viz/table-column-field-ref ["field" 1 nil], ::mb.viz/table-column-enabled true}])))
+    (is (= [1 0]
+           (@#'qp.streaming/export-column-order
+            [{:id 0, :name "Col1"}, {:id 1, :name "Col2"}]
+            [{::mb.viz/table-column-field-ref ["field" 1 nil], ::mb.viz/table-column-enabled true}
+             {::mb.viz/table-column-field-ref ["field" 0 nil], ::mb.viz/table-column-enabled true}]))))
+
+  (testing "basic correlation of columns between cols and table-columns by name"
+    (is (= [0 1]
+           (@#'qp.streaming/export-column-order
+            [{:id 0, :name "Col1"}, {:id 1, :name "Col2"}]
+            [{::mb.viz/table-column-field-ref ["field" "Col1"  nil], ::mb.viz/table-column-enabled true}
+             {::mb.viz/table-column-field-ref ["field" "Col2" nil], ::mb.viz/table-column-enabled true}])))
+    (is (= [1 0]
+           (@#'qp.streaming/export-column-order
+            [{:id 0, :name "Col1"}, {:id 1, :name "Col2"}]
+            [{::mb.viz/table-column-field-ref ["field" "Col2" nil], ::mb.viz/table-column-enabled true}
+             {::mb.viz/table-column-field-ref ["field" "Col1" nil], ::mb.viz/table-column-enabled true}]))))
+
+  (testing "disabled columns are excluded from ordering"
+    (is (= [0]
+           (@#'qp.streaming/export-column-order
+            [{:id 0, :name "Col1"}, {:id 1, :name "Col2"}]
+            [{::mb.viz/table-column-field-ref ["field" 0 nil], ::mb.viz/table-column-enabled true}
+             {::mb.viz/table-column-field-ref ["field" 1 nil], ::mb.viz/table-column-enabled false}])))
+    (is (= [1]
+           (@#'qp.streaming/export-column-order
+            [{:id 0, :name "Col1"}, {:id 1, :name "Col2"}]
+            [{::mb.viz/table-column-field-ref ["field" 0 nil], ::mb.viz/table-column-enabled false}
+             {::mb.viz/table-column-field-ref ["field" 1 nil], ::mb.viz/table-column-enabled true}]))))
+
+  (testing "remapped columns use the index of the new column"
+    (is (= [1]
+           (@#'qp.streaming/export-column-order
+            [{:id 0, :name "Col1", :remapped_to "Col2"}, {:id 1, :name "Col2", :remapped_from "Col1"}]
+            [{::mb.viz/table-column-field-ref ["field" 0 nil], ::mb.viz/table-column-enabled true}]))))
+
+  (testing "entries in table-columns without corresponding entries in cols are ignored"
+    (is (= [0]
+           (@#'qp.streaming/export-column-order
+            [{:id 0, :name "Col1"}]
+            [{::mb.viz/table-column-field-ref ["field" 0 nil], ::mb.viz/table-column-enabled true}
+             {::mb.viz/table-column-field-ref ["field" 1 nil], ::mb.viz/table-column-enabled true}]))))
+
+  (testing "if table-columns is nil, original order of cols is used"
+    (is (= [0 1]
+           (@#'qp.streaming/export-column-order
+            [{:id 0, :name "Col1"}, {:id 1, :name "Col2"}]
+            nil)))
+    (is (= [0 1]
+           (@#'qp.streaming/export-column-order
+            [{:name "Col1"}, {:name "Col2"}]
+            nil))))
+
+  (testing "if table-columns is nil, remapped columns are still respected"
+    (is (= [1]
+           (@#'qp.streaming/export-column-order
+            [{:id 0, :name "Col1" :remapped_to "Col2"}, {:id 1, :name "Col2" :remapped_from "Col1"}]
+            nil)
+           (@#'qp.streaming/export-column-order
+            [{:name "Col1" :remapped_to "Col2"}, {:name "Col2" :remapped_from "Col1"}]
+            nil)))))

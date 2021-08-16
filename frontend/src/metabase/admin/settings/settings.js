@@ -87,8 +87,6 @@ export const updateEmailSettings = createThunkAction(
       } catch (error) {
         console.log("error updating email settings", settings, error);
         throw error;
-      } finally {
-        await dispatch(reloadSettings());
       }
     };
   },
@@ -124,8 +122,6 @@ export const updateSlackSettings = createThunkAction(
       } catch (error) {
         console.log("error updating slack settings", settings, error);
         throw error;
-      } finally {
-        await dispatch(reloadSettings());
       }
     };
   },
@@ -143,8 +139,6 @@ export const updateLdapSettings = createThunkAction(
       } catch (error) {
         console.log("error updating LDAP settings", settings, error);
         throw error;
-      } finally {
-        await dispatch(reloadSettings());
       }
     };
   },

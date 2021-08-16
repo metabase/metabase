@@ -1,24 +1,38 @@
-/* eslint-disable react/prop-types */
 import React from "react";
+import PropTypes from "prop-types";
 
-import Link from "metabase/components/Link";
-import Icon from "metabase/components/Icon";
+import { iconPropTypes } from "metabase/components/Icon";
 
-import cx from "classnames";
+import { BadgeIcon, MaybeLink } from "./Badge.styled";
 
-export default function Badge({ icon, name, className, children, ...props }) {
+const propTypes = {
+  name: PropTypes.string.isRequired,
+  to: PropTypes.string,
+  icon: PropTypes.shape(iconPropTypes),
+  activeColor: PropTypes.string,
+  onClick: PropTypes.func,
+  children: PropTypes.node,
+};
+
+const DEFAULT_ICON_SIZE = 12;
+
+function Badge({ name, icon, activeColor = "brand", children, ...props }) {
+  const extraIconProps = {};
+  if (icon && !icon.size && !icon.width && !icon.height) {
+    extraIconProps.size = DEFAULT_ICON_SIZE;
+  }
   return (
-    <MaybeLink
-      className={cx(className, "flex align-center text-bold text-medium", {
-        "cursor-pointer text-brand-hover": props.to || props.onClick,
-      })}
-      {...props}
-    >
-      {icon && <Icon name={icon} mr={children ? "5px" : null} size={11} />}
+    <MaybeLink activeColor={activeColor} {...props}>
+      {icon && (
+        <BadgeIcon {...icon} {...extraIconProps} hasMargin={!!children} />
+      )}
       {children && <span className="text-wrap">{children}</span>}
     </MaybeLink>
   );
 }
 
-export const MaybeLink = ({ to, ...props }) =>
-  to ? <Link to={to} {...props} /> : <span {...props} />;
+Badge.propTypes = propTypes;
+
+export { MaybeLink };
+
+export default Badge;

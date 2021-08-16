@@ -203,6 +203,14 @@ describe("scenarios > admin > people", () => {
       assertTableRowsCount(TOTAL_USERS);
     });
 
+    it("should display more than 50 groups (metabase#17200)", () => {
+      generateGroups(51);
+
+      cy.visit("/admin/people/groups");
+      cy.scrollTo("bottom");
+      cy.findByText("readonly");
+    });
+
     describe("pagination", () => {
       const NEW_USERS = 18;
       const NEW_TOTAL_USERS = TOTAL_USERS + NEW_USERS;
@@ -297,4 +305,10 @@ function generateUsers(count, groupIds) {
   users.forEach(u => cy.createUserFromRawData(u));
 
   return users;
+}
+
+function generateGroups(count) {
+  _.range(count).map(index => {
+    cy.request("POST", "api/permissions/group", { name: "Group" + index });
+  });
 }

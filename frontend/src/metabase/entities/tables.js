@@ -180,7 +180,7 @@ const Tables = createEntity({
   objectSelectors: {
     getUrl: table =>
       Urls.tableRowsQuery(table.database_id, table.table_id, null),
-    getIcon: table => "table",
+    getIcon: table => ({ name: "table" }),
     getColor: table => color("accent2"),
   },
 

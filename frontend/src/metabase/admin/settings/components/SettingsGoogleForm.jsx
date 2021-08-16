@@ -14,6 +14,7 @@ import { updateSettings } from "metabase/admin/settings/settings";
 import { settingToFormField } from "metabase/admin/settings/utils";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import ExternalLink from "metabase/components/ExternalLink";
+import MetabaseSettings from "metabase/lib/settings";
 
 const settingsGoogleFormPropTypes = {
   elements: PropTypes.array,
@@ -56,7 +57,10 @@ export default class SettingsGoogleForm extends Component {
         <p className="text-medium">
           {jt`To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found ${(
             <ExternalLink
-              href="https://developers.google.com/identity/sign-in/web/devconsole-project"
+              href={MetabaseSettings.docsUrl(
+                "administration-guide/10-single-sign-on",
+                "enabling-google-sign-in",
+              )}
               target="_blank"
             >
               {t`here`}

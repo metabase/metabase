@@ -71,8 +71,7 @@
 (deftest graceful-fallback-test
   (testing "If a resource bundle doesn't exist, we should gracefully fall back to English"
     (is (= "Translate me 100"
-           (mt/suppress-output
-             (impl/translate "zz" "Translate me {0}" 100))))))
+           (impl/translate "zz" "Translate me {0}" 100)))))
 
 (deftest translate-test
   (mt/with-mock-i18n-bundles {"es"      {"Your database has been added!"  "¡Tu base de datos ha sido añadida!"

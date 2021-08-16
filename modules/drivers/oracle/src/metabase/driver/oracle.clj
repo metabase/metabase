@@ -5,6 +5,7 @@
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
             [java-time :as t]
+            [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql :as sql]
@@ -81,15 +82,24 @@
                       (if sid (str "(SID=" sid ")") "")
                       (if service-name (str "(SERVICE_NAME=" service-name ")") ""))))
 
+(def ^:private ^:const prog-name-property
+  "The connection property used by the Oracle JDBC Thin Driver to control the program name."
+  "v$session.program")
+
 (defmethod sql-jdbc.conn/connection-details->spec :oracle
   [_ {:keys [host port sid service-name]
       :or   {host "localhost", port 1521}
       :as   details}]
   (assert (or sid service-name))
   (let [spec      {:classname "oracle.jdbc.OracleDriver", :subprotocol "oracle:thin"}
-        finish-fn (if (:ssl details) ssl-spec non-ssl-spec)]
+        finish-fn (if (:ssl details) ssl-spec non-ssl-spec)
+        ;; the v$session.program value has a max length of 48 (see T4Connection), so we have to make it more terse than
+        ;; the usual config/mb-version-and-process-identifier string and ensure we truncate to a length of 48
+        prog-nm   (as-> (format "MB %s %s" (config/mb-version-info :tag) config/local-process-uuid) s
+                    (subs s 0 (min 48 (count s))))]
     (-> (merge spec details)
         (dissoc :host :port :sid :service-name :ssl)
+        (assoc prog-name-property prog-nm)
         (finish-fn host port sid service-name))))
 
 (defmethod driver/can-connect? :oracle

@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, filterWidget } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { PEOPLE } = SAMPLE_DATASET;
@@ -34,16 +34,22 @@ const EXPECTED_QUERY_PARAMS = "?birthdate=past30years&source=Affiliate";
 
 describe("scenarios > question > public", () => {
   beforeEach(() => {
+    cy.intercept("POST", `/api/card/*/query`).as("cardQuery");
+    cy.intercept("GET", `/api/public/card/*/query?*`).as("publicQuery");
+
     restore();
     cy.signInAsAdmin();
 
     cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
   });
 
-  it("adds filters to url as get params (metabase#7120)", () => {
+  it("adds filters to url as get params and renders the results correctly (metabase#7120, metabase#17033)", () => {
     cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
       enableSharingQuestion(id);
+
       cy.visit(`/question/${id}`);
+      // Make sure metadata fully loaded before we continue
+      cy.wait("@cardQuery");
     });
 
     cy.icon("share").click();
@@ -53,6 +59,13 @@ describe("scenarios > question > public", () => {
     // On page load, query params are added
     cy.url().should("include", "/public/question");
     cy.url().should("include", EXPECTED_QUERY_PARAMS);
+
+    filterWidget().contains("Previous 30 Years");
+    filterWidget().contains("Affiliate");
+
+    cy.wait("@publicQuery");
+    // Name of a city from the expected results
+    cy.findByText("Winner");
   });
 });
 

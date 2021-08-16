@@ -2,6 +2,13 @@
 
 ![Interactive dashboard](images/dashboards/interactive-dashboard.png)
 
+Quick links:
+
+- [Dashboard filters](08-dashboard-filters.md)
+- [Dashboard subscriptions](dashboard-subscriptions.md)
+- [Make your dashboards interactive](interactive-dashboards.md)
+- [Learn how to build great dashboards](https://www.metabase.com/learn/dashboards/index.html)
+
 ### What is a dashboard?
 
 **Dashboards** group questions and present them on a single page. You can think of dashboards as shareable reports that feature a set of related questions.

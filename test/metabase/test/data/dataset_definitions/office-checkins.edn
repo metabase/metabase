@@ -1,5 +1,5 @@
 [["checkins" [{:field-name "person", :base-type :type/Text}
-              {:field-name "timestamp", :base-type :type/DateTime}]
+              {:field-name "timestamp", :base-type :type/DateTimeWithZoneOffset}]
   [["Cam",    #t "2019-01-02T05:30:00.000-07:00"]
    ["Cam",    #t "2019-01-09T05:30:00.000-07:00"]
    ["Kyle",   #t "2019-01-06T08:30:00.000-07:00"]

@@ -1,5 +1,4 @@
 import React from "react";
-import "@testing-library/jest-dom/extend-expect";
 import { render, fireEvent } from "@testing-library/react";
 
 import { Tree } from "metabase/components/tree";
@@ -25,6 +24,10 @@ const data = [
 ];
 
 describe("Tree", () => {
+  beforeAll(() => {
+    window.HTMLElement.prototype.scrollIntoView = jest.fn();
+  });
+
   it("should render collapsed items when selectedId is not specified", () => {
     const { getAllByRole, queryByText } = render(
       <Tree data={data} onSelect={jest.fn()} />,

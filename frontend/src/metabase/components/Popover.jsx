@@ -55,6 +55,7 @@ export default class Popover extends Component {
     targetOffsetX: PropTypes.number,
     targetOffsetY: PropTypes.number,
     onClose: PropTypes.func,
+    containerClassName: PropTypes.string,
     className: PropTypes.string,
     style: PropTypes.object,
     children: PropTypes.oneOfType([
@@ -82,12 +83,13 @@ export default class Popover extends Component {
     sizeToFit: false,
     autoWidth: false,
     noOnClickOutsideWrapper: false,
+    containerClassName: "",
   };
 
   _getPopoverElement(isOpen) {
     if (!this._popoverElement && isOpen) {
       this._popoverElement = document.createElement("span");
-      this._popoverElement.className = "PopoverContainer";
+      this._popoverElement.className = `PopoverContainer ${this.props.containerClassName}`;
       document.body.appendChild(this._popoverElement);
       this._timer = setInterval(() => {
         const { width, height } = this._popoverElement.getBoundingClientRect();
