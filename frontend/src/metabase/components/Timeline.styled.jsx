@@ -20,7 +20,7 @@ export const TimelineItem = styled.div`
 
 export const ItemIcon = styled(Icon)`
   position: relative;
-  color: ${color("text-light")};
+  color: ${props => (props.color ? color(props.color) : color("text-light"))};
 `;
 
 export const ItemBody = styled.div`
