@@ -719,8 +719,10 @@
    needed. The graph is revisioned, so if it has been updated by a third party since you fetched it this function will
    fail and return a 409 (Conflict) exception. If nothing needs to be done, this function returns `nil`; otherwise it
    returns the newly created `PermissionsRevision` entry."
-  ([new-graph :- StrictPermissionsGraph]
-   (let [old-graph (graph)
+  ([new-graph :- StrictPermissionsGraph
+    group-id  :- (s/maybe su/IntGreaterThanZero)
+    db-id     :- (s/maybe su/IntGreaterThanZero)]
+   (let [old-graph (graph group-id db-id)
          [old new] (data/diff (:groups old-graph) (:groups new-graph))
          old       (or old {})]
      (when (or (seq old) (seq new))
@@ -731,6 +733,9 @@
            (update-group-permissions! group-id changes))
          (save-perms-revision! (:revision old-graph) old new)
          (delete-sandboxes/delete-gtaps-if-needed-after-permissions-change! new)))))
+
+  ([new-graph :- StrictPermissionGraph]
+   (update-graph! new-graph nil nil))
 
   ;; The following arity is provided soley for convenience for tests/REPL usage
   ([ks :- [s/Any], new-value]

@@ -41,6 +41,7 @@
   modifies it before you can submit you revisions, the endpoint will instead make no changes and return a
   409 (Conflict) response. In this case, you should fetch the updated graph and make desired changes to that."
   [:as {body :body}]
+  ;;;; some shit with the group id and db id...
   {body su/Map}
   (api/check-superuser)
   (perms/update-graph! (pg/converted-json->graph ::pg/data-permissions-graph body))
