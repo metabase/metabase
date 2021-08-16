@@ -90,7 +90,7 @@ function categorical_donut (rows, colors) {
   ;; todo is this thread safe? Should we have a resource pool on top of this? Or create them fresh for each invocation
   (delay (static-viz-context)))
 
-(defn post-process
+(defn- post-process
   "Mutate in place the elements of the svg document. Remove the fill=transparent attribute in favor of
   fill-opacity=0.0. Our svg image renderer only understands the latter. Mutation is unfortunately necessary as the
   underlying tree of nodes is inherently mutable"
@@ -106,7 +106,10 @@ function categorical_donut (rows, colors) {
         (recur s'))))
   svg-document)
 
-(defn fix-fill [^Node node]
+(defn- fix-fill
+  "The batik svg renderer does not understand fill=\"transparent\" so we must change that to
+  fill-opacity=\"0.0\". Previously was just doing a string replacement but now is a proper tree walk fix."
+  [^Node node]
   (letfn [(element? [x] (instance? Element x))]
     (if (and (element? node)
              (.hasAttribute ^Element node "fill")

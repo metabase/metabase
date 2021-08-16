@@ -18,8 +18,8 @@
 (deftest post-process-test
   (let [svg   "<svg ><g><line/></g><g><rect/></g><g><circle/></g></svg>"
         nodes (atom [])]
-    (js-svg/post-process (parse-svg svg)
-                         (fn [^Node node] (swap! nodes conj (.getNodeName node))))
+    (#'js-svg/post-process (parse-svg svg)
+                           (fn [^Node node] (swap! nodes conj (.getNodeName node))))
     (is (= ["svg" "g" "line" "g" "rect" "g" "circle"] @nodes))))
 
 (binding [*test-out* *out*] (post-process-test))
@@ -36,7 +36,7 @@
     (is (= (.getAttribute line "fill") "transparent"))
     ;; unfortunately these objects are mutable. It does return the line but want to emphasize that is works by
     ;; mutation
-    (js-svg/fix-fill line)
+    (#'js-svg/fix-fill line)
     (is (not (.hasAttribute line "fill")))
     (is (.hasAttribute line "fill-opacity"))
     (is (= (.getAttribute line "fill-opacity") "0.0"))))
