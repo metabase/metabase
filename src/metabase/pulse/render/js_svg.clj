@@ -125,6 +125,12 @@ function categorical_donut (rows, colors) {
     (with-open [is (ByteArrayInputStream. (.getBytes s StandardCharsets/UTF_8))]
       (.createDocument factory "file:///fake.svg" is))))
 
+(def svg-render-width
+  "Width to render svg images. Intentionally large to improve quality. Consumers should be aware and resize as
+  needed. Email should include width tags; slack automatically resizes inline and provides a nice detail view when
+  clicked."
+  (float 1200))
+
 (defn- render-svg
   ^bytes [^SVGOMDocument svg-document]
   (with-open [os (ByteArrayOutputStream.)]
@@ -132,7 +138,7 @@ function categorical_donut (rows, colors) {
           in                           (TranscoderInput. fixed-svg-doc)
           out                          (TranscoderOutput. os)
           transcoder                   (PNGTranscoder.)]
-      (.addTranscodingHint transcoder PNGTranscoder/KEY_WIDTH (float 1200))
+      (.addTranscodingHint transcoder PNGTranscoder/KEY_WIDTH svg-render-width)
       (.transcode transcoder in out))
     (.toByteArray os)))
 

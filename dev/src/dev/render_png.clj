@@ -58,7 +58,8 @@
                                              :card-id     card-id}))
         png-bytes                        (pulse-render/render-pulse-card-to-png (pulse/defaulted-timezone card)
                                                                                 card
-                                                                                query-results)
+                                                                                query-results
+                                                                                1000)
         tmp-file                         (java.io.File/createTempFile "card-png" ".png")]
     (with-open [w (java.io.FileOutputStream. tmp-file)]
       (.write w ^bytes png-bytes))
