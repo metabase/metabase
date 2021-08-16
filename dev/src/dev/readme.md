@@ -51,4 +51,4 @@ An example chart.html is
 </div>
 ```
 
-Save this at the top level of the repo and it will find it.
+This file should be saved at the root of the repository for the call to `preview-html` to find it.
