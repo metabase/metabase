@@ -113,7 +113,7 @@ function CollectionIcon({ item }) {
     iconProps.width = 20;
     iconProps.height = 24;
   }
-  return <Icon {...iconProps} />;
+  return <Icon {...iconProps} tooltip={null} />;
 }
 
 const ModelIconComponentMap = {
