@@ -22,7 +22,10 @@ const propTypes = {
   depth: PropTypes.number.isRequired,
   item: PropTypes.shape({
     name: PropTypes.string.isRequired,
-    icon: PropTypes.oneOfType([PropTypes.string, iconPropTypes]),
+    icon: PropTypes.oneOfType([
+      PropTypes.string,
+      PropTypes.shape(iconPropTypes),
+    ]),
     hasRightArrow: PropTypes.string,
     id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   }).isRequired,

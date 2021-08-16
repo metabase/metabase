@@ -10,7 +10,8 @@ import { ItemRoot, ItemIcon, ItemTitle } from "./SelectListItem.styled";
 const propTypes = {
   id: PropTypes.string.isRequired,
   name: PropTypes.string.isRequired,
-  icon: PropTypes.oneOfType([PropTypes.string, iconPropTypes]).isRequired,
+  icon: PropTypes.oneOfType([PropTypes.string, PropTypes.shape(iconPropTypes)])
+    .isRequired,
   iconColor: PropTypes.string,
   onSelect: PropTypes.func.isRequired,
   isSelected: PropTypes.bool,
