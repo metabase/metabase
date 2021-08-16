@@ -281,3 +281,13 @@ describe("scenarios > admin > databases > add", () => {
     });
   });
 });
+
+function chooseDatabase(database) {
+  cy.contains("Database type")
+    .parents(".Form-field")
+    .find(".AdminSelect")
+    .click();
+  popover()
+    .contains(database)
+    .click({ force: true });
+}
