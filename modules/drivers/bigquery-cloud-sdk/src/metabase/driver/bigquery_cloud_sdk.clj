@@ -17,8 +17,8 @@
             [schema.core :as s])
   (:import com.google.auth.oauth2.ServiceAccountCredentials
            [com.google.cloud.bigquery BigQuery BigQuery$JobOption BigQuery$TableListOption BigQuery$TableOption
-                                      BigQueryOptions EmptyTableResult Field FieldValue FieldValueList
-                                      QueryJobConfiguration Schema Table TableResult]
+                                      BigQueryOptions DatasetId EmptyTableResult Field FieldValue FieldValueList
+                                      QueryJobConfiguration Schema Table TableId TableResult]
            java.io.ByteArrayInputStream
            java.util.Collections))
 
@@ -43,11 +43,9 @@
   (ServiceAccountCredentials/fromStream (ByteArrayInputStream. (.getBytes service-account-json))))
 
 (defn- ^BigQuery database->client
-  [{{:keys [project-id]} :details, :as database}]
+  [database]
   (let [creds   (database->service-account-credential database)
-        proj-id (or project-id (.getProjectId creds)) ; project ID from DB config, or creds
         bq-bldr (doto (BigQueryOptions/newBuilder)
-                  (.setProjectId proj-id)
                   (.setCredentials (.createScoped creds (Collections/singletonList bigquery-scope))))]
     (.. bq-bldr build getService)))
 
@@ -57,9 +55,9 @@
 
 (defn- ^Iterable list-tables
   "Fetch all tables (new pages are loaded automatically by the API)."
-  ([{{:keys [dataset-id]} :details, :as database}]
+  ([{{:keys [project-id dataset-id]} :details, :as database}]
    (let [bq (database->client database)]
-     (list-tables bq dataset-id)))
+     (list-tables bq project-id dataset-id)))
 
   #_([{{:keys [project-id dataset-id]} :details, :as database}, ^String page-token-or-nil]
      ;; RAR 2020-May-11 - this gets messy, because this function is used to determine if we
@@ -71,9 +69,9 @@
      (let [bq (database->client database)]
       (list-tables db-client project-id dataset-id page-token-or-nil)))
 
-  ([^BigQuery client, ^String dataset-id]
+  ([^BigQuery client, ^String project-id ^String dataset-id]
    {:pre [client (not (str/blank? dataset-id))]}
-   (.iterateAll (.listTables client dataset-id (u/varargs BigQuery$TableListOption [])))))
+   (.iterateAll (.listTables client (DatasetId/of project-id dataset-id) (u/varargs BigQuery$TableListOption [])))))
 
 (defmethod driver/describe-database :bigquery-cloud-sdk
   [_ database]
@@ -94,11 +92,13 @@
     (.. table-iter iterator hasNext)))
 
 (s/defn get-table :- Table
-  ([{{:keys [dataset-id]} :details, :as database} table-id]
-   (get-table (database->client database) dataset-id table-id))
+  ([{{:keys [project-id dataset-id]} :details, :as database} table-id]
+   (get-table (database->client database) project-id dataset-id table-id))
 
-  ([client :- BigQuery, dataset-id :- su/NonBlankString, table-id :- su/NonBlankString]
-   (.getTable client dataset-id table-id (make-array BigQuery$TableOption 0))))
+  ([client :- BigQuery, project-id :- (s/maybe su/NonBlankString), dataset-id :- su/NonBlankString, table-id :- su/NonBlankString]
+   (if project-id
+     (.getTable client (TableId/of project-id dataset-id table-id) (make-array BigQuery$TableOption 0))
+     (.getTable client dataset-id table-id (make-array BigQuery$TableOption 0)))))
 
 (defn- bigquery-type->base-type [field-type]
   (case field-type

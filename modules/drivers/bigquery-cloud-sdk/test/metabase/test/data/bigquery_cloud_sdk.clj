@@ -44,12 +44,16 @@
      (fn [acc env-var]
        (assoc acc env-var (tx/db-test-env-var :bigquery-cloud-sdk env-var)))
      {}
-     [:project-id :client-id :client-secret :access-token :refresh-token :service-account-json]))
+     [:project-id :service-account-json]))
 
 (defn project-id
-  "BigQuery project ID that we're using for tests, from the env var `MB_BIGQUERY_TEST_PROJECT_ID`."
+  "BigQuery project ID that we're using for tests, either from the env var `MB_BIGQUERY_TEST_PROJECT_ID`, or if that is
+  not set, from the BigQuery client instance itself (which ultimately comes from the value embedded in the service
+  account JSON)."
   ^String []
-  (:project-id (test-db-details)))
+  (let [details (test-db-details)
+        bq      (bigquery)]
+    (or (:project-id details) (.. bq getOptions getProjectId))))
 
 (defn- bigquery
   "Get an instance of a `Bigquery` client."

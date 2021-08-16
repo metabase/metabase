@@ -30,22 +30,36 @@
            metabase.driver.common.parameters.FieldFilter
            metabase.util.honeysql_extensions.Identifier))
 
-;; TODO -- I think this only applied to Fields now -- see
-;; https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language. It definitely doesn't apply
-;; to Tables. Datasets can be passed as `dataset-id` or `project-id`.`dataset-id`.
-(defn- valid-bigquery-identifier?
-  "Is String `s` a valid BigQuery identifier? Identifiers are only allowed to contain letters, numbers, and underscores,
-  cannot start with a number, and can be at most 1054 characters long (30 for maximum length of project names and 1024
-  for dataset)."
+(defn- valid-project-identifier?
+  "Is String `s` a valid BigQuery project identifier (a.k.a. project-id)? Identifiers are only allowed to contain
+  letters, numbers, and underscores, cannot start with a number, and for project-id, can be at most 30 characters long."
+  [s]
+  (boolean (or (nil? s)
+               (and (string? s)
+                 (re-matches #"^[a-zA-Z_0-9\.\-]{1,30}$" s)))))
+
+(def ^:private ProjectIdentifierString
+  (s/pred valid-project-identifier? "Valid BigQuery project-id"))
+
+(defn- valid-dataset-identifier?
+  "Is String `s` a valid BigQuery dataset identifier (a.k.a. dataset-id)? Identifiers are only allowed to contain
+  letters, numbers, and underscores, cannot start with a number, and for dataset-id, can be at most 1024 characters
+  long."
   [s]
   (boolean (and (string? s)
-                (re-matches #"^[a-zA-Z_0-9\.\-]{1,1054}$" s))))
+                (re-matches #"^[a-zA-Z_0-9\.\-]{1,1024}$" s))))
 
-(def ^:private BigQueryIdentifierString
-  (s/pred valid-bigquery-identifier? "Valid BigQuery identifier"))
+(def ^:private DatasetIdentifierString
+  (s/pred valid-dataset-identifier? "Valid BigQuery dataset-id"))
 
-(s/defn ^:private dataset-name-for-current-query :- BigQueryIdentifierString
-  "Fetch the dataset name for the database associated with this query, needed because BigQuery requires you to qualify
+(s/defn ^:private project-id-for-current-query :- ProjectIdentifierString
+  "Fetch the project-id for the current database associated with this query, if defined.."
+  []
+  (when (qp.store/initialized?)
+    (some-> (qp.store/database) :details :project-id)))
+
+(s/defn ^:private dataset-id-for-current-query :- DatasetIdentifierString
+  "Fetch the dataset-id for the database associated with this query, needed because BigQuery requires you to qualify
   identifiers with it. This is primarily called automatically for the `to-sql` implementation of the
   `BigQueryIdentifier` record type; see its definition for more details."
   []
@@ -460,7 +474,11 @@
     identifier
     (-> identifier
         (update :components (fn [[table & more]]
-                              (cons (str (dataset-name-for-current-query) \. table)
+                              (cons (str (when-let [proj-id (project-id-for-current-query)]
+                                           (str proj-id \.))
+                                         (dataset-id-for-current-query)
+                                         \.
+                                         table)
                                     more)))
         (vary-meta assoc ::already-qualified? true))))
 

@@ -3,13 +3,14 @@
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
             [metabase.driver.bigquery-cloud-sdk :as bigquery]
-            [metabase.models :refer [Field Table]]
+            [metabase.models :refer [Database Field Table]]
             [metabase.query-processor :as qp]
             [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
             [metabase.test.util :as tu]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [toucan.db :as db]))
 
 (deftest table-rows-sample-test
   (mt/test-driver
@@ -45,16 +46,16 @@
                              (constantly conj))
                            (sort-by first)
                            (take 5))]
-         (is (= [[1 "Red Medicine"]
-                 [2 "Stout Burgers & Beers"]
-                 [3 "The Apple Pan"]
-                 [4 "Wurstküche"]
-                 [5 "Brite Spot Family Restaurant"]]
-                actual))
-         ;; the `(sort-by)` above will cause the entire resultset to be realized, so
-         ;; we want to make sure that it really did retrieve 25 rows per request
-         ;; this only works if the timeout has been temporarily set to 0 (see above)
-         (is (= 4 @pages-retrieved))))))))
+           (is (= [[1 "Red Medicine"]
+                   [2 "Stout Burgers & Beers"]
+                   [3 "The Apple Pan"]
+                   [4 "Wurstküche"]
+                   [5 "Brite Spot Family Restaurant"]]
+                  actual))
+           ;; the `(sort-by)` above will cause the entire resultset to be realized, so
+           ;; we want to make sure that it really did retrieve 25 rows per request
+           ;; this only works if the timeout has been temporarily set to 0 (see above)
+           (is (= 4 @pages-retrieved))))))))
 
 (deftest db-timezone-id-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -100,7 +101,7 @@
           "`describe-tables` should see the fields in the view")
       (sync/sync-database! (mt/db))
       (testing "We should be able to run queries against the view (#3414)"
-        (is (= [[1 "Red Medicine" "Asian" ]
+        (is (= [[1 "Red Medicine" "Asian"]
                 [2 "Stout Burgers & Beers" "Burger"]
                 [3 "The Apple Pan" "Burger"]]
                (mt/rows
@@ -128,3 +129,48 @@
         (testing "Should return the error *before* the query timeout"
           (let [duration-ms (- (System/currentTimeMillis) before-ms)]
             (is (< duration-ms (u/seconds->ms @#'bigquery/*query-timeout-seconds*)))))))))
+
+(deftest project-id-override-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "Querying a different project-id works"
+      (mt/with-temp Database [temp-db {:engine  :bigquery-cloud-sdk
+                                       :details (-> (:details (mt/db))
+                                                    (assoc :project-id "bigquery-public-data"
+                                                           :dataset-id "chicago_taxi_trips"))}]
+        (mt/with-db temp-db
+          (testing " for sync"
+            (sync/sync-database! temp-db)
+            (let [[tbl & more-tbl] (db/select Table :db_id (u/the-id temp-db))]
+              (is (some? tbl))
+              (is (nil? more-tbl))
+              (is (= "taxi_trips" (:name tbl)))
+              ;; make sure all the fields for taxi_tips were synced
+              (is (= 23 (db/count Field :table_id (u/the-id tbl))))))
+          (testing " for querying"
+            (is (= ["67794e631648a002f88d4b7f3ab0bcb6a9ed306a"
+                    "1d7ade2f592e1c98f5d34e9e1ef452fae2c76a65e1002a04d1f5262bb47aeb2060332673825208955ed5e35dab5a07b7f69ec1745fe209d4b9ad60560a9e9896"
+                    "2014-01-12T00:45:00Z"
+                    "2014-01-12T00:45:00Z"
+                    0
+                    0.0
+                    17031062300
+                    nil
+                    6
+                    nil
+                    0.07
+                    0.0
+                    0.0
+                    0.0
+                    0.07
+                    "Cash"
+                    "Top Cab Affiliation"
+                    41.9416281
+                    -87.661443368
+                    "POINT (-87.6614433685 41.9416281)"
+                    nil
+                    nil
+                    nil]
+                   (mt/first-row
+                     (mt/run-mbql-query taxi_trips
+                       {:filter [:= [:field (mt/id :taxi_trips :unique_key) nil]
+                                    "67794e631648a002f88d4b7f3ab0bcb6a9ed306a"]}))))))))))

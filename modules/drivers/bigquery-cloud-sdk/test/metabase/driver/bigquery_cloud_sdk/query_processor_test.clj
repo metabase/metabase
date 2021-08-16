@@ -219,28 +219,28 @@
 ;; if I run a BigQuery query with include-user-id-and-hash set to false, does it get a remark added to it?
 (deftest remove-remark-test
   (mt/test-driver :bigquery-cloud-sdk
-    (is (=  (str
+    (is (= (str
             "SELECT `v3_test_data.venues`.`id` AS `id`,"
             " `v3_test_data.venues`.`name` AS `name` "
             "FROM `v3_test_data.venues` "
             "LIMIT 1")
-    (tt/with-temp* [Database [db {:engine :bigquery-cloud-sdk
-                                  :details (assoc (:details (mt/db))
-                                                  :include-user-id-and-hash false)}]
-                    Table    [table {:name "venues" :db_id (u/the-id db)}]
-                    Field    [_     {:table_id (u/the-id table)
-                                    :name "id"
-                                    :base_type "type/Integer"}]
-                    Field    [_     {:table_id (u/the-id table)
-                                    :name "name"
-                                    :base_type "type/Text"}]]
-      (query->native
-        {:database (u/the-id db)
-        :type     :query
-        :query    {:source-table (u/the-id table)
-                    :limit        1}
-        :info     {:executed-by 1000
-                    :query-hash  (byte-array [1 2 3 4])}}))))))
+           (tt/with-temp* [Database [db    {:engine :bigquery-cloud-sdk
+                                            :details (assoc (:details (mt/db))
+                                                            :include-user-id-and-hash false)}]
+                           Table    [table {:name "venues" :db_id (u/the-id db)}]
+                           Field    [_     {:table_id (u/the-id table)
+                                            :name "id"
+                                            :base_type "type/Integer"}]
+                           Field    [_     {:table_id (u/the-id table)
+                                            :name "name"
+                                            :base_type "type/Text"}]]
+             (query->native
+               {:database (u/the-id db)
+                :type     :query
+                :query    {:source-table (u/the-id table)
+                           :limit        1}
+                :info     {:executed-by 1000
+                           :query-hash  (byte-array [1 2 3 4])}}))))))
 
 (deftest unprepare-params-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -622,8 +622,8 @@
             (testing (format "%s field" field-type)
               (is (= [expected-sql]
                      (hsql/format {:where (sql.qp/->honeysql :bigquery-cloud-sdk [:=
-                                                                        [:field (:id f) {:temporal-unit unit}]
-                                                                        [:relative-datetime -1 unit]])}))))))))))
+                                                                                  [:field (:id f) {:temporal-unit unit}]
+                                                                                  [:relative-datetime -1 unit]])}))))))))))
 
 ;; This is a table of different BigQuery column types -> temporal units we should be able to bucket them by for
 ;; filtering purposes against RELATIVE-DATETIMES. `relative-datetime` only supports the unit below -- a subset of all
@@ -778,7 +778,7 @@
   (mt/test-driver :bigquery
     (testing "Make sure validation of dataset's name works correctly"
       (testing "acceptable names"
-        (are [name] (= true (#'bigquery.qp/valid-bigquery-identifier? name))
+        (are [name] (= true (#'bigquery.qp/valid-dataset-identifier? name))
                     "0"
                     "a"
                     "_"
@@ -787,7 +787,7 @@
                     "my-fruits.orange"
                     (apply str (repeat 1054 "a"))))
       (testing "rejected names"
-        (are [name] (= false (#'bigquery.qp/valid-bigquery-identifier? name))
+        (are [name] (= false (#'bigquery.qp/valid-dataset-identifier? name))
                     "have:dataset"
                     ""
                     (apply str (repeat 1055 "a")))))))
