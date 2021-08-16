@@ -259,6 +259,10 @@ const TITLE_LOCALES_BN = {
   'school.dashboard.student.repeated.class-wise': {
     'en': 'Statistics of Repeated Students in each Class',
     'bn': 'প্রতি ক্লাসের পুনরাবৃত্তি ছাত্রছাত্রীর পরিসংখ্যান'
+  },
+  'admin.dashboard.census.progress': {
+    'en': 'Progress of Census',
+    'bn': 'শুমারির অগ্রগতি'
   }
 }
 
