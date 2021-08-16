@@ -12,14 +12,14 @@ import { singularize } from "metabase/lib/formatting";
 import { getAggregationOperatorsWithFields } from "metabase/lib/schema_metadata";
 import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
 
-import type { SchemaName } from "metabase-types/types/Table";
-import type StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-
-type EntityType = string; // TODO: move somewhere central
+/**
+ * @typedef { import("./metadata").SchemaName } SchemaName
+ * @typedef { import("./metadata").EntityType } EntityType
+ * @typedef { import("./metadata").StructuredQuery } StructuredQuery
+ */
 
 /** This is the primary way people interact with tables */
 export default class Table extends Base {
-
   hasSchema() {
     return (this.schema_name && this.db && this.db.schemas.length > 1) || false;
   }
@@ -52,7 +52,10 @@ export default class Table extends Base {
     return match ? parseInt(match[1]) : null;
   }
 
-  query(query = {}): StructuredQuery {
+  /**
+   * @returns {StructuredQuery}
+   */
+  query(query = {}) {
     return this.question()
       .query()
       .updateQuery(q => ({ ...q, ...query }));
@@ -124,8 +127,8 @@ export default class Table extends Base {
    * @private
    * @param {string} description
    * @param {Database} db
-   * @param {?Schema} schema
-   * @param {?SchemaName} schema_name - Deprecated: use schema.name
+   * @param {Schema?} schema
+   * @param {SchemaName} [schema_name]
    * @param {Field[]} fields
    * @param {EntityType} entity_type
    */

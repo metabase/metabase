@@ -1,7 +1,10 @@
 import Base from "./Base";
 import Database from "./Database";
 import Table from "./Table";
-import type { Aggregation } from "metabase-types/types/Query";
+
+/**
+ * @typedef { import("./metadata").Aggregation } Aggregation
+ */
 
 /**
  * Wrapper class for a metric. Belongs to a {@link Database} and possibly a {@link Table}
@@ -11,7 +14,10 @@ export default class Metric extends Base {
     return this.name;
   }
 
-  aggregationClause(): Aggregation {
+  /**
+   * @returns {Aggregation}
+   */
+  aggregationClause() {
     return ["metric", this.id];
   }
 
