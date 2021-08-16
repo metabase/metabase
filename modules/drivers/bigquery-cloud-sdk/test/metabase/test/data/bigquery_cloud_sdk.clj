@@ -46,6 +46,11 @@
      {}
      [:project-id :service-account-json]))
 
+(defn- bigquery
+  "Get an instance of a `Bigquery` client."
+  ^BigQuery []
+  (#'bigquery/database->client {:details (test-db-details)}))
+
 (defn project-id
   "BigQuery project ID that we're using for tests, either from the env var `MB_BIGQUERY_TEST_PROJECT_ID`, or if that is
   not set, from the BigQuery client instance itself (which ultimately comes from the value embedded in the service
@@ -54,11 +59,6 @@
   (let [details (test-db-details)
         bq      (bigquery)]
     (or (:project-id details) (.. bq getOptions getProjectId))))
-
-(defn- bigquery
-  "Get an instance of a `Bigquery` client."
-  ^BigQuery []
-  (#'bigquery/database->client {:details (test-db-details)}))
 
 (defmethod tx/dbdef->connection-details :bigquery-cloud-sdk [_ _ {:keys [database-name]}]
   (assoc (test-db-details) :dataset-id (normalize-name :db database-name) :include-user-id-and-hash true))
