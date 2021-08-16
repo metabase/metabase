@@ -14,7 +14,7 @@ describeWithToken("scenarios > saved question moderation", () => {
 
       cy.findByTestId("moderation-verify-action").click();
 
-      cy.findByText("You verified this").should("be.visible");
+      cy.findAllByText("You verified this");
 
       cy.findByPlaceholderText("Search…").type("orders{enter}");
       cy.findByText("Orders, Count").icon("verified");
@@ -30,7 +30,7 @@ describeWithToken("scenarios > saved question moderation", () => {
       cy.findByTestId("moderation-verify-action").click();
       cy.findByTestId("moderation-remove-review-action").click();
 
-      cy.findByText("You verified this").should("not.exist");
+      cy.findByText("You verified this").should("not.be.visible");
       cy.findByTestId("saved-question-header-button").click();
 
       cy.icon("verified").should("not.exist");
@@ -52,10 +52,10 @@ describeWithToken("scenarios > saved question moderation", () => {
       cy.findByText("History").click();
 
       cy.findByTestId("moderation-verify-action").click();
-      cy.findByText("You verified this");
+      cy.findAllByText("You verified this").should("be.visible");
 
       cy.findByTestId("moderation-remove-review-action").click();
-      cy.findByText("You unverified this");
+      cy.findByText("You removed verification").should("be.visible");
     });
   });
 
@@ -79,7 +79,7 @@ describeWithToken("scenarios > saved question moderation", () => {
       cy.icon("verified").should("not.exist");
 
       cy.findByTestId("saved-question-header-button").click();
-      cy.findByText("A moderator verified this").should("not.exist");
+      cy.findByText("Bobby Tables verified this").should("not.exist");
 
       cy.findByPlaceholderText("Search…").type("orders{enter}");
       cy.findByText("Orders, Count, Grouped by Created At (year)")
@@ -99,7 +99,7 @@ describeWithToken("scenarios > saved question moderation", () => {
       cy.icon("verified");
 
       cy.findByTestId("saved-question-header-button").click();
-      cy.findByText("A moderator verified this");
+      cy.findAllByText("Bobby Tables verified this");
 
       cy.findByPlaceholderText("Search…").type("orders{enter}");
       cy.findByText("Orders, Count").icon("verified");
@@ -115,7 +115,7 @@ describeWithToken("scenarios > saved question moderation", () => {
       cy.findByTestId("saved-question-header-button").click();
       cy.findByText("History").click();
 
-      cy.findByText("A moderator verified this");
+      cy.findAllByText("Bobby Tables verified this").should("be.visible");
     });
   });
 });
