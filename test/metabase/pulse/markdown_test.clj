@@ -1,4 +1,6 @@
 (ns metabase.pulse.markdown-test
+  "Tests for processing Markdown to mrkdwn for Slack, and HTML for email. Assertions that are commented
+  out are known discrepencies between the markdown-clj library and the Markdown parser used by the frontend."
   (:require [clojure.test :refer :all]
             [metabase.pulse.markdown :as md]))
 
@@ -45,13 +47,13 @@
     (is (= "> block "             (mrkdwn "> block")))
     (is (= ">block quote "        (mrkdwn ">block\n>quote")))
     (is (= ">block quote "        (mrkdwn ">block\n>quote")))
-    (is (= ">quote \n>• footer" (mrkdwn ">quote\n>- footer"))))
+    (is (= ">quote \n>• footer"   (mrkdwn ">quote\n>- footer"))))
 
   (testing "Links use Slack's syntax, tooltips are dropped, and link formatting is preserved"
-    (is (= "<metabase.com|Metabase>" (mrkdwn "[Metabase](metabase.com)")))
-    (is (= "<metabase.com|Metabase>" (mrkdwn "[Metabase](metabase.com tooltip)")))
-    (is (= "<metabase.com>"          (mrkdwn "<metabase.com>")))
-    (is (= "<metabase.com>"          (mrkdwn "<metabase.com>")))
+    (is (= "<metabase.com|Metabase>"   (mrkdwn "[Metabase](metabase.com)")))
+    (is (= "<metabase.com|Metabase>"   (mrkdwn "[Metabase](metabase.com tooltip)")))
+    (is (= "<metabase.com>"            (mrkdwn "<metabase.com>")))
+    (is (= "<metabase.com>"            (mrkdwn "<metabase.com>")))
     (is (= "<metabase.com|_Metabase_>" (mrkdwn "[*Metabase*](metabase.com)")))
     (is (= "<metabase.com|_Metabase_>" (mrkdwn "[_Metabase_](metabase.com)")))
     (is (= "<metabase.com|*Metabase*>" (mrkdwn "[**Metabase**](metabase.com)")))
@@ -85,4 +87,8 @@
 
   (testing "Images in Markdown are converted to links, with alt text preserved"
     (is (= "<image.png|[Image]>"           (mrkdwn "![](image.png)")))
-    (is (= "<image.png|[Image: alt-text]>" (mrkdwn "![alt-text](image.png)")))))
+    (is (= "<image.png|[Image: alt-text]>" (mrkdwn "![alt-text](image.png)"))))
+
+  (testing "Linked images include link target in parentheses"
+    (is (= "<image.png|[Image]>\n(metabase.com)"           (mrkdwn "[![](image.png)](metabase.com)")))
+    (is (= "<image.png|[Image: alt-text]>\n(metabase.com)" (mrkdwn "[![alt-text](image.png)](metabase.com)")))))

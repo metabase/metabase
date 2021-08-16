@@ -16,6 +16,13 @@
                \‘  "\u00ad`\u00ad"}))
 
 (defn- hickory->mrkdwn
+  "Takes a Hickory data structure representing HTML, and converts it to a mrkdwn string that will render
+  nicely in Slack.
+
+  Primary differences to Markdown:
+    * All headers are just rendered as bold text.
+    * Ordered and unordered lists are printed in plain text.
+    * Inline images are rendered as text that links to the image source, e.g. <image.png|[Image: alt-text]>."
   [{:keys [tag attrs content]}]
   (let [resolved-content (if (string? content)
                            (escape-markdown content)
@@ -45,7 +52,10 @@
       (str "\n>•" joined-content)
 
       :a
-      (str "<" (:href attrs) "|" joined-content ">")
+      (if (= (:tag (first content)) :img)
+        ;; If this is a linked image, add link target on separate line after image placeholder
+        (str joined-content "\n(" (:href attrs) ")")
+        (str "<" (:href attrs) "|" joined-content ">"))
 
       ;; li tags might have nested lists or other elements, which should have their indentation level increased
       :li
@@ -89,6 +99,7 @@
    state])
 
 (defn- markdown-to-html
+  "Wrapper for Markdown parsing that includes escaping HTML entities."
   [markdown]
   (md/md-to-html-string markdown
                         :replacement-transformers (into [escape-html] md.transformers/transformer-vector)))

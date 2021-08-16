@@ -46,7 +46,7 @@
                                                            commons-logging/commons-logging]}
   compojure/compojure                       {:mvn/version "1.6.2"               ; HTTP Routing library built on Ring
                                              :exclusions  [ring/ring-codec]}
-  hickory/hickory                           {:mvn/version "0.7.1"}              ; HTML -> Hiccup conversion
+  hickory/hickory                           {:mvn/version "0.7.1"}              ; HTML parsing
   dk.ative/docjure                          {:mvn/version "1.16.0"              ; excel export
   crypto-random/crypto-random               {:mvn/version "1.2.1"}              ; library for generating cryptographically secure random bytes and strings
                                              :exclusions  [org.apache.poi/poi
