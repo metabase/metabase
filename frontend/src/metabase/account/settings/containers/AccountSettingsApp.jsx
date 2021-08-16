@@ -1,15 +1,16 @@
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { getUser } from "metabase/selectors/user";
+import { getPath } from "../selectors";
 import AccountLayout from "../components/AccountLayout";
 
 const mapStateToProps = (state, props) => ({
-  tab: props.params.splat,
   user: getUser(state),
+  path: getPath(state, props),
 });
 
 const mapDispatchToProps = () => ({
-  onChangeTab: tab => push(`/account/${tab}`),
+  onChangeLocation: push,
 });
 
 export default connect(

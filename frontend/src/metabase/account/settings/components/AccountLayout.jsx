@@ -1,7 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 import AccountHeader from "./AccountHeader";
-import { AccountContent, AccountLayoutRoot } from "./AccountLayout.styled";
+import { AccountContent } from "./AccountLayout.styled";
 
 const propTypes = {
   ...AccountHeader.propTypes,

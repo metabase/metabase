@@ -11,12 +11,12 @@ import {
 } from "./AccountHeader.styled";
 
 const propTypes = {
-  tab: PropTypes.string,
   user: PropTypes.object,
-  onChangeTab: PropTypes.func,
+  path: PropTypes.string,
+  onChangeLocation: PropTypes.func,
 };
 
-const AccountHeader = ({ tab, user, onChangeTab }) => {
+const AccountHeader = ({ user, path, onChangeLocation }) => {
   const hasPasswordChange = useMemo(
     () => PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS.every(f => f(user)),
     [user],
@@ -24,9 +24,11 @@ const AccountHeader = ({ tab, user, onChangeTab }) => {
 
   const tabs = useMemo(
     () => [
-      { name: t`Profile`, value: "details" },
-      ...(hasPasswordChange ? [{ name: t`Password`, value: "password" }] : []),
-      { name: t`Login History`, value: "loginHistory" },
+      { name: t`Profile`, value: "/account/profile" },
+      ...(hasPasswordChange
+        ? [{ name: t`Password`, value: "/account/password" }]
+        : []),
+      { name: t`Login History`, value: "/account/login-history" },
     ],
     [hasPasswordChange],
   );
@@ -38,10 +40,10 @@ const AccountHeader = ({ tab, user, onChangeTab }) => {
         <HeaderTitle>{t`Account settings`}</HeaderTitle>
       </HeaderSection>
       <Radio
-        value={tab}
+        value={path}
         variant="underlined"
         options={tabs}
-        onChange={onChangeTab}
+        onChange={onChangeLocation}
       />
     </AccountHeaderRoot>
   );
