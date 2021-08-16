@@ -35,10 +35,6 @@ You have told Metabase to send email notifications, but:
 2. If so, check your spam folder, any forwarding rules you have set up, etc.
 3. Check whether you are using the same email provider as the people who are receiving their messages. If not, the problem might be with deliverability rules---please look into signing your emails with [DomainKeys Identified Mail][dkim] (DKIM).
 
-## I can't send email via Office365
-
-Some people have [reported problems sending email via Office365][office-365-bug]. We recommend using a different email delivery service if you can. 
-
 [bugs]: ./bugs.html
 [dkim]: https://en.wikipedia.org/wiki/DomainKeys_Identified_Mail
 [office-365-bug]: https://github.com/metabase/metabase/issues/4272
