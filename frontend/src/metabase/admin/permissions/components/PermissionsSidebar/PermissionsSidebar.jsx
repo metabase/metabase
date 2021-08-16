@@ -10,6 +10,8 @@ import Icon from "metabase/components/Icon";
 import Label from "metabase/components/type/Label";
 import Text from "metabase/components/type/Text";
 import { Tree } from "metabase/components/tree";
+import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 
 import { searchItems } from "./utils";
 import {
@@ -55,18 +57,19 @@ export const PermissionsSidebar = memo(function PermissionsSidebar({
   onBack,
 }) {
   const [filter, setFilter] = useState("");
+  const debouncedFilter = useDebouncedValue(filter, SEARCH_DEBOUNCE_DURATION);
 
   const handleFilterChange = text => setFilter(text);
 
   const filteredList = useMemo(() => {
-    const trimmedFilter = filter.trim().toLowerCase();
+    const trimmedFilter = debouncedFilter.trim().toLowerCase();
 
     if (trimmedFilter.length === 0) {
       return null;
     }
 
     return searchItems(entityGroups.flat(), trimmedFilter);
-  }, [entityGroups, filter]);
+  }, [entityGroups, debouncedFilter]);
 
   return (
     <SidebarRoot>

@@ -9,6 +9,8 @@ import Text from "metabase/components/type/Text";
 import TextInput from "metabase/components/TextInput";
 import Icon from "metabase/components/Icon";
 import EmptyState from "metabase/components/EmptyState";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 
 import { PermissionsEditorRoot } from "./PermissionsEditor.styled";
 import { PermissionsEditorBreadcrumbs } from "./PermissionsEditorBreadcrumbs";
@@ -39,11 +41,12 @@ export function PermissionsEditor({
   onAction,
 }) {
   const [filter, setFilter] = useState("");
+  const debouncedFilter = useDebouncedValue(filter, SEARCH_DEBOUNCE_DURATION);
 
   const handleFilterChange = text => setFilter(text);
 
   const filteredEntities = useMemo(() => {
-    const trimmedFilter = filter.trim().toLowerCase();
+    const trimmedFilter = debouncedFilter.trim().toLowerCase();
 
     if (trimmedFilter.length === 0) {
       return null;
@@ -52,7 +55,7 @@ export function PermissionsEditor({
     return entities.filter(entity =>
       entity.name.toLowerCase().includes(trimmedFilter),
     );
-  }, [entities, filter]);
+  }, [entities, debouncedFilter]);
 
   return (
     <PermissionsEditorRoot>
