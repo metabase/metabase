@@ -11,7 +11,7 @@
            [org.apache.batik.transcoder TranscoderInput TranscoderOutput]
            org.apache.batik.transcoder.image.PNGTranscoder
            org.graalvm.polyglot.Context
-           [org.w3c.dom Node Element]))
+           [org.w3c.dom Element Node]))
 
 (def ^:private bundle-path
   "frontend_client/app/dist/lib-static-viz.bundle.js")
