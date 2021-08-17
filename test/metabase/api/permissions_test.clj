@@ -141,11 +141,18 @@
                      :all))
           (is (= :all
                  (get-in (perms/graph) [:groups (u/the-id group) db-id :schemas]))))))
-    (testing "group-id specified"
-      (is (= false true)))
     
-    (testing "db-id specified"
+    (testing "complex but no ids specified"
+      ;;; check the main thing is good
+      ;;; check the other thing is indeed changed
       (is (= false true)))
-    ))
 
-;;
+    (testing "group-id specified"
+      ;;; check the main thing is good
+      ;;; check the other thing is not changed lol
+      (is (= false true)))
+
+    (testing "db-id specified"
+      ;;; check the main thing is good
+      ;;; check the other thing is not changed lol
+      (is (= false true)))))
