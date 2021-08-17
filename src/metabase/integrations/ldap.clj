@@ -138,6 +138,8 @@
   `(do-with-ldap-connection (fn [~(vary-meta connection-binding assoc :tag `LDAPConnectionPool)]
                               ~@body)))
 
+;; TODO -- the usage of `:ERROR` and `:STATUS` like this is weird. Just do something like {::error nil} for success and
+;; {::error exception} for an error
 (def ^:private user-base-error  {:status :ERROR, :message "User search base does not exist or is unreadable"})
 (def ^:private group-base-error {:status :ERROR, :message "Group search base does not exist or is unreadable"})
 

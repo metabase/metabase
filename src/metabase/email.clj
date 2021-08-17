@@ -92,8 +92,7 @@
   {:style/indent 0}
   [{:keys [subject recipients message-type message]} :- EmailMessage]
   (when-not (email-smtp-host)
-    (let [^String msg (tru "SMTP host is not set.")]
-      (throw (Exception. msg))))
+    (throw (Exception. (tru "SMTP host is not set."))))
   ;; Now send the email
   (send-email! (smtp-settings)
     {:from    (email-from-address)
@@ -105,36 +104,49 @@
                 :html        [{:type    "text/html; charset=utf-8"
                                :content message}])}))
 
+(def ^:private SMTPStatus
+  "Schema for the response returned by various functions in [[metabase.email]]. Response will be a map with the key
+  `:metabase.email/error`, which will either be `nil` (indicating no error) or an instance of [[java.lang.Throwable]]
+  with the error."
+  {::error (s/maybe Throwable)})
+
 (defn send-message!
-  "Send an email to one or more `recipients`.
-  `recipients` is a sequence of email addresses; `message-type` must be either `:text` or `:html` or `:attachments`.
+  "Send an email to one or more `:recipients`. `:recipients` is a sequence of email addresses; `:message-type` must be
+  either `:text` or `:html` or `:attachments`.
 
-     (email/send-message!
-       :subject      \"[Metabase] Password Reset Request\"
-       :recipients   [\"cam@metabase.com\"]
-       :message-type :text
-       :message      \"How are you today?\")
+    (email/send-message!
+      :subject      \"[Metabase] Password Reset Request\"
+      :recipients   [\"cam@metabase.com\"]
+      :message-type :text
+      :message      \"How are you today?\")
 
-  Upon success, this returns the `message` that was just sent. This function will catch and log any exception,
-  returning a map with a description of the error"
-  {:style/indent 0}
-  [& {:keys [subject recipients message-type message] :as msg-args}]
+  Upon success, this returns the `:message` that was just sent. (TODO -- confirm this.) This function will catch and
+  log any exception, returning a [[SMTPStatus]]."
+  [& {:as msg-args}]
   (try
     (send-message-or-throw! msg-args)
     (catch Throwable e
       (log/warn e (trs "Failed to send email"))
-      {:error   :ERROR ; Huh?
-       :message (.getMessage e)})))
+      {::error e})))
 
-(defn- run-smtp-test
-  "tests an SMTP configuration by attempting to connect and authenticate
-   if an authenticated method is passed in :security."
-  [{:keys [host port user pass sender security] :as details}]
+(def ^:private SMTPSettings
+  {:host                      su/NonBlankString
+   :port                      su/IntGreaterThanZero
+   ;; TODO -- not sure which of these other ones are actually required or not, and which are optional.
+   (s/optional-key :user)     (s/maybe s/Str)
+   (s/optional-key :security) (s/maybe (s/enum :tls :ssl :none :starttls))
+   (s/optional-key :pass)     (s/maybe s/Str)
+   (s/optional-key :sender)   (s/maybe s/Str)})
+
+(s/defn ^:private test-smtp-settings :- SMTPStatus
+  "Tests an SMTP configuration by attempting to connect and authenticate if an authenticated method is passed
+  in `:security`."
+  [{:keys [host port user pass sender security], :as details} :- SMTPSettings]
   {:pre [(string? host)
          (integer? port)]}
   (try
-    (let [ssl?      (= security "ssl")
-          proto     (if ssl? "smtps" "smtp")
+    (let [ssl?    (= (keyword security) :ssl)
+          proto   (if ssl? "smtps" "smtp")
           details (-> details
                       (assoc :proto proto
                              :connectiontimeout "1000"
@@ -144,47 +156,57 @@
                     (.setDebug false))]
       (with-open [transport (.getTransport session proto)]
         (.connect transport host port user pass)))
-    {:error   :SUCCESS
-     :message nil}
+    {::error nil}
     (catch Throwable e
       (log/error e (trs "Error testing SMTP connection"))
-      {:error   :ERROR
-       :message (.getMessage e)})))
+      {::error e})))
 
-(def ^:private email-security-order ["tls" "starttls" "ssl"])
+(def ^:private email-security-order [:tls :starttls :ssl])
 
-(defn- guess-smtp-security
+(def ^:private retry-delay-ms
+  "Amount of time to wait between retrying SMTP connections with different security options. This delay exists to keep
+  us from getting banned on Outlook.com."
+  500)
+
+(s/defn ^:private guess-smtp-security :- (s/maybe (s/enum :tls :starttls :ssl))
   "Attempts to use each of the security methods in security order with the same set of credentials. This is used only
   when the initial connection attempt fails, so it won't overwrite a functioning configuration. If this uses something
-  other than the provided method, a warning gets printed on the config page"
-  [details]
-  (loop [[security-type & more-to-try] email-security-order] ;; make sure this is not lazy, or chunking
-    (when security-type                                      ;; can cause some servers to block requests
-      (let [test-result (run-smtp-test (assoc details :security security-type))]
-        (if (not= :ERROR (:error test-result))
-          (assoc test-result :security security-type)
-          (do
-            (Thread/sleep 500) ;; try not to get banned from outlook.com
-            (recur more-to-try)))))))
+  other than the provided method, a warning gets printed on the config page.
 
-(defn test-smtp-connection
+  If unable to connect with any security method, returns `nil`. Otherwise returns the security method that we were
+  able to connect successfully with."
+  [details :- SMTPSettings]
+  ;; make sure this is not lazy, or chunking can cause some servers to block requests
+  (some
+   (fn [security-type]
+     (if-not (::error (test-smtp-settings (assoc details :security security-type)))
+       security-type
+       (do
+         (Thread/sleep retry-delay-ms) ; Try not to get banned from outlook.com
+         nil)))
+   email-security-order))
+
+(s/defn test-smtp-connection :- (s/conditional
+                                 ::error SMTPStatus
+                                 :else   SMTPSettings)
   "Test the connection to an SMTP server to determine if we can send emails.
 
-   Takes in a dictionary of properties such as:
-       {:host     \"localhost\"
-        :port     587
-        :user     \"bigbird\"
-        :pass     \"luckyme\"
-        :sender   \"foo@mycompany.com\"
-        :security \"tls\"}"
-  [details]
-  (let [inital-attempt (run-smtp-test details)
-        it-worked?     (= :SUCCESS (:error inital-attempt))
-        attempted-fix  (if (not it-worked?)
-                         (guess-smtp-security details))
-        we-fixed-it?     (= :SUCCESS (:error attempted-fix))]
-    (if it-worked?
-      inital-attempt
-      (if we-fixed-it?
-        attempted-fix
-        inital-attempt))))
+  Takes in a dictionary of properties such as:
+
+    {:host     \"localhost\"
+     :port     587
+     :user     \"bigbird\"
+     :pass     \"luckyme\"
+     :sender   \"foo@mycompany.com\"
+     :security :tls}
+
+  Attempts to connect with different `:security` options. If able to connect successfully, returns
+  working [[SMTPSettings]]. If unable to connect with any `:security` options, returns an [[SMTPStatus]] with the
+  `::error`."
+  [{:keys [port security], :as details} :- SMTPSettings]
+  (let [initial-attempt (test-smtp-settings details)]
+    (if-not (::error initial-attempt)
+      details
+      (if-let [working-security-type (guess-smtp-security details)]
+        (assoc details :security working-security-type)
+        initial-attempt))))
