@@ -38,7 +38,7 @@ function DataStep({ color, query, databases, updateQuery }) {
       />
       {table && query.isRaw() && (
         <DataFieldsPicker
-          className="ml-auto mb1 text-bold"
+          className="ml-auto text-bold"
           query={query}
           updateQuery={updateQuery}
         />

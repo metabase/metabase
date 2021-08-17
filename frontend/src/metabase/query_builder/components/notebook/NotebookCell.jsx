@@ -14,13 +14,8 @@ export const NotebookCell = styled(Flex).attrs({
 })`
   border-radius: 8px;
   background-color: ${props => alpha(props.color, 0.1)};
+  padding: 14px;
 `;
-
-NotebookCell.defaultProps = {
-  px: 2,
-  pt: 2,
-  pb: 1,
-};
 
 NotebookCell.displayName = "NotebookCell";
 
@@ -28,6 +23,7 @@ const NotebookCellItemContainer = styled(Flex).attrs({ align: "center" })`
   font-weight: bold;
   color: ${props => (props.inactive ? props.color : "white")};
   border-radius: 6px;
+  margin-right: 4px;
 
   border: 2px solid transparent;
   border-color: ${props =>
@@ -44,15 +40,10 @@ const NotebookCellItemContainer = styled(Flex).attrs({ align: "center" })`
   }
 `;
 
-NotebookCellItemContainer.defaultProps = {
-  mr: 1,
-  mb: 1,
-};
-
 const NotebookCellItemContentContainer = styled.div`
   display: flex;
   align-items: center;
-  padding: 8px;
+  padding: 10px;
   background-color: ${props => (props.inactive ? "transparent" : props.color)};
 
   &:hover {
@@ -127,9 +118,5 @@ export const NotebookCellAdd = styled(NotebookCellItem).attrs({
   children: ({ initialAddText }) =>
     initialAddText || <Icon name="add" className="text-white" />,
 })``;
-
-NotebookCellAdd.defaultProps = {
-  mb: 1,
-};
 
 NotebookCellAdd.displayName = "NotebookCellAdd";

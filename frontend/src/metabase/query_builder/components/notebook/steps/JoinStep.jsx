@@ -211,7 +211,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
 
       {join.isValid() && (
         <JoinFieldsPicker
-          className="mb1 ml-auto text-bold"
+          className="ml-auto text-bold"
           join={join}
           updateQuery={updateQuery}
         />
