@@ -34,11 +34,11 @@
    IndentedCodeBlock :codeblock
    BlockQuote        :blockquote
    Link              :link
-   Reference         :reference
-   LinkRef           :link-ref
-   ImageRef          :image-ref
+   Reference         :reference ;; TODO
+   LinkRef           :link-ref ;; TODO
+   ImageRef          :image-ref ;; TODO
    Image             :image
-   AutoLink          :auto-link})
+   AutoLink          :auto-link}) ;; TODO
 
 (defn- node-to-tag
   [node]
@@ -162,7 +162,6 @@
 
       :paragraph
       (str joined-content "\n")
-      ; joined-content
 
       :soft-line-break
       " "

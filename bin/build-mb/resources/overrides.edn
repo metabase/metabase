@@ -27,6 +27,7 @@
                                "jersey-servlet" {:resource "GPL1_1.txt"}}
  "com.sun.jersey.contribs"    {"jersey-guice" {:resource "GPL1_1.txt"}}
  "com.thoughtworks.paranamer" {"paranamer" {:resource "BSD.txt"}}
+ "com.vladsch.flexmark"       {"flexmark"  {:resource "BSD.txt"}}
  "javax.servlet.jsp"          {"jsp-api" {:resource "GPL2_0.txt"}}
 
  "org.openid4java"        {"openid4java-nodeps" {:resource "apache2_0.txt"}},
