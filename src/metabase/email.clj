@@ -115,10 +115,10 @@
   either `:text` or `:html` or `:attachments`.
 
     (email/send-message!
-      :subject      \"[Metabase] Password Reset Request\"
-      :recipients   [\"cam@metabase.com\"]
-      :message-type :text
-      :message      \"How are you today?\")
+     :subject      \"[Metabase] Password Reset Request\"
+     :recipients   [\"cam@metabase.com\"]
+     :message-type :text
+     :message      \"How are you today?\")
 
   Upon success, this returns the `:message` that was just sent. (TODO -- confirm this.) This function will catch and
   log any exception, returning a [[SMTPStatus]]."
