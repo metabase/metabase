@@ -127,9 +127,23 @@
           (is (= expected
                  (u/slugify s))))))))
 
+(deftest full-exception-chain-test
+  (testing "No causes"
+    (let [e (ex-info "A" {:a 1})]
+      (is (= ["A"]
+             (map ex-message (u/full-exception-chain e))))
+      (is (= [{:a 1}]
+             (map ex-data (u/full-exception-chain e))))))
+  (testing "w/ causes"
+    (let [e (ex-info "A" {:a 1} (ex-info "B" {:b 2} (ex-info "C" {:c 3})))]
+      (is (= ["A" "B" "C"]
+             (map ex-message (u/full-exception-chain e))))
+      (is (= [{:a 1} {:b 2} {:c 3}]
+             (map ex-data (u/full-exception-chain e)))))))
+
 (deftest select-nested-keys-test
   (mt/are+ [m keyseq expected] (= expected
-                               (u/select-nested-keys m keyseq))
+                                  (u/select-nested-keys m keyseq))
     {:a 100, :b {:c 200, :d 300}}              [:a [:b :d] :c]   {:a 100, :b {:d 300}}
     {:a 100, :b {:c 200, :d 300}}              [:b]              {:b {:c 200, :d 300}}
     {:a 100, :b {:c 200, :d 300}}              [[:b :c :d]]      {:b {:c 200, :d 300}}

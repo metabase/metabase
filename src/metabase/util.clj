@@ -431,9 +431,9 @@
    (str/join (take max-length (slugify s)))))
 
 (defn full-exception-chain
-  "Gather the full exception chain into a single vector."
+  "Gather the full exception chain into a sequence."
   [e]
-  (take-while some? (iterate #(.getCause ^Throwable %) e)))
+  (take-while some? (iterate ex-cause e)))
 
 (defn all-ex-data
   "Like `ex-data`, but merges `ex-data` from causes. If duplicate keys exist, the keys from the highest level are
