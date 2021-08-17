@@ -67,10 +67,6 @@ const DASHBOARD = {
   REGULAR: dashboard({ id: 1, name: "Regular dashboard" }),
 };
 
-const store = getStore({
-  currentUser: () => CURRENT_USER,
-});
-
 function mockCollectionEndpoint() {
   xhrMock.get("/api/collection", {
     body: JSON.stringify(Object.values(COLLECTION)),
@@ -112,6 +108,10 @@ async function setup({ models = ["dashboard"], ...props } = {}) {
   mockCollectionItemsEndpoint();
 
   const onChange = jest.fn();
+
+  const store = getStore({
+    currentUser: () => CURRENT_USER,
+  });
 
   render(
     <Provider store={store}>
