@@ -10,8 +10,8 @@ You have told Metabase to send email notifications, but:
 
 **Steps to take:**
 
-1. In the Admin Panel, select "Email Settings" and check the settings.
-2. If they seem correct, click "Send test email".
+1. In the Admin Panel, select **Email Settings** and check the settings.
+2. If they seem correct, click **Send test email**.
 3. Verify that the email is delivered to the test account.
 4. If the message is not sent or an error message is displayed in Metabase, try to use the same account credentials in another email program and see if they work. If they do, you may have found a bug---please [report it][bugs].
 
