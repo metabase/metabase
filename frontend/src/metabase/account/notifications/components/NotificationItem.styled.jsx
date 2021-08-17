@@ -1,5 +1,5 @@
 import styled from "styled-components";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 
@@ -7,9 +7,13 @@ export const NotificationItemRoot = styled.div`
   display: flex;
   align-items: center;
   padding: 1rem 1.5rem;
-  border: 1px solid ${colors["border"]};
+  border: 1px solid ${color("border")};
   border-radius: 6px;
-  background-color: ${colors["white"]};
+  background-color: ${color("white")};
+
+  &:not(:last-child) {
+    margin-bottom: 1.25rem;
+  }
 `;
 
 export const NotificationContent = styled.div`
@@ -17,7 +21,7 @@ export const NotificationContent = styled.div`
 `;
 
 export const NotificationTitle = styled(Link)`
-  color: ${colors["brand"]};
+  color: ${color("brand")};
   cursor: pointer;
   font-weight: bold;
   text-decoration: none;
@@ -28,19 +32,19 @@ export const NotificationTitle = styled(Link)`
 `;
 
 export const NotificationDescription = styled.div`
-  color: ${colors["text-medium"]};
+  color: ${color("text-medium")};
   font-size: 0.75rem;
   line-height: 0.875rem;
   margin-top: 0.25rem;
 `;
 
 export const NotificationIcon = styled(Icon)`
-  color: ${colors["text-light"]};
+  color: ${color("text-light")};
   cursor: pointer;
   width: 1rem;
   height: 1rem;
 
   &:hover {
-    color: ${colors["text-medium"]};
+    color: ${color("text-medium")};
   }
 `;

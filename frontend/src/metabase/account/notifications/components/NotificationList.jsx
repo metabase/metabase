@@ -3,9 +3,9 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import NotificationItem from "./NotificationItem";
 import {
+  NotificationButton,
   NotificationHeader,
   NotificationLabel,
-  NotificationListRoot,
 } from "./NotificationList.styled";
 
 const propTypes = {
@@ -15,14 +15,15 @@ const propTypes = {
 
 const NotificationList = ({ items, user }) => {
   return (
-    <NotificationListRoot>
+    <div>
       <NotificationHeader>
         <NotificationLabel>{t`You receive or created these`}</NotificationLabel>
+        <NotificationButton>{t`Not seeing one here?`}</NotificationButton>
       </NotificationHeader>
       {items.map(item => (
         <NotificationItem key={item.id} item={item} user={user} />
       ))}
-    </NotificationListRoot>
+    </div>
   );
 };
 

@@ -24,7 +24,7 @@ const propTypes = {
 
 const NotificationItem = ({ item, user, onRemove }) => {
   const handleRemove = useCallback(() => {
-    onRemove(item);
+    onRemove && onRemove(item);
   }, [item, onRemove]);
 
   return (
