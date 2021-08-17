@@ -17,19 +17,19 @@ If you can see the tables, but some of the rows or columns seem to be missing, p
 
 ## Does the database exist?
 
-**Root cause:** The database does not exist. For example, you may have connected to a test database while doing an evaluation but are now in a production environment.
+**Root cause:** The database doesn't exist. For example, you may have connected to a test database while doing an evaluation but are now in a production environment.
 
 **Steps to take:**
 
 1. Go to Admin > Databases.
-2. Check that the database you are trying to query is listed.
+2. Check that the database you're trying to query is listed.
 3. Click on the database name and examine the settings.
 
 Exactly what settings you need will depend on your environment. To test that the settings are correct:
 
 1. Try to connect to the database using some other application (e.g., `psql` for PostgreSQL).
 
-If you are not able to connect, the problem is probably not with Metabase. Please check that the database server is running and that you have the correct host, port, username, password, and other settings.
+If you can't connect to the database with another application, the problem is probably not with Metabase. Please check that the database server is running and that you have the correct host, port, username, password, and other settings.
 
 ## Does the table exist?
 
