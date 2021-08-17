@@ -2,15 +2,19 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import {
-  NotificationItemRoot,
-  NotificationDescription,
-} from "./NotificationItem.styled";
-import {
   formatDay,
   formatFrame,
   formatHourAMPM,
   parseTimestamp,
 } from "metabase/lib/time";
+import { dashboard } from "metabase/lib/urls";
+import {
+  NotificationItemRoot,
+  NotificationDescription,
+  NotificationTitle,
+  NotificationContent,
+  NotificationIcon,
+} from "./NotificationItem.styled";
 
 const propTypes = {
   item: PropTypes.object.isRequired,
@@ -20,14 +24,28 @@ const propTypes = {
 const NotificationItem = ({ item, user }) => {
   return (
     <NotificationItemRoot>
-      <NotificationDescription>
-        {formatDescription(item, user)}
-      </NotificationDescription>
+      <NotificationContent>
+        <NotificationTitle to={formatLink(item)}>
+          {formatTitle(item)}
+        </NotificationTitle>
+        <NotificationDescription>
+          {formatDescription(item, user)}
+        </NotificationDescription>
+      </NotificationContent>
+      <NotificationIcon name="close" />
     </NotificationItemRoot>
   );
 };
 
 NotificationItem.propTypes = propTypes;
+
+const formatTitle = item => {
+  return item.name;
+};
+
+const formatLink = item => {
+  return dashboard({ id: item.dashboard_id });
+};
 
 const formatDescription = (item, user) => {
   const parts = [
