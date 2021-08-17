@@ -109,8 +109,6 @@ jobs:
           mv version.properties resources/
 
       - name: Percy Test
-        uses: percy/exec-action@v0.3.1
-        with:
-          command: "yarn run test-visual-no-build"
+        run: yarn run test-visual-no-build
         env:
           PERCY_TOKEN: ${{ secrets.PERCY_TOKEN }}
