@@ -64,7 +64,7 @@ Be sure to log in using the same credentials that Metabase uses. A common source
 If the administrator's account can see the tables but an individual person cannot:
 
 1. Go to Admin > Permissions and see if any groups have been denied access to the table.
-2. If any groups have been denied access, go to Admin > People and look at the "Groups" column for the person who cannot see the expected tables. If they are in a group that does not have access to the table, you may need to move them to another group or change table permissions.
+2. If any groups have been denied access, go to Admin > People and look at the "Groups" column for the person who can't see the expected tables. If they're in a group that doesn't have access to the table, you may need to move them to another group or change table permissions.
 
 ## Is Metabase's metadata out of sync with the state of the database?
 
