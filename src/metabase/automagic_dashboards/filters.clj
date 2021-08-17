@@ -48,7 +48,7 @@
 (defn- interleave-all
   [& colls]
   (lazy-seq
-   (when-not (empty? colls)
+   (when (seq colls)
      (concat (map first colls) (apply interleave-all (keep (comp seq rest) colls))))))
 
 (defn- sort-by-interestingness
