@@ -49,7 +49,7 @@
   (to-clojure [this _]))
 
 (defn- convert-children [node source]
-  (map #(to-clojure % source) (.getChildren node)))
+  (map #(to-clojure % source) (.getChildren ^Node node)))
 
 (extend-protocol ASTNode
   Node
@@ -225,7 +225,7 @@
 
 (defmethod process-markdown :slack
   [markdown _]
-  (-> (to-clojure (.parse parser markdown) markdown)
+  (-> (to-clojure (.parse ^Parser parser ^String markdown) markdown)
       ast->mrkdwn
       str/trim))
 
