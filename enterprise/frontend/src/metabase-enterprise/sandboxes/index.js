@@ -32,9 +32,11 @@ const getDatabaseViewSandboxModalUrl = ({
   schemaName,
   tableId,
 }) =>
-  `/admin/permissions/data/database/${databaseId}/schema/${encodeURIComponent(
-    schemaName,
-  )}/table/${tableId}/segmented/group/${groupId}`;
+  schemaName != null
+    ? `/admin/permissions/data/database/${databaseId}/schema/${encodeURIComponent(
+        schemaName,
+      )}/table/${tableId}/segmented/group/${groupId}`
+    : `/admin/permissions/data/database/${databaseId}/table/${tableId}/segmented/group/${groupId}`;
 
 const getGroupViewSandboxModalUrl = ({
   groupId,
@@ -42,9 +44,11 @@ const getGroupViewSandboxModalUrl = ({
   schemaName,
   tableId,
 }) =>
-  `/admin/permissions/data/group/${groupId}/database/${databaseId}/schema/${encodeURIComponent(
-    schemaName,
-  )}/${tableId}/segmented`;
+  schemaName != null
+    ? `/admin/permissions/data/group/${groupId}/database/${databaseId}/schema/${encodeURIComponent(
+        schemaName,
+      )}/${tableId}/segmented`
+    : `/admin/permissions/data/group/${groupId}/database/${databaseId}/${tableId}/segmented`;
 
 const getEditSegementedAccessUrl = (params, view) =>
   view === "database"

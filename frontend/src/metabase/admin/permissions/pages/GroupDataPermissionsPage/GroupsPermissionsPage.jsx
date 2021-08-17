@@ -140,7 +140,7 @@ function GroupsPermissionsPage({
       {permissionEditor && (
         <PermissionsEditor
           {...permissionEditor}
-          onSelect={params.schemaName != null ? null : handleTableItemSelect}
+          onSelect={handleTableItemSelect}
           onChange={handlePermissionChange}
           onAction={handleAction}
           onBreadcrumbsItemSelect={handleBreadcrumbsItemSelect}
@@ -167,11 +167,7 @@ const mapDispatchToProps = dispatch => ({
         push(`${BASE_PATH}/${params.groupId}/database/${databaseId}`),
       navigateToTableItem: (item, { groupId, databaseId }) => {
         if (item.type === "database") {
-          return item.schemas.length > 1
-            ? push(`${BASE_PATH}/${groupId}/database/${item.id}`)
-            : push(
-                `${BASE_PATH}/${groupId}/database/${item.id}/schema/${item.schemas[0].name}`,
-              );
+          return push(`${BASE_PATH}/${groupId}/database/${item.id}`);
         } else if (item.type === "schema") {
           return push(
             `${BASE_PATH}/${groupId}/database/${databaseId}/schema/${item.name}`,

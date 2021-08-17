@@ -378,12 +378,6 @@ const buildDatabasePermissions = (
     getRawQueryWarningModal(permissions, groupId, entityId, newValue),
   ];
 
-  let controlledPostActionUrl = `/admin/permissions/data/group/${groupId}/database/${entityId.databaseId}`;
-  const hasSingleSchema = database.schemas.length === 1;
-  if (hasSingleSchema) {
-    controlledPostActionUrl += `/schema/${database.schemas[0].name}`;
-  }
-
   return [
     {
       name: "access",
@@ -398,7 +392,10 @@ const buildDatabasePermissions = (
         DATA_PERMISSION_OPTIONS.none,
       ],
       postActions: {
-        controlled: () => push(controlledPostActionUrl),
+        controlled: () =>
+          push(
+            `/admin/permissions/data/group/${groupId}/database/${entityId.databaseId}`,
+          ),
       },
     },
     {
@@ -533,8 +530,8 @@ export const getGroupsSidebar = createSelector(
   },
 );
 
-const getEditorEntityName = ({ databaseId, schemaName }) => {
-  if (schemaName != null) {
+const getEditorEntityName = ({ databaseId, schemaName }, hasSingleSchema) => {
+  if (schemaName != null || hasSingleSchema) {
     return t`Table name`;
   } else if (databaseId) {
     return t`Schema name`;
@@ -543,8 +540,8 @@ const getEditorEntityName = ({ databaseId, schemaName }) => {
   }
 };
 
-const getFilterPlaceholder = ({ databaseId, schemaName }) => {
-  if (schemaName != null) {
+const getFilterPlaceholder = ({ databaseId, schemaName }, hasSingleSchema) => {
+  if (schemaName != null || hasSingleSchema) {
     return t`Search tables`;
   } else if (databaseId) {
     return t`Search schemas`;
@@ -573,43 +570,48 @@ export const getDatabasesPermissionEditor = createSelector(
 
     let entities = [];
 
+    const defaultGroup = _.find(groups, isDefaultGroup);
+    const hasSingleSchema =
+      databaseId != null && metadata.database(databaseId).schemas.length === 1;
+
     const isDatabaseLevelPermission = schemaName == null && databaseId == null;
     const columns = [
-      getEditorEntityName(params),
+      getEditorEntityName(params, hasSingleSchema),
       t`Data access`,
       isDatabaseLevelPermission ? t`SQL queries` : null,
     ].filter(Boolean);
 
-    const defaultGroup = _.find(groups, isDefaultGroup);
+    if (schemaName != null || hasSingleSchema) {
+      const schema = hasSingleSchema
+        ? metadata.database(databaseId).schemas[0]
+        : metadata.schema(`${databaseId}:${schemaName}`);
 
-    if (schemaName != null) {
-      entities = metadata
-        .schema(`${databaseId}:${schemaName}`)
-        .tables.map(table => {
-          return {
-            id: table.id,
-            name: table.name,
-            type: "table",
-            permissions: buildFieldsPermissions(
-              {
-                databaseId,
-                schemaName,
-                tableId: table.id,
-              },
-              groupId,
-              isAdmin,
-              permissions,
-              defaultGroup,
-              metadata.database(databaseId),
-            ),
-          };
-        });
+      entities = schema.tables.map(table => {
+        return {
+          id: table.id,
+          name: table.name,
+          type: "table",
+          permissions: buildFieldsPermissions(
+            {
+              databaseId,
+              schemaName,
+              tableId: table.id,
+            },
+            groupId,
+            isAdmin,
+            permissions,
+            defaultGroup,
+            metadata.database(databaseId),
+          ),
+        };
+      });
     } else if (databaseId != null) {
       entities = metadata.database(databaseId).schemas.map(schema => {
         return {
           id: schema.id,
           name: schema.name,
           type: "schema",
+          canSelect: true,
           permissions: buildTablesPermissions(
             {
               databaseId,
@@ -630,6 +632,7 @@ export const getDatabasesPermissionEditor = createSelector(
             id: database.id,
             name: database.name,
             type: "database",
+            canSelect: true,
             schemas: database.schemas,
             permissions: buildDatabasePermissions(
               {
@@ -662,7 +665,7 @@ export const getDatabasesPermissionEditor = createSelector(
               group.member_count,
             )
           : null,
-      filterPlaceholder: getFilterPlaceholder(params),
+      filterPlaceholder: getFilterPlaceholder(params, hasSingleSchema),
       columns,
       entities,
     };

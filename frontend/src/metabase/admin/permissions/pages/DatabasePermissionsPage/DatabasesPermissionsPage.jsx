@@ -120,10 +120,14 @@ const mapDispatchToProps = dispatch => ({
             return push(`${BASE_PATH}${item.id}`);
           case "schema":
             return push(`${BASE_PATH}${item.databaseId}/schema/${item.name}`);
-          case "table":
-            return push(
-              `${BASE_PATH}${item.databaseId}/schema/${item.schemaName}/table/${item.originalId}`,
-            );
+          case "table": {
+            const hasSchema = item.schemaName != null;
+            const url = hasSchema
+              ? `${BASE_PATH}${item.databaseId}/schema/${item.schemaName}/table/${item.originalId}`
+              : `${BASE_PATH}${item.databaseId}/table/${item.originalId}`;
+
+            return push(url);
+          }
         }
 
         return push(BASE_PATH);

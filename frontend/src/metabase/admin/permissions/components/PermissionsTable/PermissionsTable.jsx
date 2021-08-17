@@ -100,10 +100,8 @@ export function PermissionsTable({
             return (
               <PermissionsTableRow key={entity.id}>
                 <EntityNameCell horizontalPadding={horizontalPadding}>
-                  {onSelect ? (
-                    <EntityNameLink
-                      onClick={() => onSelect && onSelect(entity)}
-                    >
+                  {entity.canSelect ? (
+                    <EntityNameLink onClick={() => onSelect(entity)}>
                       {entity.name}
                     </EntityNameLink>
                   ) : (
