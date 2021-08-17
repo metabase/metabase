@@ -140,6 +140,12 @@
                      [:groups (u/the-id group) db-id :schemas]
                      :all))
           (is (= :all
-                 (get-in (perms/graph) [:groups (u/the-id group) db-id :schemas]))))))))
+                 (get-in (perms/graph) [:groups (u/the-id group) db-id :schemas]))))))
+    (testing "group-id specified"
+      (is (= false true)))
+    
+    (testing "db-id specified"
+      (is (= false true)))
+    ))
 
 ;;

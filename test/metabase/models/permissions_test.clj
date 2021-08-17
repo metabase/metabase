@@ -579,6 +579,20 @@
       (is (= {"" {(u/the-id table) :all}}
              (get-in (perms/graph) [:groups (u/the-id group) (u/the-id database) :schemas]))))))
 
+(deftest specific-mutations-in-graph-test
+  (testing "Specific mutations in graph, meaning stuff that specifies group id or db id, work"
+    (is (= false true))
+    )
+  
+  (testing "Partial specification, group id"
+    (is (= false true))
+    )
+  
+  (testing "Partial specification, db id"
+    (is (= false true))
+    ))
+
+
 (deftest metabot-graph-test
   (testing (str "The data permissions graph should never return permissions for the MetaBot, because the MetaBot can "
                 "only have Collection permissions")
