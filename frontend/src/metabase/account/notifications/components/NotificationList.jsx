@@ -1,7 +1,12 @@
 import React from "react";
 import PropTypes from "prop-types";
+import { t } from "ttag";
 import NotificationItem from "./NotificationItem";
-import { NotificationListRoot } from "./NotificationList.styled";
+import {
+  NotificationHeader,
+  NotificationLabel,
+  NotificationListRoot,
+} from "./NotificationList.styled";
 
 const propTypes = {
   items: PropTypes.array.isRequired,
@@ -11,6 +16,9 @@ const propTypes = {
 const NotificationList = ({ items, user }) => {
   return (
     <NotificationListRoot>
+      <NotificationHeader>
+        <NotificationLabel>{t`You receive or created these`}</NotificationLabel>
+      </NotificationHeader>
       {items.map(item => (
         <NotificationItem key={item.id} item={item} user={user} />
       ))}

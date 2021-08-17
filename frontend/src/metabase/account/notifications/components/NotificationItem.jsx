@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import {
@@ -19,9 +19,14 @@ import {
 const propTypes = {
   item: PropTypes.object.isRequired,
   user: PropTypes.object.isRequired,
+  onRemove: PropTypes.func,
 };
 
-const NotificationItem = ({ item, user }) => {
+const NotificationItem = ({ item, user, onRemove }) => {
+  const handleRemove = useCallback(() => {
+    onRemove(item);
+  }, [item, onRemove]);
+
   return (
     <NotificationItemRoot>
       <NotificationContent>
@@ -32,7 +37,7 @@ const NotificationItem = ({ item, user }) => {
           {formatDescription(item, user)}
         </NotificationDescription>
       </NotificationContent>
-      <NotificationIcon name="close" />
+      <NotificationIcon name="close" onClick={handleRemove} />
     </NotificationItemRoot>
   );
 };
