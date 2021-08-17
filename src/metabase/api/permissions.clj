@@ -39,8 +39,7 @@
 
   Revisions to the permissions graph are tracked. If you fetch the permissions graph and some other third-party
   modifies it before you can submit you revisions, the endpoint will instead make no changes and return a
-  409 (Conflict) response. In this case, you should fetch the updated graph and make desired changes to that."
-  [:as {body :body group-id :group-id db-id :db-id}]
+  409 (Conflict) response. In this case, you should fetch the updated graph and make desired changes to that." [:as {body :body group-id :group-id db-id :db-id}]
   ;;;; some shit with the group id and db id...
   {body     su/Map
    group-id (s/maybe su/IntGreaterThanZero)

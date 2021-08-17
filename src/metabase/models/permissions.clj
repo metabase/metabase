@@ -722,7 +722,7 @@
   ([new-graph :- StrictPermissionsGraph
     group-id  :- (s/maybe su/IntGreaterThanZero)
     db-id     :- (s/maybe su/IntGreaterThanZero)]
-   (let [old-graph (graph group-id db-id)
+   (let [old-graph (graph {:group-id group-id :db-id db-id})
          [old new] (data/diff (:groups old-graph) (:groups new-graph))
          old       (or old {})]
      (when (or (seq old) (seq new))
@@ -734,7 +734,7 @@
          (save-perms-revision! (:revision old-graph) old new)
          (delete-sandboxes/delete-gtaps-if-needed-after-permissions-change! new)))))
 
-  ([new-graph :- StrictPermissionGraph]
+  ([new-graph :- StrictPermissionsGraph]
    (update-graph! new-graph nil nil))
 
   ;; The following arity is provided soley for convenience for tests/REPL usage
