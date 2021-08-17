@@ -128,6 +128,11 @@
                  (u/slugify s))))))))
 
 (deftest full-exception-chain-test
+  (testing "Not an Exception"
+    (is (= nil
+           (u/full-exception-chain nil)))
+    (is (= nil
+           (u/full-exception-chain 100))))
   (testing "No causes"
     (let [e (ex-info "A" {:a 1})]
       (is (= ["A"]

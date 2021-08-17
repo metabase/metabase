@@ -433,7 +433,8 @@
 (defn full-exception-chain
   "Gather the full exception chain into a sequence."
   [e]
-  (take-while some? (iterate ex-cause e)))
+  (when (instance? Throwable e)
+    (take-while some? (iterate ex-cause e))))
 
 (defn all-ex-data
   "Like `ex-data`, but merges `ex-data` from causes. If duplicate keys exist, the keys from the highest level are
