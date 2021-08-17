@@ -152,13 +152,14 @@ export default class ItemPicker extends React.Component {
 
     return (
       <LoadingAndErrorWrapper loading={!collectionsById} className="scroll-y">
-        <Box
-          style={style}
-          className={cx(className, "scroll-y")}
-          data-testid="item-picker-header"
-        >
+        <Box style={style} className={cx(className, "scroll-y")}>
           {searchMode ? (
-            <Box pb={1} mb={2} className="border-bottom flex align-center">
+            <Box
+              pb={1}
+              mb={2}
+              className="border-bottom flex align-center"
+              data-testid="item-picker-header"
+            >
               <input
                 type="search"
                 className="input rounded flex-full"
@@ -179,7 +180,12 @@ export default class ItemPicker extends React.Component {
               />
             </Box>
           ) : (
-            <Box pb={1} mb={2} className="border-bottom flex align-center">
+            <Box
+              pb={1}
+              mb={2}
+              className="border-bottom flex align-center"
+              data-testid="item-picker-header"
+            >
               <Breadcrumbs crumbs={crumbs} />
               {showSearch && (
                 <Icon
