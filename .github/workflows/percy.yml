@@ -99,6 +99,7 @@ jobs:
         with:
           path: ~/.cache/yarn
           key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+      - run: yarn install --frozen-lockfile --prefer-offline
 
       - uses: actions/download-artifact@v2
         name: Retrieve uberjar artifact
