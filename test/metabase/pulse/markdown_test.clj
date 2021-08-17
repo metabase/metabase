@@ -2,7 +2,9 @@
   "Tests for processing Markdown to mrkdwn for Slack, and HTML for email. Assertions that are commented
   out are known discrepencies between the markdown-clj library and the Markdown parser used by the frontend."
   (:require [clojure.test :refer :all]
-            [metabase.pulse.markdown :as md]))
+            [metabase.pulse.markdown :as md]
+            [metabase.test.util :as tu]
+            [metabase.public-settings :refer [site-url]]))
 
 (defn- mrkdwn
   [markdown]
@@ -55,18 +57,29 @@
     (is (= ">1. quoted\n>2. list" (mrkdwn "> 1. quoted\n> 1. list")))
     (is (= ">quote\n>• footer"    (mrkdwn ">quote\n>- footer"))))
 
-  (testing "Links use Slack's syntax, tooltips are dropped, and link formatting is preserved"
-    (is (= "<metabase.com|Metabase>"   (mrkdwn "[Metabase](metabase.com)")))
-    (is (= "<metabase.com|Metabase>"   (mrkdwn "[Metabase](metabase.com \"tooltip\")")))
-    (is (= "<metabase.com|_Metabase_>" (mrkdwn "[*Metabase*](metabase.com)")))
-    (is (= "<metabase.com|_Metabase_>" (mrkdwn "[_Metabase_](metabase.com)")))
-    (is (= "<metabase.com|*Metabase*>" (mrkdwn "[**Metabase**](metabase.com)")))
-    (is (= "<metabase.com|*Metabase*>" (mrkdwn "[__Metabase__](metabase.com)")))
-    (is (= "<metabase.com|`Metabase`>" (mrkdwn "[`Metabase`](metabase.com)"))))
+  (testing "Links use Slack's syntax, tooltips are dropped, link formatting is preserved,
+           and a protocol is added if not already present"
+    (is (= "<https://metabase.com|Metabase>"   (mrkdwn "[Metabase](https://metabase.com)")))
+    (is (= "<https://metabase.com|Metabase>"   (mrkdwn "[Metabase](https://metabase.com \"tooltip\")")))
+    (is (= "<https://metabase.com|_Metabase_>" (mrkdwn "[*Metabase*](https://metabase.com)")))
+    (is (= "<https://metabase.com|_Metabase_>" (mrkdwn "[_Metabase_](https://metabase.com)")))
+    (is (= "<https://metabase.com|*Metabase*>" (mrkdwn "[**Metabase**](https://metabase.com)")))
+    (is (= "<https://metabase.com|*Metabase*>" (mrkdwn "[__Metabase__](https://metabase.com)")))
+    (is (= "<https://metabase.com|`Metabase`>" (mrkdwn "[`Metabase`](https://metabase.com)"))))
+
+  (testing "Relative links are resolved to the current site URL"
+    (tu/with-temporary-setting-values [site-url "https://example.com"]
+      (is (= "<https://example.com/foo|Metabase>"   (mrkdwn "[Metabase](/foo)")))))
 
   (testing "Auto-links are preserved"
     (is (= "<http://metabase.com>"      (mrkdwn "<http://metabase.com>")))
     (is (= "<mailto:test@metabase.com>" (mrkdwn "<mailto:test@metabase.com>"))))
+
+  (testing "Link references render as normal links"
+    (is (= "<https://metabase.com|metabase>" (mrkdwn "[metabase]: https://metabase.com\n[metabase]")))
+    (is (= "<https://metabase.com|Metabase>" (mrkdwn "[Metabase]: https://metabase.com\n[Metabase]")))
+    (is (= "<https://metabase.com|Metabase>" (mrkdwn "[METABASE]: https://metabase.com\n[Metabase]")))
+    (is (= "<https://metabase.com|Metabase>" (mrkdwn "[Metabase]: https://metabase.com \"tooltip\"\n[Metabase]"))))
 
   (testing "Lists are rendered correctly using raw text"
     (is (= "• foo\n• bar"   (mrkdwn "* foo\n* bar")))
@@ -119,9 +132,13 @@
     (is (= "<image.png|[Image]>"           (mrkdwn "![](image.png)")))
     (is (= "<image.png|[Image: alt-text]>" (mrkdwn "![alt-text](image.png)"))))
 
+  (testing "Image references are treated the same as normal images"
+    (is (=  "<image.png|[Image]>"           (mrkdwn "![][ref]\n\n[ref]: image.png")))
+    (is (=  "<image.png|[Image: alt-text]>" (mrkdwn "![alt-text][ref]\n\n[ref]: image.png"))))
+
   (testing "Linked images include link target in parentheses"
-    (is (= "<image.png|[Image]>\n(metabase.com)"           (mrkdwn "[![](image.png)](metabase.com)")))
-    (is (= "<image.png|[Image: alt-text]>\n(metabase.com)" (mrkdwn "[![alt-text](image.png)](metabase.com)"))))
+    (is (= "<image.png|[Image]>\n(https://metabase.com)"  (mrkdwn "[![](image.png)](https://metabase.com)")))
+    (is (=  "<image.png|[Image]>\n(https://metabase.com)" (mrkdwn "[![][ref]](https://metabase.com)\n\n[ref]: image.png"))))
 
   (testing "Raw HTML in Markdown is passed through unmodified, aside from angle brackets being
            escaped with zero-width characters"

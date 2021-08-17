@@ -1,14 +1,16 @@
 (ns metabase.pulse.markdown
   (:require [clojure.string :as str]
             [clojure.edn :as edn]
-            [clojure.java.io :as io])
+            [clojure.java.io :as io]
+            [metabase.public-settings :as public-settings])
   (:import [com.vladsch.flexmark.ast
             AutoLink BlockQuote BulletList BulletListItem Code Emphasis FencedCodeBlock HardLineBreak Heading Image
             ImageRef IndentedCodeBlock Link LinkRef MailLink OrderedList OrderedListItem Paragraph Reference
             SoftLineBreak StrongEmphasis Text ThematicBreak HtmlBlock HtmlInline HtmlEntity
             HtmlCommentBlock HtmlInlineBase HtmlInlineComment HtmlInnerBlockComment]
            com.vladsch.flexmark.parser.Parser
-           [com.vladsch.flexmark.util.ast Document Node]))
+           [com.vladsch.flexmark.util.ast Document Node]
+           java.net.URI))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Markdown parsing                                                  |
@@ -37,9 +39,9 @@
    IndentedCodeBlock     :codeblock
    BlockQuote            :blockquote
    Link                  :link
-   Reference             :reference ;; TODO
-   LinkRef               :link-ref ;; TODO
-   ImageRef              :image-ref ;; TODO
+   Reference             :reference
+   LinkRef               :link-ref
+   ImageRef              :image-ref
    Image                 :image
    AutoLink              :auto-link
    MailLink              :mail-link
@@ -104,7 +106,7 @@
     {:tag     (node-to-tag this)
      :attrs   {:reference (-> (.getDocument this)
                               (.get Parser/REFERENCES)
-                              (get (str (.getReference this)))
+                              (get (str/lower-case (str (.getReference this))))
                               (#(to-clojure % source)))}
      :content (convert-children this source)})
 
@@ -185,6 +187,15 @@
       (str/replace "`" "\u00ad`\u00ad")
       (str/replace "~" "\u00ad~\u00ad")))
 
+(defn- resolve-uri
+  "If the provided URI is a relative path, resolve it relative to the site URL so that links work
+  correctly in Slack/Email."
+  [uri]
+  (when uri
+    (if-let [site-url (public-settings/site-url)]
+      (.toString (.resolve (new URI site-url) uri))
+      uri)))
+
 (defn- ast->mrkdwn
   "Takes an AST representing Markdown input, and converts it to a mrkdwn string that will render nicely in Slack.
 
@@ -230,10 +241,15 @@
         (str/join "\n" (map #(str ">" %) lines)))
 
       :link
-      (if (= (:tag (first content)) :image)
-        ;; If this is a linked image, add link target on separate line after image placeholder
-        (str joined-content "\n(" (:href attrs) ")")
-        (str "<" (:href attrs) "|" joined-content ">"))
+      (let [resolved-uri (resolve-uri (:href attrs))]
+        (if (contains? #{:image :image-ref} (:tag (first content)))
+          ;; If this is a linked image, add link target on separate line after image placeholder
+          (str joined-content "\n(" resolved-uri ")")
+          (str "<" resolved-uri "|" joined-content ">")))
+
+      :link-ref
+      (let [resolved-uri (resolve-uri (-> attrs :reference :attrs :url))]
+        (str "<" resolved-uri "|" joined-content ">"))
 
       :auto-link
       (str "<" (:href attrs) ">")
@@ -256,9 +272,16 @@
       :ordered-list
       (str/join (map-indexed #(str (inc %1) ". " %2) resolved-content))
 
+      ;; Replace images with text that links to source, including alt text if available
       :image
-      ;; Replace images with links, including alt text
       (let [{:keys [src alt]} attrs]
+        (if (str/blank? alt)
+          (str "<" src "|[Image]>")
+          (str "<" src "|[Image: " alt "]>")))
+
+      :image-ref
+      (let [src (-> attrs :reference :attrs :url)
+            alt joined-content]
         (if (str/blank? alt)
           (str "<" src "|[Image]>")
           (str "<" src "|[Image: " alt "]>")))
@@ -277,7 +300,6 @@
 
 (defmethod process-markdown :slack
   [markdown _]
-  (def my-markdown markdown)
   (-> (to-clojure (.parse ^Parser parser ^String markdown) markdown)
       ast->mrkdwn
       str/trim))
