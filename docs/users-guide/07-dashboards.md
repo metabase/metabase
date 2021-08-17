@@ -13,9 +13,9 @@ Quick links:
 
 **Dashboards** group questions and present them on a single page. You can think of dashboards as shareable reports that feature a set of related questions. You can set up [subscriptions to dashboards](dashboard-subscriptions.md) via email or Slack to receive the exported results of the dashboard's questions.
 
-A dashboard comprises a set of cards arranged on a grid. These cards can be questions - such as [tables, charts, or maps](05-visualizing-results.md) - or cards can [be text boxes](/learn/dashboards/markdown.html).
+A dashboard comprises a set of cards arranged on a grid. These cards can be questions - such as [tables, charts, or maps](05-visualizing-results.md) - or they can be [text boxes](/learn/dashboards/markdown.html).
 
-You can add [filter widgets to dashboards](08-dashboard-filters.md) that filter data across multiple questions, and [customize what happens when people click on a chart or a table](interactive-dashboards.md).
+You can add [filter widgets to dashboards](08-dashboard-filters.md) that filter data identically across multiple questions, and [customize what happens when people click on a chart or a table](interactive-dashboards.md).
 
 You can make as many dashboards as you want. Go nuts.
 
