@@ -9,64 +9,66 @@ const filter = () => true;
 
 const openCollections = [];
 
-it("renders a basic collection", () => {
-  const collections = [
-    {
+describe("CollectionsList", () => {
+  it("renders a basic collection", () => {
+    const collections = [
+      {
+        archived: false,
+        children: [],
+        id: 1,
+        location: "/",
+        name: "Collection name",
+      },
+    ];
+
+    render(
+      <DragDropContextProvider backend={HTML5Backend}>
+        <CollectionsList
+          collections={collections}
+          filter={filter}
+          openCollections={openCollections}
+        />
+      </DragDropContextProvider>,
+    );
+
+    screen.getByText("Collection name");
+  });
+
+  it("opens child collection when user clicks on chevron button", () => {
+    const parentCollection = {
       archived: false,
       children: [],
       id: 1,
       location: "/",
-      name: "Collection name",
-    },
-  ];
+      name: "Parent collection name",
+    };
 
-  render(
-    <DragDropContextProvider backend={HTML5Backend}>
-      <CollectionsList
-        collections={collections}
-        filter={filter}
-        openCollections={openCollections}
-      />
-    </DragDropContextProvider>,
-  );
+    const childCollection = {
+      archived: false,
+      children: [],
+      id: 2,
+      location: "/2/",
+      name: "Child collection name",
+    };
 
-  screen.getByText("Collection name");
-});
+    parentCollection.children = [childCollection];
 
-it("opens child collection when user clicks on chevron button", () => {
-  const parentCollection = {
-    archived: false,
-    children: [],
-    id: 1,
-    location: "/",
-    name: "Parent collection name",
-  };
+    const onOpen = jest.fn();
 
-  const childCollection = {
-    archived: false,
-    children: [],
-    id: 2,
-    location: "/2/",
-    name: "Child collection name",
-  };
+    render(
+      <DragDropContextProvider backend={HTML5Backend}>
+        <CollectionsList
+          collections={[parentCollection]}
+          filter={filter}
+          onOpen={onOpen}
+          openCollections={openCollections}
+        />
+      </DragDropContextProvider>,
+    );
 
-  parentCollection.children = [childCollection];
+    const chevronButton = screen.getByLabelText("chevronright icon");
+    fireEvent.click(chevronButton);
 
-  const onOpen = jest.fn();
-
-  render(
-    <DragDropContextProvider backend={HTML5Backend}>
-      <CollectionsList
-        collections={[parentCollection]}
-        filter={filter}
-        onOpen={onOpen}
-        openCollections={openCollections}
-      />
-    </DragDropContextProvider>,
-  );
-
-  const chevronButton = screen.getByLabelText("chevronright icon");
-  fireEvent.click(chevronButton);
-
-  expect(onOpen).toHaveBeenCalled();
+    expect(onOpen).toHaveBeenCalled();
+  });
 });
