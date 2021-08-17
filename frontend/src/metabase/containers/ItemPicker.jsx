@@ -152,7 +152,11 @@ export default class ItemPicker extends React.Component {
 
     return (
       <LoadingAndErrorWrapper loading={!collectionsById} className="scroll-y">
-        <Box style={style} className={cx(className, "scroll-y")}>
+        <Box
+          style={style}
+          className={cx(className, "scroll-y")}
+          data-testid="item-picker-header"
+        >
           {searchMode ? (
             <Box pb={1} mb={2} className="border-bottom flex align-center">
               <input
@@ -186,7 +190,7 @@ export default class ItemPicker extends React.Component {
               )}
             </Box>
           )}
-          <Box className="scroll-y">
+          <Box className="scroll-y" data-testid="item-picker-list">
             {!searchString
               ? allCollections.map(collection => {
                   const hasChildren =
@@ -305,6 +309,7 @@ const Item = ({
         "bg-brand-hover text-white-hover cursor-pointer":
           canSelect || hasChildren,
       })}
+      data-testid="item-picker-item"
     >
       <Flex align="center">
         <Icon size={22} {...iconProps} color={selected ? "white" : color} />
