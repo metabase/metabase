@@ -141,6 +141,8 @@ async function setup({
   );
 
   await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+
+  return { onChange };
 }
 
 function getItemPickerHeader() {
@@ -216,5 +218,22 @@ describe("ItemPicker", () => {
     expect(list.queryByText(DASHBOARD.REGULAR.name)).toBeNull();
     expect(list.queryByText(COLLECTION.REGULAR.name)).toBeNull();
     expect(list.queryByText(COLLECTION.PERSONAL.name)).toBeNull();
+  });
+
+  it("calls onChange when selecting an item", async () => {
+    const { onChange } = await setup();
+
+    userEvent.click(screen.getByText(DASHBOARD.REGULAR.name));
+
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining(DASHBOARD.REGULAR),
+    );
+    expect(onChange).toHaveBeenCalledTimes(1);
+  });
+
+  it("doesn't call onChange if it's not a collection picker", async () => {
+    const { onChange } = await setup();
+    userEvent.click(screen.getByText(COLLECTION.REGULAR.name));
+    expect(onChange).not.toHaveBeenCalled();
   });
 });
