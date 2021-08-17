@@ -38,7 +38,7 @@ describe("scenarios > admin > settings > email settings", () => {
     });
     cy.visit("/admin/settings/email");
     cy.findByText("Send test email").click();
-    cy.findByText("Looks like we ran into some problems");
+    cy.findAllByText("Wrong host or port").should("have.length", 2);
   });
 
   it("should send a test email for a valid SMTP configuration", () => {
