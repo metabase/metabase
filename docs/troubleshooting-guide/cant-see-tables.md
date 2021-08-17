@@ -29,7 +29,7 @@ Exactly what settings you need will depend on your environment. To test that the
 
 1. Try to connect to the database using some other application (e.g., `psql` for PostgreSQL).
 
-If you are not able to connect, the problem is probably not with Metabase. Please check that the database server is running and that you have the correct host, port, username, password, and other settings.
+If you can't connect to the database with another application, the problem is probably not with Metabase. Please check that the database server is running and that you have the correct host, port, username, password, and other settings.
 
 ## Does the table exist and can the Metabase account access it?
 
