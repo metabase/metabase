@@ -12,21 +12,33 @@
             [metabase.util :as u]
             [toucan.db :as db]))
 
+(deftest can-connect?-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (let [db-details (:details (mt/db))
+          fake-ds-id "definitely-not-a-real-dataset-no-way-no-how"]
+      (testing "can-connect? returns true in the happy path"
+        (is (true? (driver/can-connect? :bigquery-cloud-sdk db-details))))
+      (testing "can-connect? returns false for bogus dataset-id"
+        (is (false? (driver/can-connect? :bigquery-cloud-sdk (assoc db-details :dataset-id fake-ds-id)))))
+      (testing "can-connect? returns true for a valid dataset-id even with no tables"
+        (with-redefs [bigquery/list-tables (fn [& _]
+                                             [])]
+          (is (true? (driver/can-connect? :bigquery-cloud-sdk db-details))))))))
+
 (deftest table-rows-sample-test
-  (mt/test-driver
-   :bigquery-cloud-sdk
-   (testing "without worrying about pagination"
-     (is (= [[1 "Red Medicine"]
-             [2 "Stout Burgers & Beers"]
-             [3 "The Apple Pan"]
-             [4 "Wurstküche"]
-             [5 "Brite Spot Family Restaurant"]]
-            (->> (metadata-queries/table-rows-sample (Table (mt/id :venues))
-                   [(Field (mt/id :venues :id))
-                    (Field (mt/id :venues :name))]
-                   (constantly conj))
-                 (sort-by first)
-                 (take 5)))))
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "without worrying about pagination"
+      (is (= [[1 "Red Medicine"]
+              [2 "Stout Burgers & Beers"]
+              [3 "The Apple Pan"]
+              [4 "Wurstküche"]
+              [5 "Brite Spot Family Restaurant"]]
+             (->> (metadata-queries/table-rows-sample (Table (mt/id :venues))
+                    [(Field (mt/id :venues :id))
+                     (Field (mt/id :venues :name))]
+                    (constantly conj))
+                  (sort-by first)
+                  (take 5)))))
 
    ;; the initial dataset isn't realized until it's used the first time. because of that,
    ;; we don't care how many pages it took to load this dataset above. it will be a large

@@ -16,9 +16,9 @@
             [metabase.util.schema :as su]
             [schema.core :as s])
   (:import com.google.auth.oauth2.ServiceAccountCredentials
-           [com.google.cloud.bigquery BigQuery BigQuery$JobOption BigQuery$TableListOption BigQuery$TableOption
-                                      BigQueryOptions DatasetId EmptyTableResult Field FieldValue FieldValueList
-                                      QueryJobConfiguration Schema Table TableId TableResult]
+           [com.google.cloud.bigquery BigQuery BigQuery$DatasetOption BigQuery$JobOption BigQuery$TableListOption
+                                      BigQuery$TableOption BigQueryOptions DatasetId EmptyTableResult Field FieldValue
+                                      FieldValueList QueryJobConfiguration Schema Table TableId TableResult]
            java.io.ByteArrayInputStream
            java.util.Collections))
 
@@ -55,37 +55,28 @@
 
 (defn- ^Iterable list-tables
   "Fetch all tables (new pages are loaded automatically by the API)."
-  ([{{:keys [project-id dataset-id]} :details, :as database}]
-   (let [bq (database->client database)]
-     (list-tables bq project-id dataset-id)))
+  (^Iterable [{{:keys [project-id dataset-id]} :details, :as database}]
+    (let [bq (database->client database)]
+      (list-tables bq project-id dataset-id)))
 
-  #_([{{:keys [project-id dataset-id]} :details, :as database}, ^String page-token-or-nil]
-     ;; RAR 2020-May-11 - this gets messy, because this function is used to determine if we
-     ;; can connect to the database. If a service account JSON is being used, the project ID
-     ;; field isn't required in the admin page because it's embedded in that JSON. During the
-     ;; initial save, the database entry doesn't exist yet, so we haven't pulled the project ID
-     ;; from that JSON. In this case, we need to go look it up in the credentials.
-     ;; TODO: maybe handle this better in `driver/can-connect? :bigquery-cloud-sdk`
-     (let [bq (database->client database)]
-      (list-tables db-client project-id dataset-id page-token-or-nil)))
-
-  ([^BigQuery client, ^String project-id ^String dataset-id]
-   {:pre [client (not (str/blank? dataset-id))]}
-   (.iterateAll (.listTables client (DatasetId/of project-id dataset-id) (u/varargs BigQuery$TableListOption)))))
+  (^Iterable [^BigQuery client, ^String project-id ^String dataset-id]
+    {:pre [client (not (str/blank? dataset-id))]}
+    (.iterateAll (.listTables client (DatasetId/of project-id dataset-id) (u/varargs BigQuery$TableListOption)))))
 
 (defmethod driver/describe-database :bigquery-cloud-sdk
   [_ database]
-  ;; first page through all the 50-table pages until we stop getting "next page tokens"
   (let [tables (list-tables database)]
-    ;; after that convert the results to MB format
     {:tables (set (for [^Table table tables]
                     {:schema nil, :name (.. table getTableId getTable)}))}))
 
 (defmethod driver/can-connect? :bigquery-cloud-sdk
-  [_ details-map]
+  [_ {:keys [project-id dataset-id] :as details-map}]
   ;; check whether we can connect by seeing whether we have at least one Table in the iterator
-  (let [^Iterable table-iter (list-tables {:details details-map})]
-    (.. table-iter iterator hasNext)))
+  (let [^BigQuery bq     (database->client {:details details-map})
+        ^DatasetId ds-id (if (some? project-id)
+                           (DatasetId/of project-id dataset-id)
+                           (DatasetId/of dataset-id))]
+    (some? (.getDataset bq ds-id (u/varargs BigQuery$DatasetOption)))))
 
 (def ^:private empty-table-options
   (u/varargs BigQuery$TableOption))
