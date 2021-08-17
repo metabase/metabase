@@ -76,14 +76,14 @@ where `SOMEWHERE` is the table you think you should be able to see. If Metabase 
 If the administrator's account can see the tables but an individual person cannot:
 
 1. Go to Admin > Permissions and see if any groups have been denied access to the table.
-2. If any groups have been denied access, go to Admin > People and look at the "Groups" column for the person who cannot see the expected tables. If they are in a group that does not have access to the table, you may need to move them to another group or change table permissions.
+2. If any groups have been denied access, go to Admin > People and look at the "Groups" column for the person who can't see the expected tables. If they're in a group that doesn't have access to the table, you may need to move them to another group or change table permissions.
 
 ## Is Metabase's metadata out of sync with the state of the database?
 
 **Root cause:** In order to display available tables and columns in dropdown menus and previews, Metabase runs a query every hour to find out what tables are available and what columns are in each available table, and stores this information in its application database.
 
-1. If a table has been added or removed since the last time this "sync" operation ran, Metabase's information about the database will be incorrect.
-2. In some rare cases Metabase may time out while synchronizing with the database. For example, if you are using MongoDB and have very large (hundreds of kilobytes) JSON blobs, the sync operation may not complete in the allowed time.
+1. If a table has been added or removed since the last time this "sync" operation ran, Metabase's information about the database will be outdated.
+2. In some rare cases Metabase may time out while synchronizing with the database. For example, if you're using MongoDB and have very large (hundreds of kilobytes) JSON blobs, the sync operation may not complete in the allowed time.
 
 **Steps to take:**
 
