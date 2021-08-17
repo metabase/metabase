@@ -65,6 +65,12 @@ COLLECTION.REGULAR_CHILD = collection({
   location: `/${COLLECTION.REGULAR.id}/`,
 });
 
+const COLLECTION_READ_ONLY_CHILD_WRITABLE = collection({
+  id: 4,
+  name: "Read-only collection's child (writable)",
+  location: `/${COLLECTION.READ_ONLY.id}/`,
+});
+
 const DASHBOARD = {
   REGULAR: dashboard({ id: 1, name: "Regular dashboard" }),
   REGULAR_CHILD: dashboard({
@@ -74,9 +80,10 @@ const DASHBOARD = {
   }),
 };
 
-function mockCollectionEndpoint() {
+function mockCollectionEndpoint({ extraCollections = [] } = {}) {
+  const collections = [...Object.values(COLLECTION), ...extraCollections];
   xhrMock.get("/api/collection", {
-    body: JSON.stringify(Object.values(COLLECTION)),
+    body: JSON.stringify(collections),
   });
 }
 
@@ -113,8 +120,12 @@ function mockCollectionItemsEndpoint() {
   });
 }
 
-async function setup({ models = ["dashboard"], ...props } = {}) {
-  mockCollectionEndpoint();
+async function setup({
+  models = ["dashboard"],
+  extraCollections = [],
+  ...props
+} = {}) {
+  mockCollectionEndpoint({ extraCollections });
   mockCollectionItemsEndpoint();
 
   const onChange = jest.fn();
@@ -179,6 +190,11 @@ describe("ItemPicker", () => {
   it("does not display read-only collections", async () => {
     await setup();
     expect(screen.queryByText(COLLECTION.READ_ONLY.name)).toBeNull();
+  });
+
+  it("displays read-only collections if they have writable children", async () => {
+    await setup({ extraCollections: [COLLECTION_READ_ONLY_CHILD_WRITABLE] });
+    expect(screen.queryByText(COLLECTION.READ_ONLY.name)).toBeInTheDocument();
   });
 
   it("can open nested collection", async () => {
