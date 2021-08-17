@@ -17,7 +17,7 @@ If you can see the tables, but some of the rows or columns seem to be missing, p
 
 ## Does the database exist?
 
-**Root cause:** The database does not exist. For example, you may have connected to a test database while doing an evaluation but are now in a production environment.
+**Root cause:** The database doesn't exist. For example, you may have connected to a test database while doing an evaluation but are now in a production environment.
 
 **Steps to take:**
 
