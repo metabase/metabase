@@ -64,7 +64,7 @@
 (defn do-with-fake-inbox
   "Impl for `with-fake-inbox` macro; prefer using that rather than calling this directly."
   [f]
-  (with-redefs [metabase.email/send-email! fake-inbox-email-fn]
+  (with-redefs [email/send-email! fake-inbox-email-fn]
     (reset-inbox!)
     (tu/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                        email-smtp-port 587]

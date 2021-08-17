@@ -96,7 +96,8 @@
   api/generic-204-no-content)
 
 (api/defendpoint POST "/test"
-  "Send a test email. You must be a superuser to do this."
+  "Send a test email using the SMTP Settings. You must be a superuser to do this. Returns `{:ok true}` if we were able
+  to send the message successfully, otherwise a standard 400 error response."
   []
   (api/check-superuser)
   (let [response (email/send-message!

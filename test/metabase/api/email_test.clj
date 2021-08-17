@@ -32,43 +32,58 @@
    :email-smtp-password "gobble gobble"
    :email-from-address  "eating@hungry.com"})
 
-;; PUT /api/email - check updating email settings
+(deftest test-email-settings-test
+  (testing "POST /api/email/test -- send a test email"
+    (mt/with-temporary-setting-values [email-from-address "notifications@metabase.com"]
+      (mt/with-fake-inbox
+        (testing "Non-admin -- request should fail"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post 403 "email/test")))
+          (is (= {}
+                 @mt/inbox)))
+        (is (= {:ok true}
+               (mt/user-http-request :crowberto :post 200 "email/test")))
+        (is (= {"crowberto@metabase.com"
+                [{:from    "notifications@metabase.com",
+                  :to      ["crowberto@metabase.com"],
+                  :subject "Metabase Test Email",
+                  :body    "Your Metabase emails are working — hooray!"}]}
+               @mt/inbox))))))
+
 (deftest update-email-settings-test
-  (testing "PUT /api/email"
+  (testing "PUT /api/email - check updating email settings"
     ;; [[metabase.email/email-smtp-port]] was originally a string Setting (it predated our introduction of different
     ;; Settings types) -- make sure our API endpoints still work if you pass in the value as a String rather than an
     ;; integer.
-    (testing "Make sure endpoint works with port passed in as"
-      (doseq [[message body] {"an integer" default-email-settings
-                              "a string"   (update default-email-settings :email-smtp-port str)}]
-        (testing message
-          (let [original-values (email-settings)]
+    (doseq [:let         [original-values (email-settings)]
+            body         [default-email-settings
+                          (update default-email-settings :email-smtp-port str)]
             ;; test what happens on both a successful and an unsuccessful connection.
-            (doseq [[success? f] {true  (fn [thunk]
-                                          (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
-                                            (thunk)))
-                                  false (fn [f]
-                                          (with-redefs [email/retry-delay-ms 0]
-                                            (f)))}]
-              (tu/discard-setting-changes [email-smtp-host email-smtp-port email-smtp-security email-smtp-username
-                                           email-smtp-password email-from-address]
-                (testing (format "SMTP connection is valid? %b\n" success?)
-                  (f (fn []
-                       (testing "API request"
-                         (testing (format "\nRequest body =\n%s" (u/pprint-to-str body))
-                           (if success?
-                             (is (= (-> default-email-settings
-                                        (assoc :with-corrections {})
-                                        (update :email-smtp-security name))
-                                    (mt/user-http-request :crowberto :put 200 "email" body)))
-                             (is (= {:errors {:email-smtp-host "Wrong host or port"
-                                              :email-smtp-port "Wrong host or port"}}
-                                    (mt/user-http-request :crowberto :put 400 "email" body))))))
-                       (testing "Settings after API request is finished"
-                         (is (= (if success?
-                                  default-email-settings
-                                  original-values)
-                                (email-settings)))))))))))))))
+            [success? f] {true  (fn [thunk]
+                                  (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
+                                    (thunk)))
+                          false (fn [thunk]
+                                  (with-redefs [email/retry-delay-ms 0]
+                                    (thunk)))}]
+      (tu/discard-setting-changes [email-smtp-host email-smtp-port email-smtp-security email-smtp-username
+                                   email-smtp-password email-from-address]
+        (testing (format "SMTP connection is valid? %b\n" success?)
+          (f (fn []
+               (testing "API request"
+                 (testing (format "\nRequest body =\n%s" (u/pprint-to-str body))
+                   (if success?
+                     (is (= (-> default-email-settings
+                                (assoc :with-corrections {})
+                                (update :email-smtp-security name))
+                            (mt/user-http-request :crowberto :put 200 "email" body)))
+                     (is (= {:errors {:email-smtp-host "Wrong host or port"
+                                      :email-smtp-port "Wrong host or port"}}
+                            (mt/user-http-request :crowberto :put 400 "email" body))))))
+               (testing "Settings after API request is finished"
+                 (is (= (if success?
+                          default-email-settings
+                          original-values)
+                        (email-settings)))))))))))
 
 (deftest clear-email-settings-test
   (testing "DELETE /api/email"
