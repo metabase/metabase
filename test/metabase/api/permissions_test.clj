@@ -171,7 +171,7 @@
               mutation ((mt/user->client :crowberto) :put 200 "permissions/graph"
                         changed :group_id (u/the-id group1))]
           (is (= :all (get-in (perms/graph) [:groups (u/the-id group1) db-id1 :schemas])))
-          (is (= nil (get-in (perms/graph) [:groups (u/the-id group2) db-id2 :schemas])))))
+          (is (= nil (get-in (perms/graph) [:groups (u/the-id group2) db-id2 :schemas]))))))
 
     (testing "db-id specified"
       ;;; check the main thing is good
