@@ -71,7 +71,7 @@ If the administrator's account can see the tables but an individual person canno
 **Root cause:** In order to display available tables and columns in dropdown menus and previews, Metabase runs a query every hour to find out what tables are available and what columns are in each available table, and stores this information in its application database.
 
 1. If a table has been added or removed since the last time this "sync" operation ran, Metabase's information about the database will be outdated.
-2. In some rare cases Metabase may time out while synchronizing with the database. For example, if you are using MongoDB and have very large (hundreds of kilobytes) JSON blobs, the sync operation may not complete in the allowed time.
+2. In some rare cases Metabase may time out while synchronizing with the database. For example, if you're using MongoDB and have very large (hundreds of kilobytes) JSON blobs, the sync operation may not complete in the allowed time.
 
 **Steps to take:**
 
