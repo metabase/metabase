@@ -10,8 +10,8 @@ const moderationReview = {
   moderator_id: 1,
   created_at: Date.now(),
 };
-const moderator = { id: 1, display_name: "Foo" };
-const currentUser = { id: 2, display_name: "Bar" };
+const moderator = { id: 1, common_name: "Foo" };
+const currentUser = { id: 2, common_name: "Bar" };
 
 describe("ModerationReviewBanner", () => {
   it("should show text concerning the given review", () => {

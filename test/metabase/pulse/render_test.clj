@@ -26,4 +26,39 @@
                                   (mt/mbql-query checkins
                                     {:aggregation [[:count]]
                                      :breakout    [!month.date]}))
-                 [:td _ "November 2015"])))))
+                                 [:td _ "November 2015"])))))
+
+(deftest detect-pulse-chart-type-test
+  (is (= :scalar
+         (render/detect-pulse-chart-type {:display :anything}
+                                         {:cols [{:base_type :type/Number}]
+                                          :rows [[6]]})))
+  (is (= :smartscalar
+         (render/detect-pulse-chart-type {:display :smartscalar}
+                                         {:cols     [{:base_type :type/Temporal
+                                                      :name      "month"}
+                                                     {:base_type :type/Number
+                                                      :name      "apples"}]
+                                          :rows     [[#t "2020" 2]
+                                                     [#t "2021" 3]]
+                                          :insights [{:name           "apples"
+                                                      :last-value     3
+                                                      :previous-value 2
+                                                      :last-change    50.0}]})))
+  (is (= :bar
+         (render/detect-pulse-chart-type {:display :bar}
+                                         {:cols [{:base_type :type/Text}
+                                                 {:base_type :type/Number}]
+                                          :rows [["A" 2]]})))
+  (is (= :sparkline
+         (render/detect-pulse-chart-type {:display :line}
+                                         {:cols [{:base_type :type/Temporal}
+                                                 {:base_type :type/Number}]
+                                          :rows [[#t "2020" 2]
+                                                 [#t "2021" 3]]})))
+  (is (= :categorical/donut
+         (render/detect-pulse-chart-type {:display :pie}
+                                         {:cols [{:base_type :type/Text}
+                                                 {:base_type :type/Number}]
+                                          :rows [["apple" 3]
+                                                 ["banana" 4]]}))))

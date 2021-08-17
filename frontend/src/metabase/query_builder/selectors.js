@@ -462,3 +462,8 @@ export const getIsLiveResizable = createSelector(
     }
   },
 );
+
+export const getQuestionDetailsTimelineDrawerState = createSelector(
+  [getUiControls],
+  uiControls => uiControls && uiControls.questionDetailsTimelineDrawerState,
+);

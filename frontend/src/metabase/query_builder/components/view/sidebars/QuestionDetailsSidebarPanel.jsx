@@ -1,16 +1,15 @@
 import React from "react";
 import PropTypes from "prop-types";
 
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import QuestionActionButtons from "metabase/query_builder/components/QuestionActionButtons";
 import { ClampedDescription } from "metabase/query_builder/components/ClampedDescription";
 import {
-  SidebarContentContainer,
-  BorderedQuestionActivityTimeline,
+  Container,
+  SidebarPaddedContent,
 } from "./QuestionDetailsSidebarPanel.styled";
-import { PLUGIN_MODERATION } from "metabase/plugins";
+import QuestionActivityTimeline from "metabase/query_builder/components/QuestionActivityTimeline";
 
-const { QuestionModerationSection } = PLUGIN_MODERATION;
+import { PLUGIN_MODERATION } from "metabase/plugins";
 
 export default QuestionDetailsSidebarPanel;
 
@@ -35,8 +34,8 @@ function QuestionDetailsSidebarPanel({
     : undefined;
 
   return (
-    <SidebarContent>
-      <SidebarContentContainer>
+    <Container>
+      <SidebarPaddedContent>
         <QuestionActionButtons canWrite={canWrite} onOpenModal={onOpenModal} />
         <ClampedDescription
           className="pb2"
@@ -44,9 +43,9 @@ function QuestionDetailsSidebarPanel({
           description={description}
           onEdit={onDescriptionEdit}
         />
-        <QuestionModerationSection question={question} />
-        <BorderedQuestionActivityTimeline question={question} />
-      </SidebarContentContainer>
-    </SidebarContent>
+        <PLUGIN_MODERATION.QuestionModerationSection question={question} />
+      </SidebarPaddedContent>
+      <QuestionActivityTimeline question={question} />
+    </Container>
   );
 }

@@ -184,18 +184,43 @@ describe("scenarios > admin > databases > add", () => {
     );
   });
 
+  it.skip("should respect users' decision to manually sync large database (metabase#17450)", () => {
+    const H2_CONNECTION_STRING =
+      "zip:./target/uberjar/metabase.jar!/sample-dataset.db;USER=GUEST;PASSWORD=guest";
+
+    const databaseName = "Another H2";
+
+    cy.visit("/admin/databases/create");
+
+    chooseDatabase("H2");
+
+    typeField("Name", databaseName);
+    typeField("Connection String", H2_CONNECTION_STRING);
+
+    cy.findByLabelText(
+      "This is a large database, so let me choose when Metabase syncs and scans",
+    )
+      .click()
+      .should("have.attr", "aria-checked", "true");
+
+    cy.button("Next").click();
+
+    isSyncOptionSelected("Never, I'll do this manually if I need to");
+
+    cy.button("Save").click();
+    cy.findByText("I'm good thanks").click();
+
+    cy.findByText(databaseName).click();
+    cy.findByText("Scheduling").click();
+
+    isSyncOptionSelected("Never, I'll do this manually if I need to");
+  });
+
   describe("BigQuery", () => {
     it("should let you upload the service account json from a file", () => {
       cy.visit("/admin/databases/create");
 
-      // select BigQuery
-      cy.contains("Database type")
-        .parents(".Form-field")
-        .find(".AdminSelect")
-        .click();
-      popover()
-        .contains("BigQuery")
-        .click({ force: true });
+      chooseDatabase("BigQuery");
 
       // enter text
       typeField("Name", "bq db");
@@ -261,13 +286,7 @@ describe("scenarios > admin > databases > add", () => {
   describe("Google Analytics ", () => {
     it("should generate well-formed external auth URLs", () => {
       cy.visit("/admin/databases/create");
-      cy.contains("Database type")
-        .parents(".Form-field")
-        .find(".AdminSelect")
-        .click();
-      popover()
-        .contains("Google Analytics")
-        .click({ force: true });
+      chooseDatabase("Google Analytics");
 
       typeField("Client ID", "   999  ");
 
@@ -281,3 +300,20 @@ describe("scenarios > admin > databases > add", () => {
     });
   });
 });
+
+function chooseDatabase(database) {
+  cy.contains("Database type")
+    .parents(".Form-field")
+    .find(".AdminSelect")
+    .click();
+  popover()
+    .contains(database)
+    .click({ force: true });
+}
+
+function isSyncOptionSelected(option) {
+  // This is a really bad way to assert that the text element is selected/active. Can it be fixed in the FE code?
+  cy.findByText(option)
+    .parent()
+    .should("have.class", "text-brand");
+}

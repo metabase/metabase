@@ -189,9 +189,8 @@
 (s/defn test-smtp-connection :- (s/conditional
                                  ::error SMTPStatus
                                  :else   SMTPSettings)
-  "Test the connection to an SMTP server to determine if we can send emails.
-
-  Takes in a dictionary of properties such as:
+  "Test the connection to an SMTP server to determine if we can send emails. Takes in a dictionary of properties such
+  as:
 
     {:host     \"localhost\"
      :port     587
@@ -200,9 +199,8 @@
      :sender   \"foo@mycompany.com\"
      :security :tls}
 
-  Attempts to connect with different `:security` options. If able to connect successfully, returns
-  working [[SMTPSettings]]. If unable to connect with any `:security` options, returns an [[SMTPStatus]] with the
-  `::error`."
+  Attempts to connect with different `:security` options. If able to connect successfully, returns working
+  [[SMTPSettings]]. If unable to connect with any `:security` options, returns an [[SMTPStatus]] with the `::error`."
   [{:keys [port security], :as details} :- SMTPSettings]
   (let [initial-attempt (test-smtp-settings details)]
     (if-not (::error initial-attempt)

@@ -6,13 +6,12 @@ import Icon from "metabase/components/Icon";
 
 export const ItemTitle = styled(Label)`
   margin: 0;
-  padding-left: 0.5rem;
-  flex-grow: 1;
+  white-space: nowrap;
 `;
 
 export const ItemIcon = styled(Icon)`
-  color: ${props =>
-    props.isHighlighted ? color(props.color) : color("text-light")};
+  color: ${props => color(props.color) || color("text-light")};
+  justify-self: end;
 `;
 
 const activeItemCss = css`
@@ -30,7 +29,9 @@ const VERTICAL_PADDING_BY_SIZE = {
 };
 
 export const ItemRoot = styled.li`
-  display: flex;
+  display: grid;
+  grid-template-columns: min-content min-content 1fr;
+  gap: 0.5rem;
   align-items: center;
   cursor: pointer;
   padding: ${props => VERTICAL_PADDING_BY_SIZE[props.size]} 0.5rem;
