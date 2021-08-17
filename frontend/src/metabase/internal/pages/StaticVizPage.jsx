@@ -57,6 +57,10 @@ export default function StaticVizPage() {
             dangerouslySetInnerHTML={{
               __html: RenderChart("categorical/donut", {
                 data: [["donut", 20], ["cronut", 31]],
+                colors: {
+                  donut: "red",
+                  cronut: "blue",
+                },
                 accessors: {
                   dimension: row => row[0],
                   metric: row => row[1],

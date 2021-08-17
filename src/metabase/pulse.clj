@@ -140,6 +140,10 @@
        :channel-id      channel-id
        :fallback        card-name})))
 
+(def slack-width
+  "Width of the rendered png of html to be sent to slack."
+  1200)
+
 (defn create-and-upload-slack-attachments!
   "Create an attachment in Slack for a given Card by rendering its result into an image and uploading
   it. Slack-attachment-uploader is a function which takes image-bytes and an attachment name, uploads the file, and
@@ -151,7 +155,7 @@
                (conj processed (if (:render/text rendered-info)
                                  (-> (f attachment-data)
                                      (assoc :text (:render/text rendered-info)))
-                                 (let [image-bytes (render/png-from-render-info rendered-info)
+                                 (let [image-bytes (render/png-from-render-info rendered-info slack-width)
                                        image-url (slack-attachment-uploader image-bytes attachment-name channel-id)]
                                    (-> (f attachment-data)
                                        (assoc :image_url image-url))))))

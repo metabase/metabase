@@ -11,8 +11,6 @@
             [metabase.util.urls :as urls]
             [schema.core :as s]))
 
-(def ^:private ^:const card-width 400)
-
 (def ^:dynamic *include-buttons*
   "Should the rendered pulse include buttons? (default: `false`)"
   false)
@@ -79,14 +77,20 @@
         (chart-type :smartscalar "result has two columns and insights")
 
         (and (= @col-sample-count 2)
+             (number-field? @col-2)
+             (= display-type :bar))
+        (chart-type :bar "result has two cols (%s and %s (number))" (col-description @col-1) (col-description @col-2))
+
+        (and (= @col-sample-count 2)
              (> @row-sample-count 1)
              (types/temporal-field? @col-1)
              (number-field? @col-2))
         (chart-type :sparkline "result has 2 cols (%s (temporal) and %s (number)) and > 1 row" (col-description @col-1) (col-description @col-2))
 
         (and (= @col-sample-count 2)
-             (number-field? @col-2))
-        (chart-type :bar "result has two cols (%s and %s (number))" (col-description @col-1) (col-description @col-2))
+             (number-field? @col-2)
+             (= display-type :pie))
+        (chart-type :categorical/donut "result has two cols (%s and %s (number))" (col-description @col-1) (col-description @col-2))
 
         :else
         (chart-type :table "no other chart types match")))))
@@ -166,10 +170,10 @@
 
 (s/defn render-pulse-card-to-png :- bytes
   "Render a `pulse-card` as a PNG. `data` is the `:data` from a QP result (I think...)"
-  [timezone-id :- (s/maybe s/Str) pulse-card result]
-  (png/render-html-to-png (render-pulse-card :inline timezone-id pulse-card result) card-width))
+  [timezone-id :- (s/maybe s/Str) pulse-card result width]
+  (png/render-html-to-png (render-pulse-card :inline timezone-id pulse-card result) width))
 
 (s/defn png-from-render-info :- bytes
   "Create a PNG file (as a byte array) from rendering info."
-  [rendered-info :- common/RenderedPulseCard]
-  (png/render-html-to-png rendered-info card-width))
+  [rendered-info :- common/RenderedPulseCard width]
+  (png/render-html-to-png rendered-info width))

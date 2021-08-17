@@ -19,6 +19,7 @@ export default function TimeseriesLine(
     ],
     range: [40, layout.xMax],
   });
+
   // Y scale
   const yAxisScale = yScaleType({
     domain: [0, Math.max(...data.map(accessors.y))],
@@ -76,7 +77,8 @@ export default function TimeseriesLine(
       />
       <AxisBottom
         label={"Time"}
-        hideTicks
+        hideTicks={false}
+        numTicks={5}
         top={layout.yMax}
         stroke={layout.colors.axis.stroke}
         tickFormat={d => new Date(d).toLocaleDateString("en")}
