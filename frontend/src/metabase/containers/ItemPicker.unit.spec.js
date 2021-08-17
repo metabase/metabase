@@ -164,6 +164,13 @@ describe("ItemPicker", () => {
 
   it("displays items from the root collection by default", async () => {
     await setup();
+
+    // Breadcrumbs
+    expect(
+      getItemPickerHeader().queryByText(/Our analytics/i),
+    ).toBeInTheDocument();
+
+    // Content
     expect(screen.queryByText(DASHBOARD.REGULAR.name)).toBeInTheDocument();
     expect(screen.queryByText(COLLECTION.REGULAR.name)).toBeInTheDocument();
     expect(screen.queryByText(COLLECTION.PERSONAL.name)).toBeInTheDocument();
