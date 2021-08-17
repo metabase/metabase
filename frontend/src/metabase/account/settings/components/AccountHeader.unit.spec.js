@@ -24,6 +24,7 @@ describe("AccountHeader", () => {
     expect(screen.getByText("Profile")).toBeInTheDocument();
     expect(screen.queryByText("Password")).toBeInTheDocument();
     expect(screen.getByText("Login History")).toBeInTheDocument();
+    expect(screen.getByText("Notifications")).toBeInTheDocument();
   });
 
   it("should hide the password tab if it is disabled by a plugin", () => {
@@ -32,6 +33,7 @@ describe("AccountHeader", () => {
     expect(screen.getByText("Profile")).toBeInTheDocument();
     expect(screen.queryByText("Password")).not.toBeInTheDocument();
     expect(screen.getByText("Login History")).toBeInTheDocument();
+    expect(screen.getByText("Notifications")).toBeInTheDocument();
   });
 
   it("should change location when a tab is selected", () => {
