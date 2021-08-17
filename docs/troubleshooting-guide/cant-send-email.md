@@ -22,7 +22,7 @@ You have told Metabase to send email notifications, but:
 **Steps to take:**
 
 1. Check that your delivery service allows you to send email to the domain you're trying to get email sent to. (Exactly how to do this depends on the delivery service you're connecting to.)
-2. Make sure you've whitelisted the "from" address you're using for Metabase.
+2. Make sure you've whitelisted the "from" address that you're using for Metabase.
 3. Check the mail server's logs for any error messages.
 4. If you have access to your email delivery service's outbound queue or a dashboard, check that for errors as well. 
 
