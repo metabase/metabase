@@ -1,73 +1,69 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
 
 import CollectionsList from "./CollectionsList";
 
-const filter = () => true;
-
-const openCollections = [];
-
 describe("CollectionsList", () => {
-  it("renders a basic collection", () => {
-    const collections = [
-      {
-        archived: false,
-        children: [],
-        id: 1,
-        location: "/",
-        name: "Collection name",
-      },
-    ];
-
+  function setup({ collections = [], openCollections = [], ...props } = {}) {
     render(
       <DragDropContextProvider backend={HTML5Backend}>
         <CollectionsList
           collections={collections}
-          filter={filter}
           openCollections={openCollections}
+          filter={() => true}
+          {...props}
         />
       </DragDropContextProvider>,
     );
+  }
 
-    screen.getByText("Collection name");
+  function collection({
+    id,
+    name = "Collection name",
+    location = "/",
+    children = [],
+    archived = false,
+  } = {}) {
+    return {
+      id,
+      name,
+      location,
+      children,
+      archived,
+    };
+  }
+
+  it("renders a basic collection", () => {
+    setup({
+      collections: [collection({ id: 1, name: "Collection name" })],
+    });
+
+    expect(screen.queryByText("Collection name")).toBeVisible();
   });
 
   it("opens child collection when user clicks on chevron button", () => {
-    const parentCollection = {
-      archived: false,
-      children: [],
-      id: 1,
-      location: "/",
-      name: "Parent collection name",
-    };
-
-    const childCollection = {
-      archived: false,
-      children: [],
-      id: 2,
-      location: "/2/",
-      name: "Child collection name",
-    };
-
-    parentCollection.children = [childCollection];
-
     const onOpen = jest.fn();
+    setup({
+      collections: [
+        collection({
+          id: 1,
+          name: "Parent collection name",
+          children: [
+            collection({
+              id: 2,
+              name: "Child collection name",
+              location: "/2/",
+            }),
+          ],
+        }),
+      ],
+      onOpen,
+    });
 
-    render(
-      <DragDropContextProvider backend={HTML5Backend}>
-        <CollectionsList
-          collections={[parentCollection]}
-          filter={filter}
-          onOpen={onOpen}
-          openCollections={openCollections}
-        />
-      </DragDropContextProvider>,
-    );
-
-    const chevronButton = screen.getByLabelText("chevronright icon");
-    fireEvent.click(chevronButton);
+    userEvent.click(screen.getByLabelText("chevronright icon"));
 
     expect(onOpen).toHaveBeenCalled();
   });
