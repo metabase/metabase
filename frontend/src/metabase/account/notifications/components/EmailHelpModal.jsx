@@ -3,14 +3,14 @@ import PropTypes from "prop-types";
 import { jt, t } from "ttag";
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/components/Button";
-import { HelpMessage } from "./AdminHelpModal.styled";
+import { HelpMessage } from "./EmailHelpModal.styled";
 
 const propTypes = {
   adminEmail: PropTypes.string,
   onClose: PropTypes.func.isRequired,
 };
 
-const AdminHelpModal = ({ adminEmail, onClose }) => {
+const EmailHelpModal = ({ adminEmail, onClose }) => {
   const adminLink = getEmailLink(adminEmail, t`your instance administrator`);
 
   return (
@@ -33,10 +33,10 @@ const AdminHelpModal = ({ adminEmail, onClose }) => {
   );
 };
 
-AdminHelpModal.propTypes = propTypes;
+EmailHelpModal.propTypes = propTypes;
 
 const getEmailLink = (email, text) => {
   return email ? <a href={`mailto:${email}`}>{text}</a> : text;
 };
 
-export default AdminHelpModal;
+export default EmailHelpModal;
