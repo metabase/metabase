@@ -33,6 +33,7 @@
                                "flexmark-util-collection" {:resource "BSD.txt"}
                                "flexmark-util-data"       {:resource "BSD.txt"}
                                "flexmark-util-dependency" {:resource "BSD.txt"}
+                               "flexmark-util-format"     {:resource "BSD.txt"}
                                "flexmark-util-html"       {:resource "BSD.txt"}
                                "flexmark-util-misc"       {:resource "BSD.txt"}
                                "flexmark-util-sequence"   {:resource "BSD.txt"}
