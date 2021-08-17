@@ -50,6 +50,11 @@ const COLLECTION = {
     personal_owner_id: CURRENT_USER.id,
   }),
   REGULAR: collection({ id: 1, name: "Regular collection" }),
+  READ_ONLY: collection({
+    id: 2,
+    name: "Read only collection",
+    can_write: false,
+  }),
 };
 
 COLLECTION.REGULAR_CHILD = collection({
@@ -131,5 +136,10 @@ describe("ItemPicker", () => {
     expect(screen.queryByText(DASHBOARD.REGULAR.name)).toBeInTheDocument();
     expect(screen.queryByText(COLLECTION.REGULAR.name)).toBeInTheDocument();
     expect(screen.queryByText(COLLECTION.PERSONAL.name)).toBeInTheDocument();
+  });
+
+  it("does not display read-only collections", async () => {
+    await setup();
+    expect(screen.queryByText(COLLECTION.READ_ONLY.name)).toBeNull();
   });
 });
