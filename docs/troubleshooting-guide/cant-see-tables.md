@@ -22,7 +22,7 @@ If you can see the tables, but some of the rows or columns seem to be missing, p
 **Steps to take:**
 
 1. Go to Admin > Databases.
-2. Check that the database you are trying to query is listed.
+2. Check that the database you're trying to query is listed.
 3. Click on the database name and examine the settings.
 
 Exactly what settings you need will depend on your environment. To test that the settings are correct:
