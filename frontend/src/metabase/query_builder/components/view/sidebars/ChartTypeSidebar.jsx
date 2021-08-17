@@ -87,7 +87,7 @@ const ChartTypeOption = ({
 }) => (
   <Box
     p={1}
-    w={1 / 3}
+    width={1 / 3}
     className="text-centered"
     style={{ opacity: !isSensible ? 0.25 : 1 }}
   >
