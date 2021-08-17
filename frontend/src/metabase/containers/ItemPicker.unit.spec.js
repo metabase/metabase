@@ -4,7 +4,9 @@ import {
   render,
   screen,
   waitForElementToBeRemoved,
+  within,
 } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import xhrMock from "xhr-mock";
 import { getStore } from "__support__/entities-store";
 import ItemPicker from "./ItemPicker";
@@ -59,12 +61,17 @@ const COLLECTION = {
 
 COLLECTION.REGULAR_CHILD = collection({
   id: 3,
-  name: "Read-only collection's child (writable)",
+  name: "Regular collection's child",
   location: `/${COLLECTION.REGULAR.id}/`,
 });
 
 const DASHBOARD = {
   REGULAR: dashboard({ id: 1, name: "Regular dashboard" }),
+  REGULAR_CHILD: dashboard({
+    id: 2,
+    name: "Regular dashboard (nested)",
+    collection_id: COLLECTION.REGULAR.id,
+  }),
 };
 
 function mockCollectionEndpoint() {
@@ -74,9 +81,12 @@ function mockCollectionEndpoint() {
 }
 
 function mockCollectionItemsEndpoint() {
-  xhrMock.get("/api/collection/root/items?models=dashboard", (req, res) => {
+  xhrMock.get(/\/api\/collection\/(root|[1-9]\d*)\/items.*/, (req, res) => {
+    const collectionIdParam = req.url().path.split("/")[3];
+    const collectionId =
+      collectionIdParam === "root" ? null : parseInt(collectionIdParam, 10);
     const dashboards = Object.values(DASHBOARD).filter(
-      dashboard => dashboard.collection_id === null,
+      dashboard => dashboard.collection_id === collectionId,
     );
     return res.status(200).body(
       JSON.stringify({
@@ -122,6 +132,27 @@ async function setup({ models = ["dashboard"], ...props } = {}) {
   await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
 }
 
+function getItemPickerHeader() {
+  return within(screen.getByTestId("item-picker-header"));
+}
+
+function getItemPickerList() {
+  return within(screen.getByTestId("item-picker-list"));
+}
+
+function queryListItem(itemName) {
+  const node = getItemPickerList()
+    .queryByText(itemName)
+    .closest("[data-testid=item-picker-item]");
+  return within(node);
+}
+
+async function openCollection(itemName) {
+  const collectionNode = queryListItem(itemName);
+  userEvent.click(collectionNode.getByLabelText("chevronright icon"));
+  await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+}
+
 describe("ItemPicker", () => {
   beforeEach(() => {
     xhrMock.setup();
@@ -141,5 +172,26 @@ describe("ItemPicker", () => {
   it("does not display read-only collections", async () => {
     await setup();
     expect(screen.queryByText(COLLECTION.READ_ONLY.name)).toBeNull();
+  });
+
+  it("can open nested collection", async () => {
+    await setup();
+
+    await openCollection(COLLECTION.REGULAR.name);
+
+    const header = getItemPickerHeader();
+    const list = getItemPickerList();
+
+    // Breadcrumbs
+    expect(header.queryByText(/Our analytics/i)).toBeInTheDocument();
+    expect(header.queryByText(COLLECTION.REGULAR.name)).toBeInTheDocument();
+
+    // Content
+    expect(list.queryByText(COLLECTION.REGULAR_CHILD.name)).toBeInTheDocument();
+    expect(list.queryByText(DASHBOARD.REGULAR_CHILD.name)).toBeInTheDocument();
+
+    expect(list.queryByText(DASHBOARD.REGULAR.name)).toBeNull();
+    expect(list.queryByText(COLLECTION.REGULAR.name)).toBeNull();
+    expect(list.queryByText(COLLECTION.PERSONAL.name)).toBeNull();
   });
 });
