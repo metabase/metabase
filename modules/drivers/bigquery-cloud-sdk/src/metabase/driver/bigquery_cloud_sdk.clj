@@ -35,7 +35,7 @@
   Unclear if this can be sourced from the `com.google.cloud.bigquery` package directly."
   "https://www.googleapis.com/auth/bigquery")
 
-(defn- ^ServiceAccountCredentials database->service-account-credential
+(defn- database->service-account-credential
   "Returns a `ServiceAccountCredentials` (not scoped) for the given DB, from its service account JSON."
   ^ServiceAccountCredentials [{{:keys [^String service-account-json]} :details
                                :as             db}]
@@ -71,16 +71,12 @@
 
   ([^BigQuery client, ^String project-id ^String dataset-id]
    {:pre [client (not (str/blank? dataset-id))]}
-   (.iterateAll (.listTables client (DatasetId/of project-id dataset-id) (u/varargs BigQuery$TableListOption [])))))
+   (.iterateAll (.listTables client (DatasetId/of project-id dataset-id) (u/varargs BigQuery$TableListOption)))))
 
 (defmethod driver/describe-database :bigquery-cloud-sdk
   [_ database]
   ;; first page through all the 50-table pages until we stop getting "next page tokens"
-  (let [tables (list-tables database) #_(loop [tables [], ^TableList table-list (list-tables database)]
-                                          (let [tables (concat tables (.getTables table-list))]
-                                            (if-let [next-page-token (.getNextPageToken table-list)]
-                                              (recur tables (list-tables database next-page-token))
-                                              tables)))]
+  (let [tables (list-tables database)]
     ;; after that convert the results to MB format
     {:tables (set (for [^Table table tables]
                     {:schema nil, :name (.. table getTableId getTable)}))}))
@@ -91,14 +87,17 @@
   (let [^Iterable table-iter (list-tables {:details details-map})]
     (.. table-iter iterator hasNext)))
 
+(def ^:private empty-table-options
+  (u/varargs BigQuery$TableOption))
+
 (s/defn get-table :- Table
   ([{{:keys [project-id dataset-id]} :details, :as database} table-id]
    (get-table (database->client database) project-id dataset-id table-id))
 
   ([client :- BigQuery, project-id :- (s/maybe su/NonBlankString), dataset-id :- su/NonBlankString, table-id :- su/NonBlankString]
    (if project-id
-     (.getTable client (TableId/of project-id dataset-id table-id) (make-array BigQuery$TableOption 0))
-     (.getTable client dataset-id table-id (make-array BigQuery$TableOption 0)))))
+     (.getTable client (TableId/of project-id dataset-id table-id) empty-table-options)
+     (.getTable client dataset-id table-id empty-table-options))))
 
 (defn- bigquery-type->base-type [field-type]
   (case field-type
@@ -113,14 +112,6 @@
     "TIME"      :type/Time
     "NUMERIC"   :type/Decimal
     :type/*))
-
-#_(s/defn ^:private table-schema->metabase-field-info-old
-    [schema :- Schema]
-    (for [[idx ^Field field] (m/indexed (.getFields schema))]
-      {:name              (.getName field)
-       :database-type     (.getType field)
-       :base-type         (bigquery-type->base-type (.getType field))
-       :database-position idx}))
 
 (s/defn ^:private table-schema->metabase-field-info
   [schema :- Schema]
@@ -209,7 +200,7 @@
                            (.setUseLegacySql (str/includes? (str/lower-case sql) "#legacysql"))
                            (bigquery.params/set-parameters! parameters)
                            (.setMaxResults *max-results-per-page*))]
-      (.query client (.build request) (make-array BigQuery$JobOption 0)))
+      (.query client (.build request) (u/varargs BigQuery$JobOption)))
     (catch Throwable e
       (throw (ex-info (tru "Error executing query")
                {:type error-type/invalid-query, :sql sql, :parameters parameters}
