@@ -34,7 +34,7 @@ You have told Metabase to send email notifications, but:
 
 1. Check whether email sent to other accounts is arriving, e.g., are colleagues receiving their notifications?
 2. If so, check your spam folder, any forwarding rules you have set up, etc.
-3. Check whether you are using the same email provider as the people who are receiving their messages. If not, the problem might be with deliverability rules---please look into signing your emails with [DomainKeys Identified Mail][dkim] (DKIM).
+3. Check whether you're using the same email provider as the people who are receiving their messages. If not, the problem might be with deliverability rules---look into signing your emails with [DomainKeys Identified Mail][dkim] (DKIM).
 
 [bugs]: ./bugs.html
 [dkim]: https://en.wikipedia.org/wiki/DomainKeys_Identified_Mail
