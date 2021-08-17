@@ -11,7 +11,7 @@ import {
 } from "./AccountHeader.styled";
 
 const propTypes = {
-  user: PropTypes.object,
+  user: PropTypes.object.isRequired,
   path: PropTypes.string,
   onChangeLocation: PropTypes.func,
 };
