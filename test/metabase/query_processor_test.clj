@@ -42,7 +42,7 @@
   (let [features (set (cons feature more-features))]
     (set (for [driver (normal-drivers)
                :let   [driver (tx/the-driver-with-test-extensions driver)]
-               :when  (set/subset? features (driver.u/features driver))]
+               :when  (set/subset? features (driver.u/features driver (data/db)))]
            driver))))
 
 (alter-meta! #'normal-drivers-with-feature assoc :arglists (list (into ['&] (sort driver/driver-features))))

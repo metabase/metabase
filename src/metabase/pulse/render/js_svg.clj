@@ -10,7 +10,8 @@
            [org.apache.batik.anim.dom SAXSVGDocumentFactory SVGOMDocument]
            [org.apache.batik.transcoder TranscoderInput TranscoderOutput]
            org.apache.batik.transcoder.image.PNGTranscoder
-           org.graalvm.polyglot.Context))
+           org.graalvm.polyglot.Context
+           [org.w3c.dom Element Node]))
 
 (def ^:private bundle-path
   "frontend_client/app/dist/lib-static-viz.bundle.js")
@@ -80,27 +81,66 @@ function categorical_donut (rows, colors) {
     (js/load-resource bundle-path)
     (js/load-js-string src-api "src call")))
 
+(defn- static-viz-context
+  "Load the static viz js bundle into a new graal js context."
+  []
+  (load-viz-bundle (js/context)))
+
 (def ^:private ^Context context
   "Javascript context suitable for evaluating the charts. It has the chart bundle and the above `src-api` in its
   environment suitable for creating charts."
   ;; todo is this thread safe? Should we have a resource pool on top of this? Or create them fresh for each invocation
-  (delay (load-viz-bundle (js/make-context))))
+  (delay (static-viz-context)))
+
+(defn- post-process
+  "Mutate in place the elements of the svg document. Remove the fill=transparent attribute in favor of
+  fill-opacity=0.0. Our svg image renderer only understands the latter. Mutation is unfortunately necessary as the
+  underlying tree of nodes is inherently mutable"
+  [^SVGOMDocument svg-document & post-fns]
+  (loop [s [(.getDocumentElement svg-document)]]
+    (when-let [^Node node (peek s)]
+      (let [s' (let [nodelist (.getChildNodes node)
+                     length   (.getLength nodelist)]
+                 (apply conj (pop s)
+                        ;; reverse the nodes for the stack so it goes down first child first
+                        (map #(.item nodelist %) (reverse (range length)))))]
+        (reduce (fn [node f] (f node)) node post-fns)
+        (recur s'))))
+  svg-document)
+
+(defn- fix-fill
+  "The batik svg renderer does not understand fill=\"transparent\" so we must change that to
+  fill-opacity=\"0.0\". Previously was just doing a string replacement but now is a proper tree walk fix."
+  [^Node node]
+  (letfn [(element? [x] (instance? Element x))]
+    (if (and (element? node)
+             (.hasAttribute ^Element node "fill")
+             (= (.getAttribute ^Element node "fill") "transparent"))
+      (doto ^Element node
+        (.removeAttribute "fill")
+        (.setAttribute "fill-opacity" "0.0"))
+      node)))
 
 (defn- parse-svg-string [^String s]
-  (let [s       (-> s
-                    (str/replace  #"<svg " "<svg xmlns=\"http://www.w3.org/2000/svg\" ")
-                    (str/replace #"fill=\"transparent\"" "fill-opacity=\"0.0\""))
+  (let [s       (str/replace s #"<svg " "<svg xmlns=\"http://www.w3.org/2000/svg\" ")
         factory (SAXSVGDocumentFactory. "org.apache.xerces.parsers.SAXParser")]
     (with-open [is (ByteArrayInputStream. (.getBytes s StandardCharsets/UTF_8))]
       (.createDocument factory "file:///fake.svg" is))))
 
+(def svg-render-width
+  "Width to render svg images. Intentionally large to improve quality. Consumers should be aware and resize as
+  needed. Email should include width tags; slack automatically resizes inline and provides a nice detail view when
+  clicked."
+  (float 1200))
+
 (defn- render-svg
   ^bytes [^SVGOMDocument svg-document]
   (with-open [os (ByteArrayOutputStream.)]
-    (let [in         (TranscoderInput. svg-document)
-          out        (TranscoderOutput. os)
-          transcoder (PNGTranscoder.)]
-      (.addTranscodingHint transcoder PNGTranscoder/KEY_WIDTH (float 1200))
+    (let [^SVGOMDocument fixed-svg-doc (post-process svg-document fix-fill)
+          in                           (TranscoderInput. fixed-svg-doc)
+          out                          (TranscoderOutput. os)
+          transcoder                   (PNGTranscoder.)]
+      (.addTranscodingHint transcoder PNGTranscoder/KEY_WIDTH svg-render-width)
       (.transcode transcoder in out))
     (.toByteArray os)))
 

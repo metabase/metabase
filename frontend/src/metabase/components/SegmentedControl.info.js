@@ -49,6 +49,16 @@ function SegmentedControlDemo(props) {
 
 export const examples = {
   default: <SegmentedControlDemo options={SIMPLE_OPTIONS} />,
+  variants: (
+    <React.Fragment>
+      <SegmentedControlDemo options={SIMPLE_OPTIONS} variant="fill-text" />
+      <br />
+      <SegmentedControlDemo
+        options={SIMPLE_OPTIONS}
+        variant="fill-background"
+      />
+    </React.Fragment>
+  ),
   icons: <SegmentedControlDemo options={OPTIONS_WITH_ICONS} />,
   iconsOnly: <SegmentedControlDemo options={OPTIONS_ICONS_ONLY} />,
   colored: <SegmentedControlDemo options={OPTIONS_WITH_COLORS} />,

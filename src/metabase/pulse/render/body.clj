@@ -243,12 +243,12 @@
   [_ render-type _timezone-id :- (s/maybe s/Str) card {:keys [rows] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
         rows                        (common/non-nil-rows x-axis-rowfn y-axis-rowfn rows)
-        legend-colors (zipmap (map (comp str x-axis-rowfn) rows) (cycle colors))
-        image-bundle (image-bundle/make-image-bundle
-                      render-type
-                      (js-svg/categorical-donut
-                       (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)
-                       legend-colors))]
+        legend-colors               (zipmap (map (comp str x-axis-rowfn) rows) (cycle colors))
+        image-bundle                (image-bundle/make-image-bundle
+                                      render-type
+                                      (js-svg/categorical-donut
+                                        (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)
+                                        legend-colors))]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))
@@ -256,12 +256,12 @@
      :content
      [:div
       [:img {:style (style/style {:display :block :width :100%})
-             :src (:image-src image-bundle)}]
+             :src   (:image-src image-bundle)}]
       (into [:div {:style (style/style {:clear :both :width "540px" :color "#4C5773"})}]
             (for [label (map (comp str x-axis-rowfn) rows)]
-              [:div {:style (style/style {:float :left :margin-right "12px"
+              [:div {:style (style/style {:float       :left :margin-right "12px"
                                           :font-family "Lato, sans-serif"
-                                          :font-size "24px"})}
+                                          :font-size   "24px"})}
                [:span {:style (style/style {:color (legend-colors label)})}
                 "•"]
                [:span {:style (style/style {:margin-left "6px"})}

@@ -1116,6 +1116,11 @@
    (s/optional-key :add-default-userland-constraints?)
    (s/maybe s/Bool)
 
+   ;; Whether to process a question's visualization settings and include them in the result metadata so that they can
+   ;; incorporated into an export. Used by `metabase.query-processor.middleware.visualization-settings`; default `false`.
+   (s/optional-key :process-viz-settings?)
+   (s/maybe s/Bool)
+
    ;; other middleware options might be used somewhere, but I don't know about them. Add them if you come across them
    ;; for documentation purposes
    s/Keyword

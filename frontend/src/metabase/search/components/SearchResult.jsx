@@ -13,6 +13,7 @@ import Link from "metabase/components/Link";
 import Text from "metabase/components/type/Text";
 
 import {
+  PLUGIN_COLLECTIONS,
   PLUGIN_COLLECTION_COMPONENTS,
   PLUGIN_MODERATION,
 } from "metabase/plugins";
@@ -22,7 +23,6 @@ import Database from "metabase/entities/databases";
 import Table from "metabase/entities/tables";
 
 const { CollectionAuthorityLevelIcon } = PLUGIN_COLLECTION_COMPONENTS;
-const { ModerationStatusIcon } = PLUGIN_MODERATION;
 
 function getColorForIconWrapper(props) {
   if (props.item.collection_position) {
@@ -98,15 +98,38 @@ const TitleWrapper = styled.div`
   grid-gap: 0.25rem;
   align-items: center;
 `;
+const DEFAULT_ICON_SIZE = 20;
+
+function TableIcon() {
+  return <Icon name="database" />;
+}
+
+function CollectionIcon({ item }) {
+  const iconProps = { ...item.getIcon() };
+  const isRegular = PLUGIN_COLLECTIONS.isRegularCollection(item);
+  if (isRegular) {
+    iconProps.size = DEFAULT_ICON_SIZE;
+  } else {
+    iconProps.width = 20;
+    iconProps.height = 24;
+  }
+  return <Icon {...iconProps} />;
+}
+
+const ModelIconComponentMap = {
+  table: TableIcon,
+  collection: CollectionIcon,
+};
+
+function DefaultIcon({ item }) {
+  return <Icon {...item.getIcon()} size={DEFAULT_ICON_SIZE} />;
+}
 
 function ItemIcon({ item, type }) {
+  const IconComponent = ModelIconComponentMap[type] || DefaultIcon;
   return (
     <IconWrapper item={item} type={type}>
-      {type === "table" ? (
-        <Icon name="database" />
-      ) : (
-        <Icon {...item.getIcon()} size={20} />
-      )}
+      <IconComponent item={item} />
     </IconWrapper>
   );
 }
@@ -265,7 +288,10 @@ export default function SearchResult({ result, compact }) {
         <Box>
           <TitleWrapper>
             <Title>{result.name}</Title>
-            <ModerationStatusIcon status={result.moderated_status} size={12} />
+            <PLUGIN_MODERATION.ModerationStatusIcon
+              status={result.moderated_status}
+              size={12}
+            />
           </TitleWrapper>
           <Text>
             <InfoText result={result} />

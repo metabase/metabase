@@ -29,7 +29,7 @@ const devMode = NODE_ENV !== "production";
 
 // Babel:
 const BABEL_CONFIG = {
-  cacheDirectory: process.env.BABEL_DISABLE_CACHE ? null : ".babel_cache",
+  cacheDirectory: process.env.BABEL_DISABLE_CACHE ? false : ".babel_cache",
 };
 
 const CSS_CONFIG = {

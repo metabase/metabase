@@ -25,6 +25,7 @@ const propTypes = {
   name: PropTypes.string,
   value: PropTypes.any,
   options: PropTypes.arrayOf(optionShape).isRequired,
+  variant: PropTypes.oneOf(["fill-text", "fill-background"]),
   inactiveColor: PropTypes.string,
   onChange: PropTypes.func,
   fullWidth: PropTypes.bool,
@@ -39,6 +40,7 @@ export function SegmentedControl({
   onChange,
   fullWidth = false,
   inactiveColor = "text-medium",
+  variant = "fill-text",
   ...props
 }) {
   const id = useMemo(() => _.uniqueId("radio-"), []);
@@ -52,17 +54,22 @@ export function SegmentedControl({
         const id = `${name}-${option.value}`;
         const labelId = `${name}-${option.value}`;
         const iconOnly = !option.name;
+        const selectedColor = option.selectedColor || "brand";
         return (
           <SegmentedItem
             key={option.value}
+            isSelected={isSelected}
             isFirst={isFirst}
             isLast={isLast}
             fullWidth={fullWidth}
+            variant={variant}
+            selectedColor={selectedColor}
           >
             <SegmentedItemLabel
               id={labelId}
               isSelected={isSelected}
-              selectedColor={option.selectedColor || "brand"}
+              variant={variant}
+              selectedColor={selectedColor}
               inactiveColor={inactiveColor}
               compact={iconOnly}
             >

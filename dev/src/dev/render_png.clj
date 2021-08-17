@@ -1,5 +1,6 @@
 (ns dev.render-png
-  "Improve feedback loop for dealing with png rendering code"
+  "Improve feedback loop for dealing with png rendering code. Will create images using the rendering that underpins
+  pulses and subscriptions and open those images without needing to send them to slack or email."
   (:require [clojure.java.io :as io]
             [clojure.java.shell :as sh]
             [clojure.string :as str]
@@ -8,7 +9,7 @@
             [metabase.models.user :as user]
             [metabase.pulse :as pulse]
             [metabase.pulse.render :as pulse-render]
-            [metabase.pulse.render.js-svg :as poc]
+            [metabase.pulse.render.js-svg :as js-svg]
             [metabase.pulse.render.png :as png]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -57,14 +58,13 @@
                                              :card-id     card-id}))
         png-bytes                        (pulse-render/render-pulse-card-to-png (pulse/defaulted-timezone card)
                                                                                 card
-                                                                                query-results)
+                                                                                query-results
+                                                                                1000)
         tmp-file                         (java.io.File/createTempFile "card-png" ".png")]
     (with-open [w (java.io.FileOutputStream. tmp-file)]
       (.write w ^bytes png-bytes))
     (.deleteOnExit tmp-file)
     (open tmp-file)))
-
-;;;
 
 (defn open-png-bytes [bytes]
   (let [tmp-file (java.io.File/createTempFile "card-png" ".png")]
@@ -92,9 +92,9 @@
                       "gamma" "blue"
                       "delta" "yellow"}]
     (case kind
-      :line  (poc/timelineseries-line line|bar-data)
-      :bar   (poc/timelineseries-bar line|bar-data)
-      :donut (poc/categorical-donut donut-data donut-colors)
+      :line  (js-svg/timelineseries-line line|bar-data)
+      :bar   (js-svg/timelineseries-bar line|bar-data)
+      :donut (js-svg/categorical-donut donut-data donut-colors)
       (throw (ex-info (str "Invalid chart type: " kind "\n Valid choices are :line, :bar, :donut")
                       {})))))
 

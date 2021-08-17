@@ -179,11 +179,10 @@
   [details]
   (let [inital-attempt (run-smtp-test details)
         it-worked?     (= :SUCCESS (:error inital-attempt))
-        attempted-fix  (if (not it-worked?)
+        attempted-fix  (when-not it-worked?
                          (guess-smtp-security details))
-        we-fixed-it?     (= :SUCCESS (:error attempted-fix))]
-    (if it-worked?
-      inital-attempt
-      (if we-fixed-it?
-        attempted-fix
-        inital-attempt))))
+        we-fixed-it?   (= :SUCCESS (:error attempted-fix))]
+    (cond
+      it-worked?   inital-attempt
+      we-fixed-it? attempted-fix
+      :else        inital-attempt)))

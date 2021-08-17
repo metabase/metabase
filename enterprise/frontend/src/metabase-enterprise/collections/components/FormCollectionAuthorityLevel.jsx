@@ -43,6 +43,8 @@ export function FormCollectionAuthorityLevel({
         value={field.value}
         onChange={field.onChange}
         options={options}
+        variant="fill-background"
+        inactiveColor="text-dark"
       />
       {shouldSuggestToUpdateChildren && (
         <CheckBox

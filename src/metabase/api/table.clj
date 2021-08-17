@@ -13,6 +13,7 @@
             [metabase.models.table :as table :refer [Table]]
             [metabase.related :as related]
             [metabase.sync :as sync]
+            [metabase.sync.concurrent :as sync.concurrent]
             [metabase.sync.field-values :as sync-field-values]
             [metabase.types :as types]
             [metabase.util :as u]
@@ -20,8 +21,7 @@
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]])
-  (:import [java.util.concurrent Callable Executors ExecutorService Future ThreadFactory]))
+            [toucan.hydrate :refer [hydrate]]))
 
 (def ^:private TableVisibilityType
   "Schema for a valid table visibility type."
@@ -62,28 +62,11 @@
         (hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values]))
       updated-table)))
 
-(defonce ^:private thread-factory
-  (reify ThreadFactory
-    (newThread [_ r]
-      (doto (Thread. r)
-        (.setName "table sync worker")
-        (.setDaemon true)))))
-
-(defonce ^:private executor
-  (delay (Executors/newFixedThreadPool 1 ^ThreadFactory thread-factory)))
-
-(defn- submit-task
-  "Submit a task to the single thread executor. This will attempt to serialize repeated requests to sync tables. It
-  obviously cannot work across multiple instances."
-  ^Future [^Callable f]
-  (let [task (bound-fn [] (f))]
-    (.submit ^ExecutorService @executor ^Callable task)))
-
 (defn- sync-unhidden-tables
   "Function to call on newly unhidden tables. Starts a thread to sync all tables."
   [newly-unhidden]
   (when (seq newly-unhidden)
-    (submit-task
+    (sync.concurrent/submit-task
      (fn []
        (let [database (table/database (first newly-unhidden))]
          (if (driver.u/can-connect-with-details? (:engine database) (:details database))
@@ -401,8 +384,9 @@
   [id]
   (api/check-superuser)
   ;; async so as not to block the UI
-  (future
-    (sync-field-values/update-field-values-for-table! (api/check-404 (Table id))))
+  (sync.concurrent/submit-task
+    (fn []
+      (sync-field-values/update-field-values-for-table! (api/check-404 (Table id)))))
   {:status :success})
 
 (api/defendpoint POST "/:id/discard_values"

@@ -2,7 +2,7 @@
   (:require [clojure.java.io :as io])
   (:import [org.graalvm.polyglot Context HostAccess Source Value]))
 
-(defn ^Context make-context
+(defn ^Context context
   "Create a new org.graalvm.polyglot.Context suitable to evaluate javascript"
   []
   (.. (Context/newBuilder (into-array String ["js"]))
