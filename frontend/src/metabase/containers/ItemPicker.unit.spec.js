@@ -71,6 +71,12 @@ const COLLECTION_READ_ONLY_CHILD_WRITABLE = collection({
   location: `/${COLLECTION.READ_ONLY.id}/`,
 });
 
+const COLLECTION_OTHER_USERS = collection({
+  id: 5,
+  name: "John Lennon's personal collection",
+  personal_owner_id: CURRENT_USER.id + 1,
+});
+
 const DASHBOARD = {
   REGULAR: dashboard({ id: 1, name: "Regular dashboard" }),
   REGULAR_CHILD: dashboard({
@@ -255,5 +261,16 @@ describe("ItemPicker", () => {
     const { onChange } = await setup();
     userEvent.click(screen.getByText(COLLECTION.REGULAR.name));
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("groups personal collections into single folder if there are more than one", async () => {
+    await setup({ extraCollections: [COLLECTION_OTHER_USERS] });
+
+    userEvent.click(screen.queryByText(/All personal collections/i));
+
+    const list = getItemPickerList();
+    expect(list.queryByText(COLLECTION_OTHER_USERS.name)).toBeInTheDocument();
+    expect(list.queryByText(COLLECTION.PERSONAL.name)).toBeInTheDocument();
+    expect(list.queryAllByTestId("item-picker-item")).toHaveLength(2);
   });
 });
