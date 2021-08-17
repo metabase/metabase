@@ -6,7 +6,7 @@ You have told Metabase to send email notifications, but:
 
 ## Are the email credentials correct?
 
-**Root cause:** The email address or password have been set up incorrectly, or the email server's host and port have been set up incorrectly.
+**Root cause:** The host, port, email address, or password may have been set up incorrectly, or the email server's host and port have been set up incorrectly.
 
 **Steps to take:**
 
