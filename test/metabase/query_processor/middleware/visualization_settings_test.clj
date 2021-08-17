@@ -57,7 +57,7 @@
   ([field-ids card-id viz-settings query-type]
    (let [query {:type query-type
                 :query {:fields (into [] (map #(vector :field % nil) field-ids))}
-                :info {:context :xlsx-download}}
+                :middleware {:process-viz-settings? true}}
          query' (if card-id
                   (assoc-in query [:info :card-id] card-id)
                   query)]

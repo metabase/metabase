@@ -15,7 +15,31 @@
 
 (def parse-svg #'js-svg/parse-svg-string)
 
-(def ^Context context (delay (#'js-svg/load-viz-bundle (js/make-context))))
+(deftest post-process-test
+  (let [svg   "<svg ><g><line/></g><g><rect/></g><g><circle/></g></svg>"
+        nodes (atom [])]
+    (#'js-svg/post-process (parse-svg svg)
+                           (fn [^Node node] (swap! nodes conj (.getNodeName node))))
+    (is (= ["svg" "g" "line" "g" "rect" "g" "circle"] @nodes))))
+
+(deftest fix-fill-test
+  (let [svg "<svg ><line x1=\"0\" y1=\"260\" x2=\"540\" y2=\"260\" fill=\"transparent\"></line></svg>"
+
+        ^SVGOMDocument document (parse-svg svg)
+        ^Element line           (..  document
+                                     (getDocumentElement)
+                                     (getChildNodes)
+                                     (item 0))]
+    (is (.hasAttribute line "fill"))
+    (is (= (.getAttribute line "fill") "transparent"))
+    ;; unfortunately these objects are mutable. It does return the line but want to emphasize that is works by
+    ;; mutation
+    (#'js-svg/fix-fill line)
+    (is (not (.hasAttribute line "fill")))
+    (is (.hasAttribute line "fill-opacity"))
+    (is (= (.getAttribute line "fill-opacity") "0.0"))))
+
+(def ^Context context (delay (#'js-svg/static-viz-context)))
 
 (defn document-tag-seq [^SVGOMDocument document]
   (map #(.getNodeName ^Node %)

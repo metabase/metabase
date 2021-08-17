@@ -218,10 +218,10 @@
   [_ render-type _timezone-id :- (s/maybe s/Str) card {:keys [_cols] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
         rows                        (common/non-nil-rows x-axis-rowfn y-axis-rowfn (:rows data))
-        image-bundle (image-bundle/make-image-bundle
-                      render-type
-                      (js-svg/timelineseries-bar
-                       (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)))]
+        image-bundle                (image-bundle/make-image-bundle
+                                     render-type
+                                     (js-svg/timelineseries-bar
+                                      (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)))]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))
@@ -229,7 +229,7 @@
      :content
      [:div
       [:img {:style (style/style {:display :block :width :100%})
-             :src (:image-src image-bundle)}]]}))
+             :src   (:image-src image-bundle)}]]}))
 
 (def ^:private colors
   "Colors to cycle through for charts. These are copied from https://stats.metabase.com/_internal/colors"

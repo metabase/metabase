@@ -91,12 +91,22 @@
     (catch Throwable e
         (log/warn e (trs "Error running query for Card {0}" card-or-id)))))
 
+(defn- dashcard-comparator
+  "Comparator that determines which of two dashcards comes first in the layout order used for pulses.
+  This is the same order used on the frontend for the mobile layout. Orders cards left-to-right, then top-to-bottom"
+  [dashcard-1 dashcard-2]
+  (if-not (= (:row dashcard-1) (:row dashcard-2))
+    (compare (:row dashcard-1) (:row dashcard-2))
+    (compare (:col dashcard-1) (:col dashcard-2))))
+
 (defn execute-dashboard
   "Execute all the cards in a dashboard for a Pulse"
   [{pulse-creator-id :creator_id, :as pulse} dashboard-or-id & {:as options}]
-  (let [dashboard-id (u/the-id dashboard-or-id)
-        dashboard (Dashboard :id dashboard-id)]
-    (for [dashcard (db/select DashboardCard :dashboard_id dashboard-id, :card_id [:not= nil])]
+  (let [dashboard-id      (u/the-id dashboard-or-id)
+        dashboard         (Dashboard :id dashboard-id)
+        dashcards         (db/select DashboardCard :dashboard_id dashboard-id, :card_id [:not= nil])
+        ordered-dashcards (sort dashcard-comparator dashcards)]
+    (for [dashcard ordered-dashcards]
       (execute-dashboard-subscription-card pulse-creator-id dashboard dashcard (:card_id dashcard) (i/the-parameters parameters-impl pulse dashboard)))))
 
 (defn- database-id [card]
@@ -130,6 +140,10 @@
        :channel-id      channel-id
        :fallback        card-name})))
 
+(def slack-width
+  "Width of the rendered png of html to be sent to slack."
+  1200)
+
 (defn create-and-upload-slack-attachments!
   "Create an attachment in Slack for a given Card by rendering its result into an image and uploading
   it. Slack-attachment-uploader is a function which takes image-bytes and an attachment name, uploads the file, and
@@ -141,7 +155,7 @@
                (conj processed (if (:render/text rendered-info)
                                  (-> (f attachment-data)
                                      (assoc :text (:render/text rendered-info)))
-                                 (let [image-bytes (render/png-from-render-info rendered-info)
+                                 (let [image-bytes (render/png-from-render-info rendered-info slack-width)
                                        image-url (slack-attachment-uploader image-bytes attachment-name channel-id)]
                                    (-> (f attachment-data)
                                        (assoc :image_url image-url))))))

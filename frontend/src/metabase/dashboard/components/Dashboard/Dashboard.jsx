@@ -1,20 +1,23 @@
 // TODO: merge with metabase/dashboard/containers/Dashboard.jsx
-/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { Box } from "grid-styled";
-import { t } from "ttag";
 import _ from "underscore";
-import cx from "classnames";
 
-import DashboardHeader from "./DashboardHeader";
-import DashboardGrid from "./DashboardGrid";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import Parameters from "metabase/parameters/components/Parameters/Parameters";
-import EmptyState from "metabase/components/EmptyState";
-import { DashboardSidebars } from "./DashboardSidebars";
-
-import DashboardControls from "../hoc/DashboardControls";
+import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
+import DashboardControls from "../../hoc/DashboardControls";
+import { DashboardSidebars } from "../DashboardSidebars";
+import DashboardHeader from "../DashboardHeader";
+import {
+  DashboardStyled,
+  DashboardLoadingAndErrorWrapper,
+  DashboardBody,
+  HeaderContainer,
+  ParametersAndCardsContainer,
+  ParametersWidgetContainer,
+} from "./Dashboard.styled";
+import DashboardGrid from "../DashboardGrid";
+import ParametersWidget from "./ParametersWidget/ParametersWidget";
+import DashboardEmptyState from "./DashboardEmptyState/DashboardEmptyState";
 
 // NOTE: move DashboardControls HoC to container
 @DashboardControls
@@ -25,20 +28,35 @@ export default class Dashboard extends Component {
   };
 
   static propTypes = {
+    loadDashboardParams: PropTypes.func,
+    location: PropTypes.object,
+
+    isFullscreen: PropTypes.bool,
+    isNightMode: PropTypes.bool,
+    isSharing: PropTypes.bool,
     isEditable: PropTypes.bool,
     isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object])
       .isRequired,
     isEditingParameter: PropTypes.bool.isRequired,
 
     dashboard: PropTypes.object,
+    dashboardId: PropTypes.number,
     parameters: PropTypes.array,
+    parameterValues: PropTypes.object,
 
+    addCardOnLoad: PropTypes.func,
     addCardToDashboard: PropTypes.func.isRequired,
+    addParameter: PropTypes.func,
     archiveDashboard: PropTypes.func.isRequired,
+    cancelFetchDashboardCardData: PropTypes.func.isRequired,
     fetchDashboard: PropTypes.func.isRequired,
+    fetchDashboardCardData: PropTypes.func.isRequired,
+    initialize: PropTypes.func.isRequired,
+    onRefreshPeriodChange: PropTypes.func,
     saveDashboardAndCards: PropTypes.func.isRequired,
     setDashboardAttributes: PropTypes.func.isRequired,
     setEditingDashboard: PropTypes.func.isRequired,
+    setErrorPage: PropTypes.func,
     setSharing: PropTypes.func.isRequired,
 
     onUpdateDashCardVisualizationSettings: PropTypes.func.isRequired,
@@ -47,8 +65,8 @@ export default class Dashboard extends Component {
 
     onChangeLocation: PropTypes.func.isRequired,
 
-    onSharingClick: PropTypes.func.isRequired,
-    onEmbeddingClick: PropTypes.func.isRequired,
+    onSharingClick: PropTypes.func,
+    onEmbeddingClick: PropTypes.any,
   };
 
   static defaultProps = {
@@ -143,124 +161,84 @@ export default class Dashboard extends Component {
 
   render() {
     const {
+      addParameter,
       dashboard,
-      editingParameter,
-      hideParameters,
       isEditing,
       isFullscreen,
       isNightMode,
       isSharing,
-      location,
-      parameterValues,
-      parameters,
-      removeParameter,
-      setEditingParameter,
-      setParameterDefaultValue,
-      setParameterIndex,
-      setParameterName,
-      setParameterValue,
     } = this.props;
 
     const { error, showAddQuestionSidebar } = this.state;
-    const shouldRenderAsNightMode = isNightMode && isFullscreen;
 
-    let parametersWidget;
-    if (parameters && parameters.length > 0) {
-      parametersWidget = (
-        <Parameters
-          syncQueryString
-          dashboard={dashboard}
-          isEditing={isEditing}
-          isFullscreen={isFullscreen}
-          isNightMode={shouldRenderAsNightMode}
-          hideParameters={hideParameters}
-          parameters={parameters.map(p => ({
-            ...p,
-            value: parameterValues[p.id],
-          }))}
-          query={location.query}
-          editingParameter={editingParameter}
-          setEditingParameter={setEditingParameter}
-          setParameterName={setParameterName}
-          setParameterIndex={setParameterIndex}
-          setParameterDefaultValue={setParameterDefaultValue}
-          removeParameter={removeParameter}
-          setParameterValue={setParameterValue}
-        />
-      );
-    }
+    const shouldRenderAsNightMode = isNightMode && isFullscreen;
+    const dashboardHasCards = dashboard => dashboard.ordered_cards.length > 0;
+
+    const parametersWidget = (
+      <ParametersWidget
+        shouldRenderAsNightMode={shouldRenderAsNightMode}
+        {...this.props}
+      />
+    );
 
     return (
-      <LoadingAndErrorWrapper
-        className={cx("Dashboard flex-full", {
-          "Dashboard--fullscreen": isFullscreen,
-          "Dashboard--night": shouldRenderAsNightMode,
-          // prevents header from scrolling so we can have a fixed sidebar
-          "full-height": isEditing || isSharing,
-        })}
+      <DashboardLoadingAndErrorWrapper
+        isFullHeight={isEditing || isSharing}
+        isFullscreen={isFullscreen}
+        isNightMode={shouldRenderAsNightMode}
         loading={!dashboard}
         error={error}
       >
         {() => (
-          <div
-            className="full flex flex-column full-height"
-            style={{ overflowX: "hidden" }}
-          >
-            <header className="DashboardHeader relative z2">
+          <DashboardStyled>
+            <HeaderContainer
+              isFullscreen={isFullscreen}
+              isNightMode={shouldRenderAsNightMode}
+            >
               <DashboardHeader
                 {...this.props}
                 onEditingChange={this.setEditing}
                 setDashboardAttribute={this.setDashboardAttribute}
-                addParameter={this.props.addParameter}
+                addParameter={addParameter}
                 parametersWidget={parametersWidget}
                 onSharingClick={this.onSharingClick}
                 onEmbeddingClick={this.onEmbeddingClick}
                 onToggleAddQuestionSidebar={this.onToggleAddQuestionSidebar}
                 showAddQuestionSidebar={showAddQuestionSidebar}
               />
-            </header>
-            <div
-              className={cx("flex shrink-below-content-size flex-full", {
-                "flex-basis-none": isEditing || isSharing,
-              })}
-            >
-              <div className="flex-auto overflow-x-hidden">
+            </HeaderContainer>
+
+            <DashboardBody isEditingOrSharing={isEditing || isSharing}>
+              <ParametersAndCardsContainer>
                 {!isFullscreen && parametersWidget && (
-                  <div className="wrapper flex flex-column align-start mt2 relative z2">
+                  <ParametersWidgetContainer>
                     {parametersWidget}
-                  </div>
+                  </ParametersWidgetContainer>
                 )}
-                <div className="wrapper">
-                  {dashboard.ordered_cards.length === 0 ? (
-                    <Box
-                      mt={[2, 4]}
-                      color={shouldRenderAsNightMode ? "white" : "inherit"}
-                    >
-                      <EmptyState
-                        illustrationElement={
-                          <span className="QuestionCircle">?</span>
-                        }
-                        title={t`This dashboard is looking empty.`}
-                        message={t`Add a question to start making it useful!`}
-                      />
-                    </Box>
-                  ) : (
+
+                <FullWidthContainer>
+                  {dashboardHasCards(dashboard) ? (
                     <DashboardGrid
                       {...this.props}
                       onEditingChange={this.setEditing}
                     />
+                  ) : (
+                    <DashboardEmptyState
+                      isNightMode={shouldRenderAsNightMode}
+                    />
                   )}
-                </div>
-              </div>
+                </FullWidthContainer>
+              </ParametersAndCardsContainer>
+
               <DashboardSidebars
                 {...this.props}
                 onCancel={this.onCancel}
                 showAddQuestionSidebar={showAddQuestionSidebar}
               />
-            </div>
-          </div>
+            </DashboardBody>
+          </DashboardStyled>
         )}
-      </LoadingAndErrorWrapper>
+      </DashboardLoadingAndErrorWrapper>
     );
   }
 }

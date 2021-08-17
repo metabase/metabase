@@ -110,17 +110,17 @@ You can also designate a column as the table's **primary key** or **foreign key*
   - Category
   - Comment
   - Description
-  - Common
-  - Number
   - Title
-  - Common
 - **Location**
   - City
   - Country
+  - Latitude
   - Longitude
   - State
   - Zip Code
 - **Financial**
+  - Cost
+  - Currency
   - Discount
   - Gross margin
   - Income
@@ -143,7 +143,12 @@ You can also designate a column as the table's **primary key** or **foreign key*
   - Creation date
   - Creation time
   - Creation timestamp
+  - Deletion date
+  - Deletion time
   - Deletion timestamp
+  - Updated date
+  - Updated time
+  - Updated timestamp
   - Join date
   - Join time
   - Join timestamp
@@ -159,6 +164,7 @@ You can also designate a column as the table's **primary key** or **foreign key*
   - URL
 - **Other**
   - Field containing JSON
+  - No semantic type
 
 ### Casting to a specific data type
 

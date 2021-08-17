@@ -55,10 +55,10 @@
                           (load/load-settings path context)
                           (load/load-dependencies path context)]
               reload-fns (filter fn? all-res)]
-          (if-not (empty? reload-fns)
-            (do (log/info (trs "Finished first pass of load; now performing second pass"))
-                (doseq [reload-fn reload-fns]
-                  (reload-fn))))
+          (when (seq reload-fns)
+            (log/info (trs "Finished first pass of load; now performing second pass"))
+            (doseq [reload-fn reload-fns]
+              (reload-fn)))
           (log/info (trs "END LOAD from {0} with context {1}" path context))))
       (catch Throwable e
         (log/error e (trs "ERROR LOAD from {0}: {1}" path (.getMessage e)))))))

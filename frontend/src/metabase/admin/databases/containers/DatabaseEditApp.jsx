@@ -173,7 +173,7 @@ export default class DatabaseEditApp extends Component {
                 </div>
               )}
               <Flex>
-                <Box w={620}>
+                <Box width={620}>
                   <LoadingAndErrorWrapper
                     loading={!database}
                     error={initializeError}
@@ -231,7 +231,7 @@ export default class DatabaseEditApp extends Component {
 
           {/* Sidebar Actions */}
           {editingExistingDatabase && (
-            <Box ml={[2, 3]} w={420}>
+            <Box ml={[2, 3]} width={420}>
               <div className="Actions bg-light rounded p3">
                 <div className="Actions-group">
                   <label className="Actions-groupLabel block text-bold">{t`Actions`}</label>

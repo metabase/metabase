@@ -528,7 +528,7 @@ describe("collection permissions", () => {
                 });
                 cy.url().should("match", /\/dashboard\/\d+-foo$/);
                 saveDashboard();
-                cy.get(".DashboardHeader").findByText(personalCollection);
+                cy.get(".QueryBuilder-section").findByText(personalCollection);
               });
 
               it("should not offer a user the ability to update or clone the question", () => {
@@ -672,19 +672,17 @@ describe("collection permissions", () => {
                 cy.findByText("This dashboard is looking empty.");
               });
 
-              it("should be able to revert the question via the revision history modal", () => {
-                // It's possible that the mechanics of who should be able to revert the question will change (see https://github.com/metabase/metabase/issues/15131)
-                // For now that's not possible for user without data access (likely it will be again when #11719 is fixed)
+              it("should be able to access the question's revision history via the revision history button in the header of the query builder", () => {
                 cy.skipOn(user === "nodata");
+
                 cy.visit("/question/1");
                 cy.findByTestId("revision-history-button").click();
+                cy.findByText("Revert").click();
 
-                clickRevert("First revision.");
                 cy.wait("@revert").then(xhr => {
                   expect(xhr.status).to.eq(200);
                   expect(xhr.cause).not.to.exist;
                 });
-                cy.findAllByText(/Revert/).should("not.exist");
 
                 cy.contains(/^Orders$/);
               });
@@ -694,6 +692,7 @@ describe("collection permissions", () => {
 
                 cy.visit("/question/1");
                 cy.findByTestId("saved-question-header-button").click();
+                cy.findByText("History").click();
                 cy.findByText("Revert").click();
 
                 cy.wait("@revert").then(xhr => {

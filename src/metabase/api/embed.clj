@@ -332,7 +332,14 @@
   "Like `GET /api/embed/card/query`, but returns the results as a file in the specified format."
   [token export-format :as {:keys [query-params]}]
   {export-format dataset-api/ExportFormat}
-  (run-query-for-unsigned-token-async (eu/unsign token) export-format (m/map-keys keyword query-params) :constraints nil))
+  (run-query-for-unsigned-token-async
+   (eu/unsign token)
+   export-format
+   (m/map-keys keyword query-params)
+   :constraints nil
+   :middleware {:process-viz-settings? true
+                :js-int-to-string?     false
+                :format-rows?          false}))
 
 
 ;;; ----------------------------------------- /api/embed/dashboard endpoints -----------------------------------------
@@ -466,7 +473,10 @@
     card-id
     export-format
     (m/map-keys keyword query-params)
-    :constraints nil))
+    :constraints nil
+    :middleware {:process-viz-settings? true
+                 :js-int-to-string?     false
+                 :format-rows?          false}))
 
 
 ;;; ----------------------------------------------- Chain Filtering -------------------------------------------------

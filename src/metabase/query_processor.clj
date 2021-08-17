@@ -84,13 +84,13 @@
    #'validate-temporal-bucketing/validate-temporal-bucketing
    #'auto-parse-filter-values/auto-parse-filter-values
    #'wrap-value-literals/wrap-value-literals
-   #'viz-settings/update-viz-settings
    #'annotate/add-column-info
    #'perms/check-query-permissions
    #'pre-alias-ags/pre-alias-aggregations
    #'cumulative-ags/handle-cumulative-aggregations
    ;; yes, this is called a second time, because we need to handle any joins that got added
    (resolve 'ee.sandbox.rows/apply-row-level-permissions)
+   #'viz-settings/update-viz-settings
    #'resolve-joined-fields/resolve-joined-fields
    #'resolve-joins/resolve-joins
    #'add-implicit-joins/add-implicit-joins
