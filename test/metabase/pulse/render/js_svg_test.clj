@@ -22,8 +22,6 @@
                            (fn [^Node node] (swap! nodes conj (.getNodeName node))))
     (is (= ["svg" "g" "line" "g" "rect" "g" "circle"] @nodes))))
 
-(binding [*test-out* *out*] (post-process-test))
-
 (deftest fix-fill-test
   (let [svg "<svg ><line x1=\"0\" y1=\"260\" x2=\"540\" y2=\"260\" fill=\"transparent\"></line></svg>"
 
@@ -70,21 +68,23 @@
                                           (set/intersection #{"div" "span" "p"}))))))
 
 (deftest timelineseries-line-test
-  (let [rows [[#t "2020" 2]
-              [#t "2021" 3]]]
+  (let [rows   [[#t "2020" 2]
+                [#t "2021" 3]]
+        labels {:left "count" :bottom "year"}]
     (testing "It returns bytes"
-      (let [svg-bytes (js-svg/timelineseries-line rows)]
+      (let [svg-bytes (js-svg/timelineseries-line rows labels)]
         (is (bytes? svg-bytes))))
-    (let [svg-string (.asString ^Value (js/execute-fn-name @context "timeseries_line" rows))]
+    (let [svg-string (.asString ^Value (js/execute-fn-name @context "timeseries_line" rows labels))]
       (validate-svg-string :timelineseries-line svg-string))))
 
 (deftest timelineseries-bar-test
-  (let [rows [[#t "2020" 2]
-              [#t "2021" 3]]]
+  (let [rows   [[#t "2020" 2]
+                [#t "2021" 3]]
+        labels {:left "count" :bottom "year"}]
     (testing "It returns bytes"
-      (let [svg-bytes (js-svg/timelineseries-bar rows)]
+      (let [svg-bytes (js-svg/timelineseries-bar rows labels)]
         (is (bytes? svg-bytes))))
-    (let [svg-string (.asString ^Value (js/execute-fn-name @context "timeseries_bar" rows))]
+    (let [svg-string (.asString ^Value (js/execute-fn-name @context "timeseries_bar" rows labels))]
       (validate-svg-string :timelineseries-bar svg-string))))
 
 (deftest categorical-donut-test

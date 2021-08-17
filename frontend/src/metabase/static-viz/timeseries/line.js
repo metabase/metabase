@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import { t } from "ttag";
 import { LinePath } from "@visx/shape";
 import { AxisLeft, AxisBottom } from "@visx/axis";
 import { scaleLinear, scaleOrdinal, scaleTime } from "@visx/scale";
@@ -7,9 +8,10 @@ import { bottomAxisTickStyles, leftAxisTickStyles } from "../utils";
 import { GridRows } from "@visx/grid";
 
 export default function TimeseriesLine(
-  { data, yScaleType = scaleLinear, accessors },
+  { data, yScaleType = scaleLinear, accessors, labels },
   layout,
 ) {
+  const leftMargin = 55;
   let multiScale, categories;
 
   const xAxisScale = scaleTime({
@@ -17,7 +19,7 @@ export default function TimeseriesLine(
       Math.min(...data.map(accessors.x)),
       Math.max(...data.map(accessors.x)),
     ],
-    range: [40, layout.xMax],
+    range: [leftMargin, layout.xMax],
   });
 
   // Y scale
@@ -39,8 +41,8 @@ export default function TimeseriesLine(
     <svg width={layout.width} height={layout.height}>
       <GridRows
         scale={yAxisScale}
-        width={layout.width}
-        left={40}
+        width={layout.xMax - leftMargin}
+        left={leftMargin}
         strokeDasharray="4"
       />
       {multiScale ? (
@@ -67,16 +69,16 @@ export default function TimeseriesLine(
         />
       )}
       <AxisLeft
-        label={"Count"}
+        label={labels.left || t`Metric`}
         hideTicks
         hideAxisLine
         tickFormat={d => String(d)}
         scale={yAxisScale}
-        left={40}
+        left={leftMargin}
         tickLabelProps={() => leftAxisTickStyles(layout)}
       />
       <AxisBottom
-        label={"Time"}
+        label={labels.bottom || t`Dimension`}
         hideTicks={false}
         numTicks={5}
         top={layout.yMax}
