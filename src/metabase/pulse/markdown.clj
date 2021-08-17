@@ -3,7 +3,8 @@
   (:import [com.vladsch.flexmark.ast
             AutoLink BlockQuote BulletList BulletListItem Code Emphasis FencedCodeBlock HardLineBreak Heading Image
             ImageRef IndentedCodeBlock Link LinkRef MailLink OrderedList OrderedListItem Paragraph Reference
-            SoftLineBreak StrongEmphasis Text ThematicBreak]
+            SoftLineBreak StrongEmphasis Text ThematicBreak HtmlBlock HtmlInline HtmlEntity
+            HtmlBlockBase HtmlCommentBlock HtmlInlineBase HtmlInlineComment HtmlInnerBlock HtmlInnerBlockComment]
            com.vladsch.flexmark.parser.Parser
            [com.vladsch.flexmark.util.ast Document Node]))
 
@@ -17,28 +18,37 @@
 
 (def ^:private node-to-tag-mapping
   "Mappings from Flexmark AST nodes to keyword tags"
-  {Document          :document
-   Paragraph         :paragraph
-   ThematicBreak     :horizontal-line
-   HardLineBreak     :hard-line-break
-   SoftLineBreak     :soft-line-break
-   Heading           :heading
-   StrongEmphasis    :bold
-   Emphasis          :italic
-   OrderedList       :ordered-list
-   BulletList        :unordered-list
-   OrderedListItem   :ordered-list-item
-   BulletListItem    :unordered-list-item
-   Code              :code
-   FencedCodeBlock   :codeblock
-   IndentedCodeBlock :codeblock
-   BlockQuote        :blockquote
-   Link              :link
-   Reference         :reference ;; TODO
-   LinkRef           :link-ref ;; TODO
-   ImageRef          :image-ref ;; TODO
-   Image             :image
-   AutoLink          :auto-link}) ;; TODO
+  {Document              :document
+   Paragraph             :paragraph
+   ThematicBreak         :horizontal-line
+   HardLineBreak         :hard-line-break
+   SoftLineBreak         :soft-line-break
+   Heading               :heading
+   StrongEmphasis        :bold
+   Emphasis              :italic
+   OrderedList           :ordered-list
+   BulletList            :unordered-list
+   OrderedListItem       :ordered-list-item
+   BulletListItem        :unordered-list-item
+   Code                  :code
+   FencedCodeBlock       :codeblock
+   IndentedCodeBlock     :codeblock
+   BlockQuote            :blockquote
+   Link                  :link
+   Reference             :reference ;; TODO
+   LinkRef               :link-ref ;; TODO
+   ImageRef              :image-ref ;; TODO
+   Image                 :image
+   AutoLink              :auto-link ;; TODO
+   HtmlBlock             :html-block
+   HtmlInline            :html-inline
+   HtmlEntity            :html-entity
+   HtmlBlockBase         :html-block-base
+   HtmlCommentBlock      :html-comment-block
+   HtmlInlineBase        :html-inline-base
+   HtmlInlineComment     :html-inline-comment
+   HtmlInnerBlock        :html-inner-block
+   HtmlInnerBlockComment :html-inner-block-comment})
 
 (defn- node-to-tag
   [node]
@@ -122,6 +132,34 @@
   (to-clojure [this _]
     {:tag   (node-to-tag this)
      :attrs {:address (str (.getText this))}})
+
+  HtmlBlock
+  (to-clojure [this _]
+    (str (.getContentChars this)))
+
+  HtmlBlockBase
+  (to-clojure [this _]
+    (str (.getContentChars this)))
+
+  HtmlEntity
+  (to-clojure [this _]
+    (str (.getChars this)))
+
+  HtmlInline
+  (to-clojure [this _]
+    (str (.getChars this)))
+
+  HtmlCommentBlock
+  (to-clojure [this _]
+    (str (.getChars this)))
+
+  HtmlInlineComment
+  (to-clojure [this _]
+    (str (.getChars this)))
+
+  HtmlInnerBlock
+  (to-clojure [this _]
+    (str (.getChars this)))
 
   nil
   (to-clojure [this _]

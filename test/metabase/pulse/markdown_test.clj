@@ -92,4 +92,13 @@
 
   (testing "Linked images include link target in parentheses"
     (is (= "<image.png|[Image]>\n(metabase.com)"           (mrkdwn "[![](image.png)](metabase.com)")))
-    (is (= "<image.png|[Image: alt-text]>\n(metabase.com)" (mrkdwn "[![alt-text](image.png)](metabase.com)")))))
+    (is (= "<image.png|[Image: alt-text]>\n(metabase.com)" (mrkdwn "[![alt-text](image.png)](metabase.com)"))))
+
+  (testing "Raw HTML in Markdown is passed through unmodified"
+    (is (= "<h1>header</h1>"           (mrkdwn "<h1>header</h1>")))
+    (is (= "<em>bold</em>"             (mrkdwn "<em>bold</em>")))
+    (is (= "<h1><!-- comment --></h1>" (mrkdwn "<h1><!-- comment --></h1>")))
+    (is (= "<em><!-- comment --></em>" (mrkdwn "<em><!-- comment --></em>")))
+    (is (= "<p>&gt;</p>"               (mrkdwn "<p>&gt;</p>")))
+    (is (= "<img src=\"img.png\" />"   (mrkdwn "<img src=\"img.png\" />")))
+    (is (= "<script>alert(1)</script>" (mrkdwn "<script>alert(1)</script>")))))
