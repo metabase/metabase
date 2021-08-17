@@ -36,3 +36,26 @@ services:
       #JAVA_OPTS: -Xmx512m # 512MB for JAVA
 
 ```
+
+  * or Run directly from docker-hub
+```sh
+version: "3.8"
+services:
+  metabase_arm64v8:
+    image: duonghuynhbaocr/metabase:arm64v8_0.0.3
+    ports:
+      - 3000:3000
+    volumes:
+      - ./metabase-data:/metabase-data
+    restart: always
+
+    environment: 
+      MB_DB_TYPE: postgres # use postgres to store metabase config
+      MB_DB_DBNAME: MetabaseLocal # DTB name to store metabase config
+      MB_DB_PORT: 5432
+      MB_DB_USER: postgres #default username is : postgres
+      MB_DB_PASS: <pass>
+      MB_DB_HOST: <host>
+      #JAVA_OPTS: -Xmx512m # 512MB for JAVA
+
+```
