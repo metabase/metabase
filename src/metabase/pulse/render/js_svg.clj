@@ -50,16 +50,18 @@ const dimension_accessors = {
   metric: (row) => row[1],
 }
 
-function timeseries_line (data) {
+function timeseries_line (data, labels) {
   return StaticViz.RenderChart(\"timeseries/line\", {
     data: toJSArray(data),
+    labels: toJSMap(labels),
     accessors: date_accessors
  })
 }
 
-function timeseries_bar (data) {
+function timeseries_bar (data, labels) {
   return StaticViz.RenderChart(\"timeseries/bar\", {
     data: toJSArray(data),
+    labels: toJSMap(labels),
     accessors: date_accessors
  })
 }
@@ -146,17 +148,19 @@ function categorical_donut (rows, colors) {
   (-> s parse-svg-string render-svg))
 
 (defn timelineseries-line
-  "Clojure entrypoint to render a timeseries line char. Rows should be tuples of [datetime numeric-value]. Returns a
-  byte array of a png file."
-  [rows]
-  (let [svg-string (.asString (js/execute-fn-name @context "timeseries_line" rows))]
+  "Clojure entrypoint to render a timeseries line char. Rows should be tuples of [datetime numeric-value]. Labels is a
+  map of {:left \"left-label\" :right \"right-label\"}. Returns a byte array of a png file."
+  [rows labels]
+  (let [svg-string (.asString (js/execute-fn-name @context "timeseries_line" rows
+                                                  (map (fn [[k v]] [(name k) v]) labels)))]
     (svg-string->bytes svg-string)))
 
 (defn timelineseries-bar
-  "Clojure entrypoint to render a timeseries bar char. Rows should be tuples of [datetime numeric-value]. Returns a byte
-  array of a png file"
-  [rows]
-  (let [svg-string (.asString (js/execute-fn-name @context "timeseries_bar" rows))]
+  "Clojure entrypoint to render a timeseries bar char. Rows should be tuples of [datetime numeric-value]. Labels is a
+  map of {:left \"left-label\" :right \"right-label\"}. Returns a byte array of a png file"
+  [rows labels]
+  (let [svg-string (.asString (js/execute-fn-name @context "timeseries_bar" rows
+                                                  (map (fn [[k v]] [(name k) v]) labels)))]
     (svg-string->bytes svg-string)))
 
 (defn categorical-donut
