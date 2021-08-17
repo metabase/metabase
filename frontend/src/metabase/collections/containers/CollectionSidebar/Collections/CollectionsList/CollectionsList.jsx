@@ -17,7 +17,7 @@ import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
 
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 
-const { isRegularCollection } = PLUGIN_COLLECTIONS;
+const IRREGULAR_COLLECTION_ICON_SIZE = 14;
 
 function ToggleChildCollectionButton({ action, collectionId, isOpen }) {
   const iconName = isOpen ? "chevrondown" : "chevronright";
@@ -35,11 +35,16 @@ function ToggleChildCollectionButton({ action, collectionId, isOpen }) {
   );
 }
 
-function Label({ action, collection, initialIcon, isOpen }) {
+function Label({ action, depth, collection, isOpen }) {
   const { children, id, name } = collection;
 
+  const isRegular = PLUGIN_COLLECTIONS.isRegularCollection(collection);
   const hasChildren =
     Array.isArray(children) && children.some(child => !child.archived);
+
+  // Workaround: collection icons on the first tree level incorrect offset out of the box
+  const targetOffsetX =
+    !isRegular && depth === 1 ? IRREGULAR_COLLECTION_ICON_SIZE : 0;
 
   return (
     <LabelContainer>
@@ -51,7 +56,10 @@ function Label({ action, collection, initialIcon, isOpen }) {
         />
       )}
 
-      <CollectionListIcon collection={collection} />
+      <CollectionListIcon
+        collection={collection}
+        targetOffsetX={targetOffsetX}
+      />
       {name}
     </LabelContainer>
   );
@@ -78,7 +86,7 @@ function Collection({
         {({ highlighted, hovered }) => {
           const url = Urls.collection(collection);
           const selected = id === currentCollection;
-          const dimmedIcon = isRegularCollection(collection);
+          const dimmedIcon = PLUGIN_COLLECTIONS.isRegularCollection(collection);
 
           // when we click on a link, if there are children,
           // expand to show sub collections
@@ -103,6 +111,7 @@ function Collection({
                 collection={collection}
                 initialIcon={initialIcon}
                 isOpen={isOpen}
+                depth={depth}
               />
             </CollectionLink>
           );

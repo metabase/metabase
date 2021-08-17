@@ -239,11 +239,15 @@ export default class DashboardGrid extends Component {
     if (isRegularDashboard && !isRegularQuestion) {
       const authorityLevel = dashCard.collection_authority_level;
       const opts = PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[authorityLevel];
+      const iconSize = 14;
       return {
         name: opts.icon,
         color: color(opts.color),
         tooltip: opts.tooltips?.belonging,
-        size: 14,
+        size: iconSize,
+
+        // Workaround: headerIcon on cards in a first column have incorrect offset out of the box
+        targetOffsetX: dashCard.col === 0 ? iconSize : 0,
       };
     }
   };
