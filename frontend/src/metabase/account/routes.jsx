@@ -8,7 +8,8 @@ import UserProfileApp from "./profile/containers/UserProfileApp";
 import UserPasswordApp from "./password/containers/UserPasswordApp";
 import LoginHistoryApp from "./login-history/containers/LoginHistoryApp";
 import NotificationSettingsApp from "./notifications/containers/NotificationSettingsApp";
-import HelpNotificationModal from "./notifications/containers/HelpNotificationModal";
+import AdminHelpModal from "./notifications/containers/AdminHelpModal";
+import UnsubscribeAlertModal from "./notifications/containers/UnsubscribeAlertModal";
 
 const getRoutes = () => {
   return (
@@ -22,7 +23,8 @@ const getRoutes = () => {
       <Route path="password" component={UserPasswordApp} />
       <Route path="login-history" component={LoginHistoryApp} />
       <Route path="notifications" component={NotificationSettingsApp}>
-        <ModalRoute path="help" modal={HelpNotificationModal} />
+        <ModalRoute path="help" modal={AdminHelpModal} />
+        <ModalRoute path="unsubscribe" modal={UnsubscribeAlertModal} />
       </Route>
     </Route>
   );
