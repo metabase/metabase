@@ -5,6 +5,7 @@
   "com.google.guava"                 {:resource "apache2_0.txt"},
   "com.fasterxml.jackson.dataformat" {:resource "apache2_0.txt"},
   "com.onelogin"                     {:resource "MIT.txt"},
+  "com.vladsch.flexmark"             {:resource "BSD.txt"},
   "xalan"                            {:resource "apache2_0.txt"}
   "org.apache.hadoop"                {:resource "apache2_0.txt"}
   "org.ow2.asm"                      {:resource "BSD.txt"}
@@ -27,17 +28,6 @@
                                "jersey-servlet" {:resource "GPL1_1.txt"}}
  "com.sun.jersey.contribs"    {"jersey-guice" {:resource "GPL1_1.txt"}}
  "com.thoughtworks.paranamer" {"paranamer" {:resource "BSD.txt"}}
- "com.vladsch.flexmark"       {"flexmark"                 {:resource "BSD.txt"}
-                               "flexmark-util-ast"        {:resource "BSD.txt"}
-                               "flexmark-util-builder"    {:resource "BSD.txt"}
-                               "flexmark-util-collection" {:resource "BSD.txt"}
-                               "flexmark-util-data"       {:resource "BSD.txt"}
-                               "flexmark-util-dependency" {:resource "BSD.txt"}
-                               "flexmark-util-format"     {:resource "BSD.txt"}
-                               "flexmark-util-html"       {:resource "BSD.txt"}
-                               "flexmark-util-misc"       {:resource "BSD.txt"}
-                               "flexmark-util-sequence"   {:resource "BSD.txt"}
-                               "flexmark-util-visitor"    {:resource "BSD.txt"}}
  "javax.servlet.jsp"          {"jsp-api" {:resource "GPL2_0.txt"}}
 
  "org.openid4java"        {"openid4java-nodeps" {:resource "apache2_0.txt"}},
