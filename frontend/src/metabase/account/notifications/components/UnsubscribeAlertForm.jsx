@@ -9,7 +9,7 @@ const propTypes = {
   onClose: PropTypes.func,
 };
 
-const UnsubscribeAlertModal = ({ onUnsubscribe, onClose }) => {
+const UnsubscribeAlertForm = ({ onUnsubscribe, onClose }) => {
   return (
     <ModalContent
       title={t`Confirm you want to unsubscribe`}
@@ -30,6 +30,6 @@ const UnsubscribeAlertModal = ({ onUnsubscribe, onClose }) => {
   );
 };
 
-UnsubscribeAlertModal.propTypes = propTypes;
+UnsubscribeAlertForm.propTypes = propTypes;
 
-export default UnsubscribeAlertModal;
+export default UnsubscribeAlertForm;

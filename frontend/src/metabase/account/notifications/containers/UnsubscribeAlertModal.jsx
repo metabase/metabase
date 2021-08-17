@@ -1,3 +1,3 @@
-import UnsubscribeAlertModal from "../components/UnsubscribeAlertModal";
+import UnsubscribeAlertForm from "../components/UnsubscribeAlertForm";
 
-export default UnsubscribeAlertModal;
+export default UnsubscribeAlertForm;
