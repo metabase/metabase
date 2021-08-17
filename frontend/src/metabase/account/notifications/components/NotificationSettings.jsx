@@ -1,12 +1,14 @@
 import React from "react";
 import PropTypes from "prop-types";
+import NotificationList from "./NotificationList";
 
 const propTypes = {
-  children: PropTypes.node,
+  pulses: PropTypes.array.isRequired,
+  user: PropTypes.object.isRequired,
 };
 
-const NotificationSettings = ({ children }) => {
-  return <div>{children}</div>;
+const NotificationSettings = ({ pulses, user }) => {
+  return <NotificationList items={pulses} user={user} />;
 };
 
 NotificationSettings.propTypes = propTypes;
