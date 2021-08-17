@@ -2,7 +2,7 @@ import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import AccountHeader from "./AccountHeader";
 
-const EMAIL_USER = {
+const REGULAR_USER = {
   id: 1,
   first_name: "John",
   last_name: "Doe",
@@ -19,7 +19,7 @@ const GOOGLE_USER = {
 
 describe("AccountHeader", () => {
   it("should show all tabs for a regular user", () => {
-    render(<AccountHeader user={EMAIL_USER} />);
+    render(<AccountHeader user={REGULAR_USER} />);
 
     expect(screen.getByText("Profile")).toBeInTheDocument();
     expect(screen.queryByText("Password")).toBeInTheDocument();
@@ -38,7 +38,7 @@ describe("AccountHeader", () => {
     const onChangeLocation = jest.fn();
 
     render(
-      <AccountHeader user={EMAIL_USER} onChangeLocation={onChangeLocation} />,
+      <AccountHeader user={REGULAR_USER} onChangeLocation={onChangeLocation} />,
     );
 
     fireEvent.click(screen.getByText("Profile"));
