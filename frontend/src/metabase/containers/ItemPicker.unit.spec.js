@@ -193,6 +193,7 @@ describe("ItemPicker", () => {
     expect(screen.queryByText(DASHBOARD.REGULAR.name)).toBeInTheDocument();
     expect(screen.queryByText(COLLECTION.REGULAR.name)).toBeInTheDocument();
     expect(screen.queryByText(COLLECTION.PERSONAL.name)).toBeInTheDocument();
+    expect(screen.queryAllByTestId("item-picker-item")).toHaveLength(3);
   });
 
   it("does not display read-only collections", async () => {
@@ -220,10 +221,7 @@ describe("ItemPicker", () => {
     // Content
     expect(list.queryByText(COLLECTION.REGULAR_CHILD.name)).toBeInTheDocument();
     expect(list.queryByText(DASHBOARD.REGULAR_CHILD.name)).toBeInTheDocument();
-
-    expect(list.queryByText(DASHBOARD.REGULAR.name)).toBeNull();
-    expect(list.queryByText(COLLECTION.REGULAR.name)).toBeNull();
-    expect(list.queryByText(COLLECTION.PERSONAL.name)).toBeNull();
+    expect(list.queryAllByTestId("item-picker-item")).toHaveLength(2);
   });
 
   it("can navigate back from a currently open nested collection", async () => {
@@ -241,9 +239,7 @@ describe("ItemPicker", () => {
     expect(list.queryByText(DASHBOARD.REGULAR.name)).toBeInTheDocument();
     expect(list.queryByText(COLLECTION.REGULAR.name)).toBeInTheDocument();
     expect(list.queryByText(COLLECTION.PERSONAL.name)).toBeInTheDocument();
-
-    expect(list.queryByText(COLLECTION.REGULAR_CHILD.name)).toBeNull();
-    expect(list.queryByText(DASHBOARD.REGULAR_CHILD.name)).toBeNull();
+    expect(list.queryAllByTestId("item-picker-item")).toHaveLength(3);
   });
 
   it("calls onChange when selecting an item", async () => {
