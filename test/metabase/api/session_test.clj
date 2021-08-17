@@ -154,9 +154,9 @@
                         :body
                         json/parse-string
                         (get-in ["errors" "username"])))]
-        (is (re= #"^Too many attempts! You must wait 1\d seconds before trying again\.$"
+        (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
                  (error)))
-        (is (re= #"^Too many attempts! You must wait 4\d seconds before trying again\.$"
+        (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
                  (error)))))))
 
 (deftest failure-threshold-per-request-source

@@ -129,10 +129,10 @@
   "Value for session cookie's `SameSite` directive. Must be one of \"none\", \"lax\", or \"strict\" (case insensitive)."
   (mb-session-cookie-samesite*))
 
-;; In 0.40.0 we switched from Leiningen to deps.edn. This warning here to keep people from being bitten in the ass by
+;; In 0.41.0 we switched from Leiningen to deps.edn. This warning here to keep people from being bitten in the ass by
 ;; the little gotcha described below.
 ;;
-;; TODO -- after we've shipped 0.42.0, remove this warning. At that point, the last three shipped major releases will
+;; TODO -- after we've shipped 0.43.0, remove this warning. At that point, the last three shipped major releases will
 ;; all be deps.edn based.
 (when (and (not is-prod?)
            (.exists (io/file ".lein-env")))
