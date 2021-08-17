@@ -220,6 +220,26 @@ describe("ItemPicker", () => {
     expect(list.queryByText(COLLECTION.PERSONAL.name)).toBeNull();
   });
 
+  it("can navigate back from a currently open nested collection", async () => {
+    await setup();
+    await openCollection(COLLECTION.REGULAR.name);
+    let header = getItemPickerHeader();
+
+    userEvent.click(header.getByText(/Our analytics/i));
+
+    header = getItemPickerHeader();
+    const list = getItemPickerList();
+
+    expect(header.queryByText(COLLECTION.REGULAR.name)).toBeNull();
+
+    expect(list.queryByText(DASHBOARD.REGULAR.name)).toBeInTheDocument();
+    expect(list.queryByText(COLLECTION.REGULAR.name)).toBeInTheDocument();
+    expect(list.queryByText(COLLECTION.PERSONAL.name)).toBeInTheDocument();
+
+    expect(list.queryByText(COLLECTION.REGULAR_CHILD.name)).toBeNull();
+    expect(list.queryByText(DASHBOARD.REGULAR_CHILD.name)).toBeNull();
+  });
+
   it("calls onChange when selecting an item", async () => {
     const { onChange } = await setup();
 
