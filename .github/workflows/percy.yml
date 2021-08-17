@@ -6,6 +6,7 @@ on:
     branches:
       - master
       - "release-**"
+      - upgrade-percy-cypress
     paths-ignore:
       - "docs/**"
       - "**.md"
