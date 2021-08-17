@@ -141,16 +141,37 @@
                      :all))
           (is (= :all
                  (get-in (perms/graph) [:groups (u/the-id group) db-id :schemas]))))))
-    
+
     (testing "complex but no ids specified"
-      ;;; check the main thing is good
-      ;;; check the other thing is indeed changed
-      (is (= false true)))
+      ;; We need a test with multiple groups because
+      ;; there was a bug where multiple groups without group-id specified
+      ;; only had the single group updated
+      (mt/with-temp* [PermissionsGroup [group1]
+                      PermissionsGroup [group2]
+                      Database         [{db-id1 :id}]
+                      Database         [{db-id2 :id}]
+                      Database         [{db-id3 :id}]]
+        (let [changed  (-> (perms/graph)
+                           (assoc-in [:groups (u/the-id group1) db-id1 :schemas] :all)
+                           (assoc-in [:groups (u/the-id group1) db-id2 :schemas] :all)
+                           (assoc-in [:groups (u/the-id group2) db-id3 :schemas] :all))
+              mutation ((mt/user->client :crowberto) :put 200 "permissions/graph"
+                        changed)]
+          (is (= :all (get-in (perms/graph) [:groups (u/the-id group1) db-id1 :schemas])))
+          (is (= :all (get-in (perms/graph) [:groups (u/the-id group2) db-id3 :schemas]))))))
 
     (testing "group-id specified"
-      ;;; check the main thing is good
-      ;;; check the other thing is not changed lol
-      (is (= false true)))
+      (mt/with-temp* [PermissionsGroup [group1]
+                      PermissionsGroup [group2]
+                      Database         [{db-id1 :id}]
+                      Database         [{db-id2 :id}]]
+        (let [changed  (-> (perms/graph)
+                           (assoc-in [:groups (u/the-id group1) db-id1 :schemas] :all)
+                           (assoc-in [:groups (u/the-id group2) db-id2 :schemas] :all))
+              mutation ((mt/user->client :crowberto) :put 200 "permissions/graph"
+                        changed :group_id (u/the-id group1))]
+          (is (= :all (get-in (perms/graph) [:groups (u/the-id group1) db-id1 :schemas])))
+          (is (= nil (get-in (perms/graph) [:groups (u/the-id group2) db-id2 :schemas])))))
 
     (testing "db-id specified"
       ;;; check the main thing is good
