@@ -98,7 +98,7 @@ function getQuestionDetails(filter) {
           "display-name": "Filter",
           type: "dimension",
           dimension: ["field", PEOPLE.CREATED_AT, null],
-          "widget-type": "date/month-year",
+          "widget-type": filter,
         },
       },
     },
