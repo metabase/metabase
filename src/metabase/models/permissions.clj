@@ -713,6 +713,11 @@
    "\n" (trs "FROM:") (u/pprint-to-str 'magenta old)
    "\n" (trs "TO:")   (u/pprint-to-str 'blue    new)))
 
+(s/defn filtered-graph
+  [graph {some shit as options}]
+  ;;;;;;;;
+  )
+
 (s/defn update-graph!
   "Update the permissions graph, making any changes necessary to make it match NEW-GRAPH.
    This should take in a graph that is exactly the same as the one obtained by `graph` with any changes made as
@@ -722,9 +727,11 @@
   ([new-graph :- StrictPermissionsGraph
     group-id  :- (s/maybe su/IntGreaterThanZero)
     db-id     :- (s/maybe su/IntGreaterThanZero)]
-   (let [old-graph (graph {:group-id group-id :db-id db-id})
-         [old new] (data/diff (:groups old-graph) (:groups new-graph))
-         old       (or old {})]
+   (let [options      {:group-id group-id :db-id db-id}
+         filtered-new (filtered-graph options)
+         old-graph    (graph options)
+         [old new]    (data/diff (:groups old-graph) (:groups filtered-new))
+         old          (or old {})]
      (when (or (seq old) (seq new))
        (log-permissions-changes old new)
        (check-revision-numbers old-graph new-graph)
