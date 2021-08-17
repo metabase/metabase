@@ -14,6 +14,7 @@ const COLLECTION_EXAMPLE = {
   getIcon: () => ({ name: "folder" }),
   getUrl: () => DEMO_URL,
   getCollection: () => {},
+  collection: {},
 };
 
 const DASHBOARD_EXAMPLE = {
