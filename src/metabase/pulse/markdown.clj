@@ -1,10 +1,12 @@
 (ns metabase.pulse.markdown
-  (:require [clojure.string :as str])
+  (:require [clojure.string :as str]
+            [clojure.edn :as edn]
+            [clojure.java.io :as io])
   (:import [com.vladsch.flexmark.ast
             AutoLink BlockQuote BulletList BulletListItem Code Emphasis FencedCodeBlock HardLineBreak Heading Image
             ImageRef IndentedCodeBlock Link LinkRef MailLink OrderedList OrderedListItem Paragraph Reference
             SoftLineBreak StrongEmphasis Text ThematicBreak HtmlBlock HtmlInline HtmlEntity
-            HtmlBlockBase HtmlCommentBlock HtmlInlineBase HtmlInlineComment HtmlInnerBlock HtmlInnerBlockComment]
+            HtmlCommentBlock HtmlInlineBase HtmlInlineComment HtmlInnerBlockComment]
            com.vladsch.flexmark.parser.Parser
            [com.vladsch.flexmark.util.ast Document Node]))
 
@@ -39,22 +41,21 @@
    LinkRef               :link-ref ;; TODO
    ImageRef              :image-ref ;; TODO
    Image                 :image
-   AutoLink              :auto-link ;; TODO
+   AutoLink              :auto-link
+   MailLink              :mail-link
+   HtmlEntity            :html-entity
    HtmlBlock             :html-block
    HtmlInline            :html-inline
-   HtmlEntity            :html-entity
-   HtmlBlockBase         :html-block-base
    HtmlCommentBlock      :html-comment-block
    HtmlInlineBase        :html-inline-base
    HtmlInlineComment     :html-inline-comment
-   HtmlInnerBlock        :html-inner-block
    HtmlInnerBlockComment :html-inner-block-comment})
 
 (defn- node-to-tag
   [node]
   (node-to-tag-mapping (type node)))
 
-(defprotocol ASTNode
+(defprotocol ^:private ASTNode
   "Provides the protocol for the `to-clojure` method. Dispatches on AST node type"
   (to-clojure [this _]))
 
@@ -133,15 +134,12 @@
     {:tag   (node-to-tag this)
      :attrs {:address (str (.getText this))}})
 
-  HtmlBlock
-  (to-clojure [this _]
-    (str (.getContentChars this)))
-
-  HtmlBlockBase
-  (to-clojure [this _]
-    (str (.getContentChars this)))
-
   HtmlEntity
+  (to-clojure [this _]
+    {:tag (node-to-tag this)
+     :content (str (.getChars this))})
+
+  HtmlBlock
   (to-clojure [this _]
     (str (.getChars this)))
 
@@ -157,10 +155,6 @@
   (to-clojure [this _]
     (str (.getChars this)))
 
-  HtmlInnerBlock
-  (to-clojure [this _]
-    (str (.getChars this)))
-
   nil
   (to-clojure [this _]
     nil))
@@ -169,15 +163,27 @@
 ;;; |                                        Slack markup generation                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- escape-markdown
-  "Insert zero-width characters before and after certain characters that are escaped in the Markdown,
-  to prevent them from being parsed as formatting in Slack."
+(def ^:private html-entities
+  (edn/read-string (slurp (io/resource "html-entities.edn"))))
+
+(def ^:private escaped-chars-regex
+  #"\\[\\/*_`'\[\](){}<>#+-.!$@%^&=|\?~]")
+
+(defn- escape-text
+  "Insert zero-width characters before and after certain characters that are escaped in the Markdown (or are otherwise parsed as
+  plain text) to prevent them from being parsed as formatting in Slack."
   [string]
   (-> string
-      (str/replace "\\*" "\u00ad*\u00ad")
-      (str/replace "\\_" "\u00ad_\u00ad")
-      (str/replace "\\`" "\u00ad`\u00ad")
-      (str/replace "\\'" "\u00ad'\u00ad")))
+      ;; First, remove backslashes from escaped formatting characters since they're not removed during Markdown parsing
+      (str/replace escaped-chars-regex #(str (second %1)))
+      ;; Add a soft hyphen around certain chars to avoid triggering formatting in Slack
+      (str/replace "&" "\u00ad&\u00ad")
+      (str/replace ">" "\u00ad>\u00ad")
+      (str/replace "<" "\u00ad<\u00ad")
+      (str/replace "*" "\u00ad*\u00ad")
+      (str/replace "_" "\u00ad_\u00ad")
+      (str/replace "`" "\u00ad`\u00ad")
+      (str/replace "~" "\u00ad~\u00ad")))
 
 (defn- ast->mrkdwn
   "Takes an AST representing Markdown input, and converts it to a mrkdwn string that will render nicely in Slack.
@@ -188,9 +194,9 @@
     * Inline images are rendered as text that links to the image source, e.g. <image.png|[Image: alt-text]>."
   [{:keys [tag attrs content]}]
   (let [resolved-content (if (string? content)
-                           (escape-markdown content)
+                           (escape-text content)
                            (map #(if (string? %)
-                                   (escape-markdown %)
+                                   (escape-text %)
                                    (ast->mrkdwn %))
                                 content))
         joined-content   (str/join resolved-content)]
@@ -229,13 +235,16 @@
         (str joined-content "\n(" (:href attrs) ")")
         (str "<" (:href attrs) "|" joined-content ">"))
 
+      :auto-link
+      (str "<" (:href attrs) ">")
+
+      :mail-link
+      (str "<" (:address attrs) ">")
+
       ; li tags might have nested lists or other elements, which should have their indentation level increased
       (:unordered-list-item :ordered-list-item)
       (let [content-to-indent (rest resolved-content)
-            lines-to-indent   (str/split-lines
-                                ;; Treat blank sub-elements as newlines
-                               (str/join (map #(if (str/blank? %) "\n" %)
-                                              content-to-indent)))
+            lines-to-indent   (str/split-lines (str/join content-to-indent))
             indented-content  (str/join "\n" (map #(str "    " %) lines-to-indent))]
         (if-not (str/blank? indented-content)
           (str (first resolved-content) indented-content "\n")
@@ -254,6 +263,11 @@
           (str "<" src "|[Image]>")
           (str "<" src "|[Image: " alt "]>")))
 
+      :html-entity
+      (some->> content
+              (get html-entities)
+              (:characters))
+
       joined-content)))
 
 (defmulti process-markdown
@@ -263,10 +277,7 @@
 
 (defmethod process-markdown :slack
   [markdown _]
+  (def my-markdown markdown)
   (-> (to-clojure (.parse ^Parser parser ^String markdown) markdown)
       ast->mrkdwn
       str/trim))
-
-; (defmethod process-markdown :email
-;   [markdown _]
-;   (md/md-to-html-string markdown))

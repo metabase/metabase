@@ -258,11 +258,12 @@
   (log/debug (u/format-color 'cyan (trs "Sending Pulse ({0}: {1}) with {2} Cards via email"
                                         pulse-id (pr-str pulse-name) (count results))))
   (let [email-recipients (filterv u/email? (map :email recipients))
-        timezone         (-> results first :card defaulted-timezone)]
+        query-results    (filter :card results)
+        timezone         (-> query-results first :card defaulted-timezone)]
     {:subject      (subject pulse)
      :recipients   email-recipients
      :message-type :attachments
-     :message      (messages/render-pulse-email timezone pulse results)}))
+     :message      (messages/render-pulse-email timezone pulse query-results)}))
 
 (defmethod notification [:pulse :slack]
   [{pulse-id :id, pulse-name :name, :as pulse} results {{channel-id :channel} :details :as channel}]
