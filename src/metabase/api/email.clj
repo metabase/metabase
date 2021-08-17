@@ -28,13 +28,13 @@
                                 :email-smtp-port "Wrong host or port"}}
           creds-error {:errors {:email-smtp-username "Wrong username or password"
                                 :email-smtp-password "Wrong username or password"}}]
-      (condp re-matches message
+      (condp re-find message
         ;; bad host = "Unknown SMTP host: foobar"
         #"^Unknown SMTP host:.*$"
         conn-error
 
         ;; host seems valid, but host/port failed connection = "Could not connect to SMTP host: localhost, port: 123"
-        #"^Could not connect to SMTP host:.*$"
+        #".*Could(?: not)|(?:n't) connect to (?:SMTP )?host.*"
         conn-error
 
         ;; seen this show up on mandrill
@@ -51,7 +51,7 @@
 
         ;; everything else :(
         #".*"
-        {:message "Sorry, something went wrong.  Please try again."}))))
+        {:message (str "Sorry, something went wrong. Please try again. Error: " message)}))))
 
 (defn- humanize-email-corrections
   "Formats warnings when security settings are autocorrected."

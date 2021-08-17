@@ -5,6 +5,14 @@
             [metabase.test :as mt]
             [metabase.test.util :as tu]))
 
+(deftest humanize-error-messages-test
+  (is (= {:errors {:email-smtp-host "Wrong host or port", :email-smtp-port "Wrong host or port"}}
+         (#'api.email/humanize-error-messages
+          {:message "Couldn't connect to host, port: foobar, 789; timeout 1000: foobar"})))
+  (is (= {:message "Sorry, something went wrong. Please try again. Error: Some unexpected message"}
+         (#'api.email/humanize-error-messages
+          {:message "Some unexpected message"}))))
+
 (defn- email-settings
   []
   {:email-smtp-host     (setting/get :email-smtp-host)
