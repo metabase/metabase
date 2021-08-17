@@ -6,6 +6,16 @@ You have created a dashboard that shows the right things but:
 - some cards load quickly but others take much longer, but
 - the dashboard and/or the slow cards do load eventually.
 
+## Did it used to be fast enough, but has recently slowed down?
+
+**Root cause:** Metabase is not an island, complete unto itself, so if the dashboards and the cards it shows haven't changed, the slowdown is probably due to a change in the environment.
+
+**Steps to take:**
+
+1. Check if the volume of data being analyzed has grown recently---for example, are some of your tables much larger than they used to be? If so, you may need to move your database server to a more powerful machine.
+2. Check if more people are accessing the data warehouse, or if the same set of users are running more queries. (You can find this out by looking at the database server's logs.) If this is the case, you can either move the data warehouse to a more powerful machine or institute quotas to manage the volume of access.
+3. Check if queries from Metabase are being queued for execution, i.e., whether they are having to wait their turn to execute. If so, you may be able to raise the priority of Metabase queries (though this will necessarily come at the cost of slowing others down).
+
 ## Do you have too many cards in your dashboard?
 
 **Root cause:** When Metabase displays a dashboard, it re-runs all of the questions. We do our best to do this concurrently, but a dashboard with a hundred cards is going to be slower than one with a single question. And if your dashboard contains filters, then each time someone changes a filter setting, all of the cards that depend on it have to re-execute.
@@ -95,7 +105,7 @@ Similarly, you probably don't need indexes for simple tables with a few tens of 
 
 1. Check the performance logs for the server where the database is running to see if it is hitting CPU or memory limits.
 2. Check the performance logs for the server where Metabase is running.
-3. If either is a bottleneck, upgrade to a more powerful server or one with more memory. If you would like this taken care of you, along with backups, cache configuration, and so on, please consider using [Metabase Cloud][metabase-start].
+3. If either is a bottleneck, upgrade to a more powerful server or one with more memory.
 
 ## Does Metabase appear to freeze when you save a question that has not yet been run?
 
@@ -112,5 +122,4 @@ Similarly, you probably don't need indexes for simple tables with a few tens of 
 [faster-dashboards]: /learn/administration/making-dashboards-faster.html
 [freeze-bug]: https://github.com/metabase/metabase/issues/14957
 [metabase-at-scale]: /learn/administration/metabase-at-scale.html
-[metabase-start]: /start/
 [organizing-sql]: /learn/sql-questions/organizing-sql.html
