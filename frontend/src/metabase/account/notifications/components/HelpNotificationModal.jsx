@@ -1,17 +1,16 @@
 import React from "react";
 import PropTypes from "prop-types";
-import { t, jt } from "ttag";
-import Settings from "metabase/lib/settings";
+import { jt, t } from "ttag";
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/components/Button";
 import { HelpMessage } from "./HelpNotificationModal.styled";
 
 const propTypes = {
+  adminEmail: PropTypes.string,
   onClose: PropTypes.func.isRequired,
 };
 
-const HelpNotificationModal = ({ onClose }) => {
-  const adminEmail = Settings.get("admin-email");
+const HelpNotificationModal = ({ adminEmail, onClose }) => {
   const adminLink = getEmailLink(adminEmail, t`your instance administrator`);
 
   return (
