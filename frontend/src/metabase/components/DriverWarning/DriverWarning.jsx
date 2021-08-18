@@ -12,6 +12,8 @@ import {
   CardContent,
   DriverWarningContainer,
   IconContainer,
+  WarningIcon,
+  WarningParagraph,
 } from "./DriverWarning.styled";
 
 import ExternalLink from "metabase/components/ExternalLink";
@@ -35,13 +37,13 @@ function getSupersedesWarningContent(
 ) {
   return (
     <div>
-      <p className="text-medium m0">
+      <WarningParagraph className="text-medium m0">
         {t`This is our new ${
           allEngines[newDriver]["driver-name"]
         } driver, which is faster and more reliable.`}
-      </p>
+      </WarningParagraph>
 
-      <p className="text-medium m0" style={{ marginTop: 8 }}>
+      <WarningParagraph className="text-medium m0" hasMargin={true}>
         {t`The old driver has been deprecated and will be removed in the next release. If you really
       need to use it, you can `}
         &nbsp;
@@ -50,7 +52,7 @@ function getSupersedesWarningContent(
           onClick={() => onChangeEngine(supersedesDriver)}
         >{t`find it here`}</a>
         .
-      </p>
+      </WarningParagraph>
     </div>
   );
 }
@@ -58,10 +60,10 @@ function getSupersedesWarningContent(
 function getSupersededByWarningContent(engine, onChangeEngine) {
   return (
     <div>
-      <p className="text-medium m0">
+      <WarningParagraph className="text-medium m0">
         {t`This driver has been deprecated and will be removed in the next release.`}
-      </p>
-      <p className="text-medium m0" style={{ marginTop: 8, marginBottom: 8 }}>
+      </WarningParagraph>
+      <WarningParagraph className="text-medium m0" hasMargin={true}>
         {t`We recommend that you upgrade to the`}
         &nbsp;
         <a
@@ -69,7 +71,7 @@ function getSupersededByWarningContent(engine, onChangeEngine) {
           onClick={() => onChangeEngine(engine)}
         >{t`new ${allEngines[engine]["driver-name"]} driver`}</a>
         {t`, which is faster and more reliable.`}
-      </p>
+      </WarningParagraph>
       <ExternalLink
         href={driverUpgradeHelpLink}
         className="text-brand text-bold"
@@ -88,7 +90,6 @@ function DriverWarning({ engine, hasCircle = true, onChangeEngine, ...props }) {
     return null;
   }
 
-  const tooltipWarning = supersedes ? t`New driver` : t`Driver deprecated`;
   const warningContent = supersedes
     ? getSupersedesWarningContent(engine, supersedes, onChangeEngine)
     : getSupersededByWarningContent(supersededBy, onChangeEngine);
@@ -101,15 +102,10 @@ function DriverWarning({ engine, hasCircle = true, onChangeEngine, ...props }) {
         className="flex-no-shrink circular"
         hasCircle={hasCircle}
       >
-        <Icon
-          size={20}
-          name={supersedes ? "info" : "warning"}
-          className={supersededBy && "text-dark-orange"}
-        />
+        {(supersededBy && <WarningIcon size={20} name="warning" />) ||
+          (supersedes && <Icon size={20} name="info" />)}
       </IconContainer>
-      <CardContent flexDirection="column" justify="center" className="ml2">
-        {warningContent}
-      </CardContent>
+      <CardContent className="ml2">{warningContent}</CardContent>
     </DriverWarningContainer>
   );
 }
