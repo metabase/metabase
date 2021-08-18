@@ -114,6 +114,12 @@ describe("Notebook Editor > Join Step", () => {
     );
   }
 
+  function openDimensionPicker(type) {
+    const openPickerButton = screen.getByTestId(`${type}-dimension`);
+    fireEvent.click(openPickerButton);
+    return screen.findByRole("rowgroup");
+  }
+
   beforeEach(() => {
     xhrMock.setup();
     xhrMock.get("/api/database", {
@@ -172,7 +178,7 @@ describe("Notebook Editor > Join Step", () => {
     );
   });
 
-  it("can change parent dimension's join field", async () => {
+  it("shows a parent dimension's join field picker", async () => {
     const ordersFields = Object.values(ORDERS.fieldsLookup());
     setup();
     await selectTable(/Products/i);
@@ -190,7 +196,23 @@ describe("Notebook Editor > Join Step", () => {
     });
   });
 
-  it("can change join dimension's field", async () => {
+  it("can change parent dimension's join field", async () => {
+    const { onQueryChange } = setup();
+    await selectTable(/Products/i);
+    const picker = await openDimensionPicker("parent");
+
+    fireEvent.click(within(picker).getByText("Tax"));
+
+    expect(onQueryChange).toHaveBeenLastCalledWith(
+      expectedJoin({
+        joinedTable: PRODUCTS,
+        leftField: ORDERS.TAX,
+        rightField: PRODUCTS.ID,
+      }),
+    );
+  });
+
+  it("shows a join dimension's field picker", async () => {
     const productsFields = Object.values(PRODUCTS.fieldsLookup());
     setup();
     await selectTable(/Products/i);
@@ -206,6 +228,22 @@ describe("Notebook Editor > Join Step", () => {
         within(picker).queryByText(field.display_name),
       ).toBeInTheDocument();
     });
+  });
+
+  it("can change join dimension's field", async () => {
+    const { onQueryChange } = setup();
+    await selectTable(/Products/i);
+    const picker = await openDimensionPicker("join");
+
+    fireEvent.click(within(picker).getByText("Category"));
+
+    expect(onQueryChange).toHaveBeenLastCalledWith(
+      expectedJoin({
+        joinedTable: PRODUCTS,
+        leftField: ORDERS.PRODUCT_ID,
+        rightField: PRODUCTS.CATEGORY,
+      }),
+    );
   });
 
   it("automatically opens dimensions picker if can't automatically set join fields", async () => {
