@@ -12,14 +12,14 @@ import {
 } from "./NotificationList.styled";
 
 const propTypes = {
-  groups: PropTypes.array.isRequired,
+  items: PropTypes.array.isRequired,
   user: PropTypes.object,
   children: PropTypes.node,
-  onShowHelpModal: PropTypes.func,
+  onShowHelp: PropTypes.func,
 };
 
-const NotificationList = ({ groups, user, children, onShowHelpModal }) => {
-  if (!groups.length) {
+const NotificationList = ({ items, user, children, onShowHelp }) => {
+  if (!items.length) {
     return <NotificationEmptyState />;
   }
 
@@ -27,11 +27,11 @@ const NotificationList = ({ groups, user, children, onShowHelpModal }) => {
     <div>
       <NotificationHeader>
         <NotificationLabel>{t`You receive or created these`}</NotificationLabel>
-        <NotificationButton
-          onClick={onShowHelpModal}
-        >{t`Not seeing one here?`}</NotificationButton>
+        <NotificationButton onClick={onShowHelp}>
+          {t`Not seeing one here?`}
+        </NotificationButton>
       </NotificationHeader>
-      {groups.map(({ item, type }) => (
+      {items.map(({ item, type }) => (
         <NotificationItem key={item.id} item={item} type={type} user={user} />
       ))}
       {children}

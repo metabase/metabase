@@ -3,17 +3,17 @@ import _ from "underscore";
 import Alerts from "metabase/entities/alerts";
 import Pulses from "metabase/entities/pulses";
 import { getUser } from "metabase/selectors/user";
-import { getGroups } from "../selectors";
+import { getUserNotifications } from "../selectors";
 import NotificationList from "../components/NotificationList";
 import { push } from "react-router-redux";
 
-const mapStateToProps = (state, props) => ({
+const mapStateToProps = state => ({
   user: getUser(state),
-  groups: getGroups(state, props),
+  items: getUserNotifications(state),
 });
 
 const mapDispatchToProps = {
-  onShowHelpModal: () => push("/account/notifications/help"),
+  onShowHelp: () => push("/account/notifications/help"),
 };
 
 export default _.compose(

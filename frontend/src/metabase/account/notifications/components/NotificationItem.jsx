@@ -7,7 +7,7 @@ import {
   formatHourAMPM,
   parseTimestamp,
 } from "metabase/lib/time";
-import { dashboard, question } from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 import {
   NotificationContent,
   NotificationDescription,
@@ -50,9 +50,9 @@ const formatTitle = (item, type) => {
 const formatLink = (item, type) => {
   switch (type) {
     case "pulse":
-      return dashboard({ id: item.dashboard_id });
+      return Urls.dashboard({ id: item.dashboard_id });
     case "alert":
-      return question(item.card);
+      return Urls.question(item.card);
   }
 };
 
