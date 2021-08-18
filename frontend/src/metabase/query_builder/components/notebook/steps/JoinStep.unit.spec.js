@@ -20,7 +20,15 @@ import {
 import JoinStep from "./JoinStep";
 
 describe("Notebook Editor > Join Step", () => {
-  function JoinStepWrapped({ initialQuery, ...props }) {
+  const TEST_QUERY = {
+    type: "query",
+    database: SAMPLE_DATASET.id,
+    query: {
+      "source-table": ORDERS.id,
+    },
+  };
+
+  function JoinStepWrapped({ initialQuery, onChange, ...props }) {
     const [query, setQuery] = useState(initialQuery);
     return (
       <JoinStep
@@ -29,26 +37,22 @@ describe("Notebook Editor > Join Step", () => {
         updateQuery={datasetQuery => {
           const newQuery = query.setDatasetQuery(datasetQuery);
           setQuery(newQuery);
+          onChange(datasetQuery);
         }}
       />
     );
   }
 
   function setup() {
-    const TEST_QUERY = new StructuredQuery(ORDERS.question(), {
-      type: "query",
-      database: SAMPLE_DATASET.id,
-      query: {
-        "source-table": ORDERS.id,
-      },
-    });
+    const query = new StructuredQuery(ORDERS.question(), TEST_QUERY);
+    const onQueryChange = jest.fn();
 
     const TEST_STEP = {
       id: "0:join",
       type: "join",
       itemIndex: 0,
       stageIndex: 0,
-      query: TEST_QUERY,
+      query,
       valid: true,
       visible: true,
       active: true,
@@ -60,9 +64,44 @@ describe("Notebook Editor > Join Step", () => {
 
     render(
       <Provider store={getStore({}, state)}>
-        <JoinStepWrapped initialQuery={TEST_QUERY} step={TEST_STEP} />
+        <JoinStepWrapped
+          initialQuery={query}
+          step={TEST_STEP}
+          onChange={onQueryChange}
+        />
       </Provider>,
     );
+
+    return { onQueryChange };
+  }
+
+  function expectedJoin({
+    fields = "all",
+    joinedTable,
+    leftField,
+    rightField,
+  }) {
+    return {
+      ...TEST_QUERY,
+      query: {
+        ...TEST_QUERY.query,
+        joins: [
+          expect.objectContaining({
+            fields,
+            "source-table": joinedTable.id,
+            condition: [
+              "=",
+              ["field", leftField.id, null],
+              [
+                "field",
+                rightField.id,
+                { "join-alias": joinedTable.display_name },
+              ],
+            ],
+          }),
+        ],
+      },
+    };
   }
 
   async function selectTable(tableName) {
@@ -116,7 +155,7 @@ describe("Notebook Editor > Join Step", () => {
   });
 
   it("automatically sets join fields if possible", async () => {
-    setup();
+    const { onQueryChange } = setup();
 
     await selectTable(/Products/i);
 
@@ -124,6 +163,13 @@ describe("Notebook Editor > Join Step", () => {
       /Product ID/i,
     );
     expect(screen.getByTestId("join-dimension")).toHaveTextContent(/ID/i);
+    expect(onQueryChange).toHaveBeenLastCalledWith(
+      expectedJoin({
+        joinedTable: PRODUCTS,
+        leftField: ORDERS.PRODUCT_ID,
+        rightField: PRODUCTS.ID,
+      }),
+    );
   });
 
   it("can change parent dimension's join field", async () => {
