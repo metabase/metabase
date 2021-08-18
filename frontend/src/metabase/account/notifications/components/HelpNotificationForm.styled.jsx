@@ -1,6 +1,6 @@
 import styled from "styled-components";
-import Link from "metabase/components/Link";
 import { color } from "metabase/lib/colors";
+import Link from "metabase/components/Link";
 
 export const FormLink = styled(Link)`
   color: ${color("brand")};
