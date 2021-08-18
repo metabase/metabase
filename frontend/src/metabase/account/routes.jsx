@@ -9,6 +9,8 @@ import UserPasswordApp from "./password/containers/UserPasswordApp";
 import LoginHistoryApp from "./login-history/containers/LoginHistoryApp";
 import NotificationsApp from "./notifications/containers/NotificationsApp";
 import HelpModal from "./notifications/containers/HelpModal";
+import DeleteAlertModal from "./notifications/containers/DeleteAlertModal";
+import DeletePulseModal from "./notifications/containers/DeletePulseModal";
 import UnsubscribeAlertModal from "./notifications/containers/UnsubscribeAlertModal";
 import UnsubscribePulseModal from "./notifications/containers/UnsubscribePulseModal";
 
@@ -25,14 +27,14 @@ const getRoutes = () => {
       <Route path="login-history" component={LoginHistoryApp} />
       <Route path="notifications" component={NotificationsApp}>
         <ModalRoute path="help" modal={HelpModal} />
-        <ModalRoute
-          path="alerts/:alertId/unsubscribe"
-          modal={UnsubscribeAlertModal}
-        />
-        <ModalRoute
-          path="pulses/:pulseId/unsubscribe"
-          modal={UnsubscribePulseModal}
-        />
+        <Route path="alerts/:alertId">
+          <ModalRoute path="unsubscribe" modal={UnsubscribeAlertModal} />
+          <ModalRoute path="delete" modal={DeleteAlertModal} />
+        </Route>
+        <Route path="pulses/:pulseId">
+          <ModalRoute path="unsubscribe" modal={UnsubscribePulseModal} />
+          <ModalRoute path="delete" modal={DeletePulseModal} />
+        </Route>
       </Route>
     </Route>
   );
