@@ -716,6 +716,7 @@
    "\n" (trs "TO:")   (u/pprint-to-str 'blue    new)))
 
 (s/defn filtered-graph
+  "Filter the groups of the graph with respect to the group id and/or the db id"
   [graph {:keys [group-id, db-id] :as options}]
   (let [groups          (:groups graph)
         filtered-groups (if group-id
