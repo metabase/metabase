@@ -714,9 +714,9 @@
    "\n" (trs "TO:")   (u/pprint-to-str 'blue    new)))
 
 (s/defn filtered-graph
-  [graph {some shit as options}]
-  ;;;;;;;;
-  )
+  [graph {:keys [group-id, db-id] :as options}]
+  ;;;;;;
+  graph)
 
 (s/defn update-graph!
   "Update the permissions graph, making any changes necessary to make it match NEW-GRAPH.

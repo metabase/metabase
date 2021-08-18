@@ -174,6 +174,27 @@
           (is (= nil (get-in (perms/graph) [:groups (u/the-id group2) db-id2 :schemas]))))))
 
     (testing "db-id specified"
-      ;;; check the main thing is good
-      ;;; check the other thing is not changed lol
-      (is (= false true)))))
+      (mt/with-temp* [PermissionsGroup [group1]
+                      PermissionsGroup [group2]
+                      Database         [{db-id1 :id}]
+                      Database         [{db-id2 :id}]]
+        (let [changed  (-> (perms/graph)
+                           (assoc-in [:groups (u/the-id group1) db-id1 :schemas] :all)
+                           (assoc-in [:groups (u/the-id group2) db-id2 :schemas] :all))
+              mutation ((mt/user->client :crowberto) :put 200 "permissions/graph"
+                        changed :db_id db-id1)]
+          (is (= :all (get-in (perms/graph) [:groups (u/the-id group1) db-id1 :schemas])))
+          (is (= nil (get-in (perms/graph) [:groups (u/the-id group2) db-id2 :schemas]))))))
+
+    (testing "both specified"
+      (mt/with-temp* [PermissionsGroup [group1]
+                      PermissionsGroup [group2]
+                      Database         [{db-id1 :id}]
+                      Database         [{db-id2 :id}]]
+        (let [changed  (-> (perms/graph)
+                           (assoc-in [:groups (u/the-id group1) db-id1 :schemas] :all)
+                           (assoc-in [:groups (u/the-id group2) db-id2 :schemas] :all))
+              mutation ((mt/user->client :crowberto) :put 200 "permissions/graph"
+                        changed :db_id db-id1 :group_id (u/the-id group1))]
+          (is (= :all (get-in (perms/graph) [:groups (u/the-id group1) db-id1 :schemas])))
+          (is (= nil (get-in (perms/graph) [:groups (u/the-id group2) db-id2 :schemas]))))))))
