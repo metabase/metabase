@@ -589,10 +589,12 @@ export const getDatabasesPermissionEditor = createSelector(
         : metadata.schema(`${databaseId}:${schemaName}`);
 
       entities = schema.tables.map(table => {
+        const schemaName = table.schema.name;
         return {
           id: table.id,
           name: table.display_name,
           type: "table",
+          schemaName: table.schema.name,
           permissions: buildFieldsPermissions(
             {
               databaseId,

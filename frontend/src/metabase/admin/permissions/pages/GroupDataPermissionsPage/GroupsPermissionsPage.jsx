@@ -88,7 +88,7 @@ function GroupsPermissionsPage({
         case "table":
           entityId = {
             databaseId: params.databaseId,
-            schemaName: params.schemaName,
+            schemaName: item.schemaName,
             tableId: item.id,
           };
           break;
