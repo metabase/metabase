@@ -447,3 +447,33 @@
          (render-sparkline
           {:cols default-columns
            :rows [[10.0 1] [11.0 2] [nil 20] [1.25 nil]]})))))
+
+(deftest render-categorical-donut-test
+  (let [columns [{:name          "category",
+                  :display_name  "Category",
+                  :base_type     :type/Text
+                  :semantic_type nil}
+                 {:name          "NumPurchased",
+                  :display_name  "NumPurchased",
+                  :base_type     :type/Integer
+                  :semantic_type nil}]
+        render  (fn [rows]
+                  (body/render :categorical/donut :inline pacific-tz
+                               render.tu/test-card
+                               {:cols columns :rows rows}))
+        prune   (fn prune [html-tree]
+                  (walk/prewalk (fn no-maps [x]
+                                  (if (vector? x)
+                                    (filterv (complement map?) x)
+                                    x))
+                                html-tree))]
+    (testing "Renders without error"
+      (let [rendered-info (render [["Doohickey" 75] ["Widget" 25]])]
+        (is (has-inline-image? rendered-info))))
+    (testing "Includes percentages"
+      (is (= [:div
+              [:img]
+              [:div
+               [:div [:span "•"] [:span "Doohickey"] [:span "75%"]]
+               [:div [:span "•"] [:span "Widget"] [:span "25%"]]]]
+             (prune (:content (render [["Doohickey" 75] ["Widget" 25]]))))))))

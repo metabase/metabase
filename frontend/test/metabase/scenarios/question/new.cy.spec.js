@@ -375,7 +375,7 @@ describe("scenarios > question > new", () => {
     });
 
     it("should display timeseries filter and granularity widgets at the bottom of the screen (metabase#11183)", () => {
-      cy.createQuestion({
+      const questionDetails = {
         name: "11183",
         query: {
           "source-table": ORDERS_ID,
@@ -385,14 +385,10 @@ describe("scenarios > question > new", () => {
           ],
         },
         display: "line",
-      }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.server();
-        cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
+      };
 
-        cy.visit(`/question/${QUESTION_ID}`);
-      });
+      cy.createQuestion(questionDetails, { visitQuestion: true });
 
-      cy.wait("@cardQuery");
       cy.log("Reported missing in v0.33.1");
       cy.get(".AdminSelect")
         .as("select")

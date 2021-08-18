@@ -154,9 +154,9 @@
                         :body
                         json/parse-string
                         (get-in ["errors" "username"])))]
-        (is (re= #"^Too many attempts! You must wait 1\d seconds before trying again\.$"
+        (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
                  (error)))
-        (is (re= #"^Too many attempts! You must wait 4\d seconds before trying again\.$"
+        (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
                  (error)))))))
 
 (deftest failure-threshold-per-request-source
@@ -396,8 +396,10 @@
 (deftest ldap-login-test
   (ldap.test/with-ldap-server
     (testing "Test that we can login with LDAP"
-      (let [user-id (test-users/user->id :rasta)]
+      (let [user-id (mt/user->id :rasta)]
         (try
+          ;; TODO -- it's not so nice to go around permanently deleting stuff like Sessions like this in tests. We
+          ;; should just create a temp User instead for this test
           (db/simple-delete! Session :user_id user-id)
           (is (schema= SessionResponse
                        (mt/client :post 200 "session" (mt/user->credentials :rasta))))
@@ -419,7 +421,7 @@
              (mt/client :post 401 "session" (mt/user->credentials :lucky)))))
 
     (testing "Test that a deactivated user cannot login with LDAP"
-      (let [user-id (test-users/user->id :rasta)]
+      (let [user-id (mt/user->id :rasta)]
         (try
           (db/update! User user-id :is_active false)
           (is (= {:errors {:_error "Your account is disabled."}}
@@ -430,7 +432,7 @@
     (testing "Test that login will fallback to local for broken LDAP settings"
       (mt/with-temporary-setting-values [ldap-user-base "cn=wrong,cn=com"]
         ;; delete all other sessions for the bird first, otherwise test doesn't seem to work (TODO - why?)
-        (let [user-id (test-users/user->id :rasta)]
+        (let [user-id (mt/user->id :rasta)]
           (try
             (db/simple-delete! Session :user_id user-id)
             (is (schema= SessionResponse

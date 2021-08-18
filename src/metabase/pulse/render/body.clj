@@ -242,13 +242,19 @@
 (s/defmethod render :categorical/donut :- common/RenderedPulseCard
   [_ render-type _timezone-id :- (s/maybe s/Str) card {:keys [rows] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
-        rows                        (common/non-nil-rows x-axis-rowfn y-axis-rowfn rows)
-        legend-colors               (zipmap (map (comp str x-axis-rowfn) rows) (cycle colors))
+        rows                        (map (juxt (comp str x-axis-rowfn) y-axis-rowfn)
+                                         (common/non-nil-rows x-axis-rowfn y-axis-rowfn rows))
+        legend-colors               (zipmap (map first rows) (cycle colors))
+        total                       (apply + (map second rows))
+        percentages                 (into {}
+                                          (for [[label value] rows]
+                                            [label (if (zero? total)
+                                                     (tru "N/A")
+                                                     (let [f (DecimalFormat. "###,###.##%")]
+                                                       (.format f (double (/ value total)))))]))
         image-bundle                (image-bundle/make-image-bundle
-                                      render-type
-                                      (js-svg/categorical-donut
-                                        (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)
-                                        legend-colors))]
+                                     render-type
+                                     (js-svg/categorical-donut rows legend-colors))]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))
@@ -258,14 +264,16 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]
       (into [:div {:style (style/style {:clear :both :width "540px" :color "#4C5773"})}]
-            (for [label (map (comp str x-axis-rowfn) rows)]
+            (for [label (map first rows)]
               [:div {:style (style/style {:float       :left :margin-right "12px"
                                           :font-family "Lato, sans-serif"
                                           :font-size   "24px"})}
                [:span {:style (style/style {:color (legend-colors label)})}
                 "•"]
                [:span {:style (style/style {:margin-left "6px"})}
-                label]]))]}))
+                label]
+               [:span {:style (style/style {:margin-left "6px"})}
+                (percentages label)]]))]}))
 
 (s/defmethod render :scalar :- common/RenderedPulseCard
   [_ _ timezone-id card {:keys [cols rows]}]
