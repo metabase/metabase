@@ -1,0 +1,131 @@
+# Cherry-picks commits from current branch to a specified one "@metabase-bot cherry-pick release-x.40.x"
+name: CherryPick
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  target_branch:
+    name: Get target branch
+    if: contains(github.event.comment.body, '@metabase-bot cherry-pick')
+    runs-on: ubuntu-latest
+    outputs:
+      branch: ${{ steps.get_target_branch.outputs.result }}
+    steps:
+      - uses: actions/github-script@v4
+        id: get_target_branch
+        with:
+          script: |
+            // Example: @metabase-bot cherry-pick release-x.40.x
+            const [_botName, _command, targetBranch] = context.payload.comment.body.split(" ");
+            console.log(`Target branch is ${targetBranch}`);
+            return targetBranch
+
+  create_pull_request:
+    name: Creates a pull request
+    needs: [target_branch]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v4
+        id: branch_info
+        with:
+          script: |
+            const { data: originalPullRequest } = await github.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.issue.number,
+            });
+
+            const { data: commits } = await github.pulls.listCommits({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.issue.number,
+            });
+
+            const targetBranch = ${{ needs.target_branch.outputs.branch }};
+            const targetRef = await github.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `heads/${targetBranch}`,
+            });
+
+            const newBranch = `cherry-pick-${originalPullRequest.head.ref}`
+            try {
+              await github.git.getRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `heads/${newBranch}`,
+              });
+            } catch(e) {
+              if (e.status === 404) {
+                await github.git.createRef({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  ref: `refs/heads/${newBranch}`,
+                  sha: targetRef.data.object.sha,
+                });
+              }
+            }
+
+            return {
+              newBranch,
+              targetBranch,
+
+              originalPullRequestTitle: originalPullRequest.title,
+              isOriginalPrOpen: originalPullRequest.state,
+              originalPullRequestBase: originalPullRequest.base.ref,
+              originalPullRequestHead: originalPullRequest.head.ref
+
+              startSha: commits[0].sha,
+              endSha: commits[commits.length - 1].sha
+            }
+      - uses: actions/checkout@v2
+        name: Cherry-pick commits and create PR
+        with:
+          fetch-depth: 0
+      - run: |
+          git config --global user.email "metabase-github-automation@metabase.com"
+          git config --global user.name "$GITHUB_ACTOR"
+
+          git fetch --all
+
+          git checkout "${NEW_BRANCH}"
+          git reset --hard origin/${TARGET_BRANCH}
+
+          git cherry-pick ${START_SHA}^..${END_SHA}
+
+          git push origin "${NEW_BRANCH}" --force-with-lease
+
+          if [[ $(hub pr list -b "${TARGET_BRANCH}" -h "${NEW_BRANCH}" -s "open") ]]; then
+              echo "PR already exists"
+          else
+              hub pull-request -b "${TARGET_BRANCH}" -h "${NEW_BRANCH}" -l "auto-cherry-picked" -a "${GITHUB_ACTOR}" -m "🍒 \"${ORIGINAL_TITLE}\""
+              echo "PR has been created"
+          fi
+        env:
+          ORIGINAL_TITLE: ${{ fromJson(steps.branch_info.outputs.result).originalPullRequestTitle }}
+          TARGET_BRANCH: ${{ fromJson(steps.branch_info.outputs.result).targetBranch }}
+          NEW_BRANCH: ${{ fromJson(steps.branch_info.outputs.result).newBranch }}
+          START_SHA: ${{ fromJson(steps.branch_info.outputs.result).startSha }}
+          END_SHA: ${{ fromJson(steps.branch_info.outputs.result).endSha }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  notify_when_failed:
+    runs-on: ubuntu-latest
+    name: Notify about failure
+    needs: create_pull_request
+    if: ${{ failure() }}
+    steps:
+      - uses: actions/github-script@v4
+        with:
+          script: |
+            const { GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_RUN_ID} = process.env;
+            const runUrl = `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}`
+
+            github.issues.createComment({
+              issue_number: context.payload.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `Could not automatically create a PR 😩 [Failed run](${runUrl})`
+            })
