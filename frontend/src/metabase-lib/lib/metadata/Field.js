@@ -146,7 +146,10 @@ export default class Field extends Base {
     return isEntityName(this);
   }
 
-  isCompatibleWith(field: Field) {
+  /**
+   * @param {Field} field
+   */
+  isCompatibleWith(field) {
     return (
       this.isDate() === field.isDate() ||
       this.isNumeric() === field.isNumeric() ||
@@ -154,7 +157,10 @@ export default class Field extends Base {
     );
   }
 
-  fieldValues(): FieldValues {
+  /**
+   * @returns {FieldValues}
+   */
+  fieldValues() {
     return getFieldValues(this._object);
   }
 
@@ -275,8 +281,9 @@ export default class Field extends Base {
 
   /**
    * Returns the remapped field, if any
+   * @return {?Field}
    */
-  remappedField(): ?Field {
+  remappedField() {
     const displayFieldId =
       this.dimensions && this.dimensions.human_readable_field_id;
     if (displayFieldId != null) {
@@ -292,8 +299,9 @@ export default class Field extends Base {
 
   /**
    * Returns the human readable remapped value, if any
+   * @returns {?string}
    */
-  remappedValue(value): ?string {
+  remappedValue(value) {
     // TODO: Ugh. Should this be handled further up by the parameter widget?
     if (this.isNumeric() && typeof value !== "number") {
       value = parseFloat(value);
@@ -303,8 +311,9 @@ export default class Field extends Base {
 
   /**
    * Returns whether the field has a human readable remapped value for this value
+   * @returns {?string}
    */
-  hasRemappedValue(value): ?string {
+  hasRemappedValue(value) {
     // TODO: Ugh. Should this be handled further up by the parameter widget?
     if (this.isNumeric() && typeof value !== "number") {
       value = parseFloat(value);
@@ -314,8 +323,9 @@ export default class Field extends Base {
 
   /**
    * Returns true if this field can be searched, e.x. in filter or parameter widgets
+   * @returns {boolean}
    */
-  isSearchable(): boolean {
+  isSearchable() {
     // TODO: ...?
     return this.isString();
   }
@@ -326,8 +336,10 @@ export default class Field extends Base {
 
   /**
    * Returns a FKDimension for this field and the provided field
+   * @param {Field} foreignField
+   * @return {Dimension}
    */
-  foreign(foreignField: Field): Dimension {
+  foreign(foreignField) {
     return this.dimension().foreign(foreignField.dimension());
   }
 
