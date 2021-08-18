@@ -82,7 +82,7 @@ export function getRawQueryWarningModal(permissions, groupId, entityId, value) {
     getSchemasPermission(permissions, groupId, entityId) !== "all"
   ) {
     return {
-      title: t`Allow Raw Query Writing?`,
+      title: t`Allow native query editing?`,
       message: t`This will also change this group's data access to Unrestricted for this database.`,
       confirmButtonText: t`Allow`,
       cancelButtonText: t`Cancel`,

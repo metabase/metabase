@@ -118,7 +118,7 @@ export const getDatabasesSidebar = createSelector(
         children: schema.tables.map(table => ({
           id: getTableId(table.id),
           originalId: table.id,
-          name: table.name,
+          name: table.display_name,
           schemaName: schema.name,
           databaseId: databaseId,
           type: "table",
@@ -430,7 +430,7 @@ export const getGroupsDataPermissionEditor = createSelector(
     const columns = [
       t`Group name`,
       t`Data access`,
-      isDatabaseLevelPermission ? t`SQL queries` : null,
+      isDatabaseLevelPermission ? t`Native query editing` : null,
     ].filter(Boolean);
 
     const entities = groups.map(group => {
@@ -578,7 +578,7 @@ export const getDatabasesPermissionEditor = createSelector(
     const columns = [
       getEditorEntityName(params, hasSingleSchema),
       t`Data access`,
-      isDatabaseLevelPermission ? t`SQL queries` : null,
+      isDatabaseLevelPermission ? t`Native query editing` : null,
     ].filter(Boolean);
 
     if (schemaName != null || hasSingleSchema) {
@@ -589,7 +589,7 @@ export const getDatabasesPermissionEditor = createSelector(
       entities = schema.tables.map(table => {
         return {
           id: table.id,
-          name: table.name,
+          name: table.display_name,
           type: "table",
           permissions: buildFieldsPermissions(
             {
