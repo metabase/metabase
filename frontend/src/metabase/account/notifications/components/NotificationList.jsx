@@ -44,7 +44,7 @@ const NotificationEmptyState = () => {
     <NotificationSection>
       <NotificationIcon name="bell" />
       <NotificationMessage>
-        {t`If you subscribe  or are added to dashboard subscriptions or alerts you’ll be able to manage those here.`}
+        {t`If you subscribe or are added to dashboard subscriptions or alerts you’ll be able to manage those here.`}
       </NotificationMessage>
     </NotificationSection>
   );

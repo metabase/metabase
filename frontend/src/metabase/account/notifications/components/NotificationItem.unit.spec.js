@@ -8,13 +8,34 @@ const getAlert = ({
   schedule_type = "hourly",
 } = {}) => ({
   card: {
-    name: "Chart",
+    name: "Alert",
   },
-  creator: {
-    id: creatorId,
-    common_name: "John Doe",
-  },
-  channels: [
+  creator: getUser({ id: creatorId }),
+  channels: getChannels({ channel_type, schedule_type }),
+  created_at: "2021-05-08T02:02:07.441Z",
+});
+
+const getPulse = ({
+  creatorId = 1,
+  channel_type = "email",
+  schedule_type = "hourly",
+} = {}) => ({
+  name: "Pulse",
+  creator: getUser({ id: creatorId }),
+  channels: getChannels({ channel_type, schedule_type }),
+  created_at: "2021-05-08T02:02:07.441Z",
+});
+
+const getUser = ({ id = 1 } = {}) => ({
+  id,
+  common_name: "John Doe",
+});
+
+const getChannels = ({
+  channel_type = "email",
+  schedule_type = "hourly",
+} = {}) => {
+  return [
     {
       channel_type,
       schedule_type,
@@ -25,22 +46,28 @@ const getAlert = ({
         channel: "@channel",
       },
     },
-  ],
-  created_at: "2021-05-08T02:02:07.441Z",
-});
-
-const getUser = ({ id = 1 } = {}) => ({
-  id,
-});
+  ];
+};
 
 describe("NotificationItem", () => {
-  it("should render an email alert", () => {
-    const alert = getAlert({ channel_type: "email" });
+  it("should render an alert", () => {
+    const alert = getAlert();
     const user = getUser();
 
     render(<NotificationItem item={alert} type="alert" user={user} />);
 
-    screen.getByText("Chart");
+    screen.getByText("Alert");
+    screen.getByText("Emailed hourly", { exact: false });
+    screen.getByText("Created by you on 05/08/2021", { exact: false });
+  });
+
+  it("should render a pulse", () => {
+    const pulse = getPulse();
+    const user = getUser();
+
+    render(<NotificationItem item={pulse} type="pulse" user={user} />);
+
+    screen.getByText("Pulse");
     screen.getByText("Emailed hourly", { exact: false });
     screen.getByText("Created by you on 05/08/2021", { exact: false });
   });
