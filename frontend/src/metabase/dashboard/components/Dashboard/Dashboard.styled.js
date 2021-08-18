@@ -75,6 +75,7 @@ export const ParametersAndCardsContainer = styled.div`
 export const ParametersWidgetContainer = styled(FullWidthContainer)`
   align-items: flex-start;
   background-color: ${color("bg-light")};
+  border-bottom: 1px solid ${color("bg-light")};
   display: flex;
   flex-direction: column;
   padding-top: ${space(2)};
@@ -84,6 +85,7 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
   ${({ isSticky }) =>
     isSticky &&
     css`
+      border-bottom: 1px solid ${color("border")};
       position: fixed;
       top: 0;
       left: 0;
