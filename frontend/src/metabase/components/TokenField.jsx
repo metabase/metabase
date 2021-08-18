@@ -474,6 +474,7 @@ export default class TokenField extends Component {
     // We focus on the input here, and not on the input itself as a prop
     // (say by passing prop autoFocus={isFocused})
     // because certain TokenFields will live in position: fixed containers.
+    // Autofocusing like that would make the page jump in scroll position.
     // One example: parameter filters in dashboard pages.
     if (this.state.isFocused) {
       input.focus({ preventScroll: true });
