@@ -19,6 +19,8 @@ import {
 } from "__support__/sample_dataset_fixture";
 import JoinStep from "./JoinStep";
 
+jest.setTimeout(10000);
+
 describe("Notebook Editor > Join Step", () => {
   const TEST_QUERY = {
     type: "query",
@@ -168,8 +170,7 @@ describe("Notebook Editor > Join Step", () => {
     });
   });
 
-  // Fails on CI because of waitFor / findBy query
-  it.skip("automatically sets join fields if possible", async () => {
+  it("automatically sets join fields if possible", async () => {
     const { onQueryChange } = setup();
 
     await selectTable(/Products/i);
