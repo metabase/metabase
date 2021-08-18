@@ -17,7 +17,7 @@ import {
 
 const propTypes = {
   item: PropTypes.object.isRequired,
-  user: PropTypes.object.isRequired,
+  user: PropTypes.object,
 };
 
 const NotificationItem = ({ item, user }) => {
@@ -106,7 +106,7 @@ const formatChannel = channel => {
 const formatCreator = (item, user) => {
   let creatorString = "";
 
-  if (user.id === item.creator?.id) {
+  if (user?.id === item.creator?.id) {
     creatorString += t`Created by you`;
   } else if (item.creator?.common_name) {
     creatorString += t`Created by ${item.creator.common_name}`;

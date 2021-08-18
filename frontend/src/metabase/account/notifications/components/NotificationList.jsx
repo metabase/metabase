@@ -9,9 +9,9 @@ import {
 } from "./NotificationList.styled";
 
 const propTypes = {
-  user: PropTypes.object.isRequired,
   alerts: PropTypes.array.isRequired,
   pulses: PropTypes.array.isRequired,
+  user: PropTypes.object,
 };
 
 const NotificationList = ({ user, alerts, pulses }) => {
