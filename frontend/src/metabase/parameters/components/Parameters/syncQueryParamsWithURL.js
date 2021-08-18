@@ -2,6 +2,7 @@ import Dimension from "metabase-lib/lib/Dimension";
 import {
   getParameterValueFromQueryParams,
   getParameterValuePairsFromQueryParams,
+  hasParameterValue,
 } from "metabase/meta/Parameter";
 
 export const syncQueryParamsWithURL = props => {
@@ -20,7 +21,7 @@ const syncForInternalQuestion = props => {
   parameters.forEach(parameter => {
     const parameterValue = getParameterValueFromQueryParams(parameter, query);
 
-    if (parameterValue != null) {
+    if (hasParameterValue(parameterValue)) {
       const parsedParameterValue = parseQueryParams(
         parameterValue,
         parameter,

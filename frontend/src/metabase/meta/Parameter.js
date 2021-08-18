@@ -622,14 +622,16 @@ export function hasDefaultParameterValue(parameter) {
   return parameter.default != null;
 }
 
-export function hasParameterValue(parameter) {
-  return parameter && parameter.value != null;
+export function hasParameterValue(value) {
+  return value != null;
 }
 
 export function getParameterValueFromQueryParams(parameter, queryParams) {
   queryParams = queryParams || {};
   const maybeParameterValue = queryParams[parameter.slug];
-  return maybeParameterValue == null ? parameter.default : maybeParameterValue;
+  return hasParameterValue(maybeParameterValue)
+    ? maybeParameterValue
+    : parameter.default;
 }
 
 export function getParameterValuePairsFromQueryParams(parameters, queryParams) {
@@ -638,7 +640,7 @@ export function getParameterValuePairsFromQueryParams(parameters, queryParams) {
       parameter,
       getParameterValueFromQueryParams(parameter, queryParams),
     ])
-    .filter(([, value]) => value != null);
+    .filter(([, value]) => hasParameterValue(value));
 }
 
 export function getParameterValuesByIdFromQueryParams(parameters, queryParams) {
@@ -657,7 +659,7 @@ export function getParameterValuesBySlug(parameters, parameterValuesById) {
       parameter.slug,
       parameter.value || parameterValuesById[parameter.id],
     ])
-    .filter(([, value]) => value != null);
+    .filter(([, value]) => hasParameterValue(value));
 
   return Object.fromEntries(slugValuePairs);
 }
