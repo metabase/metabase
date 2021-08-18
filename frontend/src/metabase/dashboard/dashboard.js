@@ -666,7 +666,6 @@ function expandInlineCard(card) {
 export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
   dashId,
   queryParams,
-  enableDefaultParameters = true,
 ) {
   let result;
   return async function(dispatch, getState) {
