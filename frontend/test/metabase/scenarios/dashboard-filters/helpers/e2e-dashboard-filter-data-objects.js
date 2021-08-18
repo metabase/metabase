@@ -206,3 +206,47 @@ export const DASHBOARD_SQL_LOCATION_FILTERS = {
     representativeResult: "Aracely Jenkins",
   },
 };
+
+export const DASHBOARD_SQL_DATE_FILTERS = {
+  "Month and Year": {
+    sqlFilter: "date/month-year",
+    value: {
+      month: "October",
+      year: "2017",
+    },
+    representativeResult: "Hudson Borer",
+  },
+  "Quarter and Year": {
+    sqlFilter: "date/quarter-year",
+    value: {
+      quarter: "Q1",
+      year: "2018",
+    },
+    representativeResult: "Lolita Schaefer",
+  },
+  "Single Date": {
+    sqlFilter: "date/single",
+    value: "15",
+    representativeResult: "No results!",
+  },
+  "Date Range": {
+    sqlFilter: "date/range",
+    value: {
+      startDate: "13",
+      endDate: "15",
+    },
+    representativeResult: "No results!",
+  },
+  "Relative Date": {
+    sqlFilter: "date/relative",
+    value: "Past 7 days",
+    representativeResult: "No results!",
+  },
+  "All Options": {
+    sqlFilter: "date/all-options",
+    value: {
+      timeBucket: "Years",
+    },
+    representativeResult: "Hudson Borer",
+  },
+};
