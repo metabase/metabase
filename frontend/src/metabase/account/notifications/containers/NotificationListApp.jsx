@@ -12,11 +12,11 @@ const mapStateToProps = (state, props) => ({
 });
 
 const mapDispatchToProps = {
-  onHelp: () => push("/account/notifications/help"),
+  onShowHelpModal: () => push("/account/notifications/help"),
 };
 
 export default _.compose(
-  Pulses.loadList({ query: () => ({ dashboard_id: 6 }) }),
+  Pulses.loadList(),
   connect(
     mapStateToProps,
     mapDispatchToProps,

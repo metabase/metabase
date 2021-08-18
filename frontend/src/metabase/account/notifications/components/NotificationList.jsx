@@ -15,10 +15,10 @@ const propTypes = {
   groups: PropTypes.array.isRequired,
   user: PropTypes.object,
   children: PropTypes.node,
-  onHelp: PropTypes.func,
+  onShowHelpModal: PropTypes.func,
 };
 
-const NotificationList = ({ groups, user, children, onHelp }) => {
+const NotificationList = ({ groups, user, children, onShowHelpModal }) => {
   if (!groups.length) {
     return <NotificationEmptyState />;
   }
@@ -28,7 +28,7 @@ const NotificationList = ({ groups, user, children, onHelp }) => {
       <NotificationHeader>
         <NotificationLabel>{t`You receive or created these`}</NotificationLabel>
         <NotificationButton
-          onClick={onHelp}
+          onClick={onShowHelpModal}
         >{t`Not seeing one here?`}</NotificationButton>
       </NotificationHeader>
       {groups.map(({ item, type }) => (

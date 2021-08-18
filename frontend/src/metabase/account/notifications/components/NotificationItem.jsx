@@ -43,10 +43,11 @@ const formatTitle = item => {
 };
 
 const formatLink = (item, type) => {
-  if (type === "pulse") {
-    return dashboard({ id: item.dashboard_id });
-  } else {
-    return question(item.card);
+  switch (type) {
+    case "pulse":
+      return dashboard({ id: item.dashboard_id });
+    case "alert":
+      return question(item.card);
   }
 };
 
@@ -70,7 +71,7 @@ const formatChannel = channel => {
       scheduleString += t`Slack’d `;
       break;
     default:
-      scheduleString += `Sent `;
+      scheduleString += `Sent`;
       break;
   }
 
@@ -96,9 +97,6 @@ const formatChannel = channel => {
       scheduleString += t`monthly on the ${frame} ${day} at ${ampm}`;
       break;
     }
-    default:
-      scheduleString += channel.schedule_type;
-      break;
   }
 
   if (channel.channel_type === "slack") {
