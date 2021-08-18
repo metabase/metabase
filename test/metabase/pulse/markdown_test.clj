@@ -57,8 +57,7 @@
     (is (= ">1. quoted\n>2. list" (mrkdwn "> 1. quoted\n> 1. list")))
     (is (= ">quote\n>• footer"    (mrkdwn ">quote\n>- footer"))))
 
-  (testing "Links use Slack's syntax, tooltips are dropped, link formatting is preserved,
-           and a protocol is added if not already present"
+  (testing "Links use Slack's syntax, tooltips are dropped, link formatting is preserved"
     (is (= "<https://metabase.com|Metabase>"   (mrkdwn "[Metabase](https://metabase.com)")))
     (is (= "<https://metabase.com|Metabase>"   (mrkdwn "[Metabase](https://metabase.com \"tooltip\")")))
     (is (= "<https://metabase.com|_Metabase_>" (mrkdwn "[*Metabase*](https://metabase.com)")))

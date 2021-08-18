@@ -192,7 +192,7 @@
   [uri]
   (when uri
     (if-let [site-url (public-settings/site-url)]
-      (.toString (.resolve (new URI ^String site-url) ^URI uri))
+      (.toString (.resolve (new URI ^String site-url) ^String uri))
       uri)))
 
 (defn- ast->mrkdwn
