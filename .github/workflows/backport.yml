@@ -1,36 +1,24 @@
-# Cherry-picks commits from current branch to a specified one "@metabase-bot cherry-pick release-x.40.x"
-name: CherryPick
+# Cherry-picks commits from current branch to a specified one in a command "@metabase-bot backport release-x.40.x"
+name: Backport
 
 on:
   issue_comment:
     types: [created]
 
 jobs:
-  target_branch:
-    name: Get target branch
-    if: contains(github.event.comment.body, '@metabase-bot cherry-pick')
-    runs-on: ubuntu-latest
-    outputs:
-      branch: ${{ steps.get_target_branch.outputs.result }}
-    steps:
-      - uses: actions/github-script@v4
-        id: get_target_branch
-        with:
-          script: |
-            // Example: @metabase-bot cherry-pick release-x.40.x
-            const [_botName, _command, targetBranch] = context.payload.comment.body.split(" ");
-            console.log(`Target branch is ${targetBranch}`);
-            return targetBranch
-
   create_pull_request:
     name: Creates a pull request
-    needs: [target_branch]
+    if: contains(github.event.comment.body, '@metabase-bot backport')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/github-script@v4
         id: branch_info
         with:
           script: |
+            // Example: @metabase-bot backport release-x.40.x
+            const [_botName, _command, targetBranch] = context.payload.comment.body.split(" ");
+            console.log(`Target branch is ${targetBranch}`);
+
             const { data: originalPullRequest } = await github.pulls.get({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -43,40 +31,35 @@ jobs:
               pull_number: context.payload.issue.number,
             });
 
-            const targetBranch = ${{ needs.target_branch.outputs.branch }};
             const targetRef = await github.git.getRef({
               owner: context.repo.owner,
               repo: context.repo.repo,
               ref: `heads/${targetBranch}`,
             });
 
-            const newBranch = `cherry-pick-${originalPullRequest.head.ref}`
+            const backportBranch = `backport-${originalPullRequest.head.ref}`
+
             try {
               await github.git.getRef({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                ref: `heads/${newBranch}`,
+                ref: `heads/${backportBranch}`,
               });
             } catch(e) {
               if (e.status === 404) {
                 await github.git.createRef({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
-                  ref: `refs/heads/${newBranch}`,
+                  ref: `refs/heads/${backportBranch}`,
                   sha: targetRef.data.object.sha,
                 });
               }
             }
 
             return {
-              newBranch,
+              backportBranch,
               targetBranch,
-
-              originalPullRequestTitle: originalPullRequest.title,
-              isOriginalPrOpen: originalPullRequest.state,
-              originalPullRequestBase: originalPullRequest.base.ref,
-              originalPullRequestHead: originalPullRequest.head.ref
-
+              originalPullRequest,
               startSha: commits[0].sha,
               endSha: commits[commits.length - 1].sha
             }
@@ -90,23 +73,39 @@ jobs:
 
           git fetch --all
 
-          git checkout "${NEW_BRANCH}"
+          git checkout "${BACKPORT_BRANCH}"
           git reset --hard origin/${TARGET_BRANCH}
 
-          git cherry-pick ${START_SHA}^..${END_SHA}
+          if [[ -z $(git ls-remote --heads origin ${ORIGINAL_HEAD_REF}) ]]; then
+            echo "PR has been merged, searching for a squashed commit in the base branch"
+            echo "searching for a commit in a ${ORIGINAL_BASE_REF} that contains pull request number ${ORIGINAL_PULL_REQUEST_NUMBER}"
+            SQUASHED_COMMIT=$(env -i git log ${ORIGINAL_BASE_REF} --grep="(#${ORIGINAL_PULL_REQUEST_NUMBER})" --format="%H")
+            echo "found commit ${SQUASHED_COMMIT}"
+            git cherry-pick ${SQUASHED_COMMIT}
+          else
+            echo "PR has not been merged, copying all commits"
+            git cherry-pick ${ORIGINAL_BASE_SHA}..${ORIGINAL_HEAD_SHA}
+          fi
 
-          git push origin "${NEW_BRANCH}" --force-with-lease
+          git push origin "${BACKPORT_BRANCH}" --force-with-lease
 
-          if [[ $(hub pr list -b "${TARGET_BRANCH}" -h "${NEW_BRANCH}" -s "open") ]]; then
+          if [[ $(hub pr list -b "${TARGET_BRANCH}" -h "${BACKPORT_BRANCH}" -s "open") ]]; then
               echo "PR already exists"
           else
-              hub pull-request -b "${TARGET_BRANCH}" -h "${NEW_BRANCH}" -l "auto-cherry-picked" -a "${GITHUB_ACTOR}" -m "🍒 \"${ORIGINAL_TITLE}\""
-              echo "PR has been created"
+              hub pull-request -b "${TARGET_BRANCH}" -h "${BACKPORT_BRANCH}" -l "auto-backported" -a "${GITHUB_ACTOR}" -F- <<<"🤖 backported \"${ORIGINAL_TITLE}\"
+
+              #${ORIGINAL_PULL_REQUEST_NUMBER}"
+              echo "New PR has been created"
           fi
         env:
-          ORIGINAL_TITLE: ${{ fromJson(steps.branch_info.outputs.result).originalPullRequestTitle }}
+          ORIGINAL_TITLE: ${{ fromJson(steps.branch_info.outputs.result).originalPullRequest.title }}
+          ORIGINAL_BASE_REF: ${{ fromJson(steps.branch_info.outputs.result).originalPullRequest.base.ref }}
+          ORIGINAL_BASE_SHA: ${{ fromJson(steps.branch_info.outputs.result).originalPullRequest.base.sha }}
+          ORIGINAL_HEAD_REF: ${{ fromJson(steps.branch_info.outputs.result).originalPullRequest.head.ref }}
+          ORIGINAL_HEAD_SHA: ${{ fromJson(steps.branch_info.outputs.result).originalPullRequest.head.sha }}
+          ORIGINAL_PULL_REQUEST_NUMBER: ${{ fromJson(steps.branch_info.outputs.result).originalPullRequest.number }}
           TARGET_BRANCH: ${{ fromJson(steps.branch_info.outputs.result).targetBranch }}
-          NEW_BRANCH: ${{ fromJson(steps.branch_info.outputs.result).newBranch }}
+          BACKPORT_BRANCH: ${{ fromJson(steps.branch_info.outputs.result).backportBranch }}
           START_SHA: ${{ fromJson(steps.branch_info.outputs.result).startSha }}
           END_SHA: ${{ fromJson(steps.branch_info.outputs.result).endSha }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -122,10 +121,11 @@ jobs:
           script: |
             const { GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_RUN_ID} = process.env;
             const runUrl = `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}`
+            const author = context.payload.comment.user.login;
 
             github.issues.createComment({
               issue_number: context.payload.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `Could not automatically create a PR 😩 [Failed run](${runUrl})`
+              body: `@${author} could not automatically a backport PR 😩 [[Logs]](${runUrl})`
             })
