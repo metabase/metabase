@@ -9,11 +9,14 @@ import {
 } from "./NotificationList.styled";
 
 const propTypes = {
-  items: PropTypes.array.isRequired,
   user: PropTypes.object.isRequired,
+  alerts: PropTypes.array.isRequired,
+  pulses: PropTypes.array.isRequired,
 };
 
-const NotificationList = ({ items, user }) => {
+const NotificationList = ({ user, alerts, pulses }) => {
+  const items = formatItems(alerts, pulses);
+
   return (
     <div>
       <NotificationHeader>
@@ -28,5 +31,9 @@ const NotificationList = ({ items, user }) => {
 };
 
 NotificationList.propTypes = propTypes;
+
+const formatItems = (alerts, pulses) => {
+  return [...alerts, ...pulses].sort((a, b) => b.created_at - a.created_at);
+};
 
 export default NotificationList;

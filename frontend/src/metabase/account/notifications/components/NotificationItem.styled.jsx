@@ -1,6 +1,5 @@
 import styled from "styled-components";
 import { color } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 
 export const NotificationItemRoot = styled.div`
@@ -36,15 +35,4 @@ export const NotificationDescription = styled.div`
   font-size: 0.75rem;
   line-height: 0.875rem;
   margin-top: 0.25rem;
-`;
-
-export const NotificationIcon = styled(Icon)`
-  color: ${color("text-light")};
-  cursor: pointer;
-  width: 1rem;
-  height: 1rem;
-
-  &:hover {
-    color: ${color("text-medium")};
-  }
 `;

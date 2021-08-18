@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import {
@@ -9,24 +9,18 @@ import {
 } from "metabase/lib/time";
 import { dashboard } from "metabase/lib/urls";
 import {
-  NotificationItemRoot,
-  NotificationDescription,
-  NotificationTitle,
   NotificationContent,
-  NotificationIcon,
+  NotificationDescription,
+  NotificationItemRoot,
+  NotificationTitle,
 } from "./NotificationItem.styled";
 
 const propTypes = {
   item: PropTypes.object.isRequired,
   user: PropTypes.object.isRequired,
-  onRemove: PropTypes.func,
 };
 
-const NotificationItem = ({ item, user, onRemove }) => {
-  const handleRemove = useCallback(() => {
-    onRemove && onRemove(item);
-  }, [item, onRemove]);
-
+const NotificationItem = ({ item, user }) => {
   return (
     <NotificationItemRoot>
       <NotificationContent>
@@ -37,7 +31,6 @@ const NotificationItem = ({ item, user, onRemove }) => {
           {formatDescription(item, user)}
         </NotificationDescription>
       </NotificationContent>
-      <NotificationIcon name="close" onClick={handleRemove} />
     </NotificationItemRoot>
   );
 };
@@ -55,7 +48,7 @@ const formatLink = item => {
 const formatDescription = (item, user) => {
   const parts = [
     ...item.channels.map(formatChannel),
-    formatCreator(item.creator, user),
+    formatCreator(item, user),
   ];
 
   return parts.join(" · ");
@@ -110,19 +103,19 @@ const formatChannel = channel => {
   return scheduleString;
 };
 
-const formatCreator = (creator, user) => {
+const formatCreator = (item, user) => {
   let creatorString = "";
 
-  if (user.id === creator?.id) {
+  if (user.id === item.creator?.id) {
     creatorString += t`Created by you`;
-  } else if (creator?.common_name) {
-    creatorString += t`Created by ${creator.common_name}`;
+  } else if (item.creator?.common_name) {
+    creatorString += t`Created by ${item.creator.common_name}`;
   } else {
     creatorString += t`Created`;
   }
 
-  if (creator.created_at) {
-    const createdAt = parseTimestamp(creator.created_at).format("L");
+  if (item.created_at) {
+    const createdAt = parseTimestamp(item.created_at).format("L");
     creatorString += t` on ${createdAt}`;
   }
 
