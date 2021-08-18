@@ -494,7 +494,7 @@ export const getGroupsDataPermissionEditor = createSelector(
 const getGroupRouteParams = (_state, props) => {
   const { groupId, databaseId, schemaName } = props.params;
   return {
-    groupId,
+    groupId: groupId != null ? parseInt(groupId) : null,
     databaseId,
     schemaName,
   };
@@ -551,7 +551,9 @@ const getFilterPlaceholder = ({ databaseId, schemaName }, hasSingleSchema) => {
 };
 
 export const getGroup = (state, props) =>
-  Group.selectors.getObject(state, { entityId: props.params.groupId });
+  Group.selectors.getObject(state, {
+    entityId: parseInt(props.params.groupId),
+  });
 
 export const getDatabasesPermissionEditor = createSelector(
   getMetadata,
