@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import NotificationItem from "./NotificationItem";
+import NotificationCard from "./NotificationCard";
 
 const getAlert = ({
   creatorId = 1,
@@ -49,12 +49,12 @@ const getChannels = ({
   ];
 };
 
-describe("NotificationItem", () => {
+describe("NotificationCard", () => {
   it("should render an alert", () => {
     const alert = getAlert();
     const user = getUser();
 
-    render(<NotificationItem item={alert} type="alert" user={user} />);
+    render(<NotificationCard item={alert} type="alert" user={user} />);
 
     screen.getByText("Alert");
     screen.getByText("Emailed hourly", { exact: false });
@@ -65,7 +65,7 @@ describe("NotificationItem", () => {
     const pulse = getPulse();
     const user = getUser();
 
-    render(<NotificationItem item={pulse} type="pulse" user={user} />);
+    render(<NotificationCard item={pulse} type="pulse" user={user} />);
 
     screen.getByText("Pulse");
     screen.getByText("Emailed hourly", { exact: false });
@@ -76,7 +76,7 @@ describe("NotificationItem", () => {
     const alert = getAlert({ channel_type: "slack" });
     const user = getUser();
 
-    render(<NotificationItem item={alert} type="alert" user={user} />);
+    render(<NotificationCard item={alert} type="alert" user={user} />);
 
     screen.getByText("Slack’d hourly to @channel", { exact: false });
   });
@@ -85,7 +85,7 @@ describe("NotificationItem", () => {
     const alert = getAlert({ schedule_type: "daily" });
     const user = getUser();
 
-    render(<NotificationItem item={alert} type="alert" user={user} />);
+    render(<NotificationCard item={alert} type="alert" user={user} />);
 
     screen.getByText("Emailed daily at 8:00 AM", { exact: false });
   });
@@ -94,7 +94,7 @@ describe("NotificationItem", () => {
     const alert = getAlert({ schedule_type: "weekly" });
     const user = getUser();
 
-    render(<NotificationItem item={alert} type="alert" user={user} />);
+    render(<NotificationCard item={alert} type="alert" user={user} />);
 
     screen.getByText("Emailed Monday at 8:00 AM", { exact: false });
   });
@@ -103,7 +103,7 @@ describe("NotificationItem", () => {
     const alert = getAlert({ schedule_type: "monthly" });
     const user = getUser();
 
-    render(<NotificationItem item={alert} type="alert" user={user} />);
+    render(<NotificationCard item={alert} type="alert" user={user} />);
 
     screen.getByText("Emailed monthly on the first Monday", { exact: false });
     screen.getByText("at 8:00 AM", { exact: false });
@@ -113,7 +113,7 @@ describe("NotificationItem", () => {
     const alert = getAlert();
     const user = getUser({ id: 2 });
 
-    render(<NotificationItem item={alert} type="alert" user={user} />);
+    render(<NotificationCard item={alert} type="alert" user={user} />);
 
     screen.getByText("Created by John Doe", { exact: false });
   });

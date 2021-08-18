@@ -1,9 +1,9 @@
 import { connect } from "react-redux";
 import { getAdminEmail } from "../selectors";
-import HelpNotificationForm from "../components/HelpNotificationForm";
+import HelpNotificationModal from "../components/HelpNotificationModal";
 
 const mapStateToProps = () => ({
   adminEmail: getAdminEmail(),
 });
 
-export default connect(mapStateToProps)(HelpNotificationForm);
+export default connect(mapStateToProps)(HelpNotificationModal);

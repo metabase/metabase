@@ -1,13 +1,13 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import HelpNotificationForm from "./HelpNotificationForm";
+import HelpNotificationModal from "./HelpNotificationModal";
 
-describe("HelpNotificationForm", () => {
+describe("HelpNotificationModal", () => {
   const onClose = jest.fn();
 
   it("should render with admin email", () => {
     render(
-      <HelpNotificationForm
+      <HelpNotificationModal
         adminEmail={"admin@example.com"}
         onClose={onClose}
       />,
@@ -18,13 +18,13 @@ describe("HelpNotificationForm", () => {
   });
 
   it("should render without admin email", () => {
-    render(<HelpNotificationForm onClose={onClose} />);
+    render(<HelpNotificationModal onClose={onClose} />);
 
     screen.getByText("administrator", { exact: false });
   });
 
   it("should close on button click", () => {
-    render(<HelpNotificationForm onClose={onClose} />);
+    render(<HelpNotificationModal onClose={onClose} />);
 
     screen.getByText("Got it").click();
     expect(onClose).toHaveBeenCalled();
