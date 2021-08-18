@@ -12,7 +12,7 @@ const mapStateToProps = (state, props) => ({
 });
 
 const mapDispatchToProps = {
-  onChangeLocation: push,
+  onHelp: () => push("/account/notifications/help"),
 };
 
 export default _.compose(

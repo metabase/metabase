@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import NotificationItem from "./NotificationItem";
@@ -15,14 +15,10 @@ const propTypes = {
   groups: PropTypes.array.isRequired,
   user: PropTypes.object,
   children: PropTypes.node,
-  onChangeLocation: PropTypes.func,
+  onHelp: PropTypes.func,
 };
 
-const NotificationList = ({ groups, user, children, onChangeLocation }) => {
-  const onHelpClick = useCallback(() => {
-    onChangeLocation && onChangeLocation("/account/notifications/help");
-  }, [onChangeLocation]);
-
+const NotificationList = ({ groups, user, children, onHelp }) => {
   if (!groups.length) {
     return <NotificationEmptyState />;
   }
@@ -32,7 +28,7 @@ const NotificationList = ({ groups, user, children, onChangeLocation }) => {
       <NotificationHeader>
         <NotificationLabel>{t`You receive or created these`}</NotificationLabel>
         <NotificationButton
-          onClick={onHelpClick}
+          onClick={onHelp}
         >{t`Not seeing one here?`}</NotificationButton>
       </NotificationHeader>
       {groups.map(({ item, type }) => (
