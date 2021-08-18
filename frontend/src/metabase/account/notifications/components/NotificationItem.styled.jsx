@@ -21,9 +21,7 @@ export const NotificationContent = styled.div`
 
 export const NotificationTitle = styled(Link)`
   color: ${color("brand")};
-  cursor: pointer;
   font-weight: bold;
-  text-decoration: none;
 
   &:hover {
     text-decoration: underline;

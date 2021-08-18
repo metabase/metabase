@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { jt, t } from "ttag";
 import Button from "metabase/components/Button";
 import ModalContent from "metabase/components/ModalContent";
-import { FormMessage } from "./HelpNotificationForm.styled";
+import { FormLink, FormMessage } from "./HelpNotificationForm.styled";
 
 const propTypes = {
   adminEmail: PropTypes.string,
@@ -35,7 +35,7 @@ const HelpNotificationForm = ({ adminEmail, onClose }) => {
 HelpNotificationForm.propTypes = propTypes;
 
 const getAdminLink = (email, text) => {
-  return email ? <a href={`mailto:${email}`}>{text}</a> : text;
+  return email ? <FormLink href={`mailto:${email}`}>{text}</FormLink> : text;
 };
 
 const getAdminMessage = email => {
