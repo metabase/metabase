@@ -3,14 +3,14 @@ import PropTypes from "prop-types";
 import { jt, t } from "ttag";
 import Button from "metabase/components/Button";
 import ModalContent from "metabase/components/ModalContent";
-import { FormLink, FormMessage } from "./HelpNotificationModal.styled";
+import { FormLink, FormMessage } from "./HelpModal.styled";
 
 const propTypes = {
   adminEmail: PropTypes.string,
   onClose: PropTypes.func,
 };
 
-const HelpNotificationModal = ({ adminEmail, onClose }) => {
+const HelpModal = ({ adminEmail, onClose }) => {
   return (
     <ModalContent
       title={t`Not seeing something listed here?`}
@@ -32,7 +32,7 @@ const HelpNotificationModal = ({ adminEmail, onClose }) => {
   );
 };
 
-HelpNotificationModal.propTypes = propTypes;
+HelpModal.propTypes = propTypes;
 
 const getAdminLink = (email, text) => {
   return email ? <FormLink href={`mailto:${email}`}>{text}</FormLink> : text;
@@ -43,4 +43,4 @@ const getAdminMessage = email => {
   return jt`Metabase doesn’t manage those lists, so we’d recommend contacting ${adminLink}.`;
 };
 
-export default HelpNotificationModal;
+export default HelpModal;
