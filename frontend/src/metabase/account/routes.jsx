@@ -8,7 +8,7 @@ import UserProfileApp from "./profile/containers/UserProfileApp";
 import UserPasswordApp from "./password/containers/UserPasswordApp";
 import LoginHistoryApp from "./login-history/containers/LoginHistoryApp";
 import NotificationsApp from "./notifications/containers/NotificationsApp";
-import HelpNotificationModal from "./notifications/containers/HelpNotificationModal";
+import HelpModal from "./notifications/containers/HelpModal";
 
 const getRoutes = () => {
   return (
@@ -22,7 +22,7 @@ const getRoutes = () => {
       <Route path="password" component={UserPasswordApp} />
       <Route path="login-history" component={LoginHistoryApp} />
       <Route path="notifications" component={NotificationsApp}>
-        <ModalRoute path="help" modal={HelpNotificationModal} />
+        <ModalRoute path="help" modal={HelpModal} />
       </Route>
     </Route>
   );
