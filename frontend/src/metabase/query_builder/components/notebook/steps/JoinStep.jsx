@@ -194,6 +194,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
             options={join.parentDimensionOptions()}
             onChange={onParentDimensionChange}
             ref={parentDimensionPickerRef}
+            data-testid="parent-dimension"
           />
 
           <JoinOnConditionLabel />
@@ -205,6 +206,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
             options={join.joinDimensionOptions()}
             onChange={onJoinDimensionChange}
             ref={joinDimensionPickerRef}
+            data-testid="join-dimension"
           />
         </JoinedTableControlRoot>
       )}
@@ -380,6 +382,7 @@ const joinDimensionPickerPropTypes = {
   }).isRequired,
   query: PropTypes.object.isRequired,
   color: PropTypes.string,
+  "data-testid": PropTypes.string,
 };
 
 class JoinDimensionPicker extends React.Component {
@@ -388,11 +391,16 @@ class JoinDimensionPicker extends React.Component {
   }
   render() {
     const { dimension, onChange, options, query, color } = this.props;
+    const testID = this.props["data-testid"] || "join-dimension";
     return (
       <PopoverWithTrigger
         ref={ref => (this._popover = ref)}
         triggerElement={
-          <NotebookCellItem color={color} inactive={!dimension}>
+          <NotebookCellItem
+            color={color}
+            inactive={!dimension}
+            data-testid={testID}
+          >
             {dimension ? dimension.displayName() : `Pick a column...`}
           </NotebookCellItem>
         }
@@ -408,6 +416,7 @@ class JoinDimensionPicker extends React.Component {
               onChange(field);
               onClose();
             }}
+            data-testid={`${testID}-picker`}
           />
         )}
       </PopoverWithTrigger>

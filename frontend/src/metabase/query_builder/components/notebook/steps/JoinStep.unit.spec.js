@@ -1,4 +1,5 @@
-import React from "react";
+/* eslint-disable react/prop-types */
+import React, { useState } from "react";
 import { Provider } from "react-redux";
 import {
   render,
@@ -16,44 +17,51 @@ import {
   SAMPLE_DATASET,
 } from "__support__/sample_dataset_fixture";
 import JoinStep from "./JoinStep";
-import { jest } from "@jest/globals";
 
 describe("Notebook Editor > Join Step", () => {
-  const TEST_QUERY = new StructuredQuery(ORDERS.question(), {
-    type: "query",
-    database: SAMPLE_DATASET.id,
-    query: {
-      "source-table": ORDERS.id,
-    },
-  });
-
-  const TEST_STEP = {
-    id: "0:join",
-    type: "join",
-    itemIndex: 0,
-    stageIndex: 0,
-    query: TEST_QUERY,
-    valid: true,
-    visible: true,
-    active: true,
-    actions: [],
-    update: jest.fn(),
-    clean: jest.fn(),
-    revert: jest.fn(),
-  };
+  function JoinStepWrapped({ initialQuery, ...props }) {
+    const [query, setQuery] = useState(initialQuery);
+    return (
+      <JoinStep
+        {...props}
+        query={query}
+        updateQuery={datasetQuery => {
+          const newQuery = query.setDatasetQuery(datasetQuery);
+          setQuery(newQuery);
+        }}
+      />
+    );
+  }
 
   function setup() {
-    const updateQuery = jest.fn();
+    const TEST_QUERY = new StructuredQuery(ORDERS.question(), {
+      type: "query",
+      database: SAMPLE_DATASET.id,
+      query: {
+        "source-table": ORDERS.id,
+      },
+    });
+
+    const TEST_STEP = {
+      id: "0:join",
+      type: "join",
+      itemIndex: 0,
+      stageIndex: 0,
+      query: TEST_QUERY,
+      valid: true,
+      visible: true,
+      active: true,
+      actions: [],
+      update: jest.fn(),
+      clean: jest.fn(),
+      revert: jest.fn(),
+    };
+
     render(
       <Provider store={getStore({}, state)}>
-        <JoinStep
-          query={TEST_QUERY}
-          step={TEST_STEP}
-          updateQuery={updateQuery}
-        />
+        <JoinStepWrapped initialQuery={TEST_QUERY} step={TEST_STEP} />
       </Provider>,
     );
-    return { updateQuery };
   }
 
   beforeEach(() => {
@@ -94,5 +102,22 @@ describe("Notebook Editor > Join Step", () => {
       const tableName = new RegExp(table.display_name, "i");
       expect(within(dataSelector).queryByText(tableName)).toBeInTheDocument();
     });
+  });
+
+  it("automatically sets join fields if possible", async () => {
+    setup();
+
+    fireEvent.click(screen.queryByText(/Sample Dataset/i));
+    const dataSelector = await screen.findByTestId("data-selector");
+    fireEvent.click(within(dataSelector).queryByText(/Products/i));
+
+    await waitForElementToBeRemoved(() =>
+      screen.queryByTestId("data-selector"),
+    );
+
+    expect(screen.getByTestId("parent-dimension")).toHaveTextContent(
+      /Product ID/i,
+    );
+    expect(screen.getByTestId("join-dimension")).toHaveTextContent(/ID/i);
   });
 });
