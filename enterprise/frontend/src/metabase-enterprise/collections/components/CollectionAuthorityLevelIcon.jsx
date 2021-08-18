@@ -4,7 +4,8 @@ import PropTypes from "prop-types";
 import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
 
-import { AUTHORITY_LEVELS, REGULAR_COLLECTION } from "../constants";
+import { AUTHORITY_LEVELS } from "../constants";
+import { isRegularCollection } from "../utils";
 
 const propTypes = {
   tooltip: PropTypes.string,
@@ -18,10 +19,10 @@ export function CollectionAuthorityLevelIcon({
   tooltip = "default",
   ...iconProps
 }) {
-  const level = AUTHORITY_LEVELS[collection.authority_level];
-  if (!level || level.type === REGULAR_COLLECTION.type) {
+  if (isRegularCollection(collection)) {
     return null;
   }
+  const level = AUTHORITY_LEVELS[collection.authority_level];
   return (
     <Icon
       {...iconProps}
