@@ -7,7 +7,7 @@ import {
   formatHourAMPM,
   parseTimestamp,
 } from "metabase/lib/time";
-import { dashboard } from "metabase/lib/urls";
+import { dashboard, question } from "metabase/lib/urls";
 import {
   NotificationContent,
   NotificationDescription,
@@ -17,14 +17,15 @@ import {
 
 const propTypes = {
   item: PropTypes.object.isRequired,
+  type: PropTypes.oneOf(["pulse", "alert"]).isRequired,
   user: PropTypes.object,
 };
 
-const NotificationItem = ({ item, user }) => {
+const NotificationItem = ({ item, type, user }) => {
   return (
     <NotificationItemRoot>
       <NotificationContent>
-        <NotificationTitle to={formatLink(item)}>
+        <NotificationTitle to={formatLink(item, type)}>
           {formatTitle(item)}
         </NotificationTitle>
         <NotificationDescription>
@@ -41,8 +42,12 @@ const formatTitle = item => {
   return item.name;
 };
 
-const formatLink = item => {
-  return dashboard({ id: item.dashboard_id });
+const formatLink = (item, type) => {
+  if (type === "pulse") {
+    return dashboard({ id: item.dashboard_id });
+  } else {
+    return question(item.card);
+  }
 };
 
 const formatDescription = (item, user) => {

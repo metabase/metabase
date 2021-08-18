@@ -9,31 +9,24 @@ import {
 } from "./NotificationList.styled";
 
 const propTypes = {
-  alerts: PropTypes.array.isRequired,
-  pulses: PropTypes.array.isRequired,
+  groups: PropTypes.array.isRequired,
   user: PropTypes.object,
 };
 
-const NotificationList = ({ user, alerts, pulses }) => {
-  const items = formatItems(alerts, pulses);
-
+const NotificationList = ({ groups, user }) => {
   return (
     <div>
       <NotificationHeader>
         <NotificationLabel>{t`You receive or created these`}</NotificationLabel>
         <NotificationButton>{t`Not seeing one here?`}</NotificationButton>
       </NotificationHeader>
-      {items.map(item => (
-        <NotificationItem key={item.id} item={item} user={user} />
+      {groups.map(({ item, type }) => (
+        <NotificationItem key={item.id} item={item} type={type} user={user} />
       ))}
     </div>
   );
 };
 
 NotificationList.propTypes = propTypes;
-
-const formatItems = (alerts, pulses) => {
-  return [...alerts, ...pulses].sort((a, b) => b.created_at - a.created_at);
-};
 
 export default NotificationList;

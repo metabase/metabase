@@ -1,2 +1,5 @@
-export const getAlerts = state => state.account.notifications.alerts;
-export const getPulses = state => state.account.notifications.pulses;
+export const getGroups = (state, { pulses }) => {
+  const items = pulses.map(pulse => ({ item: pulse, type: "pulse" }));
+  items.sort((a, b) => b.item.created_at - a.item.created_at);
+  return items;
+};
