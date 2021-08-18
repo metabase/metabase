@@ -75,28 +75,36 @@ describe("Notebook Editor > Join Step", () => {
     return { onQueryChange };
   }
 
+  function toFieldRef(field, joinedTable) {
+    return [
+      "field",
+      field.id,
+      joinedTable ? { "join-alias": joinedTable.display_name } : null,
+    ];
+  }
+
   function expectedJoin({
     fields = "all",
     joinedTable,
     leftField,
     rightField,
   }) {
+    const joinFields = Array.isArray(fields)
+      ? fields.map(field => toFieldRef(field, joinedTable))
+      : fields;
+
     return {
       ...TEST_QUERY,
       query: {
         ...TEST_QUERY.query,
         joins: [
           expect.objectContaining({
-            fields,
+            fields: joinFields,
             "source-table": joinedTable.id,
             condition: [
               "=",
-              ["field", leftField.id, null],
-              [
-                "field",
-                rightField.id,
-                { "join-alias": joinedTable.display_name },
-              ],
+              toFieldRef(leftField),
+              toFieldRef(rightField, joinedTable),
             ],
           }),
         ],
@@ -255,5 +263,23 @@ describe("Notebook Editor > Join Step", () => {
     expect(picker).toBeInTheDocument();
     expect(picker).toBeVisible();
     expect(within(picker).queryByText("Order")).toBeInTheDocument();
+  });
+
+  it("can select fields to select from a joined table", async () => {
+    const { onQueryChange } = setup();
+    await selectTable(/Products/i);
+
+    fireEvent.click(screen.getByText("Columns"));
+    fireEvent.click(screen.getByText("Select None"));
+    fireEvent.click(screen.getByText("Category"));
+
+    expect(onQueryChange).toHaveBeenLastCalledWith(
+      expectedJoin({
+        joinedTable: PRODUCTS,
+        leftField: ORDERS.PRODUCT_ID,
+        rightField: PRODUCTS.ID,
+        fields: [PRODUCTS.CATEGORY],
+      }),
+    );
   });
 });
