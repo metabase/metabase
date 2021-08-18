@@ -21,6 +21,14 @@ driver:
       display-name: Dataset ID
       required: true
       placeholder: toucanSightings
+    - name: use-jvm-timezone
+      display-name: Use JVM Time Zone
+      default: false
+      type: boolean
+    - name: include-user-id-and-hash
+      display-name: Include User ID and query hash in queries
+      default: true
+      type: boolean
 init:
   - step: load-namespace
     namespace: metabase.driver.bigquery-cloud-sdk
