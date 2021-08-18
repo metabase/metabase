@@ -5,7 +5,10 @@ import NotificationItem from "./NotificationItem";
 import {
   NotificationButton,
   NotificationHeader,
+  NotificationIcon,
   NotificationLabel,
+  NotificationMessage,
+  NotificationSection,
 } from "./NotificationList.styled";
 
 const propTypes = {
@@ -14,6 +17,10 @@ const propTypes = {
 };
 
 const NotificationList = ({ groups, user }) => {
+  if (!groups.length) {
+    return <NotificationEmptyState />;
+  }
+
   return (
     <div>
       <NotificationHeader>
@@ -24,6 +31,17 @@ const NotificationList = ({ groups, user }) => {
         <NotificationItem key={item.id} item={item} type={type} user={user} />
       ))}
     </div>
+  );
+};
+
+const NotificationEmptyState = () => {
+  return (
+    <NotificationSection>
+      <NotificationIcon name="bell" />
+      <NotificationMessage>
+        {t`If you subscribe  or are added to dashboard subscriptions or alerts you’ll be able to manage those here.`}
+      </NotificationMessage>
+    </NotificationSection>
   );
 };
 
