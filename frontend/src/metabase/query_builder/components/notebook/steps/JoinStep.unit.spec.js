@@ -64,6 +64,16 @@ describe("Notebook Editor > Join Step", () => {
     );
   }
 
+  async function selectTable(tableName) {
+    fireEvent.click(screen.queryByText(/Sample Dataset/i));
+    const dataSelector = await screen.findByTestId("data-selector");
+    fireEvent.click(within(dataSelector).queryByText(tableName));
+
+    await waitForElementToBeRemoved(() =>
+      screen.queryByTestId("data-selector"),
+    );
+  }
+
   beforeEach(() => {
     xhrMock.setup();
     xhrMock.get("/api/database", {
@@ -107,13 +117,7 @@ describe("Notebook Editor > Join Step", () => {
   it("automatically sets join fields if possible", async () => {
     setup();
 
-    fireEvent.click(screen.queryByText(/Sample Dataset/i));
-    const dataSelector = await screen.findByTestId("data-selector");
-    fireEvent.click(within(dataSelector).queryByText(/Products/i));
-
-    await waitForElementToBeRemoved(() =>
-      screen.queryByTestId("data-selector"),
-    );
+    await selectTable(/Products/i);
 
     expect(screen.getByTestId("parent-dimension")).toHaveTextContent(
       /Product ID/i,
