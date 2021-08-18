@@ -79,7 +79,7 @@ describe("Notebook Editor > Join Step", () => {
     xhrMock.get("/api/database", {
       body: JSON.stringify({
         total: 1,
-        data: [SAMPLE_DATASET._plainObject],
+        data: [SAMPLE_DATASET.getPlainObject()],
       }),
     });
     xhrMock.get("/api/database/1/schemas", {
