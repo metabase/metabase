@@ -14,6 +14,7 @@ import { getStore } from "__support__/entities-store";
 import {
   state,
   ORDERS,
+  PRODUCTS,
   SAMPLE_DATASET,
 } from "__support__/sample_dataset_fixture";
 import JoinStep from "./JoinStep";
@@ -123,5 +124,52 @@ describe("Notebook Editor > Join Step", () => {
       /Product ID/i,
     );
     expect(screen.getByTestId("join-dimension")).toHaveTextContent(/ID/i);
+  });
+
+  it("can change parent dimension's join field", async () => {
+    const ordersFields = Object.values(ORDERS.fieldsLookup());
+    setup();
+    await selectTable(/Products/i);
+
+    fireEvent.click(screen.getByTestId("parent-dimension"));
+
+    const picker = await screen.findByRole("rowgroup");
+    expect(picker).toBeInTheDocument();
+    expect(picker).toBeVisible();
+    expect(within(picker).queryByText("Order")).toBeInTheDocument();
+    ordersFields.forEach(field => {
+      expect(
+        within(picker).queryByText(field.display_name),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("can change join dimension's field", async () => {
+    const productsFields = Object.values(PRODUCTS.fieldsLookup());
+    setup();
+    await selectTable(/Products/i);
+
+    fireEvent.click(screen.getByTestId("join-dimension"));
+
+    const picker = await screen.findByRole("rowgroup");
+    expect(picker).toBeInTheDocument();
+    expect(picker).toBeVisible();
+    expect(within(picker).queryByText("Product")).toBeInTheDocument();
+    productsFields.forEach(field => {
+      expect(
+        within(picker).queryByText(field.display_name),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("automatically opens dimensions picker if can't automatically set join fields", async () => {
+    setup();
+
+    await selectTable(/Reviews/i);
+
+    const picker = await screen.findByRole("rowgroup");
+    expect(picker).toBeInTheDocument();
+    expect(picker).toBeVisible();
+    expect(within(picker).queryByText("Order")).toBeInTheDocument();
   });
 });
