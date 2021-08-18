@@ -368,7 +368,7 @@
   "Get the immediate parent `collection` id, if set."
   {:hydrate :parent_id}
   [{:keys [location]} :- CollectionWithLocationOrRoot]
-  (if location (location-path->parent-id location)))
+  (some-> location location-path->parent-id))
 
 (s/defn children-location :- LocationPath
   "Given a `collection` return a location path that should match the `:location` value of all the children of the

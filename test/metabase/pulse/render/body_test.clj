@@ -379,8 +379,7 @@
   (tree-seq coll? seq html-data))
 
 (defn- render-bar-graph [results]
-  ;; `doall` here as the flatten won't force lazy-seqs
-  (doall (flatten-html-data (body/render :bar nil pacific-tz render.tu/test-card results))))
+  (body/render :bar :inline pacific-tz render.tu/test-card results))
 
 (def ^:private default-columns
   [{:name         "Price",
@@ -392,35 +391,26 @@
     :base_type    :type/BigInteger
     :semantic_type nil}])
 
+(defn has-inline-image? [rendered]
+  (some #{:img} (flatten-html-data rendered)))
+
 (deftest render-bar-graph-test
   (testing "Render a bar graph with non-nil values for the x and y axis"
-    (let [result (render-bar-graph {:cols default-columns
-                                    :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]})]
-      (is (= true
-             (some #(= "Price" %) result)))
-      (is (= true
-             (some #(= "NumPurchased" %) result)))))
+    (is (has-inline-image?
+         (render-bar-graph {:cols default-columns
+                            :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]}))))
   (testing "Check to make sure we allow nil values for the y-axis"
-    (let [result (render-bar-graph {:cols default-columns
-                                    :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 nil]]})]
-      (is (= true
-             (some #(= "Price" %) result)))
-      (is (= true
-             (some #(= "NumPurchased" %) result)))))
+    (is (has-inline-image?
+         (render-bar-graph {:cols default-columns
+                            :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 nil]]}))))
   (testing "Check to make sure we allow nil values for the y-axis"
-    (let [result (render-bar-graph {:cols default-columns
-                                    :rows [[10.0 1] [5.0 10] [2.50 20] [nil 30]]})]
-      (is (= true
-             (some #(= "Price" %) result)))
-      (is (= true
-             (some #(= "NumPurchased" %) result)))))
+    (is (has-inline-image?
+         (render-bar-graph {:cols default-columns
+                            :rows [[10.0 1] [5.0 10] [2.50 20] [nil 30]]}))))
   (testing "Check to make sure we allow nil values for both x and y on different rows"
-    (let [result (render-bar-graph {:cols default-columns
-                                    :rows [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]})]
-      (is (= true
-             (some #(= "Price" %) result)))
-      (is (= true
-             (some #(= "NumPurchased" %) result))))))
+    (is (has-inline-image?
+         (render-bar-graph {:cols default-columns
+                            :rows [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]})))))
 
 ;; Test rendering a sparkline
 ;;
@@ -429,33 +419,61 @@
 ;; attachment is included
 
 (defn- render-sparkline [results]
-  (some-> (body/render :sparkline :attachment pacific-tz render.tu/test-card results)
-          :attachments
-          count))
+  (body/render :sparkline :inline pacific-tz render.tu/test-card results))
 
 (deftest render-sparkline-test
   (testing "Test that we can render a sparkline with all valid values"
-    (is (= 1
-           (render-sparkline
-            {:cols default-columns
-             :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]}))))
+    (is (has-inline-image?
+         (render-sparkline
+          {:cols default-columns
+           :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]}))))
   (testing "Tex that we can have a nil value in the middle"
-    (is (= 1
-           (render-sparkline
-            {:cols default-columns
-             :rows [[10.0 1] [11.0 2] [5.0 nil] [2.50 20] [1.25 30]]}))))
+    (is (has-inline-image?
+         (render-sparkline
+          {:cols default-columns
+           :rows [[10.0 1] [11.0 2] [5.0 nil] [2.50 20] [1.25 30]]}))))
   (testing "Test that we can have a nil value for the y-axis at the end of the results"
-    (is (= 1
-           (render-sparkline
-            {:cols default-columns
-             :rows [[10.0 1] [11.0 2] [2.50 20] [1.25 nil]]}))))
+    (is (has-inline-image?
+         (render-sparkline
+          {:cols default-columns
+           :rows [[10.0 1] [11.0 2] [2.50 20] [1.25 nil]]}))))
   (testing "Test that we can have a nil value for the x-axis at the end of the results"
-    (is (= 1
-           (render-sparkline
-            {:cols default-columns
-             :rows [[10.0 1] [11.0 2] [nil 20] [1.25 30]]}))))
+    (is (has-inline-image?
+         (render-sparkline
+          {:cols default-columns
+           :rows [[10.0 1] [11.0 2] [nil 20] [1.25 30]]}))))
   (testing "Test that we can have a nil value for both x and y axis for different rows"
-    (is (= 1
-           (render-sparkline
-            {:cols default-columns
-             :rows [[10.0 1] [11.0 2] [nil 20] [1.25 nil]]})))))
+    (is (has-inline-image?
+         (render-sparkline
+          {:cols default-columns
+           :rows [[10.0 1] [11.0 2] [nil 20] [1.25 nil]]})))))
+
+(deftest render-categorical-donut-test
+  (let [columns [{:name          "category",
+                  :display_name  "Category",
+                  :base_type     :type/Text
+                  :semantic_type nil}
+                 {:name          "NumPurchased",
+                  :display_name  "NumPurchased",
+                  :base_type     :type/Integer
+                  :semantic_type nil}]
+        render  (fn [rows]
+                  (body/render :categorical/donut :inline pacific-tz
+                               render.tu/test-card
+                               {:cols columns :rows rows}))
+        prune   (fn prune [html-tree]
+                  (walk/prewalk (fn no-maps [x]
+                                  (if (vector? x)
+                                    (filterv (complement map?) x)
+                                    x))
+                                html-tree))]
+    (testing "Renders without error"
+      (let [rendered-info (render [["Doohickey" 75] ["Widget" 25]])]
+        (is (has-inline-image? rendered-info))))
+    (testing "Includes percentages"
+      (is (= [:div
+              [:img]
+              [:div
+               [:div [:span "•"] [:span "Doohickey"] [:span "75%"]]
+               [:div [:span "•"] [:span "Widget"] [:span "25%"]]]]
+             (prune (:content (render [["Doohickey" 75] ["Widget" 25]]))))))))

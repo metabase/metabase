@@ -42,7 +42,8 @@
  {"java-support" {:resource "apache2_0.txt"}},
  "io.dropwizard.metrics"  {"metrics-core" {:resource "apache2_0.txt"}},
  "stencil"                {"stencil" {:resource "EPL.txt"}},
- "org.antlr"              {"antlr-runtime" {:resource "BSD.txt"}},
+ "org.antlr"              {"antlr-runtime" {:resource "BSD.txt"}
+                           "antlr4-runtime" {:resource "BSD.txt"}},
  "de.rototor.pdfbox"      {"graphics2d" {:resource "apache2_0.txt"}},
  "colorize"               {"colorize" {:resource "EPL.txt"}},
  "org.liquibase"          {"liquibase-core" {:resource "apache2_0.txt"}},

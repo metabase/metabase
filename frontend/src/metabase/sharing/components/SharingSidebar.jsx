@@ -390,6 +390,7 @@ class SharingSidebar extends React.Component {
             this.onChannelScheduleChange,
             index,
           )}
+          testPulse={testPulse}
           toggleSkipIfEmpty={this.toggleSkipIfEmpty}
           handleArchive={this.handleArchive}
           dashboard={dashboard}

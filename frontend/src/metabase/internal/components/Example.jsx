@@ -11,7 +11,7 @@ import Card from "metabase/components/Card";
 const Example = ({ children }) => {
   const code = reactElementToJSXString(children);
   return (
-    <Box my={3} w="100%">
+    <Box my={3} width={"100%"}>
       <Label color="medium">Example</Label>
       <Card>
         <Box p={2} className="border-bottom">
