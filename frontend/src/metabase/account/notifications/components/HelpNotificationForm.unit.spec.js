@@ -14,15 +14,13 @@ describe("HelpNotificationForm", () => {
     );
 
     const link = screen.getByRole("link");
-    expect(link).toBeInTheDocument();
     expect(link).toHaveProperty("href", "mailto:admin@example.com");
   });
 
   it("should render without admin email", () => {
     render(<HelpNotificationForm onClose={onClose} />);
 
-    const message = screen.getByText("administrator", { exact: false });
-    expect(message).toBeInTheDocument();
+    screen.getByText("administrator", { exact: false });
   });
 
   it("should close on button click", () => {
