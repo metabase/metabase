@@ -1,7 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import NotificationItem from "./NotificationItem";
+import NotificationCard from "./NotificationCard";
 import {
   NotificationButton,
   NotificationHeader,
@@ -32,7 +32,7 @@ const NotificationList = ({ items, user, children, onShowHelp }) => {
         </NotificationButton>
       </NotificationHeader>
       {items.map(({ item, type }) => (
-        <NotificationItem key={item.id} item={item} type={type} user={user} />
+        <NotificationCard key={item.id} item={item} type={type} user={user} />
       ))}
       {children}
     </div>

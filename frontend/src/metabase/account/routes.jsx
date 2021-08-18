@@ -7,7 +7,7 @@ import AccountSettingsApp from "./settings/containers/AccountSettingsApp";
 import UserProfileApp from "./profile/containers/UserProfileApp";
 import UserPasswordApp from "./password/containers/UserPasswordApp";
 import LoginHistoryApp from "./login-history/containers/LoginHistoryApp";
-import NotificationListApp from "./notifications/containers/NotificationListApp";
+import NotificationsApp from "./notifications/containers/NotificationsApp";
 import HelpNotificationModal from "./notifications/containers/HelpNotificationModal";
 import UnsubscribeAlertModal from "./notifications/containers/UnsubscribeAlertModal";
 
@@ -22,7 +22,7 @@ const getRoutes = () => {
       <Route path="profile" component={UserProfileApp} />
       <Route path="password" component={UserPasswordApp} />
       <Route path="login-history" component={LoginHistoryApp} />
-      <Route path="notifications" component={NotificationListApp}>
+      <Route path="notifications" component={NotificationsApp}>
         <ModalRoute path="help" modal={HelpNotificationModal} />
         <ModalRoute
           path="alert/:alertId/unsubscribe"

@@ -13,7 +13,7 @@ import {
   NotificationDescription,
   NotificationItemRoot,
   NotificationTitle,
-} from "./NotificationItem.styled";
+} from "./NotificationCard.styled";
 
 const propTypes = {
   item: PropTypes.object.isRequired,
@@ -21,7 +21,7 @@ const propTypes = {
   user: PropTypes.object,
 };
 
-const NotificationItem = ({ item, type, user }) => {
+const NotificationCard = ({ item, type, user }) => {
   return (
     <NotificationItemRoot>
       <NotificationContent>
@@ -36,7 +36,7 @@ const NotificationItem = ({ item, type, user }) => {
   );
 };
 
-NotificationItem.propTypes = propTypes;
+NotificationCard.propTypes = propTypes;
 
 const formatTitle = (item, type) => {
   switch (type) {
@@ -130,4 +130,4 @@ const formatCreator = (item, user) => {
   return creatorString;
 };
 
-export default NotificationItem;
+export default NotificationCard;
