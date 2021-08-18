@@ -76,13 +76,13 @@ const formatChannel = channel => {
       scheduleString += t`Slack’d `;
       break;
     default:
-      scheduleString += `Sent`;
+      scheduleString += t`Sent`;
       break;
   }
 
   switch (channel.schedule_type) {
     case "hourly":
-      scheduleString += `hourly`;
+      scheduleString += t`hourly`;
       break;
     case "daily": {
       const ampm = formatHourAMPM(channel.schedule_hour);
