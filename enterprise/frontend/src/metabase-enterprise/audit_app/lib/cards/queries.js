@@ -51,6 +51,22 @@ export const slowest = () => ({
   },
 });
 
+export const bad_table = () => ({
+  card: {
+    name: "Nonfunctional queries or some shit go look it up fuck",
+    display: "row",
+    dataset_query: {
+      type: "internal",
+      fn: "metabase-enterprise.audit.pages.queries/bad-table",
+      args: [],
+    },
+    visualization_settings: {
+      "graph.metrics": ["avg_running_time"],
+      "graph.dimensions": ["card_id"],
+    },
+  },
+});
+
 export const table = (
   questionFilter,
   collectionFilter,
