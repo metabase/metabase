@@ -3,13 +3,13 @@ import _ from "underscore";
 import Alerts from "metabase/entities/alerts";
 import Pulses from "metabase/entities/pulses";
 import { getUser } from "metabase/selectors/user";
-import { getUserNotifications } from "../selectors";
+import { getNotifications } from "../selectors";
 import NotificationList from "../components/NotificationList";
 import { push } from "react-router-redux";
 
 const mapStateToProps = state => ({
   user: getUser(state),
-  items: getUserNotifications(state),
+  items: getNotifications(state),
 });
 
 const mapDispatchToProps = {
