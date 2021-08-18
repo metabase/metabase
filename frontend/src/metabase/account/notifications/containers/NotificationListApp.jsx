@@ -1,5 +1,6 @@
 import { connect } from "react-redux";
 import _ from "underscore";
+import Alerts from "metabase/entities/alerts";
 import Pulses from "metabase/entities/pulses";
 import { getUser } from "metabase/selectors/user";
 import { getGroups } from "../selectors";
@@ -16,6 +17,7 @@ const mapDispatchToProps = {
 };
 
 export default _.compose(
+  Alerts.loadList(),
   Pulses.loadList(),
   connect(
     mapStateToProps,

@@ -26,7 +26,7 @@ const NotificationItem = ({ item, type, user }) => {
     <NotificationItemRoot>
       <NotificationContent>
         <NotificationTitle to={formatLink(item, type)}>
-          {formatTitle(item)}
+          {formatTitle(item, type)}
         </NotificationTitle>
         <NotificationDescription>
           {formatDescription(item, user)}
@@ -38,8 +38,13 @@ const NotificationItem = ({ item, type, user }) => {
 
 NotificationItem.propTypes = propTypes;
 
-const formatTitle = item => {
-  return item.name;
+const formatTitle = (item, type) => {
+  switch (type) {
+    case "pulse":
+      return item.name;
+    case "alert":
+      return item.card.name;
+  }
 };
 
 const formatLink = (item, type) => {
