@@ -25,7 +25,7 @@ const getRoutes = () => {
       <Route path="notifications" component={NotificationsApp}>
         <ModalRoute path="help" modal={HelpNotificationModal} />
         <ModalRoute
-          path="alert/:alertId/unsubscribe"
+          path="alerts/:alertId/unsubscribe"
           modal={UnsubscribeAlertModal}
         />
       </Route>

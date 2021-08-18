@@ -1,16 +1,27 @@
-import React from "react";
+import React, { useCallback } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/components/Button";
 
 const propTypes = {
-  type: PropTypes.oneOf(["alert", "pulse"]),
+  item: PropTypes.object.isRequired,
+  type: PropTypes.oneOf(["alert", "pulse"]).isRequired,
   onUnsubscribe: PropTypes.func,
   onClose: PropTypes.func,
 };
 
-const UnsubscribeForm = ({ type, onUnsubscribe, onClose }) => {
+const UnsubscribeNotificationModal = ({
+  item,
+  type,
+  onUnsubscribe,
+  onClose,
+}) => {
+  const handleUnsubscribe = useCallback(async () => {
+    await onUnsubscribe(item);
+    onClose();
+  }, [item, onUnsubscribe, onClose]);
+
   return (
     <ModalContent
       title={t`Confirm you want to unsubscribe`}
@@ -18,7 +29,7 @@ const UnsubscribeForm = ({ type, onUnsubscribe, onClose }) => {
         <Button key="cancel" onClick={onClose}>
           {t`I changed my mind`}
         </Button>,
-        <Button key="unsubscribe" warning onClick={onUnsubscribe}>
+        <Button key="unsubscribe" warning onClick={handleUnsubscribe}>
           {t`Unsubscribe`}
         </Button>,
       ]}
@@ -32,7 +43,7 @@ const UnsubscribeForm = ({ type, onUnsubscribe, onClose }) => {
   );
 };
 
-UnsubscribeForm.propTypes = propTypes;
+UnsubscribeNotificationModal.propTypes = propTypes;
 
 const getUnsubscribeMessage = type => {
   switch (type) {
@@ -43,4 +54,4 @@ const getUnsubscribeMessage = type => {
   }
 };
 
-export default UnsubscribeForm;
+export default UnsubscribeNotificationModal;
