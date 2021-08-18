@@ -1,6 +1,4 @@
 import Base from "./Base";
-import Database from "./Database";
-import Table from "./Table";
 
 import { titleize, humanize } from "metabase/lib/formatting";
 

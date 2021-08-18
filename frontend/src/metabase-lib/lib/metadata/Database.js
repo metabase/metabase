@@ -1,8 +1,6 @@
 import Question from "../Question";
 
 import Base from "./Base";
-import Table from "./Table";
-import Schema from "./Schema";
 
 import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
 

@@ -1,6 +1,4 @@
 import Base from "./Base";
-import Database from "./Database";
-import Table from "./Table";
 
 /**
  * @typedef { import("./metadata").Aggregation } Aggregation

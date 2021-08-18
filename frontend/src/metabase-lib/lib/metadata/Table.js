@@ -2,11 +2,6 @@
 import Question from "../Question";
 
 import Base from "./Base";
-import Database from "./Database";
-import Schema from "./Schema";
-import Field from "./Field";
-
-import Dimension from "../Dimension";
 
 import { singularize } from "metabase/lib/formatting";
 import { getAggregationOperatorsWithFields } from "metabase/lib/schema_metadata";

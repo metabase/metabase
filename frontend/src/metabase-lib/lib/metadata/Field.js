@@ -1,5 +1,4 @@
 import Base from "./Base";
-import Table from "./Table";
 
 import moment from "moment";
 
