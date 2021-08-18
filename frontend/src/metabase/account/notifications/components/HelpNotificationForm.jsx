@@ -7,7 +7,7 @@ import { FormLink, FormMessage } from "./HelpNotificationForm.styled";
 
 const propTypes = {
   adminEmail: PropTypes.string,
-  onClose: PropTypes.func.isRequired,
+  onClose: PropTypes.func,
 };
 
 const HelpNotificationForm = ({ adminEmail, onClose }) => {
