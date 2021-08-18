@@ -51,18 +51,32 @@ export const slowest = () => ({
   },
 });
 
-export const bad_table = () => ({
+export const bad_table = (
+  // questionFilter,
+  // collectionFilter,
+  // sortColumn,
+  // sortDirection,
+) => ({
   card: {
-    name: "Nonfunctional queries or some shit go look it up fuck",
-    display: "row",
+    name: "Failing Questions",
+    display: "table",
     dataset_query: {
       type: "internal",
       fn: "metabase-enterprise.audit.pages.queries/bad-table",
-      args: [],
+      args: [] // [questionFilter, collectionFilter, sortColumn, sortDirection],
     },
     visualization_settings: {
-      "graph.metrics": ["avg_running_time"],
-      "graph.dimensions": ["card_id"],
+      "table.columns": [
+        { name: "card_id", enabled: true },
+        { name: "collection_id", enabled: true },
+        { name: "database_id", enabled: true },
+        { name: "table_id", enabled: true },
+        { name: "user_id", enabled: true },
+        { name: "total_runs", enabled: true },
+        { name: "last_run_at", enabled: true },
+        { name: "updated_at", enabled: true },
+        { name: "last_error", enabled: true },
+      ],
     },
   },
 });
