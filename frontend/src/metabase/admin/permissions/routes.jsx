@@ -34,10 +34,9 @@ const getRoutes = () => (
       </Route>
     </Route>
 
-    <Route
-      path="collections(/:collectionId)"
-      component={CollectionPermissionsPage}
-    />
+    <Route path="collections" component={CollectionPermissionsPage}>
+      <Route path=":collectionId" />
+    </Route>
   </Route>
 );
 
