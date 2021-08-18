@@ -9,6 +9,7 @@ import UserPasswordApp from "./password/containers/UserPasswordApp";
 import LoginHistoryApp from "./login-history/containers/LoginHistoryApp";
 import NotificationListApp from "./notifications/containers/NotificationListApp";
 import HelpNotificationModal from "./notifications/containers/HelpNotificationModal";
+import UnsubscribeAlertModal from "./notifications/containers/UnsubscribeAlertModal";
 
 const getRoutes = () => {
   return (
@@ -23,6 +24,10 @@ const getRoutes = () => {
       <Route path="login-history" component={LoginHistoryApp} />
       <Route path="notifications" component={NotificationListApp}>
         <ModalRoute path="help" modal={HelpNotificationModal} />
+        <ModalRoute
+          path="alert/:alertId/unsubscribe"
+          modal={UnsubscribeAlertModal}
+        />
       </Route>
     </Route>
   );
