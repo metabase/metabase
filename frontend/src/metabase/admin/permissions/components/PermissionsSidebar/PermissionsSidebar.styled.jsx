@@ -1,5 +1,6 @@
 import styled from "styled-components";
 import { color } from "metabase/lib/colors";
+import Icon from "metabase/components/Icon";
 
 export const SidebarRoot = styled.aside`
   width: 300px;
@@ -22,14 +23,23 @@ export const EntityGroupsDivider = styled.hr`
   border-top: 1px solid ${color("border")};
 `;
 
-export const BackButton = styled.button`
+export const BackIcon = styled(Icon).attrs({ name: "arrow_left" })`
+  margin-right: 0.5rem;
   color: ${color("text-light")};
+`;
+
+export const BackButton = styled.button`
+  display: flex;
+  align-items: center;
+  color: ${color("text-dark")};
+  font-family: var(--default-font-family);
+  font-weight: 700;
+  font-size: 14px;
+  padding: 0.5rem;
   cursor: pointer;
   transition: color 200ms;
-  margin-left: 0.75rem;
-  margin-right: 0.25rem;
 
   &:hover {
-    color: ${color("text-dark")};
+    color: ${color("accent7")};
   }
 `;

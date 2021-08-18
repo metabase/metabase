@@ -20,6 +20,7 @@ import {
   SidebarContent,
   EntityGroupsDivider,
   BackButton,
+  BackIcon,
 } from "./PermissionsSidebar.styled";
 
 export const permissionSidebarPropTypes = {
@@ -74,14 +75,16 @@ export const PermissionsSidebar = memo(function PermissionsSidebar({
   return (
     <SidebarRoot>
       <SidebarHeader>
-        <Flex alignItems="center">
-          {onBack && (
-            <BackButton onClick={onBack}>
-              <Icon name="arrow_left" />
-            </BackButton>
-          )}
-          {title && <Label px={1}>{title}</Label>}
-        </Flex>
+        {onBack ? (
+          <BackButton onClick={onBack}>
+            <BackIcon />
+            {title}
+          </BackButton>
+        ) : (
+          <Flex alignItems="center">
+            {title && <Label px={1}>{title}</Label>}
+          </Flex>
+        )}
         <Text color="text-dark" px={1}>
           {description}
         </Text>
