@@ -1,13 +1,12 @@
 (ns metabase.pulse.markdown
-  (:require [clojure.string :as str]
-            [clojure.edn :as edn]
+  (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
+            [clojure.string :as str]
             [metabase.public-settings :as public-settings])
-  (:import [com.vladsch.flexmark.ast
-            AutoLink BlockQuote BulletList BulletListItem Code Emphasis FencedCodeBlock HardLineBreak Heading Image
-            ImageRef IndentedCodeBlock Link LinkRef MailLink OrderedList OrderedListItem Paragraph Reference
-            SoftLineBreak StrongEmphasis Text ThematicBreak HtmlBlock HtmlInline HtmlEntity
-            HtmlCommentBlock HtmlInlineBase HtmlInlineComment HtmlInnerBlockComment]
+  (:import [com.vladsch.flexmark.ast AutoLink BlockQuote BulletList BulletListItem Code Emphasis FencedCodeBlock
+            HardLineBreak Heading HtmlBlock HtmlCommentBlock HtmlEntity HtmlInline HtmlInlineBase HtmlInlineComment
+            HtmlInnerBlockComment Image ImageRef IndentedCodeBlock Link LinkRef MailLink OrderedList OrderedListItem
+            Paragraph Reference SoftLineBreak StrongEmphasis Text ThematicBreak]
            com.vladsch.flexmark.parser.Parser
            [com.vladsch.flexmark.util.ast Document Node]
            java.net.URI))

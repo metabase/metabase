@@ -2,9 +2,9 @@
   "Tests for processing Markdown to mrkdwn for Slack, and HTML for email. Assertions that are commented
   out are known discrepencies between the markdown-clj library and the Markdown parser used by the frontend."
   (:require [clojure.test :refer :all]
+            [metabase.public-settings :refer [site-url]]
             [metabase.pulse.markdown :as md]
-            [metabase.test.util :as tu]
-            [metabase.public-settings :refer [site-url]]))
+            [metabase.test.util :as tu]))
 
 (defn- mrkdwn
   [markdown]
