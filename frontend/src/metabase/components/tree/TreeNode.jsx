@@ -1,5 +1,9 @@
 import React from "react";
 import PropTypes from "prop-types";
+import _ from "underscore";
+
+import Icon, { iconPropTypes } from "metabase/components/Icon";
+
 import {
   TreeNodeRoot,
   ExpandToggleButton,
@@ -8,8 +12,6 @@ import {
   IconContainer,
   RightArrowContainer,
 } from "./TreeNode.styled";
-
-import Icon from "metabase/components/Icon";
 
 const propTypes = {
   isExpanded: PropTypes.bool.isRequired,
@@ -20,8 +22,10 @@ const propTypes = {
   depth: PropTypes.number.isRequired,
   item: PropTypes.shape({
     name: PropTypes.string.isRequired,
-    icon: PropTypes.string,
-    iconColor: PropTypes.string,
+    icon: PropTypes.oneOfType([
+      PropTypes.string,
+      PropTypes.shape(iconPropTypes),
+    ]),
     hasRightArrow: PropTypes.string,
     id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   }).isRequired,
@@ -43,7 +47,9 @@ export const TreeNode = React.memo(
     },
     ref,
   ) {
-    const { name, icon, iconColor, hasRightArrow, id } = item;
+    const { name, icon, hasRightArrow, id } = item;
+
+    const iconProps = _.isObject(icon) ? icon : { name: icon };
 
     const handleSelect = () => {
       onSelect(item);
@@ -81,7 +87,7 @@ export const TreeNode = React.memo(
 
         {icon && (
           <IconContainer variant={variant}>
-            <Icon name={icon} color={iconColor} />
+            <Icon {...iconProps} />
           </IconContainer>
         )}
         <NameContainer>{name}</NameContainer>

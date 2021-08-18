@@ -25,7 +25,7 @@ const CollectionItem = ({ collection, event }) => {
       <Card hoverable>
         <CardContent>
           <IconContainer color={icon.color}>
-            <CollectionIcon name={icon.name} />
+            <CollectionIcon name={icon.name} tooltip={icon.tooltip} />
           </IconContainer>
           <h4 className="overflow-hidden">
             <Ellipsified>{collection.name}</Ellipsified>
