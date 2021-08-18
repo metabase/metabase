@@ -31,8 +31,7 @@ const UnsubscribeModal = ({ item, type, onUnsubscribe, onClose }) => {
       onClose={onClose}
     >
       <p>
-        {getUnsubscribeMessage(type)}{" "}
-        {t`Depending on your organization’s permissions you might need to ask a moderator to be re-added in the future.`}
+        {getUnsubscribeMessage(type)} {getPermissionsMessage()}
       </p>
     </ModalContent>
   );
@@ -47,6 +46,10 @@ const getUnsubscribeMessage = type => {
     case "pulse":
       return t`You’ll stop receiving this subscription from now on.`;
   }
+};
+
+const getPermissionsMessage = () => {
+  return t`Depending on your organization’s permissions you might need to ask a moderator to be re-added in the future.`;
 };
 
 export default UnsubscribeModal;
