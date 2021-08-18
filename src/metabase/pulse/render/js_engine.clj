@@ -1,34 +1,39 @@
 (ns metabase.pulse.render.js-engine
-  (:refer-clojure :exclude [eval])
-  (:require [metabase.util :as u])
-  (:import com.oracle.truffle.js.scriptengine.GraalJSScriptEngine
-           [javax.script Invocable ScriptEngine]
-           [org.graalvm.polyglot Context HostAccess]))
+  (:require [clojure.java.io :as io])
+  (:import [org.graalvm.polyglot Context HostAccess Source Value]))
 
-(defn ^ScriptEngine engine
-  "Create a new JavaScript engine."
+(defn ^Context context
+  "Create a new org.graalvm.polyglot.Context suitable to evaluate javascript"
   []
-  ;; see https://www.graalvm.org/reference-manual/js/ScriptEngine/#manually-creating-context-for-more-flexibility
-  (GraalJSScriptEngine/create
-   nil
-   (doto (Context/newBuilder (u/varargs String ["js"]))
-     ;; these options allow JavaScript to access Java classes such as arrays directly -- see
-     ;; https://www.graalvm.org/reference-manual/js/JavaInteroperability/
-     (.allowHostAccess HostAccess/ALL)
-     (.allowHostClassLookup (reify java.util.function.Predicate
-                              (test [_ _] true))))))
+  (.. (Context/newBuilder (into-array String ["js"]))
+      (allowHostAccess HostAccess/ALL)
+      (allowHostClassLookup (reify java.util.function.Predicate
+                              (test [_ _] true)))
+      (out System/out)
+      (err System/err)
+      (allowIO true)
+      (build)))
 
-(defn eval
-  "Eval a `javascript` snippet with `engine`, returning the result."
-  [^ScriptEngine engine ^String javascript]
-  (.eval engine javascript))
+(defn load-js-string
+  "Load a string literal source into the js context."
+  [^Context context ^String string-src ^String src-name]
+  (.eval context (.buildLiteral (Source/newBuilder "js" string-src src-name))))
 
-(defn invoke-by-name
-  "Invoke a JavaScript function with `function-name` and `args`."
-  [^Invocable engine function-name & args]
-  (.invokeFunction engine (name function-name) (object-array args)))
+(defn load-resource
+  "Load a resource into the js context"
+  [^Context context source]
+  (.eval context (.build (Source/newBuilder "js" (io/resource source)))))
 
-(defn invoke-function
-  "Invoke a JavaScript function object directly."
-  [^java.util.function.Function function & args]
-  (.apply function (object-array args)))
+(defn ^Value execute-fn-name
+  "Executes `js-fn-name` in js context with args"
+  [^Context context js-fn-name & args]
+  (let [fn-ref (.eval context "js" js-fn-name)
+        args   (into-array Object args)]
+    (assert (.canExecute fn-ref) (str "cannot execute " js-fn-name))
+    (.execute fn-ref args)))
+
+(defn ^Value execute-fn
+  "fn-ref should be an executable org.graalvm.polyglot.Value return from a js engine. Invoke this function with args."
+  [^Value fn-ref & args]
+  (assert (.canExecute fn-ref) "cannot execute function reference")
+  (.execute fn-ref (object-array args)))
