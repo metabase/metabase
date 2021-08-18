@@ -1,4 +1,5 @@
 import { createEntity, undo } from "metabase/lib/entities";
+import { PulseApi } from "metabase/services";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 
@@ -7,34 +8,48 @@ import {
   getCollectionType,
 } from "metabase/entities/collections";
 
+export const UNSUBSCRIBE = "metabase/entities/pulses/UNSUBSCRIBE";
+
 const Pulses = createEntity({
   name: "pulses",
   path: "/api/pulse",
 
+  actionTypes: {
+    UNSUBSCRIBE,
+  },
+
   objectActions: {
-    setArchived: ({ id }, archived, opts) =>
-      Pulses.actions.update(
+    setArchived: ({ id }, archived, opts) => {
+      return Pulses.actions.update(
         { id },
         { archived },
         undo(opts, "pulse", archived ? "archived" : "unarchived"),
-      ),
+      );
+    },
 
-    setCollection: ({ id }, collection, opts) =>
-      Pulses.actions.update(
+    setCollection: ({ id }, collection, opts) => {
+      return Pulses.actions.update(
         { id },
         { collection_id: canonicalCollectionId(collection && collection.id) },
         undo(opts, "pulse", "moved"),
-      ),
+      );
+    },
 
-    setPinned: ({ id }, pinned, opts) =>
-      Pulses.actions.update(
+    setPinned: ({ id }, pinned, opts) => {
+      return Pulses.actions.update(
         { id },
         {
           collection_position:
             typeof pinned === "number" ? pinned : pinned ? 1 : null,
         },
         opts,
-      ),
+      );
+    },
+
+    unsubscribe: async ({ id }) => {
+      await PulseApi.unsubscribe({ id });
+      return { type: UNSUBSCRIBE };
+    },
   },
 
   objectSelectors: {

@@ -8,6 +8,13 @@ export const getAlert = createSelector(
   },
 );
 
+export const getPulse = createSelector(
+  [({ pulses }) => pulses, ({ params: { pulseId } }) => parseInt(pulseId)],
+  (pulses, pulseId) => {
+    return pulses.find(pulse => pulse.id === pulseId);
+  },
+);
+
 export const getNotifications = createSelector(
   [({ alerts }) => alerts, ({ pulses }) => pulses],
   (alerts, pulses) => {

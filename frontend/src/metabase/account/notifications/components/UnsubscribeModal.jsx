@@ -11,12 +11,7 @@ const propTypes = {
   onClose: PropTypes.func,
 };
 
-const UnsubscribeNotificationModal = ({
-  item,
-  type,
-  onUnsubscribe,
-  onClose,
-}) => {
+const UnsubscribeModal = ({ item, type, onUnsubscribe, onClose }) => {
   const handleUnsubscribe = useCallback(async () => {
     await onUnsubscribe(item);
     onClose();
@@ -43,7 +38,7 @@ const UnsubscribeNotificationModal = ({
   );
 };
 
-UnsubscribeNotificationModal.propTypes = propTypes;
+UnsubscribeModal.propTypes = propTypes;
 
 const getUnsubscribeMessage = type => {
   switch (type) {
@@ -54,4 +49,4 @@ const getUnsubscribeMessage = type => {
   }
 };
 
-export default UnsubscribeNotificationModal;
+export default UnsubscribeModal;

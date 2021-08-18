@@ -10,6 +10,7 @@ import LoginHistoryApp from "./login-history/containers/LoginHistoryApp";
 import NotificationsApp from "./notifications/containers/NotificationsApp";
 import HelpModal from "./notifications/containers/HelpModal";
 import UnsubscribeAlertModal from "./notifications/containers/UnsubscribeAlertModal";
+import UnsubscribePulseModal from "./notifications/containers/UnsubscribePulseModal";
 
 const getRoutes = () => {
   return (
@@ -27,6 +28,10 @@ const getRoutes = () => {
         <ModalRoute
           path="alerts/:alertId/unsubscribe"
           modal={UnsubscribeAlertModal}
+        />
+        <ModalRoute
+          path="pulses/:pulseId/unsubscribe"
+          modal={UnsubscribePulseModal}
         />
       </Route>
     </Route>

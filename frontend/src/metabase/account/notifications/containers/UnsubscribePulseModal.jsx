@@ -1,21 +1,21 @@
 import { connect } from "react-redux";
 import _ from "underscore";
-import Alerts from "metabase/entities/alerts";
+import Pulses from "metabase/entities/pulses";
 import { getUserId } from "metabase/selectors/user";
-import { getAlert } from "../selectors";
+import { getPulse } from "../selectors";
 import UnsubscribeModal from "../components/UnsubscribeModal";
 
 const mapStateToProps = (state, props) => ({
-  item: getAlert(props),
-  type: "alert",
+  item: getPulse(props),
+  type: "pulse",
 });
 
 const mapDispatchToProps = {
-  onUnsubscribe: Alerts.actions.unsubscribe,
+  onUnsubscribe: Pulses.actions.unsubscribe,
 };
 
 export default _.compose(
-  Alerts.loadList({
+  Pulses.loadList({
     query: state => ({ user_id: getUserId(state) }),
   }),
   connect(
