@@ -431,9 +431,11 @@
        (group-by :group_id)
        (m/map-vals (fn [group-permissions]
                      (let [permissions-graph (perms-parse/permissions->graph (map :object group-permissions))]
-                       (if (= :all permissions-graph)
-                         (all-permissions db-ids)
-                         (:db permissions-graph)))))))
+                       (select-keys
+                         (if (= :all permissions-graph)
+                           (all-permissions db-ids)
+                           (:db permissions-graph))
+                         db-ids))))))
 
 
 (s/defn graph :- PermissionsGraph
@@ -715,8 +717,14 @@
 
 (s/defn filtered-graph
   [graph {:keys [group-id, db-id] :as options}]
-  ;;;;;;
-  graph)
+  (let [groups          (:groups graph)
+        filtered-groups (if group-id
+                          (select-keys groups [group-id])
+                          groups)
+        filtered-res    (if db-id
+                          (m/map-vals #(select-keys % [db-id]) filtered-groups)
+                          filtered-groups)]
+  (assoc graph :groups filtered-res)))
 
 (s/defn update-graph!
   "Update the permissions graph, making any changes necessary to make it match NEW-GRAPH.
@@ -724,11 +732,14 @@
    needed. The graph is revisioned, so if it has been updated by a third party since you fetched it this function will
    fail and return a 409 (Conflict) exception. If nothing needs to be done, this function returns `nil`; otherwise it
    returns the newly created `PermissionsRevision` entry."
+  ([new-graph :- StrictPermissionsGraph]
+   (update-graph! new-graph nil nil))
+
   ([new-graph :- StrictPermissionsGraph
     group-id  :- (s/maybe su/IntGreaterThanZero)
     db-id     :- (s/maybe su/IntGreaterThanZero)]
    (let [options      {:group-id group-id :db-id db-id}
-         filtered-new (filtered-graph options)
+         filtered-new (filtered-graph new-graph options)
          old-graph    (graph options)
          [old new]    (data/diff (:groups old-graph) (:groups filtered-new))
          old          (or old {})]
@@ -740,9 +751,6 @@
            (update-group-permissions! group-id changes))
          (save-perms-revision! (:revision old-graph) old new)
          (delete-sandboxes/delete-gtaps-if-needed-after-permissions-change! new)))))
-
-  ([new-graph :- StrictPermissionsGraph]
-   (update-graph! new-graph nil nil))
 
   ;; The following arity is provided soley for convenience for tests/REPL usage
   ([ks :- [s/Any], new-value]
