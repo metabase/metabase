@@ -4,7 +4,10 @@
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$": "<rootDir>/frontend/test/__mocks__/fileMock.js",
     "^promise-loader\\?global\\!metabase\\/lib\\/ga-metadata$": "<rootDir>/frontend/src/metabase/lib/ga-metadata.js"
   },
-  "testPathIgnorePatterns": ["<rootDir>/frontend/test/.*/.*.tz.unit.spec.js"],
+  "testPathIgnorePatterns": [
+    "<rootDir>/frontend/test/.*/.*.tz.unit.spec.js",
+    "<rootDir>/frontend/test/.*/.*.styled.js*"
+  ],
   "testMatch": ["<rootDir>/**/*.unit.spec.js"],
   "modulePaths": [
     "<rootDir>/frontend/test",
@@ -35,7 +38,9 @@
     "/frontend/src/metabase/visualizations/lib/errors.js",
     "/frontend/src/cljs/",
     "/frontend/src/metabase/internal/",
-    "/frontend/test/"
+    "/frontend/test/",
+    ".styled.js",
+    ".styled.jsx"
   ],
   "testEnvironment": "jsdom"
 }
