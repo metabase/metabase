@@ -29,11 +29,11 @@ const ArchiveModal = ({ item, type, onArchive, onClose }) => {
     <ModalContent
       title={getTitleMessage(type)}
       footer={[
-        error ? <FormMessage formError={error} /> : null,
+        error ? <FormMessage key="message" formError={error} /> : null,
         <Button key="cancel" onClick={onClose}>
           {t`I changed my mind`}
         </Button>,
-        <Button key="delete" warning onClick={handleArchiveClick}>
+        <Button key="submit" warning onClick={handleArchiveClick}>
           {getSubmitMessage(type)}
         </Button>,
       ]}

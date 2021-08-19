@@ -42,11 +42,11 @@ const UnsubscribeModal = ({
     <ModalContent
       title={t`Confirm you want to unsubscribe`}
       footer={[
-        error ? <FormMessage formError={error} /> : null,
+        error ? <FormMessage key="message" formError={error} /> : null,
         <Button key="cancel" onClick={onClose}>
           {t`I changed my mind`}
         </Button>,
-        <Button key="unsubscribe" warning onClick={handleArchiveClick}>
+        <Button key="submit" warning onClick={handleArchiveClick}>
           {t`Unsubscribe`}
         </Button>,
       ]}
