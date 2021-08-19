@@ -169,6 +169,18 @@ export default class DashboardGrid extends Component {
     return { desktop, mobile };
   }
 
+  getRowHeight() {
+    const { width } = this.props;
+
+    const hasScroll = window.innerWidth > document.documentElement.offsetWidth;
+    const aspectHeight = width / GRID_WIDTH / GRID_ASPECT_RATIO;
+    const actualHeight = Math.max(aspectHeight, MIN_ROW_HEIGHT);
+
+    // prevent infinite re-rendering when the scroll bar appears/disappears
+    // https://github.com/metabase/metabase/issues/17229
+    return hasScroll ? Math.ceil(actualHeight) : Math.floor(actualHeight);
+  }
+
   renderRemoveModal() {
     // can't use PopoverWithTrigger due to strange interaction with ReactGridLayout
     const isOpen = this.state.removeModalDashCard != null;
@@ -239,7 +251,16 @@ export default class DashboardGrid extends Component {
     if (isRegularDashboard && !isRegularQuestion) {
       const authorityLevel = dashCard.collection_authority_level;
       const opts = PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[authorityLevel];
-      return { name: opts.icon, color: color(opts.color), size: 14 };
+      const iconSize = 14;
+      return {
+        name: opts.icon,
+        color: color(opts.color),
+        tooltip: opts.tooltips?.belonging,
+        size: iconSize,
+
+        // Workaround: headerIcon on cards in a first column have incorrect offset out of the box
+        targetOffsetX: dashCard.col === 0 ? iconSize : 0,
+      };
     }
   };
 
@@ -304,10 +325,7 @@ export default class DashboardGrid extends Component {
   renderGrid() {
     const { dashboard, width } = this.props;
     const { layouts } = this.state;
-    const rowHeight = Math.max(
-      Math.floor(width / GRID_WIDTH / GRID_ASPECT_RATIO),
-      MIN_ROW_HEIGHT,
-    );
+    const rowHeight = this.getRowHeight();
     return (
       <GridLayout
         className={cx("DashboardGrid", {

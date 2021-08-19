@@ -6,9 +6,9 @@
             [clojurewerkz.quartzite.jobs :as jobs]
             [clojurewerkz.quartzite.schedule.cron :as cron]
             [clojurewerkz.quartzite.triggers :as triggers]
+            [metabase.driver :as driver]
             [metabase.models.pulse :as pulse]
             [metabase.models.pulse-channel :as pulse-channel]
-            [metabase.models.setting :as setting]
             [metabase.models.task-history :as task-history]
             [metabase.pulse :as p]
             [metabase.task :as task]
@@ -81,7 +81,7 @@
   (try
     (task-history/with-task-history {:task "send-pulses"}
       ;; determine what time it is right now (hour-of-day & day-of-week) in reporting timezone
-      (let [reporting-timezone (setting/get :report-timezone)
+      (let [reporting-timezone (driver/report-timezone)
             now                (if (empty? reporting-timezone)
                                  (time/now)
                                  (time/to-time-zone (time/now) (time/time-zone-for-id reporting-timezone)))

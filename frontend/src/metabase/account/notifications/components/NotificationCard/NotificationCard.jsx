@@ -1,6 +1,7 @@
 import React, { useCallback } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import Settings from "metabase/lib/settings";
 import {
   formatDay,
   formatFrame,
@@ -15,6 +16,7 @@ import {
   NotificationItemRoot,
   NotificationTitle,
 } from "./NotificationCard.styled";
+import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 
 const propTypes = {
   item: PropTypes.object.isRequired,
@@ -131,6 +133,7 @@ const formatChannel = channel => {
 
 const formatCreator = (item, user) => {
   let creatorString = "";
+  const options = Settings.formattingOptions();
 
   if (user?.id === item.creator?.id) {
     creatorString += t`Created by you`;
@@ -141,7 +144,7 @@ const formatCreator = (item, user) => {
   }
 
   if (item.created_at) {
-    const createdAt = parseTimestamp(item.created_at).format("L");
+    const createdAt = formatDateTimeWithUnit(item.created_at, "day", options);
     creatorString += t` on ${createdAt}`;
   }
 

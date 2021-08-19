@@ -23,15 +23,17 @@
 
 (defsetting ldap-port
   (deferred-tru "Server port, usually 389 or 636 if SSL is used.")
-  :default "389")
+  :type :integer
+  :default 389)
 
 (defsetting ldap-security
   (deferred-tru "Use SSL, TLS or plain text.")
-  :default "none"
+  :type    :keyword
+  :default :none
   :setter  (fn [new-value]
-             (when-not (nil? new-value)
-               (assert (contains? #{"none" "ssl" "starttls"} new-value)))
-             (setting/set-string! :ldap-security new-value)))
+             (when (some? new-value)
+               (assert (#{:none :ssl :starttls} (keyword new-value))))
+             (setting/set-keyword! :ldap-security new-value)))
 
 (defsetting ldap-bind-dn
   (deferred-tru "The Distinguished Name to bind as (if any), this user will be used to lookup information about other users."))
@@ -99,16 +101,18 @@
                                    (ldap-user-base)))))
 
 (defn- details->ldap-options [{:keys [host port bind-dn password security]}]
-  ;; Connecting via IPv6 requires us to use this form for :host, otherwise
-  ;; clj-ldap will find the first : and treat it as an IPv4 and port number
-  {:host      {:address host
-               :port    (if (string? port)
-                          (Integer/parseInt port)
-                          port)}
-   :bind-dn   bind-dn
-   :password  password
-   :ssl?      (= security "ssl")
-   :startTLS? (= security "starttls")})
+  (let [security (keyword security)
+        port     (if (string? port)
+                   (Integer/parseInt port)
+                   port)]
+    ;; Connecting via IPv6 requires us to use this form for :host, otherwise
+    ;; clj-ldap will find the first : and treat it as an IPv4 and port number
+    {:host      {:address host
+                 :port    port}
+     :bind-dn   bind-dn
+     :password  password
+     :ssl?      (= security :ssl)
+     :startTLS? (= security :starttls)}))
 
 (defn- settings->ldap-options []
   (details->ldap-options {:host      (ldap-host)
@@ -134,6 +138,8 @@
   `(do-with-ldap-connection (fn [~(vary-meta connection-binding assoc :tag `LDAPConnectionPool)]
                               ~@body)))
 
+;; TODO -- the usage of `:ERROR` and `:STATUS` like this is weird. Just do something like {::error nil} for success and
+;; {::error exception} for an error
 (def ^:private user-base-error  {:status :ERROR, :message "User search base does not exist or is unreadable"})
 (def ^:private group-base-error {:status :ERROR, :message "Group search base does not exist or is unreadable"})
 

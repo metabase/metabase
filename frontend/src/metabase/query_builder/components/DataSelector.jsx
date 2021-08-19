@@ -1009,7 +1009,10 @@ const TablePicker = ({
       },
     ];
     return (
-      <div style={{ width: 300, overflowY: "auto" }}>
+      <div
+        style={{ width: 300, overflowY: "auto" }}
+        data-testid="data-selector"
+      >
         <AccordionList
           id="TablePicker"
           key="tablePicker"

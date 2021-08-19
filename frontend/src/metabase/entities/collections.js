@@ -83,7 +83,10 @@ const Collections = createEntity({
   objectSelectors: {
     getName: collection => collection && collection.name,
     getUrl: collection => Urls.collection(collection),
-    getIcon: getCollectionIcon,
+    getIcon: (collection, opts) => {
+      const wrappedCollection = collection.collection;
+      return getCollectionIcon(wrappedCollection || collection, opts);
+    },
   },
 
   selectors: {
@@ -137,7 +140,7 @@ const Collections = createEntity({
 
 export default Collections;
 
-export function getCollectionIcon(collection) {
+export function getCollectionIcon(collection, { tooltip = "default" } = {}) {
   if (collection.id === PERSONAL_COLLECTIONS.id) {
     return { name: "group" };
   }
@@ -147,7 +150,11 @@ export function getCollectionIcon(collection) {
   const authorityLevel =
     PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[collection.authority_level];
   return authorityLevel
-    ? { name: authorityLevel.icon, color: color(authorityLevel.color) }
+    ? {
+        name: authorityLevel.icon,
+        color: color(authorityLevel.color),
+        tooltip: authorityLevel.tooltips?.[tooltip],
+      }
     : { name: "folder" };
 }
 

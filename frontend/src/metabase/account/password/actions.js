@@ -17,15 +17,15 @@ export const validatePassword = createThunkAction(VALIDATE_PASSWORD, function(
 
 export const updatePassword = createThunkAction(UPDATE_PASSWORD, function(
   user_id,
-  new_password,
+  password,
   old_password,
 ) {
   return async function() {
     try {
       await UserApi.update_password({
         id: user_id,
-        password: new_password,
-        old_password: old_password,
+        password,
+        old_password,
       });
 
       return {

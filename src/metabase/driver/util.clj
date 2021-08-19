@@ -49,7 +49,7 @@
   [driver]
   (when (driver/supports? driver :set-timezone)
     (let [report-tz (driver/report-timezone)]
-      (when-not (empty? report-tz)
+      (when (seq report-tz)
         report-tz))))
 
 

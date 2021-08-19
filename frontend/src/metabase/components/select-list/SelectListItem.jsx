@@ -2,13 +2,16 @@ import React from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 
-import { ItemRoot, ItemIcon, ItemTitle } from "./SelectListItem.styled";
+import { iconPropTypes } from "metabase/components/Icon";
 import { useScrollOnMount } from "metabase/hooks/use-scroll-on-mount";
+
+import { ItemRoot, ItemIcon, ItemTitle } from "./SelectListItem.styled";
 
 const propTypes = {
   id: PropTypes.string.isRequired,
   name: PropTypes.string.isRequired,
-  icon: PropTypes.string.isRequired,
+  icon: PropTypes.oneOfType([PropTypes.string, PropTypes.shape(iconPropTypes)])
+    .isRequired,
   iconColor: PropTypes.string,
   onSelect: PropTypes.func.isRequired,
   isSelected: PropTypes.bool,
@@ -26,7 +29,6 @@ export function SelectListItem({
   id,
   name,
   icon,
-  iconColor = "brand",
   onSelect,
   isSelected = false,
   rightIcon,
@@ -35,6 +37,7 @@ export function SelectListItem({
 }) {
   const ref = useScrollOnMount();
 
+  const iconProps = _.isObject(icon) ? icon : { name: icon };
   const rightIconProps = _.isObject(rightIcon)
     ? rightIcon
     : { name: rightIcon };
@@ -50,7 +53,7 @@ export function SelectListItem({
       onKeyDown={e => e.key === "Enter" && onSelect(id)}
       className={className}
     >
-      <ItemIcon name={icon} color={iconColor} />
+      <ItemIcon color="brand" {...iconProps} />
       <ItemTitle>{name}</ItemTitle>
       {rightIconProps.name && <ItemIcon {...rightIconProps} />}
     </ItemRoot>

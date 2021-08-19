@@ -11,6 +11,10 @@ export const OFFICIAL_COLLECTION = {
   name: t`Official`,
   icon: "badge",
   color: "saturated-yellow",
+  tooltips: {
+    default: t`Official collection`,
+    belonging: t`Belongs to an Official collection`,
+  },
 };
 
 export const AUTHORITY_LEVELS = {

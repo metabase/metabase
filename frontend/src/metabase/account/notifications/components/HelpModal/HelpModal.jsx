@@ -1,16 +1,18 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { jt, t } from "ttag";
+import Settings from "metabase/lib/settings";
 import Button from "metabase/components/Button";
 import ModalContent from "metabase/components/ModalContent";
 import { FormLink, FormMessage } from "./HelpModal.styled";
 
 const propTypes = {
-  adminEmail: PropTypes.string,
   onClose: PropTypes.func,
 };
 
-const HelpModal = ({ adminEmail, onClose }) => {
+const HelpModal = ({ onClose }) => {
+  const email = Settings.get("admin-email");
+
   return (
     <ModalContent
       title={t`Not seeing something listed here?`}
@@ -25,7 +27,7 @@ const HelpModal = ({ adminEmail, onClose }) => {
         {t`It’s possible you may also receive emails from Metabase if you’re a member of an email distribution list, like “team@mycompany.com” and that list is used as the recipient for an alert or dashboard subscription instead of your individual email.`}
       </FormMessage>
       <FormMessage>
-        {getAdminMessage(adminEmail)}
+        {getAdminMessage(email)}
         {t`Hopefully they’ll be able to help you out!`}
       </FormMessage>
     </ModalContent>

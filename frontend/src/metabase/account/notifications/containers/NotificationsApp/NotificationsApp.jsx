@@ -8,8 +8,8 @@ import {
   navigateToHelp,
   navigateToUnsubscribe,
 } from "../actions";
-import { getNotifications } from "../selectors";
-import NotificationList from "../components/NotificationList";
+import { getNotifications } from "../../selectors";
+import NotificationList from "../../components/NotificationList";
 
 const mapStateToProps = (state, props) => ({
   user: getUser(state),
