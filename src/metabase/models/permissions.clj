@@ -445,17 +445,18 @@
          db-ids      (db/select-ids 'Database)]
      {:revision (perms-revision/latest-id)
       :groups   (permissions->groups permissions db-ids)}))
-  ([{:keys [group-id, db-id] :as options}]
-   (let [permissions-args (if group-id
-                            [[Permissions :group_id :object] :group_id [:= group-id]]
+  ([index-pairs]
+   (let [group-ids        (vec (map first index-pairs))
+         db-ids           (vec (map second index-pairs))
+         permissions-args (if group-ids
+                            [[Permissions :group_id :object] :group_id [:in group-ids]]
                             [[Permissions :group_id :object]])
          permissions      (apply db/select permissions-args)
-         db-id-args       (if db-id
-                            ['Database :id [:= db-id]]
-                            ['Database])
-         db-ids           (apply db/select-ids db-id-args)]
+         current-groups   (permissions->groups permissions db-ids)]
+     ;; Post-application of filters is needed because otherwise
+     ;; we return an overall disjunction of the DB/group, not conjunction of the index pairs
      {:revision (perms-revision/latest-id)
-      :groups   (permissions->groups permissions db-ids)})))
+      :groups   (filter-graph current-groups index-pairs)})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  GRAPH UPDATE                                                  |
@@ -715,33 +716,39 @@
    "\n" (trs "FROM:") (u/pprint-to-str 'magenta old)
    "\n" (trs "TO:")   (u/pprint-to-str 'blue    new)))
 
-(s/defn filtered-graph
+(s/defn fill-in-index-pair-wildcards
+  "Index pairs for indexing into group graph dictionaries have wildcards. Fill them in"
+  some shit)
+
+(s/defn filter-graph
   "Filter the groups of the graph with respect to the group id and/or the db id"
-  [graph {:keys [group-id, db-id] :as options}]
-  (let [groups          (:groups graph)
-        filtered-groups (if group-id
-                          (select-keys groups [group-id])
-                          groups)
-        filtered-res    (if db-id
-                          (m/map-vals #(select-keys % [db-id]) filtered-groups)
-                          filtered-groups)]
-  (assoc graph :groups filtered-res)))
+  [in-graph index-pairs]
+  (let [in-graph-groups (:groups in-graph)
+        members         (vec (for [index-pair index-pairs]
+                               (assoc-in {} index-pair (get-in in-graph-groups index-pair))))
+        filtered-res    (apply m/deep-merge members)]
+    (assoc in-graph :groups filtered-res)))
 
 (s/defn update-graph!
   "Update the permissions graph, making any changes necessary to make it match NEW-GRAPH.
    This should take in a graph that is exactly the same as the one obtained by `graph` with any changes made as
    needed. The graph is revisioned, so if it has been updated by a third party since you fetched it this function will
    fail and return a 409 (Conflict) exception. If nothing needs to be done, this function returns `nil`; otherwise it
-   returns the newly created `PermissionsRevision` entry."
-  ([new-graph :- StrictPermissionsGraph]
-   (update-graph! new-graph nil nil))
+   returns the newly created `PermissionsRevision` entry.
 
-  ([new-graph :- StrictPermissionsGraph
-    group-id  :- (s/maybe su/IntGreaterThanZero)
-    db-id     :- (s/maybe su/IntGreaterThanZero)]
-   (let [options      {:group-id group-id :db-id db-id}
-         filtered-new (filtered-graph new-graph options)
-         old-graph    (graph options)
+   index-pairs is a list of [group-id, db-id] pairs to allow mutations on.
+   passing in `[]` is allowing all mutations. otherwise no wildcards."
+  ([new-graph :- StrictPermissionsGraph]
+   (update-graph! new-graph []))
+
+  ([new-graph    :- StrictPermissionsGraph
+    index-pairs  :- [(s/maybe [(s/maybe su/IntGreaterThanZero) (s/maybe su/IntGreaterThanZero)])]]
+   (let [old-graph    (if (seq? index-pairs)
+                        (graph index-pairs)
+                        (graph))
+         filtered-new (if (seq? index-pairs)
+                        (filter-graph new-graph index-pairs)
+                        new-graph)
          [old new]    (data/diff (:groups old-graph) (:groups filtered-new))
          old          (or old {})]
      (when (or (seq old) (seq new))
@@ -751,8 +758,4 @@
          (doseq [[group-id changes] new]
            (update-group-permissions! group-id changes))
          (save-perms-revision! (:revision old-graph) old new)
-         (delete-sandboxes/delete-gtaps-if-needed-after-permissions-change! new)))))
-
-  ;; The following arity is provided soley for convenience for tests/REPL usage
-  ([ks :- [s/Any], new-value]
-   (update-graph! (assoc-in (graph) (cons :groups ks) new-value))))
+         (delete-sandboxes/delete-gtaps-if-needed-after-permissions-change! new))))))
