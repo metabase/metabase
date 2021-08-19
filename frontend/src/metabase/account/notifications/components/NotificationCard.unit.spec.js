@@ -26,10 +26,12 @@ const getUser = ({ id = 1 } = {}) => ({
 const getChannel = ({
   channel_type = "email",
   schedule_type = "hourly",
+  recipients = [getUser()],
 } = {}) => {
   return {
     channel_type,
     schedule_type,
+    recipients,
     schedule_hour: 8,
     schedule_day: "mon",
     schedule_frame: "first",
@@ -114,5 +116,23 @@ describe("NotificationCard", () => {
     render(<NotificationCard item={alert} type="alert" user={user} />);
 
     screen.getByText("Created by John Doe", { exact: false });
+  });
+
+  it("should unsubscribe when subscribed and clicked on the close icon", () => {
+    const alert = getAlert();
+    const user = getUser();
+    const onUnsubscribe = jest.fn();
+
+    render(
+      <NotificationCard
+        item={alert}
+        type="alert"
+        user={user}
+        onUnsubscribe={onUnsubscribe}
+      />,
+    );
+
+    screen.getByLabelText("close icon").click();
+    expect(onUnsubscribe).toHaveBeenCalledWith(alert, "alert");
   });
 });
