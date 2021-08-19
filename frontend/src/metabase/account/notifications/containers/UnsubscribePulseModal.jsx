@@ -12,7 +12,7 @@ const mapStateToProps = (state, props) => ({
 });
 
 const mapDispatchToProps = {
-  onArchive: Pulses.actions.unsubscribe,
+  onUnsubscribe: Pulses.actions.unsubscribe,
 };
 
 export default _.compose(

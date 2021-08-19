@@ -12,7 +12,7 @@ const mapStateToProps = (state, props) => ({
 });
 
 const mapDispatchToProps = {
-  onArchive: Alerts.actions.unsubscribe,
+  onUnsubscribe: Alerts.actions.unsubscribe,
 };
 
 export default _.compose(

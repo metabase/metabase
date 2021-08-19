@@ -1,5 +1,4 @@
 import { createEntity, undo } from "metabase/lib/entities";
-import { PulseApi } from "metabase/services";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 
