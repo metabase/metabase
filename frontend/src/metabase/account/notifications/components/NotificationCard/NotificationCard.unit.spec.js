@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import NotificationCard from "./NotificationCard";
 
 const getAlert = ({
@@ -116,5 +116,23 @@ describe("NotificationCard", () => {
     render(<NotificationCard item={alert} type="alert" user={user} />);
 
     screen.getByText("Created by John Doe", { exact: false });
+  });
+
+  it("should unsubscribe when subscribed and clicked on the close icon", () => {
+    const alert = getAlert();
+    const user = getUser();
+    const onUnsubscribe = jest.fn();
+
+    render(
+      <NotificationCard
+        item={alert}
+        type="alert"
+        user={user}
+        onUnsubscribe={onUnsubscribe}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("close icon"));
+    expect(onUnsubscribe).toHaveBeenCalledWith(alert, "alert");
   });
 });
