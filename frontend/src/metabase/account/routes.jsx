@@ -8,7 +8,7 @@ import UserProfileApp from "./profile/containers/UserProfileApp";
 import UserPasswordApp from "./password/containers/UserPasswordApp";
 import LoginHistoryApp from "./login-history/containers/LoginHistoryApp";
 import NotificationsApp from "./notifications/containers/NotificationsApp";
-import HelpModal from "./notifications/containers/HelpModal";
+import HelpModal from "./notifications/components/HelpModal";
 
 const getRoutes = () => {
   return (
