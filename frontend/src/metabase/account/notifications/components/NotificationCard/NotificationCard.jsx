@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import Settings from "metabase/lib/settings";
 import { formatDay, formatFrame, formatHourAMPM } from "metabase/lib/time";
+import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import * as Urls from "metabase/lib/urls";
 import {
   NotificationContent,
@@ -10,7 +11,6 @@ import {
   NotificationItemRoot,
   NotificationTitle,
 } from "./NotificationCard.styled";
-import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 
 const propTypes = {
   item: PropTypes.object.isRequired,
