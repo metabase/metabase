@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import {
@@ -11,6 +11,7 @@ import * as Urls from "metabase/lib/urls";
 import {
   NotificationContent,
   NotificationDescription,
+  NotificationIcon,
   NotificationItemRoot,
   NotificationTitle,
 } from "./NotificationCard.styled";
@@ -19,9 +20,14 @@ const propTypes = {
   item: PropTypes.object.isRequired,
   type: PropTypes.oneOf(["pulse", "alert"]).isRequired,
   user: PropTypes.object,
+  onEdit: PropTypes.func,
 };
 
-const NotificationCard = ({ item, type, user }) => {
+const NotificationCard = ({ item, type, user, onEdit }) => {
+  const onEditClick = useCallback(() => {
+    onEdit(item, type, user);
+  }, [item, type, user, onEdit]);
+
   return (
     <NotificationItemRoot>
       <NotificationContent>
@@ -32,6 +38,7 @@ const NotificationCard = ({ item, type, user }) => {
           {formatDescription(item, user)}
         </NotificationDescription>
       </NotificationContent>
+      <NotificationIcon name="close" onClick={onEditClick} />
     </NotificationItemRoot>
   );
 };

@@ -15,10 +15,11 @@ const propTypes = {
   items: PropTypes.array.isRequired,
   user: PropTypes.object,
   children: PropTypes.node,
-  onShowHelp: PropTypes.func,
+  onEdit: PropTypes.func,
+  onHelp: PropTypes.func,
 };
 
-const NotificationList = ({ items, user, children, onShowHelp }) => {
+const NotificationList = ({ items, user, children, onEdit, onHelp }) => {
   if (!items.length) {
     return <NotificationEmptyState />;
   }
@@ -27,12 +28,18 @@ const NotificationList = ({ items, user, children, onShowHelp }) => {
     <div>
       <NotificationHeader>
         <NotificationLabel>{t`You receive or created these`}</NotificationLabel>
-        <NotificationButton onClick={onShowHelp}>
+        <NotificationButton onClick={onHelp}>
           {t`Not seeing one here?`}
         </NotificationButton>
       </NotificationHeader>
       {items.map(({ item, type }) => (
-        <NotificationCard key={item.id} item={item} type={type} user={user} />
+        <NotificationCard
+          key={item.id}
+          item={item}
+          type={type}
+          user={user}
+          onEdit={onEdit}
+        />
       ))}
       {children}
     </div>

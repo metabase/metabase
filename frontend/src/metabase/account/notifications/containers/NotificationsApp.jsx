@@ -1,9 +1,9 @@
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
 import _ from "underscore";
 import Alerts from "metabase/entities/alerts";
 import Pulses from "metabase/entities/pulses";
 import { getUser, getUserId } from "metabase/selectors/user";
+import { navigateToEdit, navigateToHelp } from "../actions";
 import { getNotifications } from "../selectors";
 import NotificationList from "../components/NotificationList";
 
@@ -13,7 +13,8 @@ const mapStateToProps = (state, props) => ({
 });
 
 const mapDispatchToProps = {
-  onShowHelp: () => push("/account/notifications/help"),
+  onEdit: navigateToEdit,
+  onHelp: navigateToHelp,
 };
 
 export default _.compose(
