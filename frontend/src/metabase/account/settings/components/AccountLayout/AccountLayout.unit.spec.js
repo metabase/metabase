@@ -13,7 +13,7 @@ describe("AccountLayout", () => {
   it("should render header and content", () => {
     render(<AccountLayout user={REGULAR_USER}>Content</AccountLayout>);
 
-    expect(screen.getByText("Profile")).toBeInTheDocument();
-    expect(screen.getByText("Content")).toBeInTheDocument();
+    screen.getByText("Profile");
+    screen.getByText("Content");
   });
 });
