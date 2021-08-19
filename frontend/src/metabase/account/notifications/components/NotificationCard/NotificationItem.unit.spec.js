@@ -58,7 +58,7 @@ describe("NotificationCard", () => {
 
     screen.getByText("Alert");
     screen.getByText("Emailed hourly", { exact: false });
-    screen.getByText("Created by you on 05/08/2021", { exact: false });
+    screen.getByText("Created by you on May 8, 2021", { exact: false });
   });
 
   it("should render a pulse", () => {
@@ -69,7 +69,7 @@ describe("NotificationCard", () => {
 
     screen.getByText("Pulse");
     screen.getByText("Emailed hourly", { exact: false });
-    screen.getByText("Created by you on 05/08/2021", { exact: false });
+    screen.getByText("Created by you on May 8, 2021", { exact: false });
   });
 
   it("should render a slack alert", () => {
