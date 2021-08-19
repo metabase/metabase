@@ -42,7 +42,7 @@ describe("ArchiveModal", () => {
 
     screen.getByText("Delete this alert?");
     screen.getByText("Yes, delete this alert");
-    screen.getByText("You created this alert on 05/08/2021", { exact: false });
+    screen.getByText("You created this alert on May 8, 2021", { exact: false });
     screen.getByText("It’s currently being sent to 1 email.", { exact: false });
   });
 
@@ -53,7 +53,7 @@ describe("ArchiveModal", () => {
 
     screen.getByText("Delete this subscription?");
     screen.getByText("Yes, delete this subscription");
-    screen.getByText("05/08/2021", { exact: false });
+    screen.getByText("May 8, 2021", { exact: false });
     screen.getByText("It’s currently being sent to 1 email.", { exact: false });
   });
 

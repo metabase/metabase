@@ -7,7 +7,7 @@ import {
   navigateToArchive,
   navigateToHelp,
   navigateToUnsubscribe,
-} from "../actions";
+} from "../../actions";
 import { getNotifications } from "../../selectors";
 import NotificationList from "../../components/NotificationList";
 

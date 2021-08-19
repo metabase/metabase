@@ -1,8 +1,8 @@
 import { connect } from "react-redux";
 import _ from "underscore";
 import Pulses from "metabase/entities/pulses";
-import { getPulseId } from "../selectors";
-import ArchiveModal from "../components/ArchiveModal";
+import { getPulseId } from "../../selectors";
+import ArchiveModal from "../../components/ArchiveModal";
 
 const mapStateToProps = () => ({
   type: "pulse",

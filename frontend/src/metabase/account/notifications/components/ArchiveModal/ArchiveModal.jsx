@@ -1,7 +1,8 @@
 import React, { useCallback, useState } from "react";
 import PropTypes from "prop-types";
 import { msgid, ngettext, t } from "ttag";
-import { parseTimestamp } from "metabase/lib/time";
+import Settings from "metabase/lib/settings";
+import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import Button from "metabase/components/Button";
 import ModalContent from "metabase/components/ModalContent";
 import FormMessage from "metabase/components/form/FormMessage";
@@ -68,7 +69,8 @@ const getSubmitMessage = type => {
 };
 
 const getDateMessage = (item, type) => {
-  const createdAt = parseTimestamp(item.created_at).format("L");
+  const options = Settings.formattingOptions();
+  const createdAt = formatDateTimeWithUnit(item.created_at, "day", options);
 
   switch (type) {
     case "alert":
