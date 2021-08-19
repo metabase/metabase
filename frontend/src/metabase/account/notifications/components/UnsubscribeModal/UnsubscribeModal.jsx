@@ -63,7 +63,7 @@ const UnsubscribeModal = ({
 UnsubscribeModal.propTypes = propTypes;
 
 const isCreator = (item, user) => {
-  return item.creator?.id === user?.id;
+  return user != null && user.id === item.creator?.id;
 };
 
 const getUnsubscribeMessage = type => {
