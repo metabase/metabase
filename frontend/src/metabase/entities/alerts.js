@@ -5,6 +5,14 @@ const Alerts = createEntity({
   path: "/api/alert",
 
   objectActions: {
+    setArchived: ({ id }, archived, opts) => {
+      return Alerts.actions.update(
+        { id },
+        { archived },
+        undo(opts, "alert", archived ? "archived" : "unarchived"),
+      );
+    },
+
     unsubscribe: ({ id, channels }, user, opts) => {
       const newChannels = channels.map(channel => ({
         ...channel,

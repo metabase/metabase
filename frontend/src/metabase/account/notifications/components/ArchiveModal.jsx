@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import PropTypes from "prop-types";
 import { msgid, ngettext, t } from "ttag";
 import { parseTimestamp } from "metabase/lib/time";
@@ -8,10 +8,16 @@ import ModalContent from "metabase/components/ModalContent";
 const propTypes = {
   item: PropTypes.object.isRequired,
   type: PropTypes.oneOf(["alert", "pulse"]).isRequired,
+  onArchive: PropTypes.func,
   onClose: PropTypes.func,
 };
 
-const ArchieveModal = ({ item, type, onClose }) => {
+const ArchiveModal = ({ item, type, onArchive, onClose }) => {
+  const handleArchiveClick = useCallback(async () => {
+    await onArchive(item);
+    onClose();
+  }, [item, onArchive, onClose]);
+
   return (
     <ModalContent
       title={getTitleMessage(type)}
@@ -19,7 +25,7 @@ const ArchieveModal = ({ item, type, onClose }) => {
         <Button key="cancel" onClick={onClose}>
           {t`I changed my mind`}
         </Button>,
-        <Button key="unsubscribe" warning onClick={onClose}>
+        <Button key="delete" warning onClick={handleArchiveClick}>
           {getSubmitMessage(type)}
         </Button>,
       ]}
@@ -33,7 +39,7 @@ const ArchieveModal = ({ item, type, onClose }) => {
   );
 };
 
-ArchieveModal.propTypes = propTypes;
+ArchiveModal.propTypes = propTypes;
 
 const getTitleMessage = type => {
   switch (type) {
@@ -95,4 +101,4 @@ const getRecipientsCount = (item, channelType) => {
     .reduce((total, channel) => total + channel.recipients.length, 0);
 };
 
-export default ArchieveModal;
+export default ArchiveModal;
