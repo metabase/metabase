@@ -210,7 +210,7 @@ describe("scenarios > question > nested", () => {
       },
     );
 
-    cy.createDashboard("13186D").then(({ body: { id: DASBOARD_ID } }) => {
+    cy.createDashboard().then(({ body: { id: DASBOARD_ID } }) => {
       cy.visit(`/dashboard/${DASBOARD_ID}`);
     });
 

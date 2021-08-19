@@ -97,7 +97,7 @@ describe("scenarios > dashboard", () => {
       visualization_settings: {},
     });
 
-    cy.createDashboard("dash:11007");
+    cy.createDashboard({ name: "dash:11007" });
 
     cy.visit("/collection/root");
     // enter newly created dashboard
@@ -149,7 +149,7 @@ describe("scenarios > dashboard", () => {
       },
       display: "map",
     }).then(({ body: { id: questionId } }) => {
-      cy.createDashboard("13597D").then(({ body: { id: dashboardId } }) => {
+      cy.createDashboard().then(({ body: { id: dashboardId } }) => {
         // add filter (ID) to the dashboard
         cy.request("PUT", `/api/dashboard/${dashboardId}`, {
           parameters: [
@@ -220,7 +220,7 @@ describe("scenarios > dashboard", () => {
       name: "14473",
       native: { query: "SELECT COUNT(*) FROM PRODUCTS", "template-tags": {} },
     }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.createDashboard("14473D").then(({ body: { id: DASHBOARD_ID } }) => {
+      cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
         cy.log("Add 4 filters to the dashboard");
 
         cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
