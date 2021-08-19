@@ -52,3 +52,10 @@
 (defn init! []
   (plugins/load-plugins!)
   (load-plugin-manifests!))
+
+(defn init-test-drivers!
+  "Explicitly initialize the given test `drivers` via plugin manifests. These manifests can live in test_modules (having
+  the same directory structure as modules), but test_modules will not be built or shipped as part of the core product."
+  {:added "0.41.0"}
+  [drivers]
+  (load-plugin-manifests! drivers))
