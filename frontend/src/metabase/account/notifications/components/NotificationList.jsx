@@ -15,11 +15,19 @@ const propTypes = {
   items: PropTypes.array.isRequired,
   user: PropTypes.object,
   children: PropTypes.node,
-  onEdit: PropTypes.func,
   onHelp: PropTypes.func,
+  onUnsubscribe: PropTypes.func,
+  onArchive: PropTypes.func,
 };
 
-const NotificationList = ({ items, user, children, onEdit, onHelp }) => {
+const NotificationList = ({
+  items,
+  user,
+  children,
+  onHelp,
+  onUnsubscribe,
+  onArchive,
+}) => {
   if (!items.length) {
     return <NotificationEmptyState />;
   }
@@ -38,7 +46,8 @@ const NotificationList = ({ items, user, children, onEdit, onHelp }) => {
           item={item}
           type={type}
           user={user}
-          onEdit={onEdit}
+          onUnsubscribe={onUnsubscribe}
+          onArchive={onArchive}
         />
       ))}
       {children}

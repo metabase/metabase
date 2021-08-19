@@ -33,12 +33,6 @@ export const getNotifications = createSelector(
   },
 );
 
-export const isSubscribed = (item, user) => {
-  return item.channels.some(channel =>
-    channel.recipients.some(recipient => recipient.id === user.id),
-  );
-};
-
 export const getAdminEmail = () => {
   return Settings.get("admin-email");
 };

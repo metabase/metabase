@@ -20,13 +20,18 @@ const propTypes = {
   item: PropTypes.object.isRequired,
   type: PropTypes.oneOf(["pulse", "alert"]).isRequired,
   user: PropTypes.object,
-  onEdit: PropTypes.func,
+  onUnsubscribe: PropTypes.func,
+  onArchive: PropTypes.func,
 };
 
-const NotificationCard = ({ item, type, user, onEdit }) => {
+const NotificationCard = ({ item, type, user, onUnsubscribe, onArchive }) => {
   const onEditClick = useCallback(() => {
-    onEdit(item, type, user);
-  }, [item, type, user, onEdit]);
+    if (isSubscribed(item, user)) {
+      onUnsubscribe(item, type);
+    } else {
+      onArchive(item, type);
+    }
+  }, [item, type, user, onUnsubscribe, onArchive]);
 
   return (
     <NotificationItemRoot>
@@ -44,6 +49,12 @@ const NotificationCard = ({ item, type, user, onEdit }) => {
 };
 
 NotificationCard.propTypes = propTypes;
+
+const isSubscribed = (item, user) => {
+  return item.channels.some(channel =>
+    channel.recipients.some(recipient => recipient.id === user.id),
+  );
+};
 
 const formatTitle = (item, type) => {
   switch (type) {

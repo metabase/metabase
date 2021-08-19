@@ -3,7 +3,11 @@ import _ from "underscore";
 import Alerts from "metabase/entities/alerts";
 import Pulses from "metabase/entities/pulses";
 import { getUser, getUserId } from "metabase/selectors/user";
-import { navigateToEdit, navigateToHelp } from "../actions";
+import {
+  navigateToArchive,
+  navigateToHelp,
+  navigateToUnsubscribe,
+} from "../actions";
 import { getNotifications } from "../selectors";
 import NotificationList from "../components/NotificationList";
 
@@ -13,8 +17,9 @@ const mapStateToProps = (state, props) => ({
 });
 
 const mapDispatchToProps = {
-  onEdit: navigateToEdit,
   onHelp: navigateToHelp,
+  onUnsubscribe: navigateToUnsubscribe,
+  onArchive: navigateToArchive,
 };
 
 export default _.compose(
