@@ -12,6 +12,8 @@ export const CardContent = styled.div`
 `;
 
 export const IconContainer = styled.div`
+  border-radius: 99px !important;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -37,4 +39,10 @@ export const WarningIcon = styled(Icon)`
 
 export const WarningParagraph = styled.p`
   margin: ${props => (props.hasMargin ? `${space(1)} 0;` : 0)};
+  color: ${color("text-medium")};
+`;
+
+export const Link = styled.a`
+  color: ${color("brand")};
+  font-weight: 700;
 `;

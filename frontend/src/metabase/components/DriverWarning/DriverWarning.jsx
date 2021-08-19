@@ -12,11 +12,11 @@ import {
   CardContent,
   DriverWarningContainer,
   IconContainer,
+  Link,
   WarningIcon,
   WarningParagraph,
 } from "./DriverWarning.styled";
 
-import ExternalLink from "metabase/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -37,20 +37,19 @@ function getSupersedesWarningContent(
 ) {
   return (
     <div>
-      <WarningParagraph className="text-medium m0">
+      <WarningParagraph>
         {t`This is our new ${
           allEngines[newDriver]["driver-name"]
         } driver, which is faster and more reliable.`}
       </WarningParagraph>
 
-      <WarningParagraph className="text-medium m0" hasMargin={true}>
+      <WarningParagraph hasMargin>
         {t`The old driver has been deprecated and will be removed in the next release. If you really
       need to use it, you can `}
         &nbsp;
-        <a
-          className="text-brand text-bold"
+        <Link
           onClick={() => onChangeEngine(supersedesDriver)}
-        >{t`find it here`}</a>
+        >{t`find it here`}</Link>
         .
       </WarningParagraph>
     </div>
@@ -60,24 +59,20 @@ function getSupersedesWarningContent(
 function getSupersededByWarningContent(engine, onChangeEngine) {
   return (
     <div>
-      <WarningParagraph className="text-medium m0">
+      <WarningParagraph>
         {t`This driver has been deprecated and will be removed in the next release.`}
       </WarningParagraph>
-      <WarningParagraph className="text-medium m0" hasMargin={true}>
+      <WarningParagraph hasMargin>
         {t`We recommend that you upgrade to the`}
         &nbsp;
-        <a
-          className="text-brand text-bold"
-          onClick={() => onChangeEngine(engine)}
-        >{t`new ${allEngines[engine]["driver-name"]} driver`}</a>
+        <Link onClick={() => onChangeEngine(engine)}>{t`new ${
+          allEngines[engine]["driver-name"]
+        } driver`}</Link>
         {t`, which is faster and more reliable.`}
       </WarningParagraph>
-      <ExternalLink
-        href={driverUpgradeHelpLink}
-        className="text-brand text-bold"
-      >
+      <Link href={driverUpgradeHelpLink} target={"_blank"}>
         {t`How to upgrade a driver`}
-      </ExternalLink>
+      </Link>
     </div>
   );
 }
@@ -96,12 +91,7 @@ function DriverWarning({ engine, hasCircle = true, onChangeEngine, ...props }) {
 
   return (
     <DriverWarningContainer p={2} {...props}>
-      <IconContainer
-        align="center"
-        justify="center"
-        className="flex-no-shrink circular"
-        hasCircle={hasCircle}
-      >
+      <IconContainer hasCircle={hasCircle}>
         {(supersededBy && <WarningIcon size={20} name="warning" />) ||
           (supersedes && <Icon size={20} name="info" />)}
       </IconContainer>
