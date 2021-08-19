@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import ArchiveModal from "./ArchiveModal";
 
 const getAlert = ({ creator = getUser(), channels = [getChannel()] } = {}) => ({
@@ -84,5 +84,54 @@ describe("ArchiveModal", () => {
     render(<ArchiveModal item={alert} type="alert" />);
 
     screen.getByText("2 emails and 3 Slack channels", { exact: false });
+  });
+
+  it("should close on submit", async () => {
+    const alert = getAlert();
+    const onArchive = jest.fn();
+    const onClose = jest.fn();
+
+    onArchive.mockResolvedValue();
+
+    render(
+      <ArchiveModal
+        item={alert}
+        type="alert"
+        onArchive={onArchive}
+        onClose={onClose}
+      />,
+    );
+
+    screen.getByText("Yes, delete this alert").click();
+
+    waitFor(() => {
+      expect(onArchive).toHaveBeenCalled();
+      expect(onClose).toHaveBeenCalled();
+    });
+  });
+
+  it("should not close on a submit error", async () => {
+    const alert = getAlert();
+    const onArchive = jest.fn();
+    const onClose = jest.fn();
+
+    onArchive.mockRejectedValue({ data: { message: "An error occurred" } });
+
+    render(
+      <ArchiveModal
+        item={alert}
+        type="alert"
+        onArchive={onArchive}
+        onClose={onClose}
+      />,
+    );
+
+    screen.getByText("Yes, delete this alert").click();
+
+    waitFor(() => {
+      screen.getByText("An error occurred");
+      expect(onArchive).toHaveBeenCalled();
+      expect(onClose).not.toHaveBeenCalled();
+    });
   });
 });

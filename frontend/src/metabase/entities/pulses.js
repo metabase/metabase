@@ -9,6 +9,7 @@ import {
 
 const Pulses = createEntity({
   name: "pulses",
+  nameOne: "pulse",
   path: "/api/pulse",
 
   objectActions: {

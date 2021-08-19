@@ -1,12 +1,10 @@
 import { connect } from "react-redux";
 import _ from "underscore";
 import Alerts from "metabase/entities/alerts";
-import { getUserId } from "metabase/selectors/user";
-import { getAlert } from "../selectors";
+import { getAlertId } from "../selectors";
 import ArchiveModal from "../components/ArchiveModal";
 
-const mapStateToProps = (state, props) => ({
-  item: getAlert(props),
+const mapStateToProps = () => ({
   type: "alert",
 });
 
@@ -15,8 +13,8 @@ const mapDispatchToProps = {
 };
 
 export default _.compose(
-  Alerts.loadList({
-    query: state => ({ user_id: getUserId(state) }),
+  Alerts.load({
+    id: (state, props) => getAlertId(props),
   }),
   connect(
     mapStateToProps,

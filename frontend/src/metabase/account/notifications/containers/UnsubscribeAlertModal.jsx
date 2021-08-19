@@ -1,13 +1,12 @@
 import { connect } from "react-redux";
 import _ from "underscore";
 import Alerts from "metabase/entities/alerts";
-import { getUser, getUserId } from "metabase/selectors/user";
+import { getUser } from "metabase/selectors/user";
 import { navigateToArchive } from "../actions";
-import { getAlert } from "../selectors";
+import { getAlertId } from "../selectors";
 import UnsubscribeModal from "../components/UnsubscribeModal";
 
-const mapStateToProps = (state, props) => ({
-  item: getAlert(props),
+const mapStateToProps = state => ({
   type: "alert",
   user: getUser(state),
 });
@@ -18,8 +17,8 @@ const mapDispatchToProps = {
 };
 
 export default _.compose(
-  Alerts.loadList({
-    query: state => ({ user_id: getUserId(state) }),
+  Alerts.load({
+    id: (state, props) => getAlertId(props),
   }),
   connect(
     mapStateToProps,

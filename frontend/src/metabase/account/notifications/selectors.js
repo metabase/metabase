@@ -1,19 +1,13 @@
 import { createSelector } from "reselect";
 import Settings from "metabase/lib/settings";
 
-export const getAlert = createSelector(
-  [({ alerts }) => alerts, ({ params: { alertId } }) => parseInt(alertId)],
-  (alerts, alertId) => {
-    return alerts.find(alert => alert.id === alertId);
-  },
-);
+export const getAlertId = ({ params: { alertId } }) => {
+  return parseInt(alertId);
+};
 
-export const getPulse = createSelector(
-  [({ pulses }) => pulses, ({ params: { pulseId } }) => parseInt(pulseId)],
-  (pulses, pulseId) => {
-    return pulses.find(pulse => pulse.id === pulseId);
-  },
-);
+export const getPulseId = ({ params: { pulseId } }) => {
+  return parseInt(pulseId);
+};
 
 export const getNotifications = createSelector(
   [({ alerts }) => alerts, ({ pulses }) => pulses],

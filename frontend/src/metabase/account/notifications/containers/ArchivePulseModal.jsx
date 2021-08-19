@@ -1,12 +1,10 @@
 import { connect } from "react-redux";
 import _ from "underscore";
 import Pulses from "metabase/entities/pulses";
-import { getUserId } from "metabase/selectors/user";
-import { getPulse } from "../selectors";
+import { getPulseId } from "../selectors";
 import ArchiveModal from "../components/ArchiveModal";
 
-const mapStateToProps = (state, props) => ({
-  item: getPulse(props),
+const mapStateToProps = () => ({
   type: "pulse",
 });
 
@@ -15,8 +13,8 @@ const mapDispatchToProps = {
 };
 
 export default _.compose(
-  Pulses.loadList({
-    query: state => ({ user_id: getUserId(state) }),
+  Pulses.load({
+    id: (state, props) => getPulseId(props),
   }),
   connect(
     mapStateToProps,

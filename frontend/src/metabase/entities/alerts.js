@@ -2,6 +2,7 @@ import { createEntity, undo } from "metabase/lib/entities";
 
 const Alerts = createEntity({
   name: "alerts",
+  nameOne: "alert",
   path: "/api/alert",
 
   objectActions: {
