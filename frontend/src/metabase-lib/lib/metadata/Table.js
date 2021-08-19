@@ -31,7 +31,7 @@ export default class Table extends Base {
 
   entity_type: ?EntityType;
 
-  hasSchema(): boolean {
+  hasSchema() {
     return (this.schema_name && this.db && this.db.schemas.length > 1) || false;
   }
 
@@ -54,7 +54,7 @@ export default class Table extends Base {
     });
   }
 
-  isSavedQuestion(): boolean {
+  isSavedQuestion() {
     return this.savedQuestionId() !== null;
   }
 
