@@ -82,3 +82,5 @@ dev/src/dev/nocommit/
 # lsp: ignore all but the config file
 .lsp/*
 !.lsp/config.edn
+
+workspace.code-workspace

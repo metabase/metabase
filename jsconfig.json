@@ -6,6 +6,7 @@
     "enterprise/frontend/test/**/*"
   ],
   "compilerOptions": {
+    // "experimentalDecorators": true,
     "baseUrl": ".",
     "paths": {
       "*": [

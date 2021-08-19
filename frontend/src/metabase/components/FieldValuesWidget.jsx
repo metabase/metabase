@@ -105,7 +105,7 @@ type Props = {
 
 type State = {
   loadingState: "INIT" | "LOADING" | "LOADED",
-  options: [Value, ?string][],
+  options: [Value,?string][],
   lastValue: string,
 };
 
@@ -245,7 +245,7 @@ export class FieldValuesWidget extends Component {
       this.shouldList() &&
       (this.useChainFilterEndpoints()
         ? this.state.loadingState === "LOADED" &&
-          nonEmptyArray(this.state.options)
+        nonEmptyArray(this.state.options)
         : this.props.fields.every(field => nonEmptyArray(field.values)))
     );
   }
