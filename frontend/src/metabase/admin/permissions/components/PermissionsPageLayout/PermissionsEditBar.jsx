@@ -32,7 +32,7 @@ export function PermissionsEditBar({
       triggerClasses={cx({ disabled: !isDirty })}
       key="save"
     >
-      <Button primary small>{t`Save Changes`}</Button>
+      <Button primary small>{t`Save changes`}</Button>
     </Confirm>
   );
 
