@@ -2,12 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import Settings from "metabase/lib/settings";
-import {
-  formatDay,
-  formatFrame,
-  formatHourAMPM,
-  parseTimestamp,
-} from "metabase/lib/time";
+import { formatDay, formatFrame, formatHourAMPM } from "metabase/lib/time";
 import * as Urls from "metabase/lib/urls";
 import {
   NotificationContent,
