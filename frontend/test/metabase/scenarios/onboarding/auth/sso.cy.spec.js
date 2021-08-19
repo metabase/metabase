@@ -20,7 +20,7 @@ describe("scenarios > auth > signin > SSO", () => {
   ["ldap_auth", "google_auth"].forEach(auth => {
     it(`login history tab should be available with ${auth} enabled (metabase#15558)`, () => {
       mockCurrentUserProperty(auth, true);
-      cy.visit("/user/edit_current");
+      cy.visit("/account/profile");
       cy.findByText("Login History");
     });
   });

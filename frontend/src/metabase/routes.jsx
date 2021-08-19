@@ -43,7 +43,6 @@ import UserCollectionList from "metabase/containers/UserCollectionList";
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp";
 import SetupApp from "metabase/setup/containers/SetupApp";
 import PostSetupApp from "metabase/setup/containers/PostSetupApp";
-import UserSettingsApp from "metabase/user/containers/UserSettingsApp";
 // new question
 import NewQueryOptions from "metabase/new_query/containers/NewQueryOptions";
 
@@ -72,6 +71,7 @@ import TableQuestionsContainer from "metabase/reference/databases/TableQuestions
 import FieldListContainer from "metabase/reference/databases/FieldListContainer";
 import FieldDetailContainer from "metabase/reference/databases/FieldDetailContainer";
 
+import getAccountRoutes from "metabase/account/routes";
 import getAdminRoutes from "metabase/admin/routes";
 
 import PublicQuestion from "metabase/public/containers/PublicQuestion";
@@ -320,8 +320,8 @@ export const getRoutes = store => (
         </Route>
       </Route>
 
-      {/* USER */}
-      <Route path="/user/edit_current" component={UserSettingsApp} />
+      {/* ACCOUNT */}
+      {getAccountRoutes()}
 
       {/* ADMIN */}
       {getAdminRoutes(store, IsAdmin)}
