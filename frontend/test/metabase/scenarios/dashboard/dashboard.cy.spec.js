@@ -460,6 +460,6 @@ function assertScrollBarExists() {
     const bodyWidth = $body[0].getBoundingClientRect().width;
     cy.window()
       .its("innerWidth")
-      .should("be.gt", bodyWidth);
+      .should("be.gte", bodyWidth);
   });
 }
