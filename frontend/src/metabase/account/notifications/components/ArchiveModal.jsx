@@ -63,7 +63,7 @@ const getSubmitMessage = type => {
     case "alert":
       return t`Yes, delete this alert`;
     case "pulse":
-      return t`Yes, delete this subscription.`;
+      return t`Yes, delete this subscription`;
   }
 };
 
