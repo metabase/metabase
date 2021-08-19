@@ -17,9 +17,9 @@ import {
 import { FieldsPickerIcon, FIELDS_PICKER_STYLES } from "../FieldsPickerIcon";
 import FieldsPicker from "./FieldsPicker";
 import {
+  JoinStepRoot,
   JoinClausesContainer,
   JoinClauseContainer,
-  JoinClauseRoot,
   JoinStrategyIcon,
   JoinTypeSelectRoot,
   JoinTypeOptionRoot,
@@ -79,7 +79,7 @@ export default function JoinStep({
   }
 
   return (
-    <NotebookCell color={color} flexWrap="nowrap">
+    <JoinStepRoot>
       <JoinClausesContainer>
         {joins.map((join, index) => {
           const isLast = index === joins.length - 1;
@@ -103,7 +103,7 @@ export default function JoinStep({
           onClick={addNewJoinClause}
         />
       )}
-    </NotebookCell>
+    </JoinStepRoot>
   );
 }
 
@@ -168,7 +168,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
   }
 
   return (
-    <JoinClauseRoot>
+    <NotebookCell color={color}>
       <NotebookCellItem color={color}>
         {(lhsTable && lhsTable.displayName()) || `Previous results`}
       </NotebookCellItem>
@@ -213,7 +213,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
       )}
 
       {showRemove && <RemoveJoinIcon onClick={removeJoin} />}
-    </JoinClauseRoot>
+    </NotebookCell>
   );
 }
 

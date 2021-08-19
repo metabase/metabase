@@ -3,6 +3,11 @@ import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 import Icon from "metabase/components/Icon";
 
+export const JoinStepRoot = styled.div`
+  display: flex;
+  align-items: center;
+`;
+
 export const JoinClausesContainer = styled.div`
   display: flex;
   flex-direction: column;
@@ -11,12 +16,6 @@ export const JoinClausesContainer = styled.div`
 
 export const JoinClauseContainer = styled.div`
   margin-bottom: ${props => (props.isLast ? 0 : "2px")};
-`;
-
-export const JoinClauseRoot = styled.div`
-  display: flex;
-  align-items: center;
-  flex: 1 1 auto;
 `;
 
 export const JoinStrategyIcon = styled(Icon).attrs({ size: 32 })`
