@@ -177,7 +177,7 @@ const getBreadcrumbs = (params, metadata) => {
 
   const table = metadata.table(tableId);
   const tableItem = {
-    text: table.name,
+    text: table.display_name,
     type: "table",
     schemaName: schema.name,
     databaseId,
@@ -318,7 +318,6 @@ const buildDatabasePermissions = (
   isAdmin,
   permissions,
   defaultGroup,
-  database,
 ) => {
   const accessPermissionValue = getSchemasPermission(
     permissions,

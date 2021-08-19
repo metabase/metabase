@@ -52,7 +52,11 @@ export const PermissionsSelect = memo(function PermissionsSelect({
   const shouldShowDisabledTooltip = isDisabled;
   const selectedValue = (
     <Tooltip tooltip={disabledTooltip} isEnabled={shouldShowDisabledTooltip}>
-      <PermissionsSelectRoot isDisabled={isDisabled} aria-haspopup="listbox">
+      <PermissionsSelectRoot
+        isDisabled={isDisabled}
+        aria-haspopup="listbox"
+        data-testid="permissions-select"
+      >
         <PermissionsSelectOption {...selected} />
         {warning && (
           <Tooltip tooltip={warning}>

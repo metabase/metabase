@@ -59,7 +59,6 @@
   color: white;
   border: none;
   font-size: 1em;
-  text-transform: capitalize;
   background-color: color(var(--color-bg-white) alpha(-90%));
   margin-left: 0.75em;
 }

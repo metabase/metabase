@@ -629,8 +629,8 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Sample Dataset").click();
 
-      cy.findByText("PRODUCTS");
-      cy.findByText("SQL Queries").should("not.exist");
+      cy.findByText("Products");
+      cy.findByText("Native query editing").should("not.exist");
 
       // Turn on data access for all users to Test Table
       cy.icon("close")
@@ -663,7 +663,7 @@ describe("smoketest > admin_setup", () => {
 
       cy.icon("warning");
 
-      cy.findByText("Save Changes").click();
+      cy.findByText("Save changes").click();
 
       cy.contains(
         "All Users will be given access to 1 table in Sample Dataset.",
@@ -682,7 +682,7 @@ describe("smoketest > admin_setup", () => {
         .click();
       cy.findByText("No access").click();
 
-      cy.findByText("Save Changes").click();
+      cy.findByText("Save changes").click();
 
       cy.contains(
         "data will no longer be able to read or write native queries for Sample Dataset.",
@@ -757,7 +757,7 @@ describe("smoketest > admin_setup", () => {
         .eq(1)
         .click();
       cy.findByText("View collection").click();
-      cy.findByText("Save Changes").click();
+      cy.findByText("Save changes").click();
 
       cy.findByText("Save permissions?");
 
@@ -778,7 +778,7 @@ describe("smoketest > admin_setup", () => {
       // Revoke data access to sub-collection
       cy.icon("eye").click();
       cy.findByText("Revoke access").click();
-      cy.findByText("Save Changes").click();
+      cy.findByText("Save changes").click();
 
       cy.findByText("Save permissions?");
 

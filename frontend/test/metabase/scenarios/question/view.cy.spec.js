@@ -97,7 +97,7 @@ describe("scenarios > question > view", () => {
       cy.findAllByRole("option")
         .contains("View")
         .click();
-      cy.findByText("Save Changes").click();
+      cy.findByText("Save changes").click();
       cy.findByText("Yes").click();
 
       // Native query saved in dasbhoard
