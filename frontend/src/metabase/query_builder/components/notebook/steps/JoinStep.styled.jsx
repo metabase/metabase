@@ -18,6 +18,12 @@ export const JoinClauseContainer = styled.div`
   margin-bottom: ${props => (props.isLast ? 0 : "2px")};
 `;
 
+export const JoinClauseRoot = styled.div`
+  display: flex;
+  align-items: center;
+  margin-bottom: ${props => (props.isLast ? 0 : "2px")};
+`;
+
 export const JoinStrategyIcon = styled(Icon).attrs({ size: 32 })`
   color: ${color("brand")};
   margin-right: 6px;
@@ -53,11 +59,6 @@ export const JoinTypeOptionRoot = styled.div`
 export const JoinTypeIcon = styled(Icon).attrs({ size: 24 })`
   margin-right: ${space(1)};
   color: ${props => (props.isSelected ? color("text-white") : color("brand"))};
-`;
-
-export const JoinedTableControlRoot = styled.div`
-  display: flex;
-  align-items: center;
 `;
 
 export const JoinWhereConditionLabel = styled.span.attrs({ children: "where" })`

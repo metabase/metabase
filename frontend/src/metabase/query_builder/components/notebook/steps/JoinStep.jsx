@@ -19,12 +19,12 @@ import FieldsPicker from "./FieldsPicker";
 import {
   JoinStepRoot,
   JoinClausesContainer,
+  JoinClauseRoot,
   JoinClauseContainer,
   JoinStrategyIcon,
   JoinTypeSelectRoot,
   JoinTypeOptionRoot,
   JoinTypeIcon,
-  JoinedTableControlRoot,
   JoinWhereConditionLabel,
   JoinOnConditionLabel,
   RemoveJoinIcon,
@@ -168,52 +168,54 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
   }
 
   return (
-    <NotebookCell color={color}>
-      <NotebookCellItem color={color}>
-        {(lhsTable && lhsTable.displayName()) || `Previous results`}
-      </NotebookCellItem>
+    <JoinClauseRoot>
+      <NotebookCell color={color} flex={1}>
+        <NotebookCellItem color={color}>
+          {(lhsTable && lhsTable.displayName()) || `Previous results`}
+        </NotebookCellItem>
 
-      <JoinTypePicker join={join} color={color} updateQuery={updateQuery} />
+        <JoinTypePicker join={join} color={color} updateQuery={updateQuery} />
 
-      <JoinTablePicker
-        join={join}
-        query={query}
-        joinedTable={joinedTable}
-        color={color}
-        updateQuery={updateQuery}
-        onSourceTableSet={onSourceTableSet}
-      />
+        <JoinTablePicker
+          join={join}
+          query={query}
+          joinedTable={joinedTable}
+          color={color}
+          updateQuery={updateQuery}
+          onSourceTableSet={onSourceTableSet}
+        />
+      </NotebookCell>
 
       {joinedTable && (
-        <JoinedTableControlRoot>
+        <React.Fragment>
           <JoinWhereConditionLabel />
 
-          <JoinDimensionPicker
-            color={color}
-            query={query}
-            dimension={join.parentDimension()}
-            options={join.parentDimensionOptions()}
-            onChange={onParentDimensionChange}
-            ref={parentDimensionPickerRef}
-            data-testid="parent-dimension"
-          />
-
-          <JoinOnConditionLabel />
-
-          <JoinDimensionPicker
-            color={color}
-            query={query}
-            dimension={join.joinDimension()}
-            options={join.joinDimensionOptions()}
-            onChange={onJoinDimensionChange}
-            ref={joinDimensionPickerRef}
-            data-testid="join-dimension"
-          />
-        </JoinedTableControlRoot>
+          <NotebookCell color={color} flex={1}>
+            <JoinDimensionPicker
+              color={color}
+              query={query}
+              dimension={join.parentDimension()}
+              options={join.parentDimensionOptions()}
+              onChange={onParentDimensionChange}
+              ref={parentDimensionPickerRef}
+              data-testid="parent-dimension"
+            />
+            <JoinOnConditionLabel />
+            <JoinDimensionPicker
+              color={color}
+              query={query}
+              dimension={join.joinDimension()}
+              options={join.joinDimensionOptions()}
+              onChange={onJoinDimensionChange}
+              ref={joinDimensionPickerRef}
+              data-testid="join-dimension"
+            />
+          </NotebookCell>
+        </React.Fragment>
       )}
 
       {showRemove && <RemoveJoinIcon onClick={removeJoin} />}
-    </NotebookCell>
+    </JoinClauseRoot>
   );
 }
 
