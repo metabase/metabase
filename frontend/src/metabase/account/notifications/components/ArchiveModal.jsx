@@ -9,8 +9,8 @@ import FormMessage from "metabase/components/form/FormMessage";
 const propTypes = {
   item: PropTypes.object.isRequired,
   type: PropTypes.oneOf(["alert", "pulse"]).isRequired,
-  onArchive: PropTypes.func.isRequired,
-  onClose: PropTypes.func.isRequired,
+  onArchive: PropTypes.func,
+  onClose: PropTypes.func,
 };
 
 const ArchiveModal = ({ item, type, onArchive, onClose }) => {
@@ -40,7 +40,7 @@ const ArchiveModal = ({ item, type, onArchive, onClose }) => {
       onClose={onClose}
     >
       <div>
-        {getDateMessage(item)}
+        {getDateMessage(item, type)}
         {getRecipientsMessage(item)}
       </div>
     </ModalContent>

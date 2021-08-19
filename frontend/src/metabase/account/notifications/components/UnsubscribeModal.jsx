@@ -9,9 +9,9 @@ const propTypes = {
   item: PropTypes.object.isRequired,
   type: PropTypes.oneOf(["alert", "pulse"]).isRequired,
   user: PropTypes.object.isRequired,
-  onUnsubscribe: PropTypes.func.isRequired,
-  onArchive: PropTypes.func.isRequired,
-  onClose: PropTypes.func.isRequired,
+  onUnsubscribe: PropTypes.func,
+  onArchive: PropTypes.func,
+  onClose: PropTypes.func,
 };
 
 const UnsubscribeModal = ({
