@@ -11,9 +11,9 @@ const propTypes = {
 
 const UserPasswordForm = ({ user, validatePassword, updatePassword }) => {
   const handleAsyncValidate = useCallback(
-    async values => {
+    async ({ password }) => {
       try {
-        validatePassword(values.password);
+        validatePassword(password);
         return {};
       } catch (error) {
         return error.data.errors;
@@ -23,8 +23,8 @@ const UserPasswordForm = ({ user, validatePassword, updatePassword }) => {
   );
 
   const handleSubmit = useCallback(
-    values => {
-      updatePassword({ user_id: user.id, ...values });
+    ({ password, old_password }) => {
+      updatePassword(user.id, password, old_password);
     },
     [user, updatePassword],
   );
