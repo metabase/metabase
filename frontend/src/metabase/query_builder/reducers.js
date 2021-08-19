@@ -47,6 +47,8 @@ import {
   onCloseSidebars,
   onOpenQuestionDetails,
   onCloseQuestionDetails,
+  onOpenQuestionHistory,
+  onCloseQuestionHistory,
 } from "./actions";
 
 const DEFAULT_UI_CONTROLS = {
@@ -169,6 +171,7 @@ export const uiControls = handleActions(
     [SHOW_CHART_SETTINGS]: {
       next: (state, { payload }) => ({
         ...state,
+        ...UI_CONTROLS_SIDEBAR_DEFAULTS,
         isShowingChartSettingsSidebar: true,
         initialChartSetting: payload,
       }),
@@ -215,10 +218,24 @@ export const uiControls = handleActions(
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
       isShowingQuestionDetailsSidebar: true,
+      questionDetailsTimelineDrawerState: undefined,
     }),
     [onCloseQuestionDetails]: state => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+      questionDetailsTimelineDrawerState: undefined,
+    }),
+    [onOpenQuestionHistory]: state => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+      isShowingQuestionDetailsSidebar: true,
+      questionDetailsTimelineDrawerState: "open",
+    }),
+    [onCloseQuestionHistory]: state => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+      isShowingQuestionDetailsSidebar: true,
+      questionDetailsTimelineDrawerState: "closed",
     }),
     [onCloseSidebars]: state => ({
       ...state,

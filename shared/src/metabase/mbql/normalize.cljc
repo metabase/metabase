@@ -755,7 +755,8 @@
 (def ^:private path->special-remove-empty-clauses-fn
   {:native identity
    :query  {:source-query remove-empty-clauses-in-source-query
-            :joins        {::sequence remove-empty-clauses-in-join}}})
+            :joins        {::sequence remove-empty-clauses-in-join}}
+   :viz-settings identity})
 
 (defn- remove-empty-clauses
   "Remove any empty or `nil` clauses in a query."

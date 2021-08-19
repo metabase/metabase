@@ -8,7 +8,7 @@ import Link from "metabase/components/Link";
 import ButtonBar from "metabase/components/ButtonBar";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
-import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQuestionHeaderButton";
+import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQuestionHeaderButton/SavedQuestionHeaderButton";
 import ViewSection, { ViewHeading, ViewSubHeading } from "./ViewSection";
 import ViewButton from "metabase/query_builder/components/view/ViewButton";
 
@@ -55,6 +55,7 @@ const viewTitleHeaderPropTypes = {
   onCloseFilter: PropTypes.func,
   onOpenQuestionDetails: PropTypes.func,
   onCloseQuestionDetails: PropTypes.func,
+  onOpenQuestionHistory: PropTypes.func,
 
   isPreviewable: PropTypes.bool,
   isPreviewing: PropTypes.bool,
@@ -119,6 +120,7 @@ export class ViewTitleHeader extends React.Component {
       isShowingQuestionDetailsSidebar,
       onOpenQuestionDetails,
       onCloseQuestionDetails,
+      onOpenQuestionHistory,
     } = this.props;
     const { isFiltersExpanded } = this.state;
     const isShowingNotebook = queryBuilderMode === "notebook";
@@ -161,7 +163,7 @@ export class ViewTitleHeader extends React.Component {
                 <LastEditInfoLabel
                   className="ml1 text-light"
                   item={question.card()}
-                  onClick={() => onOpenModal("history")}
+                  onClick={onOpenQuestionHistory}
                 />
               )}
             </div>

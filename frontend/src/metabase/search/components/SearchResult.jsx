@@ -12,7 +12,11 @@ import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import Text from "metabase/components/type/Text";
 
-import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
+import {
+  PLUGIN_COLLECTIONS,
+  PLUGIN_COLLECTION_COMPONENTS,
+  PLUGIN_MODERATION,
+} from "metabase/plugins";
 
 import Schema from "metabase/entities/schemas";
 import Database from "metabase/entities/databases";
@@ -89,14 +93,43 @@ const ResultLink = styled(Link)`
   }
 `;
 
+const TitleWrapper = styled.div`
+  display: flex;
+  grid-gap: 0.25rem;
+  align-items: center;
+`;
+const DEFAULT_ICON_SIZE = 20;
+
+function TableIcon() {
+  return <Icon name="database" />;
+}
+
+function CollectionIcon({ item }) {
+  const iconProps = { ...item.getIcon() };
+  const isRegular = PLUGIN_COLLECTIONS.isRegularCollection(item);
+  if (isRegular) {
+    iconProps.size = DEFAULT_ICON_SIZE;
+  } else {
+    iconProps.width = 20;
+    iconProps.height = 24;
+  }
+  return <Icon {...iconProps} />;
+}
+
+const ModelIconComponentMap = {
+  table: TableIcon,
+  collection: CollectionIcon,
+};
+
+function DefaultIcon({ item }) {
+  return <Icon {...item.getIcon()} size={DEFAULT_ICON_SIZE} />;
+}
+
 function ItemIcon({ item, type }) {
+  const IconComponent = ModelIconComponentMap[type] || DefaultIcon;
   return (
     <IconWrapper item={item} type={type}>
-      {type === "table" ? (
-        <Icon name="database" />
-      ) : (
-        <Icon {...item.getIcon()} size={20} />
-      )}
+      <IconComponent item={item} />
     </IconWrapper>
   );
 }
@@ -253,7 +286,13 @@ export default function SearchResult({ result, compact }) {
       <Flex align="start">
         <ItemIcon item={result} type={result.model} />
         <Box>
-          <Title>{result.name}</Title>
+          <TitleWrapper>
+            <Title>{result.name}</Title>
+            <PLUGIN_MODERATION.ModerationStatusIcon
+              status={result.moderated_status}
+              size={12}
+            />
+          </TitleWrapper>
           <Text>
             <InfoText result={result} />
           </Text>

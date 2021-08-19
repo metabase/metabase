@@ -224,7 +224,17 @@
                                   (Integer/parseInt port)
                                   port)))
                 (assoc :SSL ssl?)
-                (dissoc :ssl))]
+                ;; remove any Metabase specific properties that are not recognized by the PrestoDB JDBC driver, which is
+                ;; very picky about properties (throwing an error if any are unrecognized)
+                ;; all valid properties can be found in the JDBC Driver source here:
+                ;; https://github.com/prestodb/presto/blob/master/presto-jdbc/src/main/java/com/facebook/presto/jdbc/ConnectionProperties.java
+                (select-keys [:host :port :catalog :schema :additional-options ; needed for [jdbc-spec]
+                              ;; JDBC driver specific properties
+                              :user :password :socksProxy :httpProxy :applicationNamePrefix :disableCompression :SSL
+                              :SSLKeyStorePath :SSLKeyStorePassword :SSLTrustStorePath :SSLTrustStorePassword
+                              :KerberosRemoteServiceName :KerberosPrincipal :KerberosUseCanonicalHostname
+                              :KerberosConfigPath :KerberosKeytabPath :KerberosCredentialCachePath :accessToken
+                              :extraCredentials :sessionProperties :protocols :queryInterceptors]))]
     (jdbc-spec props)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -332,10 +342,6 @@
       (catch Throwable e
         (log/debug e (trs "Error setting statement fetch direction to FETCH_FORWARD"))))
     stmt))
-
-(defmethod driver/can-connect? :presto-jdbc
-  [driver details]
-  (sql-jdbc.conn/can-connect? driver (dissoc details :engine)))
 
 (defn- ^PrestoConnection pooled-conn->presto-conn
   "Unwraps the C3P0 `pooled-conn` and returns the underlying `PrestoConnection` it holds."

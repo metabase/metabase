@@ -636,4 +636,180 @@ describe("Question", () => {
       });
     });
   });
+
+  describe("Question.prototype._syncNativeQuerySettings", () => {
+    let question;
+    const cols = [
+      {
+        display_name: "num",
+        source: "native",
+        field_ref: [
+          "field",
+          "num",
+          {
+            "base-type": "type/Float",
+          },
+        ],
+        name: "num",
+        base_type: "type/Float",
+      },
+      {
+        display_name: "text",
+        source: "native",
+        field_ref: [
+          "field",
+          "text",
+          {
+            "base-type": "type/Text",
+          },
+        ],
+        name: "text",
+        base_type: "type/Text",
+      },
+    ];
+
+    const vizSettingCols = [
+      {
+        name: "num",
+        fieldRef: ["field", "num", { "base-type": "type/Float" }],
+        enabled: true,
+      },
+      {
+        name: "text",
+        fieldRef: ["field", "text", { "base-type": "type/Text" }],
+        enabled: true,
+      },
+    ];
+
+    beforeEach(() => {
+      question = new Question(native_orders_count_card, metadata);
+      question.setting = jest.fn();
+      question.updateSettings = jest.fn();
+    });
+
+    describe("when columns have not been defined", () => {
+      it("should do nothing when given no cols", () => {
+        question._syncNativeQuerySettings({});
+        question._syncNativeQuerySettings({ data: { cols: [] } });
+        question._syncNativeQuerySettings({ data: { cols } });
+
+        expect(question.updateSettings).not.toHaveBeenCalled();
+      });
+
+      it("should do nothing when given cols", () => {
+        question._syncNativeQuerySettings({ data: { cols } });
+
+        expect(question.updateSettings).not.toHaveBeenCalled();
+      });
+    });
+
+    describe("after vizSetting columns have been defined", () => {
+      beforeEach(() => {
+        question.setting.mockImplementation(property => {
+          if (property === "table.columns") {
+            return vizSettingCols;
+          }
+        });
+      });
+
+      it("should handle the addition and removal of columns", () => {
+        question._syncNativeQuerySettings({
+          data: {
+            cols: [
+              ...cols.slice(1),
+              {
+                display_name: "foo",
+                source: "native",
+                field_ref: [
+                  "field",
+                  "foo",
+                  {
+                    "base-type": "type/Float",
+                  },
+                ],
+                name: "foo",
+                base_type: "type/Float",
+              },
+            ],
+          },
+        });
+
+        expect(question.updateSettings).toHaveBeenCalledWith({
+          "table.columns": [
+            ...vizSettingCols.slice(1),
+            {
+              name: "foo",
+              fieldRef: [
+                "field",
+                "foo",
+                {
+                  "base-type": "type/Float",
+                },
+              ],
+              enabled: true,
+            },
+          ],
+        });
+      });
+
+      it("should handle the mutation of extraneous column props", () => {
+        question._syncNativeQuerySettings({
+          data: {
+            cols: [
+              {
+                display_name: "num with mutated display_name",
+                source: "native",
+                field_ref: [
+                  "field",
+                  "num",
+                  {
+                    "base-type": "type/Float",
+                  },
+                ],
+                name: "foo",
+                base_type: "type/Float",
+              },
+              ...cols.slice(1),
+            ],
+          },
+        });
+
+        expect(question.updateSettings).not.toHaveBeenCalled();
+      });
+
+      it("should handle the mutation of a field_ref on an existing column", () => {
+        question._syncNativeQuerySettings({
+          data: {
+            cols: [
+              {
+                display_name: "foo",
+                source: "native",
+                field_ref: [
+                  "field",
+                  "foo",
+                  {
+                    "base-type": "type/Integer",
+                  },
+                ],
+                name: "foo",
+                base_type: "type/Integer",
+              },
+              ...cols.slice(1),
+            ],
+          },
+        });
+
+        expect(question.updateSettings).toHaveBeenCalledWith({
+          "table.columns": [
+            ...vizSettingCols.slice(1),
+            {
+              name: "foo",
+              fieldRef: ["field", "foo", { "base-type": "type/Integer" }],
+              enabled: true,
+            },
+          ],
+        });
+      });
+    });
+  });
 });

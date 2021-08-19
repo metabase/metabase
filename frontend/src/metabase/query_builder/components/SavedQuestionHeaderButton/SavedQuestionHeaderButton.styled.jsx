@@ -10,6 +10,10 @@ export const HeaderButton = styled(Button)`
   color: ${props => (props.isActive ? color("brand") : "unset")};
   background-color: ${props => (props.isActive ? color("bg-light") : "unset")};
 
+  .Icon:not(.Icon-chevrondown) {
+    color: ${props => color(props.leftIconColor)};
+  }
+
   .Icon-chevrondown {
     height: 13px;
   }

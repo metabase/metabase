@@ -596,7 +596,7 @@ jobs:
       <<: *Params
     steps:
       - attach-workspace
-      # This step is pretty slow, even with the cache, so only run it if project.clj has changed
+      # This step is pretty slow, even with the cache, so only run it if deps.edn has changed
       - run-on-change:
           checksum: 'v5-{{ checksum "deps.edn" }}-{{ checksum ".SCRIPTS-DEPS-CHECKSUMS" }}'
           steps:
@@ -1014,7 +1014,8 @@ workflows:
           after-steps:
             - run:
                 name: Upload code coverage to codecov.io
-                command: bash <(curl -s https://codecov.io/bash)
+                command: bash <(curl -s https://codecov.io/bash) -F back-end
+
           skip-when-no-change: true
 
       - test-driver:

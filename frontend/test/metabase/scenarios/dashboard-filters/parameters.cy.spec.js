@@ -65,7 +65,7 @@ describe("scenarios > dashboard > parameters", () => {
     // add the same question twice
     cy.icon("pencil").click();
 
-    cy.get(".DashboardHeader .Icon-add").click();
+    cy.get(".QueryBuilder-section .Icon-add").click();
     addQuestion("Orders, Count");
     addQuestion("Orders, Count");
 
@@ -124,7 +124,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     // add a question
     cy.icon("pencil").click();
-    cy.get(".DashboardHeader .Icon-add").click();
+    cy.get(".QueryBuilder-section .Icon-add").click();
     addQuestion("Orders, Count");
 
     // add a Number - Between filter

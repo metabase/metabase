@@ -32,23 +32,45 @@
        (mbql.u/uniquify-names (map :name cols))))
 
 (defn- export-column-order
-  "Correlates the :name fields between cols and the :table.columns key of viz-settings
-  to determine the order of columns that should included in the export."
-  [cols {table-columns ::mb.viz/table-columns}]
-  (if table-columns
-    (let [enabled-table-columns (filter ::mb.viz/table-column-enabled table-columns)
-          col-index-by-name     (reduce-kv (fn [m i col] (assoc m (:name col) i))
-                                           {}
-                                           (into [] cols))]
-      (map
-       (fn [{col-name ::mb.viz/table-column-name}] (get col-index-by-name col-name))
-       enabled-table-columns))
-    (range (count cols))))
+  "For each entry in `table-columns` that is enabled, finds the index of the corresponding
+  entry in `cols` by name or id. If a col has been remapped, uses the index of the new column.
+
+  The resulting list of indices determines the order of column names and data in exports."
+  [cols table-columns]
+  (let [table-columns'     (or table-columns
+                               ;; If table-columns is not provided (e.g. for saved cards), we can construct
+                               ;; it using the original order in `cols`
+                               (for [col cols]
+                                 (let [id-or-name (or (:id col) (:name col))]
+                                   {::mb.viz/table-column-field-ref ["field" id-or-name nil]
+                                    ::mb.viz/table-column-enabled true})))
+        enabled-table-cols (filter ::mb.viz/table-column-enabled table-columns')
+        cols-vector        (into [] cols)
+        ;; `cols-index` maps column names and ids to indices in `cols`
+        cols-index         (reduce-kv (fn [m i col]
+                                        (let [m' (assoc m (:name col) i)]
+                                          (if (:id col) (assoc m' (:id col) i) m')))
+                                      {}
+                                      cols-vector)]
+    (->> (map
+          (fn [{[_ id-or-name _] ::mb.viz/table-column-field-ref}]
+            (let [index         (get cols-index id-or-name)
+                  col           (get cols-vector index)
+                  remapped-to   (:remapped_to col)
+                  remapped-from (:remapped_from col)]
+              (cond
+                remapped-to
+                (get cols-index remapped-to)
+
+                (not remapped-from)
+                index)))
+          enabled-table-cols)
+         (remove nil?))))
 
 (defn- streaming-rff [results-writer]
   (fn [{:keys [cols viz-settings] :as initial-metadata}]
     (let [deduped-cols  (deduplicate-col-names cols)
-          output-order  (export-column-order deduped-cols viz-settings)
+          output-order  (export-column-order deduped-cols (::mb.viz/table-columns viz-settings))
           ordered-cols  (if output-order
                           (let [v (into [] deduped-cols)]
                             (for [i output-order] (v i)))
@@ -103,8 +125,8 @@
 
 (defn streaming-response*
   "Impl for `streaming-response`."
-  ^StreamingResponse [export-format f]
-  (streaming-response/streaming-response (i/stream-options export-format) [os canceled-chan]
+  ^StreamingResponse [export-format filename-prefix f]
+  (streaming-response/streaming-response (i/stream-options export-format filename-prefix) [os canceled-chan]
     (let [result (try
                    (f (streaming-context export-format os canceled-chan))
                    (catch Throwable e
@@ -130,8 +152,8 @@
   Handles either async or sync QP results, but you should prefer returning sync results so we can handle query
   cancelations properly."
   {:style/indent 1}
-  [[context-binding export-format] & body]
-  `(streaming-response* ~export-format (fn [~context-binding] ~@body)))
+  [[context-binding export-format filename-prefix] & body]
+  `(streaming-response* ~export-format ~filename-prefix (fn [~context-binding] ~@body)))
 
 (defn export-formats
   "Set of valid streaming response formats. Currently, `:json`, `:csv`, `:xlsx`, and `:api` (normal JSON API results

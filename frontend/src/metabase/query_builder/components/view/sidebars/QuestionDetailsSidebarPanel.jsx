@@ -1,37 +1,51 @@
 import React from "react";
 import PropTypes from "prop-types";
 
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import QuestionActionButtons from "metabase/query_builder/components/QuestionActionButtons";
-import QuestionActivityTimeline from "metabase/query_builder/components/QuestionActivityTimeline";
 import { ClampedDescription } from "metabase/query_builder/components/ClampedDescription";
-import { SidebarContentContainer } from "./QuestionDetailsSidebarPanel.styled";
+import {
+  Container,
+  SidebarPaddedContent,
+} from "./QuestionDetailsSidebarPanel.styled";
+import QuestionActivityTimeline from "metabase/query_builder/components/QuestionActivityTimeline";
+
+import { PLUGIN_MODERATION } from "metabase/plugins";
+
+export default QuestionDetailsSidebarPanel;
 
 QuestionDetailsSidebarPanel.propTypes = {
   question: PropTypes.object.isRequired,
   onOpenModal: PropTypes.func.isRequired,
+  removeModerationReview: PropTypes.func.isRequired,
 };
 
-function QuestionDetailsSidebarPanel({ question, onOpenModal }) {
+function QuestionDetailsSidebarPanel({
+  question,
+  onOpenModal,
+  removeModerationReview,
+}) {
   const canWrite = question.canWrite();
   const description = question.description();
 
+  const onDescriptionEdit = canWrite
+    ? () => {
+        onOpenModal("edit");
+      }
+    : undefined;
+
   return (
-    <SidebarContent>
-      <SidebarContentContainer>
+    <Container>
+      <SidebarPaddedContent>
         <QuestionActionButtons canWrite={canWrite} onOpenModal={onOpenModal} />
         <ClampedDescription
-          description={description}
+          className="pb2"
           visibleLines={8}
-          onEdit={canWrite && (() => onOpenModal("edit"))}
+          description={description}
+          onEdit={onDescriptionEdit}
         />
-        <QuestionActivityTimeline
-          className="border-top mt2 pt4"
-          question={question}
-        />
-      </SidebarContentContainer>
-    </SidebarContent>
+        <PLUGIN_MODERATION.QuestionModerationSection question={question} />
+      </SidebarPaddedContent>
+      <QuestionActivityTimeline question={question} />
+    </Container>
   );
 }
-
-export default QuestionDetailsSidebarPanel;
