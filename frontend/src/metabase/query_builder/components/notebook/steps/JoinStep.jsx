@@ -212,9 +212,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
         </JoinedTableControlRoot>
       )}
 
-      {showRemove && (
-        <RemoveJoinIcon onClick={() => join.remove().update(updateQuery)} />
-      )}
+      {showRemove && <RemoveJoinIcon onClick={removeJoin} />}
     </JoinClauseRoot>
   );
 }
