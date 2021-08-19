@@ -26,9 +26,11 @@ const getUser = ({ id = 1 } = {}) => ({
 const getChannel = ({
   channel_type = "email",
   schedule_type = "hourly",
+  recipients = [],
 } = {}) => ({
   channel_type,
   schedule_type,
+  recipients,
   schedule_hour: 8,
   schedule_day: "mon",
   schedule_frame: "first",
@@ -115,9 +117,10 @@ describe("NotificationCard", () => {
   });
 
   it("should unsubscribe when subscribed and clicked on the close icon", () => {
-    const alert = getAlert();
     const user = getUser();
+    const alert = getAlert({ channels: [getChannel({ recipients: [user] })] });
     const onUnsubscribe = jest.fn();
+    const onArchive = jest.fn();
 
     render(
       <NotificationCard
@@ -125,10 +128,33 @@ describe("NotificationCard", () => {
         type="alert"
         user={user}
         onUnsubscribe={onUnsubscribe}
+        onArchive={onArchive}
       />,
     );
 
     fireEvent.click(screen.getByLabelText("close icon"));
     expect(onUnsubscribe).toHaveBeenCalledWith(alert, "alert");
+    expect(onArchive).not.toHaveBeenCalled();
+  });
+
+  it("should archive when not subscribed and clicked on the close icon", () => {
+    const alert = getAlert();
+    const user = getUser();
+    const onUnsubscribe = jest.fn();
+    const onArchive = jest.fn();
+
+    render(
+      <NotificationCard
+        item={alert}
+        type="alert"
+        user={user}
+        onUnsubscribe={onUnsubscribe}
+        onArchive={onArchive}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("close icon"));
+    expect(onUnsubscribe).not.toHaveBeenCalled();
+    expect(onArchive).toHaveBeenCalledWith(alert, "alert");
   });
 });
