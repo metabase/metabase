@@ -1,37 +1,59 @@
 # My linked filters don't work
 
-Metabase lets you [link filters][linked-filter-gloss] so that (for example) if a dashboard contains both a "State" and a "City" filter, the "City" filter only shows cities in the state selected by the "State" filter; the article ["Linking filters in dashboards"][learn-linking] explains how to set them up.
+You have created a [linked filter][linked-filter-gloss] so that (for example) if a dashboard contains both a "State" and a "City" filter, the "City" filter only shows cities in the state selected by the "State" filter. However:
 
-In order to fix problems associated with linked filters, you need a clear understanding of how they work:
+- your cards are showing "No result" when you apply the linked filter,
+- your linked filter seems to have no effect, or
+- your linked filter widget does not display a dropdown of filtered values.
 
-1. A filter isn't part of a specific question. Instead, a filter is added to a dashboard and its value is used to fill in a variable in a question (or in several questions).
+If you are having problems with a regular [filter widget][filter-widget-gloss], please see [this guide](./filters.html). In order to fix problems with linked filters, you need a clear understanding of how they work:
 
-2. In order for Metabase to display a dropdown list of possible filter values, it must know that the column corresponds to a category. This happens automatically if the question is created from tables via the graphical editor (i.e., is a Simple question or Custom question), since Metabase has knowledge about the table and columns from synchronization.
+## Do you understand the directionality of linked filters?
+
+**Root cause:** Linked filters are one of the more complex features of Metabase, and many problems stems from misunderstanding their operation.
+
+**Steps to take:** Check that you understand the points below, and that your linked filter is set up with them in mind.
+
+1. A filter isn't part of a specific question. Instead, a filter is added to a dashboard and its value is used to fill in variables in questions.
+
+2. In order for Metabase to display a dropdown list of possible filter values, it must know that the column corresponds to a category. This happens automatically if the question is created from tables via the Notebook Editor, since Metabase has knowledge about the table and columns from synchronization.
 
 3. If the question that contains the variable is written in SQL, on the other hand, the author of the question must have selected "Field Filter". Also, the field referenced must be set as a category in the Data Model in order for Metabase to show a dropdown list of values.
 
-## My cards are showing "No result" when I apply linked filters
+## Are the filters linked in the correct direction?
 
-**How to detect this:** Some data shows up when the first filter is applied, but nothing shows up when the second (dependent) filter is applied as well. For example, you may have a "State" and a "City" filter linked so that the "City" filter only shows cities in the selected state; some rows are displayed when you select a state, but none appear when you also add a city.
+**Root cause:** The most common cause is that the filters have been linked in the wrong direction. If you want the values shown by Filter B to be restricted by the setting of Filter A, you have to change the settings for Filter B, not Filter A---i.e., the downstream filter has the setting, not the upstream filter.
 
-**How to fix this:** The root cause of this problem is usually that there really are no rows that satisfy both conditions. For example, if you manually enter the name of a city that isn't in the selected state, no record will satisfy both conditions. You can check this by writing a native SQL query that you think should produce the same result. If it does not, check for typing mistakes and that you are using the correct type of join.
+**Steps to take:**
 
-## My linked filter seems to have no effect
+1. Remove the existing linkage and create a new one in the opposite direction.
 
-**How to detect this:** After creating and applying a linked filter, you see the same set of rows that you saw before the second (linked) filter was applied.
+## Do some rows actually satisfy the full filter condition?
 
-**How to fix this:**
+**Root cause:** There aren't any rows that satisfy all the conditions in a linked filter. Continuing with the city and state example, if you manually enter the name of a city that isn't in the selected state, no record will satisfy both conditions.
 
-1. The most common cause is that the filters have been linked in the wrong direction. If you want the values shown by Filter B to be restricted by the setting of Filter A, you have to change the settings for Filter B, not Filter A---i.e., the downstream filter has the setting, not the upstream filter.
+**Steps to take:**
 
-2. A less common cause is that all of the rows that pass the first test also pass the second. Again, you can check this by writing a native SQL query that you think should produce the reduced result; if it does not, the problem is most likely with the logic.
+1. Create a question that only uses the first filter and check that it produces some rows. (If it does not, adding a second filter isn't going to make any rows appear.)
+2. Create a question that you think should produce the same result as the combination of linked filter settings that isn't producing any data. If it produces the result you expect, check for typing mistakes and that you are using [the correct type of join][join-types].
 
-## My linked filter widget does not display a dropdown of filtered values
+## Do all rows that pass the first test also pass the second?
 
-**How to detect this:** After linking Filter B to Filter A, you expect Filter B to display a dropdown showing only the values constrained by the current setting of Filter A. Instead, the dropdown shows all available values.
+**Root cause:** In some cases all of the rows that satisfy the first filter's condition also satisfy the second filter's condition, so the second filter has no effect.
 
-**How to fix this:** In order for a linked filter widget to display the correct subset of values, an explicit [foreign key][foreign-key-gloss] definition must be set up---linking the filters does not by itself tell Metabase about the relationship. To check this, look at Metabase's data model for your database.
+**Steps to take:**
+
+1. Create a question that includes the first filter condition directly (i.e., in the question rather than using a variable), then add the second filter's condition. If the result set does not change, the problem is in the logic rather than in the filters.
+
+## Does the linked filter widget display a dropdown of filtered values?
+
+**Root cause:** In order for a linked filter widget to display the correct subset of values as a dropdown, an explicit [foreign key][foreign-key-gloss] definition must be set up---linking the filters does not by itself tell Metabase about the relationship.
+
+**Steps to take:**
+
+1. Check that Metabase's data model for your database includes the foreign key relationship.
 
 [foreign-key-gloss]: /glossary.html#foreign_key
+[join-types]: /learn/sql-questions/sql-join-types.html
 [learn-linking]: /learn/dashboards/linking-filters.html
 [linked-filter-gloss]: /glossary.html#linked_filter
