@@ -8,7 +8,7 @@ import FormMessage from "metabase/components/form/FormMessage";
 const propTypes = {
   item: PropTypes.object.isRequired,
   type: PropTypes.oneOf(["alert", "pulse"]).isRequired,
-  user: PropTypes.object.isRequired,
+  user: PropTypes.object,
   onUnsubscribe: PropTypes.func,
   onArchive: PropTypes.func,
   onClose: PropTypes.func,
@@ -63,7 +63,7 @@ const UnsubscribeModal = ({
 UnsubscribeModal.propTypes = propTypes;
 
 const isCreator = (item, user) => {
-  return item.creator.id === user.id;
+  return item.creator?.id === user?.id;
 };
 
 const getUnsubscribeMessage = type => {
