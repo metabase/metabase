@@ -21,7 +21,9 @@ export const JoinClauseRoot = styled.div`
 
 export const JoinStrategyIcon = styled(Icon).attrs({ size: 32 })`
   color: ${color("brand")};
-  margin-right: ${space(1)};
+  margin-right: 6px;
+  margin-left: 2px;
+  margin-top: 6px;
 `;
 
 export const JoinTypeSelectRoot = styled.div`
@@ -62,14 +64,17 @@ export const JoinedTableControlRoot = styled.div`
 export const JoinWhereConditionLabel = styled.span.attrs({ children: "where" })`
   color: ${color("text-medium")};
   font-weight: bold;
-  margin-left: ${space(1)};
-  margin-right: ${space(2)};
+  margin-top: 6px;
+  margin-left: 10px;
+  margin-right: 14px;
 `;
 
 export const JoinOnConditionLabel = styled.span.attrs({ children: "=" })`
   font-weight: bold;
   color: ${color("text-medium")};
-  margin-right: 8px;
+  margin-left: 2px;
+  margin-right: 6px;
+  margin-top: 6px;
 `;
 
 export const RemoveJoinIcon = styled(Icon).attrs({ name: "close", size: 18 })`
