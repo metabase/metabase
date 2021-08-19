@@ -1,27 +1,35 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import PropTypes from "prop-types";
 import { msgid, ngettext, t } from "ttag";
 import { parseTimestamp } from "metabase/lib/time";
 import Button from "metabase/components/Button";
 import ModalContent from "metabase/components/ModalContent";
+import FormMessage from "metabase/components/form/FormMessage";
 
 const propTypes = {
   item: PropTypes.object.isRequired,
   type: PropTypes.oneOf(["alert", "pulse"]).isRequired,
-  onArchive: PropTypes.func,
-  onClose: PropTypes.func,
+  onArchive: PropTypes.func.isRequired,
+  onClose: PropTypes.func.isRequired,
 };
 
 const ArchiveModal = ({ item, type, onArchive, onClose }) => {
+  const [error, setError] = useState();
+
   const handleArchiveClick = useCallback(async () => {
-    await onArchive(item);
-    onClose();
+    try {
+      await onArchive(item);
+      onClose();
+    } catch (error) {
+      setError(error);
+    }
   }, [item, onArchive, onClose]);
 
   return (
     <ModalContent
       title={getTitleMessage(type)}
       footer={[
+        error ? <FormMessage formError={error} /> : null,
         <Button key="cancel" onClick={onClose}>
           {t`I changed my mind`}
         </Button>,
