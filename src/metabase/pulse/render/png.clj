@@ -14,14 +14,15 @@
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s])
   (:import cz.vutbr.web.css.MediaSpec
-           java.awt.Dimension
+           [java.awt Graphics2D RenderingHints]
            java.awt.image.BufferedImage
            [java.io ByteArrayInputStream ByteArrayOutputStream]
            java.nio.charset.StandardCharsets
            javax.imageio.ImageIO
+           org.fit.cssbox.awt.GraphicsEngine
            [org.fit.cssbox.css CSSNorm DOMAnalyzer DOMAnalyzer$Origin]
            [org.fit.cssbox.io DefaultDOMSource StreamDocumentSource]
-           org.fit.cssbox.layout.BrowserCanvas
+           org.fit.cssbox.layout.Dimension
            org.w3c.dom.Document))
 
 (defn- register-font! [filename]
@@ -64,28 +65,28 @@
     (.addStyleSheet nil (CSSNorm/formsStyleSheet) DOMAnalyzer$Origin/AGENT)
     .getStyleSheets))
 
-(defn- content-canvas
-  ^BrowserCanvas [^Document doc, ^StreamDocumentSource doc-source, width]
-  (let [window-size (Dimension. width 1)
-        da          (dom-analyzer doc doc-source window-size)
-        canvas      (doto (BrowserCanvas. (.getRoot da) da (.getURL doc-source))
-                      (.setAutoMediaUpdate false)
-                      (.setAutoSizeUpdate true))]
-    (doto (.getConfig canvas)
-      (.setClipViewport false)
-      (.setLoadImages true)
-      (.setLoadBackgroundImages true))
-    (doto canvas
-      (.createLayout window-size))))
-
 (defn- render-to-png!
   [^String html, ^ByteArrayOutputStream os, width]
   (register-fonts-if-needed!)
-  (with-open [is (ByteArrayInputStream. (.getBytes html StandardCharsets/UTF_8))]
-    (let [doc-source     (StreamDocumentSource. is nil "text/html; charset=utf-8")
-          doc            (.parse (DefaultDOMSource. doc-source))
-          content-canvas (content-canvas doc doc-source width)]
-      (write-image! (.getImage content-canvas) "png" os))))
+  (with-open [is         (ByteArrayInputStream. (.getBytes html StandardCharsets/UTF_8))
+              doc-source (StreamDocumentSource. is nil "text/html; charset=utf-8")]
+    ;; todo: get rid of this hardcoded 1200. it is passed down from metabase.pulse.render/card-width = 400
+    (let [dimension       (Dimension. width 1)
+          doc             (.parse (DefaultDOMSource. doc-source))
+          da              (dom-analyzer doc doc-source dimension)
+          graphics-engine (proxy [GraphicsEngine] [(.getRoot da) da (.getURL doc-source)]
+                            (setupGraphics [^Graphics2D g]
+                              (doto g
+                                (.setRenderingHint RenderingHints/KEY_RENDERING
+                                                   RenderingHints/VALUE_RENDER_QUALITY)
+                                (.setRenderingHint RenderingHints/KEY_ALPHA_INTERPOLATION
+                                                   RenderingHints/VALUE_ALPHA_INTERPOLATION_QUALITY)
+                                (.setRenderingHint RenderingHints/KEY_TEXT_ANTIALIASING
+                                                   RenderingHints/VALUE_TEXT_ANTIALIAS_GASP)
+                                (.setRenderingHint RenderingHints/KEY_FRACTIONALMETRICS
+                                                   RenderingHints/VALUE_FRACTIONALMETRICS_ON))))]
+      (.createLayout graphics-engine dimension)
+      (write-image! (.getImage graphics-engine) "png" os))))
 
 (s/defn render-html-to-png :- bytes
   "Render the Hiccup HTML `content` of a Pulse to a PNG image, returning a byte array."

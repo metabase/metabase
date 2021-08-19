@@ -14,7 +14,7 @@
    :port       (ldap.test/get-ldap-port)
    :bind-dn    "cn=Directory Manager"
    :password   "password"
-   :security   "none"
+   :security   :none
    :user-base  "dc=metabase,dc=com"
    :group-base "dc=metabase,dc=com"})
 

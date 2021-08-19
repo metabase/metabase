@@ -192,13 +192,15 @@
      :row_count       (:row_count result)
      :col_count       (count (:cols (:data result)))}))
 
+(def ^:private preview-card-width 400)
+
 (api/defendpoint GET "/preview_card_png/:id"
   "Get PNG rendering of a Card with `id`."
   [id]
   (let [card   (api/read-check Card id)
         result (pulse-card-query-results card)
         ba     (binding [render/*include-title* true]
-                 (render/render-pulse-card-to-png (p/defaulted-timezone card) card result))]
+                 (render/render-pulse-card-to-png (p/defaulted-timezone card) card result preview-card-width))]
     {:status 200, :headers {"Content-Type" "image/png"}, :body (ByteArrayInputStream. ba)}))
 
 (api/defendpoint POST "/test"

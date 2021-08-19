@@ -106,14 +106,14 @@ function TableIcon() {
 
 function CollectionIcon({ item }) {
   const iconProps = { ...item.getIcon() };
-  const isRegular = PLUGIN_COLLECTIONS.isRegularCollection(item);
+  const isRegular = PLUGIN_COLLECTIONS.isRegularCollection(item.collection);
   if (isRegular) {
     iconProps.size = DEFAULT_ICON_SIZE;
   } else {
     iconProps.width = 20;
     iconProps.height = 24;
   }
-  return <Icon {...iconProps} />;
+  return <Icon {...iconProps} tooltip={null} />;
 }
 
 const ModelIconComponentMap = {
@@ -215,13 +215,21 @@ function contextText(context) {
   });
 }
 
+function getCollectionInfoText(collection) {
+  if (PLUGIN_COLLECTIONS.isRegularCollection(collection)) {
+    return t`Collection`;
+  }
+  const level = PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[collection.authority_level];
+  return `${level.name} ${t`Collection`}`;
+}
+
 function InfoText({ result }) {
   const collection = result.getCollection();
   switch (result.model) {
     case "card":
       return jt`Saved question in ${formatCollection(collection)}`;
     case "collection":
-      return t`Collection`;
+      return getCollectionInfoText(result.collection);
     case "database":
       return t`Database`;
     case "table":

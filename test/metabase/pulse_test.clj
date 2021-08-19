@@ -136,7 +136,7 @@
 
 (defn- produces-bytes? [{:keys [rendered-info]}]
   (when rendered-info
-    (pos? (alength (or (render/png-from-render-info rendered-info)
+    (pos? (alength (or (render/png-from-render-info rendered-info 500)
                        (byte-array 0))))))
 
 (defn- email-body? [{message-type :type, ^String content :content}]

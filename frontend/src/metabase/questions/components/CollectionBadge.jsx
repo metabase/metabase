@@ -12,6 +12,15 @@ const propTypes = {
   className: PropTypes.string,
 };
 
+const IRREGULAR_ICON_WIDTH = 14;
+const IRREGULAR_ICON_PROPS = {
+  width: IRREGULAR_ICON_WIDTH,
+  height: 16,
+
+  // Workaround: if a CollectionBadge icon has a tooltip, the default offset x is incorrect
+  targetOffsetX: IRREGULAR_ICON_WIDTH,
+};
+
 function CollectionBadge({ collection, analyticsContext, className }) {
   if (!collection) {
     return null;
@@ -19,7 +28,7 @@ function CollectionBadge({ collection, analyticsContext, className }) {
   const isRegular = PLUGIN_COLLECTIONS.isRegularCollection(collection);
   const icon = {
     ...collection.getIcon(),
-    ...(isRegular ? { size: 12 } : { width: 14, height: 16 }),
+    ...(isRegular ? { size: 12 } : IRREGULAR_ICON_PROPS),
   };
   return (
     <Badge

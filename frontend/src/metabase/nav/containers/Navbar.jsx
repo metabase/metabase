@@ -216,7 +216,7 @@ export default class Navbar extends Component {
           </Link>
         </Flex>
         <Flex className="flex-full z1" pr={2} align="center">
-          <Box w={1} style={{ maxWidth: 500 }}>
+          <Box width={1} style={{ maxWidth: 500 }}>
             <SearchBar
               location={this.props.location}
               onChangeLocation={this.props.onChangeLocation}
