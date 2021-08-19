@@ -10,20 +10,33 @@ const propTypes = {
   type: PropTypes.oneOf(["alert", "pulse"]).isRequired,
   user: PropTypes.object.isRequired,
   onUnsubscribe: PropTypes.func.isRequired,
+  onArchive: PropTypes.func.isRequired,
   onClose: PropTypes.func.isRequired,
 };
 
-const UnsubscribeModal = ({ item, type, user, onUnsubscribe, onClose }) => {
+const UnsubscribeModal = ({
+  item,
+  type,
+  user,
+  onUnsubscribe,
+  onArchive,
+  onClose,
+}) => {
   const [error, setError] = useState();
 
   const handleArchiveClick = useCallback(async () => {
     try {
       await onUnsubscribe(item, user);
-      onClose();
+
+      if (isCreator(item, user)) {
+        onArchive(item, type);
+      } else {
+        onClose();
+      }
     } catch (error) {
       setError(error);
     }
-  }, [item, user, onUnsubscribe, onClose]);
+  }, [item, type, user, onUnsubscribe, onArchive, onClose]);
 
   return (
     <ModalContent
@@ -48,6 +61,10 @@ const UnsubscribeModal = ({ item, type, user, onUnsubscribe, onClose }) => {
 };
 
 UnsubscribeModal.propTypes = propTypes;
+
+const isCreator = (item, user) => {
+  return item.creator.id === user.id;
+};
 
 const getUnsubscribeMessage = type => {
   switch (type) {

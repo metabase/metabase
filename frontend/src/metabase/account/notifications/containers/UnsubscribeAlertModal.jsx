@@ -2,6 +2,7 @@ import { connect } from "react-redux";
 import _ from "underscore";
 import Alerts from "metabase/entities/alerts";
 import { getUser, getUserId } from "metabase/selectors/user";
+import { navigateToArchive } from "../actions";
 import { getAlert } from "../selectors";
 import UnsubscribeModal from "../components/UnsubscribeModal";
 
@@ -13,6 +14,7 @@ const mapStateToProps = (state, props) => ({
 
 const mapDispatchToProps = {
   onUnsubscribe: Alerts.actions.unsubscribe,
+  onArchive: navigateToArchive,
 };
 
 export default _.compose(
