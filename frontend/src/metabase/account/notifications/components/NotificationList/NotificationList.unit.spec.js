@@ -2,28 +2,9 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import NotificationList from "./NotificationList";
 
-const getPulse = ({
-  creatorId = 1,
-  channel_type = "email",
-  schedule_type = "hourly",
-} = {}) => ({
+const getPulse = () => ({
   name: "Pulse",
-  creator: {
-    id: creatorId,
-    common_name: "John Doe",
-  },
-  channels: [
-    {
-      channel_type,
-      schedule_type,
-      schedule_hour: 8,
-      schedule_day: "mon",
-      schedule_frame: "first",
-      details: {
-        channel: "@channel",
-      },
-    },
-  ],
+  channels: [],
   created_at: "2021-05-08T02:02:07.441Z",
 });
 
