@@ -1,7 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import NotificationCard from "./NotificationCard";
+import NotificationCard from "../NotificationCard";
 import {
   NotificationButton,
   NotificationHeader,
@@ -15,10 +15,10 @@ const propTypes = {
   items: PropTypes.array.isRequired,
   user: PropTypes.object,
   children: PropTypes.node,
-  onShowHelp: PropTypes.func,
+  onHelp: PropTypes.func,
 };
 
-const NotificationList = ({ items, user, children, onShowHelp }) => {
+const NotificationList = ({ items, user, children, onHelp }) => {
   if (!items.length) {
     return <NotificationEmptyState />;
   }
@@ -27,7 +27,7 @@ const NotificationList = ({ items, user, children, onShowHelp }) => {
     <div>
       <NotificationHeader>
         <NotificationLabel>{t`You receive or created these`}</NotificationLabel>
-        <NotificationButton onClick={onShowHelp}>
+        <NotificationButton onClick={onHelp}>
           {t`Not seeing one here?`}
         </NotificationButton>
       </NotificationHeader>

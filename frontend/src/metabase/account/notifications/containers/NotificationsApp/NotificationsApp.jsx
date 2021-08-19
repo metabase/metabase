@@ -4,8 +4,8 @@ import _ from "underscore";
 import Alerts from "metabase/entities/alerts";
 import Pulses from "metabase/entities/pulses";
 import { getUser, getUserId } from "metabase/selectors/user";
-import { getNotifications } from "../selectors";
-import NotificationList from "../components/NotificationList";
+import { getNotifications } from "../../selectors";
+import NotificationList from "../../components/NotificationList";
 
 const mapStateToProps = (state, props) => ({
   user: getUser(state),
@@ -13,7 +13,7 @@ const mapStateToProps = (state, props) => ({
 });
 
 const mapDispatchToProps = {
-  onShowHelp: () => push("/account/notifications/help"),
+  onHelp: () => push("/account/notifications/help"),
 };
 
 export default _.compose(

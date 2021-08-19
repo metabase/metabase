@@ -1,6 +1,6 @@
 import { connect } from "react-redux";
-import { getAdminEmail } from "../selectors";
-import HelpModal from "../components/HelpModal";
+import { getAdminEmail } from "../../selectors";
+import HelpModal from "../../components/HelpModal";
 
 const mapStateToProps = () => ({
   adminEmail: getAdminEmail(),
