@@ -3,7 +3,7 @@ import _ from "underscore";
 import Alerts from "metabase/entities/alerts";
 import { getUserId } from "metabase/selectors/user";
 import { getAlert } from "../selectors";
-import DeleteModal from "../components/DeleteModal";
+import ArchieveModal from "../components/ArchieveModal";
 
 const mapStateToProps = (state, props) => ({
   item: getAlert(props),
@@ -15,4 +15,4 @@ export default _.compose(
     query: state => ({ user_id: getUserId(state) }),
   }),
   connect(mapStateToProps),
-)(DeleteModal);
+)(ArchieveModal);

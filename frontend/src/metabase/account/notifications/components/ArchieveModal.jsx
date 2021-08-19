@@ -11,13 +11,13 @@ const propTypes = {
   onClose: PropTypes.func,
 };
 
-const DeleteModal = ({ item, type, onClose }) => {
+const ArchieveModal = ({ item, type, onClose }) => {
   return (
     <ModalContent
       title={getTitleMessage(type)}
       footer={[
         <Button key="cancel" onClick={onClose}>
-          {t`Keep it around`}
+          {t`I changed my mind`}
         </Button>,
         <Button key="unsubscribe" warning onClick={onClose}>
           {getSubmitMessage(type)}
@@ -33,7 +33,7 @@ const DeleteModal = ({ item, type, onClose }) => {
   );
 };
 
-DeleteModal.propTypes = propTypes;
+ArchieveModal.propTypes = propTypes;
 
 const getTitleMessage = type => {
   switch (type) {
@@ -95,4 +95,4 @@ const getRecipientsCount = (item, channelType) => {
     .reduce((total, channel) => total + channel.recipients.length, 0);
 };
 
-export default DeleteModal;
+export default ArchieveModal;

@@ -1,20 +1,23 @@
-import { createEntity } from "metabase/lib/entities";
-import { AlertApi } from "metabase/services";
-
-export const UNSUBSCRIBE = "metabase/entities/alerts/UNSUBSCRIBE";
+import { createEntity, undo } from "metabase/lib/entities";
 
 const Alerts = createEntity({
   name: "alerts",
   path: "/api/alert",
 
-  actionTypes: {
-    UNSUBSCRIBE,
-  },
-
   objectActions: {
-    unsubscribe: async ({ id }) => {
-      await AlertApi.unsubscribe({ id });
-      return { type: UNSUBSCRIBE };
+    unsubscribe: ({ id, channels }, user, opts) => {
+      const newChannels = channels.map(channel => ({
+        ...channel,
+        recipients: channel.recipients.filter(
+          recipient => recipient.id !== user.id,
+        ),
+      }));
+
+      return Alerts.actions.update(
+        { id },
+        { channels: newChannels },
+        undo(opts, "alert", "unsubscribed"),
+      );
     },
   },
 });

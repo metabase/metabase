@@ -8,15 +8,9 @@ import {
   getCollectionType,
 } from "metabase/entities/collections";
 
-export const UNSUBSCRIBE = "metabase/entities/pulses/UNSUBSCRIBE";
-
 const Pulses = createEntity({
   name: "pulses",
   path: "/api/pulse",
-
-  actionTypes: {
-    UNSUBSCRIBE,
-  },
 
   objectActions: {
     setArchived: ({ id }, archived, opts) => {
@@ -46,9 +40,19 @@ const Pulses = createEntity({
       );
     },
 
-    unsubscribe: async ({ id }) => {
-      await PulseApi.unsubscribe({ id });
-      return { type: UNSUBSCRIBE };
+    unsubscribe: ({ id, channels }, user, opts) => {
+      const newChannels = channels.map(channel => ({
+        ...channel,
+        recipients: channel.recipients.filter(
+          recipient => recipient.id !== user.id,
+        ),
+      }));
+
+      return Pulses.actions.update(
+        { id },
+        { channels: newChannels },
+        undo(opts, "pulse", "unsubscribed"),
+      );
     },
   },
 
