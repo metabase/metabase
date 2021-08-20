@@ -44,8 +44,15 @@
                     {:parameters parameters}))))
 
 (defn- pre-insert [notification]
-  (let [defaults     {:parameters []}
-        notification (apply merge defaults (for [[k v] notification :when (some? v)] {k v}))]
+  (let [defaults      {:parameters []}
+        dashboard-id  (:dashboard_id notification)
+        collection-id (if dashboard-id
+                        (db/select-one-field :collection_id 'Dashboard, :id dashboard-id)
+                        (:collection_id notification))
+        notification  (->> (for [[k v] notification
+                                 :when (some? v)]
+                             {k v})
+                           (apply merge defaults {:collection_id collection-id}))]
     (u/prog1 notification
       (assert-valid-parameters notification)
       (collection/check-collection-namespace Pulse (:collection_id notification)))))
