@@ -32,11 +32,13 @@
 
 (api/defendpoint GET "/"
   "Fetch all Pulses"
-  [archived dashboard_id]
+  [archived dashboard_id user_id]
   {archived     (s/maybe su/BooleanString)
-   dashboard_id (s/maybe su/IntGreaterThanZero)}
+   dashboard_id (s/maybe su/IntGreaterThanZero)
+   user_id      (s/maybe su/IntGreaterThanZero)}
   (as-> (pulse/retrieve-pulses {:archived?    (Boolean/parseBoolean archived)
-                                :dashboard-id dashboard_id}) <>
+                                :dashboard-id dashboard_id
+                                :user-id      user_id}) <>
     (filter mi/can-read? <>)
     (hydrate <> :can_write)))
 
