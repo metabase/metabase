@@ -345,6 +345,16 @@
 ;; `metabase.models.permissions.graph.data` namespace or something and move the collections graph from
 ;; `metabase.models.collection` to `metabase.models.permissions.graph.collection` (?)
 
+(def ^:private IndexPair
+  (s/named
+    [(s/one (s/maybe su/IntGreaterThanZero) :graph-id) (s/one (s/maybe su/IntGreaterThanZero) :db-id)]
+    "Valid index pair for indexing into a graph"))
+
+(def ^:private IndexPairList
+  (s/named
+    [IndexPair]
+    "Valid list of index pair for indexing into a graph for multiple indices"))
+
 (def ^:private TablePermissionsGraph
   (s/named
     (s/cond-pre (s/enum :none :all)
@@ -445,18 +455,22 @@
          db-ids      (db/select-ids 'Database)]
      {:revision (perms-revision/latest-id)
       :groups   (permissions->groups permissions db-ids)}))
-  ([index-pairs]
+  ([index-pairs :- IndexPairList]
    (let [group-ids        (vec (map first index-pairs))
-         db-ids           (vec (map second index-pairs))
-         permissions-args (if group-ids
-                            [[Permissions :group_id :object] :group_id [:in group-ids]]
-                            [[Permissions :group_id :object]])
+         permissions-args (if (some nil? group-ids)
+                            [[Permissions :group_id :object]]
+                            [[Permissions :group_id :object] :group_id [:in group-ids]])
          permissions      (apply db/select permissions-args)
-         current-groups   (permissions->groups permissions db-ids)]
+         db-ids           (vec (map second index-pairs))
+         db-ids           (if (some nil? db-ids)
+                            (db/select-ids 'Database)
+                            db-ids)]
      ;; Post-application of filters is needed because otherwise
      ;; we return an overall disjunction of the DB/group, not conjunction of the index pairs
-     {:revision (perms-revision/latest-id)
-      :groups   (filter-graph current-groups index-pairs)})))
+     (filter-graph
+       {:revision (perms-revision/latest-id)
+        :groups   (permissions->groups permissions db-ids)}
+       index-pairs))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  GRAPH UPDATE                                                  |
@@ -716,14 +730,22 @@
    "\n" (trs "FROM:") (u/pprint-to-str 'magenta old)
    "\n" (trs "TO:")   (u/pprint-to-str 'blue    new)))
 
-(s/defn fill-in-index-pair-wildcards
-  "Index pairs for indexing into group graph dictionaries have wildcards. Fill them in"
-  some shit)
-
 (s/defn filter-graph
   "Filter the groups of the graph with respect to the group id and/or the db id"
-  [in-graph index-pairs]
+  [in-graph :- StrictPermissionsGraph
+   index-pairs :- IndexPairList]
   (let [in-graph-groups (:groups in-graph)
+        group-ids       (keys in-graph-groups)
+        index-pairs     (mapcat (fn [[fst snd]]
+                                  (if (nil? fst)
+                                    (vec (for [group-id group-ids] [group-id snd]))
+                                    [[fst snd]]))
+                                index-pairs)
+        index-pairs     (mapcat (fn [[fst snd]]
+                                  (if (nil? snd)
+                                    (vec (for [db-id (keys (in-graph-groups fst))] [fst db-id]))
+                                    [[fst snd]]))
+                                index-pairs)
         members         (vec (for [index-pair index-pairs]
                                (assoc-in {} index-pair (get-in in-graph-groups index-pair))))
         filtered-res    (apply m/deep-merge members)]
@@ -737,12 +759,12 @@
    returns the newly created `PermissionsRevision` entry.
 
    index-pairs is a list of [group-id, db-id] pairs to allow mutations on.
-   passing in `[]` is allowing all mutations. otherwise no wildcards."
+   passing in `[]` is allowing all mutations. nil is a wildcard."
   ([new-graph :- StrictPermissionsGraph]
    (update-graph! new-graph []))
 
   ([new-graph    :- StrictPermissionsGraph
-    index-pairs  :- [(s/maybe [(s/maybe su/IntGreaterThanZero) (s/maybe su/IntGreaterThanZero)])]]
+    index-pairs  :- IndexPairList]
    (let [old-graph    (if (seq? index-pairs)
                         (graph index-pairs)
                         (graph))
