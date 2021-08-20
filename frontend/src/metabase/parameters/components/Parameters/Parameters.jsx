@@ -5,7 +5,7 @@ import querystring from "querystring";
 
 import ParametersList from "metabase/parameters/components/ParametersList";
 import { syncQueryParamsWithURL } from "./syncQueryParamsWithURL";
-import { collateParametersWithValues } from "metabase/meta/Parameter";
+import { getParameterValuesBySlug } from "metabase/meta/Parameter";
 import { getMetadata } from "metabase/selectors/metadata";
 
 @connect(state => ({ metadata: getMetadata(state) }))
@@ -25,17 +25,12 @@ export default class Parameters extends Component {
 
     if (this.props.syncQueryString) {
       // sync parameters to URL query string
-      const queryParams = {};
-      for (const parameter of collateParametersWithValues(
+      const parameterValuesBySlug = getParameterValuesBySlug(
         parameters,
         parameterValues,
-      )) {
-        if (parameter.value) {
-          queryParams[parameter.slug] = parameter.value;
-        }
-      }
+      );
 
-      let search = querystring.stringify(queryParams);
+      let search = querystring.stringify(parameterValuesBySlug);
       search = search ? "?" + search : "";
 
       if (search !== window.location.search) {
