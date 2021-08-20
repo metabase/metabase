@@ -38,7 +38,7 @@ export function PermissionsTable({
   colorScheme,
   emptyState = null,
 }) {
-  const [confirmations, setConfirmations] = useState(null);
+  const [confirmations, setConfirmations] = useState([]);
   const confirmActionRef = useRef(null);
 
   const handleChange = (value, toggleState, entity, permission) => {
@@ -56,17 +56,15 @@ export function PermissionsTable({
   };
 
   const handleConfirm = () => {
+    setConfirmations(prev => prev.slice(1));
     if (confirmations.length === 1) {
       confirmActionRef.current();
-      setConfirmations(null);
       confirmActionRef.current = null;
-    } else {
-      setConfirmations(prev => prev.slice(1));
     }
   };
 
   const handleCancelConfirm = () => {
-    setConfirmations(null);
+    setConfirmations([]);
     confirmActionRef.current = null;
   };
 
