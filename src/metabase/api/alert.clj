@@ -28,6 +28,12 @@
     (filter mi/can-read? <>)
     (hydrate <> :can_write)))
 
+(api/defendpoint GET "/:id"
+  "Fetch an alert by ID"
+  [id]
+  (-> (api/read-check (pulse/retrieve-notification id))
+      (hydrate :can_write)))
+
 (api/defendpoint GET "/question/:id"
   "Fetch all questions for the given question (`Card`) id"
   [id]
