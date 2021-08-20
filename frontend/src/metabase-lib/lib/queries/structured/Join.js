@@ -211,7 +211,6 @@ export default class Join extends MBQLObjectClause {
     );
   }
 
-  // CONDITION
   // CONDITIONS
 
   isSingleConditionJoin() {
