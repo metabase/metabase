@@ -32,7 +32,7 @@ describe("user > settings", () => {
   });
 
   it("should show user details with disabled submit button", () => {
-    cy.visit("/user/edit_current");
+    cy.visit("/account/profile");
     cy.findByText("Account settings");
     cy.findByDisplayValue(first_name);
     cy.findByDisplayValue(last_name);
@@ -43,7 +43,7 @@ describe("user > settings", () => {
   it("should update the user without fetching memberships", () => {
     cy.server();
     cy.route("GET", "/api/permissions/membership").as("membership");
-    cy.visit("/user/edit_current");
+    cy.visit("/account/profile");
     cy.findByDisplayValue(first_name)
       .click()
       .clear()
@@ -62,14 +62,14 @@ describe("user > settings", () => {
     cy.server();
     cy.route("GET", "/api/user/current").as("getUser");
 
-    cy.visit("/user/edit_current");
+    cy.visit("/account/profile");
     cy.wait("@getUser");
     cy.findByText("Password").should("exist");
   });
 
-  it.skip("it should redirect to the login page when user is signed out but tries to visit `/user/edit_current` (metabase#15471)", () => {
+  it.skip("it should redirect to the login page when user is signed out but tries to visit `/account/profile` (metabase#15471)", () => {
     cy.signOut();
-    cy.visit("/user/edit_current");
+    cy.visit("/account/profile");
     cy.url().should("include", "/auth/login");
     cy.findByText("Sign in to Metabase");
   });
@@ -85,7 +85,7 @@ describe("user > settings", () => {
         }),
       ).as("getUser");
 
-      cy.visit("/user/edit_current");
+      cy.visit("/account/profile");
       cy.wait("@getUser");
     });
 
@@ -105,7 +105,7 @@ describe("user > settings", () => {
         }),
       ).as("getUser");
 
-      cy.visit("/user/edit_current");
+      cy.visit("/account/profile");
       cy.wait("@getUser");
     });
 

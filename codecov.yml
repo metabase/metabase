@@ -19,17 +19,7 @@ coverage:
         flags:
           - front-end
 
-    patch:
-      back-end:
-        # Changes must have at least 75% test coverage (by line)
-        target: 75%
-        flags:
-          - back-end
-
-      front-end:
-        target: 35%
-        flags:
-          - front-end
+    patch: off
 
 flags:
   back-end:

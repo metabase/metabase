@@ -16,13 +16,16 @@ export default function FieldsPicker({
   onSelectAll,
   onSelectNone,
   onToggleDimension,
+  triggerElement = t`Columns`,
+  ...props
 }) {
   const selected = new Set(selectedDimensions.map(d => d.key()));
   return (
     <PopoverWithTrigger
-      triggerElement={t`Columns`}
+      triggerElement={triggerElement}
       triggerClasses={className}
       sizeToFit
+      {...props}
     >
       <ul className="pt1">
         {(onSelectAll || onSelectNone) && (

@@ -5,15 +5,13 @@ import promise from "redux-promise";
 import { thunkWithDispatchAction } from "metabase/store";
 import * as entities from "metabase/redux/entities";
 
-export function getStore(reducers = {}) {
+export function getStore(reducers = {}, initialState = {}) {
   const reducer = combineReducers({
     entities: entities.reducer,
     requests: (state, action) =>
       requestsReducer(entities.requestsReducer(state, action), action),
     ...reducers,
   });
-
-  const initialState = {};
 
   return createStore(
     reducer,

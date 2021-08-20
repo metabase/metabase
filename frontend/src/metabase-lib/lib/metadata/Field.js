@@ -322,7 +322,7 @@ export default class Field extends Base {
   /**
    * Returns true if this field can be searched, e.x. in filter or parameter widgets
    */
-  isSearchable(): boolean {
+  isSearchable() {
     // TODO: ...?
     return this.isString();
   }

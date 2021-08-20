@@ -3,6 +3,7 @@
             [clojure.tools.logging :as log]
             [java-time :as t]
             [metabase.config :as config]
+            [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.plugins.classloader :as classloader]
@@ -197,13 +198,13 @@
 (defsetting query-caching-max-ttl
   (deferred-tru "The absolute maximum time to keep any cached query results, in seconds.")
   :type    :double
-  :default (* 60 60 24 100)) ; 100 days
+  :default (* 60.0 60.0 24.0 100.0)) ; 100 days
 
 ;; TODO -- this isn't really a TTL at all. Consider renaming to something like `-min-duration`
 (defsetting query-caching-min-ttl
   (deferred-tru "Metabase will cache all saved questions with an average query execution time longer than this many seconds:")
   :type    :double
-  :default 60)
+  :default 60.0)
 
 (defsetting query-caching-ttl-ratio
   (str (deferred-tru "To determine how long each saved question''s cached result should stick around, we take the query''s average execution time and multiply that by whatever you input here.")
@@ -252,8 +253,13 @@
   :type       :boolean
   :default    true
   :getter     (fn []
-                (or (setting/get-boolean :enable-password-login)
-                    (not (sso-configured?)))))
+                ;; if `:enable-password-login` has an *explict* (non-default) value, and SSO is configured, use that;
+                ;; otherwise this always returns true.
+                (let [v (setting/get-boolean :enable-password-login)]
+                  (if (and (some? v)
+                           (sso-configured?))
+                    v
+                    true))))
 
 (defsetting breakout-bins-num
   (deferred-tru "When using the default binning strategy and a number of bins is not provided, this number will be used as the default.")
@@ -353,7 +359,7 @@
   "Current report timezone abbreviation"
   :visibility :public
   :setter     :none
-  :getter     (fn [] (short-timezone-name (setting/get :report-timezone))))
+  :getter     (fn [] (short-timezone-name (driver/report-timezone))))
 
 (defsetting version
   "Metabase's version info"
@@ -390,7 +396,7 @@
   It won''t affect SQL queries.")
   :visibility :public
   :type       :keyword
-  :default    "sunday")
+  :default    :sunday)
 
 (defsetting ssh-heartbeat-interval-sec
   (deferred-tru "Controls how often the heartbeats are sent when an SSH tunnel is established (in seconds).")

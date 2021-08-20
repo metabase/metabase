@@ -136,7 +136,7 @@ export function getActivePulseParameters(pulse, parameters) {
 
       return {
         ...parameter,
-        value: hasParameterValue(pulseParameter)
+        value: hasParameterValue(pulseParameter?.value)
           ? pulseParameter.value
           : parameter.default,
       };

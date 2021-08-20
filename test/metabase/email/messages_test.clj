@@ -21,31 +21,28 @@
 
 (deftest password-reset-email
   (testing "password reset email can be sent successfully"
-    (email-test/do-with-fake-inbox
-     (fn []
-       (messages/send-password-reset-email! "test@test.com" false "test.domain.com" "http://localhost/some/url" true)
-       (is (= [{:from    "notifications@metabase.com",
-                :to      ["test@test.com"],
-                :subject "[Metabase] Password Reset Request",
-                :body    [{:type "text/html; charset=utf-8"}]}]
-              (-> (@email-test/inbox "test@test.com")
-                  (update-in [0 :body 0] dissoc :content)))))))
+    (email-test/with-fake-inbox
+      (messages/send-password-reset-email! "test@test.com" false "test.domain.com" "http://localhost/some/url" true)
+      (is (= [{:from    "notifications@metabase.com",
+               :to      ["test@test.com"],
+               :subject "[Metabase] Password Reset Request",
+               :body    [{:type "text/html; charset=utf-8"}]}]
+             (-> (@email-test/inbox "test@test.com")
+                 (update-in [0 :body 0] dissoc :content))))))
   ;; Email contents contain randomized elements, so we only check for the inclusion of a single word to verify
   ;; that the contents changed in the tests below.
   (testing "password reset email tells user if they should log in with Google Sign-In"
-    (email-test/do-with-fake-inbox
-     (fn []
-       (messages/send-password-reset-email! "test@test.com" true "test.domain.com" "http://localhost/some/url" true)
-       (is (-> (@email-test/inbox "test@test.com")
-               (get-in [0 :body 0 :content])
-               (str/includes? "Google"))))))
+    (email-test/with-fake-inbox
+      (messages/send-password-reset-email! "test@test.com" true "test.domain.com" "http://localhost/some/url" true)
+      (is (-> (@email-test/inbox "test@test.com")
+              (get-in [0 :body 0 :content])
+              (str/includes? "Google")))))
   (testing "password reset email tells user if their account is inactive"
-    (email-test/do-with-fake-inbox
-     (fn []
-       (messages/send-password-reset-email! "test@test.com" false "test.domain.com" "http://localhost/some/url" false)
-       (is (-> (@email-test/inbox "test@test.com")
-               (get-in [0 :body 0 :content])
-               (str/includes? "deactivated")))))))
+    (email-test/with-fake-inbox
+      (messages/send-password-reset-email! "test@test.com" false "test.domain.com" "http://localhost/some/url" false)
+      (is (-> (@email-test/inbox "test@test.com")
+              (get-in [0 :body 0 :content])
+              (str/includes? "deactivated"))))))
 
 (defmacro ^:private with-create-temp-failure [& body]
   `(with-redefs [messages/create-temp-file (fn [~'_]

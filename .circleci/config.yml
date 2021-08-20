@@ -561,6 +561,9 @@ jobs:
             else
                echo '' > .CACHE-PREFIX
             fi
+      - run-yarn-command:
+          command-name: Create static visualization js bundle
+          command: build-static-viz
       - persist_to_workspace:
           root: /home/circleci/
           paths:
@@ -1025,6 +1028,12 @@ workflows:
           driver: bigquery
 
       - test-driver:
+          name: be-tests-bigquery-cloud-sdk-ee
+          requires:
+            - be-tests-ee
+          driver: bigquery-cloud-sdk
+
+      - test-driver:
           name: be-tests-druid-ee
           requires:
             - be-tests-ee
@@ -1249,7 +1258,7 @@ workflows:
           matrix:
             parameters:
               edition: ["ee", "oss"]
-              folder: ["admin", "binning", "collections", "dashboard", "dashboard-filters", "onboarding", "native", "native-filters", "question", "sharing", "smoketest", "visualizations"]
+              folder: ["admin", "binning", "collections", "dashboard", "dashboard-filters", "moderation", "native", "native-filters", "onboarding", "question", "sharing", "smoketest", "visualizations"]
           name: e2e-tests-<< matrix.folder >>-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>

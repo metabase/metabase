@@ -71,7 +71,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       "13927",
       `SELECT PEOPLE.STATE, PEOPLE.CITY from PEOPLE;`,
     ).then(({ body: { id: QUESTION_ID } }) => {
-      cy.createDashboard("13927D").then(({ body: { id: DASHBOARD_ID } }) => {
+      cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
         cy.log("Add question to the dashboard");
 
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
@@ -407,7 +407,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       },
       display: "bar",
     }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.createDashboard("13785D").then(({ body: { id: DASHBOARD_ID } }) => {
+      cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
         cy.log("Add filter to the dashboard");
 
         cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
@@ -531,7 +531,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       name: "14919",
       query: { "source-table": PRODUCTS_ID },
     }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.createDashboard("14919D").then(({ body: { id: DASHBOARD_ID } }) => {
+      cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
         // Add previously added question to the dashboard
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
           cardId: QUESTION_ID,
@@ -605,7 +605,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         ],
       },
     }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.createDashboard("15331D").then(({ body: { id: DASHBOARD_ID } }) => {
+      cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
         // Add filter to the dashboard
         cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
           parameters: [
@@ -687,7 +687,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
           "graph.metrics": ["VALUE"],
         },
       }).then(({ body: { id: QUESTION2_ID } }) => {
-        cy.createDashboard("15612D").then(({ body: { id: DASHBOARD_ID } }) => {
+        cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
           // Add the first question to the dashboard
           cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
             cardId: QUESTION1_ID,
@@ -752,7 +752,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         ],
       },
     }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.createDashboard("13289D").then(({ body: { id: DASHBOARD_ID } }) => {
+      cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
         // Add question to the dashboard
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
           cardId: QUESTION_ID,
@@ -919,45 +919,47 @@ function createDashboard(
   { dashboardName = "dashboard", questionId, visualization_settings },
   callback,
 ) {
-  cy.createDashboard(dashboardName).then(({ body: { id: dashboardId } }) => {
-    cy.request("PUT", `/api/dashboard/${dashboardId}`, {
-      parameters: [
-        {
-          name: "My Param",
-          slug: "my_param",
-          id: "e8f79be9",
-          type: "category",
-        },
-      ],
-    });
-
-    cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-      cardId: questionId,
-    }).then(({ body: { id: dashCardId } }) => {
-      cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
-        cards: [
+  cy.createDashboard({ name: dashboardName }).then(
+    ({ body: { id: dashboardId } }) => {
+      cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+        parameters: [
           {
-            id: dashCardId,
-            card_id: questionId,
-            row: 0,
-            col: 0,
-            sizeX: 6,
-            sizeY: 6,
-            parameter_mappings: [
-              {
-                parameter_id: "e8f79be9",
-                card_id: questionId,
-                target: ["dimension", ["field", 22, { "source-field": 11 }]],
-              },
-            ],
-            visualization_settings,
+            name: "My Param",
+            slug: "my_param",
+            id: "e8f79be9",
+            type: "category",
           },
         ],
       });
 
-      callback(dashboardId);
-    });
-  });
+      cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
+        cardId: questionId,
+      }).then(({ body: { id: dashCardId } }) => {
+        cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
+          cards: [
+            {
+              id: dashCardId,
+              card_id: questionId,
+              row: 0,
+              col: 0,
+              sizeX: 6,
+              sizeY: 6,
+              parameter_mappings: [
+                {
+                  parameter_id: "e8f79be9",
+                  card_id: questionId,
+                  target: ["dimension", ["field", 22, { "source-field": 11 }]],
+                },
+              ],
+              visualization_settings,
+            },
+          ],
+        });
+
+        callback(dashboardId);
+      });
+    },
+  );
 }
 
 function setParamValue(paramName, text) {
