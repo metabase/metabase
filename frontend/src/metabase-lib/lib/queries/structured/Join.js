@@ -276,6 +276,10 @@ export default class Join extends MBQLObjectClause {
     return this;
   }
 
+  _convertDimensionIntoMBQL(dimension: Dimension | ConcreteField) {
+    return dimension instanceof Dimension ? dimension.mbql() : dimension;
+  }
+
   // simplified "=" join condition helpers:
 
   // NOTE: parentDimension refers to the left-hand side of the join,
