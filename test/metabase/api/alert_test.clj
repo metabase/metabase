@@ -162,7 +162,25 @@
                (db/update! Pulse (u/the-id not-archived-alert) :name "Not Archived")
                (db/update! Pulse (u/the-id archived-alert)     :name "Archived", :archived true)
                (with-alerts-in-readable-collection [not-archived-alert archived-alert]
-                 (set (map :name ((user->client :rasta) :get 200 "alert?archived=true"))))))))))
+                 (set (map :name ((user->client :rasta) :get 200 "alert?archived=true")))))))))
+
+  (testing "fetch alerts by user ID -- should return alerts created by the user,
+           or alerts for which the user is a known recipient"
+    (with-alert-in-collection [_ _ creator-alert]
+      (with-alert-in-collection [_ _ recipient-alert]
+        (with-alert-in-collection [_ _ other-alert]
+          (with-alerts-in-readable-collection [creator-alert recipient-alert other-alert]
+            (db/update! Pulse (u/the-id creator-alert) :name "LuckyCreator" :creator_id (mt/user->id :lucky))
+            (db/update! Pulse (u/the-id recipient-alert) :name "LuckyRecipient")
+            (db/update! Pulse (u/the-id other-alert) :name "Other")
+            (mt/with-temp* [PulseChannel [pulse-channel {:pulse_id (u/the-id recipient-alert)}]
+                            PulseChannelRecipient [_ {:pulse_channel_id (u/the-id pulse-channel), :user_id (mt/user->id :lucky)}]]
+              (is (= #{"LuckyCreator" "LuckyRecipient"}
+                      (set (map :name ((user->client :rasta) :get 200 (str "alert?user_id=" (mt/user->id :lucky)))))))
+              (is (= #{"LuckyRecipient" "Other"}
+                      (set (map :name ((user->client :rasta) :get 200 (str "alert?user_id=" (mt/user->id :rasta)))))))
+              (is (= #{}
+                      (set (map :name ((user->client :rasta) :get 200 (str "alert?user_id=" (mt/user->id :trashbird))))))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               GET /api/alert/:id                                               |
