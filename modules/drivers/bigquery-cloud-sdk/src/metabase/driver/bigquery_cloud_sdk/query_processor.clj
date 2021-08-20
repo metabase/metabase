@@ -1,4 +1,4 @@
-(ns metabase.driver.bigquery.query-processor
+(ns metabase.driver.bigquery-cloud-sdk.query-processor
   (:require [buddy.core.codecs :as codecs]
             [buddy.core.hash :as hash]
             [clojure.string :as str]
@@ -25,27 +25,41 @@
             [metabase.util.i18n :refer [tru]]
             [schema.core :as s]
             [toucan.db :as db])
-  (:import [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
+  (:import [com.google.cloud.bigquery Field$Mode FieldValue]
+           [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            metabase.driver.common.parameters.FieldFilter
            metabase.util.honeysql_extensions.Identifier))
 
-;; TODO -- I think this only applied to Fields now -- see
-;; https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language. It definitely doesn't apply
-;; to Tables. Datasets can be passed as `dataset-id` or `project-id`.`dataset-id`.
-;; TODO -- Needs to change frontend too
-(defn- valid-bigquery-identifier?
-  "Is String `s` a valid BigQuery identifier? Identifiers are only allowed to contain letters, numbers, and underscores;
-  cannot start with a number; and can be at most 1054 characters long (30 for maximum lenght of project names and 1024 for dataset)."
+(defn- valid-project-identifier?
+  "Is String `s` a valid BigQuery project identifier (a.k.a. project-id)? Identifiers are only allowed to contain
+  letters, numbers, and underscores, cannot start with a number, and for project-id, can be at most 30 characters long."
   [s]
-  (boolean
-   (and (string? s)
-        (re-matches #"^[a-zA-Z_0-9\.\-]{1,1054}$" s))))
+  (boolean (or (nil? s)
+               (and (string? s)
+                 (re-matches #"^[a-zA-Z_0-9\.\-]{1,30}$" s)))))
 
-(def ^:private BigQueryIdentifierString
-  (s/pred valid-bigquery-identifier? "Valid BigQuery identifier"))
+(def ^:private ProjectIdentifierString
+  (s/pred valid-project-identifier? "Valid BigQuery project-id"))
 
-(s/defn ^:private dataset-name-for-current-query :- BigQueryIdentifierString
-  "Fetch the dataset name for the database associated with this query, needed because BigQuery requires you to qualify
+(defn- valid-dataset-identifier?
+  "Is String `s` a valid BigQuery dataset identifier (a.k.a. dataset-id)? Identifiers are only allowed to contain
+  letters, numbers, and underscores, cannot start with a number, and for dataset-id, can be at most 1024 characters
+  long."
+  [s]
+  (boolean (and (string? s)
+                (re-matches #"^[a-zA-Z_0-9\.\-]{1,1024}$" s))))
+
+(def ^:private DatasetIdentifierString
+  (s/pred valid-dataset-identifier? "Valid BigQuery dataset-id"))
+
+(s/defn ^:private project-id-for-current-query :- ProjectIdentifierString
+  "Fetch the project-id for the current database associated with this query, if defined.."
+  []
+  (when (qp.store/initialized?)
+    (some-> (qp.store/database) :details :project-id)))
+
+(s/defn ^:private dataset-id-for-current-query :- DatasetIdentifierString
+  "Fetch the dataset-id for the database associated with this query, needed because BigQuery requires you to qualify
   identifiers with it. This is primarily called automatically for the `to-sql` implementation of the
   `BigQueryIdentifier` record type; see its definition for more details."
   []
@@ -65,10 +79,17 @@
   [column-mode v parse-fn]
   ;; For results from a query like `SELECT [1,2]`, BigQuery sets the column-mode to `REPEATED` and wraps the column in an ArrayList,
   ;; with ArrayMap entries, like: `ArrayList(ArrayMap("v", 1), ArrayMap("v", 2))`
-  (if (= "REPEATED" column-mode)
+  (cond
+    (= "REPEATED" column-mode) ; legacy API
     (for [result v
           ^java.util.Map$Entry entry result]
       (parse-fn (.getValue entry)))
+
+    (= Field$Mode/REPEATED column-mode) ; newer API
+    (for [^FieldValue arr-v v]
+      (parse-fn (.getValue arr-v)))
+
+    :else
     (parse-fn v)))
 
 (defmethod parse-result-of-type :default
@@ -167,8 +188,8 @@
 (defmethod temporal-type :field
   [[_ id-or-name {:keys [base-type temporal-unit], :as opts} :as clause]]
   (cond
-    (contains? (meta clause) :bigquery/temporal-type)
-    (:bigquery/temporal-type (meta clause))
+    (contains? (meta clause) :bigquery-cloud-sdk/temporal-type)
+    (:bigquery-cloud-sdk/temporal-type (meta clause))
 
     ;; date extraction operations result in integers, so the type of the expression shouldn't be a temporal type
     ;;
@@ -185,12 +206,12 @@
 
 (defmethod temporal-type :default
   [x]
-  (:bigquery/temporal-type (meta x)))
+  (:bigquery-cloud-sdk/temporal-type (meta x)))
 
 (defn- with-temporal-type {:style/indent 0} [x new-type]
   (if (= (temporal-type x) new-type)
     x
-    (vary-meta x assoc :bigquery/temporal-type new-type)))
+    (vary-meta x assoc :bigquery-cloud-sdk/temporal-type new-type)))
 
 (defmulti ^:private ->temporal-type
   "Coerce `x` to target temporal type."
@@ -242,7 +263,7 @@
     (with-temporal-type x target-type)
 
     :else
-    (let [hsql-form     (sql.qp/->honeysql :bigquery x)
+    (let [hsql-form     (sql.qp/->honeysql :bigquery-cloud-sdk x)
           bigquery-type (case target-type
                           :date      :date
                           :time      :time
@@ -259,7 +280,7 @@
         bigquery-type
         (do
           (log/tracef "Coercing %s (temporal type = %s) to %s" (binding [*print-meta* true] (pr-str x)) (pr-str (temporal-type x)) bigquery-type)
-          (with-temporal-type (hsql/call :cast (sql.qp/->honeysql :bigquery x) (hsql/raw (name bigquery-type))) target-type))
+          (with-temporal-type (hsql/call :cast (sql.qp/->honeysql :bigquery-cloud-sdk x) (hsql/raw (name bigquery-type))) target-type))
 
         :else
         x))))
@@ -341,25 +362,25 @@
     ;; for datetimes or anything without a known temporal type, cast to timestamp and go from there
     (recur unit (->temporal-type :timestamp expr))))
 
-(defmethod sql.qp/date [:bigquery :minute]          [_ _ expr] (trunc   :minute    expr))
-(defmethod sql.qp/date [:bigquery :minute-of-hour]  [_ _ expr] (extract :minute    expr))
-(defmethod sql.qp/date [:bigquery :hour]            [_ _ expr] (trunc   :hour      expr))
-(defmethod sql.qp/date [:bigquery :hour-of-day]     [_ _ expr] (extract :hour      expr))
-(defmethod sql.qp/date [:bigquery :day]             [_ _ expr] (trunc   :day       expr))
-(defmethod sql.qp/date [:bigquery :day-of-month]    [_ _ expr] (extract :day       expr))
-(defmethod sql.qp/date [:bigquery :day-of-year]     [_ _ expr] (extract :dayofyear expr))
-(defmethod sql.qp/date [:bigquery :month]           [_ _ expr] (trunc   :month     expr))
-(defmethod sql.qp/date [:bigquery :month-of-year]   [_ _ expr] (extract :month     expr))
-(defmethod sql.qp/date [:bigquery :quarter]         [_ _ expr] (trunc   :quarter   expr))
-(defmethod sql.qp/date [:bigquery :quarter-of-year] [_ _ expr] (extract :quarter   expr))
-(defmethod sql.qp/date [:bigquery :year]            [_ _ expr] (trunc   :year      expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :minute]          [_ _ expr] (trunc   :minute    expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :minute-of-hour]  [_ _ expr] (extract :minute    expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :hour]            [_ _ expr] (trunc   :hour      expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :hour-of-day]     [_ _ expr] (extract :hour      expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :day]             [_ _ expr] (trunc   :day       expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :day-of-month]    [_ _ expr] (extract :day       expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :day-of-year]     [_ _ expr] (extract :dayofyear expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :month]           [_ _ expr] (trunc   :month     expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :month-of-year]   [_ _ expr] (extract :month     expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :quarter]         [_ _ expr] (trunc   :quarter   expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :quarter-of-year] [_ _ expr] (extract :quarter   expr))
+(defmethod sql.qp/date [:bigquery-cloud-sdk :year]            [_ _ expr] (trunc   :year      expr))
 
 ;; BigQuery mod is a function like mod(x, y) rather than an operator like x mod y
 (defmethod hformat/fn-handler (u/qualified-name ::mod)
   [_ x y]
   (format "mod(%s, %s)" (hformat/to-sql x) (hformat/to-sql y)))
 
-(defmethod sql.qp/date [:bigquery :day-of-week]
+(defmethod sql.qp/date [:bigquery-cloud-sdk :day-of-week]
   [driver _ expr]
   (sql.qp/adjust-day-of-week
    driver
@@ -367,22 +388,22 @@
    (driver.common/start-of-week-offset driver)
    (partial hsql/call (u/qualified-name ::mod))))
 
-(defmethod sql.qp/date [:bigquery :week]
+(defmethod sql.qp/date [:bigquery-cloud-sdk :week]
   [_ _ expr]
   (trunc (keyword (format "week(%s)" (name (setting/get-keyword :start-of-week)))) expr))
 
 (doseq [[unix-timestamp-type bigquery-fn] {:seconds      :timestamp_seconds
                                            :milliseconds :timestamp_millis
                                            :microseconds :timestamp_micros}]
-  (defmethod sql.qp/unix-timestamp->honeysql [:bigquery unix-timestamp-type]
+  (defmethod sql.qp/unix-timestamp->honeysql [:bigquery-cloud-sdk unix-timestamp-type]
     [_ _ expr]
     (with-temporal-type (hsql/call bigquery-fn expr) :timestamp)))
 
-(defmethod sql.qp/->float :bigquery
+(defmethod sql.qp/->float :bigquery-cloud-sdk
   [_ value]
   (hx/cast :float64 value))
 
-(defmethod sql.qp/->honeysql [:bigquery :regex-match-first]
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :regex-match-first]
   [driver [_ arg pattern]]
   (hsql/call :regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
 
@@ -394,7 +415,7 @@
       [(Math/round x) (Math/round (Math/pow 10 power))]
       (recur (* 10 x) (inc power)))))
 
-(defmethod sql.qp/->honeysql [:bigquery :percentile]
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :percentile]
   [driver [_ arg p]]
   (let [[offset quantiles] (percentile->quantile p)]
     (hsql/raw (format "APPROX_QUANTILES(%s, %s)[OFFSET(%s)]"
@@ -402,7 +423,7 @@
                       quantiles
                       offset))))
 
-(defmethod sql.qp/->honeysql [:bigquery :median]
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :median]
   [driver [_ arg]]
   (sql.qp/->honeysql driver [:percentile arg 0.5]))
 
@@ -437,32 +458,36 @@
          (>= (count components) 2))
     true))
 
-(defmethod sql.qp/cast-temporal-string [:bigquery :Coercion/YYYYMMDDHHMMSSString->Temporal]
+(defmethod sql.qp/cast-temporal-string [:bigquery-cloud-sdk :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _coercion-strategy expr]
   (hsql/call :parse_datetime (hx/literal "%Y%m%d%H%M%S") expr))
 
-(defmethod sql.qp/->honeysql [:bigquery (class Field)]
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk (class Field)]
   [driver field]
   (let [parent-method (get-method sql.qp/->honeysql [:sql (class Field)])
         identifier    (parent-method driver field)]
     (with-temporal-type identifier (temporal-type field))))
 
-(defmethod sql.qp/->honeysql [:bigquery Identifier]
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk Identifier]
   [_ identifier]
   (if-not (should-qualify-identifier? identifier)
     identifier
     (-> identifier
         (update :components (fn [[table & more]]
-                              (cons (str (dataset-name-for-current-query) \. table)
+                              (cons (str (when-let [proj-id (project-id-for-current-query)]
+                                           (str proj-id \.))
+                                         (dataset-id-for-current-query)
+                                         \.
+                                         table)
                                     more)))
         (vary-meta assoc ::already-qualified? true))))
 
-(defmethod sql.qp/->honeysql [:bigquery :field]
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :field]
   [driver clause]
   (let [hsql-form ((get-method sql.qp/->honeysql [:sql :field]) driver clause)]
     (with-temporal-type hsql-form (temporal-type clause))))
 
-(defmethod sql.qp/->honeysql [:bigquery :relative-datetime]
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :relative-datetime]
   [driver clause]
   ;; wrap the parent method, converting the result if `clause` itself is typed
   (let [t (temporal-type clause)]
@@ -497,15 +522,15 @@
       ;; when compared to other strings that may have normalized to the same thing.
       (str (substring-first-n-characters replaced-str 119) \_ (short-string-hash s)))))
 
-(defmethod driver/format-custom-field-name :bigquery
+(defmethod driver/format-custom-field-name :bigquery-cloud-sdk
   [_ custom-field-name]
   (->valid-field-identifier custom-field-name))
 
-(defmethod sql.qp/field->alias :bigquery
+(defmethod sql.qp/field->alias :bigquery-cloud-sdk
   [driver field]
   (->valid-field-identifier ((get-method sql.qp/field->alias :sql) driver field)))
 
-(defmethod sql.qp/prefix-field-alias :bigquery
+(defmethod sql.qp/prefix-field-alias :bigquery-cloud-sdk
   [driver prefix field-alias]
   (let [s ((get-method sql.qp/prefix-field-alias :sql) driver prefix field-alias)]
     (->valid-field-identifier s)))
@@ -517,38 +542,38 @@
 ;; *  https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions
 ;; *  https://cloud.google.com/bigquery/docs/reference/standard-sql/datetime_functions
 
-(defmethod unprepare/unprepare-value [:bigquery String]
+(defmethod unprepare/unprepare-value [:bigquery-cloud-sdk String]
   [_ s]
   ;; escape single-quotes like Cam's String -> Cam\'s String
   (str \' (str/replace s "'" "\\\\'") \'))
 
-(defmethod unprepare/unprepare-value [:bigquery LocalTime]
+(defmethod unprepare/unprepare-value [:bigquery-cloud-sdk LocalTime]
   [_ t]
   (format "time \"%s\"" (u.date/format-sql t)))
 
-(defmethod unprepare/unprepare-value [:bigquery LocalDate]
+(defmethod unprepare/unprepare-value [:bigquery-cloud-sdk LocalDate]
   [_ t]
   (format "date \"%s\"" (u.date/format-sql t)))
 
-(defmethod unprepare/unprepare-value [:bigquery LocalDateTime]
+(defmethod unprepare/unprepare-value [:bigquery-cloud-sdk LocalDateTime]
   [_ t]
   (format "datetime \"%s\"" (u.date/format-sql t)))
 
-(defmethod unprepare/unprepare-value [:bigquery OffsetTime]
+(defmethod unprepare/unprepare-value [:bigquery-cloud-sdk OffsetTime]
   [_ t]
   ;; convert to a LocalTime in UTC
   (let [local-time (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))]
     (format "time \"%s\"" (u.date/format-sql local-time))))
 
-(defmethod unprepare/unprepare-value [:bigquery OffsetDateTime]
+(defmethod unprepare/unprepare-value [:bigquery-cloud-sdk OffsetDateTime]
   [_ t]
   (format "timestamp \"%s\"" (u.date/format-sql t)))
 
-(defmethod unprepare/unprepare-value [:bigquery ZonedDateTime]
+(defmethod unprepare/unprepare-value [:bigquery-cloud-sdk ZonedDateTime]
   [_ t]
   (format "timestamp \"%s %s\"" (u.date/format-sql (t/local-date-time t)) (.getId (t/zone-id t))))
 
-(defmethod sql.qp/field->identifier :bigquery
+(defmethod sql.qp/field->identifier :bigquery-cloud-sdk
   [_ {table-id :table_id, field-name :name, :as field}]
   ;; TODO - Making a DB call for each field to fetch its Table is inefficient and makes me cry, but this method is
   ;; currently only used for SQL params so it's not a huge deal at this point
@@ -557,7 +582,7 @@
   (let [table-name (db/select-one-field :name table/Table :id (u/the-id table-id))]
     (with-temporal-type (hx/identifier :field table-name field-name) (temporal-type field))))
 
-(defmethod sql.qp/apply-top-level-clause [:bigquery :breakout]
+(defmethod sql.qp/apply-top-level-clause [:bigquery-cloud-sdk :breakout]
   [driver _ honeysql-form {breakouts :breakout, fields :fields, :as query}]
   (-> honeysql-form
       ;; Group by all the breakout fields.
@@ -585,8 +610,8 @@
                        (sql.qp/field-clause->alias driver field-clause))]
     ((get-method sql.qp/->honeysql [:sql direction]) driver [direction field-clause])))
 
-(defmethod sql.qp/->honeysql [:bigquery :asc]  [driver clause] (alias-order-by-field driver clause))
-(defmethod sql.qp/->honeysql [:bigquery :desc] [driver clause] (alias-order-by-field driver clause))
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :asc]  [driver clause] (alias-order-by-field driver clause))
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :desc] [driver clause] (alias-order-by-field driver clause))
 
 (defn- reconcile-temporal-types
   "Make sure the temporal types of fields and values in filter clauses line up."
@@ -601,7 +626,7 @@
     clause))
 
 (doseq [filter-type [:between := :!= :> :>= :< :<=]]
-  (defmethod sql.qp/->honeysql [:bigquery filter-type]
+  (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk filter-type]
     [driver clause]
     ((get-method sql.qp/->honeysql [:sql filter-type])
      driver
@@ -629,7 +654,7 @@
 ;; [:time-interval <datetime field> -1 :day]
 ;;
 ;;
-(defrecord ^:private AddIntervalForm [hsql-form amount unit]
+(defrecord AddIntervalForm [hsql-form amount unit]
   hformat/ToSql
   (to-sql [_]
     (loop [hsql-form hsql-form]
@@ -658,11 +683,11 @@
                {:type error-type/invalid-query}))))
   (map->AddIntervalForm (update add-interval-form :hsql-form (partial ->temporal-type target-type))))
 
-(defmethod sql.qp/add-interval-honeysql-form :bigquery
+(defmethod sql.qp/add-interval-honeysql-form :bigquery-cloud-sdk
   [_ hsql-form amount unit]
   (AddIntervalForm. hsql-form amount unit))
 
-(defmethod driver/mbql->native :bigquery
+(defmethod driver/mbql->native :bigquery-cloud-sdk
   [driver
    {database-id                                                 :database
     {source-table-id :source-table, source-query :source-query} :query
@@ -699,20 +724,20 @@
   [t _]
   (CurrentMomentForm. t))
 
-(defmethod sql.qp/current-datetime-honeysql-form :bigquery
+(defmethod sql.qp/current-datetime-honeysql-form :bigquery-cloud-sdk
   [_]
   (CurrentMomentForm. nil))
 
-(defmethod sql.qp/quote-style :bigquery
+(defmethod sql.qp/quote-style :bigquery-cloud-sdk
   [_]
   :mysql)
 
 ;; convert LocalDate to an OffsetDateTime in UTC since BigQuery doesn't handle LocalDates as we'd like
-(defmethod sql/->prepared-substitution [:bigquery LocalDate]
+(defmethod sql/->prepared-substitution [:bigquery-cloud-sdk LocalDate]
   [driver t]
   (sql/->prepared-substitution driver (t/offset-date-time t (t/local-time 0) (t/zone-offset 0))))
 
-(defmethod sql.params.substitution/->replacement-snippet-info [:bigquery FieldFilter]
+(defmethod sql.params.substitution/->replacement-snippet-info [:bigquery-cloud-sdk FieldFilter]
   [driver {:keys [field], :as field-filter}]
   (let [field-temporal-type (temporal-type field)
         parent-method       (get-method sql.params.substitution/->replacement-snippet-info [:sql FieldFilter])
