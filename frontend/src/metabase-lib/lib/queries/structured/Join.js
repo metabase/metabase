@@ -377,8 +377,16 @@ export default class Join extends MBQLObjectClause {
       : this._getJoinDimensionsFromMultipleConditions();
   }
 
+  addEmptyDimensionsPair() {
+    if (!this.condition) {
+      return this.setCondition([]);
     }
+    if (this.isSingleConditionJoin()) {
+      return this.setCondition(["and", this.condition, []]);
+    } else {
+      return this.setCondition([...this.condition, []]);
     }
+  }
 
   setJoinDimension({ index = 0, dimension }) {
     const condition = this.getConditionByIndex(index);
