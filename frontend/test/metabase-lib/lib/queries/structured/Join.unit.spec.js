@@ -1,5 +1,4 @@
 import { ORDERS, PRODUCTS, REVIEWS } from "__support__/sample_dataset_fixture";
-
 import Join from "metabase-lib/lib/queries/structured/Join";
 
 describe("Join", () => {
@@ -9,6 +8,7 @@ describe("Join", () => {
       const j = new Join({}, 0, q).setJoinSourceTableId(PRODUCTS.id);
       expect(j.alias).toEqual("Products");
     });
+
     it("should deduplicate aliases", () => {
       const q = ORDERS.query().join({
         alias: "Products",
@@ -18,6 +18,7 @@ describe("Join", () => {
       expect(j.alias).toEqual("Products_2");
     });
   });
+
   describe("setDefaultCondition", () => {
     it("should set default condition to be fk relationship", () => {
       const q = ORDERS.query().join({
@@ -36,6 +37,7 @@ describe("Join", () => {
       });
     });
   });
+
   describe("setDefaultAlias", () => {
     it("should set default alias to be table + field name and update join condition", () => {
       const q = ORDERS.query().join({
@@ -65,6 +67,7 @@ describe("Join", () => {
         "source-table": REVIEWS.id,
       });
     });
+
     it("should set default alias to be table name only if it is similar to field name", () => {
       const q = ORDERS.query().join({
         alias: "x",
