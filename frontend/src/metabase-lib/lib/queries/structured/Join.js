@@ -29,6 +29,8 @@ const JOIN_STRATEGY_OPTIONS = [
 ];
 
 const PARENT_DIMENSION_INDEX = 1;
+const JOIN_DIMENSION_INDEX = 2;
+
 export default class Join extends MBQLObjectClause {
   strategy: ?JoinStrategy;
   alias: ?JoinAlias;
@@ -319,21 +321,22 @@ export default class Join extends MBQLObjectClause {
       const joinedQuery = this.joinedQuery();
       return joinedQuery && joinedQuery.parseFieldReference(condition[2]);
     }
-  }
-  setJoinDimension(dimension: Dimension | ConcreteField): Join {
-    if (dimension instanceof Dimension) {
-      dimension = dimension.mbql();
     }
-    const parentDimension = this.parentDimension();
-    return this.setCondition([
+
+  setJoinDimension({ index = 0, dimension }) {
+    const condition = this.getConditionByIndex(index);
+    const newCondition = [
+      "=",
+      condition ? condition[PARENT_DIMENSION_INDEX] : null,
+      this._convertDimensionIntoMBQL(dimension),
+    ];
+    return this.setConditionByIndex({ index, condition: newCondition });
+  }
 
   setParentDimension({ index = 0, dimension }) {
     const condition = this.getConditionByIndex(index);
     const newCondition = [
       "=",
-      parentDimension instanceof Dimension ? parentDimension.mbql() : null,
-      dimension,
-    ]);
       this._convertDimensionIntoMBQL(dimension),
       condition ? condition[JOIN_DIMENSION_INDEX] : null,
     ];

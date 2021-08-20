@@ -201,5 +201,85 @@ describe("Join", () => {
       });
     });
   });
+
+  describe("setJoinDimension", () => {
+    it("creates a condition if not present", () => {
+      let join = getJoin();
+
+      join = join.setJoinDimension({
+        dimension: PRODUCTS_ID_FIELD_REF,
+      });
+
+      expect(join).toEqual({
+        alias: "Products",
+        condition: ["=", null, PRODUCTS_ID_FIELD_REF],
+        "source-table": PRODUCTS.id,
+      });
+    });
+
+    it("sets a dimension for existing condition", () => {
+      let join = getJoin({
+        query: getOrdersJoinQuery({
+          condition: ["=", ORDERS_PRODUCT_ID_FIELD_REF, null],
+        }),
+      });
+
+      join = join.setJoinDimension({
+        dimension: PRODUCTS_ID_JOIN_FIELD_REF,
+      });
+
+      expect(join).toEqual({
+        alias: "Products",
+        condition: ORDERS_PRODUCT_JOIN_CONDITION,
+        "source-table": PRODUCTS.id,
+      });
+    });
+
+    it("sets a dimension for multi-dimension condition by index", () => {
+      let join = getJoin({
+        query: getOrdersJoinQuery({
+          condition: [
+            "and",
+            ORDERS_PRODUCT_JOIN_CONDITION,
+            ["=", ORDERS_CREATED_AT_FIELD_REF, null],
+          ],
+        }),
+      });
+
+      join = join.setJoinDimension({
+        index: 1,
+        dimension: PRODUCTS_CREATED_AT_FIELD_REF,
+      });
+
+      expect(join).toEqual({
+        alias: "Products",
+        condition: ORDERS_PRODUCT_MULTI_FIELD_JOIN_CONDITION,
+        "source-table": PRODUCTS.id,
+      });
+    });
+
+    it("turns into multi-dimension join if not existing condition index provided", () => {
+      let join = getJoin({
+        query: getOrdersJoinQuery({
+          condition: ORDERS_PRODUCT_JOIN_CONDITION,
+        }),
+      });
+
+      join = join.setJoinDimension({
+        index: 1,
+        dimension: PRODUCTS_CREATED_AT_FIELD_REF,
+      });
+
+      expect(join).toEqual({
+        alias: "Products",
+        condition: [
+          "and",
+          ORDERS_PRODUCT_JOIN_CONDITION,
+          ["=", null, PRODUCTS_CREATED_AT_FIELD_REF],
+        ],
+        "source-table": PRODUCTS.id,
+      });
+    });
+  });
   });
 });
