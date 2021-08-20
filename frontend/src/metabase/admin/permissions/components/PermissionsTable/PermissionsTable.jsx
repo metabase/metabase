@@ -17,6 +17,8 @@ import {
   EntityName,
 } from "./PermissionsTable.styled";
 
+const noop = () => {};
+
 const propTypes = {
   entities: PropTypes.arrayOf(PropTypes.object),
   columns: PropTypes.arrayOf(PropTypes.string),
@@ -39,7 +41,7 @@ export function PermissionsTable({
   emptyState = null,
 }) {
   const [confirmations, setConfirmations] = useState([]);
-  const confirmActionRef = useRef(null);
+  const [confirmAction, setConfirmAction] = useState(noop);
 
   const handleChange = (value, toggleState, entity, permission) => {
     const confirmAction = () => {
@@ -49,7 +51,7 @@ export function PermissionsTable({
       permission.confirmations?.(value).filter(Boolean) || [];
     if (confirmations.length > 0) {
       setConfirmations(confirmations);
-      confirmActionRef.current = confirmAction;
+      setConfirmAction(confirmAction);
     } else {
       confirmAction();
     }
@@ -58,14 +60,14 @@ export function PermissionsTable({
   const handleConfirm = () => {
     setConfirmations(prev => prev.slice(1));
     if (confirmations.length === 1) {
-      confirmActionRef.current();
-      confirmActionRef.current = null;
+      confirmAction();
+      setConfirmAction(noop);
     }
   };
 
   const handleCancelConfirm = () => {
     setConfirmations([]);
-    confirmActionRef.current = null;
+    setConfirmAction(noop);
   };
 
   const hasItems = entities.length > 0;
