@@ -125,6 +125,16 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
     return null;
   }
 
+  const parentDimensions = join.parentDimensions();
+  const parentDimensionOptions = join.parentDimensionOptions();
+  const joinDimensions = join.joinDimensions();
+  const joinDimensionOptions = join.joinDimensionOptions();
+
+  const joinedTable = join.joinedTable();
+
+  const joinConditions = join.getConditions();
+  const displayConditions = joinConditions.length > 0 ? joinConditions : [[]];
+
   let lhsTable;
   if (join.index() === 0) {
     // first join's lhs is always the parent table
@@ -132,10 +142,8 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
   } else if (join.parentDimension()) {
     // subsequent can be one of the previously joined tables
     // NOTE: `lhsDimension` would probably be a better name for `parentDimension`
-    lhsTable = join.parentDimension().field().table;
+    lhsTable = join.parentDimensions()[0].field().table;
   }
-
-  const joinedTable = join.joinedTable();
 
   function onSourceTableSet(newJoin) {
     if (!newJoin.parentDimension()) {
@@ -145,9 +153,9 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
     }
   }
 
-  function onParentDimensionChange(fieldRef) {
+  function onParentDimensionChange(index, fieldRef) {
     join
-      .setParentDimension(fieldRef)
+      .setParentDimension({ index, dimension: fieldRef })
       .setDefaultAlias()
       .parent()
       .update(updateQuery);
@@ -156,9 +164,9 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
     }
   }
 
-  function onJoinDimensionChange(fieldRef) {
+  function onJoinDimensionChange(index, fieldRef) {
     join
-      .setJoinDimension(fieldRef)
+      .setJoinDimension({ index, dimension: fieldRef })
       .parent()
       .update(updateQuery);
   }
@@ -190,25 +198,45 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
         <React.Fragment>
           <JoinWhereConditionLabel />
           <NotebookCell color={color} flex={1}>
-            <JoinDimensionPicker
-              color={color}
-              query={query}
-              dimension={join.parentDimension()}
-              options={join.parentDimensionOptions()}
-              onChange={onParentDimensionChange}
-              ref={parentDimensionPickerRef}
-              data-testid="parent-dimension"
-            />
-            <JoinOnConditionLabel />
-            <JoinDimensionPicker
-              color={color}
-              query={query}
-              dimension={join.joinDimension()}
-              options={join.joinDimensionOptions()}
-              onChange={onJoinDimensionChange}
-              ref={joinDimensionPickerRef}
-              data-testid="join-dimension"
-            />
+            {displayConditions.map((condition, index) => {
+              return (
+                <React.Fragment key={index}>
+                  <JoinDimensionPicker
+                    color={color}
+                    query={query}
+                    dimension={parentDimensions[index]}
+                    options={parentDimensionOptions}
+                    onChange={fieldRef =>
+                      onParentDimensionChange(index, fieldRef)
+                    }
+                    // ref={parentDimensionPickerRef}
+                    data-testid="parent-dimension"
+                  />
+                  <JoinOnConditionLabel />
+                  <JoinDimensionPicker
+                    color={color}
+                    query={query}
+                    dimension={joinDimensions[index]}
+                    options={joinDimensionOptions}
+                    onChange={fieldRef =>
+                      onJoinDimensionChange(index, fieldRef)
+                    }
+                    // ref={joinDimensionPickerRef}
+                    data-testid="join-dimension"
+                  />
+                  <NotebookCellAdd
+                    color={color}
+                    className="cursor-pointer ml-auto"
+                    onClick={() => {
+                      join
+                        .addEmptyDimensionsPair()
+                        .parent()
+                        .update(updateQuery);
+                    }}
+                  />
+                </React.Fragment>
+              );
+            })}
           </NotebookCell>
         </React.Fragment>
       )}
