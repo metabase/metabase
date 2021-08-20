@@ -571,7 +571,7 @@
                    [(u/the-id group2) (u/the-id db1) :schemas] {"" {(u/the-id table) :all}})
         [[(u/the-id group2) (u/the-id db1)]])
       ;; we expect this to not mutate
-      (perms/update-graph! 
+      (perms/update-graph!
         (new-graph (perms/graph)
                    [(u/the-id group2) (u/the-id db1) :schemas] {"" {(u/the-id table) :none}})
         [[(u/the-id group1) (u/the-id db1)]
