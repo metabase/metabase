@@ -536,6 +536,10 @@
 (defn- test-data-graph [group]
   (get-in (perms/graph) [:groups (u/the-id group) (mt/id) :schemas "PUBLIC"]))
 
+(defn- new-graph
+  [graph ks new-val]
+  (assoc-in graph (cons :groups ks) new-val))
+
 (deftest graph-set-partial-permissions-for-table-test
   (testing "Test that setting partial permissions for a table retains permissions for other tables -- #3888"
     (mt/with-temp PermissionsGroup [group]
@@ -547,13 +551,12 @@
       (testing "after"
         ;; next, grant permissions via `update-graph!` for CATEGORIES as well. Make sure permissions for VENUES are
         ;; retained (#3888)
-        (perms/update-graph! [(u/the-id group) (mt/id) :schemas "PUBLIC" (mt/id :categories)] :all)
+        (perms/update-graph! (new-graph
+                               (perms/graph)
+                               [(u/the-id group) (mt/id) :schemas "PUBLIC" (mt/id :categories)]
+                               :all))
         (is (= {(mt/id :categories) :all, (mt/id :venues) :all}
                (test-data-graph group)))))))
-
-(defn- new-graph
-  [graph ks new-val]
-  (assoc-in graph (cons :groups ks) new-val))
 
 (deftest graph-filters-test
   (testing "groupid and dbid filter works for groups"
@@ -563,10 +566,12 @@
                     Database         [db2]
                     Table            [table1    {:db_id (u/the-id db1)}]
                     Table            [table2    {:db_id (u/the-id db2)}]]
-      (perms/update-graph! (new-graph (graph) [(u/the-id group1) (u/the-id db1) :schemas] {"" {(u/the-id table1) :all}}))
-      (perms/update-graph! [(u/the-id group2) (u/the-id db1) :schemas] {"" {(u/the-id table1) :all}})
-      (perms/update-graph! [(u/the-id group1) (u/the-id db2) :schemas] {"" {(u/the-id table2) :all}})
-      (perms/update-graph! [(u/the-id group2) (u/the-id db2) :schemas] {"" {(u/the-id table2) :all}})
+      ;; we expect this to not mutate
+      (perms/update-graph! 
+        (new-graph (perms/graph) [(u/the-id group2) (u/the-id db1) :schemas] {"" {(u/the-id table1) :bob-dobbs}})
+        [[(u/the-id group1) (u/the-id db1)]
+         [(u/the-id group1) (u/the-id db2)]
+         [(u/the-id group2) (u/the-id db2)]])
       (is (= :all
              (get-in (perms/graph [[(u/the-id group2) (u/the-id db1)]])
                      [:groups (u/the-id group2) (u/the-id db1) :schemas "" (u/the-id table1)]))))))
@@ -577,8 +582,8 @@
                     Database         [database]
                     Table            [table    {:db_id (u/the-id database)}]]
       ;; try to grant idential permissions to the table twice
-      (perms/update-graph! [(u/the-id group) (u/the-id database) :schemas] {"" {(u/the-id table) :all}})
-      (perms/update-graph! [(u/the-id group) (u/the-id database) :schemas] {"" {(u/the-id table) :all}})
+      (perms/update-graph! (new-graph (perms/graph) [(u/the-id group) (u/the-id database) :schemas] {"" {(u/the-id table) :all}}))
+      (perms/update-graph! (new-graph (perms/graph) [(u/the-id group) (u/the-id database) :schemas] {"" {(u/the-id table) :all}}))
       ;; now fetch the perms that have been granted
       (is (= {"" {(u/the-id table) :all}}
              (get-in (perms/graph) [:groups (u/the-id group) (u/the-id database) :schemas]))))))
@@ -606,10 +611,11 @@
              (test-data-graph group))))
 
     (mt/with-temp PermissionsGroup [group]
-      (perms/update-graph! [(u/the-id group) (mt/id) :schemas]
-                           {"PUBLIC"
-                            {(mt/id :venues)
-                             {:read :all, :query :segmented}}})
+      (perms/update-graph! (new-graph (perms/graph)
+                                      [(u/the-id group) (mt/id) :schemas]
+                                      {"PUBLIC"
+                                       {(mt/id :venues)
+                                        {:read :all, :query :segmented}}}))
       (is (= {(mt/id :venues) {:read  :all
                                  :query :segmented}}
              (test-data-graph group))))))
