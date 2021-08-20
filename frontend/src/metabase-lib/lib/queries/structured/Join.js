@@ -344,14 +344,17 @@ export default class Join extends MBQLObjectClause {
     }
     return new DimensionOptions(options);
   }
+
+  joinDimensions() {
+    if (!this.condition) {
+      return [];
     }
+
+    return this.isSingleConditionJoin()
+      ? [this._getJoinDimensionFromCondition(this.condition)]
+      : this._getJoinDimensionsFromMultipleConditions();
   }
 
-  joinDimension() {
-    const { condition } = this;
-    if (Array.isArray(condition) && condition[0] === "=" && condition[2]) {
-      const joinedQuery = this.joinedQuery();
-      return joinedQuery && joinedQuery.parseFieldReference(condition[2]);
     }
     }
 
