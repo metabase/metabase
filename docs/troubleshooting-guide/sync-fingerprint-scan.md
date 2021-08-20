@@ -85,4 +85,4 @@ You can "fix" this by disabling scan entirely by going to the database in the Ad
 [metabase-api]: ../api-documentation.html
 [metabase-mongo-missing]: ../administration-guide/databases/mongodb.html#i-added-fields-to-my-database-but-dont-see-them-in-metabase
 [sync-frequency]: ../administration-guide/01-managing-databases.html#choose-when-metabase-syncs-and-scans
-[troubleshooting-db-connection]: ./datawarehouse.html#troubleshooting-your-database-connection
+[troubleshooting-db-connection]: ./datawarehouse.html

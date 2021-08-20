@@ -10,7 +10,7 @@
 
 If you're having trouble connecting to your data warehouse, run through these steps to identify the problem.
 
-1. Is the data warehouse server running ([see below](#the-data-warehouse-server-is-down))?
+1. Is the data warehouse server running ([see below](#server-down))?
 2. Can you connect to the data warehouse using another client from a machine you know should have access ([see below](#server-denying-connections))?
 3. Can you connect to the data warehouse from another client from the machine you're running Metabase on?
 4. Have you added the connection in Metabase?
