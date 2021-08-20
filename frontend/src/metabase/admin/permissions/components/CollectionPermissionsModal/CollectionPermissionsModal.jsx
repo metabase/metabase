@@ -16,6 +16,7 @@ import Button from "metabase/components/Button";
 import Link from "metabase/components/Link";
 
 import { PermissionsTable } from "../PermissionsTable";
+import { permissionEditorPropTypes } from "../PermissionsEditor";
 import Groups from "metabase/entities/groups";
 import {
   getDiff,
@@ -27,7 +28,8 @@ import {
   updateCollectionPermission,
   saveCollectionPermissions,
 } from "../../permissions";
-import { permissionEditorPropTypes } from "../PermissionsEditor/PermissionsEditor";
+
+import { PermissionTableContainer } from "./CollectionPermissionsModal.styled";
 
 const getDefaultTitle = namespace =>
   namespace === "snippets"
@@ -99,6 +101,7 @@ const CollectionPermissionsModal = ({
     <ModalContent
       title={modalTitle}
       onClose={onClose}
+      className="overflow-hidden"
       footer={[
         ...(namespace === "snippets"
           ? []
@@ -117,14 +120,14 @@ const CollectionPermissionsModal = ({
         </Button>,
       ]}
     >
-      <div className="relative" style={{ height: "50vh" }}>
+      <PermissionTableContainer>
         {permissionEditor && (
           <PermissionsTable
             {...permissionEditor}
             onChange={handlePermissionChange}
           />
         )}
-      </div>
+      </PermissionTableContainer>
     </ModalContent>
   );
 };
