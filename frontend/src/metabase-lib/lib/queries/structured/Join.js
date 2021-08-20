@@ -283,18 +283,50 @@ export default class Join extends MBQLObjectClause {
     return dimension instanceof Dimension ? dimension.mbql() : dimension;
   }
 
+  _getJoinDimensionFromCondition(condition) {
+    const [_operator, parentDimension, joinDimension] = condition;
+    const joinedQuery = this.joinedQuery();
+    return (
+      joinedQuery &&
+      joinDimension &&
+      joinedQuery.parseFieldReference(joinDimension)
+    );
+  }
+
+  _getJoinDimensionsFromMultipleConditions() {
+    const [_operator, ...conditions] = this.condition;
+    return conditions.map(condition =>
+      this._getJoinDimensionFromCondition(condition),
+    );
+  }
+
   // simplified "=" join condition helpers:
 
   // NOTE: parentDimension refers to the left-hand side of the join,
   // and joinDimension refers to the right-hand side
   // TODO: should we rename them to lhsDimension/rhsDimension etc?
 
-  parentDimension() {
-    const { condition } = this;
-    if (Array.isArray(condition) && condition[0] === "=" && condition[1]) {
-      return this.query().parseFieldReference(condition[1]);
-    }
+  _getParentDimensionFromCondition(condition) {
+    const [_operator, parentDimension] = condition;
+    return parentDimension && this.query().parseFieldReference(parentDimension);
   }
+
+  _getParentDimensionsFromMultipleConditions() {
+    const [_operator, ...conditions] = this.condition;
+    return conditions.map(condition =>
+      this._getParentDimensionFromCondition(condition),
+    );
+  }
+
+  parentDimensions() {
+    if (!this.condition) {
+      return [];
+    }
+    return this.isSingleConditionJoin()
+      ? [this._getParentDimensionFromCondition(this.condition)]
+      : this._getParentDimensionsFromMultipleConditions();
+  }
+
   parentDimensionOptions() {
     const query = this.query();
     const dimensions = query.dimensions();
