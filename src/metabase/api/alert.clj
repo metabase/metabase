@@ -20,9 +20,11 @@
 
 (api/defendpoint GET "/"
   "Fetch all alerts"
-  [archived]
-  {archived (s/maybe su/BooleanString)}
-  (as-> (pulse/retrieve-alerts {:archived? (Boolean/parseBoolean archived)}) <>
+  [archived user_id]
+  {archived (s/maybe su/BooleanString)
+   user_id  (s/maybe su/IntGreaterThanZero)}
+  (as-> (pulse/retrieve-alerts {:archived? (Boolean/parseBoolean archived)
+                                :user-id   user_id}) <>
     (filter mi/can-read? <>)
     (hydrate <> :can_write)))
 

@@ -218,26 +218,38 @@
           hydrate-notification
           notification->alert))
 
+(defn- query-as [model query]
+  (db/do-post-select model (db/query query)))
+
 (s/defn retrieve-alerts :- [PulseInstance]
   "Fetch all Alerts."
   ([]
    (retrieve-alerts nil))
 
-  ([{:keys [archived?]
+  ([{:keys [archived? user-id]
      :or   {archived? false}}]
-   (for [alert (hydrate-notifications (db/select Pulse
-                                        :alert_condition [:not= nil]
-                                        :archived        archived?
-                                        {:order-by [[:%lower.name :asc]]}))
-         :let [alert (notification->alert alert)]
-         ;; if for whatever reason the Alert doesn't have a Card associated with it (e.g. the Card was deleted) don't
-         ;; return the Alert -- it's basically orphaned/invalid at this point. See #13575 -- we *should* be deleting
-         ;; Alerts if their associated PulseCard is deleted, but that's not currently the case.
-         :when (:card alert)]
-     alert)))
-
-(defn- query-as [model query]
-  (db/do-post-select model (db/query query)))
+   (def my-user-id user-id)
+   (let [query {:select    [:p.* [:%lower.p.name :lower-name]]
+                :modifiers [:distinct]
+                :from      [[Pulse :p]]
+                :left-join (when user-id
+                             [[PulseChannel :pchan] [:= :p.id :pchan.pulse_id]
+                              [PulseChannelRecipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]])
+                :where     [:and
+                            [:not= :p.alert_condition nil]
+                            [:= :p.archived archived?]
+                            (when user-id
+                              [:or
+                               [:= :p.creator_id user-id]
+                               [:= :pcr.user_id user-id]])]
+                :order-by  [[:lower-name :asc]]}]
+     (for [alert (hydrate-notifications (query-as Pulse query))
+           :let [alert (notification->alert alert)]
+          ;; if for whatever reason the Alert doesn't have a Card associated with it (e.g. the Card was deleted) don't
+          ;; return the Alert -- it's basically orphaned/invalid at this point. See #13575 -- we *should* be deleting
+          ;; Alerts if their associated PulseCard is deleted, but that's not currently the case.
+           :when (:card alert)]
+       alert))))
 
 (s/defn retrieve-pulses :- [PulseInstance]
   "Fetch all `Pulses`."
