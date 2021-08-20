@@ -79,5 +79,7 @@
 }
 
 .EditHeader.EditHeader--admin .Button:hover {
-  background-color: var(--color-bg-dark);
+  background-color: color(
+    var(--color-accent7) saturation(+20%) blackness(+20%)
+  );
 }

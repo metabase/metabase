@@ -114,7 +114,7 @@ export const getDatabasesSidebar = createSelector(
         name: schema.name,
         databaseId: databaseId,
         type: "schema",
-        isHiddenFromSearch: true,
+        icon: "folder",
         children: schema.tables.map(table => ({
           id: getTableId(table.id),
           originalId: table.id,
@@ -122,6 +122,7 @@ export const getDatabasesSidebar = createSelector(
           schemaName: schema.name,
           databaseId: databaseId,
           type: "table",
+          icon: "table2",
         })),
       };
     });
@@ -156,11 +157,11 @@ const getBreadcrumbs = (params, metadata) => {
     type: "database",
   };
 
-  if (schemaName == null) {
+  if (schemaName == null && tableId == null) {
     return [databaseItem];
   }
 
-  const schema = metadata.schema(`${databaseId}:${schemaName}`);
+  const schema = database.schema(schemaName);
   const schemaItem = {
     id: schema.id,
     text: schema.name,
@@ -651,11 +652,8 @@ export const getDatabasesPermissionEditor = createSelector(
         });
     }
 
-    const breadcrumbs = getBreadcrumbs(params, metadata);
-    let title = t`Permissions for the ${group.name} group`;
-    if (breadcrumbs?.length > 0) {
-      title += " - ";
-    }
+    const breadcrumbs = getDatabasesEditorBreadcrumbs(params, metadata, group);
+    const title = t`Permissions for the `;
 
     return {
       title,
@@ -674,3 +672,42 @@ export const getDatabasesPermissionEditor = createSelector(
     };
   },
 );
+
+const getDatabasesEditorBreadcrumbs = (params, metadata, group) => {
+  const { groupId, databaseId, schemaName } = params;
+
+  if (groupId == null) {
+    return null;
+  }
+
+  const groupItem = {
+    text: `${group.name} group`,
+    id: group.id,
+    type: "group",
+  };
+
+  if (databaseId == null) {
+    return [groupItem];
+  }
+
+  const database = metadata.database(databaseId);
+  const databaseItem = {
+    id: database.id,
+    text: database.name,
+    databaseId,
+    type: "database",
+  };
+
+  if (schemaName == null) {
+    return [groupItem, databaseItem];
+  }
+
+  const schema = database.schema(schemaName);
+  const schemaItem = {
+    id: schema.name,
+    text: schema.name,
+    type: "schema",
+    databaseId,
+  };
+  return [groupItem, databaseItem, schemaItem];
+};
