@@ -486,10 +486,17 @@ export default class Join extends MBQLObjectClause {
   }
 
   isValid(): boolean {
-    return !!(
-      this.joinedTable() &&
-      this.parentDimension() &&
-      this.joinDimension()
+    if (!this.joinedTable()) {
+      return false;
+    }
+    const parentDimensions = this.parentDimensions();
+    const joinDimensions = this.joinDimensions();
+    return (
+      parentDimensions.length > 0 &&
+      joinDimensions.length > 0 &&
+      parentDimensions.every(Boolean) &&
+      joinDimensions.every(Boolean) &&
+      parentDimensions.length === joinDimensions.length
     );
   }
 }

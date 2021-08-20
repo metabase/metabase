@@ -298,5 +298,92 @@ describe("Join", () => {
       });
     });
   });
+
+  describe("isValid", () => {
+    it("should return true for complete one-fields pair join", () => {
+      const join = getJoin({
+        query: getOrdersJoinQuery({
+          condition: ORDERS_PRODUCT_JOIN_CONDITION,
+        }),
+      });
+      expect(join.isValid()).toBe(true);
+    });
+
+    it("should return true for complete multi-fields join", () => {
+      const join = getJoin({
+        query: getOrdersJoinQuery({
+          condition: ORDERS_PRODUCT_MULTI_FIELD_JOIN_CONDITION,
+        }),
+      });
+      expect(join.isValid()).toBe(true);
+    });
+
+    const invalidTestCases = [
+      [
+        "missing source table",
+        {
+          sourceTable: null,
+        },
+      ],
+      [
+        "missing condition",
+        {
+          condition: null,
+        },
+      ],
+      [
+        "missing both dimensions",
+        {
+          condition: ["=", null, null],
+        },
+      ],
+      [
+        "missing parent dimension",
+        {
+          condition: ["=", null, PRODUCTS_ID_FIELD_REF],
+        },
+      ],
+      [
+        "missing join dimension",
+        {
+          condition: ["=", ORDERS_PRODUCT_ID_FIELD_REF, null],
+        },
+      ],
+      [
+        "second condition is empty",
+        {
+          condition: ["and", ORDERS_PRODUCT_JOIN_CONDITION, ["=", null, null]],
+        },
+      ],
+      [
+        "missing parent dimension in second condition",
+        {
+          condition: [
+            "and",
+            ORDERS_PRODUCT_JOIN_CONDITION,
+            ["=", null, PRODUCTS_CREATED_AT_FIELD_REF],
+          ],
+        },
+      ],
+      [
+        "missing join dimension in second condition",
+        {
+          condition: [
+            "and",
+            ORDERS_PRODUCT_JOIN_CONDITION,
+            ["=", ORDERS_CREATED_AT_FIELD_REF, null],
+          ],
+        },
+      ],
+    ];
+
+    invalidTestCases.forEach(([invalidReason, queryOpts]) => {
+      it(`should return 'false' when ${invalidReason}`, () => {
+        const join = getJoin({
+          query: getOrdersJoinQuery(queryOpts),
+        });
+        expect(join.isValid()).toBe(false);
+      });
+    });
   });
 });
