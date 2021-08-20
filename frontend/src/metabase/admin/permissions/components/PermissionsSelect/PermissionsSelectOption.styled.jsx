@@ -1,5 +1,5 @@
 import styled from "styled-components";
-import colors from "metabase/lib/colors";
+import colors, { color } from "metabase/lib/colors";
 
 export const PermissionsSelectOptionRoot = styled.div`
   display: flex;
@@ -15,7 +15,7 @@ export const IconContainer = styled.div`
   width: 20px;
   height: 20px;
   color: ${colors["white"]};
-  background-color: ${props => props.color};
+  background-color: ${props => color(props.color)};
 `;
 
 export const PermissionsSelectLabel = styled.div`

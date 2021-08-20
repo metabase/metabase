@@ -23,7 +23,7 @@ const OPTION_SEGMENTED = {
   label: t`Sandboxed`,
   value: "controlled",
   icon: "permissions_limited",
-  iconColor: color("brand"),
+  iconColor: "brand",
 };
 
 const getDatabaseViewSandboxModalUrl = ({
@@ -73,7 +73,7 @@ if (hasPremiumFeature("sandboxes")) {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS.push(OPTION_SEGMENTED);
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS["controlled"].push({
     label: t`Edit sandboxed access`,
-    iconColor: color("brand"),
+    iconColor: "brand",
     icon: "pencil",
     actionCreator: (groupId, entityId, view) =>
       push(getEditSegementedAccessUrl({ ...entityId, groupId }, view)),

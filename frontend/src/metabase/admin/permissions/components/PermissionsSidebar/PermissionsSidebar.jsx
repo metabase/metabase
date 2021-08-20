@@ -60,8 +60,6 @@ export const PermissionsSidebar = memo(function PermissionsSidebar({
   const [filter, setFilter] = useState("");
   const debouncedFilter = useDebouncedValue(filter, SEARCH_DEBOUNCE_DURATION);
 
-  const handleFilterChange = text => setFilter(text);
-
   const filteredList = useMemo(() => {
     const trimmedFilter = debouncedFilter.trim().toLowerCase();
 
@@ -103,7 +101,7 @@ export const PermissionsSidebar = memo(function PermissionsSidebar({
           hasClearButton
           colorScheme="admin"
           placeholder={filterPlaceholder}
-          onChange={handleFilterChange}
+          onChange={setFilter}
           value={filter}
           padding="sm"
           borderRadius="md"
