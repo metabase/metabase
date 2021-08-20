@@ -1,4 +1,4 @@
-# My filters don't work
+# My dashboard filters don't work
 
 You have tried to add a [filter widget][filter-widget-gloss] to your dashboard, but:
 
@@ -8,16 +8,38 @@ You have tried to add a [filter widget][filter-widget-gloss] to your dashboard, 
 
 If you have created a [linked filter][linked-filter-gloss], please see [this troubleshooting guide](./linked-filters.html) instead.
 
-## Does the question actually include variables?
+## Is the filter actually connected to your question?
 
-**Root cause:** A filter controls the value of a variable in a question, so if the question doesn't have any variables, you can't connect a filter to it.
+- in query builder, did you exclude the column from the results *or* have you connected the filter to column A instead of column B?
+
+## Was the question built using the Query Builder or written in SQL? FIXME break this into two
+
+- If built in Query Builder, Metabase knows what columns you're using
+  - So you can add a dashboard filter and refer to them without creating variables explicitly
+- If written in SQL, you need to have created variables or Field Filters (which are a special type of variable)
+  - link link link
 
 **Steps to take:**
 
 1. Check that the question is written in SQL. (Variables cannot be used in GUI question created with the Notebook Editor.)
-2. Check that the question contains one or more variables with names enclosed in double curly braces `{% raw %}{{name}}{% endraw %}`.
+2. FIXME second step?
 
-## Is the field identified as a category in the data model?
+## If the question is written in SQL, does it actually include variables?
+
+**Root cause:** A filter must be linked to a variable in a SQL question, so if the question doesn't have any variables, you can't connect a filter to it. FIXME reword (need an injection point)
+
+**Steps to take:**
+
+1. Check that the question contains one or more variables with names enclosed in double curly braces `{% raw %}{{name}}{% endraw %}`.
+
+## Are you seeing a different kind of input widget than you expected?
+
+- For example, you want a dropdown but you're seeing a search box or a text input box
+- Logic for selecting input widgets is a bit complicated
+- If you created the question in the query builder, then:
+  - If there's more than a few hundred distinct values, you'll get a search box with autocomplete rather than a dropdown
+- If you created the question in SQL, then:
+  - You only get a dropdown if the filter is a Field Filter _and_ the field type is set correctly (see below)
 
 **Root cause:** Metabase only displays a dropdown list of possible values for a variable if it knows that the field in question is a category rather than (for example) an arbitrary number or arbitrary text.
 
@@ -29,9 +51,9 @@ If you have created a [linked filter][linked-filter-gloss], please see [this tro
 4. Set **Field Type** to "Category" and **Filtering on this field** to "A list of all values."
 5. Click the button **Re-scan this field** in the bottom.
 
-## Has the underlying database schema changed?
+## Has someone renamed or deleted columns in the database?
 
-**Root cause:** Someone has renamed a column in the database.
+**Root cause:** Someone has changed the database schema, e.g., renamed or deleted a column in a table.
 
 **Steps to take:**
 
