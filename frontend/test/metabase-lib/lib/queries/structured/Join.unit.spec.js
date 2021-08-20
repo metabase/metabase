@@ -299,6 +299,34 @@ describe("Join", () => {
     });
   });
 
+  describe("getConditions", () => {
+    it("should return empty array for a join without condition", () => {
+      const join = getJoin();
+      expect(join.getConditions()).toEqual([]);
+    });
+
+    it("should return condition for one-fields pair join", () => {
+      const join = getJoin({
+        query: getOrdersJoinQuery({
+          condition: ORDERS_PRODUCT_JOIN_CONDITION,
+        }),
+      });
+      expect(join.getConditions()).toEqual([ORDERS_PRODUCT_JOIN_CONDITION]);
+    });
+
+    it("should return condition for multi-fields join", () => {
+      const join = getJoin({
+        query: getOrdersJoinQuery({
+          condition: ORDERS_PRODUCT_MULTI_FIELD_JOIN_CONDITION,
+        }),
+      });
+      expect(join.getConditions()).toEqual([
+        ORDERS_PRODUCT_JOIN_CONDITION,
+        ORDERS_PRODUCT_JOIN_CONDITION_BY_CREATED_AT,
+      ]);
+    });
+  });
+
   describe("isValid", () => {
     it("should return true for complete one-fields pair join", () => {
       const join = getJoin({
