@@ -196,7 +196,7 @@ describe("scenarios > visualizations > line chart", () => {
             ],
           ],
         }).then(({ body: { id: question2Id } }) => {
-          cy.createDashboard("16249D").then(({ body: { id: dashboardId } }) => {
+          cy.createDashboard().then(({ body: { id: dashboardId } }) => {
             addBothSeriesToDashboard({
               dashboardId,
               firstCardId: question1Id,
@@ -245,7 +245,7 @@ describe("scenarios > visualizations > line chart", () => {
           },
           display: "line",
         }).then(({ body: { id: question2Id } }) => {
-          cy.createDashboard("16249D").then(({ body: { id: dashboardId } }) => {
+          cy.createDashboard().then(({ body: { id: dashboardId } }) => {
             addBothSeriesToDashboard({
               dashboardId,
               firstCardId: question1Id,

@@ -99,7 +99,7 @@ describe("scenarios > question > view", () => {
       cy.findByText("Yes").click();
 
       // Native query saved in dasbhoard
-      cy.createDashboard("Dashboard");
+      cy.createDashboard();
 
       cy.createNativeQuestion({
         name: "Question",

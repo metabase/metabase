@@ -1,9 +1,9 @@
 Cypress.Commands.add(
   "createNativeQuestionAndDashboard",
-  ({ questionDetails, dashboardName = "Custom dashboard" } = {}) => {
+  ({ questionDetails, dashboardDetails } = {}) => {
     cy.createNativeQuestion(questionDetails).then(
       ({ body: { id: questionId } }) => {
-        cy.createDashboard(dashboardName).then(
+        cy.createDashboard(dashboardDetails).then(
           ({ body: { id: dashboardId } }) => {
             cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
               cardId: questionId,
