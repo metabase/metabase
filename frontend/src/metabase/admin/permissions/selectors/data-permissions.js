@@ -35,6 +35,15 @@ import {
   getRawQueryWarningModal,
   getRevokingAccessToAllTablesWarningModal,
 } from "./confirmations";
+import {
+  getTableEntityId,
+  getSchemaEntityId,
+  getDatabaseEntityId,
+} from "../utils/data-entity-id";
+import {
+  getDatabaseFocusPermissionsUrl,
+  getGroupFocusPermissionsUrl,
+} from "../utils/urls";
 
 export const getIsDirty = createSelector(
   state => state.admin.permissions.dataPermissions,
@@ -86,7 +95,9 @@ export const getDatabasesSidebar = createSelector(
 
     if (databaseId == null) {
       const entities = Object.values(metadata.databases).map(database => ({
-        ...database,
+        id: database.id,
+        name: database.name,
+        entityId: getDatabaseEntityId(database),
         icon: "database",
         type: "database",
       }));
@@ -98,7 +109,7 @@ export const getDatabasesSidebar = createSelector(
       };
     }
 
-    const database = metadata.databases[databaseId];
+    const database = metadata.database(databaseId);
 
     let selectedId = null;
 
@@ -112,15 +123,12 @@ export const getDatabasesSidebar = createSelector(
       return {
         id: getSchemaId(schema.name),
         name: schema.name,
-        databaseId: databaseId,
-        type: "schema",
+        entityId: getSchemaEntityId(schema),
         icon: "folder",
         children: schema.tables.map(table => ({
           id: getTableId(table.id),
-          originalId: table.id,
+          entityId: getTableEntityId(table),
           name: table.display_name,
-          schemaName: schema.name,
-          databaseId: databaseId,
           type: "table",
           icon: "table",
         })),
@@ -154,7 +162,7 @@ const getGroupsDataEditorBreadcrumbs = (params, metadata) => {
   const databaseItem = {
     text: database.name,
     id: databaseId,
-    url: `/admin/permissions/data/database/${databaseId}`,
+    url: getDatabaseFocusPermissionsUrl(getDatabaseEntityId(database)),
   };
 
   if (schemaName == null && tableId == null) {
@@ -165,7 +173,7 @@ const getGroupsDataEditorBreadcrumbs = (params, metadata) => {
   const schemaItem = {
     id: schema.id,
     text: schema.name,
-    url: `/admin/permissions/data/database/${databaseId}/schema/${schemaName}`,
+    url: getDatabaseFocusPermissionsUrl(getSchemaEntityId(schema)),
   };
 
   const hasMultipleSchemas = database.schemas.length > 1;
@@ -581,21 +589,16 @@ export const getDatabasesPermissionEditor = createSelector(
     if (schemaName != null || hasSingleSchema) {
       const schema = hasSingleSchema
         ? metadata.database(databaseId).schemas[0]
-        : metadata.schema(`${databaseId}:${schemaName}`);
+        : metadata.database(databaseId).schema(schemaName);
 
       entities = schema.tables.map(table => {
-        const schemaName = table.schema.name;
+        const entityId = getTableEntityId(table);
         return {
           id: table.id,
           name: table.display_name,
-          type: "table",
-          schemaName: table.schema.name,
+          entityId,
           permissions: buildFieldsPermissions(
-            {
-              databaseId,
-              schemaName,
-              tableId: table.id,
-            },
+            entityId,
             groupId,
             isAdmin,
             permissions,
@@ -606,16 +609,14 @@ export const getDatabasesPermissionEditor = createSelector(
       });
     } else if (databaseId != null) {
       entities = metadata.database(databaseId).schemas.map(schema => {
+        const entityId = getSchemaEntityId(schema);
         return {
           id: schema.id,
           name: schema.name,
-          type: "schema",
+          entityId,
           canSelect: true,
           permissions: buildTablesPermissions(
-            {
-              databaseId,
-              schemaName: schema.name,
-            },
+            entityId,
             groupId,
             isAdmin,
             permissions,
@@ -627,16 +628,14 @@ export const getDatabasesPermissionEditor = createSelector(
       entities = metadata
         .databasesList({ savedQuestions: false })
         .map(database => {
+          const entityId = getDatabaseEntityId(database);
           return {
             id: database.id,
             name: database.name,
-            type: "database",
+            entityId,
             canSelect: true,
-            schemas: database.schemas,
             permissions: buildDatabasePermissions(
-              {
-                databaseId: database.id,
-              },
+              entityId,
               groupId,
               isAdmin,
               permissions,
@@ -676,9 +675,9 @@ const getDatabasesEditorBreadcrumbs = (params, metadata, group) => {
   }
 
   const groupItem = {
-    text: `${group.name} group`,
     id: group.id,
-    url: `/admin/permissions/data/group/${group.id}`,
+    text: `${group.name} group`,
+    url: getGroupFocusPermissionsUrl(group.id),
   };
 
   if (databaseId == null) {
@@ -689,8 +688,7 @@ const getDatabasesEditorBreadcrumbs = (params, metadata, group) => {
   const databaseItem = {
     id: database.id,
     text: database.name,
-    databaseId,
-    url: `/admin/permissions/data/group/${group.id}/database/${database.id}`,
+    url: getGroupFocusPermissionsUrl(group.id, getDatabaseEntityId(database)),
   };
 
   if (schemaName == null) {
@@ -701,8 +699,6 @@ const getDatabasesEditorBreadcrumbs = (params, metadata, group) => {
   const schemaItem = {
     id: schema.name,
     text: schema.name,
-    type: "schema",
-    databaseId,
   };
   return [groupItem, databaseItem, schemaItem];
 };

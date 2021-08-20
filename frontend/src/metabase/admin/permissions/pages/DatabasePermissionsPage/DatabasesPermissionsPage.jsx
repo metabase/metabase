@@ -21,6 +21,10 @@ import {
   PermissionsEditorEmptyState,
   permissionEditorPropTypes,
 } from "../../components/PermissionsEditor";
+import {
+  DATABASES_BASE_PATH,
+  getDatabaseFocusPermissionsUrl,
+} from "../../utils/urls";
 
 const propTypes = {
   params: PropTypes.shape({
@@ -62,15 +66,15 @@ function DatabasesPermissionsPage({
         groupId: item.id,
         permission,
         value,
-        entityId: params,
+        entityId: item.entityId,
         view: "database",
       });
     },
-    [params, updateDataPermission],
+    [updateDataPermission],
   );
 
   const handleAction = (action, item) => {
-    dispatch(action.actionCreator(item.id, params, "database"));
+    dispatch(action.actionCreator(item.id, item.entityId, "database"));
   };
 
   const handleBreadcrumbsItemSelect = item => dispatch(push(item.url));
@@ -107,33 +111,15 @@ function DatabasesPermissionsPage({
 
 DatabasesPermissionsPage.propTypes = propTypes;
 
-const BASE_PATH = `/admin/permissions/data/database/`;
-
 const mapDispatchToProps = dispatch => ({
   dispatch,
   ...bindActionCreators(
     {
       updateDataPermission,
       switchView: entityType => push(`/admin/permissions/data/${entityType}`),
-      navigateToDatabaseList: () => push(BASE_PATH),
-      navigateToItem: item => {
-        switch (item.type) {
-          case "database":
-            return push(`${BASE_PATH}${item.id}`);
-          case "schema":
-            return push(`${BASE_PATH}${item.databaseId}/schema/${item.name}`);
-          case "table": {
-            const hasSchema = item.schemaName != null;
-            const url = hasSchema
-              ? `${BASE_PATH}${item.databaseId}/schema/${item.schemaName}/table/${item.originalId}`
-              : `${BASE_PATH}${item.databaseId}/table/${item.originalId}`;
-
-            return push(url);
-          }
-        }
-
-        return push(BASE_PATH);
-      },
+      navigateToDatabaseList: () => push(DATABASES_BASE_PATH),
+      navigateToItem: item =>
+        push(getDatabaseFocusPermissionsUrl(item.entityId)),
     },
     dispatch,
   ),

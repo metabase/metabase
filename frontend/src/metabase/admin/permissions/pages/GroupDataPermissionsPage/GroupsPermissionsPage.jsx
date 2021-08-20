@@ -20,6 +20,10 @@ import {
   PermissionsEditorEmptyState,
   permissionEditorPropTypes,
 } from "../../components/PermissionsEditor";
+import {
+  getGroupFocusPermissionsUrl,
+  GROUPS_BASE_PATH,
+} from "../../utils/urls";
 
 const propTypes = {
   params: PropTypes.shape({
@@ -72,32 +76,11 @@ function GroupsPermissionsPage({
 
   const handlePermissionChange = useCallback(
     async (item, permission, value) => {
-      let entityId;
-
-      switch (item.type) {
-        case "database":
-          entityId = { databaseId: item.id };
-          break;
-        case "schema":
-          entityId = {
-            databaseId: params.databaseId,
-            schemaName: item.name,
-          };
-          break;
-        case "table":
-          entityId = {
-            databaseId: params.databaseId,
-            schemaName: item.schemaName,
-            tableId: item.id,
-          };
-          break;
-      }
-
       await updateDataPermission({
         groupId: params.groupId,
         permission,
         value,
-        entityId,
+        entityId: item.entityId,
         view: "group",
       });
     },
@@ -105,17 +88,7 @@ function GroupsPermissionsPage({
   );
 
   const handleAction = (action, item) => {
-    dispatch(
-      action.actionCreator(
-        params.groupId,
-        {
-          databaseId: params.databaseId,
-          schemaName: params.schemaName,
-          tableId: item.id,
-        },
-        "group",
-      ),
-    );
+    dispatch(action.actionCreator(params.groupId, item.entityId, "group"));
   };
 
   const handleBreadcrumbsItemSelect = item => dispatch(push(item.url));
@@ -152,23 +125,15 @@ function GroupsPermissionsPage({
 
 GroupsPermissionsPage.propTypes = propTypes;
 
-const BASE_PATH = `/admin/permissions/data/group`;
-
 const mapDispatchToProps = dispatch => ({
   dispatch,
   ...bindActionCreators(
     {
       updateDataPermission,
       switchView: entityType => push(`/admin/permissions/data/${entityType}/`),
-      navigateToItem: item => push(`${BASE_PATH}/${item.id}`),
-      navigateToTableItem: (item, { groupId, databaseId }) => {
-        if (item.type === "database") {
-          return push(`${BASE_PATH}/${groupId}/database/${item.id}`);
-        } else if (item.type === "schema") {
-          return push(
-            `${BASE_PATH}/${groupId}/database/${databaseId}/schema/${item.name}`,
-          );
-        }
+      navigateToItem: item => push(`${GROUPS_BASE_PATH}/${item.id}`),
+      navigateToTableItem: (item, { groupId }) => {
+        return push(getGroupFocusPermissionsUrl(groupId, item.entityId));
       },
     },
     dispatch,
