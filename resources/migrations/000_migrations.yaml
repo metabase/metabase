@@ -8464,6 +8464,20 @@ databaseChangeLog:
                 UPDATE setting SET value='simple' WHERE key='humanization-strategy'
                 AND value='advanced'
 
+  - changeSet:
+      id: 312
+      author: noahmoss
+      comment: Added 0.41.0 Backfill collection_id for dashboard subscriptions
+      changes:
+        - sql:
+              sql: >-
+                UPDATE pulse p
+                SET collection_id = (
+                  SELECT d.collection_id
+                  FROM report_dashboard d
+                  WHERE d.id = p.dashboard_id
+                );
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
