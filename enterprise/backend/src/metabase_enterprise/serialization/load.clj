@@ -499,7 +499,7 @@
              "Retrying dashboards for collection %s: %s"
              (or (:collection context) "root")
              (str/join ", " (map :name revisit-dashboards)))
-            (load-dashboards context revisit-dashboards)))))))
+            (load-dashboards (assoc context :mode :update) revisit-dashboards)))))))
 
 (defmethod load "dashboards"
   [path context]
@@ -546,7 +546,7 @@
         (fn []
           (log/infof "Reloading pulses from collection %d" (:collection context))
           (let [pulse-indexes (map ::pulse-index revisit)]
-            (load-pulses (map (partial nth pulses) pulse-indexes) context)))))))
+            (load-pulses (map (partial nth pulses) pulse-indexes) (assoc context :mode :update))))))))
 
 (defmethod load "pulses"
   [path context]
@@ -657,7 +657,7 @@
         (fn []
           (log/infof "Attempting to reload cards in collection %d" (:collection context))
           (let [revisit-indexes (::revisit-index grouped-cards)]
-            (load-cards context paths (mapv (partial nth cards) revisit-indexes))))))))
+            (load-cards (assoc context :mode :update) paths (mapv (partial nth cards) revisit-indexes))))))))
 
 (defmethod load "cards"
   [path context]

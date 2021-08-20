@@ -370,7 +370,7 @@
                                            [Card               (Card card-id-with-native-snippet)]
                                            [Card               (Card card-join-card-id)]]})]
         (with-world-cleanup
-          (load dump-dir {:on-error :continue :mode :update})
+          (load dump-dir {:on-error :continue :mode :skip})
           (mt/with-db (db/select-one Database :name ts/temp-db-name)
             (doseq [[model entity] (:entities fingerprint)]
               (testing (format "%s \"%s\"" (type model) (:name entity))
