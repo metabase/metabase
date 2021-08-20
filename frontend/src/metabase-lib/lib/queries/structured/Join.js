@@ -278,9 +278,13 @@ export default class Join extends MBQLObjectClause {
         return target && target.table && target.table.id === joinedTable.id;
       });
       if (fk) {
-        return this.setParentDimension(fk).setJoinDimension(
-          this.joinedDimension(fk.field().target.dimension()),
-        );
+        return this.setParentDimension({
+          index: 0,
+          dimension: fk,
+        }).setJoinDimension({
+          index: 0,
+          dimension: this.joinedDimension(fk.field().target.dimension()),
+        });
       }
     }
     return this;
