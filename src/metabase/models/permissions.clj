@@ -350,7 +350,7 @@
     [(s/one (s/maybe su/IntGreaterThanZero) :graph-id) (s/one (s/maybe su/IntGreaterThanZero) :db-id)]
     "Valid index pair for indexing into a graph"))
 
-(def ^:private IndexPairList
+(def IndexPairList
   (s/named
     [IndexPair]
     "Valid list of index pair for indexing into a graph for multiple indices"))
@@ -447,6 +447,27 @@
                            (:db permissions-graph))
                          db-ids))))))
 
+
+(s/defn filter-graph
+  "Filter the groups of the graph with respect to the group id and/or the db id"
+  [in-graph :- StrictPermissionsGraph
+   index-pairs :- IndexPairList]
+  (let [in-graph-groups (:groups in-graph)
+        group-ids       (keys in-graph-groups)
+        index-pairs     (mapcat (fn [[fst snd]]
+                                  (if (nil? fst)
+                                    (vec (for [group-id group-ids] [group-id snd]))
+                                    [[fst snd]]))
+                                index-pairs)
+        index-pairs     (mapcat (fn [[fst snd]]
+                                  (if (nil? snd)
+                                    (vec (for [db-id (keys (in-graph-groups fst))] [fst db-id]))
+                                    [[fst snd]]))
+                                index-pairs)
+        members         (vec (for [index-pair index-pairs]
+                               (assoc-in {} index-pair (get-in in-graph-groups index-pair))))
+        filtered-res    (apply m/deep-merge members)]
+    (assoc in-graph :groups filtered-res)))
 
 (s/defn graph :- PermissionsGraph
   "Fetch a graph representing the current permissions status for every Group and all permissioned databases."
@@ -729,27 +750,6 @@
    (trs "Changing permissions")
    "\n" (trs "FROM:") (u/pprint-to-str 'magenta old)
    "\n" (trs "TO:")   (u/pprint-to-str 'blue    new)))
-
-(s/defn filter-graph
-  "Filter the groups of the graph with respect to the group id and/or the db id"
-  [in-graph :- StrictPermissionsGraph
-   index-pairs :- IndexPairList]
-  (let [in-graph-groups (:groups in-graph)
-        group-ids       (keys in-graph-groups)
-        index-pairs     (mapcat (fn [[fst snd]]
-                                  (if (nil? fst)
-                                    (vec (for [group-id group-ids] [group-id snd]))
-                                    [[fst snd]]))
-                                index-pairs)
-        index-pairs     (mapcat (fn [[fst snd]]
-                                  (if (nil? snd)
-                                    (vec (for [db-id (keys (in-graph-groups fst))] [fst db-id]))
-                                    [[fst snd]]))
-                                index-pairs)
-        members         (vec (for [index-pair index-pairs]
-                               (assoc-in {} index-pair (get-in in-graph-groups index-pair))))
-        filtered-res    (apply m/deep-merge members)]
-    (assoc in-graph :groups filtered-res)))
 
 (s/defn update-graph!
   "Update the permissions graph, making any changes necessary to make it match NEW-GRAPH.

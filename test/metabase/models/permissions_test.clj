@@ -551,6 +551,10 @@
         (is (= {(mt/id :categories) :all, (mt/id :venues) :all}
                (test-data-graph group)))))))
 
+(defn- new-graph
+  [graph ks new-val]
+  (assoc-in graph (cons :groups ks) new-val))
+
 (deftest graph-filters-test
   (testing "groupid and dbid filter works for groups"
     (mt/with-temp* [PermissionsGroup [group1]
@@ -559,12 +563,12 @@
                     Database         [db2]
                     Table            [table1    {:db_id (u/the-id db1)}]
                     Table            [table2    {:db_id (u/the-id db2)}]]
-      (perms/update-graph! [(u/the-id group1) (u/the-id db1) :schemas] {"" {(u/the-id table1) :all}})
+      (perms/update-graph! (new-graph (graph) [(u/the-id group1) (u/the-id db1) :schemas] {"" {(u/the-id table1) :all}}))
       (perms/update-graph! [(u/the-id group2) (u/the-id db1) :schemas] {"" {(u/the-id table1) :all}})
       (perms/update-graph! [(u/the-id group1) (u/the-id db2) :schemas] {"" {(u/the-id table2) :all}})
       (perms/update-graph! [(u/the-id group2) (u/the-id db2) :schemas] {"" {(u/the-id table2) :all}})
       (is (= :all
-             (get-in (perms/graph {:graph-id (u/the-id group2) :db-id (u/the-id db1)})
+             (get-in (perms/graph [[(u/the-id group2) (u/the-id db1)]])
                      [:groups (u/the-id group2) (u/the-id db1) :schemas "" (u/the-id table1)]))))))
 
 (deftest graph-for-tables-without-schemas-test

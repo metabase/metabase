@@ -28,7 +28,7 @@
    db_id    (s/maybe su/IntGreaterThanZero)}
   (api/check-superuser)
   (let [index-pair [group_id db_id]]
-    (perms/graph [index-pair]))
+    (perms/graph [index-pair])))
 
 (api/defendpoint PUT "/graph"
   "Do a batch update of Permissions by passing in a modified graph. This should return the same graph, in the same
@@ -41,11 +41,11 @@
   409 (Conflict) response. In this case, you should fetch the updated graph and make desired changes to that."
   [index_pairs :as {body :body}]
   {index_pairs (s/maybe perms/IndexPairList)
-   body     su/Map}
+   body        su/Map}
   (api/check-superuser)
   (perms/update-graph!
     (pg/converted-json->graph ::pg/data-permissions-graph body)
-    index-pairs)
+    index_pairs)
   (perms/graph))
 
 
