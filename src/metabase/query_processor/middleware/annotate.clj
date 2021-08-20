@@ -549,11 +549,14 @@
   (let [non-nil-driver-col-metadata (m/filter-vals some? driver-col-metadata)
         our-base-type               (when (= (:base_type driver-col-metadata) :type/*)
                                       (u/select-non-nil-keys our-col-metadata [:base_type]))
+        ;; whatever type comes back from the query is by definition the effective type
+        effective-type              {:effective_type (:base_type driver-col-metadata)}
         our-name                    (u/select-non-nil-keys our-col-metadata [:name])]
     (merge our-col-metadata
            non-nil-driver-col-metadata
            our-base-type
-           our-name)))
+           our-name
+           effective-type)))
 
 (defn- merge-cols-returned-by-driver
   "Merge our column metadata (`:cols`) derived from logic above with the column metadata returned by the driver. We'll
