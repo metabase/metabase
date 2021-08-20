@@ -27,9 +27,8 @@
   {group_id (s/maybe su/IntGreaterThanZero)
    db_id    (s/maybe su/IntGreaterThanZero)}
   (api/check-superuser)
-  (let [options {:group-id group_id
-                 :db-id    db_id}]
-    (perms/graph options)))
+  (let [index-pair [group_id db_id]]
+    (perms/graph [index-pair]))
 
 (api/defendpoint PUT "/graph"
   "Do a batch update of Permissions by passing in a modified graph. This should return the same graph, in the same
@@ -40,15 +39,13 @@
   Revisions to the permissions graph are tracked. If you fetch the permissions graph and some other third-party
   modifies it before you can submit you revisions, the endpoint will instead make no changes and return a
   409 (Conflict) response. In this case, you should fetch the updated graph and make desired changes to that."
-  [group_id, db_id, :as {body :body}]
-  {group_id (s/maybe su/IntGreaterThanZero)
-   db_id    (s/maybe su/IntGreaterThanZero)
+  [index_pairs :as {body :body}]
+  {index_pairs (s/maybe perms/IndexPairList)
    body     su/Map}
   (api/check-superuser)
   (perms/update-graph!
     (pg/converted-json->graph ::pg/data-permissions-graph body)
-    group_id
-    db_id)
+    index-pairs)
   (perms/graph))
 
 
