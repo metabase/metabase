@@ -145,7 +145,7 @@
 
 ;; by default, archived Alerts should be excluded
 
-(deftest get-alert-tests
+(deftest get-alerts-test
   (testing "archived alerts should be excluded"
     (is (= #{"Not Archived"}
            (with-alert-in-collection [_ _ not-archived-alert]
@@ -163,6 +163,20 @@
                (db/update! Pulse (u/the-id archived-alert)     :name "Archived", :archived true)
                (with-alerts-in-readable-collection [not-archived-alert archived-alert]
                  (set (map :name ((user->client :rasta) :get 200 "alert?archived=true"))))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               GET /api/alert/:id                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest get-alert-test
+  (testing "an alert can be fetched by ID"
+    (with-alert-in-collection [_ _ alert]
+      (with-alerts-in-readable-collection [alert]
+        (is (= (u/the-id alert)
+               (:id ((user->client :rasta) :get 200 (str "alert/" (u/the-id alert)))))))))
+
+  (testing "fetching a non-existing alert returns an error"
+    ((user->client :rasta) :get 404 (str "alert/" 123))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                POST /api/alert                                                 |

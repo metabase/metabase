@@ -228,7 +228,6 @@
 
   ([{:keys [archived? user-id]
      :or   {archived? false}}]
-   (def my-user-id user-id)
    (let [query {:select    [:p.* [:%lower.p.name :lower-name]]
                 :modifiers [:distinct]
                 :from      [[Pulse :p]]
@@ -255,22 +254,22 @@
   "Fetch all `Pulses`."
   [{:keys [archived? dashboard-id user-id]
     :or   {archived? false}}]
-  (let [query (merge {:select    [:p.* [:%lower.p.name :lower-name]]
-                      :modifiers [:distinct]
-                      :from      [[Pulse :p]]
-                      :left-join (when user-id
-                                  [[PulseChannel :pchan] [:= :p.id :pchan.pulse_id]
-                                   [PulseChannelRecipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]])
-                      :where     [:and
-                                  [:= :p.alert_condition nil]
-                                  [:= :p.archived archived?]
-                                  (when dashboard-id
-                                    [:= :p.dashboard_id dashboard-id])
-                                  (when user-id
-                                    [:or
-                                     [:= :p.creator_id user-id]
-                                     [:= :pcr.user_id user-id]])]
-                      :order-by  [[:lower-name :asc]]})]
+  (let [query {:select    [:p.* [:%lower.p.name :lower-name]]
+               :modifiers [:distinct]
+               :from      [[Pulse :p]]
+               :left-join (when user-id
+                            [[PulseChannel :pchan] [:= :p.id :pchan.pulse_id]
+                             [PulseChannelRecipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]])
+               :where     [:and
+                           [:= :p.alert_condition nil]
+                           [:= :p.archived archived?]
+                           (when dashboard-id
+                             [:= :p.dashboard_id dashboard-id])
+                           (when user-id
+                             [:or
+                              [:= :p.creator_id user-id]
+                              [:= :pcr.user_id user-id]])]
+               :order-by  [[:lower-name :asc]]}]
     (for [pulse (query-as Pulse query)]
       (-> pulse
           (dissoc :lower-name)
