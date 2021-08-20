@@ -142,7 +142,7 @@ export const getDatabasesSidebar = createSelector(
   },
 );
 
-const getBreadcrumbs = (params, metadata) => {
+const getGroupsDataEditorBreadcrumbs = (params, metadata) => {
   const { databaseId, schemaName, tableId } = params;
 
   if (databaseId == null) {
@@ -154,7 +154,7 @@ const getBreadcrumbs = (params, metadata) => {
   const databaseItem = {
     text: database.name,
     id: databaseId,
-    type: "database",
+    url: `/admin/permissions/data/database/${databaseId}`,
   };
 
   if (schemaName == null && tableId == null) {
@@ -165,9 +165,7 @@ const getBreadcrumbs = (params, metadata) => {
   const schemaItem = {
     id: schema.id,
     text: schema.name,
-    name: schema.name,
-    databaseId,
-    type: "schema",
+    url: `/admin/permissions/data/database/${databaseId}/schema/${schemaName}`,
   };
 
   const hasMultipleSchemas = database.schemas.length > 1;
@@ -178,11 +176,8 @@ const getBreadcrumbs = (params, metadata) => {
 
   const table = metadata.table(tableId);
   const tableItem = {
+    id: table.id,
     text: table.display_name,
-    type: "table",
-    schemaName: schema.name,
-    databaseId,
-    originalId: table.id,
   };
 
   return [databaseItem, hasMultipleSchemas && schemaItem, tableItem].filter(
@@ -484,7 +479,7 @@ export const getGroupsDataPermissionEditor = createSelector(
     return {
       title: t`Permissions for`,
       filterPlaceholder: t`Search groups`,
-      breadcrumbs: getBreadcrumbs(params, metadata),
+      breadcrumbs: getGroupsDataEditorBreadcrumbs(params, metadata),
       columns,
       entities,
     };
@@ -683,7 +678,7 @@ const getDatabasesEditorBreadcrumbs = (params, metadata, group) => {
   const groupItem = {
     text: `${group.name} group`,
     id: group.id,
-    type: "group",
+    url: `/admin/permissions/data/group/${group.id}`,
   };
 
   if (databaseId == null) {
@@ -695,7 +690,7 @@ const getDatabasesEditorBreadcrumbs = (params, metadata, group) => {
     id: database.id,
     text: database.name,
     databaseId,
-    type: "database",
+    url: `/admin/permissions/data/group/${group.id}/database/${database.id}`,
   };
 
   if (schemaName == null) {

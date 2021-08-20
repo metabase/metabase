@@ -73,6 +73,8 @@ function DatabasesPermissionsPage({
     dispatch(action.actionCreator(item.id, params, "database"));
   };
 
+  const handleBreadcrumbsItemSelect = item => dispatch(push(item.url));
+
   return (
     <React.Fragment>
       <PermissionsSidebar
@@ -92,7 +94,7 @@ function DatabasesPermissionsPage({
       {permissionEditor && (
         <PermissionsEditor
           {...permissionEditor}
-          onBreadcrumbsItemSelect={navigateToItem}
+          onBreadcrumbsItemSelect={handleBreadcrumbsItemSelect}
           onChange={handlePermissionChange}
           onAction={handleAction}
         />

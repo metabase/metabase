@@ -48,7 +48,6 @@ function GroupsPermissionsPage({
   navigateToTableItem,
   updateDataPermission,
   dispatch,
-  navigateToDatabase,
 }) {
   const handleEntityChange = useCallback(
     entityType => {
@@ -119,8 +118,7 @@ function GroupsPermissionsPage({
     );
   };
 
-  const handleBreadcrumbsItemSelect = item =>
-    navigateToDatabase(params, item.id);
+  const handleBreadcrumbsItemSelect = item => dispatch(push(item.url));
 
   return (
     <React.Fragment>
@@ -163,8 +161,6 @@ const mapDispatchToProps = dispatch => ({
       updateDataPermission,
       switchView: entityType => push(`/admin/permissions/data/${entityType}/`),
       navigateToItem: item => push(`${BASE_PATH}/${item.id}`),
-      navigateToDatabase: (params, databaseId) =>
-        push(`${BASE_PATH}/${params.groupId}/database/${databaseId}`),
       navigateToTableItem: (item, { groupId, databaseId }) => {
         if (item.type === "database") {
           return push(`${BASE_PATH}/${groupId}/database/${item.id}`);
