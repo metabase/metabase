@@ -68,7 +68,7 @@
                (not= (:collection_id notification) collection_id)
                (not *allow-moving-dashboard-subscriptions*))
       (throw (ex-info (tru "collection ID of dashboard subscription cannot be directly modified") notification)))
-    (when (not= (:collection_id notification) dashboard_id)
+    (when (not= (:dashboard_id notification) dashboard_id)
       (throw (ex-info (tru "dashboard ID of a dashboard subscription cannot be modified") notification))))
   (u/prog1 notification
     (assert-valid-parameters notification)
