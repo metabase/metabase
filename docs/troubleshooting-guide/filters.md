@@ -6,7 +6,7 @@ You've tried to add a [filter widget][filter-widget-gloss] to your dashboard, bu
 - the filter doesn't show a dropdown list of possible values when you use it, or
 - the filter removes all of the rows from the table no matter what value you set it to.
 
-If you've created a [linked filter][linked-filter-gloss], please see [this troubleshooting guide](./linked-filters.html) instead.
+If you've created a [linked filter][linked-filter-gloss], please see [this troubleshooting guide][troubleshoot-linked-filters] instead.
 
 ## Is the filter actually connected to your question?
 
@@ -61,3 +61,4 @@ If a filter that used to work no longer seems to, or seems to eliminate all of t
 [linked-filter-gloss]: /glossary.html#linked_filter
 [sql-variable]: /learn/sql-questions/sql-variables.html
 [sync-scan]: ./sync-fingerprint-scan.html
+[troubleshoot-linked-filters]: ./linked-filters.html
