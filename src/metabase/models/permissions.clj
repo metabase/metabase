@@ -390,7 +390,7 @@
 (def ^:private PermissionsGraph
   (s/named
    {:revision s/Int
-    :groups   {(s/optional-key su/IntGreaterThanZero) GroupPermissionsGraph}}
+    :groups   {su/IntGreaterThanZero GroupPermissionsGraph}}
    "Valid perms graph"))
 
 ;; The "Strict" versions of the various graphs below are intended for schema checking when *updating* the permissions
