@@ -618,6 +618,10 @@ export function getValuePopulatedParameters(parameters, parameterValues) {
     : parameters;
 }
 
+// on dashboards we treat a default parameter with a set value of "" (from a query parameter)
+// to mean that the parameter value is explicitly unset.
+// this is NOT the case elsewhere (native questions, pulses) because default values are
+// automatically used in the query when unset.
 export function isDefaultedParameterSpecialCase(parameter, value) {
   return hasDefaultParameterValue(parameter) && value === "";
 }
