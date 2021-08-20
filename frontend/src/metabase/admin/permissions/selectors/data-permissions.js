@@ -122,7 +122,7 @@ export const getDatabasesSidebar = createSelector(
           schemaName: schema.name,
           databaseId: databaseId,
           type: "table",
-          icon: "table2",
+          icon: "table",
         })),
       };
     });
