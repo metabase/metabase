@@ -1,47 +1,38 @@
 # My dashboard filters don't work
 
-You have tried to add a [filter widget][filter-widget-gloss] to your dashboard, but:
+You've tried to add a [filter widget][filter-widget-gloss] to your dashboard, but:
 
-- the question you want to connect the filter to doesn't show up,
+- the question you want to connect the filter to doesn't show up, or
 - the filter doesn't show a dropdown list of possible values when you use it, or
 - the filter removes all of the rows from the table no matter what value you set it to.
 
-If you have created a [linked filter][linked-filter-gloss], please see [this troubleshooting guide](./linked-filters.html) instead.
+If you've created a [linked filter][linked-filter-gloss], please see [this troubleshooting guide](./linked-filters.html) instead.
 
 ## Is the filter actually connected to your question?
 
-- in query builder, did you exclude the column from the results *or* have you connected the filter to column A instead of column B?
-
-## Was the question built using the Query Builder or written in SQL? FIXME break this into two
-
-- If built in Query Builder, Metabase knows what columns you're using
-  - So you can add a dashboard filter and refer to them without creating variables explicitly
-- If written in SQL, you need to have created variables or Field Filters (which are a special type of variable)
-  - link link link
+**Root cause** The filter is not connected to any cards on the dashboard, or connected to the wrong field.
 
 **Steps to take:**
 
-1. Check that the question is written in SQL. (Variables cannot be used in GUI question created with the Notebook Editor.)
-2. FIXME second step?
+ 1. In dashboard edit mode, click on the gear icon next to the filter. Check that each card you want to wire up to the filter has a column selected.
+ 2. If no columns are available to select on that card, you may need to change the filter type, from say a text filter to a date filter, to connect the filter to the card.
+ 3. Check that the filter widget is connected to the column you want to filter on each relevant card.
 
-## If the question is written in SQL, does it actually include variables?
+## If the card you're trying to filter is written in SQL, does its SQL query contain a variable?
+ 
+**Root cause**: If your SQL question doesn't contain a variable, the filter can't insert the value into the query to filter the results.
 
-**Root cause:** A filter must be linked to a variable in a SQL question, so if the question doesn't have any variables, you can't connect a filter to it. FIXME reword (need an injection point)
+**Steps to take**:
 
-**Steps to take:**
+1. Check that your SQL query contains at least [one variable][sql-variable] for the filter to insert the value. These can be plain variables, or [Field Filters][field-filter], with names enclosed in double curly braces `{% raw %}{{name}}{% endraw %}`, typically in a `WHERE` clause. 
 
-1. Check that the question contains one or more variables with names enclosed in double curly braces `{% raw %}{{name}}{% endraw %}`.
+If you built your question in the Query Builder, Metabase knows which columns you're using, and which columns you can connect to different types of filters. So you can add a dashboard filter and refer to columns in the question's results without creating variables explicitly.
 
 ## Are you seeing a different kind of input widget than you expected?
 
-- For example, you want a dropdown but you're seeing a search box or a text input box
-- Logic for selecting input widgets is a bit complicated
-- If you created the question in the query builder, then:
-  - If there's more than a few hundred distinct values, you'll get a search box with autocomplete rather than a dropdown
-- If you created the question in SQL, then:
-  - You only get a dropdown if the filter is a Field Filter _and_ the field type is set correctly (see below)
+For example, you want a dropdown but you're seeing a search box or a text input box.
 
-**Root cause:** Metabase only displays a dropdown list of possible values for a variable if it knows that the field in question is a category rather than (for example) an arbitrary number or arbitrary text.
+**Root cause:** Metabase only displays a dropdown list of possible values for a variable if it knows that the field in question is a category rather than (for example) an arbitrary number or arbitrary text. However, if the number of unique categories exceeds 100 values, Metabase will display a search box with autocomplete instead of a dropdown.
 
 **Steps to take:**
 
@@ -50,6 +41,8 @@ If you have created a [linked filter][linked-filter-gloss], please see [this tro
 3. Click the gear-icon to view all the field's settings.
 4. Set **Field Type** to "Category" and **Filtering on this field** to "A list of all values."
 5. Click the button **Re-scan this field** in the bottom.
+ 
+If you created the question in SQL, then you only get a dropdown if the filter is a Field Filter _and_ the Filtering on this field option is set to your preferred input type: A list of all values (dropdown list) and the number of unique values is less than 100. 
 
 ## Has someone renamed or deleted columns in the database?
 
@@ -63,6 +56,8 @@ If a filter that used to work no longer seems to, or seems to eliminate all of t
 2. Compare the names of the fields used in the question with the actual names of the fields in the database.
 3. Modify the question to match the current database schema.
 
+[field-filter]: /learn/sql-questions/field-filters.html
 [filter-widget-gloss]: /glossary.html#filter_widget
 [linked-filter-gloss]: /glossary.html#linked_filter
+[sql-variable]: /learn/sql-questions/sql-variables.html
 [sync-scan]: ./sync-fingerprint-scan.html
