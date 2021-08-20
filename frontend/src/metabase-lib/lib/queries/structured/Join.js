@@ -224,9 +224,41 @@ export default class Join extends MBQLObjectClause {
     return Array.isArray(condition) && condition[0] === "and";
   }
 
+  getConditionByIndex(index) {
+    if (!this.condition) {
+      return null;
+    }
+    if (this.isSingleConditionJoin() && !index) {
+      return this.condition;
+    }
+    if (this.isMultipleConditionsJoin()) {
+      const [_operator, ...conditions] = this.condition;
+      return conditions[index];
+    }
+    return null;
+  }
+
   setCondition(condition: JoinCondition): Join {
     return this.set({ ...this, condition });
   }
+
+  setConditionByIndex({ index = 0, condition }): Join {
+    if (!this.condition) {
+      return this.setCondition(condition);
+    }
+    if (this.isSingleConditionJoin()) {
+      if (index === 0) {
+        return this.setCondition(condition);
+      } else {
+        return this.setCondition(["and", this.condition, condition]);
+      }
+    } else {
+      const conditions = [...this.condition];
+      conditions[index + 1] = condition;
+      return this.setCondition(conditions);
+    }
+  }
+
   setDefaultCondition() {
     const { dimensions } = this.parentDimensionOptions();
     // look for foreign keys linking the two tables
