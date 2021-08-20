@@ -390,7 +390,7 @@
 (def ^:private PermissionsGraph
   (s/named
    {:revision s/Int
-    :groups   {su/IntGreaterThanZero GroupPermissionsGraph}}
+    :groups   {(s/optional-key su/IntGreaterThanZero) GroupPermissionsGraph}}
    "Valid perms graph"))
 
 ;; The "Strict" versions of the various graphs below are intended for schema checking when *updating* the permissions
@@ -465,7 +465,7 @@
                                     [[fst snd]]))
                                 index-pairs)
         members         (vec (for [index-pair index-pairs]
-                               (assoc-in {} index-pair (get-in in-graph-groups index-pair))))
+                               (assoc-in {} index-pair (or (get-in in-graph-groups index-pair) {}))))
         filtered-res    (apply m/deep-merge members)]
     (assoc in-graph :groups filtered-res)))
 
@@ -765,10 +765,10 @@
 
   ([new-graph    :- StrictPermissionsGraph
     index-pairs  :- IndexPairList]
-   (let [old-graph    (if (seq? index-pairs)
+   (let [old-graph    (if (seq index-pairs)
                         (graph index-pairs)
                         (graph))
-         filtered-new (if (seq? index-pairs)
+         filtered-new (if (seq index-pairs)
                         (filter-graph new-graph index-pairs)
                         new-graph)
          [old new]    (data/diff (:groups old-graph) (:groups filtered-new))
