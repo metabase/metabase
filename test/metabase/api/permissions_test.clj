@@ -160,41 +160,39 @@
           (is (= :all (get-in (perms/graph) [:groups (u/the-id group1) db-id1 :schemas])))
           (is (= :all (get-in (perms/graph) [:groups (u/the-id group2) db-id3 :schemas]))))))
 
-    (testing "group-id specified"
-      (mt/with-temp* [PermissionsGroup [group1]
-                      PermissionsGroup [group2]
+    (testing "certain params specified specified"
+      (mt/with-temp* [PermissionsGroup [{group-id1 :id}]
+                      PermissionsGroup [{group-id2 :id}]
                       Database         [{db-id1 :id}]
                       Database         [{db-id2 :id}]]
         (let [changed  (-> (perms/graph)
-                           (assoc-in [:groups (u/the-id group1) db-id1 :schemas] :all)
-                           (assoc-in [:groups (u/the-id group2) db-id2 :schemas] :all))
+                           (assoc-in [:groups group-id1 db-id1 :schemas] :all)
+                           (assoc-in [:groups group-id2 db-id2 :schemas] :all))
               mutation ((mt/user->client :crowberto) :put 200 "permissions/graph"
-                        changed :group_id (u/the-id group1))]
-          (is (= :all (get-in (perms/graph) [:groups (u/the-id group1) db-id1 :schemas])))
-          (is (= nil (get-in (perms/graph) [:groups (u/the-id group2) db-id2 :schemas]))))))
+                        changed :index_pairs [group-id1 nil])]
+          (is (= :all (get-in (perms/graph) [:groups group-id1 db-id1 :schemas])))
+          (is (= nil (get-in (perms/graph) [:groups group-id2 db-id2 :schemas])))))
 
-    (testing "db-id specified"
-      (mt/with-temp* [PermissionsGroup [group1]
-                      PermissionsGroup [group2]
+      (mt/with-temp* [PermissionsGroup [{group-id1 :id}]
+                      PermissionsGroup [{group-id2 :id}]
                       Database         [{db-id1 :id}]
                       Database         [{db-id2 :id}]]
         (let [changed  (-> (perms/graph)
-                           (assoc-in [:groups (u/the-id group1) db-id1 :schemas] :all)
-                           (assoc-in [:groups (u/the-id group2) db-id2 :schemas] :all))
+                           (assoc-in [:groups group-id1 db-id1 :schemas] :all)
+                           (assoc-in [:groups group-id2 db-id2 :schemas] :all))
               mutation ((mt/user->client :crowberto) :put 200 "permissions/graph"
-                        changed :db_id db-id1)]
-          (is (= :all (get-in (perms/graph) [:groups (u/the-id group1) db-id1 :schemas])))
-          (is (= nil (get-in (perms/graph) [:groups (u/the-id group2) db-id2 :schemas]))))))
+                        changed :index_pairs [nil db-id1])]
+          (is (= :all (get-in (perms/graph) [:groups group-id1 db-id1 :schemas])))
+          (is (= nil (get-in (perms/graph) [:groups group-id2 db-id2 :schemas])))))
 
-    (testing "both specified"
-      (mt/with-temp* [PermissionsGroup [group1]
-                      PermissionsGroup [group2]
+      (mt/with-temp* [PermissionsGroup [{group-id1 :id}]
+                      PermissionsGroup [{group-id2 :id}]
                       Database         [{db-id1 :id}]
                       Database         [{db-id2 :id}]]
         (let [changed  (-> (perms/graph)
-                           (assoc-in [:groups (u/the-id group1) db-id1 :schemas] :all)
-                           (assoc-in [:groups (u/the-id group2) db-id2 :schemas] :all))
+                           (assoc-in [:groups group-id1 db-id1 :schemas] :all)
+                           (assoc-in [:groups group-id2 db-id2 :schemas] :all))
               mutation ((mt/user->client :crowberto) :put 200 "permissions/graph"
-                        changed :db_id db-id1 :group_id (u/the-id group1))]
-          (is (= :all (get-in (perms/graph) [:groups (u/the-id group1) db-id1 :schemas])))
-          (is (= nil (get-in (perms/graph) [:groups (u/the-id group2) db-id2 :schemas]))))))))
+                        changed :index_pairs [group-id1 db-id1])]
+          (is (= :all (get-in (perms/graph) [:groups group-id1 db-id1 :schemas])))
+          (is (= nil (get-in (perms/graph) [:groups group-id2 db-id2 :schemas]))))))))
