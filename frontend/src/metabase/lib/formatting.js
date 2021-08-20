@@ -558,9 +558,15 @@ export function formatTimeWithUnit(
     ? options.time_style
     : DEFAULT_TIME_STYLE;
 
+  const timeEnabled = options.time_enabled
+    ? options.time_enabled
+    : hasHour(unit)
+    ? "minutes"
+    : null;
+
   const timeFormat = options.time_format
     ? options.time_format
-    : getTimeFormatFromStyle(timeStyle, unit, "minutes");
+    : getTimeFormatFromStyle(timeStyle, unit, timeEnabled);
 
   return m.format(timeFormat);
 }

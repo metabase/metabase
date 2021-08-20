@@ -489,6 +489,25 @@ describe("formatting", () => {
 
       expect(formatTimeWithUnit(14, "hour-of-day", options)).toEqual("14:00");
     });
+
+    it("should format hour-of-day with custom precision", () => {
+      const options = {
+        time_style: "HH:mm",
+        time_enabled: "seconds",
+      };
+
+      expect(formatTimeWithUnit(14.4, "hour-of-day", options)).toEqual(
+        "14:00:00",
+      );
+    });
+
+    it("should format hour-of-day with a custom format", () => {
+      const options = {
+        time_format: "HH",
+      };
+
+      expect(formatTimeWithUnit(14.4, "hour-of-day", options)).toEqual("14");
+    });
   });
 
   describe("slugify", () => {
