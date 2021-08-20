@@ -216,14 +216,16 @@ describe("scenarios > dashboard", () => {
   });
 
   it("should display column options for cross-filter (metabase#14473)", () => {
-    cy.createNativeQuestion({
+    const questionDetails = {
       name: "14473",
       native: { query: "SELECT COUNT(*) FROM PRODUCTS", "template-tags": {} },
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
+    };
+
+    cy.createNativeQuestionAndDashboard({ questionDetails }).then(
+      ({ body: { dashboard_id } }) => {
         cy.log("Add 4 filters to the dashboard");
 
-        cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
           parameters: [
             { name: "ID", slug: "id", id: "729b6456", type: "id" },
             { name: "ID 1", slug: "id_1", id: "bb20f59e", type: "id" },
@@ -242,14 +244,9 @@ describe("scenarios > dashboard", () => {
           ],
         });
 
-        cy.log("Add previously created question to the dashboard");
-        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-          cardId: QUESTION_ID,
-        });
-
-        cy.visit(`/dashboard/${DASHBOARD_ID}`);
-      });
-    });
+        cy.visit(`/dashboard/${dashboard_id}`);
+      },
+    );
 
     // Add cross-filter click behavior manually
     cy.icon("pencil").click();
@@ -460,6 +457,6 @@ function assertScrollBarExists() {
     const bodyWidth = $body[0].getBoundingClientRect().width;
     cy.window()
       .its("innerWidth")
-      .should("be.gt", bodyWidth);
+      .should("be.gte", bodyWidth);
   });
 }
