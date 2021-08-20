@@ -62,7 +62,6 @@
   only be done when the associated dashboard is being moved to a new collection."
   false)
 
-
 (defn- pre-update [notification]
   (let [{:keys [collection_id dashboard_id]} (db/select-one [Pulse :collection_id :dashboard_id] :id (u/the-id notification))]
     (when (and dashboard_id
