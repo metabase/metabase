@@ -96,7 +96,17 @@
     (testing "get the graph"
       (mt/with-temp PermissionsGroup [group]
         (is (pos? (count (:groups
-                           (mt/user-http-request :crowberto :get 200 "permissions/graph")))))))))
+                           (mt/user-http-request :crowberto :get 200 "permissions/graph"))))))))
+  (testing "GET /api/permissions/graph?group_id=meta&db_id=meta"
+    (testing "get the graph, group id only"
+      ;;;;;
+      (is (= false true)))
+    (testing "get the graph, db id only"
+      ;;;;;
+      (is (= false true)))
+    (testing "get the graph, both group id and db id"
+      ;;;;;
+      (is (= false true)))))
 
 (deftest update-perms-graph-test
   (testing "PUT /api/permissions/graph"
@@ -160,7 +170,7 @@
           (is (= :all (get-in (perms/graph) [:groups (u/the-id group1) db-id1 :schemas])))
           (is (= :all (get-in (perms/graph) [:groups (u/the-id group2) db-id3 :schemas]))))))
 
-    (testing "certain params specified specified"
+    (testing "certain params specified"
       (mt/with-temp* [PermissionsGroup [{group-id1 :id}]
                       PermissionsGroup [{group-id2 :id}]
                       Database         [{db-id1 :id}]
@@ -168,8 +178,9 @@
         (let [changed  (-> (perms/graph)
                            (assoc-in [:groups group-id1 db-id1 :schemas] :all)
                            (assoc-in [:groups group-id2 db-id2 :schemas] :all))
-              mutation ((mt/user->client :crowberto) :put 200 "permissions/graph"
-                        changed :index_pairs [group-id1 nil])]
+              mutation ((mt/user->client :crowberto) :put 200
+                        (str "permissions/graph?index_pairs=[" group-id1 ",null]")
+                        changed)]
           (is (= :all (get-in (perms/graph) [:groups group-id1 db-id1 :schemas])))
           (is (= nil (get-in (perms/graph) [:groups group-id2 db-id2 :schemas])))))
 
