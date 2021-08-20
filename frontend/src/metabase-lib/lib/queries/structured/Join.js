@@ -134,21 +134,30 @@ export default class Join extends MBQLObjectClause {
   setAlias(alias: JoinAlias) {
     alias = this._uniqueAlias(alias);
     if (alias !== this.alias) {
-      const join = this.set({ ...this, alias });
+      let join = this.set({ ...this, alias });
       // propagate alias change to join dimension
-      const joinDimension = join.joinDimension();
-      if (
-        joinDimension instanceof FieldDimension &&
-        joinDimension.joinAlias() &&
-        joinDimension.joinAlias() === this.alias
-      ) {
-        const newDimension = joinDimension.withJoinAlias(alias);
-        return join.setJoinDimension(newDimension);
-      } else {
-        return join;
-      }
+      const joinDimensions = join.joinDimensions();
+
+      joinDimensions.forEach((joinDimension, i) => {
+        if (
+          joinDimension instanceof FieldDimension &&
+          joinDimension.joinAlias() &&
+          joinDimension.joinAlias() === this.alias
+        ) {
+          const newDimension = joinDimension.withJoinAlias(alias);
+          join = join.setJoinDimension({ index: i, dimension: newDimension });
+        }
+      });
+
+      return join;
     }
     return this;
+  }
+
+  _getParentDimensionForAlias() {
+    return this.parentDimensions().find(
+      dimension => dimension && dimension.field().isFK(),
+    );
   }
 
   setDefaultAlias() {
@@ -167,11 +176,9 @@ export default class Join extends MBQLObjectClause {
 
     const tableName = table && table.display_name;
 
-    const parentDimension = this.parentDimension();
+    const parentDimension = this._getParentDimensionForAlias();
     const fieldName =
-      parentDimension &&
-      parentDimension.field().isFK() &&
-      parentDimension.field().targetObjectName();
+      parentDimension && parentDimension.field().targetObjectName();
 
     const similarTableAndFieldNames =
       tableName &&
