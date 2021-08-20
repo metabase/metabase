@@ -66,12 +66,10 @@ export function buildCollectionTree(collections) {
     return [];
   }
   return collections.map(collection => {
-    const icon = getCollectionIcon(collection);
     return {
       id: collection.id,
       name: collection.name,
-      icon: icon.name,
-      iconColor: icon.color,
+      icon: getCollectionIcon(collection),
       children: buildCollectionTree(collection.children),
     };
   });

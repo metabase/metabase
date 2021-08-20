@@ -3,18 +3,23 @@ import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 
 export const SidebarRoot = styled.aside`
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   width: 300px;
   border-right: 1px solid ${color("border")};
 `;
 
 export const SidebarHeader = styled.div`
+  flex-shrink: 0;
   padding: 1rem;
   border-bottom: 1px solid ${color("border")};
 `;
 
 export const SidebarContent = styled.div`
+  flex-grow: 1;
   padding: 1rem 0;
-  overflow-y: auto;
+  overflow: auto;
 `;
 
 export const EntityGroupsDivider = styled.hr`
