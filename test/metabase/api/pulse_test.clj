@@ -801,7 +801,22 @@
                       Pulse [archived-pulse     {:name "Archived", :archived true}]]
         (with-pulses-in-readable-collection [not-archived-pulse archived-pulse]
           (is (= #{"Archived"}
-                 (set (map :name (mt/user-http-request :rasta :get 200 "pulse?archived=true"))))))))))
+                 (set (map :name (mt/user-http-request :rasta :get 200 "pulse?archived=true"))))))))
+
+    (testing "can fetch pulses by user ID -- should return pulses created by the user,
+           or pulses for which the user is a known recipient"
+      (mt/with-temp* [Pulse                 [creator-pulse   {:name "LuckyCreator" :creator_id (mt/user->id :lucky)}]
+                      Pulse                 [recipient-pulse {:name "LuckyRecipient"}]
+                      Pulse                 [other-pulse     {:name "Other"}]
+                      PulseChannel          [pulse-channel   {:pulse_id (u/the-id recipient-pulse)}]
+                      PulseChannelRecipient [_               {:pulse_channel_id (u/the-id pulse-channel),
+                                                              :user_id (mt/user->id :lucky)}]]
+        (is (= #{"LuckyCreator" "LuckyRecipient"}
+               (set (map :name (mt/user-http-request :rasta :get 200 (str "pulse?user_id=" (mt/user->id :lucky)))))))
+        (is (= #{"LuckyRecipient" "Other"}
+               (set (map :name (mt/user-http-request :rasta :get 200 (str "pulse?user_id=" (mt/user->id :rasta)))))))
+        (is (= #{}
+               (set (map :name (mt/user-http-request :rasta :get 200 (str "pulse?user_id=" (mt/user->id :trashbird)))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
