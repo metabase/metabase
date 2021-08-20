@@ -189,7 +189,6 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
       {joinedTable && (
         <React.Fragment>
           <JoinWhereConditionLabel />
-
           <NotebookCell color={color} flex={1}>
             <JoinDimensionPicker
               color={color}

@@ -11,7 +11,7 @@ export const JoinStepRoot = styled.div`
 export const JoinClausesContainer = styled.div`
   display: flex;
   flex-direction: column;
-  flex: 1 0 auto;
+  flex: 1;
 `;
 
 export const JoinClauseContainer = styled.div`
@@ -61,20 +61,18 @@ export const JoinTypeIcon = styled(Icon).attrs({ size: 24 })`
   color: ${props => (props.isSelected ? color("text-white") : color("brand"))};
 `;
 
-export const JoinWhereConditionLabel = styled.span.attrs({ children: "where" })`
-  color: ${color("text-medium")};
+export const JoinWhereConditionLabel = styled.span.attrs({ children: "on" })`
+  color: ${color("brand")};
   font-weight: bold;
-  margin-top: 6px;
-  margin-left: 10px;
-  margin-right: 14px;
+  margin: 0 16px;
 `;
 
 export const JoinOnConditionLabel = styled.span.attrs({ children: "=" })`
+  font-size: 20;
   font-weight: bold;
   color: ${color("text-medium")};
   margin-left: 2px;
   margin-right: 6px;
-  margin-top: 6px;
 `;
 
 export const RemoveJoinIcon = styled(Icon).attrs({ name: "close", size: 18 })`
