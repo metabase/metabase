@@ -28,6 +28,7 @@ const JOIN_STRATEGY_OPTIONS = [
   { value: "full-join", name: t`Full outer join`, icon: "join_full_outer" },
 ];
 
+const PARENT_DIMENSION_INDEX = 1;
 export default class Join extends MBQLObjectClause {
   strategy: ?JoinStrategy;
   alias: ?JoinAlias;
@@ -309,17 +310,7 @@ export default class Join extends MBQLObjectClause {
     }
     return new DimensionOptions(options);
   }
-  // TODO -- in what way is this setting a "parent dimension"? These names make no sense
-  setParentDimension(dimension: Dimension | ConcreteField): Join {
-    if (dimension instanceof Dimension) {
-      dimension = dimension.mbql();
     }
-    const joinDimension = this.joinDimension();
-    return this.setCondition([
-      "=",
-      dimension,
-      joinDimension instanceof Dimension ? joinDimension.mbql() : null,
-    ]);
   }
 
   joinDimension() {
@@ -335,11 +326,20 @@ export default class Join extends MBQLObjectClause {
     }
     const parentDimension = this.parentDimension();
     return this.setCondition([
+
+  setParentDimension({ index = 0, dimension }) {
+    const condition = this.getConditionByIndex(index);
+    const newCondition = [
       "=",
       parentDimension instanceof Dimension ? parentDimension.mbql() : null,
       dimension,
     ]);
+      this._convertDimensionIntoMBQL(dimension),
+      condition ? condition[JOIN_DIMENSION_INDEX] : null,
+    ];
+    return this.setConditionByIndex({ index, condition: newCondition });
   }
+
   joinDimensionOptions() {
     const dimensions = this.joinedDimensions();
     return new DimensionOptions({
