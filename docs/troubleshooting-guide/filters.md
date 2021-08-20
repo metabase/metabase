@@ -8,23 +8,23 @@ You've tried to add a [filter widget][filter-widget-gloss] to your dashboard, bu
 
 If you've created a [linked filter][linked-filter-gloss], please see [this troubleshooting guide][troubleshoot-linked-filters] instead.
 
-## Is the filter actually connected to your question?
+## Is the dashboard filter actually connected to your question?
 
 **Root cause** The filter is not connected to any cards on the dashboard, or connected to the wrong field.
 
 **Steps to take:**
 
- 1. In dashboard edit mode, click on the gear icon next to the filter. Check that each card you want to wire up to the filter has a column selected.
- 2. If no columns are available to select on that card, you may need to change the filter type, from say a text filter to a date filter, to connect the filter to the card.
- 3. Check that the filter widget is connected to the column you want to filter on each relevant card.
+1. In dashboard edit mode, click on the gear icon next to the filter. Check that each card you want to wire up to the filter has a column selected.
+2. If no columns are available to select on that card, you may need to change the filter type, from say a text filter to a date filter, to connect the filter to the card.
+3. Check that the filter widget is connected to the column you want to filter on each relevant card.
 
 ## If the card you're trying to filter is written in SQL, does its SQL query contain a variable?
- 
+
 **Root cause**: If your SQL question doesn't contain a variable, the filter can't insert the value into the query to filter the results.
 
 **Steps to take**:
 
-1. Check that your SQL query contains at least [one variable][sql-variable] for the filter to insert the value. These can be plain variables, or [Field Filters][field-filter], with names enclosed in double curly braces `{% raw %}{{name}}{% endraw %}`, typically in a `WHERE` clause. 
+1. Check that your SQL query contains at least [one variable][sql-variable] for the filter to insert the value. These can be plain variables, or [Field Filters][field-filter], with names enclosed in double curly braces `{% raw %}{{name}}{% endraw %}`, typically in a `WHERE` clause.
 
 If you built your question in the Query Builder, Metabase knows which columns you're using, and which columns you can connect to different types of filters. So you can add a dashboard filter and refer to columns in the question's results without creating variables explicitly.
 
@@ -41,8 +41,8 @@ For example, you want a dropdown but you're seeing a search box or a text input 
 3. Click the gear-icon to view all the field's settings.
 4. Set **Field Type** to "Category" and **Filtering on this field** to "A list of all values."
 5. Click the button **Re-scan this field** in the bottom.
- 
-If you created the question in SQL, then you only get a dropdown if the filter is a Field Filter _and_ the Filtering on this field option is set to your preferred input type: A list of all values (dropdown list) and the number of unique values is less than 100. 
+
+If you created the question in SQL, then you only get a dropdown if the filter is a Field Filter _and_ the Filtering on this field option is set to your preferred input type: A list of all values (dropdown list) and the number of unique values is less than 100.
 
 ## Has someone renamed or deleted columns in the database?
 

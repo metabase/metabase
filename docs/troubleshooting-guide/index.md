@@ -14,9 +14,9 @@ Problems, their causes, how to detect them, and how to fix them.
 
 - [My question or dashboard is slow][performance].
 
-- [My filters don't work][filters].
+- [My dashboard filters don't work][filters].
 
-- [My linked filters don't work][linked-filters].
+- [My dashboard's linked filters don't work][linked-filters].
 
 ### Setup and administration
 
