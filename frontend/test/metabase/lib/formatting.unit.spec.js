@@ -7,6 +7,7 @@ import {
   formatUrl,
   formatDateTimeWithUnit,
   slugify,
+  formatTimeWithUnit,
 } from "metabase/lib/formatting";
 import ExternalLink from "metabase/components/ExternalLink";
 import { TYPE } from "metabase/lib/types";
@@ -465,6 +466,28 @@ describe("formatting", () => {
         // globally reset locale
         moment.locale(false);
       }
+    });
+  });
+
+  describe("formatTimeWithUnit", () => {
+    it("should format hour-of day with default options", () => {
+      expect(formatTimeWithUnit(8, "hour-of-day")).toEqual("8:00 AM");
+    });
+
+    it("should format hour-of-day with 12 hour clock", () => {
+      const options = {
+        time_style: "h:mm A",
+      };
+
+      expect(formatTimeWithUnit(14, "hour-of-day", options)).toEqual("2:00 PM");
+    });
+
+    it("should format hour-of-day with 24 hour clock", () => {
+      const options = {
+        time_style: "HH:mm",
+      };
+
+      expect(formatTimeWithUnit(14, "hour-of-day", options)).toEqual("14:00");
     });
   });
 

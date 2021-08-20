@@ -105,6 +105,7 @@ export function parseTime(value) {
   }
 }
 
+// @deprecated - use formatTimeWithUnit(hour, "hour-of-day")
 export function formatHourAMPM(hour) {
   if (hour > 12) {
     const newHour = hour - 12;
