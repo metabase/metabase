@@ -93,6 +93,7 @@
         (testing "cols"
           (is (= [{:display_name "NAME"
                    :base_type    :type/Text
+                   :effective_type :type/Text
                    :source       :native
                    :field_ref    [:field "NAME" {:base-type :type/Text}]
                    :name         "NAME"}]
@@ -103,6 +104,7 @@
     (testing "A native query that doesn't return a column class name metadata should work correctly (#12150)"
       (is (= [{:display_name "D"
                :base_type    :type/DateTime
+               :effective_type :type/DateTime
                :source       :native
                :field_ref    [:field "D" {:base-type :type/DateTime}]
                :name         "D"}]

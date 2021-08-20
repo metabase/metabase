@@ -111,6 +111,10 @@
   ([table-kw cols]
    (mapv (partial col table-kw) cols)))
 
+(defn- backfill-effective-type [{:keys [base_type effective_type] :as col}]
+  (cond-> col
+    (nil? effective_type) (assoc :effective_type base_type)))
+
 (defn aggregate-col
   "Return the column information we'd expect for an aggregate column. For all columns besides `:count`, you'll need to
   pass the `Field` in question as well.
@@ -119,13 +123,16 @@
     (aggregate-col :avg (col :venues :id))
     (aggregate-col :avg :venues :id)"
   ([ag-type]
-   (tx/aggregate-column-info (tx/driver) ag-type))
+   (backfill-effective-type
+    (tx/aggregate-column-info (tx/driver) ag-type)))
 
   ([ag-type field]
-   (tx/aggregate-column-info (tx/driver) ag-type field))
+   (backfill-effective-type
+    (tx/aggregate-column-info (tx/driver) ag-type field)))
 
   ([ag-type table-kw field-kw]
-   (tx/aggregate-column-info (tx/driver) ag-type (col table-kw field-kw))))
+   (backfill-effective-type
+    (tx/aggregate-column-info (tx/driver) ag-type (col table-kw field-kw)))))
 
 (defn breakout-col
   "Return expected `:cols` info for a Field used as a breakout.

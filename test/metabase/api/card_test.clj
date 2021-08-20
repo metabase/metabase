@@ -474,6 +474,7 @@
                         :metadata_checksum  "ABCDEF"))) ; bad checksum
               (testing "check the correct metadata was fetched and was saved in the DB"
                 (is (= [{:base_type     (count-base-type)
+                         :effective_type (count-base-type)
                          :display_name  "count"
                          :name          "count"
                          :semantic_type :type/Quantity
