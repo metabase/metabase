@@ -10,7 +10,7 @@ If you've created a [linked filter][linked-filter-gloss], please see [this troub
 
 ## Is the dashboard filter actually connected to your question?
 
-**Root cause** The filter is not connected to any cards on the dashboard, or connected to the wrong field.
+**Root cause:** The filter isn't connected to any cards on the dashboard, or connected to the wrong field.
 
 **Steps to take:**
 
@@ -24,7 +24,7 @@ If you've created a [linked filter][linked-filter-gloss], please see [this troub
 
 **Steps to take**:
 
-1. Check that your SQL query contains at least [one variable][sql-variable] for the filter to insert the value. These can be plain variables, or [Field Filters][field-filter], with names enclosed in double curly braces `{% raw %}{{name}}{% endraw %}`, typically in a `WHERE` clause.
+1. Check that your SQL query contains at least [one variable][sql-variable] for the filter to insert the value. These can be plain variables, or [Field Filters][field-filter], with names enclosed in double curly braces `{% raw %}{{variable_name}}{% endraw %}`, typically in a `WHERE` clause.
 
 If you built your question in the Query Builder, Metabase knows which columns you're using, and which columns you can connect to different types of filters. So you can add a dashboard filter and refer to columns in the question's results without creating variables explicitly.
 
