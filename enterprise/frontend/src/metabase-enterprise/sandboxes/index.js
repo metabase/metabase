@@ -13,7 +13,6 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { hasPremiumFeature } from "metabase-enterprise/settings";
-import { color } from "metabase/lib/colors";
 
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import LoginAttributesWidget from "./components/LoginAttributesWidget";
