@@ -2,6 +2,8 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 
+import { getFloatRoot } from "metabase/lib/dom";
+
 export default ComposedComponent =>
   class extends Component {
     static displayName =
@@ -14,7 +16,7 @@ export default ComposedComponent =>
 
       this._element = document.createElement("div");
       this._element.className = props.className || "";
-      document.body.appendChild(this._element);
+      getFloatRoot().appendChild(this._element);
     }
 
     componentDidUpdate() {
@@ -22,7 +24,7 @@ export default ComposedComponent =>
     }
 
     componentWillUnmount() {
-      document.body.removeChild(this._element);
+      getFloatRoot().removeChild(this._element);
     }
 
     render() {

@@ -43,9 +43,9 @@ export const getScrollBarSize = _.memoize(() => {
   innerElem.style.width = "30px";
   innerElem.style.height = "60px";
   scrollableElem.appendChild(innerElem);
-  document.body.appendChild(scrollableElem); // Elements only have width if they're in the layout
+  getFloatRoot().appendChild(scrollableElem); // Elements only have width if they're in the layout
   const diff = scrollableElem.offsetWidth - scrollableElem.clientWidth;
-  document.body.removeChild(scrollableElem);
+  getFloatRoot().removeChild(scrollableElem);
   return diff;
 });
 
@@ -300,7 +300,7 @@ export function open(
 function clickLink(url, blank = false) {
   const a = document.createElement("a");
   a.style.display = "none";
-  document.body.appendChild(a);
+  getFloatRoot().appendChild(a);
   try {
     a.href = url;
     a.rel = "noopener";
@@ -425,4 +425,10 @@ export function isEventOverElement(event, element) {
   const { top, bottom, left, right } = element.getBoundingClientRect();
 
   return y >= top && y <= bottom && x >= left && x <= right;
+}
+
+let floatRoot;
+export function getFloatRoot() {
+  floatRoot = floatRoot || document.querySelector("#float-root");
+  return floatRoot;
 }

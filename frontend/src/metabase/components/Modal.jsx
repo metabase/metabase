@@ -2,11 +2,10 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
-
-import { getScrollX, getScrollY } from "metabase/lib/dom";
-
 import { CSSTransitionGroup } from "react-transition-group";
 import { Motion, spring } from "react-motion";
+
+import { getScrollX, getScrollY, getFloatRoot } from "metabase/lib/dom";
 
 import SandboxedPortal from "metabase/components/SandboxedPortal";
 import OnClickOutsideWrapper from "./OnClickOutsideWrapper";
@@ -41,7 +40,7 @@ export class WindowModal extends Component {
 
     this._modalElement = document.createElement("div");
     this._modalElement.className = "ModalContainer";
-    document.body.appendChild(this._modalElement);
+    getFloatRoot().appendChild(this._modalElement);
   }
 
   componentWillUnmount() {
@@ -116,7 +115,7 @@ export class FullPageModal extends Component {
 
     this._modalElement = document.createElement("div");
     this._modalElement.className = "ModalContainer";
-    document.body.appendChild(this._modalElement);
+    getFloatRoot().appendChild(this._modalElement);
 
     // save the scroll position, scroll to the top left, and disable scrolling
     this._scrollX = getScrollX();

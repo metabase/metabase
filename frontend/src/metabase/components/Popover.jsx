@@ -9,6 +9,8 @@ import cx from "classnames";
 
 import "./Popover.css";
 
+import { getFloatRoot } from "metabase/lib/dom";
+
 // space we should leave berween page edge and popover edge
 const PAGE_PADDING = 10;
 // Popover padding and border
@@ -90,7 +92,9 @@ export default class Popover extends Component {
     if (!this._popoverElement && isOpen) {
       this._popoverElement = document.createElement("span");
       this._popoverElement.className = `PopoverContainer ${this.props.containerClassName}`;
-      document.body.appendChild(this._popoverElement);
+
+      getFloatRoot().appendChild(this._popoverElement);
+
       this._timer = setInterval(() => {
         const { width, height } = this._popoverElement.getBoundingClientRect();
         if (this.state.width !== width || this.state.height !== height) {
@@ -272,7 +276,7 @@ export default class Popover extends Component {
       if (!target) {
         target = document.createElement("div");
         target.id = "popover-event-target";
-        document.body.appendChild(target);
+        getFloatRoot().appendChild(target);
       }
       target.style.left = this.props.targetEvent.clientX - 3 + "px";
       target.style.top = this.props.targetEvent.clientY - 3 + "px";
@@ -391,18 +395,18 @@ export default class Popover extends Component {
   }
 
   constrainPopoverToBetweenViewportAndTarget(tetherOptions, direction) {
-    const body = tetherOptions.element.querySelector(".PopoverBody");
+    const popoverBody = tetherOptions.element.querySelector(".PopoverBody");
     const target = this._getTargetElement();
-    const bodyHeight = body.getBoundingClientRect().height;
+    const bodyHeight = popoverBody.getBoundingClientRect().height;
     const space =
       direction === "top"
         ? target.getBoundingClientRect().top
         : window.innerHeight - target.getBoundingClientRect().bottom;
     const maxHeight = space - PAGE_PADDING;
     if (bodyHeight > maxHeight) {
-      body.style.maxHeight = maxHeight + "px";
-      body.classList.add("scroll-y");
-      body.classList.add("scroll-show");
+      popoverBody.style.maxHeight = maxHeight + "px";
+      popoverBody.classList.add("scroll-y");
+      popoverBody.classList.add("scroll-show");
     }
   }
 

@@ -7,6 +7,7 @@ import "./TableInteractive.css";
 import Icon from "metabase/components/Icon";
 
 import ExternalLink from "metabase/components/ExternalLink";
+import { getFloatRoot } from "metabase/lib/dom";
 
 import { formatValue } from "metabase/lib/formatting";
 import { isID, isFK } from "metabase/lib/schema_metadata";
@@ -157,7 +158,7 @@ export default class TableInteractive extends Component {
     this._div.style.position = "absolute";
     this._div.style.visibility = "hidden";
     this._div.style.zIndex = "-1";
-    document.body.appendChild(this._div);
+    getFloatRoot().appendChild(this._div);
 
     this._measure();
   }
