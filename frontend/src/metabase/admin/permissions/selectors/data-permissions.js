@@ -487,7 +487,7 @@ export const getGroupsDataPermissionEditor = createSelector(
 
     return {
       title: t`Permissions for`,
-      filterPlaceholder: t`Search groups`,
+      filterPlaceholder: t`Search for a group`,
       breadcrumbs: getGroupsDataEditorBreadcrumbs(params, metadata),
       columns,
       entities,
@@ -546,11 +546,11 @@ const getEditorEntityName = ({ databaseId, schemaName }, hasSingleSchema) => {
 
 const getFilterPlaceholder = ({ databaseId, schemaName }, hasSingleSchema) => {
   if (schemaName != null || hasSingleSchema) {
-    return t`Search tables`;
+    return t`Search for a table`;
   } else if (databaseId) {
-    return t`Search schemas`;
+    return t`Search for a schema`;
   } else {
-    return t`Search databases`;
+    return t`Search for a database`;
   }
 };
 
