@@ -88,7 +88,7 @@ function GroupsPermissionsPage({
   );
 
   const handleAction = (action, item) => {
-    dispatch(action.actionCreator(params.groupId, item.entityId, "group"));
+    dispatch(action.actionCreator(item.entityId, params.groupId, "group"));
   };
 
   const handleBreadcrumbsItemSelect = item => dispatch(push(item.url));

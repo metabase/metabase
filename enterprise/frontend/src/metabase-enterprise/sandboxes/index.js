@@ -13,8 +13,12 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { hasPremiumFeature } from "metabase-enterprise/settings";
-
+import {
+  getDatabaseFocusPermissionsUrl,
+  getGroupFocusPermissionsUrl,
+} from "metabase/admin/permissions/utils/urls";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
+
 import LoginAttributesWidget from "./components/LoginAttributesWidget";
 import GTAPModal from "./components/GTAPModal";
 
@@ -25,37 +29,26 @@ const OPTION_SEGMENTED = {
   iconColor: "brand",
 };
 
-const getDatabaseViewSandboxModalUrl = ({
-  groupId,
-  databaseId,
-  schemaName,
-  tableId,
-}) =>
-  schemaName != null
-    ? `/admin/permissions/data/database/${databaseId}/schema/${encodeURIComponent(
-        schemaName,
-      )}/table/${tableId}/segmented/group/${groupId}`
-    : `/admin/permissions/data/database/${databaseId}/table/${tableId}/segmented/group/${groupId}`;
+const getDatabaseViewSandboxModalUrl = (entityId, groupId) => {
+  const baseUrl = getDatabaseFocusPermissionsUrl(entityId, groupId);
+  return `${baseUrl}/segmented/group/${groupId}`;
+};
 
-const getGroupViewSandboxModalUrl = ({
-  groupId,
-  databaseId,
-  schemaName,
-  tableId,
-}) =>
-  schemaName != null
-    ? `/admin/permissions/data/group/${groupId}/database/${databaseId}/schema/${encodeURIComponent(
-        schemaName,
-      )}/${tableId}/segmented`
-    : `/admin/permissions/data/group/${groupId}/database/${databaseId}/${tableId}/segmented`;
+const getGroupViewSandboxModalUrl = (entityId, groupId) => {
+  const baseUrl = getGroupFocusPermissionsUrl(groupId, {
+    ...entityId,
+    tableId: null,
+  });
+  return `${baseUrl}/${entityId.tableId}/segmented`;
+};
 
-const getEditSegementedAccessUrl = (params, view) =>
+const getEditSegementedAccessUrl = (entityId, groupId, view) =>
   view === "database"
-    ? getDatabaseViewSandboxModalUrl(params)
-    : getGroupViewSandboxModalUrl(params);
+    ? getDatabaseViewSandboxModalUrl(entityId, groupId)
+    : getGroupViewSandboxModalUrl(entityId, groupId);
 
-const getEditSegmentedAcessPostAction = (params, view) =>
-  push(getEditSegementedAccessUrl(params, view));
+const getEditSegmentedAcessPostAction = (entityId, groupId, view) =>
+  push(getEditSegementedAccessUrl(entityId, groupId, view));
 
 if (hasPremiumFeature("sandboxes")) {
   PLUGIN_ADMIN_USER_FORM_FIELDS.push({
@@ -75,7 +68,7 @@ if (hasPremiumFeature("sandboxes")) {
     iconColor: "brand",
     icon: "pencil",
     actionCreator: (groupId, entityId, view) =>
-      push(getEditSegementedAccessUrl({ ...entityId, groupId }, view)),
+      push(getEditSegementedAccessUrl(entityId, groupId, view)),
   });
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION[
     "controlled"

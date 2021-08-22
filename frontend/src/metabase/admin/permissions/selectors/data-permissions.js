@@ -480,6 +480,7 @@ export const getGroupsDataPermissionEditor = createSelector(
       return {
         id: group.id,
         name: group.name,
+        entityId: params,
         permissions: groupPermissions,
       };
     });

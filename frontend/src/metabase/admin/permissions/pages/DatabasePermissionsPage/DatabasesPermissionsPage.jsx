@@ -74,7 +74,7 @@ function DatabasesPermissionsPage({
   );
 
   const handleAction = (action, item) => {
-    dispatch(action.actionCreator(item.id, item.entityId, "database"));
+    dispatch(action.actionCreator(item.entityId, item.id, "database"));
   };
 
   const handleBreadcrumbsItemSelect = item => dispatch(push(item.url));

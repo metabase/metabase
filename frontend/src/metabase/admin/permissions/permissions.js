@@ -67,8 +67,11 @@ export const updateDataPermission = createThunkAction(
     return (dispatch, getState) => {
       const metadata = getMetadata(getState());
       if (permission.postActions) {
-        const params = { ...entityId, groupId };
-        const action = permission.postActions?.[value]?.(params, view);
+        const action = permission.postActions?.[value]?.(
+          entityId,
+          groupId,
+          view,
+        );
         if (action) {
           dispatch(action);
           return null;

@@ -14,10 +14,10 @@ import { isPersonalCollectionChild } from "metabase/collections/utils";
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/components/Button";
 import Link from "metabase/components/Link";
+import Groups from "metabase/entities/groups";
 
 import { PermissionsTable } from "../PermissionsTable";
 import { permissionEditorPropTypes } from "../PermissionsEditor";
-import Groups from "metabase/entities/groups";
 import {
   getDiff,
   getIsDirty,
