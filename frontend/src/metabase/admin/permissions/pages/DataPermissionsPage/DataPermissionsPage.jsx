@@ -14,6 +14,17 @@ import {
 } from "../../permissions";
 import PermissionsPageLayout from "../../components/PermissionsPageLayout/PermissionsPageLayout";
 
+const mapDispatchToProps = {
+  loadPermissions: loadDataPermissions,
+  savePermissions: saveDataPermissions,
+  initialize: initializeDataPermissions,
+};
+
+const mapStateToProps = (state, props) => ({
+  isDirty: getIsDirty(state, props),
+  diff: getDiff(state, props),
+});
+
 const propTypes = {
   children: PropTypes.node.isRequired,
   isDirty: PropTypes.bool,
@@ -52,17 +63,6 @@ function DataPermissionsPage({
 }
 
 DataPermissionsPage.propTypes = propTypes;
-
-const mapDispatchToProps = {
-  loadPermissions: loadDataPermissions,
-  savePermissions: saveDataPermissions,
-  initialize: initializeDataPermissions,
-};
-
-const mapStateToProps = (state, props) => ({
-  isDirty: getIsDirty(state, props),
-  diff: getDiff(state, props),
-});
 
 export default _.compose(
   Databases.loadList({ entityQuery: { include: "tables" } }),

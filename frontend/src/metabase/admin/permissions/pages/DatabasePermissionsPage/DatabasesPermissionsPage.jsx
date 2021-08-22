@@ -26,6 +26,27 @@ import {
   getDatabaseFocusPermissionsUrl,
 } from "../../utils/urls";
 
+const mapDispatchToProps = dispatch => ({
+  dispatch,
+  ...bindActionCreators(
+    {
+      updateDataPermission,
+      switchView: entityType => push(`/admin/permissions/data/${entityType}`),
+      navigateToDatabaseList: () => push(DATABASES_BASE_PATH),
+      navigateToItem: item =>
+        push(getDatabaseFocusPermissionsUrl(item.entityId)),
+    },
+    dispatch,
+  ),
+});
+
+const mapStateToProps = (state, props) => {
+  return {
+    sidebar: getDatabasesSidebar(state, props),
+    permissionEditor: getGroupsDataPermissionEditor(state, props),
+  };
+};
+
 const propTypes = {
   params: PropTypes.shape({
     databaseId: PropTypes.string,
@@ -110,27 +131,6 @@ function DatabasesPermissionsPage({
 }
 
 DatabasesPermissionsPage.propTypes = propTypes;
-
-const mapDispatchToProps = dispatch => ({
-  dispatch,
-  ...bindActionCreators(
-    {
-      updateDataPermission,
-      switchView: entityType => push(`/admin/permissions/data/${entityType}`),
-      navigateToDatabaseList: () => push(DATABASES_BASE_PATH),
-      navigateToItem: item =>
-        push(getDatabaseFocusPermissionsUrl(item.entityId)),
-    },
-    dispatch,
-  ),
-});
-
-const mapStateToProps = (state, props) => {
-  return {
-    sidebar: getDatabasesSidebar(state, props),
-    permissionEditor: getGroupsDataPermissionEditor(state, props),
-  };
-};
 
 export default _.compose(
   connect(

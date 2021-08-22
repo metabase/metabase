@@ -36,6 +36,33 @@ const getDefaultTitle = namespace =>
     ? t`Permissions for this folder`
     : t`Permissions for this collection`;
 
+const getCollectionEntity = props =>
+  props.namespace === "snippets" ? SnippetCollections : Collections;
+
+const mapStateToProps = (state, props) => {
+  const collectionId = Urls.extractCollectionId(props.params.slug);
+  return {
+    permissionEditor: getCollectionsPermissionEditor(state, {
+      namespace: props.namespace,
+      params: { collectionId },
+    }),
+    collection: getCollectionEntity(props).selectors.getObject(state, {
+      entityId: collectionId,
+    }),
+    collectionsList: Collections.selectors.getList(state, {
+      entityQuery: { tree: true },
+    }),
+    diff: getDiff(state, props),
+    isDirty: getIsDirty(state, props),
+  };
+};
+
+const mapDispatchToProps = {
+  initialize: initializeCollectionPermissions,
+  updateCollectionPermission,
+  saveCollectionPermissions,
+};
+
 const propTypes = {
   permissionEditor: PropTypes.shape(permissionEditorPropTypes),
   namespace: PropTypes.string,
@@ -133,33 +160,6 @@ const CollectionPermissionsModal = ({
 };
 
 CollectionPermissionsModal.propTypes = propTypes;
-
-const getCollectionEntity = props =>
-  props.namespace === "snippets" ? SnippetCollections : Collections;
-
-const mapStateToProps = (state, props) => {
-  const collectionId = Urls.extractCollectionId(props.params.slug);
-  return {
-    permissionEditor: getCollectionsPermissionEditor(state, {
-      namespace: props.namespace,
-      params: { collectionId },
-    }),
-    collection: getCollectionEntity(props).selectors.getObject(state, {
-      entityId: collectionId,
-    }),
-    collectionsList: Collections.selectors.getList(state, {
-      entityQuery: { tree: true },
-    }),
-    diff: getDiff(state, props),
-    isDirty: getIsDirty(state, props),
-  };
-};
-
-const mapDispatchToProps = {
-  initialize: initializeCollectionPermissions,
-  updateCollectionPermission,
-  saveCollectionPermissions,
-};
 
 export default _.compose(
   Collections.loadList({

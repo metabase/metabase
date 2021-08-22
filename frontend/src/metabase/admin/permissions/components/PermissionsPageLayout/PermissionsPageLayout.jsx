@@ -17,6 +17,18 @@ import { useLeaveConfirmation } from "../../hooks/use-leave-confirmation";
 import { withRouter } from "react-router";
 import { clearSaveError } from "../../permissions";
 
+const mapDispatchToProps = {
+  navigateToTab: tab => push(`/admin/permissions/${tab}`),
+  navigateToLocation: location => push(location.pathname, location.state),
+  clearSaveError,
+};
+
+const mapStateToProps = (state, _props) => {
+  return {
+    saveError: state.admin.permissions.saveError,
+  };
+};
+
 const propTypes = {
   children: PropTypes.node.isRequired,
   tab: PropTypes.oneOf(["data", "collections"]).isRequired,
@@ -90,18 +102,6 @@ function PermissionsPageLayout({
 }
 
 PermissionsPageLayout.propTypes = propTypes;
-
-const mapDispatchToProps = {
-  navigateToTab: tab => push(`/admin/permissions/${tab}`),
-  navigateToLocation: location => push(location.pathname, location.state),
-  clearSaveError,
-};
-
-const mapStateToProps = (state, _props) => {
-  return {
-    saveError: state.admin.permissions.saveError,
-  };
-};
 
 export default _.compose(
   connect(

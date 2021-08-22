@@ -32,6 +32,24 @@ import {
   permissionSidebarPropTypes,
 } from "../../components/PermissionsSidebar";
 
+const mapDispatchToProps = {
+  initialize: initializeCollectionPermissions,
+  loadPermissions: loadCollectionPermissions,
+  navigateToItem: ({ id }) => push(`/admin/permissions/collections/${id}`),
+  updateCollectionPermission,
+  savePermissions: saveCollectionPermissions,
+};
+
+const mapStateToProps = (state, props) => {
+  return {
+    sidebar: getCollectionsSidebar(state, props),
+    permissionEditor: getCollectionsPermissionEditor(state, props),
+    isDirty: getIsDirty(state, props),
+    diff: getDiff(state, props),
+    collection: getCollectionEntity(state, props),
+  };
+};
+
 const propTypes = {
   params: PropTypes.shape({
     collectionId: PropTypes.string,
@@ -108,24 +126,6 @@ function CollectionsPermissionsPage({
 }
 
 CollectionsPermissionsPage.propTypes = propTypes;
-
-const mapDispatchToProps = {
-  initialize: initializeCollectionPermissions,
-  loadPermissions: loadCollectionPermissions,
-  navigateToItem: ({ id }) => push(`/admin/permissions/collections/${id}`),
-  updateCollectionPermission,
-  savePermissions: saveCollectionPermissions,
-};
-
-const mapStateToProps = (state, props) => {
-  return {
-    sidebar: getCollectionsSidebar(state, props),
-    permissionEditor: getCollectionsPermissionEditor(state, props),
-    isDirty: getIsDirty(state, props),
-    diff: getDiff(state, props),
-    collection: getCollectionEntity(state, props),
-  };
-};
 
 export default _.compose(
   Collections.loadList({

@@ -25,6 +25,28 @@ import {
   GROUPS_BASE_PATH,
 } from "../../utils/urls";
 
+const mapDispatchToProps = dispatch => ({
+  dispatch,
+  ...bindActionCreators(
+    {
+      updateDataPermission,
+      switchView: entityType => push(`/admin/permissions/data/${entityType}/`),
+      navigateToItem: item => push(`${GROUPS_BASE_PATH}/${item.id}`),
+      navigateToTableItem: (item, { groupId }) => {
+        return push(getGroupFocusPermissionsUrl(groupId, item.entityId));
+      },
+    },
+    dispatch,
+  ),
+});
+
+const mapStateToProps = (state, props) => {
+  return {
+    sidebar: getGroupsSidebar(state, props),
+    permissionEditor: getDatabasesPermissionEditor(state, props),
+  };
+};
+
 const propTypes = {
   params: PropTypes.shape({
     groupId: PropTypes.string,
@@ -124,28 +146,6 @@ function GroupsPermissionsPage({
 }
 
 GroupsPermissionsPage.propTypes = propTypes;
-
-const mapDispatchToProps = dispatch => ({
-  dispatch,
-  ...bindActionCreators(
-    {
-      updateDataPermission,
-      switchView: entityType => push(`/admin/permissions/data/${entityType}/`),
-      navigateToItem: item => push(`${GROUPS_BASE_PATH}/${item.id}`),
-      navigateToTableItem: (item, { groupId }) => {
-        return push(getGroupFocusPermissionsUrl(groupId, item.entityId));
-      },
-    },
-    dispatch,
-  ),
-});
-
-const mapStateToProps = (state, props) => {
-  return {
-    sidebar: getGroupsSidebar(state, props),
-    permissionEditor: getDatabasesPermissionEditor(state, props),
-  };
-};
 
 export default _.compose(
   connect(
