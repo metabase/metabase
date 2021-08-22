@@ -29,7 +29,7 @@ const propTypes = {
     hasRightArrow: PropTypes.string,
     id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   }).isRequired,
-  colorScheme: PropTypes.string,
+  colorScheme: PropTypes.oneOf(["default", "admin"]),
 };
 
 // eslint-disable-next-line react/display-name

@@ -10,7 +10,7 @@ const propTypes = {
   expandedIds: PropTypes.instanceOf(Set),
   selectedId: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   depth: PropTypes.number.isRequired,
-  colorScheme: PropTypes.string,
+  colorScheme: PropTypes.oneOf(["default", "admin"]),
 };
 
 export function TreeNodeList({

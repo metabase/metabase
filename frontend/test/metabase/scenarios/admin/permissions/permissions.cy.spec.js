@@ -252,7 +252,7 @@ describe("scenarios > admin > permissions", () => {
           "readonly",
         ];
 
-        // client filter devounce
+        // client filter debounce
         cy.wait(300);
 
         assertSidebarItems(filteredGroups);
