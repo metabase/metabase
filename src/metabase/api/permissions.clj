@@ -1,6 +1,7 @@
 (ns metabase.api.permissions
   "/api/permissions endpoints."
-  (:require [compojure.core :refer [DELETE GET POST PUT]]
+  (:require [cheshire.core :as json]
+            [compojure.core :refer [DELETE GET POST PUT]]
             [honeysql.helpers :as hh]
             [metabase.api.common :as api]
             [metabase.api.permission-graph :as pg]
@@ -40,12 +41,13 @@
   modifies it before you can submit you revisions, the endpoint will instead make no changes and return a
   409 (Conflict) response. In this case, you should fetch the updated graph and make desired changes to that."
   [index_pairs :as {body :body}]
-  {index_pairs (s/maybe perms/IndexPairList)
+  {index_pairs su/NonBlankString
    body        su/Map}
   (api/check-superuser)
-  (perms/update-graph!
-    (pg/converted-json->graph ::pg/data-permissions-graph body)
-    index_pairs)
+  (let [index-pairs (json/parse-string index_pairs)]
+    (perms/update-graph!
+      (pg/converted-json->graph ::pg/data-permissions-graph body)
+      index-pairs))
   (perms/graph))
 
 

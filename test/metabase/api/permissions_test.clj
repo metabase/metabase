@@ -1,6 +1,7 @@
 (ns metabase.api.permissions-test
   "Tests for `/api/permissions` endpoints."
-  (:require [clojure.test :refer :all]
+  (:require [cheshire.core :as json]
+            [clojure.test :refer :all]
             [metabase.api.permissions :as permissions-api]
             [metabase.models.database :refer [Database]]
             [metabase.models.permissions :as perms]
@@ -169,36 +170,12 @@
                            (assoc-in [:groups group-id1 db-id1 :schemas] :all)
                            (assoc-in [:groups group-id2 db-id2 :schemas] :all))
               mutation ((mt/user->client :crowberto) :put 200
-                        (str "permissions/graph?index_pairs[0][]=" group-id1 "&index_pairs[0][]=null")
-                        changed)]
+                        "permissions/graph" changed :index_pairs (json/generate-string [[group-id1, db-id1]]))]
           (is (= :all (get-in (perms/graph) [:groups group-id1 db-id1 :schemas])))
           (is (= nil (get-in (perms/graph) [:groups group-id2 db-id2 :schemas])))))
+      
+      (testing "wildcards"
 
-      (mt/with-temp* [PermissionsGroup [{group-id1 :id}]
-                      PermissionsGroup [{group-id2 :id}]
-                      Database         [{db-id1 :id}]
-                      Database         [{db-id2 :id}]]
-        (let [changed  (-> (perms/graph)
-                           (assoc-in [:groups group-id1 db-id1 :schemas] :all)
-                           (assoc-in [:groups group-id2 db-id2 :schemas] :all))
-              mutation ((mt/user->client :crowberto) :put 200
-                        (str "permissions/graph?index_pairs[0][]=null&index_pairs[0][]=" db-id1)
-                        changed)]
-          (is (= :all (get-in (perms/graph) [:groups group-id1 db-id1 :schemas])))
-          (is (= nil (get-in (perms/graph) [:groups group-id2 db-id2 :schemas])))))
-
-      (mt/with-temp* [PermissionsGroup [{group-id1 :id}]
-                      PermissionsGroup [{group-id2 :id}]
-                      Database         [{db-id1 :id}]
-                      Database         [{db-id2 :id}]]
-        (let [changed  (-> (perms/graph)
-                           (assoc-in [:groups group-id1 db-id1 :schemas] :all)
-                           (assoc-in [:groups group-id2 db-id2 :schemas] :all))
-              mutation ((mt/user->client :crowberto) :put 200
-                        (str "permissions/graph?index_pairs[0][]=" group-id1 "&index_pairs[0][]=" db-id1)
-                        changed)]
-          (is (= :all (get-in (perms/graph) [:groups group-id1 db-id1 :schemas])))
-          (is (= nil (get-in (perms/graph) [:groups group-id2 db-id2 :schemas])))))
       (testing "multiple index pairs"
         (mt/with-temp* [PermissionsGroup [{group-id1 :id}]
                         PermissionsGroup [{group-id2 :id}]
@@ -207,12 +184,7 @@
           (let [changed  (-> (perms/graph)
                              (assoc-in [:groups group-id1 db-id1 :schemas] :all)
                              (assoc-in [:groups group-id2 db-id2 :schemas] :all))
-              mutation ((mt/user->client :crowberto) :put 200
-                        (str
-                          "permissions/graph?index_pairs[0][]=" group-id1
-                          "&index_pairs[0][]=" db-id1
-                          "&index_pairs[1][]=" group-id2
-                          "&index_pairs[1][]=" db-id2)
-                        changed)]
+                mutation ((mt/user->client :crowberto) :put 200
+                          "permissions/graph" changed :index_pairs (json/generate-string [[group-id1, db-id1], [group-id2, db-id2]]))]
             (is (= :all (get-in (perms/graph) [:groups group-id1 db-id1 :schemas])))
             (is (= :all (get-in (perms/graph) [:groups group-id2 db-id2 :schemas])))))))))
