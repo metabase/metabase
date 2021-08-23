@@ -14,6 +14,10 @@ Problems, their causes, how to detect them, and how to fix them.
 
 - [My question or dashboard is slow][performance].
 
+- [My dashboard filters don't work][filters].
+
+- [My dashboard's linked filters don't work][linked-filters].
+
 ### Setup and administration
 
 - [Running the Metabase JAR][running].
@@ -78,10 +82,12 @@ Metabase adds new features and squashes bugs with each release. [Upgrading to th
 [edge]: https://docs.microsoft.com/en-us/microsoft-edge/devtools-guide-chromium
 [email]: ../operations-guide/upgrading-metabase.html
 [faq]: /faq
+[filters]: ./filters.html
 [firefox]: https://developer.mozilla.org/en-US/docs/Tools/Web_Console/Opening_the_Web_Console
 [forum]: https://discourse.metabase.com/
 [ldap]: ./ldap.html
 [learn]: https://www.metabase.com/learn
+[linked-filters]: ./linked-filters.html
 [login]: ./loggingin.html
 [loadh2]: ./loading-from-h2.html
 [performance]: ./performance.html

@@ -79,6 +79,6 @@ We only allow [one sandbox per table][one-sandbox-per-table]: if someone is a me
 [locked-parameters]: /learn/embedding/embedding-charts-and-dashboards.html#hide-or-lock-parameters-to-restrict-what-data-is-shown
 [one-sandbox-per-table]: /docs/latest/enterprise-guide/data-sandboxes.html#a-user-can-only-have-one-sandbox-per-table
 [permissions]: /learn/permissions/data-permissions.html
-[prepared-statement]: /glossary.html#prepared-statement
+[prepared-statement]: /glossary.html#prepared_statement
 [sandboxing-your-data]: /docs/latest/enterprise-guide/data-sandboxes.html
 [signed-embedding]: /learn/embedding/embedding-charts-and-dashboards.html#enable-embedding-in-other-applications
