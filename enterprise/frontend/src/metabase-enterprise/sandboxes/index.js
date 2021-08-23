@@ -67,7 +67,7 @@ if (hasPremiumFeature("sandboxes")) {
     label: t`Edit sandboxed access`,
     iconColor: "brand",
     icon: "pencil",
-    actionCreator: (groupId, entityId, view) =>
+    actionCreator: (entityId, groupId, view) =>
       push(getEditSegementedAccessUrl(entityId, groupId, view)),
   });
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION[
