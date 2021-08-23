@@ -464,8 +464,22 @@ describe("formatting", () => {
         ).toEqual("julio 7, 2019 – julio 13, 2019");
       } finally {
         // globally reset locale
-        moment.locale(false);
+        moment.locale("en");
       }
+    });
+
+    it("should format days of week with default options", () => {
+      expect(formatDateTimeWithUnit("mon", "day-of-week")).toEqual("Monday");
+    });
+
+    it("should format days of week with compact option", () => {
+      const options = {
+        compact: true,
+      };
+
+      expect(formatDateTimeWithUnit("sun", "day-of-week", options)).toEqual(
+        "Sun",
+      );
     });
   });
 

@@ -33,6 +33,10 @@ function addAbbreviatedLocale() {
   moment.locale(initialLocale);
 }
 
+const TEXT_UNIT_FORMATS = {
+  "day-of-week": value => moment.parseZone(value, "ddd").startOf("day"),
+};
+
 const NUMERIC_UNIT_FORMATS = {
   // workaround for https://github.com/metabase/metabase/issues/1992
   year: value =>
@@ -81,7 +85,9 @@ export function parseTimestamp(value, unit = null, local = false) {
     m = value;
   } else if (typeof value === "string" && /(Z|[+-]\d\d:?\d\d)$/.test(value)) {
     m = moment.parseZone(value);
-  } else if (unit in NUMERIC_UNIT_FORMATS && typeof value == "number") {
+  } else if (typeof value === "string" && unit in TEXT_UNIT_FORMATS) {
+    m = TEXT_UNIT_FORMATS[unit](value);
+  } else if (typeof value == "number" && unit in NUMERIC_UNIT_FORMATS) {
     m = NUMERIC_UNIT_FORMATS[unit](value);
   } else {
     m = moment.utc(value);

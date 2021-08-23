@@ -532,7 +532,7 @@ export function formatDateTimeWithUnit(
     );
   }
 
-  return formatDateTimeWithFormats(value, dateFormat, timeFormat, options);
+  return formatDateTimeWithFormats(m, dateFormat, timeFormat, options);
 }
 
 export function formatTime(value: Value) {
