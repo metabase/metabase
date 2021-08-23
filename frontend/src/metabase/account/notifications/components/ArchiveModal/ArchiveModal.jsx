@@ -10,11 +10,20 @@ import FormMessage from "metabase/components/form/FormMessage";
 const propTypes = {
   item: PropTypes.object.isRequired,
   type: PropTypes.oneOf(["alert", "pulse"]).isRequired,
+  user: PropTypes.object,
+  hasUnsubscribed: PropTypes.bool,
   onArchive: PropTypes.func,
   onClose: PropTypes.func,
 };
 
-const ArchiveModal = ({ item, type, onArchive, onClose }) => {
+const ArchiveModal = ({
+  item,
+  type,
+  user,
+  hasUnsubscribed,
+  onArchive,
+  onClose,
+}) => {
   const [error, setError] = useState();
 
   const handleArchiveClick = useCallback(async () => {
@@ -40,6 +49,12 @@ const ArchiveModal = ({ item, type, onArchive, onClose }) => {
       ]}
       onClose={onClose}
     >
+      {isCreator(item, user) && hasUnsubscribed && (
+        <div>
+          {getCreatorMessage(user)}
+          {t`As the creator you can also choose to delete this if it’s no longer relevant to others as well.`}
+        </div>
+      )}
       <div>
         {getDateMessage(item, type)}
         {getRecipientsMessage(item)}
@@ -50,22 +65,36 @@ const ArchiveModal = ({ item, type, onArchive, onClose }) => {
 
 ArchiveModal.propTypes = propTypes;
 
-const getTitleMessage = type => {
+const isCreator = (item, user) => {
+  return user != null && user.id === item.creator?.id;
+};
+
+const getTitleMessage = (type, hasUnsubscribed) => {
   switch (type) {
     case "alert":
-      return t`Delete this alert?`;
+      return hasUnsubscribed
+        ? t`You’re unsubscribed. Delete this alert as well?`
+        : t`Delete this alert?`;
     case "pulse":
-      return t`Delete this subscription?`;
+      return hasUnsubscribed
+        ? t`You’re unsubscribed. Delete this subscription as well?`
+        : t`Delete this subscription?`;
   }
 };
 
-const getSubmitMessage = type => {
+const getSubmitMessage = (type, hasUnsubscribed) => {
   switch (type) {
     case "alert":
-      return t`Yes, delete this alert`;
+      return hasUnsubscribed ? t`Delete this alert` : t`Yes, delete this alert`;
     case "pulse":
-      return t`Yes, delete this subscription`;
+      return hasUnsubscribed
+        ? t`Delete this subscription`
+        : t`Yes, delete this subscription`;
   }
+};
+
+const getCreatorMessage = user => {
+  return t`You won’t receive this alert at ${user.email} any more.`;
 };
 
 const getDateMessage = (item, type) => {

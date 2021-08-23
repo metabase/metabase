@@ -85,7 +85,7 @@ describe("UnsubscribeModal", () => {
 
     waitFor(() => {
       expect(onUnsubscribe).toHaveBeenCalledWith(alert, user);
-      expect(onArchive).toHaveBeenCalled();
+      expect(onArchive).toHaveBeenCalledWith(alert, "alert", true);
       expect(onClose).not.toHaveBeenCalled();
     });
   });

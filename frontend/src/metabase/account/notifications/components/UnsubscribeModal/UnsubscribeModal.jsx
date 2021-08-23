@@ -29,7 +29,7 @@ const UnsubscribeModal = ({
       await onUnsubscribe(item, user);
 
       if (isCreator(item, user)) {
-        onArchive(item, type);
+        onArchive(item, type, true);
       } else {
         onClose();
       }

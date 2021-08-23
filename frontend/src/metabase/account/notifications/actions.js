@@ -1,13 +1,16 @@
 import { push } from "react-router-redux";
 
+const PREFIX = `/account/notifications`;
+
 export const navigateToUnsubscribe = (item, type) => {
-  return push(`/account/notifications/${type}/${item.id}/unsubscribe`);
+  return push(`${PREFIX}/${type}/${item.id}/unsubscribe`);
 };
 
-export const navigateToArchive = (item, type) => {
-  return push(`/account/notifications/${type}/${item.id}/archive`);
+export const navigateToArchive = (item, type, hasUnsubscribed) => {
+  const query = hasUnsubscribed ? "?unsubscribed=true" : "";
+  return push(`${PREFIX}/${type}/${item.id}/archive${query}`);
 };
 
 export const navigateToHelp = () => {
-  return push("/account/notifications/help");
+  return push("${PREFIX}/help");
 };
