@@ -52,7 +52,7 @@ Note: you may also see your database being overloaded if you're using the same d
 4. Run the query with a JDBC-based tool like [DBeaver][dbeaver], which is also Java-based and uses most of the same database drivers as Metabase. Using this, and running the test query from the same machine that Metabase is running on, can help you determine if the problem is a network bottleneck.
 5. If the query runs slowly when sent by another tool, see if you can write a SQL query that calculates the same result as the question you have built in Metabase, but does so more quickly.
 
-## Are we generating inefficient SQL?
+## Is Metabase generating inefficient SQL?
 
 **Root cause:** We save questions created graphically in Metabase Query Language (MBQL), then translate MBQL into queries for particular back-end databases. We create the most efficient queries we can, but for the sake of portability, we don't take advantage of every database's idiosyncracies, so sometimes a GUI question will be slower than the equivalent hand-written SQL.
 

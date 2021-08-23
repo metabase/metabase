@@ -9,7 +9,7 @@ You have connected Metabase to a database, but:
 
 If you can see the tables, but some of the rows or columns seem to be missing, please check out the [troubleshooting guide for sandboxing][sandboxing].
 
-## Is it a browser caching issue?
+## Is your browser showing you a cached list of tables?
 
 **Root cause:** Sometimes browsers will show an old cached list of tables.
 
@@ -53,7 +53,7 @@ Be sure to log in using the same credentials that Metabase uses. A common source
 
 ## Can the Metabase account access the table?
 
-**Root cause:** The login ID that Metabase uses to query the database does not have privileges to view the table.
+**Root cause:** The login ID that Metabase uses to query the database doesn't have privileges to view the table.
 
 **Steps to take:** Use the SQL Editor to write and run a simple query like the one shown immediately above:
 
