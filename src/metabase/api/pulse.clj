@@ -31,7 +31,9 @@
 (u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util))
 
 (api/defendpoint GET "/"
-  "Fetch all Pulses"
+  "Fetch all Pulses. If `dashboard_id` is specified, restricts results to dashboard subscriptions
+  associated with that dashboard. If `user_id` is specified, restricts results to pulses or subscriptions
+  created by the user, or for which the user is a known recipient."
   [archived dashboard_id user_id]
   {archived     (s/maybe su/BooleanString)
    dashboard_id (s/maybe su/IntGreaterThanZero)
