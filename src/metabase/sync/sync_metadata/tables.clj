@@ -84,8 +84,7 @@
 (s/defn ^:private update-database-metadata!
   "If there is a version in the db-metadata update the DB to have that in the DB model"
   [database :- i/DatabaseInstance db-metadata :- i/DatabaseMetadata]
-  (log/info (trs "Found new version for DB:")
-            (:version db-metadata))
+  (log/info (trs "Found new version for DB: {0}" (:version db-metadata)))
   (db/update! Database (u/the-id database)
               :details
               (assoc (:details database) :version (:version db-metadata))))
