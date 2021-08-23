@@ -1,4 +1,10 @@
 export const updateParametersWidgetStickiness = dashboard => {
+  if (dashboard.parametersWidgetRef) {
+    doUpdateParametersWidgetStickiness(dashboard);
+  }
+};
+
+export const doUpdateParametersWidgetStickiness = dashboard => {
   initializeWidgetOffsetTop(dashboard);
 
   const shouldBeSticky = checkIfParametersWidgetShouldBeSticky(dashboard);
