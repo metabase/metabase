@@ -99,7 +99,6 @@ export const getDatabasesSidebar = createSelector(
         name: database.name,
         entityId: getDatabaseEntityId(database),
         icon: "database",
-        type: "database",
       }));
 
       return {
@@ -119,23 +118,22 @@ export const getDatabasesSidebar = createSelector(
       selectedId = getSchemaId(schemaName);
     }
 
-    let entities = database.schemas.map(schema => {
+    let entities = database.getSchemas().map(schema => {
       return {
         id: getSchemaId(schema.name),
         name: schema.name,
         entityId: getSchemaEntityId(schema),
         icon: "folder",
-        children: schema.tables.map(table => ({
+        children: schema.getTables().map(table => ({
           id: getTableId(table.id),
           entityId: getTableEntityId(table),
-          name: table.display_name,
-          type: "table",
+          name: table.displayName(),
           icon: "table",
         })),
       };
     });
 
-    const shouldIncludeSchemas = database.schemas.length > 1;
+    const shouldIncludeSchemas = database.schemasCount() > 1;
     if (!shouldIncludeSchemas) {
       entities = entities[0].children;
     }
@@ -176,7 +174,7 @@ const getGroupsDataEditorBreadcrumbs = (params, metadata) => {
     url: getDatabaseFocusPermissionsUrl(getSchemaEntityId(schema)),
   };
 
-  const hasMultipleSchemas = database.schemas.length > 1;
+  const hasMultipleSchemas = database.schemasCount() > 1;
 
   if (tableId == null) {
     return [databaseItem, hasMultipleSchemas && schemaItem].filter(Boolean);
@@ -193,8 +191,8 @@ const getGroupsDataEditorBreadcrumbs = (params, metadata) => {
   );
 };
 
-export const getGroupsWithoutMetabot = createSelector(
-  [Group.selectors.getList],
+const getGroupsWithoutMetabot = createSelector(
+  Group.selectors.getList,
   groups => groups.filter(group => !isMetaBotGroup(group)),
 );
 
@@ -554,7 +552,7 @@ const getFilterPlaceholder = ({ databaseId, schemaName }, hasSingleSchema) => {
   }
 };
 
-export const getGroup = (state, props) =>
+const getGroup = (state, props) =>
   Group.selectors.getObject(state, {
     entityId: parseInt(props.params.groupId),
   });
@@ -573,12 +571,10 @@ export const getDatabasesPermissionEditor = createSelector(
     }
 
     const isAdmin = isAdminGroup(group);
-
-    let entities = [];
-
     const defaultGroup = _.find(groups, isDefaultGroup);
     const hasSingleSchema =
-      databaseId != null && metadata.database(databaseId).schemas.length === 1;
+      databaseId != null &&
+      metadata.database(databaseId).getSchemas().length === 1;
 
     const isDatabaseLevelPermission = schemaName == null && databaseId == null;
     const columns = [
@@ -587,12 +583,14 @@ export const getDatabasesPermissionEditor = createSelector(
       isDatabaseLevelPermission ? t`Native query editing` : null,
     ].filter(Boolean);
 
+    let entities = [];
+
     if (schemaName != null || hasSingleSchema) {
       const schema = hasSingleSchema
-        ? metadata.database(databaseId).schemas[0]
+        ? metadata.database(databaseId).getSchemas()[0]
         : metadata.database(databaseId).schema(schemaName);
 
-      entities = schema.tables.map(table => {
+      entities = schema.getTables().map(table => {
         const entityId = getTableEntityId(table);
         return {
           id: table.id,
@@ -609,22 +607,25 @@ export const getDatabasesPermissionEditor = createSelector(
         };
       });
     } else if (databaseId != null) {
-      entities = metadata.database(databaseId).schemas.map(schema => {
-        const entityId = getSchemaEntityId(schema);
-        return {
-          id: schema.id,
-          name: schema.name,
-          entityId,
-          canSelect: true,
-          permissions: buildTablesPermissions(
+      entities = metadata
+        .database(databaseId)
+        .getSchemas()
+        .map(schema => {
+          const entityId = getSchemaEntityId(schema);
+          return {
+            id: schema.id,
+            name: schema.name,
             entityId,
-            groupId,
-            isAdmin,
-            permissions,
-            defaultGroup,
-          ),
-        };
-      });
+            canSelect: true,
+            permissions: buildTablesPermissions(
+              entityId,
+              groupId,
+              isAdmin,
+              permissions,
+              defaultGroup,
+            ),
+          };
+        });
     } else if (groupId != null) {
       entities = metadata
         .databasesList({ savedQuestions: false })
