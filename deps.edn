@@ -253,6 +253,7 @@
   :drivers-dev
   {:extra-paths
    ["modules/drivers/bigquery/test"
+    "modules/drivers/bigquery-cloud-sdk/test"
     "modules/drivers/druid/test"
     "modules/drivers/google/test"
     "modules/drivers/googleanalytics/test"
@@ -290,6 +291,7 @@
                                  "shared/src"
                                  "enterprise/backend/src"
                                  "modules/drivers/bigquery/src"
+                                 "modules/drivers/bigquery-cloud-sdk/src"
                                  "modules/drivers/druid/src"
                                  "modules/drivers/google/src"
                                  "modules/drivers/googleanalytics/src"

@@ -1,6 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 
+import { getValuePopulatedParameters } from "metabase/meta/Parameter";
 import Parameters from "metabase/parameters/components/Parameters/Parameters";
 
 const propTypes = {
@@ -46,10 +47,7 @@ const ParametersWidget = ({
       isFullscreen={isFullscreen}
       isNightMode={shouldRenderAsNightMode}
       hideParameters={hideParameters}
-      parameters={parameters.map(p => ({
-        ...p,
-        value: parameterValues[p.id],
-      }))}
+      parameters={getValuePopulatedParameters(parameters, parameterValues)}
       query={location.query}
       editingParameter={editingParameter}
       setEditingParameter={setEditingParameter}

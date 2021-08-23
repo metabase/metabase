@@ -17,7 +17,7 @@ describe("scenarios > visualizations > scalar", () => {
   };
 
   Object.entries(SCREEN_SIZES).forEach(([size, viewport]) => {
-    it(`should render human readable numbers on ${size} screen size (metabase#12629)`, () => {
+    it(`should render human readable numbers on ${size} screen size (metabase`, () => {
       const [width, height] = viewport;
 
       cy.skipOn(size === "mobile");
@@ -31,7 +31,7 @@ describe("scenarios > visualizations > scalar", () => {
         },
         display: "scalar",
       }).then(({ body: { id: questionId } }) => {
-        cy.createDashboard("12629").then(({ body: { id: dashboardId } }) => {
+        cy.createDashboard().then(({ body: { id: dashboardId } }) => {
           // Add previously created question to the dashboard
           cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
             cardId: questionId,

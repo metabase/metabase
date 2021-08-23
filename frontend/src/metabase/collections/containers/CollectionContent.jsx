@@ -143,7 +143,7 @@ function CollectionContent({
 
         return (
           <Box pt={2}>
-            <Box w="90%" ml="auto" mr="auto">
+            <Box width="90%" ml="auto" mr="auto">
               <Header
                 isRoot={isRoot}
                 isAdmin={isAdmin}

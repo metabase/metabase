@@ -138,7 +138,7 @@
     (testing (str "Make sure that BigQuery properly aliases the names generated for Join Tables. It's important to use "
                   "the right alias, e.g. something like `categories__via__category_id`, which is considerably "
                   "different  what other SQL databases do. (#4218)")
-      (mt/with-bigquery-fks
+      (mt/with-bigquery-fks :bigquery
         (let [results (mt/run-mbql-query venues
                         {:aggregation [:count]
                          :breakout    [$category_id->categories.name]})]
@@ -701,6 +701,24 @@
                                   "WHERE `v3_test_data.venues`.`name` = ?")
                      :params ["x\\\\' OR 1 = 1 -- "]})))))))))
 
+(deftest acceptable-dataset-test
+  (mt/test-driver :bigquery
+    (testing "Make sure validation of dataset's name works correctly"
+      (testing "acceptable names"
+        (are [name] (= true (#'bigquery.qp/valid-bigquery-identifier? name))
+              "0"
+              "a"
+              "_"
+              "apple"
+              "banana.apple"
+              "my-fruits.orange"
+              (apply str (repeat 1054 "a"))))
+      (testing "rejected names"
+        (are [name] (= false (#'bigquery.qp/valid-bigquery-identifier? name))
+              "have:dataset"
+              ""
+              (apply str (repeat 1055 "a")))))))
+
 (deftest ->valid-field-identifier-test
   (testing "`->valid-field-identifier` should generate valid field identifiers"
     (testing "no need to change anything"
@@ -734,7 +752,7 @@
 (deftest remove-diacriticals-from-field-aliases-test
   (mt/test-driver :bigquery
     (testing "We should remove diacriticals and other disallowed characters from field aliases (#14933)"
-      (mt/with-bigquery-fks
+      (mt/with-bigquery-fks :bigquery
         (let [query (mt/mbql-query checkins
                       {:fields [$id $venue_id->venues.name]})]
           (mt/with-temp-vals-in-db Table (mt/id :venues) {:name "Organização"}

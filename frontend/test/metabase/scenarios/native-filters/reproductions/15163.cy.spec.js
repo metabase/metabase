@@ -33,7 +33,7 @@ const dashboardFilter = {
 };
 
 ["nodata+nosql", "nosql"].forEach(test => {
-  describe.skip("issue 14302", () => {
+  describe.skip("issue 15163", () => {
     beforeEach(() => {
       cy.intercept("POST", "/api/dataset").as("dataset");
 
@@ -41,7 +41,7 @@ const dashboardFilter = {
       cy.signInAsAdmin();
 
       cy.createNativeQuestion(nativeQuery).then(({ body: { id: card_id } }) => {
-        cy.createDashboard("15163D").then(({ body: { id: dashboard_id } }) => {
+        cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
           cy.addFilterToDashboard({ filter: dashboardFilter, dashboard_id });
 
           // Add previously created question to the dashboard

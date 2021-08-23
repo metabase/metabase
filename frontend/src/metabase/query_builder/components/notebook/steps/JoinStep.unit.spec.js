@@ -271,7 +271,7 @@ describe("Notebook Editor > Join Step", () => {
     const { onQueryChange } = setup();
     await selectTable(/Products/i);
 
-    fireEvent.click(screen.getByText("Columns"));
+    fireEvent.click(screen.getByLabelText("table icon"));
     fireEvent.click(screen.getByText("Select None"));
     fireEvent.click(screen.getByText("Category"));
 

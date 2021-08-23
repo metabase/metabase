@@ -595,7 +595,7 @@ describe("collection permissions", () => {
 
       it("shouldn't render revision history steps when there was no diff (metabase#1926)", () => {
         cy.signInAsAdmin();
-        cy.createDashboard("foo").then(({ body }) => {
+        cy.createDashboard().then(({ body }) => {
           visitAndEditDashboard(body.id);
         });
 

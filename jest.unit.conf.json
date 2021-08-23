@@ -9,7 +9,6 @@
   "modulePaths": [
     "<rootDir>/frontend/test",
     "<rootDir>/frontend/src",
-    "<rootDir>/enterprise/frontend/test",
     "<rootDir>/enterprise/frontend/src"
   ],
   "setupFiles": [
@@ -25,7 +24,12 @@
   },
   "coverageDirectory": "./coverage",
   "coverageReporters": ["text", "html", "lcov"],
-  "collectCoverageFrom": ["frontend/src/**/*.js", "frontend/src/**/*.jsx"],
+  "collectCoverageFrom": [
+    "frontend/src/**/*.js",
+    "frontend/src/**/*.jsx",
+    "enterprise/frontend/src/**/*.js",
+    "enterprise/frontend/src/**/*.jsx"
+  ],
   "coveragePathIgnorePatterns": [
     "/node_modules/",
     "/frontend/src/metabase/visualizations/lib/errors.js",

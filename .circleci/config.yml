@@ -1028,6 +1028,12 @@ workflows:
           driver: bigquery
 
       - test-driver:
+          name: be-tests-bigquery-cloud-sdk-ee
+          requires:
+            - be-tests-ee
+          driver: bigquery-cloud-sdk
+
+      - test-driver:
           name: be-tests-druid-ee
           requires:
             - be-tests-ee

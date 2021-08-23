@@ -5,6 +5,7 @@ import { IFRAMED, initializeIframeResizer } from "metabase/lib/dom";
 import { parseHashOptions } from "metabase/lib/browser";
 
 import MetabaseSettings from "metabase/lib/settings";
+import { getValuePopulatedParameters } from "metabase/meta/Parameter";
 
 import TitleAndDescription from "metabase/components/TitleAndDescription";
 import Parameters from "metabase/parameters/components/Parameters/Parameters";
@@ -98,10 +99,10 @@ export default class EmbedFrame extends Component {
                 <div className="flex ml-auto">
                   <Parameters
                     dashboard={this.props.dashboard}
-                    parameters={parameters.map(p => ({
-                      ...p,
-                      value: parameterValues && parameterValues[p.id],
-                    }))}
+                    parameters={getValuePopulatedParameters(
+                      parameters,
+                      parameterValues,
+                    )}
                     query={location.query}
                     setParameterValue={setParameterValue}
                     setMultipleParameterValues={setMultipleParameterValues}

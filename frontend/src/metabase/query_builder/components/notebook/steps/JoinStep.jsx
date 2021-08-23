@@ -14,6 +14,7 @@ import {
   NotebookCellItem,
   NotebookCellAdd,
 } from "../NotebookCell";
+import { FieldsPickerIcon, FIELDS_PICKER_STYLES } from "../FieldsPickerIcon";
 import FieldsPicker from "./FieldsPicker";
 import {
   JoinClausesContainer,
@@ -211,14 +212,6 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
         </JoinedTableControlRoot>
       )}
 
-      {join.isValid() && (
-        <JoinFieldsPicker
-          className="ml-auto text-bold"
-          join={join}
-          updateQuery={updateQuery}
-        />
-      )}
-
       {showRemove && <RemoveJoinIcon onClick={removeJoin} />}
     </JoinClauseRoot>
   );
@@ -258,7 +251,21 @@ function JoinTablePicker({
   }
 
   return (
-    <NotebookCellItem color={color} inactive={!joinedTable}>
+    <NotebookCellItem
+      color={color}
+      inactive={!joinedTable}
+      right={
+        joinedTable && (
+          <JoinFieldsPicker
+            join={join}
+            updateQuery={updateQuery}
+            triggerElement={<FieldsPickerIcon />}
+            triggerStyle={FIELDS_PICKER_STYLES.trigger}
+          />
+        )
+      }
+      rightContainerStyle={FIELDS_PICKER_STYLES.notebookItemContainer}
+    >
       <DatabaseSchemaAndTableDataSelector
         hasTableSearch
         canChangeDatabase={false}
@@ -429,10 +436,9 @@ JoinDimensionPicker.propTypes = joinDimensionPickerPropTypes;
 const joinFieldsPickerPropTypes = {
   join: PropTypes.object.isRequired,
   updateQuery: PropTypes.func.isRequired,
-  className: PropTypes.string,
 };
 
-const JoinFieldsPicker = ({ className, join, updateQuery }) => {
+const JoinFieldsPicker = ({ join, updateQuery, ...props }) => {
   const dimensions = join.joinedDimensions();
   const selectedDimensions = join.fieldsDimensions();
   const selected = new Set(selectedDimensions.map(d => d.key()));
@@ -470,7 +476,7 @@ const JoinFieldsPicker = ({ className, join, updateQuery }) => {
 
   return (
     <FieldsPicker
-      className={className}
+      {...props}
       dimensions={dimensions}
       selectedDimensions={selectedDimensions}
       isAll={join.fields === "all"}

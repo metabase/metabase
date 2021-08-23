@@ -21,7 +21,7 @@ export default class Segment extends Base {
     return ["segment", this.id];
   }
 
-  isActive(): boolean {
+  isActive() {
     return !this.archived;
   }
 }

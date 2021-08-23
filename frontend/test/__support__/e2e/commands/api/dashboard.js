@@ -1,11 +1,9 @@
 Cypress.Commands.add(
   "createDashboard",
-  (name, { collection_position = null, collection_id = null } = {}) => {
+  ({ name = "Test Dashboard", ...dashboardDetails } = {}) => {
     cy.log(`Create a dashboard: ${name}`);
-    cy.request("POST", "/api/dashboard", {
-      name,
-      collection_position,
-      collection_id,
-    });
+
+    // For all the possible keys, refer to `src/metabase/api/dashboard.clj`
+    cy.request("POST", "/api/dashboard", { name, ...dashboardDetails });
   },
 );

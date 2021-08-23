@@ -2,6 +2,9 @@
  ["src" "resources"]
 
  :deps
- {com.google.apis/google-api-services-bigquery {:mvn/version "v2-rev20200523-1.30.9"}}
+ ;; TODO: use BOM to manage these (see extensive comment in project.clj under bigquery for more details)
+ {com.google.apis/google-api-services-bigquery {:mvn/version "v2-rev20200523-1.30.9"}
+  ;; keep this synced with bigquery-cloud-sdk driver dependency version
+  com.google.http-client/google-http-client-jackson2 {:mvn/version "1.39.2"}}
 
  :metabase.build-driver/parents #{:google}}

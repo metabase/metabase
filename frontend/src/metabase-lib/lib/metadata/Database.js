@@ -57,9 +57,7 @@ export default class Database extends Base {
 
   // FEATURES
 
-  hasFeature(
-    feature: null | DatabaseFeature | VirtualDatabaseFeature,
-  ): boolean {
+  hasFeature(feature: null | DatabaseFeature | VirtualDatabaseFeature) {
     if (!feature) {
       return true;
     }

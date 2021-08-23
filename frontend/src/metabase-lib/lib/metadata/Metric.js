@@ -49,7 +49,7 @@ export default class Metric extends Base {
     }
   }
 
-  isActive(): boolean {
+  isActive() {
     return !this.archived;
   }
 }
