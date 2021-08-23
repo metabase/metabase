@@ -182,7 +182,7 @@
                    (dissoc :base_type :effective_type)))))
 
       (testing "binning-strategy = num-bins: 5"
-        (is (= (assoc (dissoc (qp.test/breakout-col :venues :latitude) :base_type)
+        (is (= (assoc (dissoc (qp.test/breakout-col :venues :latitude) :base_type :effective_type)
                       :binning_info {:min_value 7.5, :max_value 45.0, :num_bins 5, :bin_width 7.5, :binning_strategy :num-bins}
                       :field_ref    [:field (mt/id :venues :latitude) {:binning {:strategy  :num-bins
                                                                                  :min-value 7.5
@@ -194,7 +194,7 @@
                       :breakout    [[:field %latitude {:binning {:strategy :num-bins, :num-bins 5}}]]})
                    qp.test/cols
                    first
-                   (dissoc :base_type))))))))
+                   (dissoc :base_type :effective_type))))))))
 
 (deftest binning-error-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning)
