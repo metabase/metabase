@@ -53,7 +53,7 @@ Be sure to log in using the same credentials that Metabase uses. A common source
 
 ## Can the Metabase account access the table?
 
-**Root cause:** The login ID that Metabase uses to query the database does not have privileges to view the table.
+**Root cause:** The login ID that Metabase uses to query the database doesn't have privileges to view the table.
 
 **Steps to take:** Use the SQL Editor to write and run a simple query like the one shown immediately above:
 
