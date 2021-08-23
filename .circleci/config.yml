@@ -126,7 +126,7 @@ executors:
      working_directory: /home/circleci/metabase/metabase/
      docker:
        - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
-       - image: circleci/mongo:4.0
+       - image: circleci/mongo:5.0
 
   presto-186:
     working_directory: /home/circleci/metabase/metabase/
@@ -196,11 +196,11 @@ executors:
     resource_class: large
 
 
-  fe-mongo-4:
+  fe-mongo-5:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
-      - image: metabase/qa-databases:mongo-sample-4.0
+      - image: metabase/qa-databases:mongo-sample-5.0
 
   fe-postgres-12:
     working_directory: /home/circleci/metabase/metabase/
@@ -1266,10 +1266,10 @@ workflows:
           source-folder: << matrix.folder >>
 
       - fe-tests-cypress:
-          name: e2e-tests-mongo-4-<< matrix.edition >>
+          name: e2e-tests-mongo-5-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
-          e: fe-mongo-4
+          e: fe-mongo-5
           cypress-group: "mongo"
           source-folder: mongo
           qa-db: true
