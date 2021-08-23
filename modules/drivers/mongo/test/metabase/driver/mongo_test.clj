@@ -120,10 +120,10 @@
 (deftest describe-database-test
   (mt/test-driver :mongo
     (is (= #{{:schema nil, :name "checkins"}
-            {:schema nil, :name "categories"}
-            {:schema nil, :name "users"}
-            {:schema nil, :name "venues"}}
-            (:tables (driver/describe-database :mongo (mt/db)))))))
+             {:schema nil, :name "categories"}
+             {:schema nil, :name "users"}
+             {:schema nil, :name "venues"}}
+             (:tables (driver/describe-database :mongo (mt/db)))))))
 
 (deftest describe-table-test
   (mt/test-driver :mongo

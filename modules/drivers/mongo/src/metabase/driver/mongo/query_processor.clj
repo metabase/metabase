@@ -330,7 +330,6 @@
 
 (defmethod ->rvalue :coalesce [[_ & args]] (->lvalue (first args)))
 
-
 (defmethod ->rvalue :avg       [[_ inp]] {"$avg" (->rvalue inp)})
 (defmethod ->rvalue :stddev    [[_ inp]] {"$stdDevPop" (->rvalue inp)})
 (defmethod ->rvalue :sum       [[_ inp]] {"$sum" (->rvalue inp)})

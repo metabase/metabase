@@ -148,7 +148,8 @@
 
 
 (s/defn ^:private table-set :- #{i/DatabaseMetadataTable}
-  "Get set of tables from database metadata which aren't metabase metadata tables"
+  "So there exist tables for the user and metabase metadata tables for internal usage by metabase.
+  Get set of user tables only, excluding metabase metadata tables."
   [db-metadata :- i/DatabaseMetadata]
   (set (for [table (:tables db-metadata)
              :when (not (metabase-metadata/is-metabase-metadata-table? table))]
