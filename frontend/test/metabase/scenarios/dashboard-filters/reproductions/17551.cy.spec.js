@@ -30,8 +30,8 @@ describe.skip("issue 17551", () => {
       cy.createQuestionAndDashboard({
         questionDetails,
         dashboardDetails,
-      }).then(({ body: oldCard }) => {
-        const { card_id, dashboard_id } = oldCard;
+      }).then(({ body: card }) => {
+        const { card_id, dashboard_id } = card;
 
         const mapFilterToCard = {
           parameter_mappings: [
@@ -52,7 +52,7 @@ describe.skip("issue 17551", () => {
           ],
         };
 
-        cy.editDashboardCard(oldCard, mapFilterToCard);
+        cy.editDashboardCard(card, mapFilterToCard);
 
         cy.visit(`/dashboard/${dashboard_id}`);
       });
