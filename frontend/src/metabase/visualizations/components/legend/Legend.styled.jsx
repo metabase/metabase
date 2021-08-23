@@ -4,6 +4,7 @@ import colors, { darken } from "metabase/lib/colors";
 export const LegendRoot = styled.div`
   display: flex;
   flex-direction: ${({ isVertical }) => (isVertical ? "column" : "row")};
+  overflow: ${({ isVertical }) => (isVertical ? "" : "hidden")};
 `;
 
 export const LegendLink = styled.div`
