@@ -351,6 +351,9 @@
     "Valid index pair for indexing into a graph"))
 
 (def IndexPairList
+  "List of index pairs for indexing into the graph for multiple indices.
+  You're indexing into the graph as a dictionary of keys adjacency matrix representation,
+  although we munge these into indexing into the adjacency list representation we actually use"
   (s/named
     [IndexPair]
     "Valid list of index pair for indexing into a graph for multiple indices"))
