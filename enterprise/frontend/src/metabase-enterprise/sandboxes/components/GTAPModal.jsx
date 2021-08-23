@@ -479,7 +479,7 @@ const AttributeMappingEditor = ({
         <Tooltip
           tooltip={t`We can automatically get your users’ attributes if you’ve set up SSO, or you can add them manually from the "…" menu in the People section of the Admin Panel.`}
         >
-          <Icon className="ml1" name="infooutlined" />
+          <Icon className="ml1" name="info_outline" />
         </Tooltip>
       </div>
     }

@@ -1,11 +1,17 @@
-import { restore, popover, modal } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  modal,
+  describeWithoutToken,
+  describeWithToken,
+} from "__support__/e2e/cypress";
 
 const COLLECTION_ACCESS_PERMISSION_INDEX = 0;
 
 const DATA_ACCESS_PERMISSION_INDEX = 0;
 const NATIVE_QUERIES_PERMISSION_INDEX = 1;
 
-describe("scenarios > admin > permissions", () => {
+describeWithoutToken("scenarios > admin > permissions", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -466,6 +472,73 @@ describe("scenarios > admin > permissions", () => {
         ]);
       });
     });
+  });
+});
+
+describeWithToken("scenarios > admin > permissions", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("allows editing sandboxed access in the database focused view", () => {
+    cy.visit("/admin/permissions/data/database/1/schema/PUBLIC/table/2");
+
+    modifyPermission("All Users", DATA_ACCESS_PERMISSION_INDEX, "Sandboxed");
+
+    modal().within(() => {
+      cy.findByText("Change access to this database to limited?");
+      cy.button("Change").click();
+    });
+
+    cy.url().should(
+      "include",
+      "/admin/permissions/data/database/1/schema/PUBLIC/table/2/segmented/group/1",
+    );
+    cy.findByText("Grant sandboxed access to this table");
+    cy.button("Save").should("be.disabled");
+
+    cy.findByText("Pick a column").click();
+    cy.findByText("User ID").click();
+
+    cy.findByText("Pick a user attribute").click();
+    cy.findByText("attr_uid").click();
+    cy.button("Save").click();
+
+    assertPermissionTable([
+      ["Administrators", "Allowed"],
+      ["All Users", "Sandboxed"],
+      ["collection", "No access"],
+      ["data", "Allowed"],
+      ["nosql", "Allowed"],
+      ["readonly", "No access"],
+    ]);
+
+    modifyPermission(
+      "All Users",
+      DATA_ACCESS_PERMISSION_INDEX,
+      "Edit sandboxed access",
+    );
+
+    cy.url().should(
+      "include",
+      "/admin/permissions/data/database/1/schema/PUBLIC/table/2/segmented/group/1",
+    );
+    cy.findByText("Grant sandboxed access to this table");
+
+    cy.button("Save").click();
+    cy.findByText("Grant sandboxed access to this table").should("not.exist");
+
+    cy.button("Save changes").click();
+
+    assertPermissionTable([
+      ["Administrators", "Allowed"],
+      ["All Users", "Sandboxed"],
+      ["collection", "No access"],
+      ["data", "Allowed"],
+      ["nosql", "Allowed"],
+      ["readonly", "No access"],
+    ]);
   });
 });
 
