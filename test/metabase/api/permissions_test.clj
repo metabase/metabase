@@ -175,6 +175,17 @@
           (is (= nil (get-in (perms/graph) [:groups group-id2 db-id2 :schemas])))))
       
       (testing "wildcards"
+        (mt/with-temp* [PermissionsGroup [{group-id1 :id}]
+                        PermissionsGroup [{group-id2 :id}]
+                        Database         [{db-id1 :id}]
+                        Database         [{db-id2 :id}]]
+          (let [changed  (-> (perms/graph)
+                             (assoc-in [:groups group-id1 db-id1 :schemas] :all)
+                             (assoc-in [:groups group-id2 db-id2 :schemas] :all))
+                mutation ((mt/user->client :crowberto) :put 200
+                          "permissions/graph" changed :index_pairs (json/generate-string [[group-id1, nil]]))]
+            (is (= :all (get-in (perms/graph) [:groups group-id1 db-id1 :schemas])))
+            (is (= nil (get-in (perms/graph) [:groups group-id2 db-id2 :schemas]))))))
 
       (testing "multiple index pairs"
         (mt/with-temp* [PermissionsGroup [{group-id1 :id}]

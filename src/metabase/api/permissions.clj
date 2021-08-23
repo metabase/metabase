@@ -41,7 +41,7 @@
   modifies it before you can submit you revisions, the endpoint will instead make no changes and return a
   409 (Conflict) response. In this case, you should fetch the updated graph and make desired changes to that."
   [index_pairs :as {body :body}]
-  {index_pairs su/NonBlankString
+  {index_pairs (s/maybe s/Str)
    body        su/Map}
   (api/check-superuser)
   (let [index-pairs (json/parse-string index_pairs)]
