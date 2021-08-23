@@ -9,7 +9,7 @@ You have connected Metabase to a database, but:
 
 If you can see the tables, but some of the rows or columns seem to be missing, please check out the [troubleshooting guide for sandboxing][sandboxing].
 
-## Is it a browser caching issue?
+## Is your browser showing you a cached list of tables?
 
 **Root cause:** Sometimes browsers will show an old cached list of tables.
 
