@@ -8,7 +8,7 @@ Problems, their causes, how to detect them, and how to fix them.
 
 ### Using Metabase
 
-- [Logging in][login].
+- [People can't log in to Metabase][login].
 
 - [Saving questions or dashboards][proxies].
 
@@ -91,7 +91,7 @@ Metabase adds new features and squashes bugs with each release. [Upgrading to th
 [ldap]: ./ldap.html
 [learn]: https://www.metabase.com/learn
 [linked-filters]: ./linked-filters.html
-[login]: ./loggingin.html
+[login]: ./cant-log-in.html
 [loadh2]: ./loading-from-h2.html
 [not-sending-email]: ./cant-send-email.html
 [proxies]: ./proxies.html
