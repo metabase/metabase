@@ -37,6 +37,7 @@ export const LegendItemDot = styled.div`
 
 export const LegendItemTitle = styled.div`
   color: ${colors["text-dark"]};
+  font-size: 0.875rem;
   font-weight: bold;
   margin-left: 0.5rem;
   overflow: hidden;
