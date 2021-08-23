@@ -80,7 +80,7 @@ Similarly, you probably don't need indexes for simple tables with a few tens of 
 
 **Steps to take:**
 
-1. Go to Admin Panel > Settings > Caching to see whether caching is enabled or not.
+1. Go to Admin Panel > Settings > Caching to see if caching is enabled.
 2. Determine whether the question *can* be cached. We hash the query string, so (for example) if results are being filtered by a user ID, every person who views the dashboard will be sending a slightly different question to the database, and the results will not be cached.
 3. [This guide][admin-caching] explains how to change the minimum query duration (we cache anything that takes longer than that to run) and the maximum cache size for each query result. You may need to experiment with these values over several days to find the best balance. If the problem appears to be caused by a high proportion of sandboxed queries, check that the cache is large enough to store all of their results.
 
