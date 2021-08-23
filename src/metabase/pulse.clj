@@ -1,6 +1,7 @@
 (ns metabase.pulse
   "Public API for sending Pulses."
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [metabase.api.card :as card-api]
             [metabase.email :as email]
             [metabase.email.messages :as messages]
@@ -108,10 +109,10 @@
         dashcards         (db/select DashboardCard :dashboard_id dashboard-id)
         ordered-dashcards (sort dashcard-comparator dashcards)]
     (for [dashcard ordered-dashcards]
-      (if (-> dashcard :visualization_settings :virtual_card)
+      (if-let [card-id (:card_id dashcard)]
+        (execute-dashboard-subscription-card pulse-creator-id dashboard dashcard card-id (i/the-parameters parameters-impl pulse dashboard))
         ;; For virtual cards, return the viz settings map directly
-        (-> dashcard :visualization_settings)
-        (execute-dashboard-subscription-card pulse-creator-id dashboard dashcard (:card_id dashcard) (i/the-parameters parameters-impl pulse dashboard))))))
+        (-> dashcard :visualization_settings)))))
 
 (defn- database-id [card]
   (or (:database_id card)
@@ -136,17 +137,21 @@
   "Returns a seq of slack attachment data structures, used in `create-and-upload-slack-attachments!`"
   [card-results]
   (let [{channel-id :id} (slack/files-channel)]
-    (remove nil?
-            (for [card-result card-results]
-              (if (:virtual_card card-result)
-                {:blocks [{:type "section" :text {:type "mrkdwn" :text (:text card-result)}}]}
-                (let [{{card-id :id, card-name :name, :as card} :card, result :result} card-result]
-                  {:title           card-name
-                   :rendered-info   (render/render-pulse-card :inline (defaulted-timezone card) card result)
-                   :title_link      (urls/card-url card-id)
-                   :attachment-name "image.png"
-                   :channel-id      channel-id
-                   :fallback        card-name}))))))
+    (->> (for [card-result card-results]
+           (let [{{card-id :id, card-name :name, :as card} :card, result :result} card-result]
+             (if (and card result)
+               {:title           card-name
+                :rendered-info   (render/render-pulse-card :inline (defaulted-timezone card) card result)
+                :title_link      (urls/card-url card-id)
+                :attachment-name "image.png"
+                :channel-id      channel-id
+                :fallback        card-name}
+               (let [mrkdwn (markdown/process-markdown (:text card-result) :slack)]
+                 (when (not (str/blank? mrkdwn))
+                   {:blocks [{:type "section"
+                              :text {:type "mrkdwn"
+                                     :text mrkdwn}}]})))))
+         (remove nil?))))
 
 (def slack-width
   "Width of the rendered png of html to be sent to slack."
@@ -155,18 +160,15 @@
 (defn create-and-upload-slack-attachments!
   "Create an attachment in Slack for a given Card by rendering its result into an image and uploading
   it. Slack-attachment-uploader is a function which takes image-bytes and an attachment name, uploads the file, and
-  returns an image url, defaulting to slack/upload-file!."
+  returns an image url, defaulting to slack/upload-file!.
+
+  Nested `blocks` lists containing text cards are passed through unmodified."
   ([attachments] (create-and-upload-slack-attachments! attachments slack/upload-file!))
   ([attachments slack-attachment-uploader]
-   ;; TODO refactor the logic here
    (letfn [(f [a] (select-keys a [:title :title_link :fallback]))]
-     (reduce (fn [processed {:keys [blocks rendered-info attachment-name channel-id] :as attachment-data}]
-               (conj processed (if blocks
-                                 ;; TODO skip block if markdown renders to empty string
-                                 (update-in attachment-data
-                                            [:blocks 0 :text :text]
-                                            markdown/process-markdown
-                                            :slack)
+     (reduce (fn [processed {:keys [rendered-info attachment-name channel-id] :as attachment-data}]
+               (conj processed (if (:blocks attachment-data)
+                                 attachment-data
                                  (if (:render/text rendered-info)
                                    (-> (f attachment-data)
                                        (assoc :text (:render/text rendered-info)))

@@ -123,7 +123,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest execute-dashboard-test
-  (testing "it runs for each card"
+  (testing "it runs for each non-virtual card"
     (mt/with-temp* [Card          [{card-id-1 :id}]
                     Card          [{card-id-2 :id}]
                     Dashboard     [{dashboard-id :id} {:name "Birdfeed Usage"}]
@@ -146,7 +146,15 @@
                     User [{user-id :id}]]
       (let [result (pulse/execute-dashboard {:creator_id user-id} dashboard-id)]
         (is (= [card-id-3 card-id-2 card-id-1]
-               (map #(-> % :card :id) result)))))))
+               (map #(-> % :card :id) result))))))
+  (testing "virtual (text) cards are returned as a viz settings map"
+    (mt/with-temp* [Card          [{card-id-1 :id}]
+                    Card          [{card-id-2 :id}]
+                    Dashboard     [{dashboard-id :id} {:name "Birdfeed Usage"}]
+                    DashboardCard [dashcard-1 {:dashboard_id dashboard-id
+                                               :visualization_settings {:virtual_card {}, :text "test"}}]
+                    User [{user-id :id}]]
+      (is (= [{:virtual_card {}, :text "test"}] (pulse/execute-dashboard {:creator_id user-id} dashboard-id))))))
 
 (deftest basic-table-test
   (tests {:pulse {:skip_if_empty false}}
