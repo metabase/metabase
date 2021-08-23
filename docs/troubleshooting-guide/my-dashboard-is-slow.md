@@ -70,7 +70,7 @@ Note: you may also see your database being overloaded if you're using the same d
 
 Similarly, you probably don't need indexes for simple tables with a few tens of thousands of rows, but you almost certainly *do* if you have a few million rows. All of this is very dependent on the underlying database: Redshift can easily handle millions of rows with thousands of columns, but MySQL or PostgreSQL may require a star schema designed for OLAP to deliver the performance you need.
 
-## Is the answer to your question not being cached?
+## Is Metabase not caching the answer to your question?
 
 **Root cause:** By default caching is disabled so that we always re-run every question. However, if your data is only being updated every few seconds or minutes, you will improve performance by enabling caching. Note that:
 
