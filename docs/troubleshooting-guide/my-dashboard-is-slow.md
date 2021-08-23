@@ -6,6 +6,8 @@ You have created a dashboard that shows the right things but:
 - some cards load quickly but others take much longer, but
 - the dashboard and/or the slow cards do load eventually.
 
+Our articles on [Metabase at scale][metabase-at-scale] and [making dashboards faster][faster-dashboards] will help set the stage for the steps below.
+
 ## Did it used to be fast enough, but has recently slowed down?
 
 **Root cause:** Metabase is not an island, complete unto itself, so if the dashboards and the cards it shows haven't changed, the slowdown is probably due to a change in the environment.
@@ -29,7 +31,7 @@ Note: this is a good way to design dashboards even when there aren't performance
 
 ## Is the database overloaded by other traffic?
 
-**Root cause:** Metabase is usually not the only application using your database, and you may not be the only person using Metabase. If someone else has opened a dashboard that launches a couple of dozen long-running queries, everyone else may then have to wait until database connections become free. Our article on [Metabase at scale][metabase-at-scale] discusses this in more detail, and our article on [making dashboards faster][faster-dashboards] may help as well.
+**Root cause:** Metabase is usually not the only application using your database, and you may not be the only person using Metabase. If someone else has opened a dashboard that launches a couple of dozen long-running queries, everyone else may then have to wait until database connections become free.
 
 **Steps to take:**
 
