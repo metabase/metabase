@@ -167,7 +167,7 @@
     (testing "Validate binning info is returned with the binning-strategy"
       (testing "binning-strategy = default"
         ;; base_type can differ slightly between drivers and it's really not important for the purposes of this test
-        (is (= (assoc (dissoc (qp.test/breakout-col :venues :latitude) :base_type)
+        (is (= (assoc (dissoc (qp.test/breakout-col :venues :latitude) :base_type :effective_type)
                       :binning_info {:min_value 10.0, :max_value 50.0, :num_bins 4, :bin_width 10.0, :binning_strategy :bin-width}
                       :field_ref    [:field (mt/id :venues :latitude) {:binning {:strategy  :bin-width
                                                                                  :min-value 10.0
@@ -179,7 +179,7 @@
                       :breakout    [[:field %latitude {:binning {:strategy :default}}]]})
                    qp.test/cols
                    first
-                   (dissoc :base_type)))))
+                   (dissoc :base_type :effective_type)))))
 
       (testing "binning-strategy = num-bins: 5"
         (is (= (assoc (dissoc (qp.test/breakout-col :venues :latitude) :base_type)

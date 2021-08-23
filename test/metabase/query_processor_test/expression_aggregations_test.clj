@@ -247,7 +247,6 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
     (testing "check that named aggregations come back with the correct column metadata (#4002)"
       (is (= (assoc (qp.test/aggregate-col :count)
-                    :effective_type :type/BigInteger
                     :name         "auto_generated_name"
                     :display_name "Count of Things")
              (-> (mt/run-mbql-query venues

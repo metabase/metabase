@@ -38,16 +38,19 @@
                :display_name "venue_id"
                :source       :native
                :base_type    :type/Integer
+               :effective_type :type/Integer
                :field_ref    [:field "venue_id" {:base-type :type/Integer}]}
               {:name         "user_id"
                :display_name "user_id"
                :source       :native
                :base_type    :type/Integer
+               :effective_type :type/Integer
                :field_ref    [:field "user_id" {:base-type :type/Integer}]}
               {:name         "checkins_id"
                :display_name "checkins_id"
                :source       :native
                :base_type    :type/Integer
+               :effective_type :type/Integer
                :field_ref    [:field "checkins_id" {:base-type :type/Integer}]}]
              (qp.test/cols
                (qp/process-query

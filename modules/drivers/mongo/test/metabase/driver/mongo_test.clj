@@ -81,6 +81,7 @@
                         :cols             [{:name         "count"
                                             :display_name "count"
                                             :base_type    :type/Integer
+                                            :effective_type :type/Integer
                                             :source       :native
                                             :field_ref    [:field "count" {:base-type :type/Integer}]}]
                         :native_form      {:collection "venues"
