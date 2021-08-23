@@ -125,6 +125,7 @@ export function formatHourAMPM(hour) {
   }
 }
 
+// @deprecated use formatDateTimeWithUnit(day, "day-of-week")
 export function formatDay(day) {
   switch (day) {
     case "mon":
