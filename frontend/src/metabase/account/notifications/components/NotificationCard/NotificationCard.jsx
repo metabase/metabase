@@ -2,8 +2,11 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import Settings from "metabase/lib/settings";
-import { formatDay, formatFrame, formatHourAMPM } from "metabase/lib/time";
-import { formatDateTimeWithUnit } from "metabase/lib/formatting";
+import { formatFrame } from "metabase/lib/time";
+import {
+  formatDateTimeWithUnit,
+  formatTimeWithUnit,
+} from "metabase/lib/formatting";
 import * as Urls from "metabase/lib/urls";
 import {
   NotificationContent,
@@ -62,10 +65,18 @@ const formatDescription = (item, user) => {
   return parts.join(" · ");
 };
 
-const formatChannel = channel => {
+const formatChannel = ({
+  channel_type,
+  schedule_type,
+  schedule_hour,
+  schedule_day,
+  schedule_frame,
+  details,
+}) => {
   let scheduleString = "";
+  const options = Settings.formattingOptions();
 
-  switch (channel.channel_type) {
+  switch (channel_type) {
     case "email":
       scheduleString += t`Emailed `;
       break;
@@ -77,32 +88,32 @@ const formatChannel = channel => {
       break;
   }
 
-  switch (channel.schedule_type) {
+  switch (schedule_type) {
     case "hourly":
       scheduleString += t`hourly`;
       break;
     case "daily": {
-      const ampm = formatHourAMPM(channel.schedule_hour);
+      const ampm = formatTimeWithUnit(schedule_hour, "hour-of-day", options);
       scheduleString += t`daily at ${ampm}`;
       break;
     }
     case "weekly": {
-      const ampm = formatHourAMPM(channel.schedule_hour);
-      const day = formatDay(channel.schedule_day);
+      const ampm = formatTimeWithUnit(schedule_hour, "hour-of-day", options);
+      const day = formatDateTimeWithUnit(schedule_day, "day-of-week", options);
       scheduleString += t`${day} at ${ampm}`;
       break;
     }
     case "monthly": {
-      const ampm = formatHourAMPM(channel.schedule_hour);
-      const day = formatDay(channel.schedule_day);
-      const frame = formatFrame(channel.schedule_frame);
+      const ampm = formatTimeWithUnit(schedule_hour, "hour-of-day", options);
+      const day = formatDateTimeWithUnit(schedule_day, "day-of-week", options);
+      const frame = formatFrame(schedule_frame);
       scheduleString += t`monthly on the ${frame} ${day} at ${ampm}`;
       break;
     }
   }
 
-  if (channel.channel_type === "slack") {
-    scheduleString += t` to ${channel.details.channel}`;
+  if (channel_type === "slack") {
+    scheduleString += t` to ${details.channel}`;
   }
 
   return scheduleString;
