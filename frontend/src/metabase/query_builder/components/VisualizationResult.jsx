@@ -105,6 +105,7 @@ export default class VisualizationResult extends Component {
           rawSeries={rawSeries}
           onChangeCardAndRun={navigateToNewCardInsideQB}
           isEditing={true}
+          isQueryBuilder={true}
           showTitle={false}
           metadata={question.metadata()}
           onOpenChartSettings={this.props.onOpenChartSettings}

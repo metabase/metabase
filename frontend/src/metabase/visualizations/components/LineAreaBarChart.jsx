@@ -359,6 +359,7 @@ export default class LineAreaBarChart extends Component {
       headerIcon,
       actionButtons,
       isFullscreen,
+      isQueryBuilder,
       onHoverChange,
       onAddSeries,
       onRemoveSeries,
@@ -382,6 +383,7 @@ export default class LineAreaBarChart extends Component {
           this.getHoverClasses(),
           this.props.className,
         )}
+        isQueryBuilder={isQueryBuilder}
       >
         {hasTitle && (
           <ChartLegendCaption
