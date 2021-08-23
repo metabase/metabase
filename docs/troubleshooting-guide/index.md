@@ -12,7 +12,7 @@ Problems, their causes, how to detect them, and how to fix them.
 
 - [Saving questions or dashboards][proxies].
 
-- [My question or dashboard is slow][performance].
+- [My dashboard is slow][slow-dashboard].
 
 - [My dashboard filters don't work][filters].
 
@@ -28,13 +28,15 @@ Problems, their causes, how to detect them, and how to fix them.
 
 - [Setting up LDAP][ldap].
 
-- [Setting up email][email].
+- [Metabase isn't sending email][not-sending-email].
 
 - [Using the default H2 application database][appdb].
 
 - [Loading an exported H2 application database][loadh2].
 
-- [Handling timezones][timezones].
+- [The dates and times in my questions and charts are wrong][incorrect-times].
+
+- [I can't see my tables][cant-see-tables].
 
 - [Managing data sandboxing][sandbox].
 
@@ -75,28 +77,29 @@ Metabase adds new features and squashes bugs with each release. [Upgrading to th
 
 [appdb]: ./application-database.html
 [bugs]: ./bugs.html
+[cant-see-tables]: ./cant-see-tables.html
 [chrome]: https://developers.google.com/web/tools/chrome-devtools/open#console
 [cloud]: https://www.metabase.com/start/ 
 [datawarehouse]: ./datawarehouse.html
 [docker]: ./docker.html
 [edge]: https://docs.microsoft.com/en-us/microsoft-edge/devtools-guide-chromium
-[email]: ../operations-guide/upgrading-metabase.html
 [faq]: /faq
 [filters]: ./filters.html
 [firefox]: https://developer.mozilla.org/en-US/docs/Tools/Web_Console/Opening_the_Web_Console
 [forum]: https://discourse.metabase.com/
+[incorrect-times]: ./times-appear-incorrect.html
 [ldap]: ./ldap.html
 [learn]: https://www.metabase.com/learn
 [linked-filters]: ./linked-filters.html
 [login]: ./loggingin.html
 [loadh2]: ./loading-from-h2.html
-[performance]: ./performance.html
+[not-sending-email]: ./cant-send-email.html
 [proxies]: ./proxies.html
 [releases]: https://github.com/metabase/metabase/releases
 [running]: ./running.html
 [safari]: https://support.apple.com/guide/safari-developer/develop-menu-dev39df999c1/mac
 [server-logs]: ./server-logs.html
 [sandbox]: ./sandboxing.html
+[slow-dashboard]: ./my-dashboard-is-slow.html
 [sync-fingerprint-scan]: ./sync-fingerprint-scan.html
-[timezones]: ./timezones.html
 [upgrade]: ../operations-guide/upgrading-metabase.html
