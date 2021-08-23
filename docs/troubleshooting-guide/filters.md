@@ -42,7 +42,7 @@ For example, you want a dropdown but you're seeing a search box or a text input 
 4. Set **Field Type** to "Category" and **Filtering on this field** to "A list of all values."
 5. Click the button **Re-scan this field** in the bottom.
 
-If you created the question in SQL, then you only get a dropdown if the filter is a Field Filter _and_ the Filtering on this field option is set to your preferred input type: A list of all values (dropdown list) and the number of unique values is less than 100.
+If you created the question in SQL, then you only get a dropdown if the filter is a Field Filter _and_ the Filtering on this field option is set to your preferred input type: A list of all values (dropdown list) _and_ the number of unique values is less than 100.
 
 ## Has someone renamed or deleted columns in the database?
 
