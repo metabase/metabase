@@ -95,10 +95,6 @@
   transition: background-color 1s linear, border 1s linear;
 }
 
-.DashboardGrid {
-  margin-top: 1em;
-}
-
 .Dash--editing {
   margin-top: 1.5em;
 }

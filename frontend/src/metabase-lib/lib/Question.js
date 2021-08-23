@@ -35,7 +35,10 @@ import {
   findColumnIndexForColumnSetting,
   syncTableColumnsToQuery,
 } from "metabase/lib/dataset";
-import { getParametersWithExtras, isTransientId } from "metabase/meta/Card";
+import {
+  getValueAndFieldIdPopulatedParametersFromCard,
+  isTransientId,
+} from "metabase/meta/Card";
 import {
   parameterToMBQLFilter,
   normalizeParameterValue,
@@ -969,7 +972,10 @@ export default class Question {
 
   // TODO: Fix incorrect Flow signature
   parameters(): ParameterObject[] {
-    return getParametersWithExtras(this.card(), this._parameterValues);
+    return getValueAndFieldIdPopulatedParametersFromCard(
+      this.card(),
+      this._parameterValues,
+    );
   }
 
   parametersList(): ParameterObject[] {
