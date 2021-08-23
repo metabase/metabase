@@ -466,7 +466,7 @@
                                 index-pairs)
         members         (vec (for [index-pair index-pairs]
                                (assoc-in {} index-pair (or (get-in in-graph-groups index-pair) {}))))
-        filtered-res    (apply m/deep-merge members)]
+        filtered-res    (or (apply m/deep-merge members) {})]
     (assoc in-graph :groups filtered-res)))
 
 (s/defn graph :- PermissionsGraph

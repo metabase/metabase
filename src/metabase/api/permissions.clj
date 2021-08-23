@@ -44,11 +44,11 @@
   {index_pairs (s/maybe s/Str)
    body        su/Map}
   (api/check-superuser)
-  (let [index-pairs (json/parse-string index_pairs)]
+  (let [index-pairs (vec (json/parse-string index_pairs))]
     (perms/update-graph!
       (pg/converted-json->graph ::pg/data-permissions-graph body)
-      index-pairs))
-  (perms/graph))
+      index-pairs)
+    (perms/graph)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
