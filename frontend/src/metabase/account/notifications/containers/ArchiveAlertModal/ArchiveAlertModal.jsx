@@ -4,7 +4,8 @@ import Alerts from "metabase/entities/alerts";
 import { getAlertId } from "../../selectors";
 import ArchiveModal from "../../components/ArchiveModal";
 
-const mapStateToProps = () => ({
+const mapStateToProps = (state, { alert }) => ({
+  item: alert,
   type: "alert",
 });
 

@@ -6,7 +6,8 @@ import { navigateToArchive } from "../../actions";
 import { getPulseId } from "../../selectors";
 import UnsubscribeModal from "../../components/UnsubscribeModal";
 
-const mapStateToProps = state => ({
+const mapStateToProps = (state, { pulse }) => ({
+  item: pulse,
   type: "pulse",
   user: getUser(state),
 });

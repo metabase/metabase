@@ -4,7 +4,8 @@ import Pulses from "metabase/entities/pulses";
 import { getPulseId } from "../../selectors";
 import ArchiveModal from "../../components/ArchiveModal";
 
-const mapStateToProps = () => ({
+const mapStateToProps = (state, { pulse }) => ({
+  item: pulse,
   type: "pulse",
 });
 

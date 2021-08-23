@@ -6,7 +6,8 @@ import { navigateToArchive } from "../../actions";
 import { getAlertId } from "../../selectors";
 import UnsubscribeModal from "../../components/UnsubscribeModal";
 
-const mapStateToProps = state => ({
+const mapStateToProps = (state, { alert }) => ({
+  item: alert,
   type: "alert",
   user: getUser(state),
 });
