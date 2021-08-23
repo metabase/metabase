@@ -10,7 +10,6 @@ export const LegendRoot = styled.div`
 export const LegendLink = styled.div`
   cursor: pointer;
   color: ${colors["brand"]};
-  font-size: 0.875rem;
   font-weight: bold;
 
   &:hover {

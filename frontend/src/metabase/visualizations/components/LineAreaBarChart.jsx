@@ -358,6 +358,7 @@ export default class LineAreaBarChart extends Component {
       hovered,
       headerIcon,
       actionButtons,
+      isFullscreen,
       onHoverChange,
       onAddSeries,
       onRemoveSeries,
@@ -397,6 +398,7 @@ export default class LineAreaBarChart extends Component {
           hovered={hovered}
           hasLegend={hasLegend}
           actionButtons={!hasTitle ? actionButtons : undefined}
+          isFullscreen={isFullscreen}
           onHoverChange={onHoverChange}
           onAddSeries={!hasBreakout ? onAddSeries : undefined}
           onRemoveSeries={!hasBreakout ? onRemoveSeries : undefined}
