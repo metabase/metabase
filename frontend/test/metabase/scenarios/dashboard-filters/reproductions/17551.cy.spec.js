@@ -59,7 +59,7 @@ describe.skip("issue 17551", () => {
     });
   });
 
-  it("should include today (metabase#17551)", () => {
+  it("should include today in the 'All time' date filter when chosen 'Next' (metabase#17551)", () => {
     filterWidget().click();
     setAdHocFilter({ condition: "Next", includeCurrent: true });
 
