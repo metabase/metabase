@@ -54,7 +54,7 @@ Note: you may also see your database being overloaded if you're using the same d
 
 ## Is Metabase generating inefficient SQL?
 
-**Root cause:** We save questions created graphically in Metabase Query Language (MBQL), then translate MBQL into queries for particular back-end databases. We create the most efficient queries we can, but for the sake of portability, we don't take advantage of every database's idiosyncracies, so sometimes a GUI question will be slower than the equivalent hand-written SQL.
+**Root cause:** Metabase saves questions created graphically in Metabase Query Language (MBQL), then translate MBQL into queries for particular back-end databases. It creates the most efficient queries it can, but for the sake of portability, it doesn't take advantage of every database's idiosyncracies, so sometimes a GUI question will be slower than the equivalent hand-written SQL.
 
 **Steps to take:**
 
