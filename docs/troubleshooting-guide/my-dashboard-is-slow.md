@@ -64,7 +64,7 @@ Note: you may also see your database being overloaded if you're using the same d
 
 ## Do you have the right database schema?
 
-**Root cause:** If the database schema is not designed well, questions cannot run quickly.
+**Root cause:** If the database schema is poorly designed, questions cannot run quickly.
 
 **Steps to take:** The difference between OLTP and OLAP, and how to design database schemas to support them, are out of scope for this troubleshooting guide. In brief, you must look at the data schema of the data warehouse, or ask the database administrator whether the database is designed for online transaction processing (OLTP) or online analytical processing (OLAP). Metabase is an OLAP application; if the database schema is designed for OLTP, you may need to create views that reorganize the data.
 
