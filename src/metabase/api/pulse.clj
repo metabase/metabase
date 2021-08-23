@@ -31,12 +31,16 @@
 (u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util))
 
 (api/defendpoint GET "/"
-  "Fetch all Pulses"
-  [archived dashboard_id]
+  "Fetch all Pulses. If `dashboard_id` is specified, restricts results to dashboard subscriptions
+  associated with that dashboard. If `user_id` is specified, restricts results to pulses or subscriptions
+  created by the user, or for which the user is a known recipient."
+  [archived dashboard_id user_id]
   {archived     (s/maybe su/BooleanString)
-   dashboard_id (s/maybe su/IntGreaterThanZero)}
+   dashboard_id (s/maybe su/IntGreaterThanZero)
+   user_id      (s/maybe su/IntGreaterThanZero)}
   (as-> (pulse/retrieve-pulses {:archived?    (Boolean/parseBoolean archived)
-                                :dashboard-id dashboard_id}) <>
+                                :dashboard-id dashboard_id
+                                :user-id      user_id}) <>
     (filter mi/can-read? <>)
     (hydrate <> :can_write)))
 
