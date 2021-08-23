@@ -54,7 +54,7 @@ Note: you may also see your database being overloaded if you're using the same d
 
 ## Is Metabase generating inefficient SQL?
 
-**Root cause:** We save questions created graphically in Metabase Query Language (MBQL), then translate MBQL into queries for particular back-end databases. We create the most efficient queries we can, but for the sake of portability, we don't take advantage of every database's idiosyncracies, so sometimes a GUI question will be slower than the equivalent hand-written SQL.
+**Root cause:** Metabase saves questions created graphically in Metabase Query Language (MBQL), then translate MBQL into queries for particular back-end databases. It creates the most efficient queries it can, but for the sake of portability, it doesn't take advantage of every database's idiosyncracies, so sometimes a GUI question will be slower than the equivalent hand-written SQL.
 
 **Steps to take:**
 
@@ -64,13 +64,13 @@ Note: you may also see your database being overloaded if you're using the same d
 
 ## Do you have the right database schema?
 
-**Root cause:** If the database schema is not designed well, questions cannot run quickly.
+**Root cause:** If the database schema is poorly designed, questions cannot run quickly.
 
 **Steps to take:** The difference between OLTP and OLAP, and how to design database schemas to support them, are out of scope for this troubleshooting guide. In brief, you must look at the data schema of the data warehouse, or ask the database administrator whether the database is designed for online transaction processing (OLTP) or online analytical processing (OLAP). Metabase is an OLAP application; if the database schema is designed for OLTP, you may need to create views that reorganize the data.
 
 Similarly, you probably don't need indexes for simple tables with a few tens of thousands of rows, but you almost certainly *do* if you have a few million rows. All of this is very dependent on the underlying database: Redshift can easily handle millions of rows with thousands of columns, but MySQL or PostgreSQL may require a star schema designed for OLAP to deliver the performance you need.
 
-## Is the answer to your question not being cached?
+## Is Metabase not caching the answer to your question?
 
 **Root cause:** By default caching is disabled so that we always re-run every question. However, if your data is only being updated every few seconds or minutes, you will improve performance by enabling caching. Note that:
 
@@ -80,7 +80,7 @@ Similarly, you probably don't need indexes for simple tables with a few tens of 
 
 **Steps to take:**
 
-1. Go to Admin Panel > Settings > Caching to see whether caching is enabled or not.
+1. Go to Admin Panel > Settings > Caching to see if caching is enabled.
 2. Determine whether the question *can* be cached. We hash the query string, so (for example) if results are being filtered by a user ID, every person who views the dashboard will be sending a slightly different question to the database, and the results will not be cached.
 3. [This guide][admin-caching] explains how to change the minimum query duration (we cache anything that takes longer than that to run) and the maximum cache size for each query result. You may need to experiment with these values over several days to find the best balance. If the problem appears to be caused by a high proportion of sandboxed queries, check that the cache is large enough to store all of their results.
 
