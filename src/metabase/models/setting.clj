@@ -121,7 +121,7 @@
   ;; called whenever setting value changes, whether from update-setting! or a cache refresh. used to handle cases
   ;; where a change to the cache necessitates a change to some value outside the cache, like when a change the
   ;; `:site-locale` setting requires a call to `java.util.Locale/setDefault`
-  :on-change   (s/maybe clojure.lang.IFn)})
+   :on-change   (s/maybe clojure.lang.IFn)})
 
 
 (defonce ^:private registered-settings
@@ -468,7 +468,7 @@
   (set-string! setting-definition-or-name (when new-value
                                             (assert (or (number? new-value)
                                                         (and (string? new-value)
-                                                             (re-matches #"[+-]?([0-9]*[.])?[0-9]+" new-value) )))
+                                                             (re-matches #"[+-]?([0-9]*[.])?[0-9]+" new-value))))
                                             (str new-value))))
 
 (defn set-json!
