@@ -8,6 +8,7 @@ import "./commands/api/dashboardCard";
 import "./commands/api/dashboardFilters";
 import "./commands/api/collection";
 import "./commands/api/moderation";
+import "./commands/api/pulse";
 import "./commands/api/user";
 
 import "./commands/api/composite/createQuestionAndDashboard";

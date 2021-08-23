@@ -3,10 +3,15 @@ import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
 
-const TEST_QUESTION_QUERY = {
-  "source-table": ORDERS_ID,
-  aggregation: [["count"]],
-  breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }]],
+const questionDetails = {
+  name: "Question",
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [["count"]],
+    breakout: [
+      ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
+    ],
+  },
 };
 
 describe("scenarios > account > notifications", () => {
@@ -17,14 +22,11 @@ describe("scenarios > account > notifications", () => {
 
   describe("alerts", () => {
     beforeEach(() => {
-      cy.getCurrentUser().then(({ body: { id: USER_ID } }) => {
-        cy.createQuestion({
-          name: "Question",
-          query: TEST_QUESTION_QUERY,
-        }).then(({ body: { id: CARD_ID } }) => {
+      cy.getCurrentUser().then(({ body: { id: user_id } }) => {
+        cy.createQuestion(questionDetails).then(({ body: { id: card_id } }) => {
           cy.createAlert({
             card: {
-              id: CARD_ID,
+              id: card_id,
               include_csv: false,
               include_xls: false,
             },
@@ -35,7 +37,7 @@ describe("scenarios > account > notifications", () => {
                 schedule_type: "hourly",
                 recipients: [
                   {
-                    id: USER_ID,
+                    id: user_id,
                   },
                 ],
               },
@@ -70,14 +72,77 @@ describe("scenarios > account > notifications", () => {
       cy.findByText("Unsubscribe").click();
       cy.findByText("Unsubscribe").should("not.exist");
 
-      cy.findByText("Question");
-      cy.findByLabelText("close icon").click();
-
       cy.findByText("Delete this alert?");
       cy.findByText("Yes, delete this alert").click();
       cy.findByText("Yes, delete this alert").should("not.exist");
 
       cy.findByText("Question").should("not.exist");
+    });
+  });
+
+  describe("pulses", () => {
+    beforeEach(() => {
+      cy.getCurrentUser().then(({ body: { id: user_id } }) => {
+        cy.createQuestionAndDashboard({ questionDetails }).then(
+          ({ body: { card_id, dashboard_id } }) => {
+            cy.createPulse({
+              name: "Pulse",
+              dashboard_id,
+              cards: [
+                {
+                  id: card_id,
+                  include_csv: false,
+                  include_xls: false,
+                },
+              ],
+              channels: [
+                {
+                  enabled: true,
+                  channel_type: "slack",
+                  schedule_type: "hourly",
+                  recipients: [
+                    {
+                      id: user_id,
+                    },
+                  ],
+                },
+              ],
+            });
+          },
+        );
+      });
+    });
+
+    it("should be able to see help info", () => {
+      cy.visit("/account/notifications");
+
+      cy.findByText("Not seeing one here?").click();
+      cy.findByText("Not seeing something listed here?");
+      cy.findByText("Got it").click();
+      cy.findByText("Not seeing something listed here?").should("not.exist");
+    });
+
+    it("should be able to see pulses notifications", () => {
+      cy.visit("/account/notifications");
+
+      cy.findByText("Pulse");
+      cy.findByText("Slack’d hourly", { exact: false });
+      cy.findByText("Created by you", { exact: false });
+    });
+
+    it("should be able to unsubscribe and delete a pulse", () => {
+      cy.findByText("Pulse");
+      cy.findByLabelText("close icon").click();
+
+      cy.findByText("Confirm you want to unsubscribe");
+      cy.findByText("Unsubscribe").click();
+      cy.findByText("Unsubscribe").should("not.exist");
+
+      cy.findByText("Delete this subscription?");
+      cy.findByText("Yes, delete this subscription").click();
+      cy.findByText("Yes, delete this subscription").should("not.exist");
+
+      cy.findByText("Subscription").should("not.exist");
     });
   });
 });
