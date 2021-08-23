@@ -35,7 +35,9 @@
     "/frontend/src/metabase/visualizations/lib/errors.js",
     "/frontend/src/cljs/",
     "/frontend/src/metabase/internal/",
-    "/frontend/test/"
+    "/frontend/test/",
+    ".styled.js",
+    ".styled.jsx"
   ],
   "testEnvironment": "jsdom"
 }
