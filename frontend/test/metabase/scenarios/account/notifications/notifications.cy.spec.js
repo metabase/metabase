@@ -14,6 +14,10 @@ const questionDetails = {
   },
 };
 
+const dashboardDetails = {
+  name: "Dashboard",
+};
+
 describe("scenarios > account > notifications", () => {
   beforeEach(() => {
     restore();
@@ -70,11 +74,9 @@ describe("scenarios > account > notifications", () => {
 
       cy.findByText("Confirm you want to unsubscribe");
       cy.findByText("Unsubscribe").click();
-      cy.findByText("Unsubscribe").should("not.exist");
 
-      cy.findByText("Delete this alert?");
-      cy.findByText("Yes, delete this alert").click();
-      cy.findByText("Yes, delete this alert").should("not.exist");
+      cy.findByText("You’re unsubscribed. Delete this alert as well?");
+      cy.findByText("Delete this alert").click();
 
       cy.findByText("Question").should("not.exist");
     });
@@ -83,33 +85,34 @@ describe("scenarios > account > notifications", () => {
   describe("pulses", () => {
     beforeEach(() => {
       cy.getCurrentUser().then(({ body: { id: user_id } }) => {
-        cy.createQuestionAndDashboard({ questionDetails }).then(
-          ({ body: { card_id, dashboard_id } }) => {
-            cy.createPulse({
-              name: "Pulse",
-              dashboard_id,
-              cards: [
-                {
-                  id: card_id,
-                  include_csv: false,
-                  include_xls: false,
-                },
-              ],
-              channels: [
-                {
-                  enabled: true,
-                  channel_type: "slack",
-                  schedule_type: "hourly",
-                  recipients: [
-                    {
-                      id: user_id,
-                    },
-                  ],
-                },
-              ],
-            });
-          },
-        );
+        cy.createQuestionAndDashboard({
+          questionDetails,
+          dashboardDetails,
+        }).then(({ body: { card_id, dashboard_id } }) => {
+          cy.createPulse({
+            name: "Pulse",
+            dashboard_id,
+            cards: [
+              {
+                id: card_id,
+                include_csv: false,
+                include_xls: false,
+              },
+            ],
+            channels: [
+              {
+                enabled: true,
+                channel_type: "slack",
+                schedule_type: "hourly",
+                recipients: [
+                  {
+                    id: user_id,
+                  },
+                ],
+              },
+            ],
+          });
+        });
       });
     });
 
@@ -125,24 +128,22 @@ describe("scenarios > account > notifications", () => {
     it("should be able to see pulses notifications", () => {
       cy.visit("/account/notifications");
 
-      cy.findByText("Pulse");
+      cy.findByText("Dashboard");
       cy.findByText("Slack’d hourly", { exact: false });
       cy.findByText("Created by you", { exact: false });
     });
 
     it("should be able to unsubscribe and delete a pulse", () => {
-      cy.findByText("Pulse");
+      cy.findByText("Dashboard");
       cy.findByLabelText("close icon").click();
 
       cy.findByText("Confirm you want to unsubscribe");
       cy.findByText("Unsubscribe").click();
-      cy.findByText("Unsubscribe").should("not.exist");
 
-      cy.findByText("Delete this subscription?");
-      cy.findByText("Yes, delete this subscription").click();
-      cy.findByText("Yes, delete this subscription").should("not.exist");
+      cy.findByText("You’re unsubscribed. Delete this subscription as well?");
+      cy.findByText("Delete this subscription").click();
 
-      cy.findByText("Subscription").should("not.exist");
+      cy.findByText("Dashboard").should("not.exist");
     });
   });
 });
