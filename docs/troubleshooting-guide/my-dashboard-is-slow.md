@@ -60,7 +60,7 @@ Note: you may also see your database being overloaded if you're using the same d
 
 1. Check if you have the most recent version of Metabase: we fix problems as they're reported, and updating Metabase may make your problem go away.
 2. You can use your SQL in place of the code we generate, and [make its result available][organizing-sql] to people who prefer the Notebook Editor as a starting point for their questions.
-3. Please file a bug report to help us figure out how to generate better SQL.
+3. Please [file a bug report][bugs] to help us figure out how to generate better SQL.
 
 ## Do you have the right database schema?
 
@@ -117,6 +117,7 @@ Similarly, you probably don't need indexes for simple tables with a few tens of 
 
 [admin-caching]: ../administration-guide/14-caching.html
 [bi-best-practices]: /learn/dashboards/bi-dashboard-best-practices.html
+[bugs]: ./bugs.html
 [custom-destinations]: /learn/dashboards/custom-destinations.html
 [data-sandboxing]: /learn/permissions/data-sandboxing-row-permissions.html
 [dbeaver]: https://dbeaver.io/
