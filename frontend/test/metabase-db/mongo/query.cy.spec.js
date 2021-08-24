@@ -104,5 +104,5 @@ function writeNativeMongoQuery() {
     parseSpecialCharSequences: false,
   });
   cy.get(".NativeQueryEditor .Icon-play").click();
-  cy.findByText("42");
+  cy.findByText("18,760");
 }
