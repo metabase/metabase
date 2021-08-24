@@ -57,7 +57,6 @@
   (node-to-tag-mapping (type node)))
 
 (defprotocol ^:private ASTNode
-  "Provides the protocol for the `to-clojure` method. Dispatches on AST node type"
   (to-clojure [this _]))
 
 (defn- convert-children [node source]
@@ -171,8 +170,8 @@
   #"\\[\\/*_`'\[\](){}<>#+-.!$@%^&=|\?~]")
 
 (defn- escape-text
-  "Insert zero-width characters before and after certain characters that are escaped in the Markdown (or are otherwise parsed as
-  plain text) to prevent them from being parsed as formatting in Slack."
+  "Insert zero-width characters before and after certain characters that are escaped in the Markdown
+  (or are otherwise parsed as plain text) to prevent them from being parsed as formatting in Slack."
   [string]
   (-> string
       ;; First, remove backslashes from escaped formatting characters since they're not removed during Markdown parsing
@@ -198,7 +197,7 @@
 (defn- ast->mrkdwn
   "Takes an AST representing Markdown input, and converts it to a mrkdwn string that will render nicely in Slack.
 
-  Primary differences to Markdown:
+  Some of the differences to Markdown include:
     * All headers are just rendered as bold text.
     * Ordered and unordered lists are printed in plain text.
     * Inline images are rendered as text that links to the image source, e.g. <image.png|[Image: alt-text]>."
@@ -256,11 +255,13 @@
       :mail-link
       (str "<" (:address attrs) ">")
 
-      ; li tags might have nested lists or other elements, which should have their indentation level increased
+      ;; li tags might have nested lists or other elements, which should have their indentation level increased
       (:unordered-list-item :ordered-list-item)
-      (let [content-to-indent (rest resolved-content)
-            lines-to-indent   (str/split-lines (str/join content-to-indent))
-            indented-content  (str/join "\n" (map #(str "    " %) lines-to-indent))]
+      (let [indented-content (->> (rest resolved-content)
+                                  str/join
+                                  str/split-lines
+                                  (map #(str "    " %))
+                                  (str/join "\n"))]
         (if-not (str/blank? indented-content)
           (str (first resolved-content) indented-content "\n")
           joined-content))
@@ -287,8 +288,8 @@
 
       :html-entity
       (some->> content
-              (get html-entities)
-              (:characters))
+               (get html-entities)
+               (:characters))
 
       joined-content)))
 
