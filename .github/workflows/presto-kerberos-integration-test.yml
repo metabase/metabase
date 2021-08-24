@@ -68,4 +68,3 @@ jobs:
         run: >
           mba --mb . --data-db postgres-data -n example.com \
            run .github/scripts/run-presto-kerberos-integration-test.sh
-

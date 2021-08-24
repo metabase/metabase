@@ -25,7 +25,7 @@
   {:added "0.41.0"}
   [separator-style additional-opts]
   {:pre [(or (nil? additional-opts) (map? additional-opts)) (contains? valid-separator-styles separator-style)]}
-  (if (some? additional-opts)
+  (when (some? additional-opts)
     (reduce-kv (fn [m k v]
                  (str m
                       (when (seq m)

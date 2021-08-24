@@ -38,7 +38,7 @@ openssl s_client -showcerts -connect presto-kerberos:7778 </dev/null \
 openssl x509 -outform der -in $RESOURCES_DIR/presto-ssl-root-ca.pem  -out $RESOURCES_DIR/presto-ssl-root-ca.der
 
 # Add Presto's self signed CA to the truststore
-keytool -noprompt -import -alias presto-kerberos -keystore $RESOURCES_DIR/cacerts-with-presto-ca.jks \
+$JAVA_HOME/bin/keytool -noprompt -import -alias presto-kerberos -keystore $RESOURCES_DIR/cacerts-with-presto-ca.jks \
         -storepass changeit -file $RESOURCES_DIR/presto-ssl-root-ca.der -trustcacerts
 
 ADDITIONAL_OPTS="SSLKeyStorePath=$RESOURCES_DIR/ssl_keystore.jks&SSLKeyStorePassword=presto\
