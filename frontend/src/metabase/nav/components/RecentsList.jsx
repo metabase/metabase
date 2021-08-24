@@ -29,11 +29,15 @@ export default function RecentsList() {
             {list.map(item => (
               <div key={getItemKey(item)}>
                 <ResultLink to={Urls.modelToUrl(item)} compact={true}>
-                  <Flex align="start">
+                  <Flex align="start" data-testid="recently-viewed-item">
                     <ItemIcon item={item} type={item.model} />
                     <Box>
-                      <Title>{item.model_object.name}</Title>
-                      <Text>{getTranslatedEntityName(item.model)}</Text>
+                      <Title data-testid="recently-viewed-item-title">
+                        {item.model_object.name}
+                      </Title>
+                      <Text data-testid="recently-viewed-item-type">
+                        {getTranslatedEntityName(item.model)}
+                      </Text>
                     </Box>
                   </Flex>
                 </ResultLink>
