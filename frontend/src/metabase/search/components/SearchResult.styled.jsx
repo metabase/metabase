@@ -4,6 +4,7 @@ import { color, lighten } from "metabase/lib/colors";
 
 import Link from "metabase/components/Link";
 import Text from "metabase/components/type/Text";
+import { space } from "metabase/styled-components/theme";
 
 function getColorForIconWrapper(props) {
   if (props.item.collection_position) {
@@ -32,10 +33,10 @@ export const ResultLink = styled(Link)`
   display: block;
   background-color: transparent;
   min-height: ${props => (props.compact ? "36px" : "54px")};
-  padding-top: 8px;
-  padding-bottom: 8px;
+  padding-top: ${space(1)};
+  padding-bottom: ${space(1)};
   padding-left: 14px;
-  padding-right: ${props => (props.compact ? "20px" : "32px")};
+  padding-right: ${props => (props.compact ? "20px" : space(3))};
 
   &:hover {
     background-color: ${lighten("brand", 0.63)};
@@ -91,7 +92,7 @@ export const Title = styled("h3")`
 `;
 
 export const Description = styled(Text)`
-  padding-left: 8px;
+  padding-left: ${space(1)};
   margin-top: 6px !important;
   border-left: 2px solid ${lighten("brand", 0.45)};
 `;
