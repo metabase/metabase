@@ -8493,7 +8493,7 @@ databaseChangeLog:
                 FROM report_dashboard d
                 WHERE d.id = p.dashboard_id
               )
-              WHERE collection_id IS NULL;
+              WHERE dashboard_id IS NOT NULL;
 
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
