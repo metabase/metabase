@@ -84,7 +84,9 @@
                        (pulse/send-pulse! (models.pulse/retrieve-notification pulse-id))))
                   (thunk []
                     (if fixture
-                      (fixture {:card-id card-id, :pulse-id pulse-id} thunk*)
+                      (fixture {:dashboard-id dashboard-id,
+                                :card-id card-id,
+                                :pulse-id pulse-id} thunk*)
                       (thunk*)))]
             (case channel-type
               :email (email-test-setup (thunk))
@@ -206,3 +208,38 @@
           (testing "attached-results-text should return nil since it's a slack message"
             (is (= [nil]
                    (output @#'render.body/attached-results-text))))))}}))
+
+(deftest virtual-card-test
+  (tests {:pulse {:skip_if_empty false}}
+    "Dashboard subscription that includes a virtual (markdown) card"
+    {:card (checkins-query-card {})
+
+     :fixture
+     (fn [{dashboard-id :dashboard-id} thunk]
+       (mt/with-temp DashboardCard [_ {:dashboard_id dashboard-id, :visualization_settings {:text "# header"}}]
+         (thunk)))
+
+     :assert
+     {:email
+       (fn [_ _]
+         (testing "Markdown cards are not included in email subscriptions"
+           (is (= (rasta-pulse-email {:body [{"Aviary KPIs" true}]})
+                  (mt/summarize-multipart-email #"Aviary KPIs")))))
+
+       :slack
+       (fn [{:keys [card-id]} [pulse-results]]
+         (testing "Markdown cards are included in attachments list as :blocks sublists, and markdown is
+                  converted to mrkdwn (Slack markup language)"
+           (is (= {:channel-id "#general"
+                   :message    "Aviary KPIs"
+                   :attachments
+                   [{:title           card-name
+                     :rendered-info {:attachments false, :content true, :render/text true},
+                     :title_link      (str "https://metabase.com/testmb/question/" card-id)
+                     :attachment-name "image.png"
+                     :channel-id      "FOO"
+                     :fallback        card-name}
+                    {:blocks [{:type "section"
+                               :text {:type "mrkdwn"
+                                      :text "*header*"}}]}]}
+                  (thunk->boolean pulse-results)))))}}))
