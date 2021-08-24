@@ -1,5 +1,6 @@
 #! /usr/bin/env bash
 # runs one or more Metabase test(s) against a Kerberized Presto instance
+set -eo pipefail
 
 # install clojure version needed for Metabase
 curl -O https://download.clojure.org/install/linux-install-1.10.3.933.sh

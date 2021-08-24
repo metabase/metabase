@@ -67,5 +67,5 @@ jobs:
       - name: Run test script in MBA instance
         run: >
           mba --mb . --data-db postgres-data -n example.com \
-           run test-scripts/run-presto-kerberos-integration-test.sh
+           run .github/scripts/run-presto-kerberos-integration-test.sh
 

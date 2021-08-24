@@ -215,7 +215,7 @@
                         :additional-options
                         str
                         ;; add separator if there are already additional-options
-                        (if-not (str/blank? additional-options) "&")
+                        (when-not (str/blank? additional-options) "&")
                         ;; convert Kerberos options map to URL string
                         (sql-jdbc.common/additional-opts->string :url (details->kerberos-url-params details))))
               details)]
