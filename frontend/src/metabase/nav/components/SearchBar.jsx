@@ -11,6 +11,7 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import { SearchInput, SearchWrapper } from "./SearchBar.styled";
 import { SearchResults } from "./SearchResults";
+import RecentsList from "./RecentsList";
 
 const ALLOWED_SEARCH_FOCUS_ELEMENTS = new Set(["BODY", "A"]);
 
@@ -95,7 +96,9 @@ export default class SearchBar extends React.Component {
                 >
                   <SearchResults searchText={searchText.trim()} />
                 </Card>
-              ) : null}
+              ) : (
+                <RecentsList />
+              )}
             </div>
           )}
         </SearchWrapper>

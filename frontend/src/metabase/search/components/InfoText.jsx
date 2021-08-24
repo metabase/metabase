@@ -1,8 +1,8 @@
 import React from "react";
+import PropTypes from "prop-types";
 import { t, jt } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
-import { capitalize } from "metabase/lib/formatting";
 
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
@@ -11,19 +11,21 @@ import Schema from "metabase/entities/schemas";
 import Database from "metabase/entities/databases";
 import Table from "metabase/entities/tables";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { getTranslatedEntityName } from "metabase/nav/components/utils";
 import { CollectionBadge } from "./CollectionBadge";
 
-function formatCollection(collection) {
-  return collection.id && <CollectionBadge collection={collection} />;
-}
+const searchResultPropTypes = {
+  database_id: PropTypes.number,
+  table_id: PropTypes.number,
+  model: PropTypes.string,
+  getCollection: PropTypes.func,
+  collection: PropTypes.object,
+  table_schema: PropTypes.string,
+};
 
-function getCollectionInfoText(collection) {
-  if (PLUGIN_COLLECTIONS.isRegularCollection(collection)) {
-    return t`Collection`;
-  }
-  const level = PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[collection.authority_level];
-  return `${level.name} ${t`Collection`}`;
-}
+const infoTextPropTypes = {
+  result: PropTypes.shape(searchResultPropTypes),
+};
 
 export function InfoText({ result }) {
   const collection = result.getCollection();
@@ -68,20 +70,40 @@ export function InfoText({ result }) {
         </span>
       );
     case "segment":
+      return <span>{jt`Segment of ${<TableLink result={result} />}`}</span>;
     case "metric":
-      return (
-        <span>
-          {result.model === "segment" ? t`Segment of ` : t`Metric for `}
-          <Link to={Urls.tableRowsQuery(result.database_id, result.table_id)}>
-            <Table.Loader id={result.table_id} loadingAndErrorWrapper={false}>
-              {({ table }) =>
-                table ? <span>{table.display_name}</span> : null
-              }
-            </Table.Loader>
-          </Link>
-        </span>
-      );
+      return <span>{jt`Metric for ${<TableLink result={result} />}`}</span>;
     default:
-      return jt`${capitalize(result.model)} in ${formatCollection(collection)}`;
+      return jt`${getTranslatedEntityName(result.model)} in ${formatCollection(
+        collection,
+      )}`;
   }
 }
+
+InfoText.propTypes = infoTextPropTypes;
+
+function formatCollection(collection) {
+  return collection.id && <CollectionBadge collection={collection} />;
+}
+
+function getCollectionInfoText(collection) {
+  if (PLUGIN_COLLECTIONS.isRegularCollection(collection)) {
+    return t`Collection`;
+  }
+  const level = PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[collection.authority_level];
+  return `${level.name} ${t`Collection`}`;
+}
+
+function TableLink({ result }) {
+  return (
+    <Link to={Urls.tableRowsQuery(result.database_id, result.table_id)}>
+      <Table.Loader id={result.table_id} loadingAndErrorWrapper={false}>
+        {({ table }) => (table ? <span>{table.display_name}</span> : null)}
+      </Table.Loader>
+    </Link>
+  );
+}
+
+TableLink.propTypes = {
+  result: PropTypes.shape(searchResultPropTypes),
+};

@@ -46,7 +46,7 @@ function DefaultIcon({ item }) {
   return <Icon {...item.getIcon()} size={DEFAULT_ICON_SIZE} />;
 }
 
-function ItemIcon({ item, type }) {
+export function ItemIcon({ item, type }) {
   const IconComponent = ModelIconComponentMap[type] || DefaultIcon;
   return (
     <IconWrapper item={item} type={type}>
