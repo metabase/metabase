@@ -255,14 +255,14 @@
                                         :skip_if_empty false}))))))
 
 (deftest dashboard-subscription-update-test
-  (testing "collection_id and dashboard_id of a dashboard subscription cannot be directly updated"
+  (testing "collection_id and dashboard_id of a dashboard subscription cannot be directly modified"
       (mt/with-temp* [Collection [{collection-id :id}]
                       Dashboard  [{dashboard-id :id}]
-                      Pulse      [pulse {:dashboard_id dashboard-id :collection_id collection-id}]]
-        (is (thrown? Exception
-              (db/update! Pulse (u/the-id pulse) {:collection_id (inc collection-id)})))
-        (is (thrown? Exception
-              (db/update! Pulse (u/the-id pulse) {:dashboard_id (inc dashboard-id)}))))))
+                      Pulse      [{pulse-id :id} {:dashboard_id dashboard-id :collection_id collection-id}]]
+        (is (thrown-with-msg? Exception #"collection ID of dashboard subscription cannot be directly modified"
+              (db/update! Pulse pulse-id {:collection_id (inc collection-id)})))
+        (is (thrown-with-msg? Exception #"collection ID of dashboard subscription cannot be directly modified"
+              (db/update! Pulse pulse-id {:dashboard_id (inc dashboard-id)}))))))
 
 (deftest no-archived-cards-test
   (testing "make sure fetching a Pulse doesn't return any archived cards"

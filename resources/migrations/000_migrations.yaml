@@ -8472,11 +8472,10 @@ databaseChangeLog:
         - sql:
             sql: >-
               UPDATE pulse p
-              SET collection_id = (
-              SELECT d.collection_id
-                FROM report_dashboard d
-                WHERE d.id = p.dashboard_id
-              );
+              SET collection_id = d.collection_id
+              FROM report_dashboard d
+              WHERE p.dashboard_id = d.id
+              AND p.dashboard_id IS NOT NULL;
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
