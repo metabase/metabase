@@ -173,7 +173,7 @@
                         "permissions/graph" changed :index_pairs (json/generate-string [[group-id1, db-id1]]))]
           (is (= :all (get-in (perms/graph) [:groups group-id1 db-id1 :schemas])))
           (is (= nil (get-in (perms/graph) [:groups group-id2 db-id2 :schemas])))))
-      
+
       (testing "wildcards"
         (mt/with-temp* [PermissionsGroup [{group-id1 :id}]
                         PermissionsGroup [{group-id2 :id}]
