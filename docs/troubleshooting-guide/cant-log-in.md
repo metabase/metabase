@@ -5,7 +5,7 @@ You are supposed to be able to log in to Metabase, but:
 - you can't see the login page, or
 - your credentials aren't accepted.
 
-## Are you using the right URL?
+## Are you using the right URL for your Metabase?
 
 - Do you have the port as well as the host?
 - Has someone moved the Metabase instance (e.g., it was in dev and now it's in production)?
