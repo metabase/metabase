@@ -1,6 +1,4 @@
 (ns metabase.pulse.markdown-test
-  "Tests for processing Markdown to mrkdwn for Slack, and HTML for email. Assertions that are commented
-  out are known discrepencies between the markdown-clj library and the Markdown parser used by the frontend."
   (:require [clojure.test :refer :all]
             [metabase.public-settings :refer [site-url]]
             [metabase.pulse.markdown :as md]
@@ -133,7 +131,8 @@
 
   (testing "Image references are treated the same as normal images"
     (is (=  "<image.png|[Image]>"           (mrkdwn "![][ref]\n\n[ref]: image.png")))
-    (is (=  "<image.png|[Image: alt-text]>" (mrkdwn "![alt-text][ref]\n\n[ref]: image.png"))))
+    (is (=  "<image.png|[Image: alt-text]>" (mrkdwn "![alt-text][ref]\n\n[ref]: image.png")))
+    (is (=  "<image.png|[Image]>"           (mrkdwn "![][Ref]\n\n[REF]: image.png"))))
 
   (testing "Linked images include link target in parentheses"
     (is (= "<image.png|[Image]>\n(https://metabase.com)"  (mrkdwn "[![](image.png)](https://metabase.com)")))

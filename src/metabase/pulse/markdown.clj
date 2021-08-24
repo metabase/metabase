@@ -17,7 +17,7 @@
 
 (def ^:private parser
   "An instance of a Flexmark parser"
-  (.build (Parser/builder)))
+  (delay (.build (Parser/builder))))
 
 (def ^:private node-to-tag-mapping
   "Mappings from Flexmark AST nodes to keyword tags"
@@ -113,7 +113,7 @@
     {:tag     (node-to-tag this)
      :attrs   {:reference (-> (.getDocument this)
                               (.get Parser/REFERENCES)
-                              (get (str (.getReference this)))
+                              (get (str/lower-case (str (.getReference this))))
                               (#(to-clojure % source)))}
      :content (convert-children this source)})
 
@@ -164,7 +164,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def ^:private html-entities
-  (edn/read-string (slurp (io/resource "html-entities.edn"))))
+  (delay (edn/read-string (slurp (io/resource "html-entities.edn")))))
 
 (def ^:private escaped-chars-regex
   #"\\[\\/*_`'\[\](){}<>#+-.!$@%^&=|\?~]")
@@ -255,7 +255,7 @@
       :mail-link
       (str "<" (:address attrs) ">")
 
-      ;; li tags might have nested lists or other elements, which should have their indentation level increased
+      ;; list items might have nested lists or other elements, which should have their indentation level increased
       (:unordered-list-item :ordered-list-item)
       (let [indented-content (->> (rest resolved-content)
                                   str/join
@@ -288,7 +288,7 @@
 
       :html-entity
       (some->> content
-               (get html-entities)
+               (get @html-entities)
                (:characters))
 
       joined-content)))
@@ -300,6 +300,6 @@
 
 (defmethod process-markdown :slack
   [markdown _]
-  (-> (to-clojure (.parse ^Parser parser ^String markdown) markdown)
+  (-> (to-clojure (.parse ^Parser @parser ^String markdown) markdown)
       ast->mrkdwn
       str/trim))
