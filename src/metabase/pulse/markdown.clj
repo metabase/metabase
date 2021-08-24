@@ -294,7 +294,7 @@
 
       joined-content)))
 
-(def ^:dynamic *slack-mrkdwn-length-limit*
+(def ^:private ^:dynamic *slack-mrkdwn-length-limit*
   3000)
 
 (defn- truncate-mrkdwn
