@@ -294,6 +294,19 @@
 
       joined-content)))
 
+(def ^:dynamic *slack-mrkdwn-length-limit*
+  3000)
+
+(defn- truncate-mrkdwn
+  "If a string is greater than Slack's length limit, truncates it to fit the limit and
+  adds an ellipsis character to the end."
+  [mrkdwn]
+  (if (> (count mrkdwn) *slack-mrkdwn-length-limit*)
+    (-> mrkdwn
+        (subs 0 (dec *slack-mrkdwn-length-limit*))
+        (str "…"))
+    mrkdwn))
+
 (defmulti process-markdown
   "Converts a markdown string from a virtual card into a form that can be sent to the provided channel type
   (mrkdwn for Slack; HTML for email)."
@@ -303,4 +316,5 @@
   [markdown _]
   (-> (to-clojure (.parse ^Parser @parser ^String markdown) markdown)
       ast->mrkdwn
-      str/trim))
+      str/trim
+      truncate-mrkdwn))

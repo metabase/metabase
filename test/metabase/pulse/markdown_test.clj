@@ -155,4 +155,8 @@
   (testing "HTML entities (outside of HTML tags) are converted to Unicode"
     (is (= "&" (mrkdwn "&amp;")))
     (is (= ">" (mrkdwn "&gt;")))
-    (is (= "ℋ" (mrkdwn "&HilbertSpace;")))))
+    (is (= "ℋ" (mrkdwn "&HilbertSpace;"))))
+
+  (testing "mrkdwn that exceeds the length limit for Slack is truncated"
+    (binding [md/*slack-mrkdwn-length-limit* 10]
+      (is (= "abcdefghi…" (mrkdwn "abcdefghijklmnopqrstuvwxyz"))))))
