@@ -1,9 +1,10 @@
 import React from "react";
 import PropTypes from "prop-types";
+import { Box } from "grid-styled";
 import { t } from "ttag";
 import Search from "metabase/entities/search";
-import Icon from "metabase/components/Icon";
 import SearchResult from "metabase/search/components/SearchResult";
+import EmptyState from "metabase/components/EmptyState";
 
 const SEARCH_LIMIT = 50;
 
@@ -23,7 +24,7 @@ export const SearchResults = ({ searchText }) => {
         const hasResults = list.length > 0;
 
         return (
-          <ol data-testid="search-results-list">
+          <ul data-testid="search-results-list">
             {hasResults ? (
               list.map(item => (
                 <li key={`${item.model}:${item.id}`}>
@@ -31,14 +32,11 @@ export const SearchResults = ({ searchText }) => {
                 </li>
               ))
             ) : (
-              <li className="flex flex-column align-center justify-center p4 text-medium text-centered">
-                <div className="my3">
-                  <Icon name="search" mb={1} size={24} />
-                  <h3 className="text-light">{t`Didn't find anything`}</h3>
-                </div>
-              </li>
+              <Box mt={4} mb={3}>
+                <EmptyState message={t`Didn't find anything`} icon="search" />
+              </Box>
             )}
-          </ol>
+          </ul>
         );
       }}
     </Search.ListLoader>

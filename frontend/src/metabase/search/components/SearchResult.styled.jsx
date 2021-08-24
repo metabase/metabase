@@ -93,6 +93,6 @@ export const Title = styled("h3")`
 
 export const Description = styled(Text)`
   padding-left: ${space(1)};
-  margin-top: 6px !important;
+  margin-top: ${space(1)} !important;
   border-left: 2px solid ${lighten("brand", 0.45)};
 `;

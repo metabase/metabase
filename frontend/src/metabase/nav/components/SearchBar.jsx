@@ -6,7 +6,6 @@ import { t } from "ttag";
 import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
-import SearchResult from "metabase/search/components/SearchResult";
 
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -45,7 +44,7 @@ export default class SearchBar extends React.Component {
       this.setState({ searchText: "" });
     }
   }
-  handleKeyUp = (e: KeyboardEvent) => {
+  handleKeyUp = e => {
     const FORWARD_SLASH_KEY = 191;
     if (
       e.keyCode === FORWARD_SLASH_KEY &&
@@ -55,25 +54,6 @@ export default class SearchBar extends React.Component {
       this.setState({ active: true });
     }
   };
-
-  renderResults(results) {
-    if (results.length === 0) {
-      return (
-        <li className="flex flex-column align-center justify-center p4 text-medium text-centered">
-          <div className="my3">
-            <Icon name="search" mb={1} size={24} />
-            <h3 className="text-light">{t`Didn't find anything`}</h3>
-          </div>
-        </li>
-      );
-    } else {
-      return results.map(l => (
-        <li key={`${l.model}:${l.id}`}>
-          <SearchResult result={l} compact={true} />
-        </li>
-      ));
-    }
-  }
 
   render() {
     const { active, searchText } = this.state;
