@@ -6,6 +6,8 @@ import ChoroplethMap, {
 } from "../components/ChoroplethMap";
 import PinMap from "../components/PinMap";
 
+//import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
+
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import {
   isNumeric,
@@ -31,8 +33,8 @@ import _ from "underscore";
 const PIN_MAP_TYPES = new Set(["pin", "heat", "grid"]);
 
 import { desaturated } from "metabase/lib/colors";
-
-import ColorRangePicker from "metabase/components/ColorRangePicker";
+import RegionMapConditions from 'metabase/components/RegionMapConditions';
+import ColorPicker from "metabase/components/ColorPicker";
 
 export default class Map extends Component {
   static uiName = t`Map`;
@@ -252,19 +254,17 @@ export default class Map extends Component {
       title: t`Region field`,
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
     }),
-    "map.colors": {
-      title: t`Color`,
-      widget: ColorRangePicker,
+
+    "map.region_conditions": {
+      title: t`Conditions`,
+      widget: RegionMapConditions,
       props: {
-        ranges: Object.values(desaturated).map(color =>
-          getColorplethColorScale(color),
-        ),
-        quantile: true,
-        columns: 1,
+      
       },
-      default: getColorplethColorScale(Object.values(desaturated)[0]),
+      default: null,
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
     },
+   
     "map.zoom": {},
     "map.center_latitude": {},
     "map.center_longitude": {},
@@ -331,6 +331,7 @@ export default class Map extends Component {
   render() {
     const { settings } = this.props;
     const type = settings["map.type"];
+    console.log(this.props,'====');
     if (PIN_MAP_TYPES.has(type)) {
       return <PinMap {...this.props} />;
     } else if (type === "region") {

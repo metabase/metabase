@@ -59,8 +59,10 @@ const Databases = createEntity({
       ({ id }) => async () => {
         console.log("Fetching Fields", id);
         console.log(Fields.schema);
-        return normalize(await MetabaseApi.db_idfields({ dbId: id }), [Fields.schema]);
-      }
+        return normalize(await MetabaseApi.db_idfields({ dbId: id }), [
+          Fields.schema,
+        ]);
+      },
     ),
 
     fetchSchemas: ({ id }) => Schemas.actions.fetchList({ dbId: id }),
