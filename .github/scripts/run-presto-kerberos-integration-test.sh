@@ -1,6 +1,6 @@
 #! /usr/bin/env bash
 # runs one or more Metabase test(s) against a Kerberized Presto instance
-set -eo pipefail
+# set -eo pipefail
 
 # install clojure version needed for Metabase
 curl -O https://download.clojure.org/install/linux-install-1.10.3.933.sh
@@ -25,8 +25,6 @@ if [ ! -f "$RESOURCES_DIR/client.keytab" ]; then
   exit 13
 fi
 
-set -euo pipefail
-
 # Copy the JDK cacerts file to our resources
 cp $JAVA_HOME/lib/security/cacerts $RESOURCES_DIR/cacerts-with-presto-ca.jks
 
@@ -44,12 +42,19 @@ $JAVA_HOME/bin/keytool -noprompt -import -alias presto-kerberos -keystore $RESOU
 ADDITIONAL_OPTS="SSLKeyStorePath=$RESOURCES_DIR/ssl_keystore.jks&SSLKeyStorePassword=presto\
 &SSLTrustStorePath=$RESOURCES_DIR/cacerts-with-presto-ca.jks&SSLTrustStorePassword=changeit"
 
+# Prepare dependencies
+
+source "./bin/prep.sh"
+prep_deps
+
 # Prepare dependencies; see
 # https://github.com/metabase/metabase/wiki/Migrating-from-Leiningen-to-tools.deps#preparing-dependencies
-clojure -X:deps prep
-cd modules/drivers
-clojure -X:deps prep
-cd -
+#clojure -Sverbose -X:deps prep
+#echo "Running -X:deps prep at top level"
+#cd modules/drivers
+#echo "Running -X:deps prep under modules/drivers"
+#clojure -X:deps prep
+#cd -
 
 # Set up the environment variables pointing to all of this, and run some tests
 DRIVERS=presto-jdbc \
@@ -64,4 +69,4 @@ MB_PRESTO_JDBC_TEST_KERBEROS_REMOTE_SERVICE_NAME=HTTP \
 MB_PRESTO_JDBC_TEST_KERBEROS_KEYTAB_PATH=$RESOURCES_DIR/client.keytab \
 MB_PRESTO_JDBC_TEST_KERBEROS_CONFIG_PATH=$RESOURCES_DIR/krb5.conf \
 MB_PRESTO_JDBC_TEST_ADDITIONAL_OPTIONS=$ADDITIONAL_OPTS \
-clojure -X:dev:test:drivers:drivers-dev :only metabase.driver.presto-jdbc-test
+clojure -X:dev:test:drivers:drivers-dev :only metabase.driver.presto-jdbc-test || cat /tmp/clojure*edn
