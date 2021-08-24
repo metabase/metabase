@@ -445,8 +445,8 @@
   (mt/test-drivers (mt/normal-drivers)
     (testing "The QP should automatically parse String parameters in filter clauses to the correct type"
       (testing "String parameter to an Integer Field"
-        (is (= (mt/rows (mt/run-mbql-query venues {:filter [:= $price 4]}))
-               (mt/rows (mt/run-mbql-query venues {:filter [:= $price "4"]}))))))))
+        (is (= (mt/rows (mt/run-mbql-query venues {:filter [:= $price 4] :order-by [[:asc $id]]}))
+               (mt/rows (mt/run-mbql-query venues {:filter [:= $price "4"] :order-by [[:asc $id]]}))))))))
 
 ;; For the tests below:
 ;;

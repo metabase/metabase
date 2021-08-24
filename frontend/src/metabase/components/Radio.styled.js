@@ -4,17 +4,46 @@ import { space } from "styled-system";
 
 import { color, lighten } from "metabase/lib/colors";
 
+export const RadioInput = styled.input.attrs({ type: "radio" })`
+  cursor: inherit;
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  top: 0;
+  left: 0;
+  margin: 0;
+  padding: 0;
+  z-index: 1;
+`;
+
+export const RadioButton = styled.div`
+  cursor: pointer;
+  display: inline-block;
+  flex: 0 0 auto;
+  position: relative;
+  margin-right: 0.5rem;
+  width: 12px;
+  height: 12px;
+  border: 2px solid white;
+  box-shadow: 0 0 0 2px ${color("shadow")};
+  border-radius: 12px;
+  background-color: ${props =>
+    props.checked ? color("brand") : "transparent"};
+`;
+
 // BASE
 const BaseList = styled.ul`
   display: flex;
   flex-direction: ${props => (props.vertical ? "column" : "row")};
 `;
 
-const BaseItem = styled.li.attrs({
+const BaseItem = styled.label.attrs({
   mr: props => (!props.vertical && !props.last ? props.xspace : null),
   mb: props => (props.vertical && !props.last ? props.yspace : null),
 })`
   ${space}
+  position: relative;
   display: flex;
   align-items: center;
   cursor: pointer;

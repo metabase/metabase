@@ -1,6 +1,5 @@
 (ns metabase.util.password-test
   (:require [clojure.test :refer :all]
-            [environ.core :as environ]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util.password :as pwu]))

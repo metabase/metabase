@@ -1,11 +1,24 @@
 (ns metabase.api.search-test
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
             [metabase.api.search :as api.search]
-            [metabase.models :refer [Card CardFavorite Collection Dashboard DashboardCard DashboardFavorite Database
-                                     Metric PermissionsGroup PermissionsGroupMembership Pulse PulseCard Segment Table]]
+            [metabase.models
+             :refer
+             [Card
+              CardFavorite
+              Collection
+              Dashboard
+              DashboardCard
+              DashboardFavorite
+              Database
+              Metric
+              PermissionsGroup
+              PermissionsGroupMembership
+              Pulse
+              PulseCard
+              Segment
+              Table]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
             [metabase.search.config :as search-config]
@@ -21,6 +34,7 @@
    :collection                 {:id false :name nil :authority_level nil}
    :collection_authority_level nil
    :collection_position        nil
+   :moderated_status           nil
    :context                    nil
    :dashboardcard_count        nil
    :favorite                   nil
@@ -73,8 +87,6 @@
 
 (defn- default-metric-segment-results []
   (filter #(contains? #{"metric" "segment"} (:model %)) (default-search-results)))
-
-(defn- subset-model [model res] (filter #(= (:model %) (name model)) res))
 
 (defn- default-archived-results []
   (for [result (default-search-results)
@@ -202,7 +214,7 @@
                (search-request-data :crowberto :q "test"))))))
   (testing "It prioritizes exact matches"
     (with-search-items-in-root-collection "test"
-      (with-redefs [search-config/db-max-results 1]
+      (with-redefs [search-config/*db-max-results* 1]
         (is (= [test-collection]
                (search-request-data :crowberto :q "test collection"))))))
   (testing "It limits matches properly"

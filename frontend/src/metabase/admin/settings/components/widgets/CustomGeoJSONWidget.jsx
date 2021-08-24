@@ -18,8 +18,6 @@ import cx from "classnames";
 
 import LeafletChoropleth from "metabase/visualizations/components/LeafletChoropleth";
 
-import pure from "recompose/pure";
-
 export default class CustomGeoJSONWidget extends Component {
   constructor(props, context) {
     super(props, context);
@@ -411,6 +409,8 @@ const EditMap = ({
   </div>
 );
 
-const ChoroplethPreview = pure(({ geoJson }) => (
+const ChoroplethPreview = React.memo(({ geoJson }) => (
   <LeafletChoropleth geoJson={geoJson} />
 ));
+
+ChoroplethPreview.displayName = "ChoroplethPreview";

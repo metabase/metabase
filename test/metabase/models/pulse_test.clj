@@ -105,7 +105,7 @@
                   Card  [card-3 {:name "card3"}]]
     (letfn [(update-cards! [card-nums]
               (let [cards (for [card-num card-nums]
-                            (case card-num
+                            (case (int card-num)
                               1 card-1
                               2 card-2
                               3 card-3))]

@@ -463,7 +463,7 @@ export class UnconnectedDataSelector extends Component {
     const nextStep = this.getNextStep();
     if (!nextStep) {
       await this.setStateWithComputedState(stateChange);
-      this.popover.current.toggle();
+      this.popover.current && this.popover.current.toggle();
     } else {
       await this.switchToStep(nextStep, stateChange, skipSteps);
     }

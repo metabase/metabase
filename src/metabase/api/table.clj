@@ -332,11 +332,12 @@
   [{:keys [database_id] :as card} & {:keys [include-fields?]}]
   ;; if collection isn't already hydrated then do so
   (let [card (hydrate card :collection)]
-    (cond-> {:id           (str "card__" (u/the-id card))
-             :db_id        (:database_id card)
-             :display_name (:name card)
-             :schema       (get-in card [:collection :name] (root-collection-schema-name))
-             :description  (:description card)}
+    (cond-> {:id               (str "card__" (u/the-id card))
+             :db_id            (:database_id card)
+             :display_name     (:name card)
+             :schema           (get-in card [:collection :name] (root-collection-schema-name))
+             :moderated_status (:moderated_status card)
+             :description      (:description card)}
       include-fields? (assoc :fields (card-result-metadata->virtual-fields (u/the-id card)
                                                                            database_id
                                                                            (:result_metadata card))))))
@@ -354,10 +355,20 @@
 (api/defendpoint GET "/card__:id/query_metadata"
   "Return metadata for the 'virtual' table for a Card."
   [id]
-  (let [{:keys [database_id] :as card } (db/select-one [Card :id :dataset_query :result_metadata :name :description
-                                                        :collection_id :database_id]
-                                          :id id)]
-    (-> card
+  (let [{:keys [database_id] :as card} (db/select-one [Card :id :dataset_query :result_metadata :name :description
+                                                       :collection_id :database_id]
+                                                      :id id)
+        moderated-status              (->> (db/query {:select   [:status]
+                                                      :from     [:moderation_review]
+                                                      :where    [:and
+                                                                 [:= :moderated_item_type "card"]
+                                                                 [:= :moderated_item_id id]
+                                                                 [:= :most_recent true]]
+                                                      :order-by [[:id :desc]]
+                                                      :limit    1}
+                                                     :id id)
+                                           first :status)]
+    (-> (assoc card :moderated_status moderated-status)
         api/read-check
         (card->virtual-table :include-fields? true)
         (assoc-dimension-options (driver.u/database->driver database_id))

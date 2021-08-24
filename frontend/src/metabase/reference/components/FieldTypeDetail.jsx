@@ -2,7 +2,6 @@ import React from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import { getIn } from "icepick";
-import pure from "recompose/pure";
 import { t } from "ttag";
 import * as MetabaseCore from "metabase/lib/core";
 import { isNumericBaseType } from "metabase/lib/schema_metadata";
@@ -88,4 +87,4 @@ FieldTypeDetail.propTypes = {
   isEditing: PropTypes.bool.isRequired,
 };
 
-export default pure(FieldTypeDetail);
+export default React.memo(FieldTypeDetail);

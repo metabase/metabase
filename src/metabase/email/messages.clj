@@ -361,11 +361,11 @@
     (qp.store/with-store
       (qp.store/fetch-and-store-database! database-id)
       (let [w (qp.streaming.i/streaming-results-writer export-format os)]
-        (qp.streaming.i/begin! w results)
+        (qp.streaming.i/begin! w results {})
         (dorun
          (map-indexed
           (fn [i row]
-            (qp.streaming.i/write-row! w row i))
+            (qp.streaming.i/write-row! w row i {} {}))
           rows))
         (qp.streaming.i/finish! w results)))))
 

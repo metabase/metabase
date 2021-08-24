@@ -7,16 +7,31 @@ import { goBack, push } from "react-router-redux";
 import * as Urls from "metabase/lib/urls";
 import Collection from "metabase/entities/collections";
 
+function mapStateToProps(state, props) {
+  return {
+    form: Collection.selectors.getForm(state, props),
+  };
+}
+
+function CollectionForm({ form, collection, onSave, onClose }) {
+  return (
+    <Collection.ModalForm
+      form={form}
+      collection={collection}
+      onSaved={onSave}
+      onClose={onClose}
+    />
+  );
+}
+
+const UpdateCollectionForm = connect(mapStateToProps)(CollectionForm);
+
 const mapDispatchToProps = {
   push,
   goBack,
 };
 
-@connect(
-  null,
-  mapDispatchToProps,
-)
-export default class CollectionEdit extends Component {
+class CollectionEdit extends Component {
   onSave = updatedCollection => {
     const url = Urls.collection(updatedCollection);
     this.props.push(url);
@@ -27,9 +42,9 @@ export default class CollectionEdit extends Component {
     return (
       <Collection.Loader id={collectionId}>
         {({ collection, update }) => (
-          <Collection.ModalForm
+          <UpdateCollectionForm
             collection={collection}
-            onSaved={this.onSave}
+            onSave={this.onSave}
             onClose={this.props.goBack}
           />
         )}
@@ -37,3 +52,8 @@ export default class CollectionEdit extends Component {
     );
   }
 }
+
+export default connect(
+  null,
+  mapDispatchToProps,
+)(CollectionEdit);

@@ -1,28 +1,27 @@
 {
   "plugins": [
     "babel-plugin-styled-components",
-    "transform-flow-strip-types",
-    "add-react-displayname",
-    "transform-decorators-legacy",
-    ["transform-builtin-extend", {
-        "globals": ["Error", "Array"]
-    }],
-    "syntax-trailing-function-commas"
+    "@babel/plugin-transform-flow-strip-types",
+    "@babel/plugin-proposal-export-default-from",
+    ["@babel/plugin-proposal-decorators", { "legacy": true }]
   ],
-  "presets": ["es2015", "stage-0", "react"],
+  "presets": ["@babel/preset-env", "@babel/preset-react"],
   "env": {
     "development": {
       "presets": []
     },
     "extract": {
       "plugins": [
-        ["ttag", {
-          "extract": {
-            "output": "locales/metabase-frontend.pot"
-          },
-          "discover": ["t", "jt"],
-          "numberedExpressions": true
-        }]
+        [
+          "ttag",
+          {
+            "extract": {
+              "output": "locales/metabase-frontend.pot"
+            },
+            "discover": ["t", "jt"],
+            "numberedExpressions": true
+          }
+        ]
       ]
     }
   }

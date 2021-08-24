@@ -14,7 +14,7 @@ import DateMonthYearWidget from "./widgets/DateMonthYearWidget";
 import DateQuarterYearWidget from "./widgets/DateQuarterYearWidget";
 import DateAllOptionsWidget from "./widgets/DateAllOptionsWidget";
 import TextWidget from "./widgets/TextWidget";
-import ParameterFieldWidget from "./widgets/ParameterFieldWidget";
+import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
 
 import { fetchField, fetchFieldValues } from "metabase/redux/metadata";
 import {

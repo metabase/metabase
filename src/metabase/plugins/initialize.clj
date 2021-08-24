@@ -45,7 +45,7 @@
   (@initialized-plugin-names plugin-name))
 
 (s/defn init-plugin-with-info!
-  "Initiaize plugin using parsed info from a plugin maifest. Returns truthy if plugin was successfully initialized;
+  "Initialize plugin using parsed info from a plugin manifest. Returns truthy if plugin was successfully initialized;
   falsey otherwise."
   [info :- {:info     {:name s/Str, :version s/Str, s/Keyword s/Any}
             s/Keyword s/Any}]

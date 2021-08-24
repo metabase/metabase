@@ -15,7 +15,6 @@ import Select from "metabase/components/Select";
 import Icon from "metabase/components/Icon";
 
 import cx from "classnames";
-import pure from "recompose/pure";
 
 const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
   <div className={cx(S.item, "pt1", "border-top")}>
@@ -127,4 +126,4 @@ Field.propTypes = {
   formField: PropTypes.object,
 };
 
-export default pure(Field);
+export default React.memo(Field);

@@ -25,6 +25,7 @@ const colors = {
   white: "#FFFFFF",
   black: "#2E353B",
   success: "#84BB4C",
+  danger: "#ED6E6E",
   error: "#ED6E6E",
   warning: "#F9CF48",
   "text-dark": "#4C5773",

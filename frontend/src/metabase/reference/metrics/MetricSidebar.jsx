@@ -3,7 +3,6 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
-import pure from "recompose/pure";
 
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -64,4 +63,4 @@ MetricSidebar.propTypes = {
   style: PropTypes.object,
 };
 
-export default pure(MetricSidebar);
+export default React.memo(MetricSidebar);

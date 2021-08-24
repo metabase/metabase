@@ -1,7 +1,9 @@
 (ns metabase.util.date-2.common
   (:require [clojure.string :as str]
+            [java-time :as t]
             [metabase.util :as u])
-  (:import [java.time.temporal ChronoField IsoFields TemporalField WeekFields]))
+  (:import [java.time ZoneId ZoneOffset]
+           [java.time.temporal ChronoField IsoFields TemporalField WeekFields]))
 
 ;; TODO - not sure this belongs here, it seems to be a bit more general than just `date-2`.
 
@@ -33,3 +35,12 @@
     :week-fields/week-of-month           (.weekOfMonth WeekFields/SUNDAY_START)
     :week-fields/week-of-week-based-year (.weekOfWeekBasedYear WeekFields/SUNDAY_START)
     :week-fields/week-of-year            (.weekOfYear WeekFields/SUNDAY_START)}))
+
+;; We don't know what zone offset to shift this to, since the offset for a zone-id can vary depending on the date
+;; part of a temporal value (e.g. DST vs non-DST). So just adjust to the non-DST "standard" offset for the zone in
+;; question.
+(defn standard-offset
+  "Standard (non-DST) offset for a time zone, for cases when we don't have date information.  Gets the offset for the
+  given `zone-id` at January 1 of the current year (since that is the best we can do in this situation)."
+  ^ZoneOffset [^ZoneId zone-id]
+  (.. zone-id getRules (getStandardOffset (t/instant (t/offset-date-time (-> (t/zoned-date-time) t/year t/value) 1 1)))))

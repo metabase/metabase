@@ -64,7 +64,7 @@ export default class ArchiveApp extends Component {
                   <ArchivedItem
                     type={item.type}
                     name={item.getName()}
-                    icon={item.getIcon()}
+                    icon={item.getIcon().name}
                     color={item.getColor()}
                     isAdmin={isAdmin}
                     onUnarchive={

@@ -17,7 +17,7 @@ import EmbeddingLevel from "./components/widgets/EmbeddingLevel";
 import FormattingWidget from "./components/widgets/FormattingWidget";
 
 import { SettingsCloudStoreLink } from "./components/SettingsCloudStoreLink";
-import SettingsUpdatesForm from "./components/SettingsUpdatesForm";
+import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
 import SettingsEmailForm from "./components/SettingsEmailForm";
 import SettingsSetupList from "./components/SettingsSetupList";
 import SettingsSlackForm from "./components/SettingsSlackForm";

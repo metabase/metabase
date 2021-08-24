@@ -44,5 +44,3 @@
                          (json/read-json true))
               expected (make-version-info edition test-versions)]
           (is (= expected actual)))))))
-
-

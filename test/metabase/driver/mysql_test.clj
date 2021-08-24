@@ -56,7 +56,7 @@
 ;; Test how TINYINT(1) columns are interpreted. By default, they should be interpreted as integers, but with the
 ;; correct additional options, we should be able to change that -- see
 ;; https://github.com/metabase/metabase/issues/3506
-(tx/defdataset ^:private tiny-int-ones
+(tx/defdataset tiny-int-ones
   [["number-of-cans"
      [{:field-name "thing",          :base-type :type/Text}
       {:field-name "number-of-cans", :base-type {:native "tinyint(1)"}, :effective-type :type/Integer}]
@@ -89,7 +89,7 @@
                    {:name "thing", :base_type :type/Text, :semantic_type :type/Category}}
                  (db->fields db))))))))
 
-(tx/defdataset ^:private year-db
+(tx/defdataset year-db
   [["years"
     [{:field-name "year_column", :base-type {:native "YEAR"}, :effective-type :type/Date}]
     [[2001] [2002] [1999]]]])
@@ -143,10 +143,6 @@
                   nil
                   (catch Throwable e
                     e)))))))
-
-
-(def ^:private before-daylight-savings #t "2018-03-10T10:00:00Z")
-(def ^:private after-daylight-savings  #t "2018-03-12T10:00:00Z")
 
 (deftest timezone-date-formatting-test
   (mt/test-driver :mysql

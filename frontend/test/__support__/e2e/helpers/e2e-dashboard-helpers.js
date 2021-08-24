@@ -44,6 +44,9 @@ export function setFilter(type, subType) {
 
   popover().within(() => {
     cy.findByText(type).click();
-    cy.findByText(subType).click();
+
+    if (subType) {
+      cy.findByText(subType).click();
+    }
   });
 }

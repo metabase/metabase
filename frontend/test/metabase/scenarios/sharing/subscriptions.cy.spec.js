@@ -119,7 +119,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       cy.findAllByRole("listitem")
         .contains("Orders") // yields the whole <li> element
         .within(() => {
-          cy.findByRole("checkbox").should("have.attr", "aria-checked", "true");
+          cy.findByRole("checkbox").should("be.checked");
         });
     });
 

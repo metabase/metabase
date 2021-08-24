@@ -1,7 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
-import pure from "recompose/pure";
 import cx from "classnames";
 
 import S from "./QueryButton.css";
@@ -29,4 +28,4 @@ QueryButton.propTypes = {
   link: PropTypes.string,
 };
 
-export default pure(QueryButton);
+export default React.memo(QueryButton);

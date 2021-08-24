@@ -4,10 +4,10 @@
             [metabase.models :refer [Database Field Table]]
             [metabase.sample-data :as sample-data]
             [metabase.sync :as sync]
+            [metabase.test :as mt]
             [metabase.util :as u]
             [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]
-            [metabase.test :as mt]))
+            [toucan.hydrate :refer [hydrate]]))
 
 ;;; ---------------------------------------------------- Tooling -----------------------------------------------------
 

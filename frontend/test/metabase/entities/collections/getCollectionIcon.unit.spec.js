@@ -1,0 +1,59 @@
+import {
+  getCollectionIcon,
+  ROOT_COLLECTION,
+  PERSONAL_COLLECTIONS as ALL_PERSONAL_COLLECTIONS_VIRTUAL,
+} from "metabase/entities/collections";
+
+// NOTE: getCollectionIcon behaves differently in EE
+// e.g. it should not return 'folder' for official collections
+
+describe("getCollectionIcon", () => {
+  function collection({
+    id = 10,
+    personal_owner_id = null,
+    authority_level = null,
+  } = {}) {
+    return {
+      id,
+      personal_owner_id,
+      authority_level,
+    };
+  }
+
+  const testCases = [
+    {
+      name: "Our analytics",
+      collection: ROOT_COLLECTION,
+      expectedIcon: "folder",
+    },
+    {
+      name: "All personal collections",
+      collection: ALL_PERSONAL_COLLECTIONS_VIRTUAL,
+      expectedIcon: "group",
+    },
+    {
+      name: "Regular collection",
+      collection: collection(),
+      expectedIcon: "folder",
+    },
+    {
+      name: "Personal collection",
+      collection: collection({ personal_owner_id: 4 }),
+      expectedIcon: "person",
+    },
+    {
+      name: "Official collection",
+      collection: collection({ authority_level: "official" }),
+      expectedIcon: "folder",
+    },
+  ];
+
+  testCases.forEach(testCase => {
+    const { name, collection, expectedIcon } = testCase;
+    it(`returns '${expectedIcon}' for '${name}'`, () => {
+      expect(getCollectionIcon(collection)).toMatchObject({
+        name: expectedIcon,
+      });
+    });
+  });
+});

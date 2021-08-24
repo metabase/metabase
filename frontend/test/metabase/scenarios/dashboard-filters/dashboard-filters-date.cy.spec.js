@@ -13,7 +13,7 @@ import * as DateFilter from "../native-filters/helpers/e2e-date-filter-helpers";
 
 Object.entries(DASHBOARD_DATE_FILTERS).forEach(
   ([filter, { value, representativeResult }]) => {
-    describe(`should work for ${filter}`, () => {
+    describe("scenarios > dashboard > filters > date", () => {
       beforeEach(() => {
         cy.intercept("GET", "/api/table/*/query_metadata").as("metadata");
 
@@ -61,6 +61,7 @@ Object.entries(DASHBOARD_DATE_FILTERS).forEach(
           filterType: filter,
           filterValue: value,
         });
+
         saveDashboard();
 
         cy.get(".Card").within(() => {

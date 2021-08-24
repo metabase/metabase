@@ -12,13 +12,21 @@ import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import Text from "metabase/components/type/Text";
 
+import {
+  PLUGIN_COLLECTION_COMPONENTS,
+  PLUGIN_MODERATION,
+} from "metabase/plugins";
+
 import Schema from "metabase/entities/schemas";
 import Database from "metabase/entities/databases";
 import Table from "metabase/entities/tables";
 
+const { CollectionAuthorityLevelIcon } = PLUGIN_COLLECTION_COMPONENTS;
+const { ModerationStatusIcon } = PLUGIN_MODERATION;
+
 function getColorForIconWrapper(props) {
   if (props.item.collection_position) {
-    return color("warning");
+    return color("saturated-yellow");
   }
   switch (props.type) {
     case "collection":
@@ -85,30 +93,51 @@ const ResultLink = styled(Link)`
   }
 `;
 
+const TitleWrapper = styled.div`
+  display: flex;
+  grid-gap: 0.25rem;
+  align-items: center;
+`;
+
 function ItemIcon({ item, type }) {
   return (
     <IconWrapper item={item} type={type}>
       {type === "table" ? (
         <Icon name="database" />
       ) : (
-        <Icon name={item.getIcon()} size={20} />
+        <Icon {...item.getIcon()} size={20} />
       )}
     </IconWrapper>
   );
 }
 
+const CollectionBadgeRoot = styled.div`
+  display: inline-block;
+`;
+
 const CollectionLink = styled(Link)`
+  display: flex;
+  align-items: center;
   text-decoration: dashed;
   &:hover {
     color: ${color("brand")};
   }
 `;
 
+const AuthorityLevelIcon = styled(CollectionAuthorityLevelIcon).attrs({
+  size: 13,
+})`
+  padding-right: 2px;
+`;
+
 function CollectionBadge({ collection }) {
   return (
-    <CollectionLink to={Urls.collection(collection)}>
-      {collection.name}
-    </CollectionLink>
+    <CollectionBadgeRoot>
+      <CollectionLink to={Urls.collection(collection)}>
+        <AuthorityLevelIcon collection={collection} />
+        {collection.name}
+      </CollectionLink>
+    </CollectionBadgeRoot>
   );
 }
 
@@ -234,7 +263,10 @@ export default function SearchResult({ result, compact }) {
       <Flex align="start">
         <ItemIcon item={result} type={result.model} />
         <Box>
-          <Title>{result.name}</Title>
+          <TitleWrapper>
+            <Title>{result.name}</Title>
+            <ModerationStatusIcon status={result.moderated_status} size={12} />
+          </TitleWrapper>
           <Text>
             <InfoText result={result} />
           </Text>

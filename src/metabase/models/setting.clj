@@ -242,7 +242,13 @@
 (defn get-json
   "Get the string value of `setting-definition-or-name` and parse it as JSON."
   [setting-definition-or-name]
-  (json/parse-string (get-string setting-definition-or-name) keyword))
+  (try
+    (json/parse-string (get-string setting-definition-or-name) keyword)
+    (catch Throwable e
+      (let [{setting-name :name} (resolve-setting setting-definition-or-name)]
+        (throw (ex-info (tru "Error parsing JSON setting {0}: {1}" setting-name (ex-message e))
+                        {:setting setting-name}
+                        e))))))
 
 (defn get-timestamp
   "Get the string value of `setting-definition-or-name` and parse it as an ISO-8601-formatted string, returning a

@@ -8,6 +8,7 @@ const propTypes = {
   id: PropTypes.string.isRequired,
   name: PropTypes.string.isRequired,
   icon: PropTypes.string.isRequired,
+  iconColor: PropTypes.string,
   onSelect: PropTypes.func.isRequired,
   isSelected: PropTypes.bool,
   isHighlighted: PropTypes.bool,
@@ -19,6 +20,7 @@ export function SelectListItem({
   id,
   name,
   icon,
+  iconColor = "brand",
   onSelect,
   isSelected = false,
   isHighlighted = false,
@@ -37,7 +39,7 @@ export function SelectListItem({
       onClick={() => onSelect(id)}
       onKeyDown={e => e.key === "Enter" && onSelect(id)}
     >
-      <ItemIcon name={icon} isHighlighted={isHighlighted} />
+      <ItemIcon name={icon} color={iconColor} isHighlighted={isHighlighted} />
       <ItemTitle>{name}</ItemTitle>
       {hasRightArrow && <ItemIcon name="chevronright" />}
     </ItemRoot>

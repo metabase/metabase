@@ -148,6 +148,12 @@ describe("binning related reproductions", () => {
           aggregation: [["avg", ["field", ORDERS.SUBTOTAL, null]]],
           breakout: [["field", ORDERS.USER_ID, null]],
         },
+      }).then(({ body }) => {
+        cy.intercept("POST", `/api/card/${body.id}/query`).as("cardQuery");
+        cy.visit(`/question/${body.id}`);
+
+        // Wait for `result_metadata` to load
+        cy.wait("@cardQuery");
       });
     });
 
@@ -161,7 +167,7 @@ describe("binning related reproductions", () => {
       });
 
       popover().within(() => {
-        cy.findByText("50 bins").click();
+        cy.findByText("10 bins").click();
       });
 
       cy.get(".bar");
@@ -184,7 +190,7 @@ describe("binning related reproductions", () => {
       popover()
         .last()
         .within(() => {
-          cy.findByText("50 bins").click();
+          cy.findByText("10 bins").click();
         });
 
       cy.button("Visualize").click();

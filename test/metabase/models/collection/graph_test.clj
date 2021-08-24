@@ -70,9 +70,9 @@
   (group/admin)
   (group/metabot)
   ;; now fetch the graph
-  (cond-> (-> (graph/graph)
-              (only-groups (concat [(group/all-users) (group/metabot) (group/admin)] groups))
-              (only-collections (cons :root collections)))))
+  (-> (graph/graph)
+      (only-groups (concat [(group/all-users) (group/metabot) (group/admin)] groups))
+      (only-collections (cons :root collections))))
 
 (deftest basic-test
   (testing "Check that the basic graph works"

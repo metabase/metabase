@@ -13,20 +13,21 @@
                   [goog.string :as gstring]
                   [metabase.shared.models.visualization-settings :as mb.viz])]))
 
-(def ^:private all-instrument-fns [`mb.viz/field-id->column-ref
-                                   `mb.viz/column-name->column-ref
-                                   `mb.viz/field-str->column-ref
-                                   `mb.viz/keyname
-                                   `mb.viz/parse-json-string
-                                   `mb.viz/encode-json-string
-                                   `mb.viz/parse-db-column-ref
-                                   `mb.viz/with-col-settings
-                                   `mb.viz/crossfilter-click-action
-                                   `mb.viz/url-click-action
-                                   `mb.viz/entity-click-action
-                                   `mb.viz/with-click-action
-                                   `mb.viz/with-entity-click-action
-                                   `mb.viz/fk-parameter-mapping])
+(def all-instrument-fns
+  [`mb.viz/field-id->column-ref
+   `mb.viz/column-name->column-ref
+   `mb.viz/field-str->column-ref
+   `mb.viz/keyname
+   `mb.viz/parse-json-string
+   `mb.viz/encode-json-string
+   `mb.viz/parse-db-column-ref
+   `mb.viz/with-col-settings
+   `mb.viz/crossfilter-click-action
+   `mb.viz/url-click-action
+   `mb.viz/entity-click-action
+   `mb.viz/with-click-action
+   `mb.viz/with-entity-click-action
+   `mb.viz/fk-parameter-mapping])
 
 (defn with-spec-instrumentation-fixture
   "`clojure.test` fixture that turns on instrumentation of all specs in the viz settings namespace, then turns it off."
@@ -76,8 +77,8 @@
                                ::mb.viz/link-type           ::mb.viz/card
                                ::mb.viz/parameter-mapping   {}
                                ::mb.viz/link-target-id      target-id}
-          norm-col-nm         {::mb.viz/column-title       "Name Column"
-                               ::mb.viz/show-mini-barchart true}
+          norm-col-nm         {::mb.viz/column-title  "Name Column"
+                               ::mb.viz/show-mini-bar true}
           norm-click-bhvr-map {::mb.viz/click-behavior norm-click-behavior}
           norm-col-settings {(mb.viz/field-id->column-ref f-id {"base-type" "type/Integer"}) norm-click-bhvr-map
                              (mb.viz/column-name->column-ref col-name)                       norm-col-nm}

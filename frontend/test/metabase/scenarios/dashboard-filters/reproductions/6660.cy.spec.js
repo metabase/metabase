@@ -1,9 +1,6 @@
 import { restore, popover } from "__support__/e2e/cypress";
 
-// This issue was fixed but the test needs to be skipped in `release-x.40.x` branch.
-// It relies on a refactor from `master`.
-// Please see https://github.com/metabase/metabase/pull/16913.
-describe.skip("issue 6660", () => {
+describe("issue 6660", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

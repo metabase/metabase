@@ -7,12 +7,15 @@
 
 (defn- all-drivers []
   (->> (.listFiles (io/file (u/filename u/project-root-directory "modules" "drivers")))
-       (filter (fn [^File d]
-                 (and (.isDirectory d) ;; watch for errant DS_Store files on os_x
-                   ;; only consider a directory to be a driver if it contains a lein or deps build file
-                   (some true? (map (fn [f]
-                                      (.exists (io/file d f))) ["project.clj" "deps.edn"])))))
-       (map (comp keyword #(.getName %)))))
+       (filter (fn [^File d]                                        ;
+                 (and
+                  ;; watch for errant DS_Store files on os_x
+                  (.isDirectory d)
+                  ;; ignore stuff like .cpcache
+                  (not (.isHidden d))
+                  ;; only consider a directory to be a driver if it contains a lein or deps build file
+                  (.exists (io/file d "deps.edn")))))
+       (map (comp keyword #(.getName ^File %)))))
 
 (defn build-drivers! [edition]
   (let [edition (or edition :oss)]

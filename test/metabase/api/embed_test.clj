@@ -133,7 +133,7 @@
 (deftest we-should-fail-when-attempting-to-use-an-expired-token
   (with-embedding-enabled-and-new-secret-key
     (with-temp-card [card {:enable_embedding true}]
-      (is (re= #"Token is expired"
+      (is (re= #"Token is expired.*"
                (http/client :get 400 (card-url card {:exp (buddy-util/to-timestamp yesterday)})))))))
 
 (deftest check-that-the-endpoint-doesn-t-work-if-embedding-isn-t-enabled
@@ -351,7 +351,7 @@
              (dissoc-id-and-name
                (http/client :get 200 (dashboard-url dash))))))))
 
-(deftest we-should-fail-when-attempting-to-use-an-expired-token
+(deftest we-should-fail-when-attempting-to-use-an-expired-token-2
   (with-embedding-enabled-and-new-secret-key
     (mt/with-temp Dashboard [dash {:enable_embedding true}]
       (is (re= #"^Token is expired.*"
@@ -887,7 +887,7 @@
        response-format))
 
 (deftest pivot-embed-query-test
-  (mt/test-drivers pivots/applicable-drivers
+  (mt/test-drivers (pivots/applicable-drivers)
     (mt/dataset sample-dataset
       (testing "GET /api/embed/pivot/card/:token/query"
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
@@ -925,7 +925,7 @@
        "/card/" (:card_id dashcard)))
 
 (deftest pivot-dashcard-success-test
-  (mt/test-drivers pivots/applicable-drivers
+  (mt/test-drivers (pivots/applicable-drivers)
     (mt/dataset sample-dataset
       (with-embedding-enabled-and-new-secret-key
         (with-temp-dashcard [dashcard {:dash {:enable_embedding true}
