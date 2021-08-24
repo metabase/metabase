@@ -37,42 +37,11 @@ export function InfoText({ result }) {
     case "database":
       return t`Database`;
     case "table":
-      return (
-        <span>
-          {jt`Table in ${(
-            <span>
-              <Database.Link id={result.database_id} />{" "}
-              {result.table_schema && (
-                <Schema.ListLoader
-                  query={{ dbId: result.database_id }}
-                  loadingAndErrorWrapper={false}
-                >
-                  {({ list }) =>
-                    list && list.length > 1 ? (
-                      <span>
-                        <Icon name="chevronright" mx="4px" size={10} />
-                        {/* we have to do some {} manipulation here to make this look like the table object that browseSchema was written for originally */}
-                        <Link
-                          to={Urls.browseSchema({
-                            db: { id: result.database_id },
-                            schema_name: result.table_schema,
-                          })}
-                        >
-                          {result.table_schema}
-                        </Link>
-                      </span>
-                    ) : null
-                  }
-                </Schema.ListLoader>
-              )}
-            </span>
-          )}`}
-        </span>
-      );
+      return <TablePath result={result} />;
     case "segment":
-      return <span>{jt`Segment of ${<TableLink result={result} />}`}</span>;
+      return jt`Segment of ${<TableLink result={result} />}`;
     case "metric":
-      return <span>{jt`Metric for ${<TableLink result={result} />}`}</span>;
+      return jt`Metric for ${<TableLink result={result} />}`;
     default:
       return jt`${getTranslatedEntityName(result.model)} in ${formatCollection(
         collection,
@@ -93,6 +62,41 @@ function getCollectionInfoText(collection) {
   const level = PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[collection.authority_level];
   return `${level.name} ${t`Collection`}`;
 }
+
+function TablePath({ result }) {
+  return jt`Table in ${(
+    <span>
+      <Database.Link id={result.database_id} />{" "}
+      {result.table_schema && (
+        <Schema.ListLoader
+          query={{ dbId: result.database_id }}
+          loadingAndErrorWrapper={false}
+        >
+          {({ list }) =>
+            list && list.length > 1 ? (
+              <span>
+                <Icon name="chevronright" mx="4px" size={10} />
+                {/* we have to do some {} manipulation here to make this look like the table object that browseSchema was written for originally */}
+                <Link
+                  to={Urls.browseSchema({
+                    db: { id: result.database_id },
+                    schema_name: result.table_schema,
+                  })}
+                >
+                  {result.table_schema}
+                </Link>
+              </span>
+            ) : null
+          }
+        </Schema.ListLoader>
+      )}
+    </span>
+  )}`;
+}
+
+TablePath.propTypes = {
+  result: PropTypes.shape(searchResultPropTypes),
+};
 
 function TableLink({ result }) {
   return (
