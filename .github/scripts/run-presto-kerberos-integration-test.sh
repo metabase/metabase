@@ -1,6 +1,12 @@
 #! /usr/bin/env bash
 # runs one or more Metabase test(s) against a Kerberized Presto instance
-# set -eo pipefail
+set -eo pipefail
+
+# Need Java commands on $PATH, which apparently is not yet the case
+export PATH="$PATH:$JAVA_HOME/bin"
+
+# ensure java commmand is available
+which java
 
 # install clojure version needed for Metabase
 curl -O https://download.clojure.org/install/linux-install-1.10.3.933.sh
@@ -35,9 +41,6 @@ openssl s_client -showcerts -connect presto-kerberos:7778 </dev/null \
 # Convert the Presto server self signed CA to DER format
 openssl x509 -outform der -in $RESOURCES_DIR/presto-ssl-root-ca.pem  -out $RESOURCES_DIR/presto-ssl-root-ca.der
 
-# Need Java commands on $PATH, which apparently is not yet the case
-export PATH="$PATH:$JAVA_HOME/bin"
-
 # Add Presto's self signed CA to the truststore
 keytool -noprompt -import -alias presto-kerberos -keystore $RESOURCES_DIR/cacerts-with-presto-ca.jks \
         -storepass changeit -file $RESOURCES_DIR/presto-ssl-root-ca.der -trustcacerts
@@ -62,4 +65,4 @@ MB_PRESTO_JDBC_TEST_KERBEROS_REMOTE_SERVICE_NAME=HTTP \
 MB_PRESTO_JDBC_TEST_KERBEROS_KEYTAB_PATH=$RESOURCES_DIR/client.keytab \
 MB_PRESTO_JDBC_TEST_KERBEROS_CONFIG_PATH=$RESOURCES_DIR/krb5.conf \
 MB_PRESTO_JDBC_TEST_ADDITIONAL_OPTIONS=$ADDITIONAL_OPTS \
-clojure -X:dev:test:drivers:drivers-dev :only metabase.driver.presto-jdbc-test || cat /tmp/clojure*edn
+clojure -X:dev:test:drivers:drivers-dev :only metabase.driver.presto-jdbc-test
