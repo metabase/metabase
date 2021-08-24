@@ -479,7 +479,7 @@ export function getSettingDefintionsForColumn(series: Series, column: Column) {
       ? visualization.columnSettings(column)
       : visualization.columnSettings || {};
 
-  if (isDate(column)) {
+  if (isDate(column) || column.unit) {
     return {
       ...extraColumnSettings,
       ...DATE_COLUMN_SETTINGS,
