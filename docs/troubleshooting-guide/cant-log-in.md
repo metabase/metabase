@@ -5,12 +5,12 @@ You should be able to log in to Metabase, but:
 - you can't see the login page, or
 - your credentials aren't accepted.
 
-## Are you using the right URL?
+## Are you using the right URL for your Metabase?
 
 - Do you have the port as well as the host?
 - Has someone moved the Metabase instance (e.g., it was in dev and now it's in production)?
 
-## Are the credentials stored by Metabase or is the account managed using Single Sign-On?
+## Does your Metabase use Single Sign-On (SS0) to manage accounts?
 
 - Other steps depend on knowing this
 The tell here should be obvious when they sign in. They should have an option to use the third party identity provider, or "sign in with email".
