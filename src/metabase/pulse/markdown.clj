@@ -246,8 +246,9 @@
           (str "<" resolved-uri "|" joined-content ">")))
 
       :link-ref
-      (let [resolved-uri (resolve-uri (-> attrs :reference :attrs :url))]
-        (str "<" resolved-uri "|" joined-content ">"))
+      (if-let [resolved-uri (resolve-uri (-> attrs :reference :attrs :url))]
+        (str "<" resolved-uri "|" joined-content ">")
+        joined-content)
 
       :auto-link
       (str "<" (:href attrs) ">")
