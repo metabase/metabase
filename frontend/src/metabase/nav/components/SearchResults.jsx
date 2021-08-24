@@ -2,6 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import { Box } from "grid-styled";
 import { t } from "ttag";
+
 import Search from "metabase/entities/search";
 import SearchResult from "metabase/search/components/SearchResult";
 import EmptyState from "metabase/components/EmptyState";
