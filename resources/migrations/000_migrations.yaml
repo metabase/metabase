@@ -8474,9 +8474,8 @@ databaseChangeLog:
             sql: >-
               UPDATE pulse p
               INNER JOIN report_dashboard d
-              ON p.dashboard_id = d.
-              id SET p.collection_id = d.collection_id
-              WHERE p.dashboard_id IS NOT NULL;
+              ON p.dashboard_id = d.id
+              SET p.collection_id = d.collection_id;
         - sql:
             dbms: postgresql
             sql: >-
