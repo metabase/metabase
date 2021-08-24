@@ -1053,9 +1053,18 @@ workflows:
 
       - test-driver:
           name: be-tests-mongo-ee
+          description: "(Mongo 4.0)"
           requires:
             - be-tests-ee
-          e: mongo
+          e: mongo-4-0
+          driver: mongo
+
+      - test-driver:
+          name: be-tests-mongo-ee
+          description: "(Mongo latest)"
+          requires:
+            - be-tests-ee
+          e: mongo-latest
           driver: mongo
 
       - test-driver:
