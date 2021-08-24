@@ -22,7 +22,7 @@ export default class EntityForm extends React.Component {
       form = getForm(entityDef),
       update,
       create,
-      onSubmit = object => (object.id ? create(object) : update(object)),
+      onSubmit = object => (object.id ? update(object) : create(object)),
       onClose,
       onSaved,
       modal,
@@ -46,8 +46,8 @@ export default class EntityForm extends React.Component {
           title={
             title ||
             (entityObject?.id
-              ? t`New ${entityDef.displayNameOne}`
-              : entityDef.objectSelectors.getName(entityObject))
+              ? entityDef.objectSelectors.getName(entityObject)
+              : t`New ${entityDef.displayNameOne}`)
           }
           onClose={onClose}
         >
