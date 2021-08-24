@@ -122,7 +122,13 @@ executors:
           # MYSQL_USER: root
           # MYSQL_ALLOW_EMPTY_PASSWORD: yes
 
-  mongo:
+  mongo-4-0:
+     working_directory: /home/circleci/metabase/metabase/
+     docker:
+       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+       - image: circleci/mongo:4.0
+
+  mongo-latest:
      working_directory: /home/circleci/metabase/metabase/
      docker:
        - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
