@@ -8495,7 +8495,6 @@ databaseChangeLog:
               )
               WHERE dashboard_id IS NOT NULL;
 
-
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
