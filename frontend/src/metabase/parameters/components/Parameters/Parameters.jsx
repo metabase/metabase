@@ -5,7 +5,10 @@ import querystring from "querystring";
 
 import ParametersList from "metabase/parameters/components/ParametersList";
 import { syncQueryParamsWithURL } from "./syncQueryParamsWithURL";
-import { getParameterValuesBySlug } from "metabase/meta/Parameter";
+import {
+  getParameterValuesBySlug,
+  removeUndefaultedNilValuedPairs,
+} from "metabase/meta/Parameter";
 import { getMetadata } from "metabase/selectors/metadata";
 
 @connect(state => ({ metadata: getMetadata(state) }))
@@ -21,13 +24,14 @@ export default class Parameters extends Component {
   }
 
   componentDidUpdate() {
-    const { parameters, parameterValues } = this.props;
+    const { parameters, parameterValues, dashboard } = this.props;
 
     if (this.props.syncQueryString) {
       // sync parameters to URL query string
       const parameterValuesBySlug = getParameterValuesBySlug(
         parameters,
         parameterValues,
+        dashboard && removeUndefaultedNilValuedPairs,
       );
 
       let search = querystring.stringify(parameterValuesBySlug);
