@@ -5,37 +5,7 @@ You should be able to log in to Metabase, but:
 - you can't see the login page, or
 - your credentials aren't accepted.
 
-## Are you using the right URL for your Metabase?
-
-**Root cause:** the Metabase instance you are trying to log in to isn't where you think it is or isn't accessible.
-
-**Steps to take:**
-
-1. Check whether you need to include a port number as well as a hostname in the connection URL. For example, Metabase might be at `https://example.com:3000/` instead of `https://example.com/`.
-   - If you're an administrator, you'll have configured this.
-   - If you're not, please ask your admin.
-2. Check whether your Metabase instance has moved. For example, if you were using a trial instance of Metabase, but you're now in production, the URL might have changed.
-
-## Does your Metabase use Single Sign-On (SS0) to manage accounts?
-
-Metabase can manage accounts itself, or administrators can configure it to let people sign on using third-party credentials. You can tell what kind of account you have when you try to sign in: if your login ID is your email address, Metabase is managing the account, but if you're using the option to sign in which a third-party identity provider, someone else is responsible for authenticating you.
-
-## If your account is managed by Metabase...
-
-### Has your account been deactivated?
-
-**Root cause:** Metabase doesn't delete accounts, but admins can deactivate them, and if your account is deactivated, you can't log in with it.
-
-**Steps to take:**
-
-For obvious reasons, regular users can't reactivate deactivated accounts. If you're an administrator and you want to do this for someone else:
-
-1. Go to **Admin Panel** and select **People**.
-2. If no **Deactivated** tab is available, there are no deactivated accounts, so this isn't the problem.
-3. If there *is* a **Deactivated** tab, look for the user who isn't able to log in.
-4. Click on the recycle loop arrow to reactivate the account.
-
-### Do you need to reset your password?
+## Do you need to reset your password?
 
 **Root cause:** You have forgotten your password.
 
@@ -73,13 +43,41 @@ For obvious reasons, regular users can't reactivate deactivated accounts. If you
     ```
 6.  You should now see a page where you can input a new password for the admin account.
 
-## If your account is managed by Single Sign-On...
+## Are you using the right URL for your Metabase?
+
+**Root cause:** the Metabase instance you are trying to log in to isn't where you think it is or isn't accessible.
+
+**Steps to take:**
+
+1. Check whether you need to include a port number as well as a hostname in the connection URL. For example, Metabase might be at `https://example.com:3000/` instead of `https://example.com/`.
+   - If you're an administrator, you'll have configured this.
+   - If you're not, please ask your admin.
+2. Check whether your Metabase instance has moved. For example, if you were using a trial instance of Metabase, but you're now in production, the URL might have changed.
+
+## Does your Metabase use Single Sign-On (SS0) to manage accounts?
+
+Metabase can manage accounts itself, or administrators can configure it to let people sign on using third-party credentials. You can tell what kind of account you have when you try to sign in: if your login ID is your email address, Metabase is managing the account, but if you're using the option to sign in which a third-party identity provider, someone else is responsible for authenticating you.
+
+## If Metabase is managing your password, has your account been deactivated?
+
+**Root cause:** Metabase doesn't delete accounts, but admins can deactivate them, and if your account is deactivated, you can't log in with it.
+
+**Steps to take:**
+
+For obvious reasons, regular users can't reactivate deactivated accounts. If you're an administrator and you want to do this for someone else:
+
+1. Go to **Admin Panel** and select **People**.
+2. If no **Deactivated** tab is available, there are no deactivated accounts, so this isn't the problem.
+3. If there *is* a **Deactivated** tab, look for the user who isn't able to log in.
+4. Click on the recycle loop arrow to reactivate the account.
+
+## If you're logging in using Single Sign-On...
 
 Metabase can't reset passwords for SSO: for example, if you are logging in using your Google ID, Google is managing your password, not Metabase, and for obvious security reasons, Google won't let other applications reset people's passwords.
 
 If you are an admin and want to check SSO settings, go to **Admin Panel**, choose **Settings**, then select the **Authentication** tab.  [This FAQ][auth] explains how to configure SSO for various providers.
 
-### Are LDAP groups and attributes set up correctly?
+## If you're logging in via LDAP, is LDAP configured correctly?
 
 **Root cause**: The LDAP connection is not configured correctly.
 
