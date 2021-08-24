@@ -132,7 +132,7 @@ executors:
      working_directory: /home/circleci/metabase/metabase/
      docker:
        - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
-       - image: circleci/mongo:5.0
+       - image: circleci/mongo:latest
 
   presto-186:
     working_directory: /home/circleci/metabase/metabase/
@@ -1060,7 +1060,7 @@ workflows:
           driver: mongo
 
       - test-driver:
-          name: be-tests-mongo-ee
+          name: be-tests-mongo-latest-ee
           description: "(Mongo latest)"
           requires:
             - be-tests-ee
