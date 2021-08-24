@@ -1,6 +1,7 @@
 (ns metabase.driver.sqlite
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
             [java-time :as t]
@@ -13,10 +14,12 @@
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.parameters.substitution :as params.substitution]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.i18n :refer [trs]]
             [schema.core :as s])
-  (:import [java.sql Connection ResultSet Types]
+  (:import [java.sql Connection ResultSet ResultSetMetaData Types]
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            java.time.temporal.Temporal))
 
@@ -379,11 +382,20 @@
 ;; (.getObject rs i LocalDate) doesn't seem to work, nor does `(.getDate)`; and it seems to be the case that
 ;; timestamps come back as `Types/DATE` as well? Fetch them as a String and then parse them
 (defmethod sql-jdbc.execute/read-column-thunk [:sqlite Types/DATE]
-  [_ ^ResultSet rs _ ^Integer i]
+  [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
   (fn []
     (try
-      (when-let [t (.getDate rs i)]
-        (t/local-date t))
+      (let [column-type (.getColumnTypeName rsmeta)]
+        (case column-type
+          "DATE"     (when-let [t (.getDate rs i)]
+                       (t/local-date t))
+          "DATETIME" (when-let [t (.getObject rs i LocalDateTime)]
+                       (t/with-offset-same-instant (t/offset-date-time t (t/zone-id (qp.timezone/results-timezone-id)))
+                         (t/zone-offset 0)))
+          ;; this should never be hit:
+          ;; https://github.com/xerial/sqlite-jdbc/blob/master/src/main/java/org/sqlite/jdbc3/JDBC3ResultSet.java#L755-L757
+          (do (log/warn (trs "Unrecognized column type: {0}" column-type))
+              nil)))
       (catch Throwable _
         (when-let [s (.getString rs i)]
           (u.date/parse s))))))
