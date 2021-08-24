@@ -36,7 +36,6 @@
     "/frontend/src/cljs/",
     "/frontend/src/metabase/internal/",
     "/frontend/test/",
-    ".styled.js",
     ".styled.jsx"
   ],
   "testEnvironment": "jsdom"
