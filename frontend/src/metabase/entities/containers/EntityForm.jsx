@@ -13,47 +13,55 @@ export function getForm(entityDef) {
   return entityDef.form || Object.values(entityDef.forms)[0];
 }
 
+const EForm = ({
+  entityDef,
+  entityObject,
+  form = getForm(entityDef),
+  update,
+  create,
+  onSubmit = object => (object.id ? update(object) : create(object)),
+  onSaved,
+  ...props
+}) => (
+  <Form
+    {...props}
+    form={form}
+    initialValues={entityObject}
+    onSubmit={onSubmit}
+    onSubmitSuccess={action => onSaved && onSaved(action.payload.object)}
+  />
+);
+
+const Modal = ({
+  children,
+  title: titleProp,
+  entityDef,
+  entityObject,
+  onClose,
+}) => {
+  const parseTitleFromEntity = () =>
+    entityObject?.id
+      ? entityDef.objectSelectors.getName(entityObject)
+      : t`New ${entityDef.displayNameOne}`;
+
+  const title = titleProp || parseTitleFromEntity();
+
+  return (
+    <ModalContent title={title} onClose={onClose}>
+      {children}
+    </ModalContent>
+  );
+};
+
 @entityType()
 export default class EntityForm extends React.Component {
   render() {
-    const {
-      entityDef,
-      entityObject,
-      form = getForm(entityDef),
-      update,
-      create,
-      onSubmit = object => (object.id ? update(object) : create(object)),
-      onClose,
-      onSaved,
-      modal,
-      title,
-      ...props
-    } = this.props;
+    const { modal, ...props } = this.props;
 
-    const eForm = (
-      <Form
-        {...props}
-        form={form}
-        initialValues={entityObject}
-        onSubmit={onSubmit}
-        onSubmitSuccess={action => onSaved && onSaved(action.payload.object)}
-      />
-    );
+    const eForm = <EForm {...props} />;
 
     if (modal) {
-      return (
-        <ModalContent
-          title={
-            title ||
-            (entityObject?.id
-              ? entityDef.objectSelectors.getName(entityObject)
-              : t`New ${entityDef.displayNameOne}`)
-          }
-          onClose={onClose}
-        >
-          {eForm}
-        </ModalContent>
-      );
+      return <Modal {...this.props}>{eForm}</Modal>;
     } else {
       return eForm;
     }
