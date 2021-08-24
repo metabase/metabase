@@ -7,9 +7,7 @@ import ModalContent from "metabase/components/ModalContent";
 
 import entityType from "./EntityType";
 
-import type { Entity } from "metabase/lib/entities";
-
-export function getForm(entityDef: Entity) {
+export function getForm(entityDef) {
   // 1. default `form`
   // 2. first of the named `forms`
   return entityDef.form || Object.values(entityDef.forms)[0];
