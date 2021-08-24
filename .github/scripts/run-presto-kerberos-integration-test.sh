@@ -35,26 +35,19 @@ openssl s_client -showcerts -connect presto-kerberos:7778 </dev/null \
 # Convert the Presto server self signed CA to DER format
 openssl x509 -outform der -in $RESOURCES_DIR/presto-ssl-root-ca.pem  -out $RESOURCES_DIR/presto-ssl-root-ca.der
 
+# Need Java commands on $PATH, which apparently is not yet the case
+export PATH="$PATH:$JAVA_HOME/bin"
+
 # Add Presto's self signed CA to the truststore
-$JAVA_HOME/bin/keytool -noprompt -import -alias presto-kerberos -keystore $RESOURCES_DIR/cacerts-with-presto-ca.jks \
+keytool -noprompt -import -alias presto-kerberos -keystore $RESOURCES_DIR/cacerts-with-presto-ca.jks \
         -storepass changeit -file $RESOURCES_DIR/presto-ssl-root-ca.der -trustcacerts
 
 ADDITIONAL_OPTS="SSLKeyStorePath=$RESOURCES_DIR/ssl_keystore.jks&SSLKeyStorePassword=presto\
 &SSLTrustStorePath=$RESOURCES_DIR/cacerts-with-presto-ca.jks&SSLTrustStorePassword=changeit"
 
 # Prepare dependencies
-
 source "./bin/prep.sh"
 prep_deps
-
-# Prepare dependencies; see
-# https://github.com/metabase/metabase/wiki/Migrating-from-Leiningen-to-tools.deps#preparing-dependencies
-#clojure -Sverbose -X:deps prep
-#echo "Running -X:deps prep at top level"
-#cd modules/drivers
-#echo "Running -X:deps prep under modules/drivers"
-#clojure -X:deps prep
-#cd -
 
 # Set up the environment variables pointing to all of this, and run some tests
 DRIVERS=presto-jdbc \
