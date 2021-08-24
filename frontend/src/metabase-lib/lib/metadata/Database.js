@@ -43,6 +43,18 @@ export default class Database extends Base {
     return this.schemas.map(s => s.name).sort((a, b) => a.localeCompare(b));
   }
 
+  getSchemas() {
+    return this.schemas;
+  }
+
+  schemasCount() {
+    return this.schemas.length;
+  }
+
+  getTables() {
+    return this.tables;
+  }
+
   // TABLES
 
   @memoize
