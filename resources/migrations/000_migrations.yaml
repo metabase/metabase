@@ -8470,7 +8470,14 @@ databaseChangeLog:
       comment: Added 0.41.0 Backfill collection_id for dashboard subscriptions
       changes:
         - sql:
-            dbms: postgresql,mariadb,mysql
+            dbms: mariadb,mysql
+              UPDATE pulse p
+              INNER JOIN report_dashboard d
+              ON p.dashboard_id = d.
+              id SET p.collection_id = d.collection_id
+              WHERE p.dashboard_id IS NOT NULL;
+        - sql:
+            dbms: postgresql
             sql: >-
               UPDATE pulse p
               SET collection_id = d.collection_id
