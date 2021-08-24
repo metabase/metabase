@@ -44,13 +44,34 @@
                     {:parameters parameters}))))
 
 (defn- pre-insert [notification]
-  (let [defaults     {:parameters []}
-        notification (apply merge defaults (for [[k v] notification :when (some? v)] {k v}))]
+  (let [defaults      {:parameters []}
+        dashboard-id  (:dashboard_id notification)
+        collection-id (if dashboard-id
+                        (db/select-one-field :collection_id 'Dashboard, :id dashboard-id)
+                        (:collection_id notification))
+        notification  (->> (for [[k v] notification
+                                 :when (some? v)]
+                             {k v})
+                           (apply merge defaults {:collection_id collection-id}))]
     (u/prog1 notification
       (assert-valid-parameters notification)
       (collection/check-collection-namespace Pulse (:collection_id notification)))))
 
+(def ^:dynamic *allow-moving-dashboard-subscriptions*
+  "If true, allows the collection_id on a dashboard subscription to be modified. This should
+  only be done when the associated dashboard is being moved to a new collection."
+  false)
+
 (defn- pre-update [notification]
+  (let [{:keys [collection_id dashboard_id]} (db/select-one [Pulse :collection_id :dashboard_id] :id (u/the-id notification))]
+    (when (and dashboard_id
+               (not= (:collection_id notification) collection_id)
+               (not *allow-moving-dashboard-subscriptions*))
+      (throw (ex-info (tru "collection ID of dashboard subscription cannot be directly modified") notification)))
+    (when (and dashboard_id
+               (contains? notification :dashboard_id)
+               (not= (:dashboard_id notification) dashboard_id))
+      (throw (ex-info (tru "dashboard ID of a dashboard subscription cannot be modified") notification))))
   (u/prog1 notification
     (assert-valid-parameters notification)
     (collection/check-collection-namespace Pulse (:collection_id notification))))
