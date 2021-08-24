@@ -10,7 +10,7 @@ You are supposed to be able to log in to Metabase, but:
 - Do you have the port as well as the host?
 - Has someone moved the Metabase instance (e.g., it was in dev and now it's in production)?
 
-## Are the credentials stored by Metabase or is the account managed using Single Sign-On?
+## Does your Metabase use Single Sign-On (SS0) to manage accounts?
 
 - Other steps depend on knowing this
 - FIXME: can people look at their own profile to find out how their credentials are managed?
