@@ -8471,6 +8471,7 @@ databaseChangeLog:
       changes:
         - sql:
             dbms: mariadb,mysql
+            sql: >-
               UPDATE pulse p
               INNER JOIN report_dashboard d
               ON p.dashboard_id = d.
