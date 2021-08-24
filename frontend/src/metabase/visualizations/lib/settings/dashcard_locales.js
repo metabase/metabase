@@ -54,7 +54,7 @@ const TITLE_LOCALES_BN = {
   }, 
   'admin.dashboard.teacher.gender': {
       'en': 'Statistics of Gender',
-      'bn': 'লিঙ্গ পরিসংখ্যান'
+      'bn': 'জেন্ডার পরিসংখ্যান'
   },
   'admin.dashboard.teacher.job.post': {
       'en': 'Statistics of Job Post',
@@ -98,7 +98,7 @@ const TITLE_LOCALES_BN = {
   }, 
   'school.dashboard.teacher.gender': {
       'en': 'Statistics of Gender',
-      'bn': 'লিঙ্গ পরিসংখ্যান'
+      'bn': 'জেন্ডার পরিসংখ্যান'
   },
   'school.dashboard.teacher.job.post': {
       'en': 'Statistics of Job Post',
@@ -194,7 +194,7 @@ const TITLE_LOCALES_BN = {
   },
   'admin.dashboard.student.gender': {
     'en': 'Statistics of Gender',
-    'bn': 'লিঙ্গ পরিসংখ্যান'
+    'bn': 'জেন্ডার পরিসংখ্যান'
   },
   'admin.dashboard.student.ethnicity': {
     'en': 'Statistics of Ethnicity',
@@ -209,8 +209,8 @@ const TITLE_LOCALES_BN = {
     'bn': 'প্রাকপ্রাথমিক থেকে প্রথম শ্রেণীতে ভর্তির পরিসংখ্যান'
   },
   'admin.dashboard.student.disability': {
-    'en': 'Statistics of Disability',
-    'bn': 'প্রতিবন্ধীর পরিসংখ্যান'
+    'en': 'Statistics of Special Needs',
+    'bn': 'বিশেষ চাহিদা সম্পন্ন ছাত্র ছাত্রীর পরিসংখ্যান'
   },
   'admin.dashboard.total.students.class-wise': {
     'en': 'Statistics of Students in each Class',
@@ -218,7 +218,7 @@ const TITLE_LOCALES_BN = {
   },
   'admin.dashboard.student.gender.class-wise': {
     'en': 'Statistics of Gender in each Class',
-    'bn': 'প্রতি ক্লাসের লিঙ্গ পরিসংখ্যান'
+    'bn': 'প্রতি ক্লাসের জেন্ডার পরিসংখ্যান'
   },
   'admin.dashboard.student.repeated.class-wise': {
     'en': 'Statistics of Repeated Students in each Class',
@@ -230,7 +230,7 @@ const TITLE_LOCALES_BN = {
   },
   'school.dashboard.student.gender': {
     'en': 'Statistics of Gender',
-    'bn': 'লিঙ্গ পরিসংখ্যান'
+    'bn': 'জেন্ডার পরিসংখ্যান'
   },
   'school.dashboard.student.ethnicity': {
     'en': 'Statistics of Ethnicity',
@@ -245,8 +245,8 @@ const TITLE_LOCALES_BN = {
     'bn': 'প্রাকপ্রাথমিক থেকে প্রথম শ্রেণীতে ভর্তির পরিসংখ্যান'
   },
   'school.dashboard.student.disability': {
-    'en': 'Statistics of Disability',
-    'bn': 'প্রতিবন্ধীর পরিসংখ্যান'
+    'en': 'Statistics of Special Needs',
+    'bn': 'বিশেষ চাহিদা সম্পন্ন ছাত্রছাত্রীর পরিসংখ্যান'
   },
   'school.dashboard.student.total.class-wise': {
     'en': 'Statistics of Students in each Class',
@@ -254,7 +254,7 @@ const TITLE_LOCALES_BN = {
   },
   'school.dashboard.student.gender.class-wise': {
     'en': 'Statistics of Gender in each Class',
-    'bn': 'প্রতি ক্লাসের লিঙ্গ পরিসংখ্যান'
+    'bn': 'প্রতি ক্লাসের জেন্ডার পরিসংখ্যান'
   },
   'school.dashboard.student.repeated.class-wise': {
     'en': 'Statistics of Repeated Students in each Class',
@@ -263,7 +263,48 @@ const TITLE_LOCALES_BN = {
   'admin.dashboard.census.progress': {
     'en': 'Progress of Census',
     'bn': 'শুমারির অগ্রগতি'
+  }, 
+  'admin.dashboard.census.progress.unsubmitted': {
+    'en': 'Unsubmitted Census',
+    'bn': 'শুমারি জমা দেওয়া হয়নি'
+  },
+  'admin.dashboard.census.progress.pending': {
+    'en': 'Pending Census for Approval',
+    'bn': 'অনুমোদনের জন্য পেন্ডিং শুমারি'
+  },
+  'admin.dashboard.census.progress.approved': {
+    'en': 'Approved Census',
+    'bn': 'অনুমোদিত শুমারি'
+  },
+  'admin.dashboard.census.progress.rejected': {
+    'en': 'Rejected Census',
+    'bn': 'খারিজ শুমারি'
+  },
+  'admin.dashboard.census.dli.gir': {
+    'en': 'Gross Intake Rate (GIR %)',
+    'bn': 'গ্রস ইনটেক রেট (জিআইআর %)'
+  },
+  'admin.dashboard.census.dli.nir': {
+    'en': 'Net Intake Rate (NIR %)',
+    'bn': 'নেট ইনটেক রেট (এনআইআর %)'
+  },
+  'admin.dashboard.census.dli.ger': {
+    'en': 'Gross Enrollment Rate (GER %)',
+    'bn': 'গ্রস এনরোলমেন্ট রেট (জিইআর %)'
+  },
+  'admin.dashboard.census.dli.ner': {
+    'en': 'Net Enrollment Rate (NER %)',
+    'bn': 'নেট এনরোলমেন্ট রেট (এনইআর %)'
+  },
+  'admin.dashboard.census.teacher.gender': {
+    'en': 'Statistics of Gender of Teachers',
+    'bn': 'শিক্ষক/ শিক্ষিকার পরিসংখ্যান'
+  },
+  'admin.dashboard.census.student.preprimary.gender': {
+    'en': 'Statistics of Enrollment of Students',
+    'bn': ' ছাত্রছাত্রীর এনরোলমেন্ট পরিসংখ্যান'
   }
+  
 }
 
 export function dashcard_locale_title (locale, title_key) {
