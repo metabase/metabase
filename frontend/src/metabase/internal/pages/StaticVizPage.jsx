@@ -62,7 +62,16 @@ export default function StaticVizPage() {
           <Box
             dangerouslySetInnerHTML={{
               __html: RenderChart("categorical/bar", {
-                data: [["donut", 20], ["cronut", 31]],
+                data: [
+                  ["aaaaaaaaaaaaaaa", 20],
+                  ["bbbbbbbbbbbbbbb", 31],
+                  ["ccccccccccccccc", 20],
+                  ["ddddddddddddddd", 31],
+                  ["eeeeeeeeeeeeeee", 20],
+                  ["fffffffffffffff", 31],
+                  ["ggggggggggggggg", 20],
+                  ["hhhhhhhhhhhhhhh", 31],
+                ],
                 accessors: {
                   x: row => row[0],
                   y: row => row[1],

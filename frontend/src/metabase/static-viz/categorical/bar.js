@@ -3,7 +3,7 @@ import React from "react";
 import { t } from "ttag";
 import { Bar } from "@visx/shape";
 import { AxisLeft, AxisBottom } from "@visx/axis";
-import { scaleBand, scaleLinear, scaleOrdinal } from "@visx/scale";
+import { scaleBand, scaleLinear } from "@visx/scale";
 import { bottomAxisTickStyles, leftAxisTickStyles } from "../utils.js";
 import { GridRows } from "@visx/grid";
 
@@ -12,7 +12,6 @@ export default function CategoricalBar(
   layout,
 ) {
   const leftMargin = 55;
-  let multiScale, categories;
   const xAxisScale = scaleBand({
     domain: data.map(accessors.x),
     range: [leftMargin, layout.xMax],
@@ -21,7 +20,7 @@ export default function CategoricalBar(
   });
 
   const yAxisScale = yScaleType({
-    domain: [0, Math.max(...data.map(accessors.y))],
+    domain: [0, data.reduce((t, d) => Math.max(t, accessors.y(d)), 0)],
     range: [layout.yMax, 0],
     nice: true,
   });
@@ -65,6 +64,9 @@ export default function CategoricalBar(
         hideTicks={false}
         numTicks={5}
         top={layout.yMax}
+        tickFormat={d => {
+          return String(d);
+        }}
         scale={xAxisScale}
         stroke={layout.colors.axis.stroke}
         label={labels.bottom}
