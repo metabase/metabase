@@ -16,9 +16,18 @@ const propTypes = {
   user: PropTypes.object,
   children: PropTypes.node,
   onHelp: PropTypes.func,
+  onUnsubscribe: PropTypes.func,
+  onArchive: PropTypes.func,
 };
 
-const NotificationList = ({ items, user, children, onHelp }) => {
+const NotificationList = ({
+  items,
+  user,
+  children,
+  onHelp,
+  onUnsubscribe,
+  onArchive,
+}) => {
   if (!items.length) {
     return <NotificationEmptyState />;
   }
@@ -32,7 +41,14 @@ const NotificationList = ({ items, user, children, onHelp }) => {
         </NotificationButton>
       </NotificationHeader>
       {items.map(({ item, type }) => (
-        <NotificationCard key={item.id} item={item} type={type} user={user} />
+        <NotificationCard
+          key={`${type}-${item.id}`}
+          item={item}
+          type={type}
+          user={user}
+          onUnsubscribe={onUnsubscribe}
+          onArchive={onArchive}
+        />
       ))}
       {children}
     </div>

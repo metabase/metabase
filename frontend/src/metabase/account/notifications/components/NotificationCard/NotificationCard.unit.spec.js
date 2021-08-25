@@ -1,28 +1,20 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import NotificationCard from "./NotificationCard";
 
-const getAlert = ({
-  creatorId = 1,
-  channel_type = "email",
-  schedule_type = "hourly",
-} = {}) => ({
+const getAlert = ({ creator = getUser(), channels = [getChannel()] } = {}) => ({
+  creator,
+  channels,
   card: {
     name: "Alert",
   },
-  creator: getUser({ id: creatorId }),
-  channels: getChannels({ channel_type, schedule_type }),
   created_at: "2021-05-08T02:02:07.441Z",
 });
 
-const getPulse = ({
-  creatorId = 1,
-  channel_type = "email",
-  schedule_type = "hourly",
-} = {}) => ({
+const getPulse = ({ creator = getUser(), channels = [getChannel()] } = {}) => ({
   name: "Pulse",
-  creator: getUser({ id: creatorId }),
-  channels: getChannels({ channel_type, schedule_type }),
+  creator,
+  channels,
   created_at: "2021-05-08T02:02:07.441Z",
 });
 
@@ -31,23 +23,21 @@ const getUser = ({ id = 1 } = {}) => ({
   common_name: "John Doe",
 });
 
-const getChannels = ({
+const getChannel = ({
   channel_type = "email",
   schedule_type = "hourly",
-} = {}) => {
-  return [
-    {
-      channel_type,
-      schedule_type,
-      schedule_hour: 8,
-      schedule_day: "mon",
-      schedule_frame: "first",
-      details: {
-        channel: "@channel",
-      },
-    },
-  ];
-};
+  recipients = [],
+} = {}) => ({
+  channel_type,
+  schedule_type,
+  recipients,
+  schedule_hour: 8,
+  schedule_day: "mon",
+  schedule_frame: "first",
+  details: {
+    channel: "@channel",
+  },
+});
 
 describe("NotificationCard", () => {
   it("should render an alert", () => {
@@ -73,7 +63,9 @@ describe("NotificationCard", () => {
   });
 
   it("should render a slack alert", () => {
-    const alert = getAlert({ channel_type: "slack" });
+    const alert = getAlert({
+      channels: [getChannel({ channel_type: "slack" })],
+    });
     const user = getUser();
 
     render(<NotificationCard item={alert} type="alert" user={user} />);
@@ -82,7 +74,9 @@ describe("NotificationCard", () => {
   });
 
   it("should render a daily alert", () => {
-    const alert = getAlert({ schedule_type: "daily" });
+    const alert = getAlert({
+      channels: [getChannel({ schedule_type: "daily" })],
+    });
     const user = getUser();
 
     render(<NotificationCard item={alert} type="alert" user={user} />);
@@ -91,7 +85,9 @@ describe("NotificationCard", () => {
   });
 
   it("should render a weekly alert", () => {
-    const alert = getAlert({ schedule_type: "weekly" });
+    const alert = getAlert({
+      channels: [getChannel({ schedule_type: "weekly" })],
+    });
     const user = getUser();
 
     render(<NotificationCard item={alert} type="alert" user={user} />);
@@ -100,7 +96,9 @@ describe("NotificationCard", () => {
   });
 
   it("should render a monthly alert", () => {
-    const alert = getAlert({ schedule_type: "monthly" });
+    const alert = getAlert({
+      channels: [getChannel({ schedule_type: "monthly" })],
+    });
     const user = getUser();
 
     render(<NotificationCard item={alert} type="alert" user={user} />);
@@ -116,5 +114,47 @@ describe("NotificationCard", () => {
     render(<NotificationCard item={alert} type="alert" user={user} />);
 
     screen.getByText("Created by John Doe", { exact: false });
+  });
+
+  it("should unsubscribe when subscribed and clicked on the close icon", () => {
+    const user = getUser();
+    const alert = getAlert({ channels: [getChannel({ recipients: [user] })] });
+    const onUnsubscribe = jest.fn();
+    const onArchive = jest.fn();
+
+    render(
+      <NotificationCard
+        item={alert}
+        type="alert"
+        user={user}
+        onUnsubscribe={onUnsubscribe}
+        onArchive={onArchive}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("close icon"));
+    expect(onUnsubscribe).toHaveBeenCalledWith(alert, "alert");
+    expect(onArchive).not.toHaveBeenCalled();
+  });
+
+  it("should archive when not subscribed and clicked on the close icon", () => {
+    const alert = getAlert();
+    const user = getUser();
+    const onUnsubscribe = jest.fn();
+    const onArchive = jest.fn();
+
+    render(
+      <NotificationCard
+        item={alert}
+        type="alert"
+        user={user}
+        onUnsubscribe={onUnsubscribe}
+        onArchive={onArchive}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("close icon"));
+    expect(onUnsubscribe).not.toHaveBeenCalled();
+    expect(onArchive).toHaveBeenCalledWith(alert, "alert");
   });
 });

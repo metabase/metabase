@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import Settings from "metabase/lib/settings";
@@ -11,6 +11,7 @@ import * as Urls from "metabase/lib/urls";
 import {
   NotificationContent,
   NotificationDescription,
+  NotificationIcon,
   NotificationItemRoot,
   NotificationTitle,
 } from "./NotificationCard.styled";
@@ -19,9 +20,21 @@ const propTypes = {
   item: PropTypes.object.isRequired,
   type: PropTypes.oneOf(["pulse", "alert"]).isRequired,
   user: PropTypes.object,
+  onUnsubscribe: PropTypes.func,
+  onArchive: PropTypes.func,
 };
 
-const NotificationCard = ({ item, type, user }) => {
+const NotificationCard = ({ item, type, user, onUnsubscribe, onArchive }) => {
+  const hasSubscribed = isSubscribed(item, user);
+
+  const onUnsubscribeClick = useCallback(() => {
+    onUnsubscribe(item, type);
+  }, [item, type, onUnsubscribe]);
+
+  const onArchiveClick = useCallback(() => {
+    onArchive(item, type);
+  }, [item, type, onArchive]);
+
   return (
     <NotificationItemRoot>
       <NotificationContent>
@@ -32,11 +45,31 @@ const NotificationCard = ({ item, type, user }) => {
           {formatDescription(item, user)}
         </NotificationDescription>
       </NotificationContent>
+      {hasSubscribed && (
+        <NotificationIcon
+          name="close"
+          tooltip={t`Unsubscribe`}
+          onClick={onUnsubscribeClick}
+        />
+      )}
+      {!hasSubscribed && (
+        <NotificationIcon
+          name="close"
+          tooltip={t`Delete`}
+          onClick={onArchiveClick}
+        />
+      )}
     </NotificationItemRoot>
   );
 };
 
 NotificationCard.propTypes = propTypes;
+
+const isSubscribed = (item, user) => {
+  return item.channels.some(channel =>
+    channel.recipients.some(recipient => recipient.id === user.id),
+  );
+};
 
 const formatTitle = (item, type) => {
   switch (type) {
@@ -112,7 +145,7 @@ const formatChannel = ({
     }
   }
 
-  if (channel_type === "slack") {
+  if (channel_type === "slack" && details) {
     scheduleString += t` to ${details.channel}`;
   }
 
