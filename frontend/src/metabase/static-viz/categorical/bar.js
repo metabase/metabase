@@ -20,7 +20,7 @@ export default function CategoricalBar(
   });
 
   const yAxisScale = yScaleType({
-    domain: [0, data.reduce((t, d) => Math.max(t, accessors.y(d)), 0)],
+    domain: [0, Math.max(...data.map(accessors.y))],
     range: [layout.yMax, 0],
     nice: true,
   });
@@ -64,9 +64,6 @@ export default function CategoricalBar(
         hideTicks={false}
         numTicks={5}
         top={layout.yMax}
-        tickFormat={d => {
-          return String(d);
-        }}
         scale={xAxisScale}
         stroke={layout.colors.axis.stroke}
         label={labels.bottom}
