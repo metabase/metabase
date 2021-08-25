@@ -4,5 +4,5 @@
  :deps
  {com.facebook.presto/presto-jdbc {:mvn/version "0.254"}}
 
- :metabase.build-driver/parents
+ :metabase.driver/parents
  #{:presto-common}}

@@ -27,13 +27,13 @@
                        (yaml/parse-string (slurp manifest))))))))
 
 (defn- driver-parents
-  "Return the set of parents for `driver`. Based on the value of `:metabase.build-driver/parents` in its `deps.edn`
+  "Return the set of parents for `driver`. Based on the value of `:metabase.driver/parents` in its `deps.edn`
   file."
   [driver]
   (let [driver-deps-edn-file (io/file (format "modules/drivers/%s/deps.edn" (name driver)))]
     (when (.exists driver-deps-edn-file)
       (let [edn (edn/read-string (slurp driver-deps-edn-file))]
-        (:metabase.build-driver/parents edn)))))
+        (:metabase.driver/parents edn)))))
 
 (defn- load-plugin-manifests!
   "When running tests driver plugins aren't loaded the normal way -- instead, to keep things sane, we simply merge their
