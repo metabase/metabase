@@ -171,7 +171,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
     <JoinClauseRoot>
       <NotebookCell color={color} flex={1}>
         <NotebookCellItem color={color}>
-          {(lhsTable && lhsTable.displayName()) || `Previous results`}
+          {lhsTable?.displayName() || `Previous results`}
         </NotebookCellItem>
 
         <JoinTypePicker join={join} color={color} updateQuery={updateQuery} />
