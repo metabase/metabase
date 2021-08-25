@@ -780,14 +780,14 @@
                  ((mt/user->client :rasta) :get 200 (format "database/%d/schemas" db-id)))))
 
         (testing "...or full schema perms..."
-          (perms/revoke-permissions! (perms-group/all-users) db-id)
+          (perms/revoke-data-perms! (perms-group/all-users) db-id)
           (perms/grant-permissions!  (perms-group/all-users) db-id "schema1")
           (is (= ["schema1"]
                  ((mt/user->client :rasta) :get 200 (format "database/%d/schemas" db-id)))))
 
         (testing "...or just table read perms..."
-          (perms/revoke-permissions! (perms-group/all-users) db-id)
-          (perms/revoke-permissions! (perms-group/all-users) db-id "schema1")
+          (perms/revoke-data-perms! (perms-group/all-users) db-id)
+          (perms/revoke-data-perms! (perms-group/all-users) db-id "schema1")
           (perms/grant-permissions!  (perms-group/all-users) db-id "schema1" t1)
           (perms/grant-permissions!  (perms-group/all-users) db-id "schema1" t2)
           (is (= ["schema1"]
@@ -836,14 +836,14 @@
                  (map :name ((mt/user->client :rasta) :get 200 (format "database/%d/schema/%s" db-id "schema1"))))))
 
         (testing "if we have full schema perms"
-          (perms/revoke-permissions! (perms-group/all-users) db-id)
+          (perms/revoke-data-perms! (perms-group/all-users) db-id)
           (perms/grant-permissions!  (perms-group/all-users) db-id "schema1")
           (is (= ["t1" "t3"]
                  (map :name ((mt/user->client :rasta) :get 200 (format "database/%d/schema/%s" db-id "schema1"))))))
 
         (testing "if we have full Table perms"
-          (perms/revoke-permissions! (perms-group/all-users) db-id)
-          (perms/revoke-permissions! (perms-group/all-users) db-id "schema1")
+          (perms/revoke-data-perms! (perms-group/all-users) db-id)
+          (perms/revoke-data-perms! (perms-group/all-users) db-id "schema1")
           (perms/grant-permissions!  (perms-group/all-users) db-id "schema1" t1)
           (perms/grant-permissions!  (perms-group/all-users) db-id "schema1" t3)
           (is (= ["t1" "t3"]
@@ -852,7 +852,7 @@
     (testing "should return a 403 for a user that doesn't have read permissions"
       (mt/with-temp* [Database [{database-id :id}]
                       Table    [_ {:db_id database-id, :schema "test"}]]
-        (perms/revoke-permissions! (perms-group/all-users) database-id)
+        (perms/revoke-data-perms! (perms-group/all-users) database-id)
         (is (= "You don't have permissions to do that."
                ((mt/user->client :rasta) :get 403 (format "database/%s/schemas" database-id))))))
 
@@ -860,7 +860,7 @@
       (mt/with-temp* [Database [{database-id :id}]
                       Table    [_ {:db_id database-id, :schema "schema-with-perms"}]
                       Table    [_ {:db_id database-id, :schema "schema-without-perms"}]]
-        (perms/revoke-permissions! (perms-group/all-users) database-id)
+        (perms/revoke-data-perms! (perms-group/all-users) database-id)
         (perms/grant-permissions!  (perms-group/all-users) database-id "schema-with-perms")
         (is (= ["schema-with-perms"]
                ((mt/user->client :rasta) :get 200 (format "database/%s/schemas" database-id))))))
@@ -869,7 +869,7 @@
       (testing "for the DB"
         (mt/with-temp* [Database [{database-id :id}]
                         Table    [{table-id :id} {:db_id database-id, :schema "test"}]]
-          (perms/revoke-permissions! (perms-group/all-users) database-id)
+          (perms/revoke-data-perms! (perms-group/all-users) database-id)
           (is (= "You don't have permissions to do that."
                  ((mt/user->client :rasta) :get 403 (format "database/%s/schema/%s" database-id "test"))))))
 
@@ -877,7 +877,7 @@
         (mt/with-temp* [Database [{database-id :id}]
                         Table    [_ {:db_id database-id, :schema "schema-with-perms"}]
                         Table    [_ {:db_id database-id, :schema "schema-without-perms"}]]
-          (perms/revoke-permissions! (perms-group/all-users) database-id)
+          (perms/revoke-data-perms! (perms-group/all-users) database-id)
           (perms/grant-permissions!  (perms-group/all-users) database-id "schema-with-perms")
           (is (= "You don't have permissions to do that."
                  ((mt/user->client :rasta) :get 403 (format "database/%s/schema/%s" database-id "schema-without-perms")))))))
@@ -892,7 +892,7 @@
       (mt/with-temp* [Database [{database-id :id}]
                       Table    [table-with-perms {:db_id database-id, :schema "public", :name "table-with-perms"}]
                       Table    [_                {:db_id database-id, :schema "public", :name "table-without-perms"}]]
-        (perms/revoke-permissions! (perms-group/all-users) database-id)
+        (perms/revoke-data-perms! (perms-group/all-users) database-id)
         (perms/grant-permissions!  (perms-group/all-users) database-id "public" table-with-perms)
         (is (= ["table-with-perms"]
                (map :name ((mt/user->client :rasta) :get 200 (format "database/%s/schema/%s" database-id "public")))))))

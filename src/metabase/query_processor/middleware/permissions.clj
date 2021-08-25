@@ -7,6 +7,7 @@
             [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
             [metabase.models.query.permissions :as query-perms]
+            [metabase.plugins.classloader :as classloader]
             [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.middleware.resolve-referenced :as qp.resolve-referenced]
             [metabase.util.i18n :refer [tru]]
@@ -31,6 +32,22 @@
                     :permissions-error?   true}
                    additional-ex-data))))
 
+(defn- check-block-permissions
+  "Assert that block permissions are not in effect for Database for a query that's only allowed to run because of
+  Collection perms; throw an Exception if they are. Otherwise returns a keyword explaining why the check wasn't done,
+  or why it succeeded (this is mostly for test/debug purposes). The query is still allowed to run if the current User
+  has appropriate data permissions from another Group. See the namespace documentation
+  for [[metabase.models.collection]] for more details.
+
+  Note that this feature is Metabase© Enterprise Edition™ only. Actual implementation is
+  in [[metabase-enterprise.enhancements.models.permissions.block-permissions/check-block-permissions]] if EE code is
+  present. This feature is only enabled if we have a valid Enterprise Edition™ token."
+  [query]
+  (classloader/require 'metabase-enterprise.enhancements.models.permissions.block-permissions)
+  (if-let [f (resolve 'metabase-enterprise.enhancements.models.permissions.block-permissions/check-block-permissions)]
+    (f query)
+    ::ee-not-present))
+
 (s/defn ^:private check-card-read-perms
   "Check that the current user has permissions to read Card with `card-id`, or throw an Exception. "
   [card-id :- su/IntGreaterThanZero]
@@ -46,20 +63,24 @@
 
 (declare check-query-permissions*)
 
-(s/defn ^:private check-ad-hoc-query-perms
+(defn- required-perms
   {:arglists '([outer-query context])}
   [outer-query {:keys [gtap-perms]}]
-  ;; *If* we're using a GTAP, the User is obviously allowed to run its source query. So subtract the set of
-  ;; perms required to run the source query. (See further discussion in
-  ;; metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions)
-  (let [required-perms (set/difference
-                        (query-perms/perms-set outer-query, :throw-exceptions? true, :already-preprocessed? true)
-                        gtap-perms)]
-    (log/tracef "Required ad-hoc perms: %s" (pr-str required-perms))
-    (when-not (perms/set-has-full-permissions-for-set? @*current-user-permissions-set* required-perms)
-      (throw (perms-exception required-perms)))
-    (doseq [{:keys [dataset_query]} (qp.resolve-referenced/tags-referenced-cards outer-query)]
-      (check-query-permissions* dataset_query))))
+  (set/difference
+   (query-perms/perms-set outer-query, :throw-exceptions? true, :already-preprocessed? true)
+   gtap-perms))
+
+(defn- has-data-perms? [required-perms]
+  (perms/set-has-full-permissions-for-set? @*current-user-permissions-set* required-perms))
+
+(s/defn ^:private check-ad-hoc-query-perms
+  [outer-query context]
+  (let [required-perms (required-perms outer-query context)]
+    (when-not (has-data-perms? required-perms)
+      (throw (perms-exception required-perms))))
+  ;; check perms for any Cards referenced by this query (if it is a native query)
+  (doseq [{query :dataset_query} (qp.resolve-referenced/tags-referenced-cards outer-query)]
+    (check-query-permissions* query)))
 
 (s/defn ^:private check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
@@ -67,7 +88,10 @@
   (when *current-user-id*
     (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
     (if *card-id*
-      (check-card-read-perms *card-id*)
+      (do
+        (check-card-read-perms *card-id*)
+        (when-not (has-data-perms? (required-perms outer-query context))
+          (check-block-permissions outer-query)))
       (check-ad-hoc-query-perms outer-query context))))
 
 (defn check-query-permissions

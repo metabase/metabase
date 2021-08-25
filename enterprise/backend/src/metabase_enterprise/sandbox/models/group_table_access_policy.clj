@@ -1,7 +1,9 @@
 (ns metabase-enterprise.sandbox.models.group-table-access-policy
   "Model definition for Group Table Access Policy, aka GTAP. A GTAP is useed to control access to a certain Table for a
   certain PermissionsGroup. Whenever a member of that group attempts to query the Table in question, a Saved Question
-  specified by the GTAP is instead used as the source of the query."
+  specified by the GTAP is instead used as the source of the query.
+
+  See documentation in [[metabase.models.permissions]] for more information about the Metabase permissions system."
   (:require [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.mbql.normalize :as normalize]

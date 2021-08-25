@@ -32,13 +32,13 @@
          (when (and result
                     (try
                       (testing "Endpoint should return 403 if user does not have permissions"
-                        (perms/revoke-permissions! (perms-group/all-users) (mt/id))
+                        (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
                         (revoke-fn)
                         (let [result (mt/user-http-request :rasta :get 403 api-endpoint)]
                           (is (= "You don't have permissions to do that."
                                  result))))
                       (finally
-                        (perms/grant-permissions! (perms-group/all-users) (perms/object-path (mt/id))))))
+                        (perms/grant-permissions! (perms-group/all-users) (perms/data-perms-path (mt/id))))))
            result))))))
 
 
