@@ -135,6 +135,8 @@
 
 (defn thunk->boolean [{:keys [attachments] :as result}]
   (assoc result :attachments (for [attachment-info attachments]
-                               (-> attachment-info
-                                   (update :rendered-info (fn [ri]
-                                                            (m/map-vals some? ri)))))))
+                               (if (:rendered-info attachment-info)
+                                 (update attachment-info
+                                         :rendered-info
+                                         (fn [ri] (m/map-vals some? ri)))
+                                 attachment-info))))
