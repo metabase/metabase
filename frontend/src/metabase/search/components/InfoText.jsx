@@ -28,10 +28,9 @@ const infoTextPropTypes = {
 };
 
 export function InfoText({ result }) {
-  const collection = result.getCollection();
   switch (result.model) {
     case "card":
-      return jt`Saved question in ${formatCollection(collection)}`;
+      return jt`Saved question in ${formatCollection(result.getCollection())}`;
     case "collection":
       return getCollectionInfoText(result.collection);
     case "database":
@@ -44,7 +43,7 @@ export function InfoText({ result }) {
       return jt`Metric for ${<TableLink result={result} />}`;
     default:
       return jt`${getTranslatedEntityName(result.model)} in ${formatCollection(
-        collection,
+        result.getCollection(),
       )}`;
   }
 }
@@ -99,10 +98,14 @@ TablePath.propTypes = {
 };
 
 function TableLink({ result }) {
+  console.log(">>", result);
   return (
     <Link to={Urls.tableRowsQuery(result.database_id, result.table_id)}>
       <Table.Loader id={result.table_id} loadingAndErrorWrapper={false}>
-        {({ table }) => (table ? <span>{table.display_name}</span> : null)}
+        {({ table }) =>
+          console.log(">>>", table) ||
+          (table ? <span>{table.display_name}</span> : null)
+        }
       </Table.Loader>
     </Link>
   );
