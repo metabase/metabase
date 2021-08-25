@@ -13,10 +13,10 @@ To run all Cypress tests programmatically in the terminal:
 yarn run test-cypress-no-build
 ```
 
-You can run a specific set of scenarios by using the `--folder` flag.
+You can run a specific set of scenarios by using the `--folder` flag, which will pick up the chosen scenarios under `frontend/test/metabase/scenarios/`.
 
 ```
-yarn run test-cypress-no-build --folder frontend/test/metabase/scenarios/auth/
+yarn run test-cypress-no-build --folder sharing
 ```
 
 You can quickly test a single file only by using the `--spec` flag.
