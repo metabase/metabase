@@ -1,22 +1,53 @@
 import { restore } from "__support__/e2e/helpers/e2e-setup-helpers";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
+const { ORDERS_ID } = SAMPLE_DATASET;
 
-const questionDetails = {
+const getQuestionDetails = () => ({
   name: "Question",
   query: {
     "source-table": ORDERS_ID,
-    aggregation: [["count"]],
-    breakout: [
-      ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
-    ],
   },
-};
+});
 
-const dashboardDetails = {
-  name: "Dashboard",
-};
+const getAlertDetails = ({ user_id, card_id }) => ({
+  card: {
+    id: card_id,
+    include_csv: false,
+    include_xls: false,
+  },
+  channels: [
+    {
+      enabled: true,
+      channel_type: "email",
+      schedule_type: "hourly",
+      recipients: [
+        {
+          id: user_id,
+        },
+      ],
+    },
+  ],
+});
+
+const getPulseDetails = ({ card_id, dashboard_id }) => ({
+  name: "Subscription",
+  dashboard_id,
+  cards: [
+    {
+      id: card_id,
+      include_csv: false,
+      include_xls: false,
+    },
+  ],
+  channels: [
+    {
+      enabled: true,
+      channel_type: "slack",
+      schedule_type: "hourly",
+    },
+  ],
+});
 
 describe("scenarios > account > notifications", () => {
   beforeEach(() => {
@@ -27,27 +58,11 @@ describe("scenarios > account > notifications", () => {
   describe("alerts", () => {
     beforeEach(() => {
       cy.getCurrentUser().then(({ body: { id: user_id } }) => {
-        cy.createQuestion(questionDetails).then(({ body: { id: card_id } }) => {
-          cy.createAlert({
-            card: {
-              id: card_id,
-              include_csv: false,
-              include_xls: false,
-            },
-            channels: [
-              {
-                enabled: true,
-                channel_type: "email",
-                schedule_type: "hourly",
-                recipients: [
-                  {
-                    id: user_id,
-                  },
-                ],
-              },
-            ],
-          });
-        });
+        cy.createQuestion(getQuestionDetails()).then(
+          ({ body: { id: card_id } }) => {
+            cy.createAlert(getAlertDetails({ user_id, card_id }));
+          },
+        );
       });
     });
 
@@ -69,6 +84,8 @@ describe("scenarios > account > notifications", () => {
     });
 
     it("should be able to unsubscribe and delete an alert", () => {
+      cy.visit("/account/notifications");
+
       cy.findByText("Question");
       cy.findByLabelText("close icon").click();
 
@@ -86,32 +103,9 @@ describe("scenarios > account > notifications", () => {
     beforeEach(() => {
       cy.getCurrentUser().then(({ body: { id: user_id } }) => {
         cy.createQuestionAndDashboard({
-          questionDetails,
-          dashboardDetails,
+          questionDetails: getQuestionDetails(),
         }).then(({ body: { card_id, dashboard_id } }) => {
-          cy.createPulse({
-            name: "Pulse",
-            dashboard_id,
-            cards: [
-              {
-                id: card_id,
-                include_csv: false,
-                include_xls: false,
-              },
-            ],
-            channels: [
-              {
-                enabled: true,
-                channel_type: "slack",
-                schedule_type: "hourly",
-                recipients: [
-                  {
-                    id: user_id,
-                  },
-                ],
-              },
-            ],
-          });
+          cy.createPulse(getPulseDetails({ card_id, dashboard_id }));
         });
       });
     });
@@ -128,22 +122,21 @@ describe("scenarios > account > notifications", () => {
     it("should be able to see pulses notifications", () => {
       cy.visit("/account/notifications");
 
-      cy.findByText("Dashboard");
+      cy.findByText("Subscription");
       cy.findByText("Slack’d hourly", { exact: false });
       cy.findByText("Created by you", { exact: false });
     });
 
     it("should be able to unsubscribe and delete a pulse", () => {
-      cy.findByText("Dashboard");
+      cy.visit("/account/notifications");
+
+      cy.findByText("Subscription");
       cy.findByLabelText("close icon").click();
 
-      cy.findByText("Confirm you want to unsubscribe");
-      cy.findByText("Unsubscribe").click();
+      cy.findByText("Delete this subscription?");
+      cy.findByText("Yes, delete this subscription").click();
 
-      cy.findByText("You’re unsubscribed. Delete this subscription as well?");
-      cy.findByText("Delete this subscription").click();
-
-      cy.findByText("Dashboard").should("not.exist");
+      cy.findByText("Subscription").should("not.exist");
     });
   });
 });

@@ -42,10 +42,10 @@ const ArchiveModal = ({
       footer={[
         error ? <FormMessage key="message" formError={error} /> : null,
         <Button key="cancel" onClick={onClose}>
-          {t`I changed my mind`}
+          {getCancelMessage(hasUnsubscribed)}
         </Button>,
         <Button key="submit" warning onClick={handleArchiveClick}>
-          {getSubmitMessage(type)}
+          {getSubmitMessage(type, hasUnsubscribed)}
         </Button>,
       ]}
       onClose={onClose}
@@ -92,6 +92,10 @@ const getSubmitMessage = (type, hasUnsubscribed) => {
         ? t`Delete this subscription`
         : t`Yes, delete this subscription`;
   }
+};
+
+const getCancelMessage = hasUnsubscribed => {
+  return hasUnsubscribed ? t`Keep it around` : t`I changed my mind`;
 };
 
 const getCreatorMessage = (type, user) => {

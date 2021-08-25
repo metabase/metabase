@@ -130,7 +130,7 @@ const formatChannel = ({
     }
   }
 
-  if (channel_type === "slack") {
+  if (channel_type === "slack" && details) {
     scheduleString += t` to ${details.channel}`;
   }
 
