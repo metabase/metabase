@@ -1,3 +1,4 @@
+import { t } from "ttag";
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
@@ -17,7 +18,7 @@ const Pulses = createEntity({
       return Pulses.actions.update(
         { id },
         { archived },
-        undo(opts, "pulse", archived ? "archived" : "unarchived"),
+        undo(opts, t`subscription`, archived ? t`archived` : t`unarchived`),
       );
     },
 
@@ -25,7 +26,7 @@ const Pulses = createEntity({
       return Pulses.actions.update(
         { id },
         { collection_id: canonicalCollectionId(collection && collection.id) },
-        undo(opts, "pulse", "moved"),
+        undo(opts, t`subscription`, t`moved`),
       );
     },
 
@@ -51,7 +52,7 @@ const Pulses = createEntity({
       return Pulses.actions.update(
         { id },
         { channels: newChannels },
-        undo(opts, "pulse", "unsubscribed"),
+        undo(opts, "", t`Successfully unsubscribed`),
       );
     },
   },

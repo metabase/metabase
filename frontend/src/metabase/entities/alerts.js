@@ -1,3 +1,4 @@
+import { t } from "ttag";
 import { createEntity, undo } from "metabase/lib/entities";
 
 const Alerts = createEntity({
@@ -10,7 +11,7 @@ const Alerts = createEntity({
       return Alerts.actions.update(
         { id },
         { archived },
-        undo(opts, "alert", archived ? "archived" : "unarchived"),
+        undo(opts, t`alert`, archived ? t`archived` : t`unarchived`),
       );
     },
 
@@ -25,7 +26,7 @@ const Alerts = createEntity({
       return Alerts.actions.update(
         { id },
         { channels: newChannels },
-        undo(opts, "alert", "unsubscribed"),
+        undo(opts, "", t`Successfully unsubscribed`),
       );
     },
   },
