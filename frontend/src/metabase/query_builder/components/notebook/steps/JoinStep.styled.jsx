@@ -64,7 +64,7 @@ export const JoinTypeIcon = styled(Icon).attrs({ size: 24 })`
 export const JoinWhereConditionLabel = styled.span.attrs({ children: "on" })`
   color: ${color("brand")};
   font-weight: bold;
-  margin: 0 16px;
+  margin: 0 ${space(2)};
 `;
 
 export const JoinOnConditionLabel = styled.span.attrs({ children: "=" })`
