@@ -30,7 +30,7 @@ const AuditQuestionsOverviewTab = () => (
 const FailingQuestionsAuditTable = () => (
   <AuditDashboard
     cards={[
-      [{ x: 0, y: 0, w: 9, h: 9 }, QueriesCards.bad_table()],
+      [{ x: 0, y: 0, w: 16, h: 16 }, QueriesCards.bad_table()],
     ]}
   />
 );
