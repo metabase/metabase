@@ -1,84 +1,160 @@
-# Sandboxing
+# Troubleshooting sandbox access to rows and columns
 
-<div class='doc-toc' markdown=1>
-- [People can see data they're not supposed to be able to see](#see-data-not-supposed-to)
-- [People can't see the data they're supposed to be able to see](#cant-see-data-supposed-to)
-- [Someone is in several groups but can't see the sandboxed data](#in-several-groups-cant-see-sandboxed-data)
-</div>
+[Sandboxing data][sandboxing-your-data] gives some people access to only a subset of the data. (The term comes from the practice of putting children in a sandbox to play safely.) To implement sandboxing, Metabase runs a query that filters rows and/or selects a subset of columns from a table based on [the person's permissions][permissions]; the person's query then runs on the initial query's result (i.e., it runs on the sandboxed data).
 
-[Sandboxing data][sandboxing-your-data] gives some people access to only a subset of the data. (The term comes from the practice of putting children in a sandbox to play safely.) To implement sandboxing, Metabase runs a query that filters rows and/or selects a subset of columns from a table based on [the person's permissions][permissions]; the user's query then runs on the initial query's result.
+If you haven't already, give these articles a look to get a better understanding of how Sandboxing works:
 
-Several databases did not support [common table expressions][cte] when sandboxing was added to Metabase, so we implemented it using subqueries. Suppose you use the Notebook Editor to create a query like:
+- [Data Sandboxing: setting row-level permissions][row-permissions].
+- [Advanced data sandboxing: limiting access to columns][column-permissions].
 
-```
-SELECT *
-FROM orders
-WHERE price > 100.00
-```
+If you can't see tables at all, check out [I can't see my tables][cant-see-tables].
 
-If the `orders` table is sandboxed by the user's ID, what we actually run is something like this:
+## People can't see **rows** in a table they _should_ be able to see
 
-```
-SELECT
-  made_up_name_01.customer_id AS customer_id,
-  made_up_name_01.price AS price,
-  made_up_name_01.whatever AS whatever
-FROM
-  (
-    SELECT
-      orders.customer_id AS customer_id,
-      orders.price AS price,
-      orders.whatever AS whatever
-    FROM
-      orders 
-    WHERE
-      orders.customer_id = {% raw %} {{user_id}} {% endraw %}
-  )
-  made_up_name_01
-WHERE
-  made_up_name_01.price > 100
-```
+### Is a sandbox filtering rows by a user attribute?
 
-Metabase creates a unique temporary name like `made_up_name_01` to make sure the query doesn't actually pull in data from an existing table. The curly braces `{% raw %}{{...}}{% endraw %}` around `user_id` show that it is bound to an attribute from the user properties.
+**Root cause:** A sandbox is using user attribute to filter rows.
 
-Sandboxing isn't implemented for non-SQL databases like MongoDB, Druid, or Google Analytics. It also isn't implemented for native SQL questions: since we generate the SQL for questions written with the Notebook Editor, we can produce exactly what sandboxing needs, but parsing and modifying an arbitrary query written in SQL is a much (much) bigger challenge. As ar esult, any user with permissions to view the question can see all the results.
+**Steps to take:**
 
-<h2 id="see-data-not-supposed-to">People can see data they're not supposed to be able to see</h2>
+This is expected behavior: using a user attribute to filter rows for a sandboxed table is how sandboxing works. But if you _don't_ want Metabase to filter those rows, you'll need to either:
 
-**How to detect this:** People can view data that they shouldn't be able to.
+- Remove the sandbox (which would grant full access to all rows to everyone with access to that table). Go to **Admin** > **Permissions**, and change the access level for the table.
+- Add the person to a group (or create a group) with unrestricted access to the table. Check out [Guide to data permissions][data-permissions].
 
-**How to fix this:** The fix depends on the root cause.
+## People can see **rows** they're _not_ supposed to see
 
-1. Public questions can't be sandboxed: if someone doesn't have to log in to view the question, Metabase doesn't have user properties or group properties available for filtering the data, so all results will be shown. (We recommend that you *avoid* public sharing when you are sandboxing data.)
+There are several reasons people could be seeing rows that they're not supposed to see.
 
-2. If the administrator didn't restrict access to the underlying table when setting up sandboxing, people will be able to see the original data. You can check this by going into the Admin Panel and viewing Permissions for the table in question.
+### Is the question public?
 
-3. [Signed embedding][signed-embedding] will show all results by default, though it's possible to control filtering with [locked parameters][locked-parameters]. Note that signed embedding depends only on the token generated by the including page, not whether someone is logged into Metabase or not.
+**Root cause**: The question is public. Public questions can't be sandboxed: if someone doesn't have to log in to view the question, Metabase doesn't have user attributes or group information available for filtering the data, so all results will be shown.
 
-4. If people are logging in with single sign-on, but the expected attributes aren't being saved and made available, sandboxing will deny access. Our article on [Authenticating with SAML][authenticating-with-saml] explains the required setup in detail.
+**Steps to take**:
 
-<h2 id="cant-see-data-supposed-to">People can't see the data they're supposed to be able to see</h2>
+You should _avoid_ public sharing when you are sandboxing data. See [public sharing][public-sharing].
 
-**How to detect this:** Someone is supposed to be able to use some of the values in a table in their queries, but are denied access or get an empty set of results where there should be data.
+### Is the question written in SQL?
 
-**How to fix this:** Again, the fix depends on the root cause:
+**Root cause**. People with SQL access to a database cannot be sandboxed. They have as much access to the database as the user account used to connect Metabase to the database. Even if you hide tables in Metabase, someone with SQL access to a database would still be able to query those tables.
 
-1. Administrators usually restrict access to tables as part of sandboxing. If the restrictions are too tight by mistake (e.g., "no access") then people might not be able to see any data at all. You can check this by going into the Admin Panel and viewing Permissions for the table in question.
+**Steps to take**
 
-2. Some fields in a table which the person *does* have sandbox access to are using remapping to display information from another table which the person does *not* have sandbox access to. You can check this by going into the Admin Panel and viewing the Data Model for the fields in question.
+If you want to sandbox access, avoid adding the person to a group with SQL access to that table.
 
-<h2 id="in-several-groups-cant-see-sandboxed-data">Someone is in several groups but can't see the sandboxed data</h2>
+If you want to give them SQL access, but still limit what the person can see, you'll need to set up permissions in your database, and connect that database via the user account with that restricted access. You can connect the same database to Metabase multiple times, each with different levels of access, and expose different connections to different groups.
 
-We only allow [one sandbox per table][one-sandbox-per-table]: if someone is a member of two or more groups with different permissions, every rule for figuring out whether access should be allowed or not is confusing. We therefore only allow one rule.
+### Is the question retrieving data from a non-SQL data source?
 
-**How to detect this:** The root cause of this problem is conceptual---administrators can't create several sandboxes for one table because we don't allow it.
+**Root cause:** Data sandboxes do not support non-SQL databases.
 
-**How to fix this:** The administrator can create a new group to capture precisely who's allowed access to what.
+**Steps to take:**
 
-[authenticating-with-saml]: /docs/latest/enterprise-guide/authenticating-with-saml.html
+Not much you can do here: if you need to sandbox data, [you can't use these databases][unsupported-databases].
+
+## People can see **columns** they're _not_ supposed to see
+
+### Did the administrator forget to set up a sandbox?
+
+**Root cause:** The administrator didn't restrict access to the underlying table when setting up sandboxing.
+
+**Steps to take**:
+
+You can check this by going into the **Admin** > **Permissions** for the table in question. Check that the sandbox exists, and that the question used to sandbox the table excludes the columns you don't want people to see.
+
+### Does the question used to set up the sandbox include the columns?
+
+**Root cause:** The question used to create the sandbox includes the columns they're not supposed to see.
+
+**Steps to take**:
+
+Make sure that you're using a SQL question to create the sandbox, and that you're not including columns you should be excluding.
+
+If you build a question using the query builder (i.e., use a simple or custom question), you may unintentionally pull in additional columns. You can check exactly which columns are included by viewing the notebook editor for that question and clicking on the **View the SQL** button. But again: use SQL questions to sandbox the data, and this problem goes away.
+
+## Is the person in a group with unrestricted access to view the table?
+
+**Root cause:** You've sandboxed the table with the question, but the person is also in an group with unrestricted access to the table. If a person is in multiple groups, they'll get the most permissive access to a data source across all of their groups.
+
+**Steps to take**:
+
+Remove the person from all groups with unrestricted access to the sandboxed table. If they need some permissions from those other groups, you'll need to create a new group with a new set of permissions that only has sandboxed access to the table in question.
+
+## People can't see **columns** they _should_ be able to see
+
+### Do they only have sandboxed access to the table?
+
+**Root cause:** They only have access to a sandboxed version of the table, where only some columns are shown.
+
+**Steps to take**:
+
+You could add these people to a group (or create a new group) that has permissions to view the table.
+
+### Has an administrator hidden fields in the table?
+
+**Root cause:**: An administrator has hidden fields in the table.
+
+**Steps to take:**
+
+Go to **Admin** > **Data model** and find the table. Check to make sure that the fields you want to make visible are not hidden.
+
+### Is a field remapped to display info from a restricted table?
+
+**Root cause:** If a table which the person _does_ have sandbox access has a field that uses remapping to display information from another table which the person does _not_ have sandbox access to, they won't be able to see the table. For example, if you have remapped an ID field to display a product's name instead, but the person does not have access to the product table, they won't be able to see the column.
+
+**Steps to take:**
+
+You can check this by going into the **Admin** > **Data model** for the fields in question. If the value is remapped from a restricted table, change it so that Metabase will use the original value from the table. Checkout [Metadata editing][data-model].
+
+### Is the question available via signed embedding?
+
+**Root cause**: [Signed embedding][signed-embedding] will show all results by default. While it's possible to control filtering with [locked parameters][locked-parameters], signed embedding depends only on the token generated by the including page, not whether someone is logged into Metabase
+
+**Steps to take**:
+
+Avoid using signed embedding when you want to restrict row or column access to a table. A person must log in so that Metabase to apply sandboxed views to that person.
+
+### If using Single Sign-on (SSO), are user attributes correct?
+
+**Root cause** If people are logging in with SSO, but the expected attributes aren't being saved and made available, sandboxing will deny access.
+
+**Steps to take**:
+
+Our article on [Authenticating with SAML][authenticating-with-saml] explains the required setup in detail.
+
+## People can't see data they're supposed to be able to see
+
+Someone is supposed to be able to view some of the values in a table in their queries, but are denied access or get an empty set of results where there should be data.
+
+**Root cause**: Administrators restricted access to the table. Administrators usually restrict access to tables as part of sandboxing. If the restrictions are too tight by mistake (e.g., "no access") then people might not be able to see any data at all.
+
+**Steps to take:**
+
+You can check the access level for the groups by going into the Admin Panel and viewing Permissions for the table in question. If the person isn't in a group with access to that table, you can add them to a group that does, or create a new group with access to that table and add them to that new group.
+
+## Is the person who can't see the sandboxed data in multiple groups?
+
+**Root cause:** We only allow [one sandbox per table][one-sandbox-per-table]: if someone is a member of two or more groups with different permissions, every rule for figuring out whether access should be allowed or not is confusing. We therefore only allow one rule.
+
+The root cause of this problem is conceptual---administrators can't create several sandboxes for one table because we don't allow it.
+
+**Steps to take:** 
+
+The administrator can [create a new group][group] to capture precisely who's allowed access to what.
+
+[authenticating-with-saml]: ../enterprise-guide/authenticating-with-saml.html
 [locked-parameters]: /learn/embedding/embedding-charts-and-dashboards.html#hide-or-lock-parameters-to-restrict-what-data-is-shown
-[one-sandbox-per-table]: /docs/latest/enterprise-guide/data-sandboxes.html#a-user-can-only-have-one-sandbox-per-table
+[column-permissions]: /learn/permissions/data-sandboxing-column-permissions.html
+[data-model]: ../administration-guide/03-metadata-editing.html
+[data-permissions]: /learn/permissions/data-permissions.html
+[groups]: ../administration-guide/05-setting-permissions.html#group
+[one-sandbox-per-table]: ../enterprise-guide/data-sandboxes.html#a-user-can-only-have-one-sandbox-per-table
 [permissions]: /learn/permissions/data-permissions.html
 [prepared-statement]: /glossary.html#prepared_statement
-[sandboxing-your-data]: /docs/latest/enterprise-guide/data-sandboxes.html
+[public-sharing]: ../administration-guide/12-public-links.html
+[row-permissions]: /learn/permissions/data-sandboxing-row-permissions.html
+[sandboxing-your-data]: ../enterprise-guide/data-sandboxes.html
 [signed-embedding]: /learn/embedding/embedding-charts-and-dashboards.html#enable-embedding-in-other-applications
+[cant-see-tables]: cant-see-tables.html
+[sandbox-limitations]: ../enterprise-guide/data-sandboxes.html#current-limitations
+[unsupported-databases]: ../enterprise-guide/data-sandboxes.html#data-sandboxes-do-not-support-non-sql-databases
