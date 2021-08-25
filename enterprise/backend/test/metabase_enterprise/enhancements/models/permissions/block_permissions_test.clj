@@ -136,8 +136,6 @@
                   (check-block-perms []
                     (mt/with-current-user user-id
                       (#'qp.perms/check-block-permissions query)))]
-            ;; TODO -- figure out how to test the :metabase.query-processor.middleware.permissions/ee-not-present case
-            ;; revoke all data perms for the DB.
             (testing "sanity check: should not be able to run ad-hoc query"
               (is (not (contains? @api/*current-user-permissions-set*
                                   (perms/data-perms-path (mt/id)))))

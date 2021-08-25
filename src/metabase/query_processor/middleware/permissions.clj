@@ -10,6 +10,7 @@
             [metabase.plugins.classloader :as classloader]
             [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.middleware.resolve-referenced :as qp.resolve-referenced]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -32,7 +33,7 @@
                     :permissions-error?   true}
                    additional-ex-data))))
 
-(defn- check-block-permissions
+(def ^:private ^{:arglists '([query])} check-block-permissions
   "Assert that block permissions are not in effect for Database for a query that's only allowed to run because of
   Collection perms; throw an Exception if they are. Otherwise returns a keyword explaining why the check wasn't done,
   or why it succeeded (this is mostly for test/debug purposes). The query is still allowed to run if the current User
@@ -42,11 +43,13 @@
   Note that this feature is Metabase© Enterprise Edition™ only. Actual implementation is
   in [[metabase-enterprise.enhancements.models.permissions.block-permissions/check-block-permissions]] if EE code is
   present. This feature is only enabled if we have a valid Enterprise Edition™ token."
-  [query]
-  (classloader/require 'metabase-enterprise.enhancements.models.permissions.block-permissions)
-  (if-let [f (resolve 'metabase-enterprise.enhancements.models.permissions.block-permissions/check-block-permissions)]
-    (f query)
-    ::ee-not-present))
+  (let [dlay (delay
+               (u/ignore-exceptions
+                 (classloader/require 'metabase-enterprise.enhancements.models.permissions.block-permissions)
+                 (resolve 'metabase-enterprise.enhancements.models.permissions.block-permissions/check-block-permissions)))]
+    (fn [query]
+      (when-let [f @dlay]
+        (f query)))))
 
 (s/defn ^:private check-card-read-perms
   "Check that the current user has permissions to read Card with `card-id`, or throw an Exception. "
