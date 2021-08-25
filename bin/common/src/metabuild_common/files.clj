@@ -1,6 +1,6 @@
 (ns metabuild-common.files
-  (:require [clojure.string :as str]
-            [environ.core :as env]
+  (:require [clojure.java.io :as io]
+            [clojure.string :as str]
             [metabuild-common.misc :as misc]
             [metabuild-common.output :as out]
             [metabuild-common.shell :as sh]
@@ -97,20 +97,15 @@
   (str/join File/separatorChar path-components))
 
 (def ^String project-root-directory
-  "Root directory of the Metabase repo, e.g. `/users/cam/metabase`. Determined by finding the directory that has
-  `.git` in it."
-  (loop [^File dir (File. ^String (env/env :user-dir))]
-    (cond
-      (file-exists? (filename (.getAbsolutePath dir) "package.json"))
-      (.getAbsolutePath dir)
-
-      (.getParentFile dir)
-      (recur (.getParentFile dir))
-
-      :else
-      (throw (ex-info (format "Can't find project root directory: no parent directory of %s has a .git directory"
-                              (env/env :user-dir))
-                      {:dir (env/env :user-dir)})))))
+  "Root directory of the Metabase repo, e.g. `/users/cam/metabase`. Determined based on its location relative to this
+  source file."
+  (.. (Paths/get (.toURI (io/resource "metabuild_common/files.clj")))
+      toFile
+      getParentFile   ; /home/cam/metabase/bin/common/src/metabuild_common
+      getParentFile   ; /home/cam/metabase/bin/common/src/
+      getParentFile   ; /home/cam/metabase/bin/common/
+      getParentFile   ; /home/cam/metabase/bin/
+      getParentFile)) ; /home/cam/metabase/
 
 (defn download-file!
   "Download a file from `url` to `dest-path` using `wget`."
