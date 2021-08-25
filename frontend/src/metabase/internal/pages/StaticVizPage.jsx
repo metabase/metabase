@@ -34,7 +34,7 @@ export default function StaticVizPage() {
                 },
               }),
             }}
-          ></Box>
+          />
         </Box>
         <Box py={3}>
           <Subhead>Line chart with timeseries data</Subhead>
@@ -55,7 +55,7 @@ export default function StaticVizPage() {
                 },
               }),
             }}
-          ></Box>
+          />
         </Box>
         <Box py={3}>
           <Subhead>Bar chart showing categorical data</Subhead>
@@ -68,11 +68,11 @@ export default function StaticVizPage() {
                   y: row => row[1],
                 },
                 labels: {
-                  bottom: "Created At",
+                  bottom: "Category",
                 },
               }),
             }}
-          ></Box>
+          />
         </Box>
         <Box py={3}>
           <Subhead>Donut chart showing categorical data</Subhead>
@@ -90,7 +90,7 @@ export default function StaticVizPage() {
                 },
               }),
             }}
-          ></Box>
+          />
         </Box>
       </Box>
     </Box>

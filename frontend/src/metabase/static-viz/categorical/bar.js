@@ -66,7 +66,7 @@ export default function CategoricalBar(
         top={layout.yMax}
         scale={xAxisScale}
         stroke={layout.colors.axis.stroke}
-        label={labels.bottom}
+        label={labels.bottom || t`Category`}
         tickLabelProps={() => bottomAxisTickStyles(layout)}
       />
     </svg>
