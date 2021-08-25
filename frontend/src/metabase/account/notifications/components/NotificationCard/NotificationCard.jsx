@@ -25,13 +25,15 @@ const propTypes = {
 };
 
 const NotificationCard = ({ item, type, user, onUnsubscribe, onArchive }) => {
-  const onRemoveClick = useCallback(() => {
-    if (isSubscribed(item, user)) {
-      onUnsubscribe(item, type);
-    } else {
-      onArchive(item, type);
-    }
-  }, [item, type, user, onUnsubscribe, onArchive]);
+  const hasSubscribed = isSubscribed(item, user);
+
+  const onUnsubscribeClick = useCallback(() => {
+    onUnsubscribe(item, type);
+  }, [item, type, onUnsubscribe]);
+
+  const onArchiveClick = useCallback(() => {
+    onArchive(item, type);
+  }, [item, type, onArchive]);
 
   return (
     <NotificationItemRoot>
@@ -43,7 +45,20 @@ const NotificationCard = ({ item, type, user, onUnsubscribe, onArchive }) => {
           {formatDescription(item, user)}
         </NotificationDescription>
       </NotificationContent>
-      <NotificationIcon name="close" onClick={onRemoveClick} />
+      {hasSubscribed && (
+        <NotificationIcon
+          name="close"
+          tooltip={t`Unsubscribe`}
+          onClick={onUnsubscribeClick}
+        />
+      )}
+      {!hasSubscribed && (
+        <NotificationIcon
+          name="close"
+          tooltip={t`Delete`}
+          onClick={onArchiveClick}
+        />
+      )}
     </NotificationItemRoot>
   );
 };
