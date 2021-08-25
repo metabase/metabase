@@ -72,7 +72,7 @@ function TablePath({ result }) {
           loadingAndErrorWrapper={false}
         >
           {({ list }) =>
-            list && list.length > 1 ? (
+            list?.length > 1 ? (
               <span>
                 <Icon name="chevronright" mx="4px" size={10} />
                 {/* we have to do some {} manipulation here to make this look like the table object that browseSchema was written for originally */}
@@ -98,14 +98,10 @@ TablePath.propTypes = {
 };
 
 function TableLink({ result }) {
-  console.log(">>", result);
   return (
     <Link to={Urls.tableRowsQuery(result.database_id, result.table_id)}>
       <Table.Loader id={result.table_id} loadingAndErrorWrapper={false}>
-        {({ table }) =>
-          console.log(">>>", table) ||
-          (table ? <span>{table.display_name}</span> : null)
-        }
+        {({ table }) => (table ? <span>{table.display_name}</span> : null)}
       </Table.Loader>
     </Link>
   );

@@ -1,6 +1,5 @@
 import React from "react";
 import { t } from "ttag";
-import { Box, Flex } from "grid-styled";
 import Recents from "metabase/entities/recents";
 
 import Card from "metabase/components/Card";
@@ -15,45 +14,51 @@ import {
 import { ItemIcon } from "metabase/search/components/SearchResult";
 import { getTranslatedEntityName } from "./utils";
 import EmptyState from "metabase/components/EmptyState";
+import {
+  EmptyStateContainer,
+  Header,
+  RecentListItemContent,
+} from "./RecentsList.styled";
 
 const getItemKey = ({ model, model_id }) => `${model}:${model_id}`;
 
 export default function RecentsList() {
   return (
     <Card py={1}>
-      <Box px={2} py={1}>
-        <h4>{t`Recently viewed`}</h4>
-      </Box>
+      <Header>{t`Recently viewed`}</Header>
       <Recents.ListLoader wrapped reload>
         {({ list }) => {
           const hasRecents = list.length > 0;
 
           if (!hasRecents) {
             return (
-              <Box my={3}>
+              <EmptyStateContainer>
                 <EmptyState message={t`Nothing here`} icon="all" />
-              </Box>
+              </EmptyStateContainer>
             );
           }
 
           return (
             <ul>
               {list.map(item => (
-                <div key={getItemKey(item)}>
+                <li key={getItemKey(item)}>
                   <ResultLink to={Urls.modelToUrl(item)} compact={true}>
-                    <Flex align="start" data-testid="recently-viewed-item">
+                    <RecentListItemContent
+                      align="start"
+                      data-testid="recently-viewed-item"
+                    >
                       <ItemIcon item={item} type={item.model} />
-                      <Box>
+                      <div>
                         <Title data-testid="recently-viewed-item-title">
                           {item.model_object.name}
                         </Title>
                         <Text data-testid="recently-viewed-item-type">
                           {getTranslatedEntityName(item.model)}
                         </Text>
-                      </Box>
-                    </Flex>
+                      </div>
+                    </RecentListItemContent>
                   </ResultLink>
-                </div>
+                </li>
               ))}
             </ul>
           );
