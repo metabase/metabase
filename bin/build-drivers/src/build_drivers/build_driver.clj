@@ -12,13 +12,24 @@
     (u/delete-file-if-exists! (c/driver-jar-destination-path driver))))
 
 (defn build-driver!
-  [driver edition]
-  (let [edition (or edition :oss)
-        start-time-ms (System/currentTimeMillis)]
-    (u/step (format "Build driver %s (edition = %s)" driver edition)
-      (clean! driver)
-      (copy-source-files/copy-source-files! driver edition)
-      (compile-source-files/compile-clojure-source-files! driver edition)
-      (create-uberjar/create-uberjar! driver edition)
-      (u/announce "Built %s driver in %d ms." driver (- (System/currentTimeMillis) start-time-ms))
-      (verify/verify-driver driver))))
+  ;; 1-arity that takes just a map is mean for use directly with clojure -X
+  ([{:keys [driver edition], :as options}]
+   (build-driver! driver edition (dissoc options [:driver :edition])))
+
+  ([driver edition]
+   (build-driver! driver edition nil))
+
+  ([driver edition {:keys [project-dir target-dir], :as options}]
+   (let [edition       (or edition :oss)
+         start-time-ms (System/currentTimeMillis)]
+     (binding [c/*driver-project-dir* (or project-dir
+                                          c/*driver-project-dir*)
+               c/*target-directory*   (or target-dir
+                                          c/*target-directory*)]
+       (u/step (format "Build driver %s (edition = %s, options = %s)" driver edition (pr-str options))
+         (clean! driver)
+         (copy-source-files/copy-source-files! driver edition)
+         (compile-source-files/compile-clojure-source-files! driver edition)
+         (create-uberjar/create-uberjar! driver edition)
+         (u/announce "Built %s driver in %d ms." driver (- (System/currentTimeMillis) start-time-ms))
+         (verify/verify-driver driver))))))
