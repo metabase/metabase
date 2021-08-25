@@ -142,3 +142,57 @@
                                    :base-type :type/DateTime
                                    :database-position 0}}}
                        (driver/describe-table driver db (Table (mt/id :timestamp_table)))))))))))))
+
+(deftest select-query-datetime
+  (mt/test-driver :sqlite
+    (let [db-name "datetime_test"
+          details (mt/dbdef->connection-details :sqlite :db {:database-name db-name})]
+      (doseq [stmt ["DROP TABLE IF EXISTS datetime_table;"
+                    "CREATE TABLE datetime_table (
+                      test_case varchar,
+                      col_timestamp timestamp,
+                      col_date date,
+                      col_datetime datetime);"
+                    "INSERT INTO datetime_table
+                      (test_case,         col_timestamp,             col_date,      col_datetime) VALUES
+                      ('epoch',           1629865104000,             1629849600000, 1629865104000),
+                      ('iso8601-ms',      '2021-08-25 04:18:24.111', null,          '2021-08-25 04:18:24.111'),
+                      ('iso8601-no-ms',   '2021-08-25 04:18:24',     null,          '2021-08-25 04:18:24'),
+                      ('iso8601-no-time', null,                      '2021-08-25',  null);"]]
+        (jdbc/execute! (sql-jdbc.conn/connection-details->spec :sqlite details)
+                       [stmt]))
+      (mt/with-temp Database [db {:engine :sqlite :details (assoc details :dbname db-name)}]
+        (sync/sync-database! db)
+        ;; In SQLite, you can actually store any value in any date/timestamp column,
+        ;; let's test only values we'd reasonably run into.
+        ;; Caveat: TIMESTAMP stored as string doesn't get parsed and is returned as-is by the driver,
+        ;;         some upper layer will handle it.
+        (mt/with-db db
+          (testing "select datetime stored as unix epoch"
+            (is (= [["2021-08-25T04:18:24Z"                 ; TIMESTAMP
+                     "2021-08-25T00:00:00Z"                 ; DATE
+                     "2021-08-25T04:18:24Z"]]               ; DATETIME
+                   (qp.test/rows
+                     (mt/run-mbql-query :datetime_table
+                                        {:fields [$col_timestamp $col_date $col_datetime]
+                                         :filter [:= $test_case "epoch"]})))))
+          (testing "select datetime stored as string with milliseconds"
+            (is (= [["2021-08-25 04:18:24.111"              ; TIMESTAMP (raw string)
+                     "2021-08-25T04:18:24.111Z"]]           ; DATETIME
+                   (qp.test/rows
+                     (mt/run-mbql-query :datetime_table
+                                        {:fields [$col_timestamp $col_datetime]
+                                         :filter [:= $test_case "iso8601-ms"]})))))
+          (testing "select datetime stored as string without milliseconds"
+            (is (= [["2021-08-25 04:18:24"                  ; TIMESTAMP (raw string)
+                     "2021-08-25T04:18:24Z"]]               ; DATETIME
+                   (qp.test/rows
+                     (mt/run-mbql-query :datetime_table
+                                        {:fields [$col_timestamp $col_datetime]
+                                         :filter [:= $test_case "iso8601-no-ms"]})))))
+          (testing "select date stored as string without time"
+            (is (= [["2021-08-25T00:00:00Z"]]               ; DATE
+                   (qp.test/rows
+                     (mt/run-mbql-query :datetime_table
+                                        {:fields [$col_date]
+                                         :filter [:= $test_case "iso8601-no-time"]}))))))))))
