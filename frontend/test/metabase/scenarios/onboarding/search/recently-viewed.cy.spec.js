@@ -23,9 +23,7 @@ describe(`search > recently viewed`, () => {
 
     assertRecentlyViewedItem(0, "Orders in a dashboard", "Dashboard");
     assertRecentlyViewedItem(1, "Orders", "Question");
-
-    // TODO: uncomment when BE starts returning tables
-    // assertRecentlyViewedItem(2, "People", "Table");
+    assertRecentlyViewedItem(2, "People", "Table");
   });
 });
 

@@ -41,7 +41,8 @@ const recentsData = [
     max_ts: "2021-08-24T23:49:34.577",
     model_object: {
       id: 1,
-      name: "Table I visited",
+      name: "table_i_visited",
+      display_name: "Table I visited",
     },
   },
 ];

@@ -21,6 +21,8 @@ import {
 } from "./RecentsList.styled";
 
 const getItemKey = ({ model, model_id }) => `${model}:${model_id}`;
+const getItemName = model_object =>
+  model_object.display_name || model_object.name;
 
 export default function RecentsList() {
   return (
@@ -50,7 +52,7 @@ export default function RecentsList() {
                       <ItemIcon item={item} type={item.model} />
                       <div>
                         <Title data-testid="recently-viewed-item-title">
-                          {item.model_object.name}
+                          {getItemName(item.model_object)}
                         </Title>
                         <Text data-testid="recently-viewed-item-type">
                           {getTranslatedEntityName(item.model)}
