@@ -6,6 +6,7 @@
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.interface :as mi]
+            [metabase.models.table :refer [Table]]
             [metabase.models.view-log :refer [ViewLog]]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]))
@@ -66,11 +67,12 @@
                            add-model-exists-info)))
 
 (defn- view-log-entry->matching-object [{:keys [model model_id]}]
-  (when (contains? #{"card" "dashboard"} model)
+  (when (contains? #{"card" "dashboard" "table"} model)
     (db/select-one
         (case model
           "card"      [Card      :id :name :collection_id :description :display :dataset_query]
-          "dashboard" [Dashboard :id :name :collection_id :description])
+          "dashboard" [Dashboard :id :name :collection_id :description]
+          "table"     [Table     :id :name :db_id])
         :id model_id)))
 
 (defendpoint GET "/recent_views"
