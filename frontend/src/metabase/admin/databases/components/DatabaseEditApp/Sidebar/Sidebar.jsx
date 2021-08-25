@@ -72,7 +72,7 @@ const DatabaseEditAppSidebar = ({
               >
                 <DeleteDatabaseModal
                   database={database}
-                  onClose={() => this.deleteDatabaseModal.current.toggle()}
+                  onClose={() => deleteDatabaseModal.current.toggle()}
                   onDelete={() => deleteDatabase(database.id, true)}
                 />
               </ModalWithTrigger>
