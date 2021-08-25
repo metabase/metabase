@@ -1,5 +1,6 @@
 (ns metabase.moderation
   (:require [clojure.string :as str]
+            [medley.core :as m]
             [metabase.util :as u]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -43,6 +44,16 @@
           nil
           (let [k ((juxt (comp keyword object->type) u/the-id) item)]
             (assoc item :moderation_reviews (get all-reviews k ()))))))))
+
+(defn moderation-user-details
+  "User details on moderation reviews"
+  {:batched-hydrate :moderator_details}
+  [moderation-reviews]
+  (when (seq moderation-reviews)
+    (let [id->user (m/index-by :id
+                               (db/select 'User :id [:in (map :moderator_id moderation-reviews)]))]
+      (for [mr moderation-reviews]
+        (assoc mr :user (get id->user (:moderator_id mr)))))))
 
 (defn moderated-item
   "The moderated item for a given request or review"
