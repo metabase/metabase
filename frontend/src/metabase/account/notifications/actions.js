@@ -12,5 +12,5 @@ export const navigateToArchive = (item, type, hasUnsubscribed) => {
 };
 
 export const navigateToHelp = () => {
-  return push("${PREFIX}/help");
+  return push(`${PREFIX}/help`);
 };
