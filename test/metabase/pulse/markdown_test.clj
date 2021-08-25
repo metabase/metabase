@@ -14,14 +14,15 @@
 
 (deftest process-markdown-slack-test
   (testing "Headers are converted to bold text"
-    (is (= "*header*" (mrkdwn "# header")))
-    (is (= "*header*" (mrkdwn "## header")))
-    (is (= "*header*" (mrkdwn "### header")))
-    (is (= "*header*" (mrkdwn "#### header")))
-    (is (= "*header*" (mrkdwn "##### header")))
-    (is (= "*header*" (mrkdwn "###### header")))
-    (is (= "*header*" (mrkdwn "header\n=========")))
-    (is (= "*header*" (mrkdwn "header\n---------"))))
+    (is (= "*header*"          (mrkdwn "# header")))
+    (is (= "*header*"          (mrkdwn "## header")))
+    (is (= "*header*"          (mrkdwn "### header")))
+    (is (= "*header*"          (mrkdwn "#### header")))
+    (is (= "*header*"          (mrkdwn "##### header")))
+    (is (= "*header*"          (mrkdwn "###### header")))
+    (is (= "*header*"          (mrkdwn "header\n=========")))
+    (is (= "*header*"          (mrkdwn "header\n---------")))
+    (is (= "*header*\ncontent" (mrkdwn "# header\ncontent"))))
 
   (testing "Bold and italic text uses Slack's syntax"
     (is (= "*bold*"   (mrkdwn "**bold**")))
@@ -155,8 +156,4 @@
   (testing "HTML entities (outside of HTML tags) are converted to Unicode"
     (is (= "&" (mrkdwn "&amp;")))
     (is (= ">" (mrkdwn "&gt;")))
-    (is (= "ℋ" (mrkdwn "&HilbertSpace;"))))
-
-  (testing "mrkdwn that exceeds the length limit for Slack is truncated"
-    (binding [md/*slack-mrkdwn-length-limit* 10]
-      (is (= "abcdefghi…" (mrkdwn "abcdefghijklmnopqrstuvwxyz"))))))
+    (is (= "ℋ" (mrkdwn "&HilbertSpace;")))))

@@ -57,106 +57,106 @@
   (node-to-tag-mapping (type node)))
 
 (defprotocol ^:private ASTNode
-  (to-clojure [this _]))
+  (to-clojure [this]))
 
-(defn- convert-children [node source]
-  (map #(to-clojure % source) (.getChildren ^Node node)))
+(defn- convert-children [node]
+  (map to-clojure (.getChildren ^Node node)))
 
 (extend-protocol ASTNode
   Node
-  (to-clojure [this source]
+  (to-clojure [this]
     {:tag     (node-to-tag this)
      :attrs   {}
-     :content (convert-children this source)})
+     :content (convert-children this)})
 
   Text
-  (to-clojure [this _]
+  (to-clojure [this]
     (str (.getChars this)))
 
   FencedCodeBlock
-  (to-clojure [this source]
+  (to-clojure [this]
     {:tag     (node-to-tag this)
      :attrs   {}
      :content (str (.getContentChars this))})
 
   IndentedCodeBlock
-  (to-clojure [this _]
+  (to-clojure [this]
     {:tag     (node-to-tag this)
      :attrs   {}
      :content (str (.getContentChars this))})
 
   Link
-  (to-clojure [this source]
+  (to-clojure [this]
     {:tag     (node-to-tag this)
      :attrs   {:href (str (.getUrl this))
                :title (not-empty (str (.getTitle this)))}
-     :content (convert-children this source)})
+     :content (convert-children this)})
 
   Reference
-  (to-clojure [this _]
+  (to-clojure [this]
     {:tag   (node-to-tag this)
      :attrs {:title (not-empty (str (.getTitle this)))
              :label (str (.getReference this))
              :url (str (.getUrl this))}})
 
   LinkRef
-  (to-clojure [this source]
+  (to-clojure [this]
     {:tag     (node-to-tag this)
      :attrs   {:reference (-> (.getDocument this)
                               (.get Parser/REFERENCES)
                               (get (str/lower-case (str (.getReference this))))
-                              (#(to-clojure % source)))}
-     :content (convert-children this source)})
+                              to-clojure)}
+     :content (convert-children this)})
 
   ImageRef
-  (to-clojure [this source]
+  (to-clojure [this]
     {:tag     (node-to-tag this)
      :attrs   {:reference (-> (.getDocument this)
                               (.get Parser/REFERENCES)
                               (get (str/lower-case (str (.getReference this))))
-                              (#(to-clojure % source)))}
-     :content (convert-children this source)})
+                              to-clojure)}
+     :content (convert-children this)})
 
   Image
-  (to-clojure [this _]
+  (to-clojure [this]
     {:tag   (node-to-tag this)
      :attrs {:src (str (.getUrl this))
              :alt (str (.getText this))
              :title (not-empty (str (.getTitle this)))}})
 
   AutoLink
-  (to-clojure [this _]
+  (to-clojure [this]
     {:tag   (node-to-tag this)
      :attrs {:href (str (.getUrl this))}})
 
   MailLink
-  (to-clojure [this _]
+  (to-clojure [this]
     {:tag   (node-to-tag this)
      :attrs {:address (str (.getText this))}})
 
   HtmlEntity
-  (to-clojure [this _]
+  (to-clojure [this]
     {:tag (node-to-tag this)
      :content (str (.getChars this))})
 
   HtmlBlock
-  (to-clojure [this _]
+  (to-clojure [this]
     (str (.getChars this)))
 
   HtmlInline
-  (to-clojure [this _]
+  (to-clojure [this]
     (str (.getChars this)))
 
   HtmlCommentBlock
-  (to-clojure [this _]
+  (to-clojure [this]
     (str (.getChars this)))
 
   HtmlInlineComment
-  (to-clojure [this _]
+  (to-clojure [this]
     (str (.getChars this)))
 
   nil
-  (to-clojure [this _]
+  (to-clojure [this]
     nil))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -222,7 +222,10 @@
       :hard-line-break
       "\n"
 
-      (:heading :bold)
+      (:heading)
+      (str "*" joined-content "*\n")
+
+      :bold
       (str "*" joined-content "*")
 
       :italic
@@ -294,27 +297,14 @@
 
       joined-content)))
 
-(def ^:private ^:dynamic *slack-mrkdwn-length-limit*
-  3000)
-
-(defn- truncate-mrkdwn
-  "If a string is greater than Slack's length limit, truncates it to fit the limit and
-  adds an ellipsis character to the end."
-  [mrkdwn]
-  (if (> (count mrkdwn) *slack-mrkdwn-length-limit*)
-    (-> mrkdwn
-        (subs 0 (dec *slack-mrkdwn-length-limit*))
-        (str "…"))
-    mrkdwn))
-
 (defmulti process-markdown
-  "Converts a markdown string from a virtual card into a form that can be sent to the provided channel type
+  "Converts a markdown string from a virtual card into a form that can be sent to a channel
   (mrkdwn for Slack; HTML for email)."
   (fn [_markdown channel-type] channel-type))
 
-(defmethod process-markdown :slack
+(defmethod process-markdown :mrkdwn
   [markdown _]
-  (-> (to-clojure (.parse ^Parser @parser ^String markdown) markdown)
+  (-> (.parse ^Parser @parser ^String markdown)
+      to-clojure
       ast->mrkdwn
-      str/trim
-      truncate-mrkdwn))
+      str/trim))

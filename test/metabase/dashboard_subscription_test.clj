@@ -243,3 +243,20 @@
                                :text {:type "mrkdwn"
                                       :text "*header*"}}]}]}
                   (thunk->boolean pulse-results)))))}}))
+
+(deftest mrkdwn-length-limit-test
+  (tests {:pulse {:skip_if_empty false}}
+    "Dashboard subscription that includes a Markdown card that exceeds Slack's length limit when converted to mrkdwn"
+    {:card (checkins-query-card {})
+
+     :fixture
+     (fn [{dashboard-id :dashboard-id} thunk]
+       (mt/with-temp DashboardCard [_ {:dashboard_id dashboard-id, :visualization_settings {:text "abcdefghijklmnopqrstuvwxyz"}}]
+         (binding [pulse/*slack-mrkdwn-length-limit* 10]
+           (thunk))))
+
+     :assert
+     {:slack
+      (fn [{:keys [card-id]} [pulse-results]]
+        (is (= {:blocks [{:type "section" :text {:type "mrkdwn" :text "abcdefghi…"}}]}
+               (-> (thunk->boolean pulse-results) :attachments second))))}}))

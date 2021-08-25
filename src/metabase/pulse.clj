@@ -133,6 +133,19 @@
     :below (trs "gone below its goal")
     :rows  (trs "results")))
 
+(def ^:private ^:dynamic *slack-mrkdwn-length-limit*
+  3000)
+
+(defn- truncate-mrkdwn
+  "If a mrkdwn string is greater than Slack's length limit, truncates it to fit the limit and
+  adds an ellipsis character to the end."
+  [mrkdwn]
+  (if (> (count mrkdwn) *slack-mrkdwn-length-limit*)
+    (-> mrkdwn
+        (subs 0 (dec *slack-mrkdwn-length-limit*))
+        (str "…"))
+    mrkdwn))
+
 (defn create-slack-attachment-data
   "Returns a seq of slack attachment data structures, used in `create-and-upload-slack-attachments!`"
   [card-results]
@@ -146,11 +159,11 @@
                 :attachment-name "image.png"
                 :channel-id      channel-id
                 :fallback        card-name}
-               (let [mrkdwn (markdown/process-markdown (:text card-result) :slack)]
+               (let [mrkdwn (markdown/process-markdown (:text card-result) :mrkdwn)]
                  (when (not (str/blank? mrkdwn))
                    {:blocks [{:type "section"
                               :text {:type "mrkdwn"
-                                     :text mrkdwn}}]})))))
+                                     :text (truncate-mrkdwn mrkdwn)}}]})))))
          (remove nil?))))
 
 (def slack-width
