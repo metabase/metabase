@@ -1,7 +1,6 @@
 (ns metabase-enterprise.enhancements.models.permissions.block-permissions
   (:require [metabase.api.common :as api]
             [metabase.models.permissions :as perms]
-            [metabase.models.query.permissions :as query.perms]
             [metabase.public-settings.metastore :as settings.metastore]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util.i18n :refer [tru]]))
@@ -9,11 +8,6 @@
 (defn- current-user-has-block-permissions-for-database?
   [database-or-id]
   (contains? @api/*current-user-permissions-set* (perms/database-block-perms-path database-or-id)))
-
-(defn- has-data-perms? [query]
-  (perms/set-has-full-permissions-for-set?
-   @api/*current-user-permissions-set*
-   (query.perms/perms-set query, :already-preprocessed? true)))
 
 (defn check-block-permissions
   "Assert that block permissions are not in effect for Database for a query that's only allowed to run because of
