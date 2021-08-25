@@ -6,7 +6,7 @@
 
 (defn- mrkdwn
   [markdown]
-  (md/process-markdown markdown :slack))
+  (md/process-markdown markdown :mrkdwn))
 
 (defn- escape
   [text]
