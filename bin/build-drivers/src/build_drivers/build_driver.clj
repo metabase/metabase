@@ -14,7 +14,7 @@
 (defn build-driver!
   ;; 1-arity that takes just a map is mean for use directly with clojure -X
   ([{:keys [driver edition], :as options}]
-   (build-driver! driver edition (dissoc options [:driver :edition])))
+   (build-driver! driver edition (dissoc options :driver :edition)))
 
   ([driver edition]
    (build-driver! driver edition nil))
