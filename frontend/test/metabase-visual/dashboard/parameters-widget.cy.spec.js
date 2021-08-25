@@ -22,8 +22,8 @@ describe("visual tests > dashboard > parameters widget", () => {
     cy.signInAsAdmin();
 
     cy.createQuestionAndDashboard({ questionDetails }).then(
-      ({ body: oldCard }) => {
-        const { dashboard_id } = oldCard;
+      ({ body: card }) => {
+        const { dashboard_id } = card;
 
         cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
           parameters: filters,
@@ -34,7 +34,7 @@ describe("visual tests > dashboard > parameters widget", () => {
           sizeY: 32,
         };
 
-        cy.editDashboardCard(oldCard, updatedSize);
+        cy.editDashboardCard(card, updatedSize);
 
         cy.visit(`/dashboard/${dashboard_id}`);
       },

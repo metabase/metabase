@@ -2,15 +2,15 @@ import styled, { css } from "styled-components";
 import colors, { lighten } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 
-// NOTE: whitelabeling/theming mutates colors object so we need to make it lazy
-const TEXT_COLOR_BY_VARIANT = {
-  default: () => colors["brand"],
-  admin: () => colors["text-medium"],
-};
-
-const BACKGROUND_COLOR_BY_VARIANT = {
-  default: () => colors["brand"],
-  admin: () => colors["accent7"],
+const COLOR_SCHEMES = {
+  admin: {
+    text: () => colors["text-medium"],
+    background: () => colors["accent7"],
+  },
+  default: {
+    text: () => colors["brand"],
+    background: () => colors["brand"],
+  },
 };
 
 export const TreeNodeRoot = styled.li`
@@ -19,9 +19,9 @@ export const TreeNodeRoot = styled.li`
   color: ${props =>
     props.isSelected
       ? colors["white"]
-      : TEXT_COLOR_BY_VARIANT[props.variant]()};
+      : COLOR_SCHEMES[props.colorScheme].text()};
   background-color: ${props =>
-    props.isSelected ? BACKGROUND_COLOR_BY_VARIANT[props.variant]() : "unset"};
+    props.isSelected ? COLOR_SCHEMES[props.colorScheme].background() : "unset"};
   padding-left: ${props => props.depth + 0.5}rem;
   padding-right: 0.5rem;
   cursor: pointer;
@@ -30,8 +30,8 @@ export const TreeNodeRoot = styled.li`
   &:hover {
     background-color: ${props =>
       props.isSelected
-        ? BACKGROUND_COLOR_BY_VARIANT[props.variant]()
-        : lighten(BACKGROUND_COLOR_BY_VARIANT[props.variant](), 0.6)};
+        ? COLOR_SCHEMES[props.colorScheme].background()
+        : lighten(COLOR_SCHEMES[props.colorScheme].background(), 0.6)};
   }
 `;
 
@@ -75,5 +75,5 @@ export const RightArrowContainer = styled.div`
   color: ${props =>
     props.isSelected
       ? colors["white"]
-      : TEXT_COLOR_BY_VARIANT[props.variant]()};
+      : COLOR_SCHEMES[props.colorScheme].text()};
 `;

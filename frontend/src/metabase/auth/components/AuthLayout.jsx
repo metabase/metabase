@@ -17,7 +17,7 @@ const AuthLayout = ({ children }) => (
   >
     <Flex mt={-4} flexDirection="column">
       <LogoIcon height={65} />
-      <Card p={3} mt={3} className="relative z2" w={420}>
+      <Card p={3} mt={3} className="relative z2" width={420}>
         {children}
       </Card>
     </Flex>

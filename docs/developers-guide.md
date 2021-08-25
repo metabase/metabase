@@ -128,7 +128,7 @@ which will run unit and Cypress end-to-end tests in sequence.
 
 ### Cypress end-to-end tests
 
-End-to-end tests simulate realistic sequences of user interactions. Read more about how we approach end-to-end testing with Cypress in our [wiki page](https://github.com/metabase/metabase/wiki/E2E-Tests-with-Cypress).
+End-to-end tests simulate realistic sequences of user interactions. Read more about how we approach [end-to-end testing with Cypress](developers-e2e-tests.md).
 
 Cypress end-to-end tests use an enforced file naming convention `<test-suite-name>.cy.spec.js` to separate them from unit tests.
 

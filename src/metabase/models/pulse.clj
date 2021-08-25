@@ -44,13 +44,34 @@
                     {:parameters parameters}))))
 
 (defn- pre-insert [notification]
-  (let [defaults     {:parameters []}
-        notification (apply merge defaults (for [[k v] notification :when (some? v)] {k v}))]
+  (let [defaults      {:parameters []}
+        dashboard-id  (:dashboard_id notification)
+        collection-id (if dashboard-id
+                        (db/select-one-field :collection_id 'Dashboard, :id dashboard-id)
+                        (:collection_id notification))
+        notification  (->> (for [[k v] notification
+                                 :when (some? v)]
+                             {k v})
+                           (apply merge defaults {:collection_id collection-id}))]
     (u/prog1 notification
       (assert-valid-parameters notification)
       (collection/check-collection-namespace Pulse (:collection_id notification)))))
 
+(def ^:dynamic *allow-moving-dashboard-subscriptions*
+  "If true, allows the collection_id on a dashboard subscription to be modified. This should
+  only be done when the associated dashboard is being moved to a new collection."
+  false)
+
 (defn- pre-update [notification]
+  (let [{:keys [collection_id dashboard_id]} (db/select-one [Pulse :collection_id :dashboard_id] :id (u/the-id notification))]
+    (when (and dashboard_id
+               (not= (:collection_id notification) collection_id)
+               (not *allow-moving-dashboard-subscriptions*))
+      (throw (ex-info (tru "collection ID of dashboard subscription cannot be directly modified") notification)))
+    (when (and dashboard_id
+               (contains? notification :dashboard_id)
+               (not= (:dashboard_id notification) dashboard_id))
+      (throw (ex-info (tru "dashboard ID of a dashboard subscription cannot be modified") notification))))
   (u/prog1 notification
     (assert-valid-parameters notification)
     (collection/check-collection-namespace Pulse (:collection_id notification))))
@@ -218,38 +239,57 @@
           hydrate-notification
           notification->alert))
 
+(defn- query-as [model query]
+  (db/do-post-select model (db/query query)))
+
 (s/defn retrieve-alerts :- [PulseInstance]
   "Fetch all Alerts."
   ([]
    (retrieve-alerts nil))
 
-  ([{:keys [archived?]
+  ([{:keys [archived? user-id]
      :or   {archived? false}}]
-   (for [alert (hydrate-notifications (db/select Pulse
-                                        :alert_condition [:not= nil]
-                                        :archived        archived?
-                                        {:order-by [[:%lower.name :asc]]}))
-         :let [alert (notification->alert alert)]
-         ;; if for whatever reason the Alert doesn't have a Card associated with it (e.g. the Card was deleted) don't
-         ;; return the Alert -- it's basically orphaned/invalid at this point. See #13575 -- we *should* be deleting
-         ;; Alerts if their associated PulseCard is deleted, but that's not currently the case.
-         :when (:card alert)]
-     alert)))
-
-(defn- query-as [model query]
-  (db/do-post-select model (db/query query)))
+   (let [query {:select    [:p.* [:%lower.p.name :lower-name]]
+                :modifiers [:distinct]
+                :from      [[Pulse :p]]
+                :left-join (when user-id
+                             [[PulseChannel :pchan] [:= :p.id :pchan.pulse_id]
+                              [PulseChannelRecipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]])
+                :where     [:and
+                            [:not= :p.alert_condition nil]
+                            [:= :p.archived archived?]
+                            (when user-id
+                              [:or
+                               [:= :p.creator_id user-id]
+                               [:= :pcr.user_id user-id]])]
+                :order-by  [[:lower-name :asc]]}]
+     (for [alert (hydrate-notifications (query-as Pulse query))
+           :let [alert (notification->alert alert)]
+          ;; if for whatever reason the Alert doesn't have a Card associated with it (e.g. the Card was deleted) don't
+          ;; return the Alert -- it's basically orphaned/invalid at this point. See #13575 -- we *should* be deleting
+          ;; Alerts if their associated PulseCard is deleted, but that's not currently the case.
+           :when (:card alert)]
+       alert))))
 
 (s/defn retrieve-pulses :- [PulseInstance]
   "Fetch all `Pulses`."
-  [{:keys [archived? dashboard-id]
+  [{:keys [archived? dashboard-id user-id]
     :or   {archived? false}}]
   (let [query {:select    [:p.* [:%lower.p.name :lower-name]]
                :modifiers [:distinct]
                :from      [[Pulse :p]]
+               :left-join (when user-id
+                            [[PulseChannel :pchan] [:= :p.id :pchan.pulse_id]
+                             [PulseChannelRecipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]])
                :where     [:and
                            [:= :p.alert_condition nil]
                            [:= :p.archived archived?]
-                           [:= :p.dashboard_id dashboard-id]]
+                           (when dashboard-id
+                             [:= :p.dashboard_id dashboard-id])
+                           (when user-id
+                             [:or
+                              [:= :p.creator_id user-id]
+                              [:= :pcr.user_id user-id]])]
                :order-by  [[:lower-name :asc]]}]
     (for [pulse (query-as Pulse query)]
       (-> pulse
