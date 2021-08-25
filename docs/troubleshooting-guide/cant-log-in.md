@@ -14,8 +14,9 @@ You should be able to log in to Metabase, but:
 1. If Metabase is managing your account, or if your instance is using LDAP, you will typically log in directly using an email address and password.
 2. If some other service (like Google) is managing your credentials, you will typically see a single button that launches a pop-up dialog when you log in.
 3. If a Metabase question or dashboard is embedded in another website or web application, that site or application determines who you are. It may pass on your identity to Metabase to control what data you are allowed to view---please see [our troubleshooting guide for sandboxing][sandboxing] if you are having trouble with this.
+4. If you are using Metabase Cloud, the password for the Metabase store (where you pay for things) is not automatically the same as the password for your Metabase instance (where you log in to look at data).
 
-If you are an administrator, you can go to **Admin Panel** and select **People**, then search for a user and look for an icon beside their name. If they log in using Google credentials, Metabase displays a Google icon. If they log in using an email address and password stored in Metababse, no icon is shown. FIXME: what other situations?
+If you are an administrator, you can go to **Admin Panel** and select **People**, then search for a user and look for an icon beside their name. If they log in using Google credentials, Metabase displays a Google icon. If they log in using an email address and password stored in Metababse, no icon is shown. Note that the type of user is set when the account is first created: if you create a user in Metabase, but that person then logs in via Google or some other form of SSO, the latter's icon will *not* show up next to their name.
 
 If you are an administrator and want to check SSO settings, go to **Admin Panel**, choose **Settings**, then select the **Authentication** tab.  [This FAQ][auth] explains how to configure SSO for various providers.
 
@@ -33,11 +34,19 @@ If you are an administrator and want to check SSO settings, go to **Admin Panel*
    2. If your Metabase administrator has [set up email][setting-up-email] you will receive a password reset email.
    3. If email has not been configured, you will need to contact a Metabase admin to perform a password reset.
 
+## If you are using Metabase Cloud, are you trying to use the correct password?
+
+**Root cause:** 
+
 ## Do you need to reset the admin password?
 
 **Root cause:** You have forgotten the overall admin password for a Metabase instance.
 
-**Steps to take:** If you're the administrator of a Metabase instance and have access to the server console, but have forgotten the password for the admin account, you can get Metabase to send you a password reset token.
+**Steps to take:**
+
+If you are using Metabase Cloud, contact support to have your admin password reset.
+
+If you're the administrator of a Metabase instance and have access to the server console, but have forgotten the password for the admin account, you can get Metabase to send you a password reset token:
 
 1.  Stop the running Metabase application.
 2.  Restart Metabase with `reset-password email@example.com`, where "email@example.com" is the email associated with the admin account:
