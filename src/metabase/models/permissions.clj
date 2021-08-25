@@ -165,9 +165,9 @@
     /db/:id/schema/:name/table/:id/                 ; full perms for a Table
     /db/:id/schema/:name/table/:id/read/            ; perms to fetch info about this Table from the DB
     /db/:id/schema/:name/table/:id/query/           ; ad-hoc MBQL query perms for a Table
-    /db/:id/schema/:name/table/:id/query/segmented/ ; [GRANT ONLY] allow ad-hoc MBQL queries. Sandbox all queries against this Table.
-    /block/db/:id/                                  ; [GRANT ONLY] disallow queries against this DB unless User has data perms.
-    /                                               ; [GRANT ONLY] full root perms"
+    /db/:id/schema/:name/table/:id/query/segmented/ ; allow ad-hoc MBQL queries. Sandbox all queries against this Table.
+    /block/db/:id/                                  ; disallow queries against this DB unless User has data perms.
+    /                                               ; full root perms"
   (:require [clojure.core.match :refer [match]]
             [clojure.data :as data]
             [clojure.string :as str]
@@ -219,7 +219,7 @@
   (u.regex/rx (or #"[^\\/]" #"\\/" #"\\\\")))
 
 (def ^:private path-regex
-  "Regex for a valid permissions path. The [[metabase.util.regex/rx]] macro is used to make the big-and-hairy macro
+  "Regex for a valid permissions path. The [[metabase.util.regex/rx]] macro is used to make the big-and-hairy regex
   somewhat readable."
   (u.regex/rx "^/"
               ;; any path starting with /db/ is a DATA PERMISSIONS path

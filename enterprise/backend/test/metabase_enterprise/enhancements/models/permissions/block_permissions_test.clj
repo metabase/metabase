@@ -165,15 +165,14 @@
               (testing "\nAllow running if current User has data permissions from another group."
                 (mt/with-temp* [PermissionsGroup           [{group-2-id :id}]
                                 PermissionsGroupMembership [_ {:group_id group-2-id, :user_id user-id}]]
-                  (comment
-                    (doseq [[message perms] {"with full DB perms"                   (perms/data-perms-path (mt/id))
-                                             "with perms for the Table in question" (perms/table-query-path (mt/id :venues))}]
-                      (mt/with-temp Permissions [_ {:group_id group-2-id, :object perms}]
-                        (testing "Should be able to run the query"
-                          (doseq [[message f] {"ad-hoc queries"  run-ad-hoc-query
-                                               "Saved Questions" run-saved-question}]
-                            (testing message
-                              (is (f))))))))
+                  (doseq [[message perms] {"with full DB perms"                   (perms/data-perms-path (mt/id))
+                                           "with perms for the Table in question" (perms/table-query-path (mt/id :venues))}]
+                    (mt/with-temp Permissions [_ {:group_id group-2-id, :object perms}]
+                      (testing "Should be able to run the query"
+                        (doseq [[message f] {"ad-hoc queries"  run-ad-hoc-query
+                                             "Saved Questions" run-saved-question}]
+                          (testing message
+                            (is (f)))))))
                   (testing "\nSandboxed permissions"
                     (metastore-test/with-metastore-token-features #{:enhancements :sandboxing}
                       (mt/with-temp* [Permissions            [_ {:group_id group-2-id
