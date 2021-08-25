@@ -65,6 +65,7 @@ describe("visual tests > account > notifications", () => {
 
   it("renders notifications", () => {
     cy.visit("/account/notifications");
+    cy.findByText("Question");
     cy.percySnapshot();
   });
 });
