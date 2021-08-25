@@ -72,7 +72,7 @@
         (case model
           "card"      [Card      :id :name :collection_id :description :display :dataset_query]
           "dashboard" [Dashboard :id :name :collection_id :description]
-          "table"     [Table     :id :name :db_id])
+          "table"     [Table     :id :name :db_id :display_name])
         :id model_id)))
 
 (defendpoint GET "/recent_views"
