@@ -20,7 +20,7 @@ export const JoinClauseContainer = styled.div`
 
 export const JoinClauseRoot = styled.div`
   display: flex;
-  align-items: center;
+  align-items: baseline;
   margin-bottom: ${props => (props.isLast ? 0 : "2px")};
 `;
 
