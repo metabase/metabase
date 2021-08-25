@@ -6,6 +6,7 @@ import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import Button from "metabase/components/Button";
 import ModalContent from "metabase/components/ModalContent";
 import FormMessage from "metabase/components/form/FormMessage";
+import { ModalMessage } from "./ArchiveModal.styled";
 
 const propTypes = {
   item: PropTypes.object.isRequired,
@@ -28,7 +29,7 @@ const ArchiveModal = ({
 
   const handleArchiveClick = useCallback(async () => {
     try {
-      await onArchive(item);
+      await onArchive(item, true);
       onClose();
     } catch (error) {
       setError(error);
@@ -37,7 +38,7 @@ const ArchiveModal = ({
 
   return (
     <ModalContent
-      title={getTitleMessage(type)}
+      title={getTitleMessage(type, hasUnsubscribed)}
       footer={[
         error ? <FormMessage key="message" formError={error} /> : null,
         <Button key="cancel" onClick={onClose}>
@@ -50,15 +51,15 @@ const ArchiveModal = ({
       onClose={onClose}
     >
       {isCreator(item, user) && hasUnsubscribed && (
-        <div>
-          {getCreatorMessage(user)}
+        <ModalMessage>
+          {getCreatorMessage(type, user)}
           {t`As the creator you can also choose to delete this if it’s no longer relevant to others as well.`}
-        </div>
+        </ModalMessage>
       )}
-      <div>
+      <ModalMessage>
         {getDateMessage(item, type)}
         {getRecipientsMessage(item)}
-      </div>
+      </ModalMessage>
     </ModalContent>
   );
 };
@@ -93,8 +94,13 @@ const getSubmitMessage = (type, hasUnsubscribed) => {
   }
 };
 
-const getCreatorMessage = user => {
-  return t`You won’t receive this alert at ${user.email} any more.`;
+const getCreatorMessage = (type, user) => {
+  switch (type) {
+    case "alert":
+      return t`You won’t receive this alert at ${user.email} any more. `;
+    case "pulse":
+      return t`You won’t receive this subscription at ${user.email} any more. `;
+  }
 };
 
 const getDateMessage = (item, type) => {

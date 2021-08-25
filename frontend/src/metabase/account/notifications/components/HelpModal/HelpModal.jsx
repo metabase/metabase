@@ -4,7 +4,7 @@ import { jt, t } from "ttag";
 import Settings from "metabase/lib/settings";
 import Button from "metabase/components/Button";
 import ModalContent from "metabase/components/ModalContent";
-import { FormLink, FormMessage } from "./HelpModal.styled";
+import { ModalLink, ModalMessage } from "./HelpModal.styled";
 
 const propTypes = {
   onClose: PropTypes.func,
@@ -23,13 +23,13 @@ const HelpModal = ({ onClose }) => {
       }
       onClose={onClose}
     >
-      <FormMessage>
+      <ModalMessage>
         {t`It’s possible you may also receive emails from Metabase if you’re a member of an email distribution list, like “team@mycompany.com” and that list is used as the recipient for an alert or dashboard subscription instead of your individual email.`}
-      </FormMessage>
-      <FormMessage>
+      </ModalMessage>
+      <ModalMessage>
         {getAdminMessage(email)}
         {t`Hopefully they’ll be able to help you out!`}
-      </FormMessage>
+      </ModalMessage>
     </ModalContent>
   );
 };
@@ -37,7 +37,7 @@ const HelpModal = ({ onClose }) => {
 HelpModal.propTypes = propTypes;
 
 const getAdminLink = (email, text) => {
-  return email ? <FormLink href={`mailto:${email}`}>{text}</FormLink> : text;
+  return email ? <ModalLink href={`mailto:${email}`}>{text}</ModalLink> : text;
 };
 
 const getAdminMessage = email => {
