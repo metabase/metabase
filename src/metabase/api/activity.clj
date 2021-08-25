@@ -62,8 +62,8 @@
   "Get recent activity."
   []
   (filter mi/can-read? (-> (db/select Activity, {:order-by [[:timestamp :desc]], :limit 40})
-                               (hydrate :user :table :database)
-                               add-model-exists-info)))
+                           (hydrate :user :table :database)
+                           add-model-exists-info)))
 
 (defn- view-log-entry->matching-object [{:keys [model model_id]}]
   (when (contains? #{"card" "dashboard"} model)

@@ -1,17 +1,20 @@
 import _ from "underscore";
 
-Cypress.Commands.add("editDashboardCard", (oldCard, newCard) => {
-  const { id, dashboard_id } = oldCard;
+Cypress.Commands.add(
+  "editDashboardCard",
+  (dashboardCard, updatedProperties) => {
+    const { id, dashboard_id } = dashboardCard;
 
-  const cleanOldCard = sanitizeCard(oldCard);
+    const cleanCard = sanitizeCard(dashboardCard);
 
-  const updatedCard = Object.assign({}, cleanOldCard, newCard);
+    const updatedCard = Object.assign({}, cleanCard, updatedProperties);
 
-  cy.log(`Edit dashboard card ${id}`);
-  cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-    cards: [updatedCard],
-  });
-});
+    cy.log(`Edit dashboard card ${id}`);
+    cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+      cards: [updatedCard],
+    });
+  },
+);
 
 /**
  * Remove `created_at` and `updated_at` fields from the dashboard card that was previously added to the dashboard.

@@ -4,5 +4,5 @@ If you're using Metabase version 0.32 or earlier, you'll need to either write a 
 
 If you are using Metabase 0.33 or above, you can [perform joins using the Notebook editor][notebook-editor-joins], but you should probably upgrade anyway.
 
-[editing-metadata]: ../../administration-guide/03-metadata-editing.md
+[editing-metadata]: ../../administration-guide/03-metadata-editing.html
 [notebook-editor-joins]: /learn/questions/joins-in-metabase.html

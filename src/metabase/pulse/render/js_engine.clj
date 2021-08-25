@@ -1,4 +1,11 @@
 (ns metabase.pulse.render.js-engine
+  "Graal polyglot context suitable for executing javascript code.
+
+  We run the js in interpreted mode and turn off the warning with the `(option \"engine.WarnInterpreterOnly\"
+  \"false\")`. Ideally we would compile the javascript but this is difficult when using the graal ecosystem in a non
+  graal jdk. See https://github.com/oracle/graaljs/blob/master/docs/user/RunOnJDK.md for more information.
+
+  Javadocs: https://www.graalvm.org/truffle/javadoc/overview-summary.html"
   (:require [clojure.java.io :as io])
   (:import [org.graalvm.polyglot Context HostAccess Source Value]))
 
@@ -6,6 +13,8 @@
   "Create a new org.graalvm.polyglot.Context suitable to evaluate javascript"
   []
   (.. (Context/newBuilder (into-array String ["js"]))
+      ;; https://github.com/oracle/graaljs/blob/master/docs/user/RunOnJDK.md
+      (option "engine.WarnInterpreterOnly" "false")
       (allowHostAccess HostAccess/ALL)
       (allowHostClassLookup (reify java.util.function.Predicate
                               (test [_ _] true)))

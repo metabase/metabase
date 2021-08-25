@@ -590,10 +590,10 @@
 
                                                        ;; if user is controlling schedules
                                                        (:let-user-control-scheduling details)
-                                                       (sync.schedules/schedule-map->cron-strings (sync.schedules/scheduling schedules))
+                                                       (sync.schedules/schedule-map->cron-strings (sync.schedules/scheduling schedules))))))
                                                        ;; do nothing in the case that user is not in control of
                                                        ;; scheduling. leave them as they are in the db
-                                                       ))))
+
           (let [db (Database id)]
             (events/publish-event! :database-update db)
             ;; return the DB with the expanded schedules back in place

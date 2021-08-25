@@ -177,7 +177,7 @@
    (str (object-path database-or-id) "schema/" (escape-path-component schema-name) "/"))
 
   ([database-or-id :- MapOrID, schema-name :- (s/maybe s/Str), table-or-id :- MapOrID]
-   (str (object-path database-or-id schema-name) "table/" (u/the-id table-or-id) "/" )))
+   (str (object-path database-or-id schema-name) "table/" (u/the-id table-or-id) "/")))
 
 (s/defn adhoc-native-query-path :- ObjectPath
   "Return the native query read/write permissions path for a database.
@@ -674,8 +674,8 @@
   [old-graph new-graph]
   (when (not= (:revision old-graph) (:revision new-graph))
     (throw (ex-info (str (deferred-tru "Looks like someone else edited the permissions and your data is out of date.")
-                               " "
-                               (deferred-tru "Please fetch new data and try again."))
+                         " "
+                         (deferred-tru "Please fetch new data and try again."))
              {:status-code 409}))))
 
 (defn- save-perms-revision!

@@ -791,3 +791,29 @@
                     "have:dataset"
                     ""
                     (apply str (repeat 1055 "a")))))))
+
+(defn- project-id-prefix-if-set []
+  (if-let [proj-id (mt/db-test-env-var :bigquery-cloud-sdk :project-id)]
+    (str proj-id \.)
+    ""))
+
+(deftest multiple-counts-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "Count of count grouping works (#15074)"
+      (is (= {:query      (format (str "SELECT `source`.`count` AS `count`, count(*) AS `count` FROM "
+                                       "(SELECT date_trunc(`%1$sv3_test_data.checkins`.`date`, month) "
+                                       "AS `date`, "
+                                       "count(*) AS `count` FROM `%1$sv3_test_data.checkins` "
+                                       "GROUP BY `date` ORDER BY `date` ASC) `source` GROUP BY `source`.`count` "
+                                       "ORDER BY `source`.`count` ASC")
+                                  (project-id-prefix-if-set))
+              :params     nil
+              :table-name "source"
+              :mbql?      true}
+            (qp/query->native
+              (mt/mbql-query checkins
+                {:aggregation  [[:count]],
+                 :breakout     [[:field "count" {:base-type :type/Integer}]],
+                 :source-query {:source-table (mt/id :checkins)
+                                :aggregation  [[:count]]
+                                :breakout     [!month.date]}})))))))

@@ -34,6 +34,7 @@ import { applyParameters, questionUrlWithParameters } from "metabase/meta/Card";
 import {
   getParameterValuesBySlug,
   getParameterValuesByIdFromQueryParams,
+  removeDefaultedParametersWithEmptyStringValue,
 } from "metabase/meta/Parameter";
 import * as Urls from "metabase/lib/urls";
 
@@ -738,6 +739,7 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
     const parameterValuesById = getParameterValuesByIdFromQueryParams(
       result.parameters,
       queryParams,
+      removeDefaultedParametersWithEmptyStringValue,
     );
 
     return {

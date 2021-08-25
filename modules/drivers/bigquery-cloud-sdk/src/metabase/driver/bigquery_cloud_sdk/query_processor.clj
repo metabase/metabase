@@ -582,32 +582,44 @@
   (let [table-name (db/select-one-field :name table/Table :id (u/the-id table-id))]
     (with-temporal-type (hx/identifier :field table-name field-name) (temporal-type field))))
 
+(defn- maybe-source-query-alias
+  "Returns an Identifer instance if the QP table alias is in effect, and the breakout is for a field alias. This is
+  neccessary in order to properly qualify the GROUP BY or ORDER BY field (a regular :field-alias identifier will only
+  use the final alias portion, not including the table alias in effect."
+  [breakout]
+  (when (and (vector? breakout) (some? sql.qp/*table-alias*))
+    (let [[_ f & _] breakout]
+      (when (string? f)
+        (hx/identifier :field sql.qp/*table-alias* f)))))
+
 (defmethod sql.qp/apply-top-level-clause [:bigquery-cloud-sdk :breakout]
   [driver _ honeysql-form {breakouts :breakout, fields :fields, :as query}]
-  (-> honeysql-form
+  (as-> honeysql-form new-hsql
       ;; Group by all the breakout fields.
       ;;
-      ;; Unlike other SQL drivers, BigQuery requires that we refer to Fields using the alias we gave them in the
-      ;; `SELECT` clause, rather than repeating their definitions.
-      ((partial apply h/group) (for [breakout breakouts
-                                     :let     [alias (or (sql.qp/field-clause->alias driver breakout)
-                                                         (throw (ex-info (tru "Error compiling SQL: breakout does not have an alias")
-                                                                         {:type     error-type/qp
-                                                                          :breakout breakout
-                                                                          :query    query})))]]
-                                 alias))
       ;; Add fields form only for fields that weren't specified in :fields clause -- we don't want to include it
       ;; twice, or HoneySQL will barf
-      ((partial apply h/merge-select) (for [field-clause breakouts
-                                            :when        (not (contains? (set fields) field-clause))]
-                                        (sql.qp/as driver field-clause)))))
+      (apply h/merge-select new-hsql (for [field-clause breakouts
+                                           :when        (not (contains? (set fields) field-clause))]
+                                       (sql.qp/as driver field-clause)))
+      ;; Unlike other SQL drivers, BigQuery requires that we refer to Fields using the alias we gave them in the
+      ;; `SELECT` clause, rather than repeating their definitions.
+      (apply h/group new-hsql (for [breakout breakouts
+                                    :let     [alias (or (maybe-source-query-alias breakout)
+                                                        (sql.qp/field-clause->alias driver breakout)
+                                                        (throw (ex-info (tru "Error compiling SQL: breakout does not have an alias")
+                                                                        {:type     error-type/qp
+                                                                         :breakout breakout
+                                                                         :query    query})))]]
+                                alias))))
 
 ;; as with breakouts BigQuery requires that you use the Field aliases in order by clauses, so override the methods for
 ;; compiling `:asc` and `:desc` and alias the Fields if applicable
 (defn- alias-order-by-field [driver [direction field-clause]]
   (let [field-clause (if (mbql.u/is-clause? :aggregation field-clause)
                        field-clause
-                       (sql.qp/field-clause->alias driver field-clause))]
+                       (or (maybe-source-query-alias field-clause)
+                           (sql.qp/field-clause->alias driver field-clause)))]
     ((get-method sql.qp/->honeysql [:sql direction]) driver [direction field-clause])))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :asc]  [driver clause] (alias-order-by-field driver clause))

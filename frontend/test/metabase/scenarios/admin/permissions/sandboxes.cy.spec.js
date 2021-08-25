@@ -740,17 +740,12 @@ describeWithToken("formatting > sandboxes", () => {
         native: { query: "SELECT CAST(ID AS VARCHAR) AS ID FROM ORDERS;" },
       });
 
-      cy.visit("/admin/permissions/databases/1/schemas");
-      cy.findByText("View tables").click();
-      // |                | All users | collection |
-      // |--------------- |:---------:|:----------:|
-      // | Orders         |   X (0)   |    X (1)   |
-
+      cy.visit("/admin/permissions/data/database/1/schema/PUBLIC/table/2");
       cy.wait("@tablePermissions");
       cy.icon("close")
         .eq(1) // No better way of doing this, undfortunately (see table above)
         .click();
-      cy.findByText("Grant sandboxed access").click();
+      cy.findByText("Sandboxed").click();
       cy.button("Change").click();
       cy.findByText(
         "Use a saved question to create a custom view for this table",
