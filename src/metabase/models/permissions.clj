@@ -13,10 +13,10 @@
   with `is_superuser`) is a member; and the [[metabase.models.permissions-group/metabot]] Group, which defines
   permissions for the MetaBot.
 
-  The permissions needed to perform an action are represented as path strings. Permissions paths are slash-delimited
-  strings such as `/db/1/schema/PUBLIC/`. Each slash represents a different part of the permissions path, and each
-  permissions path must start and end with a slash. Permissions use the same path representation for both the
-  permissions required to perform an action and the permissions that get granted to individual Groups.
+  The permissions needed to perform an action are represented as slash-delimited path strings, for example
+  `/db/1/schema/PUBLIC/`. Each slash represents a different part of the permissions path, and each permissions path
+  must start and end with a slash. Permissions use the same path representation for both the permissions required to
+  perform an action and the permissions granted to individual Groups.
 
   Permissions paths use a prefix system where a User is normally allowed to perform any action if one of their Groups
   has *any* permissions entry that is a prefix for the permission required to perform that action. For example, if
@@ -27,10 +27,10 @@
   permissions matching an path or path using `LIKE`; see [[metabase.models.database/pre-delete]] for
   an example of the sort of efficient queries the prefix system facilitates.
 
-  The union of all permissions the current User's permissions gets from all groups of which they are a member are
-  automatically bound to [[metabase.api.common/*current-user-permissions-set*]]
-  by [[metabase.server.middleware.session/bind-current-user]] for every REST API request, and by others when queries
-  are ran in a non-API thread (e.g. for MetaBot or scheduled Dashboard Subscriptions).
+  The union of all permissions the current User's gets from all groups of which they are a member are automatically
+  bound to [[metabase.api.common/*current-user-permissions-set*]] by
+  [[metabase.server.middleware.session/bind-current-user]] for every REST API request, and in other places when
+  queries are ran in a non-API thread (e.g. for MetaBot or scheduled Dashboard Subscriptions).
 
   ### Different types of permissions
 
@@ -46,8 +46,7 @@
   ### Enterprise-only permissions and \"anti-permissions\"
 
   In addition to data permissions and Collection permissions, a User can also be granted three additional types of
-  permissions. Some of these types are referred to as \"anti-permissions\" because they are subtractive grants that
-  take away permissions from what the User would otherwise have.
+  permissions.
 
   * _root permissions_ -- permissions for `/`, i.e. full access for everything. Automatically granted to
     the [[metabase.models.permissions-group/admin]] group that gets created on first launch. Because `/` is a prefix
@@ -64,14 +63,14 @@
 
     Additional things to know:
 
-    * Sandboxes permissions are only available in Metabase® Enterprise Edition™.
+    * Sandboxed permissions are only available in Metabase® Enterprise Edition™.
 
     * Only one GTAP may defined per-Group per-Table (this is an application-DB-level constraint). A User may have
       multiple applicable GTAPs if they are members of multiple groups that have sandboxed anti-perms for that Table; in
       that case, the QP signals an error if multiple GTAPs apply to a given Table for the current User (see
       [[metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions/assert-one-gtap-per-table]]).
 
-    * Segmented (sandboxing) anti-permissions and GTAPs are tied together, and a Group should be given both (or both
+    * Segmented (sandboxing) permissions and GTAPs are tied together, and a Group should be given both (or both
       should be deleted) at the same time. This is *not* currently enforced as a hard application DB constraint, but is
       done in the respective Toucan pre-delete actions. The QP will signal an error if the current user has segmented
       permissions but no matching GTAP exists.
@@ -82,12 +81,14 @@
 
     * GTAPs are not allowed to add columns not present in the original Table, or change their effective type to
       something incompatible (this constraint is in place so we other things continue to work transparently regardless
-      of whether the Table is swapped out.)
+      of whether the Table is swapped out.) See
+      [[metabase-enterprise.sandbox.models.group-table-access-policy/check-columns-match-table]]
 
-  * *block anti-permissions* are per-Group, per-Table grants that tell Metabase to disallow running Saved
-    Questions unless the User has data permissions (in other words, disregard Collection permissions). See the
-    `Determining query permissions` section below for more details. As with segmented anti-permissions, block
-    anti-permissions are only available in Metabase® Enterprise Edition™.
+  * *block \"anti-permissions\"* are per-Group, per-Table grants that tell Metabase to disallow running Saved
+    Questions unless the User has data permissions (in other words, disregard Collection permissions). These are
+    referred to as \"anti-permissions\" because they are subtractive grants that take away permissions from what the
+    User would otherwise have. See the `Determining query permissions` section below for more details. As with
+    segmented permissions, block anti-permissions are only available in Metabase® Enterprise Edition™.
 
   ### Determining CRUD permissions in the REST API
 
@@ -124,7 +125,7 @@
 
   The Query Processor middleware in [[metabase.query-processor.middleware.permissions]],
   [[metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions]], and
-  [[metabase-enterprise.forthcoming-block-permissions-middleware-namespace]] determines whether the current
+  [[metabase-enterprise.enhancements.models.permissions.block-permissions]] determines whether the current
   User has permissions to run the current query. Permissions are as follows:
 
   | Data perms? | Coll perms? | Block? | Segmented? | Can run? |
