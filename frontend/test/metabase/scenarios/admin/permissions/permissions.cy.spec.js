@@ -235,7 +235,7 @@ describeWithoutToken("scenarios > admin > permissions", () => {
         cy.visit("/admin/permissions");
 
         // no groups selected initially and it shows an empty state
-        cy.findByText("Select a group to see it's data permissions");
+        cy.findByText("Select a group to see its data permissions");
 
         const groups = [
           "Administrators",
