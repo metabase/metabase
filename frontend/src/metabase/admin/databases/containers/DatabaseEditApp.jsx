@@ -126,10 +126,14 @@ export default class DatabaseEditApp extends Component {
   render() {
     const {
       database,
+      deleteDatabase,
+      discardSavedFieldValues,
       selectedEngine,
       letUserControlSchedulingSaved,
       letUserControlSchedulingForm,
       initializeError,
+      rescanDatabaseFields,
+      syncDatabaseSchema,
     } = this.props;
     const { currentTab } = this.state;
     const editingExistingDatabase = database?.id != null;
