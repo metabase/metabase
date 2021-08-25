@@ -42,7 +42,7 @@ const NotificationList = ({
       </NotificationHeader>
       {items.map(({ item, type }) => (
         <NotificationCard
-          key={item.id}
+          key={`${type}-${item.id}`}
           item={item}
           type={type}
           user={user}
