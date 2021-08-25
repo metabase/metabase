@@ -282,7 +282,7 @@
     {:subject      (subject pulse)
      :recipients   email-recipients
      :message-type :attachments
-     :message      (messages/render-pulse-email timezone pulse query-results)}))
+     :message      (messages/render-pulse-email timezone pulse results)}))
 
 (defmethod notification [:pulse :slack]
   [{pulse-id :id, pulse-name :name, :as pulse} results {{channel-id :channel} :details :as channel}]

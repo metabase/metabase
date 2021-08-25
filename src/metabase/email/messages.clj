@@ -13,6 +13,7 @@
             [metabase.driver.util :as driver.u]
             [metabase.email :as email]
             [metabase.public-settings :as public-settings]
+            [metabase.pulse.markdown :as markdown]
             [metabase.pulse.render :as render]
             [metabase.pulse.render.body :as render.body]
             [metabase.pulse.render.style :as render.style]
@@ -386,9 +387,15 @@
 (defn- result-attachments [results]
   (filter some? (mapcat result-attachment results)))
 
+(defn- render-result-card
+  [timezone result]
+  (if (:card result)
+    (render/render-pulse-section timezone result)
+    {:content (markdown/process-markdown (:text result) :html)}))
+
 (defn- render-message-body [message-template message-context timezone results]
   (let [rendered-cards (binding [render/*include-title* true]
-                         (mapv #(render/render-pulse-section timezone %) results))
+                         (mapv #(render-result-card timezone %) results))
         message-body   (assoc message-context :pulse (html (vec (cons :div (map :content rendered-cards)))))
         attachments    (apply merge (map :attachments rendered-cards))]
     (vec (concat [{:type "text/html; charset=utf-8" :content (stencil/render-file message-template message-body)}]
@@ -398,7 +405,9 @@
 (defn- assoc-attachment-booleans [pulse results]
   (for [{{result-card-id :id} :card :as result} results
         :let [pulse-card (m/find-first #(= (:id %) result-card-id) (:cards pulse))]]
-    (update result :card merge (select-keys pulse-card [:include_csv :include_xls]))))
+      (if result-card-id
+        (update result :card merge (select-keys pulse-card [:include_csv :include_xls]))
+        result)))
 
 (defn render-pulse-email
   "Take a pulse object and list of results, returns an array of attachment objects for an email"
