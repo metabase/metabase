@@ -120,12 +120,12 @@ jobs:
       - uses: actions/github-script@v4
         with:
           script: |
-            const { GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_RUN_ID} = process.env;
+            const { GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_RUN_ID } = process.env;
             const runUrl = `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}`
 
             github.issues.createComment({
               issue_number: ${{ needs.pr_info.outputs.number }},
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '@${{ needs.pr_info.outputs.author }} could not automatically create a backport PR 😩 [[Logs]](${runUrl})'
+              body: `@${{ needs.pr_info.outputs.author }} could not automatically create a backport PR 😩 [[Logs]](${runUrl})`
             })
