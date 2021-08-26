@@ -138,7 +138,6 @@ You can check the access level for the groups by going into the Admin Panel and 
 
 **Root cause:** We only allow [one sandbox per table][one-sandbox-per-table]: if someone is a member of two or more groups with different permissions, every rule for figuring out whether access should be allowed or not is confusing. We therefore only allow one rule.
 
-The root cause of this problem is conceptual---administrators can't create several sandboxes for one table because we don't allow it.
 
 **Steps to take:** 
 
