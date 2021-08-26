@@ -54,50 +54,61 @@
 
 (s/defn ^:internal-query-fn bad-table
   "List of all failing questions"
-  ;;;;; this one's gonna need filters and sorting and shit
-  []
-  {:metadata [[:card_id         {:display_name "Card ID",              :base_type :type/Integer}]
-              [:card_name       {:display_name "Name",                 :base_type :type/Name}]
-              [:collection_id   {:display_name "Collection ID",        :base_type :type/Integer}]
-              [:collection_name {:display_name "Collection",           :base_type :type/Text}]
-              [:database_id     {:display_name "Database ID",          :base_type :type/Integer}]
-              [:database_name   {:display_name "Database",             :base_type :type/Text}]
-              [:num_dashboards  {:display_name "Number of Dashboards", :base_type :type/Text}]
-              [:table_id        {:display_name "Table ID",             :base_type :type/Integer}]
-              [:table_name      {:display_name "Table",                :base_type :type/Text}]
-              [:user_id         {:display_name "Created By ID",        :base_type :type/Integer}]
-              [:user_name       {:display_name "Created By",           :base_type :type/Text}]
-              [:total_runs      {:display_name "Total Runs",           :base_type :type/Integer}]
-              [:last_run_at     {:display_name "Last Run At",          :base_type :type/DateTime}]
-              [:updated_at      {:display_name "Updated At",           :base_type :type/DateTime}]
-              [:last_error      {:display_name "Error",                :base_type :type/Text}]]
+  ([]
+   (table nil nil nil nil))
+  ([errorFilter   :- (s/maybe s/Str)
+    dbFilter      :- (s/maybe s/Str)
+    sortColumn    :- (s/maybe s/Str)
+    sortDirection :- (s/maybe (s/enum "asc" "desc"))]
+  {:metadata [[:card_id         {:display_name "Card ID",            :base_type :type/Integer :remapped_to   :card_name}]
+              [:card_name       {:display_name "Question",           :base_type :type/Name    :remapped_from :card_id}]
+              [:error_substr    {:display_name "Error",              :base_type :type/Text}]
+              [:collection_id   {:display_name "Collection ID",      :base_type :type/Integer :remapped_to   :collection_name}]
+              [:collection_name {:display_name "Collection",         :base_type :type/Text    :remapped_from :collection_id}]
+              [:database_id     {:display_name "Database ID",        :base_type :type/Integer :remapped_to   :database_name}]
+              [:database_name   {:display_name "Database",           :base_type :type/Text    :remapped_from :database_id}]
+              [:table_id        {:display_name "Table ID",           :base_type :type/Integer :remapped_to   :table_name}]
+              [:table_name      {:display_name "Table",              :base_type :type/Text    :remapped_from :table_id}]
+              [:last_run_at     {:display_name "Last run at",        :base_type :type/DateTime}]
+              [:total_runs      {:display_name "Total runs",         :base_type :type/Integer}]
+              ;; if it appears a billion times each in 2 dashboards, that's 2 billion appearances
+              [:num_dashboards  {:display_name "Dashboards it's in", :base_type :type/Integer}]
+              [:user_id         {:display_name "Created By ID",      :base_type :type/Integer :remapped_to   :user_name}]
+              [:user_name       {:display_name "Created By",         :base_type :type/Text    :remapped_from :user_id}]
+              [:updated_at      {:display_name "Updated At",         :base_type :type/DateTime}]]
    :results (common/reducible-query
-              {:select    [[:card.id :card_id]
-                           [:card.name :card_name]
-                           :collection_id
-                           [:coll.name :collection_name]
-                           :card.database_id
-                           [:db.name :database_name]
-                           [:%count.dash_card.id :num_dashboards]
-                           :card.table_id
-                           [:t.name :table_name]
-                           [:card.creator_id :user_id]
-                           [(common/user-full-name :u) :user_name]
-                           [:%count.qe.id :total_runs]
-                           [(hsql/call :max :qe.started_at) :last_run_at]
-                           :card.updated_at
-                           [:qe.error :error]]
-               :from      [[:report_card :card]]
-               :left-join [[:collection :coll]                [:= :card.collection_id :coll.id]
-                           [:metabase_database :db]           [:= :card.database_id :db.id]
-                           [:metabase_table :t]               [:= :card.table_id :t.id]
-                           [:core_user :u]                    [:= :card.creator_id :u.id]
-                           [:report_dashboardcard :dash_card] [:= :card.id :dash_card.card_id]
-                           [:query_execution :qe]             [:= :card.id :qe.card_id]]
-               :group-by  [:card.id]
-               :where     [:and
-                           [:= :card.archived false]
-                           [:<> :qe.error nil]]})})
+              (->
+                {:select    [[:card.id :card_id]
+                             [:card.name :card_name]
+                             [(hsql/call :concat (hsql/call :substring :qe.error 0 60) "...") :error_substr]
+                             :collection_id
+                             [:coll.name :collection_name]
+                             :card.database_id
+                             [:db.name :database_name]
+                             :card.table_id
+                             [:t.name :table_name]
+                             [(hsql/call :max :qe.started_at) :last_run_at]
+                             [:%distinct-count.qe.id :total_runs]
+                             [:%distinct-count.dash_card.card_id :num_dashboards]
+                             [:card.creator_id :user_id]
+                             [(common/user-full-name :u) :user_name]
+                             :card.updated_at]
+                 :from      [[:report_card :card]]
+                 :left-join [[:collection :coll]                [:= :card.collection_id :coll.id]
+                             [:metabase_database :db]           [:= :card.database_id :db.id]
+                             [:metabase_table :t]               [:= :card.table_id :t.id]
+                             [:core_user :u]                    [:= :card.creator_id :u.id]
+                             [:report_dashboardcard :dash_card] [:= :card.id :dash_card.card_id]
+                             [:query_execution :qe]             [:= :card.id :qe.card_id]]
+                 :group-by  [:card.id :qe.error]
+                 :where     [:and
+                             [:= :card.archived false]
+                             [:<> :qe.error nil]]}
+                (common/add-search-clause errorFilter :qe.error)
+                (common/add-search-clause dbFilter    :db.name)
+                (common/add-sort-clause
+                  (or sortColumn "card.name")
+                  (or sortDirection "asc"))))}))
 
 (s/defn ^:internal-query-fn table
   "A list of all questions.

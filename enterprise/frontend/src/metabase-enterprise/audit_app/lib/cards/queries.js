@@ -52,10 +52,10 @@ export const slowest = () => ({
 });
 
 export const bad_table = (
-  // questionFilter,
-  // collectionFilter,
-  // sortColumn,
-  // sortDirection,
+  errorFilter,
+  dbFilter,
+  sortColumn,
+  sortDirection,
 ) => ({
   card: {
     name: "Failing Questions",
@@ -63,19 +63,24 @@ export const bad_table = (
     dataset_query: {
       type: "internal",
       fn: "metabase-enterprise.audit.pages.queries/bad-table",
-      args: [] // [questionFilter, collectionFilter, sortColumn, sortDirection],
+      args: [errorFilter, dbFilter, sortColumn, sortDirection],
     },
     visualization_settings: {
       "table.columns": [
         { name: "card_id", enabled: true },
+        { name: "error_substr",
+          enabled: true,
+          markdown_template: "not working`({{value}})`",
+	},
         { name: "collection_id", enabled: true },
         { name: "database_id", enabled: true },
+        { name: "schema_id", enabled: true },
         { name: "table_id", enabled: true },
-        { name: "user_id", enabled: true },
-        { name: "total_runs", enabled: true },
         { name: "last_run_at", enabled: true },
+        { name: "total_runs", enabled: true },
+        { name: "num_dashboards", enabled: true },
+        { name: "user_id", enabled: true },
         { name: "updated_at", enabled: true },
-        { name: "last_error", enabled: true },
       ],
     },
   },
