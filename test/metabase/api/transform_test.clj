@@ -35,8 +35,8 @@
   (testing "GET /api/transform/:db-id/:schema/:transform-name"
     (testing "Do we correctly check for permissions?"
       (try
-        (perms/revoke-permissions! (perms-group/all-users) (mt/id))
+        (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403 (test-endpoint))))
         (finally
-          (perms/grant-permissions! (perms-group/all-users) (perms/object-path (mt/id))))))))
+          (perms/grant-permissions! (perms-group/all-users) (perms/data-perms-path (mt/id))))))))

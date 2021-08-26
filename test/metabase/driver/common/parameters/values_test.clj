@@ -292,7 +292,7 @@
   (testing "We should be able to run a query referenced via a template tag if we have perms for the Card in question (#12354)"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp-copy-of-db
-        (perms/revoke-permissions! (group/all-users) (mt/id))
+        (perms/revoke-data-perms! (group/all-users) (mt/id))
         (mt/with-temp* [Collection [collection]
                         Card       [{card-1-id :id, :as card-1} {:collection_id (u/the-id collection)
                                                                  :dataset_query (mt/mbql-query venues

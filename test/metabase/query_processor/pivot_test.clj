@@ -278,7 +278,7 @@
         (let [query (mt/mbql-query orders
                       {:aggregation [[:count]]
                        :breakout    [$product_id->products.category $user_id->people.source]})]
-          (perms/revoke-permissions! (group/all-users) (mt/db))
+          (perms/revoke-data-perms! (group/all-users) (mt/db))
           (testing "User without perms shouldn't be able to run the query normally"
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo

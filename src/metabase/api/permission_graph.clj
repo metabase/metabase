@@ -7,7 +7,7 @@
             [clojure.spec.gen.alpha :as gen]
             [clojure.walk :as walk]))
 
-(defmulti convert
+(defmulti ^:private convert
   "convert values from the naively converted json to what we REALLY WANT"
   first)
 
@@ -40,7 +40,7 @@
 (s/def ::native (s/or :str->kw #{"write" "none"}
                       :nil->none nil?))
 
-;;; --------------------------------------------------- Data Permissions ----------------------------------------------------
+;;; ------------------------------------------------ Data Permissions ------------------------------------------------
 
 (s/def ::schema-name (s/or :kw->str keyword?))
 
@@ -82,8 +82,7 @@
 (s/def ::data-permissions-graph
   (s/keys :req-un [:metabase.api.permission-graph.data/groups]))
 
-
-;;; --------------------------------------------------- Collection Permissions ----------------------------------------------------
+;;; --------------------------------------------- Collection Permissions ---------------------------------------------
 
 (s/def ::collections
   (s/map-of (s/or :identity ::id

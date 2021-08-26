@@ -119,7 +119,7 @@
     (testing " should return a 403 for a user that doesn't have read permissions for the table"
       (mt/with-temp* [Database [{database-id :id}]
                       Table    [{table-id :id}    {:db_id database-id}]]
-        (perms/revoke-permissions! (perms-group/all-users) database-id)
+        (perms/revoke-data-perms! (perms-group/all-users) database-id)
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403 (str "table/" table-id))))))))
 
@@ -255,7 +255,7 @@
                       Field    [table-2-id {:table_id (u/the-id table-2), :name "id", :base_type :type/Integer, :semantic_type :type/PK}]
                       Field    [table-2-fk {:table_id (u/the-id table-2), :name "fk", :base_type :type/Integer, :semantic_type :type/FK, :fk_target_field_id (u/the-id table-1-id)}]]
         ;; grant permissions only to table-2
-        (perms/revoke-permissions! (perms-group/all-users) (u/the-id db))
+        (perms/revoke-data-perms! (perms-group/all-users) (u/the-id db))
         (perms/grant-permissions! (perms-group/all-users) (u/the-id db) (:schema table-2) (u/the-id table-2))
         ;; metadata for table-2 should show all fields for table-2, but the FK target info shouldn't be hydrated
         (is (= #{{:name "id", :target false}

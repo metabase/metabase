@@ -24,7 +24,7 @@
   "Fetch a graph of all Permissions."
   []
   (api/check-superuser)
-  (perms/graph))
+  (perms/data-perms-graph))
 
 (api/defendpoint PUT "/graph"
   "Do a batch update of Permissions by passing in a modified graph. This should return the same graph, in the same
@@ -38,8 +38,8 @@
   [:as {body :body}]
   {body su/Map}
   (api/check-superuser)
-  (perms/update-graph! (pg/converted-json->graph ::pg/data-permissions-graph body))
-  (perms/graph))
+  (perms/update-data-perms-graph! (pg/converted-json->graph ::pg/data-permissions-graph body))
+  (perms/data-perms-graph))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

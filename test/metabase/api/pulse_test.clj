@@ -744,7 +744,7 @@
                         PulseCard [_     {:pulse_id (u/the-id pulse), :card_id (u/the-id card)}]]
           (with-pulses-in-readable-collection [pulse]
             ;; revoke permissions for default group to this database
-            (perms/revoke-permissions! (perms-group/all-users) (mt/id))
+            (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
             ;; now a user without permissions to the Card in question should *not* be allowed to delete the pulse
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :delete 403 (format "pulse/%d" (u/the-id pulse)))))))))))

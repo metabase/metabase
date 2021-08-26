@@ -528,7 +528,7 @@
     ;; create a copy of the test data warehouse DB, then revoke permissions to it for All Users. Only admins should be
     ;; able to ad-hoc query it now.
     (mt/with-temp-copy-of-db
-      (perms/revoke-permissions! (perms-group/all-users) (mt/db))
+      (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
       (let [query        (mt/mbql-query :venues)
             create-card! (fn [test-user expected-status-code]
                            (mt/with-model-cleanup [Card]
@@ -540,8 +540,8 @@
           (testing "Permissions errors should be meaningful and include info for debugging (#14931)"
             (is (schema= {:message        (s/eq "You cannot save this Question because you do not have permissions to run its query.")
                           :query          (s/eq (mt/obj->json->obj query))
-                          :required-perms [perms/ObjectPath]
-                          :actual-perms   [perms/UserPath]
+                          :required-perms [perms/Path]
+                          :actual-perms   [perms/Path]
                           :trace          [s/Any]
                           s/Keyword       s/Any}
                          (create-card! :rasta 403)))))))))
@@ -1001,7 +1001,7 @@
     ;; create a copy of the test data warehouse DB, then revoke permissions to it for All Users. Only admins should be
     ;; able to ad-hoc query it now.
     (mt/with-temp-copy-of-db
-      (perms/revoke-permissions! (perms-group/all-users) (mt/db))
+      (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
       (mt/with-temp Card [{card-id :id} {:dataset_query (mt/mbql-query :venues)}]
         (let [update-card! (fn [test-user expected-status-code request-body]
                              (mt/user-http-request test-user :put expected-status-code (format "card/%d" card-id)
@@ -1024,8 +1024,8 @@
               (testing "Permissions errors should be meaningful and include info for debugging (#14931)"
                 (is (schema= {:message        (s/eq "You cannot save this Question because you do not have permissions to run its query.")
                               :query          (s/eq (mt/obj->json->obj (mt/mbql-query :users)))
-                              :required-perms [perms/ObjectPath]
-                              :actual-perms   [perms/UserPath]
+                              :required-perms [perms/Path]
+                              :actual-perms   [perms/Path]
                               :trace          [s/Any]
                               s/Keyword       s/Any}
                              (update-card! :rasta 403 {:dataset_query (mt/mbql-query :users)}))))
@@ -1482,7 +1482,7 @@
                     Table      [table      {:db_id (u/the-id database)}]
                     Card       [card-1     {:dataset_query (mbql-count-query (u/the-id database) (u/the-id table))}]
                     Card       [card-2     {:dataset_query (mbql-count-query (u/the-id database) (u/the-id table))}]]
-      (perms/revoke-permissions! (perms-group/all-users) (u/the-id database))
+      (perms/revoke-data-perms! (perms-group/all-users) (u/the-id database))
       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
       (is (= {:response    "You don't have permissions to do that."
               :collections [nil nil]}

@@ -508,7 +508,7 @@
     (testing "You should be able to read a Card with a source Card if you can read that Card and their Collections (#12354)\n"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp-copy-of-db
-          (perms/revoke-permissions! (group/all-users) (mt/id))
+          (perms/revoke-data-perms! (group/all-users) (mt/id))
           (mt/with-temp* [Collection [collection]
                           Card       [card-1 {:collection_id (u/the-id collection)
                                               :dataset_query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 2})}]

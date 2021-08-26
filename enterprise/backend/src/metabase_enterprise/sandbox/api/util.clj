@@ -15,4 +15,4 @@
        ;; access they shouldn't have. If we don't have permissions, we can't determine whether they are segmented, so
        ;; throw.
        (throw (ex-info (str (tru "No permissions found for current user"))
-                {:status-code 403}))))))
+                       {:status-code 403}))))))
