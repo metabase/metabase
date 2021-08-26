@@ -60,7 +60,8 @@ There is not much you can do here: if you need to sandbox data, [you can't use t
 
 **Steps to take**:
 
-You can check this by going into the **Admin** > **Permissions** for the table in question. Check that the sandbox exists, and that the question used to sandbox the table excludes the columns you don't want people to see.
+1. Go into **Admin Panel** > **Permissions** for the table in question.
+2. Check that the sandbox exists, and that the question used to sandbox the table excludes the columns you don't want people to see.
 
 ### Does the question used to set up the sandbox include the columns?
 
