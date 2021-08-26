@@ -33,8 +33,8 @@
 (defn driver-edn-filename [driver]
   (u/filename (driver-project-dir driver) "deps.edn"))
 
-(defn- ->absolute [driver ^String path]
-  (if (.isAbsolute (io/file path))
+(defn- ->absolute [driver path]
+  (if (u/absolute? path)
     path
     (u/filename (driver-project-dir driver) path)))
 

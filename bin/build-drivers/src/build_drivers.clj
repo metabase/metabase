@@ -27,4 +27,4 @@
 
 (defn -main [& [edition]]
   (u/exit-when-finished-nonzero-on-exception
-    (build-drivers! (keyword edition))))
+    (build-drivers! (u/parse-as-keyword edition))))

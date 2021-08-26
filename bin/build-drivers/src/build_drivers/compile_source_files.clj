@@ -7,10 +7,10 @@
             [metabuild-common.core :as u]))
 
 (defn driver-source-paths [driver edition]
-  (mapv
-   (fn [path]
-     (u/filename (c/driver-project-dir driver) path))
-   (:paths (c/driver-edn driver edition))))
+  (let [dirs (:paths (c/driver-edn driver edition))]
+    (assert (every? u/absolute? dirs)
+            (format "All dirs should be absolute, got: %s" (pr-str dirs)))
+    dirs))
 
 (defn- dependencies-graph
   "Return a `clojure.tools.namespace` dependency graph of namespaces named by `ns-symbol`."
