@@ -19,7 +19,7 @@ import {
 const propTypes = {
   item: PropTypes.object.isRequired,
   type: PropTypes.oneOf(["pulse", "alert"]).isRequired,
-  user: PropTypes.object,
+  user: PropTypes.object.isRequired,
   onUnsubscribe: PropTypes.func,
   onArchive: PropTypes.func,
 };
@@ -70,7 +70,7 @@ const canArchive = (item, user) => {
     channel.recipients.map(recipient => recipient.id),
   );
 
-  const isCreator = item.creator?.id === user?.id;
+  const isCreator = item.creator?.id === user.id;
   const isSubscribed = recipients.includes(user.id);
   const isOnlyRecipient = recipients.length === 1;
 
@@ -162,7 +162,7 @@ const formatCreator = (item, user) => {
   let creatorString = "";
   const options = Settings.formattingOptions();
 
-  if (user?.id === item.creator?.id) {
+  if (user.id === item.creator?.id) {
     creatorString += t`Created by you`;
   } else if (item.creator?.common_name) {
     creatorString += t`Created by ${item.creator.common_name}`;
