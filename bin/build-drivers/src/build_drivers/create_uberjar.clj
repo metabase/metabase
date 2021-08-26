@@ -25,32 +25,50 @@
 (defonce metabase-core-provided-libs
   (set (keys (:libs metabase-core-basis))))
 
-(defn driver-parents [driver edition]
+(defn- driver-parents [driver edition]
   (when-let [parents (not-empty (:metabase.build-driver/parents (c/driver-edn driver edition)))]
     (u/announce "Driver has parent drivers %s" (pr-str parents))
     parents))
 
-(defn parent-provided-libs [driver edition]
+(defn- parent-provided-libs [driver edition]
   (into {} (for [parent (driver-parents driver edition)
                  lib    (keys (:libs (driver-basis parent edition)))]
              [lib parent])))
 
-(defn remove-provided-libs [libs driver edition]
-  (let [parent-provided (parent-provided-libs driver edition)]
-    (into {} (for [[lib info] (sort-by first (seq libs))
-                   :let       [provider (if (contains? metabase-core-provided-libs lib)
-                                          "metabase-core"
-                                          (get parent-provided lib))
-                               _ (u/announce (if provider
-                                               (format "SKIP    %%s (provided by %s)" provider)
-                                               "INCLUDE %s")
-                                             (colorize/yellow lib))]
-                   :when      (not provider)]
-               [lib info]))))
+(defn- provided-libs
+  "Return a map of lib -> provider, where lib is a symbol like `com.h2database/h2` and provider is either
+  `metabase-core` or the parent driver that provided that lib."
+  [driver edition]
+  (into (parent-provided-libs driver edition)
+        (map (fn [lib]
+               [lib 'metabase-core]))
+        metabase-core-provided-libs))
 
-(defn uberjar-basis [driver edition]
+(defn remove-provided-libs [basis driver edition]
+  (let [provided-lib->provider (into {}
+                                     (filter (fn [[lib]]
+                                               (get-in basis [:libs lib])))
+                                     (provided-libs driver edition))]
+    ;; log which libs we're including and excluding.
+    (doseq [lib (sort (keys (:libs basis)))]
+      (u/announce (if-let [provider (get provided-lib->provider lib)]
+                    (format "SKIP %%45s (provided by %s)" provider)
+                    "INCLUDE %s")
+                  (colorize/yellow lib)))
+    ;; now remove the provide libs from `:classpath`, `:classpath-roots`, and `:libs`
+    (let [provided-libs-set  (into #{} (keys provided-lib->provider))
+          provided-paths-set (into #{} (mapcat #(get-in basis [:libs % :paths])) provided-libs-set)]
+      (-> basis
+          (update :classpath-roots #(vec (remove provided-paths-set %)))
+          (update :libs            #(into {} (remove (fn [[lib]] (provided-libs-set lib))) %))
+          (update :classpath       #(into {} (remove (fn [[path]] (provided-paths-set path))) %))))))
+
+(defn- uberjar-basis [driver edition]
   (u/step "Determine which dependencies to include"
-    (update (driver-basis driver edition) :libs remove-provided-libs driver edition)))
+    (-> (driver-basis driver edition)
+        (remove-provided-libs driver edition)
+        ;; remove unneeded keys so Depstar doesn't try to do anything clever and resolve them
+        (dissoc :deps :aliases :mvn/repos))))
 
 (defn create-uberjar! [driver edition]
   (u/step (format "Write %s %s uberjar -> %s" driver edition (c/driver-jar-destination-path driver))

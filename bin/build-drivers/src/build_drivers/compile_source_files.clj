@@ -7,8 +7,10 @@
             [metabuild-common.core :as u]))
 
 (defn driver-source-paths [driver edition]
-  (for [path (:paths (c/driver-edn driver edition))]
-    (u/filename (c/driver-project-dir driver) path)))
+  (mapv
+   (fn [path]
+     (u/filename (c/driver-project-dir driver) path))
+   (:paths (c/driver-edn driver edition))))
 
 (defn- dependencies-graph
   "Return a `clojure.tools.namespace` dependency graph of namespaces named by `ns-symbol`."
@@ -32,7 +34,7 @@
         ns-symbols (set (map ns.parse/name-from-ns-decl ns-decls))]
     (->> (dependencies-graph ns-decls)
          ns.deps/topo-sort
-         (filter ns-symbols))))
+         (filterv ns-symbols))))
 
 (defn compile-clojure-source-files! [driver edition]
   (u/step "Compile clojure source files"

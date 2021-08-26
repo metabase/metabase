@@ -1,5 +1,6 @@
 (ns build-drivers.common
-  (:require [clojure.tools.deps.alpha :as deps]
+  (:require [clojure.java.io :as io]
+            [clojure.tools.deps.alpha :as deps]
             [metabuild-common.core :as u]))
 
 (defn driver-project-dir
@@ -26,7 +27,14 @@
 (defn driver-edn-filename [driver]
   (u/filename (driver-project-dir driver) "deps.edn"))
 
+(defn- ->absolute [driver ^String path]
+  (if (.isAbsolute (io/file path))
+    path
+    (u/filename (driver-project-dir driver) path)))
+
 (defn driver-edn [driver edition]
   (let [edn      (deps/merge-edns ((juxt :root-edn :project-edn) (deps/find-edn-maps (driver-edn-filename driver))))
         combined (deps/combine-aliases edn #{edition})]
-    (deps/tool edn combined)))
+    (-> (deps/tool edn combined)
+        ;; make sure :paths are absolute
+        (update :paths (partial mapv (partial ->absolute driver))))))
