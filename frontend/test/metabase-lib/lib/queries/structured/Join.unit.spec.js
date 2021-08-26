@@ -327,6 +327,103 @@ describe("Join", () => {
     });
   });
 
+  describe("removeCondition", () => {
+    it("does nothing when there is no condition", () => {
+      let join = getJoin();
+
+      join = join.removeCondition(0);
+
+      expect(join).toEqual({
+        alias: "Products",
+        condition: undefined,
+        "source-table": PRODUCTS.id,
+      });
+    });
+
+    it("removes condition for single fields pair join by index", () => {
+      let join = getJoin();
+
+      join = join.removeCondition(0);
+
+      expect(join).toEqual({
+        alias: "Products",
+        condition: undefined,
+        "source-table": PRODUCTS.id,
+      });
+    });
+
+    it("does nothing if condition index is out of range for single fields pair join", () => {
+      let join = getJoin({
+        query: getOrdersJoinQuery({
+          condition: ORDERS_PRODUCT_JOIN_CONDITION,
+        }),
+      });
+
+      join = join.removeCondition(100);
+
+      expect(join).toEqual({
+        alias: "Products",
+        condition: ORDERS_PRODUCT_JOIN_CONDITION,
+        "source-table": PRODUCTS.id,
+      });
+    });
+
+    it("removes condition from multi-fields join by index", () => {
+      let join = getJoin({
+        query: getOrdersJoinQuery({
+          condition: [
+            ...ORDERS_PRODUCT_MULTI_FIELD_JOIN_CONDITION,
+            [
+              "=",
+              ["field", ORDERS.TAX.id, null],
+              ["field", PRODUCTS.PRICE.id, null],
+            ],
+          ],
+        }),
+      });
+
+      join = join.removeCondition(2);
+
+      expect(join).toEqual({
+        alias: "Products",
+        condition: ORDERS_PRODUCT_MULTI_FIELD_JOIN_CONDITION,
+        "source-table": PRODUCTS.id,
+      });
+    });
+
+    it("turns multi-fields join condition into single pair when only one condition is left", () => {
+      let join = getJoin({
+        query: getOrdersJoinQuery({
+          condition: ORDERS_PRODUCT_MULTI_FIELD_JOIN_CONDITION,
+        }),
+      });
+
+      join = join.removeCondition(1);
+
+      expect(join).toEqual({
+        alias: "Products",
+        condition: ORDERS_PRODUCT_JOIN_CONDITION,
+        "source-table": PRODUCTS.id,
+      });
+    });
+
+    it("does nothing if condition index is out of range for multi-fields join", () => {
+      let join = getJoin({
+        query: getOrdersJoinQuery({
+          condition: ORDERS_PRODUCT_MULTI_FIELD_JOIN_CONDITION,
+        }),
+      });
+
+      join = join.removeCondition(100);
+
+      expect(join).toEqual({
+        alias: "Products",
+        condition: ORDERS_PRODUCT_MULTI_FIELD_JOIN_CONDITION,
+        "source-table": PRODUCTS.id,
+      });
+    });
+  });
+
   describe("isValid", () => {
     it("should return true for complete one-fields pair join", () => {
       const join = getJoin({

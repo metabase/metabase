@@ -277,6 +277,24 @@ export default class Join extends MBQLObjectClause {
     conditions[index + 1] = condition;
     return this.setCondition(conditions);
   }
+
+  removeCondition(index) {
+    if (index == null || !this.getConditionByIndex(index)) {
+      return this;
+    }
+    if (this.isSingleConditionJoin()) {
+      return this.setCondition(undefined);
+    }
+    const filteredCondition = this.condition.filter((_, i) => {
+      // Adding 1 because the first element of a condition is an operator ("and")
+      return i !== index + 1;
+    });
+    const [_operator, ...conditions] = filteredCondition;
+    const isSingleNewCondition = conditions.length === 1;
+    if (isSingleNewCondition) {
+      return this.setCondition(conditions[0]);
+    }
+    return this.setCondition(filteredCondition);
   }
 
   setDefaultCondition() {
