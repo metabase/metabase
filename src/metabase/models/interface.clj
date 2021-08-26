@@ -1,5 +1,6 @@
 (ns metabase.models.interface
-  (:require [cheshire.core :as json]
+  (:require [buddy.core.codecs :as codecs]
+            [cheshire.core :as json]
             [clojure.core.memoize :as memoize]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
@@ -160,6 +161,10 @@
 
 (models/add-type! :encrypted-text
   :in  encryption/maybe-encrypt
+  :out encryption/maybe-decrypt)
+
+(models/add-type! :secret-value
+  :in  (comp encryption/maybe-encrypt-bytes codecs/to-bytes)
   :out encryption/maybe-decrypt)
 
 (defn decompress
