@@ -146,7 +146,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
   }
 
   function onSourceTableSet(newJoin) {
-    if (!newJoin.parentDimension()) {
+    if (!newJoin.parentDimensions().length) {
       setTimeout(() => {
         parentDimensionPickerRef.current.open();
       });
@@ -159,7 +159,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
       .setDefaultAlias()
       .parent()
       .update(updateQuery);
-    if (!join.joinDimension()) {
+    if (!join.joinDimensions().length) {
       joinDimensionPickerRef.current.open();
     }
   }
