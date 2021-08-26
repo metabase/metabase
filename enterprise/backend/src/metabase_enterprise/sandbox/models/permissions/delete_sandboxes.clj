@@ -90,19 +90,17 @@
 
 (defn- delete-gtaps-for-group-database! [{:keys [group-id database-id], :as context} changes]
   (log/debugf "Deleting unneeded GTAPs for Group %d for Database %d. Graph changes: %s"
-             group-id database-id (pr-str changes))
-  (cond
-    (= changes :none)
+              group-id database-id (pr-str changes))
+  (if (#{:none :all :block} changes)
     (do
-      (log/debugf "Group %d no longer has any perms for Database %d, deleting all GTAPs for this DB" group-id database-id)
+      (log/debugf "Group %d %s for Database %d, deleting all GTAPs for this DB"
+                  group-id
+                  (case changes
+                    :none  "no longer has any perms"
+                    :all   "now has full data perms"
+                    :block "is now BLOCKED from all non-data-perms access")
+                  database-id)
       (delete-gtaps-with-condition! group-id [:= :table.db_id database-id]))
-
-    (= changes :all)
-    (do
-      (log/debugf "Group %d now has full data perms for Database %d, deleting all GTAPs for this DB" group-id database-id)
-      (delete-gtaps-with-condition! group-id [:= :table.db_id database-id]))
-
-    :else
     (doseq [schema-name (set (keys changes))]
       (delete-gtaps-for-group-schema!
        (assoc context :schema-name schema-name)

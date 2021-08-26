@@ -67,12 +67,12 @@
           [4  6]]
    :cols [(cond-> (qp.test/breakout-col (qp.test/col :venues :price))
             native-source?
-            (-> (assoc :field_ref [:field "PRICE" {:base-type :type/Integer}])
+            (-> (assoc :field_ref [:field "PRICE" {:base-type :type/Integer}]
+                       :effective_type :type/Integer)
                 (dissoc :description :parent_id :visibility_type))
 
             (not has-source-metadata?)
-            (dissoc :id :semantic_type :settings :fingerprint :table_id
-                    :effective_type :coercion_strategy))
+            (dissoc :id :semantic_type :settings :fingerprint :table_id :coercion_strategy))
           (qp.test/aggregate-col :count)]})
 
 (deftest mbql-source-query-breakout-aggregation-test
@@ -400,7 +400,7 @@
                        :unit      :day)
                 ;; because this field literal comes from a native query that does not include `:source-metadata` it won't have
                 ;; the usual extra keys
-                (dissoc :semantic_type :effective_type :coercion_strategy :table_id
+                (dissoc :semantic_type :coercion_strategy :table_id
                         :id :settings :fingerprint))
             (qp.test/aggregate-col :count)]
            (mt/cols
@@ -508,7 +508,7 @@
     (testing "You should be able to read a Card with a source Card if you can read that Card and their Collections (#12354)\n"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp-copy-of-db
-          (perms/revoke-permissions! (group/all-users) (mt/id))
+          (perms/revoke-data-perms! (group/all-users) (mt/id))
           (mt/with-temp* [Collection [collection]
                           Card       [card-1 {:collection_id (u/the-id collection)
                                               :dataset_query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 2})}]

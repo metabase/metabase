@@ -231,7 +231,7 @@
       (mt/with-temp* [Database [db]
                       Table    [table   {:db_id (u/the-id db)}]
                       Segment  [segment {:table_id (u/the-id table)}]]
-        (perms/revoke-permissions! (group/all-users) db)
+        (perms/revoke-data-perms! (group/all-users) db)
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403 (str "segment/" (u/the-id segment)))))))))
 
@@ -266,7 +266,7 @@
       (mt/with-temp* [Database [db]
                       Table    [table   {:db_id (u/the-id db)}]
                       Segment  [segment {:table_id (u/the-id table)}]]
-        (perms/revoke-permissions! (group/all-users) db)
+        (perms/revoke-data-perms! (group/all-users) db)
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403 (format "segment/%d/revisions" (u/the-id segment)))))))))
 

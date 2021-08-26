@@ -1,3 +1,4 @@
-import Donut from "./donut.js";
+import CategoricalBar from "./bar.js";
+import CategoricalDonut from "./donut.js";
 
-export { Donut };
+export { CategoricalBar, CategoricalDonut };

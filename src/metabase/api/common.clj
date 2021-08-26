@@ -34,7 +34,8 @@
   false)
 
 (def ^:dynamic *current-user-permissions-set*
-  "Delay to the set of permissions granted to the current user."
+  "Delay to the set of permissions granted to the current user. See documentation in [[metabase.models.permissions]] for
+  more information about the Metabase permissions system."
   (atom #{}))
 
 

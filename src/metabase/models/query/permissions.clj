@@ -66,7 +66,7 @@
    (s/eq ::native)
    su/IntGreaterThanZero))
 
-(s/defn ^:private tables->permissions-path-set :- #{perms/ObjectPath}
+(s/defn ^:private tables->permissions-path-set :- #{perms/Path}
   "Given a sequence of `tables-or-ids` referenced by a query, return a set of required permissions. A truthy value for
   `segmented-perms?` will return segmented permissions for the table rather that full table permissions."
   [database-or-id             :- (s/cond-pre su/IntGreaterThanZero su/Map)
@@ -90,7 +90,7 @@
                              (table-or-id->schema table-or-id)
                              (u/the-id table-or-id)))))))
 
-(s/defn ^:private source-card-read-perms :- #{perms/ObjectPath}
+(s/defn ^:private source-card-read-perms :- #{perms/Path}
   "Calculate the permissions needed to run an ad-hoc query that uses a Card with `source-card-id` as its source
   query."
   [source-card-id :- su/IntGreaterThanZero]
@@ -105,7 +105,7 @@
   (binding [api/*current-user-id* nil]
     ((resolve 'metabase.query-processor/query->preprocessed) query)))
 
-(s/defn ^:private mbql-permissions-path-set :- #{perms/ObjectPath}
+(s/defn ^:private mbql-permissions-path-set :- #{perms/Path}
   "Return the set of required permissions needed to run an adhoc `query`.
 
   Also optionally specify `throw-exceptions?` -- normally this function avoids throwing Exceptions to avoid breaking
@@ -135,7 +135,7 @@
         (log/error e))
       #{"/db/0/"})))                    ; DB 0 will never exist
 
-(s/defn ^:private perms-set* :- #{perms/ObjectPath}
+(s/defn ^:private perms-set* :- #{perms/Path}
   "Does the heavy lifting of creating the perms set. `opts` will indicate whether exceptions should be thrown and
   whether full or segmented table permissions should be returned."
   [{query-type :type, database :database, :as query} perms-opts :- PermsOptions]

@@ -32,7 +32,7 @@
   "Map with the various allowed search parameters, used to construct the SQL query"
   {:search-string                (s/maybe su/NonBlankString)
    :archived?                    s/Bool
-   :current-user-perms           #{perms/UserPath}
+   :current-user-perms           #{perms/Path}
    (s/optional-key :models)      (s/maybe #{su/NonBlankString})
    (s/optional-key :table-db-id) (s/maybe s/Int)
    (s/optional-key :limit-int)   (s/maybe s/Int)

@@ -5,6 +5,7 @@
   "com.google.guava"                 {:resource "apache2_0.txt"},
   "com.fasterxml.jackson.dataformat" {:resource "apache2_0.txt"},
   "com.onelogin"                     {:resource "MIT.txt"},
+  "com.vladsch.flexmark"             {:resource "BSD.txt"},
   "xalan"                            {:resource "apache2_0.txt"}
   "org.apache.hadoop"                {:resource "apache2_0.txt"}
   "org.ow2.asm"                      {:resource "BSD.txt"}

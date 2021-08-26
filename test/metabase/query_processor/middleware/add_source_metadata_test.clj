@@ -200,7 +200,9 @@
                        (concat
                         (venues-source-metadata :price)
                         (let [[count-col] (results-metadata (mt/run-mbql-query venues {:aggregation [[:count]]}))]
-                          [(assoc count-col :field_ref field-ref)])))]
+                          [(-> count-col
+                               (dissoc :effective_type)
+                               (assoc :field_ref field-ref))])))]
                (mt/mbql-query venues
                  {:source-query    {:source-query    {:source-query    {:source-table $$venues
                                                                         :aggregation  [[:count]]
@@ -253,7 +255,9 @@
                                                                            :max-value 45.0
                                                                            :num-bins  7
                                                                            :bin-width 5.0}}])])
-                                  (results-metadata (mt/run-mbql-query venues {:aggregation [[:count]]})))})
+                                  ;; computed column doesn't have an effective type in middleware before query
+                                  (map #(dissoc % :effective_type)
+                                       (results-metadata (mt/run-mbql-query venues {:aggregation [[:count]]}))))})
              (add-source-metadata
               (mt/mbql-query venues
                 {:source-query

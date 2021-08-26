@@ -70,3 +70,28 @@
                                        "/db/5/schema/PUBLIC/table/10/read/"
                                        "/collection/root/"
                                        "/collection/1/read/"})))))
+
+(deftest block-permissions-test
+  (testing "Should parse block permissions entries correctly"
+    (is (= {:db {1 {:schemas :block}
+                 2 {:schemas :block}}}
+           (parse/permissions->graph #{"/block/db/1/" "/block/db/2/"}))))
+  (testing (str "Block perms and data perms shouldn't exist together at the same time for a given DB, but if they do "
+                "for some  reason, ignore the data perms and return the block perms")
+    (doseq [path  ["/db/1/"
+                   "/db/1/schema/"
+                   "/db/1/schema/public/"
+                   "/db/1/schema/public/"
+                   "/db/1/schema/public/table/2/"
+                   "/db/1/schema/public/table/2/read/"]
+            ;; should work regardless of what order the paths come in
+            :let  [paths ["/block/db/1/" path]]
+            paths [paths (reverse paths)]]
+      (testing (format "\nPaths = %s" (pr-str paths))
+        (is (= {:db {1 (merge {:schemas :block}
+                              ;; block permissions should only affect the `:schema` key. `/db/1/` also sets the
+                              ;; `:native` key. In reality, it makes no sense to have block perms AND allow native
+                              ;; access but that's not the parsing code's concern.
+                              (when (= path "/db/1/")
+                                {:native :write}))}}
+               (parse/permissions->graph paths)))))))

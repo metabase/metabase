@@ -263,11 +263,13 @@
               (mt/with-db db
                 (sync/sync-database! db)
                 (letfn [(check-data [] (is (= {:cols [{:base_type    :type/Text
+                                                       :effective_type :type/Text
                                                        :display_name "COL1"
                                                        :field_ref    [:field "COL1" {:base-type :type/Text}]
                                                        :name         "COL1"
                                                        :source       :native}
                                                       {:base_type    :type/Decimal
+                                                       :effective_type :type/Decimal
                                                        :display_name "COL2"
                                                        :field_ref    [:field "COL2" {:base-type :type/Decimal}]
                                                        :name         "COL2"

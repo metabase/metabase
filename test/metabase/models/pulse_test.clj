@@ -310,7 +310,7 @@
 (deftest no-permissions-test
   (is (= false
          (with-pulse-in-collection [db _ pulse]
-           (binding [api/*current-user-permissions-set* (atom #{(perms/object-path (u/the-id db))})]
+           (binding [api/*current-user-permissions-set* (atom #{(perms/data-perms-path (u/the-id db))})]
              (mi/can-read? pulse))))))
 
 (deftest validate-collection-namespace-test

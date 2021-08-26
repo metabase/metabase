@@ -55,7 +55,7 @@
           (mt/with-temp* [Database [db]
                           Table    [table {:db_id (u/the-id db)}]]
             ;; All users get perms for all new DBs by default
-            (perms/revoke-permissions! (perms-group/all-users) (u/the-id db))
+            (perms/revoke-data-perms! (perms-group/all-users) (u/the-id db))
             (check-perms-for-rasta
              {:database (u/the-id db)
               :type     :query
@@ -98,7 +98,7 @@
           (mt/with-temp* [Database [db]
                           Table    [table {:db_id (u/the-id db)}]]
             ;; All users get perms for all new DBs by default
-            (perms/revoke-permissions! (perms-group/all-users) (u/the-id db))
+            (perms/revoke-data-perms! (perms-group/all-users) (u/the-id db))
             (check-perms-for-rasta
              {:database (u/the-id db)
               :type     :query
@@ -124,7 +124,7 @@
                           Card     [card    {:dataset_query {:database (u/the-id db), :type :query,
                                                              :query {:source-table (u/the-id table-2)}}}]]
             ;; All users get perms for all new DBs by default
-            (perms/revoke-permissions! (perms-group/all-users) (u/the-id db) nil (u/the-id table-2))
+            (perms/revoke-data-perms! (perms-group/all-users) (u/the-id db) nil (u/the-id table-2))
             (let [card-id  (:id card)
                   tag-name (str "#" card-id)]
               (check-perms-for-rasta
@@ -165,7 +165,7 @@
                                           {:database (u/the-id db), :type :native,
                                            :native {:query "SELECT 1 AS \"foo\", 2 AS \"bar\", 3 AS \"baz\""}}}]]
             ;; All users get perms for all new DBs by default
-            (perms/revoke-permissions! (perms-group/all-users) (u/the-id db))
+            (perms/revoke-data-perms! (perms-group/all-users) (u/the-id db))
             (let [card-id  (:id card)
                   tag-name (str "#" card-id)]
               (check-perms-for-rasta
@@ -223,7 +223,7 @@
   (testing "Make sure permissions are calculated for Card -> Card -> Source Query (#12354)"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp-copy-of-db
-        (perms/revoke-permissions! (perms-group/all-users) (mt/id))
+        (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
         (mt/with-temp Collection [collection]
           (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
           (doseq [[card-1-query-type card-1-query] {"MBQL"   (mt/mbql-query venues
@@ -278,7 +278,7 @@
 (deftest e2e-ignore-user-supplied-card-ids-test
   (testing "You shouldn't be able to bypass security restrictions by passing `[:info :card-id]` in the query."
     (mt/with-temp-copy-of-db
-      (perms/revoke-permissions! (perms-group/all-users) (mt/id))
+      (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
       (mt/with-temp* [Collection [collection]
                       Card       [card {:collection_id (u/the-id collection)
                                         :dataset_query (mt/mbql-query venues {:fields [$id], :order-by [[:asc $id]], :limit 2})}]]

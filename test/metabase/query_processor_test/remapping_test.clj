@@ -51,7 +51,7 @@
                       :limit       3}))
                  qp.test/rows-and-cols
                  (update :cols (fn [[c1 c2 agg]]
-                                 [(dissoc c1 :source_alias) c2 (dissoc agg :base_type)]))))))))
+                                 [(dissoc c1 :source_alias) c2 (dissoc agg :base_type :effective_type)]))))))))
 
 (deftest nested-remapping-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)

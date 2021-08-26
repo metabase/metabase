@@ -126,7 +126,7 @@ function GroupsPermissionsPage({
       {!permissionEditor && (
         <PermissionsEditorEmptyState
           icon="group"
-          message={t`Select a group to see it's data permissions`}
+          message={t`Select a group to see its data permissions`}
         />
       )}
 

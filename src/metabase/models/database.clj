@@ -60,7 +60,10 @@
 
 (defn- pre-delete [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
-  (db/delete! 'Permissions :object [:like (str (perms/object-path id) "%")])
+  (db/execute! {:delete-from (db/resolve-model 'Permissions)
+                :where       [:or
+                              [:like :object (str (perms/data-perms-path id) "%")]
+                              [:= :object (perms/database-block-perms-path id)]]})
   (try
     (driver/notify-database-updated driver database)
     (catch Throwable e
@@ -100,7 +103,7 @@
 
 
 (defn- perms-objects-set [database _]
-  #{(perms/object-path (u/the-id database))})
+  #{(perms/data-perms-path (u/the-id database))})
 
 (u/strict-extend (class Database)
   models/IModel

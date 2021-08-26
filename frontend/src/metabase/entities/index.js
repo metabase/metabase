@@ -1,3 +1,4 @@
+export alerts from "./alerts";
 export collections from "./collections";
 export snippetCollections from "./snippet-collections";
 export dashboards from "./dashboards";
