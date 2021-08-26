@@ -50,7 +50,7 @@ You should _avoid_ public sharing when you are sandboxing data. See [public shar
 
 **Steps to take:**
 
-Not much you can do here: if you need to sandbox data, [you can't use these databases][unsupported-databases].
+There is not much you can do here: if you need to sandbox data, [you can't use these databases][unsupported-databases].
 
 ## People can see **columns** they're _not_ supposed to see
 
