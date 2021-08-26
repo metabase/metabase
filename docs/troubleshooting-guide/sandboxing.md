@@ -40,7 +40,7 @@ You should _avoid_ public sharing when you are sandboxing data. See [public shar
 
 **Steps to take**
 
-If you want to sandbox access, avoid adding the person to a group with SQL access to that table.
+- If you want to sandbox access, avoid adding the person to a group with SQL access to that table.
 
 If you want to give them SQL access, but still limit what the person can see, you'll need to set up permissions in your database, and connect that database via the user account with that restricted access. You can connect the same database to Metabase multiple times, each with different levels of access, and expose different connections to different groups.
 
