@@ -41,7 +41,7 @@ const filter = {
 
 const dashboardDetails = { parameters: [filter] };
 
-describe("issue 17514", () => {
+describe.skip("issue 17514", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
