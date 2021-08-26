@@ -118,8 +118,8 @@ const joinClausePropTypes = {
 };
 
 function JoinClause({ color, join, updateQuery, showRemove }) {
-  const joinDimensionPickerRef = useRef();
-  const parentDimensionPickerRef = useRef();
+  const joinDimensionPickersRef = useRef([]);
+  const parentDimensionPickersRef = useRef([]);
 
   const query = join.query();
   if (!query) {
@@ -149,7 +149,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
   function onSourceTableSet(newJoin) {
     if (!newJoin.parentDimensions().length) {
       setTimeout(() => {
-        // parentDimensionPickerRef.current.open();
+        parentDimensionPickersRef.current[0]?.open();
       });
     }
   }
@@ -160,8 +160,8 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
       .setDefaultAlias()
       .parent()
       .update(updateQuery);
-    if (!join.joinDimensions().length) {
-      // joinDimensionPickerRef.current.open();
+    if (!join.joinDimensions[index]) {
+      joinDimensionPickersRef.current[index]?.open();
     }
   }
 
@@ -172,11 +172,14 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
       .update(updateQuery);
   }
 
-  function addNewDimensionsPair() {
+  function addNewDimensionsPair(index) {
     join
       .addEmptyDimensionsPair()
       .parent()
       .update(updateQuery);
+    setTimeout(() => {
+      parentDimensionPickersRef.current[index]?.open();
+    });
   }
 
   function removeJoin() {
@@ -235,7 +238,9 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
                     onChange={fieldRef =>
                       onParentDimensionChange(index, fieldRef)
                     }
-                    // ref={parentDimensionPickerRef}
+                    ref={ref =>
+                      (parentDimensionPickersRef.current[index] = ref)
+                    }
                     data-testid="parent-dimension"
                   />
                   <JoinConditionLabel>=</JoinConditionLabel>
@@ -247,7 +252,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
                     onChange={fieldRef =>
                       onJoinDimensionChange(index, fieldRef)
                     }
-                    // ref={joinDimensionPickerRef}
+                    ref={ref => (joinDimensionPickersRef.current[index] = ref)}
                     data-testid="join-dimension"
                   />
                   {isLast ? (
@@ -255,7 +260,9 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
                       <NotebookCellAdd
                         color={color}
                         className="cursor-pointer ml-auto"
-                        onClick={addNewDimensionsPair}
+                        onClick={() => {
+                          addNewDimensionsPair(index + 1);
+                        }}
                       />
                     ) : (
                       <RemoveJoinIcon onClick={removeDimensionPair} size={12} />

@@ -298,6 +298,30 @@ describe("Notebook Editor > Join Step", () => {
       expect(screen.queryAllByText("Pick a column...")).toHaveLength(2);
     });
 
+    it("automatically opens a parent dimension picker for new fields pair", async () => {
+      await setup({ joinTable: "Products" });
+
+      fireEvent.click(screen.queryByLabelText("add icon"));
+
+      const picker = await screen.findByRole("rowgroup");
+      expect(picker).toBeInTheDocument();
+      expect(picker).toBeVisible();
+      expect(within(picker).queryByText("Order")).toBeInTheDocument();
+    });
+
+    it("automatically opens a join dimension picker for new fields pair", async () => {
+      await setup({ joinTable: "Products" });
+
+      fireEvent.click(screen.queryByLabelText("add icon"));
+      let picker = await screen.findByRole("rowgroup");
+      fireEvent.click(within(picker).queryByText("Created At"));
+
+      picker = await screen.findByRole("rowgroup");
+      expect(picker).toBeInTheDocument();
+      expect(picker).toBeVisible();
+      expect(within(picker).queryByText("Product")).toBeInTheDocument();
+    });
+
     it("does not display a new dimensions pair control for a new empty pair", async () => {
       await setup({ joinTable: "Products" });
 
