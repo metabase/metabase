@@ -311,5 +311,19 @@ describe("Notebook Editor > Join Step", () => {
 
       expect(screen.queryByLabelText("add icon")).toBe(null);
     });
+
+    it("can remove an empty dimension pair", async () => {
+      setup();
+      await selectTable(/Products/i);
+      fireEvent.click(screen.queryByLabelText("add icon"));
+
+      fireEvent.click(screen.queryByLabelText("close icon"));
+
+      expect(screen.queryAllByText("Pick a column...")).toEqual([]);
+      expect(screen.getByTestId("parent-dimension")).toHaveTextContent(
+        /Product ID/i,
+      );
+      expect(screen.getByTestId("join-dimension")).toHaveTextContent(/ID/i);
+    });
   });
 });

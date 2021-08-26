@@ -213,6 +213,14 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
           >
             {displayConditions.map((condition, index) => {
               const isLast = index === displayConditions.length - 1;
+
+              function removeDimensionPair() {
+                join
+                  .removeCondition(index)
+                  .parent()
+                  .update(updateQuery);
+              }
+
               return (
                 <JoinDimensionControlsContainer key={index}>
                   <JoinDimensionPicker
@@ -239,12 +247,14 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
                     data-testid="join-dimension"
                   />
                   {isLast ? (
-                    join.isValid() && (
+                    join.isValid() ? (
                       <NotebookCellAdd
                         color={color}
                         className="cursor-pointer ml-auto"
                         onClick={addNewDimensionsPair}
                       />
+                    ) : (
+                      <RemoveJoinIcon onClick={removeDimensionPair} size={12} />
                     )
                   ) : (
                     <JoinConditionLabel>{t`on`}</JoinConditionLabel>
