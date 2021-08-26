@@ -149,7 +149,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
   function onSourceTableSet(newJoin) {
     if (!newJoin.parentDimensions().length) {
       setTimeout(() => {
-        parentDimensionPickerRef.current.open();
+        // parentDimensionPickerRef.current.open();
       });
     }
   }
@@ -161,7 +161,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
       .parent()
       .update(updateQuery);
     if (!join.joinDimensions().length) {
-      joinDimensionPickerRef.current.open();
+      // joinDimensionPickerRef.current.open();
     }
   }
 
