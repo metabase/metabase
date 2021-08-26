@@ -47,10 +47,16 @@
     (is (not= (encryption/encrypt secret "Hello!")
               (encryption/encrypt secret "Hello!")))))
 
-(deftest  decrypt-test
+(deftest decrypt-test
   (testing "test that we can decrypt something"
     (is (= "Hello!"
            (encryption/decrypt secret (encryption/encrypt secret "Hello!"))))))
+
+(deftest decrypt-bytes-test
+  (testing "test that we can decrypt binary data"
+    (let [data (byte-array (range 0 100))]
+      (is (= (seq data)
+             (seq (encryption/decrypt-bytes secret (encryption/encrypt-bytes secret data))))))))
 
 (deftest exception-with-wrong-decryption-key-test
   (testing "trying to decrypt something with the wrong key with `decrypt` should throw an Exception"
