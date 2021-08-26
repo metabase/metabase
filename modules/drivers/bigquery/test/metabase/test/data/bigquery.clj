@@ -36,7 +36,7 @@
 (defn- normalize-name ^String [db-or-table-or-field identifier]
   (let [s (str/replace (name identifier) "-" "_")]
     (case db-or-table-or-field
-      :db             (str "v3_" s)
+      :db             (str "v3_legacydriver_" s)
       (:table :field) s)))
 
 (def ^:private details
