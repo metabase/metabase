@@ -118,7 +118,7 @@ Since someone must log in so that Metabase can apply sandboxed views to that per
 
 ### If using Single Sign-on (SSO), are user attributes correct?
 
-**Root cause** If people are logging in with SSO, but the expected attributes aren't being saved and made available, sandboxing will deny access.
+**Root cause**: If people are logging in with SSO, but the expected attributes aren't being saved and made available, sandboxing will deny access.
 
 **Steps to take**:
 
