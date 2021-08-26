@@ -105,7 +105,8 @@
       getParentFile   ; /home/cam/metabase/bin/common/src/
       getParentFile   ; /home/cam/metabase/bin/common/
       getParentFile   ; /home/cam/metabase/bin/
-      getParentFile)) ; /home/cam/metabase/
+      getParentFile   ; /home/cam/metabase/
+      getCanonicalPath))
 
 (defn download-file!
   "Download a file from `url` to `dest-path` using `wget`."
