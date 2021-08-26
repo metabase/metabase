@@ -114,7 +114,7 @@ Go to **Admin** > **Data model** and find the table. Check to make sure that the
 
 **Steps to take**:
 
-Avoid using signed embedding when you want to restrict row or column access to a table. A person must log in so that Metabase to apply sandboxed views to that person.
+Since someone must log in so that Metabase can apply sandboxed views to that person, avoid using signed embedding when you want to restrict row or column access to a table.
 
 ### If using Single Sign-on (SSO), are user attributes correct?
 
