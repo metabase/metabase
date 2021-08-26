@@ -207,11 +207,13 @@ export default class DatabaseEditApp extends Component {
                     {({
                       Form,
                       FormField,
+                      FormMessage,
+                      FormSubmit,
                       formFields,
                       handleSubmit,
                       canSubmit,
                       onChangeField,
-                      ...props
+                      submitTitle,
                     }) => {
                       return (
                         <Flex>
@@ -234,6 +236,12 @@ export default class DatabaseEditApp extends Component {
                                     {t`Next`}
                                   </Button>
                                 )}
+                              <FormMessage />
+                              <div className="Form-actions text-centered">
+                                <FormSubmit className="block mb2">
+                                  {submitTitle}
+                                </FormSubmit>
+                              </div>
                             </Form>
                           </Box>
                           <Box>

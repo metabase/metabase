@@ -22,7 +22,7 @@ import MetabaseSettings from "metabase/lib/settings";
 
 const propTypes = {
   engine: PropTypes.string.isRequired,
-  hasCircle: PropTypes.bool.isRequired,
+  hasCircle: PropTypes.bool,
   onChangeEngine: PropTypes.func.isRequired,
 };
 
