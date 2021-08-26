@@ -141,25 +141,42 @@
       (possibly-encrypted-bytes? b))))
 
 (defn maybe-decrypt
-  "If `MB_ENCRYPTION_SECRET_KEY` is set and `s` is encrypted, decrypt `s`; otherwise return `s` as-is."
+  "If `MB_ENCRYPTION_SECRET_KEY` is set and `v` is encrypted, decrypt `v`; otherwise return `s` as-is. Attempts to check
+  whether `v` is an encrypted String, in which case the decrypted String is returned, or whether `v` is encrypted bytes,
+  in which case the decrypted bytes are returned."
   {:arglists '([secret-key? s & {:keys [log-errors?], :or {log-errors? true}}])}
   [& args]
-  (let [[secret-key & more]        (if (bytes? (first args))
+  (let [[secret-key & more]        (if (and (bytes? (first args)) (string? (second args))) ;TODO: fix hackiness
                                      args
                                      (cons default-secret-key args))
-        [s & options]              more
+        [v & options]              more
         {:keys [log-errors?]
-         :or   {log-errors? true}} (apply hash-map options)]
-    (if (and secret-key (possibly-encrypted-string? s))
-      (try
-        (decrypt secret-key s)
-        (catch Throwable e
-          ;; if we can't decrypt `s`, but it *is* probably encrypted, log a warning
-          (when log-errors?
-            (log/warn
-             (trs "Cannot decrypt encrypted string. Have you changed or forgot to set MB_ENCRYPTION_SECRET_KEY?")
-             (.getMessage e)
-             (u/pprint-to-str (u/filtered-stacktrace e))))
-          s))
-      ;; otherwise return `s` without decrypting. It's probably not encrypted in the first place
-      s)))
+         :or   {log-errors? true}} (apply hash-map options)
+        log-error-fn (fn [kind ^Throwable e]
+                       (when log-errors?
+                         (log/warn (trs "Cannot decrypt encrypted {0}. Have you changed or forgot to set MB_ENCRYPTION_SECRET_KEY?"
+                                        kind)
+                                   (.getMessage e)
+                                   (u/pprint-to-str (u/filtered-stacktrace e)))))]
+
+    (cond (not (some? secret-key))
+          v
+
+          (possibly-encrypted-string? v)
+          (try
+            (decrypt secret-key v)
+            (catch Throwable e
+              ;; if we can't decrypt `v`, but it *is* probably encrypted, log a warning
+              (log-error-fn "String" e)
+              v))
+
+          (possibly-encrypted-bytes? v)
+          (try
+            (decrypt-bytes secret-key v)
+            (catch Throwable e
+              ;; if we can't decrypt `v`, but it *is* probably encrypted, log a warning
+              (log-error-fn "bytes" e)
+              v))
+
+          :else
+          v)))

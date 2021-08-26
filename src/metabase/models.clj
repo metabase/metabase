@@ -29,6 +29,7 @@
             [metabase.models.query-cache :as query-cache]
             [metabase.models.query-execution :as query-execution]
             [metabase.models.revision :as revision]
+            [metabase.models.secret :as secret]
             [metabase.models.segment :as segment]
             [metabase.models.session :as session]
             [metabase.models.setting :as setting]
@@ -69,6 +70,7 @@
          query-cache/keep-me
          query-execution/keep-me
          revision/keep-me
+         secret/keep-me
          segment/keep-me
          session/keep-me
          setting/keep-me
@@ -108,6 +110,7 @@
  [query-cache QueryCache]
  [query-execution QueryExecution]
  [revision Revision]
+ [secret Secret]
  [segment Segment]
  [session Session]
  [setting Setting]
