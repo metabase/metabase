@@ -71,7 +71,7 @@ There is not much you can do here: if you need to sandbox data, [you can't use t
 
 Make sure that you're using a SQL question to create the sandbox, and that you're not including columns you should be excluding.
 
-If you build a question using the query builder (i.e., use a simple or custom question), you may unintentionally pull in additional columns. You can check exactly which columns are included by viewing the notebook editor for that question and clicking on the **View the SQL** button. But again: use SQL questions to sandbox the data, and this problem goes away.
+If you build a question using the query builder (i.e., use a simple or custom question), you may unintentionally pull in additional columns. You can check exactly which columns are included by viewing the question in the Notebook Editor and clicking on the **View the SQL** button. But again: if you use SQL questions to sandbox the data, this problem goes away.
 
 ## Is the person in a group with unrestricted access to view the table?
 
