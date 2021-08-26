@@ -16,7 +16,8 @@
   *  empty strings get parsed to `nil` instead of an empty keyword `:`
   *  strings starting with `:` e.g. `\":driver\"` get parsed to normal keywords e.g. `:driver` instead of `::driver`
      (which is super confusing, because it's an _unnamespaced_ keyword whose the _name_ is `:driver`)"
-  [^String s]
-  (when-not (str/blank? s)
-    (keyword (cond-> s
-               (str/starts-with? s ":") (.substring 1)))))
+  [s]
+  (cond
+    (keyword? s)         s
+    (not (str/blank? s)) (keyword (cond-> s
+                                    (str/starts-with? s ":") (.substring 1)))))

@@ -7,4 +7,6 @@
     "abc"  :abc
     ":abc" :abc
     ""     nil
-    "  "   nil))
+    "  "   nil
+    :abc   :abc
+    nil    nil))
