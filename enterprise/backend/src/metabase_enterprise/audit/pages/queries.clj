@@ -55,11 +55,12 @@
 (s/defn ^:internal-query-fn bad-table
   "List of all failing questions"
   ([]
-   (table nil nil nil nil))
-  ([errorFilter   :- (s/maybe s/Str)
-    dbFilter      :- (s/maybe s/Str)
-    sortColumn    :- (s/maybe s/Str)
-    sortDirection :- (s/maybe (s/enum "asc" "desc"))]
+   (table nil nil nil nil nil))
+  ([errorFilter      :- (s/maybe s/Str)
+    dbFilter         :- (s/maybe s/Str)
+    collectionFilter :- (s/maybe s/Str)
+    sortColumn       :- (s/maybe s/Str)
+    sortDirection    :- (s/maybe (s/enum "asc" "desc"))]
   {:metadata [[:card_id         {:display_name "Card ID",            :base_type :type/Integer :remapped_to   :card_name}]
               [:card_name       {:display_name "Question",           :base_type :type/Name    :remapped_from :card_id}]
               [:error_substr    {:display_name "Error",              :base_type :type/Text}]
@@ -105,7 +106,8 @@
                              [:= :card.archived false]
                              [:<> :qe.error nil]]}
                 (common/add-search-clause errorFilter :qe.error)
-                (common/add-search-clause dbFilter    :db.name)
+                (common/add-search-clause dbFilter :db.name)
+                (common/add-search-clause collectionFilter :coll.name)
                 (common/add-sort-clause
                   (or sortColumn "card.name")
                   (or sortDirection "asc"))))}))
