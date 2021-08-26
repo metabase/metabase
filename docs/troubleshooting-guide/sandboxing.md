@@ -132,7 +132,8 @@ Someone is supposed to be able to view some of the values in a table in their qu
 
 **Steps to take:**
 
-You can check the access level for the groups by going into the Admin Panel and viewing Permissions for the table in question. If the person isn't in a group with access to that table, you can add them to a group that does, or create a new group with access to that table and add them to that new group.
+1. Check the access level for the groups by going to **Admin Panel** and viewing **Permissions** for the table in question.
+2. If the person isn't in a group with access to that table, add them to a group that does, or create a new group with access to that table and add them to that new group.
 
 ## Is the person who can't see the sandboxed data in multiple groups?
 
