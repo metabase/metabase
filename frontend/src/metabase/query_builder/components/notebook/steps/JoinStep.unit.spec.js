@@ -284,4 +284,15 @@ describe("Notebook Editor > Join Step", () => {
       }),
     );
   });
+
+  describe("joins on multiple fields", () => {
+    it("can add a new dimension pair", async () => {
+      setup();
+      await selectTable(/Products/i);
+
+      fireEvent.click(screen.queryByLabelText("add icon"));
+
+      expect(screen.queryAllByText("Pick a column...")).toHaveLength(2);
+    });
+  });
 });
