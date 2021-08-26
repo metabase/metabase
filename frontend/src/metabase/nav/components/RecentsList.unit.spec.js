@@ -1,10 +1,6 @@
 import React from "react";
 import { Provider } from "react-redux";
-import {
-  render,
-  screen,
-  waitForElementToBeRemoved,
-} from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import xhrMock from "xhr-mock";
 import { getStore } from "__support__/entities-store";
 import RecentsList from "./RecentsList";
@@ -64,7 +60,7 @@ async function setup(recents = recentsData) {
     </Provider>,
   );
 
-  await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+  await waitFor(() => screen.queryByText("Recently viewed"));
 }
 
 describe("RecentsList", () => {
@@ -78,7 +74,7 @@ describe("RecentsList", () => {
 
   it("shows list of recents", async () => {
     await setup();
-
+    await waitFor(() => screen.queryByText("Question I visited"));
     expect(screen.queryByText("Recently viewed")).toBeInTheDocument();
 
     const [questionType, dashboardType, tableType] = screen.queryAllByTestId(

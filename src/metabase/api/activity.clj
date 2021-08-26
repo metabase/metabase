@@ -85,7 +85,7 @@
                    :user_id *current-user-id*
                    {:group-by [:user_id :model :model_id]
                     :order-by [[:max_ts :desc]]
-                    :limit    10})
+                    :limit    5})
         :let     [model-object (view-log-entry->matching-object view-log)]
         :when    (and model-object
                       (mi/can-read? model-object))]

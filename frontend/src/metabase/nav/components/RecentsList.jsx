@@ -1,6 +1,8 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import PropTypes from "prop-types";
 import { t } from "ttag";
 import Recents from "metabase/entities/recents";
+import _ from "underscore";
 
 import Card from "metabase/components/Card";
 import Text from "metabase/components/type/Text";
@@ -19,28 +21,44 @@ import {
   Header,
   RecentListItemContent,
 } from "./RecentsList.styled";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+
+const LOADER_THRESHOLD = 100;
 
 const getItemKey = ({ model, model_id }) => `${model}:${model_id}`;
 const getItemName = model_object =>
   model_object.display_name || model_object.name;
 
-export default function RecentsList() {
+const propTypes = {
+  list: PropTypes.arrayOf(
+    PropTypes.shape({
+      model_id: PropTypes.number,
+      model: PropTypes.string,
+      model_object: PropTypes.object,
+    }),
+  ),
+  loading: PropTypes.bool,
+};
+
+function RecentsList({ list, loading }) {
+  const [canShowLoader, setCanShowLoader] = useState(false);
+  const hasRecents = list?.length > 0;
+
+  useEffect(() => {
+    const timer = setTimeout(() => setCanShowLoader(true), LOADER_THRESHOLD);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (loading && !canShowLoader) {
+    return null;
+  }
+
   return (
     <Card py={1}>
       <Header>{t`Recently viewed`}</Header>
-      <Recents.ListLoader wrapped reload>
-        {({ list }) => {
-          const hasRecents = list.length > 0;
-
-          if (!hasRecents) {
-            return (
-              <EmptyStateContainer>
-                <EmptyState message={t`Nothing here`} icon="all" />
-              </EmptyStateContainer>
-            );
-          }
-
-          return (
+      <LoadingAndErrorWrapper loading={loading} noWrapper>
+        <React.Fragment>
+          {hasRecents && (
             <ul>
               {list.map(item => (
                 <li key={getItemKey(item)}>
@@ -63,9 +81,25 @@ export default function RecentsList() {
                 </li>
               ))}
             </ul>
-          );
-        }}
-      </Recents.ListLoader>
+          )}
+
+          {!hasRecents && (
+            <EmptyStateContainer>
+              <EmptyState message={t`Nothing here`} icon="all" />
+            </EmptyStateContainer>
+          )}
+        </React.Fragment>
+      </LoadingAndErrorWrapper>
     </Card>
   );
 }
+
+RecentsList.propTypes = propTypes;
+
+export default _.compose(
+  Recents.loadList({
+    wrapped: true,
+    reload: true,
+    loadingAndErrorWrapper: false,
+  }),
+)(RecentsList);
