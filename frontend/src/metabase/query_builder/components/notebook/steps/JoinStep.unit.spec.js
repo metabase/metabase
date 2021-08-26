@@ -286,6 +286,14 @@ describe("Notebook Editor > Join Step", () => {
   });
 
   describe("joins on multiple fields", () => {
+    it("does not display a new dimensions pair control until first pair is valid", async () => {
+      setup();
+      await selectTable(/Reviews/i);
+
+      expect(screen.queryAllByText("Pick a column...")).toHaveLength(2);
+      expect(screen.queryByLabelText("add icon")).toBe(null);
+    });
+
     it("can add a new dimension pair", async () => {
       setup();
       await selectTable(/Products/i);
@@ -293,6 +301,15 @@ describe("Notebook Editor > Join Step", () => {
       fireEvent.click(screen.queryByLabelText("add icon"));
 
       expect(screen.queryAllByText("Pick a column...")).toHaveLength(2);
+    });
+
+    it("does not display a new dimensions pair control for a new empty pair", async () => {
+      setup();
+      await selectTable(/Products/i);
+
+      fireEvent.click(screen.queryByLabelText("add icon"));
+
+      expect(screen.queryByLabelText("add icon")).toBe(null);
     });
   });
 });

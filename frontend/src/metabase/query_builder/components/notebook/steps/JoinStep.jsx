@@ -172,6 +172,13 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
       .update(updateQuery);
   }
 
+  function addNewDimensionsPair() {
+    join
+      .addEmptyDimensionsPair()
+      .parent()
+      .update(updateQuery);
+  }
+
   function removeJoin() {
     join.remove().update(updateQuery);
   }
@@ -205,6 +212,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
             align="start"
           >
             {displayConditions.map((condition, index) => {
+              const isLast = index === displayConditions.length - 1;
               return (
                 <JoinDimensionControlsContainer key={index}>
                   <JoinDimensionPicker
@@ -230,17 +238,13 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
                     // ref={joinDimensionPickerRef}
                     data-testid="join-dimension"
                   />
-                  <NotebookCellAdd
-                    color={color}
-                    className="cursor-pointer ml-auto"
-                    onClick={() => {
-                      join
-                        .addEmptyDimensionsPair()
-                        .parent()
-                        .update(updateQuery);
-                    }}
-                  />
-                </React.Fragment>
+                  {isLast && join.isValid() && (
+                    <NotebookCellAdd
+                      color={color}
+                      className="cursor-pointer ml-auto"
+                      onClick={addNewDimensionsPair}
+                    />
+                  )}
                 </JoinDimensionControlsContainer>
               );
             })}
