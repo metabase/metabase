@@ -2,7 +2,7 @@
 
 [Sandboxing data][sandboxing-your-data] gives some people access to only a subset of the data. (The term comes from the practice of putting children in a sandbox to play safely.) To implement sandboxing, Metabase runs a query that filters rows and/or selects a subset of columns from a table based on [the person's permissions][permissions]; the person's query then runs on the initial query's result (i.e., it runs on the sandboxed data).
 
-If you haven't already, give these articles a look to get a better understanding of how Sandboxing works:
+These articles will help you understand how sandboxing works:
 
 - [Data Sandboxing: setting row-level permissions][row-permissions].
 - [Advanced data sandboxing: limiting access to columns][column-permissions].
