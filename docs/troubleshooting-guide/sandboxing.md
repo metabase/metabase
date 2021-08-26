@@ -101,7 +101,7 @@ Go to **Admin** > **Data model** and find the table. Check to make sure that the
 
 ### Is a field remapped to display info from a restricted table?
 
-**Root cause:** If a table which the person _does_ have sandbox access has a field that uses remapping to display information from another table which the person does _not_ have sandbox access to, they won't be able to see the table. For example, if you have remapped an ID field to display a product's name instead, but the person does not have access to the product table, they won't be able to see the column.
+**Root cause:** If a table which the person _does_ have sandboxed access has a field that uses remapping to display information from another table which the person does _not_ have sandboxed access to, they won't be able to see the table. For example, if you have remapped an ID field to display a product's name instead, but the person does not have access to the product table, they won't be able to see the column.
 
 **Steps to take:**
 
