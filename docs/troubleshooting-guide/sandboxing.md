@@ -139,7 +139,6 @@ Someone is supposed to be able to view some of the values in a table in their qu
 
 **Root cause:** We only allow [one sandbox per table][one-sandbox-per-table]: if someone is a member of two or more groups with different permissions, every rule for figuring out whether access should be allowed or not is confusing. We therefore only allow one rule.
 
-
 **Steps to take:** 
 
 The administrator can [create a new group][group] to capture precisely who's allowed access to what.
