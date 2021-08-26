@@ -89,7 +89,7 @@ Remove the person from all groups with unrestricted access to the sandboxed tabl
 
 **Steps to take**:
 
-You could add these people to a group (or create a new group) that has permissions to view the table.
+Add these people to a group (or create a new group) that has permissions to view the table.
 
 ### Has an administrator hidden fields in the table?
 
