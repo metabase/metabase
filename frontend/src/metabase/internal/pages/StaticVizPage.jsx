@@ -34,7 +34,7 @@ export default function StaticVizPage() {
                 },
               }),
             }}
-          ></Box>
+          />
         </Box>
         <Box py={3}>
           <Subhead>Line chart with timeseries data</Subhead>
@@ -55,7 +55,24 @@ export default function StaticVizPage() {
                 },
               }),
             }}
-          ></Box>
+          />
+        </Box>
+        <Box py={3}>
+          <Subhead>Bar chart showing categorical data</Subhead>
+          <Box
+            dangerouslySetInnerHTML={{
+              __html: RenderChart("categorical/bar", {
+                data: [["donut", 20], ["cronut", 31]],
+                accessors: {
+                  x: row => row[0],
+                  y: row => row[1],
+                },
+                labels: {
+                  bottom: "Category",
+                },
+              }),
+            }}
+          />
         </Box>
         <Box py={3}>
           <Subhead>Donut chart showing categorical data</Subhead>
@@ -73,7 +90,7 @@ export default function StaticVizPage() {
                 },
               }),
             }}
-          ></Box>
+          />
         </Box>
       </Box>
     </Box>
