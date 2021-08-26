@@ -27,18 +27,9 @@ const AuditQuestionsOverviewTab = () => (
   />
 );
 
-const FailingQuestionsAuditTable = () => (
-  <AuditDashboard
-    cards={[
-      [{ x: 0, y: 0, w: 16, h: 16 }, QueriesCards.bad_table()],
-    ]}
-  />
-);
-
 AuditQuestions.tabs = [
   { path: "overview", title: "Overview", component: AuditQuestionsOverviewTab },
   { path: "all", title: "All questions", component: QuestionsAuditTable },
-  { path: "failing", title: "Failing questions", component: FailingQuestionsAuditTable },
 ];
 
 export default AuditQuestions;
