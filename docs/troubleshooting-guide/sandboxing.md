@@ -128,7 +128,7 @@ Our article on [Authenticating with SAML][authenticating-with-saml] explains the
 
 Someone is supposed to be able to view some of the values in a table in their queries, but are denied access or get an empty set of results where there should be data.
 
-**Root cause**: Administrators restricted access to the table. Administrators usually restrict access to tables as part of sandboxing. If the restrictions are too tight by mistake (e.g., "no access") then people might not be able to see any data at all.
+**Root cause**: The administrator restricted access to the table. Administrators usually restrict access to tables as part of sandboxing; if the restrictions are too tight by mistake (e.g., "no access") then people might not be able to see any data at all.
 
 **Steps to take:**
 
