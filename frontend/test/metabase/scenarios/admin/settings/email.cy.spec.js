@@ -5,7 +5,8 @@ describe("scenarios > admin > settings > email settings", () => {
     restore();
     cy.signInAsAdmin();
   });
-  it("should be able to save email settings", () => {
+
+  it.skip("should be able to save email settings (metabase#17615)", () => {
     cy.visit("/admin/settings/email");
     cy.findByPlaceholderText("smtp.yourservice.com")
       .type("localhost")
@@ -25,6 +26,12 @@ describe("scenarios > admin > settings > email settings", () => {
     cy.findByText("Save changes").click();
 
     cy.findByText("Changes saved!");
+
+    // This part was added as a repro for metabase#17615
+    cy.findByDisplayValue("localhost");
+    cy.findByDisplayValue("25");
+    cy.findAllByDisplayValue("admin");
+    cy.findByDisplayValue("mailer@metabase.test");
   });
   it("should show an error if test email fails", () => {
     // Reuse Email setup without relying on the previous test
