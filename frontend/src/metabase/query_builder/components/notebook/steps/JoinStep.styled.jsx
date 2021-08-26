@@ -72,7 +72,7 @@ export const JoinWhereConditionLabel = styled.span.attrs({ children: "on" })`
   margin: 0 ${space(2)};
 `;
 
-export const JoinOnConditionLabel = styled.span.attrs({ children: "=" })`
+export const JoinConditionLabel = styled.span`
   font-size: 20;
   font-weight: bold;
   color: ${color("text-medium")};

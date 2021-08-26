@@ -27,7 +27,7 @@ import {
   JoinTypeIcon,
   JoinDimensionControlsContainer,
   JoinWhereConditionLabel,
-  JoinOnConditionLabel,
+  JoinConditionLabel,
   RemoveJoinIcon,
 } from "./JoinStep.styled";
 
@@ -226,7 +226,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
                     // ref={parentDimensionPickerRef}
                     data-testid="parent-dimension"
                   />
-                  <JoinOnConditionLabel />
+                  <JoinConditionLabel>=</JoinConditionLabel>
                   <JoinDimensionPicker
                     color={color}
                     query={query}
@@ -238,12 +238,16 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
                     // ref={joinDimensionPickerRef}
                     data-testid="join-dimension"
                   />
-                  {isLast && join.isValid() && (
-                    <NotebookCellAdd
-                      color={color}
-                      className="cursor-pointer ml-auto"
-                      onClick={addNewDimensionsPair}
-                    />
+                  {isLast ? (
+                    join.isValid() && (
+                      <NotebookCellAdd
+                        color={color}
+                        className="cursor-pointer ml-auto"
+                        onClick={addNewDimensionsPair}
+                      />
+                    )
+                  ) : (
+                    <JoinConditionLabel>{t`on`}</JoinConditionLabel>
                   )}
                 </JoinDimensionControlsContainer>
               );
