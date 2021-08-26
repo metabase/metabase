@@ -16,6 +16,7 @@ import {
   TitleWrapper,
   Description,
   ContextText,
+  ContextContainer,
 } from "./SearchResult.styled";
 import { InfoText } from "./InfoText";
 
@@ -46,7 +47,7 @@ function DefaultIcon({ item }) {
   return <Icon {...item.getIcon()} size={DEFAULT_ICON_SIZE} />;
 }
 
-function ItemIcon({ item, type }) {
+export function ItemIcon({ item, type }) {
   const IconComponent = ModelIconComponentMap[type] || DefaultIcon;
   return (
     <IconWrapper item={item} type={type}>
@@ -67,7 +68,7 @@ function Context({ context }) {
   }
 
   return (
-    <Box ml="42px" mt="12px" style={{ maxWidth: 620 }}>
+    <ContextContainer>
       <ContextText>
         {context.map(({ is_match, text }, i) => {
           if (!is_match) {
@@ -82,7 +83,7 @@ function Context({ context }) {
           );
         })}
       </ContextText>
-    </Box>
+    </ContextContainer>
   );
 }
 
@@ -112,7 +113,7 @@ export default function SearchResult({ result, compact }) {
           <Score scores={result.scores} />
         </Box>
       </Flex>
-      {!compact && <Context context={result.context} />}
+      {compact || <Context context={result.context} />}
     </ResultLink>
   );
 }

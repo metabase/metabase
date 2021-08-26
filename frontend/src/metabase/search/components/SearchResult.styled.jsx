@@ -10,12 +10,7 @@ function getColorForIconWrapper(props) {
   if (props.item.collection_position) {
     return color("saturated-yellow");
   }
-  switch (props.type) {
-    case "collection":
-      return lighten("brand", 0.35);
-    default:
-      return color("brand");
-  }
+  return props.type === "collection" ? lighten("brand", 0.35) : color("brand");
 }
 
 export const IconWrapper = styled.div`
@@ -95,4 +90,10 @@ export const Description = styled(Text)`
   padding-left: ${space(1)};
   margin-top: ${space(1)} !important;
   border-left: 2px solid ${lighten("brand", 0.45)};
+`;
+
+export const ContextContainer = styled.div`
+  margin-left: 42px;
+  margin-top: 12px;
+  max-width: 620px;
 `;

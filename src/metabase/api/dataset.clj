@@ -5,10 +5,12 @@
             [clojure.tools.logging :as log]
             [compojure.core :refer [POST]]
             [metabase.api.common :as api]
+            [metabase.events :as events]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.card :refer [Card]]
             [metabase.models.database :as database :refer [Database]]
             [metabase.models.query :as query]
+            [metabase.models.table :refer [Table]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.constraints :as qp.constraints]
             [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -46,6 +48,10 @@
       (throw (ex-info (tru "`database` is required for all queries whose type is not `internal`.")
                       {:status-code 400, :query query})))
     (api/read-check Database database))
+  ;; store table id trivially iff we get a query with simple source-table
+  (let [table-id (get-in query [:query :source-table])]
+    (when (int? table-id)
+      (events/publish-event! :table-read (assoc (Table table-id) :actor_id api/*current-user-id*))))
   ;; add sensible constraints for results limits on our query
   (let [source-card-id (query->source-card-id query)
         info           {:executed-by api/*current-user-id*
