@@ -122,11 +122,17 @@ executors:
           # MYSQL_USER: root
           # MYSQL_ALLOW_EMPTY_PASSWORD: yes
 
-  mongo:
+  mongo-4-0:
      working_directory: /home/circleci/metabase/metabase/
      docker:
        - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
-       - image: circleci/mongo:5.0
+       - image: circleci/mongo:4.0
+
+  mongo-latest:
+     working_directory: /home/circleci/metabase/metabase/
+     docker:
+       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+       - image: circleci/mongo:latest
 
   presto-186:
     working_directory: /home/circleci/metabase/metabase/
@@ -1047,9 +1053,18 @@ workflows:
 
       - test-driver:
           name: be-tests-mongo-ee
+          description: "(Mongo 4.0)"
           requires:
             - be-tests-ee
-          e: mongo
+          e: mongo-4-0
+          driver: mongo
+
+      - test-driver:
+          name: be-tests-mongo-latest-ee
+          description: "(Mongo latest)"
+          requires:
+            - be-tests-ee
+          e: mongo-latest
           driver: mongo
 
       - test-driver:
