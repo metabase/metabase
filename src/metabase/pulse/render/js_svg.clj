@@ -45,6 +45,11 @@ const date_accessors = {
   y: (row) => row[1],
 }
 
+const positional_accessors = {
+  x: (row) => row[0],
+  y: (row) => row[1],
+}
+
 const dimension_accessors = {
   dimension: (row) => row[0],
   metric: (row) => row[1],
@@ -63,6 +68,14 @@ function timeseries_bar (data, labels) {
     data: toJSArray(data),
     labels: toJSMap(labels),
     accessors: date_accessors
+ })
+}
+
+function categorical_bar (data, labels) {
+  return StaticViz.RenderChart(\"categorical/bar\", {
+    data: toJSArray(data),
+    labels: toJSMap(labels),
+    accessors: positional_accessors
  })
 }
 
@@ -157,9 +170,17 @@ function categorical_donut (rows, colors) {
 
 (defn timelineseries-bar
   "Clojure entrypoint to render a timeseries bar char. Rows should be tuples of [datetime numeric-value]. Labels is a
-  map of {:left \"left-label\" :right \"right-label\"}. Returns a byte array of a png file"
+  map of {:left \"left-label\" :right \"right-label\"}. Returns a byte array of a png file."
   [rows labels]
   (let [svg-string (.asString (js/execute-fn-name @context "timeseries_bar" rows
+                                                  (map (fn [[k v]] [(name k) v]) labels)))]
+    (svg-string->bytes svg-string)))
+
+(defn categorical-bar
+  "Clojure entrypoint to render a categorical bar chart. Rows should be tuples of [stringable numeric-value]. Labels is
+  a map of {:left \"left-label\" :right \"right-label\". Returns a byte array of a png file. "
+  [rows labels]
+  (let [svg-string (.asString (js/execute-fn-name @context "categorical_bar" rows
                                                   (map (fn [[k v]] [(name k) v]) labels)))]
     (svg-string->bytes svg-string)))
 
