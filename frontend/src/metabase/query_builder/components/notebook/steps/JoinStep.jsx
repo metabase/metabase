@@ -424,7 +424,7 @@ function JoinTypeOption({ name, value, icon, selected, onChange }) {
 JoinTypeOption.propTypes = joinTypeOptionPropTypes;
 
 const joinDimensionPickerPropTypes = {
-  dimension: PropTypes.object.isRequired,
+  dimension: PropTypes.object,
   onChange: PropTypes.func.isRequired,
   options: PropTypes.shape({
     count: PropTypes.number.isRequired,
