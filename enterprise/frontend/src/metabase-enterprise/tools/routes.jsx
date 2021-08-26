@@ -7,7 +7,6 @@ import ToolsApp from "./containers/ToolsApp";
 
 const getRoutes = (store: any) => (
   <Route path="tools" title={t`Tools`} component={ToolsApp}>
-    <IndexRedirect to="members" />
   </Route>
 );
 

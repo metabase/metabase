@@ -1,17 +1,31 @@
-import React from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
+import { t } from "ttag";
 
-// some shit...
-import SidebarLayout from "../components/SidebarLayoutFixedWidth";
-import ToolsSidebar from "../components/AuditSidebar";
+import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
 
-type Props = {
-  children: React.Element,
-};
+import AdminLayout from "metabase/components/AdminLayout";
 
-const ToolsApp = ({ children }: Props) => (
-  <SidebarLayout sidebar={<ToolsSidebar />}>
-    <div>{children}</div>
-  </SidebarLayout>
-);
+export default class ToolsApp extends Component {
+  static propTypes = {
+    children: PropTypes.any,
+  };
 
-export default ToolsApp;
+  render() {
+    const { children } = this.props;
+    return (
+      <AdminLayout
+        sidebar={
+          <LeftNavPane>
+            <LeftNavPaneItem
+              name={t`Erroring Questions`}
+              path="/admin/tools/errors"
+            />
+          </LeftNavPane>
+        }
+      >
+        {children}
+      </AdminLayout>
+    );
+  }
+}
