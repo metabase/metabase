@@ -1,5 +1,4 @@
 import styled from "styled-components";
-import { Flex } from "grid-styled";
 import { space } from "styled-system";
 
 import { DefaultSearchColor } from "metabase/nav/constants";
@@ -7,7 +6,8 @@ import { color, lighten } from "metabase/lib/colors";
 
 const ActiveSearchColor = lighten(color("nav"), 0.1);
 
-export const SearchWrapper = styled(Flex)`
+export const SearchWrapper = styled.div`
+  display: flex;
   position: relative;
   background-color: ${props =>
     props.active ? ActiveSearchColor : DefaultSearchColor};
