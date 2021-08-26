@@ -25,7 +25,7 @@ const propTypes = {
 };
 
 const NotificationCard = ({ item, type, user, onUnsubscribe, onArchive }) => {
-  const hasSubscribed = isSubscribed(item, user);
+  const hasArchive = canArchive(item, user);
 
   const onUnsubscribeClick = useCallback(() => {
     onUnsubscribe(item, type);
@@ -45,14 +45,14 @@ const NotificationCard = ({ item, type, user, onUnsubscribe, onArchive }) => {
           {formatDescription(item, user)}
         </NotificationDescription>
       </NotificationContent>
-      {hasSubscribed && (
+      {!hasArchive && (
         <NotificationIcon
           name="close"
           tooltip={t`Unsubscribe`}
           onClick={onUnsubscribeClick}
         />
       )}
-      {!hasSubscribed && (
+      {hasArchive && (
         <NotificationIcon
           name="close"
           tooltip={t`Delete`}
@@ -65,10 +65,16 @@ const NotificationCard = ({ item, type, user, onUnsubscribe, onArchive }) => {
 
 NotificationCard.propTypes = propTypes;
 
-const isSubscribed = (item, user) => {
-  return item.channels.some(channel =>
-    channel.recipients.some(recipient => recipient.id === user.id),
+const canArchive = (item, user) => {
+  const recipients = item.channels.flatMap(channel =>
+    channel.recipients.map(recipient => recipient.id),
   );
+
+  const isCreator = item.creator?.id === user?.id;
+  const isSubscribed = recipients.includes(user.id);
+  const isOnlyRecipient = recipients.length === 1;
+
+  return isCreator && (!isSubscribed || isOnlyRecipient);
 };
 
 const formatTitle = (item, type) => {

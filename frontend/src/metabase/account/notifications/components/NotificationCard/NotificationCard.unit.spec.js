@@ -116,9 +116,13 @@ describe("NotificationCard", () => {
     screen.getByText("Created by John Doe", { exact: false });
   });
 
-  it("should unsubscribe when subscribed and clicked on the close icon", () => {
-    const user = getUser();
-    const alert = getAlert({ channels: [getChannel({ recipients: [user] })] });
+  it("should unsubscribe when the user is not the creator and subscribed", () => {
+    const creator = getUser({ id: 1 });
+    const user = getUser({ id: 2 });
+    const alert = getAlert({
+      creator,
+      channels: [getChannel({ recipients: [user] })],
+    });
     const onUnsubscribe = jest.fn();
     const onArchive = jest.fn();
 
@@ -137,9 +141,13 @@ describe("NotificationCard", () => {
     expect(onArchive).not.toHaveBeenCalled();
   });
 
-  it("should archive when not subscribed and clicked on the close icon", () => {
-    const alert = getAlert();
-    const user = getUser();
+  it("should unsubscribe when user user is the creator and subscribed with another user", () => {
+    const creator = getUser({ id: 1 });
+    const recipient = getUser({ id: 2 });
+    const alert = getAlert({
+      creator,
+      channels: [getChannel({ recipients: [creator, recipient] })],
+    });
     const onUnsubscribe = jest.fn();
     const onArchive = jest.fn();
 
@@ -147,7 +155,52 @@ describe("NotificationCard", () => {
       <NotificationCard
         item={alert}
         type="alert"
-        user={user}
+        user={creator}
+        onUnsubscribe={onUnsubscribe}
+        onArchive={onArchive}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("close icon"));
+    expect(onUnsubscribe).toHaveBeenCalledWith(alert, "alert");
+    expect(onArchive).not.toHaveBeenCalled();
+  });
+
+  it("should archive when the user is the creator and not subscribed", () => {
+    const creator = getUser();
+    const alert = getAlert({ creator });
+    const onUnsubscribe = jest.fn();
+    const onArchive = jest.fn();
+
+    render(
+      <NotificationCard
+        item={alert}
+        type="alert"
+        user={creator}
+        onUnsubscribe={onUnsubscribe}
+        onArchive={onArchive}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("close icon"));
+    expect(onUnsubscribe).not.toHaveBeenCalled();
+    expect(onArchive).toHaveBeenCalledWith(alert, "alert");
+  });
+
+  it("should archive when the user is the creator and is the only one subscribed", () => {
+    const creator = getUser();
+    const alert = getAlert({
+      creator,
+      channels: [getChannel({ recipients: [creator] })],
+    });
+    const onUnsubscribe = jest.fn();
+    const onArchive = jest.fn();
+
+    render(
+      <NotificationCard
+        item={alert}
+        type="alert"
+        user={creator}
         onUnsubscribe={onUnsubscribe}
         onArchive={onArchive}
       />,
