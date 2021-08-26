@@ -222,7 +222,11 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
               }
 
               return (
-                <JoinDimensionControlsContainer key={index}>
+                <JoinDimensionControlsContainer
+                  key={index}
+                  isFirst={index === 0}
+                  data-testid={`join-dimensions-pair-${index}`}
+                >
                   <JoinDimensionPicker
                     color={color}
                     query={query}
