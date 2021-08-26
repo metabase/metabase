@@ -188,7 +188,8 @@ export default class DatabaseEditApp extends Component {
                     }
                     submitTitle={addingNewDatabase ? t`Save` : t`Save changes`}
                     renderSubmit={
-                      // override use of ActionButton for the `Next` button
+                      // override use of ActionButton for the `Next` button, for adding a new database in which
+                      // scheduling is being overridden
                       addingNewDatabase &&
                       currentTab === "connection" &&
                       letUserControlSchedulingForm &&
@@ -210,8 +211,6 @@ export default class DatabaseEditApp extends Component {
                       FormMessage,
                       FormSubmit,
                       formFields,
-                      handleSubmit,
-                      canSubmit,
                       onChangeField,
                       submitTitle,
                     }) => {
@@ -225,17 +224,6 @@ export default class DatabaseEditApp extends Component {
                                   name={formField.name}
                                 />
                               ))}
-                              {addingNewDatabase &&
-                                currentTab === "connection" &&
-                                letUserControlSchedulingForm && (
-                                  <Button
-                                    primary={canSubmit}
-                                    disabled={!canSubmit}
-                                    onClick={handleSubmit}
-                                  >
-                                    {t`Next`}
-                                  </Button>
-                                )}
                               <FormMessage />
                               <div className="Form-actions text-centered">
                                 <FormSubmit className="block mb2">
