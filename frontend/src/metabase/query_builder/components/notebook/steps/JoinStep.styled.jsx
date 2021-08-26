@@ -61,6 +61,11 @@ export const JoinTypeIcon = styled(Icon).attrs({ size: 24 })`
   color: ${props => (props.isSelected ? color("text-white") : color("brand"))};
 `;
 
+export const JoinDimensionControlsContainer = styled.div`
+  display: flex;
+  align-items: center;
+`;
+
 export const JoinWhereConditionLabel = styled.span.attrs({ children: "on" })`
   color: ${color("brand")};
   font-weight: bold;

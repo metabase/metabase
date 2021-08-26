@@ -25,6 +25,7 @@ import {
   JoinTypeSelectRoot,
   JoinTypeOptionRoot,
   JoinTypeIcon,
+  JoinDimensionControlsContainer,
   JoinWhereConditionLabel,
   JoinOnConditionLabel,
   RemoveJoinIcon,
@@ -197,10 +198,15 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
       {joinedTable && (
         <React.Fragment>
           <JoinWhereConditionLabel />
-          <NotebookCell color={color} flex={1}>
+          <NotebookCell
+            color={color}
+            flex={1}
+            flexDirection="column"
+            align="start"
+          >
             {displayConditions.map((condition, index) => {
               return (
-                <React.Fragment key={index}>
+                <JoinDimensionControlsContainer key={index}>
                   <JoinDimensionPicker
                     color={color}
                     query={query}
@@ -235,6 +241,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
                     }}
                   />
                 </React.Fragment>
+                </JoinDimensionControlsContainer>
               );
             })}
           </NotebookCell>
