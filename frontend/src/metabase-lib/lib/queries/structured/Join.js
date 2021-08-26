@@ -272,11 +272,11 @@ export default class Join extends MBQLObjectClause {
       } else {
         return this.setCondition(["and", this.condition, condition]);
       }
-    } else {
-      const conditions = [...this.condition];
-      conditions[index + 1] = condition;
-      return this.setCondition(conditions);
     }
+    const conditions = [...this.condition];
+    conditions[index + 1] = condition;
+    return this.setCondition(conditions);
+  }
   }
 
   setDefaultCondition() {
