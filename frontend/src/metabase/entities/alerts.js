@@ -26,7 +26,7 @@ const Alerts = createEntity({
       return Alerts.actions.update(
         { id },
         { channels: newChannels },
-        undo(opts, "", t`Successfully unsubscribed`),
+        undo(opts, "", t`unsubscribed`),
       );
     },
   },
