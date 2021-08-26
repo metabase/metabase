@@ -2,23 +2,29 @@
   (:require [clojure.tools.deps.alpha :as deps]
             [metabuild-common.core :as u]))
 
+(def ^:dynamic *driver-project-dir* nil)
+
+(def ^:dynamic *target-directory* nil)
+
 (defn driver-project-dir
   "e.g. \"/home/cam/metabase/modules/drivers/redshift\""
   ^String [driver]
-  (u/filename u/project-root-directory "modules" "drivers" (name driver)))
+  (or *driver-project-dir*
+      (u/filename u/project-root-directory "modules" "drivers" (name driver))))
 
 (defn driver-jar-name
   "e.g. \"redshift.metabase-driver.jar\""
   ^String [driver]
   (format "%s.metabase-driver.jar" (name driver)))
 
-(def ^String driver-jar-destination-directory
-  (u/filename u/project-root-directory "resources" "modules"))
+(defn driver-jar-destination-directory ^String []
+  (or *target-directory*
+      (u/filename u/project-root-directory "resources" "modules")))
 
 (defn driver-jar-destination-path
   "e.g. \"/home/cam/metabase/resources/modules/redshift.metabase-driver.jar\""
   ^String [driver]
-  (u/filename driver-jar-destination-directory (driver-jar-name driver)))
+  (u/filename (driver-jar-destination-directory) (driver-jar-name driver)))
 
 (defn compiled-source-target-dir [driver]
   (u/filename (driver-project-dir driver) "target" "jar"))
