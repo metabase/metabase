@@ -118,6 +118,40 @@ describe("Notebook Editor > Join Step", () => {
     };
   }
 
+  function expectedMultiFieldsJoin({
+    fields = "all",
+    joinedTable,
+    dimensions,
+  }) {
+    const joinFields = Array.isArray(fields)
+      ? fields.map(field => toFieldRef(field, joinedTable))
+      : fields;
+
+    const condition = ["and"];
+    dimensions.forEach(pair => {
+      const [leftField, rightField] = pair;
+      condition.push([
+        "=",
+        toFieldRef(leftField),
+        toFieldRef(rightField, joinedTable),
+      ]);
+    });
+
+    return {
+      ...TEST_QUERY,
+      query: {
+        ...TEST_QUERY.query,
+        joins: [
+          expect.objectContaining({
+            fields: joinFields,
+            "source-table": joinedTable.id,
+            condition,
+          }),
+        ],
+      },
+    };
+  }
+
   async function selectTable(tableName) {
     fireEvent.click(screen.queryByText(/Sample Dataset/i));
     const dataSelector = await screen.findByTestId("data-selector");
@@ -320,6 +354,26 @@ describe("Notebook Editor > Join Step", () => {
       expect(picker).toBeInTheDocument();
       expect(picker).toBeVisible();
       expect(within(picker).queryByText("Product")).toBeInTheDocument();
+    });
+
+    it("correctly updates join when adding multiple conditions", async () => {
+      const { onQueryChange } = await setup({ joinTable: "Products" });
+      fireEvent.click(screen.queryByLabelText("add icon"));
+
+      let picker = await screen.findByRole("rowgroup");
+      fireEvent.click(within(picker).queryByText("Tax"));
+      picker = await screen.findByRole("rowgroup");
+      fireEvent.click(within(picker).queryByText("Price"));
+
+      expect(onQueryChange).toHaveBeenLastCalledWith(
+        expectedMultiFieldsJoin({
+          dimensions: [
+            [ORDERS.PRODUCT_ID, PRODUCTS.ID],
+            [ORDERS.TAX, PRODUCTS.PRICE],
+          ],
+          joinedTable: PRODUCTS,
+        }),
+      );
     });
 
     it("does not display a new dimensions pair control for a new empty pair", async () => {
