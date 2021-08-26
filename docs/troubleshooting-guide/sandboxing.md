@@ -105,7 +105,8 @@ Go to **Admin** > **Data model** and find the table. Check to make sure that the
 
 **Steps to take:**
 
-You can check this by going into the **Admin** > **Data model** for the fields in question. If the value is remapped from a restricted table, change it so that Metabase will use the original value from the table. Checkout [Metadata editing][data-model].
+1. Go to **Admin Panel** > **Data model** for the fields in question.
+2. If the value is remapped from a restricted table, change it so that Metabase will use the original value from the table. See [Metadata editing][data-model] for more information.
 
 ### Is the question available via signed embedding?
 
