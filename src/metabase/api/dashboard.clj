@@ -76,6 +76,7 @@
   {name                su/NonBlankString
    parameters          [su/Map]
    description         (s/maybe s/Str)
+   cache_ttl           (s/maybe su/IntGreaterThanZero)
    collection_id       (s/maybe su/IntGreaterThanZero)
    collection_position (s/maybe su/IntGreaterThanZero)}
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
@@ -84,6 +85,7 @@
                         :description         description
                         :parameters          (or parameters [])
                         :creator_id          api/*current-user-id*
+                        :cache_ttl           cache_ttl
                         :collection_id       collection_id
                         :collection_position collection_position}]
     (let [dash (db/transaction

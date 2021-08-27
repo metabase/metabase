@@ -473,7 +473,8 @@
    is_full_sync     (s/maybe s/Bool)
    is_on_demand     (s/maybe s/Bool)
    schedules        (s/maybe sync.schedules/ExpandedSchedulesMap)
-   auto_run_queries (s/maybe s/Bool)}
+   auto_run_queries (s/maybe s/Bool)
+   cache_ttl        (s/maybe su/IntGreaterThanZero)}
   (api/check-superuser)
   (let [is-full-sync?    (or (nil? is_full_sync)
                              (boolean is_full_sync))
@@ -488,7 +489,8 @@
                                    :engine       engine
                                    :details      details-or-error
                                    :is_full_sync is-full-sync?
-                                   :is_on_demand (boolean is_on_demand)}
+                                   :is_on_demand (boolean is_on_demand)
+                                   :cache_ttl    cache_ttl}
                                   (sync.schedules/schedule-map->cron-strings
                                     (if (:let-user-control-scheduling details)
                                       (sync.schedules/scheduling schedules)

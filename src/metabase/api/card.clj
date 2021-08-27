@@ -238,7 +238,7 @@
   ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required by
   ;; `api/maybe-reconcile-collection-position!`
   (let [data-keys            [:dataset_query :description :display :name
-                              :visualization_settings :collection_id :collection_position]
+                              :visualization_settings :collection_id :collection_position :cache_ttl]
         card-data            (assoc (zipmap data-keys (map card-data data-keys))
                                     :creator_id api/*current-user-id*)
         result-metadata-chan (result-metadata-async dataset_query result_metadata metadata_checksum)
@@ -259,7 +259,7 @@
 (api/defendpoint ^:returns-chan POST "/"
   "Create a new `Card`."
   [:as {{:keys [collection_id collection_position dataset_query description display metadata_checksum name
-                result_metadata visualization_settings], :as body} :body}]
+                result_metadata visualization_settings cache_ttl], :as body} :body}]
   {name                   su/NonBlankString
    description            (s/maybe su/NonBlankString)
    display                su/NonBlankString
@@ -267,7 +267,8 @@
    collection_id          (s/maybe su/IntGreaterThanZero)
    collection_position    (s/maybe su/IntGreaterThanZero)
    result_metadata        (s/maybe qr/ResultsMetadata)
-   metadata_checksum      (s/maybe su/NonBlankString)}
+   metadata_checksum      (s/maybe su/NonBlankString)
+   cache_ttl              (s/maybe su/IntGreaterThanZero)}
   ;; check that we have permissions to run the query that we're trying to save
   (check-data-permissions-for-query dataset_query)
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
@@ -432,7 +433,7 @@
 (api/defendpoint ^:returns-chan PUT "/:id"
   "Update a `Card`."
   [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id
-                   collection_position enable_embedding embedding_params result_metadata metadata_checksum]
+                   collection_position enable_embedding embedding_params result_metadata metadata_checksum cache_ttl]
             :as   card-updates} :body}]
   {name                   (s/maybe su/NonBlankString)
    dataset_query          (s/maybe su/Map)
@@ -445,7 +446,8 @@
    collection_id          (s/maybe su/IntGreaterThanZero)
    collection_position    (s/maybe su/IntGreaterThanZero)
    result_metadata        (s/maybe qr/ResultsMetadata)
-   metadata_checksum      (s/maybe su/NonBlankString)}
+   metadata_checksum      (s/maybe su/NonBlankString)
+   cache_ttl              (s/maybe su/IntGreaterThanZero)}
   (let [card-before-update (api/write-check Card id)]
     ;; Do various permissions checks
     (collection/check-allowed-to-change-collection card-before-update card-updates)
