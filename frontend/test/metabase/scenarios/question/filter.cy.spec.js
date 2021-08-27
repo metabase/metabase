@@ -330,7 +330,7 @@ describe("scenarios > question > filter", () => {
     });
   });
 
-  it.skip("should not preserve cleared filter with the default value on refresh (metabase#13960)", () => {
+  it("should not preserve cleared filter with the default value on refresh (metabase#13960)", () => {
     cy.log("Create a question");
     cy.createQuestion({
       name: "13960",
