@@ -9,9 +9,9 @@
   This would not have had the random namespace that requires these helpers and the run fails.
   "
   (:require [clojure.test :as t]
-            [schema.core :as s]
             [metabase.util.date-2 :as date-2]
-            [metabase.util.i18n.impl :as i18n.impl]))
+            [metabase.util.i18n.impl :as i18n.impl]
+            [schema.core :as s]))
 
 (comment
   ;; these are necessary so data_readers.clj functions can function
