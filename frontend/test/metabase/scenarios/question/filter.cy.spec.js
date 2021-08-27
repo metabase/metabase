@@ -416,14 +416,14 @@ describe("scenarios > question > filter", () => {
           .should("not.be.disabled")
           .click();
 
-        cy.location("search").should("eq", "?id=1");
+        cy.location("search").should("eq", "?category=&id=1");
 
         cy.reload();
 
         cy.findByText("13960");
         cy.findAllByText("Doohickey").should("not.exist");
-        // TODO: depending on how this issue will be fixed, the next assertion might need to be updated
-        cy.location("search").should("eq", "?id=1");
+
+        cy.location("search").should("eq", "?category=&id=1");
       });
     });
   });
