@@ -8501,16 +8501,7 @@ databaseChangeLog:
       comment: Added 0.41.0 Fine grained caching controls
       changes:
         - addColumn:
-            tableName: card
-            columns:
-              - column:
-                  name: cache_ttl
-                  type: integer
-                  remarks: "Granular cache TTL for specific card."
-                  constraints:
-                    nullable: true
-        - addColumn:
-            tableName: database
+            tableName: metabase_database
             columns:
               - column:
                   name: cache_ttl
@@ -8519,7 +8510,7 @@ databaseChangeLog:
                   constraints:
                     nullable: true
         - addColumn:
-            tableName: dashboard
+            tableName: report_dashboard
             columns:
               - column:
                   name: cache_ttl
