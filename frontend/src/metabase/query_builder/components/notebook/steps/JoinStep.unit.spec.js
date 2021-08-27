@@ -19,7 +19,8 @@ import {
 } from "__support__/sample_dataset_fixture";
 import JoinStep from "./JoinStep";
 
-jest.setTimeout(10000);
+// Workaround for timeouts on CI
+jest.setTimeout(15000);
 
 describe("Notebook Editor > Join Step", () => {
   const TEST_QUERY = {
