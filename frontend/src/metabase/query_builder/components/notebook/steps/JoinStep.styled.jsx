@@ -82,6 +82,13 @@ export const JoinConditionLabel = styled.span`
   margin-right: 6px;
 `;
 
+export const DimensionSourceName = styled.div`
+  display: block;
+  font-size: 11px;
+  color: ${color("text-white")};
+  opacity: 0.65;
+`;
+
 export const RemoveJoinIcon = styled(Icon).attrs({ name: "close", size: 18 })`
   cursor: pointer;
   color: ${color("text-light")};

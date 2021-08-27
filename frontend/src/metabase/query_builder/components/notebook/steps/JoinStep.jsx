@@ -17,6 +17,7 @@ import {
 import { FieldsPickerIcon, FIELDS_PICKER_STYLES } from "../FieldsPickerIcon";
 import FieldsPicker from "./FieldsPicker";
 import {
+  DimensionSourceName,
   JoinStepRoot,
   JoinClausesContainer,
   JoinClauseRoot,
@@ -473,7 +474,17 @@ class JoinDimensionPicker extends React.Component {
             inactive={!dimension}
             data-testid={testID}
           >
-            {dimension ? dimension.displayName() : `Pick a column...`}
+            <div>
+              {dimension && (
+                <DimensionSourceName>
+                  {dimension
+                    .query()
+                    .table()
+                    .displayName()}
+                </DimensionSourceName>
+              )}
+              {dimension?.displayName() || t`Pick a column...`}
+            </div>
           </NotebookCellItem>
         }
       >
