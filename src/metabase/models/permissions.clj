@@ -169,8 +169,7 @@
     /db/:id/schema/:name/table/:id/query/segmented/ ; allow ad-hoc MBQL queries. Sandbox all queries against this Table.
     /block/db/:id/                                  ; disallow queries against this DB unless User has data perms.
     /                                               ; full root perms"
-  (:require [clojure.core.match :refer [match]]
-            [clojure.data :as data]
+  (:require [clojure.data :as data]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [medley.core :as m]
@@ -573,15 +572,10 @@
 ;; somewhat useful?
 (defn- check-native-and-schemas-permissions-allowed-together [{:keys [native schemas]}]
   ;; Only do the check when we have both, e.g. when the entire graph is coming in
-  (if-not (and native schemas)
-    :ok
-    (match [native schemas]
-      [:write :all]  :ok
-      [:write _]      (log/warn "Invalid DB permissions: if you have write access for native queries, you must have full data access.")
-      [:read  :none]  (log/warn "Invalid DB permissions: if you have readonly native query access, you must also have data access.")
-      ;; TODO -- log a warning if we end up keeping this code.
-      [_      :block] false
-      [_      _]     :ok)))
+  (if (and (= native :write)
+           (not= schemas :all))
+    (log/warn (trs "Invalid DB permissions: If you have write access for native queries, you must have full data access."))
+    :ok))
 
 (def ^:private StrictDBPermissionsGraph
   (s/constrained DBPermissionsGraph
