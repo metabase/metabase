@@ -299,7 +299,8 @@
 
 (defn retrieve-user-alerts-for-card
   "Find all alerts for `card-id` that `user-id` is set to receive"
-  [card-id user-id]
+  [{:keys [archived? card-id user-id]
+    :or   {archived? false}}]
   (map (comp notification->alert hydrate-notification)
        (query-as Pulse
                  {:select [:p.*]
@@ -310,11 +311,13 @@
                   :where  [:and
                            [:not= :p.alert_condition nil]
                            [:= :pc.card_id card-id]
-                           [:= :pcr.user_id user-id]]})))
+                           [:= :pcr.user_id user-id]
+                           [:= :p.archived archived?]]})))
 
 (defn retrieve-alerts-for-cards
   "Find all alerts for `card-ids`, used for admin users"
-  [& card-ids]
+  [{:keys [archived? card-ids]
+    :or   {archived? false}}]
   (when (seq card-ids)
     (map (comp notification->alert hydrate-notification)
          (query-as Pulse
@@ -323,7 +326,8 @@
                     :join   [[PulseCard :pc] [:= :p.id :pc.pulse_id]]
                     :where  [:and
                              [:not= :p.alert_condition nil]
-                             [:in :pc.card_id card-ids]]}))))
+                             [:in :pc.card_id card-ids]
+                             [:= :p.archived archived?]]}))))
 
 (s/defn card->ref :- CardRef
   "Create a card reference from a card or id"

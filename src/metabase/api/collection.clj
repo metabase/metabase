@@ -629,9 +629,9 @@
   users just as if they had be archived individually via the card API."
   [collection-before-update collection-updates]
   (when (api/column-will-change? :archived collection-before-update collection-updates)
-    (when-let [alerts (seq (apply pulse/retrieve-alerts-for-cards (db/select-ids Card
-                                                                    :collection_id (u/the-id collection-before-update))))]
-        (card-api/delete-alert-and-notify-archived! alerts))))
+    (when-let [alerts (seq (apply pulse/retrieve-alerts-for-cards
+                                  {:card-ids (db/select-ids Card :collection_id (u/the-id collection-before-update))}))]
+      (card-api/delete-alert-and-notify-archived! alerts))))
 
 (api/defendpoint PUT "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
