@@ -438,6 +438,19 @@ export default class Join extends MBQLObjectClause {
 
   // HELPERS
 
+  getDimensions() {
+    const conditions = this.getConditions();
+    return conditions.map(condition => {
+      const [_operator, parentDimension, joinDimension] = condition;
+      return [
+        parentDimension
+          ? this.query().parseFieldReference(parentDimension)
+          : null,
+        joinDimension ? this.query().parseFieldReference(joinDimension) : null,
+      ];
+    });
+  }
+
   joinedQuery() {
     const sourceTable = this.joinSourceTableId();
     const sourceQuery = this.joinSourceQuery();

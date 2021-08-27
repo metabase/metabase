@@ -1124,11 +1124,19 @@ export default class StructuredQuery extends AtomicQuery {
       const keyForFk = (src, dst) =>
         src && dst ? `${src.id},${dst.id}` : null;
       const explicitJoins = new Set(
-        joins.map(join => {
-          const p = join.parentDimension();
-          const j = join.joinDimension();
-          return keyForFk(p && p.field(), j && j.field());
-        }),
+        _.flatten(
+          joins.map(join => {
+            const dimensionPairs = join.getDimensions();
+            return dimensionPairs.map(pair => {
+              // eslint-disable-next-line no-unused-vars
+              const [parentDimension, joinDimension] = pair;
+              return keyForFk(
+                parentDimension && parentDimension.field(),
+                joinDimension && joinDimension.field(),
+              );
+            });
+          }),
+        ),
       );
       explicitJoins.delete(null);
 
