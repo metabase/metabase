@@ -1,5 +1,11 @@
 # Sandboxing
 
+<div class='doc-toc' markdown=1>
+- [People can see data they're not supposed to be able to see](#see-data-not-supposed-to)
+- [People can't see the data they're supposed to be able to see](#cant-see-data-supposed-to)
+- [Someone is in several groups but can't see the sandboxed data](#in-several-groups-cant-see-sandboxed-data)
+</div>
+
 [Sandboxing data][sandboxing-your-data] gives some people access to only a subset of the data. (The term comes from the practice of putting children in a sandbox to play safely.) To implement sandboxing, Metabase runs a query that filters rows and/or selects a subset of columns from a table based on [the person's permissions][permissions]; the user's query then runs on the initial query's result.
 
 Several databases did not support [common table expressions][cte] when sandboxing was added to Metabase, so we implemented it using subqueries. Suppose you use the Notebook Editor to create a query like:
@@ -37,9 +43,7 @@ Metabase creates a unique temporary name like `made_up_name_01` to make sure the
 
 Sandboxing isn't implemented for non-SQL databases like MongoDB, Druid, or Google Analytics. It also isn't implemented for native SQL questions: since we generate the SQL for questions written with the Notebook Editor, we can produce exactly what sandboxing needs, but parsing and modifying an arbitrary query written in SQL is a much (much) bigger challenge. As ar esult, any user with permissions to view the question can see all the results.
 
-## Specific Problems
-
-### People can see data they're not supposed to be able to see
+<h2 id="see-data-not-supposed-to">People can see data they're not supposed to be able to see</h2>
 
 **How to detect this:** People can view data that they shouldn't be able to.
 
@@ -53,7 +57,7 @@ Sandboxing isn't implemented for non-SQL databases like MongoDB, Druid, or Googl
 
 4. If people are logging in with single sign-on, but the expected attributes aren't being saved and made available, sandboxing will deny access. Our article on [Authenticating with SAML][authenticating-with-saml] explains the required setup in detail.
 
-### People can't see the data they're supposed to be able to see
+<h2 id="cant-see-data-supposed-to">People can't see the data they're supposed to be able to see</h2>
 
 **How to detect this:** Someone is supposed to be able to use some of the values in a table in their queries, but are denied access or get an empty set of results where there should be data.
 
@@ -63,7 +67,7 @@ Sandboxing isn't implemented for non-SQL databases like MongoDB, Druid, or Googl
 
 2. Some fields in a table which the person *does* have sandbox access to are using remapping to display information from another table which the person does *not* have sandbox access to. You can check this by going into the Admin Panel and viewing the Data Model for the fields in question.
 
-### Someone is in several groups but can't see the sandboxed data
+<h2 id="in-several-groups-cant-see-sandboxed-data">Someone is in several groups but can't see the sandboxed data</h2>
 
 We only allow [one sandbox per table][one-sandbox-per-table]: if someone is a member of two or more groups with different permissions, every rule for figuring out whether access should be allowed or not is confusing. We therefore only allow one rule.
 
@@ -75,6 +79,6 @@ We only allow [one sandbox per table][one-sandbox-per-table]: if someone is a me
 [locked-parameters]: /learn/embedding/embedding-charts-and-dashboards.html#hide-or-lock-parameters-to-restrict-what-data-is-shown
 [one-sandbox-per-table]: /docs/latest/enterprise-guide/data-sandboxes.html#a-user-can-only-have-one-sandbox-per-table
 [permissions]: /learn/permissions/data-permissions.html
-[prepared-statement]: /glossary.html#prepared-statement
+[prepared-statement]: /glossary.html#prepared_statement
 [sandboxing-your-data]: /docs/latest/enterprise-guide/data-sandboxes.html
 [signed-embedding]: /learn/embedding/embedding-charts-and-dashboards.html#enable-embedding-in-other-applications

@@ -1,4 +1,4 @@
-## Loading exported application database fails 
+# Loading exported application database fails
 
 If you've been using the default H2 application database that ships with Metabase, and want to [migrate from the default H2 application database][migrate] to a production database like [PostgreSQL][postgres] or MySQL/MariaDB, you'll need to use the `load-from-h2` command, which will fail if the database filename is incorrect. 
 
