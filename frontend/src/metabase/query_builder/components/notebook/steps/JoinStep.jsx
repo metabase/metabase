@@ -27,6 +27,7 @@ import {
   JoinTypeOptionRoot,
   JoinTypeIcon,
   JoinDimensionControlsContainer,
+  JoinWhereConditionLabelContainer,
   JoinWhereConditionLabel,
   JoinConditionLabel,
   RemoveJoinIcon,
@@ -189,7 +190,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
 
   return (
     <JoinClauseRoot>
-      <NotebookCell color={color} flex={1}>
+      <NotebookCell color={color} flex={1} alignSelf="start">
         <NotebookCellItem color={color}>
           {lhsTable?.displayName() || t`Previous results`}
         </NotebookCellItem>
@@ -208,12 +209,15 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
 
       {joinedTable && (
         <React.Fragment>
-          <JoinWhereConditionLabel />
+          <JoinWhereConditionLabelContainer>
+            <JoinWhereConditionLabel />
+          </JoinWhereConditionLabelContainer>
           <NotebookCell
             color={color}
             flex={1}
             flexDirection="column"
             align="start"
+            padding="8px"
           >
             {displayConditions.map((condition, index) => {
               const isLast = index === displayConditions.length - 1;

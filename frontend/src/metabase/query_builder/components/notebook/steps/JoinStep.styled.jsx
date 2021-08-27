@@ -20,7 +20,6 @@ export const JoinClauseContainer = styled.div`
 
 export const JoinClauseRoot = styled.div`
   display: flex;
-  align-items: baseline;
   margin-bottom: ${props => (props.isLast ? 0 : "2px")};
 `;
 
@@ -66,6 +65,13 @@ export const JoinDimensionControlsContainer = styled.div`
   align-items: center;
 
   margin-top: ${props => (props.isFirst ? 0 : space(1))};
+`;
+
+export const JoinWhereConditionLabelContainer = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 60px;
 `;
 
 export const JoinWhereConditionLabel = styled.span.attrs({ children: "on" })`
