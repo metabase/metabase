@@ -62,6 +62,7 @@ export const JoinTypeIcon = styled(Icon).attrs({ size: 24 })`
 
 export const JoinDimensionControlsContainer = styled.div`
   display: flex;
+  flex: 1;
   align-items: center;
 
   margin-top: ${props => (props.isFirst ? 0 : space(1))};

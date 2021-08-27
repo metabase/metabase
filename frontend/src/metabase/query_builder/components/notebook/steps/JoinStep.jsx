@@ -140,6 +140,8 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
   const joinConditions = join.getConditions();
   const displayConditions = joinConditions.length > 0 ? joinConditions : [[]];
 
+  const hasAtLeastOneDimensionSelected = join.getDimensions().length > 0;
+
   let lhsTable;
   if (join.index() === 0) {
     // first join's lhs is always the parent table
@@ -219,7 +221,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
             flex={1}
             flexDirection="column"
             align="start"
-            padding="8px"
+            padding={hasAtLeastOneDimensionSelected && "8px"}
           >
             {displayConditions.map((condition, index) => {
               const isFirst = index === 0;
