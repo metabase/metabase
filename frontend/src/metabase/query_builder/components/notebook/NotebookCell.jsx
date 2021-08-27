@@ -14,7 +14,7 @@ export const NotebookCell = styled(Flex).attrs({
 })`
   border-radius: 8px;
   background-color: ${props => alpha(props.color, 0.1)};
-  padding: 14px;
+  padding: ${props => props.padding || "14px"};
 `;
 
 NotebookCell.displayName = "NotebookCell";
