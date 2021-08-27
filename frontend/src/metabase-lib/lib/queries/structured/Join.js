@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { MBQLObjectClause } from "./MBQLClause";
 import { t } from "ttag";
 
