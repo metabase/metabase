@@ -186,6 +186,7 @@
         (let [updates {:name         "Cam's Awesome Toucan Database"
                        :engine       "h2"
                        :is_full_sync false
+                       :cache_ttl    1337
                        :details      {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}}
               update! (fn [expected-status-code]
                         ((mt/user->client :crowberto) :put expected-status-code (format "database/%d" db-id) updates))]

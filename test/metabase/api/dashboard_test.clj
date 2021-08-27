@@ -124,6 +124,7 @@
    :made_public_by_id       nil
    :parameters              []
    :points_of_interest      nil
+   :cache_ttl               nil
    :position                nil
    :public_uuid             nil
    :show_in_getting_started false
@@ -388,6 +389,7 @@
                                             :collection_id           true
                                             :caveats                 ""
                                             :points_of_interest      ""
+                                            :cache_ttl               1337
                                             :last-edit-info
                                             {:timestamp true, :id true, :first_name "Rasta",
                                              :last_name "Toucan", :email "rasta@metabase.com"}
@@ -395,6 +397,7 @@
                  (dashboard-response (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
                                                            {:caveats                 ""
                                                             :points_of_interest      ""
+                                                            :cache_ttl               1337
                                                             :show_in_getting_started true})))))))))
 
 (deftest update-dashboard-clear-description-test

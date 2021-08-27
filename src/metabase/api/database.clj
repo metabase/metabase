@@ -539,7 +539,7 @@
 (api/defendpoint PUT "/:id"
   "Update a `Database`."
   [id :as {{:keys [name engine details is_full_sync is_on_demand description caveats points_of_interest schedules
-                   auto_run_queries refingerprint]} :body}]
+                   auto_run_queries refingerprint cache_ttl]} :body}]
   {name               (s/maybe su/NonBlankString)
    engine             (s/maybe DBEngineString)
    refingerprint      (s/maybe s/Bool)
@@ -548,7 +548,8 @@
    description        (s/maybe s/Str)                ; s/Str instead of su/NonBlankString because we don't care
    caveats            (s/maybe s/Str)                ; whether someone sets these to blank strings
    points_of_interest (s/maybe s/Str)
-   auto_run_queries   (s/maybe s/Bool)}
+   auto_run_queries   (s/maybe s/Bool)
+   cache_ttl          (s/maybe su/IntGreaterThanZero)}
   (api/check-superuser)
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
   (api/let-404 [existing-database (Database id)]
@@ -578,7 +579,8 @@
                                                       :description        description
                                                       :caveats            caveats
                                                       :points_of_interest points_of_interest
-                                                      :auto_run_queries   auto_run_queries}
+                                                      :auto_run_queries   auto_run_queries
+                                                      :cache_ttl          cache_ttl}
                                                      (cond
                                                        ;; transition back to metabase managed schedules. the schedule
                                                        ;; details, even if provided, are ignored. database is the

@@ -269,7 +269,7 @@
   permissions for the Cards belonging to this Dashboard), but to change the value of `enable_embedding` you must be a
   superuser."
   [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started enable_embedding
-                   embedding_params position archived collection_id collection_position]
+                   embedding_params position archived collection_id collection_position cache_ttl]
             :as dash-updates} :body}]
   {name                    (s/maybe su/NonBlankString)
    description             (s/maybe s/Str)
@@ -282,7 +282,8 @@
    position                (s/maybe su/IntGreaterThanZero)
    archived                (s/maybe s/Bool)
    collection_id           (s/maybe su/IntGreaterThanZero)
-   collection_position     (s/maybe su/IntGreaterThanZero)}
+   collection_position     (s/maybe su/IntGreaterThanZero)
+   cache_ttl               (s/maybe su/IntGreaterThanZero)}
   (let [dash-before-update (api/write-check Dashboard id)]
     ;; Do various permissions checks as needed
     (collection/check-allowed-to-change-collection dash-before-update dash-updates)
@@ -295,10 +296,10 @@
        (api/maybe-reconcile-collection-position! dash-before-update dash-updates)
 
        (db/update! Dashboard id
-         ;; description, position, collection_id, and collection_position are allowed to be `nil`. Everything else
-         ;; must be non-nil
+         ;; description, position, collection_id, cache_ttl, and collection_position are allowed to be `nil`.
+         ;; Everything else must be non-nil
          (u/select-keys-when dash-updates
-           :present #{:description :position :collection_id :collection_position}
+           :present #{:description :position :collection_id :collection_position :cache_ttl}
            :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
                       :embedding_params :archived})))))
   ;; now publish an event and return the updated Dashboard
