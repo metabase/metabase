@@ -78,6 +78,8 @@ const chartSettingNestedSettings = ({
     };
 
     handleChangeEditingObject = (editingObject: ?NestedObject) => {
+      // objectKeyOverride allows child components to set the editing object key to a different value than is derived
+      // from the props. For example, this is used by the "More options" button in ChartNestedSettingSeries.
       this.setState({
         objectKeyOverride: editingObject ? getObjectKey(editingObject) : null,
       });
