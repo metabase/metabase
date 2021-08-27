@@ -282,23 +282,15 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
                     data-testid="join-dimension"
                   />
                   {isLast ? (
-                    join.isValid() ? (
-                      <NotebookCellAdd
-                        color={color}
-                        className="cursor-pointer ml-auto"
-                        onClick={() => {
-                          addNewDimensionsPair(index + 1);
-                        }}
-                      />
-                    ) : (
-                      !isFirst && (
-                        <RemoveJoinIcon
-                          onClick={removeDimensionPair}
-                          size={12}
-                          data-testid="remove-dimension-pair"
-                        />
-                      )
-                    )
+                    <JoinDimensionsRightControl
+                      isValidJoin={join.isValid()}
+                      color={color}
+                      isFirst={isFirst}
+                      onAddNewDimensionPair={() =>
+                        addNewDimensionsPair(index + 1)
+                      }
+                      onRemoveDimensionPair={removeDimensionPair}
+                    />
                   ) : (
                     <JoinConditionLabel>{t`on`}</JoinConditionLabel>
                   )}
@@ -315,6 +307,44 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
 }
 
 JoinClause.propTypes = joinClausePropTypes;
+
+const joinDimensionsRightControlPropTypes = {
+  isValidJoin: PropTypes.bool.isRequired,
+  isFirst: PropTypes.bool.isRequired,
+  color: PropTypes.string,
+  onAddNewDimensionPair: PropTypes.func.isRequired,
+  onRemoveDimensionPair: PropTypes.func.isRequired,
+};
+
+function JoinDimensionsRightControl({
+  isValidJoin,
+  isFirst,
+  color,
+  onAddNewDimensionPair,
+  onRemoveDimensionPair,
+}) {
+  if (isValidJoin) {
+    return (
+      <NotebookCellAdd
+        color={color}
+        className="cursor-pointer ml-auto"
+        onClick={onAddNewDimensionPair}
+      />
+    );
+  }
+  if (!isFirst) {
+    return (
+      <RemoveJoinIcon
+        onClick={onRemoveDimensionPair}
+        size={12}
+        data-testid="remove-dimension-pair"
+      />
+    );
+  }
+  return null;
+}
+
+JoinDimensionsRightControl.propTypes = joinDimensionsRightControlPropTypes;
 
 const joinTablePickerPropTypes = {
   join: PropTypes.object,
