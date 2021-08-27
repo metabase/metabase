@@ -65,7 +65,7 @@ where `SOMEWHERE` is the table you think you should be able to see. If Metabase 
 
 ## Does the person who cannot see the table have permission to view it?
 
-*Root cause:** Metabase uses a group-based permission model: people belong to groups, and administrators can set permissions so that some groups cannot see all of the tables. (It also allows administrators to control which rows or columns specific people can see---issues with that are covered in the troubleshooting guide for [sandboxing][sandboxing].)
+**Root cause:** Metabase uses a group-based permission model: people belong to groups, and administrators can set permissions so that some groups cannot see all of the tables. (It also allows administrators to control which rows or columns specific people can see---issues with that are covered in the troubleshooting guide for [sandboxing][sandboxing].)
 
 **Steps to take:**
 
