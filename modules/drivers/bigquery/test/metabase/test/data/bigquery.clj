@@ -33,14 +33,14 @@
 
 ;;; ----------------------------------------------- Connection Details -----------------------------------------------
 
-;; keep track of databases we haven't created yet
+;; keep track of databases we have already created
 (def ^:private existing-datasets
   (atom #{}))
 
 (def ^:private current-dataset-version-prefix "v3_")
 
 (defn- prefix-legacydriver-if-new
-  "Adds a legacrydriver_ prefix to the db-name, if the `existing-dataset` atom does not contain it. This is to ensure
+  "Adds a legacydriver_ prefix to the db-name, if the `existing-dataset` atom does not contain it. This is to ensure
   that transient datasets created and destroyed by these tests do not interfere with parallel test runs for the new
   BigQuery driver (which are also creating and destroying datasets that would have the same name, if not for this
   change). If the `db-name` is already an existing one, however, the assumption is it's not transient (i.e. not being
