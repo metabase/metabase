@@ -477,3 +477,20 @@
                [:div [:span "•"] [:span "Doohickey"] [:span "75%"]]
                [:div [:span "•"] [:span "Widget"] [:span "25%"]]]]
              (prune (:content (render [["Doohickey" 75] ["Widget" 25]]))))))))
+
+(def donut-info #'body/donut-info)
+
+(deftest donut-info-test
+  (let [rows [["a" 45] ["b" 45] ["c" 5] ["d" 5]]]
+    (testing "If everything is above the threshold does nothing"
+      (is (= rows (:rows (donut-info 4 rows)))))
+    (testing "Collapses smaller sections below threshold"
+      (is (= [["a" 45] ["b" 45] ["Other" 10]]
+             (:rows (donut-info 5 rows)))))
+    (testing "Computes percentages"
+      (is (= {"a" "45%" "b" "45%" "Other" "10%"}
+             (:percentages (donut-info 5 rows)))))
+    (testing "Includes zero percent rows"
+      (let [rows [["a" 50] ["b" 50] ["d" 0]]]
+        (is (= {"a" "50%" "b" "50%" "Other" "0%"}
+               (:percentages (donut-info 5 rows))))))))

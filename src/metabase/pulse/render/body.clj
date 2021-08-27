@@ -243,19 +243,33 @@
    "#c589b9" "#efce8c" "#b5f95c" "#e35850" "#554dbf" "#bec589" "#8cefc6" "#5cc2f9" "#55e350" "#bf4d4f"
    "#89c3c5" "#be8cef" "#f95cd0" "#50e3ae" "#bf974d" "#899bc5" "#ef8cde" "#f95c67"])
 
+(defn- donut-info
+  "Process rows with a minimum slice threshold. Collapses any segments below the threshold given as a percentage (the
+  value 25 for 25%) into a single category as \"Other\". "
+  [threshold-percentage rows]
+  (let [total                    (reduce + 0 (map second rows))
+        threshold                (* total (/ threshold-percentage 100))
+        {as-is true clump false} (group-by (comp #(> % threshold) second) rows)
+        rows (cond-> as-is
+               (seq clump)
+               (conj [(tru "Other") (reduce + 0 (map second clump))]))]
+    {:rows        rows
+     :percentages (into {}
+                        (for [[label value] rows]
+                          [label (if (zero? total)
+                                   (tru "N/A")
+                                   (let [f (DecimalFormat. "###,###.##%")]
+                                     (.format f (double (/ value total)))))]))}))
+
 (s/defmethod render :categorical/donut :- common/RenderedPulseCard
   [_ render-type _timezone-id :- (s/maybe s/Str) card {:keys [rows] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
         rows                        (map (juxt (comp str x-axis-rowfn) y-axis-rowfn)
                                          (common/non-nil-rows x-axis-rowfn y-axis-rowfn rows))
+        slice-threshold             (or (get-in card [:visualization_settings :pie.slice_threshold])
+                                        2.5)
+        {:keys [rows percentages]}  (donut-info slice-threshold rows)
         legend-colors               (zipmap (map first rows) (cycle colors))
-        total                       (apply + (map second rows))
-        percentages                 (into {}
-                                          (for [[label value] rows]
-                                            [label (if (zero? total)
-                                                     (tru "N/A")
-                                                     (let [f (DecimalFormat. "###,###.##%")]
-                                                       (.format f (double (/ value total)))))]))
         image-bundle                (image-bundle/make-image-bundle
                                      render-type
                                      (js-svg/categorical-donut rows legend-colors))]
