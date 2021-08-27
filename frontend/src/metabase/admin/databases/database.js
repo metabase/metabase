@@ -190,6 +190,10 @@ export const proceedWithDbCreation = function(database) {
 };
 
 export const createDatabase = function(database) {
+  if (database.details["let-user-control-scheduling"]) {
+    database.is_full_sync = false;
+  }
+
   return async function(dispatch, getState) {
     try {
       dispatch.action(CREATE_DATABASE_STARTED, {});
