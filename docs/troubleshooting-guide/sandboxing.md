@@ -26,9 +26,17 @@ This is expected behavior: using a user attribute to filter rows for a sandboxed
 
 There are several reasons people could be seeing rows that they're not supposed to see.
 
-### Is the question public?
+### Are those people also in groups with permission to view the entire table?
 
-**Root cause**: The question is public. Public questions can't be sandboxed: if someone doesn't have to log in to view the question, Metabase doesn't have user attributes or group information available for filtering the data, so all results will be shown.
+**Root cause:** People are in groups with permissions to view the table, and therefore can see all rows, not just the sandboxed rows.
+
+**Steps to take:**
+
+For the person in question, check to see which groups they belong to. Do any of the groups have access to the table you're trying to sandboxed? If so, remove them from that group. Remember that everyone is a member of the "All users" group; which is why we recommend you revoke permissions from the all users group, and create new groups to selectively apply permissions to your data sources.
+
+### Is the question available via Signed Embedding or Public Sharing?
+
+**Root cause**: The question is public. [Public questions][public-sharing], even those that use [Signed Embedding][signed-embedding], can't be sandboxed. If someone doesn't have to log into Metabase to view the question, Metabase doesn't have user attributes or group information available for filtering the data, so all results will be shown.
 
 **Steps to take**:
 
@@ -36,13 +44,16 @@ You should _avoid_ public sharing when you are sandboxing data. See [public shar
 
 ### Is the question written in SQL?
 
-**Root cause**. People with SQL access to a database cannot be sandboxed. They have as much access to the database as the user account used to connect Metabase to the database. Even if you hide tables in Metabase, someone with SQL access to a database would still be able to query those tables.
+**Root cause**. People with SQL access to a database cannot be sandboxed. They have as much access to the database as the user account used to connect Metabase to the database. Even if you hide tables in Metabase, someone with SQL access to a database would still be able to query those tables. Which is also to say that SQL questions cannot be sandboxed. Sandboxing exclusively applies to questions composed in the query builder (even though you can use a SQL question to create a sandbox, e.g., to create a result set of a table that excludes some columns)
+.
 
 **Steps to take**
 
-- If you want to sandbox access, avoid adding the person to a group with SQL access to that table.
+- Don't try to sandbox a question written in SQL, because you can't.
 
-- If you want to give them SQL access, but still limit what the person can see, you'll need to set up permissions in your database, and connect that database via the user account with that restricted access. You can connect the same database to Metabase multiple times, each with different levels of access, and expose different connections to different groups.
+- If you want to sandbox access, avoid adding the person to a group with SQL access to that table (or any other more permissive access to that table, for that matter).
+
+- If you want to give them SQL access, but still limit what the person can see, you'll need to set up permissions in your database, and connect that database via the user account with that restricted access. You can connect the same database to Metabase multiple times, each with different levels of access, and expose different connections to different groups. But again, you won't be able to sandbox the data from a person with SQL access.
 
 ### Is the question retrieving data from a non-SQL data source?
 
@@ -51,6 +62,14 @@ You should _avoid_ public sharing when you are sandboxing data. See [public shar
 **Steps to take:**
 
 There is not much you can do here: if you need to sandbox data, [you can't use these databases][unsupported-databases].
+
+### If using Single Sign-on (SSO), are user attributes correct?
+
+**Root cause**: If people are logging in with SSO, but the expected attributes aren't being saved and made available, sandboxing will deny access.
+
+**Steps to take**:
+
+Our docs on [Authenticating with SAML][authenticating-with-saml] and [Authenticating with JWT][jwt-auth] explain how to use your identity provider to pass user attributes to Metabase, which (the user attributes) can be used to sandbox data.
 
 ## People can see **columns** they're _not_ supposed to see
 
@@ -116,14 +135,6 @@ Go to **Admin** > **Data model** and find the table. Check to make sure that the
 
 Since someone must log in so that Metabase can apply sandboxed views to that person, avoid using signed embedding when you want to restrict row or column access to a table.
 
-### If using Single Sign-on (SSO), are user attributes correct?
-
-**Root cause**: If people are logging in with SSO, but the expected attributes aren't being saved and made available, sandboxing will deny access.
-
-**Steps to take**:
-
-Our article on [Authenticating with SAML][authenticating-with-saml] explains the required setup in detail.
-
 ## People can't see data they're supposed to be able to see
 
 Someone is supposed to be able to view some of the values in a table in their queries, but are denied access or get an empty set of results where there should be data.
@@ -139,7 +150,7 @@ Someone is supposed to be able to view some of the values in a table in their qu
 
 **Root cause:** We only allow [one sandbox per table][one-sandbox-per-table]: if someone is a member of two or more groups with different permissions, every rule for figuring out whether access should be allowed or not is confusing. We therefore only allow one rule.
 
-**Steps to take:** 
+**Steps to take:**
 
 The administrator can [create a new group][group] to capture precisely who's allowed access to what.
 
@@ -149,6 +160,7 @@ The administrator can [create a new group][group] to capture precisely who's all
 [data-model]: ../administration-guide/03-metadata-editing.html
 [data-permissions]: /learn/permissions/data-permissions.html
 [groups]: ../administration-guide/05-setting-permissions.html#group
+[jwt-auth]: ../enterprise-guide/authenticating-with-jwt.html
 [one-sandbox-per-table]: ../enterprise-guide/data-sandboxes.html#a-user-can-only-have-one-sandbox-per-table
 [permissions]: /learn/permissions/data-permissions.html
 [prepared-statement]: /glossary.html#prepared_statement
