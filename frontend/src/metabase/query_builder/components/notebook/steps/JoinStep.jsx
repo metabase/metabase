@@ -506,6 +506,40 @@ function JoinTypeOption({ name, value, icon, selected, onChange }) {
 
 JoinTypeOption.propTypes = joinTypeOptionPropTypes;
 
+const joinDimensionCellItemPropTypes = {
+  dimension: PropTypes.object,
+  onRemove: PropTypes.func.isRequired,
+  color: PropTypes.string,
+  testID: PropTypes.string,
+};
+
+function getDimensionSourceName(dimension) {
+  return dimension
+    .query()
+    .table()
+    .displayName();
+}
+
+function JoinDimensionCellItem({ dimension, color, testID, onRemove }) {
+  return (
+    <NotebookCellItem color={color} inactive={!dimension} data-testid={testID}>
+      <DimensionContainer>
+        <div>
+          {dimension && (
+            <DimensionSourceName>
+              {getDimensionSourceName(dimension)}
+            </DimensionSourceName>
+          )}
+          {dimension?.displayName() || t`Pick a column...`}
+        </div>
+        {dimension && <RemoveDimensionIcon onClick={onRemove} />}
+      </DimensionContainer>
+    </NotebookCellItem>
+  );
+}
+
+JoinDimensionCellItem.propTypes = joinDimensionCellItemPropTypes;
+
 const joinDimensionPickerPropTypes = {
   dimension: PropTypes.object,
   onChange: PropTypes.func.isRequired,
@@ -527,37 +561,22 @@ class JoinDimensionPicker extends React.Component {
   render() {
     const { dimension, onChange, onRemove, options, query, color } = this.props;
     const testID = this.props["data-testid"] || "join-dimension";
+
+    function onRemoveDimension(e) {
+      e.stopPropagation(); // don't trigger picker popover
+      onRemove();
+    }
+
     return (
       <PopoverWithTrigger
         ref={ref => (this._popover = ref)}
         triggerElement={
-          <NotebookCellItem
+          <JoinDimensionCellItem
+            dimension={dimension}
             color={color}
-            inactive={!dimension}
-            data-testid={testID}
-          >
-            <DimensionContainer>
-              <div>
-                {dimension && (
-                  <DimensionSourceName>
-                    {dimension
-                      .query()
-                      .table()
-                      .displayName()}
-                  </DimensionSourceName>
-                )}
-                {dimension?.displayName() || t`Pick a column...`}
-              </div>
-              {dimension && (
-                <RemoveDimensionIcon
-                  onClick={e => {
-                    e.stopPropagation();
-                    onRemove();
-                  }}
-                />
-              )}
-            </DimensionContainer>
-          </NotebookCellItem>
+            testID={testID}
+            onRemove={onRemoveDimension}
+          />
         }
       >
         {({ onClose }) => (
