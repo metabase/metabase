@@ -82,6 +82,9 @@ describe("Notebook Editor > Join Step", () => {
   }
 
   function toFieldRef(field, joinedTable) {
+    if (!field) {
+      return null;
+    }
     return [
       "field",
       field.id,
@@ -316,6 +319,50 @@ describe("Notebook Editor > Join Step", () => {
     );
   });
 
+  it("can clear selected parent dimension", async () => {
+    const { onQueryChange } = await setup({ joinTable: "Products" });
+    const parentDimensionPicker = screen.getByTestId("parent-dimension");
+
+    fireEvent.click(
+      within(parentDimensionPicker).queryByLabelText("close icon"),
+    );
+
+    expect(screen.getByTestId("parent-dimension")).toHaveTextContent(
+      "Pick a column...",
+    );
+    expect(screen.queryByRole("rowgroup")).toBe(null);
+    expect(onQueryChange).toHaveBeenLastCalledWith(
+      expectedJoin({
+        joinedTable: PRODUCTS,
+        rightField: PRODUCTS.ID,
+      }),
+    );
+  });
+
+  it("can clear selected join dimension", async () => {
+    const { onQueryChange } = await setup({ joinTable: "Products" });
+    const joinDimensionPicker = screen.getByTestId("join-dimension");
+
+    fireEvent.click(within(joinDimensionPicker).queryByLabelText("close icon"));
+
+    expect(screen.getByTestId("join-dimension")).toHaveTextContent(
+      "Pick a column...",
+    );
+    expect(screen.queryByRole("rowgroup")).toBe(null);
+    expect(onQueryChange).toHaveBeenLastCalledWith(
+      expectedJoin({
+        joinedTable: PRODUCTS,
+        leftField: ORDERS.PRODUCT_ID,
+      }),
+    );
+  });
+
+  it("hides icons for removing dimensions if dimensions are not set yet", async () => {
+    await setup({ joinTable: "Reviews" });
+
+    expect(screen.queryAllByLabelText("close icon")).toHaveLength(0);
+  });
+
   describe("joins on multiple fields", () => {
     it("does not display a new dimensions pair control until first pair is valid", async () => {
       await setup({ joinTable: "Reviews" });
@@ -388,7 +435,7 @@ describe("Notebook Editor > Join Step", () => {
       await setup({ joinTable: "Products" });
       fireEvent.click(screen.queryByLabelText("add icon"));
 
-      fireEvent.click(screen.queryByLabelText("close icon"));
+      fireEvent.click(screen.queryByTestId("remove-dimension-pair"));
 
       expect(screen.queryAllByText("Pick a column...")).toEqual([]);
       expect(screen.getByTestId("parent-dimension")).toHaveTextContent(
