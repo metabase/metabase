@@ -387,12 +387,12 @@
 (defn- sqlite-handle-timestamp
   [^ResultSet rs ^Integer i]
   (let [obj (.getObject rs i)]
-    (if (instance? String obj)
+    (cond
       ;; For strings, use our own parser which is more flexible than sqlite-jdbc's and handles timezones correctly
-      (u.date/parse obj)
+      (instance? String obj) (u.date/parse obj)
       ;; For other types, fallback to sqlite-jdbc's parser
       ;; Even in DATE column, it is possible to put DATETIME, so always treat as DATETIME
-      (t/local-date-time (.getTimestamp rs i)))))
+      (some? obj) (t/local-date-time (.getTimestamp rs i)))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:sqlite Types/DATE]
   [_ ^ResultSet rs _ ^Integer i]

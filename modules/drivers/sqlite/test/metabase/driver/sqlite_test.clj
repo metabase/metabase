@@ -158,7 +158,8 @@
                       ('epoch',           1629865104000,             1629849600000, 1629865104000),
                       ('iso8601-ms',      '2021-08-25 04:18:24.111', null,          '2021-08-25 04:18:24.111'),
                       ('iso8601-no-ms',   '2021-08-25 04:18:24',     null,          '2021-08-25 04:18:24'),
-                      ('iso8601-no-time', null,                      '2021-08-25',  null);"]]
+                      ('iso8601-no-time', null,                      '2021-08-25',  null),
+                      ('null',            null,                      null,          null);"]]
         (jdbc/execute! (sql-jdbc.conn/connection-details->spec :sqlite details)
                        [stmt]))
       (mt/with-temp Database [db {:engine :sqlite :details (assoc details :dbname db-name)}]
@@ -195,4 +196,10 @@
                    (qp.test/rows
                      (mt/run-mbql-query :datetime_table
                                         {:fields [$col_date]
-                                         :filter [:= $test_case "iso8601-no-time"]}))))))))))
+                                         :filter [:= $test_case "iso8601-no-time"]})))))
+          (testing "select NULL"
+            (is (= [[nil nil nil]]
+                   (qp.test/rows
+                     (mt/run-mbql-query :datetime_table
+                                        {:fields [$col_timestamp $col_date $col_datetime]
+                                         :filter [:= $test_case "null"]}))))))))))
