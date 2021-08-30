@@ -295,7 +295,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
                       onRemoveDimensionPair={removeDimensionPair}
                     />
                   ) : (
-                    <JoinConditionLabel>{t`on`}</JoinConditionLabel>
+                    <JoinConditionLabel>{t`and`}</JoinConditionLabel>
                   )}
                 </JoinDimensionControlsContainer>
               );
