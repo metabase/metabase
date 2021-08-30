@@ -4,6 +4,7 @@ import {
   describeWithToken,
   popover,
   mockSessionProperty,
+  sidebar,
 } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 const { admin } = USERS;
@@ -77,6 +78,23 @@ describe("scenarios > dashboard > subscriptions", () => {
     });
 
     describe("with no existing subscriptions", () => {
+      it.skip("should not enable subscriptions without the recepient (metabase#17657)", () => {
+        openDashboardSubscriptions();
+
+        cy.findByText("Email it").click();
+
+        // Make sure no recipients have been assigned
+        cy.findByPlaceholderText("Enter user names or email addresses");
+
+        // Change the schedule to "Monthly"
+        cy.findByText("Hourly").click();
+        cy.findByText("Monthly").click();
+
+        sidebar().within(() => {
+          cy.button("Done").should("be.disabled");
+        });
+      });
+
       it("should allow creation of a new email subscription", () => {
         createEmailSubscription();
         cy.findByText("Emailed daily at 8:00 AM");
