@@ -183,6 +183,9 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
       .addEmptyDimensionsPair()
       .parent()
       .update(updateQuery);
+
+    // Need to wait, so a new dimensions pair renders
+    // and a corresponding ref is created, so we can reference it here
     setTimeout(() => {
       parentDimensionPickersRef.current[index]?.open();
     });
