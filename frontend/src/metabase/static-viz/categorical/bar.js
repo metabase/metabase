@@ -59,9 +59,6 @@ export default function CategoricalBar(
       <AxisLeft
         hideTicks
         hideAxisLine
-        tickFormat={d => {
-          return String(d);
-        }}
         scale={yAxisScale}
         label={leftLabel}
         left={leftMargin}
