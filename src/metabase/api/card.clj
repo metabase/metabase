@@ -14,6 +14,7 @@
             [metabase.models.card :as card :refer [Card]]
             [metabase.models.card-favorite :refer [CardFavorite]]
             [metabase.models.collection :as collection :refer [Collection]]
+            [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.database :refer [Database]]
             [metabase.models.interface :as mi]
             [metabase.models.pulse :as pulse :refer [Pulse]]
@@ -596,20 +597,27 @@
                   (u/emoji "💾"))
         ttl-seconds))))
 
+(defn- ttl-hierarchy
+  [card dashboard database query]
+  (when (public-settings/enable-query-caching)
+    (let [ttls (map :cache_ttl [database dashboard card])
+          most-granular-ttl (last (filter some? ttls))]
+      (or most-granular-ttl
+          (query-magic-ttl query)))))
+
 (defn query-for-card
   "Generate a query for a saved Card"
   [{query :dataset_query
-    :as   card} parameters constraints middleware]
-  (let [query (-> query
-                  ;; don't want default constraints overridding anything that's already there
-                  (m/dissoc-in [:middleware :add-default-userland-constraints?])
-                  (assoc :constraints constraints
-                         :parameters  parameters
-                         :middleware  middleware))
-        ;;; this one needs to be fucked around with so cache ttl actually works..
-        ttl   (when (public-settings/enable-query-caching)
-                (or (:cache_ttl card)
-                    (query-magic-ttl query)))]
+    :as   card} parameters constraints middleware & ids]
+  (let [query     (-> query
+                      ;; don't want default constraints overridding anything that's already there
+                      (m/dissoc-in [:middleware :add-default-userland-constraints?])
+                      (assoc :constraints constraints
+                             :parameters  parameters
+                             :middleware  middleware))
+        dashboard (db/select-one [Dashboard :cache_ttl] :id (:dashboard-id ids))
+        database  (db/select-one [Database :cache_ttl] :id (:database_id card))
+        ttl       (ttl-hierarchy card dashboard database query)]
     (assoc query :cache-ttl ttl)))
 
 (defn run-query-for-card-async
@@ -622,25 +630,25 @@
              context     :question
              qp-runner   qp/process-query-and-save-execution!}}]
   {:pre [(u/maybe? sequential? parameters)]}
-  (let [run   (or run
-                  ;; param `run` can be used to control how the query is ran, e.g. if you need to
-                  ;; customize the `context` passed to the QP
-                  (^:once fn* [query info]
-                   (qp.streaming/streaming-response [context export-format (u/slugify (:card-name info))]
-                     (binding [qp.perms/*card-id* card-id]
-                       (qp-runner query info context)))))
-        card  (api/read-check (db/select-one [Card :name :dataset_query :cache_ttl :collection_id] :id card-id))
-        query (-> (assoc (query-for-card card parameters constraints middleware)
-                         :async? true)
-                  (update :middleware (fn [middleware]
-                                        (merge
-                                         {:js-int-to-string? true :ignore-cached-results? ignore_cache}
-                                         middleware))))
-        info  {:executed-by  api/*current-user-id*
-               :context      context
-               :card-id      card-id
-               :card-name    (:name card)
-               :dashboard-id dashboard-id}]
+  (let [run       (or run
+                      ;; param `run` can be used to control how the query is ran, e.g. if you need to
+                      ;; customize the `context` passed to the QP
+                      (^:once fn* [query info]
+                       (qp.streaming/streaming-response [context export-format (u/slugify (:card-name info))]
+                         (binding [qp.perms/*card-id* card-id]
+                           (qp-runner query info context)))))
+        card      (api/read-check (db/select-one [Card :name :dataset_query :cache_ttl :collection_id] :id card-id))
+        query     (-> (assoc (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
+                             :async? true)
+                      (update :middleware (fn [middleware]
+                                            (merge
+                                             {:js-int-to-string? true :ignore-cached-results? ignore_cache}
+                                             middleware))))
+        info      {:executed-by  api/*current-user-id*
+                   :context      context
+                   :card-id      card-id
+                   :card-name    (:name card)
+                   :dashboard-id dashboard-id}]
     (api/check-not-archived card)
     (run query info)))
 

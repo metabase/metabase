@@ -72,7 +72,7 @@
 
 (api/defendpoint POST "/"
   "Create a new Dashboard."
-  [:as {{:keys [name description parameters collection_id collection_position], :as dashboard} :body}]
+  [:as {{:keys [name description parameters cache_ttl collection_id collection_position], :as dashboard} :body}]
   {name                su/NonBlankString
    parameters          [su/Map]
    description         (s/maybe s/Str)

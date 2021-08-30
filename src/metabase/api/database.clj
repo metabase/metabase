@@ -466,7 +466,7 @@
 
 (api/defendpoint POST "/"
   "Add a new `Database`."
-  [:as {{:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries]} :body}]
+  [:as {{:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl]} :body}]
   {name             su/NonBlankString
    engine           DBEngineString
    details          su/Map
