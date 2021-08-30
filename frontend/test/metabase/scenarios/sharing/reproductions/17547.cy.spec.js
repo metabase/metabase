@@ -22,6 +22,7 @@ describe("issue 17547", () => {
 
     cy.createQuestion(questionDetails).then(({ body: { id: questionId } }) => {
       cy.intercept("POST", `/api/card/${questionId}/query`).as("cardQuery");
+      cy.intercept("GET", `/api/alert/question/${questionId}`).as("alertQuery");
 
       setUpAlert(questionId);
 
@@ -39,6 +40,8 @@ describe("issue 17547", () => {
 
     cy.findByText("AM").click();
     cy.button("Save changes").click();
+
+    cy.wait("@alertQuery");
 
     cy.icon("bell").click();
     popover().within(() => {
