@@ -69,6 +69,7 @@ export default function CategoricalBar(
       />
       <AxisBottom
         hideTicks={false}
+        tickStroke={layout.colors.axis.stroke}
         numTicks={data.length}
         top={layout.yMax}
         scale={xAxisScale}

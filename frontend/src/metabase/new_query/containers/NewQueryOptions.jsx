@@ -83,7 +83,7 @@ export default class NewQueryOptions extends Component {
       <Box my="auto" mx={PAGE_PADDING}>
         <Grid className="justifyCenter">
           {hasDataAccess && (
-            <GridItem w={ITEM_WIDTHS}>
+            <GridItem width={ITEM_WIDTHS}>
               <NewQueryOption
                 image="app/img/simple_mode_illustration"
                 title={t`Simple question`}
@@ -95,7 +95,7 @@ export default class NewQueryOptions extends Component {
             </GridItem>
           )}
           {hasDataAccess && (
-            <GridItem w={ITEM_WIDTHS}>
+            <GridItem width={ITEM_WIDTHS}>
               <NewQueryOption
                 image="app/img/notebook_mode_illustration"
                 title={t`Custom question`}
@@ -107,7 +107,7 @@ export default class NewQueryOptions extends Component {
             </GridItem>
           )}
           {hasNativeWrite && (
-            <GridItem w={ITEM_WIDTHS}>
+            <GridItem width={ITEM_WIDTHS}>
               <NewQueryOption
                 image="app/img/sql_illustration"
                 title={t`Native query`}

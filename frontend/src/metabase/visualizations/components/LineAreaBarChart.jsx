@@ -358,6 +358,8 @@ export default class LineAreaBarChart extends Component {
       hovered,
       headerIcon,
       actionButtons,
+      isFullscreen,
+      isQueryBuilder,
       onHoverChange,
       onAddSeries,
       onRemoveSeries,
@@ -381,6 +383,7 @@ export default class LineAreaBarChart extends Component {
           this.getHoverClasses(),
           this.props.className,
         )}
+        isQueryBuilder={isQueryBuilder}
       >
         {hasTitle && (
           <ChartLegendCaption
@@ -397,6 +400,8 @@ export default class LineAreaBarChart extends Component {
           hovered={hovered}
           hasLegend={hasLegend}
           actionButtons={!hasTitle ? actionButtons : undefined}
+          isFullscreen={isFullscreen}
+          isQueryBuilder={isQueryBuilder}
           onHoverChange={onHoverChange}
           onAddSeries={!hasBreakout ? onAddSeries : undefined}
           onRemoveSeries={!hasBreakout ? onRemoveSeries : undefined}
