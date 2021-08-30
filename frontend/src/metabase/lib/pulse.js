@@ -17,6 +17,19 @@ export function channelIsValid(channel, channelSpec) {
     }
   }
 
+  if (channelSpec.fields) {
+    for (const field of channelSpec.fields) {
+      if (
+        field.required &&
+        channel.details &&
+        (channel.details[field.name] == null ||
+          channel.details[field.name] === "")
+      ) {
+        return false;
+      }
+    }
+  }
+
   switch (channel.schedule_type) {
     case "monthly":
       if (channel.schedule_frame != null && channel.schedule_hour != null) {
@@ -38,19 +51,6 @@ export function channelIsValid(channel, channelSpec) {
       break;
     default:
       return false;
-  }
-
-  if (channelSpec.fields) {
-    for (const field of channelSpec.fields) {
-      if (
-        field.required &&
-        channel.details &&
-        (channel.details[field.name] == null ||
-          channel.details[field.name] === "")
-      ) {
-        return false;
-      }
-    }
   }
 
   return true;
