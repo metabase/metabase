@@ -24,7 +24,7 @@ function DataStep({ color, query, updateQuery }) {
               query={query}
               updateQuery={updateQuery}
               triggerStyle={FIELDS_PICKER_STYLES.trigger}
-              triggerElement={<FieldsPickerIcon />}
+              triggerElement={FieldsPickerIcon}
             />
           )
         }

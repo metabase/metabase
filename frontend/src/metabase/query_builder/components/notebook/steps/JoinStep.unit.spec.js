@@ -8,6 +8,7 @@ import {
   within,
   waitForElementToBeRemoved,
 } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import xhrMock from "xhr-mock";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { getStore } from "__support__/entities-store";
@@ -362,6 +363,25 @@ describe("Notebook Editor > Join Step", () => {
     await setup({ joinTable: "Reviews" });
 
     expect(screen.queryAllByLabelText("close icon")).toHaveLength(0);
+  });
+
+  it("shows the fields picker tooltip on control hover", async () => {
+    await setup({ joinTable: "Products" });
+
+    userEvent.hover(screen.getByLabelText("table icon"));
+
+    const tooltip = screen.queryByRole("tooltip");
+    expect(tooltip).toBeInTheDocument();
+    expect(tooltip).toHaveTextContent("Pick columns");
+  });
+
+  it("hides the fields picker tooltip when the picker opens", async () => {
+    await setup({ joinTable: "Products" });
+
+    userEvent.click(screen.getByLabelText("table icon"));
+    userEvent.hover(screen.getByLabelText("table icon"));
+
+    expect(screen.queryByRole("tooltip")).toBe(null);
   });
 
   describe("joins on multiple fields", () => {

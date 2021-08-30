@@ -389,7 +389,7 @@ function JoinTablePicker({
           <JoinFieldsPicker
             join={join}
             updateQuery={updateQuery}
-            triggerElement={<FieldsPickerIcon />}
+            triggerElement={FieldsPickerIcon}
             triggerStyle={FIELDS_PICKER_STYLES.trigger}
           />
         )
