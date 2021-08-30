@@ -65,9 +65,10 @@
 (defn- pre-update [notification]
   (let [{:keys [collection_id dashboard_id]} (db/select-one [Pulse :collection_id :dashboard_id] :id (u/the-id notification))]
     (when (and dashboard_id
+               (contains? notification :collection_id)
                (not= (:collection_id notification) collection_id)
                (not *allow-moving-dashboard-subscriptions*))
-      (throw (ex-info (tru "collection ID of dashboard subscription cannot be directly modified") notification)))
+      (throw (ex-info (tru "collection ID of a dashboard subscription cannot be directly modified") notification)))
     (when (and dashboard_id
                (contains? notification :dashboard_id)
                (not= (:dashboard_id notification) dashboard_id))

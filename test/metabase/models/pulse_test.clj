@@ -259,9 +259,9 @@
       (mt/with-temp* [Collection [{collection-id :id}]
                       Dashboard  [{dashboard-id :id}]
                       Pulse      [{pulse-id :id} {:dashboard_id dashboard-id :collection_id collection-id}]]
-        (is (thrown-with-msg? Exception #"collection ID of dashboard subscription cannot be directly modified"
+        (is (thrown-with-msg? Exception #"collection ID of a dashboard subscription cannot be directly modified"
               (db/update! Pulse pulse-id {:collection_id (inc collection-id)})))
-        (is (thrown-with-msg? Exception #"collection ID of dashboard subscription cannot be directly modified"
+        (is (thrown-with-msg? Exception #"dashboard ID of a dashboard subscription cannot be modified"
               (db/update! Pulse pulse-id {:dashboard_id (inc dashboard-id)}))))))
 
 (deftest no-archived-cards-test
