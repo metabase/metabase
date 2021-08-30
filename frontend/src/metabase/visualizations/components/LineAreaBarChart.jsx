@@ -401,6 +401,7 @@ export default class LineAreaBarChart extends Component {
           hasLegend={hasLegend}
           actionButtons={!hasTitle ? actionButtons : undefined}
           isFullscreen={isFullscreen}
+          isQueryBuilder={isQueryBuilder}
           onHoverChange={onHoverChange}
           onAddSeries={!hasBreakout ? onAddSeries : undefined}
           onRemoveSeries={!hasBreakout ? onRemoveSeries : undefined}

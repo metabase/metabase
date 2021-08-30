@@ -26,6 +26,7 @@ const propTypes = {
   hasLegend: PropTypes.bool,
   actionButtons: PropTypes.node,
   isFullscreen: PropTypes.bool,
+  isQueryBuilder: PropTypes.bool,
   children: PropTypes.node,
   onHoverChange: PropTypes.func,
   onAddSeries: PropTypes.func,
@@ -43,6 +44,7 @@ const LegendLayout = ({
   hasLegend,
   actionButtons,
   isFullscreen,
+  isQueryBuilder,
   children,
   onHoverChange,
   onAddSeries,
@@ -63,7 +65,10 @@ const LegendLayout = ({
   return (
     <LegendLayoutRoot className={className} isVertical={isVertical}>
       {isVisible && (
-        <LegendContainer isVertical={isVertical}>
+        <LegendContainer
+          isVertical={isVertical}
+          isQueryBuilder={isQueryBuilder}
+        >
           <Legend
             labels={labels}
             colors={colors}
