@@ -608,7 +608,7 @@
 (defn query-for-card
   "Generate a query for a saved Card"
   [{query :dataset_query
-    :as   card} parameters constraints middleware & ids]
+    :as   card} parameters constraints middleware & [ids]]
   (let [query     (-> query
                       ;; don't want default constraints overridding anything that's already there
                       (m/dissoc-in [:middleware :add-default-userland-constraints?])
