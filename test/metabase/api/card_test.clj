@@ -1075,7 +1075,7 @@
             :expected-email "the question was edited by Rasta Toucan"
             :f              (fn [{:keys [card]}]
                               (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:visualization_settings {:something "else"}}))}
-           {:message        "Adding an additional breakout will cause the alert to be removed"
+           {:message        "Adding an additional breakout to an alert with a goal will cause the alert to be removed"
             :card           {:display                :line
                              :visualization_settings {:graph.goal_value 10}
                              :dataset_query          (assoc-in
