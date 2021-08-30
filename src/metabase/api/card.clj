@@ -606,6 +606,7 @@
                   (assoc :constraints constraints
                          :parameters  parameters
                          :middleware  middleware))
+        ;;; this one needs to be fucked around with so cache ttl actually works..
         ttl   (when (public-settings/enable-query-caching)
                 (or (:cache_ttl card)
                     (query-magic-ttl query)))]

@@ -124,7 +124,7 @@
 ;; Adding the average execution time to all of the Cards in a Dashboard efficiently is somewhat involved. There are a
 ;; few things that make this tricky:
 ;;
-;; 1. Queries are usually executed with `:constraints` that different from how they're actually definied, but not
+;; 1. Queries are usually executed with `:constraints` that different from how they're actually defined, but not
 ;;    always. This means we should look up hashes for both the query as-is and for the query with
 ;;    `default-query-constraints` and use whichever one we find
 ;;
