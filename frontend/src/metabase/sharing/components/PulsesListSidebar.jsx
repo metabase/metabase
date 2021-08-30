@@ -103,11 +103,14 @@ function buildRecipientText(pulse) {
   const {
     channels: [firstChannel],
   } = pulse;
-  if (firstChannel.channel_type !== "email") {
+
+  const { channel_type, recipients } = firstChannel;
+
+  if (channel_type !== "email" || _.isEmpty(recipients)) {
     return "";
   }
 
-  const [firstRecipient, ...otherRecipients] = firstChannel.recipients;
+  const [firstRecipient, ...otherRecipients] = recipients;
   const firstRecipientText = firstRecipient.common_name || firstRecipient.email;
   return _.isEmpty(otherRecipients)
     ? firstRecipientText
