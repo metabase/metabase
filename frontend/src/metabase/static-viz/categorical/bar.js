@@ -3,9 +3,10 @@ import React from "react";
 import { t } from "ttag";
 import { Bar } from "@visx/shape";
 import { AxisLeft, AxisBottom } from "@visx/axis";
-import { scaleBand, scaleLinear } from "@visx/scale";
-import { bottomAxisTickStyles, leftAxisTickStyles } from "../utils.js";
 import { GridRows } from "@visx/grid";
+import { scaleBand, scaleLinear } from "@visx/scale";
+import { Text } from "@visx/text";
+import { bottomAxisTickStyles, leftAxisTickStyles } from "../utils.js";
 
 export default function CategoricalBar(
   { data, yScaleType = scaleLinear, accessors, labels },
@@ -62,11 +63,14 @@ export default function CategoricalBar(
       />
       <AxisBottom
         hideTicks={false}
-        numTicks={5}
+        numTicks={data.length}
         top={layout.yMax}
         scale={xAxisScale}
         stroke={layout.colors.axis.stroke}
         label={labels.bottom || t`Category`}
+        tickComponent={({ formattedValue, ...tickProps }) => (
+          <Text {...tickProps}>{formattedValue}</Text>
+        )}
         tickLabelProps={() => bottomAxisTickStyles(layout)}
       />
     </svg>
