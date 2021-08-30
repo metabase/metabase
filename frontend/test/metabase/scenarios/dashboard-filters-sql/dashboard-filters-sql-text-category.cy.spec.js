@@ -8,16 +8,16 @@ import {
   setFilter,
 } from "__support__/e2e/cypress";
 
-import { DASHBOARD_SQL_DATE_FILTERS } from "./helpers/e2e-dashboard-filter-data-objects";
-import * as DateFilter from "../native-filters/helpers/e2e-date-filter-helpers";
+import { DASHBOARD_SQL_TEXT_FILTERS } from "../dashboard-filters/helpers/e2e-dashboard-filter-data-objects";
+import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
-const { PEOPLE } = SAMPLE_DATASET;
+const { PRODUCTS } = SAMPLE_DATASET;
 
-Object.entries(DASHBOARD_SQL_DATE_FILTERS).forEach(
+Object.entries(DASHBOARD_SQL_TEXT_FILTERS).forEach(
   ([filter, { value, representativeResult, sqlFilter }]) => {
-    describe("scenarios > dashboard > filters > SQL > date", () => {
+    describe("scenarios > dashboard > filters > SQL > text/category", () => {
       beforeEach(() => {
         restore();
         cy.signInAsAdmin();
@@ -39,7 +39,7 @@ Object.entries(DASHBOARD_SQL_DATE_FILTERS).forEach(
         );
 
         editDashboard();
-        setFilter("Time", filter);
+        setFilter("Text or Category", filter);
 
         cy.findByText("Column to filter on")
           .next("a")
@@ -54,11 +54,7 @@ Object.entries(DASHBOARD_SQL_DATE_FILTERS).forEach(
         saveDashboard();
 
         filterWidget().click();
-
-        dateFilterSelector({
-          filterType: filter,
-          filterValue: value,
-        });
+        addWidgetStringFilter(value);
 
         cy.get(".Card").within(() => {
           cy.contains(representativeResult);
@@ -70,10 +66,7 @@ Object.entries(DASHBOARD_SQL_DATE_FILTERS).forEach(
           .next()
           .click();
 
-        dateFilterSelector({
-          filterType: filter,
-          filterValue: value,
-        });
+        addWidgetStringFilter(value);
 
         saveDashboard();
 
@@ -89,49 +82,17 @@ function getQuestionDetails(filter) {
   return {
     name: "SQL with Field Filter",
     native: {
-      query:
-        "select PEOPLE.NAME, PEOPLE.CREATED_AT from people where {{filter}} limit 10",
+      query: "select * from PRODUCTS where {{filter}}",
       "template-tags": {
         filter: {
-          id: "7136f057-cfa6-e6fb-40c1-02046a1df9fb",
+          id: "e05b9e58-3c51-676d-7334-4c2543709094",
           name: "filter",
           "display-name": "Filter",
           type: "dimension",
-          dimension: ["field", PEOPLE.CREATED_AT, null],
+          dimension: ["field", PRODUCTS.CATEGORY, null],
           "widget-type": filter,
         },
       },
     },
   };
-}
-
-function dateFilterSelector({ filterType, filterValue } = {}) {
-  switch (filterType) {
-    case "Month and Year":
-      DateFilter.setMonthAndYear(filterValue);
-      break;
-
-    case "Quarter and Year":
-      DateFilter.setQuarterAndYear(filterValue);
-      break;
-
-    case "Single Date":
-      DateFilter.setSingleDate(filterValue);
-      break;
-
-    case "Date Range":
-      DateFilter.setDateRange(filterValue);
-      break;
-
-    case "Relative Date":
-      DateFilter.setRelativeDate(filterValue);
-      break;
-
-    case "All Options":
-      DateFilter.setAdHocFilter(filterValue);
-      break;
-
-    default:
-      throw new Error("Wrong filter type!");
-  }
 }
