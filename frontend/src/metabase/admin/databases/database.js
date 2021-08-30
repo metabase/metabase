@@ -12,6 +12,8 @@ import MetabaseSettings from "metabase/lib/settings";
 import { MetabaseApi } from "metabase/services";
 import Databases from "metabase/entities/databases";
 
+import { editParamsForUserControlledScheduling } from "./editParamsForUserControlledScheduling";
+
 // Default schedules for db sync and deep analysis
 export const DEFAULT_SCHEDULES = {
   cache_field_values: {
@@ -165,10 +167,12 @@ export const proceedWithDbCreation = function(database) {
     if (database.details["let-user-control-scheduling"]) {
       try {
         dispatch.action(VALIDATE_DATABASE_STARTED);
+
         const { valid } = await MetabaseApi.db_validate({ details: database });
+
         if (valid) {
           dispatch.action(SET_DATABASE_CREATION_STEP, {
-            database: database,
+            database,
             step: DB_EDIT_FORM_SCHEDULING_TAB,
           });
         } else {
@@ -190,6 +194,8 @@ export const proceedWithDbCreation = function(database) {
 };
 
 export const createDatabase = function(database) {
+  editParamsForUserControlledScheduling(database);
+
   return async function(dispatch, getState) {
     try {
       dispatch.action(CREATE_DATABASE_STARTED, {});
