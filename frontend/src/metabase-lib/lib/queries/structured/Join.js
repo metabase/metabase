@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 import { MBQLObjectClause } from "./MBQLClause";
 import { t } from "ttag";
 
@@ -210,7 +209,7 @@ export default class Join extends MBQLObjectClause {
     if (this.isSingleConditionJoin()) {
       return [this.condition];
     }
-    const [_operator, ...conditions] = this.condition;
+    const [, ...conditions] = this.condition;
     return conditions;
   }
 
@@ -253,7 +252,7 @@ export default class Join extends MBQLObjectClause {
       return this.condition;
     }
     if (this.isMultipleConditionsJoin()) {
-      const [_operator, ...conditions] = this.condition;
+      const [, ...conditions] = this.condition;
       return conditions[index];
     }
     return null;
@@ -290,7 +289,7 @@ export default class Join extends MBQLObjectClause {
       // Adding 1 because the first element of a condition is an operator ("and")
       return i !== index + 1;
     });
-    const [_operator, ...conditions] = filteredCondition;
+    const [, ...conditions] = filteredCondition;
     const isSingleNewCondition = conditions.length === 1;
     if (isSingleNewCondition) {
       return this.setCondition(conditions[0]);
@@ -325,7 +324,7 @@ export default class Join extends MBQLObjectClause {
   }
 
   _getJoinDimensionFromCondition(condition) {
-    const [_operator, parentDimension, joinDimension] = condition;
+    const [, , joinDimension] = condition;
     const joinedQuery = this.joinedQuery();
     return (
       joinedQuery &&
@@ -335,7 +334,7 @@ export default class Join extends MBQLObjectClause {
   }
 
   _getJoinDimensionsFromMultipleConditions() {
-    const [_operator, ...conditions] = this.condition;
+    const [, ...conditions] = this.condition;
     return conditions.map(condition =>
       this._getJoinDimensionFromCondition(condition),
     );
@@ -348,12 +347,12 @@ export default class Join extends MBQLObjectClause {
   // TODO: should we rename them to lhsDimension/rhsDimension etc?
 
   _getParentDimensionFromCondition(condition) {
-    const [_operator, parentDimension] = condition;
+    const [, parentDimension] = condition;
     return parentDimension && this.query().parseFieldReference(parentDimension);
   }
 
   _getParentDimensionsFromMultipleConditions() {
-    const [_operator, ...conditions] = this.condition;
+    const [, ...conditions] = this.condition;
     return conditions.map(condition =>
       this._getParentDimensionFromCondition(condition),
     );
@@ -441,7 +440,7 @@ export default class Join extends MBQLObjectClause {
   getDimensions() {
     const conditions = this.getConditions();
     return conditions.map(condition => {
-      const [_operator, parentDimension, joinDimension] = condition;
+      const [, parentDimension, joinDimension] = condition;
       return [
         parentDimension
           ? this.query().parseFieldReference(parentDimension)
