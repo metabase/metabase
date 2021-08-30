@@ -7,7 +7,7 @@ import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import { NotebookCell } from "./NotebookCell";
 
-const IconContainer = styled.div`
+export const FieldPickerContentContainer = styled.div`
   padding: ${NotebookCell.CONTAINER_PADDING};
 `;
 
@@ -25,9 +25,9 @@ export function FieldsPickerIcon({ isTriggeredComponentOpen }) {
       tooltip={<span>{t`Pick columns`}</span>}
       isEnabled={!isTriggeredComponentOpen}
     >
-      <IconContainer>
+      <FieldPickerContentContainer>
         <StyledIcon name="table" size={14} />
-      </IconContainer>
+      </FieldPickerContentContainer>
     </Tooltip>
   );
 }
@@ -36,6 +36,9 @@ FieldsPickerIcon.propTypes = propTypes;
 
 export const FIELDS_PICKER_STYLES = {
   notebookItemContainer: {
+    padding: 0,
+  },
+  notebookRightItemContainer: {
     width: 37,
     height: 37,
     padding: 0,

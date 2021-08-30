@@ -75,13 +75,10 @@ const NotebookCellItemContentContainer = styled.div`
   transition: background 300ms linear;
 `;
 
-NotebookCellItemContentContainer.defaultProps = {
-  hasPadding: true,
-};
-
 export function NotebookCellItem({
   inactive,
   color,
+  containerStyle,
   right,
   rightContainerStyle,
   children,
@@ -98,6 +95,7 @@ export function NotebookCellItem({
         inactive={inactive}
         color={color}
         roundedCorners={mainContentRoundedCorners}
+        style={containerStyle}
       >
         {children}
       </NotebookCellItemContentContainer>

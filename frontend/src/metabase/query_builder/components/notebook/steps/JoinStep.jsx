@@ -14,7 +14,11 @@ import {
   NotebookCellItem,
   NotebookCellAdd,
 } from "../NotebookCell";
-import { FieldsPickerIcon, FIELDS_PICKER_STYLES } from "../FieldsPickerIcon";
+import {
+  FieldsPickerIcon,
+  FieldPickerContentContainer,
+  FIELDS_PICKER_STYLES,
+} from "../FieldsPickerIcon";
 import FieldsPicker from "./FieldsPicker";
 import {
   DimensionContainer,
@@ -401,7 +405,8 @@ function JoinTablePicker({
           />
         )
       }
-      rightContainerStyle={FIELDS_PICKER_STYLES.notebookItemContainer}
+      containerStyle={FIELDS_PICKER_STYLES.notebookItemContainer}
+      rightContainerStyle={FIELDS_PICKER_STYLES.notebookRightItemContainer}
     >
       <DatabaseSchemaAndTableDataSelector
         hasTableSearch
@@ -413,7 +418,9 @@ function JoinTablePicker({
         setSourceTableFn={onChange}
         isInitiallyOpen={join.joinSourceTableId() == null}
         triggerElement={
-          joinedTable ? joinedTable.displayName() : t`Pick a table...`
+          <FieldPickerContentContainer>
+            {joinedTable ? joinedTable.displayName() : t`Pick a table...`}
+          </FieldPickerContentContainer>
         }
       />
     </NotebookCellItem>
