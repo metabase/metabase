@@ -23,8 +23,6 @@ function ToggleChildCollectionButton({ action, collectionId, isOpen }) {
   const iconName = isOpen ? "chevrondown" : "chevronright";
 
   function handleClick(e) {
-    e.preventDefault();
-    e.stopPropagation();
     action(collectionId);
   }
 
