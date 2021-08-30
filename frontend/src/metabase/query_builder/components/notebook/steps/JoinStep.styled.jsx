@@ -1,7 +1,12 @@
 import styled from "styled-components";
 import { color } from "metabase/lib/colors";
-import { space } from "metabase/styled-components/theme";
+import { space, breakpointMaxMedium } from "metabase/styled-components/theme";
 import Icon from "metabase/components/Icon";
+
+export const Row = styled.div`
+  display: flex;
+  align-items: center;
+`;
 
 export const JoinStepRoot = styled.div`
   display: flex;
@@ -66,6 +71,11 @@ export const JoinDimensionControlsContainer = styled.div`
   align-items: center;
 
   margin-top: ${props => (props.isFirst ? 0 : space(1))};
+
+  ${breakpointMaxMedium} {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 `;
 
 export const JoinWhereConditionLabelContainer = styled.div`

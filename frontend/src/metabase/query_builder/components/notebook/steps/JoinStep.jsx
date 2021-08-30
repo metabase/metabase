@@ -33,6 +33,7 @@ import {
   JoinConditionLabel,
   RemoveDimensionIcon,
   RemoveJoinIcon,
+  Row,
 } from "./JoinStep.styled";
 
 const stepShape = {
@@ -257,46 +258,52 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
                   isFirst={isFirst}
                   data-testid={`join-dimensions-pair-${index}`}
                 >
-                  <JoinDimensionPicker
-                    color={color}
-                    query={query}
-                    dimension={parentDimensions[index]}
-                    options={parentDimensionOptions}
-                    onChange={fieldRef =>
-                      onParentDimensionChange(index, fieldRef)
-                    }
-                    onRemove={removeParentDimension}
-                    ref={ref =>
-                      (parentDimensionPickersRef.current[index] = ref)
-                    }
-                    data-testid="parent-dimension"
-                  />
-                  <JoinConditionLabel>=</JoinConditionLabel>
-                  <JoinDimensionPicker
-                    color={color}
-                    query={query}
-                    dimension={joinDimensions[index]}
-                    options={joinDimensionOptions}
-                    onChange={fieldRef =>
-                      onJoinDimensionChange(index, fieldRef)
-                    }
-                    onRemove={removeJoinDimension}
-                    ref={ref => (joinDimensionPickersRef.current[index] = ref)}
-                    data-testid="join-dimension"
-                  />
-                  {isLast ? (
-                    <JoinDimensionsRightControl
-                      isValidJoin={join.isValid()}
+                  <Row>
+                    <JoinDimensionPicker
                       color={color}
-                      isFirst={isFirst}
-                      onAddNewDimensionPair={() =>
-                        addNewDimensionsPair(index + 1)
+                      query={query}
+                      dimension={parentDimensions[index]}
+                      options={parentDimensionOptions}
+                      onChange={fieldRef =>
+                        onParentDimensionChange(index, fieldRef)
                       }
-                      onRemoveDimensionPair={removeDimensionPair}
+                      onRemove={removeParentDimension}
+                      ref={ref =>
+                        (parentDimensionPickersRef.current[index] = ref)
+                      }
+                      data-testid="parent-dimension"
                     />
-                  ) : (
-                    <JoinConditionLabel>{t`and`}</JoinConditionLabel>
-                  )}
+                    <JoinConditionLabel>=</JoinConditionLabel>
+                  </Row>
+                  <Row>
+                    <JoinDimensionPicker
+                      color={color}
+                      query={query}
+                      dimension={joinDimensions[index]}
+                      options={joinDimensionOptions}
+                      onChange={fieldRef =>
+                        onJoinDimensionChange(index, fieldRef)
+                      }
+                      onRemove={removeJoinDimension}
+                      ref={ref =>
+                        (joinDimensionPickersRef.current[index] = ref)
+                      }
+                      data-testid="join-dimension"
+                    />
+                    {isLast ? (
+                      <JoinDimensionsRightControl
+                        isValidJoin={join.isValid()}
+                        color={color}
+                        isFirst={isFirst}
+                        onAddNewDimensionPair={() =>
+                          addNewDimensionsPair(index + 1)
+                        }
+                        onRemoveDimensionPair={removeDimensionPair}
+                      />
+                    ) : (
+                      <JoinConditionLabel>{t`and`}</JoinConditionLabel>
+                    )}
+                  </Row>
                 </JoinDimensionControlsContainer>
               );
             })}
