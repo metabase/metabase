@@ -166,7 +166,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
       .setDefaultAlias()
       .parent()
       .update(updateQuery);
-    if (!join.joinDimensions[index]) {
+    if (!join.joinDimensions()[index]) {
       joinDimensionPickersRef.current[index]?.open();
     }
   }
