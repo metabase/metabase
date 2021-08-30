@@ -165,10 +165,12 @@ export const proceedWithDbCreation = function(database) {
     if (database.details["let-user-control-scheduling"]) {
       try {
         dispatch.action(VALIDATE_DATABASE_STARTED);
+
         const { valid } = await MetabaseApi.db_validate({ details: database });
+
         if (valid) {
           dispatch.action(SET_DATABASE_CREATION_STEP, {
-            database: database,
+            database,
             step: DB_EDIT_FORM_SCHEDULING_TAB,
           });
         } else {
@@ -190,14 +192,7 @@ export const proceedWithDbCreation = function(database) {
 };
 
 export const createDatabase = function(database) {
-  if (database.details["let-user-control-scheduling"]) {
-    database.is_full_sync = false;
-    database.schedules = {
-      metadata_sync: {
-        schedule_type: "daily",
-      },
-    };
-  }
+  editSyncParamsForUserControlledScheduling(database);
 
   return async function(dispatch, getState) {
     try {
@@ -218,6 +213,17 @@ export const createDatabase = function(database) {
       throw error;
     }
   };
+};
+
+const editSyncParamsForUserControlledScheduling = database => {
+  if (database.details["let-user-control-scheduling"]) {
+    database.is_full_sync = false;
+    database.schedules = {
+      metadata_sync: {
+        schedule_type: "daily",
+      },
+    };
+  }
 };
 
 export const updateDatabase = function(database) {
