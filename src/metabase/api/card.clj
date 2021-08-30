@@ -600,8 +600,8 @@
 (defn- ttl-hierarchy
   [card dashboard database query]
   (when (public-settings/enable-query-caching)
-    (let [ttls (map :cache_ttl [database dashboard card])
-          most-granular-ttl (last (filter some? ttls))]
+    (let [ttls (map :cache_ttl [card dashboard database])
+          most-granular-ttl (first (filter some? ttls))]
       (or most-granular-ttl
           (query-magic-ttl query)))))
 
