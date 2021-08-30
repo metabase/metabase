@@ -51,4 +51,4 @@ Metabase expects that you'll run the command against a brand-new (empty) databas
 
 ### Troubleshooting
 
-If you get an error, check out [Error when loading application database from H2](../troubleshooting-guide/loading-from-h2.md).
+If you get an error, check out [this troubleshooting guide](../troubleshooting-guide/application-database.md).

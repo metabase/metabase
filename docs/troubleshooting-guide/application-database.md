@@ -1,36 +1,75 @@
-# Trouble with the Metabase Application Database
+---
+redirect_from:
+  - ./loading-from-h2.html
+---
+# The application database isn't working
 
-<div class='doc-toc' markdown=1>
-- [Metabase fails to start due to database locks](#database-locks)
-- [Metabase H2 application database gets corrupted](#h2-app-db-corrupted)
-- [Metabase fails to connect to H2 Database on Windows 10](#h2-connect-windows-10)
-</div>
+You have installed Metabase, but:
 
-Metabase stores information about users, questions, and so on in a database of its own that we call the "application database". The default application database that ships with Metabase is an [H2 database][what-is-h2], which is not recommended for production. To use a production-ready database for you Metabase application database, see [Migrating from H2][migrating]. 
+- you are trying to migrate the application database from H2 to another database and something has gone wrong,
+- it logs a `liquibase` error message when you try to run it,
+- it logs another error message that mentions `H2` or `h2` while it is running, or
+- you are on Windows 10 and get a warning about file permissions.
 
-<h2 id="database-locks">Metabase fails to start due to database locks</h2>
+## Are you currently using H2 as your application database?
 
-Sometimes Metabase will fail to start up because a database lock did not clear properly. 
+**Root cause:** Metabase stores information about users, questions, and so on in a database of its own called the "application database", or "app database" for short. By default Metabase uses [H2][what-is-h2] for the app database, but we don't recommended it for production---because it's an on-disk database, it's sensitive to filesystem errors, such as a drive being corrupted or a file not being flushed properly.
 
-**How to detect this:** The error message will look something like:
+**Steps to take:**
+
+1. FIXME how to tell if you're using H2
+2. See [Migrating from H2][migrate] for instructions on how to migrate to a more robust app database.
+
+## Are you trying to migrate the application database from H2 to something else?
+
+**Root cause:** You are trying to [migrate][migrate] the app database from H2 to a production database such as PostgreSQL or MySQL/MariaDB using the `load-from-h2` command, but this has failed because the database filename is incorrect with an error message like:
+
+```
+Command failed with exception: Unsupported database file version or invalid file header in file <YOUR FILENAME> 
+```
+
+**Steps to take:**
+
+1.  Create a copy of the exported H2 database (see [Backing up Metabase Application Data][backup]). *Do not proceed until you have done this* in case something goes wrong.
+
+2.  Check that the H2 database file you exported is named `metabase.db.mv.db`.
+
+3.  H2 automatically adds `.mv.db` extension to the database path you specify on the command line, so make sure the path to the DB file you pass to the command does *not* include the `.mv.db` extension. For example, if you've exported an application database, and you want to load the data from that H2 database into a PostgreSQL database using `load-from-h2`, your command will look something like:
+    ```
+    export MB_DB_TYPE=postgres
+    export MB_DB_DBNAME=metabase
+    export MB_DB_PORT=5432
+    export MB_DB_USER=<username>
+    export MB_DB_PASS=<password>
+    export MB_DB_HOST=localhost
+    java -jar metabase.jar load-from-h2 /path/to/metabase.db # do not include .mv.db
+    ```
+
+If you're using [Metabase Enterprise Edition][enterprise], you can use [serialization][serialization-docs] to snapshot your application database. Serialization is useful when you want to [preload questions and dashboards][serialization-learn] in a new Metabase instance.
+
+## Is the app database locked?
+
+**Root cause:** Sometimes Metabase fails to start up because an app database lock did not clear properly during a previous run. The error message looks something like:
 
 ```
 liquibase.exception.DatabaseException: liquibase.exception.LockException: Could not acquire change log lock.
 ```
 
-**How to fix this:** When this happens, open a shell on the server where Metabase is installed and run:
+**Steps to take:**
 
-```
-java -jar metabase.jar migrate release-locks
-```
+1.  Open a shell on the server where Metabase is installed and manually clear the locks by running:
 
-This command will manually clear the locks. When it's done, restart your Metabase instance.
+    ```
+    java -jar metabase.jar migrate release-locks
+    ```
 
-<h2 id="h2-app-db-corrupted">Metabase H2 application database gets corrupted</h2>
+2.  Once this command completes, restart your Metabase instance normally (*without* the `release-locks` flag).
 
-By default, Metabase uses [H2][what-is-h2] for its application database. Because H2 is an on-disk database, it's sensitive to filesystem errors, such as a drive being corrupted or a file not being flushed properly. In these situations, you'll see errors on startup. 
+## Is the app database corrupted?
 
-**How to detect this:** Error messages will vary, but one example is:
+**Root cause:** H2 is less reliable than production-quality database management systems, and sometimes the database itself becomes corrupted. This can result in loss of data in the app database, but can *not* damage data in the databases that Metabase is connected.
+
+**Steps to take:** Error messages can vary depending on how the app database was corrupted, but in most cases the log message will mention `h2`. A typical command and message are:
 
 ```
 myUser@myIp:~$ java -cp metabase.jar org.h2.tools.RunScript -script whatever.sql -url jdbc:h2:~/metabase.db
@@ -39,37 +78,43 @@ Exception in thread "main" org.h2.jdbc.JdbcSQLException: Row not found when tryi
     [etc]
 ```
 
-**How to fix this:** To attempt to recover a corrupted H2 file with a recent version of Metabase, try the commands shown below:
+**How to fix this:** not all H2 errors are recoverable (which is why if you're using H2, _please_ have a backup strategy for the application database file).
 
-```
-java -cp metabase.jar org.h2.tools.Recover
-mv metabase.db.mv.db metabase.old.db
-touch metabase.db.mv.db
-java -cp target/uberjar/metabase.jar org.h2.tools.RunScript -script metabase.db.h2.sql -url jdbc:h2:`pwd`/metabase.db
-```
+1.  Determine whether you are running a recent version of Metabase or an older version:
+2.  If you are running a recent version and using H2, the app database is stored in `metabase.db.mv.db`.
+    -   Open a shell on the server where the Metabase instance is running and attempt to recover the corrupted H2 file by running:
+        ```
+        $ java -cp metabase.jar org.h2.tools.Recover
+        $ mv metabase.db.mv.db metabase.old.db
+        $ touch metabase.db.mv.db
+        $ java -cp target/uberjar/metabase.jar org.h2.tools.RunScript -script metabase.db.h2.sql -url jdbc:h2:`pwd`/metabase.db
+        ```
+3.  If you are running an older version, the app database is stored in `metabase.db.h2.db`.
+    -   Open a shell on the server where the Metabase instance is running and attempt to recover the corrupted H2 file by running:
+        ```
+        $ java -cp metabase.jar org.h2.tools.Recover
+        $ mv metabase.db.h2.db metabase.old.db
+        $ touch metabase.db.h2.db
+        $ java -cp target/uberjar/metabase.jar org.h2.tools.RunScript -script metabase.db.h2.sql -url jdbc:h2:`pwd`/metabase.db;MV_STORE=FALSE
+        ```
 
-If you're using a legacy Metabase H2 application database (where the database file is named 'metabase.db.h2.db') use the command below instead:
+## Are you running Metabase with H2 on Windows 10?
 
-```
-java -cp metabase.jar org.h2.tools.Recover
-mv metabase.db.h2.db metabase.old.db
-touch metabase.db.h2.db
-java -cp target/uberjar/metabase.jar org.h2.tools.RunScript -script metabase.db.h2.sql -url jdbc:h2:`pwd`/metabase.db;MV_STORE=FALSE
-```
-
-Not all H2 errors are recoverable (which is why if you're using H2, _please_ have a backup strategy for the application database file).
-
-<h2 id="h2-connect-windows-10">Metabase fails to connect to H2 Database on Windows 10</h2>
-
-In some situations on Windows 10, the Metabase JAR needs to have permissions to create local files for the application database. 
-
-**How to detect this:** If the Metabase JAR lacks permissions, you might see an error message like this when running the JAR:
+**Root cause:** In some situations on Windows 10, the Metabase JAR needs to have permissions to create local files for the application database. In this case, you will see an error message like this when running the JAR:
 
 ```
 Exception in thread "main" java.lang.AssertionError: Assert failed: Unable to connect to Metabase DB.
 ```
 
-**How to fix this:** You can unblock the file by right-clicking on it, clicking "Properties," and then clicking "Unblock." 
+**Steps to take:**
 
-[what-is-h2]: ../faq/setup/what-is-h2.html
-[migrating]: ../operations-guide/migrating-from-h2.html
+1.  Right-click on the Metabase JAR file (*not* the app database file).
+2.  Select "Properties".
+3.  Select "Unblock."
+
+[backup]: ../operations-guide/backing-up-metabase-application-data.md
+[enterprise]: /enterprise/
+[migrate]: ../operations-guide/migrating-from-h2.md
+[serialization-docs]: ../enterprise-guide/serialization.md
+[serialization-learn]: /learn/administration/serialization.html
+[what-is-h2]: ../faq/setup/what-is-h2.md
