@@ -13,6 +13,11 @@ export default function CategoricalBar(
   layout,
 ) {
   const leftMargin = 55;
+  const isVertical = data.length > 10;
+  const leftLabel = labels.left || t`Count`;
+  const bottomLabel = !isVertical ? labels.bottom || t`Category` : undefined;
+  const tickMargin = 5;
+
   const xAxisScale = scaleBand({
     domain: data.map(accessors.x),
     range: [leftMargin, layout.xMax],
@@ -34,14 +39,15 @@ export default function CategoricalBar(
         left={leftMargin}
         strokeDasharray="4"
       />
-      {data.map(d => {
+      {data.map((d, index) => {
         const barWidth = xAxisScale.bandwidth();
         const barHeight = layout.yMax - yAxisScale(accessors.y(d));
         const x = xAxisScale(accessors.x(d));
         const y = layout.yMax - barHeight;
+
         return (
           <Bar
-            key={`bar-${x}`}
+            key={index}
             width={barWidth}
             height={barHeight}
             x={x}
@@ -57,7 +63,7 @@ export default function CategoricalBar(
           return String(d);
         }}
         scale={yAxisScale}
-        label={labels.left || t`Count`}
+        label={leftLabel}
         left={leftMargin}
         tickLabelProps={() => leftAxisTickStyles(layout)}
       />
@@ -67,10 +73,19 @@ export default function CategoricalBar(
         top={layout.yMax}
         scale={xAxisScale}
         stroke={layout.colors.axis.stroke}
-        label={labels.bottom || t`Category`}
-        tickComponent={({ formattedValue, ...tickProps }) => (
-          <Text {...tickProps}>{formattedValue}</Text>
-        )}
+        label={bottomLabel}
+        tickComponent={props => {
+          const transform = isVertical
+            ? `rotate(45, ${props.x} ${props.y}) translate(${-tickMargin} 0)`
+            : undefined;
+          const textAnchor = isVertical ? "start" : "middle";
+
+          return (
+            <Text {...props} transform={transform} textAnchor={textAnchor}>
+              {props.formattedValue}
+            </Text>
+          );
+        }}
         tickLabelProps={() => bottomAxisTickStyles(layout)}
       />
     </svg>

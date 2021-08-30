@@ -1,8 +1,8 @@
 export function leftAxisTickStyles(layout) {
   return {
+    fontSize: 11,
     fontFamily: "Lato, sans-serif",
     fill: layout.colors.axis.label.fill,
-    fontSize: 11,
     textAnchor: "end",
   };
 }
