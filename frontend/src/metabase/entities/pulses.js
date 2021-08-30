@@ -52,7 +52,7 @@ const Pulses = createEntity({
       return Pulses.actions.update(
         { id },
         { channels: newChannels },
-        undo(opts, "", t`Successfully unsubscribed`),
+        undo(opts, "", t`unsubscribed`),
       );
     },
   },

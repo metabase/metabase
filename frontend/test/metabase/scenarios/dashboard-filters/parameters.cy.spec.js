@@ -400,49 +400,6 @@ describe("scenarios > dashboard > parameters", () => {
     cy.findByText("Text contains").click();
     cy.findByText("No valid fields");
   });
-
-  it("should allow for forcefully unset default parameters by clicking the parameter widget's removal button", () => {
-    cy.visit("/dashboard/1");
-
-    // Add a filter
-    cy.icon("pencil").click();
-    cy.icon("filter").click();
-    cy.findByText("Location").click();
-    cy.findByText("Dropdown").click();
-
-    // Link that filter to the card
-    cy.findByText("Select…").click();
-    popover().within(() => {
-      cy.findByText("City").click();
-    });
-
-    // Create a default value and save filter
-    cy.findByText("No default").click();
-    cy.findByPlaceholderText("Search by City")
-      .click()
-      .type("Boz");
-    cy.findByText("Bozeman").click();
-    cy.findByText("Add filter").click();
-    cy.get(".Button--primary")
-      .contains("Done")
-      .click();
-
-    // Save the dashboard and wait for the card query to rerun
-    cy.findByText("Save").click();
-    cy.findByText("You're editing this dashboard.").should("not.exist");
-    cy.findByText("Bozeman");
-    cy.findByText("No results!");
-
-    // Remove the filter and check that there are now results where there previously weren't
-    cy.icon("close").click();
-    cy.findByText("Bozeman").should("not.exist");
-    cy.findByText("39.72");
-
-    cy.log("**Unset filter should persist across a reload of the page**");
-    cy.reload();
-    cy.findByText("Bozeman").should("not.exist");
-    cy.findByText("39.72");
-  });
 });
 
 function selectFilter(selection, filterName) {

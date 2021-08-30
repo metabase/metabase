@@ -13,6 +13,7 @@ import {
 
 const MIN_ITEM_WIDTH = 100;
 const MIN_ITEM_HEIGHT = 25;
+const MIN_ITEM_HEIGHT_LARGE = 31;
 const MIN_LEGEND_WIDTH = 400;
 
 const propTypes = {
@@ -24,6 +25,8 @@ const propTypes = {
   height: PropTypes.number,
   hasLegend: PropTypes.bool,
   actionButtons: PropTypes.node,
+  isFullscreen: PropTypes.bool,
+  isQueryBuilder: PropTypes.bool,
   children: PropTypes.node,
   onHoverChange: PropTypes.func,
   onAddSeries: PropTypes.func,
@@ -40,14 +43,17 @@ const LegendLayout = ({
   height = 0,
   hasLegend,
   actionButtons,
+  isFullscreen,
+  isQueryBuilder,
   children,
   onHoverChange,
   onAddSeries,
   onSelectSeries,
   onRemoveSeries,
 }) => {
+  const itemHeight = !isFullscreen ? MIN_ITEM_HEIGHT : MIN_ITEM_HEIGHT_LARGE;
   const maxXItems = Math.floor(width / MIN_ITEM_WIDTH);
-  const maxYItems = Math.floor(height / MIN_ITEM_HEIGHT);
+  const maxYItems = Math.floor(height / itemHeight);
   const maxYLabels = Math.max(maxYItems - 1, 0);
   const minYLabels = labels.length > maxYItems ? maxYLabels : labels.length;
 
@@ -59,7 +65,10 @@ const LegendLayout = ({
   return (
     <LegendLayoutRoot className={className} isVertical={isVertical}>
       {isVisible && (
-        <LegendContainer isVertical={isVertical}>
+        <LegendContainer
+          isVertical={isVertical}
+          isQueryBuilder={isQueryBuilder}
+        >
           <Legend
             labels={labels}
             colors={colors}

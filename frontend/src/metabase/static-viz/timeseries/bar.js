@@ -74,6 +74,7 @@ export default function TimeseriesBar(
         hideTicks={false}
         numTicks={5}
         top={layout.yMax}
+        tickStroke={layout.colors.axis.stroke}
         tickFormat={d => new Date(d).toLocaleDateString("en")}
         scale={xAxisScale}
         stroke={layout.colors.axis.stroke}

@@ -13,7 +13,7 @@ import {
 
 const propTypes = {
   items: PropTypes.array.isRequired,
-  user: PropTypes.object,
+  user: PropTypes.object.isRequired,
   children: PropTypes.node,
   onHelp: PropTypes.func,
   onUnsubscribe: PropTypes.func,

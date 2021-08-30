@@ -52,9 +52,9 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
       // drag across to filter
       cy.get(".Visualization")
-        .trigger("mousedown", 100, 200)
-        .trigger("mousemove", 210, 200)
-        .trigger("mouseup", 210, 200);
+        .trigger("mousedown", 120, 200)
+        .trigger("mousemove", 230, 200)
+        .trigger("mouseup", 230, 200);
 
       // new filter applied
       // Note: Test was flaking because apparently mouseup doesn't always happen at the same position.

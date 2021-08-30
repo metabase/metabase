@@ -31,7 +31,10 @@ const LegendCaption = ({
   return (
     <LegendCaptionRoot className={className} data-testid="legend-caption">
       {icon && <LegendLabelIcon {...icon} />}
-      <LegendLabel onClick={onSelectTitle}>
+      <LegendLabel
+        className="fullscreen-normal-text fullscreen-night-text"
+        onClick={onSelectTitle}
+      >
         <Ellipsified>{title}</Ellipsified>
       </LegendLabel>
       {description && (
