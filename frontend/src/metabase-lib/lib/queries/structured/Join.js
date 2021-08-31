@@ -535,7 +535,7 @@ export default class Join extends MBQLObjectClause {
     return this._query.removeJoin(this._index);
   }
 
-  isValid(): boolean {
+  isValid() {
     if (!this.joinedTable()) {
       return false;
     }

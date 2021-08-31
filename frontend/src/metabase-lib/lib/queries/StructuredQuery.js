@@ -72,7 +72,7 @@ export const STRUCTURED_QUERY_TEMPLATE = {
  * A wrapper around an MBQL (`query` type @type {DatasetQuery}) object
  */
 export default class StructuredQuery extends AtomicQuery {
-  static isDatasetQueryType(datasetQuery: DatasetQuery): boolean {
+  static isDatasetQueryType(datasetQuery: DatasetQuery) {
     return datasetQuery && datasetQuery.type === STRUCTURED_QUERY_TEMPLATE.type;
   }
 
@@ -117,7 +117,7 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * @returns true if this query is in a state where it can be edited. Must have database and table set, and metadata for the table loaded.
    */
-  isEditable(): boolean {
+  isEditable() {
     return this.hasMetadata();
   }
 
@@ -158,7 +158,7 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * Returns true if the database metadata (or lack thererof indicates the user can modify and run this query
    */
-  readOnly(): boolean {
+  readOnly() {
     return !this.database();
   }
 
@@ -404,7 +404,7 @@ export default class StructuredQuery extends AtomicQuery {
     }
   }
 
-  isValid(): boolean {
+  isValid() {
     if (!this.hasData()) {
       return false;
     }
@@ -647,21 +647,21 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * @returns true if the aggregation can be removed
    */
-  canRemoveAggregation(): boolean {
+  canRemoveAggregation() {
     return this.aggregations().length > 1;
   }
 
   /**
    * @returns true if the query has no aggregation
    */
-  isBareRows(): boolean {
+  isBareRows() {
     return !this.hasAggregations();
   }
 
   /**
    * @returns true if the query has no aggregation or breakouts
    */
-  isRaw(): boolean {
+  isRaw() {
     return !this.hasAggregations() && !this.hasBreakouts();
   }
 
@@ -734,14 +734,14 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * @returns whether a new breakout can be added or not
    */
-  canAddBreakout(): boolean {
+  canAddBreakout() {
     return this.breakoutOptions().count > 0;
   }
 
   /**
    * @returns whether the current query has a valid breakout
    */
-  hasValidBreakout(): boolean {
+  hasValidBreakout() {
     const breakouts = this.breakouts();
     return breakouts.length > 0 && breakouts[0].isValid();
   }
@@ -878,7 +878,7 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * @returns whether a new filter can be added or not
    */
-  canAddFilter(): boolean {
+  canAddFilter() {
     return (
       Q.canAddFilter(this.query()) &&
       (this.filterDimensionOptions().count > 0 ||
@@ -952,7 +952,7 @@ export default class StructuredQuery extends AtomicQuery {
       return new DimensionOptions(sortOptions);
     }
   }
-  canAddSort(): boolean {
+  canAddSort() {
     const sorts = this.sorts();
     return (
       this.sortOptions().count > 0 &&
