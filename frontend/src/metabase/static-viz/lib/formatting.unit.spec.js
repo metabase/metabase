@@ -65,10 +65,50 @@ describe("formatDate", () => {
 
 describe("formatNumber", () => {
   it("should format a number with default options", () => {
-    const number = 15;
+    const number = 1500;
 
     const text = formatNumber(number);
 
-    expect(text).toEqual("15");
+    expect(text).toEqual("1,500");
+  });
+
+  it("should format a number with fractional digits", () => {
+    const number = 1500.234;
+
+    const text = formatNumber(number);
+
+    expect(text).toEqual("1,500.23");
+  });
+
+  it("should format currency", () => {
+    const number = 1500;
+
+    const text = formatNumber(number, {
+      number_style: "currency",
+      currency: "USD",
+      currency_style: "symbol",
+    });
+
+    expect(text).toEqual("$1,500");
+  });
+
+  it("should format percents", () => {
+    const number = 0.867;
+
+    const text = formatNumber(number, {
+      number_style: "percent",
+    });
+
+    expect(text).toEqual("86.7%");
+  });
+
+  it("should format a number in scientific notation", () => {
+    const number = 1200;
+
+    const text = formatNumber(number, {
+      number_style: "scientific",
+    });
+
+    expect(text).toEqual("1.2E3");
   });
 });

@@ -64,8 +64,8 @@ export const formatNumber = (number, options) => {
     currency: currency,
     currencyDisplay: currency_style,
     useGrouping: true,
-    minimumFractionalDigits: decimals != null ? decimals : 0,
-    maximumFractionalDigits: decimals != null ? decimals : 2,
+    minimumFractionDigits: decimals != null ? decimals : 0,
+    maximumFractionDigits: decimals != null ? decimals : 2,
   });
 
   const formattedNumber = format
