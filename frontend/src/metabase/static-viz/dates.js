@@ -1,5 +1,5 @@
 const DEFAULT_OPTIONS = {
-  date_style: "MMMM D, YYYY",
+  date_style: "M/D/YYYY",
   date_abbreviate: false,
   date_separator: "/",
   time_style: "h:mm A",
@@ -34,8 +34,8 @@ const TIME_FORMATS = {
 
 const formatDate = (date, { date_style, date_abbreviate, date_separator }) => {
   return date_style
-    .replace(/M+/g, date_abbreviate ? "MMM" : "MMMM")
-    .replace(/d+/g, date_abbreviate ? "ddd" : "dddd")
+    .replace(/MMMM/g, date_abbreviate ? "MMM" : "MMMM")
+    .replace(/dddd/g, date_abbreviate ? "ddd" : "dddd")
     .replace(/\//g, date_separator)
     .replace(/\w+/g, field => DATE_FORMATS[field].format(date));
 };
