@@ -1,18 +1,19 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
+import { AxisBottom, AxisLeft } from "@visx/axis";
 import { Bar } from "@visx/shape";
-import { AxisLeft, AxisBottom } from "@visx/axis";
-import { scaleBand, scaleLinear, scaleOrdinal } from "@visx/scale";
-import { bottomAxisTickStyles, leftAxisTickStyles } from "../styles.js";
 import { GridRows } from "@visx/grid";
+import { scaleBand, scaleLinear } from "@visx/scale";
+import { formatDateTime } from "../dates";
+import { bottomAxisTickStyles, leftAxisTickStyles } from "../styles.js";
 
 export default function TimeseriesBar(
-  { data, yScaleType = scaleLinear, accessors, labels },
+  { data, accessors, settings, labels },
   layout,
 ) {
   const leftMargin = 55;
-  let multiScale, categories;
+
   const xAxisScale = scaleBand({
     domain: data.map(accessors.x),
     range: [leftMargin, layout.xMax],
@@ -20,20 +21,11 @@ export default function TimeseriesBar(
     padding: 0.2,
   });
 
-  const yAxisScale = yScaleType({
+  const yAxisScale = scaleLinear({
     domain: [0, Math.max(...data.map(accessors.y))],
     range: [layout.yMax, 0],
     nice: true,
   });
-
-  if (accessors.multi) {
-    categories = data.map(accessors.multi);
-    // eslint-disable-next-line no-unused-vars
-    multiScale = scaleOrdinal({
-      domain: categories,
-      range: ["blue", "yellow", "green", "red"],
-    });
-  }
 
   return (
     <svg width={layout.width} height={layout.height}>
@@ -56,15 +48,12 @@ export default function TimeseriesBar(
             x={x}
             y={y}
             fill="#509ee3"
-          ></Bar>
+          />
         );
       })}
       <AxisLeft
         hideTicks
         hideAxisLine
-        tickFormat={d => {
-          return String(d);
-        }}
         scale={yAxisScale}
         label={labels.left || t`Count`}
         left={leftMargin}
@@ -75,7 +64,7 @@ export default function TimeseriesBar(
         numTicks={5}
         top={layout.yMax}
         tickStroke={layout.colors.axis.stroke}
-        tickFormat={d => new Date(d).toLocaleDateString("en")}
+        tickFormat={d => formatDateTime(d, settings?.x)}
         scale={xAxisScale}
         stroke={layout.colors.axis.stroke}
         label={labels.bottom || t`Time`}

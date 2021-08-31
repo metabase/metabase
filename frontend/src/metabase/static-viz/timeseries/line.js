@@ -1,14 +1,15 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
-import { LinePath } from "@visx/shape";
 import { AxisLeft, AxisBottom } from "@visx/axis";
-import { scaleLinear, scaleOrdinal, scaleTime } from "@visx/scale";
-import { bottomAxisTickStyles, leftAxisTickStyles } from "../styles";
 import { GridRows } from "@visx/grid";
+import { scaleLinear, scaleOrdinal, scaleTime } from "@visx/scale";
+import { LinePath } from "@visx/shape";
+import { bottomAxisTickStyles, leftAxisTickStyles } from "../styles";
+import { formatDateTime } from "../dates";
 
 export default function TimeseriesLine(
-  { data, yScaleType = scaleLinear, accessors, labels },
+  { data, accessors, settings, labels },
   layout,
 ) {
   const leftMargin = 55;
@@ -23,7 +24,7 @@ export default function TimeseriesLine(
   });
 
   // Y scale
-  const yAxisScale = yScaleType({
+  const yAxisScale = scaleLinear({
     domain: [0, Math.max(...data.map(accessors.y))],
     range: [layout.yMax, 0],
     nice: true,
@@ -84,7 +85,7 @@ export default function TimeseriesLine(
         numTicks={5}
         top={layout.yMax}
         stroke={layout.colors.axis.stroke}
-        tickFormat={d => new Date(d).toLocaleDateString("en")}
+        tickFormat={d => formatDateTime(d, settings?.x)}
         scale={xAxisScale}
         tickLabelProps={() => bottomAxisTickStyles(layout)}
       />
