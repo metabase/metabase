@@ -4,8 +4,8 @@ import {
   selectDashboardFilter,
   expectedRouteCalls,
   showDashboardCardActions,
-  modal,
   filterWidget,
+  sidebar,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
@@ -408,31 +408,23 @@ describe("scenarios > dashboard", () => {
   });
 
   it("should show values of added dashboard card via search immediately (metabase#15959)", () => {
-    /**
-     * For the reason I don't understand, I could reproduce this issue ONLY if I use these specific functions in this order:
-     *  1. realType()
-     *  2. type()
-     */
+    cy.intercept("GET", "/api/search").as("search");
     cy.visit("/dashboard/1");
     cy.icon("pencil").click();
     cy.icon("add")
       .last()
-      .as("addQuestion")
       .click();
-    cy.icon("search")
-      .last()
-      .as("searchModal")
-      .click();
-    cy.findByPlaceholderText("Search").realType("Orders{enter}"); /* [1] */
-    modal()
-      .findByText("Orders, Count")
-      .realClick();
-    cy.get("@addQuestion").click();
-    cy.get("@searchModal").click();
-    cy.findByPlaceholderText("Search").type("Orders{enter}"); /* [2] */
-    modal()
-      .findByText("Orders, Count")
-      .realClick();
+
+    sidebar().within(() => {
+      // From the list
+      cy.findByText("Orders, Count").click();
+
+      // From search
+      cy.findByPlaceholderText("Search…").type("Orders{enter}");
+      cy.wait("@search");
+      cy.findByText("Orders, Count").click();
+    });
+
     cy.get(".LoadingSpinner").should("not.exist");
     cy.findAllByText("18,760").should("have.length", 2);
   });
