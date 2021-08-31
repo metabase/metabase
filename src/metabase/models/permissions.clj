@@ -575,7 +575,8 @@
   (if (and (= native :write)
            schemas
            (not= schemas :all))
-    (log/warn (trs "Invalid DB permissions: If you have write access for native queries, you must have full data access."))
+    (do (log/warn (trs "Invalid DB permissions: If you have write access for native queries, you must have full data access."))
+        nil)
     :ok))
 
 (def ^:private StrictDBPermissionsGraph
