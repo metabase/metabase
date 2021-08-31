@@ -1,5 +1,6 @@
 import { restore } from "__support__/e2e/helpers/e2e-setup-helpers";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { modal } from "__support__/e2e/helpers/e2e-ui-elements-helpers";
 
 const { ORDERS_ID } = SAMPLE_DATASET;
 
@@ -10,7 +11,7 @@ const getQuestionDetails = () => ({
   },
 });
 
-const getAlertDetails = ({ user_id, card_id }) => ({
+const getAlertDetails = ({ card_id, user_id, admin_id }) => ({
   card: {
     id: card_id,
     include_csv: false,
@@ -24,6 +25,9 @@ const getAlertDetails = ({ user_id, card_id }) => ({
       recipients: [
         {
           id: user_id,
+        },
+        {
+          id: admin_id,
         },
       ],
     },
@@ -52,17 +56,24 @@ const getPulseDetails = ({ card_id, dashboard_id }) => ({
 describe("scenarios > account > notifications", () => {
   beforeEach(() => {
     restore();
-    cy.signInAsNormalUser();
   });
 
   describe("alerts", () => {
     beforeEach(() => {
-      cy.getCurrentUser().then(({ body: { id: user_id } }) => {
-        cy.createQuestion(getQuestionDetails()).then(
-          ({ body: { id: card_id } }) => {
-            cy.createAlert(getAlertDetails({ user_id, card_id }));
-          },
-        );
+      cy.signInAsAdmin().then(() => {
+        cy.getCurrentUser().then(({ body: { id: admin_id } }) => {
+          cy.signInAsNormalUser().then(() => {
+            cy.getCurrentUser().then(({ body: { id: user_id } }) => {
+              cy.createQuestion(getQuestionDetails()).then(
+                ({ body: { id: card_id } }) => {
+                  cy.createAlert(
+                    getAlertDetails({ card_id, user_id, admin_id }),
+                  );
+                },
+              );
+            });
+          });
+        });
       });
     });
 
@@ -70,9 +81,13 @@ describe("scenarios > account > notifications", () => {
       cy.visit("/account/notifications");
 
       cy.findByText("Not seeing one here?").click();
-      cy.findByText("Not seeing something listed here?");
-      cy.findByText("Got it").click();
-      cy.findByText("Not seeing something listed here?").should("not.exist");
+
+      modal().within(() => {
+        cy.findByText("Not seeing something listed here?");
+        cy.findByText("Got it").click();
+      });
+
+      modal().should("not.exist");
     });
 
     it("should be able to see alerts notifications", () => {
@@ -89,11 +104,15 @@ describe("scenarios > account > notifications", () => {
       cy.findByText("Question");
       cy.findByLabelText("close icon").click();
 
-      cy.findByText("Confirm you want to unsubscribe");
-      cy.findByText("Unsubscribe").click();
+      modal().within(() => {
+        cy.findByText("Confirm you want to unsubscribe");
+        cy.findByText("Unsubscribe").click();
+      });
 
-      cy.findByText("You’re unsubscribed. Delete this alert as well?");
-      cy.findByText("Delete this alert").click();
+      modal().within(() => {
+        cy.findByText("You’re unsubscribed. Delete this alert as well?");
+        cy.findByText("Delete this alert").click();
+      });
 
       cy.findByText("Question").should("not.exist");
     });
@@ -101,7 +120,7 @@ describe("scenarios > account > notifications", () => {
 
   describe("pulses", () => {
     beforeEach(() => {
-      cy.getCurrentUser().then(({ body: { id: user_id } }) => {
+      cy.signInAsNormalUser().then(() => {
         cy.createQuestionAndDashboard({
           questionDetails: getQuestionDetails(),
         }).then(({ body: { card_id, dashboard_id } }) => {
@@ -114,9 +133,13 @@ describe("scenarios > account > notifications", () => {
       cy.visit("/account/notifications");
 
       cy.findByText("Not seeing one here?").click();
-      cy.findByText("Not seeing something listed here?");
-      cy.findByText("Got it").click();
-      cy.findByText("Not seeing something listed here?").should("not.exist");
+
+      modal().within(() => {
+        cy.findByText("Not seeing something listed here?");
+        cy.findByText("Got it").click();
+      });
+
+      modal().should("not.exist");
     });
 
     it("should be able to see pulses notifications", () => {
@@ -133,8 +156,10 @@ describe("scenarios > account > notifications", () => {
       cy.findByText("Subscription");
       cy.findByLabelText("close icon").click();
 
-      cy.findByText("Delete this subscription?");
-      cy.findByText("Yes, delete this subscription").click();
+      modal().within(() => {
+        cy.findByText("Delete this subscription?");
+        cy.findByText("Yes, delete this subscription").click();
+      });
 
       cy.findByText("Subscription").should("not.exist");
     });

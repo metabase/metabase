@@ -15,6 +15,7 @@
   (.. (Context/newBuilder (into-array String ["js"]))
       ;; https://github.com/oracle/graaljs/blob/master/docs/user/RunOnJDK.md
       (option "engine.WarnInterpreterOnly" "false")
+      (option "js.intl-402" "true")
       (allowHostAccess HostAccess/ALL)
       (allowHostClassLookup (reify java.util.function.Predicate
                               (test [_ _] true)))

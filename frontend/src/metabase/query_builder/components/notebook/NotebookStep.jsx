@@ -162,6 +162,7 @@ export default class NotebookStep extends React.Component {
                   className="ml-auto cursor-pointer text-light text-medium-hover hover-child"
                   tooltip={t`Remove`}
                   onClick={onRemove}
+                  data-testid="remove-step"
                 />
               )}
             </Flex>

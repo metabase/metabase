@@ -139,7 +139,7 @@ export const ExploreList = ({
   <Grid>
     {candidates &&
       candidates.map((option, index) => (
-        <GridItem w={gridColumns} key={index}>
+        <GridItem width={gridColumns} key={index}>
           {asCards ? (
             <Card hoverable p={2}>
               <ExploreOption option={option} />

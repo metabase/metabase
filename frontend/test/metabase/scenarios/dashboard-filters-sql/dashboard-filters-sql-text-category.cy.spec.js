@@ -8,16 +8,16 @@ import {
   setFilter,
 } from "__support__/e2e/cypress";
 
-import { DASHBOARD_SQL_LOCATION_FILTERS } from "./helpers/e2e-dashboard-filter-data-objects";
+import { DASHBOARD_SQL_TEXT_FILTERS } from "./helpers/e2e-dashboard-filter-sql-data-objects";
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
-const { PEOPLE } = SAMPLE_DATASET;
+const { PRODUCTS } = SAMPLE_DATASET;
 
-Object.entries(DASHBOARD_SQL_LOCATION_FILTERS).forEach(
+Object.entries(DASHBOARD_SQL_TEXT_FILTERS).forEach(
   ([filter, { value, representativeResult, sqlFilter }]) => {
-    describe("scenarios > dashboard > filters > location", () => {
+    describe("scenarios > dashboard > filters > SQL > text/category", () => {
       beforeEach(() => {
         restore();
         cy.signInAsAdmin();
@@ -39,7 +39,7 @@ Object.entries(DASHBOARD_SQL_LOCATION_FILTERS).forEach(
         );
 
         editDashboard();
-        setFilter("Location", filter);
+        setFilter("Text or Category", filter);
 
         cy.findByText("Column to filter on")
           .next("a")
@@ -82,15 +82,14 @@ function getQuestionDetails(filter) {
   return {
     name: "SQL with Field Filter",
     native: {
-      query:
-        "select PEOPLE.NAME, PEOPLE.CITY from people where {{filter}} limit 10",
+      query: "select * from PRODUCTS where {{filter}}",
       "template-tags": {
         filter: {
-          id: "0388fcd0-55cd-ca2a-5113-1bbceafc6047",
+          id: "e05b9e58-3c51-676d-7334-4c2543709094",
           name: "filter",
           "display-name": "Filter",
           type: "dimension",
-          dimension: ["field", PEOPLE.CITY, null],
+          dimension: ["field", PRODUCTS.CATEGORY, null],
           "widget-type": filter,
         },
       },
