@@ -7,9 +7,10 @@ import { GridRows } from "@visx/grid";
 import { scaleBand, scaleLinear } from "@visx/scale";
 import { Text } from "@visx/text";
 import { leftAxisTickStyles } from "metabase/static-viz/lib/styling";
+import { formatNumber } from "metabase/static-viz/lib/formatting";
 
 export default function CategoricalBar(
-  { data, yScaleType = scaleLinear, accessors, labels },
+  { data, accessors, labels, settings },
   layout,
 ) {
   const leftMargin = 55;
@@ -25,7 +26,7 @@ export default function CategoricalBar(
     padding: 0.2,
   });
 
-  const yAxisScale = yScaleType({
+  const yAxisScale = scaleLinear({
     domain: [0, Math.max(...data.map(accessors.y))],
     range: [layout.yMax, 0],
     nice: true,
@@ -59,9 +60,10 @@ export default function CategoricalBar(
       <AxisLeft
         hideTicks
         hideAxisLine
-        scale={yAxisScale}
-        label={leftLabel}
         left={leftMargin}
+        label={leftLabel}
+        scale={yAxisScale}
+        tickFormat={d => formatNumber(d, settings?.x)}
         tickLabelProps={() => leftAxisTickStyles(layout)}
       />
       <AxisBottom

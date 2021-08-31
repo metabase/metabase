@@ -5,11 +5,11 @@ import { AxisLeft, AxisBottom } from "@visx/axis";
 import { GridRows } from "@visx/grid";
 import { scaleLinear, scaleOrdinal, scaleTime } from "@visx/scale";
 import { LinePath } from "@visx/shape";
-import { formatDate } from "metabase/static-viz/lib/formatting";
+import { formatDate, formatNumber } from "metabase/static-viz/lib/formatting";
 import { bottomAxisTickStyles } from "metabase/static-viz/lib/styling";
 
 export default function TimeseriesLine(
-  { data, accessors, settings, labels },
+  { data, accessors, labels, settings },
   layout,
 ) {
   const leftMargin = 55;
@@ -73,9 +73,9 @@ export default function TimeseriesLine(
         label={labels.left || t`Metric`}
         hideTicks
         hideAxisLine
-        tickFormat={d => String(d)}
-        scale={yAxisScale}
         left={leftMargin}
+        scale={yAxisScale}
+        tickFormat={d => formatNumber(d, settings?.y)}
         tickLabelProps={() => leftAxisTickStyles(layout)}
       />
       <AxisBottom
@@ -85,8 +85,8 @@ export default function TimeseriesLine(
         numTicks={5}
         top={layout.yMax}
         stroke={layout.colors.axis.stroke}
-        tickFormat={d => formatDate(d, settings?.x)}
         scale={xAxisScale}
+        tickFormat={d => formatDate(d, settings?.x)}
         tickLabelProps={() => bottomAxisTickStyles(layout)}
       />
     </svg>

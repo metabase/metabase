@@ -5,11 +5,11 @@ import { AxisBottom, AxisLeft } from "@visx/axis";
 import { Bar } from "@visx/shape";
 import { GridRows } from "@visx/grid";
 import { scaleBand, scaleLinear } from "@visx/scale";
-import { formatDate } from "metabase/static-viz/lib/formatting";
+import { formatDate, formatNumber } from "metabase/static-viz/lib/formatting";
 import { leftAxisTickStyles } from "metabase/static-viz/lib/styling";
 
 export default function TimeseriesBar(
-  { data, accessors, settings, labels },
+  { data, accessors, labels, settings },
   layout,
 ) {
   const leftMargin = 55;
@@ -54,20 +54,20 @@ export default function TimeseriesBar(
       <AxisLeft
         hideTicks
         hideAxisLine
-        scale={yAxisScale}
-        label={labels.left || t`Count`}
         left={leftMargin}
+        label={labels.left || t`Count`}
+        scale={yAxisScale}
+        tickFormat={d => formatNumber(d, settings?.y)}
         tickLabelProps={() => leftAxisTickStyles(layout)}
       />
       <AxisBottom
-        hideTicks={false}
         numTicks={5}
         top={layout.yMax}
-        tickStroke={layout.colors.axis.stroke}
-        tickFormat={d => formatDate(d, settings?.x)}
-        scale={xAxisScale}
         stroke={layout.colors.axis.stroke}
+        tickStroke={layout.colors.axis.stroke}
         label={labels.bottom || t`Time`}
+        scale={xAxisScale}
+        tickFormat={d => formatDate(d, settings?.x)}
         tickLabelProps={() => bottomAxisTickStyles(layout)}
       />
     </svg>
