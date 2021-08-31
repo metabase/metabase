@@ -217,7 +217,6 @@
     ]
   },
   "resolutions": {
-    "cypress": "6.8.0",
     "styled-components": "3.2.6",
     "styled-system": "2.2.5"
   },
