@@ -73,7 +73,7 @@ function setUpAlert(questionId) {
     skip_if_empty: true,
     parameters: [],
     dashboard_id: null,
-  }).then(({ body: {id: alertId} }) => {
+  }).then(({ body: { id: alertId } }) => {
     cy.intercept("PUT", `/api/alert/${alertId}`).as("alertQuery");
   });
 }
