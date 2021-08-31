@@ -3,15 +3,21 @@ import React from "react";
 import { t } from "ttag";
 import { Bar } from "@visx/shape";
 import { AxisLeft, AxisBottom } from "@visx/axis";
-import { scaleBand, scaleLinear } from "@visx/scale";
-import { bottomAxisTickStyles, leftAxisTickStyles } from "../utils.js";
 import { GridRows } from "@visx/grid";
+import { scaleBand, scaleLinear } from "@visx/scale";
+import { Text } from "@visx/text";
+import { bottomAxisTickStyles, leftAxisTickStyles } from "../utils.js";
 
 export default function CategoricalBar(
   { data, yScaleType = scaleLinear, accessors, labels },
   layout,
 ) {
   const leftMargin = 55;
+  const isVertical = data.length > 10;
+  const leftLabel = labels.left || t`Count`;
+  const bottomLabel = !isVertical ? labels.bottom || t`Category` : undefined;
+  const tickMargin = 5;
+
   const xAxisScale = scaleBand({
     domain: data.map(accessors.x),
     range: [leftMargin, layout.xMax],
@@ -33,14 +39,15 @@ export default function CategoricalBar(
         left={leftMargin}
         strokeDasharray="4"
       />
-      {data.map(d => {
+      {data.map((d, index) => {
         const barWidth = xAxisScale.bandwidth();
         const barHeight = layout.yMax - yAxisScale(accessors.y(d));
         const x = xAxisScale(accessors.x(d));
         const y = layout.yMax - barHeight;
+
         return (
           <Bar
-            key={`bar-${x}`}
+            key={index}
             width={barWidth}
             height={barHeight}
             x={x}
@@ -52,22 +59,31 @@ export default function CategoricalBar(
       <AxisLeft
         hideTicks
         hideAxisLine
-        tickFormat={d => {
-          return String(d);
-        }}
         scale={yAxisScale}
-        label={labels.left || t`Count`}
+        label={leftLabel}
         left={leftMargin}
         tickLabelProps={() => leftAxisTickStyles(layout)}
       />
       <AxisBottom
         hideTicks={false}
         tickStroke={layout.colors.axis.stroke}
-        numTicks={5}
+        numTicks={data.length}
         top={layout.yMax}
         scale={xAxisScale}
         stroke={layout.colors.axis.stroke}
-        label={labels.bottom || t`Category`}
+        label={bottomLabel}
+        tickComponent={props => {
+          const transform = isVertical
+            ? `rotate(45, ${props.x} ${props.y}) translate(${-tickMargin} 0)`
+            : undefined;
+          const textAnchor = isVertical ? "start" : "middle";
+
+          return (
+            <Text {...props} transform={transform} textAnchor={textAnchor}>
+              {props.formattedValue}
+            </Text>
+          );
+        }}
         tickLabelProps={() => bottomAxisTickStyles(layout)}
       />
     </svg>
