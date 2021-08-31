@@ -29,7 +29,7 @@
               [:database_name   {:display_name "Database",        :base_type :type/Text}]
               [:dashboard_id    {:display_name "Dashboard Id",    :base_type :type/Integer}]
               [:card_query      {:display_name "Query",           :base_type :type/*}]
-              [:table_id        {:display_name "Table ID",        :base_type :type/Integer}] 
+              [:table_id        {:display_name "Table ID",        :base_type :type/Integer}]
               [:table_name      {:display_name "Table",           :base_type :type/Text}]
               [:user_id         {:display_name "Created By ID",   :base_type :type/Integer}]
               [:user_name       {:display_name "Created By",      :base_type :type/Text}]
