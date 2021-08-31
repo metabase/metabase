@@ -1,6 +1,7 @@
 (ns metabase.api.permissions
   "/api/permissions endpoints."
-  (:require [compojure.core :refer [DELETE GET POST PUT]]
+  (:require [clojure.spec.alpha :as spec]
+            [compojure.core :refer [DELETE GET POST PUT]]
             [honeysql.helpers :as hh]
             [metabase.api.common :as api]
             [metabase.api.permission-graph :as pg]
@@ -10,6 +11,7 @@
             [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
             [metabase.server.middleware.offset-paging :as offset-paging]
             [metabase.util :as u]
+            [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]))
@@ -38,7 +40,13 @@
   [:as {body :body}]
   {body su/Map}
   (api/check-superuser)
-  (perms/update-data-perms-graph! (pg/converted-json->graph ::pg/data-permissions-graph body))
+  (let [graph (pg/converted-json->graph ::pg/data-permissions-graph body)]
+    (when (= graph :clojure.spec.alpha/invalid)
+      (throw (ex-info (tru "Cannot parse permissions graph because it is invalid: {0}"
+                           (spec/explain-str ::pg/data-permissions-graph body))
+                      {:status-code 400
+                       :error       (spec/explain-data ::pg/data-permissions-graph body)})))
+    (perms/update-data-perms-graph! graph))
   (perms/data-perms-graph))
 
 
