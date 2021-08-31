@@ -3,6 +3,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
+import { Router, Route } from "react-router";
+import { createMemoryHistory } from "history";
 
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 
@@ -10,15 +12,22 @@ import CollectionsList from "./CollectionsList";
 
 describe("CollectionsList", () => {
   function setup({ collections = [], openCollections = [], ...props } = {}) {
-    render(
+    const Page = () => (
       <DragDropContextProvider backend={HTML5Backend}>
         <CollectionsList
           collections={collections}
           openCollections={openCollections}
           filter={() => true}
+          handleToggleMobileSidebar={() => false}
           {...props}
         />
-      </DragDropContextProvider>,
+      </DragDropContextProvider>
+    );
+
+    render(
+      <Router history={createMemoryHistory()}>
+        <Route path="/" component={Page} />
+      </Router>,
     );
   }
 
