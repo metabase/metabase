@@ -5,7 +5,7 @@ import { AxisBottom, AxisLeft } from "@visx/axis";
 import { Bar } from "@visx/shape";
 import { GridRows } from "@visx/grid";
 import { scaleBand, scaleLinear } from "@visx/scale";
-import { formatDateTime } from "../dates";
+import { formatDate } from "../dates";
 import { bottomAxisTickStyles, leftAxisTickStyles } from "../styles.js";
 
 export default function TimeseriesBar(
@@ -64,7 +64,7 @@ export default function TimeseriesBar(
         numTicks={5}
         top={layout.yMax}
         tickStroke={layout.colors.axis.stroke}
-        tickFormat={d => formatDateTime(d, settings?.x)}
+        tickFormat={d => formatDate(d, settings?.x)}
         scale={xAxisScale}
         stroke={layout.colors.axis.stroke}
         label={labels.bottom || t`Time`}

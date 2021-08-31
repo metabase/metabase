@@ -6,7 +6,7 @@ import { GridRows } from "@visx/grid";
 import { scaleLinear, scaleOrdinal, scaleTime } from "@visx/scale";
 import { LinePath } from "@visx/shape";
 import { bottomAxisTickStyles, leftAxisTickStyles } from "../styles";
-import { formatDateTime } from "../dates";
+import { formatDate } from "../dates";
 
 export default function TimeseriesLine(
   { data, accessors, settings, labels },
@@ -85,7 +85,7 @@ export default function TimeseriesLine(
         numTicks={5}
         top={layout.yMax}
         stroke={layout.colors.axis.stroke}
-        tickFormat={d => formatDateTime(d, settings?.x)}
+        tickFormat={d => formatDate(d, settings?.x)}
         scale={xAxisScale}
         tickLabelProps={() => bottomAxisTickStyles(layout)}
       />

@@ -1,11 +1,3 @@
-const DEFAULT_OPTIONS = {
-  date_style: "M/D/YYYY",
-  date_abbreviate: false,
-  date_separator: "/",
-  time_style: "h:mm A",
-  time_enabled: false,
-};
-
 const DATE_FORMATS = {
   YYYY: new Intl.DateTimeFormat([], { year: "numeric" }),
   M: new Intl.DateTimeFormat([], { month: "numeric" }),
@@ -32,21 +24,22 @@ const TIME_FORMATS = {
   }),
 };
 
-const formatDate = (date, { date_style, date_abbreviate, date_separator }) => {
-  return date_style
+export const formatDate = (
+  value,
+  {
+    date_style = "M/D/YYYY",
+    date_abbreviate = false,
+    date_separator = "/",
+    time_style = "h:mm A",
+    time_enabled = false,
+  },
+) => {
+  const date = date_style
     .replace(/MMMM/g, date_abbreviate ? "MMM" : "MMMM")
     .replace(/dddd/g, date_abbreviate ? "ddd" : "dddd")
     .replace(/\//g, date_separator)
-    .replace(/\w+/g, field => DATE_FORMATS[field].format(date));
-};
+    .replace(/\w+/g, field => DATE_FORMATS[field].format(value));
 
-const formatTime = (date, { time_style, time_enabled }) => {
-  return time_enabled ? TIME_FORMATS[time_style].format(date) : "";
-};
-
-export const formatDateTime = (date, options) => {
-  const dateText = formatDate(date, { ...DEFAULT_OPTIONS, ...options });
-  const timeText = formatTime(date, { ...DEFAULT_OPTIONS, ...options });
-
-  return timeText ? `${dateText} ${timeText}` : dateText;
+  const time = TIME_FORMATS[time_style].format(value);
+  return time_enabled ? `${date} ${time}` : date;
 };
