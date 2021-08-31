@@ -407,9 +407,9 @@ describe("scenarios > dashboard", () => {
     assertScrollBarExists();
   });
 
-  it.skip("should show values of added dashboard card via search immediately (metabase#15959)", () => {
+  it("should show values of added dashboard card via search immediately (metabase#15959)", () => {
     /**
-     * For the reason I don't udnerstand, I could reproduce this issue ONLY if I use these specific functions in this order:
+     * For the reason I don't understand, I could reproduce this issue ONLY if I use these specific functions in this order:
      *  1. realType()
      *  2. type()
      */
