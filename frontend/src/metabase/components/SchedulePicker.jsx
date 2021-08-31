@@ -175,7 +175,7 @@ export default class SchedulePicker extends Component {
 
     return (
       <span className="flex align-center">
-        <span className="text-bold mx1">on</span>
+        <span className="text-bold mx1">{t`on`}</span>
         <Select
           className="text-bold bg-white"
           value={schedule.schedule_day}
