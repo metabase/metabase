@@ -40,4 +40,25 @@ describe("formatDateTime", () => {
 
     expect(text).toEqual("1-10-2018");
   });
+
+  it("should format dates with time", () => {
+    const date = new Date(2018, 0, 10, 15, 10, 20);
+
+    const text = formatDateTime(date, {
+      time_enabled: true,
+    });
+
+    expect(text).toEqual("1/10/2018 3:10 PM");
+  });
+
+  it("should format dates with time and 24-hour clock", () => {
+    const date = new Date(2018, 0, 10, 15, 10, 20);
+
+    const text = formatDateTime(date, {
+      time_enabled: true,
+      time_style: "HH:mm",
+    });
+
+    expect(text).toEqual("1/10/2018 15:10");
+  });
 });
