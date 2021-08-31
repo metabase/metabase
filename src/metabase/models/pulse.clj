@@ -288,9 +288,11 @@
                            (when dashboard-id
                              [:= :p.dashboard_id dashboard-id])
                            (when user-id
-                             [:or
-                              [:= :p.creator_id user-id]
-                              [:= :pcr.user_id user-id]])]
+                             [:and
+                              [:not= :p.dashboard_id nil]
+                              [:or
+                               [:= :p.creator_id user-id]
+                               [:= :pcr.user_id user-id]]])]
                :order-by  [[:lower-name :asc]]}]
     (for [pulse (query-as Pulse query)]
       (-> pulse
