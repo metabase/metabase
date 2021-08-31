@@ -74,11 +74,12 @@ function timeseries_bar (data, labels, settings) {
  })
 }
 
-function categorical_bar (data, labels) {
+function categorical_bar (data, labels, settings) {
   return StaticViz.RenderChart(\"categorical/bar\", {
     data: toJSArray(data),
     labels: toJSMap(labels),
-    accessors: positional_accessors
+    accessors: positional_accessors,
+    settings: JSON.parse(settings)
  })
 }
 
@@ -184,9 +185,10 @@ function categorical_donut (rows, colors) {
 (defn categorical-bar
   "Clojure entrypoint to render a categorical bar chart. Rows should be tuples of [stringable numeric-value]. Labels is
   a map of {:left \"left-label\" :right \"right-label\". Returns a byte array of a png file. "
-  [rows labels]
+  [rows labels settings]
   (let [svg-string (.asString (js/execute-fn-name @context "categorical_bar" rows
-                                                  (map (fn [[k v]] [(name k) v]) labels)))]
+                                                  (map (fn [[k v]] [(name k) v]) labels)
+                                                  (json/generate-string settings)))]
     (svg-string->bytes svg-string)))
 
 (defn categorical-donut
