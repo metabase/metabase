@@ -111,4 +111,45 @@ describe("formatNumber", () => {
 
     expect(text).toEqual("1.2E3");
   });
+
+  it("should format a number with custom number separators", () => {
+    const number = 1500.234;
+
+    const text = formatNumber(number, {
+      number_separators: ".’",
+    });
+
+    expect(text).toEqual("1’500.23");
+  });
+
+  it("should format a number with fixed fractional precision", () => {
+    const number = 1500;
+
+    const text = formatNumber(number, {
+      decimals: 2,
+    });
+
+    expect(text).toEqual("1,500.00");
+  });
+
+  it("should format a number with scale", () => {
+    const number = 15;
+
+    const text = formatNumber(number, {
+      scale: 100,
+    });
+
+    expect(text).toEqual("1,500");
+  });
+
+  it("should format a number with a prefix and a suffix", () => {
+    const number = 15;
+
+    const text = formatNumber(number, {
+      prefix: "prefix",
+      suffix: "suffix",
+    });
+
+    expect(text).toEqual("prefix15suffix");
+  });
 });
