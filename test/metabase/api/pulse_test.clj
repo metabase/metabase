@@ -976,26 +976,3 @@
                             :via      s/Any
                             s/Keyword s/Any}
                      body)))))))))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                         DELETE /api/pulse/:pulse-id/subscription                               |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(deftest delete-subscription-test
-  (testing "DELETE /api/pulse/:pulse-id/subscription"
-    (mt/with-temp* [Pulse        [{pulse-id :id}   {:name "Lodi Dodi" :creator_id (mt/user->id :crowberto)}]
-                    PulseChannel [{channel-id :id} {:pulse_id      pulse-id
-                                                    :channel_type  "email"
-                                                    :schedule_type "daily"
-                                                    :details       {:other  "stuff"
-                                                                    :emails ["foo@bar.com"]}}]]
-      (testing "Should be able to delete your own subscription"
-        (mt/with-temp PulseChannelRecipient [pcr {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
-          (is (= nil
-                 (mt/user-http-request :rasta :delete 204 (str "pulse/" pulse-id "/subscription/email"))))))
-
-      (testing "Users can't delete someone else's pulse subscription"
-        (mt/with-temp PulseChannelRecipient [pcr {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
-          (is (= "Not found."
-                 (mt/user-http-request :lucky :delete 404 (str "pulse/" pulse-id "/subscription/email")))))))))

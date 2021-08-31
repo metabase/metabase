@@ -118,18 +118,6 @@
   ;; return updated Pulse
   (pulse/retrieve-pulse id))
 
-
-(api/defendpoint DELETE "/:id"
-  "Delete a Pulse. (DEPRECATED -- don't delete a Pulse anymore -- archive it instead.)"
-  [id]
-  (log/warn (tru "DELETE /api/pulse/:id is deprecated. Instead, change its `archived` value via PUT /api/pulse/:id."))
-  (api/let-404 [pulse (Pulse id)]
-    (api/write-check Pulse id)
-    (db/delete! Pulse :id id)
-    (events/publish-event! :pulse-delete (assoc pulse :actor_id api/*current-user-id*)))
-  api/generic-204-no-content)
-
-
 (api/defendpoint GET "/form_input"
   "Provides relevant configuration information and user choices for creating/updating Pulses."
   []
@@ -220,14 +208,5 @@
   (check-card-read-permissions cards)
   (p/send-pulse! (assoc body :creator_id api/*current-user-id*))
   {:ok true})
-
-(api/defendpoint DELETE "/:id/subscription/email"
-  "For users to unsubscribe themselves from a pulse subscription."
-  [id]
-  (api/let-404 [pulse-id (db/select-one-id Pulse :id id)
-                pc-id    (db/select-one-id PulseChannel :pulse_id pulse-id :channel_type "email")
-                pcr-id   (db/select-one-id PulseChannelRecipient :pulse_channel_id pc-id :user_id api/*current-user-id*)]
-    (db/delete! PulseChannelRecipient :id pcr-id))
-  api/generic-204-no-content)
 
 (api/define-routes)
