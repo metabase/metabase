@@ -8,20 +8,28 @@ const DEFAULT_OPTIONS = {
 
 const DATE_FORMATS = {
   YYYY: new Intl.DateTimeFormat("en", { year: "numeric" }),
-  M: { month: "numeric" },
-  MMM: { month: "short" },
-  MMMM: { month: "long" },
-  D: { day: "numeric" },
-  ddd: { weekday: "short" },
-  dddd: { weekday: "long" },
-  HH: { hour: "2-digit", hour12: false },
-  h: { hour: "numeric", hour12: true },
-  mm: { minute: "2-digit" },
+  M: new Intl.DateTimeFormat("en", { month: "numeric" }),
+  MMM: new Intl.DateTimeFormat("en", { month: "short" }),
+  MMMM: new Intl.DateTimeFormat("en", { month: "long" }),
+  D: new Intl.DateTimeFormat("en", { day: "numeric" }),
+  ddd: new Intl.DateTimeFormat("en", { weekday: "short" }),
+  dddd: new Intl.DateTimeFormat("en", { weekday: "long" }),
+  HH: new Intl.DateTimeFormat("en", { hour: "2-digit", hour12: false }),
+  h: new Intl.DateTimeFormat("en", { hour: "numeric", hour12: true }),
+  mm: new Intl.DateTimeFormat("en", { minute: "2-digit" }),
 };
 
 const TIME_FORMATS = {
-  "HH:mm": { hour: "2-digit", minute: "2-digit", hourCycle: "h24" },
-  "h:mm A": { hour: "numeric", minute: "2-digit", hourCycle: "h12" },
+  "HH:mm": new Intl.DateTimeFormat("en", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h24",
+  }),
+  "h:mm A": new Intl.DateTimeFormat("en", {
+    hour: "numeric",
+    minute: "2-digit",
+    hourCycle: "h12",
+  }),
 };
 
 const formatDate = (date, { date_style, date_abbreviate, date_separator }) => {
