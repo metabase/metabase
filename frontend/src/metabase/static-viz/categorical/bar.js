@@ -6,7 +6,7 @@ import { AxisLeft, AxisBottom } from "@visx/axis";
 import { GridRows } from "@visx/grid";
 import { scaleBand, scaleLinear } from "@visx/scale";
 import { Text } from "@visx/text";
-import { bottomAxisTickStyles, leftAxisTickStyles } from "../lib/styles.js";
+import { leftAxisTickStyles } from "metabase/static-viz/lib/styles";
 
 export default function CategoricalBar(
   { data, yScaleType = scaleLinear, accessors, labels },
