@@ -573,6 +573,7 @@
 (defn- check-native-and-schemas-permissions-allowed-together [{:keys [native schemas]}]
   ;; Only do the check when we have both, e.g. when the entire graph is coming in
   (if (and (= native :write)
+           schemas
            (not= schemas :all))
     (log/warn (trs "Invalid DB permissions: If you have write access for native queries, you must have full data access."))
     :ok))
