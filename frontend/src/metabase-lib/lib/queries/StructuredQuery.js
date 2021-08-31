@@ -1087,6 +1087,32 @@ export default class StructuredQuery extends AtomicQuery {
 
   // DIMENSION OPTIONS
 
+  _keyForFK(source, destination) {
+    if (source && destination) {
+      return `${source.id},${destination.id}`;
+    }
+    return null;
+  }
+
+  _getExplicitJoinsSet(joins) {
+    const joinDimensionPairs = joins.map(join => {
+      const dimensionPairs = join.getDimensions();
+      return dimensionPairs.map(pair => {
+        const [parentDimension, joinDimension] = pair;
+        return this._keyForFK(
+          parentDimension && parentDimension.field(),
+          joinDimension && joinDimension.field(),
+        );
+      });
+    });
+
+    const flatJoinDimensions = _.flatten(joinDimensionPairs);
+    const explicitJoins = new Set(flatJoinDimensions);
+    explicitJoins.delete(null);
+
+    return explicitJoins;
+  }
+
   // TODO Atte Keinänen 6/18/17: Refactor to dimensionOptions which takes a dimensionFilter
   // See aggregationFieldOptions for an explanation why that covers more use cases
   dimensionOptions(
@@ -1121,21 +1147,12 @@ export default class StructuredQuery extends AtomicQuery {
       }
 
       // de-duplicate explicit and implicit joined tables
-      const keyForFk = (src, dst) =>
-        src && dst ? `${src.id},${dst.id}` : null;
-      const explicitJoins = new Set(
-        joins.map(join => {
-          const p = join.parentDimension();
-          const j = join.joinDimension();
-          return keyForFk(p && p.field(), j && j.field());
-        }),
-      );
-      explicitJoins.delete(null);
+      const explicitJoins = this._getExplicitJoinsSet(joins);
 
       const fkDimensions = this.dimensions().filter(dimensionIsFKReference);
       for (const dimension of fkDimensions) {
         const field = dimension.field();
-        if (field && explicitJoins.has(keyForFk(field, field.target))) {
+        if (field && explicitJoins.has(this._keyForFK(field, field.target))) {
           continue;
         }
 
