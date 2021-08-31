@@ -78,7 +78,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     });
 
     describe("with no existing subscriptions", () => {
-      it.skip("should not enable subscriptions without the recepient (metabase#17657)", () => {
+      it("should not enable subscriptions without the recipient (metabase#17657)", () => {
         openDashboardSubscriptions();
 
         cy.findByText("Email it").click();

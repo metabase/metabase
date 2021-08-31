@@ -38,7 +38,7 @@ describe("recipient picker", () => {
           onRecipientsChange={() => alert("why?")}
         />,
       );
-      // Now only the recepient name should be visible
+      // Now only the recipient name should be visible
       screen.getByText("Barb");
       expect(screen.queryByText("Dustin")).toBeNull();
     });
