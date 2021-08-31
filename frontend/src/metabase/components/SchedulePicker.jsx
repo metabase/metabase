@@ -147,7 +147,6 @@ export default class SchedulePicker extends Component {
           style={{ minWidth: "48px" }}
         >{t`on the`}</span>
         <Select
-          className="text-bold"
           value={schedule.schedule_frame}
           onChange={({ target: { value } }) =>
             this.handleChangeProperty("schedule_frame", value)
@@ -157,7 +156,6 @@ export default class SchedulePicker extends Component {
         {schedule.schedule_frame !== "mid" && (
           <span className="mx1">
             <Select
-              className="text-bold"
               value={schedule.schedule_day}
               onChange={({ target: { value } }) =>
                 this.handleChangeProperty("schedule_day", value)
@@ -177,7 +175,6 @@ export default class SchedulePicker extends Component {
       <span className="flex align-center">
         <span className="text-bold mx1">{t`on`}</span>
         <Select
-          className="text-bold"
           value={schedule.schedule_day}
           onChange={({ target: { value } }) =>
             this.handleChangeProperty("schedule_day", value)
@@ -201,7 +198,7 @@ export default class SchedulePicker extends Component {
             style={{ minWidth: "48px" }}
           >{t`at`}</span>
           <Select
-            className="mr1 text-bold"
+            className="mr1"
             value={minuteOfHour}
             options={MINUTE_OPTIONS}
             onChange={({ target: { value } }) =>
@@ -231,7 +228,7 @@ export default class SchedulePicker extends Component {
             style={{ minWidth: "48px" }}
           >{t`at`}</span>
           <Select
-            className="mr1 text-bold"
+            className="mr1"
             value={hour}
             options={HOUR_OPTIONS}
             onChange={({ target: { value } }) =>
@@ -269,7 +266,6 @@ export default class SchedulePicker extends Component {
             {textBeforeInterval}
           </span>
           <Select
-            className="text-bold"
             value={scheduleType}
             onChange={({ target: { value } }) =>
               this.handleChangeProperty("schedule_type", value)
