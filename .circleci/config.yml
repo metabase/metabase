@@ -11,6 +11,11 @@ executors:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+
+  clojure-and-node-and-browsers-with-maildev:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
       - image: maildev/maildev
       - image: metabase/qa-databases:postgres-sample-12
       - image: metabase/qa-databases:mongo-sample-4.0
@@ -120,7 +125,7 @@ executors:
           MB_DB_USER: root
           MB_MYSQL_TEST_USER: root
       - image: circleci/mariadb:latest
-        environment:
+        # environment:
           # MYSQL_DATABASE: metabase_test
           # MYSQL_USER: root
           # MYSQL_ALLOW_EMPTY_PASSWORD: yes
@@ -247,7 +252,7 @@ cache-key-metabase-core: &CacheKeyMetabaseCore
 
 # Key for the drivers built by build-uberjar-drivers
 cache-key-drivers: &CacheKeyDrivers
-  key: v5-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}-<< parameters.edition >>
+  key: v5-{{ checksum ".CACHE-PREFIX" }}-drivers-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
 
 # This is also used by the uberjar-build-drivers step; this is a unique situation because the build-drivers script has
 # logic to determine whether to rebuild drivers or not that is quite a bit more sophisticated that the run-on-change
@@ -255,9 +260,9 @@ cache-key-drivers: &CacheKeyDrivers
 # redshift driver.
 cache-keys-drivers-with-fallback-keys: &CacheKeyDrivers_WithFallbackKeys
   keys:
-    - v5-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
-    - v5-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-{{ checksum ".MODULES-CHECKSUMS" }}
-    - v5-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-
+    - v5-{{ checksum ".CACHE-PREFIX" }}-drivers-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
+    - v5-{{ checksum ".CACHE-PREFIX" }}-drivers-{{ checksum ".MODULES-CHECKSUMS" }}
+    - v5-{{ checksum ".CACHE-PREFIX" }}-drivers-
 
 # Key for frontend client built by uberjar-build-frontend step
 cache-key-frontend: &CacheKeyFrontend
@@ -559,6 +564,7 @@ jobs:
             - metabase/metabase
 
   check-migrations:
+    resource_class: small
     executor:
       clojure-and-node-and-browsers
     steps:
@@ -583,6 +589,7 @@ jobs:
 ########################################################################################################################
 
   be-deps:
+    resource_class: small
     executor: clojure-and-node-and-browsers
     parameters:
       <<: *Params
@@ -629,6 +636,9 @@ jobs:
         default: []
       clojure-args:
         type: string
+      java-version:
+        type: string
+        default: ""
       after-steps:
         type: steps
         default: []
@@ -694,6 +704,9 @@ jobs:
       extra-env:
         type: string
         default: ""
+      version:
+        type: string
+        default: ""
     executor: << parameters.e >>
     steps:
       - attach-workspace
@@ -714,6 +727,7 @@ jobs:
             - steps: << parameters.after-steps >>
 
   test-build-scripts:
+    resource_class: small
     executor: clojure-and-node-and-browsers
     steps:
       - attach-workspace
@@ -780,6 +794,7 @@ jobs:
                   - /home/circleci/.cache/Cypress
 
   shared-tests-cljs:
+    resource_class: small
     executor: clojure-and-node-and-browsers
     steps:
       - run-yarn-command:
@@ -790,6 +805,7 @@ jobs:
   # Unlike the other build-uberjar steps, this step should be run once overall and the results can be shared between
   # OSS and EE uberjars.
   build-uberjar-drivers:
+    resource_class: small
     executor: clojure-and-node-and-browsers
     parameters:
       <<: *Params
@@ -900,7 +916,7 @@ jobs:
     parameters:
       e:
         type: executor
-        default: clojure-and-node-and-browsers
+        default: clojure-and-node-and-browsers-with-maildev
       cypress-group:
         type: string
       source-folder:
@@ -972,31 +988,16 @@ workflows:
             - checkout
 
       - clojure:
-          name: be-tests-<< matrix.edition >>
+          matrix:
+            parameters:
+              edition: ["ee", "oss"]
+              java-version: ["java-8", "java-11", "java-16"]
+          name: be-tests-<< matrix.java-version >>-<< matrix.edition >>
           requires:
             - be-deps
-          e: java-8
+          e: << matrix.java-version >>
           clojure-args: -X:dev:ci:test
           skip-when-no-change: true
-          <<: *Matrix
-
-      - clojure:
-          name: be-tests-java-11-<< matrix.edition >>
-          requires:
-            - be-deps
-          e: java-11
-          clojure-args: -X:dev:ci:test
-          skip-when-no-change: true
-          <<: *Matrix
-
-      - clojure:
-          name: be-tests-java-16-<< matrix.edition >>
-          requires:
-            - be-deps
-          e: java-16
-          clojure-args: -X:dev:ci:test
-          skip-when-no-change: true
-          <<: *Matrix
 
       - clojure:
           name: be-linter-cloverage
@@ -1012,60 +1013,52 @@ workflows:
           skip-when-no-change: true
 
       - test-driver:
-          name: be-tests-bigquery-ee
+          matrix:
+            parameters:
+              driver: ["bigquery", "bigquery-cloud-sdk", "googleanalytics", "sqlite"]
+          name: be-tests-<< matrix.driver >>
           requires:
-            - be-tests-ee
-          driver: bigquery
+            - be-tests-java-11-ee
+          driver: << matrix.driver >>
 
       - test-driver:
-          name: be-tests-bigquery-cloud-sdk-ee
+          matrix:
+            parameters:
+              driver: ["sqlserver", "druid"]
+          name: be-tests-<< matrix.driver >>-ee
           requires:
-            - be-tests-ee
-          driver: bigquery-cloud-sdk
+            - be-tests-java-11-ee
+          e: << matrix.driver >>
+          driver: << matrix.driver >>
 
       - test-driver:
-          name: be-tests-druid-ee
+          matrix:
+            parameters:
+              version: ["mongo-4-0", "mongo-latest"]
+          name: be-tests-<< matrix.version >>-ee
+          description: "(<< matrix.version >>)"
           requires:
-            - be-tests-ee
-          e: druid
-          driver: druid
-
-      - test-driver:
-          name: be-tests-googleanalytics-ee
-          requires:
-            - be-tests-ee
-          driver: googleanalytics
-
-      - test-driver:
-          name: be-tests-mongo-ee
-          description: "(Mongo 4.0)"
-          requires:
-            - be-tests-ee
-          e: mongo-4-0
+            - be-tests-java-11-ee
+          e: << matrix.version >>
           driver: mongo
 
       - test-driver:
-          name: be-tests-mongo-latest-ee
-          description: "(Mongo latest)"
+          matrix:
+            parameters:
+              version: ["mysql-5-7", "mariadb-10-2", "mariadb-latest"]
+          name: be-tests-<< matrix.version >>-ee
+          description: "(<< matrix.version >>)"
           requires:
-            - be-tests-ee
-          e: mongo-latest
-          driver: mongo
-
-      - test-driver:
-          name: be-tests-mysql-ee
-          description: "(MySQL 5.7)"
-          requires:
-            - be-tests-ee
+            - be-tests-java-11-ee
           e:
-            name: mysql-5-7
+            name: << matrix.version >>
           driver: mysql
 
       - test-driver:
           name: be-tests-mysql-latest-ee
           description: "(MySQL latest)"
           requires:
-            - be-tests-ee
+            - be-tests-java-11-ee
           e:
             name: mysql-latest
           driver: mysql
@@ -1083,27 +1076,9 @@ workflows:
             MB_MYSQL_SSL_TEST_PASSWORD=$MYSQL_RDS_SSL_INSTANCE_PASSWORD
 
       - test-driver:
-          name: be-tests-mariadb-ee
-          description: "(MariaDB 10.2)"
-          requires:
-            - be-tests-ee
-          e:
-            name: mariadb-10-2
-          driver: mysql
-
-      - test-driver:
-          name: be-tests-mariadb-latest-ee
-          description: "(MariaDB latest)"
-          requires:
-            - be-tests-ee
-          e:
-            name: mariadb-latest
-          driver: mysql
-
-      - test-driver:
           name: be-tests-oracle-ee
           requires:
-            - be-tests-ee
+            - be-tests-java-11-ee
           before-steps:
             - fetch-jdbc-driver:
                 source: ORACLE_JDBC_JAR
@@ -1117,25 +1092,20 @@ workflows:
                       -Djavax.net.ssl.trustStorePassword=metabase $JAVA_OPTS"
 
       - test-driver:
-          name: be-tests-postgres-ee
-          description: "(9.6)"
+          matrix:
+            parameters:
+              version: ["postgres-9-6", "postgres-latest"]
+          name: be-tests-<< matrix.version >>-ee
+          description: "(<< matrix.version >>)"
           requires:
-            - be-tests-ee
-          e: postgres-9-6
-          driver: postgres
-
-      - test-driver:
-          name: be-tests-postgres-latest-ee
-          description: "(Latest)"
-          requires:
-            - be-tests-ee
-          e: postgres-latest
+            - be-tests-java-11-ee
+          e: << matrix.version >>
           driver: postgres
 
       - test-driver:
           name: be-tests-presto-ee
           requires:
-            - be-tests-ee
+            - be-tests-java-11-ee
           e: presto-186
           before-steps:
             - wait-for-port:
@@ -1145,7 +1115,7 @@ workflows:
       - test-driver:
           name: be-tests-presto-jdbc-ee
           requires:
-            - be-tests-ee
+            - be-tests-java-11-ee
           e: presto-jdbc-env # specific env for running Presto JDBC tests (newer Presto version, SSL, etc.)
           before-steps:
             - wait-for-port:
@@ -1178,21 +1148,21 @@ workflows:
       - test-driver:
           name: be-tests-redshift-ee
           requires:
-            - be-tests-ee
+            - be-tests-java-11-ee
           driver: redshift
           timeout: 15m
 
       - test-driver:
           name: be-tests-snowflake-ee
           requires:
-            - be-tests-ee
+            - be-tests-java-11-ee
           driver: snowflake
           timeout: 115m
 
       - test-driver:
           name: be-tests-sparksql-ee
           requires:
-            - be-tests-ee
+            - be-tests-java-11-ee
           e: sparksql
           before-steps:
             - wait-for-port:
@@ -1200,22 +1170,9 @@ workflows:
           driver: sparksql
 
       - test-driver:
-          name: be-tests-sqlite-ee
-          requires:
-            - be-tests-ee
-          driver: sqlite
-
-      - test-driver:
-          name: be-tests-sqlserver-ee
-          requires:
-            - be-tests-ee
-          e: sqlserver
-          driver: sqlserver
-
-      - test-driver:
           name: be-tests-vertica-ee
           requires:
-            - be-tests-ee
+            - be-tests-java-11-ee
           e: vertica
           before-steps:
             - fetch-jdbc-driver:
@@ -1228,10 +1185,9 @@ workflows:
             - be-deps
 
       - build-uberjar-drivers:
-          name: build-uberjar-drivers-<< matrix.edition >>
+          name: build-uberjar-drivers
           requires:
             - be-deps
-          <<: *Matrix
 
       - build-uberjar-frontend:
           name: build-uberjar-frontend-<< matrix.edition >>
@@ -1242,7 +1198,7 @@ workflows:
       - build-uberjar:
           name: build-uberjar-<< matrix.edition >>
           requires:
-            - build-uberjar-drivers-<< matrix.edition >>
+            - build-uberjar-drivers
             - build-uberjar-frontend-<< matrix.edition >>
           <<: *Matrix
 
