@@ -19,18 +19,24 @@ import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 
 const IRREGULAR_COLLECTION_ICON_SIZE = 14;
 
-function ToggleChildCollectionButton({ isOpen }) {
+function ToggleChildCollectionButton({ action, collectionId, isOpen }) {
   const iconName = isOpen ? "chevrondown" : "chevronright";
+
+  function handleClick(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    action(collectionId);
+  }
 
   return (
     <ExpandCollectionButton>
-      <Icon name={iconName} size={12} />
+      <Icon name={iconName} onClick={handleClick} size={12} />
     </ExpandCollectionButton>
   );
 }
 
 function Label({ action, depth, collection, isOpen }) {
-  const { children, name } = collection;
+  const { children, id, name } = collection;
 
   const isRegular = PLUGIN_COLLECTIONS.isRegularCollection(collection);
   const hasChildren =
@@ -42,7 +48,13 @@ function Label({ action, depth, collection, isOpen }) {
 
   return (
     <LabelContainer>
-      {hasChildren && <ToggleChildCollectionButton isOpen={isOpen} />}
+      {hasChildren && (
+        <ToggleChildCollectionButton
+          action={action}
+          collectionId={id}
+          isOpen={isOpen}
+        />
+      )}
 
       <CollectionListIcon
         collection={collection}
