@@ -8,7 +8,6 @@
             [metabase.models :refer [Card Collection Dashboard Pulse PulseCard PulseChannel PulseChannelRecipient]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
-            [metabase.models.pulse :as pulse]
             [metabase.models.pulse-test :as pulse-test]
             [metabase.pulse.render.png :as png]
             [metabase.server.middleware.util :as middleware.u]
@@ -717,37 +716,6 @@
                   (testing "Collection 2"
                     (is (= (second expected)
                            (card-api-test/get-name->collection-position :rasta (u/the-id collection-2))))))))))))))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                             DELETE /api/pulse/:id                                              |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(deftest delete-test
-  (testing "DELETE /api/pulse/:id"
-    (testing "check that a regular user can delete a Pulse if they have write permissions for its collection (!)"
-      (mt/with-temp* [Pulse                 [pulse]
-                      PulseChannel          [pc    {:pulse_id (u/the-id pulse)}]
-                      PulseChannelRecipient [_     {:pulse_channel_id (u/the-id pc), :user_id (mt/user->id :rasta)}]]
-        (with-pulses-in-writeable-collection [pulse]
-          (mt/user-http-request :rasta :delete 204 (format "pulse/%d" (u/the-id pulse)))
-          (is (= nil
-                 (pulse/retrieve-pulse (u/the-id pulse)))))))
-
-    (testing "check that a rando (e.g. someone without collection write access) isn't allowed to delete a pulse"
-      (mt/with-temp-copy-of-db
-        (mt/with-temp* [Card      [card  {:dataset_query {:database (mt/id)
-                                                          :type     "query"
-                                                          :query    {:source-table (mt/id :venues)
-                                                                     :aggregation  [[:count]]}}}]
-                        Pulse     [pulse {:name "Daily Sad Toucans"}]
-                        PulseCard [_     {:pulse_id (u/the-id pulse), :card_id (u/the-id card)}]]
-          (with-pulses-in-readable-collection [pulse]
-            ;; revoke permissions for default group to this database
-            (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-            ;; now a user without permissions to the Card in question should *not* be allowed to delete the pulse
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :delete 403 (format "pulse/%d" (u/the-id pulse)))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
