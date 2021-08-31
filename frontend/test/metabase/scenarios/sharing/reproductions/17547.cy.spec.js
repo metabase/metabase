@@ -22,7 +22,6 @@ describe("issue 17547", () => {
 
     cy.createQuestion(questionDetails).then(({ body: { id: questionId } }) => {
       cy.intercept("POST", `/api/card/${questionId}/query`).as("cardQuery");
-      cy.intercept("GET", `/api/alert/question/${questionId}`).as("alertQuery");
 
       setUpAlert(questionId);
 
@@ -74,5 +73,7 @@ function setUpAlert(questionId) {
     skip_if_empty: true,
     parameters: [],
     dashboard_id: null,
+  }).then(({ body: {id: alertId} }) => {
+    cy.intercept("PUT", `/api/alert/${alertId}`).as("alertQuery");
   });
 }
