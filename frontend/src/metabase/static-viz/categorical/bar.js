@@ -2,12 +2,12 @@
 import React from "react";
 import { t } from "ttag";
 import { Bar } from "@visx/shape";
-import { AxisLeft, AxisBottom } from "@visx/axis";
+import { AxisBottom, AxisLeft } from "@visx/axis";
 import { GridRows } from "@visx/grid";
 import { scaleBand, scaleLinear } from "@visx/scale";
 import { Text } from "@visx/text";
-import { leftAxisTickStyles } from "metabase/static-viz/lib/styling";
-import { formatNumber } from "metabase/static-viz/lib/formatting";
+import { formatNumber } from "../lib/formatting";
+import { bottomAxisTickStyles, leftAxisTickStyles } from "../lib/styling";
 
 export default function CategoricalBar(
   { data, accessors, labels, settings },
@@ -63,7 +63,7 @@ export default function CategoricalBar(
         left={leftMargin}
         label={leftLabel}
         scale={yAxisScale}
-        tickFormat={d => formatNumber(d, settings?.x)}
+        tickFormat={d => formatNumber(d, settings?.y)}
         tickLabelProps={() => leftAxisTickStyles(layout)}
       />
       <AxisBottom

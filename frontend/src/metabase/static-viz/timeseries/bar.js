@@ -5,8 +5,8 @@ import { AxisBottom, AxisLeft } from "@visx/axis";
 import { Bar } from "@visx/shape";
 import { GridRows } from "@visx/grid";
 import { scaleBand, scaleLinear } from "@visx/scale";
-import { formatDate, formatNumber } from "metabase/static-viz/lib/formatting";
-import { leftAxisTickStyles } from "metabase/static-viz/lib/styling";
+import { formatDate, formatNumber } from "../lib/formatting";
+import { bottomAxisTickStyles, leftAxisTickStyles } from "../lib/styling";
 
 export default function TimeseriesBar(
   { data, accessors, labels, settings },

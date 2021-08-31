@@ -24,7 +24,7 @@ export default function StaticVizPage() {
           <Box
             dangerouslySetInnerHTML={{
               __html: RenderChart("timeseries/bar", {
-                data: [["2010-11-07", 20], ["2020-11-07", 30]],
+                data: [["2010-11-07", 20], ["2020-11-08", 30]],
                 accessors: {
                   x: row => new Date(row[0]).valueOf(),
                   y: row => row[1],
@@ -43,15 +43,26 @@ export default function StaticVizPage() {
               __html: RenderChart("timeseries/line", {
                 data: [
                   ["2010-11-07", 20],
-                  ["2020-11-07", 30],
-                  ["2021-11-07", 31],
+                  ["2020-11-08", 30],
+                  ["2021-11-09", 31],
                 ],
                 accessors: {
                   x: row => new Date(row[0]).valueOf(),
                   y: row => row[1],
                 },
                 labels: {
-                  left: "Count",
+                  left: "Price",
+                  bottom: "Created at",
+                },
+                settings: {
+                  x: {
+                    date_style: "YYYY/M/D",
+                  },
+                  y: {
+                    number_style: "currency",
+                    currency: "USD",
+                    currency_style: "symbol",
+                  },
                 },
               }),
             }}
@@ -62,7 +73,7 @@ export default function StaticVizPage() {
           <Box
             dangerouslySetInnerHTML={{
               __html: RenderChart("categorical/bar", {
-                data: [["donut", 20], ["cronut", 31]],
+                data: [["Gadget", 20], ["Widget", 31]],
                 accessors: {
                   x: row => row[0],
                   y: row => row[1],
