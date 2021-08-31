@@ -14,6 +14,7 @@ export default function ErrorOverview(props) {
   });
 
   const handleSortingChange = sorting => setSorting(sorting);
+  const rowChecked = [false, false, false];
   return (
     <AuditParameters
       parameters={[
@@ -27,6 +28,9 @@ export default function ErrorOverview(props) {
           {...props}
           pageSize={50}
           isSortable
+          isSelectable
+          selectHeader={"Reload?"}
+          rowChecked={rowChecked}
           sorting={sorting}
           onSortingChange={handleSortingChange}
           table={Queries.bad_table(

@@ -10,6 +10,7 @@ import Table from "metabase/visualizations/visualizations/Table";
 
 import EmptyState from "metabase/components/EmptyState";
 import Icon from "metabase/components/Icon";
+import CheckBox from "metabase/components/CheckBox";
 
 import NoResults from "assets/img/no_results.svg";
 
@@ -31,6 +32,10 @@ const propTypes = {
     column: PropTypes.string.isRequired,
     isAscending: PropTypes.bool.isRequired,
   }),
+  isSelectable: PropTypes.bool,
+  selectHeader: PropTypes.str,
+  onRowSelect: PropTypes.func,
+  rowChecked: PropTypes.array,
 };
 
 export default class AuditTableVisualization extends React.Component {
@@ -69,6 +74,10 @@ export default class AuditTableVisualization extends React.Component {
       onVisualizationClick,
       settings,
       isSortable,
+      isSelectable,
+      selectHeader,
+      onRowSelect,
+      rowChecked,
     } = this.props;
 
     const columnIndexes = settings["table.columns"]
@@ -88,6 +97,7 @@ export default class AuditTableVisualization extends React.Component {
       <table className="ContentTable">
         <thead>
           <tr>
+	    {isSelectable && <th>{selectHeader}</th>}
             {columnIndexes.map(colIndex => {
               const column = cols[colIndex];
               const isSortedByColumn =
@@ -119,6 +129,10 @@ export default class AuditTableVisualization extends React.Component {
         <tbody>
           {rows.map((row, rowIndex) => (
             <tr key={rowIndex}>
+              {isSelectable && <td><CheckBox
+                checked={rowChecked[rowIndex]}
+                onChange={(change) => onRowSelect({...change, originRow: row})}/></td>}
+
               {columnIndexes.map(colIndex => {
                 const value = row[colIndex];
                 const column = cols[colIndex];

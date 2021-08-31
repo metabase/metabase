@@ -55,7 +55,7 @@
 (s/defn ^:internal-query-fn bad-table
   "List of all failing questions"
   ([]
-   (table nil nil nil nil nil))
+   (bad-table nil nil nil nil nil))
   ([errorFilter      :- (s/maybe s/Str)
     dbFilter         :- (s/maybe s/Str)
     collectionFilter :- (s/maybe s/Str)
