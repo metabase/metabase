@@ -1,3 +1,6 @@
+---
+redirect_from: ["../faq/using-metabase/how-do-i-reset-my-password.html"]
+---
 # People can't log in to Metabase
 
 You should be able to log in to Metabase, but:
