@@ -1,6 +1,5 @@
 (ns metabase.pulse.render.body
   (:require [cheshire.core :as json]
-            [clojure.set :as set]
             [clojure.string :as str]
             [hiccup.core :refer [h]]
             [medley.core :as m]
@@ -15,6 +14,7 @@
             [metabase.pulse.render.table :as table]
             [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.types :as types]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [schema.core :as s])
   (:import (java.text DecimalFormat DecimalFormatSymbols)))
@@ -238,31 +238,35 @@
    "dddd, MMMM D, YYYY" {:week "MMMM D, YYYY"
                          :month "MMMM, YYYY"}})
 
-(defn- ->js-viz [x-col y-col {::mb.viz/keys [column-settings] :as _viz-settings}]
+(defn- ->js-viz
+  "Include viz settings for js.
+
+  - there are some date overrides done from lib/formatting.js
+  - chop off and underscore the nasty keys in our map
+  - backfill currency to the default of USD if not present"
+  [x-col y-col {::mb.viz/keys [column-settings] :as _viz-settings}]
   (letfn [(settings [col] (or (get column-settings {::mb.viz/field-id (:id col)})
                               (get column-settings {::mb.viz/column-name (:name col)})))
           (update-date-style [date-style unit]
             (let [unit (or unit :default)]
-              (tap> unit)
-              (tap> [:before date-style])
-              (doto (or (get-in override-date-styles [date-style unit])
-                   (get-in default-date-styles [unit])
-                   date-style)
-                tap>)))
+              (or (get-in override-date-styles [date-style unit])
+                  (get-in default-date-styles [unit])
+                  date-style)))
+          (backfill-currency [{:keys [number_style currency] :as settings}]
+            (cond-> settings
+              (and (= number_style "currency") (nil? currency))
+              (assoc :currency "USD")))
           (for-js [col-settings col]
-            (-> col-settings
-                (set/rename-keys {::mb.viz/date-style      :date_style
-                                  ::mb.viz/date-abbreviate :date_abbreviate
-                                  ::mb.viz/date-separator  :date_separator
-                                  ::mb.viz/time-style      :time_style
-                                  ::mb.viz/time-enabled    :time_enabled})
-                (update :date_style update-date-style (:unit col))))]
-    (let [x-col-settings  (settings x-col)
-          ;; number settings are coming
-          _y-col-settings (settings y-col)]
+            (-> (m/map-keys (fn [k] (-> k name (str/replace #"-" "_") keyword)) col-settings)
+                (backfill-currency)
+                (u/update-when :date_style update-date-style (:unit col))))]
+    (let [x-col-settings (settings x-col)
+          y-col-settings (settings y-col)]
       (cond-> {}
         x-col-settings
-        (assoc :x (for-js x-col-settings x-col))))))
+        (assoc :x (for-js x-col-settings x-col))
+        y-col-settings
+        (assoc :y (for-js y-col-settings y-col))))))
 
 (s/defmethod render :bar :- common/RenderedPulseCard
   [_ render-type _timezone-id :- (s/maybe s/Str) card {:keys [cols rows viz-settings] :as data}]
@@ -277,7 +281,8 @@
                                      (if (isa? (-> cols x-axis-rowfn :effective_type) :type/Temporal)
                                        (js-svg/timelineseries-bar rows labels
                                                                   (->js-viz x-col y-col viz-settings))
-                                       (js-svg/categorical-bar rows labels)))]
+                                       (js-svg/categorical-bar rows labels
+                                                               (->js-viz x-col y-col viz-settings))))]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))
