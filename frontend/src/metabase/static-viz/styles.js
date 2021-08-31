@@ -1,4 +1,4 @@
-export function leftAxisTickStyles(layout) {
+export function getLeftAxisTickStyles(layout) {
   return {
     fontSize: 11,
     fontFamily: "Lato, sans-serif",
@@ -7,7 +7,7 @@ export function leftAxisTickStyles(layout) {
   };
 }
 
-export function bottomAxisTickStyles(layout) {
+export function getBottomAxisTickStyles(layout) {
   return {
     fontSize: 11,
     fontFamily: "Lato, sans-serif",

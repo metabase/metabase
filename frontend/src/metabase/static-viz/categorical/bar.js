@@ -6,7 +6,7 @@ import { AxisLeft, AxisBottom } from "@visx/axis";
 import { GridRows } from "@visx/grid";
 import { scaleBand, scaleLinear } from "@visx/scale";
 import { Text } from "@visx/text";
-import { bottomAxisTickStyles, leftAxisTickStyles } from "../utils.js";
+import { getBottomAxisTickStyles, getLeftAxisTickStyles } from "../styles.js";
 
 export default function CategoricalBar(
   { data, yScaleType = scaleLinear, accessors, labels },
@@ -62,7 +62,7 @@ export default function CategoricalBar(
         scale={yAxisScale}
         label={leftLabel}
         left={leftMargin}
-        tickLabelProps={() => leftAxisTickStyles(layout)}
+        tickLabelProps={() => getLeftAxisTickStyles(layout)}
       />
       <AxisBottom
         hideTicks={false}
@@ -84,7 +84,7 @@ export default function CategoricalBar(
             </Text>
           );
         }}
-        tickLabelProps={() => bottomAxisTickStyles(layout)}
+        tickLabelProps={() => getBottomAxisTickStyles(layout)}
       />
     </svg>
   );

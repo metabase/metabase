@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { Bar } from "@visx/shape";
 import { AxisLeft, AxisBottom } from "@visx/axis";
 import { scaleBand, scaleLinear, scaleOrdinal } from "@visx/scale";
-import { bottomAxisTickStyles, leftAxisTickStyles } from "../utils.js";
+import { getBottomAxisTickStyles, getLeftAxisTickStyles } from "../styles.js";
 import { GridRows } from "@visx/grid";
 
 export default function TimeseriesBar(
@@ -68,7 +68,7 @@ export default function TimeseriesBar(
         scale={yAxisScale}
         label={labels.left || t`Count`}
         left={leftMargin}
-        tickLabelProps={() => leftAxisTickStyles(layout)}
+        tickLabelProps={() => getLeftAxisTickStyles(layout)}
       />
       <AxisBottom
         hideTicks={false}
@@ -79,7 +79,7 @@ export default function TimeseriesBar(
         scale={xAxisScale}
         stroke={layout.colors.axis.stroke}
         label={labels.bottom || t`Time`}
-        tickLabelProps={() => bottomAxisTickStyles(layout)}
+        tickLabelProps={() => getBottomAxisTickStyles(layout)}
       />
     </svg>
   );
