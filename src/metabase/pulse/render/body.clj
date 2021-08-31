@@ -217,21 +217,52 @@
        (list results-attached table-body)
        (list table-body))}))
 
+(def ^:private default-date-styles
+  {:year "YYYY"
+   :quarter "[Q]Q - YYYY"
+   :minute-of-hour "m"
+   :day-of-week "dddd"
+   :day-of-month "D"
+   :day-of-year "DDD"
+   :week-of-year "wo"
+   :month-of-year "MMMM"
+   :quarter-of-year "[Q]Q"})
+
+(def ^:private override-date-styles
+  {"M/D/YYYY" {:month "M/YYYY"}
+   "D/M/YYYY" {:month "M/YYYY"}
+   "YYYY/M/D" {:month "YYYY/M"
+               :quarter "YYYY - [Q]Q"}
+   "MMMM D, YYYY" {:month "MMMM, YYYY"}
+   "D MMMM, YYYY" {:month "MMMM, YYYY"}
+   "dddd, MMMM D, YYYY" {:week "MMMM D, YYYY"
+                         :month "MMMM, YYYY"}})
+
 (defn- ->js-viz [x-col y-col {::mb.viz/keys [column-settings] :as _viz-settings}]
-  (letfn [(access [col] (or (get column-settings {::mb.viz/field-id (:id col)})
-                            (get column-settings {::mb.viz/column-name (:name col)})))
-          (for-js [col-settings] (set/rename-keys col-settings
-                                                  {::mb.viz/date-style      :date_style
-                                                   ::mb.viz/date-abbreviate :date_abbreviate
-                                                   ::mb.viz/date-separator  :date_separator
-                                                   ::mb.viz/time-style      :time_style
-                                                   ::mb.viz/time-enabled    :time_enabled}))]
-    (let [x-col-settings  (access x-col)
+  (letfn [(settings [col] (or (get column-settings {::mb.viz/field-id (:id col)})
+                              (get column-settings {::mb.viz/column-name (:name col)})))
+          (update-date-style [date-style unit]
+            (let [unit (or unit :default)]
+              (tap> unit)
+              (tap> [:before date-style])
+              (doto (or (get-in override-date-styles [date-style unit])
+                   (get-in default-date-styles [unit])
+                   date-style)
+                tap>)))
+          (for-js [col-settings col]
+            (-> col-settings
+                (set/rename-keys {::mb.viz/date-style      :date_style
+                                  ::mb.viz/date-abbreviate :date_abbreviate
+                                  ::mb.viz/date-separator  :date_separator
+                                  ::mb.viz/time-style      :time_style
+                                  ::mb.viz/time-enabled    :time_enabled})
+                (update :date_style update-date-style (:unit col))))]
+    (let [x-col-settings  (settings x-col)
           ;; number settings are coming
-          _y-col-settings (access y-col)]
+          _y-col-settings (settings y-col)]
       (cond-> {}
         x-col-settings
-        (assoc :x (for-js x-col-settings))))))
+        (assoc :x (for-js x-col-settings x-col))))))
 
 (s/defmethod render :bar :- common/RenderedPulseCard
   [_ render-type _timezone-id :- (s/maybe s/Str) card {:keys [cols rows viz-settings] :as data}]
