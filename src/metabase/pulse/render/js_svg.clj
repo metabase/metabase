@@ -3,7 +3,8 @@
   which has charting library. This namespace has some wrapper functions to invoke those functions. Interop is very
   strange, as the jvm datastructures, not just serialized versions are used. This is why we have the `toJSArray` and
   `toJSMap` functions to turn Clojure's normal datastructures into js native structures."
-  (:require [clojure.string :as str]
+  (:require [cheshire.core :as json]
+            [clojure.string :as str]
             [metabase.pulse.render.js-engine :as js])
   (:import [java.io ByteArrayInputStream ByteArrayOutputStream]
            java.nio.charset.StandardCharsets
@@ -55,19 +56,21 @@ const dimension_accessors = {
   metric: (row) => row[1],
 }
 
-function timeseries_line (data, labels) {
+function timeseries_line (data, labels, settings) {
   return StaticViz.RenderChart(\"timeseries/line\", {
     data: toJSArray(data),
     labels: toJSMap(labels),
-    accessors: date_accessors
+    accessors: date_accessors,
+    settings: JSON.parse(settings)
  })
 }
 
-function timeseries_bar (data, labels) {
+function timeseries_bar (data, labels, settings) {
   return StaticViz.RenderChart(\"timeseries/bar\", {
     data: toJSArray(data),
     labels: toJSMap(labels),
-    accessors: date_accessors
+    accessors: date_accessors,
+    settings: JSON.parse(settings)
  })
 }
 
@@ -163,17 +166,19 @@ function categorical_donut (rows, colors) {
 (defn timelineseries-line
   "Clojure entrypoint to render a timeseries line char. Rows should be tuples of [datetime numeric-value]. Labels is a
   map of {:left \"left-label\" :right \"right-label\"}. Returns a byte array of a png file."
-  [rows labels]
+  [rows labels settings]
   (let [svg-string (.asString (js/execute-fn-name @context "timeseries_line" rows
-                                                  (map (fn [[k v]] [(name k) v]) labels)))]
+                                                  (map (fn [[k v]] [(name k) v]) labels)
+                                                  (json/generate-string settings)))]
     (svg-string->bytes svg-string)))
 
 (defn timelineseries-bar
   "Clojure entrypoint to render a timeseries bar char. Rows should be tuples of [datetime numeric-value]. Labels is a
   map of {:left \"left-label\" :right \"right-label\"}. Returns a byte array of a png file."
-  [rows labels]
+  [rows labels settings]
   (let [svg-string (.asString (js/execute-fn-name @context "timeseries_bar" rows
-                                                  (map (fn [[k v]] [(name k) v]) labels)))]
+                                                  (map (fn [[k v]] [(name k) v]) labels)
+                                                  (json/generate-string settings)))]
     (svg-string->bytes svg-string)))
 
 (defn categorical-bar

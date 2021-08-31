@@ -1,5 +1,6 @@
 (ns metabase.pulse.render.body
   (:require [cheshire.core :as json]
+            [clojure.set :as set]
             [clojure.string :as str]
             [hiccup.core :refer [h]]
             [medley.core :as m]
@@ -12,6 +13,7 @@
             [metabase.pulse.render.sparkline :as sparkline]
             [metabase.pulse.render.style :as style]
             [metabase.pulse.render.table :as table]
+            [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.types :as types]
             [metabase.util.i18n :refer [trs tru]]
             [schema.core :as s])
@@ -215,20 +217,36 @@
        (list results-attached table-body)
        (list table-body))}))
 
+(defn- ->js-viz [x-col y-col {::mb.viz/keys [column-settings] :as _viz-settings}]
+  (letfn [(access [col] (or (get column-settings {::mb.viz/field-id (:id col)})
+                            (get column-settings {::mb.viz/column-name (:name col)})))
+          (for-js [col-settings] (set/rename-keys col-settings
+                                                  {::mb.viz/date-style      :date_style
+                                                   ::mb.viz/date-abbreviate :date_abbreviate
+                                                   ::mb.viz/date-separator  :date_separator
+                                                   ::mb.viz/time-style      :time_style
+                                                   ::mb.viz/time-enabled    :time_enabled}))]
+    (let [x-col-settings  (access x-col)
+          ;; number settings are coming
+          _y-col-settings (access y-col)]
+      (cond-> {}
+        x-col-settings
+        (assoc :x (for-js x-col-settings))))))
+
 (s/defmethod render :bar :- common/RenderedPulseCard
-  [_ render-type _timezone-id :- (s/maybe s/Str) card {:keys [cols rows] :as data}]
+  [_ render-type _timezone-id :- (s/maybe s/Str) card {:keys [cols rows viz-settings] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
         rows                        (map (juxt x-axis-rowfn y-axis-rowfn)
                                          (common/non-nil-rows x-axis-rowfn y-axis-rowfn rows))
-        svg-fn                   (if (isa? (-> cols x-axis-rowfn :effective_type) :type/Temporal)
-                                   js-svg/timelineseries-bar
-                                   js-svg/categorical-bar)
+        [x-col y-col]               ((juxt x-axis-rowfn y-axis-rowfn) cols)
+        labels                      {:bottom (:display_name x-col)
+                                     :left   (:display_name y-col)}
         image-bundle                (image-bundle/make-image-bundle
-                                      render-type
-                                      (svg-fn
-                                        rows
-                                        {:bottom (-> cols x-axis-rowfn :display_name)
-                                         :left   (-> cols y-axis-rowfn :display_name)}))]
+                                     render-type
+                                     (if (isa? (-> cols x-axis-rowfn :effective_type) :type/Temporal)
+                                       (js-svg/timelineseries-bar rows labels
+                                                                  (->js-viz x-col y-col viz-settings))
+                                       (js-svg/categorical-bar rows labels)))]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))
@@ -353,9 +371,10 @@
         @error-rendered-info))))
 
 (s/defmethod render :sparkline :- common/RenderedPulseCard
-  [_ render-type timezone-id card {:keys [_rows cols] :as data}]
+  [_ render-type timezone-id card {:keys [_rows cols viz-settings] :as data}]
   (let [[x-axis-rowfn
          y-axis-rowfn] (common/graphing-column-row-fns card data)
+        [x-col y-col]  ((juxt x-axis-rowfn y-axis-rowfn) cols)
         rows           (sparkline/cleaned-rows timezone-id card data)
         last-rows      (reverse (take-last 2 rows))
         values         (for [row last-rows]
@@ -366,8 +385,9 @@
         image-bundle   (image-bundle/make-image-bundle
                         render-type
                         (js-svg/timelineseries-line (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)
-                                                    {:bottom (-> cols x-axis-rowfn :display_name)
-                                                     :left   (-> cols y-axis-rowfn :display_name)}))]
+                                                    {:bottom (:display_name x-col)
+                                                     :left   (:display_name y-col)}
+                                                    (->js-viz x-col y-col viz-settings)))]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))
