@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { LinePath } from "@visx/shape";
 import { AxisLeft, AxisBottom } from "@visx/axis";
 import { scaleLinear, scaleOrdinal, scaleTime } from "@visx/scale";
-import { getBottomAxisTickStyles, getLeftAxisTickStyles } from "../styles";
+import { bottomAxisTickStyles, leftAxisTickStyles } from "../styles";
 import { GridRows } from "@visx/grid";
 
 export default function TimeseriesLine(
@@ -75,7 +75,7 @@ export default function TimeseriesLine(
         tickFormat={d => String(d)}
         scale={yAxisScale}
         left={leftMargin}
-        tickLabelProps={() => getLeftAxisTickStyles(layout)}
+        tickLabelProps={() => leftAxisTickStyles(layout)}
       />
       <AxisBottom
         label={labels.bottom || t`Dimension`}
@@ -86,7 +86,7 @@ export default function TimeseriesLine(
         stroke={layout.colors.axis.stroke}
         tickFormat={d => new Date(d).toLocaleDateString("en")}
         scale={xAxisScale}
-        tickLabelProps={() => getBottomAxisTickStyles(layout)}
+        tickLabelProps={() => bottomAxisTickStyles(layout)}
       />
     </svg>
   );
