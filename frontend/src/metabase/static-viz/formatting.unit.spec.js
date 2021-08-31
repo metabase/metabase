@@ -1,7 +1,7 @@
-import { formatDate } from "./dates";
+import { formatDate } from "./formatting";
 
 describe("formatDate", () => {
-  it("should format dates with default settings", () => {
+  it("should format a date with default settings", () => {
     const date = new Date(2018, 0, 10);
 
     const text = formatDate(date);
@@ -9,7 +9,7 @@ describe("formatDate", () => {
     expect(text).toEqual("1/10/2018");
   });
 
-  it("should format dates with style option", () => {
+  it("should format a date with style option", () => {
     const date = new Date(2018, 0, 10);
 
     const text = formatDate(date, {
@@ -19,7 +19,7 @@ describe("formatDate", () => {
     expect(text).toEqual("Wednesday, January 10, 2018");
   });
 
-  it("should format dates with abbreviate option", () => {
+  it("should format a date with abbreviate option", () => {
     const date = new Date(2018, 0, 10);
 
     const text = formatDate(date, {
@@ -30,7 +30,7 @@ describe("formatDate", () => {
     expect(text).toEqual("Wed, Jan 10, 2018");
   });
 
-  it("should format dates with separator option", () => {
+  it("should format a date with separator option", () => {
     const date = new Date(2018, 0, 10);
 
     const text = formatDate(date, {
@@ -41,7 +41,7 @@ describe("formatDate", () => {
     expect(text).toEqual("1-10-2018");
   });
 
-  it("should format dates with time", () => {
+  it("should format a date with time", () => {
     const date = new Date(2018, 0, 10, 15, 10, 20);
 
     const text = formatDate(date, {
@@ -51,7 +51,7 @@ describe("formatDate", () => {
     expect(text).toEqual("1/10/2018 3:10 PM");
   });
 
-  it("should format dates with time and 24-hour clock", () => {
+  it("should format a date with time and 24-hour clock", () => {
     const date = new Date(2018, 0, 10, 15, 10, 20);
 
     const text = formatDate(date, {

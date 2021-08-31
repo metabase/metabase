@@ -6,7 +6,7 @@ import { GridRows } from "@visx/grid";
 import { scaleLinear, scaleOrdinal, scaleTime } from "@visx/scale";
 import { LinePath } from "@visx/shape";
 import { bottomAxisTickStyles, leftAxisTickStyles } from "../styles";
-import { formatDate } from "../dates";
+import { formatDate } from "../formatting";
 
 export default function TimeseriesLine(
   { data, accessors, settings, labels },
