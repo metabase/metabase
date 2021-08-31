@@ -1,4 +1,4 @@
-import { formatDate } from "./formatting";
+import { formatDate, formatNumber } from "./formatting";
 
 describe("formatDate", () => {
   it("should format a date with default settings", () => {
@@ -60,5 +60,15 @@ describe("formatDate", () => {
     });
 
     expect(text).toEqual("1/10/2018 15:10");
+  });
+});
+
+describe("formatNumber", () => {
+  it("should format a number with default options", () => {
+    const number = 15;
+
+    const text = formatNumber(number);
+
+    expect(text).toEqual("15");
   });
 });

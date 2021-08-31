@@ -1,9 +1,9 @@
 const DEFAULT_NUMBER_OPTIONS = {
   number_style: "decimal",
-  currency: null,
+  currency: undefined,
   currency_style: "symbol",
   number_separators: ".,",
-  decimals: null,
+  decimals: undefined,
   scale: 1,
   prefix: "",
   suffix: "",
