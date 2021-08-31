@@ -86,8 +86,15 @@ describe("scenarios > dashboard > subscriptions", () => {
         // Make sure no recipients have been assigned
         cy.findByPlaceholderText("Enter user names or email addresses");
 
-        // Change the schedule to "Monthly"
-        cy.findByText("Hourly").click();
+        /**
+         * Change the schedule to "Monthly"
+         *
+         * Please note: This test was modified for the `release-x.40.x` branch specifically.
+         *              The default schedule on `master` is "hourly".
+         *              That change was introduced in https://github.com/metabase/metabase/pull/17425.
+         */
+
+        cy.findByText("Daily").click();
         cy.findByText("Monthly").click();
 
         sidebar().within(() => {
