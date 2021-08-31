@@ -76,7 +76,7 @@ describe("CollectionsList", () => {
       onOpen,
     });
 
-    userEvent.click(screen.getByLabelText("chevronright icon"));
+    userEvent.click(screen.getByText("Parent collection name"));
 
     expect(onOpen).toHaveBeenCalled();
   });
