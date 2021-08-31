@@ -53,6 +53,11 @@ class CollectionSidebar extends React.Component {
   };
 
   onClose = id => {
+    const { openCollections } = this.state;
+    const { collections } = this.props;
+
+    console.log("🚀", { id, openCollections, collections });
+
     this.setState({
       openCollections: this.state.openCollections.filter(c => {
         return c !== id;
