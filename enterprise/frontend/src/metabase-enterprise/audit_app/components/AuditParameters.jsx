@@ -1,6 +1,8 @@
 import React from "react";
 import PropTypes from "prop-types";
 
+import Button from "metabase/components/Button";
+
 import _ from "underscore";
 
 const DEBOUNCE_PERIOD = 300;
@@ -10,6 +12,13 @@ const propTypes = {
     PropTypes.shape({
       key: PropTypes.string.isRequired,
       placeholder: PropTypes.string.isRequired,
+    }),
+  ),
+  buttons: PropTypes.arrayOf(
+    PropTypes.shape({
+      key: PropTypes.string.isRequired,
+      onClick: PropTypes.func.isRequired,
+      label: PropTypes.string.isRequired,
     }),
   ),
   children: PropTypes.func,
@@ -38,7 +47,7 @@ export default class AuditParameters extends React.Component {
   }, DEBOUNCE_PERIOD);
 
   render() {
-    const { parameters, children } = this.props;
+    const { parameters, children, buttons } = this.props;
     const { inputValues, committedValues } = this.state;
     return (
       <div>
@@ -54,6 +63,16 @@ export default class AuditParameters extends React.Component {
                 this.changeValue(key, e.target.value);
               }}
             />
+          ))}
+          {buttons.map(({ key, onClick, label }) => (
+            <Button
+              primary
+              key={key}
+              style={{ fontSize: 14 }}
+              onClick={onClick}
+            >
+              {label}
+            </Button>
           ))}
         </div>
         {children && children(committedValues)}

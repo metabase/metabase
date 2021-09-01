@@ -18,7 +18,6 @@ export default function ErrorOverview(props) {
     const newRowChecked = rowChecked;
     newRowChecked[e.originRow] = !(rowChecked[e.originRow] || false);
     setRowChecked(newRowChecked);
-    console.log(rowChecked);
   };
 
   const handleSortingChange = sorting => setSorting(sorting);
@@ -28,6 +27,9 @@ export default function ErrorOverview(props) {
         { key: "errorFilter", placeholder: t`Error name` },
         { key: "dbFilter", placeholder: t`DB name` },
         { key: "collectionFilter", placeholder: t`Collection name` },
+      ]}
+      buttons={[
+        { key: "reloadSelected", label: t`Reload Selected`, onClick: () => {} }
       ]}
     >
       {({ errorFilter, dbFilter, collectionFilter }) => (
