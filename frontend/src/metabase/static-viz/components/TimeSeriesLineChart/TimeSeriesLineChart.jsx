@@ -1,16 +1,15 @@
 import React from "react";
 import PropTypes from "prop-types";
-import { AxisBottom, AxisLeft } from "@visx/axis";
+import { scaleLinear, scaleTime } from "@visx/scale";
 import { GridRows } from "@visx/grid";
-import { scaleBand, scaleLinear } from "@visx/scale";
-import { Bar } from "@visx/shape";
-import { Text } from "@visx/text";
+import { AxisBottom, AxisLeft } from "@visx/axis";
+import { LinePath } from "@visx/shape";
 
 const propTypes = {
   data: PropTypes.array.isRequired,
   accessors: PropTypes.shape({
-    x: PropTypes.func.isRequired,
-    y: PropTypes.func.isRequired,
+    x: PropTypes.func,
+    y: PropTypes.func,
   }).isRequired,
   labels: PropTypes.shape({
     left: PropTypes.string,
@@ -38,20 +37,19 @@ const layout = {
   },
 };
 
-const CategoricalBarChart = ({ data, accessors, labels }) => {
+const TimeSeriesLineChart = ({ data, accessors, labels }) => {
   const xMax = layout.width - layout.margin.right;
   const yMax = layout.height - layout.margin.bottom;
   const innerWidth = xMax - layout.margin.left;
-  const innerHeight = yMax - layout.margin.top;
-  const isVertical = data.length > 10;
   const leftLabel = labels?.left;
-  const bottomLabel = !isVertical ? labels?.bottom : undefined;
+  const bottomLabel = labels?.bottom;
 
-  const xScale = scaleBand({
-    domain: data.map(accessors.x),
+  const xScale = scaleTime({
+    domain: [
+      Math.min(...data.map(accessors.x)),
+      Math.max(...data.map(accessors.x)),
+    ],
     range: [layout.margin.left, xMax],
-    round: true,
-    padding: 0.2,
   });
 
   const yScale = scaleLinear({
@@ -59,23 +57,6 @@ const CategoricalBarChart = ({ data, accessors, labels }) => {
     range: [yMax, 0],
     nice: true,
   });
-
-  const getBarProps = d => {
-    const width = xScale.bandwidth();
-    const height = innerHeight - yScale(accessors.y(d));
-    const x = xScale(accessors.x(d));
-    const y = yMax - height;
-
-    return { x, y, width, height, fill: layout.colors.brand };
-  };
-
-  const getBottomTickProps = ({ x, y, formattedValue, ...props }) => {
-    const transform = isVertical
-      ? `rotate(45, ${x} ${y}) translate(-${Math.floor(layout.font.size)} 0)`
-      : undefined;
-
-    return { ...props, x, y, transform, children: formattedValue };
-  };
 
   const getLeftTickLabelProps = () => ({
     fontSize: layout.font.size,
@@ -88,7 +69,7 @@ const CategoricalBarChart = ({ data, accessors, labels }) => {
     fontSize: layout.font.size,
     fontFamily: layout.font.family,
     fill: layout.colors.textMedium,
-    textAnchor: isVertical ? "start" : "middle",
+    textAnchor: "middle",
   });
 
   return (
@@ -99,9 +80,13 @@ const CategoricalBarChart = ({ data, accessors, labels }) => {
         width={innerWidth}
         strokeDasharray="4"
       />
-      {data.map((d, index) => (
-        <Bar key={index} {...getBarProps(d)} fill="#509ee3" />
-      ))}
+      <LinePath
+        data={data}
+        stroke={layout.colors.brand}
+        strokeWidth={2}
+        x={d => xScale(accessors.x(d))}
+        y={d => yScale(accessors.y(d))}
+      />
       <AxisLeft
         scale={yScale}
         left={layout.margin.left}
@@ -114,16 +99,16 @@ const CategoricalBarChart = ({ data, accessors, labels }) => {
         scale={xScale}
         top={yMax}
         label={bottomLabel}
-        numTicks={data.length}
+        numTicks={5}
         stroke={layout.colors.textLight}
         tickStroke={layout.colors.textLight}
-        tickComponent={props => <Text {...getBottomTickProps(props)} />}
+        tickFormat={d => new Date(d).toLocaleDateString()}
         tickLabelProps={() => getBottomTickLabelProps()}
       />
     </svg>
   );
 };
 
-CategoricalBarChart.propTypes = propTypes;
+TimeSeriesLineChart.propTypes = propTypes;
 
-export default CategoricalBarChart;
+export default TimeSeriesLineChart;

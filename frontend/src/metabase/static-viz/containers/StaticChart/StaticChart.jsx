@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import CategoricalBarChart from "../../components/CategoricalBarChart";
 import CategoricalDonutChart from "../../components/CategoricalDonutChart";
 import TimeSeriesBarChart from "../../components/TimeSeriesBarChart";
+import TimeSeriesLineChart from "../../components/TimeSeriesLineChart";
 
 const propTypes = {
   type: PropTypes.oneOf([
@@ -22,6 +23,8 @@ const StaticChart = ({ type, options }) => {
       return <CategoricalDonutChart {...options} />;
     case "timeseries/bar":
       return <TimeSeriesBarChart {...options} />;
+    case "timeseries/line":
+      return <TimeSeriesLineChart {...options} />;
   }
 };
 

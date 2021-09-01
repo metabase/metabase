@@ -22,13 +22,33 @@ export default function StaticVizPage() {
           <StaticChart
             type="timeseries/bar"
             options={{
-              data: [["2010-11-07", 20], ["2020-11-07", 30]],
+              data: [["2010-11-07", 20], ["2020-11-08", 30]],
               accessors: {
                 x: row => new Date(row[0]).valueOf(),
                 y: row => row[1],
               },
               labels: {
                 bottom: "Created At",
+              },
+            }}
+          />
+        </Box>
+        <Box py={3}>
+          <Subhead>Line chart with timeseries data</Subhead>
+          <StaticChart
+            type="timeseries/line"
+            options={{
+              data: [
+                ["2020-01-10", 10],
+                ["2020-06-10", 60],
+                ["2020-12-10", 120],
+              ],
+              accessors: {
+                x: row => new Date(row[0]).valueOf(),
+                y: row => row[1],
+              },
+              labels: {
+                left: "Count",
               },
             }}
           />

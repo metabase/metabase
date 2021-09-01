@@ -31,9 +31,9 @@ const layout = {
     family: "Lato, sans-serif",
   },
   colors: {
-    bar: "#509ee3",
-    stroke: "#b8bbc3",
-    label: "#949aab",
+    brand: "#509ee3",
+    textLight: "#b8bbc3",
+    textMedium: "#949aab",
   },
 };
 
@@ -64,20 +64,20 @@ const TimeSeriesBarChart = ({ data, accessors, labels }) => {
     const x = xScale(accessors.x(d));
     const y = yMax - height;
 
-    return { x, y, width, height, fill: layout.colors.bar };
+    return { x, y, width, height, fill: layout.colors.brand };
   };
 
   const getLeftTickLabelProps = () => ({
     fontSize: layout.font.size,
     fontFamily: layout.font.family,
-    fill: layout.colors.label,
+    fill: layout.colors.textMedium,
     textAnchor: "end",
   });
 
   const getBottomTickLabelProps = () => ({
     fontSize: layout.font.size,
     fontFamily: layout.font.family,
-    fill: layout.colors.label,
+    fill: layout.colors.textMedium,
     textAnchor: "middle",
   });
 
@@ -95,7 +95,7 @@ const TimeSeriesBarChart = ({ data, accessors, labels }) => {
       <AxisLeft
         scale={yScale}
         left={layout.margin.left}
-        label={bottomLabel}
+        label={leftLabel}
         hideTicks
         hideAxisLine
         tickLabelProps={() => getLeftTickLabelProps()}
@@ -103,10 +103,10 @@ const TimeSeriesBarChart = ({ data, accessors, labels }) => {
       <AxisBottom
         scale={xScale}
         top={yMax}
-        label={leftLabel}
-        numTicks={data.length}
-        stroke={layout.colors.stroke}
-        tickStroke={layout.colors.stroke}
+        label={bottomLabel}
+        numTicks={5}
+        stroke={layout.colors.textLight}
+        tickStroke={layout.colors.textLight}
         tickFormat={d => new Date(d).toLocaleDateString()}
         tickLabelProps={() => getBottomTickLabelProps()}
       />
