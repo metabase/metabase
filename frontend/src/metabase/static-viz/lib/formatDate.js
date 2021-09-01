@@ -1,26 +1,9 @@
-export const formatDate = (
-  value,
-  {
-    date_style = "M/D/YYYY",
-    date_abbreviate = false,
-    date_separator = "/",
-    time_style = "h:mm A",
-    time_enabled = false,
-  } = {},
-) => {
-  const date = new Date(value);
-
-  const formattedDate = date_style
-    .replace(/MMMM/g, date_abbreviate ? "MMM" : "MMMM")
-    .replace(/dddd/g, date_abbreviate ? "ddd" : "dddd")
-    .replace(/\//g, date_separator)
-    .replace(/\w+/g, field => formatDateField(date, field));
-
-  const formattedTime = time_style
-    .replace(/\//g, date_separator)
-    .replace(/\w+/g, field => formatDateField(date, field));
-
-  return time_enabled ? `${formattedDate} ${formattedTime}` : formattedDate;
+const DEFAULT_OPTIONS = {
+  date_style: "M/D/YYYY",
+  date_abbreviate: false,
+  date_separator: "/",
+  time_style: "h:mm A",
+  time_enabled: false,
 };
 
 const DATE_FORMATS = {
@@ -42,16 +25,47 @@ const DATE_FORMATS = {
   mm: new Intl.DateTimeFormat("en", { minute: "2-digit" }),
 };
 
-const formatDateField = (date, field) => {
+export const formatDate = (date, options) => {
+  const {
+    date_style,
+    date_abbreviate,
+    date_separator,
+    time_style,
+    time_enabled,
+  } = { ...DEFAULT_OPTIONS, ...options };
+
+  const formattedDate = date_style
+    .replace(/MMMM/g, date_abbreviate ? "MMM" : "MMMM")
+    .replace(/dddd/g, date_abbreviate ? "ddd" : "dddd")
+    .replace(/\//g, date_separator)
+    .replace(/\w+/g, field => formatDatePart(date, field));
+
+  const formattedTime = time_style
+    .replace(/\//g, date_separator)
+    .replace(/\w+/g, field => formatDatePart(date, field));
+
+  return time_enabled ? `${formattedDate} ${formattedTime}` : formattedDate;
+};
+
+const formatDatePart = (date, field) => {
   switch (field) {
-    case "Q":
-      return `Q${(date.getMonth() % 4) + 1}`;
+    case "h":
+      return findDatePart(DATE_FORMATS.h.formatToParts(date), "hour");
+    case "hh":
+      return findDatePart(DATE_FORMATS.hh.formatToParts(date), "hour");
     case "A":
-      return DATE_FORMATS.h
-        .formatToParts(date)
-        .filter(part => part.type === "dayPeriod")
-        .map(part => part.value)[0];
+      return findDatePart(DATE_FORMATS.h.formatToParts(date), "dayPeriod");
+    case "Q":
+      return `Q${findQuarter(DATE_FORMATS.M.format(date))}`;
     default:
       return DATE_FORMATS[field].format(date);
   }
+};
+
+const findDatePart = (parts, type) => {
+  return parts.find(part => part.type === type)?.value;
+};
+
+const findQuarter = month => {
+  return ((month - 1) % 4) + 1;
 };

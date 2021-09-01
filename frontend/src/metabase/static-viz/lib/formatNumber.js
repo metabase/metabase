@@ -1,16 +1,26 @@
-export const formatNumber = (
-  value,
-  {
-    number_style = "decimal",
+const DEFAULT_OPTIONS = {
+  number_style: "decimal",
+  currency: undefined,
+  currency_style: "symbol",
+  number_separators: ".,",
+  decimals: undefined,
+  scale: 1,
+  prefix: "",
+  suffix: "",
+};
+
+export const formatNumber = (number, options) => {
+  const {
+    number_style,
     currency,
-    currency_style = "symbol",
-    number_separators: [decimal_separator, grouping_separator] = ".,",
+    currency_style,
+    number_separators: [decimal_separator, grouping_separator],
     decimals,
-    scale = 1,
-    prefix = "",
-    suffix = "",
-  } = {},
-) => {
+    scale,
+    prefix,
+    suffix,
+  } = { ...DEFAULT_OPTIONS, ...options };
+
   const format = new Intl.NumberFormat("en", {
     style: number_style !== "scientific" ? number_style : "decimal",
     notation: number_style !== "scientific" ? "standard" : "scientific",
@@ -22,7 +32,7 @@ export const formatNumber = (
   });
 
   const formattedNumber = format
-    .format(value * scale)
+    .format(number * scale)
     .replace(/\./g, decimal_separator)
     .replace(/,/g, grouping_separator);
 
