@@ -16,7 +16,7 @@
   (is (= "What about this one?"
          (u/add-period "What about this one?")))
   (is (= "   "
-         (u/add-period "   ")))))
+         (u/add-period "   "))))
 
 (deftest decolorize-test
   (is (= "[31mmessage[0m"
