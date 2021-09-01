@@ -8,16 +8,16 @@ import {
   setFilter,
 } from "__support__/e2e/cypress";
 
-import { DASHBOARD_SQL_NUMBER_FILTERS } from "./helpers/e2e-dashboard-filter-data-objects";
-import { addWidgetNumberFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
+import { DASHBOARD_SQL_LOCATION_FILTERS } from "./helpers/e2e-dashboard-filter-sql-data-objects";
+import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
-const { PRODUCTS } = SAMPLE_DATASET;
+const { PEOPLE } = SAMPLE_DATASET;
 
-Object.entries(DASHBOARD_SQL_NUMBER_FILTERS).forEach(
+Object.entries(DASHBOARD_SQL_LOCATION_FILTERS).forEach(
   ([filter, { value, representativeResult, sqlFilter }]) => {
-    describe("scenarios > dashboard > filters > SQL > text/category", () => {
+    describe("scenarios > dashboard > filters > location", () => {
       beforeEach(() => {
         restore();
         cy.signInAsAdmin();
@@ -39,7 +39,7 @@ Object.entries(DASHBOARD_SQL_NUMBER_FILTERS).forEach(
         );
 
         editDashboard();
-        setFilter("Number", filter);
+        setFilter("Location", filter);
 
         cy.findByText("Column to filter on")
           .next("a")
@@ -54,7 +54,7 @@ Object.entries(DASHBOARD_SQL_NUMBER_FILTERS).forEach(
         saveDashboard();
 
         filterWidget().click();
-        addWidgetNumberFilter(value);
+        addWidgetStringFilter(value);
 
         cy.get(".Card").within(() => {
           cy.contains(representativeResult);
@@ -66,7 +66,7 @@ Object.entries(DASHBOARD_SQL_NUMBER_FILTERS).forEach(
           .next()
           .click();
 
-        addWidgetNumberFilter(value);
+        addWidgetStringFilter(value);
 
         saveDashboard();
 
@@ -80,17 +80,17 @@ Object.entries(DASHBOARD_SQL_NUMBER_FILTERS).forEach(
 
 function getQuestionDetails(filter) {
   return {
-    name: "SQL with number filter",
+    name: "SQL with Field Filter",
     native: {
       query:
-        "select PRODUCTS.TITLE, PRODUCTS.RATING from PRODUCTS where {{filter}} limit 10",
+        "select PEOPLE.NAME, PEOPLE.CITY from people where {{filter}} limit 10",
       "template-tags": {
         filter: {
-          id: "1c46dd00-3f32-9328-f663-71f98c5d7953",
+          id: "0388fcd0-55cd-ca2a-5113-1bbceafc6047",
           name: "filter",
           "display-name": "Filter",
           type: "dimension",
-          dimension: ["field", PRODUCTS.RATING, null],
+          dimension: ["field", PEOPLE.CITY, null],
           "widget-type": filter,
         },
       },

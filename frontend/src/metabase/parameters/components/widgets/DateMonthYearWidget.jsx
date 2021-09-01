@@ -57,9 +57,9 @@ export default class DateMonthYearWidget extends React.Component {
             onChange={year => this.setState({ year: year })}
           />
         </div>
-        <Flex flexWrap="wrap" w="100%" p={1}>
+        <Flex flexWrap="wrap" width="100%" p={1}>
           {_.range(0, 12).map(m => (
-            <Flex key={m} w={1 / 3} align="center" justifyContent="center">
+            <Flex key={m} width={1 / 3} align="center" justifyContent="center">
               <Month
                 month={m}
                 selected={m === month}
