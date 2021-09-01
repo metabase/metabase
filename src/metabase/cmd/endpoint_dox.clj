@@ -85,7 +85,7 @@
   "Gets a list of all API endpoints. Currently excludes Enterprise endpoints."
   []
   (for [ns-symb     u/metabase-namespace-symbols
-        :when       (str/includes? (name ns-symb) "api")
+        :when       (str/includes? (name ns-symb) "metabase.api")
         [symb varr] (do (classloader/require ns-symb)
                         (sort (ns-interns ns-symb)))
         :when       (:is-endpoint? (meta varr))]
