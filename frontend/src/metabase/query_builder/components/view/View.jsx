@@ -115,7 +115,8 @@ export default class View extends React.Component {
     if (!card || !databases) {
       return <LoadingAndErrorWrapper className={fitClassNames} loading />;
     }
-    const ModeFooter = mode && mode.ModeFooter;
+    const queryMode = mode && mode.queryMode();
+    const ModeFooter = queryMode && queryMode.ModeFooter;
     const isStructured = query instanceof StructuredQuery;
     const isNative = query instanceof NativeQuery;
 

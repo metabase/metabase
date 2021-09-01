@@ -8,6 +8,7 @@
             [metabase.db :as mdb]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models :refer [Session User]]
+            [metabase.public-settings :as public-settings]
             [metabase.server.middleware.session :as mw.session]
             [metabase.test :as mt]
             [metabase.util.i18n :as i18n]
@@ -49,18 +50,25 @@
               {:value     (str uuid)
                :same-site :lax
                :http-only true
-               :path      "/"
-               :max-age   1209600}}
+               :path      "/"}}
              (-> (mw.session/set-session-cookie {} {} {:id uuid, :type :normal})
                  :cookies))))
-    (testing "if `MB_SESSION_COOKIES=true` we shouldn't set a `Max-Age`"
+    (testing "should set `Max-Age` if `remember` is true in request"
+      (is (= {:value     (str uuid)
+              :same-site :lax
+              :http-only true
+              :path      "/"
+              :max-age   1209600}
+             (-> (mw.session/set-session-cookie {:body {:remember true}} {} {:id uuid, :type :normal})
+                 (get-in [:cookies "metabase.SESSION"])))))
+    (testing "if `MB_SESSION_COOKIES=true` we shouldn't set a `Max-Age`, even if `remember` is true"
       (is (= {:value     (str uuid)
               :same-site :lax
               :http-only true
               :path      "/"}
              (let [env env/env]
-               (with-redefs [env/env (assoc env :mb-session-cookies "true")]
-                 (-> (mw.session/set-session-cookie {} {} {:id uuid, :type :normal})
+               (mt/with-temporary-setting-values [session-cookies true]
+                 (-> (mw.session/set-session-cookie {:body {:remember true}} {} {:id uuid, :type :normal})
                      (get-in [:cookies "metabase.SESSION"])))))))))
 
 ;; if request is an HTTPS request then we should set `:secure true`. There are several different headers we check for

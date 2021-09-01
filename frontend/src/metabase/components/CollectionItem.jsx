@@ -9,35 +9,31 @@ import Link from "metabase/components/Link";
 
 import { color } from "metabase/lib/colors";
 
-const ItemLink = props => (
+const ItemLink = ({ collection, hovered, highlighted, event, children }) => (
   <Link
-    to={`collection/${props.collection.id}`}
+    to={collection.getUrl()}
     bg={
-      props.hovered
+      hovered
         ? color("brand")
-        : props.highlighted
+        : highlighted
         ? color("bg-light")
         : color("bg-medium")
     }
-    color={props.hovered ? "white" : color("text-medium")}
+    color={hovered ? "white" : color("text-medium")}
     className="block rounded relative text-brand-hover"
-    data-metabase-event={props.event}
+    data-metabase-event={event}
     style={{
       borderSize: 1,
-      borderColor: props.hovered
+      borderColor: hovered
         ? color("brand")
-        : props.highlighted
+        : highlighted
         ? color("bg-medium")
         : "transparent",
-      borderStyle: props.hovered
-        ? "solid"
-        : props.highlighted
-        ? "dotted"
-        : "solid",
+      borderStyle: hovered ? "solid" : highlighted ? "dotted" : "solid",
     }}
     hover={{ color: color("brand") }}
   >
-    {props.children}
+    {children}
   </Link>
 );
 

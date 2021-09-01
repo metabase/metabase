@@ -3,8 +3,6 @@ import Breadcrumbs from "metabase/components/Breadcrumbs";
 
 export const component = Breadcrumbs;
 export const category = "navigation";
-// uses Tooltip which breaks snapshot tests
-export const noSnapshotTest = true;
 
 export const description = `
 Breadcrumbs to help user get know where they are and to parent pages.

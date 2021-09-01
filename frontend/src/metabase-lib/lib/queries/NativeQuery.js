@@ -261,7 +261,6 @@ export default class NativeQuery extends AtomicQuery {
     return getEngineNativeRequiresTable(this.engine());
   }
 
-  // $FlowFixMe
   templateTags(): TemplateTag[] {
     return Object.values(this.templateTagsMap());
   }
@@ -297,12 +296,14 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   dimensionOptions(
-    dimensionFilter: DimensionFilter = () => true,
+    dimensionFilter: DimensionFilter = _.identity,
+    operatorFilter = _.identity,
   ): DimensionOptions {
     const dimensions = this.templateTags()
-      .filter(tag => tag.type === "dimension")
+      .filter(tag => tag.type === "dimension" && operatorFilter(tag))
       .map(tag => new TemplateTagDimension(tag.name, this.metadata(), this))
-      .filter(dimensionFilter);
+      .filter(dimension => dimensionFilter(dimension));
+
     return new DimensionOptions({
       dimensions: dimensions,
       count: dimensions.length,
@@ -446,7 +447,6 @@ export default class NativeQuery extends AtomicQuery {
         }
 
         // ensure all tags have an id since we need it for parameter values to work
-        // $FlowFixMe
         for (const tag: TemplateTag of Object.values(templateTags)) {
           if (tag.id == null) {
             tag.id = Utils.uuid();

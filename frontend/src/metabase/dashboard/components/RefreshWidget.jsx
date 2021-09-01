@@ -10,6 +10,8 @@ import CountdownIcon from "metabase/components/icons/CountdownIcon";
 import { t } from "ttag";
 import cx from "classnames";
 
+import { DashboardHeaderButton } from "./DashboardHeader.styled";
+
 const OPTIONS = [
   { name: t`Off`, period: null },
   { name: t`1 minute`, period: 1 * 60 },
@@ -21,6 +23,11 @@ const OPTIONS = [
 ];
 
 export default class RefreshWidget extends Component {
+  constructor(props) {
+    super(props);
+
+    this.popover = React.createRef();
+  }
   state = { elapsed: null };
 
   UNSAFE_componentWillMount() {
@@ -46,11 +53,13 @@ export default class RefreshWidget extends Component {
     const remaining = period - elapsed;
     return (
       <PopoverWithTrigger
-        ref="popover"
+        ref={this.popover}
         triggerElement={
           elapsed == null ? (
             <Tooltip tooltip={t`Auto-refresh`}>
-              <ClockIcon width={18} height={18} className={className} />
+              <DashboardHeaderButton>
+                <ClockIcon width={18} height={18} className={className} />
+              </DashboardHeaderButton>
             </Tooltip>
           ) : (
             <Tooltip
@@ -63,12 +72,14 @@ export default class RefreshWidget extends Component {
                 Math.round(remaining % 60)
               }
             >
-              <CountdownIcon
-                width={18}
-                height={18}
-                className="text-green"
-                percent={Math.min(0.95, (period - elapsed) / period)}
-              />
+              <DashboardHeaderButton>
+                <CountdownIcon
+                  width={18}
+                  height={18}
+                  className="text-green"
+                  percent={Math.min(0.95, (period - elapsed) / period)}
+                />
+              </DashboardHeaderButton>
             </Tooltip>
           )
         }
@@ -84,7 +95,7 @@ export default class RefreshWidget extends Component {
                 period={option.period}
                 selected={option.period === period}
                 onClick={() => {
-                  this.refs.popover.close();
+                  this.popover.current.close();
                   onChangePeriod(option.period);
                 }}
               />

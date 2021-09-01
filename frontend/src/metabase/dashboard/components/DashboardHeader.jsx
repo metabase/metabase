@@ -1,15 +1,15 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/components/Button";
-import AddToDashSelectQuestionModal from "./AddToDashSelectQuestionModal";
 import Header from "metabase/components/Header";
 import Icon from "metabase/components/Icon";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Tooltip from "metabase/components/Tooltip";
 
 import { getDashboardActions } from "./DashboardActions";
+import { DashboardHeaderButton } from "./DashboardHeader.styled";
 
 import ParametersPopover from "./ParametersPopover";
 import Popover from "metabase/components/Popover";
@@ -76,7 +76,12 @@ type State = {
 };
 
 export default class DashboardHeader extends Component {
-  props: Props;
+  constructor(props: Props) {
+    super(props);
+
+    this.addQuestionModal = React.createRef();
+  }
+
   state: State = {
     modal: null,
   };
@@ -183,6 +188,8 @@ export default class DashboardHeader extends Component {
       isFullscreen,
       isEditable,
       location,
+      onToggleAddQuestionSidebar,
+      showAddQuestionSidebar,
     } = this.props;
     const canEdit = dashboard.can_write && isEditable && !!dashboard;
 
@@ -194,23 +201,20 @@ export default class DashboardHeader extends Component {
     }
 
     if (isEditing) {
+      const addQuestionButtonHint = showAddQuestionSidebar
+        ? t`Close sidebar`
+        : t`Add questions`;
+
       buttons.push(
-        <ModalWithTrigger
-          key="add-a-question"
-          ref="addQuestionModal"
-          triggerElement={
-            <Tooltip tooltip={t`Add question`}>
-              <Icon name="add" data-metabase-event="Dashboard;Add Card Modal" />
-            </Tooltip>
-          }
-        >
-          <AddToDashSelectQuestionModal
-            dashboard={dashboard}
-            addCardToDashboard={this.props.addCardToDashboard}
-            onEditingChange={this.props.onEditingChange}
-            onClose={() => this.refs.addQuestionModal.toggle()}
-          />
-        </ModalWithTrigger>,
+        <Tooltip tooltip={addQuestionButtonHint}>
+          <DashboardHeaderButton
+            isActive={showAddQuestionSidebar}
+            onClick={onToggleAddQuestionSidebar}
+            data-metabase-event="Dashboard;Add Card Sidebar"
+          >
+            <Icon name="add" />
+          </DashboardHeaderButton>
+        </Tooltip>,
       );
 
       // Add text card button
@@ -222,7 +226,9 @@ export default class DashboardHeader extends Component {
             className="text-brand-hover cursor-pointer"
             onClick={() => this.onAddTextBox()}
           >
-            <Icon name="string" size={18} />
+            <DashboardHeaderButton>
+              <Icon name="string" size={18} />
+            </DashboardHeaderButton>
           </a>
         </Tooltip>,
       );
@@ -244,7 +250,9 @@ export default class DashboardHeader extends Component {
               })}
               onClick={showAddParameterPopover}
             >
-              <Icon name="filter" />
+              <DashboardHeaderButton>
+                <Icon name="filter" />
+              </DashboardHeaderButton>
             </a>
           </Tooltip>
 
@@ -280,7 +288,9 @@ export default class DashboardHeader extends Component {
             className="text-brand-hover cursor-pointer"
             onClick={() => this.handleEdit(dashboard)}
           >
-            <Icon name="pencil" />
+            <DashboardHeaderButton>
+              <Icon name="pencil" />
+            </DashboardHeaderButton>
           </a>
         </Tooltip>,
       );
@@ -348,7 +358,9 @@ export default class DashboardHeader extends Component {
       buttons.push(
         <PopoverWithTrigger
           triggerElement={
-            <Icon name="ellipsis" size={20} className="text-brand-hover" />
+            <DashboardHeaderButton>
+              <Icon name="ellipsis" size={20} className="text-brand-hover" />
+            </DashboardHeaderButton>
           }
         >
           <div className="py1">
@@ -373,7 +385,7 @@ export default class DashboardHeader extends Component {
         analyticsContext="Dashboard"
         item={dashboard}
         isEditing={this.props.isEditing}
-        showBadge={!this.props.isEditing && !this.props.isFullscreen}
+        hasBadge={!this.props.isEditing && !this.props.isFullscreen}
         isEditingInfo={this.props.isEditing}
         headerButtons={this.getHeaderButtons()}
         editWarning={this.getEditWarning(dashboard)}

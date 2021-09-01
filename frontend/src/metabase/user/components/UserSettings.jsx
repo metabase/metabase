@@ -56,25 +56,21 @@ export default class UserSettings extends Component {
             <UserAvatar user={user} mb={[1, 2]} size={["3em", "4em", "5em"]} />
             <h2>{t`Account settings`}</h2>
           </Flex>
-
-          {showChangePassword && (
-            <Radio
-              value={tab}
-              underlined={true}
-              options={[
-                { name: t`Profile`, value: "details" },
-                {
-                  name: t`Password`,
-                  value: "password",
-                },
-                { name: t`Login History`, value: "loginHistory" },
-              ]}
-              onChange={tab => setTab(tab)}
-            />
-          )}
+          <Radio
+            value={tab}
+            variant="underlined"
+            options={[
+              { name: t`Profile`, value: "details" },
+              ...(showChangePassword
+                ? [{ name: t`Password`, value: "password" }]
+                : []),
+              { name: t`Login History`, value: "loginHistory" },
+            ]}
+            onChange={tab => setTab(tab)}
+          />
         </Flex>
         <Box w={["100%", 540]} ml="auto" mr="auto" px={[1, 2]} py={[1, 3]}>
-          {tab === "details" || !showChangePassword ? (
+          {tab === "details" ? (
             <User.Form
               {...this.props}
               form={User.forms.user}
@@ -84,7 +80,7 @@ export default class UserSettings extends Component {
                 }
               }}
             />
-          ) : tab === "password" ? (
+          ) : tab === "password" && showChangePassword ? (
             <SetUserPassword
               submitFn={this.onUpdatePassword.bind(this)}
               {...this.props}

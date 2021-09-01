@@ -1,5 +1,6 @@
 import {
   getTableCellClickedObject,
+  getTableClickedObjectRowData,
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
 import { TYPE } from "metabase/lib/types";
@@ -15,7 +16,29 @@ const DIMENSION_COLUMN = {
 };
 
 describe("metabase/visualization/lib/table", () => {
+  describe("getTableClickedObjectRowData", () => {
+    it("should get row data from series", () => {
+      const series = [
+        {
+          data: {
+            rows: [[1, 2, 3]],
+            cols: [DIMENSION_COLUMN, METRIC_COLUMN, RAW_COLUMN],
+          },
+        },
+      ];
+      const rowIndex = 0;
+
+      expect(getTableClickedObjectRowData(series, rowIndex)).toEqual([
+        { col: { source: "breakout" }, value: 1 },
+        { col: { source: "aggregation" }, value: 2 },
+        { col: { source: "fields" }, value: 3 },
+      ]);
+    });
+  });
+
   describe("getTableCellClickedObject", () => {
+    const rowData = ["row data"];
+
     describe("normal table", () => {
       it("should work with a raw data cell", () => {
         expect(
@@ -25,6 +48,7 @@ describe("metabase/visualization/lib/table", () => {
             0,
             0,
             false,
+            rowData,
           ),
         ).toEqual({
           value: 0,
@@ -35,7 +59,7 @@ describe("metabase/visualization/lib/table", () => {
             row: [0],
             rowIndex: 0,
           },
-          data: [{ col: { source: "fields" }, value: 0 }],
+          data: rowData,
         });
       });
       it("should work with a dimension cell", () => {
@@ -46,6 +70,7 @@ describe("metabase/visualization/lib/table", () => {
             0,
             0,
             false,
+            rowData,
           ),
         ).toEqual({
           value: 1,
@@ -56,10 +81,7 @@ describe("metabase/visualization/lib/table", () => {
             rowIndex: 0,
           },
           settings: {},
-          data: [
-            { col: { source: "breakout" }, value: 1 },
-            { col: { source: "aggregation" }, value: 2 },
-          ],
+          data: rowData,
         });
       });
       it("should work with a metric cell", () => {
@@ -70,6 +92,7 @@ describe("metabase/visualization/lib/table", () => {
             0,
             1,
             false,
+            rowData,
           ),
         ).toEqual({
           value: 2,
@@ -86,10 +109,7 @@ describe("metabase/visualization/lib/table", () => {
             rowIndex: 0,
           },
           settings: {},
-          data: [
-            { col: { source: "breakout" }, value: 1 },
-            { col: { source: "aggregation" }, value: 2 },
-          ],
+          data: rowData,
         });
       });
     });

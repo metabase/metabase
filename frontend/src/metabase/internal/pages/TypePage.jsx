@@ -80,7 +80,7 @@ const TypePage = () => (
         <Text>Used for page headings, etc</Text>
 
         <Example>
-          <Heading>Title o' the page</Heading>
+          <Heading>Title o&apos; the page</Heading>
         </Example>
       </Box>
       <Box mb={3}>

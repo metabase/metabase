@@ -13,6 +13,7 @@ function DataStep({ color, query, databases, updateQuery }) {
   return (
     <NotebookCell color={color}>
       <DatabaseSchemaAndTableDataSelector
+        hasTableSearch
         databaseQuery={{ saved: true }}
         selectedDatabaseId={query.databaseId()}
         selectedTableId={query.tableId()}
@@ -29,7 +30,11 @@ function DataStep({ color, query, databases, updateQuery }) {
               {t`Pick your starting data`}
             </NotebookCellItem>
           ) : (
-            <NotebookCellItem color={color} icon="table2">
+            <NotebookCellItem
+              color={color}
+              icon="table2"
+              data-testid="data-step-cell"
+            >
               {table && table.displayName()}
             </NotebookCellItem>
           )

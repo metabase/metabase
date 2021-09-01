@@ -1,10 +1,13 @@
 (ns metabase.search.scoring
   (:require [clojure.core.memoize :as memoize]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [java-time :as t]
+            [metabase.plugins.classloader :as classloader]
             [metabase.search.config :as search-config]
-            [schema.core :as s])
-    (:import java.util.PriorityQueue))
+            [metabase.util :as u]
+            [potemkin.types :as p.types]
+            [schema.core :as s]))
 
 ;;; Utility functions
 
@@ -93,13 +96,13 @@
                                                              (map :scorer weighted-scorers)))]
                            :when  (and matched-text
                                        (> score 0))]
-                       {:text-score          (/ score total-weight)
+                       {:score               (/ score total-weight)
                         :match               matched-text
                         :match-context-thunk #(match-context query-tokens match-tokens)
                         :column              column
                         :result              search-result})]
     (when (seq scores)
-      (apply max-key :text-score scores))))
+      (apply max-key :score scores))))
 
 (defn- consecutivity-scorer
   [query-tokens match-tokens]
@@ -167,9 +170,9 @@
     (text-score-with match-based-scorers
                      (tokenize (normalize raw-search-string))
                      result)
-    {:text-score          0
-     :match               ""
-     :result              result}))
+    {:score  0
+     :match  ""
+     :result result}))
 
 (defn- pinned-score
   [{:keys [model collection_position]}]
@@ -207,9 +210,9 @@
 
 (defn- serialize
   "Massage the raw result from the DB and match data into something more useful for the client"
-  [{:keys [result column match-context-thunk]} scores]
+  [result {:keys [column match-context-thunk]} scores]
   (let [{:keys [name display_name
-                collection_id collection_name]} result]
+                collection_id collection_name collection_authority_level]} result]
     (-> result
         (assoc
          :name           (if (or (= column :name)
@@ -219,8 +222,9 @@
          :context        (when (and (not (search-config/displayed-columns column))
                                     match-context-thunk)
                            (match-context-thunk))
-         :collection     {:id   collection_id
-                          :name collection_name}
+         :collection     {:id              collection_id
+                          :name            collection_name
+                          :authority_level collection_authority_level}
          :scores          scores)
         (dissoc
          :collection_id
@@ -228,11 +232,8 @@
          :display_name))))
 
 (defn- weights-and-scores
-  [{:keys [text-score result]}]
-  [{:weight 10
-    :score  text-score
-    :name   "text"}
-   {:weight 2
+  [result]
+  [{:weight 2
     :score  (pinned-score result)
     :name   "pinned"}
    {:weight 3/2
@@ -245,41 +246,43 @@
     :score  (model-score result)
     :name   "model"}])
 
-(defn- weighted-scores
-  [hit]
-  (->> hit
-       weights-and-scores
-       (filter :score)
-       (map (fn [{:keys [weight score] :as composite-score}]
-              (assoc composite-score :weighted-score (* weight score))))))
+(p.types/defprotocol+ ResultScore
+  "Protocol to score a result in search beyond the text scoring."
+  (score-result [_ result]
+    "Score a result, returning a collection of maps with score and weight. Should not include the text scoring, done
+    separately. Should return a sequence of maps with
 
-(defn- accumulate-top-results
-  "Accumulator that saves the top n (defined by `search-config/max-filtered-results`) items sent to it"
-  ([] (PriorityQueue. search-config/max-filtered-results compare-score-and-result))
-  ([^PriorityQueue q]
-   (loop [acc []]
-     (if-let [x (.poll q)]
-       (recur (conj acc x))
-       acc)))
-  ([^PriorityQueue q item]
-   (if (>= (.size q) search-config/max-filtered-results)
-     (let [smallest (.peek q)]
-       (if (pos? (compare-score-and-result item smallest))
-         (doto q
-           (.poll)
-           (.offer item))
-         q))
-     (doto q
-       (.offer item)))))
+     {:weight number,
+      :score  number,
+      :name   string}"))
+
+(def oss-score-impl
+  "Default open source scoring implementation."
+  (reify ResultScore
+    (score-result [_ result]
+      (weights-and-scores result))))
+
+(def score-impl
+  "Default scoring implementation, using ee if present, or oss otherwise"
+  (u/prog1 (or (u/ignore-exceptions
+                (classloader/require 'metabase-enterprise.search.scoring)
+                (some-> (resolve 'metabase-enterprise.search.scoring/ee-scoring)
+                        var-get))
+               oss-score-impl)
+           (log/debugf "Scoring implementation set to %s" <>)))
 
 (defn score-and-result
   "Returns a map with the `:score` and `:result`—or nil. The score is a vector of comparable things in priority order."
-  [raw-search-string result]
-  (when-let [hit (text-score-with-match raw-search-string result)]
-    (let [scores (weighted-scores hit)]
-      {:score      (/ (reduce + (map :weighted-score scores))
-                      (reduce + (map :weight scores)))
-       :result     (serialize hit scores)})))
+  ([raw-search-string result]
+   (score-and-result score-impl raw-search-string result))
+  ([scorer raw-search-string result]
+   (let [text-score (text-score-with-match raw-search-string result)
+         scores     (->> (conj (score-result scorer result)
+                               {:score (:score text-score), :weight 10 :name "text score"})
+                         (filter :score))]
+     {:score  (/ (reduce + (map (fn [{:keys [weight score]}] (* weight score)) scores))
+                 (reduce + (map :weight scores)))
+      :result (serialize result text-score scores)})))
 
 (defn top-results
   "Given a reducible collection (i.e., from `jdbc/reducible-query`) and a transforming function for it, applies the
@@ -287,7 +290,7 @@
   maps with `:score` and `:result` keys."
   [reducible-results xf]
   (->> reducible-results
-       (transduce xf accumulate-top-results)
+       (transduce xf (u/sorted-take search-config/max-filtered-results compare-score-and-result))
        ;; Make it descending: high scores first
-       reverse
+       rseq
        (map :result)))

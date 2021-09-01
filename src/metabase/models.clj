@@ -3,7 +3,7 @@
             [metabase.models.card :as card]
             [metabase.models.card-favorite :as card-favorite]
             [metabase.models.collection :as collection]
-            [metabase.models.collection-revision :as collection-revision]
+            [metabase.models.collection-permission-graph-revision :as c-perm-revision]
             [metabase.models.dashboard :as dashboard]
             [metabase.models.dashboard-card :as dashboard-card]
             [metabase.models.dashboard-card-series :as dashboard-card-series]
@@ -42,7 +42,7 @@
          card/keep-me
          card-favorite/keep-me
          collection/keep-me
-         collection-revision/keep-me
+         c-perm-revision/keep-me
          dashboard/keep-me
          dashboard-card/keep-me
          dashboard-card-series/keep-me
@@ -80,7 +80,7 @@
  [card Card]
  [card-favorite CardFavorite]
  [collection Collection]
- [collection-revision CollectionRevision]
+ [c-perm-revision CollectionPermissionGraphRevision]
  [dashboard Dashboard]
  [dashboard-card DashboardCard]
  [dashboard-card-series DashboardCardSeries]

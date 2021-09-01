@@ -6,13 +6,11 @@ import { Box } from "grid-styled";
 
 import DashboardHeader from "./DashboardHeader";
 import DashboardGrid from "./DashboardGrid";
-import ClickBehaviorSidebar from "./ClickBehaviorSidebar";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { t } from "ttag";
-import Parameters from "metabase/parameters/components/Parameters";
-import ParameterSidebar from "metabase/parameters/components/ParameterSidebar";
-import SharingSidebar from "metabase/sharing/components/SharingSidebar";
+import Parameters from "metabase/parameters/components/Parameters/Parameters";
 import EmptyState from "metabase/components/EmptyState";
+import { DashboardSidebars } from "./DashboardSidebars";
 
 import DashboardControls from "../hoc/DashboardControls";
 
@@ -134,6 +132,7 @@ export default class Dashboard extends Component {
   props: Props;
   state: State = {
     error: null,
+    showAddQuestionSidebar: false,
   };
 
   static propTypes = {
@@ -219,6 +218,10 @@ export default class Dashboard extends Component {
   setEditing = (isEditing: false | DashboardWithCards) => {
     this.props.onRefreshPeriodChange(null);
     this.props.setEditingDashboard(isEditing);
+
+    this.setState({
+      showAddQuestionSidebar: false,
+    });
   };
 
   setDashboardAttribute = (attribute: string, value: any) => {
@@ -226,6 +229,12 @@ export default class Dashboard extends Component {
       id: this.props.dashboard.id,
       attributes: { [attribute]: value },
     });
+  };
+
+  onToggleAddQuestionSidebar = () => {
+    this.setState(prev => ({
+      showAddQuestionSidebar: !prev.showAddQuestionSidebar,
+    }));
   };
 
   onCancel = () => {
@@ -251,7 +260,7 @@ export default class Dashboard extends Component {
       isSharing,
       hideParameters,
     } = this.props;
-    const { error } = this.state;
+    const { error, showAddQuestionSidebar } = this.state;
     isNightMode = isNightMode && isFullscreen;
 
     let parametersWidget;
@@ -304,6 +313,8 @@ export default class Dashboard extends Component {
                 parametersWidget={parametersWidget}
                 onSharingClick={this.onSharingClick}
                 onEmbeddingClick={this.onEmbeddingClick}
+                onToggleAddQuestionSidebar={this.onToggleAddQuestionSidebar}
+                showAddQuestionSidebar={showAddQuestionSidebar}
               />
             </header>
             <div
@@ -336,96 +347,15 @@ export default class Dashboard extends Component {
                   )}
                 </div>
               </div>
-              <Sidebars {...this.props} onCancel={this.onCancel} />
+              <DashboardSidebars
+                {...this.props}
+                onCancel={this.onCancel}
+                showAddQuestionSidebar={showAddQuestionSidebar}
+              />
             </div>
           </div>
         )}
       </LoadingAndErrorWrapper>
     );
   }
-}
-
-function Sidebars(props) {
-  const {
-    dashboard,
-    parameters,
-    showAddParameterPopover,
-    removeParameter,
-    editingParameter,
-    isEditingParameter,
-    clickBehaviorSidebarDashcard,
-    onReplaceAllDashCardVisualizationSettings,
-    onUpdateDashCardVisualizationSettings,
-    onUpdateDashCardColumnSettings,
-    hideClickBehaviorSidebar,
-    setEditingParameter,
-    setParameter,
-    setParameterName,
-    setParameterDefaultValue,
-    dashcardData,
-    setParameterFilteringParameters,
-    isSharing,
-    isEditing,
-    isFullscreen,
-    onCancel,
-  } = props;
-  if (clickBehaviorSidebarDashcard) {
-    return (
-      <ClickBehaviorSidebar
-        dashboard={dashboard}
-        dashcard={clickBehaviorSidebarDashcard}
-        parameters={parameters}
-        dashcardData={dashcardData[clickBehaviorSidebarDashcard.id]}
-        onUpdateDashCardVisualizationSettings={
-          onUpdateDashCardVisualizationSettings
-        }
-        onUpdateDashCardColumnSettings={onUpdateDashCardColumnSettings}
-        hideClickBehaviorSidebar={hideClickBehaviorSidebar}
-        onReplaceAllDashCardVisualizationSettings={
-          onReplaceAllDashCardVisualizationSettings
-        }
-      />
-    );
-  }
-
-  if (isEditingParameter) {
-    const { id: editingParameterId } = editingParameter || {};
-    const [[parameter], otherParameters] = _.partition(
-      parameters,
-      p => p.id === editingParameterId,
-    );
-    return (
-      <ParameterSidebar
-        parameter={parameter}
-        otherParameters={otherParameters}
-        remove={() => {
-          setEditingParameter(null);
-          removeParameter(editingParameterId);
-        }}
-        done={() => setEditingParameter(null)}
-        showAddParameterPopover={showAddParameterPopover}
-        setParameter={setParameter}
-        setName={name => setParameterName(editingParameterId, name)}
-        setDefaultValue={value =>
-          setParameterDefaultValue(editingParameterId, value)
-        }
-        setFilteringParameters={ids =>
-          setParameterFilteringParameters(editingParameterId, ids)
-        }
-      />
-    );
-  }
-
-  // SharingSidebar should only show if we're not editing or in fullscreen
-  if (!isEditing && !isFullscreen && isSharing) {
-    return (
-      <SharingSidebar
-        dashboard={dashboard}
-        params={props.params}
-        onCancel={onCancel}
-      />
-    );
-  }
-
-  return null;
 }

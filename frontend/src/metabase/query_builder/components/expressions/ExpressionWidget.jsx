@@ -2,6 +2,8 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import { t } from "ttag";
+import _ from "underscore";
+
 import ExpressionEditorTextfield from "./ExpressionEditorTextfield";
 import { isExpression } from "metabase/lib/expressions";
 import MetabaseSettings from "metabase/lib/settings";
@@ -16,7 +18,7 @@ export default class ExpressionWidget extends Component {
     query: PropTypes.object.isRequired,
     onChangeExpression: PropTypes.func.isRequired,
     onRemoveExpression: PropTypes.func,
-    onClose: PropTypes.func.isRequired,
+    onClose: PropTypes.func,
   };
 
   static defaultProps = {
@@ -29,10 +31,12 @@ export default class ExpressionWidget extends Component {
   }
 
   UNSAFE_componentWillReceiveProps(newProps) {
-    this.setState({
-      name: newProps.name,
-      expression: newProps.expression,
-    });
+    if (!this.state || !_.isEqual(this.props.expression, newProps.expression)) {
+      this.setState({
+        name: newProps.name,
+        expression: newProps.expression,
+      });
+    }
   }
 
   isValid() {

@@ -45,7 +45,7 @@
      ;; fetch the corresponding Table, then set the Table or Field property
      (when-let [table-id (db/select-one-id Table
                            ;; TODO: this needs to support schemas
-                           :db_id  (u/get-id database)
+                           :db_id  (u/the-id database)
                            :name   table-name
                            :active true)]
        (if field-name

@@ -189,8 +189,8 @@ const PermissionsCell = ({
 
 const ActionsList = connect()(({ actions, dispatch }) => (
   <ul className="border-top">
-    {actions.map(action => (
-      <li>
+    {actions.map((action, index) => (
+      <li key={index}>
         {typeof action === "function" ? (
           action()
         ) : (
@@ -209,6 +209,7 @@ class GroupPermissionCell extends Component {
       confirmAction: null,
       hovered: false,
     };
+    this.popover = React.createRef();
   }
   hoverEnter() {
     // only change the hover state if the group is not the admin
@@ -249,7 +250,7 @@ class GroupPermissionCell extends Component {
 
     return (
       <PopoverWithTrigger
-        ref="popover"
+        ref={this.popover}
         disabled={!isEditable}
         triggerClasses="cursor-pointer flex flex-full layout-centered border-column-divider"
         triggerElement={
@@ -337,7 +338,7 @@ class GroupPermissionCell extends Component {
             } else {
               confirmAction();
             }
-            this.refs.popover.close();
+            this.popover.current.close();
           }}
         />
         {actions && actions.length > 0 ? (

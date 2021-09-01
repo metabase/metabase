@@ -16,9 +16,15 @@
     "react/no-did-mount-set-state": 0,
     "react/no-did-update-set-state": 0,
     "react/no-find-dom-node": 0,
+    "react/no-children-prop": 2,
+    "react/no-string-refs": 2,
+    "react/no-unescaped-entities": 2,
+    "react/jsx-no-target-blank": 2,
+    "react/jsx-key": 2,
     "prefer-const": [1, { "destructuring": "all" }],
     "no-useless-escape": 0,
-    "no-only-tests/no-only-tests": "error"
+    "no-only-tests/no-only-tests": "error",
+    "complexity": ["error", { "max": 54 }]
   },
   "globals": {
     "pending": false,

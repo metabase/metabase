@@ -1,5 +1,6 @@
 import React from "react";
 import LogoIcon from "metabase/components/LogoIcon";
+import ExternalLink from "metabase/components/ExternalLink";
 
 import { t, jt } from "ttag";
 
@@ -8,7 +9,7 @@ type Props = {
 };
 
 const LogoBadge = ({ dark }: Props) => (
-  <a
+  <ExternalLink
     href="https://metabase.com/"
     target="_blank"
     className="h4 flex text-bold align-center no-decoration"
@@ -21,7 +22,7 @@ const LogoBadge = ({ dark }: Props) => (
         </span>
       )}`}</span>
     </span>
-  </a>
+  </ExternalLink>
 );
 
 export default LogoBadge;

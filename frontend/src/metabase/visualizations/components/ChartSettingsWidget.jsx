@@ -2,10 +2,12 @@
 import React from "react";
 
 import cx from "classnames";
+import Icon from "metabase/components/Icon";
 
 const ChartSettingsWidget = ({
   title,
   description,
+  hint,
   hidden,
   disabled,
   widget: Widget,
@@ -28,7 +30,16 @@ const ChartSettingsWidget = ({
         disable: disabled,
       })}
     >
-      {title && <h4 className="mb1 flex align-center">{title}</h4>}
+      {title && (
+        <h4 className="mb1 flex align-center">
+          {title}
+          {hint && (
+            <span className="flex ml1">
+              <Icon name="info" size={14} tooltip={hint} />
+            </span>
+          )}
+        </h4>
+      )}
       {description && <div className="mb1">{description}</div>}
       {Widget && (
         <Widget

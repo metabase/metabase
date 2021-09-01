@@ -130,3 +130,12 @@
   "Get the size, in bytes, of the file at `path`."
   ^Long [^String path]
   (Files/size (nio-path path)))
+
+(defn temporary-file
+  "Create a temporary file with prefix and suffix. Default to delete on exit."
+  ([prefix suffix] (temporary-file prefix suffix true))
+  ([prefix suffix delete-on-exit?]
+   (let [file (File/createTempFile prefix suffix)]
+     (when delete-on-exit?
+       (.deleteOnExit file))
+     file)))

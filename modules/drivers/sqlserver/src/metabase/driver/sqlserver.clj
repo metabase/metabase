@@ -80,7 +80,7 @@
   [_ {:keys [user password db host port instance domain ssl]
       :or   {user "dbuser", password "dbpassword", db "", host "localhost"}
       :as   details}]
-  (-> {:applicationName    config/mb-app-id-string
+  (-> {:applicationName    config/mb-version-and-process-identifier
        :subprotocol        "sqlserver"
        ;; it looks like the only thing that actually needs to be passed as the `subname` is the host; everything else
        ;; can be passed as part of the Properties
@@ -209,6 +209,23 @@
 (defmethod sql.qp/cast-temporal-string [:sqlserver :Coercion/ISO8601->DateTime]
   [_driver _semantic_type expr]
   (hx/->datetime expr))
+
+(defmethod sql.qp/cast-temporal-string [:sqlserver :Coercion/YYYYMMDDHHMMSSString->Temporal]
+  [_driver _semantic_type expr]
+  ;; "20190421164300" -> "2019-04-21 16:43:00"
+  ;;                          5  8  11 14 17
+  (let [formatted (reduce (fn [expr [index c]]
+                            (hsql/call :stuff expr index 0 c))
+                          expr
+                          [[5 "-"]
+                           [8 "-"]
+                           [11 " "]
+                           [14 ":"]
+                           [17 ":"]])]
+    ;; 20 is ODBC canonical yyyy-mm-dd hh:mi:ss (24h). I couldn't find a way to use an arbitrary format string when
+    ;; parsing and SO seems to push towards manually formatting a string and then parsing with one of the available
+    ;; formats. Not great.
+    (hsql/call :convert (hsql/raw "datetime2") formatted 20)))
 
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :limit]
   [_ _ honeysql-form {value :limit}]

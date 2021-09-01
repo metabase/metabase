@@ -117,6 +117,7 @@ export default class SharingPane extends Component {
               <div className="mt1">
                 {extensions.map(extension => (
                   <span
+                    key={extension}
                     className={cx(
                       "cursor-pointer text-brand-hover text-bold text-uppercase",
                       extension === this.state.extension

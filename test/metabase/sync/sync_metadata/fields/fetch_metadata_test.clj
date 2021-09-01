@@ -69,7 +69,7 @@
                                                           :effective-type    :type/Integer
                                                           :pk?               false}}}}}}
 
-           (let [transactions-table-id   (u/get-id (db/select-one-id Table :db_id (u/get-id db), :name "transactions"))
+           (let [transactions-table-id   (u/the-id (db/select-one-id Table :db_id (u/the-id db), :name "transactions"))
                  remove-ids-and-nil-vals (partial walk/postwalk #(if-not (map? %)
                                                                    %
                                                                    ;; database-position isn't stable since they are

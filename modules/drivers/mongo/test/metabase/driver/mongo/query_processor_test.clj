@@ -112,7 +112,7 @@
       (mt/dataset geographical-tips
         (mt/with-everything-store
           (is (= {:projections ["count"]
-                  :query       [{"$match" {"source.username" {"$eq" "tupac"}}}
+                  :query       [{"$match" {"source.username" "tupac"}}
                                 {"$group" {"_id" nil, "count" {"$sum" 1}}}
                                 {"$sort" {"_id" 1}}
                                 {"$project" {"_id" false, "count" true}}],

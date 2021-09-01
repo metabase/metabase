@@ -14,6 +14,7 @@ import { memoize } from "metabase-lib/lib/utils";
 import {
   getTableCellClickedObject,
   getTableHeaderClickedObject,
+  getTableClickedObjectRowData,
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
@@ -26,7 +27,6 @@ import cx from "classnames";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import MiniBar from "./MiniBar";
 
-// $FlowFixMe: had to ignore react-virtualized in flow, probably due to different version
 import { Grid, ScrollSync } from "react-virtualized";
 import Draggable from "react-draggable";
 import Ellipsified from "metabase/components/Ellipsified";
@@ -340,6 +340,7 @@ export default class TableInteractive extends Component {
         rowIndex,
         columnIndex,
         this.props.isPivoted,
+        this.props.series,
       );
     } catch (e) {
       console.error(e);
@@ -348,18 +349,21 @@ export default class TableInteractive extends Component {
   // NOTE: all arguments must be passed to the memoized method, not taken from this.props etc
   @memoize
   _getCellClickedObjectCached(
-    data: DatasetData,
-    settings: VisualizationSettings,
-    rowIndex: number,
-    columnIndex: number,
-    isPivoted: boolean,
+    data,
+    settings,
+    rowIndex,
+    columnIndex,
+    isPivoted,
+    series,
   ) {
+    const clickedRowData = getTableClickedObjectRowData(series, rowIndex);
     return getTableCellClickedObject(
       data,
       settings,
       rowIndex,
       columnIndex,
       isPivoted,
+      clickedRowData,
     );
   }
 
@@ -507,13 +511,22 @@ export default class TableInteractive extends Component {
           "Table-FK": value != null && isFK(column),
           link: isClickable && isID(column),
         })}
-        onMouseUp={
+        onClick={
           isClickable
             ? e => {
                 this.onVisualizationClick(clicked, e.currentTarget);
               }
             : undefined
         }
+        onKeyUp={
+          isClickable
+            ? e => {
+                e.key === "Enter" &&
+                  this.onVisualizationClick(clicked, e.currentTarget);
+              }
+            : undefined
+        }
+        tabIndex="0"
       >
         {this.props.renderTableCellWrapper(cellData)}
       </div>
@@ -559,12 +572,10 @@ export default class TableInteractive extends Component {
     const { dragColIndex, columnPositions } = this.state;
     const { cols } = this.props.data;
     const indexes = cols.map((col, index) => index);
-    // $FlowFixMe
     indexes.splice(dragColNewIndex, 0, indexes.splice(dragColIndex, 1)[0]);
     let left = 0;
     const lefts = indexes.map(index => {
       const thisLeft = left;
-      // $FlowFixMe: we know columnPositions[index] isn't null because onDrag is called after onStart
       left += columnPositions[index].width;
       return { index, left: thisLeft };
     });
@@ -755,13 +766,10 @@ export default class TableInteractive extends Component {
   handleOnMouseEnter = () => {
     // prevent touchpad gestures from navigating forward/back if you're expecting to just scroll the table
     // https://stackoverflow.com/a/50846937
-    // $FlowFixMe: overscrollBehaviorX
     this._previousOverscrollBehaviorX = document.body.style.overscrollBehaviorX;
-    // $FlowFixMe: overscrollBehaviorX
     document.body.style.overscrollBehaviorX = "none";
   };
   handleOnMouseLeave = () => {
-    // $FlowFixMe: overscrollBehaviorX
     document.body.style.overscrollBehaviorX = this._previousOverscrollBehaviorX;
   };
 

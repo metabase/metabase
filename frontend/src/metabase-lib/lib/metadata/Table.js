@@ -35,7 +35,7 @@ export default class Table extends Base {
     return (this.schema_name && this.db && this.db.schemas.length > 1) || false;
   }
 
-  // $FlowFixMe Could be replaced with hydrated database property in selectors/metadata.js (instead / in addition to `table.db`)
+  // Could be replaced with hydrated database property in selectors/metadata.js (instead / in addition to `table.db`)
   get database() {
     return this.db;
   }
@@ -64,12 +64,9 @@ export default class Table extends Base {
   }
 
   query(query = {}): StructuredQuery {
-    return (
-      this.question()
-        .query()
-        // $FlowFixMe: we know question returns a StructuredQuery but flow doesn't
-        .updateQuery(q => ({ ...q, ...query }))
-    );
+    return this.question()
+      .query()
+      .updateQuery(q => ({ ...q, ...query }));
   }
 
   dimensions(): Dimension[] {
@@ -113,13 +110,11 @@ export default class Table extends Base {
   }
 
   // @deprecated: use aggregationOperators
-  // $FlowFixMe: known to not have side-effects
   get aggregation_operators() {
     return this.aggregationOperators();
   }
 
   // @deprecated: use aggregationOperatorsLookup
-  // $FlowFixMe: known to not have side-effects
   get aggregation_operators_lookup() {
     return this.aggregationOperatorsLookup();
   }
@@ -132,7 +127,6 @@ export default class Table extends Base {
   }
 
   // @deprecated: use fieldsLookup
-  // $FlowFixMe: known to not have side-effects
   get fields_lookup() {
     return this.fieldsLookup();
   }

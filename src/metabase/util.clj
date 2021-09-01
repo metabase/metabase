@@ -20,8 +20,8 @@
             [weavejester.dependency :as dep])
   (:import [java.net InetAddress InetSocketAddress Socket]
            [java.text Normalizer Normalizer$Form]
+           (java.util Locale PriorityQueue)
            java.util.concurrent.TimeoutException
-           java.util.Locale
            javax.xml.bind.DatatypeConverter
            [org.apache.commons.validator.routines RegexValidator UrlValidator]))
 
@@ -497,7 +497,7 @@
   Otherwise returns `nil`.
 
   Provided as a convenience to allow model-layer functions to easily accept either an object or raw ID. Use this in
-  cases where the ID/object is allowed to be `nil`. Use `get-id` below in cases where you would also like to guarantee
+  cases where the ID/object is allowed to be `nil`. Use `the-id` below in cases where you would also like to guarantee
   it is non-`nil`."
   ^Integer [object-or-id]
   (cond
@@ -514,10 +514,6 @@
   ^Integer [object-or-id]
   (or (id object-or-id)
       (throw (Exception. (tru "Not something with an ID: {0}" object-or-id)))))
-
-(def ^:deprecated ^Integer ^{:arglists '([object-or-id])} get-id
-  "DEPRECATED: Use `the-id` instead, which does the same thing, but has a clearer name."
-  the-id)
 
 ;; This is made `^:const` so it will get calculated when the uberjar is compiled. `find-namespaces` won't work if
 ;; source is excluded; either way this takes a few seconds, so doing it at compile time speeds up launch as well.
@@ -896,3 +892,33 @@
   [^String s]
   (and (string? s)
        (.isValid (org.apache.commons.validator.routines.InetAddressValidator/getInstance) s)))
+
+(defn sorted-take
+  "A reducing function that maintains a queue of the largest items as determined by `kompare`. The queue is bounded
+  in size by `size`. Useful if you are interested in the largest `size` number of items without keeping the entire
+  collection in memory.
+
+  In general,
+  (=
+    (take-last 2 (sort-by identity kompare coll))
+    (transduce (map identity) (u/sorted-take 2 kompare) coll))
+  But the entire collection is not in memory, just at most
+  "
+  [size kompare]
+  (fn bounded-heap-acc
+    ([] (PriorityQueue. size kompare))
+    ([^PriorityQueue q]
+     (loop [acc []]
+       (if-let [x (.poll q)]
+         (recur (conj acc x))
+         acc)))
+    ([^PriorityQueue q item]
+     (if (>= (.size q) size)
+       (let [smallest (.peek q)]
+         (if (pos? (kompare item smallest))
+           (doto q
+             (.poll)
+             (.offer item))
+           q))
+       (doto q
+         (.offer item))))))

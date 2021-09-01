@@ -2,6 +2,7 @@
   "Most of the code in `metabase.driver.sql.parameters.substitution` is actually tested by
   `metabase.driver.sql.parameters.substitute-test`."
   (:require [clojure.test :refer :all]
+            [metabase.driver.common.parameters :as i]
             [metabase.driver.sql.parameters.substitution :as substitution]
             [metabase.models :refer [Field]]
             [metabase.test :as mt]))
@@ -21,3 +22,14 @@
             {:field (Field (mt/id :venues :name))
              :value {:type  :string/=
                      :value ["Doohickey"]}})))))
+
+(deftest card-with-params->replacement-snippet-test
+  (testing "Make sure Card params are preserved when expanding a Card reference (#12236)"
+    (is (= {:replacement-snippet     "(SELECT * FROM table WHERE x LIKE ?)"
+            :prepared-statement-args ["G%"]}
+           (substitution/->replacement-snippet-info
+            :h2
+            (i/map->ReferencedCardQuery
+             {:card-id 1
+              :query   "SELECT * FROM table WHERE x LIKE ?"
+              :params  ["G%"]}))))))

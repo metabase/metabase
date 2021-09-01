@@ -25,14 +25,6 @@
   border-right: none;
 }
 
-.Header-button {
-  margin-right: 1.5em;
-}
-
-.Header-button:last-child {
-  margin-right: 0;
-}
-
 .EditHeader {
   background-color: color(var(--color-bg-white) alpha(-85%));
   position: relative;

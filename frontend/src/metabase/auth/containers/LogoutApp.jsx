@@ -1,5 +1,5 @@
-/* eslint-disable react/prop-types */
 import { Component } from "react";
+import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
 import { logout } from "../auth";
@@ -23,3 +23,7 @@ export default class LogoutApp extends Component {
     return null;
   }
 }
+
+LogoutApp.propTypes = {
+  logout: PropTypes.func.isRequired,
+};

@@ -1,4 +1,7 @@
-import { restore, visitQuestionAdhoc } from "__support__/cypress";
+import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
+import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+
+const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
 
 describe("scenarios > visualizations > bar chart", () => {
   beforeEach(() => {
@@ -49,6 +52,28 @@ describe("scenarios > visualizations > bar chart", () => {
 
       cy.wait("@dataset");
       cy.findByText("(empty)");
+    });
+  });
+
+  describe("with binned dimension (histogram)", () => {
+    it("should filter out null values (metabase#16049)", () => {
+      visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", ORDERS.DISCOUNT, { binning: { strategy: "default" } }],
+            ],
+          },
+          database: 1,
+        },
+      });
+
+      cy.get(".bar").should("have.length", 5); // there are six bars when null isn't filtered
+      cy.findByText("1,800"); // correct data has this on the y-axis
+      cy.findByText("16,000").should("not.exist"); // If nulls are included the y-axis stretches much higher
     });
   });
 });

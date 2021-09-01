@@ -36,3 +36,7 @@ If you want to delete it, back it up, or replace it with an old backup, shut dow
 
 Note: depending on when you first started using Metabase the file may be called
 `~/Library/Application Support/Metabase/metabase.db.mv.db`
+
+### Uninstalling Metabase
+
+To uninstall Metabase, simply grab the Metabase application in your `Applications` folder and send it to the Trash.

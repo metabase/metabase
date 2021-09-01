@@ -23,13 +23,18 @@ import {
   FieldDimension,
 } from "metabase-lib/lib/Dimension";
 import Mode from "metabase-lib/lib/Mode";
+import { isStandard } from "metabase/lib/query/filter";
 
 import { memoize, sortObject } from "metabase-lib/lib/utils";
 
 // TODO: remove these dependencies
 import * as Card_DEPRECATED from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
-import { syncTableColumnsToQuery } from "metabase/lib/dataset";
+import {
+  findColumnSettingIndexForColumn,
+  findColumnIndexForColumnSetting,
+  syncTableColumnsToQuery,
+} from "metabase/lib/dataset";
 import { getParametersWithExtras, isTransientId } from "metabase/meta/Card";
 import {
   parameterToMBQLFilter,
@@ -155,7 +160,6 @@ export default class Question {
     visualization_settings?: VisualizationSettings,
     dataset_query?: DatasetQuery,
   } = {}) {
-    // $FlowFixMe
     let card: CardObject = {
       name,
       display,
@@ -540,69 +544,120 @@ export default class Question {
     }
   }
 
-  syncColumnsAndSettings(previous) {
+  _syncStructuredQueryColumnsAndSettings(previousQuestion, previousQuery) {
     const query = this.query();
+
+    if (
+      !_.isEqual(
+        previousQuestion.setting("table.columns"),
+        this.setting("table.columns"),
+      )
+    ) {
+      return syncTableColumnsToQuery(this);
+    }
+
+    const addedColumnNames = _.difference(
+      query.columnNames(),
+      previousQuery.columnNames(),
+    );
+    const removedColumnNames = _.difference(
+      previousQuery.columnNames(),
+      query.columnNames(),
+    );
+
+    if (
+      this.setting("graph.metrics") &&
+      addedColumnNames.length > 0 &&
+      removedColumnNames.length === 0
+    ) {
+      const addedMetricColumnNames = addedColumnNames.filter(
+        name =>
+          query.columnDimensionWithName(name) instanceof AggregationDimension,
+      );
+      if (addedMetricColumnNames.length > 0) {
+        return this.updateSettings({
+          "graph.metrics": [
+            ...this.setting("graph.metrics"),
+            ...addedMetricColumnNames,
+          ],
+        });
+      }
+    }
+
+    if (
+      this.setting("table.columns") &&
+      addedColumnNames.length > 0 &&
+      removedColumnNames.length === 0
+    ) {
+      return this.updateSettings({
+        "table.columns": [
+          ...this.setting("table.columns"),
+          ...addedColumnNames.map(name => {
+            const dimension = query.columnDimensionWithName(name);
+            return {
+              name: name,
+              field_ref: dimension.baseDimension().mbql(),
+              enabled: true,
+            };
+          }),
+        ],
+      });
+    }
+
+    return this;
+  }
+
+  _syncNativeQuerySettings({ data: { cols = [] } = {} }) {
+    const vizSettings = this.setting("table.columns") || [];
+    // "table.columns" receive a value only if there are custom settings
+    // e.g. some columns are hidden. If it's empty, it means everything is visible
+    const isUsingDefaultSettings = vizSettings.length === 0;
+    if (isUsingDefaultSettings) {
+      return this;
+    }
+
+    let addedColumns = cols.filter(col => {
+      const hasVizSettings =
+        findColumnSettingIndexForColumn(vizSettings, col) >= 0;
+      return !hasVizSettings;
+    });
+
+    const validVizSettings = vizSettings.filter(colSetting => {
+      const hasColumn = findColumnIndexForColumnSetting(cols, colSetting) >= 0;
+      return hasColumn;
+    });
+    const noColumnsRemoved = validVizSettings.length === vizSettings.length;
+
+    if (noColumnsRemoved && addedColumns.length === 0) {
+      return this;
+    }
+
+    addedColumns = addedColumns.map(col => ({
+      name: col.name,
+      fieldRef: col.field_ref,
+      enabled: true,
+    }));
+
+    return this.updateSettings({
+      "table.columns": [...validVizSettings, ...addedColumns],
+    });
+  }
+
+  syncColumnsAndSettings(previous, queryResults) {
+    const query = this.query();
+    const isQueryResultValid = queryResults && !queryResults.error;
+    if (query instanceof NativeQuery && isQueryResultValid) {
+      return this._syncNativeQuerySettings(queryResults);
+    }
     const previousQuery = previous && previous.query();
     if (
       query instanceof StructuredQuery &&
       previousQuery instanceof StructuredQuery
     ) {
-      if (
-        !_.isEqual(
-          previous.setting("table.columns"),
-          this.setting("table.columns"),
-        )
-      ) {
-        return syncTableColumnsToQuery(this);
-      }
-
-      const addedColumnNames = _.difference(
-        query.columnNames(),
-        previousQuery.columnNames(),
+      return this._syncStructuredQueryColumnsAndSettings(
+        previous,
+        previousQuery,
       );
-      const removedColumnNames = _.difference(
-        previousQuery.columnNames(),
-        query.columnNames(),
-      );
-
-      if (
-        this.setting("graph.metrics") &&
-        addedColumnNames.length > 0 &&
-        removedColumnNames.length === 0
-      ) {
-        const addedMetricColumnNames = addedColumnNames.filter(
-          name =>
-            query.columnDimensionWithName(name) instanceof AggregationDimension,
-        );
-        if (addedMetricColumnNames.length > 0) {
-          return this.updateSettings({
-            "graph.metrics": [
-              ...this.setting("graph.metrics"),
-              ...addedMetricColumnNames,
-            ],
-          });
-        }
-      }
-
-      if (
-        this.setting("table.columns") &&
-        addedColumnNames.length > 0 &&
-        removedColumnNames.length === 0
-      ) {
-        return this.updateSettings({
-          "table.columns": [
-            ...this.setting("table.columns"),
-            ...addedColumnNames.map(name => {
-              const dimension = query.columnDimensionWithName(name);
-              return {
-                name: name,
-                field_ref: dimension.baseDimension().mbql(),
-                enabled: true,
-              };
-            }),
-          ],
-        });
-      }
     }
     return this;
   }
@@ -654,7 +709,9 @@ export default class Question {
     const query = this.query();
     if (this.isObjectDetail() && query instanceof StructuredQuery) {
       const filters = query.filters();
-      return filters[0] && filters[0][2];
+      if (filters[0] && isStandard(filters[0])) {
+        return filters[0][2];
+      }
     }
   }
 
@@ -688,6 +745,10 @@ export default class Question {
 
   description(): ?string {
     return this._card && this._card.description;
+  }
+
+  lastEditInfo() {
+    return this._card && this._card["last-edit-info"];
   }
 
   isSaved(): boolean {
@@ -732,7 +793,7 @@ export default class Question {
     ) {
       return Urls.question(null, this._serializeForUrl({ clean }), query);
     } else {
-      return Urls.question(this.id(), "", query);
+      return Urls.question(this.card(), "", query);
     }
   }
 
@@ -909,7 +970,6 @@ export default class Question {
   }
 
   parametersList(): ParameterObject[] {
-    // $FlowFixMe
     return (Object.values(this.parameters()): ParameterObject[]);
   }
 
@@ -933,9 +993,9 @@ export default class Question {
   }
 
   isDirtyComparedToWithoutParameters(originalQuestion: Question) {
-    const [a, b] = [this, originalQuestion].map(q =>
-      new Question(q.card(), this.metadata()).setParameters([]),
-    );
+    const [a, b] = [this, originalQuestion].map(q => {
+      return q && new Question(q.card(), this.metadata()).setParameters([]);
+    });
     return a.isDirtyComparedTo(b);
   }
 

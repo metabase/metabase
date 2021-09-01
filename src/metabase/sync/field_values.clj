@@ -11,11 +11,11 @@
             [toucan.db :as db]))
 
 (s/defn ^:private clear-field-values-for-field! [field :- i/FieldInstance]
-  (when (db/exists? FieldValues :field_id (u/get-id field))
+  (when (db/exists? FieldValues :field_id (u/the-id field))
     (log/debug (format "Based on cardinality and/or type information, %s should no longer have field values.\n"
                        (sync-util/name-for-logging field))
                "Deleting FieldValues...")
-    (db/delete! FieldValues :field_id (u/get-id field))
+    (db/delete! FieldValues :field_id (u/the-id field))
     ::field-values/fv-deleted))
 
 (s/defn ^:private update-field-values-for-field! [field :- i/FieldInstance]
@@ -45,7 +45,7 @@
                              (clear-field-values-for-field! field)))]
               (update-field-value-stats-count fv-change-counts result)))
           {:errors 0, :created 0, :updated 0, :deleted 0}
-          (db/select Field :table_id (u/get-id table), :active true, :visibility_type "normal")))
+          (db/select Field :table_id (u/the-id table), :active true, :visibility_type "normal")))
 
 (s/defn ^:private update-field-values-for-database!
   [database :- i/DatabaseInstance]

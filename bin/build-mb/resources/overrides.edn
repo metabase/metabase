@@ -1,0 +1,48 @@
+{:override/group
+ {"org.clojure"                      {:resource "EPL.txt"},
+  "io.netty"                         {:resource "apache2_0.txt"},
+  "org.opensaml"                     {:resource "apache2_0.txt"},
+  "com.google.guava"                 {:resource "apache2_0.txt"},
+  "com.fasterxml.jackson.dataformat" {:resource "apache2_0.txt"},
+  "com.onelogin"                     {:resource "MIT.txt"},
+  "xalan"                            {:resource "apache2_0.txt"}
+  "org.apache.hadoop"                {:resource "apache2_0.txt"}
+  "org.ow2.asm"                      {:resource "BSD.txt"}
+  "org.eclipse.jetty"                {:resource "apache2_0.txt"}}
+
+ "com.google.http-client"     {"google-http-client"          {:resource "apache2_0.txt"}
+                               "google-http-client-jackson2" {:resource "apache2_0.txt"}}
+ "com.google.api-client"      {"google-api-client" {:resource "apache2_0.txt"}}
+ "com.google.oauth-client"    {"google-oauth-client" {:resource "apache2_0.txt"}}
+ "org.mortbay.jetty"          {"jetty"          {:resource "apache2_0.txt"}
+                               "jetty-util"     {:resource "apache2_0.txt"}
+                               "jetty-security" {:resource "apache2_0.txt"}}
+ "com.jolbox"                 {"bonecp" {:resource "apache2_0.txt"}}
+ "org.eclipse.jetty"          {"jetty-webapp" {:resource "EPL.txt"}}
+ "org.fusesource.leveldbjni"  {"leveldbjni-all" {:resource "BSD.txt"}}
+ "com.sun.jersey"             {"jersey-server"  {:resource "apache2_0.txt"}
+                               "jersey-core"    {:resource "GPL1_1.txt"}
+                               "jersey-json"    {:resource "GPL1_1.txt"}
+                               "jersey-client"  {:resource "apache2_0.txt"}
+                               "jersey-servlet" {:resource "GPL1_1.txt"}}
+ "com.sun.jersey.contribs"    {"jersey-guice" {:resource "GPL1_1.txt"}}
+ "com.thoughtworks.paranamer" {"paranamer" {:resource "BSD.txt"}}
+ "javax.servlet.jsp"          {"jsp-api" {:resource "GPL2_0.txt"}}
+
+ "org.openid4java"        {"openid4java-nodeps" {:resource "apache2_0.txt"}},
+ "net.redhogs.cronparser" {"cron-parser-core" {:resource "MIT.txt"}},
+ "org.slf4j"              {"slf4j-api" {:resource "MIT.txt"}},
+ "amalloy"                {"ring-gzip-middleware" {:resource "MIT.txt"}},
+ "jakarta.activation"     {"jakarta.activation-api" {:resource "EDL.txt"}},
+ "net.jcip"               {"jcip-annotations" {:resource "CC_2_5.txt"}},
+ "hiccup"                 {"hiccup" {:resource "EPL.txt"}},
+ "jakarta.xml.bind"       {"jakarta.xml.bind-api" {:resource "EDL.txt"}},
+ "net.shibboleth.utilities"
+ {"java-support" {:resource "apache2_0.txt"}},
+ "io.dropwizard.metrics"  {"metrics-core" {:resource "apache2_0.txt"}},
+ "stencil"                {"stencil" {:resource "EPL.txt"}},
+ "org.antlr"              {"antlr-runtime" {:resource "BSD.txt"}},
+ "de.rototor.pdfbox"      {"graphics2d" {:resource "apache2_0.txt"}},
+ "colorize"               {"colorize" {:resource "EPL.txt"}},
+ "org.liquibase"          {"liquibase-core" {:resource "apache2_0.txt"}},
+ "org.quartz-scheduler"   {"quartz" {:resource "apache2_0.txt"}}}

@@ -42,7 +42,16 @@ If important queries are appearing on the list of slowest queries, you will want
 
 ![Items](./images/audit-questions.png)
 
-A list of all of your questions is available as well, and you can see various data points about each question at a glance, such as number of views and cache TTL.
+A list of all of your questions is available as well, and you can see various data points about each question at a glance:
+
+- Query Runs
+- Average Runtime 
+- Cache Duration
+- Total Runtime
+- Database
+- Table
+- Collection
+- Public Link
 
 #### Drilling In
 

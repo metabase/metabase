@@ -51,6 +51,9 @@ export default class SettingsLdapForm extends React.Component {
             settings: [
               "ldap-group-sync",
               "ldap-group-base",
+              "ldap-group-membership-filter" in this.props.settingValues
+                ? "ldap-group-membership-filter"
+                : null,
               "ldap-sync-admin-group" in this.props.settingValues
                 ? "ldap-sync-admin-group"
                 : null,

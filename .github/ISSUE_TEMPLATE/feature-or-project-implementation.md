@@ -1,9 +1,9 @@
 ---
-name: Feature or Project Implementation
+name: Feature or Project Implementation (Internal Use)
 about: This issue is used to track a feature implementation for a solution to a user
   problem that may span days to weeks to implement. This is used by the core Metabase
-  team to project plan and mange work.
-title: Feature/Project X Implementation
+  team to project plan and manage work.
+title: X - Internal Use - Feature/Project X Implementation
 labels: ".Epic"
 assignees: ''
 
@@ -19,9 +19,6 @@ assignees: ''
 
 **Implementation Plan**
 
-***ETA***: MM/DD/YYYY (ETA of merged feature when we start work)
-
-_(each individual item in list should correspond to a PR and be less than one week of work maximum!)_
 
 ***Milestone 1*** )_(note, each milestone should correspond to a point at which product/design can jump in to apply polish, evaluate changes, etc)_
 - [x] step 1: #somePRnumber

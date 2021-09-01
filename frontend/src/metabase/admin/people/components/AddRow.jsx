@@ -1,9 +1,9 @@
-/* eslint-disable react/prop-types */
 import React from "react";
+import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
 
-const AddRow = ({
+export const AddRow = ({
   value,
   isValid,
   placeholder,
@@ -37,4 +37,13 @@ const AddRow = ({
   </div>
 );
 
-export default AddRow;
+AddRow.propTypes = {
+  value: PropTypes.string.isRequired,
+  isValid: PropTypes.bool.isRequired,
+  placeholder: PropTypes.string,
+  onKeyDown: PropTypes.func.isRequired,
+  onChange: PropTypes.func.isRequired,
+  onDone: PropTypes.func.isRequired,
+  onCancel: PropTypes.func.isRequired,
+  children: PropTypes.node,
+};

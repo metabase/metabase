@@ -1,5 +1,14 @@
-import { modal, popover, restore } from "__support__/cypress";
+import {
+  sidebar,
+  popover,
+  restore,
+  openNativeEditor,
+} from "__support__/e2e/cypress";
+import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+
 // NOTE: some overlap with parameters-embedded.cy.spec.js
+
+const { PRODUCTS } = SAMPLE_DATASET;
 
 describe("scenarios > dashboard > parameters", () => {
   beforeEach(() => {
@@ -55,6 +64,8 @@ describe("scenarios > dashboard > parameters", () => {
 
     // add the same question twice
     cy.icon("pencil").click();
+
+    cy.get(".DashboardHeader .Icon-add").click();
     addQuestion("Orders, Count");
     addQuestion("Orders, Count");
 
@@ -113,6 +124,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     // add a question
     cy.icon("pencil").click();
+    cy.get(".DashboardHeader .Icon-add").click();
     addQuestion("Orders, Count");
 
     // add a Number - Between filter
@@ -248,15 +260,9 @@ describe("scenarios > dashboard > parameters", () => {
   });
 
   it("should allow linked question to be changed without breaking (metabase#9299)", () => {
-    cy.visit("/");
-    cy.findByText("Ask a question").click();
-    cy.findByText("Native query").click();
-    cy.get(".ace_content")
-      .as("editor")
-      .click()
-      .type("SELECT * FROM ORDERS WHERE {{filter}}", {
-        parseSpecialCharSequences: false,
-      });
+    openNativeEditor().type("SELECT * FROM ORDERS WHERE {{filter}}", {
+      parseSpecialCharSequences: false,
+    });
     // make {{filter}} a "Field Filter" connected to `Orders > Created At`
     cy.get(".AdminSelect")
       .contains("Text")
@@ -329,6 +335,71 @@ describe("scenarios > dashboard > parameters", () => {
     cy.findByText("Orders in a dashboard");
     cy.findByText("DashQ");
   });
+
+  it("should not having any mapping options if the native question field filter and parameter type differ (metabase#16181)", () => {
+    const filter = {
+      name: "Text contains",
+      slug: "text_contains",
+      id: "98289b9b",
+      type: "string/contains",
+      sectionId: "string",
+    };
+
+    cy.createNativeQuestion({
+      name: "16181",
+      native: {
+        query: "select count(*) from products where {{filter}}",
+        "template-tags": {
+          filter: {
+            id: "0b004110-d64a-a413-5aa2-5a5314fc8fec",
+            name: "filter",
+            "display-name": "Filter",
+            type: "dimension",
+            dimension: ["field", PRODUCTS.TITLE, null],
+            "widget-type": "string/=",
+            default: null,
+          },
+        },
+      },
+      display: "scalar",
+    }).then(({ body: { id: card_id } }) => {
+      cy.createDashboard("16181D").then(({ body: { id: dashboard_id } }) => {
+        // Add previously created question to the dashboard
+        cy.request("POST", `/api/dashboard/${dashboard_id}/cards`, {
+          cardId: card_id,
+        }).then(({ body: { id } }) => {
+          cy.addFilterToDashboard({ filter, dashboard_id });
+
+          cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+            cards: [
+              {
+                id,
+                card_id,
+                row: 0,
+                col: 0,
+                sizeX: 8,
+                sizeY: 6,
+                parameter_mappings: [
+                  {
+                    parameter_id: filter.id,
+                    card_id,
+                    target: ["dimension", ["template-tag", "filter"]],
+                  },
+                ],
+              },
+            ],
+          });
+        });
+
+        cy.visit(`/dashboard/${dashboard_id}`);
+      });
+    });
+
+    // confirm you can't map the parameter on the dashboard to the native question's field filter
+    cy.icon("pencil").click();
+    cy.findByText("Text contains").click();
+    cy.findByText("No valid fields");
+  });
 });
 
 function selectFilter(selection, filterName) {
@@ -339,8 +410,7 @@ function selectFilter(selection, filterName) {
 }
 
 function addQuestion(name) {
-  cy.get(".DashboardHeader .Icon-add").click();
-  modal()
+  sidebar()
     .contains(name)
     .click();
 }

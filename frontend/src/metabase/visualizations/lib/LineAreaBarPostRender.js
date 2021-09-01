@@ -161,7 +161,6 @@ const VORONOI_MAX_POINTS = 300;
 /// dispatchUIEvent used below in the "Voroni Hover" stuff
 function dispatchUIEvent(element, eventName) {
   const e = document.createEvent("UIEvents");
-  // $FlowFixMe
   e.initUIEvent(eventName, true, true, window, 1);
   element.dispatchEvent(e);
 }

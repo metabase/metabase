@@ -1,13 +1,16 @@
 (ns metabase.driver.mongo-test
   "Tests for Mongo driver."
-  (:require [clojure.test :refer :all]
+  (:require [cheshire.core :as json]
+            [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.automagic-dashboards.core :as magic]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
             [metabase.driver.mongo :as mongo]
+            [metabase.driver.mongo.util :as mongo.u]
             [metabase.driver.util :as driver.u]
             [metabase.mbql.util :as mbql.u]
+            [metabase.models.database :refer [Database]]
             [metabase.models.field :refer [Field]]
             [metabase.models.table :as table :refer [Table]]
             [metabase.query-processor :as qp]
@@ -15,6 +18,7 @@
             [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
+            [monger.collection :as mc]
             [taoensso.nippy :as nippy]
             [toucan.db :as db])
   (:import org.bson.types.ObjectId))
@@ -326,3 +330,49 @@
                                           {"$sort" {"_id" 1}}
                                           {"$project" {"_id" false, "count" true}}]
                             :collection  "venues"}})))))))
+
+(defn- create-database-from-row-maps! [database-name collection-name row-maps]
+  (or (db/select-one Database :engine "mongo", :name database-name)
+      (let [dbdef {:database-name database-name}]
+        ;; destroy Mongo database if it already exists.
+        (tx/destroy-db! :mongo dbdef)
+        (let [details (tx/dbdef->connection-details :mongo :db dbdef)]
+          ;; load rows
+          (mongo.u/with-mongo-connection [conn details]
+            (doseq [[i row] (map-indexed vector row-maps)
+                    :let    [row (assoc row :_id (inc i))]]
+              (try
+                (mc/insert conn collection-name row)
+                (catch Throwable e
+                  (throw (ex-info (format "Error inserting row: %s" (ex-message e))
+                                  {:database database-name, :collection collection-name, :details details, :row row}
+                                  e)))))
+            (println (format "Inserted %d rows into %s collection %s."
+                             (count row-maps) (pr-str database-name) (pr-str collection-name))))
+          ;; now sync the Database.
+          (let [db (db/insert! Database {:name database-name, :engine "mongo", :details details})]
+            (sync/sync-database! db)
+            db)))))
+
+(defn- json-from-file [^String filename]
+  (with-open [rdr (java.io.FileReader. (java.io.File. filename))]
+    (json/parse-stream rdr true)))
+
+(defn- array-fields-db []
+  (create-database-from-row-maps!
+   "test-16299"
+   "coll"
+   (json-from-file "modules/drivers/mongo/test/metabase/driver/array-fields.json")))
+
+(deftest filter-on-nested-column-no-results-test
+  (testing "Should return results when filtering on nested columns (#16299)"
+    (mt/test-driver :mongo
+      (mt/with-db (array-fields-db)
+        (is (= [["value_gf_a" 1] ["value_gf_b" 1]]
+               (mt/rows
+                (mt/run-mbql-query coll
+                  {:filter      [:and
+                                 [:= $coll.json_field.key_1 "value_jf_a" "value_jf_b"]
+                                 [:= $list_field "value_lf_a"]]
+                   :aggregation [[:count]]
+                   :breakout    [$coll.metas.group_field]}))))))))

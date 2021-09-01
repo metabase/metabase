@@ -5,7 +5,6 @@ import type { Series } from "metabase-types/types/Visualization";
 
 const visualizations = new Map();
 const aliases = new Map();
-// $FlowFixMe
 visualizations.get = function(key) {
   return (
     Map.prototype.get.call(this, key) ||
@@ -78,7 +77,6 @@ export function getVisualizationTransformed(series: Series) {
     }
     if (series !== lastSeries) {
       series = [...series];
-      // $FlowFixMe
       series._raw = lastSeries;
     }
   } while (series !== lastSeries);

@@ -45,13 +45,14 @@ const ChartTypeSidebar = ({
       title={t`Choose a visualization`}
       onDone={onCloseChartType}
     >
-      {layout.map(row => (
-        <Flex mx={2} mb={1} className="flex-wrap">
+      {layout.map((row, index) => (
+        <Flex key={index} mx={2} mb={1} className="flex-wrap">
           {row.map(type => {
             const visualization = visualizations.get(type);
             return (
               visualization && (
                 <ChartTypeOption
+                  key={type}
                   visualization={visualization}
                   isSelected={type === question.display()}
                   isSensible={

@@ -21,20 +21,20 @@
   "Fetch the Metabase objects (Tables and Fields) that are relevant to a foreign key relationship described by FK."
   [database :- i/DatabaseInstance, table :- i/TableInstance, fk :- i/FKMetadataEntry]
   (when-let [source-field (db/select-one Field
-                            :table_id           (u/get-id table)
+                            :table_id           (u/the-id table)
                             :%lower.name        (str/lower-case (:fk-column-name fk))
                             :fk_target_field_id nil
                             :active             true
                             :visibility_type    [:not= "retired"])]
     (when-let [dest-table (db/select-one Table
-                            :db_id           (u/get-id database)
+                            :db_id           (u/the-id database)
                             :%lower.name     (str/lower-case (-> fk :dest-table :name))
                             :%lower.schema   (when-let [schema (-> fk :dest-table :schema)]
                                                (str/lower-case schema))
                             :active          true
                             :visibility_type nil)]
       (when-let [dest-field (db/select-one Field
-                              :table_id           (u/get-id dest-table)
+                              :table_id           (u/the-id dest-table)
                               :%lower.name        (str/lower-case (:dest-column-name fk))
                               :active             true
                               :visibility_type    [:not= "retired"])]
@@ -51,9 +51,9 @@
                 (sync-util/name-for-logging source-field)
                 (sync-util/name-for-logging dest-table)
                 (sync-util/name-for-logging dest-field)))
-    (db/update! Field (u/get-id source-field)
+    (db/update! Field (u/the-id source-field)
       :semantic_type      :type/FK
-      :fk_target_field_id (u/get-id dest-field))
+      :fk_target_field_id (u/the-id dest-field))
     true))
 
 

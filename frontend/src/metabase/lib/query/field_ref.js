@@ -41,8 +41,6 @@ export function isSameField(fieldA, fieldB, exact = false) {
  */
 export function getFieldTargetId(field: FieldReference): ?FieldId {
   if (isLocalField(field)) {
-    // $FlowFixMe
-    // return field[1];
     return typeof field[1] === "number" ? field[1] : field;
   }
   console.warn("Unknown field type:", field);

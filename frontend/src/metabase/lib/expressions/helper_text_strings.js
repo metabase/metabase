@@ -465,7 +465,7 @@ const helperTextStrings = [
     name: "is-null",
     structure: "isnull(" + t`column` + ")",
     description: t`Checks if a column is null`,
-    example: "isnull([" + t`Discount` + '")',
+    example: "isnull([" + t`Discount` + "])",
     args: [
       {
         name: t`column`,
@@ -477,7 +477,7 @@ const helperTextStrings = [
     name: "is-empty",
     structure: "isempty(" + t`column` + ")",
     description: t`Checks if a column is empty`,
-    example: "isempty([" + t`Name` + '")',
+    example: "isempty([" + t`Name` + "])",
     args: [
       {
         name: t`column`,

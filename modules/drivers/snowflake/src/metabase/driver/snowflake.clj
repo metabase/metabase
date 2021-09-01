@@ -224,7 +224,7 @@
   ;; currently only used for SQL params so it's not a huge deal at this point
   ;;
   ;; TODO - we should make sure these are in the QP store somewhere and then could at least batch the calls
-  (qp.store/fetch-and-store-tables! [(u/get-id table-id)])
+  (qp.store/fetch-and-store-tables! [(u/the-id table-id)])
   (sql.qp/->honeysql driver field))
 
 
@@ -232,7 +232,7 @@
   [driver database table]
   (sql-jdbc/query driver database {:select [:*]
                                    :from   [(qp.store/with-store
-                                              (qp.store/fetch-and-store-database! (u/get-id database))
+                                              (qp.store/fetch-and-store-database! (u/the-id database))
                                               (sql.qp/->honeysql driver table))]}))
 
 (defmethod driver/describe-database :snowflake
@@ -242,7 +242,7 @@
   (let [db-name          (db-name database)
         excluded-schemas (set (sql-jdbc.sync/excluded-schemas driver))]
     (qp.store/with-store
-      (qp.store/fetch-and-store-database! (u/get-id database))
+      (qp.store/fetch-and-store-database! (u/the-id database))
       (let [spec (sql-jdbc.conn/db->pooled-connection-spec database)
             sql  (format "SHOW OBJECTS IN DATABASE \"%s\"" db-name)]
         (with-open [conn (jdbc/get-connection spec)]

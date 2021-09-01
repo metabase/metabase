@@ -1,4 +1,4 @@
-import { restore, popover } from "__support__/cypress";
+import { restore, popover } from "__support__/e2e/cypress";
 
 describe("operators in questions", () => {
   beforeEach(() => {

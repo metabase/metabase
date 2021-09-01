@@ -62,6 +62,7 @@
   WHERE lower(name) LIKE '%cam'
   AND field_2 = \"abc\""
   (:require [clojure.core.memoize :as memoize]
+            [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
@@ -71,8 +72,10 @@
             [metabase.mbql.util :as mbql.u]
             [metabase.models :refer [Database Dimension Field FieldValues Table]]
             [metabase.models.field :as field]
+            [metabase.models.field-values :as field-values]
             [metabase.models.params :as params]
             [metabase.models.params.chain-filter.dedupe-joins :as dedupe]
+            [metabase.models.params.field-values :as params.field-values]
             [metabase.models.table :as table]
             [metabase.query-processor :as qp]
             [metabase.types :as types]
@@ -209,6 +212,33 @@
   the implementation of `find-joins` below."
   (memoize/ttl database-fk-relationships* :ttl/threshold find-joins-cache-duration-ms))
 
+(defn- traverse-graph
+  "A breadth first traversal of graph, not probing any paths that are over `max-depth` in length."
+  [graph start end max-depth]
+  (letfn [(transform [path] (let [edges (partition 2 1 path)]
+                              (not-empty (vec (mapcat (fn [[x y]] (get-in graph [x y])) edges)))))]
+    (loop [paths (conj clojure.lang.PersistentQueue/EMPTY [start])
+           seen  #{start}]
+      (let [path (peek paths)
+            node (peek path)]
+        (cond (nil? node)
+              nil
+              ;; found a path, bfs finds shortest first
+              (= node end)
+              (transform path)
+              ;; abandon this path. A bit hazy on how seen and max depth interact.
+              (= (count path) max-depth)
+              (recur (pop paths) seen)
+              ;; probe further and throw them on the queue
+              :else
+              (let [next-nodes (->> (get graph node)
+                                    keys
+                                    (remove seen))]
+                (recur (into (pop paths) (for [n next-nodes] (conj path n)))
+                       (set/union seen (set next-nodes)))))))))
+
+(def ^:private max-traversal-depth 5)
+
 (defn- find-joins* [database-id source-table-id other-table-id enable-reverse-joins?]
   (let [fk-relationships (database-fk-relationships database-id enable-reverse-joins?)]
     ;; find series of joins needed to get from LHS -> RHS. `path` is the tables we're already joining against when
@@ -216,30 +246,9 @@
     ;;
     ;; the general idea here is to see if LHS can join directly against RHS, otherwise recursively try all of the
     ;; tables LHS can join against and see if we can find a path that way.
-    (letfn [(find-relationship [lhs-table-id rhs-table-id path]
-              (log/tracef "Find FK relationship for %s -> %s\n"
-                          (name-for-logging Table lhs-table-id)
-                          (name-for-logging Table rhs-table-id))
-              ;; get the tables LHS can join directly against.
-              (when-let [direct-joins (not-empty (get fk-relationships lhs-table-id))]
-                (log/tracef "%s can join against %s"
-                            (name-for-logging Table lhs-table-id)
-                            (str/join " or " (mapv (partial name-for-logging Table)
-                                                   (keys direct-joins))))
-                ;; first, see if there is a direct relationship between LHS and RHS. If so, use that.
-                (or (get direct-joins rhs-table-id)
-                    ;; if not, see if we can find an indirect path by recursing on the directly joined tables
-                    (some not-empty
-                          (for [[joined-id join-info] direct-joins
-                                :when                 (and (not= joined-id lhs-table-id)
-                                                           (not (contains? (set path) joined-id)))
-                                :let                  [recursive-joins (find-relationship joined-id rhs-table-id
-                                                                                          (conj path lhs-table-id))]
-                                :when                 recursive-joins]
-                            (concat join-info recursive-joins))))))]
-      (u/prog1 (find-relationship source-table-id other-table-id [])
-        (when (seq <>)
-          (log/tracef (format-joins-for-logging <>)))))))
+    (u/prog1 (traverse-graph fk-relationships source-table-id other-table-id max-traversal-depth)
+      (when (seq <>)
+        (log/tracef (format-joins-for-logging <>))))))
 
 (def ^:private ^{:arglists '([database-id source-table-id other-table-id]
                              [database-id source-table-id other-table-id enable-reverse-joins?])} find-joins
@@ -498,6 +507,25 @@
                                   :limit  1})]
     id))
 
+(defn- use-cached-field-values?
+  "Whether we should use cached `FieldValues` instead of running a query via the QP."
+  [field-id constraints]
+  (and
+   field-id
+   ;; only use cached Field values if there are no additional constraints (i.e. if this is just a simple "fetch all
+   ;; values" call)
+   (empty? constraints)
+   ;; check whether the Field *should* have Field values. Not whether it actually does.
+   (field-values/field-should-have-field-values? field-id)
+   ;; If the Field *should* values, make sure the Field actually *does* have Field Values as well (but not a
+   ;; human-readable remap, which is handled by `human-readable-values-remapped-chain-filter`_
+   (db/exists? FieldValues :field_id field-id, :values [:not= nil], :human_readable_values nil)))
+
+(defn- cached-field-values [field-id {:keys [limit]}]
+  (let [{:keys [values]} (params.field-values/get-or-create-field-values-for-current-user! (Field field-id))]
+    (cond->> (map first values)
+      limit (take limit))))
+
 (s/defn chain-filter
   "Fetch a sequence of possible values of Field with `field-id` by restricting the possible values to rows that match
   values of other Fields in the `constraints` map. Powers the `GET /api/dashboard/:id/param/:key/values` chain filter
@@ -520,9 +548,11 @@
   (let [{:as options} options]
     (if-let [v->human-readable (human-readable-remapping-map field-id)]
       (human-readable-values-remapped-chain-filter field-id v->human-readable constraints options)
-      (if-let [remapped-field-id (remapped-field-id field-id)]
-        (field-to-field-remapped-chain-filter field-id remapped-field-id constraints options)
-        (unremapped-chain-filter field-id constraints options)))))
+      (if (use-cached-field-values? field-id constraints)
+        (cached-field-values field-id options)
+        (if-let [remapped-field-id (remapped-field-id field-id)]
+          (field-to-field-remapped-chain-filter field-id remapped-field-id constraints options)
+          (unremapped-chain-filter field-id constraints options))))))
 
 
 ;;; ----------------- Chain filter search (powers GET /api/dashboard/:id/params/:key/search/:query) -----------------
@@ -577,6 +607,19 @@
           (add-human-readable-values values v->human-readable)))
       []))
 
+(defn- search-cached-field-values? [field-id constraints]
+  (and (use-cached-field-values? field-id constraints)
+       (isa? (db/select-one-field :base_type Field :id field-id) :type/Text)))
+
+(defn- cached-field-values-search
+  [field-id query {:keys [limit]}]
+  (let [values (cached-field-values field-id nil)
+        query  (str/lower-case query)]
+    (cond->> (filter (fn [s]
+                       (str/includes? (str/lower-case s) query))
+                     values)
+      limit (take limit))))
+
 (s/defn ^:private field-to-field-remapped-chain-filter-search
   "Chain filter search, but for Field->Field remappings e.g. 'remap' `venue.category_id` -> `category.name`; search by
   `category.name` but return tuples of `[venue.category_id category.name]`."
@@ -601,9 +644,11 @@
     (let [{:as options} options]
       (if-let [v->human-readable (human-readable-remapping-map field-id)]
         (human-readable-values-remapped-chain-filter-search field-id v->human-readable constraints query options)
-        (if-let [remapped-field-id (remapped-field-id field-id)]
-          (field-to-field-remapped-chain-filter-search field-id remapped-field-id constraints query options)
-          (unremapped-chain-filter-search field-id constraints query options))))))
+        (if (search-cached-field-values? field-id constraints)
+          (cached-field-values-search field-id query options)
+          (if-let [remapped-field-id (remapped-field-id field-id)]
+            (field-to-field-remapped-chain-filter-search field-id remapped-field-id constraints query options)
+            (unremapped-chain-filter-search field-id constraints query options)))))))
 
 
 ;;; ------------------ Filterable Field IDs (powers GET /api/dashboard/params/valid-filter-fields) -------------------

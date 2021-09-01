@@ -46,7 +46,6 @@ export default class PasswordReveal extends Component {
 
         {visible ? (
           <input
-            ref="input"
             style={styles.input}
             className="text-light text-normal mr3 borderless"
             value={password}

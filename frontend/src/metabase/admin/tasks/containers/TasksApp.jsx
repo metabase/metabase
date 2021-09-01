@@ -6,15 +6,19 @@ import { Box, Flex } from "grid-styled";
 import Database from "metabase/entities/databases";
 import Task from "metabase/entities/tasks";
 
+import PaginationControls from "metabase/components/PaginationControls";
 import AdminHeader from "metabase/components/AdminHeader";
-import Icon, { IconWrapper } from "metabase/components/Icon";
+import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import Tooltip from "metabase/components/Tooltip";
 
+// Please preserve the following 2 @ calls in this order.
+// Otherwise @Database.loadList overrides pagination props
+// that come from @Task.LoadList
+@Database.loadList()
 @Task.loadList({
   pageSize: 50,
 })
-@Database.loadList()
 class TasksApp extends React.Component {
   render() {
     const {
@@ -48,15 +52,13 @@ class TasksApp extends React.Component {
             </Tooltip>
           </Flex>
           <Flex align="center" ml="auto">
-            <span className="text-bold mr1">
-              {page * pageSize + 1} - {page * pageSize + tasks.length}
-            </span>
-            <IconWrapper onClick={onPreviousPage} disabled={!onPreviousPage}>
-              <Icon name="chevronleft" />
-            </IconWrapper>
-            <IconWrapper small onClick={onNextPage} disabled={!onNextPage}>
-              <Icon name="chevronright" />
-            </IconWrapper>
+            <PaginationControls
+              onPreviousPage={onPreviousPage}
+              onNextPage={onNextPage}
+              page={page}
+              pageSize={pageSize}
+              itemsLength={tasks.length}
+            />
           </Flex>
         </Flex>
 

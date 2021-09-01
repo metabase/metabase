@@ -51,29 +51,35 @@ export const slowest = () => ({
   },
 });
 
-export const table = (searchString?: string) => ({
+export const table = (
+  questionFilter,
+  collectionFilter,
+  sortColumn,
+  sortDirection,
+) => ({
   card: {
     name: "Questions",
     display: "table",
     dataset_query: {
       type: "internal",
       fn: "metabase-enterprise.audit.pages.queries/table",
-      args: searchString ? [searchString] : [],
+      args: [questionFilter, collectionFilter, sortColumn, sortDirection],
     },
     visualization_settings: {
       "table.columns": [
         { name: "card_id", enabled: true },
-        { name: "collection_id", enabled: true },
+        { name: "query_runs", enabled: true },
+        { name: "avg_exec_time", enabled: true },
+        { name: "cache_ttl", enabled: true },
+        { name: "total_runtime", enabled: true },
         { name: "database_id", enabled: true },
         { name: "table_id", enabled: true },
-        { name: "user_id", enabled: true },
+        { name: "collection_id", enabled: true },
         {
           name: "public_link",
           enabled: true,
           markdown_template: "[Link]({{value}})",
         },
-        { name: "cache_ttl", enabled: true },
-        { name: "total_views", enabled: true },
       ],
     },
   },

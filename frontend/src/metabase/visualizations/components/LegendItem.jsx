@@ -7,10 +7,6 @@ import Ellipsified from "metabase/components/Ellipsified";
 
 import cx from "classnames";
 
-// Don't use a <a> tag if there's no href
-const LegendLink = props =>
-  props.href ? <a {...props} /> : <span {...props} />;
-
 export default class LegendItem extends Component {
   constructor(props, context) {
     super(props, context);
@@ -42,8 +38,9 @@ export default class LegendItem extends Component {
       onClick,
       infoClassName,
     } = this.props;
+
     return (
-      <LegendLink
+      <span
         className={cx(
           className,
           "LegendItem",
@@ -85,7 +82,7 @@ export default class LegendItem extends Component {
             )}
           </div>
         )}
-      </LegendLink>
+      </span>
     );
   }
 }

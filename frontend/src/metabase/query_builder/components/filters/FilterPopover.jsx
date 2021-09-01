@@ -1,5 +1,5 @@
-/* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import { t } from "ttag";
 
@@ -130,7 +130,6 @@ export default class ViewFilterPopover extends Component {
 
   handleFilterChange = (newFilter: ?Filter) => {
     const filter = this.state.filter || new Filter([], null, this.props.query);
-    // $FlowFixMe
     this.setFilter(filter.set(newFilter));
   };
 
@@ -247,3 +246,7 @@ export default class ViewFilterPopover extends Component {
     }
   }
 }
+
+ViewFilterPopover.propTypes = {
+  noCommitButton: PropTypes.bool,
+};

@@ -5,6 +5,7 @@
             [honeysql.core :as hsql]
             [java-time :as t]
             [medley.core :as m]
+            [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -36,7 +37,10 @@
 
 (deftest connection-spec-test
   (testing "Test that additional connection string options work (#5296)"
-    (is (= {:applicationName    "Metabase <version>"
+    (is (= {:applicationName    (format
+                                 "Metabase %s [%s]"
+                                 (or (:tag config/mb-version-info) "")
+                                 config/local-process-uuid)
             :database           "birddb"
             :encrypt            false
             :instanceName       nil
@@ -47,16 +51,13 @@
             :subname            "//localhost;trustServerCertificate=false"
             :subprotocol        "sqlserver"
             :user               "cam"}
-           (-> (sql-jdbc.conn/connection-details->spec :sqlserver
-                 {:user               "cam"
-                  :password           "toucans"
-                  :db                 "birddb"
-                  :host               "localhost"
-                  :port               1433
-                  :additional-options "trustServerCertificate=false"})
-               ;; the MB version Is subject to change between test runs, so replace the part like `v.0.25.0` with
-               ;; `<version>`
-               (update :applicationName #(str/replace % #"\s.*$" " <version>")))))))
+           (sql-jdbc.conn/connection-details->spec :sqlserver
+             {:user               "cam"
+              :password           "toucans"
+              :db                 "birddb"
+              :host               "localhost"
+              :port               1433
+              :additional-options "trustServerCertificate=false"})))))
 
 (deftest add-max-results-limit-test
   (mt/test-driver :sqlserver

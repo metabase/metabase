@@ -16,6 +16,9 @@ If you are using Docker containers and prefer to manage your Metabase installati
 #### [Running on AWS Elastic Beanstalk](running-metabase-on-elastic-beanstalk.md)
 Step-by-step instructions on how to deploy Metabase on Elastic Beanstalk using RDS.  This is the most common way to run Metabase in production.
 
+#### [Running on Azure Web Apps](running-metabase-on-azure.md)
+Step-by-step instructions on how to deploy Metabase on Azure Web Apps with a private Azure Database.
+
 #### [Running on Heroku](running-metabase-on-heroku.md)
 Currently in beta.  We've run Metabase on Heroku and it works just fine, but it's not hardened for production use just yet.  If you're up for it then give it a shot and let us know how we can make it better!
 
@@ -23,4 +26,4 @@ Currently in beta.  We've run Metabase on Heroku and it works just fine, but it'
 Community support only at this time, but learn how to deploy Metabase as a service on Debian (and Debian-based) systems. Simple, guided, step-by-step approach that will work on any VPS.
 
 #### [Running on Kubernetes](running-metabase-on-kubernetes.md)
-Community Helm chart for running Metabase on Kubernetes
+Community Helm chart for running Metabase on Kubernetes.

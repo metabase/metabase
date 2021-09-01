@@ -186,7 +186,7 @@ const metadataTableToTableEntityId = (table: Table): TableEntityId => ({
 // TODO Atte Keinänen 6/24/17 See if this method could be simplified
 const entityIdToMetadataTableFields = (entityId: EntityId) => ({
   ...(entityId.databaseId ? { db_id: entityId.databaseId } : {}),
-  // $FlowFixMe Because schema name can be an empty string, which means an empty schema, this check becomes a little nasty
+  // Because schema name can be an empty string, which means an empty schema, this check becomes a little nasty
   ...(entityId.schemaName !== undefined
     ? { schema_name: entityId.schemaName !== "" ? entityId.schemaName : null }
     : {}),
@@ -231,13 +231,11 @@ export function inferAndUpdateEntityPermissions(
   entityId: DatabaseEntityId | SchemaEntityId,
   metadata: Metadata,
 ) {
-  // $FlowFixMe
   const { databaseId } = entityId;
   const schemaName = entityId.schemaName || "";
 
   if (schemaName) {
     // Check all tables for current schema if their shared schema-level permission value should be updated
-    // $FlowFixMe
     const tablesPermissionValue = inferEntityPermissionValueFromChildTables(
       permissions,
       groupId,

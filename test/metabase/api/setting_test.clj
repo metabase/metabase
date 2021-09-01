@@ -23,10 +23,10 @@
       (test-setting-3 "oh hai")         ; internal setting that should not be returned
       (is (= [{:key            "test-setting-1"
                :value          nil
-               :is_env_setting true
+               :is_env_setting false
                :env_name       "MB_TEST_SETTING_1"
                :description    "Test setting - this only shows up in dev (1)"
-               :default        "Using value of env var $MB_TEST_SETTING_1"}
+               :default        nil}
               {:key            "test-setting-2"
                :value          "FANCY"
                :is_env_setting false

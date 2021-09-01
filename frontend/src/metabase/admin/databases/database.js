@@ -70,7 +70,10 @@ export const DELETE_DATABASE_FAILED =
   "metabase/admin/databases/DELETE_DATABASE_FAILED";
 export const MIGRATE_TO_NEW_SCHEDULING_SETTINGS =
   "metabase/admin/databases/MIGRATE_TO_NEW_SCHEDULING_SETTINGS";
-
+export const INITIALIZE_DATABASE_ERROR =
+  "metabase/admin/databases/INITIALIZE_DATABASE_ERROR";
+export const CLEAR_INITIALIZE_DATABASE_ERROR =
+  "metabase/admin/databases/CLEAR_INITIALIZE_DATABASE_ERROR";
 // NOTE: some but not all of these actions have been migrated to use metabase/entities/databases
 
 export const reset = createAction(RESET);
@@ -103,6 +106,8 @@ const migrateDatabaseToNewSchedulingSettings = database => {
 // initializeDatabase
 export const initializeDatabase = function(databaseId) {
   return async function(dispatch, getState) {
+    dispatch.action(CLEAR_INITIALIZE_DATABASE_ERROR);
+
     if (databaseId) {
       try {
         const action = await dispatch(
@@ -116,11 +121,8 @@ export const initializeDatabase = function(databaseId) {
           dispatch(migrateDatabaseToNewSchedulingSettings(database));
         }
       } catch (error) {
-        if (error.status === 404) {
-          //$location.path('/admin/databases/');
-        } else {
-          console.error("error fetching database", databaseId, error);
-        }
+        console.error("error fetching database", databaseId, error);
+        dispatch.action(INITIALIZE_DATABASE_ERROR, error);
       }
     } else {
       const newDatabase = {
@@ -326,6 +328,14 @@ const editingDatabase = handleActions(
   null,
 );
 
+const initializeError = handleActions(
+  {
+    [INITIALIZE_DATABASE_ERROR]: (state, { payload }) => payload,
+    [CLEAR_INITIALIZE_DATABASE_ERROR]: () => null,
+  },
+  null,
+);
+
 const deletes = handleActions(
   {
     [DELETE_DATABASE_STARTED]: (state, { payload: { databaseId } }) =>
@@ -364,6 +374,7 @@ const sampleDataset = handleActions(
 
 export default combineReducers({
   editingDatabase,
+  initializeError,
   deletionError,
   databaseCreationStep,
   deletes,

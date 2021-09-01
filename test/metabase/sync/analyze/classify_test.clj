@@ -12,22 +12,22 @@
 (deftest fields-to-classify-test
   (testing "Finds current fingerprinted versions that are not analyzed"
     (tt/with-temp* [Table [table]
-                    Field [_ {:table_id            (u/get-id table)
+                    Field [_ {:table_id            (u/the-id table)
                               :name                "expected"
                               :description         "Current fingerprint, not analyzed"
                               :fingerprint_version i/latest-fingerprint-version
                               :last_analyzed       nil}]
-                    Field [_ {:table_id            (u/get-id table)
+                    Field [_ {:table_id            (u/the-id table)
                               :name                "not expected 1"
                               :description         "Current fingerprint, already analzed"
                               :fingerprint_version i/latest-fingerprint-version
                               :last_analyzed       #t "2017-08-09"}]
-                    Field [_ {:table_id            (u/get-id table)
+                    Field [_ {:table_id            (u/the-id table)
                               :name                "not expected 2"
                               :description         "Old fingerprint, not analyzed"
                               :fingerprint_version (dec i/latest-fingerprint-version)
                               :last_analyzed       nil}]
-                    Field [_ {:table_id            (u/get-id table)
+                    Field [_ {:table_id            (u/the-id table)
                               :name                "not expected 3"
                               :description         "Old fingerprint, already analzed"
                               :fingerprint_version (dec i/latest-fingerprint-version)
@@ -37,22 +37,22 @@
                (:name field))))))
   (testing "Finds previously marked :type/category fields for state"
     (tt/with-temp* [Table [table]
-                    Field [_ {:table_id            (u/get-id table)
+                    Field [_ {:table_id            (u/the-id table)
                               :name                "expected"
                               :description         "Current fingerprint, not analyzed"
                               :fingerprint_version i/latest-fingerprint-version
                               :last_analyzed       nil}]
-                    Field [_ {:table_id            (u/get-id table)
+                    Field [_ {:table_id            (u/the-id table)
                               :name                "not expected 1"
                               :description         "Current fingerprint, already analzed"
                               :fingerprint_version i/latest-fingerprint-version
                               :last_analyzed       #t "2017-08-09"}]
-                    Field [_ {:table_id            (u/get-id table)
+                    Field [_ {:table_id            (u/the-id table)
                               :name                "not expected 2"
                               :description         "Old fingerprint, not analyzed"
                               :fingerprint_version (dec i/latest-fingerprint-version)
                               :last_analyzed       nil}]
-                    Field [_ {:table_id            (u/get-id table)
+                    Field [_ {:table_id            (u/the-id table)
                               :name                "not expected 3"
                               :description         "Old fingerprint, already analzed"
                               :fingerprint_version (dec i/latest-fingerprint-version)
@@ -61,8 +61,8 @@
 (deftest classify-fields-for-db!-test
   (testing "We classify decimal fields that have specially handled NaN values"
     (tt/with-temp* [Database [db]
-                    Table    [table {:db_id (u/get-id db)}]
-                    Field    [field {:table_id            (u/get-id table)
+                    Table    [table {:db_id (u/the-id db)}]
+                    Field    [field {:table_id            (u/the-id table)
                                      :name                "Income"
                                      :base_type           :type/Float
                                      :semantic_type       nil
@@ -72,13 +72,13 @@
                                                                                   :avg "NaN"}}
                                                            :global {:distinct-count 3}}
                                      :last_analyzed       nil}]]
-      (is (nil? (:semantic_type (Field (u/get-id field)))))
+      (is (nil? (:semantic_type (Field (u/the-id field)))))
       (classify/classify-fields-for-db! db [table] (constantly nil))
-      (is (= :type/Income (:semantic_type (Field (u/get-id field)))))))
+      (is (= :type/Income (:semantic_type (Field (u/the-id field)))))))
   (testing "We can classify decimal fields that have specially handled infinity values"
     (tt/with-temp* [Database [db]
-                    Table    [table {:db_id (u/get-id db)}]
-                    Field    [field {:table_id            (u/get-id table)
+                    Table    [table {:db_id (u/the-id db)}]
+                    Field    [field {:table_id            (u/the-id table)
                                      :name                "Income"
                                      :base_type           :type/Float
                                      :semantic_type       nil
@@ -88,9 +88,9 @@
                                                                                   :avg "Infinity"}}
                                                            :global {:distinct-count 3}}
                                      :last_analyzed       nil}]]
-      (is (nil? (:semantic_type (Field (u/get-id field)))))
+      (is (nil? (:semantic_type (Field (u/the-id field)))))
       (classify/classify-fields-for-db! db [table] (constantly nil))
-      (is (= :type/Income (:semantic_type (Field (u/get-id field))))))))
+      (is (= :type/Income (:semantic_type (Field (u/the-id field))))))))
 
 (defn- ->field [field]
   (field/map->FieldInstance

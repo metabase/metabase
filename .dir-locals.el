@@ -1,7 +1,5 @@
 ((nil . ((indent-tabs-mode . nil)       ; always use spaces for tabs
-         (require-final-newline . t)    ; add final newline on save
-         (cider-shadow-default-options . "node-repl")
-         (cider-default-cljs-repl . shadow)))
+         (require-final-newline . t)))  ; add final newline on save
  (js2-mode . ((js2-mode-show-parse-errors . nil)      ; these settings will let flycheck do everything through eslint,
               (js2-mode-show-strict-warnings . nil))) ; because js2-mode can't handle flowtype
  (clojure-mode . ((eval . (progn
@@ -38,6 +36,8 @@
                               (p.types/deftype+ '(2 nil nil (:defn)))
                               (p/def-map-type '(2 nil nil (:defn)))
                               (p.types/defrecord+ '(2 nil nil (:defn)))
+                              (qp.streaming/streaming-response 1)
+                              (prop/for-all 1)
                               (tools.macro/macrolet '(1 (:defn))))))
                   (clojure-indent-style . always-align)
                   ;; if you're using clj-refactor (highly recommended!)

@@ -8,11 +8,9 @@
      CREATE TABLE ...               -- Bad"
   (:require [cemerick.friend.credentials :as creds]
             [cheshire.core :as json]
-            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [medley.core :as m]
-            [metabase.config :as config]
             [metabase.db.util :as mdb.u]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.card :refer [Card]]
@@ -121,85 +119,6 @@
           :object   (perms/object-path database-id)
           :group_id group-id)))))
 
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                NEW TYPE SYSTEM                                                 |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-;; this is the old new type system. as of v39 these are migrated from a field named special_type to
-;; semantic_type. These migrations target the world before this migration so they are left as is. The migrations talk
-;; about semantic_type as a column and a try/catch is introduced to the migration runner to allow migrations to
-;; fail. It is opt in.
-(def ^:private ^:const old-special-type->new-type
-    {"avatar"                 "type/AvatarURL"
-     "category"               "type/Category"
-     "city"                   "type/City"
-     "country"                "type/Country"
-     "desc"                   "type/Description"
-     "fk"                     "type/FK"
-     "id"                     "type/PK"
-     "image"                  "type/ImageURL"
-     "json"                   "type/SerializedJSON"
-     "latitude"               "type/Latitude"
-     "longitude"              "type/Longitude"
-     "name"                   "type/Name"
-     "number"                 "type/Number"
-     "state"                  "type/State"
-     "url"                    "type/URL"
-     "zip_code"               "type/ZipCode"})
-
-;; make sure the new types are all valid
-(when-not config/is-prod?
-  (doseq [[_ t] old-special-type->new-type]
-    (assert (isa? (keyword t) :type/*))))
-
-(def ^:private ^:const old-base-type->new-type
-  {"ArrayField"      "type/Array"
-   "BigIntegerField" "type/BigInteger"
-   "BooleanField"    "type/Boolean"
-   "CharField"       "type/Text"
-   "DateField"       "type/Date"
-   "DateTimeField"   "type/DateTime"
-   "DecimalField"    "type/Decimal"
-   "DictionaryField" "type/Dictionary"
-   "FloatField"      "type/Float"
-   "IntegerField"    "type/Integer"
-   "TextField"       "type/Text"
-   "TimeField"       "type/Time"
-   "UUIDField"       "type/UUID"
-   "UnknownField"    "type/*"})
-
-(when-not config/is-prod?
-  (doseq [[_ t] old-base-type->new-type]
-    (assert (isa? (keyword t) :type/*))))
-
-;; migrate all of the old base + special types to the new ones.  This also takes care of any types that are already
-;; correct other than the fact that they're missing :type/ in the front.  This was a bug that existed for a bit in
-;; 0.20.0-SNAPSHOT but has since been corrected
-(defmigration ^{:author "camsaul", :added "0.20.0", :catch? true} migrate-field-types
-  (doseq [[old-type new-type] old-special-type->new-type]
-    ;; migrate things like :timestamp_milliseconds -> :type/UNIXTimestampMilliseconds
-    (db/update-where! 'Field {:%lower.semantic_type (str/lower-case old-type)}
-      :semantic_type new-type)
-    ;; migrate things like :UNIXTimestampMilliseconds -> :type/UNIXTimestampMilliseconds
-    (db/update-where! 'Field {:semantic_type (name (keyword new-type))}
-      :semantic_type new-type))
-  (doseq [[old-type new-type] old-base-type->new-type]
-    ;; migrate things like :DateTimeField -> :type/DateTime
-    (db/update-where! 'Field {:%lower.base_type (str/lower-case old-type)}
-      :base_type new-type)
-    ;; migrate things like :DateTime -> :type/DateTime
-    (db/update-where! 'Field {:base_type (name (keyword new-type))}
-      :base_type new-type)))
-
-;; if there were invalid field types in the database anywhere fix those so the new stricter validation logic doesn't
-;; blow up
-(defmigration ^{:author "camsaul", :added "0.20.0", :catch? true} fix-invalid-field-types
-  (db/update-where! 'Field {:base_type [:not-like "type/%"]}
-    :base_type "type/*")
-  (db/update-where! 'Field {:semantic_type [:not-like "type/%"]}
-    :semantic_type nil))
-
 ;; Copy the value of the old setting `-site-url` to the new `site-url` if applicable.  (`site-url` used to be stored
 ;; internally as `-site-url`; this was confusing, see #4188 for details) This has the side effect of making sure the
 ;; `site-url` has no trailing slashes (as part of the magic setter fn; this was fixed as part of #4123)
@@ -290,7 +209,7 @@
               ;; #legacySQL directive...
               (let [updated-sql (str "#legacySQL\n" sql)]
                 ;; and save the updated dataset_query map
-                (db/update! Card (u/get-id card-id)
+                (db/update! Card (u/the-id card-id)
                   :dataset_query (assoc-in query [:native :query] updated-sql))))))
         ;; if for some reason something above fails (as in #8924) let's log the error and proceed. It's not mission
         ;; critical that we migrate existing queries anyway, and for ones that are impossible to migrate (e.g. ones
@@ -306,7 +225,7 @@
 (defmigration ^{:author "senior", :added "0.30.0"} clear-ldap-user-local-passwords
   (db/transaction
     (doseq [user (db/select [User :id :password_salt] :ldap_auth [:= true])]
-      (db/update! User (u/get-id user) :password (creds/hash-bcrypt (str (:password_salt user) (UUID/randomUUID)))))))
+      (db/update! User (u/the-id user) :password (creds/hash-bcrypt (str (:password_salt user) (UUID/randomUUID)))))))
 
 
 ;; In 0.30 dashboards and pulses will be saved in collections rather than on separate list pages. Additionally, there
@@ -330,7 +249,7 @@
 ;;    new collections.
 ;;
 (defmigration ^{:author "camsaul", :added "0.30.0"} add-migrated-collections
-  (let [non-admin-group-ids (db/select-ids PermissionsGroup :id [:not= (u/get-id (perm-group/admin))])]
+  (let [non-admin-group-ids (db/select-ids PermissionsGroup :id [:not= (u/the-id (perm-group/admin))])]
     ;; 1. Grant Root Collection readwrite perms to all Groups. Except for admin since they already have root (`/`)
     ;; perms, and we don't want to put extra entries in there that confuse things
     (doseq [group-id non-admin-group-ids]
@@ -348,9 +267,9 @@
         (perms/revoke-collection-permissions! group-id new-collection))
       ;; 4. move everything not in this Collection to a new Collection
       (log/info (trs "Moving instances of {0} that aren''t in a Collection to {1} Collection {2}"
-                     (name model) new-collection-name (u/get-id new-collection)))
+                     (name model) new-collection-name (u/the-id new-collection)))
       (db/update-where! model {:collection_id nil}
-        :collection_id (u/get-id new-collection)))))
+        :collection_id (u/the-id new-collection)))))
 
 (defn- fix-click-through
   "Fixes click behavior settings on dashcards, returns nil if no fix available. Format changed from:

@@ -15,8 +15,8 @@
       [(str sql replacement-snippet) (concat args prepared-statement-args) missing])))
 
 (defn- substitute-card-query [[sql args missing] v]
-  (let [{:keys [replacement-snippet]} (substitution/->replacement-snippet-info driver/*driver* v)]
-    [(str sql replacement-snippet) args missing]))
+  (let [{:keys [replacement-snippet prepared-statement-args]} (substitution/->replacement-snippet-info driver/*driver* v)]
+    [(str sql replacement-snippet) (concat args prepared-statement-args) missing]))
 
 (defn- substitute-native-query-snippet [[sql args missing] v]
    (let [{:keys [replacement-snippet]} (substitution/->replacement-snippet-info driver/*driver* v)]

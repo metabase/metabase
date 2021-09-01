@@ -2,6 +2,7 @@
   "Tests for support for parameterized queries in drivers that support it. (There are other tests for parameter support
   in various places; these are mainly for high-level verification that parameters are working.)"
   (:require [clojure.test :refer :all]
+            [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.models :refer [Card]]
             [metabase.query-processor :as qp]
@@ -185,3 +186,19 @@
                :parameters [{:type   :category
                              :target [:dimension [:template-tag "price"]]
                              :value  [1 2]}]}))))))
+
+(deftest ignore-parameters-for-unparameterized-native-query-test
+  (testing "Parameters passed for unparameterized queries should get ignored"
+    (let [query {:database (mt/id)
+                 :type     :native
+                 :native   {:query "select 111 as my_number, 'foo' as my_string"}}]
+      (is (= (-> (qp/process-query query)
+                 (m/dissoc-in [:data :results_metadata :checksum]))
+             (-> (qp/process-query (assoc query :parameters [{:type   "category"
+                                                              :value  [:param-value]
+                                                              :target [:dimension
+                                                                       [:field
+                                                                        (mt/id :categories :id)
+                                                                        {:source-field (mt/id :venues :category_id)}]]}]))
+                 (m/dissoc-in [:data :native_form :params])
+                 (m/dissoc-in [:data :results_metadata :checksum])))))))

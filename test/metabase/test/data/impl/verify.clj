@@ -88,11 +88,11 @@
             (throw (ex-info "Error verifying Field." (params->ex-data params) e)))))
       (log/debugf "All Fields for Table %s.%s loaded correctly." (pr-str actual-schema) (pr-str actual-name))
       (log/debugf "Verifying rows...")
-      (let [table-id           (or (db/select-one-id Table :db_id (u/get-id database), :name actual-name)
+      (let [table-id           (or (db/select-one-id Table :db_id (u/the-id database), :name actual-name)
                                    (throw (ex-info (format "Cannot find %s.%s after sync." (pr-str actual-schema) (pr-str actual-name))
                                                    (params->ex-data params))))
             expected-row-count (count rows)
-            actual-row-count   (-> (qp/process-query {:database (u/get-id database)
+            actual-row-count   (-> (qp/process-query {:database (u/the-id database)
                                                       :type     :query
                                                       :query    {:source-table table-id
                                                                  :aggregation  [[:count]]}})

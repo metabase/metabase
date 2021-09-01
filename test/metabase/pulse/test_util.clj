@@ -14,7 +14,7 @@
   "Create a Pulse with `:creator_id` of `user-kw`, and simulate sending it, executing it and returning the results."
   [user-kw card]
   (tt/with-temp* [Pulse      [pulse {:creator_id (users/user->id user-kw)}]
-                  PulseCard  [_ {:pulse_id (:id pulse), :card_id (u/get-id card)}]]
+                  PulseCard  [_ {:pulse_id (:id pulse), :card_id (u/the-id card)}]]
     (with-redefs [pulse/send-notifications!    identity
                   pulse/results->notifications (fn [_ results]
                                                  (vec results))]

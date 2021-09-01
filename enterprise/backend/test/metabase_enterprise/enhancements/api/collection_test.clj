@@ -12,7 +12,7 @@
     (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
       (mt/with-temp NativeQuerySnippet [snippet]
         (letfn [(can-see-snippet? []
-                  (let [response ((mt/user->client :rasta) :get "collection/root/items?namespace=snippets")]
+                  (let [response (:data ((mt/user->client :rasta) :get "collection/root/items?namespace=snippets"))]
                     (boolean (some (fn [a-snippet]
                                      (= (:id snippet) (:id a-snippet)))
                                    response))))]

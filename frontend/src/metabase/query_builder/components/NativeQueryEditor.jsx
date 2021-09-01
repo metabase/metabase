@@ -1,12 +1,10 @@
 /*global ace*/
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import ReactDOM from "react-dom";
 import cx from "classnames";
 
 import "./NativeQueryEditor.css";
 
-// $FlowFixMe react-resizable causes Flow errors
 import { ResizableBox } from "react-resizable";
 
 import "ace/ace";
@@ -40,7 +38,7 @@ import Popover from "metabase/components/Popover";
 import Snippets from "metabase/entities/snippets";
 import SnippetCollections from "metabase/entities/snippet-collections";
 
-import Parameters from "metabase/parameters/components/Parameters";
+import Parameters from "metabase/parameters/components/Parameters/Parameters";
 
 const SCROLL_MARGIN = 8;
 const LINE_HEIGHT = 16;
@@ -146,8 +144,10 @@ export default class NativeQueryEditor extends Component {
 
     // Ace sometimes fires mutliple "change" events in rapid succession
     // e.x. https://github.com/metabase/metabase/issues/2801
-    // $FlowFixMe
     this.onChange = _.debounce(this.onChange.bind(this), 1);
+
+    this.editor = React.createRef();
+    this.resizeBox = React.createRef();
   }
 
   maxAutoSizeLines() {
@@ -218,7 +218,7 @@ export default class NativeQueryEditor extends Component {
       this._localUpdate = false;
     }
 
-    const editorElement = ReactDOM.findDOMNode(this.refs.editor);
+    const editorElement = this.editor.current;
     if (query.hasWritePermission()) {
       this._editor.setReadOnly(false);
       editorElement.classList.remove("read-only");
@@ -288,7 +288,6 @@ export default class NativeQueryEditor extends Component {
         shouldUpdateUrl: false,
       });
     } else if (query.canRun()) {
-      // $FlowFixMe
       runQuestionQuery()
         // <hack>
         // This is an attempt to fix a conflict between Ace and react-draggable.
@@ -310,9 +309,8 @@ export default class NativeQueryEditor extends Component {
   loadAceEditor() {
     const { query } = this.props;
 
-    const editorElement = ReactDOM.findDOMNode(this.refs.editor);
+    const editorElement = this.editor.current;
 
-    // $FlowFixMe
     if (typeof ace === "undefined" || !ace || !ace.edit) {
       // fail gracefully-ish if ace isn't available, e.x. in integration tests
       return;
@@ -412,7 +410,7 @@ export default class NativeQueryEditor extends Component {
 
   _updateSize() {
     const doc = this._editor.getSession().getDocument();
-    const element = ReactDOM.findDOMNode(this.refs.resizeBox);
+    const element = this.resizeBox.current;
     // set the newHeight based on the line count, but ensure it's within
     // [MIN_HEIGHT_LINES, this.maxAutoSizeLines()]
     const newHeight = getEditorLineHeight(
@@ -605,7 +603,7 @@ export default class NativeQueryEditor extends Component {
           )}
         </div>
         <ResizableBox
-          ref="resizeBox"
+          ref={this.resizeBox}
           className={cx("border-top flex ", { hide: !isNativeEditorOpen })}
           height={this.state.initialHeight}
           minConstraints={[Infinity, getEditorLineHeight(MIN_HEIGHT_LINES)]}
@@ -617,14 +615,10 @@ export default class NativeQueryEditor extends Component {
           }}
           resizeHandles={["s"]}
         >
-          <div className="flex-full" id="id_sql" ref="editor" />
+          <div className="flex-full" id="id_sql" ref={this.editor} />
           <Popover
             isOpen={this.state.isSelectedTextPopoverOpen}
-            target={() =>
-              ReactDOM.findDOMNode(this.refs.editor).querySelector(
-                ".ace_selection",
-              )
-            }
+            target={() => this.editor.current.querySelector(".ace_selection")}
           >
             <div className="flex flex-column">
               <a className="p2 bg-medium-hover flex" onClick={this.runQuery}>

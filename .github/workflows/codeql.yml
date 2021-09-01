@@ -1,12 +1,6 @@
 name: "CodeQL"
 
-on:
-  pull_request:
-    paths-ignore:
-    - 'docs/**'
-  push:
-    paths-ignore:
-    - 'docs/**'
+on: [push, pull_request]
 
 jobs:
   analyze:

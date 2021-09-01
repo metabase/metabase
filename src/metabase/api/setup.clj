@@ -95,7 +95,7 @@
    first_name       su/NonBlankString
    last_name        su/NonBlankString
    email            su/Email
-   password         su/ComplexPassword
+   password         su/ValidPassword
    allow_tracking   (s/maybe (s/cond-pre s/Bool su/BooleanString))
    schedules        (s/maybe sync.schedules/ExpandedSchedulesMap)
    auto_run_queries (s/maybe s/Bool)}

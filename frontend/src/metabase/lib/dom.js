@@ -1,4 +1,6 @@
 import _ from "underscore";
+import { isCypressActive } from "metabase/env";
+
 // IE doesn't support scrollX/scrollY:
 export const getScrollX = () =>
   typeof window.scrollX === "undefined" ? window.pageXOffset : window.scrollX;
@@ -9,7 +11,7 @@ export const getScrollY = () =>
 // Cypress renders the whole app within an iframe, but we want to exlude it from this check to avoid certain components (like Nav bar) not rendering
 export const IFRAMED = (function() {
   try {
-    return !window.Cypress && window.self !== window.top;
+    return !isCypressActive && window.self !== window.top;
   } catch (e) {
     return true;
   }
@@ -406,7 +408,6 @@ export function initializeIframeResizer(readyCallback = () => {}) {
     // Ideally that should happen in the test config, but it doesn't
     // seem to want to play nice when messing with require
     if (typeof require.ensure !== "function") {
-      // $FlowFixMe: flow doesn't seem to like returning false here
       return false;
     }
 

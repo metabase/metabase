@@ -162,7 +162,7 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                 USEFUL `schema`S                                                 |
+;;; |                                                 USEFUL SCHEMAS                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def NonBlankString
@@ -201,12 +201,34 @@
     (deferred-tru "value must be a keyword or string.")))
 
 (def FieldType
-  "Schema for a valid Field type (does it derive from `:type/*`)?"
+  "Schema for a valid Field base or effective (data) type (does it derive from `:type/*`)?"
   (with-api-error-message (s/pred #(isa? % :type/*) (deferred-tru "Valid field type"))
     (deferred-tru "value must be a valid field type.")))
 
+(def FieldSemanticType
+  "Schema for a valid Field semantic type deriving from `:Semantic/*`."
+  (with-api-error-message (s/pred #(isa? % :Semantic/*)
+                                  (deferred-tru "Valid field semantic type"))
+    (deferred-tru "value must be a valid field semantic type.")))
+
+(def FieldRelationType
+  "Schema for a valid Field relation type deriving from `:Relation/*`"
+  (with-api-error-message (s/pred #(isa? % :Relation/*)
+                                  (deferred-tru "Valid field relation type"))
+    (deferred-tru "value must be a valid field relation type.")))
+
+(def FieldSemanticOrRelationType
+  "Schema for a valid Field semantic *or* Relation type. This is currently needed because the `semantic_column` is used
+  to store either the semantic type or relation type info. When this is changed in the future we can get rid of this
+  schema. See #15486."
+  (with-api-error-message (s/pred (fn [k]
+                                    (or (isa? k :Semantic/*)
+                                        (isa? k :Relation/*)))
+                                  (deferred-tru "Valid field semantic or relation type"))
+    (deferred-tru "value must be a valid field semantic or relation type.")))
+
 (def CoercionStrategy
-  "Schema for a valid Field type (does it derive from `:type/*`)?"
+  "Schema for a valid Field coercion strategy (does it derive from `:Coercion/*`)?"
   (with-api-error-message (s/pred #(isa? % :Coercion/*) (deferred-tru "Valid coercion strategy"))
     (deferred-tru "value must be a valid coercion strategy.")))
 
@@ -214,8 +236,32 @@
   "Like `FieldType` (e.g. a valid derivative of `:type/*`) but allows either a keyword or a string.
    This is useful especially for validating API input or objects coming out of the DB as it is unlikely
    those values will be encoded as keywords at that point."
-  (with-api-error-message (s/pred #(isa? (keyword %) :type/*) (deferred-tru "Valid field type (keyword or string)"))
-    (deferred-tru "value must be a valid field type (keyword or string).")))
+  (with-api-error-message (s/pred #(isa? (keyword %) :type/*) (deferred-tru "Valid field data type (keyword or string)"))
+    (deferred-tru "value must be a valid field data type (keyword or string).")))
+
+(def FieldSemanticTypeKeywordOrString
+  "Like `FieldSemanticType` but accepts either a keyword or string."
+  (with-api-error-message (s/pred #(isa? (keyword %) :Semantic/*) (deferred-tru "Valid field semantic type (keyword or string)"))
+    (deferred-tru "value must be a valid field semantic type (keyword or string).")))
+
+(def FieldRelationTypeKeywordOrString
+  "Like `FieldRelationType` but accepts either a keyword or string."
+  (with-api-error-message (s/pred #(isa? (keyword %) :Relation/*) (deferred-tru "Valid field relation type (keyword or string)"))
+    (deferred-tru "value must be a valid field relation type (keyword or string).")))
+
+(def FieldSemanticOrRelationTypeKeywordOrString
+  "Like `FieldSemanticOrRelationType` but accepts either a keyword or string."
+  (with-api-error-message (s/pred (fn [k]
+                                    (let [k (keyword k)]
+                                      (or (isa? k :Semantic/*)
+                                          (isa? k :Relation/*))))
+                                  (deferred-tru "Valid field semantic or relation type (keyword or string)"))
+    (deferred-tru "value must be a valid field semantic or relation type (keyword or string).")))
+
+(def CoercionStrategyKeywordOrString
+  "Like `CoercionStrategy` but accepts either a keyword or string."
+  (with-api-error-message (s/pred #(isa? (keyword %) :Coercion/*) (deferred-tru "Valid coercion strategy"))
+    (deferred-tru "value must be a valid coercion strategy (keyword or string).")))
 
 (def EntityTypeKeywordOrString
   "Validates entity type derivatives of `:entity/*`. Allows strings or keywords"
@@ -224,7 +270,7 @@
 
 (def Map
   "Schema for a valid map."
-  (with-api-error-message (s/pred map? (deferred-tru "Valid map"))
+  (with-api-error-message (s/named clojure.lang.IPersistentMap (deferred-tru "Valid map"))
     (deferred-tru "value must be a map.")))
 
 (def Email
@@ -232,10 +278,10 @@
   (with-api-error-message (s/constrained s/Str u/email? (deferred-tru "Valid email address"))
     (deferred-tru "value must be a valid email address.")))
 
-(def ComplexPassword
-  "Schema for a valid password of sufficient complexity."
-  (with-api-error-message (s/constrained s/Str password/is-complex?)
-    (deferred-tru "Insufficient password strength")))
+(def ValidPassword
+  "Schema for a valid password of sufficient complexity which is not found on a common password list."
+  (with-api-error-message (s/constrained s/Str password/is-valid?)
+    (deferred-tru "password is too common.")))
 
 (def IntString
   "Schema for a string that can be parsed as an integer.

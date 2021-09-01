@@ -14,7 +14,7 @@ const Props = ({ of }) => {
       <tbody>
         {Object.keys(component.propTypes).map(prop => {
           return (
-            <tr>
+            <tr key={prop}>
               <td>{prop}</td>
               <td></td>
               <td>

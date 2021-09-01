@@ -12,6 +12,7 @@ import type {
 
 import {
   dimensionFilterForParameter,
+  getTagOperatorFilterForParameter,
   variableFilterForParameter,
   getParameterOptions,
   PARAMETER_OPERATOR_TYPES,
@@ -184,6 +185,7 @@ export function getParameterMappingOptions(
       ...query
         .dimensionOptions(
           parameter ? dimensionFilterForParameter(parameter) : undefined,
+          parameter ? getTagOperatorFilterForParameter(parameter) : undefined,
         )
         .sections()
         .flatMap(section =>

@@ -58,7 +58,7 @@
       (db/update! (if (instance? (type Field) original-model)
                     Field
                     Table)
-          (u/get-id original-model)
+          (u/the-id original-model)
         values-to-set)
       true)))
 
@@ -92,7 +92,7 @@
   "Run various classifiers on `field` and its `fingerprint`, and save any detected changes."
   ([field :- i/FieldInstance]
    (classify! field (or (:fingerprint field)
-                        (db/select-one-field :fingerprint Field :id (u/get-id field)))))
+                        (db/select-one-field :fingerprint Field :id (u/the-id field)))))
 
   ([field :- i/FieldInstance, fingerprint :- (s/maybe i/Fingerprint)]
    (sync-util/with-error-handling (format "Error classifying %s" (sync-util/name-for-logging field))
@@ -110,7 +110,7 @@
   should include Fields that have the latest fingerprint, but have not yet *completed* analysis."
   [table :- i/TableInstance]
   (seq (db/select Field
-         :table_id            (u/get-id table)
+         :table_id            (u/the-id table)
          :fingerprint_version i/latest-fingerprint-version
          :last_analyzed       nil)))
 

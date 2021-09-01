@@ -56,7 +56,7 @@ class ParameterSidebar extends React.Component {
         <div className="flex justify-evenly border-bottom">
           <Radio
             options={tabs}
-            underlined
+            variant="underlined"
             value={currentTab}
             onChange={value => this.setState({ currentTab: value })}
           />
@@ -207,7 +207,10 @@ class OtherParameterList extends React.Component {
                     className="border-top text-small"
                   >
                     {columnPairs.map((row, index) => (
-                      <div className={cx({ "border-top": index > 0 })}>
+                      <div
+                        key={index}
+                        className={cx({ "border-top": index > 0 })}
+                      >
                         {index === 0 && (
                           <div className="flex">
                             <div className="half text-brand px2 pt1">{t`Filtering column`}</div>

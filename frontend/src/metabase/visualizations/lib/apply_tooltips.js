@@ -185,6 +185,7 @@ export function getClickHoverObject(
     value,
     column,
     settings,
+    seriesIndex,
   };
 }
 

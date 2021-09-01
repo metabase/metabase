@@ -116,6 +116,16 @@ Dashboards are a fixed aspect ratio, so if you'd like to ensure they're automati
 <iframe src="http://metabase.example.com/embed/dashboard/TOKEN" onload="iFrameResize({}, this)"></iframe>
 ```
 
+### Additional parameters
+
+To change the look and feel of the embed, you can add additional parameters to the embedding URL:
+
+- **bordered**: true or false. Adds a visible border to the embed.
+- **titled**: true or false. Adds or removes the title to the embedding.
+- **theme**: null or night. Shows the embedded iframe in dark mode.
+
+For example: http://yourmetabaseurl.com/embed/dashboard/a_very_huge_hashed_url#theme=night&hide_parameters=category&titled=true&bordered=false
+
 ### Reference applications
 
 To see concrete examples of how to embed Metabase in applications under a number of common frameworks, check out our [reference implementations](https://github.com/metabase/embedding-reference-apps) on Github.
@@ -126,5 +136,6 @@ If you'd like to embed Metabase dashboards or charts in your application without
 
 To learn more about embedding, check out these articles:
 
-- [How to use Metabase to deliver analytics to your customers](https://www.metabase.com/blog/external-facing-analytics/index.html).
-- [How to embed Metabase in your app to deliver multi-tenant, self-service analytics](https://www.metabase.com/blog/embedding/index.html).
+- [Embedding charts and dashboards](https://www.metabase.com/learn/developing-applications/advanced-metabase/embedding-charts-and-dashboards)
+- [Four strategies for delivering customer-facing analytics with Metabase](https://www.metabase.com/learn/developing-applications/advanced-metabase/embedding-overview)
+- [Embed Metabase in your app to deliver multi-tenant, self-service analytics](https://www.metabase.com/learn/developing-applications/advanced-metabase/multi-tenant-self-service-analytics.html)

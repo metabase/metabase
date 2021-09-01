@@ -1,5 +1,6 @@
 (ns metabase.driver.sqlite
-  (:require [clojure.string :as str]
+  (:require [clojure.java.io :as io]
+            [clojure.string :as str]
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
             [java-time :as t]
@@ -37,6 +38,23 @@
 ;; HACK SQLite doesn't support ALTER TABLE ADD CONSTRAINT FOREIGN KEY and I don't have all day to work around this so
 ;; for now we'll just skip the foreign key stuff in the tests.
 (defmethod driver/supports? [:sqlite :foreign-keys] [_ _] (not config/is-test?))
+
+;; Every SQLite3 file starts with "SQLite Format 3"
+;; or "** This file contains an SQLite
+;; There is also SQLite2 but last 2 version was 2005
+(defn- confirm-file-is-sqlite [filename]
+  (with-open [reader (io/input-stream filename)]
+    (let [outarr (byte-array 50)]
+      (.read reader outarr)
+      (let [line (String. outarr)]
+        (or (str/includes? line "SQLite format 3")
+            (str/includes? line "This file contains an SQLite"))))))
+
+(defmethod driver/can-connect? :sqlite
+  [driver details]
+  (if (confirm-file-is-sqlite (:db details))
+    (sql-jdbc.conn/can-connect? driver details)
+    false ))
 
 (defmethod driver/db-start-of-week :sqlite
   [_]
@@ -336,7 +354,7 @@
 ;; SQLite's JDBC driver is fussy and won't let you change connections to read-only after you create them
 (defmethod sql-jdbc.execute/connection-with-timezone :sqlite
   [driver database ^String timezone-id]
-  (let [conn (.getConnection (sql-jdbc.execute/datasource database))]
+  (let [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))]
     (try
       (sql-jdbc.execute/set-best-transaction-level! driver conn)
       conn

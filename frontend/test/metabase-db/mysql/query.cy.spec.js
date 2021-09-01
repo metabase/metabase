@@ -1,4 +1,4 @@
-import { restore, modal, addMySQLDatabase } from "__support__/cypress";
+import { restore, modal, addMySQLDatabase } from "__support__/e2e/cypress";
 
 const MYSQL_DB_NAME = "QA MySQL8";
 
@@ -85,6 +85,6 @@ describe("mysql > user > query", () => {
     cy.findByText("Not now").click();
 
     cy.contains("Save").should("not.exist");
-    cy.url().should("match", /\/question\/\d+$/);
+    cy.url().should("match", /\/question\/\d+-[a-z0-9-]*$/);
   });
 });

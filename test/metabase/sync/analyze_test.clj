@@ -1,5 +1,6 @@
 (ns metabase.sync.analyze-test
   (:require [clojure.test :refer :all]
+            [metabase.api.table :as table-api]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :as field :refer [Field]]
             [metabase.models.table :refer [Table]]
@@ -40,7 +41,7 @@
 ;; ...but they *SHOULD* get analyzed if they ARE newly created (expcept for PK which we skip)
 (deftest analyze-table-test
   (tt/with-temp* [Database [db    {:engine "h2", :details (:details (data/db))}]
-                  Table    [table {:name "VENUES", :db_id (u/get-id db)}]]
+                  Table    [table {:name "VENUES", :db_id (u/the-id db)}]]
     ;; sync the metadata, but DON't do analysis YET
     (sync-metadata/sync-table-metadata! table)
     ;; ok, NOW run the analysis process
@@ -52,32 +53,32 @@
              {:name "LONGITUDE", :semantic_type :type/Longitude, :last_analyzed true}
              {:name "CATEGORY_ID", :semantic_type :type/Category, :last_analyzed true}
              {:name "NAME", :semantic_type :type/Name, :last_analyzed true}}
-           (set (for [field (db/select [Field :name :semantic_type :last_analyzed] :table_id (u/get-id table))]
+           (set (for [field (db/select [Field :name :semantic_type :last_analyzed] :table_id (u/the-id table))]
                   (into {} (update field :last_analyzed boolean))))))))
 
 (deftest mark-fields-as-analyzed-test
   (testing "Make sure that only the correct Fields get marked as recently analyzed"
     (with-redefs [i/latest-fingerprint-version Short/MAX_VALUE]
       (tt/with-temp* [Table [table]
-                      Field [_ {:table_id            (u/get-id table)
+                      Field [_ {:table_id            (u/the-id table)
                                 :name                "Current fingerprint, not analyzed"
                                 :fingerprint_version Short/MAX_VALUE
                                 :last_analyzed       nil}]
-                      Field [_ {:table_id            (u/get-id table)
+                      Field [_ {:table_id            (u/the-id table)
                                 :name                "Current fingerprint, already analzed"
                                 :fingerprint_version Short/MAX_VALUE
                                 :last_analyzed       #t "2017-08-09T00:00Z"}]
-                      Field [_ {:table_id            (u/get-id table)
+                      Field [_ {:table_id            (u/the-id table)
                                 :name                "Old fingerprint, not analyzed"
                                 :fingerprint_version (dec Short/MAX_VALUE)
                                 :last_analyzed       nil}]
-                      Field [_ {:table_id            (u/get-id table)
+                      Field [_ {:table_id            (u/the-id table)
                                 :name                "Old fingerprint, already analzed"
                                 :fingerprint_version (dec Short/MAX_VALUE)
                                 :last_analyzed       #t "2017-08-09T00:00Z"}]]
         (#'analyze/update-fields-last-analyzed! table)
         (is (= #{"Current fingerprint, not analyzed"}
-               (db/select-field :name Field :table_id (u/get-id table), :last_analyzed [:> #t "2018-01-01"])))))))
+               (db/select-field :name Field :table_id (u/the-id table), :last_analyzed [:> #t "2018-01-01"])))))))
 
 (deftest survive-fingerprinting-errors
   (testing "Make sure we survive fingerprinting failing"
@@ -147,13 +148,13 @@
 (defn- fake-field-was-analyzed? [field]
   ;; don't let ourselves be fooled if the test passes because the table is
   ;; totally broken or has no fields. Make sure we actually test something
-  (assert (db/exists? Field :id (u/get-id field)))
-  (db/exists? Field :id (u/get-id field), :last_analyzed [:not= nil]))
+  (assert (db/exists? Field :id (u/the-id field)))
+  (db/exists? Field :id (u/the-id field), :last_analyzed [:not= nil]))
 
 (defn- latest-sync-time [table]
   (db/select-one-field :last_analyzed Field
     :last_analyzed [:not= nil]
-    :table_id      (u/get-id table)
+    :table_id      (u/the-id table)
     {:order-by [[:last_analyzed :desc]]}))
 
 (defn- set-table-visibility-type-via-api!
@@ -176,7 +177,7 @@
          additional-options))
 
 (defn- fake-field [table & {:as additional-options}]
-  (merge {:table_id (u/get-id table), :name "PRICE", :base_type "type/Integer"}
+  (merge {:table_id (u/the-id table), :name "PRICE", :base_type "type/Integer"}
          additional-options))
 
 (defn- analyze-table! [table]
@@ -230,12 +231,18 @@
 
 (deftest analyze-unhidden-tables-test
   (testing "un-hiding a table should cause it to be analyzed"
-    (mt/with-temp* [Table [table (fake-table)]
-                    Field [field (fake-field table)]]
-      (set-table-visibility-type-via-api! table "hidden")
-      (set-table-visibility-type-via-api! table nil)
-      (is (= true
-             (fake-field-was-analyzed? field))))))
+    (let [original-submit (var-get #'table-api/submit-task)
+          finished?       (promise)]
+      (with-redefs [table-api/submit-task (fn [task]
+                                            @(original-submit task)
+                                            (deliver finished? true))]
+        (mt/with-temp* [Table [table (fake-table)]
+                        Field [field (fake-field table)]]
+          (set-table-visibility-type-via-api! table "hidden")
+          (set-table-visibility-type-via-api! table nil)
+          (deref finished? 1000 ::timeout)
+          (is (= true
+                 (fake-field-was-analyzed? field))))))))
 
 (deftest dont-analyze-rehidden-table-test
   (testing "re-hiding a table should not cause it to be analyzed"

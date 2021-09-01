@@ -1,3 +1,4 @@
+/* eslint-disable react/no-string-refs */
 import React from "react";
 import { t } from "ttag";
 import cx from "classnames";
@@ -10,6 +11,8 @@ import NightModeIcon from "metabase/components/icons/NightModeIcon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import RefreshWidget from "metabase/dashboard/components/RefreshWidget";
 import Tooltip from "metabase/components/Tooltip";
+
+import { DashboardHeaderButton } from "./DashboardHeader.styled";
 
 export const getDashboardActions = (
   self,
@@ -27,8 +30,6 @@ export const getDashboardActions = (
     setRefreshElapsedHook,
     onRefreshPeriodChange,
     onSharingClick,
-    onEmbeddingClick,
-    dashcardData,
   },
 ) => {
   const isPublicLinksEnabled = MetabaseSettings.get("enable-public-sharing");
@@ -36,68 +37,116 @@ export const getDashboardActions = (
 
   const buttons = [];
 
-  /* we consider the dashboard to be shareable if there is at least one card with data in it on the dashboard
-    markdown cards don't appear in dashcardData so we check to see if there is at least one value
-  */
-  const canShareDashboard = Object.keys(dashcardData).length > 0;
+  const isLoaded = !!dashboard;
+  const hasCards = isLoaded && dashboard.ordered_cards.length > 0;
+
+  // dashcardData only contains question cards, text ones don't appear here
+  const hasDataCards =
+    hasCards &&
+    dashboard.ordered_cards.some(dashCard => dashCard.card.display !== "text");
+
+  const canShareDashboard = hasCards;
+
+  // Getting notifications with static text-only cards doesn't make a lot of sense
+  const canSubscribeToDashboard = hasDataCards;
 
   if (!isEditing && !isEmpty && !isPublic) {
     const extraButtonClassNames =
       "bg-brand-hover text-white-hover py2 px3 text-bold block cursor-pointer";
 
-    buttons.push(
-      <PopoverWithTrigger
-        ref="popover"
-        disabled={!canShareDashboard}
-        triggerElement={
-          <Tooltip
-            tooltip={
-              canShareDashboard
-                ? t`Sharing`
-                : t`Add data to share this dashboard`
-            }
-          >
-            <Icon
-              name="share"
-              className={cx({
-                "text-brand-hover": canShareDashboard,
-                "text-light": !canShareDashboard,
-              })}
-            />
-          </Tooltip>
-        }
-      >
-        <div className="py1">
-          <div>
-            <a
-              className={extraButtonClassNames}
-              data-metabase-event={"Dashboard;Subscriptions"}
-              onClick={() => {
-                self.refs.popover.close();
-                onSharingClick();
-              }}
-            >
-              {t`Dashboard subscriptions`}
-            </a>
-          </div>
-          <div>
-            <DashboardSharingEmbeddingModal
-              additionalClickActions={() => self.refs.popover.close()}
-              dashboard={dashboard}
-              enabled={
-                !isEditing &&
-                !isFullscreen &&
-                ((isPublicLinksEnabled && (isAdmin || dashboard.public_uuid)) ||
-                  (isEmbeddingEnabled && isAdmin))
+    if (canSubscribeToDashboard) {
+      buttons.push(
+        <PopoverWithTrigger
+          ref="popover"
+          disabled={!canShareDashboard}
+          triggerElement={
+            <Tooltip
+              tooltip={
+                canShareDashboard
+                  ? t`Sharing`
+                  : t`Add data to share this dashboard`
               }
-              linkClassNames={extraButtonClassNames}
-              linkText={t`Sharing and embedding`}
-              key="dashboard-embed"
-            />
+            >
+              <DashboardHeaderButton>
+                <Icon
+                  name="share"
+                  className={cx({
+                    "text-brand-hover": canShareDashboard,
+                    "text-light": !canShareDashboard,
+                  })}
+                />
+              </DashboardHeaderButton>
+            </Tooltip>
+          }
+        >
+          <div className="py1">
+            <div>
+              <a
+                className={extraButtonClassNames}
+                data-metabase-event={"Dashboard;Subscriptions"}
+                onClick={() => {
+                  self.refs.popover.close();
+                  onSharingClick();
+                }}
+              >
+                {t`Dashboard subscriptions`}
+              </a>
+            </div>
+            <div>
+              <DashboardSharingEmbeddingModal
+                additionalClickActions={() => self.refs.popover.close()}
+                dashboard={dashboard}
+                enabled={
+                  !isEditing &&
+                  !isFullscreen &&
+                  ((isPublicLinksEnabled &&
+                    (isAdmin || dashboard.public_uuid)) ||
+                    (isEmbeddingEnabled && isAdmin))
+                }
+                linkClassNames={extraButtonClassNames}
+                linkText={t`Sharing and embedding`}
+                key="dashboard-embed"
+              />
+            </div>
           </div>
-        </div>
-      </PopoverWithTrigger>,
-    );
+        </PopoverWithTrigger>,
+      );
+    } else {
+      buttons.push(
+        <DashboardSharingEmbeddingModal
+          key="dashboard-embed"
+          additionalClickActions={() => self.refs.popover.close()}
+          dashboard={dashboard}
+          enabled={
+            !isEditing &&
+            !isFullscreen &&
+            ((isPublicLinksEnabled && (isAdmin || dashboard.public_uuid)) ||
+              (isEmbeddingEnabled && isAdmin))
+          }
+          isLinkEnabled={canShareDashboard}
+          linkText={
+            <Tooltip
+              isLinkEnabled={canShareDashboard}
+              tooltip={
+                canShareDashboard
+                  ? t`Sharing`
+                  : t`Add data to share this dashboard`
+              }
+            >
+              <DashboardHeaderButton>
+                <Icon
+                  name="share"
+                  className={cx({
+                    "text-brand-hover": canShareDashboard,
+                    "text-light": !canShareDashboard,
+                  })}
+                />
+              </DashboardHeaderButton>
+            </Tooltip>
+          }
+        />,
+      );
+    }
   }
 
   if (!isEditing && !isEmpty) {
@@ -120,11 +169,13 @@ export const getDashboardActions = (
         tooltip={isNightMode ? t`Daytime mode` : t`Nighttime mode`}
       >
         <span data-metabase-event={"Dashboard;Night Mode;" + !isNightMode}>
-          <NightModeIcon
-            className="text-brand-hover cursor-pointer"
-            isNightMode={isNightMode}
-            onClick={() => onNightModeChange(!isNightMode)}
-          />
+          <DashboardHeaderButton>
+            <NightModeIcon
+              className="text-brand-hover cursor-pointer"
+              isNightMode={isNightMode}
+              onClick={() => onNightModeChange(!isNightMode)}
+            />
+          </DashboardHeaderButton>
         </span>
       </Tooltip>,
     );
@@ -140,11 +191,13 @@ export const getDashboardActions = (
         <span
           data-metabase-event={"Dashboard;Fullscreen Mode;" + !isFullscreen}
         >
-          <FullscreenIcon
-            className="text-brand-hover cursor-pointer"
-            isFullscreen={isFullscreen}
-            onClick={e => onFullscreenChange(!isFullscreen, !e.altKey)}
-          />
+          <DashboardHeaderButton>
+            <FullscreenIcon
+              className="text-brand-hover cursor-pointer"
+              isFullscreen={isFullscreen}
+              onClick={e => onFullscreenChange(!isFullscreen, !e.altKey)}
+            />
+          </DashboardHeaderButton>
         </span>
       </Tooltip>,
     );

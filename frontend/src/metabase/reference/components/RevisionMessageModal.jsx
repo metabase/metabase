@@ -15,11 +15,17 @@ export default class RevisionMessageModal extends Component {
     children: PropTypes.any,
   };
 
+  constructor(props) {
+    super(props);
+
+    this.modal = React.createRef();
+  }
+
   render() {
     const { action, children, field, submitting } = this.props;
 
     const onClose = () => {
-      this.refs.modal.close();
+      this.modal.current.close();
     };
 
     const onAction = () => {
@@ -28,7 +34,7 @@ export default class RevisionMessageModal extends Component {
     };
 
     return (
-      <ModalWithTrigger ref="modal" triggerElement={children}>
+      <ModalWithTrigger ref={this.modal} triggerElement={children}>
         <ModalContent title={t`Reason for changes`} onClose={onClose}>
           <div className={S.modalBody}>
             <textarea

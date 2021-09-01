@@ -28,7 +28,7 @@
   ([collection-name color description]
    (create-collection! collection-name color description (root-container-location)))
   ([collection-name color description location]
-   (u/get-id
+   (u/the-id
     (db/insert! Collection
       {:name        collection-name
        :color       color

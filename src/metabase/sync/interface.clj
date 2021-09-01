@@ -25,7 +25,7 @@
    :database-type                      (s/maybe su/NonBlankString) ; blank if the Field is all NULL & untyped, i.e. in Mongo
    :base-type                          su/FieldType
    :database-position                  su/IntGreaterThanOrEqualToZero
-   (s/optional-key :semantic-type)     (s/maybe su/FieldType)
+   (s/optional-key :semantic-type)     (s/maybe su/FieldSemanticOrRelationType)
    (s/optional-key :effective-type)    (s/maybe su/FieldType)
    (s/optional-key :coercion-strategy) (s/maybe su/CoercionStrategy)
    (s/optional-key :field-comment)     (s/maybe su/NonBlankString)

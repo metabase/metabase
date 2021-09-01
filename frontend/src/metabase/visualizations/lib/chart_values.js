@@ -99,7 +99,7 @@ export function onRenderValueLabels(
           !showAll && barCount > 1 && isBarLike(display) && barWidth < 20;
         return { x, y, showLabelBelow, seriesIndex, rotated, hidden };
       })
-      .filter(d => !(isBarLike(display) && d.y === 0));
+      .filter(d => !(display === "bar" && d.y === 0));
 
     if (display === "waterfall" && data.length > 0) {
       let total = 0;
@@ -161,6 +161,12 @@ export function onRenderValueLabels(
   // Ordinal bar charts and histograms need extra logic to center the label.
   const xShifts = displays.map((display, index) => {
     if (!isBarLike(display)) {
+      const shouldCenterValueLabel =
+        xScale.rangeBand && displays.some(d => isBarLike(d));
+      if (shouldCenterValueLabel) {
+        // this aligns labels on non-bars with in the center of the bar group
+        return ((1 + chart._rangeBandPadding()) * xScale.rangeBand()) / 2;
+      }
       return 0;
     }
     const barIndex = displays.slice(0, index).filter(isBarLike).length;

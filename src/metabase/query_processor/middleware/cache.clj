@@ -33,12 +33,6 @@
     [initial-metadata row-1 row-2 ... row-n final-metadata]"
   3)
 
-;; TODO - Why not make this an option in the query itself? :confused:
-(def ^:dynamic ^Boolean *ignore-cached-results*
-  "Should we force the query to run, ignoring cached results even if they're available?
-  Setting this to `true` will run the query again and will still save the updated results."
-  false)
-
 (def ^:dynamic *backend*
   "Current cache backend. Dynamically rebindable primary for test purposes."
   (i/cache-backend (config/config-kw :mb-qp-cache-backend)))
@@ -139,15 +133,14 @@
 
         ([acc row]
          (if (map? row)
-           (do (vreset! final-metadata row)
-               (rf acc))
+           (vreset! final-metadata row)
            (rf acc row)))))))
 
 (defn- maybe-reduce-cached-results
   "Reduces cached results if there is a hit. Otherwise, returns `::miss` directly."
-  [query-hash max-age-seconds rff context]
+  [ignore-cache? query-hash max-age-seconds rff context]
   (try
-    (or (when-not *ignore-cached-results*
+    (or (when-not ignore-cache?
           (log/tracef "Looking for cached results for query with hash %s younger than %s\n"
                       (pr-str (i/short-hex-hash query-hash)) (u/format-seconds max-age-seconds))
           (i/with-cached-results *backend* query-hash max-age-seconds [is]
@@ -173,11 +166,11 @@
 ;;; --------------------------------------------------- Middleware ---------------------------------------------------
 
 (defn- run-query-with-cache
-  [qp {:keys [cache-ttl], :as query} rff context]
+  [qp {:keys [cache-ttl middleware], :as query} rff context]
   ;; TODO - Query will already have `info.hash` if it's a userland query. I'm not 100% sure it will be the same hash,
   ;; because this is calculated after normalization, instead of before
   (let [query-hash (qputil/query-hash query)
-        result     (maybe-reduce-cached-results query-hash cache-ttl rff context)]
+        result     (maybe-reduce-cached-results (:ignore-cached-results? middleware) query-hash cache-ttl rff context)]
     (when (= result ::miss)
       (let [start-time-ms (System/currentTimeMillis)]
         (log/trace "Running query and saving cached results (if eligible)...")

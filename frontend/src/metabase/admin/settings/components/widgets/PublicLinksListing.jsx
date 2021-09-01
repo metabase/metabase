@@ -94,7 +94,7 @@ export default class PublicLinksListing extends Component {
             <tbody>
               {list &&
                 list.map(link => (
-                  <tr>
+                  <tr key={link.id}>
                     <td>
                       <Link
                         to={getUrl(link)}
@@ -147,7 +147,7 @@ export const PublicLinksDashboardListing = () => (
     load={DashboardApi.listPublic}
     revoke={DashboardApi.deletePublicLink}
     type={t`Public Dashboard Listing`}
-    getUrl={({ id }) => Urls.dashboard(id)}
+    getUrl={dashboard => Urls.dashboard(dashboard)}
     getPublicUrl={({ public_uuid }) => Urls.publicDashboard(public_uuid)}
     noLinksMessage={t`No dashboards have been publicly shared yet.`}
   />
@@ -158,7 +158,7 @@ export const PublicLinksQuestionListing = () => (
     load={CardApi.listPublic}
     revoke={CardApi.deletePublicLink}
     type={t`Public Card Listing`}
-    getUrl={({ id }) => Urls.question(id)}
+    getUrl={question => Urls.question(question)}
     getPublicUrl={({ public_uuid }) => Urls.publicQuestion(public_uuid)}
     noLinksMessage={t`No questions have been publicly shared yet.`}
   />
@@ -168,7 +168,7 @@ export const EmbeddedDashboardListing = () => (
   <div className="bordered rounded full" style={{ maxWidth: 820 }}>
     <PublicLinksListing
       load={DashboardApi.listEmbeddable}
-      getUrl={({ id }) => Urls.dashboard(id)}
+      getUrl={dashboard => Urls.dashboard(dashboard)}
       type={t`Embedded Dashboard Listing`}
       noLinksMessage={t`No dashboards have been embedded yet.`}
     />
@@ -179,7 +179,7 @@ export const EmbeddedQuestionListing = () => (
   <div className="bordered rounded full" style={{ maxWidth: 820 }}>
     <PublicLinksListing
       load={CardApi.listEmbeddable}
-      getUrl={({ id }) => Urls.question(id)}
+      getUrl={question => Urls.question(question)}
       type={t`Embedded Card Listing`}
       noLinksMessage={t`No questions have been embedded yet.`}
     />

@@ -23,7 +23,7 @@
 
 (defn- perms-objects-set [segment read-or-write]
   (let [table (or (:table segment)
-                  (db/select-one ['Table :db_id :schema :id] :id (u/get-id (:table_id segment))))]
+                  (db/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id segment))))]
     (i/perms-objects-set table read-or-write)))
 
 (u/strict-extend (class Segment)

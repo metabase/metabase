@@ -30,7 +30,7 @@
 (s/defn ^:private job-context->database-id :- (s/maybe su/IntGreaterThanZero)
   "Get the Database ID referred to in `job-context`."
   [job-context]
-  (u/get-id (get (qc/from-job-data job-context) "db-id")))
+  (u/the-id (get (qc/from-job-data job-context) "db-id")))
 
 ;; The DisallowConcurrentExecution on the two defrecords below attaches an annotation to the generated class that will
 ;; constrain the job execution to only be one at a time. Other triggers wanting the job to run will misfire.
@@ -122,7 +122,7 @@
 (s/defn ^:private trigger-key :- TriggerKey
   "Return an appropriate string key for the trigger for `task-info` and `database-or-id`."
   [database :- DatabaseInstance, task-info :- TaskInfo]
-  (triggers/key (format "metabase.task.%s.trigger.%d" (name (:key task-info)) (u/get-id database))))
+  (triggers/key (format "metabase.task.%s.trigger.%d" (name (:key task-info)) (u/the-id database))))
 
 (s/defn ^:private cron-schedule :- cron-util/CronScheduleString
   "Fetch the appropriate cron schedule string for `database` and `task-info`."
@@ -137,7 +137,7 @@
 (s/defn ^:private trigger-description :- s/Str
   "Return an appropriate description string for a job/trigger for Database described by `task-info`."
   [database :- DatabaseInstance, task-info :- TaskInfo]
-  (format "%s Database %d" (name (:key task-info)) (u/get-id database)))
+  (format "%s Database %d" (name (:key task-info)) (u/the-id database)))
 
 (s/defn ^:private job-description :- s/Str
   "Return an appropriate description string for a job"
@@ -154,7 +154,7 @@
   [database :- DatabaseInstance, task-info :- TaskInfo]
   (let [trigger-key (trigger-key database task-info)]
     (log/debug (u/format-color 'red
-                   (trs "Unscheduling task for Database {0}: trigger: {1}" (u/get-id database) (.getName trigger-key))))
+                   (trs "Unscheduling task for Database {0}: trigger: {1}" (u/the-id database) (.getName trigger-key))))
     (task/delete-trigger! trigger-key)))
 
 (s/defn unschedule-tasks-for-db!
@@ -187,7 +187,7 @@
   (triggers/build
    (triggers/with-description (trigger-description database task-info))
    (triggers/with-identity (trigger-key database task-info))
-   (triggers/using-job-data {"db-id" (u/get-id database)})
+   (triggers/using-job-data {"db-id" (u/the-id database)})
    (triggers/for-job (job-key task-info))
    (triggers/start-now)
    (triggers/with-schedule
@@ -231,7 +231,7 @@
         (delete-task! database ti)
         (log/info
          (u/format-color 'green "Scheduling %s for database %d: trigger: %s"
-                         description (u/get-id database) (.. ^org.quartz.Trigger trigger getKey getName)))
+                         description (u/the-id database) (.. ^org.quartz.Trigger trigger getKey getName)))
         ;; now (re)schedule the task
         (task/add-trigger! trigger)))))
 

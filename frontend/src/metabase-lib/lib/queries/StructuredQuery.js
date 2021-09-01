@@ -432,9 +432,7 @@ export default class StructuredQuery extends AtomicQuery {
 
   _cleanClauseList(listName) {
     let query = this;
-    // $FlowFixMe
     for (let index = 0; index < query[listName]().length; index++) {
-      // $FlowFixMe
       const clause = query[listName]()[index];
       if (!this._validateClause(clause)) {
         console.warn("Removing invalid MBQL clause", clause);
@@ -447,7 +445,6 @@ export default class StructuredQuery extends AtomicQuery {
   }
 
   _isValidClauseList(listName) {
-    // $FlowFixMe
     for (const clause of this[listName]()) {
       if (!this._validateClause(clause)) {
         return false;

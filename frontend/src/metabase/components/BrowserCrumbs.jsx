@@ -18,30 +18,24 @@ const BrowserCrumbs = ({ crumbs, analyticsContext }) => (
   <Flex align="center">
     {crumbs
       .filter(c => c)
-      .map((crumb, index, crumbs) => [
-        <Flex align="center">
+      .map((crumb, index, crumbs) => (
+        <Flex align="center" key={index}>
           {crumb.to ? (
             <Link
               className="text-brand-hover cursor-pointer"
-              key={"title" + index}
               to={crumb.to}
               data-metabase-event={`${analyticsContext};Bread Crumb;Click`}
             >
               <Crumb>{crumb.title}</Crumb>
             </Link>
           ) : (
-            <Crumb key={"title" + index}>{crumb.title}</Crumb>
+            <Crumb>{crumb.title}</Crumb>
           )}
           {index < crumbs.length - 1 ? (
-            <Icon
-              key={"divider" + index}
-              name="chevronright"
-              color={color("text-light")}
-              mx={1}
-            />
+            <Icon name="chevronright" color={color("text-light")} mx={1} />
           ) : null}
-        </Flex>,
-      ])}
+        </Flex>
+      ))}
   </Flex>
 );
 

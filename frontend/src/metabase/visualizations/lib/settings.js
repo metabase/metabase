@@ -57,7 +57,6 @@ export type WidgetDef = {
   hidden: boolean,
   disabled: boolean,
   props: { [key: string]: any },
-  // $FlowFixMe
   widget?: React.Component,
   onChange: (value: any) => void,
 };
@@ -287,4 +286,36 @@ export function mergeSettings(first: Settings = {}, second: Settings = {}) {
     }
   }
   return merged;
+}
+
+export function getClickBehaviorSettings(settings) {
+  const newSettings = {};
+
+  if (settings.click_behavior) {
+    newSettings.click_behavior = settings.click_behavior;
+  }
+
+  const columnSettings = getColumnClickBehavior(settings.column_settings);
+  if (columnSettings) {
+    newSettings.column_settings = columnSettings;
+  }
+
+  return newSettings;
+}
+
+function getColumnClickBehavior(columnSettings) {
+  if (columnSettings == null) {
+    return null;
+  }
+
+  return Object.entries(columnSettings)
+    .filter(([_, fieldSettings]) => fieldSettings.click_behavior != null)
+    .reduce((acc, [key, fieldSettings]) => {
+      return {
+        ...acc,
+        [key]: {
+          click_behavior: fieldSettings.click_behavior,
+        },
+      };
+    }, null);
 }

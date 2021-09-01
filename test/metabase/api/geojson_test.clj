@@ -11,6 +11,10 @@
   "URL of a GeoJSON file used for test purposes."
   "https://raw.githubusercontent.com/metabase/metabase/master/test_resources/test.geojson")
 
+(def ^:private ^String test-broken-geojson-url
+  "URL of a GeoJSON file that is a valid URL but which cannot be connected to."
+  "https://raw.githubusercontent.com/metabase/metabase/master/test_resources/broken.geojson")
+
 (def ^:private test-custom-geojson
   {:middle-earth {:name        "Middle Earth"
                   :url         test-geojson-url
@@ -18,13 +22,12 @@
                   :region_key  nil
                   :region_name nil}})
 
-(def ^:private test-geojson-value
-  {:type "FeatureCollection"
-   :features [{:type "Feature"
-               :geometry {:type "Point",
-                          :coordinates [55.948609737988384
-                                        -3.1919722001105044]}
-               :properties []}]})
+(def ^:private test-broken-custom-geojson
+  {:middle-earth {:name        "Middle Earth"
+                  :url         test-broken-geojson-url
+                  :builtin     true
+                  :region_key  nil
+                  :region_name nil}})
 
 (deftest geojson-schema-test
   (is (= true
@@ -57,8 +60,8 @@
           valid?   #'geojson-api/validate-geojson]
       (doseq [[url should-pass?] examples]
         (let [geojson {:deadb33f {:name        "Rivendell"
-                                   :url         url
-                                   :region_key  nil
+                                  :url         url
+                                  :region_key  nil
                                   :region_name nil}}]
           (if should-pass?
             (is (valid? geojson) url)
@@ -92,10 +95,20 @@
                     {:value resource-geojson})
                    ((mt/user->client :crowberto) :get 200 "setting/custom-geojson")))))))))
 
-(deftest proxy-endpoint-test
+(deftest url-proxy-endpoint-test
+  (testing "GET /api/geojson"
+    (testing "test the endpoint that fetches JSON files given a URL"
+      (is (= {:type        "Point"
+              :coordinates [37.77986 -122.429]}
+             ((mt/user->client :rasta) :get 200 "geojson" :url test-geojson-url))))
+    (testing "error is returned if URL connection fails"
+      (is (= "GeoJSON URL failed to load"
+             ((mt/user->client :rasta) :get 400 "geojson" :url test-broken-geojson-url))))))
+
+(deftest key-proxy-endpoint-test
   (testing "GET /api/geojson/:key"
     (mt/with-temporary-setting-values [custom-geojson test-custom-geojson]
-      (testing "test the endpoint that acts as a proxy for JSON files"
+      (testing "test the endpoint that fetches JSON files given a GeoJSON key"
         (is (= {:type        "Point"
                 :coordinates [37.77986 -122.429]}
                ((mt/user->client :rasta) :get 200 "geojson/middle-earth"))))
@@ -107,7 +120,10 @@
         (is (= {:type        "Point"
                 :coordinates [37.77986 -122.429]}
                (client/client :get 200 "geojson/middle-earth"))))
-      (testing "error conditions"
         (testing "try fetching an invalid key; should fail"
           (is (= "Invalid custom GeoJSON key: invalid-key"
-                 ((mt/user->client :rasta) :get 400 "geojson/invalid-key"))))))))
+                 ((mt/user->client :rasta) :get 400 "geojson/invalid-key")))))
+    (mt/with-temporary-setting-values [custom-geojson test-broken-custom-geojson]
+      (testing "fetching a broken URL should fail"
+        (is (= "GeoJSON URL failed to load"
+               ((mt/user->client :rasta) :get 400 "geojson/middle-earth")))))))

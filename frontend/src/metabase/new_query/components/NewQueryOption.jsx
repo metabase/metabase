@@ -29,7 +29,7 @@ export default class NewQueryOption extends Component {
           boxShadow: hover
             ? `0 3px 8px 0 ${color("text-light")}`
             : `0 1px 3px 0 ${color("text-light")}`,
-          "min-height": 340,
+          minHeight: 340,
         }}
         onMouseOver={() => this.setState({ hover: true })}
         onMouseLeave={() => this.setState({ hover: false })}

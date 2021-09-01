@@ -27,25 +27,23 @@
                  identity)
        (filter field-reference?)))
 
-;; TODO — this function name is inaccurate, rename to `temporal?`
-(defn datetime?
+(defn- temporal?
   "Does `field` represent a temporal value, i.e. a date, time, or datetime?"
-  [field]
-  (and (not ((disj u.date/extract-units :year) (:unit field)))
-       (or (isa? (:base_type field) :type/Temporal)
-           (field/unix-timestamp? field))))
+  [{base-type :base_type, effective-type :effective_type, unit :unit}]
+  ;; TODO -- not sure why we're excluding year here? Is it because we normally returned it as an integer in the past?
+  (and (not ((disj u.date/extract-units :year) unit))
+       (isa? (or effective-type base-type) :type/Temporal)))
 
 (defn- interestingness
-  [{:keys [base_type semantic_type fingerprint] :as field}]
+  [{base-type :base_type, effective-type :effective_type, semantic-type :semantic_type, :keys [fingerprint]}]
   (cond-> 0
     (some-> fingerprint :global :distinct-count (< 10)) inc
     (some-> fingerprint :global :distinct-count (> 20)) dec
-    ((descendants :type/Category) semantic_type)        inc
-    (field/unix-timestamp? field)                       inc
-    (isa? base_type :type/Temporal)                     inc
-    ((descendants :type/Temporal) semantic_type)        inc
-    (isa? semantic_type :type/CreationTimestamp)        inc
-    (#{:type/State :type/Country} semantic_type)        inc))
+    ((descendants :type/Category) semantic-type)        inc
+    (isa? (or effective-type base-type) :type/Temporal) inc
+    ((descendants :type/Temporal) semantic-type)        inc
+    (isa? semantic-type :type/CreationTimestamp)        inc
+    (#{:type/State :type/Country} semantic-type)        inc))
 
 (defn- interleave-all
   [& colls]
@@ -70,7 +68,7 @@
   [fields]
   (->> fields
        (filter (fn [{:keys [semantic_type] :as field}]
-                 (or (datetime? field)
+                 (or (temporal? field)
                      (isa? semantic_type :type/Category))))
        sort-by-interestingness))
 
@@ -118,7 +116,8 @@
   "Return filter type for a given field."
   [{:keys [base_type semantic_type] :as field}]
   (cond
-    (datetime? field)                   "date/all-options"
+    (temporal? field
+     )                   "date/all-options"
     (isa? semantic_type :type/State)    "location/state"
     (isa? semantic_type :type/Country)  "location/country"
     (isa? semantic_type :type/Category) "category"))

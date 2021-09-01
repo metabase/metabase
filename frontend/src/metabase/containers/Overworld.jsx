@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import _ from "underscore";
 import { Box, Flex } from "grid-styled";
 import { connect } from "react-redux";
 import { t, jt } from "ttag";
@@ -38,29 +37,7 @@ import {
 } from "metabase/selectors/settings";
 
 const PAGE_PADDING = [1, 2, 4];
-
-// use reselect select to avoid re-render if list doesn't change
-const getParitionedCollections = createSelector(
-  [(state, props) => props.list],
-  list => {
-    const [collections, items] = _.partition(
-      list,
-      item => item.model === "collection",
-    );
-    const [pinned, unpinned] = _.partition(
-      items,
-      item => item.collection_position != null,
-    );
-
-    // sort the pinned items by collection_position
-    pinned.sort((a, b) => a.collection_position - b.collection_position);
-    return {
-      collections,
-      pinned,
-      unpinned,
-    };
-  },
-);
+const ROOT_COLLECTIONS_LOAD_LIMIT = 500;
 
 const getGreeting = createSelector(
   [getUser],
@@ -69,13 +46,15 @@ const getGreeting = createSelector(
 
 //class Overworld extends Zelda
 @Search.loadList({
-  query: { collection: "root" },
+  query: {
+    collection: "root",
+    models: "collection",
+    limit: ROOT_COLLECTIONS_LOAD_LIMIT,
+  },
   wrapped: true,
 })
 @connect(
   (state, props) => ({
-    // split out collections, pinned, and unpinned since bulk actions only apply to unpinned
-    ...getParitionedCollections(state, props),
     user: getUser(state, props),
     showHomepageData: getShowHomepageData(state),
     showHomepageXrays: getShowHomepageXrays(state),
@@ -104,11 +83,7 @@ class Overworld extends React.Component {
         </Flex>
         <CollectionItemsLoader collectionId="root">
           {({ items }) => {
-            const pinnedDashboards = items.filter(
-              d => d.model === "dashboard" && d.collection_position != null,
-            );
-
-            if (showHomepageXrays && !pinnedDashboards.length > 0) {
+            if (showHomepageXrays && !items.length > 0) {
               return (
                 <CandidateListLoader>
                   {({ candidates, sampleCandidates, isSample }) => {
@@ -178,7 +153,7 @@ class Overworld extends React.Component {
               );
             }
 
-            if (pinnedDashboards.length === 0) {
+            if (items.length === 0) {
               return null;
             }
 
@@ -186,7 +161,7 @@ class Overworld extends React.Component {
               <Box px={PAGE_PADDING} mt={2}>
                 <SectionHeading>{t`Start here`}</SectionHeading>
                 <Grid>
-                  {pinnedDashboards.map(pin => {
+                  {items.map(pin => {
                     return (
                       <GridItem
                         w={[1, 1 / 2, 1 / 3]}
@@ -194,7 +169,7 @@ class Overworld extends React.Component {
                       >
                         <Link
                           data-metabase-event={`Homepage;Pinned Item Click;Pin Type ${pin.model}`}
-                          to={Urls.dashboard(pin.id)}
+                          to={Urls.dashboard(pin)}
                           hover={{ color: color("brand") }}
                         >
                           <Card hoverable p={3}>
@@ -220,11 +195,10 @@ class Overworld extends React.Component {
         <Box px={PAGE_PADDING} my={3}>
           <SectionHeading>{ROOT_COLLECTION.name}</SectionHeading>
           <Box p={[1, 2]} mt={2} bg={color("bg-medium")}>
-            {this.props.collections.filter(
-              c => c.id !== user.personal_collection_id,
-            ).length > 0 ? (
+            {this.props.list.filter(c => c.id !== user.personal_collection_id)
+              .length > 0 ? (
               <CollectionList
-                collections={this.props.collections}
+                collections={this.props.list}
                 analyticsContext="Homepage"
                 asCards={true}
               />
@@ -317,7 +291,7 @@ class Overworld extends React.Component {
                       {databases.map(database => (
                         <GridItem w={[1, 1 / 3]} key={database.id}>
                           <Link
-                            to={`browse/${database.id}`}
+                            to={Urls.browseDatabase(database)}
                             hover={{ color: color("brand") }}
                             data-metabase-event={`Homepage;Browse DB Clicked; DB Type ${database.engine}`}
                           >
@@ -387,7 +361,11 @@ export class AdminPinMessage extends React.Component {
     }
 
     const link = (
-      <Link className="link" to={Urls.collection()}>{t`Our analytics`}</Link>
+      <Link
+        className="link"
+        key="link-root"
+        to={Urls.collection({ id: "root" })}
+      >{t`Our analytics`}</Link>
     );
 
     return (

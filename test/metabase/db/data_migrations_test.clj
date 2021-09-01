@@ -30,13 +30,13 @@
     ;; Create a BigQuery database with 2 SQL Cards, one that already has a directive and one that doesn't.
     (mt/with-temp* [Database [database {:engine "bigquery"}]
                     Card     [card-1   {:name          "Card that should get directive"
-                                        :database_id   (u/get-id database)
-                                        :dataset_query {:database (u/get-id database)
+                                        :database_id   (u/the-id database)
+                                        :dataset_query {:database (u/the-id database)
                                                         :type     :native
                                                         :native   {:query "SELECT * FROM [dataset.table];"}}}]
                     Card     [card-2   {:name          "Card that already has directive"
-                                        :database_id   (u/get-id database)
-                                        :dataset_query {:database (u/get-id database)
+                                        :database_id   (u/the-id database)
+                                        :dataset_query {:database (u/the-id database)
                                                         :type     :native
                                                         :native   {:query "#standardSQL\nSELECT * FROM `dataset.table`;"}}}]]
       ;; manually running the migration function should cause card-1, which needs a directive, to get updated, but
@@ -50,7 +50,7 @@
               {:database true
                :type     :native
                :native   {:query "#standardSQL\nSELECT * FROM `dataset.table`;"}}}
-             (->> (db/select-field->field :name :dataset_query Card :id [:in (map u/get-id [card-1 card-2])])
+             (->> (db/select-field->field :name :dataset_query Card :id [:in (map u/the-id [card-1 card-2])])
                   (m/map-vals #(update % :database integer?))))))))
 
 (deftest add-legacy-sql-directive-to-bigquery-sql-cards-empty-query-test
@@ -58,14 +58,14 @@
     (testing (str "If for some reason we have a BigQuery native query that does not actually have any SQL, ignore it "
                   "rather than barfing (#8924) (No idea how this was possible, but clearly it was)")
       (mt/with-temp* [Database [database {:engine "bigquery"}]
-                      Card     [card     {:database_id   (u/get-id database)
-                                          :dataset_query {:database (u/get-id database)
+                      Card     [card     {:database_id   (u/the-id database)
+                                          :dataset_query {:database (u/the-id database)
                                                           :type     :native
                                                           :native   {:query 1000}}}]]
         (mt/suppress-output
           (#'migrations/add-legacy-sql-directive-to-bigquery-sql-cards))
         (is (= {:database true, :type :native, :native {:query 1000}}
-               (-> (db/select-one-field :dataset_query Card :id (u/get-id card))
+               (-> (db/select-one-field :dataset_query Card :id (u/the-id card))
                    (update :database integer?))))))))
 
 (deftest clear-ldap-user-local-passwords-test
@@ -76,7 +76,7 @@
                     User [user      {:email    "notanldapuser@metabase.com"
                                      :password "no change"}]]
       (#'migrations/clear-ldap-user-local-passwords)
-      (let [get-pass-and-salt          #(db/select-one [User :password :password_salt] :id (u/get-id %))
+      (let [get-pass-and-salt          #(db/select-one [User :password :password_salt] :id (u/the-id %))
             {ldap-pass :password,
              ldap-salt :password_salt} (get-pass-and-salt ldap-user)
             {user-pass :password,
@@ -96,7 +96,7 @@
 (defn- do-with-add-migrated-collections-cleanup [f]
   ;; remove the root collection perms if they're already there so we don't see warnings about duplicate perms
   (try
-    (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/get-id (group/admin))])]
+    (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/the-id (group/admin))])]
       (perms/revoke-collection-permissions! group-id collection/root-collection))
     (f)
     (finally
@@ -113,7 +113,7 @@
         (#'migrations/add-migrated-collections)
         (letfn [(perms [group]
                   (db/select-field :object Permissions
-                    :group_id (u/get-id group)
+                    :group_id (u/the-id group)
                     :object   [:like "/collection/root/%"]))]
           (testing "to All Users"
             (is (= #{"/collection/root/"}
@@ -153,21 +153,21 @@
       (with-add-migrated-collections-cleanup
         (mt/with-temp Pulse [pulse]
           (#'migrations/add-migrated-collections)
-          (is (= (db/select-one-field :collection_id Pulse :id (u/get-id pulse))
+          (is (= (db/select-one-field :collection_id Pulse :id (u/the-id pulse))
                  (db/select-one-id Collection :name "Migrated Pulses"))))))
 
     (testing "Card"
       (with-add-migrated-collections-cleanup
         (mt/with-temp Card [card]
           (#'migrations/add-migrated-collections)
-          (is (= (db/select-one-field :collection_id Card :id (u/get-id card))
+          (is (= (db/select-one-field :collection_id Card :id (u/the-id card))
                  (db/select-one-id Collection :name "Migrated Questions"))))))
 
     (testing "Dashboard"
       (with-add-migrated-collections-cleanup
         (mt/with-temp Dashboard [dashboard]
           (#'migrations/add-migrated-collections)
-          (is (= (db/select-one-field :collection_id Dashboard :id (u/get-id dashboard))
+          (is (= (db/select-one-field :collection_id Dashboard :id (u/the-id dashboard))
                  (db/select-one-id Collection :name "Migrated Dashboards"))))))))
 
 (deftest add-migrated-collections-perms-test
@@ -180,7 +180,7 @@
       (letfn [(perms [group]
                 (db/select Permissions
                   {:where [:and
-                           [:= :group_id (u/get-id (group/all-users))]
+                           [:= :group_id (u/the-id (group/all-users))]
                            (cons
                             :or
                             (for [migrated-collection-id (db/select-ids Collection :name [:in migrated-collection-names])]

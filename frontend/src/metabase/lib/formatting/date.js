@@ -1,3 +1,4 @@
+import { parseTimestamp } from "metabase/lib/time";
 import type { DateSeparator } from "metabase/lib/formatting";
 
 import type { DatetimeUnit } from "metabase-types/types/Query";
@@ -119,5 +120,33 @@ export function getTimeFormatFromStyle(
     return format.replace(/mm/, "mm:ss");
   } else {
     return format;
+  }
+}
+
+export function formatDateTimeForParameter(value, unit) {
+  const m = parseTimestamp(value, unit);
+  if (!m.isValid()) {
+    return String(value);
+  }
+
+  if (unit === "month") {
+    return m.format("YYYY-MM");
+  } else if (unit === "quarter") {
+    return m.format("[Q]Q-YYYY");
+  } else if (unit === "day") {
+    return m.format("YYYY-MM-DD");
+  } else if (unit) {
+    const start = m.clone().startOf(unit);
+    const end = m.clone().endOf(unit);
+
+    if (!start.isValid() || !end.isValid()) {
+      return String(value);
+    }
+
+    const isSameDay = start.isSame(end, "day");
+
+    return isSameDay
+      ? start.format("YYYY-MM-DD")
+      : `${start.format("YYYY-MM-DD")}~${end.format("YYYY-MM-DD")}`;
   }
 }

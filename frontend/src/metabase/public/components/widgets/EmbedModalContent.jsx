@@ -202,7 +202,6 @@ export default class EmbedModalContent extends Component {
             {/* Center only using margins because  */}
             <div className="ml-auto mr-auto" style={{ maxWidth: 1040 }}>
               <SharingPane
-                // $FlowFixMe: Flow doesn't understand these are provided by @connect?
                 {...this.props}
                 publicUrl={getUnsignedPreviewUrl(
                   siteUrl,

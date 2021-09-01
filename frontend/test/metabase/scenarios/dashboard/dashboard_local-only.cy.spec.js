@@ -1,5 +1,5 @@
-import { restore } from "__support__/cypress";
-import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+import { restore, filterWidget } from "__support__/e2e/cypress";
+import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
 
@@ -69,7 +69,7 @@ describe("LOCAL TESTING ONLY > dashboard", () => {
         });
 
         cy.visit(`/dashboard/${DASHBOARD_ID}?location=AK&location=CA`);
-        cy.get("fieldset")
+        filterWidget()
           .contains(/\{0\}/)
           .should("not.exist");
       });

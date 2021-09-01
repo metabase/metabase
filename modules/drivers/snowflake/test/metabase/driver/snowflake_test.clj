@@ -91,7 +91,7 @@
             ;; now take a look at the Tables in the database, there should be an entry for the view
             (is (= [{:name "example_view"}]
                    (map (partial into {})
-                        (db/select [Table :name] :db_id (u/get-id database)))))))))))
+                        (db/select [Table :name] :db_id (u/the-id database)))))))))))
 
 (deftest describe-table-test
   (mt/test-driver :snowflake

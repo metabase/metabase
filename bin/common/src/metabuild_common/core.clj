@@ -46,7 +46,8 @@
   filename
   find-files
   nio-path
-  project-root-directory]
+  project-root-directory
+  temporary-file]
 
  [input
   interactive?

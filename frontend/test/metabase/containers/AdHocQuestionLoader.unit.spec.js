@@ -29,8 +29,9 @@ describe("AdHocQuestionLoader", () => {
       <AdHocQuestionLoader
         questionHash={questionHash}
         loadMetadataForCard={loadMetadataSpy}
-        children={mockChild}
-      />,
+      >
+        {mockChild}
+      </AdHocQuestionLoader>,
     );
     expect(mockChild.mock.calls[0][0].loading).toEqual(true);
     expect(mockChild.mock.calls[0][0].error).toEqual(null);
@@ -57,8 +58,9 @@ describe("AdHocQuestionLoader", () => {
       <AdHocQuestionLoader
         questionHash={originalQuestionHash}
         loadMetadataForCard={loadMetadataSpy}
-        children={mockChild}
-      />,
+      >
+        {mockChild}
+      </AdHocQuestionLoader>,
     );
 
     expect(loadQuestionSpy).toHaveBeenCalledWith(originalQuestionHash);
@@ -69,8 +71,9 @@ describe("AdHocQuestionLoader", () => {
       <AdHocQuestionLoader
         questionHash={newQuestionHash}
         loadMetadataForCard={loadMetadataSpy}
-        children={mockChild}
-      />,
+      >
+        {mockChild}
+      </AdHocQuestionLoader>,
     );
 
     // question loading should begin with the new ID

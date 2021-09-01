@@ -36,7 +36,6 @@ import {
   getCard,
   getQuestion,
   getOriginalQuestion,
-  getOriginalCard,
   getIsEditing,
   getTransformedSeries,
   getRawSeries,
@@ -63,8 +62,8 @@ import { getSensibleDisplays } from "metabase/visualizations";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 
-import Questions from "metabase/entities/questions";
 import Databases from "metabase/entities/databases";
+import Questions from "metabase/entities/questions";
 import Snippets from "metabase/entities/snippets";
 
 import { getMetadata } from "metabase/selectors/metadata";
@@ -313,6 +312,7 @@ export const initializeQB = (location, params) => {
 
     const { currentUser } = getState();
 
+    const cardId = Urls.extractEntityId(params.slug);
     let card, originalCard;
     const uiControls: UiControls = {
       isEditing: false,
@@ -335,7 +335,7 @@ export const initializeQB = (location, params) => {
 
     let preserveParameters = false;
     let snippetFetch;
-    if (params.cardId || serializedCard) {
+    if (cardId || serializedCard) {
       // existing card being loaded
       try {
         // if we have a serialized card then unpack and use it
@@ -351,8 +351,8 @@ export const initializeQB = (location, params) => {
         }
 
         // load the card either from `cardId` parameter or the serialized card
-        if (params.cardId) {
-          card = await loadCard(params.cardId);
+        if (cardId) {
+          card = await loadCard(cardId);
           // when we are loading from a card id we want an explicit clone of the card we loaded which is unmodified
           originalCard = Utils.copy(card);
           // for showing the "started from" lineage correctly when adding filters/breakouts and when going back and forth
@@ -407,7 +407,7 @@ export const initializeQB = (location, params) => {
         uiControls.isEditing = !!options.edit;
 
         // if this is the users first time loading a saved card on the QB then show them the newb modal
-        if (params.cardId && currentUser.is_qbnewb) {
+        if (cardId && currentUser.is_qbnewb) {
           uiControls.isShowingNewbModal = true;
           MetabaseAnalytics.trackEvent("QueryBuilder", "Show Newb Modal");
         }
@@ -721,19 +721,25 @@ export const setParameterValue = createAction(
   },
 );
 
-// reloadCard
 export const RELOAD_CARD = "metabase/qb/RELOAD_CARD";
 export const reloadCard = createThunkAction(RELOAD_CARD, () => {
   return async (dispatch, getState) => {
-    // clone
-    const card = Utils.copy(getOriginalCard(getState()));
+    const outdatedCard = getState().qb.card;
+    const action = await dispatch(
+      Questions.actions.fetch({ id: outdatedCard.id }, { reload: true }),
+    );
+    const card = Questions.HACK_getObjectFromAction(action);
 
     dispatch(loadMetadataForCard(card));
 
-    // we do this to force the indication of the fact that the card should not be considered dirty when the url is updated
     dispatch(
-      runQuestionQuery({ overrideWithCard: card, shouldUpdateUrl: false }),
+      runQuestionQuery({
+        overrideWithCard: card,
+        shouldUpdateUrl: false,
+      }),
     );
+
+    // if the name of the card changed this will update the url slug
     dispatch(updateUrl(card, { dirty: false }));
 
     return card;
@@ -832,10 +838,10 @@ export const updateQuestion = (
       newQuestion = newQuestion.withoutNameAndId();
     }
 
-    newQuestion = newQuestion.syncColumnsAndSettings(oldQuestion);
+    const queryResult = getFirstQueryResult(getState());
+    newQuestion = newQuestion.syncColumnsAndSettings(oldQuestion, queryResult);
 
     if (run === "auto") {
-      const queryResult = getFirstQueryResult(getState());
       run = hasNewColumns(newQuestion, queryResult);
     }
 
@@ -1107,6 +1113,7 @@ export const queryCompleted = (question, queryResults) => {
       // Otherwise, trust that the question was saved with the correct display.
       question = question
         // if we are going to trigger autoselection logic, check if the locked display no longer is "sensible".
+        .syncColumnsAndSettings(originalQuestion, queryResults[0])
         .maybeUnlockDisplay(getSensibleDisplays(data))
         .setDefaultDisplay()
         .switchTableScalar(data);
@@ -1231,7 +1238,6 @@ export const loadObjectDetailFKReferences = createThunkAction(
           ) {
             info["value"] = result.data.rows[0][0];
           } else {
-            // $FlowFixMe
             info["value"] = "Unknown";
           }
         } catch (error) {
@@ -1268,19 +1274,6 @@ export const loadObjectDetailFKReferences = createThunkAction(
 
 export const CLEAR_OBJECT_DETAIL_FK_REFERENCES =
   "metabase/qb/CLEAR_OBJECT_DETAIL_FK_REFERENCES";
-
-// DEPRECATED: use metabase/entities/questions
-export const ARCHIVE_QUESTION = "metabase/qb/ARCHIVE_QUESTION";
-export const archiveQuestion = createThunkAction(
-  ARCHIVE_QUESTION,
-  (questionId, archived = true) => async (dispatch, getState) => {
-    const card = getState().qb.card;
-
-    await dispatch(Questions.actions.setArchived({ id: card.id }, archived));
-
-    dispatch(push(Urls.collection(card.collection_id)));
-  },
-);
 
 export const VIEW_NEXT_OBJECT_DETAIL = "metabase/qb/VIEW_NEXT_OBJECT_DETAIL";
 export const viewNextObjectDetail = () => {

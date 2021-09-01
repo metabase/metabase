@@ -86,17 +86,23 @@ export default class LeafletMarkerPinMap extends LeafletMap {
             },
           ],
         } = this.props;
+        // if there is a primary key then associate a pin with it
         const pkIndex = _.findIndex(cols, isPK);
-        if (pkIndex >= 0) {
-          // if there's a PK just use that for now
-          onVisualizationClick({
-            value: rows[rowIndex][pkIndex],
-            column: cols[pkIndex],
-            element: marker._icon,
-            origin: { row: rows[rowIndex], cols },
-            settings,
-          });
-        }
+        const hasPk = pkIndex >= 0;
+
+        const data = cols.map((col, index) => ({
+          col,
+          value: rows[rowIndex][index],
+        }));
+
+        onVisualizationClick({
+          value: hasPk ? rows[rowIndex][pkIndex] : null,
+          column: hasPk ? cols[pkIndex] : null,
+          element: marker._icon,
+          origin: { row: rows[rowIndex], cols },
+          settings,
+          data,
+        });
       });
     }
     return marker;

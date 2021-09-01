@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import PropTypes from "prop-types";
-import ReactDOM from "react-dom";
 
 import { t } from "ttag";
 import _ from "underscore";
@@ -9,6 +8,12 @@ import cx from "classnames";
 
 import { format } from "metabase/lib/expressions/format";
 import { processSource } from "metabase/lib/expressions/process";
+import {
+  tokenize,
+  countMatchingParentheses,
+  TOKEN,
+  OPERATOR as OP,
+} from "metabase/lib/expressions/tokenizer";
 import MetabaseSettings from "metabase/lib/settings";
 import colors from "metabase/lib/colors";
 
@@ -32,7 +37,7 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 
 import TokenizedInput from "./TokenizedInput";
 
-import { isExpression } from "metabase/lib/expressions";
+import { getMBQLName, isExpression } from "metabase/lib/expressions";
 
 import ExpressionEditorSuggestions from "./ExpressionEditorSuggestions";
 
@@ -57,8 +62,8 @@ const HelpText = ({ helpText, width }) =>
         <p className="text-code m0 text-body">{helpText.example}</p>
       </div>
       <div className="p2 border-top">
-        {helpText.args.map(({ name, description }) => (
-          <div>
+        {helpText.args.map(({ name, description }, index) => (
+          <div key={index}>
             <h4 className="text-medium">{name}</h4>
             <p className="mt1 text-bold">{description}</p>
           </div>
@@ -75,20 +80,14 @@ const HelpText = ({ helpText, width }) =>
     </Popover>
   ) : null;
 
-const Errors = ({ compileError }) => {
-  if (!compileError) {
-    return null;
-  }
-
-  compileError = Array.isArray(compileError) ? compileError : [compileError];
-
+const ErrorMessage = ({ error }) => {
   return (
     <div>
-      {compileError.map(error => (
+      {error && (
         <div className="text-error mt1 mb1" style={{ whiteSpace: "pre-wrap" }}>
           {error.message}
         </div>
-      ))}
+      )}
     </div>
   );
 };
@@ -103,6 +102,7 @@ export default class ExpressionEditorTextfield extends React.Component {
       // except currently we exclude `startRule` and `query` since they shouldn't change
       [source, targetOffset].join(","),
     );
+    this.input = React.createRef();
   }
 
   static propTypes = {
@@ -142,10 +142,16 @@ export default class ExpressionEditorTextfield extends React.Component {
               source,
               ...this._getParserOptions(newProps),
             })
-          : { expression: null, compileError: null, syntaxTree: null };
+          : {
+              expression: null,
+              tokenizerError: [],
+              compileError: null,
+              syntaxTree: null,
+            };
       this.setState({
         source,
         expression,
+        tokenizeError: [],
         compileError,
         syntaxTree,
         suggestions: [],
@@ -159,6 +165,8 @@ export default class ExpressionEditorTextfield extends React.Component {
       this.state.source.length,
       this.state.source.length === 0,
     );
+
+    this._triggerAutosuggest();
   }
 
   onSuggestionSelected = index => {
@@ -166,22 +174,31 @@ export default class ExpressionEditorTextfield extends React.Component {
     const suggestion = suggestions && suggestions[index];
 
     if (suggestion) {
-      let prefix = source.slice(0, suggestion.index);
-      if (suggestion.prefixTrim) {
-        prefix = prefix.replace(suggestion.prefixTrim, "");
-      }
-      let postfix = source.slice(suggestion.index);
-      if (suggestion.postfixTrim) {
-        postfix = postfix.replace(suggestion.postfixTrim, "");
-      }
-      if (!postfix && suggestion.postfixText) {
-        postfix = suggestion.postfixText;
-      }
+      const { tokens } = tokenize(source);
+      const token = tokens.find(t => t.end >= suggestion.index);
+      if (token) {
+        const prefix = source.slice(0, token.start);
+        const postfix = source.slice(token.end);
+        const suggested = suggestion.text;
 
-      this.onExpressionChange(prefix + suggestion.text + postfix);
-      setTimeout(() =>
-        this._setCaretPosition((prefix + suggestion.text).length, true),
-      );
+        // e.g. source is "isnull(A" and suggested is "isempty("
+        // the result should be "isempty(A" and NOT "isempty((A"
+        const openParen = _.last(suggested) === "(";
+        const alreadyOpenParen = _.first(postfix.trimLeft()) === "(";
+        const extraTrim = openParen && alreadyOpenParen ? 1 : 0;
+        const replacement = suggested.slice(0, suggested.length - extraTrim);
+
+        const updatedExpression = prefix + replacement.trim() + postfix;
+        this.onExpressionChange(updatedExpression);
+        const caretPos = updatedExpression.length - postfix.length;
+        setTimeout(() => {
+          this._setCaretPosition(caretPos, true);
+        });
+      } else {
+        const newExpression = source + suggestion.text;
+        this.onExpressionChange(newExpression);
+        setTimeout(() => this._setCaretPosition(newExpression.length, true));
+      }
     }
   };
 
@@ -238,8 +255,17 @@ export default class ExpressionEditorTextfield extends React.Component {
 
   onInputBlur = () => {
     this.clearSuggestions();
-    const { compileError } = this.state;
-    this.setState({ displayCompileError: compileError });
+
+    const { tokenizerError, compileError } = this.state;
+    let displayError = [...tokenizerError];
+    if (compileError) {
+      if (Array.isArray(compileError)) {
+        displayError = [...displayError, ...compileError];
+      } else {
+        displayError.push(compileError);
+      }
+    }
+    this.setState({ displayError, helpText: null });
 
     // whenever our input blurs we push the updated expression to our parent if valid
     if (this.state.expression) {
@@ -247,8 +273,8 @@ export default class ExpressionEditorTextfield extends React.Component {
         console.warn("isExpression=false", this.state.expression);
       }
       this.props.onChange(this.state.expression);
-    } else if (this.state.compileError) {
-      this.props.onError(this.state.compileError);
+    } else if (displayError && displayError.length > 0) {
+      this.props.onError(displayError);
     } else {
       this.props.onError({ message: t`Invalid expression` });
     }
@@ -263,14 +289,14 @@ export default class ExpressionEditorTextfield extends React.Component {
   };
 
   _setCaretPosition = (position, autosuggest) => {
-    setCaretPosition(ReactDOM.findDOMNode(this.refs.input), position);
+    setCaretPosition(this.input.current, position);
     if (autosuggest) {
       setTimeout(() => this._triggerAutosuggest());
     }
   };
 
   onExpressionChange(source) {
-    const inputElement = ReactDOM.findDOMNode(this.refs.input);
+    const inputElement = this.input.current;
     if (!inputElement) {
       return;
     }
@@ -311,12 +337,46 @@ export default class ExpressionEditorTextfield extends React.Component {
     const showSuggestions =
       !hasSelection && !(isValid && isAtEnd && !endsWithWhitespace);
 
+    const { tokens, errors: tokenizerError } = tokenize(source);
+    const mismatchedParentheses = countMatchingParentheses(tokens);
+    const mismatchedError =
+      mismatchedParentheses === 1
+        ? t`Expecting a closing parenthesis`
+        : mismatchedParentheses > 1
+        ? t`Expecting ${mismatchedParentheses} closing parentheses`
+        : mismatchedParentheses === -1
+        ? t`Expecting an opening parenthesis`
+        : mismatchedParentheses < -1
+        ? t`Expecting ${-mismatchedParentheses} opening parentheses`
+        : null;
+    if (mismatchedError) {
+      tokenizerError.push({
+        message: mismatchedError,
+      });
+    }
+
+    for (let i = 0; i < tokens.length - 1; ++i) {
+      const token = tokens[i];
+      if (token.type === TOKEN.Identifier && source[token.start] !== "[") {
+        const functionName = source.slice(token.start, token.end);
+        if (getMBQLName(functionName)) {
+          const next = tokens[i + 1];
+          if (next.op !== OP.OpenParenthesis) {
+            tokenizerError.unshift({
+              message: t`Expecting an opening parenthesis after function ${functionName}`,
+            });
+          }
+        }
+      }
+    }
+
     this.setState({
       source,
       expression,
       syntaxTree,
+      tokenizerError,
       compileError,
-      displayCompileError: null,
+      displayError: null,
       suggestions: showSuggestions ? suggestions : [],
       helpText,
       highlightedSuggestionIndex: 0,
@@ -334,19 +394,14 @@ export default class ExpressionEditorTextfield extends React.Component {
 
   render() {
     const { placeholder } = this.props;
-    const {
-      compileError,
-      displayCompileError,
-      source,
-      suggestions,
-      syntaxTree,
-    } = this.state;
+    const { displayError, source, suggestions, syntaxTree } = this.state;
 
     const inputClassName = cx("input text-bold text-monospace", {
       "text-dark": source,
       "text-light": !source,
     });
     const inputStyle = { fontSize: 12 };
+    const priorityError = _.first(displayError);
 
     return (
       <div className={cx("relative my1")}>
@@ -361,10 +416,10 @@ export default class ExpressionEditorTextfield extends React.Component {
           {"= "}
         </div>
         <TokenizedInput
-          ref="input"
+          ref={this.input}
           type="text"
           className={cx(inputClassName, {
-            "border-error": compileError,
+            "border-error": priorityError,
           })}
           style={{ ...inputStyle, paddingLeft: 26, whiteSpace: "pre-wrap" }}
           placeholder={placeholder}
@@ -378,7 +433,7 @@ export default class ExpressionEditorTextfield extends React.Component {
           onClick={this.onInputClick}
           autoFocus
         />
-        <Errors compileError={displayCompileError} />
+        <ErrorMessage error={priorityError} />
         <HelpText helpText={this.state.helpText} width={this.props.width} />
         <ExpressionEditorSuggestions
           suggestions={suggestions}

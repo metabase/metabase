@@ -224,29 +224,22 @@
    :lowerStrict (not inclusive?)
    :upperStrict (not inclusive?)})
 
-(defmulti ^:private parse-filter
+(defmulti ^:private parse-filter*
   "Parse an MBQL `filter-clause` and generate an appropriate Druid filter map.
 
-    (parse-filter [:= [:field 1 null] 2]) ; -> {:type :selector, :dimension \"venue_price\", :value 2}"
+    (parse-filter* [:= [:field 1 nil] 2]) ; -> {:type :selector, :dimension \"venue_price\", :value 2}"
   {:arglists '([filter-clause])}
-  ;; dispatch function first checks to make sure this is a valid filter clause, then dispatches off of the clause name
-  ;; if it is.
-  (fn [[clause-name & args, :as filter-clause]]
-    (let [fields (mbql.u/match args :field)]
-      ;; and make sure none of the Fields are datetime Fields We'll handle :timestamp separately. It needs to go in
-      ;; :intervals instead
-      (when (empty? (mbql.u/match fields [:field _ (_ :guard :temporal-unit)]))
-        clause-name))))
+  mbql.u/dispatch-by-clause-name-or-class)
 
-(defmethod parse-filter nil
+(defmethod parse-filter* nil
   [_]
   nil)
 
-(defmethod parse-filter :between
+(defmethod parse-filter* :between
   [[_ field min-val max-val]]
   (filter:bound field, :lower min-val, :upper max-val))
 
-(defmethod parse-filter :contains
+(defmethod parse-filter* :contains
   [[_ field string-or-field options]]
   {:type      :search
    :dimension (->rvalue field)
@@ -254,56 +247,64 @@
                :value         (->rvalue string-or-field)
                :caseSensitive (get options :case-sensitive true)}})
 
-(defmethod parse-filter :starts-with
+(defmethod parse-filter* :starts-with
   [[_ field string-or-field options]]
   (filter:like field
                (str (escape-like-filter-pattern (->rvalue string-or-field)) \%)
                (get options :case-sensitive true)))
 
-(defmethod parse-filter :ends-with
+(defmethod parse-filter* :ends-with
   [[_ field string-or-field options]]
   (filter:like field
                (str \% (escape-like-filter-pattern (->rvalue string-or-field)))
                (get options :case-sensitive true)))
 
-(defmethod parse-filter :=
+(defmethod parse-filter* :=
   [[_ field value-or-field]]
   (filter:= field value-or-field))
 
-(defmethod parse-filter :!=
+(defmethod parse-filter* :!=
   [[_ field value-or-field]]
   (filter:not (filter:= field value-or-field)))
 
-(defmethod parse-filter :<
+(defmethod parse-filter* :<
   [[_ field value-or-field]]
   (filter:bound field, :upper value-or-field, :inclusive? false))
 
-(defmethod parse-filter :>
+(defmethod parse-filter* :>
   [[_ field value-or-field]]
   (filter:bound field, :lower value-or-field, :inclusive? false))
 
-(defmethod parse-filter :<=
+(defmethod parse-filter* :<=
   [[_ field value-or-field]]
   (filter:bound field, :upper value-or-field))
 
-(defmethod parse-filter :>=
+(defmethod parse-filter* :>=
   [[_ field value-or-field]]
   (filter:bound field, :lower value-or-field))
 
-(defmethod parse-filter :and
+(defmethod parse-filter* :and
   [[_ & args]]
-  (when-let [fields (seq (keep identity (map parse-filter args)))]
+  (when-let [fields (seq (keep identity (map parse-filter* args)))]
     {:type :and, :fields (vec fields)}))
 
-(defmethod parse-filter :or
+(defmethod parse-filter* :or
   [[_ & args]]
-  (when-let [fields (seq (keep identity (map parse-filter args)))]
+  (when-let [fields (seq (keep identity (map parse-filter* args)))]
     {:type :or, :fields (vec fields)}))
 
-(defmethod parse-filter :not
+(defmethod parse-filter* :not
   [[_ subclause]]
-  (when-let [subclause (parse-filter subclause)]
+  (when-let [subclause (parse-filter* subclause)]
     (filter:not subclause)))
+
+(defn- parse-filter [filter-clause]
+  ;; strip out all the filters against temporal fields. Those are handled separately, as intervals
+  (-> (mbql.u/replace filter-clause
+        [_ [:field _ (_ :guard :temporal-unit)] & _]
+        nil)
+      mbql.u/simplify-compound-filter
+      parse-filter*))
 
 (s/defn ^:private add-datetime-units* :- mbql.s/DateTimeValue
   "Return a `relative-datetime` clause with `n` units added to it."

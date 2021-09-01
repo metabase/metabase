@@ -3,8 +3,8 @@ import {
   addPostgresDatabase,
   withDatabase,
   describeWithToken,
-} from "__support__/cypress";
-import { USER_GROUPS } from "__support__/cypress_data";
+} from "__support__/e2e/cypress";
+import { USER_GROUPS } from "__support__/e2e/cypress_data";
 
 const PG_DB_NAME = "QA Postgres12";
 const PG_DB_ID = 2;

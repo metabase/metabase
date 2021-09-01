@@ -4,14 +4,19 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import * as Urls from "metabase/lib/urls";
+import { CollectionsApi } from "metabase/services";
+
+import Collections from "metabase/entities/collections";
+import SnippetCollections from "metabase/entities/snippet-collections";
+
+import { isPersonalCollectionChild } from "metabase/collections/utils";
+
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/components/Button";
 import Link from "metabase/components/Link";
-import PermissionsGrid from "../components/PermissionsGrid";
 
-import { CollectionsApi } from "metabase/services";
-import Collections from "metabase/entities/collections";
-import SnippetCollections from "metabase/entities/snippet-collections";
+import PermissionsGrid from "../components/PermissionsGrid";
 
 import {
   getCollectionsPermissionsGrid,
@@ -24,7 +29,7 @@ const getCollectionEntity = props =>
   props.namespace === "snippets" ? SnippetCollections : Collections;
 
 const mapStateToProps = (state, props) => {
-  const { collectionId } = props.params;
+  const collectionId = Urls.extractCollectionId(props.params.slug);
   return {
     grid: getCollectionsPermissionsGrid(state, {
       collectionId,
@@ -36,6 +41,7 @@ const mapStateToProps = (state, props) => {
     collection: getCollectionEntity(props).selectors.getObject(state, {
       entityId: collectionId,
     }),
+    collectionsList: getCollectionEntity(props).selectors.getList(state, props),
   };
 };
 
@@ -63,6 +69,21 @@ export default class CollectionPermissionsModal extends Component {
     );
     loadCollections();
   }
+
+  componentDidUpdate() {
+    const { collection, collectionsList, onClose } = this.props;
+
+    const loadedPersonalCollection =
+      collection &&
+      Array.isArray(collectionsList) &&
+      (collection.personal_owner_id ||
+        isPersonalCollectionChild(collection, collectionsList));
+
+    if (loadedPersonalCollection) {
+      onClose();
+    }
+  }
+
   render() {
     const {
       grid,
@@ -87,12 +108,17 @@ export default class CollectionPermissionsModal extends Component {
           ...(namespace === "snippets"
             ? []
             : [
-                <Link className="link" to="/admin/permissions/collections">
+                <Link
+                  key="all-permissions"
+                  className="link"
+                  to="/admin/permissions/collections"
+                >
                   {t`See all collection permissions`}
                 </Link>,
               ]),
-          <Button onClick={onClose}>{t`Cancel`}</Button>,
+          <Button key="cancel" onClick={onClose}>{t`Cancel`}</Button>,
           <Button
+            key="save"
             primary
             disabled={!isDirty}
             onClick={async () => {

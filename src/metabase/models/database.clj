@@ -95,7 +95,7 @@
 
 
 (defn- perms-objects-set [database _]
-  #{(perms/object-path (u/get-id database))})
+  #{(perms/object-path (u/the-id database))})
 
 (u/strict-extend (class Database)
   models/IModel

@@ -957,16 +957,18 @@
     (testing "Syntactic sugar (`:time-interval` clause)"
       (mt/dataset checkins:1-per-day
         (is (= 1
-               (-> (mt/run-mbql-query checkins
-                     {:aggregation [[:count]]
-                      :filter      [:time-interval $timestamp :current :day]})
-                   mt/first-row first int)))
+               (ffirst
+                (mt/formatted-rows [int]
+                  (mt/run-mbql-query checkins
+                    {:aggregation [[:count]]
+                     :filter      [:time-interval $timestamp :current :day]})))))
 
         (is (= 7
-               (-> (mt/run-mbql-query checkins
-                     {:aggregation [[:count]]
-                      :filter      [:time-interval $timestamp :last :week]})
-                   mt/first-row first int)))))))
+               (ffirst
+                (mt/formatted-rows [int]
+                  (mt/run-mbql-query checkins
+                    {:aggregation [[:count]]
+                     :filter      [:time-interval $timestamp :last :week]})))))))))
 
 ;; Make sure that when referencing the same field multiple times with different units we return the one that actually
 ;; reflects the units the results are in. eg when we breakout by one unit and filter by another, make sure the results

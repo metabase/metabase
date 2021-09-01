@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import { Flex } from "grid-styled";
@@ -14,11 +15,14 @@ export const NotebookCell = styled(Flex).attrs({
   border-radius: 8px;
   background-color: ${props => alpha(props.color, 0.1)};
 `;
+
 NotebookCell.defaultProps = {
   px: 2,
   pt: 2,
   pb: 1,
 };
+
+NotebookCell.displayName = "NotebookCell";
 
 export const NotebookCellItem = styled(Flex).attrs({
   align: "center",
@@ -43,14 +47,18 @@ export const NotebookCellItem = styled(Flex).attrs({
     opacity: 0.6;
   }
 `;
+
 NotebookCellItem.defaultProps = {
   p: 1,
   mr: 1,
   mb: 1,
 };
 
+NotebookCellItem.displayName = "NotebookCellItem";
+
 export const NotebookCellAdd = styled(NotebookCellItem).attrs({
   inactive: ({ initialAddText }) => initialAddText,
+  // eslint-disable-next-line react/display-name
   children: ({ initialAddText }) =>
     initialAddText || <Icon name="add" className="text-white" />,
 })`
@@ -62,3 +70,5 @@ export const NotebookCellAdd = styled(NotebookCellItem).attrs({
 NotebookCellAdd.defaultProps = {
   mb: 1,
 };
+
+NotebookCellAdd.displayName = "NotebookCellAdd";

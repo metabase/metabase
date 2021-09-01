@@ -79,7 +79,6 @@ export function getGlobalSettingsForColumn(column: Column) {
   // NOTE: the order of these doesn't matter as long as there's no overlap between settings
   for (const [type, globalSettings] of Object.entries(customFormatting || {})) {
     if (isa(column.semantic_type || column.base_type, type)) {
-      // $FlowFixMe
       Object.assign(settings, globalSettings);
     }
   }
@@ -314,7 +313,6 @@ export const NUMBER_COLUMN_SETTINGS = {
     props: {
       // FIXME: rest of these options
       options: Object.values(currency).map(
-        // $FlowFixMe
         (currency: { name: string, code: string }) => ({
           name: currency.name,
           value: currency.code,

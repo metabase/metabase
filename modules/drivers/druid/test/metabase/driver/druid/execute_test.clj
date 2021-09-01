@@ -13,7 +13,7 @@
                   "columns order (#9294)")
       (tqpt/with-flattened-dbdef
         (let [results (mt/run-mbql-query checkins
-                        {:limit 1})]
+                        {:limit 1, :order-by [[:asc $timestamp]]})]
           (assert (= (:status results) :completed)
             (u/pprint-to-str 'red results))
           (testing "cols"
@@ -25,20 +25,22 @@
                      "venue_category_name"
                      "id"
                      "count"
+                     "unique_users"
                      "user_name"
                      "user_last_login"]
                    (->> results :data :cols (map :name)))))
           (testing "rows"
-            (is (=  [["2013-01-03T08:00:00Z"
+            (is (=  [["2013-01-03T00:00:00Z"
                       "Kinaree Thai Bistro"
-                      "-118.344"
-                      "34.094"
-                      "1"
-                      "Thai"
-                      "931"
+                      -118.344
+                      34.094
                       1
+                      "Thai"
+                      931
+                      1
+                      "AQAAAQAAAAEBsA=="
                       "Simcha Yan"
-                      "2014-01-01T08:30:00.000Z"]]
+                      "2014-01-01T08:30:00"]]
                    (-> results :data :rows)))))))))
 
 (deftest post-process-select-query-test

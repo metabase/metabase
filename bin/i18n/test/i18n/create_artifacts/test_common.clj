@@ -44,7 +44,7 @@
   {:id                "{0} Queryable Table"
    :id-plural         "{0} Queryable Tables"
    :str               nil
-   :str-plural        ["{0] Tabla Consultable" "{0] Tablas consultables"]
+   :str-plural        ["{0} Tabla Consultable" "{0} Tablas consultables"]
    :fuzzy?            false
    :plural?           true
    :source-references ["frontend/src/metabase/admin/datamodel/components/database/MetadataTableList.jsx:77"]

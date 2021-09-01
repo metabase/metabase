@@ -447,3 +447,55 @@
       (testing "String parameter to an Integer Field"
         (is (= (mt/rows (mt/run-mbql-query venues {:filter [:= $price 4]}))
                (mt/rows (mt/run-mbql-query venues {:filter [:= $price "4"]}))))))))
+
+;; For the tests below:
+;;
+;; - there are 415 regions, and 8 have a `nil` name; 407 have non-empty, non-nil names
+;; - there are 601 airports, and 1 has a `""` code; 600 have non-empty, non-nil codes
+
+(deftest text-equals-nil-empty-string-test
+  (mt/test-drivers (mt/normal-drivers)
+    (mt/dataset airports
+      (testing ":= against a text column should match the correct columns when value is"
+        (testing "nil"
+          (is (= [[8]]
+                 (mt/formatted-rows [int]
+                   (mt/run-mbql-query region {:aggregation [:count], :filter [:= $name nil]}))))
+          (testing "an empty string (#13158)"
+            (is (= [[1]]
+                   (mt/formatted-rows [int]
+                     (mt/run-mbql-query airport {:aggregation [:count], :filter [:= $code ""]}))))))))))
+
+(deftest text-not-equals-nil-test
+  (mt/test-drivers (mt/normal-drivers)
+    (mt/dataset airports
+      (testing ":!= against a nil/NULL in a text column should be truthy"
+        (testing "should match non-nil, non-empty strings"
+          (is (= [[414]]
+                 (mt/formatted-rows [int]
+                   (mt/run-mbql-query region {:aggregation [:count], :filter [:!= $name "California"]}))))
+          (is (= [[600]]
+                 (mt/formatted-rows [int]
+                   (mt/run-mbql-query airport {:aggregation [:count], :filter [:!= $code "SFO"]})))))))))
+
+(deftest is-empty-not-empty-test
+  (mt/test-drivers (mt/normal-drivers)
+    (mt/dataset airports
+      (testing ":is-empty and :not-empty filters should work correctly (#13158)"
+        (testing :is-empty
+          (testing "should match nil strings"
+            (is (= [[8]]
+                   (mt/formatted-rows [int]
+                     (mt/run-mbql-query region {:aggregation [:count], :filter [:is-empty $name]})))))
+          (testing "should match EMPTY strings"
+            (is (= [[1]]
+                   (mt/formatted-rows [int]
+                     (mt/run-mbql-query airport {:aggregation [:count], :filter [:is-empty $code]}))))))
+        (testing :not-empty
+          (testing "should match non-nil, non-empty strings"
+            (is (= [[407]]
+                   (mt/formatted-rows [int]
+                     (mt/run-mbql-query region {:aggregation [:count], :filter [:not-empty $name]}))))
+            (is (= [[600]]
+                   (mt/formatted-rows [int]
+                     (mt/run-mbql-query airport {:aggregation [:count], :filter [:not-empty $code]}))))))))))

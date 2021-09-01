@@ -1,4 +1,4 @@
-import { restore, modal, typeAndBlurUsingLabel } from "__support__/cypress";
+import { restore, modal, typeAndBlurUsingLabel } from "__support__/e2e/cypress";
 
 describe("postgres > admin > add", () => {
   beforeEach(() => {

@@ -163,7 +163,27 @@ log_x_real_ip () {
     fi
 }
 
+set_up_env_vars () {
+    if [ ! -z "$RDS_HOSTNAME" ]; then
+    # EEK: this is a bit fragile.  if user picks a non-standard port for their db we are screwed :(
+        if [ "$RDS_PORT" == "3306" ]; then
+            export MB_DB_TYPE=mysql
+        else
+            export MB_DB_TYPE=postgres
+        fi
+
+        export MB_DB_DBNAME=$RDS_DB_NAME
+        export MB_DB_USER=$RDS_USERNAME
+        export MB_DB_PASS=$RDS_PASSWORD
+        export MB_DB_HOST=$RDS_HOSTNAME
+        export MB_DB_PORT=$RDS_PORT
+    fi
+}
+
 case $1 in
+set_up_env_vars)
+    set_up_env_vars
+    ;;
 server_https)
     server_https
     ;;

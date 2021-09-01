@@ -4,8 +4,15 @@ import cx from "classnames";
 
 import { formDomOnlyProps } from "metabase/lib/redux";
 
-const FormTextAreaWidget = ({ placeholder, field, className, rows }) => (
+const FormTextAreaWidget = ({
+  placeholder,
+  field,
+  className,
+  rows,
+  autoFocus,
+}) => (
   <textarea
+    autoFocus={autoFocus}
     className={cx(className, "Form-input full")}
     rows={rows}
     placeholder={placeholder}

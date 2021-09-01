@@ -373,13 +373,16 @@ class ClickBehaviorSidebar extends React.Component {
                       }[linkType]
                     }
                   </h5>
-                  {columnsWithClickBehavior.map(({ column, clickBehavior }) => (
-                    <Column
-                      column={column}
-                      clickBehavior={clickBehavior}
-                      onClick={() => this.setSelectedColumn(column)}
-                    />
-                  ))}
+                  {columnsWithClickBehavior.map(
+                    ({ column, clickBehavior }, index) => (
+                      <Column
+                        key={index}
+                        column={column}
+                        clickBehavior={clickBehavior}
+                        onClick={() => this.setSelectedColumn(column)}
+                      />
+                    ),
+                  )}
                 </div>
               ))
               .value()}
@@ -516,7 +519,7 @@ function TypeSelector({
   return (
     <div>
       {clickBehaviorOptions.map(({ value, icon }) => (
-        <div className="mb1">
+        <div key={value} className="mb1">
           <BehaviorOption
             onClick={() => {
               if (value !== clickBehavior.type) {

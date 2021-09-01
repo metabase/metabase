@@ -5,6 +5,8 @@ import {
   formatSourceForTarget,
 } from "metabase/lib/click-behavior";
 import { metadata, PRODUCTS } from "__support__/sample_dataset_fixture";
+import * as dateFormatUtils from "metabase/lib/formatting/date";
+
 describe("metabase/lib/click-behavior", () => {
   describe("getDataFromClicked", () => {
     it("should pull out column values from data", () => {
@@ -402,6 +404,41 @@ describe("metabase/lib/click-behavior", () => {
         clickBehavior,
       });
       expect(value).toEqual("foo");
+    });
+
+    it("should format date/all-options parameters based on unit", () => {
+      const formatDateTimeForParameterSpy = jest.spyOn(
+        dateFormatUtils,
+        "formatDateTimeForParameter",
+      );
+
+      const source = { type: "column", id: "SOME_DATE" };
+      const target = { type: "parameter", id: "param123" };
+      const data = {
+        column: {
+          some_date: {
+            value: "2020-01-01T00:00:00+05:00",
+            column: { base_type: "type/DateTime", unit: "year" },
+          },
+        },
+      };
+      const extraData = {
+        dashboard: {
+          parameters: [{ id: "param123", type: "date/all-options" }],
+        },
+      };
+      const clickBehavior = { type: "crossfilter" };
+      const value = formatSourceForTarget(source, target, {
+        data,
+        extraData,
+        clickBehavior,
+      });
+
+      expect(formatDateTimeForParameterSpy).toHaveBeenCalledWith(
+        "2020-01-01T00:00:00+05:00",
+        "year",
+      );
+      expect(value).toEqual("2020-01-01~2020-12-31");
     });
 
     it("should format datetimes for date parameters", () => {

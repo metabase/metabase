@@ -19,7 +19,7 @@
   (some (fn [^Column column]
           (when (= (.getId column) (name column-name))
             column))
-        (metadata/columns (Database (u/get-id database-or-id)) {:status "PUBLIC"})))
+        (metadata/columns (Database (u/the-id database-or-id)) {:status "PUBLIC"})))
 
 (defn- column-metadata [database-id column-name]
   (when-let [ga-column (column-with-name database-id column-name)]
@@ -39,7 +39,7 @@
   (memoize column-metadata))
 
 (defn- add-col-metadata [{database-id :database} col]
-  (let [{:keys [base_type] :as metadata} (merge col (memoized-column-metadata (u/get-id database-id) (:name col)))]
+  (let [{:keys [base_type] :as metadata} (merge col (memoized-column-metadata (u/the-id database-id) (:name col)))]
     (cond-> metadata
       (and base_type (not (:effective_type metadata)))
       (assoc :effective_type base_type))))

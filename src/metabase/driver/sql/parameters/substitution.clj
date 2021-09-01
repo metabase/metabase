@@ -287,8 +287,8 @@
 ;;; ------------------------------------ Referenced Card replacement snippet info ------------------------------------
 
 (defmethod ->replacement-snippet-info [:sql ReferencedCardQuery]
-  [_ {:keys [query]}]
-  {:prepared-statement-args nil
+  [_ {:keys [query params]}]
+  {:prepared-statement-args (not-empty params)
    :replacement-snippet     (str "(" query ")")})
 
 

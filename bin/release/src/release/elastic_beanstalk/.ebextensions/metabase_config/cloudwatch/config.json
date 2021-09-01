@@ -1,0 +1,134 @@
+{
+    "agent": {
+      "metrics_collection_interval": 60
+    },
+    "metrics": {
+      "namespace": "Metabase",
+      "metrics_collected": {
+        "cpu": {
+          "measurement": [
+            "time_active", 
+            "time_guest", 
+            "time_guest_nice", 
+            "time_idle", 
+            "time_iowait", 
+            "time_irq", 
+            "time_nice", 
+            "time_softirq", 
+            "time_steal", 
+            "time_system", 
+            "time_user", 
+            "usage_active", 
+            "usage_guest", 
+            "usage_guest_nice", 
+            "usage_idle", 
+            "usage_iowait", 
+            "usage_irq", 
+            "usage_nice", 
+            "usage_softirq", 
+            "usage_steal", 
+            "usage_system", 
+            "usage_user"
+          ],
+          "totalcpu": false
+        },
+        "disk": {
+          "measurement": [
+            "free", 
+            "total", 
+            "used", 
+            "used_percent", 
+            "inodes_free", 
+            "inodes_used", 
+            "inodes_total"
+          ],
+           "ignore_file_system_types": [
+            "sysfs", "devtmpfs"
+          ]        },
+        "diskio": {
+          "measurement": [
+            "reads",
+            "writes",
+            "read_bytes", 
+            "write_bytes", 
+            "read_time", 
+            "write_time", 
+            "io_time", 
+            "iops_in_progress"
+          ]
+        },
+        "swap": {
+          "measurement": [
+            "free", 
+            "used", 
+            "used_percent"
+          ]
+        },
+        "mem": {
+          "measurement": [
+            "active", 
+            "available", 
+            "available_percent", 
+            "buffered", 
+            "cached", 
+            "free", 
+            "inactive", 
+            "total", 
+            "used", 
+            "used_percent"
+          ]
+        },
+        "net": {
+          "measurement": [
+            "bytes_sent", 
+            "bytes_recv", 
+            "drop_in", 
+            "drop_out", 
+            "err_in", 
+            "err_out", 
+            "packets_sent", 
+            "packets_recv"
+          ]
+        },
+        "netstat": {
+          "measurement": [
+            "tcp_close", 
+            "tcp_close_wait", 
+            "tcp_closing", 
+            "tcp_established", 
+            "tcp_fin_wait1", 
+            "tcp_fin_wait2", 
+            "tcp_last_ack", 
+            "tcp_listen", 
+            "tcp_none", 
+            "tcp_syn_sent", 
+            "tcp_syn_recv", 
+            "tcp_time_wait", 
+            "udp_socket"
+          ]
+        },
+        "processes": {
+          "measurement": [
+            "blocked", 
+            "dead", 
+            "idle", 
+            "paging", 
+            "running", 
+            "sleeping", 
+            "stopped", 
+            "total", 
+            "total_threads", 
+            "wait", 
+            "zombies"
+          ]
+        }
+      },
+      "append_dimensions": {
+        "ImageId": "${aws:ImageId}",
+        "InstanceId": "${aws:InstanceId}",
+        "InstanceType": "${aws:InstanceType}",
+        "AutoScalingGroupName": "${aws:AutoScalingGroupName}"
+      },
+      "aggregation_dimensions" : [["InstanceId"], ["InstanceType"], ["InstanceId","InstanceType"]]
+    }
+}

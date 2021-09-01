@@ -1,6 +1,9 @@
 (ns metabase.util-test
   "Tests for functions in `metabase.util`."
   (:require [clojure.test :refer :all]
+            [clojure.test.check.clojure-test :refer [defspec]]
+            [clojure.test.check.generators :as gen]
+            [clojure.test.check.properties :as prop]
             [flatland.ordered.map :refer [ordered-map]]
             [metabase.test :as mt]
             [metabase.util :as u]))
@@ -273,3 +276,36 @@
     ""                     false
     nil                    false
     100                    false))
+
+;; this would be such a good spot for test.check
+(deftest sorted-take-test
+  (testing "It ensures there are never more than `size` items in the priority queue"
+    (let [limit 5
+          rf    (u/sorted-take limit compare)]
+      (reduce (fn [q x]
+                (let [q' (rf q x)]
+                  ;; a bit internal but this is really what we're after: bounded size while we look for the biggest
+                  ;; elements
+                  (is (<= (.size q) limit))
+                  q))
+              (rf)
+              (shuffle (range 30))))))
+
+(defspec sorted-take-test-size
+  (prop/for-all [coll (gen/list (gen/tuple gen/int gen/string))
+                 size (gen/fmap inc gen/nat)]
+    (= (vec (take-last size (sort coll)))
+       (transduce (map identity)
+                  (u/sorted-take size compare)
+                  coll))))
+
+(defspec sorted-take-test-comparator
+  (prop/for-all [coll (gen/list (gen/fmap (fn [x] {:score x}) gen/int))
+                 size (gen/fmap inc gen/nat)]
+    (let [coll    (shuffle coll)
+          kompare (fn [{score-1 :score} {score-2 :score}]
+                    (compare score-1 score-2))]
+      (= (vec (take-last size (sort-by identity kompare coll)))
+         (transduce (map identity)
+                    (u/sorted-take size kompare)
+                    coll)))))

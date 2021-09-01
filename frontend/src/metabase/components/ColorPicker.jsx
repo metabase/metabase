@@ -23,6 +23,11 @@ const ColorSquare = ({ color, size }) => (
 );
 
 class ColorPicker extends Component {
+  constructor(props) {
+    super(props);
+
+    this.colorPopover = React.createRef();
+  }
   static defaultProps = {
     size: DEFAULT_COLOR_SQUARE_SIZE,
     triggerSize: DEFAULT_COLOR_SQUARE_SIZE,
@@ -43,7 +48,7 @@ class ColorPicker extends Component {
     return (
       <div className="inline-block">
         <PopoverWithTrigger
-          ref="colorPopover"
+          ref={this.colorPopover}
           triggerElement={
             <div
               className="bordered rounded flex align-center"
@@ -65,7 +70,7 @@ class ColorPicker extends Component {
                 />
               </div>
               <div className="p1 border-top">
-                <Button onClick={() => this.refs.colorPopover.close()}>
+                <Button onClick={() => this.colorPopover.current.close()}>
                   Done
                 </Button>
               </div>
@@ -85,7 +90,7 @@ class ColorPicker extends Component {
                     key={index}
                     onClick={() => {
                       onChange(color);
-                      this.refs.colorPopover.close();
+                      this.colorPopover.current.close();
                     }}
                   >
                     <ColorSquare color={color} size={size} />

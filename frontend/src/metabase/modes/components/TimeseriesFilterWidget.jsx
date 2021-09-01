@@ -7,12 +7,10 @@ import Button from "metabase/components/Button";
 
 import * as Query from "metabase/lib/query/query";
 import * as Filter from "metabase/lib/query/filter";
-import * as FieldRef from "metabase/lib/query/field_ref";
 import * as Card from "metabase/meta/Card";
 
 import {
   parseFieldTarget,
-  parseFieldTargetId,
   generateTimeFilterValuesDescriptions,
 } from "metabase/lib/query_time";
 
@@ -43,7 +41,6 @@ type State = {
 export default class TimeseriesFilterWidget extends Component {
   props: Props;
   state: State = {
-    // $FlowFixMe
     filter: null,
     filterIndex: -1,
     currentFilter: null,
@@ -61,24 +58,22 @@ export default class TimeseriesFilterWidget extends Component {
       const breakouts = Query.getBreakouts(query);
       const filters = Query.getFilters(query);
 
-      const timeFieldId = parseFieldTargetId(breakouts[0]);
       const timeField = parseFieldTarget(breakouts[0]);
 
       const filterIndex = _.findIndex(
         filters,
         filter =>
           Filter.isFieldFilter(filter) &&
-          FieldRef.getFieldTargetId(filter[1]) === timeFieldId,
+          _.isEqual(filter[1], timeField.mbql()),
       );
 
       let filter, currentFilter;
       if (filterIndex >= 0) {
         filter = currentFilter = filters[filterIndex];
       } else {
-        filter = ["time-interval", timeField, -30, "day"];
+        filter = ["time-interval", timeField.mbql(), -30, "day"];
       }
 
-      // $FlowFixMe
       this.setState({ filter, filterIndex, currentFilter });
     }
   }

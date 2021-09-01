@@ -3,7 +3,7 @@ import {
   addPostgresDatabase,
   withDatabase,
   visitQuestionAdhoc,
-} from "__support__/cypress";
+} from "__support__/e2e/cypress";
 
 const PG_DB_NAME = "QA Postgres12";
 const PG_DB_ID = 2;
@@ -38,7 +38,7 @@ describe("postgres > user > query", () => {
     cy.contains("37.65");
   });
 
-  it("should display pivot tables  (metabase#14148)", () => {
+  it("should display pivot tables (metabase#14148)", () => {
     cy.server();
     cy.route("POST", "/api/dataset/pivot").as("pivotDataset");
 

@@ -160,7 +160,7 @@
                                   :details      "{\"db\": \"mem:temp\"}"}]
         ;; Sync the database so we have the new table and it's fields
         (sync/sync-database! db)
-        (let [table-id        (db/select-one-field :id Table :db_id (u/get-id db) :name "FOO")
+        (let [table-id        (db/select-one-field :id Table :db_id (u/the-id db) :name "FOO")
               field-id        (db/select-one-field :id Field :table_id table-id :name "CATEGORY_ID")
               field-values-id (db/select-one-field :id FieldValues :field_id field-id)]
           ;; Add in human readable values for remapping

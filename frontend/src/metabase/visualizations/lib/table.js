@@ -1,35 +1,41 @@
 import type { DatasetData, Column } from "metabase-types/types/Dataset";
 import type { ClickObject } from "metabase-types/types/Visualization";
-import type { VisualizationSettings } from "metabase-types/types/Card";
 import { isNumber, isCoordinate } from "metabase/lib/schema_metadata";
 
+export function getTableClickedObjectRowData([series], rowIndex) {
+  const { rows, cols } = series.data;
+
+  return rows[rowIndex].map((value, index) => ({
+    value,
+    col: cols[index],
+  }));
+}
+
 export function getTableCellClickedObject(
-  data: DatasetData,
-  settings: VisualizationSettings,
-  rowIndex: number,
-  columnIndex: number,
-  isPivoted: boolean,
-): ClickObject {
+  data,
+  settings,
+  rowIndex,
+  columnIndex,
+  isPivoted,
+  clickedRowData,
+) {
   const { rows, cols } = data;
 
   const column = cols[columnIndex];
   const row = rows[rowIndex];
   const value = row[columnIndex];
-  const dataForClick = row.map((value, index) => ({ value, col: cols[index] }));
 
   if (isPivoted) {
     // if it's a pivot table, the first column is
     if (columnIndex === 0) {
-      // $FlowFixMe: _dimension
       return row._dimension;
     } else {
       return {
         value,
         column,
         settings,
-        // $FlowFixMe: _dimension
         dimensions: [row._dimension, column._dimension],
-        data: dataForClick,
+        data: clickedRowData,
       };
     }
   } else if (column.source === "aggregation") {
@@ -41,7 +47,7 @@ export function getTableCellClickedObject(
         .map((column, index) => ({ value: row[index], column }))
         .filter(dimension => dimension.column.source === "breakout"),
       origin: { rowIndex, row, cols },
-      data: dataForClick,
+      data: clickedRowData,
     };
   } else {
     return {
@@ -49,7 +55,7 @@ export function getTableCellClickedObject(
       column,
       settings,
       origin: { rowIndex, row, cols },
-      data: dataForClick,
+      data: clickedRowData,
     };
   }
 }
@@ -63,7 +69,6 @@ export function getTableHeaderClickedObject(
   if (isPivoted) {
     // if it's a pivot table, the first column is
     if (columnIndex >= 0 && column) {
-      // $FlowFixMe: _dimension
       return column._dimension;
     } else {
       return null; // FIXME?
@@ -80,7 +85,6 @@ export function getTableHeaderClickedObject(
 export function isColumnRightAligned(column: Column) {
   // handle remapped columns
   if (column && column.remapped_to_column) {
-    // $FlowFixMe: remapped_to_column
     column = column.remapped_to_column;
   }
   return isNumber(column) || isCoordinate(column);

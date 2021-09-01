@@ -1,4 +1,4 @@
-import { restore } from "__support__/cypress";
+import { restore } from "__support__/e2e/cypress";
 
 const ORDERS_URL = "/admin/datamodel/database/1/table/2";
 

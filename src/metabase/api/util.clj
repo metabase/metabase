@@ -7,12 +7,13 @@
             [metabase.logger :as logger]
             [metabase.troubleshooting :as troubleshooting]
             [metabase.util.schema :as su]
-            [metabase.util.stats :as stats]))
+            [metabase.util.stats :as stats]
+            [ring.util.response :as ring.response]))
 
 (api/defendpoint POST "/password_check"
   "Endpoint that checks if the supplied password meets the currently configured password complexity rules."
   [:as {{:keys [password]} :body}]
-  {password su/ComplexPassword} ;; if we pass the su/ComplexPassword test we're g2g
+  {password su/ValidPassword} ;; if we pass the su/ValidPassword test we're g2g
   {:valid true})
 
 (api/defendpoint GET "/logs"
@@ -40,5 +41,13 @@
   (api/check-superuser)
   {:system-info   (troubleshooting/system-info)
    :metabase-info (troubleshooting/metabase-info)})
+
+(api/defendpoint GET "/diagnostic_info/connection_pool_info"
+  "Returns database connection pool info for the current Metabase instance."
+  []
+  (api/check-superuser)
+  (let [pool-info (troubleshooting/connection-pool-info)
+        headers   {"Content-Disposition" "attachment; filename=\"connection_pool_info.json\""}]
+    (assoc (ring.response/response pool-info) :headers headers, :status 200)))
 
 (api/define-routes)

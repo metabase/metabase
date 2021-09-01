@@ -14,12 +14,15 @@
   [[source-entity fk] [dest-entity pk]]
   {:left-join [(db/resolve-model dest-entity) [:= (db/qualify source-entity fk) (db/qualify dest-entity pk)]]})
 
-(s/defn ^:private type-keyword->descendants :- (su/non-empty #{su/FieldTypeKeywordOrString})
+(def ^:private NamespacedKeyword
+  (s/constrained s/Keyword (comp seq namespace) "namespaced keyword"))
+
+(s/defn ^:private type-keyword->descendants :- (su/non-empty #{su/NonBlankString})
   "Return a set of descendents of Metabase `type-keyword`. This includes `type-keyword` itself, so the set will always
   have at least one element.
 
-     (type-keyword->descendants :type/Coordinate) ; -> #{\"type/Latitude\" \"type/Longitude\" \"type/Coordinate\"}"
-  [type-keyword :- su/FieldType]
+     (type-keyword->descendants :Semantic/Coordinate) ; -> #{\"type/Latitude\" \"type/Longitude\" \"type/Coordinate\"}"
+  [type-keyword :- NamespacedKeyword]
   (set (map u/qualified-name (cons type-keyword (descendants type-keyword)))))
 
 (defn isa
@@ -38,7 +41,12 @@
   ([type-keyword]
    [:in (type-keyword->descendants type-keyword)])
   ;; when using this with an `expr` (e.g. `(isa :semantic_type :type/URL)`) just go ahead and take the results of the
-  ;; one-arity impl above and splice expr in as the second element (`[:in #{"type/URL" "type/ImageURL"}]` becomes
-  ;; `[:in :semantic_type #{"type/URL" "type/ImageURL"}]`)
+  ;; one-arity impl above and splice expr in as the second element
+  ;;
+  ;;    [:in #{"type/URL" "type/ImageURL"}]
+  ;;
+  ;; becomes
+  ;;
+  ;;    [:in :semantic_type #{"type/URL" "type/ImageURL"}]
   ([expr type-keyword]
    [:in expr (type-keyword->descendants type-keyword)]))

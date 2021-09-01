@@ -37,7 +37,6 @@ export default class Join extends MBQLObjectClause {
   // "source-table": ?TableId;
 
   set(join: any): Join {
-    // $FlowFixMe
     return super.set(join);
   }
 
@@ -54,11 +53,9 @@ export default class Join extends MBQLObjectClause {
 
   // SOURCE TABLE
   joinSourceTableId(): ?TableId {
-    // $FlowFixMe
     return this["source-table"];
   }
   setJoinSourceTableId(tableId: TableId) {
-    // $FlowFixMe
     if (tableId !== this["source-table"]) {
       const join = this.set({
         ...this,
@@ -78,7 +75,6 @@ export default class Join extends MBQLObjectClause {
 
   // SOURCE QUERY
   joinSourceQuery(): ?StructuredQueryObject {
-    // $FlowFixMe
     return this["source-query"];
   }
   setJoinSourceQuery(query: StructuredQuery) {
@@ -90,7 +86,6 @@ export default class Join extends MBQLObjectClause {
     });
   }
 
-  // $FlowFixMe: will always return JoinAlias even though Flow doesn't think so
   _uniqueAlias(name: JoinAlias): JoinAlias {
     const usedAliases = new Set(
       this.query()
@@ -292,7 +287,6 @@ export default class Join extends MBQLObjectClause {
       dimension = dimension.mbql();
     }
     const parentDimension = this.parentDimension();
-    // $FlowFixMe
     return this.setCondition([
       "=",
       parentDimension instanceof Dimension ? parentDimension.mbql() : null,

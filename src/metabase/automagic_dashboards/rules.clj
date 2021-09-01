@@ -54,7 +54,9 @@
 
 (defn- field-type?
   [t]
-  (isa? t :type/*))
+  (some
+   (partial isa? t)
+   [:type/* :Semantic/* :Relation/*]))
 
 (defn- table-type?
   [t]

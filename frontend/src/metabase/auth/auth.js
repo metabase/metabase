@@ -53,12 +53,7 @@ export const loginGoogle = createThunkAction(LOGIN_GOOGLE, function(
       dispatch(push(redirectUrl || "/"));
     } catch (error) {
       await clearGoogleAuthCredentials();
-      // If we see a 428 ("Precondition Required") that means we need to show the "No Metabase account exists for this Google Account" page
-      if (error.status === 428) {
-        dispatch(push("/auth/google_no_mb_account"));
-      } else {
-        return error;
-      }
+      return error;
     }
   };
 });

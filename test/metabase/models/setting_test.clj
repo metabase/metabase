@@ -1,5 +1,6 @@
 (ns metabase.models.setting-test
   (:require [clojure.test :refer :all]
+            [environ.core :as env]
             [medley.core :as m]
             [metabase.models.setting :as setting :refer [defsetting Setting]]
             [metabase.models.setting.cache :as cache]
@@ -49,6 +50,10 @@
   :type :csv
   :default "A,B,C")
 
+(defsetting ^:private test-env-setting
+  "Test setting - this only shows up in dev (7)"
+  :visibility :internal)
+
 (setting/defsetting toucan-name
   "Name for the Metabase Toucan mascot."
   :visibility :internal)
@@ -60,7 +65,9 @@
   [setting-name]
   (db/select-one-field :value Setting, :key (name setting-name)))
 
-(defn setting-exists-in-db? [setting-name]
+(defn setting-exists-in-db?
+  "Returns a boolean indicating whether a setting has a value stored in the application DB."
+  [setting-name]
   (boolean (Setting :key (name setting-name))))
 
 (deftest string-tag-test
@@ -69,10 +76,10 @@
            (:tag (meta #'test-setting-1))))))
 
 (deftest defsetting-getter-fn-test
-  (testing "Test defsetting getter fn. Should return the value from env var MB_TEST_SETTING_1"
-    (test-setting-1 nil)
+  (testing "Test defsetting getter fn. Should return the value from env var MB_TEST_ENV_SETTING"
+    (test-env-setting nil)
     (is (= "ABCDEFG"
-           (test-setting-1))))
+           (test-env-setting))))
 
   (testing "Test getting a default value -- if you clear the value of a Setting it should revert to returning the default value"
     (test-setting-2 nil)
@@ -131,18 +138,17 @@
 
 (deftest delete-test
   (testing "delete"
-    (testing "w/o default value, but with env var value"
+    (testing "w/o default value"
       (test-setting-1 "COOL")
       (is (= "COOL"
              (test-setting-1)))
       (is (= true
              (setting-exists-in-db? :test-setting-1)))
       (test-setting-1 nil)
-      (testing "env var value"
-        (is (= "ABCDEFG"
-               (test-setting-1)))
-        (is (= "ABCDEFG"
-               (setting/get :test-setting-1))))
+      (is (= nil
+             (test-setting-1)))
+      (is (= nil
+             (setting/get :test-setting-1)))
       (is (= false
              (setting-exists-in-db? :test-setting-1))))
 
@@ -169,7 +175,7 @@
 (defn- user-facing-info-with-db-and-env-var-values [setting db-value env-var-value]
   (do-with-temporary-setting-value setting db-value
     (fn []
-      (with-redefs [environ.core/env {(keyword (str "mb-" (name setting))) env-var-value}]
+      (with-redefs [env/env {(keyword (str "mb-" (name setting))) env-var-value}]
         (dissoc (#'setting/user-facing-info (#'setting/resolve-setting setting))
                 :key :description)))))
 
@@ -198,12 +204,12 @@
     (is (= {:value "WOW", :is_env_setting false, :env_name "MB_TEST_SETTING_2", :default "[Default Value]"}
            (user-facing-info-with-db-and-env-var-values :test-setting-2 "WOW" nil))))
 
-  (testing "user-facing info w/ db value, env var value, no default value -- the DB value should take precedence over the env var"
-    (is (= {:value "WOW", :is_env_setting true, :env_name "MB_TEST_SETTING_1", :default "Using value of env var $MB_TEST_SETTING_1"}
+  (testing "user-facing info w/ db value, env var value, no default value -- the env var should take precedence over the db value, but should be obfuscated"
+    (is (= {:value nil, :is_env_setting true, :env_name "MB_TEST_SETTING_1", :default "Using value of env var $MB_TEST_SETTING_1"}
            (user-facing-info-with-db-and-env-var-values :test-setting-1 "WOW" "ENV VAR"))))
 
-  (testing "user-facing info w/ db value, env var value, default value -- env var should take precedence over default"
-    (is (= {:value "WOW", :is_env_setting true, :env_name "MB_TEST_SETTING_2", :default "Using value of env var $MB_TEST_SETTING_2"}
+  (testing "user-facing info w/ db value, env var value, default value -- env var should take precedence over default, but should be obfuscated"
+    (is (= {:value nil, :is_env_setting true, :env_name "MB_TEST_SETTING_2", :default "Using value of env var $MB_TEST_SETTING_2"}
            (user-facing-info-with-db-and-env-var-values :test-setting-2 "WOW" "ENV VAR")))))
 
 (deftest all-test
@@ -241,13 +247,13 @@
       (test-setting-2 "S2")
       (is (= [{:key            :test-setting-1
                :value          nil
-               :is_env_setting true
+               :is_env_setting false
                :env_name       "MB_TEST_SETTING_1"
                :description    "Test setting - this only shows up in dev (1)"
-               :default        "Using value of env var $MB_TEST_SETTING_1"}
+               :default        nil}
               {:key            :test-setting-2
                :value          "S2"
-               :is_env_setting false,
+               :is_env_setting false
                :env_name       "MB_TEST_SETTING_2"
                :description    "Test setting - this only shows up in dev (2)"
                :default        "[Default Value]"}]
@@ -448,10 +454,14 @@
 
 ;;; ----------------------------------------------- Uncached Settings ------------------------------------------------
 
-(defn clear-settings-last-updated-value-in-db! []
+(defn clear-settings-last-updated-value-in-db!
+  "Deletes the timestamp for the last updated setting from the DB."
+  []
   (db/simple-delete! Setting {:key cache/settings-last-updated-key}))
 
-(defn settings-last-updated-value-in-db []
+(defn settings-last-updated-value-in-db
+  "Fetches the timestamp of the last updated setting."
+  []
   (db/select-one-field :value Setting :key cache/settings-last-updated-key))
 
 (defsetting ^:private uncached-setting
@@ -552,7 +562,7 @@
   (testing "Only valid characters used for environment lookup"
     (is (nil? (test-setting-with-question-mark?)))
     ;; note now question mark on the environmental setting
-    (with-redefs [environ.core/env {:mb-test-setting-with-question-mark "resolved"}]
+    (with-redefs [env/env {:mb-test-setting-with-question-mark "resolved"}]
       (binding [setting/*disable-cache* false]
         (is (= "resolved" (test-setting-with-question-mark?))))))
   (testing "Setting a setting that would munge the same throws an error"

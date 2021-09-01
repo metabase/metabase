@@ -130,7 +130,7 @@ const Dashboards = createEntity({
   objectSelectors: {
     getFavorited: dashboard => dashboard && dashboard.favorite,
     getName: dashboard => dashboard && dashboard.name,
-    getUrl: dashboard => dashboard && Urls.dashboard(dashboard.id),
+    getUrl: dashboard => dashboard && Urls.dashboard(dashboard),
     getCollection: dashboard =>
       dashboard && normalizedCollection(dashboard.collection),
     getIcon: dashboard => "dashboard",
@@ -143,6 +143,7 @@ const Dashboards = createEntity({
         name: "name",
         title: t`Name`,
         placeholder: t`What is the name of your dashboard?`,
+        autoFocus: true,
         validate: name => (!name ? "Name is required" : null),
       },
       {

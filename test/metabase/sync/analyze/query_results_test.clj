@@ -52,7 +52,7 @@
 (defn- query-for-card [card]
   {:database mbql.s/saved-questions-virtual-database-id
    :type     :query
-   :query    {:source-table (str "card__" (u/get-id card))}})
+   :query    {:source-table (str "card__" (u/the-id card))}})
 
 (def ^:private venue-name->semantic-types
   {:id          :type/PK

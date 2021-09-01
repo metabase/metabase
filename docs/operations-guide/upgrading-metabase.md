@@ -28,6 +28,10 @@ If you are using the Metabase macOS app, you will be notified when there is a ne
 
 Step-by-step instructions on how to upgrade Metabase running on Elastic Beanstalk using RDS.
 
+#### [Upgrading Azure Web Apps deployments](running-metabase-on-azure.html#additional-configurations)
+
+Step-by-step instructions on how to upgrade Metabase running on Azure Web Apps.
+
 #### [Upgrading Heroku deployments](running-metabase-on-heroku.html#deploying-new-versions-of-metabase)
 
 Step-by-step instructions on how to upgrade Metabase running on Heroku.

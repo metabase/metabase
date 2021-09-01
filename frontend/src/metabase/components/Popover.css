@@ -57,6 +57,14 @@
   pointer-events: none;
 }
 
+/* As Popover footer uses absolute positioning
+ * to stick to bottom, options lists and other
+ * middle content need extra margin-bottom
+ */
+.PopoverBody--marginBottom {
+  margin-bottom: 60px;
+}
+
 .PopoverBody .Form-input {
   font-size: 1rem;
 }
@@ -117,6 +125,24 @@
 .PopoverHeader-item--withArrow:after {
   right: -15px;
   border-left-color: var(--color-bg-white);
+}
+
+.PopoverFooter {
+  background: white;
+  position: absolute;
+  bottom: 0;
+  border-top: 1px solid var(--color-border);
+  border-bottom-right-radius: 6px;
+  border-bottom-left-radius: 6px;
+  padding-top: 8px;
+  width: calc(100% - 2px);
+  /* Without z-index; calendar days, if selected, scroll above this component */
+  z-index: 1;
+}
+
+.PopoverParameterFieldWidgetFooter {
+  position: fixed;
+  bottom: -7px;
 }
 
 /* create a slightly larger arrow on the top for border purposes */

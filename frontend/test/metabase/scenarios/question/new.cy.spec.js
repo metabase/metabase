@@ -4,9 +4,9 @@ import {
   popover,
   openOrdersTable,
   openReviewsTable,
-} from "__support__/cypress";
+} from "__support__/e2e/cypress";
 
-import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
 
@@ -71,8 +71,18 @@ describe("scenarios > question > new", () => {
         .click();
       cy.findByText("Rating").click();
     });
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
     cy.get(".Visualization .bar").should("have.length", 6);
+  });
+
+  it("should display a tooltip for CTA icons on an individual question (metabase#16108)", () => {
+    openOrdersTable();
+    cy.icon("download").realHover();
+    cy.findByText("Download full results");
+    cy.icon("bell").realHover();
+    cy.findByText("Get alerts");
+    cy.icon("share").realHover();
+    cy.findByText("Sharing");
   });
 
   describe("browse data", () => {
@@ -82,6 +92,150 @@ describe("scenarios > question > new", () => {
       cy.contains("Sample Dataset").click();
       cy.contains("Orders").click();
       cy.contains("37.65");
+    });
+  });
+
+  describe("data picker search", () => {
+    beforeEach(() => {
+      cy.visit("/");
+      cy.findByText("Ask a question").click();
+    });
+
+    describe("on a (simple) question page", () => {
+      beforeEach(() => {
+        cy.findByText("Simple question").click();
+        cy.findByPlaceholderText("Search for a table...").type("Ord");
+      });
+
+      it("should allow to search saved questions", () => {
+        cy.findByText("Orders, Count").click();
+        cy.findByText("18,760");
+      });
+
+      it("should allow to search and select tables", () => {
+        cy.findAllByText("Orders")
+          .closest("li")
+          .findByText("Table in")
+          .click();
+        cy.url().should("include", "question#");
+        cy.findByText("Sample Dataset");
+        cy.findByText("Orders");
+      });
+    });
+
+    describe("on a (custom) question page", () => {
+      beforeEach(() => {
+        cy.findByText("Custom question").click();
+        cy.findByPlaceholderText("Search for a table...").type("Ord");
+      });
+
+      it("should allow to search saved questions", () => {
+        cy.findByText("Orders, Count").click();
+        cy.findByText("Visualize").click();
+        cy.findByText("18,760");
+      });
+
+      it("should allow to search and select tables", () => {
+        cy.findAllByText("Orders")
+          .closest("li")
+          .findByText("Table in")
+          .click();
+        cy.findByText("Visualize").click();
+        cy.url().should("include", "question#");
+        cy.findByText("Sample Dataset");
+        cy.findByText("Orders");
+      });
+    });
+
+    it("should ignore an empty search string", () => {
+      cy.intercept("/api/search", req => {
+        expect("Unexpected call to /api/search").to.be.false;
+      });
+      cy.findByText("Custom question").click();
+      cy.findByPlaceholderText("Search for a table...").type("  ");
+    });
+  });
+
+  describe("saved question picker", () => {
+    beforeEach(() => {
+      cy.visit("/");
+      cy.findByText("Ask a question").click();
+    });
+
+    describe("on a (simple) question page", () => {
+      beforeEach(() => {
+        cy.findByText("Simple question").click();
+        cy.findByText("Saved Questions").click();
+      });
+
+      it("should display the collection tree on the left side", () => {
+        cy.findByText("Our analytics");
+      });
+
+      it("should display the saved questions list on the right side", () => {
+        cy.findByText("Orders, Count, Grouped by Created At (year)");
+        cy.findByText("Orders");
+        cy.findByText("Orders, Count").click();
+        cy.findByText("18,760");
+      });
+
+      it("should perform a search scoped to saved questions", () => {
+        cy.findByPlaceholderText("Search for a question").type("Grouped");
+        cy.findByText("Orders, Count, Grouped by Created At (year)").click();
+        cy.findByText("1,994");
+      });
+    });
+
+    describe("on a (custom) question page", () => {
+      beforeEach(() => {
+        cy.findByText("Custom question").click();
+        cy.findByText("Saved Questions").click();
+      });
+
+      it("should display the collection tree on the left side", () => {
+        cy.findByText("Our analytics");
+      });
+
+      it("should display the saved questions list on the right side", () => {
+        cy.findByText("Orders, Count, Grouped by Created At (year)");
+        cy.findByText("Orders");
+        cy.findByText("Orders, Count").click();
+        cy.button("Visualize").click();
+        cy.findByText("18,760");
+      });
+
+      it("should redisplay the saved question picker when changing a question", () => {
+        cy.findByText("Orders, Count").click();
+
+        // Try to choose a different saved question
+        cy.get("[icon=table2]").click();
+
+        cy.findByText("Our analytics");
+        cy.findByText("Orders");
+        cy.findByText("Orders, Count, Grouped by Created At (year)").click();
+
+        cy.button("Visualize").click();
+        cy.findByText("2016");
+        cy.findByText("5,834");
+      });
+
+      it("should perform a search scoped to saved questions", () => {
+        cy.findByPlaceholderText("Search for a question").type("Grouped");
+        cy.findByText("Orders, Count, Grouped by Created At (year)").click();
+        cy.button("Visualize").click();
+        cy.findByText("2018");
+      });
+
+      it("should reopen saved question picker after returning back to editor mode", () => {
+        cy.findByText("Orders, Count, Grouped by Created At (year)").click();
+        cy.button("Visualize").click();
+        cy.icon("notebook").click();
+        cy.findByTestId("data-step-cell").click();
+
+        cy.findByTestId("select-list").within(() => {
+          cy.findByText("Orders, Count, Grouped by Created At (year)");
+        });
+      });
     });
   });
 
@@ -220,7 +374,7 @@ describe("scenarios > question > new", () => {
       cy.findByText("Hour of Day");
     });
 
-    it.skip("should display timeseries filter and granularity widgets at the bottom of the screen (metabase#11183)", () => {
+    it("should display timeseries filter and granularity widgets at the bottom of the screen (metabase#11183)", () => {
       cy.createQuestion({
         name: "11183",
         query: {
@@ -269,7 +423,7 @@ describe("scenarios > question > new", () => {
         cy.findByPlaceholderText("Name (required)").type("twice max total");
         cy.findByText("Done").click();
       });
-      cy.findByText("Visualize").click();
+      cy.button("Visualize").click();
       cy.findByText("318.7");
     });
 
@@ -334,7 +488,7 @@ describe("scenarios > question > new", () => {
       cy.findByText("Hour of day").click();
     });
 
-    it.skip("trend visualization should work regardless of column order (metabase#13710)", () => {
+    it("trend visualization should work regardless of column order (metabase#13710)", () => {
       cy.server();
       cy.createQuestion({
         name: "13710",
@@ -355,7 +509,7 @@ describe("scenarios > question > new", () => {
         cy.wait("@cardQuery");
         cy.log("Reported failing on v0.35 - v0.37.0.2");
         cy.log("Bug: showing blank visualization");
-        cy.get(".ScalarValue").contains("33");
+        cy.get(".ScalarValue").contains("100");
       });
     });
 

@@ -47,7 +47,7 @@
       :type/BigInteger     "cast(1 AS bigint)"
       :type/Float          "1.0"
       :type/Decimal        "DECIMAL '1.0'"
-      :type/Text           "cast('' AS varchar(255))"
+      :type/Text           "cast('' AS VARCHAR)"
       :type/Date           "current_timestamp" ; this should probably be a date type, but the test data begs to differ
       :type/DateTime       "current_timestamp"
       :type/DateTimeWithTZ "current_timestamp"
@@ -100,9 +100,21 @@
                       batches    (partition 100 100 nil keyed-rows)]]
       (when-not skip-drop-db?
         (execute! (sql.tx/drop-table-if-exists-sql driver dbdef tabledef)))
-      (execute! (sql.tx/create-table-sql driver dbdef tabledef))
+      (try
+        (execute! (sql.tx/create-table-sql driver dbdef tabledef))
+        (catch Throwable e
+          (throw (ex-info (format "Error creating Presto table %s: %s" (:table-name tabledef) (ex-message e))
+                          {:tabledef (dissoc tabledef :rows)}
+                          e))))
       (doseq [batch batches]
-        (execute! (insert-sql driver dbdef tabledef batch))))))
+        (try
+          (execute! (insert-sql driver dbdef tabledef batch))
+          (catch Throwable e
+            (throw (ex-info (format "Error inserting rows into Presto table %s: %s"
+                                    (:table-name tabledef) (ex-message e))
+                            {:tabledef (dissoc tabledef :rows)
+                             :batch    batch}
+                            e))))))))
 
 (defmethod tx/destroy-db! :presto
   [driver {:keys [database-name table-definitions], :as dbdef}]

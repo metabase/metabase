@@ -7,7 +7,7 @@
             [metabase.automagic-dashboards.populate :as magic.populate]
             [metabase.events :as events]
             [metabase.models.card :as card :refer [Card]]
-            [metabase.models.collection :as collection]
+            [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
             [metabase.models.field-values :as field-values]
             [metabase.models.interface :as i]
@@ -34,9 +34,10 @@
   {:hydrate :ordered_cards}
   [dashboard-or-id]
   (db/do-post-select DashboardCard
-    (db/query {:select    [:dashcard.*]
+    (db/query {:select    [:dashcard.* [:collection.authority_level :collection_authority_level]]
                :from      [[DashboardCard :dashcard]]
-               :left-join [[Card :card] [:= :dashcard.card_id :card.id]]
+               :left-join [[Card :card] [:= :dashcard.card_id :card.id]
+                           [Collection :collection] [:= :collection.id :card.collection_id]]
                :where     [:and
                            [:= :dashcard.dashboard_id (u/the-id dashboard-or-id)]
                            [:or
@@ -44,10 +45,21 @@
                             [:= :card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
                :order-by  [[:dashcard.created_at :asc]]})))
 
-
-;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
+(defn collections-authority-level
+  "Efficiently hydrate the `:collection_authority_level` of a sequence of dashboards."
+  {:batched-hydrate :collection_authority_level}
+  [dashboards]
+  (let [coll-id->level (into {}
+                             (map (juxt :id :authority_level))
+                             (db/query {:select    [:dashboard.id :collection.authority_level]
+                                        :from      [[:report_dashboard :dashboard]]
+                                        :left-join [[Collection :collection] [:= :collection.id :dashboard.collection_id]]
+                                        :where     [:in :dashboard.id (into #{} (map u/the-id) dashboards)]}))]
+    (for [dashboard dashboards]
+      (assoc dashboard :collection_authority_level (get coll-id->level (u/the-id dashboard))))))
 
 (models/defmodel Dashboard :report_dashboard)
+;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (defn- assert-valid-parameters [{:keys [parameters]}]
   (when (s/check (s/maybe [{:id su/NonBlankString, s/Keyword s/Any}]) parameters)

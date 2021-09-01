@@ -19,6 +19,3 @@ export const examples = {
     </Tooltip>
   ),
 };
-
-// disable snapshot testing due to issue with Popover
-export const noSnapshotTest = true;

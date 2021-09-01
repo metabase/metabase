@@ -120,12 +120,16 @@
   [filter-clause & more-filter-clauses]
   (simplify-compound-filter (cons :and (cons filter-clause more-filter-clauses))))
 
+(s/defn add-filter-clause-to-inner-query :- mbql.s/MBQLQuery
+  [inner-query :- mbql.s/MBQLQuery new-clause :- (s/maybe mbql.s/Filter)]
+  (if-not new-clause
+    inner-query
+    (update inner-query :filter combine-filter-clauses new-clause)))
+
 (s/defn add-filter-clause :- mbql.s/Query
   "Add an additional filter clause to an `outer-query`. If `new-clause` is `nil` this is a no-op."
-  [outer-query :- mbql.s/Query, new-clause :- (s/maybe mbql.s/Filter)]
-  (if-not new-clause
-    outer-query
-    (update-in outer-query [:query :filter] combine-filter-clauses new-clause)))
+  [outer-query :- mbql.s/Query new-clause :- (s/maybe mbql.s/Filter)]
+  (update outer-query :query add-filter-clause-to-inner-query new-clause))
 
 (defn desugar-inside
   "Rewrite `:inside` filter clauses as a pair of `:between` clauses."

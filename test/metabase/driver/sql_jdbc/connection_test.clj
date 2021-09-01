@@ -2,7 +2,9 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.test :refer :all]
             [metabase.db.spec :as db.spec]
+            [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
             [metabase.driver.util :as driver.u]
             [metabase.models.database :refer [Database]]
             [metabase.test :as mt]
@@ -56,3 +58,12 @@
                                     (u/id database)))))
               (testing "the pool has been destroyed"
                 (is @destroyed?)))))))))
+
+(deftest c3p0-datasource-name-test
+  (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
+    (testing "The dataSourceName c3p0 property is set properly for a database"
+      (let [db       (mt/db)
+            props    (sql-jdbc.conn/data-warehouse-connection-pool-properties driver/*driver* db)
+            expected (format "db-%d-%s-%s" (u/the-id db) (name driver/*driver*) (-> db :details :db))]
+        (is (= expected
+               (get props "dataSourceName")))))))

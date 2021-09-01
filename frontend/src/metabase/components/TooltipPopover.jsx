@@ -25,6 +25,7 @@ const TooltipPopover = ({ children, constrainedWidth, ...props }) => {
       // OnClickOutsideWrapper is unecessary and causes existing popovers not to
       // be dismissed if a tooltip is visisble, so pass noOnClickOutsideWrapper
       noOnClickOutsideWrapper
+      role="tooltip"
       {...props}
     >
       {popoverContent}

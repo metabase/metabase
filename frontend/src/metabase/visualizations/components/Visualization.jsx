@@ -197,7 +197,6 @@ export default class Visualization extends React.PureComponent {
   // shouldComponentUpdate(nextProps, nextState) {
   // }
 
-  // $FlowFixMe
   getWarnings(props = this.props, state = this.state) {
     let warnings = state.warnings || [];
     // don't warn about truncated data for table since we show a warning in the row count
@@ -277,14 +276,10 @@ export default class Visualization extends React.PureComponent {
     if (!clicked) {
       return [];
     }
-    const {
-      rawSeries,
-      metadata,
-      getExtraDataForClick = () => ({}),
-    } = this.props;
+    const { metadata, getExtraDataForClick = () => ({}) } = this.props;
     // TODO: push this logic into Question?
     const seriesIndex = clicked.seriesIndex || 0;
-    const card = rawSeries[seriesIndex].card;
+    const card = this.state.series[seriesIndex].card;
     const question = this._getQuestionForCardCached(metadata, card);
     const mode = this.props.mode
       ? question && new Mode(question, this.props.mode)
@@ -455,7 +450,6 @@ export default class Visualization extends React.PureComponent {
 
     if (!error) {
       noResults = _.every(
-        // $FlowFixMe
         series,
         s => s && s.data && datasetContainsNoResults(s.data),
       );
@@ -583,16 +577,13 @@ export default class Visualization extends React.PureComponent {
             )}
           </div>
         ) : (
-          // $FlowFixMe
           <CardVisualization
             {...this.props}
             // NOTE: CardVisualization class used to target ExplicitSize HOC
             className="CardVisualization flex-full flex-basis-none"
             series={series}
             settings={settings}
-            // $FlowFixMe
             card={series[0].card} // convenience for single-series visualizations
-            // $FlowFixMe
             data={series[0].data} // convenience for single-series visualizations
             hovered={hovered}
             onHoverChange={this.handleHoverChange}

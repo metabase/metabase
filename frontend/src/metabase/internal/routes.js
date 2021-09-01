@@ -9,7 +9,6 @@ import {
 } from "metabase/containers/ErrorPages";
 
 // Import legacy apps - TODO - move this to a different style of documentation
-// $FlowFixMe: doesn't know about require.context
 const req = require.context(
   "metabase/internal/components",
   true,

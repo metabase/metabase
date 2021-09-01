@@ -43,7 +43,7 @@
    (for [job   (tu/scheduler-current-tasks)
          :when (#{"metabase.task.sync-and-analyze.job" "metabase.task.update-field-values.job"} (:key job))]
      (-> job
-         (update :triggers (partial filter #(str/ends-with? (:key %) (str \. (u/get-id db-or-id)))))
+         (update :triggers (partial filter #(str/ends-with? (:key %) (str \. (u/the-id db-or-id)))))
          (dissoc :class)))))
 
 (defmacro with-scheduler-setup [& body]
@@ -90,7 +90,7 @@
           (update fv-job   :triggers empty)]
         (with-scheduler-setup
           (mt/with-temp Database [database {:engine :postgres}]
-            (db/delete! Database :id (u/get-id database))
+            (db/delete! Database :id (u/the-id database))
             (current-tasks-for-db database))))))
 
 ;; Check that changing the schedule column(s) for a DB properly updates the scheduled tasks
@@ -99,7 +99,7 @@
           (assoc-in fv-job   [:triggers 0 :cron-schedule] "0 11 11 11 11 ?")]
          (with-scheduler-setup
            (mt/with-temp Database [database {:engine :postgres}]
-             (db/update! Database (u/get-id database)
+             (db/update! Database (u/the-id database)
                :metadata_sync_schedule      "0 15 10 ? * MON-FRI" ; 10:15 AM every weekday
                :cache_field_values_schedule "0 11 11 11 11 ?")    ; Every November 11th at 11:11 AM
              (current-tasks-for-db database))))))
@@ -110,7 +110,7 @@
           (assoc-in fv-job [:triggers 0 :cron-schedule] "0 15 10 ? * MON-FRI")]
          (with-scheduler-setup
            (mt/with-temp Database [database {:engine :postgres}]
-             (db/update! Database (u/get-id database)
+             (db/update! Database (u/the-id database)
                          :cache_field_values_schedule "0 15 10 ? * MON-FRI")
              (current-tasks-for-db database)))))
 
@@ -118,7 +118,7 @@
           fv-job]
          (with-scheduler-setup
            (mt/with-temp Database [database {:engine :postgres}]
-             (db/update! Database (u/get-id database)
+             (db/update! Database (u/the-id database)
                          :metadata_sync_schedule "0 15 10 ? * MON-FRI")
              (current-tasks-for-db database))))))
 
@@ -136,7 +136,7 @@
         (testing (format "Update %s" k)
           (is (thrown?
                Exception
-               (db/update! Database (u/get-id database)
+               (db/update! Database (u/the-id database)
                  k "2 CANS PER DAY"))))))))
 
 ;; this is a deftype due to an issue with Clojure. The `org.quartz.JobExecutionContext` interface has a put method and

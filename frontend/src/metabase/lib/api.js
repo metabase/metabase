@@ -178,7 +178,6 @@ export class Api extends EventEmitter {
           throw e;
         }
       }
-      // $FlowFixMe: fails with our old version of flow but not newer versions
     } while (retryCount < maxAttempts);
   }
 
@@ -192,7 +191,6 @@ export class Api extends EventEmitter {
         xhr.setRequestHeader(headerName, headers[headerName]);
       }
       xhr.onreadystatechange = () => {
-        // $FlowFixMe
         if (xhr.readyState === XMLHttpRequest.DONE) {
           // getResponseHeader() is case-insensitive
           const antiCsrfToken = xhr.getResponseHeader(ANTI_CSRF_HEADER);

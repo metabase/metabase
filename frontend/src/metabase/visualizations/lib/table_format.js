@@ -179,25 +179,21 @@ export function compileFormatter(
     return () => null;
   } else if (format.type === "range") {
     const columnMin = name =>
-      // $FlowFixMe
       columnExtents && columnExtents[name] && columnExtents[name][0];
     const columnMax = name =>
-      // $FlowFixMe
       columnExtents && columnExtents[name] && columnExtents[name][1];
 
     const min =
       format.min_type === "custom"
         ? parseFloat(format.min_value)
         : format.min_type === "all"
-        ? // $FlowFixMe
-          Math.min(...format.columns.map(columnMin))
+        ? Math.min(...format.columns.map(columnMin))
         : columnMin(columnName);
     const max =
       format.max_type === "custom"
         ? parseFloat(format.max_value)
         : format.max_type === "all"
-        ? // $FlowFixMe
-          Math.max(...format.columns.map(columnMax))
+        ? Math.max(...format.columns.map(columnMax))
         : columnMax(columnName);
 
     if (typeof max !== "number" || typeof min !== "number") {

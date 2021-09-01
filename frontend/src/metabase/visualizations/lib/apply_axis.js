@@ -91,7 +91,6 @@ export function applyChartTimeseriesXAxis(
   { xValues, xDomain, xInterval },
 ) {
   // find the first nonempty single series
-  // $FlowFixMe
   const firstSeries: SingleSeries = _.find(
     series,
     s => !datasetContainsNoResults(s.data),
@@ -223,7 +222,6 @@ export function applyChartQuantitativeXAxis(
   { xValues, xDomain, xInterval },
 ) {
   // find the first nonempty single series
-  // $FlowFixMe
   const firstSeries: SingleSeries = _.find(
     series,
     s => !datasetContainsNoResults(s.data),
@@ -296,7 +294,6 @@ export function applyChartOrdinalXAxis(
   { xValues, isHistogramBar },
 ) {
   // find the first nonempty single series
-  // $FlowFixMe
   const firstSeries: SingleSeries = _.find(
     series,
     s => !datasetContainsNoResults(s.data),

@@ -1,5 +1,5 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import ReactDOM from "react-dom";
 import styles from "./PieChart.css";
 import { t } from "ttag";
 import ChartTooltip from "../components/ChartTooltip";
@@ -42,7 +42,12 @@ const PERCENT_REGEX = /percent/i;
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 
 export default class PieChart extends Component {
-  props: VisualizationProps;
+  constructor(props: VisualizationProps) {
+    super(props);
+
+    this.chartDetail = React.createRef();
+    this.chartGroup = React.createRef();
+  }
 
   static uiName = t`Pie`;
   static identifier = "pie";
@@ -194,8 +199,8 @@ export default class PieChart extends Component {
 
   componentDidUpdate() {
     requestAnimationFrame(() => {
-      const groupElement = ReactDOM.findDOMNode(this.refs.group);
-      const detailElement = ReactDOM.findDOMNode(this.refs.detail);
+      const groupElement = this.chartGroup.current;
+      const detailElement = this.chartDetail.current;
       if (groupElement.getBoundingClientRect().width < 120) {
         detailElement.classList.add("hide");
       } else {
@@ -378,7 +383,7 @@ export default class PieChart extends Component {
 
     const getSliceClickObject = index => {
       const slice = slices[index];
-      const sliceRows = slice.rowIndex && rows[slice.rowIndex];
+      const sliceRows = slice.rowIndex != null && rows[slice.rowIndex];
       const data =
         sliceRows &&
         sliceRows.map((value, index) => ({
@@ -420,7 +425,7 @@ export default class PieChart extends Component {
         isDashboard={this.props.isDashboard}
       >
         <div className={styles.ChartAndDetail}>
-          <div ref="detail" className={styles.Detail}>
+          <div ref={this.chartDetail} className={styles.Detail}>
             <div
               data-testid="detail-value"
               className={cx(
@@ -434,11 +439,12 @@ export default class PieChart extends Component {
           </div>
           <div className={cx(styles.Chart, "layout-centered")}>
             <svg
+              data-testid="pie-chart"
               className={cx(styles.Donut, "m1")}
               viewBox="0 0 100 100"
               style={{ maxWidth: MAX_PIE_SIZE, maxHeight: MAX_PIE_SIZE }}
             >
-              <g ref="group" transform={`translate(50,50)`}>
+              <g ref={this.chartGroup} transform={`translate(50,50)`}>
                 {pie(slices).map((slice, index) => (
                   <path
                     data-testid="slice"

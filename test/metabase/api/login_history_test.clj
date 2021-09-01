@@ -58,7 +58,7 @@
                  :device_description "Browser (Chrome/Windows)"
                  :ip_address         "185.233.100.23"
                  :active             true
-                 :location           "Begles, Nouvelle-Aquitaine, France"
+                 :location           "Talence, Nouvelle-Aquitaine, France"
                  :timezone           "CET"}
                 {:timestamp          "2021-03-18T15:52:20.172351-04:00"
                  :device_description "Browser (Chrome/Windows)"

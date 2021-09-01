@@ -222,6 +222,7 @@ const AccountStatus = ({
       <Flex mt={4} align="center" flexWrap="wrap" w="100%">
         {featuresOrdered.map(([id, feature]) => (
           <Feature
+            key={id}
             feature={feature}
             included={features[id]}
             expired={expired}
@@ -297,7 +298,7 @@ const FeatureLinks = ({ links, defaultTitle }) => (
   <Flex align="center">
     {links &&
       links.map(({ link, title }) => (
-        <ExternalLink href={link} className="mx2 link">
+        <ExternalLink href={link} key={link} className="mx2 link">
           {title || defaultTitle}
         </ExternalLink>
       ))}

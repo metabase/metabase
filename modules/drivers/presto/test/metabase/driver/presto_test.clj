@@ -67,7 +67,7 @@
                 {:type "timestamp with time zone"}
                 {:type "timestamp"}
                 {:type "decimal(10,4)"}
-                {:type "varchar(255)"}])
+                {:type "varchar"}])
               ["2017-04-03" "2017-04-03 10:19:17.417 America/Toronto" "2017-04-03 10:19:17.417" "3.1416" "test"])))
       (is (= [0 false "" nil]
              ((#'presto/parse-row-fn
@@ -92,7 +92,7 @@
     (is (= {:name   "test_data_venues"
             :schema "default"
             :fields #{{:name          "name",
-                       :database-type "varchar(255)"
+                       :database-type "varchar"
                        :base-type     :type/Text
                        :database-position 1}
                       {:name          "latitude"

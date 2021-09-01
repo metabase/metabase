@@ -142,6 +142,8 @@
    [org.clojars.pntblnk/clj-ldap "0.0.16"]                            ; LDAP client
    [org.eclipse.jetty/jetty-server "9.4.32.v20200930"]                ; We require JDK 8 which allows us to run Jetty 9.4, ring-jetty-adapter runs on 1.7 which forces an older version
    [org.flatland/ordered "1.5.9"]                                     ; ordered maps & sets
+   [org.graalvm.js/js "21.0.0.2"]                                     ; JavaScript engine
+   [org.graalvm.js/js-scriptengine "21.0.0.2"]
    [org.liquibase/liquibase-core "3.6.3"                              ; migration management (Java lib)
     :exclusions [ch.qos.logback/logback-classic]]
    [org.mariadb.jdbc/mariadb-java-client "2.6.2"]                     ; MySQL/MariaDB driver
@@ -151,7 +153,7 @@
    [org.threeten/threeten-extra "1.5.0"]                               ; extra Java 8 java.time classes like DayOfMonth and Quarter
    [org.yaml/snakeyaml "1.23"]                                        ; YAML parser (required by liquibase)
    [potemkin "0.4.5" :exclusions [riddley]]                           ; utility macros & fns
-   [pretty "1.0.4"]                                                   ; protocol for defining how custom types should be pretty printed
+   [pretty "1.0.5"]                                                   ; protocol for defining how custom types should be pretty printed
    [prismatic/schema "1.1.12"]                                        ; Data schema declaration and validation library
    [redux "0.1.4"]                                                    ; Utility functions for building and composing transducers
    [riddley "0.2.0"]                                                  ; code walking lib -- used interally by Potemkin, manifold, etc.
@@ -166,13 +168,13 @@
                                  honeysql]]
    [user-agent "0.1.0"]                                               ; User-Agent string parser, for Login History page & elsewhere
    [weavejester/dependency "0.2.1"]                                   ; Dependency graphs and topological sorting
-   ]
+   [org.clojure/java.jmx "1.0.0"]]                                    ; JMX bean library, for exporting diagnostic info
 
   :main ^:skip-aot metabase.core
 
-  ;; Liquibase uses this manifest parameter to dynamically find extensions at startup (via classpath scanning, etc)
   :manifest
-  {"Liquibase-Package"
+  {;; Liquibase uses this manifest parameter to dynamically find extensions at startup (via classpath scanning, etc)
+   "Liquibase-Package"
    #= (eval
        (str "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,"
             "liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,"
@@ -222,8 +224,8 @@
      [pjstadig/humane-test-output "0.10.0"]
      [reifyhealth/specmonstah "2.0.0"]                                ; Generate fixtures to test huge databases
      [ring/ring-mock "0.4.0"]
-     [talltale "0.5.4"]                                               ; Generate realistic data for fixtures
-     ]
+     [talltale "0.5.4"]]                                               ; Generate realistic data for fixtures
+
 
     :plugins
     [[lein-environ "1.1.0"] ; easy access to environment variables
@@ -240,14 +242,14 @@
     :env
     {:mb-run-mode       "dev"
      :mb-field-filter-operators-enabled "true"
-     :mb-test-setting-1 "ABCDEFG"}
+     :mb-test-env-setting "ABCDEFG"}
 
     :jvm-opts
     ["-Dlogfile.path=target/log"]
 
     :repl-options
     {:init-ns user ; starting in the user namespace is a lot faster than metabase.core since it has less deps
-     :timeout 180000}}
+     :timeout 240000}}
 
    ;; output test results in JUnit XML format
    :junit
@@ -295,7 +297,7 @@
      :repl-options
      {:init    (do (require 'metabase.core)
                    (metabase.core/-main))
-      :timeout 180000}}]
+      :timeout 240000}}]
 
    ;; DISABLED FOR NOW SINCE IT'S BROKEN -- SEE #12181
    ;; start the dev HTTP server with 'lein ring server'

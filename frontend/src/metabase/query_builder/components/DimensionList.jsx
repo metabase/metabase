@@ -112,6 +112,13 @@ export default class DimensionList extends Component {
 
     const multiSelect = !!(onAddDimension || onRemoveDimension);
 
+    const sectionDimension = dimension
+      ? dimension
+      : _.find(
+          this._getDimensions(),
+          d => d.field() === item.dimension.field(),
+        );
+
     return (
       <div className="Field-extra flex align-center">
         {/* {item.segment && this.renderSegmentTooltip(item.segment)} */}
@@ -132,7 +139,7 @@ export default class DimensionList extends Component {
             {({ onClose }) => (
               <DimensionPicker
                 className="scroll-y"
-                dimension={dimension}
+                dimension={sectionDimension}
                 dimensions={subDimensions}
                 onChangeDimension={dimension => {
                   this.props.onChangeDimension(dimension);

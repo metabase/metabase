@@ -34,7 +34,7 @@ The following steps need to be done before building the Mac App:
    **VERY IMPORTANT!**
 
    Make sure the JRE version you use is one that is known to work successfully with notarization. We have found out the one linked above does not work.
-   I have found a nightly build that *does* work, but it's no longer available for download. Cam and Sameer both have copies of a JRE that is known to work. Refer to Option 2.
+   I have found a nightly build that *does* work, but it's no longer available for download. Cam has a copy of a JRE that is known to work. Refer to Option 2.
 
    If you get notarization errors like
 
@@ -45,18 +45,18 @@ The following steps need to be done before building the Mac App:
    Assuming the OpenJDK folks have resolved this issue going forward, you are fine to use whatever the latest JRE version available is. I have been using the HotSpot JRE instead of the OpenJ9 one but it ultimately shouldn't make a difference.
    </details>
 
-   <details><summary>Option 2: Ask Cam or Sameer for known working JRE</summary>
+   <details><summary>Option 2: Ask Cam for known working JRE</summary>
 
-    Have Cam or Sameer ZIP up their `/path/to/metabase/repo/OSX/Metabase/jre` folder and send it to you. Don't try Option 1 until we know the issues are fixed
+    Have Cam ZIP up their `/path/to/metabase/repo/OSX/Metabase/jre` folder and send it to you. Don't try Option 1 until we know the issues are fixed
     </details>
-
-1. Copy Metabase uberjar to OSX resources dir
+   
+1. Copy Metabase uberjar to OSX resources dir (only needed for testing build in Xcode)
+   
+    Normally the release script does this for you automatically, but for purposes of making sure things are working at this point independently of the release script you should do this yourself just this once. Download a Metabase uberjar from `https://downloads.metabase.com` and copy it to the `Resources` directory:
 
     ```bash
     cp /path/to/metabase.jar OSX/Resources/metabase.jar
     ```
-
-    Every time you want to build a new version of the Mac App, you can simply update the bundled uberjar the same way. I usually download the new JAR from `downloads.metabase.com` after it's up and copy that one into place.
 
 At this point, you should try opening up the Xcode project and building the Mac App in Xcode by clicking the run button. The app should build and launch at this point. If it doesn't, ask Cam for help!
 
@@ -99,11 +99,11 @@ The following steps are prereqs for *releasing* the Mac App:
 
         1) Choose "Save to Disk"
 
-    1) Have Sameer go to [the Apple Developer Site](https://developer.apple.com/account/mac/certificate/) and generate a `Developer ID Application` certificate for you by uploading the Certificate Signing Request you creating in the last step.
+    1) Have Cam go to [the Apple Developer Site](https://developer.apple.com/account/mac/certificate/) and generate a `Developer ID Application` certificate for you by uploading the Certificate Signing Request you creating in the last step.
 
     1) Load the generated certificate on your computer.
 
-1)  Export your Apple ID for building the app as `METABASE_MAC_APP_BUILD_APPLE_ID`. (This Apple ID must be part of the Metabase org in the Apple developer site. Ask Cam or Sameer to add you if it isn't.)
+1)  Export your Apple ID for building the app as `METABASE_MAC_APP_BUILD_APPLE_ID`. (This Apple ID must be part of the Metabase org in the Apple developer site. Ask Cam to add you if it isn't.)
 
     ```bash
     #  Add this to .zshrc or .bashrc

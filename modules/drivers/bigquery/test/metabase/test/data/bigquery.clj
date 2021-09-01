@@ -33,11 +33,11 @@
 
 ;;; ----------------------------------------------- Connection Details -----------------------------------------------
 
-(defn- normalize-name ^String [db-or-table identifier]
+(defn- normalize-name ^String [db-or-table-or-field identifier]
   (let [s (str/replace (name identifier) "-" "_")]
-    (case db-or-table
-      :db    (str "v3_" s)
-      :table s)))
+    (case db-or-table-or-field
+      :db             (str "v3_" s)
+      (:table :field) s)))
 
 (def ^:private details
   (delay
@@ -278,16 +278,19 @@
    (cons
     ["id" :INTEGER]
     (for [{:keys [field-name base-type]} field-definitions]
-      [field-name (or (base-type->bigquery-type base-type)
-                      (let [message (format "Don't know what BigQuery type to use for base type: %s" base-type)]
-                        (println (u/format-color 'red message))
-                        (throw (ex-info message {:metabase.util/no-auto-retry? true}))))]))))
+      [(normalize-name :field field-name)
+       (or (base-type->bigquery-type base-type)
+           (let [message (format "Don't know what BigQuery type to use for base type: %s" base-type)]
+             (println (u/format-color 'red message))
+             (throw (ex-info message {:metabase.util/no-auto-retry? true}))))]))))
 
 (defn- tabledef->prepared-rows
   "Convert `table-definition` to a format approprate for passing to `insert-data!`."
   [{:keys [field-definitions rows]}]
   {:pre [(every? map? field-definitions) (sequential? rows) (seq rows)]}
-  (let [field-names (map :field-name field-definitions)]
+  (let [field-names (->> field-definitions
+                         (map :field-name)
+                         (map (partial normalize-name :field)))]
     (for [[i row] (m/indexed rows)]
       (assoc (zipmap field-names row)
              :id (inc i)))))

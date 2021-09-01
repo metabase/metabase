@@ -4,7 +4,7 @@ import { isLatitude, isLongitude, isDate } from "metabase/lib/schema_metadata";
 import _ from "underscore";
 
 import { FieldDimension } from "metabase-lib/lib/Dimension";
-
+import { isExpressionField } from "metabase/lib/query/field_ref";
 // Drill-down progressions are defined as a series of steps, where each step has one or more dimension <-> breakout
 // transforms.
 //
@@ -387,9 +387,13 @@ function matchingProgression(dimensions) {
 }
 
 function nextBreakouts(dimensionMaps, metadata) {
-  const dimensions = dimensionMaps.map(d =>
-    columnToFieldDimension(d.column, metadata),
-  );
+  const columns = dimensionMaps.map(d => d.column);
+  const dimensions = columnsToFieldDimensions(columns, metadata);
+
+  const [firstDimension] = dimensions;
+  if (!firstDimension) {
+    return null;
+  }
 
   const [progression, currentStepNumber] = matchingProgression(
     dimensions,
@@ -401,15 +405,9 @@ function nextBreakouts(dimensionMaps, metadata) {
   }
   const nextStepNumber = currentStepNumber + 1;
 
-  const [firstDimension] = dimensions;
-  if (!firstDimension) {
-    return null;
-  }
-
   const table = metadata && firstDimension.field().table;
-  const tableDimensions = table.fields.map(field =>
-    columnToFieldDimension(field, metadata),
-  );
+  const tableDimensions = columnsToFieldDimensions(table.fields, metadata);
+
   const allDimensions = [...dimensions, ...tableDimensions];
 
   const nextStep = progression[nextStepNumber];
@@ -437,7 +435,17 @@ export function drillDownForDimensions(dimensions: any, metadata: any) {
   };
 }
 
+function columnsToFieldDimensions(columns, metadata) {
+  return columns
+    .map(column => columnToFieldDimension(column, metadata))
+    .filter(Boolean);
+}
+
 function columnToFieldDimension(column, metadata) {
+  if (isExpressionField(column.field_ref)) {
+    return;
+  }
+
   const dimension = new FieldDimension(column.id, null, metadata);
 
   if (column.unit) {

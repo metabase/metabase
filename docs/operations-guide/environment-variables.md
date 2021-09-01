@@ -760,7 +760,7 @@ Set a minimum password length to increase security for regular logins. This only
 Type: string<br>
 Default: `"plugins"`
 
-Path of the "plugins" directory, which is used for the Metabase database drivers. The path should be to a writable directory. When using JAR, the default directory is `plugins`, created in the same location as the JAR file. When using Docker, the default directory is `/plugins`.
+Path of the "plugins" directory, which is used to store the Metabase database drivers. The user who is running Metabase should have permission to write to the directory. When running the JAR, the default directory is `plugins`, created in the same location as the JAR file. When running Docker, the default directory is `/plugins`.
 
 The location is where custom third-party drivers should be added. Then Metabase will load the driver on startup, which can be verified in the log.
 
@@ -946,7 +946,8 @@ Send email notifications to users in Admin group, when a new SSO users is create
 Type: boolean<br>
 Default: `null`
 
-When set to `true`, the user login session will expire, when the browser is closed. The user login session will always expire after the amount of time defined in [MAX_SESSION_AGE](#max_session_age) (by default 2 weeks).
+When set to `true`, the user login session will expire when the browser is closed. The user login session will always expire after the amount of time defined in [MAX_SESSION_AGE](#max_session_age) (by default 2 weeks).
+This overrides the "Remember me" checkbox when logging in.
 
 Also see the [Changing session expiration](changing-session-expiration.md) documentation page.
 

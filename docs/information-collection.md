@@ -19,19 +19,19 @@ If you prefer not to provide us with this anonymous usage data, please go to you
   - Are users using filters?
   - Are users using groupings?
   - How often are users using bare rows vs other aggregation options?
-  - are people clicking on column headings to sort or manually adding a sort clause?
+  - Are people clicking on column headings to sort or manually adding a sort clause?
 - How often are users writing SQL instead of using the query interface?
-  - are these queries written by a select group of analysts or is the entire company sql literate?
+  - Are these queries written by a select group of analysts or is the entire company SQL literate?
 - Are people using dashboards as a starting point for queries?
-- how many clicks are there on dashboard cards?
+- How many clicks are there on dashboard cards?
 - How many of these clicks result in modified queries that are executed?
 - How often are questions saved?
 - How often are saved questions added to dashboards?
 
 ### What we will do with the answers to these questions:
 
-- Prioritize improvements in the query interface vs the SQL interface.
-- Optimize the product for the usage patterns our users are using the product for
+- Prioritize improvements in the query interface vs the SQL interface
+- Optimize the product for common usage patterns
 - Stay on top of browser incompatibilities
 - Optimize our dashboards for either passive consumption or as a starting point for further exploration depending on how they are being used
 
@@ -39,7 +39,7 @@ While we will closely follow reported issues and feature requests, we aim to mak
 
 # The data we collect:
 
-NOTE: we never capture any specific details in any of our tracking methodology such as user details, table names, field names, etc. collected data is limited to the types of actions users are taking with the product.
+NOTE: We never capture any specific details in any of our tracking methodology such as user details, table names, field names, etc. Collected data is limited to the types of actions users are taking with the product.
 
 ### Google Analytics Events
 
@@ -77,7 +77,7 @@ NOTE: we never capture any specific details in any of our tracking methodology s
 | Number of Query Errors                            | Do we need to change how we display errors in the logs? Are they being spammed?                                                                         |
 | Query Latencies                                   | What percentage of our user base runs queries that allow for iterative querying (less than 1 second)                                                    |
 | Timezone                                          | We have a bug in a certain timezone, how many users are in that timezone?                                                                               |
-| Language                                          | How many non-english speaking users do we have? How fast should we be pushing internationalization?                                                     |
-| OS and JVM Version                                | Can we deprecate Java 7 already?                                                                                                                        |
+| Language                                          | How many non-English speaking users do we have? How fast should we be pushing internationalization?                                                     |
+| OS and JVM Version                                | Can we deprecate Java 7 yet?                                                                                                                        |
 
 Note this is meant to be representative. The actual code that is running to generate this can be audited at [https://github.com/metabase/metabase/blob/master/src/metabase/util/stats.clj](https://github.com/metabase/metabase/blob/master/src/metabase/util/stats.clj).

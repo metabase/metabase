@@ -9,6 +9,7 @@ import { push } from "react-router-redux";
 
 import * as Urls from "metabase/lib/urls";
 
+import Collection from "metabase/entities/collections";
 import Dashboard from "metabase/entities/dashboards";
 
 import ArchiveModal from "metabase/components/ArchiveModal";
@@ -22,7 +23,12 @@ const mapDispatchToProps = {
   null,
   mapDispatchToProps,
 )
-@Dashboard.load({ id: (state, props) => props.params.dashboardId })
+@Dashboard.load({
+  id: (state, props) => Urls.extractCollectionId(props.params.slug),
+})
+@Collection.load({
+  id: (state, props) => props.dashboard && props.dashboard.collection_id,
+})
 @withRouter
 export default class ArchiveDashboardModal extends Component {
   static propTypes = {
@@ -35,15 +41,13 @@ export default class ArchiveDashboardModal extends Component {
     // parent collection
     this.props.onClose();
     if (this.props.dashboard.archived) {
-      this.props.push(Urls.collection(this.props.dashboard.collection_id));
+      this.props.push(Urls.collection(this.props.collection));
     }
   };
 
   archive = async () => {
-    await this.props.setDashboardArchived(
-      { id: this.props.params.dashboardId },
-      true,
-    );
+    const dashboardId = Urls.extractEntityId(this.props.params.slug);
+    await this.props.setDashboardArchived({ id: dashboardId }, true);
   };
 
   render() {

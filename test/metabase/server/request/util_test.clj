@@ -81,7 +81,7 @@
 
     ;; this is from the MaxMind sample high-risk IP address list https://www.maxmind.com/en/high-risk-ip-sample-list
     ["185.233.100.23"]
-    {"185.233.100.23" {:description "Begles, Nouvelle-Aquitaine, France", :timezone (t/zone-id "Europe/Paris")}}
+    {"185.233.100.23" {:description "Talence, Nouvelle-Aquitaine, France", :timezone (t/zone-id "Europe/Paris")}}
 
     ["127.0.0.1"]
     {"127.0.0.1" {:description "Unknown location", :timezone nil}}

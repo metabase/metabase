@@ -249,6 +249,7 @@ export default class SnippetSidebar extends React.Component {
                           ),
                         ].map(({ icon, name, onClick }) => (
                           <div
+                            key={name}
                             className="p2 bg-medium-hover flex cursor-pointer text-brand-hover"
                             onClick={() => {
                               onClick();

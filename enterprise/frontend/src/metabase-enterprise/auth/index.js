@@ -16,6 +16,7 @@ import AuthenticationOption from "metabase/admin/settings/components/widgets/Aut
 import GroupMappingsWidget from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
 import SecretKeyWidget from "metabase/admin/settings/components/widgets/SecretKeyWidget";
 
+import SettingsGoogleForm from "metabase/admin/settings/components/SettingsGoogleForm";
 import SettingsSAMLForm from "./components/SettingsSAMLForm";
 import SettingsJWTForm from "./components/SettingsJWTForm";
 
@@ -266,9 +267,45 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
   updateIn(sections, ["authentication/ldap", "settings"], settings => [
     ...settings,
     {
+      key: "ldap-group-membership-filter",
+      display_name: t`Group membership filter`,
+      type: "string",
+      validations: [
+        value =>
+          (value.match(/\(/g) || []).length !==
+          (value.match(/\)/g) || []).length
+            ? t`Check your parentheses`
+            : null,
+      ],
+    },
+    {
       key: "ldap-sync-admin-group",
       display_name: t`Sync Administrator group`,
       type: "boolean",
     },
   ]),
 );
+
+PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
+  ...sections,
+  "authentication/google": {
+    component: SettingsGoogleForm,
+    sidebar: false,
+    settings: [
+      {
+        key: "google-auth-client-id",
+      },
+      {
+        // Default to OSS fields if enterprise SSO is not enabled
+        ...sections["authentication/google"].settings.find(
+          setting => setting.key === "google-auth-auto-create-accounts-domain",
+        ),
+        ...(hasPremiumFeature("sso") && {
+          placeholder: "mycompany.com, example.com.br, otherdomain.co.uk",
+          description:
+            "Allow users to sign up on their own if their Google account email address is from one of the domains you specify here:",
+        }),
+      },
+    ],
+  },
+}));

@@ -248,7 +248,7 @@
 
 .text-dark,
 :local(.text-dark),
-.text-dark-hover {
+.text-dark-hover:hover {
   color: var(--color-text-dark);
 }
 

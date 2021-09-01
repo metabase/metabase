@@ -209,8 +209,8 @@
                             ;; need to initialize the store since we're calling `execute-reducible-query` directly
                             ;; instead of going thru normal QP pipeline
                             (qp.store/with-store
-                              (qp.store/fetch-and-store-database! (u/get-id database))
-                              (let [query {:database (u/get-id database), :native {:query native-query}}
+                              (qp.store/fetch-and-store-database! (u/the-id database))
+                              (let [query {:database (u/the-id database), :native {:query native-query}}
                                     reduce (fn [metadata reducible-rows]
                                              (transduce
                                               identity

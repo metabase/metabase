@@ -222,7 +222,7 @@
 (p.types/defprotocol+ IObjectPermissions
   "Methods for determining whether the current user has read/write permissions for a given object."
 
-  (perms-objects-set [this ^clojure.lang.Keyword read-or-write]
+  (perms-objects-set [instance ^clojure.lang.Keyword read-or-write]
     "Return a set of permissions object paths that a user must have access to in order to access this object. This
     should be something like #{\"/db/1/schema/public/table/20/\"}. `read-or-write` will be either `:read` or `:write`,
     depending on which permissions set we're fetching (these will be the same sets for most models; they can ignore

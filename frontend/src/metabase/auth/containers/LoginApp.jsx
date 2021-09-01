@@ -1,5 +1,5 @@
-/* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import PropTypes from "prop-types";
 import { Link } from "react-router";
 import { connect } from "react-redux";
 import { t } from "ttag";
@@ -8,6 +8,9 @@ import _ from "underscore";
 import AuthLayout from "metabase/auth/components/AuthLayout";
 
 import { getAuthProviders } from "../selectors";
+
+const buildLinkURL = ({ Panel, name }) =>
+  Panel && `/auth/login/${name}${location.search}`;
 
 const mapStateToProps = (state, props) => ({
   providers: getAuthProviders(state, props),
@@ -33,7 +36,7 @@ export default class LoginApp extends Component {
             {visibleProviders.map(provider => (
               <Link
                 key={provider.name}
-                to={provider.Panel ? `/auth/login/${provider.name}` : null}
+                to={buildLinkURL(provider)}
                 className="mt2 block"
               >
                 <provider.Button {...this.props} />
@@ -45,3 +48,8 @@ export default class LoginApp extends Component {
     );
   }
 }
+
+LoginApp.propTypes = {
+  providers: PropTypes.array,
+  params: PropTypes.object.isRequired,
+};

@@ -38,12 +38,12 @@
   powering Cards and the sync process, which are less sensitive to overhead than something like the application DB.
 
   Drivers that need to override the default properties below can provide custom implementations of this method."
-  {:arglists '([driver])}
+  {:arglists '([driver database])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defmethod data-warehouse-connection-pool-properties :default
-  [_]
+  [driver database]
   { ;; only fetch one new connection at a time, rather than batching fetches (default = 3 at a time). This is done in
    ;; interest of minimizing memory consumption
    "acquireIncrement"             1
@@ -76,7 +76,9 @@
    ;; if the parameter is to have any effect.
    ;;
    ;; Kill idle connections above the minPoolSize after 5 minutes.
-   "maxIdleTimeExcessConnections" (* 5 60)})
+   "maxIdleTimeExcessConnections" (* 5 60)
+   ;; Set the data source name so that the c3p0 JMX bean has a useful identifier
+   "dataSourceName"               (format "db-%d-%s-%s" (u/the-id database) (name driver) (-> database :details :db))})
 
 (defn- create-pool!
   "Create a new C3P0 `ComboPooledDataSource` for connecting to the given `database`."
@@ -85,7 +87,7 @@
   (log/debug (u/format-color 'cyan (trs "Creating new connection pool for {0} database {1} ..." driver id)))
   (let [details-with-tunnel (driver/incorporate-ssh-tunnel-details driver details) ;; If the tunnel is disabled this returned unchanged
         spec                (connection-details->spec driver details-with-tunnel)
-        properties          (data-warehouse-connection-pool-properties driver)]
+        properties          (data-warehouse-connection-pool-properties driver database)]
     (merge
       (connection-pool/connection-pool-spec spec properties)
       ;; also capture entries related to ssh tunneling for later use

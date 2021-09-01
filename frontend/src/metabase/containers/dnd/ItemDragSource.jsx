@@ -9,36 +9,25 @@ import { dragTypeForItem } from ".";
 @DragSource(
   props => dragTypeForItem(props.item),
   {
-    canDrag(props, monitor) {
+    canDrag({ isSelected, selected, collection, item }, monitor) {
       // can't drag if can't write the parent collection
-      if (props.collection && props.collection.can_write === false) {
+      if (collection && collection.can_write === false) {
         return false;
       }
-      // if items are selected only allow dragging selected items
-      if (
-        props.selection &&
-        props.selection.size > 0 &&
-        !props.selection.has(props.item)
-      ) {
-        return false;
-      } else {
-        return true;
-      }
+
+      return isSelected || selected.length === 0;
     },
     beginDrag(props, monitor, component) {
       return { item: props.item };
     },
-    async endDrag(props, monitor, component) {
+    async endDrag({ selected, onDrop }, monitor, component) {
       if (!monitor.didDrop()) {
         return;
       }
       const { item } = monitor.getItem();
       const { collection, pinIndex } = monitor.getDropResult();
       if (item) {
-        const items =
-          props.selection && props.selection.size > 0
-            ? Array.from(props.selection)
-            : [item];
+        const items = selected && selected.length > 0 ? selected : [item];
         try {
           if (collection !== undefined) {
             await Promise.all(
@@ -49,6 +38,8 @@ import { dragTypeForItem } from ".";
               items.map(i => i.setPinned && i.setPinned(pinIndex)),
             );
           }
+
+          onDrop && onDrop();
         } catch (e) {
           alert("There was a problem moving these items: " + e);
         }
@@ -79,7 +70,7 @@ export default class ItemDragSource extends React.Component {
       // must be a native DOM element or use innerRef which appears to be broken
       // https://github.com/react-dnd/react-dnd/issues/1021
       // https://github.com/jxnblk/styled-system/pull/188
-      <div>{typeof children === "function" ? children(props) : children}</div>,
+      typeof children === "function" ? children(props) : children,
     );
   }
 }

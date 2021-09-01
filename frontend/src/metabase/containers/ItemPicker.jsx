@@ -56,7 +56,7 @@ export default class ItemPicker extends React.Component {
   };
 
   // returns a list of "crumbs" starting with the "root" collection
-  _getCrumbs(collection, collectionsById) {
+  getCrumbs(collection, collectionsById) {
     if (collection && collection.path) {
       return [
         ...collection.path.map(id => [
@@ -76,6 +76,31 @@ export default class ItemPicker extends React.Component {
     }
   }
 
+  checkHasWritePermissionForItem(item, models) {
+    const { collectionsById } = this.props;
+
+    // if user is selecting a collection, they must have a `write` access to it
+    if (models.has("collection") && item.model === "collection") {
+      return item.can_write;
+    }
+
+    // if user is selecting something else (e.g. dashboard),
+    // they must have `write` access to a collection item belongs to
+    const collection = item.collection_id
+      ? collectionsById[item.collection_id]
+      : collectionsById["root"];
+    return collection.can_write;
+  }
+
+  checkCanWriteToCollectionOrItsChildren(collection) {
+    return (
+      collection.can_write ||
+      collection.children.some(child =>
+        this.checkCanWriteToCollectionOrItsChildren(child),
+      )
+    );
+  }
+
   render() {
     const {
       value,
@@ -93,7 +118,7 @@ export default class ItemPicker extends React.Component {
       this.props.models.filter(model => model !== "collection").length > 0;
 
     const collection = collectionsById[parentId];
-    const crumbs = this._getCrumbs(collection, collectionsById);
+    const crumbs = this.getCrumbs(collection, collectionsById);
 
     let allCollections = (collection && collection.children) || [];
 
@@ -101,6 +126,11 @@ export default class ItemPicker extends React.Component {
     if (collection && isRoot(collection) && models.has("collection")) {
       allCollections = [collection, ...allCollections];
     }
+
+    // ensure we only display collections a user can write to
+    allCollections = allCollections.filter(collection =>
+      this.checkCanWriteToCollectionOrItsChildren(collection),
+    );
 
     // code below assumes items have a "model" property
     allCollections = allCollections.map(collection => ({
@@ -172,6 +202,7 @@ export default class ItemPicker extends React.Component {
                   // only show if collection can be selected or has children
                   return canSelect || hasChildren ? (
                     <Item
+                      key={`collection-${collection.id}`}
                       item={collection}
                       name={collection.name}
                       color={COLLECTION_ICON_COLOR}
@@ -197,33 +228,40 @@ export default class ItemPicker extends React.Component {
                   ...(searchString
                     ? { q: searchString }
                     : { collection: parentId }),
-                  ...(models.size === 1
-                    ? { model: Array.from(models)[0] }
-                    : {}),
+                  ...(models.size === 1 ? { models: Array.from(models) } : {}),
                 }}
                 wrapped
               >
                 {({ list }) => (
                   <div>
-                    {list
-                      .filter(
-                        item =>
-                          // remove collections unless we're searching
-                          (item.model !== "collection" || !!searchString) &&
-                          // only include desired models (TODO: ideally the endpoint would handle this)
-                          models.has(item.model),
-                      )
-                      .map(item => (
-                        <Item
-                          item={item}
-                          name={item.getName()}
-                          color={item.getColor()}
-                          icon={item.getIcon()}
-                          selected={isSelected(item)}
-                          canSelect
-                          onChange={onChange}
-                        />
-                      ))}
+                    {list.map(item => {
+                      const hasPermission = this.checkHasWritePermissionForItem(
+                        item,
+                        models,
+                      );
+                      if (
+                        hasPermission &&
+                        // only include desired models (TODO: ideally the endpoint would handle this)
+                        models.has(item.model) &&
+                        // remove collections unless we're searching
+                        // (so a user can navigate through collections)
+                        (item.model !== "collection" || !!searchString)
+                      ) {
+                        return (
+                          <Item
+                            key={item.id}
+                            item={item}
+                            name={item.getName()}
+                            color={item.getColor()}
+                            icon={item.getIcon()}
+                            selected={isSelected(item)}
+                            canSelect={hasPermission}
+                            onChange={onChange}
+                          />
+                        );
+                      }
+                      return null;
+                    })}
                   </div>
                 )}
               </EntityListLoader>

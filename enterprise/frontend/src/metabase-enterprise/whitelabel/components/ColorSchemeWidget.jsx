@@ -62,7 +62,7 @@ const ColorSchemeWidget = ({ setting, onChange }) => {
           {THEMEABLE_COLORS.map(name => {
             const properties = COLOR_DISPLAY_PROPERTIES[name] || {};
             return (
-              <tr>
+              <tr key={name}>
                 <td>{properties.name || humanize(name)}:</td>
                 <td>
                   <span className="mx1">

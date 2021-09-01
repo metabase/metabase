@@ -8,11 +8,11 @@
 
 # Contributing
 
-In general, we like to have an open issue for every pull request as a place to discuss the nature of any bug or proposed improvement. Each pull request should address a single issue, and contain both the fix as well as a description of how the pull request and tests that validate that the PR fixes the issue in question.
+In general, we like to have an open issue for every pull request as a place to discuss the nature of any bug or proposed improvement. Each pull request should address a single issue, and contain both the fix as well as a description of the pull request and tests that validate that the PR fixes the issue in question.
 
 For significant feature additions, it is expected that discussion will have taken place in the attached issue. Any feature that requires a major decision to be reached will need to have an explicit design document written. The goals of this document are to make explicit the assumptions, constraints and tradeoffs any given feature implementation will contain. The point is not to generate documentation but to allow discussion to reference a specific proposed design and to allow others to consider the implications of a given design.
 
-We don't like getting sued, so before merging any pull request, we'll need each person contributing code to sign a Contributor License Agreement [here](https://docs.google.com/a/metabase.com/forms/d/1oV38o7b9ONFSwuzwmERRMi9SYrhYeOrkbmNaq9pOJ_E/viewform)
+We don't like getting sued, so before merging any pull request, we'll need each person contributing code to sign a Contributor License Agreement [here](https://docs.google.com/a/metabase.com/forms/d/1oV38o7b9ONFSwuzwmERRMi9SYrhYeOrkbmNaq9pOJ_E/viewform).
 
 # Development on Windows
 
@@ -22,10 +22,10 @@ If you have problems with your development environment, make sure that you are n
 
 # Install Prerequisites
 
-These are the set of tools which are required in order to complete any build of the Metabase code. Follow the links to download and install them on your own before continuing.
+These are the tools which are required in order to complete any build of the Metabase code. Follow the links to download and install them on your own before continuing.
 
-1. [Clojure (ttps://clojure.org)](https://clojure.org/guides/getting_started) - install the latest release by following the guide depending on your OS
-2. [Java Development Kit JDK (https://adoptopenjdk.net/releases.html)](https://adoptopenjdk.net/releases.html) - you need to install JDK 11 (./operations-guide/java-versions.md)
+1. [Clojure (https://clojure.org)](https://clojure.org/guides/getting_started) - install the latest release by following the guide depending on your OS
+2. [Java Development Kit JDK (https://adoptopenjdk.net/releases.html)](https://adoptopenjdk.net/releases.html) - you need to install JDK 11 ([more info on Java versions](./operations-guide/java-versions.md))
 3. [Node.js (http://nodejs.org/)](http://nodejs.org/) - latest LTS release
 4. [Yarn package manager for Node.js](https://yarnpkg.com/) - latest release of version 1.x - you can install it in any OS by doing `npm install --global yarn`
 5. [Leiningen (http://leiningen.org/)](http://leiningen.org/) - latest release
@@ -59,7 +59,7 @@ If you plan to work on the Metabase code and make changes then you'll need to un
 
 ### Overview
 
-The Metabase application has two basic compnents:
+The Metabase application has two basic components:
 
 1. a backend written in Clojure which contains a REST API as well as all the relevant code for talking to databases and processing queries.
 2. a frontend written as a Javascript single-page application which provides the web UI.

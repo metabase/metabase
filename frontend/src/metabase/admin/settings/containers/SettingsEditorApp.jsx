@@ -3,9 +3,11 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import { connect } from "react-redux";
+import { t } from "ttag";
+
 import title from "metabase/hoc/Title";
 import MetabaseAnalytics from "metabase/lib/analytics";
-import { t } from "ttag";
+import MetabaseSettings from "metabase/lib/settings";
 import AdminLayout from "metabase/components/AdminLayout";
 import { NotFound } from "metabase/containers/ErrorPages";
 
@@ -58,6 +60,11 @@ export default class SettingsEditorApp extends Component {
     updateSetting: PropTypes.func.isRequired,
   };
 
+  constructor(props) {
+    super(props);
+    this.saveStatusRef = React.createRef();
+  }
+
   UNSAFE_componentWillMount() {
     this.props.initializeSettings();
   }
@@ -65,7 +72,7 @@ export default class SettingsEditorApp extends Component {
   updateSetting = async (setting, newValue) => {
     const { settingValues, updateSetting } = this.props;
 
-    this.layout.setSaving();
+    this.saveStatusRef.current.setSaving();
 
     const oldValue = setting.value;
 
@@ -83,7 +90,7 @@ export default class SettingsEditorApp extends Component {
         );
       }
 
-      this.layout.setSaved();
+      this.saveStatusRef.current.setSaved();
 
       const value = prepareAnalyticsValue(setting);
 
@@ -97,7 +104,7 @@ export default class SettingsEditorApp extends Component {
     } catch (error) {
       const message =
         error && (error.message || (error.data && error.data.message));
-      this.layout.setSaveError(message);
+      this.saveStatusRef.current.setSaveError(message);
       MetabaseAnalytics.trackEvent(
         "General Settings",
         setting.display_name,
@@ -180,17 +187,19 @@ export default class SettingsEditorApp extends Component {
         );
 
         // if this is the Updates section && there is a new version then lets add a little indicator
-        let newVersionIndicator;
-        if (slug === "updates" && newVersionAvailable) {
-          newVersionIndicator = (
-            <span
-              style={{ padding: "4px 8px 4px 8px" }}
-              className="bg-brand rounded text-white text-bold h6"
-            >
-              1
-            </span>
-          );
-        }
+        const shouldDisplayNewVersionIndicator =
+          slug === "updates" &&
+          newVersionAvailable &&
+          !MetabaseSettings.isHosted();
+
+        const newVersionIndicator = shouldDisplayNewVersionIndicator ? (
+          <span
+            style={{ padding: "4px 8px 4px 8px" }}
+            className="bg-brand rounded text-white text-bold h6"
+          >
+            1
+          </span>
+        ) : null;
 
         return (
           <li key={slug}>
@@ -213,7 +222,7 @@ export default class SettingsEditorApp extends Component {
   render() {
     return (
       <AdminLayout
-        ref={layout => (this.layout = layout)}
+        saveStatusRef={this.saveStatusRef}
         title={t`Settings`}
         sidebar={this.renderSettingsSections()}
       >

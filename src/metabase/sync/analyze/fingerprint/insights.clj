@@ -226,15 +226,17 @@
   (let [cols-by-type (->> cols
                           (map-indexed (fn [idx col]
                                          (assoc col :position idx)))
-                          (group-by (fn [{:keys [base_type semantic_type unit] :as field}]
+                          (group-by (fn [{base-type      :base_type
+                                          effective-type :effective_type
+                                          semantic-type  :semantic_type
+                                          unit           :unit}]
                                       (cond
-                                        (#{:type/FK :type/PK} semantic_type) :others
-                                        (= unit :year)                       :datetimes
-                                        (u.date/extract-units unit)          :numbers
-                                        (field/unix-timestamp? field)        :datetimes
-                                        (isa? base_type :type/Number)        :numbers
-                                        (isa? base_type :type/Temporal)      :datetimes
-                                        :else                                :others))))]
+                                        (isa? semantic-type :Relation/*)                    :others
+                                        (= unit :year)                                      :datetimes
+                                        (u.date/extract-units unit)                         :numbers
+                                        (isa? (or effective-type base-type) :type/Temporal) :datetimes
+                                        (isa? base-type :type/Number)                       :numbers
+                                        :else                                               :others))))]
     (cond
       (timeseries? cols-by-type) (timeseries-insight cols-by-type)
       :else                      (f/constant-fingerprinter nil))))

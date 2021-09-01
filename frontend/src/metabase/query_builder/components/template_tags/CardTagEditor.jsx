@@ -10,7 +10,7 @@ import SelectButton from "metabase/components/SelectButton";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import Questions from "metabase/entities/questions";
-import { question as questionUrl } from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -26,6 +26,11 @@ export default class CardTagEditor extends Component {
     );
     this._popover && this._popover.close();
   };
+
+  getQuestionUrl() {
+    const { tag, question } = this.props;
+    return Urls.question(question || { id: tag["card-id"] });
+  }
 
   errorMessage() {
     const { error, question, query } = this.props;
@@ -78,7 +83,7 @@ export default class CardTagEditor extends Component {
           {cardId == null ? (
             t`Question #…`
           ) : (
-            <Link to={questionUrl(cardId)}>{t`Question #${cardId}`}</Link>
+            <Link to={this.getQuestionUrl()}>{t`Question #${cardId}`}</Link>
           )}
         </h3>
         {loading ? (

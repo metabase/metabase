@@ -1,4 +1,4 @@
-import { restore, modal, addMongoDatabase } from "__support__/cypress";
+import { restore, modal, addMongoDatabase } from "__support__/e2e/cypress";
 
 const MONGO_DB_NAME = "QA Mongo4";
 
@@ -50,7 +50,7 @@ describe("mongodb > user > query", () => {
 
       cy.findByText("Not now").click();
 
-      cy.url().should("match", /\/question\/\d+$/);
+      cy.url().should("match", /\/question\/\d+-[a-z0-9-]*$/);
     });
 
     it.skip("should correctly apply distinct count on multiple columns (metabase#13097)", () => {
@@ -67,7 +67,7 @@ describe("mongodb > user > query", () => {
       cy.server();
       cy.route("POST", "/api/dataset").as("dataset");
 
-      cy.findByText("Visualize").click();
+      cy.button("Visualize").click();
       cy.wait("@dataset");
 
       cy.log("Reported failing on stats ~v0.36.3");

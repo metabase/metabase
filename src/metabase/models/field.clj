@@ -1,6 +1,7 @@
 (ns metabase.models.field
   (:require [clojure.core.memoize :as memoize]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.models.dimension :refer [Dimension]]
             [metabase.models.field-values :as fv :refer [FieldValues]]
@@ -8,6 +9,7 @@
             [metabase.models.interface :as i]
             [metabase.models.permissions :as perms]
             [metabase.util :as u]
+            [metabase.util.i18n :refer [trs tru]]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]
             [toucan.models :as models]))
@@ -58,26 +60,50 @@
 
 (models/defmodel Field :metabase_field)
 
-(defn- check-valid-types [{base-type :base_type, semantic-type :semantic_type,
-                           coercion-strategy :coercion_strategy}]
-  (when base-type
-    (assert (isa? (keyword base-type) :type/*)
-      (str "Invalid base type: " base-type)))
-  (when semantic-type
-    (assert (isa? (keyword semantic-type) :type/*)
-      (str "Invalid semantic type: " semantic-type)))
-  (when coercion-strategy
-    (assert (isa? (keyword coercion-strategy) :Coercion/*)
-      (str "Invalid coercion strategy: " coercion-strategy))))
+(defn- hierarchy-keyword-in [column-name & {:keys [ancestor-types]}]
+  (fn [k]
+    (when-let [k (keyword k)]
+      (when-not (some
+                 (partial isa? k)
+                 ancestor-types)
+        (let [message (tru "Invalid Field {0} {1}" column-name k)]
+          (throw (ex-info message
+                          {:status-code 400
+                           :errors      {column-name message}
+                           :value       k}))))
+      (u/qualified-name k))))
+
+(defn- hierarchy-keyword-out [column-name & {:keys [fallback-type ancestor-types]}]
+  (fn [s]
+    (when (seq s)
+      (let [k (keyword s)]
+        (if (some
+             (partial isa? k)
+             ancestor-types)
+          k
+          (do
+            (log/warn (trs "Invalid Field {0} {1}: falling back to {2}" column-name k fallback-type))
+            fallback-type))))))
+
+(models/add-type! ::base-type
+  :in  (hierarchy-keyword-in  :base_type :ancestor-types [:type/*])
+  :out (hierarchy-keyword-out :base_type :ancestor-types [:type/*], :fallback-type :type/*))
+
+(models/add-type! ::effective-type
+  :in  (hierarchy-keyword-in  :effective_type :ancestor-types [:type/*])
+  :out (hierarchy-keyword-out :effective_type :ancestor-types [:type/*], :fallback-type :type/*))
+
+(models/add-type! ::semantic-type
+  :in  (hierarchy-keyword-in  :semantic_type :ancestor-types [:Semantic/* :Relation/*])
+  :out (hierarchy-keyword-out :semantic_type :ancestor-types [:Semantic/* :Relation/*], :fallback-type nil))
+
+(models/add-type! ::coercion-strategy
+  :in  (hierarchy-keyword-in  :coercion_strategy :ancestor-types [:Coercion/*])
+  :out (hierarchy-keyword-out :coercion_strategy :ancestor-types [:Coercion/*], :fallback-type nil))
 
 (defn- pre-insert [field]
-  (check-valid-types field)
   (let [defaults {:display_name (humanization/name->human-readable-name (:name field))}]
     (merge defaults field)))
-
-(defn- pre-update [field]
-  (u/prog1 field
-    (check-valid-types field)))
 
 ;;; Field permissions
 ;; There are several API endpoints where large instances can return many thousands of Fields. Normally Fields require
@@ -137,17 +163,16 @@
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:destination :field :origin :human_readable_field])
-          :types          (constantly {:base_type         :keyword
-                                       :effective_type    :keyword
-                                       :coercion_strategy :keyword
-                                       :semantic_type     :keyword
+          :types          (constantly {:base_type         ::base-type
+                                       :effective_type    ::effective-type
+                                       :coercion_strategy ::coercion-strategy
+                                       :semantic_type     ::semantic-type
                                        :visibility_type   :keyword
                                        :has_field_values  :keyword
                                        :fingerprint       :json-for-fingerprints
                                        :settings          :json})
           :properties     (constantly {:timestamped? true})
-          :pre-insert     pre-insert
-          :pre-update     pre-update})
+          :pre-insert     pre-insert})
 
   i/IObjectPermissions
   (merge i/IObjectPermissionsDefaults
@@ -302,9 +327,3 @@
   {:arglists '([field])}
   [{:keys [table_id]}]
   (db/select-one 'Table, :id table_id))
-
-(defn unix-timestamp?
-  "Is field a UNIX timestamp?"
-  [{:keys [base_type semantic_type]}]
-  (and (isa? base_type :type/Integer)
-       (isa? semantic_type :type/Temporal)))

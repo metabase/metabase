@@ -60,7 +60,7 @@
 (defn- database->driver* [database-or-id]
   (or
    (:engine database-or-id)
-   (db/select-one-field :engine 'Database, :id (u/get-id database-or-id))))
+   (db/select-one-field :engine 'Database, :id (u/the-id database-or-id))))
 
 (def ^{:arglists '([database-or-id])} database->driver
   "Look up the driver that should be used for a Database. Lightly cached.

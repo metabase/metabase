@@ -30,7 +30,7 @@ check-uberjar-hash() {
 
 build-uberjar-for-test() {
   ./bin/build version
-  echo "$VERSION_PROPERTY_NAME=$(source-hash)" >> resources/version.properties
+  echo -e "\n$VERSION_PROPERTY_NAME=$(source-hash)" >> resources/version.properties
   ./bin/build uberjar
 }
 

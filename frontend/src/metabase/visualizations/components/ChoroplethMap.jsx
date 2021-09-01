@@ -1,10 +1,9 @@
-/* eslint-disable no-color-literals */
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { t } from "ttag";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
-import { isString } from "metabase/lib/schema_metadata";
+import { isMetric, isString } from "metabase/lib/schema_metadata";
 import { MinColumnsError } from "metabase/visualizations/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -104,8 +103,8 @@ export default class ChoroplethMap extends Component {
 
   static minSize = { width: 4, height: 4 };
 
-  static isSensible({ cols, rows }) {
-    return cols.length > 1 && isString(cols[0]);
+  static isSensible({ cols }) {
+    return cols.filter(isString).length > 0 && cols.filter(isMetric).length > 0;
   }
 
   static checkRenderable([

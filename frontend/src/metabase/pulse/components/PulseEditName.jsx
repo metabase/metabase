@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import ReactDOM from "react-dom";
 import { t } from "ttag";
 
 import _ from "underscore";
@@ -14,6 +13,8 @@ export default class PulseEditName extends Component {
       valid: true,
     };
 
+    this.name = React.createRef();
+
     _.bindAll(this, "setName", "validate");
   }
 
@@ -26,7 +27,7 @@ export default class PulseEditName extends Component {
   }
 
   validate() {
-    this.setState({ valid: !!ReactDOM.findDOMNode(this.refs.name).value });
+    this.setState({ valid: !!this.name.current.value });
   }
 
   render() {
@@ -39,14 +40,14 @@ export default class PulseEditName extends Component {
         </p>
         <div className="my3">
           <input
-            ref="name"
+            ref={this.name}
             className={cx("input text-bold", {
               "border-error": !this.state.valid,
             })}
             style={{ width: "400px" }}
             value={pulse.name || ""}
             onChange={this.setName}
-            onBlur={this.refs.name && this.validate}
+            onBlur={this.name.current && this.validate}
             placeholder={t`Important metrics`}
             autoFocus
           />

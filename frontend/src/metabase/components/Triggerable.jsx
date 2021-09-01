@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import ReactDOM from "react-dom";
 
 import { isObscured } from "metabase/lib/dom";
 
@@ -27,6 +26,7 @@ export default ComposedComponent =>
       this._startCheckObscured = this._startCheckObscured.bind(this);
       this._stopCheckObscured = this._stopCheckObscured.bind(this);
       this.onClose = this.onClose.bind(this);
+      this.trigger = React.createRef();
     }
 
     static defaultProps = {
@@ -47,11 +47,7 @@ export default ComposedComponent =>
 
     onClose(e) {
       // don't close if clicked the actual trigger, it will toggle
-      if (
-        e &&
-        e.target &&
-        ReactDOM.findDOMNode(this.refs.trigger).contains(e.target)
-      ) {
+      if (e && e.target && this.trigger.current.contains(e.target)) {
         return;
       }
 
@@ -66,7 +62,7 @@ export default ComposedComponent =>
       if (this.props.target) {
         return this.props.target();
       } else {
-        return this.refs.trigger;
+        return this.trigger.current;
       }
     }
 
@@ -89,7 +85,7 @@ export default ComposedComponent =>
     _startCheckObscured() {
       if (this._offscreenTimer == null) {
         this._offscreenTimer = setInterval(() => {
-          const trigger = ReactDOM.findDOMNode(this.refs.trigger);
+          const trigger = this.trigger.current;
           if (isObscured(trigger)) {
             this.close();
           }
@@ -139,7 +135,7 @@ export default ComposedComponent =>
       return (
         <a
           id={triggerId}
-          ref="trigger"
+          ref={this.trigger}
           onClick={event => {
             event.preventDefault();
             !this.props.disabled && this.toggle();
@@ -153,16 +149,18 @@ export default ComposedComponent =>
               "cursor-default": this.props.disabled,
             },
           )}
+          aria-disabled={this.props.disabled}
           style={triggerStyle}
         >
           {triggerElement}
           <ComposedComponent
             {...this.props}
-            children={children}
             isOpen={isOpen}
             onClose={this.onClose}
             target={() => this.target()}
-          />
+          >
+            {children}
+          </ComposedComponent>
         </a>
       );
     }

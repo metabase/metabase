@@ -33,7 +33,7 @@ If you would like a reliable, scalable and fully managed Metabase, please consid
 
 ## Quick Launch
 
-Download the [Metabase AWS source bundle file](https://downloads.metabase.com/{{ site.latest_version }}/metabase-aws-eb.zip) to upload to Elastic Beanstalk.
+Download the [Metabase Community Edition AWS source bundle file](https://downloads.metabase.com/{{ site.latest_version }}/metabase-aws-eb.zip) to upload to Elastic Beanstalk. 
 
 Metabase provides several pre-configured Elastic Beanstalk launch URLs to help you get started. Open one of the links below in a new tab to create an Elastic Beanstalk deployment with a few choices pre-filled. Then just follow the step-by-step instructions below to complete your installation. 
 
@@ -103,6 +103,8 @@ Click on the `Edit` link under the Load Balancer section as seen here:
 
 ![Elastic Beanstalk Monitoring](images/EBLoadBalancerEdit.png)
 
+Select `Application Load Balancer` in the ***Load Balancer type*** if not already selected.
+
 In the **Processes** section, select the default process and click on `Actions` → Edit.
 
 ![Elastic Beanstalk Monitoring Process](images/EBProcessesSection.png)
@@ -135,7 +137,7 @@ Now go to the Capacity section and click **Edit**.
 
 ![Elastic Beanstalk Networking configuration](images/EBCapacity.png)
 
-The only change you need to do here is to reduce the number of Instances from 4 (the default number) to 1, as we still haven't created a centralized database where Metabase will save all of its configurations and will be using only the embedded H2 database which lives __inside__ the Metabase container and [is *not recommended* for production workloads](https://www.metabase.com/docs/latest/operations-guide/configuring-application-database.html) as there will be no way to backup and maintain that database. **When your instance is restarted for any reason you'll lose all your Metabase data**. If you are just doing a quick trial of Metabase that may be okay but otherwise you would like to start [creating your database engine in RDS separately](creating-RDS-database-on-AWS.html) or deploy one a separate server.
+The only change you need to do here is to reduce the number of Instances from 4 (the default number) to 1, as we still haven't created a centralized database where Metabase will save all of its configurations and will be using only the embedded H2 database which lives __inside__ the Metabase container and [is *not recommended* for production workloads](configuring-application-database.html) as there will be no way to backup and maintain that database. **When your instance is restarted for any reason you'll lose all your Metabase data**. If you are just doing a quick trial of Metabase that may be okay but otherwise you would like to start [creating your database engine in RDS separately](creating-RDS-database-on-AWS.html) or deploy one a separate server. You can take a look at the [Metabase at Scale](https://www.metabase.com/learn/data-diet/analytics/metabase-at-scale.html) article we wrote about how you can build redundant and scalable Metabase architectures.
 
 ![Elastic Beanstalk Networking configuration](images/EBCapacityModified.png)
 

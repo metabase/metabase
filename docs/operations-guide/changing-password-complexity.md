@@ -10,3 +10,6 @@ The settings above can be used independently, so it's fine to use only one or th
 * `weak` = no character constraints
 * `normal` = at least 1 digit
 * `strong` = minimum 8 characters w/ 2 lowercase, 2 uppercase, 1 digit, and 1 special character
+
+By default, Metabase also prevents users from setting passwords that are in a list of common passwords (like `qwerty123` and
+`passw0rd`). Changing the complexity requirement to `weak` disables this behavior.

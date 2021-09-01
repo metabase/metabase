@@ -8,16 +8,36 @@ import { createSelector } from "reselect";
 
 import { GET } from "metabase/lib/api";
 
-import {
-  getUser,
-  getUserDefaultCollectionId,
-  getUserPersonalCollectionId,
-} from "metabase/selectors/user";
+import { getUser, getUserPersonalCollectionId } from "metabase/selectors/user";
 
 import { t } from "ttag";
 
 const listCollectionsTree = GET("/api/collection/tree");
 const listCollections = GET("/api/collection");
+
+export const ROOT_COLLECTION = {
+  id: "root",
+  name: t`Our analytics`,
+  location: "",
+  path: [],
+};
+
+export const PERSONAL_COLLECTION = {
+  id: undefined, // to be filled in by getExpandedCollectionsById
+  name: t`My personal collection`,
+  location: "/",
+  path: [ROOT_COLLECTION.id],
+  can_write: true,
+};
+
+// fake collection for admins that contains all other user's collections
+export const PERSONAL_COLLECTIONS = {
+  id: "personal", // placeholder id
+  name: t`All personal collections`,
+  location: "/",
+  path: [ROOT_COLLECTION.id],
+  can_write: false,
+};
 
 const Collections = createEntity({
   name: "collections",
@@ -53,13 +73,12 @@ const Collections = createEntity({
       ),
 
     // NOTE: DELETE not currently implemented
-    // $FlowFixMe: no official way to disable builtin actions yet
     delete: null,
   },
 
   objectSelectors: {
     getName: collection => collection && collection.name,
-    getUrl: collection => Urls.collection(collection.id),
+    getUrl: collection => Urls.collection(collection),
     getIcon: collection => "folder",
   },
 
@@ -67,7 +86,10 @@ const Collections = createEntity({
     getExpandedCollectionsById: createSelector(
       [
         state => state.entities.collections,
-        state => state.entities.collections_list[null] || [],
+        state => {
+          const { list } = state.entities.collections_list[null] || {};
+          return list || [];
+        },
         getUser,
       ],
       (collections, collectionsIds, user) =>
@@ -78,20 +100,26 @@ const Collections = createEntity({
     ),
     getInitialCollectionId: createSelector(
       [
+        state => state.entities.collections,
+
         // these are listed in order of priority
-        (state, { collectionId }) => collectionId,
-        (state, { params }) => (params ? params.collectionId : undefined),
-        (state, { location }) =>
-          location && location.query ? location.query.collectionId : undefined,
-        getUserDefaultCollectionId,
+        byCollectionIdProp,
+        byCollectionIdNavParam,
+        byCollectionUrlId,
+        byCollectionQueryParameter,
+
+        // defaults
+        () => ROOT_COLLECTION.id,
+        getUserPersonalCollectionId,
       ],
-      (...collectionIds) => {
+      (collections, ...collectionIds) => {
         for (const collectionId of collectionIds) {
-          if (collectionId !== undefined) {
+          const collection = collections[collectionId];
+          if (collection && collection.can_write) {
             return canonicalCollectionId(collectionId);
           }
         }
-        return null;
+        return canonicalCollectionId(ROOT_COLLECTION.id);
       },
     ),
   },
@@ -106,6 +134,7 @@ const Collections = createEntity({
         name: "name",
         title: t`Name`,
         placeholder: t`My new fantastic collection`,
+        autoFocus: true,
         validate: name =>
           (!name && t`Name is required`) ||
           (name && name.length > 100 && t`Name must be 100 characters or less`),
@@ -149,7 +178,6 @@ export const canonicalCollectionId = (
     ? null
     : parseInt(collectionId, 10);
 
-// $FlowFixMe
 export function normalizedCollection(collection) {
   if (canonicalCollectionId(collection.id) === null) {
     return ROOT_COLLECTION;
@@ -165,31 +193,6 @@ export const getCollectionType = (collectionId: string, state: {}) =>
     : collectionId !== undefined
     ? "other"
     : null;
-
-export const ROOT_COLLECTION = {
-  id: "root",
-  name: t`Our analytics`,
-  location: "",
-  path: [],
-};
-
-// the user's personal collection
-export const PERSONAL_COLLECTION = {
-  id: undefined, // to be filled in by getExpandedCollectionsById
-  name: t`My personal collection`,
-  location: "/",
-  path: ["root"],
-  can_write: true,
-};
-
-// fake collection for admins that contains all other user's collections
-export const PERSONAL_COLLECTIONS = {
-  id: "personal", // placeholder id
-  name: t`All personal collections`,
-  location: "/",
-  path: ["root"],
-  can_write: false,
-};
 
 type UserId = number;
 
@@ -282,7 +285,6 @@ export function getExpandedCollectionsById(
         parentId = ROOT_COLLECTION.id;
       }
 
-      // $FlowFixMe
       const parent = parentId == null ? null : collectionsById[parentId];
       c.parent = parent;
       // need to ensure the parent collection exists, it may have been filtered
@@ -303,4 +305,55 @@ export function getExpandedCollectionsById(
   }
 
   return collectionsById;
+}
+
+// Initial collection ID selector helpers
+
+/**
+ * @param {ReduxState} state
+ * @param {{collectionId?: number}} props
+ * @returns {number | undefined}
+ */
+function byCollectionIdProp(state, { collectionId }) {
+  return collectionId;
+}
+
+/**
+ * @param {ReduxState} state
+ * @param {params?: {collectionId?: number}} props
+ * @returns {number | undefined}
+ */
+function byCollectionIdNavParam(state, { params }) {
+  return params && params.collectionId;
+}
+
+/**
+ * Extracts ID from collection URL slugs
+ *
+ * Example: /collection/14-marketing —> 14
+ *
+ * @param {ReduxState} state
+ * @param {params?: {slug?: string}, location?: {pathname?: string}} props
+ * @returns {number | undefined}
+ */
+function byCollectionUrlId(state, { params, location }) {
+  const isCollectionPath =
+    params &&
+    params.slug &&
+    location &&
+    Urls.isCollectionPath(location.pathname);
+  return isCollectionPath && Urls.extractCollectionId(params.slug);
+}
+
+/**
+ * Extracts collection ID from query params
+ *
+ * Example: /some-route?collectionId=14 —> 14
+ *
+ * @param {ReduxState} state
+ * @param {location?: {query?: {collectionId?: number}}} props
+ * @returns {number | undefined}
+ */
+function byCollectionQueryParameter(state, { location }) {
+  return location && location.query && location.query.collectionId;
 }

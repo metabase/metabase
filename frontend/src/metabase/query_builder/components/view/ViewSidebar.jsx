@@ -17,7 +17,7 @@ const ViewSideBar = ({ left, right, width = 355, isOpen, children }) => (
     }
   >
     {motionStyle => (
-      <div
+      <aside
         data-testid={right ? "sidebar-right" : "sidebar-left"}
         className={cx("bg-white relative overflow-x-hidden", {
           "border-right": left,
@@ -35,7 +35,7 @@ const ViewSideBar = ({ left, right, width = 355, isOpen, children }) => (
         >
           {children}
         </div>
-      </div>
+      </aside>
     )}
   </Motion>
 );

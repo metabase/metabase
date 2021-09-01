@@ -45,7 +45,7 @@
       (symbol (format "#_\"%s.%s\"" field-name table-name)))))
 
 (defn add-names
-  "Walk a MBQL snippet `x` and add comment forms with the names of the Fields referenced to any `:field-id` clauses
+  "Walk a MBQL snippet `x` and add comment forms with the names of the Fields referenced to any `:field` clauses nil
   encountered. Helpful for debugging!"
   [x]
   (walk/postwalk
@@ -275,68 +275,95 @@
         (qp query)))))
 
 (defn- strip-$ [coll]
-  (remove (partial = ::$) coll))
+  (vec (remove (partial = ::$) coll)))
 
-(defn- can-symbolize? [form]
-  (mbql.u/match-one form
-    (s :guard string?)
-    (not (re-find #"\s+" s))
+(defn- can-symbolize? [x]
+  (mbql.u/match-one x
+    (_ :guard string?)
+    (not (re-find #"\s+" x))
 
-    [:field-id id]
+    [:field (id :guard integer?) nil]
     (every? can-symbolize? (field-and-table-name id))
 
-    [:field-literal field-name _]
+    [:field (field-name :guard string?) (opts :guard #(= (set (keys %)) #{:base-type}))]
     (can-symbolize? field-name)
 
-    [:fk-> x y]
-    (every? can-symbolize? [x y])
+    [:field _ (opts :guard :join-alias)]
+    (and (can-symbolize? (:join-alias opts))
+         (can-symbolize? (mbql.u/update-field-options &match dissoc :join-alias)))
 
-    [:joined-field join-alias clause]
-    (every? can-symbolize? [join-alias clause])))
+    [:field _ (opts :guard :temporal-unit)]
+    (and (can-symbolize? (name (:temporal-unit opts)))
+         (can-symbolize? (mbql.u/update-field-options &match dissoc :temporal-unit)))
 
-(defn- expand [query table]
-  (mbql.u/replace query
-    ([:field-id id] :guard can-symbolize?)
-    (let [[table-name field-name] (field-and-table-name id)
-          field-name              (str/lower-case field-name)
-          table-name              (str/lower-case table-name)]
-      (if (= table-name table)
-        [::$ field-name]
-        [::$ table-name field-name]))
+    [:field _ (opts :guard :source-field)]
+    (let [source-field-id (:source-field opts)]
+      (and (can-symbolize? [:field source-field-id nil])
+           (can-symbolize? (mbql.u/update-field-options &match dissoc :source-field))))
 
-    ([:field-literal field-name base-type] :guard can-symbolize?)
-    [::* field-name (name base-type)]
+    _
+    false))
 
-    ([:datetime-field field-clause unit] :guard can-symbolize?)
-    (into [::! (name unit)] (strip-$ (expand field-clause table)))
+(defn- expand [x table]
+  (try
+    (mbql.u/replace x
+      ([:field (id :guard integer?) nil] :guard can-symbolize?)
+      (let [[table-name field-name] (field-and-table-name id)
+            field-name              (str/lower-case field-name)
+            table-name              (str/lower-case table-name)]
+        (if (= table-name table)
+          [::$ field-name]
+          [::$ table-name field-name]))
 
-    [:datetime-field field-clause unit]
-    [:datetime-field (expand field-clause table) unit]
+      ([:field (field-name :guard string?) (opts :guard #(= (set (keys %)) #{:base-type}))] :guard can-symbolize?)
+      [::* field-name (name (:base-type opts))]
 
-    ([:fk-> x y] :guard can-symbolize?)
-    [::-> (expand x table) (expand y table)]
+      ([:field _ (opts :guard :temporal-unit)] :guard can-symbolize?)
+      (let [without-unit (mbql.u/update-field-options &match dissoc :temporal-unit)
+            expansion    (expand without-unit table)]
+        (into [::! (name (:temporal-unit opts))] (strip-$ expansion)))
 
-    [:fk-> x y]
-    [:fk-> (expand x table) (expand y table)]
+      ([:field _ (opts :guard :source-field)] :guard can-symbolize?)
+      (let [without-source-field   (mbql.u/update-field-options &match dissoc :source-field)
+            expansion              (expand without-source-field table)
+            source-as-field-clause [:field (:source-field opts) nil]
+            source-expansion       (expand source-as-field-clause table)]
+        [::-> source-expansion expansion])
 
-    ([:joined-field join-alias field-clause] :guard can-symbolize?)
-    (into [::& join-alias] (strip-$ (expand field-clause table)))
+      ([:field _ (opts :guard :join-alias)] :guard can-symbolize?)
+      (let [without-join-alias (mbql.u/update-field-options &match dissoc :join-alias)
+            expansion          (expand without-join-alias table)]
+        [::& (:join-alias opts) expansion])
 
-    [:joined-field join-alias field-clause]
-    [:joined-field join-alias (expand field-clause table)]
+      [:field (id :guard integer?) opts]
+      (let [without-opts [:field id nil]
+            expansion    (expand without-opts table)]
+        (if (= expansion without-opts)
+          &match
+          [:field (into [::%] (strip-$ expansion)) opts]))
 
-    (m :guard (every-pred map? (comp integer? :source-table)))
-    (-> (update m :source-table (fn [table-id]
-                                  [::$$ (str/lower-case (db/select-one-field :name Table :id table-id))]))
-        (expand table))))
+      (m :guard (every-pred map? (comp integer? :source-table)))
+      (-> (update m :source-table (fn [table-id]
+                                    [::$$ (str/lower-case (db/select-one-field :name Table :id table-id))]))
+          (expand table)))
+    (catch Throwable e
+      (throw (ex-info (format "Error expanding %s: %s" (pr-str x) (ex-message e))
+                      {:x x, :table table}
+                      e)))))
+
+(defn- no-$ [x]
+  (mbql.u/replace x [::$ & args] (into [::no-$] args)))
 
 (defn- symbolize [query]
   (mbql.u/replace query
     [::-> x y]
     (symbol (format "%s->%s" (symbolize x) (str/replace (symbolize y) #"^\$" "")))
 
-    [(qualifier :guard #{::$ ::& ::!}) & args]
-    (symbol (str (name qualifier) (str/join \. (strip-$ args))))
+    [::no-$ & args]
+    (str/join \. args)
+
+    [(qualifier :guard #{::$ ::& ::! ::%}) & args]
+    (symbol (str (name qualifier) (str/join \. (symbolize (no-$ args)))))
 
     [::* field-name base-type]
     (symbol (format "*%s/%s" field-name base-type))
@@ -364,34 +391,42 @@
                                            (dissoc :source-table)))
        (list 'mt/$ids table-symb symbolized)))))
 
+(defn expand-symbolize [x]
+  (-> x (expand "orders") symbolize))
+
 (deftest to-mbql-shorthand-test
   (mt/dataset sample-dataset
-    (is (= '(mt/mbql-query orders
-              {:joins       [{:source-table $$people
-                              :fields       :all
-                              :condition    [:= $user_id [:joined-field "People - User" $people.id]]
-                              :alias        "People - User"}]
-               :aggregation [[:sum $total]
-                             [:sum $products.id]]
-               :breakout    [&P.people.source
-                             $product_id->products.id
-                             [:fk-> $product_id [:field-literal "w o w" :Type/Text]]
-                             $product_id->*wow/Text
-                             *wow/Text]})
-           (to-mbql-shorthand
-            {:database (mt/id)
-             :type     :query
-             :query    {:joins        [{:fields       :all
-                                        :source-table (mt/id :people)
-                                        :condition    [:=
-                                                       [:field-id (mt/id :orders :user_id)]
-                                                       [:joined-field "People - User" [:field-id (mt/id :people :id)]]]
-                                        :alias        "People - User"}]
-                        :aggregation  [[:sum [:field-id (mt/id :orders :total)]]
-                                       [:sum  [:field-id (mt/id :products :id)]]]
-                        :breakout     [[:joined-field "P" [:field-id (mt/id :people :source)]]
-                                       [:fk-> [:field-id (mt/id :orders :product_id)] [:field-id (mt/id :products :id)]]
-                                       [:fk-> [:field-id (mt/id :orders :product_id)] [:field-literal "w o w" :Type/Text]]
-                                       [:fk-> [:field-id (mt/id :orders :product_id)] [:field-literal "wow" :Type/Text]]
-                                       [:field-literal "wow" :Type/Text]]
-                        :source-table (mt/id :orders)}})))))
+    (testing "Normal Field ID clause"
+      (is (= '$user_id
+             (expand-symbolize [:field (mt/id :orders :user_id) nil])))
+      (is (= '$products.id
+             (expand-symbolize [:field (mt/id :products :id) nil]))))
+    (testing "Field literal name"
+      (is (= '*wow/Text
+             (expand-symbolize [:field "wow" {:base-type :type/Text}])))
+      (is (= [:field "w o w" {:base-type :type/Text}]
+             (expand-symbolize [:field "w o w" {:base-type :type/Text}]))))
+    (testing "Field with join alias"
+      (is (= '&P.people.source
+             (expand-symbolize [:field (mt/id :people :source) {:join-alias "P"}])))
+      (is (= [:field '%people.id {:join-alias "People - User"}]
+             (expand-symbolize [:field (mt/id :people :id) {:join-alias "People - User"}])))
+      (is (= '&Q.*ID/BigInteger
+             (expand-symbolize [:field "ID" {:base-type :type/BigInteger, :join-alias "Q"}]))))
+    (testing "Field with source-field"
+      (is (= '$product_id->products.id
+             (expand-symbolize [:field (mt/id :products :id) {:source-field (mt/id :orders :product_id)}])))
+      (is (= '$product_id->*wow/Text
+             (expand-symbolize [:field "wow" {:base-type :type/Text, :source-field (mt/id :orders :product_id)}]))))
+    (testing "Binned field - no expansion (%id only)"
+      (is (= [:field '%people.source {:binning {:strategy :default}}]
+             (expand-symbolize [:field (mt/id :people :source) {:binning {:strategy :default}}]))))
+
+    (testing "source table"
+      (is (= '(mt/mbql-query orders
+                {:joins [{:source-table $$people}]})
+             (to-mbql-shorthand
+              {:database (mt/id)
+               :type     :query
+               :query    {:source-table (mt/id :orders)
+                          :joins        [{:source-table (mt/id :people)}]}}))))))

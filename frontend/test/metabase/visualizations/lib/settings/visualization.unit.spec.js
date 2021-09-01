@@ -69,20 +69,11 @@ describe("visualization_settings", () => {
         ],
         rows: [[0, 0]],
       };
-      it("should use the card name if there's one series", () => {
-        const card = {
-          visualization_settings: {},
-          display: "bar",
-          name: "card name",
-        };
-        const settings = getComputedSettingsForSeries([{ card, data }]);
-        expect(settings["graph.y_axis.title_text"]).toBe("card name");
-      });
 
       it("should use the series title if set", () => {
         const card = {
           visualization_settings: {
-            series_settings: { foo: { title: "some title" } },
+            "graph.y_axis.title_text": "some title",
           },
           display: "bar",
           name: "foo",

@@ -13,7 +13,8 @@
 (u/strict-extend (class Query)
   models/IModel
   (merge models/IModelDefaults
-         {:types (constantly {:query :json})}))
+         {:types       (constantly {:query :json})
+          :primary-key (constantly :query_hash)}))
 
 
 ;;; Helper Fns

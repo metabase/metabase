@@ -33,7 +33,7 @@ describe("LoadingAndErrorWrapper", () => {
         <LoadingAndErrorWrapper
           loading={true}
           error={null}
-          loadingScenes={[<Scene />]}
+          loadingScenes={[<Scene key="0" />]}
         />,
       );
       screen.getByText("Fun load animation");

@@ -68,26 +68,6 @@ const FILTER_FUNCTIONS = [
   { text: "isnull(", type: "functions" },
   { text: "startsWith(", type: "functions" },
 ];
-const EXPRESSION_OPERATORS = [
-  { text: " * ", type: "operators" },
-  { text: " + ", type: "operators" },
-  { text: " - ", type: "operators" },
-  { text: " / ", type: "operators" },
-];
-const FILTER_OPERATORS = [
-  { text: " != ", type: "operators" },
-  { text: " < ", type: "operators" },
-  { text: " <= ", type: "operators" },
-  { text: " = ", type: "operators" },
-  { text: " > ", type: "operators" },
-  { text: " >= ", type: "operators" },
-];
-const UNARY_BOOLEAN_OPERATORS = [{ text: " NOT ", type: "operators" }];
-const BINARY_BOOLEAN_OPERATORS = [
-  { text: " AND ", type: "operators" },
-  { text: " OR ", type: "operators" },
-];
-const OPEN_PAREN = { type: "other", text: " (" };
 
 // custom metadata defined in __support__/expressions
 const METRICS_CUSTOM = [{ type: "metrics", text: "[metric]" }];
@@ -148,10 +128,6 @@ describe("metabase/lib/expression/suggest", () => {
       return cleanSuggestions(suggest_(...args).suggestions);
     }
 
-    function uncleanSuggest(...args) {
-      return suggest_(...args).suggestions;
-    }
-
     function helpText(...args) {
       return suggest_(...args).helpText;
     }
@@ -167,7 +143,6 @@ describe("metabase/lib/expression/suggest", () => {
             ...NUMERIC_FUNCTIONS,
             ...STRING_FUNCTIONS_EXCLUDING_REGEX,
           ].sort(suggestionSort),
-          OPEN_PAREN,
         ]);
       });
 
@@ -177,7 +152,6 @@ describe("metabase/lib/expression/suggest", () => {
           ...[{ type: "functions", text: "case(" }, ...NUMERIC_FUNCTIONS].sort(
             suggestionSort,
           ),
-          OPEN_PAREN,
         ]);
       });
       it("should suggest partial matches in expression", () => {
@@ -255,18 +229,8 @@ describe("metabase/lib/expression/suggest", () => {
             { text: "coalesce(", type: "functions" },
             ...STRING_FUNCTIONS,
             ...NUMERIC_FUNCTIONS,
-            OPEN_PAREN,
           ].sort(suggestionSort),
         );
-      });
-      it("should suggest numeric operators after field in an expression", () => {
-        expect(
-          suggest({
-            source: "Total ",
-            query: ORDERS.query(),
-            startRule: "expression",
-          }),
-        ).toEqual([...EXPRESSION_OPERATORS]);
       });
 
       it("should provide help text for the function", () => {
@@ -328,7 +292,6 @@ describe("metabase/lib/expression/suggest", () => {
             ...NUMERIC_FUNCTIONS,
           ].sort(suggestionSort),
           ...METRICS_CUSTOM,
-          OPEN_PAREN,
         ]);
       });
       it("should suggest partial matches in aggregation", () => {
@@ -356,7 +319,6 @@ describe("metabase/lib/expression/suggest", () => {
             ...NUMERIC_FUNCTIONS,
           ].sort(suggestionSort),
           ...METRICS_ORDERS,
-          OPEN_PAREN,
         ]);
       });
 
@@ -369,43 +331,17 @@ describe("metabase/lib/expression/suggest", () => {
         expect(name).toEqual("sum");
         expect(example).toEqual("Sum([Subtotal])");
       });
-
-      it("should give us the prefix trim regex in expressions that actually trims", () => {
-        expect(
-          "no".replace(
-            uncleanSuggest({
-              source: "no",
-              query: ORDERS.query(),
-              startRule: "boolean",
-            })[0].prefixTrim,
-            "",
-          ),
-        ).toEqual("");
-      });
     });
 
     describe("filter", () => {
-      it("should suggest comparison operators after field in a filter", () => {
-        expect(
-          suggest({
-            source: "Total ",
-            query: ORDERS.query(),
-            startRule: "boolean",
-          }),
-        ).toEqual([...FILTER_OPERATORS, ...BINARY_BOOLEAN_OPERATORS]);
-      });
-
       it("should suggest filter functions, fields, and segments in a filter", () => {
         expect(
           suggest({ source: "", query: ORDERS.query(), startRule: "boolean" }),
         ).toEqual([
           ...FIELDS_ORDERS,
-          ...[
-            { type: "functions", text: "case(" },
-            ...FILTER_FUNCTIONS,
-            ...UNARY_BOOLEAN_OPERATORS,
-          ].sort(suggestionSort),
-          OPEN_PAREN,
+          ...[{ type: "functions", text: "case(" }, ...FILTER_FUNCTIONS].sort(
+            suggestionSort,
+          ),
           ...SEGMENTS_ORDERS,
         ]);
       });

@@ -19,6 +19,7 @@ export default class DatabaseConnectionStep extends Component {
     activeStep: PropTypes.number.isRequired,
     setActiveStep: PropTypes.func.isRequired,
 
+    formName: PropTypes.string.isRequired,
     databaseDetails: PropTypes.object,
     validateDatabase: PropTypes.func.isRequired,
     setDatabaseDetails: PropTypes.func.isRequired,
@@ -99,6 +100,7 @@ export default class DatabaseConnectionStep extends Component {
       databaseDetails,
       setActiveStep,
       stepNumber,
+      formName,
     } = this.props;
     let stepText = t`Add your data`;
     if (activeStep > stepNumber) {
@@ -131,6 +133,7 @@ export default class DatabaseConnectionStep extends Component {
           </div>
 
           <Databases.Form
+            formName={formName}
             form={Databases.forms.connection}
             database={databaseDetails}
             onSubmit={this.handleSubmit}

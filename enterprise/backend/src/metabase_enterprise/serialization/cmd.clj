@@ -10,6 +10,7 @@
             [metabase.models.database :refer [Database]]
             [metabase.models.field :as field :refer [Field]]
             [metabase.models.metric :refer [Metric]]
+            [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
             [metabase.models.pulse :refer [Pulse]]
             [metabase.models.segment :refer [Segment]]
             [metabase.models.table :refer [Table]]
@@ -47,13 +48,20 @@
                        context)]
     (try
       (do
-        (load/load (str path "/users") context)
-        (load/load (str path "/databases") context)
-        (load/load (str path "/collections") context)
-        (load/load-settings path context)
-        (load/load-dependencies path context))
+        (log/info (trs "BEGIN LOAD from {0} with context {1}" path context))
+        (let [all-res    [(load/load (str path "/users") context)
+                          (load/load (str path "/databases") context)
+                          (load/load (str path "/collections") context)
+                          (load/load-settings path context)
+                          (load/load-dependencies path context)]
+              reload-fns (filter fn? all-res)]
+          (if-not (empty? reload-fns)
+            (do (log/info (trs "Finished first pass of load; now performing second pass"))
+                (doseq [reload-fn reload-fns]
+                  (reload-fn))))
+          (log/info (trs "END LOAD from {0} with context {1}" path context))))
       (catch Throwable e
-        (log/error (trs "Error loading dump: {0}" (.getMessage e)))))))
+        (log/error e (trs "ERROR LOAD from {0}: {1}" path (.getMessage e)))))))
 
 (defn- select-entities-in-collections
   ([model collections]
@@ -82,25 +90,38 @@
       (mapcat #(db/select Segment :table_id (u/the-id %)) tables)))))
 
 (defn- select-collections
+  "Selects the collections for a given user-id, or all collections without a personal ID if the passed user-id is nil.
+  If `state` is passed (by default, `:active`), then that will be used to filter for collections that are archived (if
+  the value is passed as `:all`)."
   ([users]
    (select-collections users :active))
   ([users state]
-   (let [state-filter (case state
-                        :all nil
-                        :active [:= :archived false])]
-     (db/select Collection
-                       {:where [:and
-                                [:or
-                                 [:= :personal_owner_id nil]
-                                 [:= :personal_owner_id (some-> users first u/the-id)]]
-                                state-filter]}))))
+   (let [state-filter     (case state
+                            :all nil
+                            :active [:= :archived false])
+         base-collections (db/select Collection {:where [:and [:= :location "/"]
+                                                              [:or [:= :personal_owner_id nil]
+                                                                   [:= :personal_owner_id
+                                                                       (some-> users first u/the-id)]]
+                                                              state-filter]})]
+     (-> (db/select Collection
+                           {:where [:and
+                                    (reduce (fn [acc coll]
+                                              (conj acc [:like :location (format "/%d/%%" (:id coll))]))
+                                            [:or] base-collections)
+                                    state-filter]})
+         (into base-collections)))))
+
 
 (defn dump
   "Serialized metabase instance into directory `path`."
   ([path user]
-   (dump path user :active))
-  ([path user state]
+   (dump path user :active {}))
+  ([path user opts]
+   (dump path user :active opts))
+  ([path user state opts]
    (mdb/setup-db!)
+   (log/info (trs "BEGIN DUMP to {0} via user {1}" path user))
    (let [users       (if user
                        (let [user (db/select-one User
                                     :email        user
@@ -108,19 +129,32 @@
                          (assert user (trs "{0} is not a valid user" user))
                          [user])
                        [])
-         tables (Table)
-         collections (Collection)] ;(select-collections users state)]
+         databases   (if (contains? opts :only-db-ids)
+                       (db/select Database :id [:in (:only-db-ids opts)] {:order-by [[:id :asc]]})
+                       (Database))
+         tables      (if (contains? opts :only-db-ids)
+                       (db/select Table :db_id [:in (:only-db-ids opts)] {:order-by [[:id :asc]]})
+                       (Table))
+         fields      (if (contains? opts :only-db-ids)
+                       (db/select Field :table_id [:in (map :id tables)] {:order-by [[:id :asc]]})
+                       (Field))
+         metrics     (if (contains? opts :only-db-ids)
+                       (db/select Metric :table_id [:in (map :id tables)] {:order-by [[:id :asc]]})
+                       (Metric))
+         collections (select-collections users state)]
      (dump/dump path
-                (Database)
+                databases
                 tables
-                (field/with-values (Field))
-                (Metric)
+                (field/with-values fields)
+                metrics
                 (select-segments-in-tables tables state)
                 collections
+                (select-entities-in-collections NativeQuerySnippet collections state)
                 (select-entities-in-collections Card collections state)
                 (select-entities-in-collections Dashboard collections state)
                 (select-entities-in-collections Pulse collections state)
                 users))
    (dump/dump-settings path)
    (dump/dump-dependencies path)
-   (dump/dump-dimensions path)))
+   (dump/dump-dimensions path)
+   (log/info (trs "END DUMP to {0} via user {1}" path user))))

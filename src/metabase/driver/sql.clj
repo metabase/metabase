@@ -7,7 +7,9 @@
             [metabase.driver.sql.parameters.substitution :as param-substitution]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
-            [potemkin :as p]))
+            [metabase.util.schema :as su]
+            [potemkin :as p]
+            [schema.core :as s]))
 
 (comment param-substitution/keep-me) ; this is so `cljr-clean-ns` and the liner don't remove the `:require`
 
@@ -37,8 +39,8 @@
   [driver query]
   (sql.qp/mbql->native driver query))
 
-(defmethod driver/substitute-native-parameters :sql
-  [_ {:keys [query] :as inner-query}]
+(s/defmethod driver/substitute-native-parameters :sql
+  [_ {:keys [query] :as inner-query} :- {:query su/NonBlankString, s/Keyword s/Any}]
   (let [[query params] (-> query
                            params.parse/parse
                            (params.substitute/substitute (params.values/query->params-map inner-query)))]

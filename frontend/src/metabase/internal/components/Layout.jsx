@@ -28,7 +28,6 @@ export const CATEGORIES = {
 import COMPONENTS from "../lib/components-webpack";
 import { slugify } from "metabase/lib/formatting";
 
-// $FlowFixMe: doesn't know about require.context
 const req = require.context(
   "metabase/internal/components",
   true,
@@ -115,13 +114,13 @@ export const InternalLayout = fitViewport(({ children }) => {
             Components
             <IndentedList>
               {Object.keys(CATEGORIES).map(category => (
-                <li>
+                <li key={category}>
                   <Label>{CATEGORIES[category]}</Label>
                   <IndentedList>
                     {COMPONENTS.filter(
                       c => c.category && c.category === category,
-                    ).map(({ component }) => (
-                      <ComponentItem component={component} />
+                    ).map(({ component }, index) => (
+                      <ComponentItem key={index} component={component} />
                     ))}
                   </IndentedList>
                 </li>
@@ -129,9 +128,11 @@ export const InternalLayout = fitViewport(({ children }) => {
               <li>
                 <Label>Other</Label>
                 <IndentedList>
-                  {COMPONENTS.filter(c => !c.category).map(({ component }) => (
-                    <ComponentItem component={component} />
-                  ))}
+                  {COMPONENTS.filter(c => !c.category).map(
+                    ({ component }, index) => (
+                      <ComponentItem key={index} component={component} />
+                    ),
+                  )}
                 </IndentedList>
               </li>
             </IndentedList>

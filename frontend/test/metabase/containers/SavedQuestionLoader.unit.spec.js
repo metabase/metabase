@@ -34,8 +34,9 @@ describe("SavedQuestionLoader", () => {
       <SavedQuestionLoader
         questionId={questionId}
         loadMetadataForCard={loadMetadataSpy}
-        children={mockChild}
-      />,
+      >
+        {mockChild}
+      </SavedQuestionLoader>,
     );
     expect(mockChild.mock.calls[0][0].loading).toEqual(true);
     expect(mockChild.mock.calls[0][0].error).toEqual(null);
@@ -60,8 +61,9 @@ describe("SavedQuestionLoader", () => {
       <SavedQuestionLoader
         questionId={originalQuestionId}
         loadMetadataForCard={loadMetadataSpy}
-        children={mockChild}
-      />,
+      >
+        {mockChild}
+      </SavedQuestionLoader>,
     );
 
     expect(loadQuestionSpy).toHaveBeenCalledWith(originalQuestionId);
@@ -71,8 +73,9 @@ describe("SavedQuestionLoader", () => {
       <SavedQuestionLoader
         questionId={newQuestionId}
         loadMetadataForCard={loadMetadataSpy}
-        children={mockChild}
-      />,
+      >
+        {mockChild}
+      </SavedQuestionLoader>,
     );
 
     // question loading should begin with the new ID

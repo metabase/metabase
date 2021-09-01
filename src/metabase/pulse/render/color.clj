@@ -2,31 +2,24 @@
   "Namespaces that uses the Nashorn javascript engine to invoke some shared javascript code that we use to determine
   the background color of pulse table cells"
   (:require [cheshire.core :as json]
+            [clojure.java.io :as io]
+            [metabase.pulse.render.js-engine :as js]
             [metabase.util.i18n :refer [trs]]
-            [schema.core :as s])
-  (:import java.io.InputStream
-           [javax.script Invocable ScriptEngineManager]
-           jdk.nashorn.api.scripting.JSObject))
+            [schema.core :as s]))
 
-(defn- make-js-engine-with-script [^String script]
-  (let [engine-mgr (ScriptEngineManager.)
-        js-engine  (.getEngineByName engine-mgr "nashorn")]
-    (.eval js-engine script)
-    js-engine))
+(def ^:private js-file-path "frontend_shared/color_selector.js")
 
-(defn- ^InputStream get-classpath-resource [path]
-  (.getResourceAsStream (class []) path))
-
-(def ^:private js-engine
-  (let [js-file-path "/frontend_shared/color_selector.js"]
-    ;; The code that loads the JS engine is behind a delay so that we don't incur that cost on startup. The below
-    ;; assertion till look for the javascript file at startup and fail if it doesn't find it. This is to avoid a big
-    ;; delay in finding out that the system is broken
-    (assert (get-classpath-resource js-file-path)
-      (trs "Can''t find JS color selector at ''{0}''" js-file-path))
-    (delay
-     (with-open [stream (get-classpath-resource js-file-path)]
-       (make-js-engine-with-script (slurp stream))))))
+(def ^:private ^{:arglists '([])} js-engine
+  ;; The code that loads the JS engine is behind a delay so that we don't incur that cost on startup. The below
+  ;; assertion till look for the javascript file at startup and fail if it doesn't find it. This is to avoid a big
+  ;; delay in finding out that the system is broken
+  (let [file-url (io/resource js-file-path)]
+    (assert file-url (trs "Can''t find JS color selector at ''{0}''" js-file-path))
+    (let [dlay (delay
+                 (doto (js/engine)
+                   (js/eval (slurp file-url))))]
+      (fn []
+        @dlay))))
 
 (def ^:private QueryResults
   "This is a pretty loose schema, more as a safety net as we have a long feedback loop for this being broken as it's
@@ -43,19 +36,19 @@
   complex, but defined in a set of rules in `viz-settings`. There are some colors that are picked based on a
   particular cell value, others affect the row, so it's necessary to call this once for the resultset and then
   `get-background-color` on each cell."
-  [{:keys [cols rows]} :- QueryResults, viz-settings]
-  ;; NOTE: for development it is useful to replace the following line with this one so it reload each time:
-  ; (let [^Invocable engine (make-js-engine-with-script (slurp "resources/frontend_shared/color_selector.js"))
-  (let [^Invocable engine @js-engine
-        ;; Ideally we'd convert everything to JS data before invoking the function below, but converting rows would be
-        ;; expensive. The JS code is written to deal with `rows` in it's native Nashorn format but since `cols` and
-        ;; `viz-settings` are small, pass those as JSON so that they can be deserialized to pure JS objects once in JS
-        ;; code
-        js-fn-args (object-array [rows (json/generate-string cols) (json/generate-string viz-settings)])]
-    (.invokeFunction engine "makeCellBackgroundGetter" js-fn-args)))
+  [{:keys [cols rows]} :- QueryResults viz-settings]
+  ;; Ideally we'd convert everything to JS data before invoking the function below, but converting rows would be
+  ;; expensive. The JS code is written to deal with `rows` in it's native Nashorn format but since `cols` and
+  ;; `viz-settings` are small, pass those as JSON so that they can be deserialized to pure JS objects once in JS
+  ;; code
+  (js/invoke-by-name (js-engine) "makeCellBackgroundGetter"
+                     rows
+                     (json/generate-string cols)
+                     (json/generate-string viz-settings)))
 
 (defn get-background-color
-  "Get the correct color for a cell in a pulse table. This is intended to be invoked on each cell of every row in the
-  table. See `make-color-selector` for more info."
-  [^JSObject color-selector, cell-value column-name row-index]
-  (.call color-selector color-selector (object-array [cell-value row-index column-name])))
+  "Get the correct color for a cell in a pulse table. Returns color as string suitable for use CSS, e.g. a hex string or
+  `rgba()` string. This is intended to be invoked on each cell of every row in the table. See `make-color-selector`
+  for more info."
+  ^String [color-selector cell-value column-name row-index]
+  (js/invoke-function color-selector cell-value row-index column-name))

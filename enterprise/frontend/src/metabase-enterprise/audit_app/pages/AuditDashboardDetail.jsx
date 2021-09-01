@@ -1,5 +1,5 @@
-/* eslint-disable react/prop-types */
 import React from "react";
+import PropTypes from "prop-types";
 
 import AuditContent from "../components/AuditContent";
 import AuditDashboard from "../containers/AuditDashboard";
@@ -7,44 +7,60 @@ import AuditTable from "../containers/AuditTable";
 
 import OpenInMetabase from "../components/OpenInMetabase";
 
-import EntityName from "metabase/entities/containers/EntityName";
+import Dashboard from "metabase/entities/dashboards";
 
 import * as Urls from "metabase/lib/urls";
 
 import * as DashboardCards from "../lib/cards/dashboard_detail";
 
-type Props = {
-  params: { [key: string]: string },
+const tabPropTypes = {
+  dashboardId: PropTypes.number.isRequired,
 };
 
-const AuditDashboardDetail = ({ params, ...props }: Props) => {
+AuditDashboardDetail.propTypes = {
+  params: PropTypes.shape(tabPropTypes),
+};
+
+function AuditDashboardDetail({ params, ...props }) {
   const dashboardId = parseInt(params.dashboardId);
   return (
-    <AuditContent
-      {...props}
-      title={<EntityName entityType="dashboards" entityId={dashboardId} />}
-      subtitle={<OpenInMetabase to={Urls.dashboard(dashboardId)} />}
-      tabs={AuditDashboardDetail.tabs}
-      dashboardId={dashboardId}
+    <Dashboard.Loader id={dashboardId} wrapped>
+      {({ dashboard }) => (
+        <AuditContent
+          {...props}
+          title={dashboard.getName()}
+          subtitle={<OpenInMetabase to={Urls.dashboard(dashboard)} />}
+          tabs={AuditDashboardDetail.tabs}
+          dashboardId={dashboardId}
+        />
+      )}
+    </Dashboard.Loader>
+  );
+}
+
+AuditDashboardActivityTab.propTypes = tabPropTypes;
+
+function AuditDashboardActivityTab({ dashboardId }) {
+  return (
+    <AuditDashboard
+      cards={[
+        [{ x: 0, y: 0, w: 18, h: 10 }, DashboardCards.viewsByTime(dashboardId)],
+      ]}
     />
   );
-};
+}
 
-const AuditDashboardActivityTab = ({ dashboardId }) => (
-  <AuditDashboard
-    cards={[
-      [{ x: 0, y: 0, w: 18, h: 10 }, DashboardCards.viewsByTime(dashboardId)],
-    ]}
-  />
-);
+AuditDashboardRevisionsTab.propTypes = tabPropTypes;
 
-const AuditDashboardRevisionsTab = ({ dashboardId }) => (
-  <AuditTable table={DashboardCards.revisionHistory(dashboardId)} />
-);
+function AuditDashboardRevisionsTab({ dashboardId }) {
+  return <AuditTable table={DashboardCards.revisionHistory(dashboardId)} />;
+}
 
-const AuditDashboardAuditLogTab = ({ dashboardId }) => (
-  <AuditTable table={DashboardCards.auditLog(dashboardId)} />
-);
+AuditDashboardAuditLogTab.propTypes = tabPropTypes;
+
+function AuditDashboardAuditLogTab({ dashboardId }) {
+  return <AuditTable table={DashboardCards.auditLog(dashboardId)} />;
+}
 
 AuditDashboardDetail.tabs = [
   { path: "activity", title: "Activity", component: AuditDashboardActivityTab },

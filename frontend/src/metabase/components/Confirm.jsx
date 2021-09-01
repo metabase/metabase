@@ -6,6 +6,12 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import ConfirmContent from "./ConfirmContent";
 
 export default class Confirm extends Component {
+  constructor(props) {
+    super(props);
+
+    this.modal = React.createRef();
+  }
+
   static propTypes = {
     action: PropTypes.func.isRequired,
     title: PropTypes.string.isRequired,
@@ -18,7 +24,7 @@ export default class Confirm extends Component {
     const { action, children, title, content, triggerClasses } = this.props;
     return (
       <ModalWithTrigger
-        ref="modal"
+        ref={this.modal}
         triggerElement={children}
         triggerClasses={triggerClasses}
       >
@@ -26,7 +32,7 @@ export default class Confirm extends Component {
           title={title}
           content={content}
           onClose={() => {
-            this.refs.modal.close();
+            this.modal.current.close();
           }}
           onAction={action}
         />

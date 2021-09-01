@@ -10,6 +10,7 @@ import { connect } from "react-redux";
 
 import _ from "underscore";
 import { t } from "ttag";
+import { humanizeCoercionStrategy } from "./humanizeCoercionStrategy";
 
 // COMPONENTS
 
@@ -90,8 +91,6 @@ export default class FieldApp extends React.Component {
     tab: "general",
   };
 
-  saveStatus: null;
-
   props: {
     databaseId: DatabaseId,
     tableId: TableId,
@@ -114,6 +113,11 @@ export default class FieldApp extends React.Component {
     location: any,
     params: any,
   };
+
+  constructor(props) {
+    super(props);
+    this.saveStatusRef = React.createRef();
+  }
 
   async UNSAFE_componentWillMount() {
     const {
@@ -147,9 +151,9 @@ export default class FieldApp extends React.Component {
   }
 
   linkWithSaveStatus = (saveMethod: Function) => async (...args: any[]) => {
-    this.saveStatus && this.saveStatus.setSaving();
+    this.saveStatusRef.current && this.saveStatusRef.current.setSaving();
     await saveMethod(...args);
-    this.saveStatus && this.saveStatus.setSaved();
+    this.saveStatusRef.current && this.saveStatusRef.current.setSaved();
   };
 
   onUpdateFieldProperties = this.linkWithSaveStatus(async fieldProps => {
@@ -176,7 +180,6 @@ export default class FieldApp extends React.Component {
     this.props.deleteFieldDimension,
   );
 
-  // $FlowFixMe
   onUpdateFieldSettings = (settings: ColumnSettingsType): void => {
     return this.onUpdateFieldProperties({ settings });
   };
@@ -239,7 +242,7 @@ export default class FieldApp extends React.Component {
                 </div>
               )}
               <div className="absolute top right mt4 mr4">
-                <SaveStatus ref={ref => (this.saveStatus = ref)} />
+                <SaveStatus ref={this.saveStatusRef} />
               </div>
 
               {section == null || section === "general" ? (
@@ -340,7 +343,7 @@ const FieldGeneralPane = ({
             },
           ]}
           optionValueFn={field => field.id}
-          optionNameFn={field => field.name.replace("Coercion/", "")}
+          optionNameFn={field => humanizeCoercionStrategy(field.name)}
           optionIconFn={field => null}
         />
       </Section>

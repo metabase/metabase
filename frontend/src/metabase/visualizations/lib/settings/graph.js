@@ -402,7 +402,6 @@ export const GRAPH_AXIS_SETTINGS = {
     section: t`Axes`,
     title: t`X-axis scale`,
     widget: "select",
-    default: "ordinal",
     readDependencies: [
       "graph.x_axis._is_timeseries",
       "graph.x_axis._is_numeric",
@@ -552,9 +551,6 @@ export const GRAPH_AXIS_SETTINGS = {
     getHidden: (series, vizSettings) =>
       vizSettings["graph.y_axis.labels_enabled"] === false,
     getDefault: (series, vizSettings) => {
-      if (series.length === 1) {
-        return vizSettings.series(series[0]).title;
-      }
       // If there are multiple series, we check if the metric names match.
       // If they do, we use that as the default y axis label.
       const [metric] = vizSettings["graph.metrics"];

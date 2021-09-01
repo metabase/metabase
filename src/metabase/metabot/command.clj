@@ -26,7 +26,7 @@
   and irrelevant."
   []
   (db/select-field :object Permissions
-    :group_id (u/get-id (perms-group/metabot))
+    :group_id (u/the-id (perms-group/metabot))
     :object   [:like "/collection/%"]))
 
 (defn- metabot-visible-collection-ids

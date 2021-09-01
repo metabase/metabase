@@ -312,7 +312,6 @@
 
 (defn data
   "Return the result `data` from a successful query run, or throw an Exception if processing failed."
-  {:style/indent 0}
   [results]
   (when (#{:failed "failed"} (:status results))
     (throw (ex-info (str (or (:error results) "Error running query"))
@@ -321,7 +320,6 @@
 
 (defn rows
   "Return the result rows from query `results`, or throw an Exception if they're missing."
-  {:style/indent 0}
   [results]
   (or (some-> (data results) :rows vec)
       (throw (ex-info "Query does not have any :rows in results."
@@ -338,7 +336,6 @@
 
 (defn first-row
   "Return the first row in the `results` of a query, or throw an Exception if they're missing."
-  {:style/indent 0}
   [results]
   (first (rows results)))
 
@@ -349,7 +346,6 @@
 
 (defn cols
   "Return the result `:cols` from query `results`, or throw an Exception if they're missing."
-  {:style/indent 0}
   [results]
   (or (some->> (data results) :cols (mapv #(into {} %)))
       (throw (ex-info "Query does not have any :cols in results." results))))
@@ -358,13 +354,11 @@
   "Return both `:rows` and `:cols` from the results. Equivalent to
 
     {:rows (rows results), :cols (cols results)}"
-  {:style/indent 0}
   [results]
   {:rows (rows results), :cols (cols results)})
 
 (defn rows+column-names
   "Return the result rows and column names from query `results`, or throw an Exception if they're missing."
-  {:style/indent 0}
   [results]
   {:rows (rows results), :columns (map :name (cols results))})
 

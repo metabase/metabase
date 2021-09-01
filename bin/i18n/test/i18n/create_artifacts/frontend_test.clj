@@ -25,5 +25,5 @@
 
                           "${ 0 } Queryable Table"
                           {:msgid_plural "{0} Queryable Tables"
-                           :msgstr       ["{0] Tabla Consultable" "{0] Tablas consultables"]}}}}
+                           :msgstr       ["${ 0 } Tabla Consultable" "${ 0 } Tablas consultables"]}}}}
          (#'frontend/->i18n-map test-common/po-contents))))
