@@ -654,12 +654,14 @@
 
 (api/defendpoint ^:streaming POST "/:card-id/query"
   "Run the query associated with a Card."
-  [card-id :as {{:keys [parameters ignore_cache], :or {ignore_cache false}} :body}]
-  {ignore_cache (s/maybe s/Bool)}
+  [card-id :as {{:keys [parameters ignore_cache], :or {ignore_cache false dashboard_id nil}} :body}]
+  {ignore_cache (s/maybe s/Bool)
+   dashboard_id (s/maybe su/IntGreaterThanZero)}
   (run-query-for-card-async
    card-id :api
    :parameters parameters,
    :ignore_cache ignore_cache
+   :dashboard-id dashboard_id
    :middleware {:process-viz-settings? false}))
 
 (api/defendpoint ^:streaming POST "/:card-id/query/:export-format"
