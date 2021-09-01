@@ -43,7 +43,7 @@ export default class Breakout extends MBQLClause {
   /**
    * Predicate function to test if a given breakout clause is valid
    */
-  isValid(): boolean {
+  isValid() {
     const query = this.query();
     return !query || query.breakoutOptions(this).hasDimension(this.dimension());
   }
