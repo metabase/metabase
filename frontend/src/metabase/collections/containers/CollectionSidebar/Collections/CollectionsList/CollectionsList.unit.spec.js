@@ -57,7 +57,7 @@ describe("CollectionsList", () => {
     expect(screen.queryByText("Collection name")).toBeVisible();
   });
 
-  it("opens child collection when user clicks on chevron button", () => {
+  it("opens child collection when user clicks on collection name", () => {
     const onOpen = jest.fn();
     setup({
       collections: [
