@@ -17,7 +17,7 @@ export const DataPermissionsHelp = () => (
   <DataPermissionsHelpRoot>
     <DataPermissionsHelpContent>
       <h2>{t`About data permissions`}</h2>
-      <p>{t`Each of your user groups can has a level of access for each of your databases on the tables they contain.`}</p>
+      <p>{t`Each of your user groups can have a level of access for each of your databases on the tables they contain.`}</p>
       <p>{jt`Users can be members of multiple groups, and are given the ${(
         <strong>{t`most permissive`}</strong>
       )} level of access for a database or table across all the groups they’re a member of.`}</p>
