@@ -7,4 +7,4 @@
   (u/exit-when-finished-nonzero-on-exception
     (when-not (seq driver)
       (throw (ex-info "Usage: clojure -m verify-driver <driver>" {})))
-    (verify/verify-driver (keyword driver))))
+    (verify/verify-driver (u/parse-as-keyword driver))))
