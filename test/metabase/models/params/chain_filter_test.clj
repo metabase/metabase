@@ -418,25 +418,22 @@
     (mt/dataset nil-values-dataset
       (mt/$ids tbl
         (letfn [(thunk []
-                  ;; sorting can differ a bit based on whether we use FieldValues or not... not sure why this is the
-                  ;; case, but that's not important for this test anyway. Just sort everything
                   (testing "chain-filter"
-                    (testing "mytype"
-                      (is (= ["empty" "null" "value"]
-                             (sort (chain-filter/chain-filter %mytype {})))))
-                    (testing "myfield"
-                      (is (= [nil "" "value"]
-                             (sort (chain-filter/chain-filter %myfield {}))))))
+                    (doseq [[field expected] {:mytype  ["empty" "null" "value"]
+                                              :myfield [nil "" "value"]}]
+                      (testing field
+                        ;; sorting can differ a bit based on whether we use FieldValues or not... not sure why this is
+                        ;; the case, but that's not important for this test anyway. Just sort everything
+                        (is (= expected
+                               (sort (chain-filter/chain-filter (mt/id :tbl field) {})))))))
                   (testing "chain-filter-search"
-                    (testing "mytype"
-                      (is (= ["value"]
-                             (chain-filter/chain-filter-search %mytype {} "val"))))
-                    (testing "myfield"
-                      (is (= ["value"]
-                             (chain-filter/chain-filter-search %myfield {} "val"))))))]
+                    (doseq [field #{:mytype :myfield}]
+                      (testing field
+                        (is (= ["value"]
+                               (chain-filter/chain-filter-search (mt/id :tbl field) {} "val")))))))]
           (testing "no FieldValues"
             (thunk))
-          (testing "with FieldValues"
+          (testing "with FieldValues for myfield"
             (mt/with-temp FieldValues [_ {:field_id %myfield, :values ["value" nil ""]}]
               (mt/with-temp-vals-in-db Field %myfield {:has_field_values "auto-list"}
                 (testing "Sanity check: make sure we will actually use the cached FieldValues"
