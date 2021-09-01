@@ -418,19 +418,16 @@
     (mt/dataset nil-values-dataset
       (mt/$ids tbl
         (letfn [(thunk []
-                  (testing "chain-filter"
-                    (doseq [[field expected] {:mytype  ["empty" "null" "value"]
-                                              :myfield [nil "" "value"]}]
-                      (testing field
-                        ;; sorting can differ a bit based on whether we use FieldValues or not... not sure why this is
-                        ;; the case, but that's not important for this test anyway. Just sort everything
-                        (is (= expected
-                               (sort (chain-filter/chain-filter (mt/id :tbl field) {})))))))
-                  (testing "chain-filter-search"
-                    (doseq [field #{:mytype :myfield}]
-                      (testing field
-                        (is (= ["value"]
-                               (chain-filter/chain-filter-search (mt/id :tbl field) {} "val")))))))]
+                  (doseq [[field expected-values] {:mytype  ["empty" "null" "value"]
+                                                   :myfield [nil "" "value"]}]
+                    (testing "chain-filter"
+                      ;; sorting can differ a bit based on whether we use FieldValues or not... not sure why this is
+                      ;; the case, but that's not important for this test anyway. Just sort everything
+                      (is (= expected-values
+                             (sort (chain-filter/chain-filter (mt/id :tbl field) {})))))
+                    (testing "chain-filter-search"
+                      (is (= ["value"]
+                             (chain-filter/chain-filter-search (mt/id :tbl field) {} "val"))))))]
           (testing "no FieldValues"
             (thunk))
           (testing "with FieldValues for myfield"
