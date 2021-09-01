@@ -1,11 +1,15 @@
 import React, { useState } from "react";
 import { t } from "ttag";
 
+import _ from "underscore";
+
 import * as Queries from "../../audit_app/lib/cards/queries";
 import AuditTable from "../../audit_app/containers/AuditTable";
 import AuditParameters from "../../audit_app/components/AuditParameters";
 
 const getSortOrder = isAscending => (isAscending ? "asc" : "desc");
+
+const CARD_ID_COL = 0;
 
 export default function ErrorOverview(props) {
   const [sorting, setSorting] = useState({
@@ -14,11 +18,19 @@ export default function ErrorOverview(props) {
   });
 
   const [rowChecked, setRowChecked] = useState({})
+  const [rowToCardId, setRowToCardId] = useState({})
   const handleRowSelectClick = e => {
     const newRowChecked = rowChecked;
-    newRowChecked[e.originRow] = !(rowChecked[e.originRow] || false);
+    const newRowToCardId = rowToCardId;
+    newRowChecked[e.rowIndex] = !(rowChecked[e.rowIndex] || false);
+    newRowToCardId[e.rowIndex] = e.row[CARD_ID_COL];
     setRowChecked(newRowChecked);
+    setRowToCardId(newRowToCardId);
   };
+  const handleReloadSelected = () => {
+    const checkedCardIds = Object.values(_.pick(rowToCardId, (member, key) => (rowChecked[key])));
+    console.log(checkedCardIds);
+  }
 
   const handleSortingChange = sorting => setSorting(sorting);
   return (
@@ -29,7 +41,7 @@ export default function ErrorOverview(props) {
         { key: "collectionFilter", placeholder: t`Collection name` },
       ]}
       buttons={[
-        { key: "reloadSelected", label: t`Reload Selected`, onClick: () => {} }
+        { key: "reloadSelected", label: t`Reload Selected`, onClick: handleReloadSelected }
       ]}
     >
       {({ errorFilter, dbFilter, collectionFilter }) => (

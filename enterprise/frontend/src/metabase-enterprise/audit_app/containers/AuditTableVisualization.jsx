@@ -97,9 +97,9 @@ export default class AuditTableVisualization extends React.Component {
         />
       );
     }
-    const handleRowSelectClick = (e, rowIndex) => {
+    const handleRowSelectClick = (e, row, rowIndex) => {
       this.setState({ rerender: {}});
-      onRowSelectClick({...e, originRow: rowIndex});
+      onRowSelectClick({...e, row: row, rowIndex: rowIndex});
     };
 
     return (
@@ -140,7 +140,7 @@ export default class AuditTableVisualization extends React.Component {
             <tr key={rowIndex}>
               {isSelectable && <td><CheckBox
                 checked={rowChecked[rowIndex]}
-                onChange={(e) => handleRowSelectClick({...e, originRow: rowIndex}, rowIndex)}/></td>}
+                onChange={(e) => handleRowSelectClick({...e, originRow: rowIndex}, row, rowIndex)}/></td>}
 
               {columnIndexes.map(colIndex => {
                 const value = row[colIndex];
