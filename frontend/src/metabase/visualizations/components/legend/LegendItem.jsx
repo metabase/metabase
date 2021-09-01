@@ -55,7 +55,7 @@ const LegendItem = ({
         onMouseLeave={onHoverChange && handleItemMouseLeave}
       >
         <LegendItemDot color={color} />
-        <LegendItemTitle>
+        <LegendItemTitle className="fullscreen-normal-text fullscreen-night-text">
           <Ellipsified>{label}</Ellipsified>
         </LegendItemTitle>
       </LegendItemLabel>

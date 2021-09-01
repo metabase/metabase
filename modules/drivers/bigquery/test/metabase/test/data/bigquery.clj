@@ -33,10 +33,27 @@
 
 ;;; ----------------------------------------------- Connection Details -----------------------------------------------
 
+;; keep track of databases we have already created
+(def ^:private existing-datasets
+  (atom #{}))
+
+(def ^:private current-dataset-version-prefix "v3_")
+
+(defn- prefix-legacydriver-if-new
+  "Adds a legacydriver_ prefix to the db-name, if the `existing-dataset` atom does not contain it. This is to ensure
+  that transient datasets created and destroyed by these tests do not interfere with parallel test runs for the new
+  BigQuery driver (which are also creating and destroying datasets that would have the same name, if not for this
+  change). If the `db-name` is already an existing one, however, the assumption is it's not transient (i.e. not being
+  created and destroyed at test time), and hence, it can keep its name without modification."
+  [db-name]
+  (if (contains? @existing-datasets db-name)
+    db-name
+    (str/replace-first db-name current-dataset-version-prefix (str current-dataset-version-prefix "legacydriver_"))))
+
 (defn- normalize-name ^String [db-or-table-or-field identifier]
   (let [s (str/replace (name identifier) "-" "_")]
     (case db-or-table-or-field
-      :db             (str "v3_" s)
+      :db             (prefix-legacydriver-if-new (str current-dataset-version-prefix s))
       (:table :field) s)))
 
 (def ^:private details
@@ -324,10 +341,6 @@
         ;; to the current moment in time and thus need to be recreated before running the tests.
         :when   (not (str/includes? dataset-name "checkins_interval_"))]
     dataset-name))
-
-;; keep track of databases we haven't created yet
-(def ^:private existing-datasets
-  (atom #{}))
 
 (defmethod tx/create-db! :bigquery [_ {:keys [database-name table-definitions]} & _]
   {:pre [(seq database-name) (sequential? table-definitions)]}

@@ -1,4 +1,5 @@
 import { createSelector } from "reselect";
+import { parseTimestamp } from "metabase/lib/time";
 
 export const getAlertId = ({ params: { alertId } }) => {
   return parseInt(alertId);
@@ -22,6 +23,10 @@ export const getNotifications = createSelector(
       })),
     ];
 
-    return items.sort((a, b) => b.item.created_at - a.item.created_at);
+    return items.sort(
+      (a, b) =>
+        parseTimestamp(b.item.created_at).unix() -
+        parseTimestamp(a.item.created_at).unix(),
+    );
   },
 );

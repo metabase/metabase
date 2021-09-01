@@ -25,7 +25,7 @@
             [toucan.db :as db]
             [toucan.hydrate :as hydrate]))
 
-(use-fixtures :once (fixtures/initialize :db :plugins))
+(use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
 
 ;; HELPER FNS
 
@@ -1092,3 +1092,14 @@
                                                   :tunnel-private-key-passphrase protected-password
                                                   :access-token                  protected-password
                                                   :refresh-token                 protected-password})))))
+
+
+(deftest db-ids-with-deprecated-drivers-test
+  (mt/with-driver :driver-deprecation-test-legacy
+    (testing "GET /api/database/db-ids-with-deprecated-drivers"
+      (mt/with-temp Database [{db-id :id} {:engine :driver-deprecation-test-legacy}]
+        (is (not-empty (filter #(= % db-id) (mt/user-http-request
+                                             :crowberto
+                                             :get
+                                             200
+                                             "database/db-ids-with-deprecated-drivers"))))))))

@@ -215,13 +215,17 @@
        (list table-body))}))
 
 (s/defmethod render :bar :- common/RenderedPulseCard
-  [_ render-type _timezone-id :- (s/maybe s/Str) card {:keys [cols] :as data}]
+  [_ render-type _timezone-id :- (s/maybe s/Str) card {:keys [cols rows] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
-        rows                        (common/non-nil-rows x-axis-rowfn y-axis-rowfn (:rows data))
+        rows                        (map (juxt x-axis-rowfn y-axis-rowfn)
+                                         (common/non-nil-rows x-axis-rowfn y-axis-rowfn rows))
+        svg-fn                   (if (isa? (-> cols x-axis-rowfn :effective_type) :type/Temporal)
+                                   js-svg/timelineseries-bar
+                                   js-svg/categorical-bar)
         image-bundle                (image-bundle/make-image-bundle
                                       render-type
-                                      (js-svg/timelineseries-bar
-                                        (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)
+                                      (svg-fn
+                                        rows
                                         {:bottom (-> cols x-axis-rowfn :display_name)
                                          :left   (-> cols y-axis-rowfn :display_name)}))]
     {:attachments
