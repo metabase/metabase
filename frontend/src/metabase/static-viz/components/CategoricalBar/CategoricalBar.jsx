@@ -6,11 +6,11 @@ import { scaleBand, scaleLinear } from "@visx/scale";
 import { Bar } from "@visx/shape";
 
 const propTypes = {
-  data: PropTypes.array,
+  data: PropTypes.array.isRequired,
   accessors: PropTypes.shape({
-    x: PropTypes.func,
-    y: PropTypes.func,
-  }),
+    x: PropTypes.func.isRequired,
+    y: PropTypes.func.isRequired,
+  }).isRequired,
   labels: PropTypes.shape({
     left: PropTypes.string,
     bottom: PropTypes.string,
@@ -79,7 +79,7 @@ const CategoricalBar = ({ data, accessors, labels }) => {
       <AxisLeft
         scale={yScale}
         left={layout.margin.left}
-        label={labels.left}
+        label={labels?.left}
         hideTicks
         hideAxisLine
         tickLabelProps={() => ({
@@ -92,7 +92,7 @@ const CategoricalBar = ({ data, accessors, labels }) => {
       <AxisBottom
         scale={xScale}
         top={yMax}
-        label={labels.bottom}
+        label={labels?.bottom}
         numTicks={data.length}
         stroke={layout.colors.stroke}
         tickStroke={layout.colors.stroke}
