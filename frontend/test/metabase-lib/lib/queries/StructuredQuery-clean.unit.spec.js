@@ -29,7 +29,7 @@ describe("StructuredQuery", () => {
         expect(q.clean() === q).toBe(true);
       });
 
-      xit("should remove join referencing invalid source-table", () => {
+      it.skip("should remove join referencing invalid source-table", () => {
         const q = ORDERS.query()
           .setTableId(12345)
           .join([JOIN]);
@@ -98,7 +98,7 @@ describe("StructuredQuery", () => {
           expect(q.clean().query()).toEqual(q.query());
           expect(q.clean() === q).toBe(true);
         });
-        xit("should remove invalid named aggregations", () => {
+        it.skip("should remove invalid named aggregations", () => {
           const q = ORDERS.query().aggregate([
             "aggregation-option",
             ["invalid"],
@@ -139,7 +139,7 @@ describe("StructuredQuery", () => {
           expect(q.clean().query()).toEqual(q.query());
           expect(q.clean() === q).toBe(true);
         });
-        xit("should remove aggregations referencing invalid field ID", () => {
+        it.skip("should remove aggregations referencing invalid field ID", () => {
           const q = ORDERS.query().aggregate([
             ["+", ["avg", ["field", 12345, null]], 1],
           ]);
@@ -196,7 +196,7 @@ describe("StructuredQuery", () => {
         expect(q.clean() === q).toBe(true);
       });
 
-      xit("should remove sort referencing invalid field ID", () => {
+      it.skip("should remove sort referencing invalid field ID", () => {
         const q = ORDERS.query().sort(["asc", ["field", 12345, null]]);
         expect(q.clean().query()).toEqual({ "source-table": ORDERS.id });
       });
