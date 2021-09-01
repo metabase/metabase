@@ -1,11 +1,9 @@
 import React from "react";
 import { Box } from "grid-styled";
-
 import Heading from "metabase/components/type/Heading";
 import Subhead from "metabase/components/type/Subhead";
 import Text from "metabase/components/type/Text";
-
-import { RenderChart } from "../../static-viz/";
+import StaticChart from "metabase/static-viz/containers/StaticChart";
 
 export default function StaticVizPage() {
   return (
@@ -21,74 +19,50 @@ export default function StaticVizPage() {
         </Text>
         <Box py={3}>
           <Subhead>Bar chart with timeseries data</Subhead>
-          <Box
-            dangerouslySetInnerHTML={{
-              __html: RenderChart("timeseries/bar", {
-                data: [["2010-11-07", 20], ["2020-11-07", 30]],
-                accessors: {
-                  x: row => new Date(row[0]).valueOf(),
-                  y: row => row[1],
-                },
-                labels: {
-                  bottom: "Created At",
-                },
-              }),
+          <StaticChart
+            type="timeseries/bar"
+            options={{
+              data: [["2010-11-07", 20], ["2020-11-07", 30]],
+              accessors: {
+                x: row => new Date(row[0]).valueOf(),
+                y: row => row[1],
+              },
+              labels: {
+                bottom: "Created At",
+              },
             }}
           />
         </Box>
         <Box py={3}>
-          <Subhead>Line chart with timeseries data</Subhead>
-          <Box
-            dangerouslySetInnerHTML={{
-              __html: RenderChart("timeseries/line", {
-                data: [
-                  ["2010-11-07", 20],
-                  ["2020-11-07", 30],
-                  ["2021-11-07", 31],
-                ],
-                accessors: {
-                  x: row => new Date(row[0]).valueOf(),
-                  y: row => row[1],
-                },
-                labels: {
-                  left: "Count",
-                },
-              }),
+          <Subhead>Bar chart with categorical data</Subhead>
+          <StaticChart
+            type="categorical/bar"
+            options={{
+              data: [["Gadget", 20], ["Widget", 31]],
+              accessors: {
+                x: row => row[0],
+                y: row => row[1],
+              },
+              labels: {
+                bottom: "Category",
+              },
             }}
           />
         </Box>
         <Box py={3}>
-          <Subhead>Bar chart showing categorical data</Subhead>
-          <Box
-            dangerouslySetInnerHTML={{
-              __html: RenderChart("categorical/bar", {
-                data: [["donut", 20], ["cronut", 31]],
-                accessors: {
-                  x: row => row[0],
-                  y: row => row[1],
-                },
-                labels: {
-                  bottom: "Category",
-                },
-              }),
-            }}
-          />
-        </Box>
-        <Box py={3}>
-          <Subhead>Donut chart showing categorical data</Subhead>
-          <Box
-            dangerouslySetInnerHTML={{
-              __html: RenderChart("categorical/donut", {
-                data: [["donut", 20], ["cronut", 31]],
-                colors: {
-                  donut: "red",
-                  cronut: "blue",
-                },
-                accessors: {
-                  dimension: row => row[0],
-                  metric: row => row[1],
-                },
-              }),
+          <Subhead>Donut chart with categorical data</Subhead>
+          <StaticChart
+            type="categorical/donut"
+            options={{
+              data: [["donut", 20], ["cronut", 31]],
+              colors: {
+                donut: "#509EE3",
+                cronut: "#DDECFA",
+              },
+              accessors: {
+                dimension: row => row[0],
+                metric: row => row[1],
+              },
             }}
           />
         </Box>

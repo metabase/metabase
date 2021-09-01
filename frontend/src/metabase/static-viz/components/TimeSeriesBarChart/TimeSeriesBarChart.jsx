@@ -4,7 +4,6 @@ import { AxisBottom, AxisLeft } from "@visx/axis";
 import { GridRows } from "@visx/grid";
 import { scaleBand, scaleLinear } from "@visx/scale";
 import { Bar } from "@visx/shape";
-import { Text } from "@visx/text";
 
 const propTypes = {
   data: PropTypes.array.isRequired,
@@ -38,14 +37,13 @@ const layout = {
   },
 };
 
-const CategoricalBar = ({ data, accessors, labels }) => {
+const TimeSeriesBarChart = ({ data, accessors, labels }) => {
   const xMax = layout.width - layout.margin.right;
   const yMax = layout.height - layout.margin.bottom;
   const innerWidth = xMax - layout.margin.left;
   const innerHeight = yMax - layout.margin.top;
-  const isVertical = data.length > 10;
   const leftLabel = labels?.left;
-  const bottomLabel = !isVertical ? labels?.bottom : undefined;
+  const bottomLabel = labels?.bottom;
 
   const xScale = scaleBand({
     domain: data.map(accessors.x),
@@ -69,14 +67,6 @@ const CategoricalBar = ({ data, accessors, labels }) => {
     return { x, y, width, height, fill: layout.colors.bar };
   };
 
-  const getBottomTickProps = ({ x, y, formattedValue, ...props }) => {
-    const transform = isVertical
-      ? `rotate(45, ${x} ${y}) translate(-${Math.floor(layout.font.size)} 0)`
-      : undefined;
-
-    return { ...props, x, y, transform, children: formattedValue };
-  };
-
   const getLeftTickLabelProps = () => ({
     fontSize: layout.font.size,
     fontFamily: layout.font.family,
@@ -88,7 +78,7 @@ const CategoricalBar = ({ data, accessors, labels }) => {
     fontSize: layout.font.size,
     fontFamily: layout.font.family,
     fill: layout.colors.label,
-    textAnchor: isVertical ? "start" : "middle",
+    textAnchor: "middle",
   });
 
   return (
@@ -117,13 +107,13 @@ const CategoricalBar = ({ data, accessors, labels }) => {
         numTicks={data.length}
         stroke={layout.colors.stroke}
         tickStroke={layout.colors.stroke}
-        tickComponent={props => <Text {...getBottomTickProps(props)} />}
+        tickFormat={d => new Date(d).toLocaleDateString()}
         tickLabelProps={() => getBottomTickLabelProps()}
       />
     </svg>
   );
 };
 
-CategoricalBar.propTypes = propTypes;
+TimeSeriesBarChart.propTypes = propTypes;
 
-export default CategoricalBar;
+export default TimeSeriesBarChart;
