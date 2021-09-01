@@ -364,7 +364,8 @@
   "If there are multiple breakouts and a goal, we don't know which breakout to compare to the goal, so it invalidates
   the alert"
   [{:keys [display] :as new-card}]
-  (and (or (line-area-bar? display)
+  (and (get-in new-card [:visualization_settings :graph.goal_value])
+       (or (line-area-bar? display)
            (progress? display))
        (< 1 (count (get-in new-card [:dataset_query :query :breakout])))))
 
