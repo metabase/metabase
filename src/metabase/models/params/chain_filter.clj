@@ -518,7 +518,7 @@
    ;; check whether the Field *should* have Field values. Not whether it actually does.
    (field-values/field-should-have-field-values? field-id)
    ;; If the Field *should* values, make sure the Field actually *does* have Field Values as well (but not a
-   ;; human-readable remap, which is handled by `human-readable-values-remapped-chain-filter`_
+   ;; human-readable remap, which is handled by [[human-readable-values-remapped-chain-filter]].
    (db/exists? FieldValues :field_id field-id, :values [:not= nil], :human_readable_values nil)))
 
 (defn- cached-field-values [field-id {:keys [limit]}]
@@ -532,13 +532,13 @@
   API endpoint.
 
     ;; fetch possible values of venue price (between 1 and 4 inclusive) where category name is 'BBQ'
-    (chain-filter $venues.price {$categories.name \"BBQ\"})
+    (chain-filter %venues.price {%categories.name \"BBQ\"})
     ;; -> [1 2 3] (there are no BBQ places with price = 4)
 
   `options` are key-value options. Currently only one option is supported, `:limit`:
 
     ;; fetch first 10 values of venues.price
-    (chain-filter $venues.price {} :limit 10)
+    (chain-filter %venues.price {} :limit 10)
 
   For remapped columns, this returns results as a sequence of `[value remapped-value]` pairs."
   [field-id    :- su/IntGreaterThanZero
@@ -616,7 +616,8 @@
   (let [values (cached-field-values field-id nil)
         query  (str/lower-case query)]
     (cond->> (filter (fn [s]
-                       (str/includes? (str/lower-case s) query))
+                       (when s
+                         (str/includes? (str/lower-case s) query)))
                      values)
       limit (take limit))))
 
