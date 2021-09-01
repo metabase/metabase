@@ -7,4 +7,4 @@
   ;; keep this synced with bigquery-cloud-sdk driver dependency version
   com.google.http-client/google-http-client-jackson2 {:mvn/version "1.39.2"}}
 
- :metabase.build-driver/parents #{:google}}
+ :metabase.driver/parents #{:google}}
