@@ -4,6 +4,8 @@ import { AxisBottom, AxisLeft } from "@visx/axis";
 import { GridRows } from "@visx/grid";
 import { scaleBand, scaleLinear } from "@visx/scale";
 import { Bar } from "@visx/shape";
+import { formatDate } from "../../lib/formatDate";
+import { formatNumber } from "../../lib/formatNumber";
 
 const propTypes = {
   data: PropTypes.array.isRequired,
@@ -11,6 +13,10 @@ const propTypes = {
     x: PropTypes.func.isRequired,
     y: PropTypes.func.isRequired,
   }).isRequired,
+  settings: PropTypes.shape({
+    x: PropTypes.object,
+    y: PropTypes.object,
+  }),
   labels: PropTypes.shape({
     left: PropTypes.string,
     bottom: PropTypes.string,
@@ -37,7 +43,7 @@ const layout = {
   },
 };
 
-const TimeSeriesBarChart = ({ data, accessors, labels }) => {
+const TimeSeriesBarChart = ({ data, accessors, settings, labels }) => {
   const xMax = layout.width - layout.margin.right;
   const yMax = layout.height - layout.margin.bottom;
   const innerWidth = xMax - layout.margin.left;
@@ -98,6 +104,7 @@ const TimeSeriesBarChart = ({ data, accessors, labels }) => {
         label={leftLabel}
         hideTicks
         hideAxisLine
+        tickFormat={value => formatNumber(value, settings?.y)}
         tickLabelProps={() => getLeftTickLabelProps()}
       />
       <AxisBottom
@@ -107,7 +114,7 @@ const TimeSeriesBarChart = ({ data, accessors, labels }) => {
         numTicks={5}
         stroke={layout.colors.textLight}
         tickStroke={layout.colors.textLight}
-        tickFormat={d => new Date(d).toLocaleDateString()}
+        tickFormat={value => formatDate(value, settings?.x)}
         tickLabelProps={() => getBottomTickLabelProps()}
       />
     </svg>

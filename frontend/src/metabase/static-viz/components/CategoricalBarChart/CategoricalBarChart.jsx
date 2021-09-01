@@ -5,6 +5,7 @@ import { GridRows } from "@visx/grid";
 import { scaleBand, scaleLinear } from "@visx/scale";
 import { Bar } from "@visx/shape";
 import { Text } from "@visx/text";
+import { formatNumber } from "../../lib/formatNumber";
 
 const propTypes = {
   data: PropTypes.array.isRequired,
@@ -12,6 +13,10 @@ const propTypes = {
     x: PropTypes.func.isRequired,
     y: PropTypes.func.isRequired,
   }).isRequired,
+  settings: PropTypes.shape({
+    x: PropTypes.object,
+    y: PropTypes.object,
+  }),
   labels: PropTypes.shape({
     left: PropTypes.string,
     bottom: PropTypes.string,
@@ -38,7 +43,7 @@ const layout = {
   },
 };
 
-const CategoricalBarChart = ({ data, accessors, labels }) => {
+const CategoricalBarChart = ({ data, accessors, settings, labels }) => {
   const xMax = layout.width - layout.margin.right;
   const yMax = layout.height - layout.margin.bottom;
   const innerWidth = xMax - layout.margin.left;
@@ -108,6 +113,7 @@ const CategoricalBarChart = ({ data, accessors, labels }) => {
         label={leftLabel}
         hideTicks
         hideAxisLine
+        tickFormat={value => formatNumber(value, settings?.y)}
         tickLabelProps={() => getLeftTickLabelProps()}
       />
       <AxisBottom
