@@ -494,3 +494,11 @@
       (let [rows [["a" 50] ["b" 50] ["d" 0]]]
         (is (= {"a" "50%" "b" "50%" "Other" "0%"}
                (:percentages (donut-info 5 rows))))))))
+
+(deftest format-percentage-test
+  (let [value 12345.54321]
+    (is (= "1,234,543.21%" (body/format-percentage 12345.4321 ".,")))
+    (is (= "1&234&543^21%" (body/format-percentage 12345.4321 "^&")))
+    (is (= "1,234,543 21%" (body/format-percentage 12345.4321 " ")))
+    (is (= "1,234,543.21%" (body/format-percentage 12345.4321 nil)))
+    (is (= "1,234,543.21%" (body/format-percentage 12345.4321 "")))))

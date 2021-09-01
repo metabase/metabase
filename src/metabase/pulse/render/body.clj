@@ -3,6 +3,7 @@
             [clojure.string :as str]
             [hiccup.core :refer [h]]
             [medley.core :as m]
+            [metabase.public-settings :as public-settings]
             [metabase.pulse.render.color :as color]
             [metabase.pulse.render.common :as common]
             [metabase.pulse.render.datetime :as datetime]
@@ -14,7 +15,7 @@
             [metabase.types :as types]
             [metabase.util.i18n :refer [trs tru]]
             [schema.core :as s])
-  (:import java.text.DecimalFormat))
+  (:import (java.text DecimalFormat DecimalFormatSymbols)))
 
 (def error-rendered-info
   "Default rendered-info map when there is an error displaying a card. Is a delay due to the call to `trs`."
@@ -243,6 +244,21 @@
    "#c589b9" "#efce8c" "#b5f95c" "#e35850" "#554dbf" "#bec589" "#8cefc6" "#5cc2f9" "#55e350" "#bf4d4f"
    "#89c3c5" "#be8cef" "#f95cd0" "#50e3ae" "#bf974d" "#899bc5" "#ef8cde" "#f95c67"])
 
+(defn format-percentage
+  "Format a percentage which includes site settings for locale. The first arg is a numeric value to format. The second
+  is an optional string of decimal and grouping symbols to be used, ie \".,\". There will soon be a values.clj file
+  that will handle this but this is here in the meantime."
+  ([value]
+   (format-percentage value (get-in (public-settings/custom-formatting) [:type/Number :number_separators])))
+  ([value [decimal grouping]]
+   (let [base "#,###.##%"
+         fmt (if (or decimal grouping)
+               (DecimalFormat. base (doto (DecimalFormatSymbols.)
+                                      (cond-> decimal (.setDecimalSeparator decimal))
+                                      (cond-> grouping (.setGroupingSeparator grouping))))
+               (DecimalFormat. base))]
+     (.format fmt value))))
+
 (defn- donut-info
   "Process rows with a minimum slice threshold. Collapses any segments below the threshold given as a percentage (the
   value 25 for 25%) into a single category as \"Other\". "
@@ -252,14 +268,13 @@
         {as-is true clump false} (group-by (comp #(> % threshold) second) rows)
         rows (cond-> as-is
                (seq clump)
-               (conj [(tru "Other") (reduce + 0 (map second clump))]))]
+               (conj [(tru "Other") (reduce (fnil + 0) 0 (map second clump))]))]
     {:rows        rows
      :percentages (into {}
                         (for [[label value] rows]
                           [label (if (zero? total)
                                    (tru "N/A")
-                                   (let [f (DecimalFormat. "###,###.##%")]
-                                     (.format f (double (/ value total)))))]))}))
+                                   (format-percentage (/ value total)))]))}))
 
 (s/defmethod render :categorical/donut :- common/RenderedPulseCard
   [_ render-type _timezone-id :- (s/maybe s/Str) card {:keys [rows] :as data}]
@@ -311,8 +326,7 @@
                                  (isa? (:base_type c) t)))
           (where [f coll] (some #(when (f %) %) coll))
           (percentage [arg] (if (number? arg)
-                              (let [f (DecimalFormat. "###,###.##%")]
-                                (.format f (double arg)))
+                              (format-percentage arg)
                               " - "))
           (format-unit [unit] (str/replace (name unit) "-" " "))]
     (let [[_time-col metric-col] (if (col-of-type :type/Temporal (first cols)) cols (reverse cols))
