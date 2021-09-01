@@ -1,4 +1,4 @@
-export function onClose(id, collections, openCollections) {
+export function updateOpenCollectionList(id, collections, openCollections) {
   collections.forEach(collection => {
     if (collection.id === id) {
       if (openCollections.includes(id)) {
@@ -10,7 +10,11 @@ export function onClose(id, collections, openCollections) {
         );
       }
     } else if (collection.children) {
-      openCollections = onClose(id, collection.children, openCollections);
+      openCollections = updateOpenCollectionList(
+        id,
+        collection.children,
+        openCollections,
+      );
     }
   });
 
