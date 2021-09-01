@@ -10,13 +10,13 @@
 
 (deftest add-period-test
   (is (= "This sentence needs a period."
-         (u/add-period "This sentence needs a period"))
-      (= "This sentence doesn't need a period!"
-         (u/add-period "This sentence doesn't need a period!"))
-      (= "What about this one?"
-         (u/add-period "What about this one?"))
-      (= "   "
-         (u/add-period "   "))))
+         (u/add-period "This sentence needs a period")))
+  (is (= "This sentence doesn't need a period!"
+         (u/add-period "This sentence doesn't need a period!")))
+  (is (= "What about this one?"
+         (u/add-period "What about this one?")))
+  (is (= "   "
+         (u/add-period "   ")))))
 
 (deftest decolorize-test
   (is (= "[31mmessage[0m"
