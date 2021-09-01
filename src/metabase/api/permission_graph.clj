@@ -65,7 +65,7 @@
                                 :conform-keys true))
 
 ;; {:groups {1 {:schemas ::schemas}}}
-(s/def ::schemas (s/or :str->kw   #{"all" "segmented" "none"}
+(s/def ::schemas (s/or :str->kw   #{"all" "segmented" "none" "block"}
                        :nil->none nil?
                        :identity  ::schema-graph))
 

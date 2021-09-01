@@ -8,17 +8,27 @@ const getPulse = () => ({
   created_at: "2021-05-08T02:02:07.441Z",
 });
 
+const getUser = () => ({
+  id: 1,
+  common_name: "John Doe",
+});
+
 describe("NotificationList", () => {
   it("should render items", () => {
     const pulse = getPulse();
+    const user = getUser();
 
-    render(<NotificationList items={[{ item: pulse, type: "pulse" }]} />);
+    render(
+      <NotificationList items={[{ item: pulse, type: "pulse" }]} user={user} />,
+    );
 
     screen.getByText("Pulse");
   });
 
   it("should render empty state when there are no items", () => {
-    render(<NotificationList items={[]} />);
+    const user = getUser();
+
+    render(<NotificationList items={[]} user={user} />);
 
     screen.getByText("you’ll be able to manage those here", { exact: false });
   });

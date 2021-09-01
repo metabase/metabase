@@ -19,13 +19,13 @@ import {
 const propTypes = {
   item: PropTypes.object.isRequired,
   type: PropTypes.oneOf(["pulse", "alert"]).isRequired,
-  user: PropTypes.object,
+  user: PropTypes.object.isRequired,
   onUnsubscribe: PropTypes.func,
   onArchive: PropTypes.func,
 };
 
 const NotificationCard = ({ item, type, user, onUnsubscribe, onArchive }) => {
-  const hasSubscribed = isSubscribed(item, user);
+  const hasArchive = canArchive(item, user);
 
   const onUnsubscribeClick = useCallback(() => {
     onUnsubscribe(item, type);
@@ -45,14 +45,14 @@ const NotificationCard = ({ item, type, user, onUnsubscribe, onArchive }) => {
           {formatDescription(item, user)}
         </NotificationDescription>
       </NotificationContent>
-      {hasSubscribed && (
+      {!hasArchive && (
         <NotificationIcon
           name="close"
           tooltip={t`Unsubscribe`}
           onClick={onUnsubscribeClick}
         />
       )}
-      {!hasSubscribed && (
+      {hasArchive && (
         <NotificationIcon
           name="close"
           tooltip={t`Delete`}
@@ -65,10 +65,16 @@ const NotificationCard = ({ item, type, user, onUnsubscribe, onArchive }) => {
 
 NotificationCard.propTypes = propTypes;
 
-const isSubscribed = (item, user) => {
-  return item.channels.some(channel =>
-    channel.recipients.some(recipient => recipient.id === user.id),
+const canArchive = (item, user) => {
+  const recipients = item.channels.flatMap(channel =>
+    channel.recipients.map(recipient => recipient.id),
   );
+
+  const isCreator = item.creator?.id === user.id;
+  const isSubscribed = recipients.includes(user.id);
+  const isOnlyRecipient = recipients.length === 1;
+
+  return isCreator && (!isSubscribed || isOnlyRecipient);
 };
 
 const formatTitle = (item, type) => {
@@ -156,7 +162,7 @@ const formatCreator = (item, user) => {
   let creatorString = "";
   const options = Settings.formattingOptions();
 
-  if (user?.id === item.creator?.id) {
+  if (user.id === item.creator?.id) {
     creatorString += t`Created by you`;
   } else if (item.creator?.common_name) {
     creatorString += t`Created by ${item.creator.common_name}`;

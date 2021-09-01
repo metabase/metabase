@@ -25,7 +25,7 @@
   (set (keys (:libs metabase-core-basis))))
 
 (defn driver-parents [driver edition]
-  (when-let [parents (not-empty (:metabase.build-driver/parents (c/driver-edn driver edition)))]
+  (when-let [parents (not-empty (:metabase.driver/parents (c/driver-edn driver edition)))]
     (u/announce "Driver has parent drivers %s" (pr-str parents))
     parents))
 

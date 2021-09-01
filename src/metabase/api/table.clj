@@ -6,6 +6,7 @@
             [metabase.api.common :as api]
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
+            [metabase.events :as events]
             [metabase.models.card :refer [Card]]
             [metabase.models.field :refer [Field]]
             [metabase.models.field-values :as fv :refer [FieldValues]]
@@ -41,8 +42,9 @@
 (api/defendpoint GET "/:id"
   "Get `Table` with ID."
   [id]
-  (-> (api/read-check Table id)
-      (hydrate :db :pk_field)))
+  (u/prog1 (-> (api/read-check Table id)
+               (hydrate :db :pk_field))
+           (events/publish-event! :table-read (assoc <> :actor_id api/*current-user-id*))))
 
 (defn- update-table!*
   "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`

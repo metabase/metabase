@@ -80,6 +80,7 @@ export default function TimeseriesLine(
       <AxisBottom
         label={labels.bottom || t`Dimension`}
         hideTicks={false}
+        tickStroke={layout.colors.axis.stroke}
         numTicks={5}
         top={layout.yMax}
         stroke={layout.colors.axis.stroke}

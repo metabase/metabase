@@ -14,7 +14,7 @@ export const NotebookCell = styled(Flex).attrs({
 })`
   border-radius: 8px;
   background-color: ${props => alpha(props.color, 0.1)};
-  padding: 14px;
+  padding: ${props => props.padding || "14px"};
 `;
 
 NotebookCell.displayName = "NotebookCell";
@@ -40,10 +40,12 @@ const NotebookCellItemContainer = styled(Flex).attrs({ align: "center" })`
   }
 `;
 
+const CONTAINER_PADDING = "10px";
+
 const NotebookCellItemContentContainer = styled.div`
   display: flex;
   align-items: center;
-  padding: 10px;
+  padding: ${CONTAINER_PADDING};
   background-color: ${props => (props.inactive ? "transparent" : props.color)};
 
   &:hover {
@@ -76,6 +78,7 @@ const NotebookCellItemContentContainer = styled.div`
 export function NotebookCellItem({
   inactive,
   color,
+  containerStyle,
   right,
   rightContainerStyle,
   children,
@@ -92,6 +95,7 @@ export function NotebookCellItem({
         inactive={inactive}
         color={color}
         roundedCorners={mainContentRoundedCorners}
+        style={containerStyle}
       >
         {children}
       </NotebookCellItemContentContainer>
@@ -111,6 +115,7 @@ export function NotebookCellItem({
 }
 
 NotebookCellItem.displayName = "NotebookCellItem";
+NotebookCell.CONTAINER_PADDING = CONTAINER_PADDING;
 
 export const NotebookCellAdd = styled(NotebookCellItem).attrs({
   inactive: ({ initialAddText }) => initialAddText,
