@@ -33,9 +33,9 @@ const propTypes = {
     isAscending: PropTypes.bool.isRequired,
   }),
   isSelectable: PropTypes.bool,
-  selectHeader: PropTypes.str,
-  onRowSelect: PropTypes.func,
+  selectHeader: PropTypes.string,
   rowChecked: PropTypes.array,
+  onRowSelectClick: PropTypes.func,
 };
 
 export default class AuditTableVisualization extends React.Component {
@@ -46,6 +46,11 @@ export default class AuditTableVisualization extends React.Component {
   // copy Table's settings and columnSettings
   static settings = Table.settings;
   static columnSettings = Table.columnSettings;
+
+  constructor(props) {
+    super(props);
+    this.state = { rerender: {}};
+  }
 
   handleColumnHeaderClick = column => {
     const { isSortable, onSortingChange, sorting } = this.props;
@@ -76,8 +81,8 @@ export default class AuditTableVisualization extends React.Component {
       isSortable,
       isSelectable,
       selectHeader,
-      onRowSelect,
       rowChecked,
+      onRowSelectClick,
     } = this.props;
 
     const columnIndexes = settings["table.columns"]
@@ -92,6 +97,10 @@ export default class AuditTableVisualization extends React.Component {
         />
       );
     }
+    const handleRowSelectClick = (e, rowIndex) => {
+      this.setState({ rerender: {}});
+      onRowSelectClick({...e, originRow: rowIndex});
+    };
 
     return (
       <table className="ContentTable">
@@ -131,7 +140,7 @@ export default class AuditTableVisualization extends React.Component {
             <tr key={rowIndex}>
               {isSelectable && <td><CheckBox
                 checked={rowChecked[rowIndex]}
-                onChange={(change) => onRowSelect({...change, originRow: row})}/></td>}
+                onChange={(e) => handleRowSelectClick({...e, originRow: rowIndex}, rowIndex)}/></td>}
 
               {columnIndexes.map(colIndex => {
                 const value = row[colIndex];

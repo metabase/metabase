@@ -13,8 +13,15 @@ export default function ErrorOverview(props) {
     isAscending: true,
   });
 
+  const [rowChecked, setRowChecked] = useState({})
+  const handleRowSelectClick = e => {
+    const newRowChecked = rowChecked;
+    newRowChecked[e.originRow] = !(rowChecked[e.originRow] || false);
+    setRowChecked(newRowChecked);
+    console.log(rowChecked);
+  };
+
   const handleSortingChange = sorting => setSorting(sorting);
-  const rowChecked = [false, false, false];
   return (
     <AuditParameters
       parameters={[
@@ -33,6 +40,7 @@ export default function ErrorOverview(props) {
           rowChecked={rowChecked}
           sorting={sorting}
           onSortingChange={handleSortingChange}
+          onRowSelectClick={handleRowSelectClick}
           table={Queries.bad_table(
             errorFilter,
             dbFilter,
