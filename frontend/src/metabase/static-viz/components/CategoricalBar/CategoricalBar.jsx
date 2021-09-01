@@ -4,6 +4,7 @@ import { AxisBottom, AxisLeft } from "@visx/axis";
 import { GridRows } from "@visx/grid";
 import { scaleBand, scaleLinear } from "@visx/scale";
 import { Bar } from "@visx/shape";
+import { Text } from "@visx/text";
 
 const propTypes = {
   data: PropTypes.array.isRequired,
@@ -26,9 +27,14 @@ const layout = {
     right: 40,
     bottom: 40,
   },
+  font: {
+    size: 11,
+    family: "Lato, sans-serif",
+  },
   colors: {
-    label: "#949aab",
+    bar: "#509ee3",
     stroke: "#b8bbc3",
+    label: "#949aab",
   },
 };
 
@@ -37,6 +43,9 @@ const CategoricalBar = ({ data, accessors, labels }) => {
   const yMax = layout.height - layout.margin.bottom;
   const innerWidth = xMax - layout.margin.left;
   const innerHeight = yMax - layout.margin.top;
+  const isVertical = data.length > 10;
+  const leftLabel = labels?.left;
+  const bottomLabel = !isVertical ? labels?.bottom : undefined;
 
   const xScale = scaleBand({
     domain: data.map(accessors.x),
@@ -51,6 +60,37 @@ const CategoricalBar = ({ data, accessors, labels }) => {
     nice: true,
   });
 
+  const getBarProps = d => {
+    const width = xScale.bandwidth();
+    const height = innerHeight - yScale(accessors.y(d));
+    const x = xScale(accessors.x(d));
+    const y = yMax - height;
+
+    return { x, y, width, height, fill: layout.colors.bar };
+  };
+
+  const getBottomTickProps = ({ x, y, formattedValue, ...props }) => {
+    const transform = isVertical
+      ? `rotate(45, ${x} ${y}) translate(-${Math.floor(layout.font.size)} 0)`
+      : undefined;
+
+    return { ...props, x, y, transform, children: formattedValue };
+  };
+
+  const getLeftTickLabelProps = () => ({
+    fontSize: layout.font.size,
+    fontFamily: layout.font.family,
+    fill: layout.colors.label,
+    textAnchor: "end",
+  });
+
+  const getBottomTickLabelProps = () => ({
+    fontSize: layout.font.size,
+    fontFamily: layout.font.family,
+    fill: layout.colors.label,
+    textAnchor: isVertical ? "start" : "middle",
+  });
+
   return (
     <svg width={layout.width} height={layout.height}>
       <GridRows
@@ -59,49 +99,26 @@ const CategoricalBar = ({ data, accessors, labels }) => {
         width={innerWidth}
         strokeDasharray="4"
       />
-      {data.map((d, index) => {
-        const barWidth = xScale.bandwidth();
-        const barHeight = innerHeight - yScale(accessors.y(d));
-        const x = xScale(accessors.x(d));
-        const y = yMax - barHeight;
-
-        return (
-          <Bar
-            key={index}
-            width={barWidth}
-            height={barHeight}
-            x={x}
-            y={y}
-            fill="#509ee3"
-          />
-        );
-      })}
+      {data.map((d, index) => (
+        <Bar key={index} {...getBarProps(d)} fill="#509ee3" />
+      ))}
       <AxisLeft
         scale={yScale}
         left={layout.margin.left}
-        label={labels?.left}
+        label={bottomLabel}
         hideTicks
         hideAxisLine
-        tickLabelProps={() => ({
-          fontSize: 11,
-          fontFamily: "Lato, sans-serif",
-          fill: layout.colors.label,
-          textAnchor: "end",
-        })}
+        tickLabelProps={() => getLeftTickLabelProps()}
       />
       <AxisBottom
         scale={xScale}
         top={yMax}
-        label={labels?.bottom}
+        label={leftLabel}
         numTicks={data.length}
         stroke={layout.colors.stroke}
         tickStroke={layout.colors.stroke}
-        tickLabelProps={() => ({
-          fontSize: 11,
-          fontFamily: "Lato, sans-serif",
-          fill: layout.colors.label,
-          textAnchor: "middle",
-        })}
+        tickComponent={props => <Text {...getBottomTickProps(props)} />}
+        tickLabelProps={() => getBottomTickLabelProps()}
       />
     </svg>
   );
