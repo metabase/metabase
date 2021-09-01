@@ -1054,28 +1054,47 @@
                            :body    body-map}))
 
 (deftest alert-deletion-test
-  (doseq [{:keys [message card expected-email f]}
+  (doseq [{:keys [message card deleted? expected-email f]}
           [{:message        "Archiving a Card should trigger Alert deletion"
+            :deleted?       true
             :expected-email "the question was archived by Rasta Toucan"
             :f              (fn [{:keys [card]}]
                               (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:archived true}))}
            {:message        "Validate changing a display type triggers alert deletion"
             :card           {:display :table}
+            :deleted?       true
             :expected-email "the question was edited by Rasta Toucan"
             :f              (fn [{:keys [card]}]
                               (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:display :line}))}
            {:message        "Changing the display type from line to table should force a delete"
             :card           {:display :line}
+            :deleted?       true
             :expected-email "the question was edited by Rasta Toucan"
             :f              (fn [{:keys [card]}]
                               (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:display :table}))}
            {:message        "Removing the goal value will trigger the alert to be deleted"
             :card           {:display                :line
                              :visualization_settings {:graph.goal_value 10}}
+            :deleted?       true
             :expected-email "the question was edited by Rasta Toucan"
             :f              (fn [{:keys [card]}]
                               (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:visualization_settings {:something "else"}}))}
-           {:message        "Adding an additional breakout to an alert with a goal will cause the alert to be removed"
+           {:message        "Adding an additional breakout does not cause the alert to be removed if no goal is set"
+            :card           {:display                :line
+                             :visualization_settings {}
+                             :dataset_query          (assoc-in
+                                                      (mbql-count-query (mt/id) (mt/id :checkins))
+                                                      [:query :breakout]
+                                                      [[:field
+                                                        (mt/id :checkins :date)
+                                                        {:temporal-unit :hour}]])}
+            :deleted?       false
+            :f              (fn [{:keys [card]}]
+                              (mt/user-http-request :crowberto :put 202 (str "card/" (u/the-id card))
+                                                    {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
+                                                                              [:query :breakout] [[:datetime-field (mt/id :checkins :date) "hour"]
+                                                                                                  [:datetime-field (mt/id :checkins :date) "minute"]])}))}
+           {:message        "Adding an additional breakout will cause the alert to be removed if a goal is set"
             :card           {:display                :line
                              :visualization_settings {:graph.goal_value 10}
                              :dataset_query          (assoc-in
@@ -1084,6 +1103,7 @@
                                                       [[:field
                                                         (mt/id :checkins :date)
                                                         {:temporal-unit :hour}]])}
+            :deleted?       true
             :expected-email "the question was edited by Crowberto Corv"
             :f              (fn [{:keys [card]}]
                               (mt/user-http-request :crowberto :put 202 (str "card/" (u/the-id card))
@@ -1107,16 +1127,19 @@
                                                     :pulse_channel_id (u/the-id pc)}]]
         (with-cards-in-writeable-collection card
           (mt/with-fake-inbox
-            (u/with-timeout 5000
-              (mt/with-expected-messages 2
-                (f {:card card})))
-            (is (= (merge (crowberto-alert-not-working {expected-email true})
-                          (rasta-alert-not-working     {expected-email true}))
-                   (mt/regex-email-bodies (re-pattern expected-email)))
-                (format "Email containing %s should have been sent to Crowberto and Rasta" (pr-str expected-email)))
-            (is (= nil
-                   (Pulse (u/the-id pulse)))
-                "Alert should have been deleted")))))))
+            (when deleted?
+              (u/with-timeout 5000
+                (mt/with-expected-messages 2
+                  (f {:card card}))
+               (is (= (merge (crowberto-alert-not-working {expected-email true})
+                             (rasta-alert-not-working     {expected-email true}))
+                      (mt/regex-email-bodies (re-pattern expected-email)))
+                   (format "Email containing %s should have been sent to Crowberto and Rasta" (pr-str expected-email)))))
+            (if deleted?
+              (is (= nil (Pulse (u/the-id pulse)))
+                  "Alert should have been deleted")
+              (is (not= nil (Pulse (u/the-id pulse)))
+                  "Alert should not have been deleted"))))))))
 
 (deftest changing-the-display-type-from-line-to-area-bar-is-fine-and-doesnt-delete-the-alert
   (is (= {:emails-1 {}
