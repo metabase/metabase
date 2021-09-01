@@ -605,7 +605,6 @@
     (format "alert/question/%d" (u/the-id card-or-id))))
 
 (defn- api:alert-question-count [user-kw card-or-id & [archived]]
-  (def my-archived archived)
   (count ((alert-client user-kw) :get 200 (alert-question-url card-or-id archived))))
 
 (deftest get-alert-question-test

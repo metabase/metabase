@@ -249,6 +249,7 @@
 
   ([{:keys [archived? user-id]
      :or   {archived? false}}]
+   (assert boolean? archived?)
    (let [query {:select    [:p.* [:%lower.p.name :lower-name]]
                 :modifiers [:distinct]
                 :from      [[Pulse :p]]
@@ -301,6 +302,7 @@
   "Find all alerts for `card-id` that `user-id` is set to receive"
   [{:keys [archived? card-id user-id]
     :or   {archived? false}}]
+  (assert boolean? archived?)
   (map (comp notification->alert hydrate-notification)
        (query-as Pulse
                  {:select [:p.*]
