@@ -1,3 +1,10 @@
+/**
+ * Filters out ids in array of `openCollections` that are the id, or children descendants in the `collections` array of the id passed.
+ * @param {number} id must be an integer
+ * @param {object[]} collections array of objects
+ * @param {number[]} openCollections array of integers
+ * @returns {Number[]} Returns array of ids that should be open, that is, display their children..
+ */
 export function updateOpenCollectionList(id, collections, openCollections) {
   collections.forEach(collection => {
     if (collection.id === id) {
