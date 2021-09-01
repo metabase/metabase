@@ -4,7 +4,8 @@
             [java-time :as t]
             [metabase.server.request.util :as request.u]
             [metabase.test :as mt]
-            [ring.mock.request :as ring.mock]))
+            [ring.mock.request :as ring.mock]
+            [schema.core :as s]))
 
 (deftest https?-test
   (doseq [[headers expected] {{"x-forwarded-proto" "https"}    true
@@ -75,34 +76,33 @@
                    (request.u/ip-address mock-request)))))))))
 
 (deftest geocode-ip-addresses-test
-  (are [ip-addresses expected] (= expected (request.u/geocode-ip-addresses ip-addresses))
+  (are [ip-addresses expected] (schema= expected (request.u/geocode-ip-addresses ip-addresses))
     ["8.8.8.8"]
-    {"8.8.8.8" {:description "United States", :timezone (t/zone-id "America/Chicago")}}
+    {(s/required-key "8.8.8.8") {:description (s/eq "United States")
+                                 :timezone    (s/eq (t/zone-id "America/Chicago"))}}
 
     ;; this is from the MaxMind sample high-risk IP address list https://www.maxmind.com/en/high-risk-ip-sample-list
     ["185.233.100.23"]
-    {"185.233.100.23" {:description "Talence, Nouvelle-Aquitaine, France", :timezone (t/zone-id "Europe/Paris")}}
+    {(s/required-key "185.233.100.23") {:description #"France"
+                                        :timezone    (s/eq (t/zone-id "Europe/Paris"))}}
 
     ["127.0.0.1"]
-    {"127.0.0.1" {:description "Unknown location", :timezone nil}}
+    {(s/required-key "127.0.0.1") {:description (s/eq "Unknown location")
+                                   :timezone    (s/eq nil)}}
 
     ["0:0:0:0:0:0:0:1"]
-    {"0:0:0:0:0:0:0:1" {:description "Unknown location", :timezone nil}}
+    {(s/required-key "0:0:0:0:0:0:0:1") {:description (s/eq "Unknown location")
+                                         :timezone    (s/eq nil)}}
 
     ;; multiple addresses at once
     ;; store.metabase.com, Google DNS
     ["52.206.149.9" "2001:4860:4860::8844"]
-    {"52.206.149.9"         {:description "Ashburn, Virginia, United States", :timezone (t/zone-id "America/New_York")}
-     "2001:4860:4860::8844" {:description "United States", :timezone (t/zone-id "America/Chicago")}}
+    {(s/required-key "52.206.149.9")         {:description (s/eq "Ashburn, Virginia, United States")
+                                              :timezone    (s/eq (t/zone-id "America/New_York"))}
+     (s/required-key "2001:4860:4860::8844") {:description (s/eq "United States")
+                                              :timezone    (s/eq (t/zone-id "America/Chicago"))}}
 
-    ["wow"]
-    nil
-
-    ["   "]
-    nil
-
-    []
-    nil
-
-    nil
-    nil))
+    ["wow"] (s/eq nil)
+    ["   "] (s/eq nil)
+    []      (s/eq nil)
+    nil     (s/eq nil)))
