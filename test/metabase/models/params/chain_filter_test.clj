@@ -417,33 +417,29 @@
   (testing "Chain filter fns should work for fields that have nil or empty values (#17659)"
     (mt/dataset nil-values-dataset
       (mt/$ids tbl
-        (doseq [[message f] {"no FieldValues"
-                             (fn [thunk]
-                               (thunk))
-
-                             "with FieldValues"
-                             (fn [thunk]
-                               (mt/with-temp FieldValues [_ {:field_id %myfield, :values ["value" nil ""]}]
-                                 (mt/with-temp-vals-in-db Field %myfield {:has_field_values "auto-list"}
-                                   (testing "Sanity check: make sure we will actually use the cached FieldValues"
-                                     (is (field-values/field-should-have-field-values? %myfield))
-                                     (is (#'chain-filter/use-cached-field-values? %myfield {})))
-                                   (thunk))))}]
-          (testing (str "\n" message "\n")
-            (f (fn []
-                 ;; sorting can differ a bit based on whether we use FieldValues or not... not sure why this is the
-                 ;; case, but that's not important for this test anyway. Just sort everything
-                 (testing "chain-filter"
-                   (testing "mytype"
-                     (is (= ["empty" "null" "value"]
-                            (sort (chain-filter/chain-filter %mytype {})))))
-                   (testing "myfield"
-                     (is (= [nil "" "value"]
-                            (sort (chain-filter/chain-filter %myfield {}))))))
-                 (testing "chain-filter-search"
-                   (testing "mytype"
-                     (is (= ["value"]
-                            (chain-filter/chain-filter-search %mytype {} "val"))))
-                   (testing "myfield"
-                     (is (= ["value"]
-                            (chain-filter/chain-filter-search %myfield {} "val")))))))))))))
+        (letfn [(thunk []
+                  ;; sorting can differ a bit based on whether we use FieldValues or not... not sure why this is the
+                  ;; case, but that's not important for this test anyway. Just sort everything
+                  (testing "chain-filter"
+                    (testing "mytype"
+                      (is (= ["empty" "null" "value"]
+                             (sort (chain-filter/chain-filter %mytype {})))))
+                    (testing "myfield"
+                      (is (= [nil "" "value"]
+                             (sort (chain-filter/chain-filter %myfield {}))))))
+                  (testing "chain-filter-search"
+                    (testing "mytype"
+                      (is (= ["value"]
+                             (chain-filter/chain-filter-search %mytype {} "val"))))
+                    (testing "myfield"
+                      (is (= ["value"]
+                             (chain-filter/chain-filter-search %myfield {} "val"))))))]
+          (testing "no FieldValues"
+            (thunk))
+          (testing "with FieldValues"
+            (mt/with-temp FieldValues [_ {:field_id %myfield, :values ["value" nil ""]}]
+              (mt/with-temp-vals-in-db Field %myfield {:has_field_values "auto-list"}
+                (testing "Sanity check: make sure we will actually use the cached FieldValues"
+                  (is (field-values/field-should-have-field-values? %myfield))
+                  (is (#'chain-filter/use-cached-field-values? %myfield {})))
+                (thunk)))))))))
