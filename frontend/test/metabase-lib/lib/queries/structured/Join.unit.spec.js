@@ -661,6 +661,23 @@ describe("Join", () => {
           "source-table": PRODUCTS.id,
         });
       });
+
+      it("does nothing if the joined table is invalid", () => {
+        const join = getJoin({
+          query: getOrdersJoinQuery({
+            condition: ORDERS_PRODUCT_JOIN_CONDITION,
+            sourceTable: "invalid",
+          }),
+        });
+
+        const cleanJoin = join.clean();
+
+        expect(cleanJoin).toEqual({
+          alias: "Products",
+          condition: ORDERS_PRODUCT_JOIN_CONDITION,
+          "source-table": "invalid",
+        });
+      });
     });
   });
 });

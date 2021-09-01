@@ -551,7 +551,8 @@ export default class Join extends MBQLObjectClause {
   }
 
   clean() {
-    if (!this.condition || this.isValid()) {
+    const invalidAndCantFix = !this.condition || !this.joinedTable();
+    if (invalidAndCantFix || this.isValid()) {
       return this;
     }
     let join = this;
