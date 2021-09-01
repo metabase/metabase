@@ -91,6 +91,7 @@ function Collection({
           // when we click on a link, if there are children,
           // expand to show sub collections
           function handleClick() {
+            action(collection.id);
             handleToggleMobileSidebar();
           }
 

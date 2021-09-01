@@ -771,11 +771,17 @@
           (is (= #{"Archived"}
                  (set (map :name (mt/user-http-request :rasta :get 200 "pulse?archived=true"))))))))
 
-    (testing "can fetch pulses by user ID -- should return pulses created by the user,
-           or pulses for which the user is a known recipient"
-      (mt/with-temp* [Pulse                 [creator-pulse   {:name "LuckyCreator" :creator_id (mt/user->id :lucky)}]
-                      Pulse                 [recipient-pulse {:name "LuckyRecipient"}]
-                      Pulse                 [other-pulse     {:name "Other"}]
+    (testing "can fetch dashboard subscriptions by user ID -- should return subscriptions created by the user,
+           or subscriptions for which the user is a known recipient. Should exclude pulses."
+      (mt/with-temp* [Dashboard             [{dashboard-id :id}]
+                      Pulse                 [creator-pulse   {:name "LuckyCreator",
+                                                              :creator_id (mt/user->id :lucky)
+                                                              :dashboard_id dashboard-id}]
+                      Pulse                 [recipient-pulse {:name "LuckyRecipient",
+                                                              :dashboard_id dashboard-id}]
+                      Pulse                 [other-pulse     {:name "Other",
+                                                              :dashboard_id dashboard-id}]
+                      Pulse                 [excluded-pulse  {:name "Excluded"}]
                       PulseChannel          [pulse-channel   {:pulse_id (u/the-id recipient-pulse)}]
                       PulseChannelRecipient [_               {:pulse_channel_id (u/the-id pulse-channel),
                                                               :user_id (mt/user->id :lucky)}]]
