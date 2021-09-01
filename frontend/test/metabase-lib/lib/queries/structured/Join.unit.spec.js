@@ -511,4 +511,156 @@ describe("Join", () => {
       });
     });
   });
+
+  describe("clean", () => {
+    describe("for single dimensions pair join", () => {
+      it("does nothing if valid", () => {
+        const join = getJoin({
+          query: getOrdersJoinQuery({
+            condition: ORDERS_PRODUCT_JOIN_CONDITION,
+          }),
+        });
+
+        const cleanJoin = join.clean();
+
+        expect(cleanJoin).toEqual({
+          alias: "Products",
+          condition: ORDERS_PRODUCT_JOIN_CONDITION,
+          "source-table": PRODUCTS.id,
+        });
+      });
+
+      it("removes the condition if missing parent dimension", () => {
+        const join = getJoin({
+          query: getOrdersJoinQuery({
+            condition: ["=", null, PRODUCTS.ID.id],
+          }),
+        });
+
+        const cleanJoin = join.clean();
+
+        expect(cleanJoin).toEqual({
+          alias: "Products",
+          condition: null,
+          "source-table": PRODUCTS.id,
+        });
+      });
+
+      it("removes the condition if missing join dimension", () => {
+        const join = getJoin({
+          query: getOrdersJoinQuery({
+            condition: ["=", ORDERS.PRODUCT_ID.id, null],
+          }),
+        });
+
+        const cleanJoin = join.clean();
+
+        expect(cleanJoin).toEqual({
+          alias: "Products",
+          condition: null,
+          "source-table": PRODUCTS.id,
+        });
+      });
+
+      it("removes the condition if both dimensions are missing", () => {
+        const join = getJoin({
+          query: getOrdersJoinQuery({
+            condition: ["=", null, null],
+          }),
+        });
+
+        const cleanJoin = join.clean();
+
+        expect(cleanJoin).toEqual({
+          alias: "Products",
+          condition: null,
+          "source-table": PRODUCTS.id,
+        });
+      });
+    });
+
+    describe("for multi-dimensions join", () => {
+      it("does nothing if valid", () => {
+        const join = getJoin({
+          query: getOrdersJoinQuery({
+            condition: ORDERS_PRODUCT_MULTI_FIELD_JOIN_CONDITION,
+          }),
+        });
+
+        const cleanJoin = join.clean();
+
+        expect(cleanJoin).toEqual({
+          alias: "Products",
+          condition: ORDERS_PRODUCT_MULTI_FIELD_JOIN_CONDITION,
+          "source-table": PRODUCTS.id,
+        });
+      });
+
+      it("removes invalid conditions", () => {
+        const join = getJoin({
+          query: getOrdersJoinQuery({
+            condition: [
+              ...ORDERS_PRODUCT_MULTI_FIELD_JOIN_CONDITION,
+              ["=", null, PRODUCTS.CATEGORY.id],
+              ["=", ORDERS.TAX.id, null],
+              ["=", null, PRODUCTS.PRICE.id],
+              ["=", null, null],
+              ["=", ORDERS.TOTAL.id, null],
+            ],
+          }),
+        });
+
+        const cleanJoin = join.clean();
+
+        expect(cleanJoin).toEqual({
+          alias: "Products",
+          condition: ORDERS_PRODUCT_MULTI_FIELD_JOIN_CONDITION,
+          "source-table": PRODUCTS.id,
+        });
+      });
+
+      it("turns into single dimensions pair join if only one condition is valid", () => {
+        const join = getJoin({
+          query: getOrdersJoinQuery({
+            condition: [
+              "and",
+              ORDERS_PRODUCT_JOIN_CONDITION,
+              ["=", null, null],
+            ],
+          }),
+        });
+
+        const cleanJoin = join.clean();
+
+        expect(cleanJoin).toEqual({
+          alias: "Products",
+          condition: ORDERS_PRODUCT_JOIN_CONDITION,
+          "source-table": PRODUCTS.id,
+        });
+      });
+
+      it("removes the condition completely if all of them are invalid", () => {
+        const join = getJoin({
+          query: getOrdersJoinQuery({
+            condition: [
+              "and",
+              ["=", null, PRODUCTS.CATEGORY.id],
+              ["=", ORDERS.TAX.id, null],
+              ["=", null, PRODUCTS.PRICE.id],
+              ["=", null, null],
+              ["=", ORDERS.TOTAL.id, null],
+            ],
+          }),
+        });
+
+        const cleanJoin = join.clean();
+
+        expect(cleanJoin).toEqual({
+          alias: "Products",
+          condition: null,
+          "source-table": PRODUCTS.id,
+        });
+      });
+    });
+  });
 });

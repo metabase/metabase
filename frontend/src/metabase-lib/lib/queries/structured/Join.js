@@ -283,7 +283,7 @@ export default class Join extends MBQLObjectClause {
       return this;
     }
     if (this.isSingleConditionJoin()) {
-      return this.setCondition(undefined);
+      return this.setCondition(null);
     }
     const filteredCondition = this.condition.filter((_, i) => {
       // Adding 1 because the first element of a condition is an operator ("and")
@@ -548,5 +548,28 @@ export default class Join extends MBQLObjectClause {
       joinDimensions.every(Boolean) &&
       parentDimensions.length === joinDimensions.length
     );
+  }
+
+  clean() {
+    if (!this.condition || this.isValid()) {
+      return this;
+    }
+    let join = this;
+
+    let invalidDimensionIndex = this.parentDimensions().findIndex(
+      dimension => dimension == null,
+    );
+    if (invalidDimensionIndex >= 0) {
+      join = this.removeCondition(invalidDimensionIndex);
+    }
+
+    invalidDimensionIndex = this.joinDimensions().findIndex(
+      dimension => dimension == null,
+    );
+    if (invalidDimensionIndex >= 0) {
+      join = this.removeCondition(invalidDimensionIndex);
+    }
+
+    return join.clean();
   }
 }
