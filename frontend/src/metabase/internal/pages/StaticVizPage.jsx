@@ -41,7 +41,27 @@ export default function StaticVizPage() {
               data: [
                 ["2020-01-10", 10],
                 ["2020-06-10", 60],
-                ["2020-12-10", 120],
+                ["2020-12-10", 80],
+              ],
+              accessors: {
+                x: row => new Date(row[0]).valueOf(),
+                y: row => row[1],
+              },
+              labels: {
+                left: "Count",
+              },
+            }}
+          />
+        </Box>
+        <Box py={3}>
+          <Subhead>Area chart with timeseries data</Subhead>
+          <StaticChart
+            type="timeseries/area"
+            options={{
+              data: [
+                ["2020-01-10", 10],
+                ["2020-06-10", 60],
+                ["2020-12-10", 80],
               ],
               accessors: {
                 x: row => new Date(row[0]).valueOf(),

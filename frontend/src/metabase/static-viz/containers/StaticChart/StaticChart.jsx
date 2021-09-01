@@ -2,6 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import CategoricalBarChart from "../../components/CategoricalBarChart";
 import CategoricalDonutChart from "../../components/CategoricalDonutChart";
+import TimeSeriesAreaChart from "../../components/TimeSeriesAreaChart";
 import TimeSeriesBarChart from "../../components/TimeSeriesBarChart";
 import TimeSeriesLineChart from "../../components/TimeSeriesLineChart";
 
@@ -9,6 +10,7 @@ const propTypes = {
   type: PropTypes.oneOf([
     "categorical/bar",
     "categorical/donut",
+    "timeseries/area",
     "timeseries/bar",
     "timeseries/line",
   ]).isRequired,
@@ -21,6 +23,8 @@ const StaticChart = ({ type, options }) => {
       return <CategoricalBarChart {...options} />;
     case "categorical/donut":
       return <CategoricalDonutChart {...options} />;
+    case "timeseries/area":
+      return <TimeSeriesAreaChart {...options} />;
     case "timeseries/bar":
       return <TimeSeriesBarChart {...options} />;
     case "timeseries/line":
