@@ -8509,6 +8509,12 @@ databaseChangeLog:
                   remarks: "Granular cache TTL for specific database."
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: 314
+      author: howonlee
+      comment: Added 0.41.0 Fine grained caching controls, pt 2
+      changes:
         - addColumn:
             tableName: report_dashboard
             columns:
