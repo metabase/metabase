@@ -17,6 +17,7 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [medley.core :as m]
+            [metabase.api.common :as api]
             [metabase.events :as events]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection]
@@ -32,8 +33,7 @@
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]
-            [toucan.models :as models]
-            [metabase.api.common :as api]))
+            [toucan.models :as models]))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
