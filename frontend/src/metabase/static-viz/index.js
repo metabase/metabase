@@ -1,10 +1,9 @@
+import React from "react";
 import ReactDOMServer from "react-dom/server";
 
+import CategoricalBar from "./components/CategoricalBar";
 import { TimeseriesBar, TimeseriesLine } from "metabase/static-viz/timeseries/";
-import {
-  CategoricalBar,
-  CategoricalDonut,
-} from "metabase/static-viz/categorical/";
+import { CategoricalDonut } from "metabase/static-viz/categorical/";
 
 const DEFAULTS = {
   width: 540,
@@ -44,7 +43,7 @@ export function RenderChart(type, logic, layout = DEFAULTS) {
       chart = TimeseriesLine(logic, { ...layout, xMax, yMax });
       break;
     case CATEGORICAL_BAR:
-      chart = CategoricalBar(logic, { ...layout, xMax, yMax });
+      chart = <CategoricalBar {...logic} />;
       break;
     case CATEGORICAL_DONUT:
       chart = CategoricalDonut(logic, { ...layout, height: 540, xMax, yMax });
