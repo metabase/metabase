@@ -25,20 +25,23 @@ TextInput.propTypes = {
   colorScheme: PropTypes.oneOf(["default", "admin"]),
 };
 
-function TextInput({
-  value = "",
-  className,
-  placeholder = t`Find...`,
-  onChange,
-  hasClearButton = false,
-  icon,
-  type = "text",
-  colorScheme = "default",
-  autoFocus = false,
-  padding = "md",
-  borderRadius = "md",
-  ...rest
-}) {
+function TextInput(
+  {
+    value = "",
+    className,
+    placeholder = t`Find...`,
+    onChange,
+    hasClearButton = false,
+    icon,
+    type = "text",
+    colorScheme = "default",
+    autoFocus = false,
+    padding = "md",
+    borderRadius = "md",
+    ...rest
+  },
+  ref,
+) {
   const handleClearClick = () => {
     onChange("");
   };
@@ -49,6 +52,7 @@ function TextInput({
     <TextInputRoot className={className}>
       {icon && <IconWrapper>{icon}</IconWrapper>}
       <Input
+        innerRef={ref}
         colorScheme={colorScheme}
         autoFocus={autoFocus}
         hasClearButton={hasClearButton}
@@ -71,6 +75,4 @@ function TextInput({
   );
 }
 
-export default forwardRef(function TextInputWithForwardedRef(props, ref) {
-  return <TextInput forwardedRef={ref} {...props} />;
-});
+export default forwardRef(TextInput);
