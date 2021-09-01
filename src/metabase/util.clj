@@ -34,9 +34,12 @@
 (defn add-period
   "Fixes strings that don't terminate in a period."
   [s]
-  (if (str/blank? s)
+  (if (or (str/blank? s)
+          (str/ends-with? s ".")
+          (str/ends-with? s "?")
+          (str/ends-with? s "!"))
     s
-    (if (str/ends-with? s ".") s (str s "."))))
+    (str s ".")))
 
 (defn lower-case-en
   "Locale-agnostic version of `clojure.string/lower-case`.
