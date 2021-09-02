@@ -1,9 +1,15 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, setupMetabaseCloud } from "__support__/e2e/cypress";
 
 describe("scenarios > admin > troubleshooting > tasks", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+  });
+
+  it("should add a support link when running Metabase Cloud", () => {
+    setupMetabaseCloud();
+    cy.visit("/admin/troubleshooting/help");
+    cy.findByText("Contact support");
   });
 
   it("pagination should work (metabase#14636)", () => {
