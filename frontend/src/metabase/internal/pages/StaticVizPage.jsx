@@ -28,6 +28,7 @@ export default function StaticVizPage() {
                 y: row => row[1],
               },
               labels: {
+                left: "Count",
                 bottom: "Created At",
               },
             }}
@@ -49,6 +50,7 @@ export default function StaticVizPage() {
               },
               labels: {
                 left: "Count",
+                bottom: "Created At",
               },
             }}
           />
@@ -69,6 +71,7 @@ export default function StaticVizPage() {
               },
               labels: {
                 left: "Count",
+                bottom: "Created At",
               },
             }}
           />
@@ -84,6 +87,7 @@ export default function StaticVizPage() {
                 y: row => row[1],
               },
               labels: {
+                left: "Count",
                 bottom: "Category",
               },
             }}
