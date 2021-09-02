@@ -150,7 +150,7 @@ export function downgradeNativePermissionsIfNeeded(
     databaseId,
   });
 
-  if (value === "none") {
+  if (value === "none" || value === "block") {
     // if changing schemas to none, downgrade native to none
     return updateNativePermission(
       permissions,
@@ -452,7 +452,7 @@ function diffDatabasePermissions(
       tableId: table.id,
     });
     if (oldFieldsPerm !== newFieldsPerm) {
-      if (newFieldsPerm === "none") {
+      if (newFieldsPerm === "none" || newFieldsPerm === "block") {
         databaseDiff.revokedTables[table.id] = { name: table.display_name };
       } else {
         databaseDiff.grantedTables[table.id] = { name: table.display_name };
