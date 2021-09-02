@@ -140,7 +140,7 @@ export default class SnippetSidebar extends React.Component {
               style={{ width: "25%", marginTop: 120 }}
             >
               <path
-                style={{ textLight: color("bg-medium"), strokeWidth: 1 }}
+                style={{ stroke: color("bg-medium"), strokeWidth: 1 }}
                 d="M0,1H8M0,3H10M0,5H7M0,7H10M0,9H3"
               />
             </svg>

@@ -38,22 +38,22 @@ function createClauseToken(name, options = {}) {
 export const Identifier = createToken({
   name: "Identifier",
   pattern: /(\w|\.)+/,
-  textMedium: "identfier",
+  label: "identfier",
 });
 export const IdentifierString = createToken({
   name: "IdentifierString",
   pattern: Lexer.NA,
-  textMedium: "identfier",
+  label: "identfier",
 });
 export const StringLiteral = createToken({
   name: "StringLiteral",
   pattern: Lexer.NA,
-  textMedium: "string",
+  label: "string",
 });
 export const NumberLiteral = createToken({
   name: "NumberLiteral",
   pattern: /-?(0|[1-9]\d*)(\.\d+)?([eE][+-]?\d+)?/,
-  textMedium: "number",
+  label: "number",
 });
 
 // OPERATORS
@@ -102,7 +102,7 @@ for (const clause of Array.from(FILTER_OPERATORS)) {
 export const BooleanOperatorUnary = createToken({
   name: "BooleanOperatorUnary",
   pattern: Lexer.NA,
-  textMedium: "boolean operator",
+  label: "boolean operator",
 });
 
 for (const clause of Array.from(BOOLEAN_UNARY_OPERATORS)) {
@@ -112,13 +112,13 @@ for (const clause of Array.from(BOOLEAN_UNARY_OPERATORS)) {
 export const LogicalAndOperator = createToken({
   name: "LogicalAndOperator",
   pattern: Lexer.NA,
-  textMedium: "boolean operator",
+  label: "boolean operator",
 });
 
 export const LogicalOrOperator = createToken({
   name: "LogicalOrOperator",
   pattern: Lexer.NA,
-  textMedium: "boolean operator",
+  label: "boolean operator",
 });
 
 for (const clause of Array.from(LOGICAL_AND_OPERATOR)) {
@@ -134,7 +134,7 @@ for (const clause of Array.from(LOGICAL_OR_OPERATOR)) {
 export const FunctionName = createToken({
   name: "FunctionName",
   pattern: Lexer.NA,
-  textMedium: "function name",
+  label: "function name",
 });
 
 // AGGREGATION
@@ -169,19 +169,19 @@ export const Case = createClauseToken("case");
 export const Comma = createToken({
   name: "Comma",
   pattern: ",",
-  textMedium: "comma",
+  label: "comma",
 });
 
 export const LParen = createToken({
   name: "LParen",
   pattern: "(",
-  textMedium: "opening parenthesis",
+  label: "opening parenthesis",
 });
 
 export const RParen = createToken({
   name: "RParen",
   pattern: ")",
-  textMedium: "closing parenthesis",
+  label: "closing parenthesis",
 });
 
 // QUOTED STRINGS
