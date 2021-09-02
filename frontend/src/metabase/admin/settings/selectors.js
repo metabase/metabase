@@ -16,7 +16,7 @@ import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
 import EmbeddingLevel from "./components/widgets/EmbeddingLevel";
 import FormattingWidget from "./components/widgets/FormattingWidget";
 
-import { SettingsCloudStoreLink } from "./components/SettingsCloudStoreLink";
+import { SettingsCloudStoreLink } from "../../plugins/components/SettingsCloudStoreLink";
 import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
 import SettingsEmailForm from "./components/SettingsEmailForm";
 import SettingsSetupList from "./components/SettingsSetupList";
@@ -67,12 +67,14 @@ const SECTIONS = updateSectionsWithPlugins({
         type: "string",
         widget: SiteUrlWidget,
         warningMessage: t`Only change this if you know what you're doing!`,
+        getHidden: () => MetabaseSettings.isHosted(),
       },
       {
         key: "redirect-all-requests-to-https",
         display_name: t`Redirect to HTTPS`,
         type: "boolean",
-        getHidden: ({ "site-url": url }) => !/^https:\/\//.test(url),
+        getHidden: ({ "site-url": url }) =>
+          MetabaseSettings.isHosted() || !/^https:\/\//.test(url),
         widget: HttpsOnlyWidget,
       },
       {
