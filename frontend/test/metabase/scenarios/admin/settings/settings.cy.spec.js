@@ -372,6 +372,8 @@ describe("scenarios > admin > settings", () => {
     it("should hide Enterprise settings when running Metabase Cloud", () => {
       setupMetabaseCloud();
       cy.visit("/admin/settings/general");
+
+      cy.findByText("Site Name");
       cy.findByText("Enterprise").should("not.exist");
     });
   });
