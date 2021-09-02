@@ -67,5 +67,5 @@ const findDatePart = (parts, type) => {
 };
 
 const findQuarter = month => {
-  return ((month - 1) % 4) + 1;
+  return Math.floor((month - 1) / 3) + 1;
 };
