@@ -41,6 +41,9 @@ const layout = {
     textLight: "#b8bbc3",
     textMedium: "#949aab",
   },
+  numTicks: 5,
+  barPadding: 0.2,
+  strokeDasharray: "4",
 };
 
 const TimeSeriesBarChart = ({ data, accessors, settings, labels }) => {
@@ -55,7 +58,7 @@ const TimeSeriesBarChart = ({ data, accessors, settings, labels }) => {
     domain: data.map(accessors.x),
     range: [layout.margin.left, xMax],
     round: true,
-    padding: 0.2,
+    padding: layout.barPadding,
   });
 
   const yScale = scaleLinear({
@@ -93,10 +96,10 @@ const TimeSeriesBarChart = ({ data, accessors, settings, labels }) => {
         scale={yScale}
         left={layout.margin.left}
         width={innerWidth}
-        strokeDasharray="4"
+        strokeDasharray={layout.strokeDasharray}
       />
       {data.map((d, index) => (
-        <Bar key={index} {...getBarProps(d)} fill="#509ee3" />
+        <Bar key={index} {...getBarProps(d)} />
       ))}
       <AxisLeft
         scale={yScale}
@@ -111,7 +114,7 @@ const TimeSeriesBarChart = ({ data, accessors, settings, labels }) => {
         scale={xScale}
         top={yMax}
         label={bottomLabel}
-        numTicks={5}
+        numTicks={layout.numTicks}
         stroke={layout.colors.textLight}
         tickStroke={layout.colors.textLight}
         tickFormat={value => formatDate(value, settings?.x)}

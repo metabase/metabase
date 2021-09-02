@@ -41,6 +41,8 @@ const layout = {
     textLight: "#b8bbc3",
     textMedium: "#949aab",
   },
+  barPadding: 0.2,
+  strokeDasharray: "4",
 };
 
 const CategoricalBarChart = ({ data, accessors, settings, labels }) => {
@@ -56,7 +58,7 @@ const CategoricalBarChart = ({ data, accessors, settings, labels }) => {
     domain: data.map(accessors.x),
     range: [layout.margin.left, xMax],
     round: true,
-    padding: 0.2,
+    padding: layout.barPadding,
   });
 
   const yScale = scaleLinear({
@@ -75,8 +77,9 @@ const CategoricalBarChart = ({ data, accessors, settings, labels }) => {
   };
 
   const getBottomTickProps = ({ x, y, formattedValue, ...props }) => {
+    const fontShift = Math.floor(layout.font.size / 2);
     const transform = isVertical
-      ? `rotate(45, ${x} ${y}) translate(-${Math.floor(layout.font.size)} 0)`
+      ? `rotate(45, ${x} ${y}) translate(-${fontShift} 0)`
       : undefined;
 
     return { ...props, x, y, transform, children: formattedValue };
@@ -102,10 +105,10 @@ const CategoricalBarChart = ({ data, accessors, settings, labels }) => {
         scale={yScale}
         left={layout.margin.left}
         width={innerWidth}
-        strokeDasharray="4"
+        strokeDasharray={layout.strokeDasharray}
       />
       {data.map((d, index) => (
-        <Bar key={index} {...getBarProps(d)} fill="#509ee3" />
+        <Bar key={index} {...getBarProps(d)} />
       ))}
       <AxisLeft
         scale={yScale}

@@ -41,6 +41,9 @@ const layout = {
     textLight: "#b8bbc3",
     textMedium: "#949aab",
   },
+  numTicks: 5,
+  strokeWidth: 2,
+  strokeDasharray: "4",
 };
 
 const TimeSeriesLineChart = ({ data, accessors, settings, labels }) => {
@@ -84,12 +87,12 @@ const TimeSeriesLineChart = ({ data, accessors, settings, labels }) => {
         scale={yScale}
         left={layout.margin.left}
         width={innerWidth}
-        strokeDasharray="4"
+        strokeDasharray={layout.strokeDasharray}
       />
       <LinePath
         data={data}
         stroke={layout.colors.brand}
-        strokeWidth={2}
+        strokeWidth={layout.strokeWidth}
         x={d => xScale(accessors.x(d))}
         y={d => yScale(accessors.y(d))}
       />
@@ -106,7 +109,7 @@ const TimeSeriesLineChart = ({ data, accessors, settings, labels }) => {
         scale={xScale}
         top={yMax}
         label={bottomLabel}
-        numTicks={5}
+        numTicks={layout.numTicks}
         stroke={layout.colors.textLight}
         tickStroke={layout.colors.textLight}
         tickFormat={value => formatDate(value, settings?.x)}
