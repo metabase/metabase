@@ -81,6 +81,9 @@
                                      [] (range (.getLength children)))))))))]
     (tree (.getDocumentElement document))))
 
+(defn text-node? [x]
+  (and (vector? x) (= (first x) "#text")))
+
 (deftest timelineseries-line-test
   (let [rows     [[#t "2020" 2]
                   [#t "2021" 3]]
@@ -90,12 +93,24 @@
     (testing "It returns bytes"
       (let [svg-bytes (js-svg/timelineseries-line rows labels settings)]
         (is (bytes? svg-bytes))))
-    (let [svg-string (.asString (js/execute-fn-name @context "timeseries_line" rows labels settings))]
-      (validate-svg-string :timelineseries-line svg-string)
-      (document-tag-hiccup (-> svg-string parse-svg)))))
-
-(defn text-node? [x]
-  (and (vector? x) (= (first x) "#text")))
+    (let [svg-string (.asString (js/execute-fn-name @context "timeseries_line" rows labels settings))
+          svg-hiccup (-> svg-string parse-svg document-tag-hiccup)]
+      (testing "it returns a valid svg string with no html"
+        (validate-svg-string :timelineseries-line svg-string))
+      (testing "The svg string has formatted axes"
+        (let [spec (s/cat :y-axis-labels (s/+ (s/tuple
+                                               #{"#text"}
+                                               #(and (string? %)
+                                                     ;; ["#text" "prefix0.00"]
+                                                     (re-matches #"prefix\d+\.\d{2}" %))))
+                          :x-axis-labels (s/+ (s/tuple
+                                               #{"#text"}
+                                               #(and (string? %)
+                                                     ;; ["#text" "1/1/2020"]
+                                                     (re-matches #"\d+/\d+/\d{4}" %)))))
+              text-nodes (->> svg-hiccup (tree-seq vector? rest) (filter text-node?))]
+          (is (= (s/valid? spec text-nodes) true)
+              text-nodes))))))
 
 (deftest timelineseries-bar-test
   (let [rows     [[#t "2020" 2]
@@ -115,12 +130,12 @@
                                                #{"#text"}
                                                #(and (string? %)
                                                      ;; ["#text" "prefix0.0000"]
-                                                     (re-matches #"prefix\d\.\d{4}" %))))
+                                                     (re-matches #"prefix\d+\.\d{4}" %))))
                           :x-axis-labels (s/+ (s/tuple
                                                #{"#text"}
                                                #(and (string? %)
                                                      ;; ["#text" "1/1/2020"]
-                                                     (re-matches #"\d/\d/\d{4}" %)))))
+                                                     (re-matches #"\d+/\d+/\d{4}" %)))))
               text-nodes (->> svg-hiccup (tree-seq vector? rest) (filter text-node?))]
           (is (= (s/valid? spec text-nodes) true)
               text-nodes))))))
