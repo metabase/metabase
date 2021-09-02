@@ -20,6 +20,7 @@ import {
   ToggleContainer,
   ToggleLabel,
   WarningIcon,
+  DisabledPermissionOption,
 } from "./PermissionsSelect.styled";
 
 const propTypes = {
@@ -30,6 +31,7 @@ const propTypes = {
   onChange: PropTypes.func.isRequired,
   onAction: PropTypes.func,
   isDisabled: PropTypes.bool,
+  isHighlighted: PropTypes.bool,
   disabledTooltip: PropTypes.string,
   warning: PropTypes.string,
 };
@@ -44,26 +46,38 @@ export const PermissionsSelect = memo(function PermissionsSelect({
   isDisabled,
   disabledTooltip,
   warning,
+  isHighlighted,
 }) {
   const [toggleState, setToggleState] = useState(false);
-  const selected = options.find(option => option.value === value);
-  const selectableOptions = options.filter(option => option !== selected);
+  const selectedOption = options.find(option => option.value === value);
+  const selectableOptions = options.filter(option => option !== selectedOption);
 
   const shouldShowDisabledTooltip = isDisabled;
-  const selectedValue = (
+  const selectedOptionValue = (
     <Tooltip tooltip={disabledTooltip} isEnabled={shouldShowDisabledTooltip}>
       <PermissionsSelectRoot
         isDisabled={isDisabled}
         aria-haspopup="listbox"
         data-testid="permissions-select"
       >
-        <PermissionsSelectOption {...selected} />
+        {isDisabled ? (
+          <DisabledPermissionOption
+            {...selectedOption}
+            isHighlighted={isHighlighted}
+            iconColor="text-light"
+          />
+        ) : (
+          <PermissionsSelectOption {...selectedOption} />
+        )}
+
         {warning && (
           <Tooltip tooltip={warning}>
             <WarningIcon />
           </Tooltip>
         )}
+
         <Icon
+          style={{ visibility: isDisabled ? "hidden" : "visible" }}
           name="chevrondown"
           size={16}
           color={lighten("text-light", 0.15)}
@@ -72,13 +86,13 @@ export const PermissionsSelect = memo(function PermissionsSelect({
     </Tooltip>
   );
 
-  const actionsForCurrentValue = actions?.[selected.value] || [];
+  const actionsForCurrentValue = actions?.[selectedOption?.value] || [];
   const hasActions = actionsForCurrentValue.length > 0;
 
   return (
     <PopoverWithTrigger
       disabled={isDisabled}
-      triggerElement={selectedValue}
+      triggerElement={selectedOptionValue}
       targetOffsetX={16}
       targetOffsetY={8}
     >

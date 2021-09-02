@@ -7,8 +7,10 @@
             [metabuild-common.core :as u]))
 
 (defn driver-source-paths [driver edition]
-  (for [path (:paths (c/driver-edn driver edition))]
-    (u/filename (c/driver-project-dir driver) path)))
+  (let [dirs (:paths (c/driver-edn driver edition))]
+    (assert (every? u/absolute? dirs)
+            (format "All dirs should be absolute, got: %s" (pr-str dirs)))
+    dirs))
 
 (defn- dependencies-graph
   "Return a `clojure.tools.namespace` dependency graph of namespaces named by `ns-symbol`."
@@ -32,7 +34,7 @@
         ns-symbols (set (map ns.parse/name-from-ns-decl ns-decls))]
     (->> (dependencies-graph ns-decls)
          ns.deps/topo-sort
-         (filter ns-symbols))))
+         (filterv ns-symbols))))
 
 (defn compile-clojure-source-files! [driver edition]
   (u/step "Compile clojure source files"

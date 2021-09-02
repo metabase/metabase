@@ -291,20 +291,26 @@ describe("getGroupsDataPermissionEditor", () => {
       {
         icon: "check",
         iconColor: "success",
-        label: "Allowed",
+        label: "Unrestricted",
         value: "all",
       },
       {
         icon: "permissions_limited",
         iconColor: "warning",
-        label: "Limited",
+        label: "Granular",
         value: "controlled",
+      },
+      {
+        icon: "eye",
+        iconColor: "accent5",
+        label: "No self-service",
+        value: "none",
       },
       {
         icon: "close",
         iconColor: "danger",
-        label: "No access",
-        value: "none",
+        label: "Block",
+        value: "block",
       },
     ]);
 
@@ -313,13 +319,13 @@ describe("getGroupsDataPermissionEditor", () => {
       {
         icon: "check",
         iconColor: "success",
-        label: "Allowed",
+        label: "Yes",
         value: "write",
       },
       {
         icon: "close",
         iconColor: "danger",
-        label: "No access",
+        label: "No",
         value: "none",
       },
     ]);

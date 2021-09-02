@@ -5,6 +5,7 @@ import Icon from "metabase/components/Icon";
 export const SidebarRoot = styled.aside`
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
   overflow: hidden;
   width: 300px;
   border-right: 1px solid ${color("border")};

@@ -6,7 +6,7 @@ import {
 
 import * as SQLFilter from "../helpers/e2e-sql-filter-helpers";
 
-describe.skip("issue 17490", () => {
+describe("issue 17490", () => {
   beforeEach(() => {
     mockSessionProperty("field-filter-operators-enabled?", true);
 

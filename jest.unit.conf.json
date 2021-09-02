@@ -38,5 +38,9 @@
     "/frontend/test/",
     ".styled.jsx"
   ],
-  "testEnvironment": "jsdom"
+  "testEnvironment": "jsdom",
+  "watchPlugins": [
+    "jest-watch-typeahead/filename",
+    "jest-watch-typeahead/testname"
+  ]
 }
