@@ -484,7 +484,6 @@
 (def ^:private admin-unsubscribed-template (template-path "alert_admin_unsubscribed_you"))
 (def ^:private added-template              (template-path "alert_you_were_added"))
 (def ^:private stopped-template            (template-path "alert_stopped_working"))
-(def ^:private deleted-template            (template-path "alert_was_deleted"))
 
 (defn send-new-alert-email!
   "Send out the initial 'new alert' email to the `creator` of the alert"
@@ -524,10 +523,3 @@
   [alert user {:keys [first_name last_name] :as archiver}]
   (let [edited-text (format "the question was edited by %s %s" first_name last_name)]
     (send-email! user not-working-subject stopped-template (assoc (default-alert-context alert) :deletionCause edited-text))))
-
-(defn send-admin-deleted-your-alert!
-  "Email to notify users when an admin has deleted their alert"
-  [alert user {:keys [first_name last_name] :as deletor}]
-  (let [subject (format "%s %s deleted an alert you created" first_name last_name)
-        admin-name (format "%s %s" first_name last_name)]
-    (send-email! user subject deleted-template (assoc (default-alert-context alert) :adminName admin-name))))
