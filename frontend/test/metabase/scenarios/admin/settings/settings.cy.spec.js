@@ -3,6 +3,7 @@ import {
   openOrdersTable,
   version,
   popover,
+  describeWithToken,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
@@ -365,6 +366,14 @@ describe("scenarios > admin > settings", () => {
 
     cy.findByText("Email").should("not.exist");
     cy.findByText("Updates").should("not.exist");
+  });
+
+  describeWithToken("EE", () => {
+    it("should hide Enterprise settings when running Metabase Cloud", () => {
+      setupMetabaseCloud();
+      cy.visit("/admin/settings/general");
+      cy.findByText("Enterprise").should("not.exist");
+    });
   });
 
   describe(" > slack settings", () => {
