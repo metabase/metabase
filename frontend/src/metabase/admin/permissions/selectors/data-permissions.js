@@ -18,12 +18,14 @@ import {
   getSchemasPermission,
   getTablesPermission,
   diffPermissions,
+  isRestrictivePermission,
 } from "metabase/lib/permissions";
 import {
   DATA_ACCESS_IS_REQUIRED,
   UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
 } from "../constants/messages";
 import {
+  PLUGIN_ADMIN_PERMISSIONS_DATABASE_RESTRICTIVE_OPTIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION,
@@ -99,12 +101,14 @@ export const getDatabasesSidebar = createSelector(
     const { databaseId, schemaName, tableId } = params;
 
     if (databaseId == null) {
-      const entities = Object.values(metadata.databases).map(database => ({
-        id: database.id,
-        name: database.name,
-        entityId: getDatabaseEntityId(database),
-        icon: "database",
-      }));
+      const entities = Object.values(metadata.databases)
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map(database => ({
+          id: database.id,
+          name: database.name,
+          entityId: getDatabaseEntityId(database),
+          icon: "database",
+        }));
 
       return {
         entityGroups: [entities],
@@ -123,20 +127,26 @@ export const getDatabasesSidebar = createSelector(
       selectedId = getSchemaId(schemaName);
     }
 
-    let entities = database.getSchemas().map(schema => {
-      return {
-        id: getSchemaId(schema.name),
-        name: schema.name,
-        entityId: getSchemaEntityId(schema),
-        icon: "folder",
-        children: schema.getTables().map(table => ({
-          id: getTableId(table.id),
-          entityId: getTableEntityId(table),
-          name: table.displayName(),
-          icon: "table",
-        })),
-      };
-    });
+    let entities = database
+      .getSchemas()
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map(schema => {
+        return {
+          id: getSchemaId(schema.name),
+          name: schema.name,
+          entityId: getSchemaEntityId(schema),
+          icon: "folder",
+          children: schema
+            .getTables()
+            .sort((a, b) => a.displayName().localeCompare(b.displayName()))
+            .map(table => ({
+              id: getTableId(table.id),
+              entityId: getTableEntityId(table),
+              name: table.displayName(),
+              icon: "table",
+            })),
+        };
+      });
 
     const shouldIncludeSchemas = database.schemasCount() > 1;
     if (!shouldIncludeSchemas) {
@@ -203,14 +213,10 @@ const NATIVE_QUERIES_OPTIONS = [
   DATA_PERMISSION_OPTIONS.none,
 ];
 
-const getTableAndFieldAccessOptions = value =>
-  value === DATA_PERMISSION_OPTIONS.block.value
-    ? [DATA_PERMISSION_OPTIONS.block]
-    : [
-        DATA_PERMISSION_OPTIONS.all,
-        ...PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
-        DATA_PERMISSION_OPTIONS.noSelfService,
-      ];
+const shouldIncludeRestrictivePluginOptions = value =>
+  PLUGIN_ADMIN_PERMISSIONS_DATABASE_RESTRICTIVE_OPTIONS.some(
+    option => option.value === value,
+  );
 
 const buildFieldsPermissions = (
   entityId,
@@ -256,12 +262,19 @@ const buildFieldsPermissions = (
   return [
     {
       name: "access",
-      isDisabled: isAdmin || value === DATA_PERMISSION_OPTIONS.block.value,
+      isDisabled: isAdmin,
       disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
       isHighlighted: isAdmin,
       value,
       warning,
-      options: getTableAndFieldAccessOptions(value),
+      options: [
+        DATA_PERMISSION_OPTIONS.all,
+        ...PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
+        DATA_PERMISSION_OPTIONS.noSelfService,
+        ...(shouldIncludeRestrictivePluginOptions(value)
+          ? PLUGIN_ADMIN_PERMISSIONS_DATABASE_RESTRICTIVE_OPTIONS
+          : []),
+      ],
       actions: PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS,
       postActions: PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION,
       confirmations,
@@ -327,7 +340,14 @@ const buildTablesPermissions = (
             `/admin/permissions/data/group/${groupId}/database/${entityId.databaseId}/schema/${entityId.schemaName}`,
           ),
       },
-      options: getTableAndFieldAccessOptions(value),
+      options: [
+        DATA_PERMISSION_OPTIONS.all,
+        DATA_PERMISSION_OPTIONS.controlled,
+        DATA_PERMISSION_OPTIONS.noSelfService,
+        ...(shouldIncludeRestrictivePluginOptions(value)
+          ? PLUGIN_ADMIN_PERMISSIONS_DATABASE_RESTRICTIVE_OPTIONS
+          : []),
+      ],
     },
     {
       name: "native",
@@ -408,9 +428,7 @@ const buildDatabasePermissions = (
   ];
 
   const isNativePermissionDisabled =
-    isAdmin ||
-    accessPermissionValue === DATA_PERMISSION_OPTIONS.none.value ||
-    accessPermissionValue === DATA_PERMISSION_OPTIONS.none.block;
+    isAdmin || isRestrictivePermission(accessPermissionValue);
 
   return [
     {
@@ -425,7 +443,7 @@ const buildDatabasePermissions = (
         DATA_PERMISSION_OPTIONS.all,
         DATA_PERMISSION_OPTIONS.controlled,
         DATA_PERMISSION_OPTIONS.noSelfService,
-        DATA_PERMISSION_OPTIONS.block,
+        ...PLUGIN_ADMIN_PERMISSIONS_DATABASE_RESTRICTIVE_OPTIONS,
       ],
       postActions: {
         controlled: () =>

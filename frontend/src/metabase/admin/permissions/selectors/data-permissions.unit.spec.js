@@ -155,16 +155,6 @@ describe("getDatabasesSidebar", () => {
                 entityId: {
                   databaseId: 2,
                   schemaName: "schema_2",
-                  tableId: 7,
-                },
-                icon: "table",
-                id: "table:7",
-                name: "Tupac Sightings Sightings",
-              },
-              {
-                entityId: {
-                  databaseId: 2,
-                  schemaName: "schema_2",
                   tableId: 8,
                 },
                 icon: "table",
@@ -180,6 +170,16 @@ describe("getDatabasesSidebar", () => {
                 icon: "table",
                 id: "table:9",
                 name: "Tupac Sightings Cities",
+              },
+              {
+                entityId: {
+                  databaseId: 2,
+                  schemaName: "schema_2",
+                  tableId: 7,
+                },
+                icon: "table",
+                id: "table:7",
+                name: "Tupac Sightings Sightings",
               },
             ],
             entityId: {
@@ -226,21 +226,21 @@ describe("getDatabasesSidebar", () => {
             entityId: {
               databaseId: 3,
               schemaName: null,
-              tableId: 12,
-            },
-            icon: "table",
-            id: "table:12",
-            name: "Badminton Women's Singles Results",
-          },
-          {
-            entityId: {
-              databaseId: 3,
-              schemaName: null,
               tableId: 13,
             },
             icon: "table",
             id: "table:13",
             name: "Badminton Mixed Singles Results",
+          },
+          {
+            entityId: {
+              databaseId: 3,
+              schemaName: null,
+              tableId: 12,
+            },
+            icon: "table",
+            id: "table:12",
+            name: "Badminton Women's Singles Results",
           },
         ],
       ]);
@@ -305,12 +305,6 @@ describe("getGroupsDataPermissionEditor", () => {
         iconColor: "accent5",
         label: "No self-service",
         value: "none",
-      },
-      {
-        icon: "close",
-        iconColor: "danger",
-        label: "Block",
-        value: "block",
       },
     ]);
 

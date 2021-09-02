@@ -5,6 +5,7 @@ import { connect } from "react-redux";
 
 import Databases from "metabase/entities/databases";
 import Groups from "metabase/entities/groups";
+import { PLUGIN_ADMIN_PERMISSIONS_HELP } from "metabase/plugins";
 
 import { getIsDirty, getDiff } from "../../selectors/data-permissions";
 import {
@@ -13,7 +14,6 @@ import {
   initializeDataPermissions,
 } from "../../permissions";
 import PermissionsPageLayout from "../../components/PermissionsPageLayout/PermissionsPageLayout";
-import { DataPermissionsHelp } from "../../components/DataPermissionsHelp/DataPermissionsHelp";
 
 const mapDispatchToProps = {
   loadPermissions: loadDataPermissions,
@@ -57,7 +57,11 @@ function DataPermissionsPage({
       diff={diff}
       isDirty={isDirty}
       route={route}
-      helpContent={<DataPermissionsHelp />}
+      helpContent={
+        PLUGIN_ADMIN_PERMISSIONS_HELP.Component ? (
+          <PLUGIN_ADMIN_PERMISSIONS_HELP.Component />
+        ) : null
+      }
     >
       {children}
     </PermissionsPageLayout>
