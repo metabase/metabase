@@ -8,7 +8,7 @@ How you upgrade Metabase depends on how you are running it. See below for inform
 
 #### Docker Image
 
-If you are running Metabase via docker, then you simply need to kill the Docker process and start a new container with the latest Metabase image. On startup, Metabase will perform any upgrade tasks it needs to perform, and once it's finished you'll be running the new version.
+If you are running Metabase via docker, then you simply need to stop the Docker container and start a new container with the latest Metabase image. On startup, Metabase will perform any upgrade tasks it needs to perform, and once it's finished you'll be running the new version.
 
 To pull the latest Metabase:
 
