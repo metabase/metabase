@@ -142,14 +142,6 @@ export default class NotebookStep extends React.Component {
     actions.sort((a, b) => (b.priority || 0) - (a.priority || 0));
     const actionButtons = actions.map(action => action.button);
 
-    let onRemove = null;
-    if (step.revert) {
-      const reverted = step.revert(step.query).clean();
-      if (reverted.isValid()) {
-        onRemove = () => reverted.update(updateQuery);
-      }
-    }
-
     return (
       <ExpandingContent isInitiallyOpen={!isLastOpened} isOpen>
         <Box
@@ -158,25 +150,21 @@ export default class NotebookStep extends React.Component {
           className="hover-parent hover--visibility"
           data-testid={getTestId(step)}
         >
-          {(title || onRemove) && (
-            <Flex
-              mb={1}
-              width={CONTENT_WIDTH}
-              className="text-bold"
-              style={{ color }}
-            >
-              {title}
-              {onRemove && (
-                <Icon
-                  name="close"
-                  className="ml-auto cursor-pointer text-light text-medium-hover hover-child"
-                  tooltip={t`Remove`}
-                  onClick={onRemove}
-                  data-testid="remove-step"
-                />
-              )}
-            </Flex>
-          )}
+          <Flex
+            mb={1}
+            width={CONTENT_WIDTH}
+            className="text-bold"
+            style={{ color }}
+          >
+            {title}
+            <Icon
+              name="close"
+              className="ml-auto cursor-pointer text-light text-medium-hover hover-child"
+              tooltip={t`Remove`}
+              onClick={() => step.revert(step.query).update(updateQuery)}
+              data-testid="remove-step"
+            />
+          </Flex>
 
           {NotebookStepComponent && (
             <Flex align="center">
