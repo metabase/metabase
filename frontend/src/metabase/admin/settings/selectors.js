@@ -15,8 +15,6 @@ import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
 import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
 import EmbeddingLevel from "./components/widgets/EmbeddingLevel";
 import FormattingWidget from "./components/widgets/FormattingWidget";
-
-import { SettingsCloudStoreLink } from "../../plugins/components/SettingsCloudStoreLink";
 import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
 import SettingsEmailForm from "./components/SettingsEmailForm";
 import SettingsSetupList from "./components/SettingsSetupList";
@@ -67,14 +65,12 @@ const SECTIONS = updateSectionsWithPlugins({
         type: "string",
         widget: SiteUrlWidget,
         warningMessage: t`Only change this if you know what you're doing!`,
-        getHidden: () => MetabaseSettings.isHosted(),
       },
       {
         key: "redirect-all-requests-to-https",
         display_name: t`Redirect to HTTPS`,
         type: "boolean",
-        getHidden: ({ "site-url": url }) =>
-          MetabaseSettings.isHosted() || !/^https:\/\//.test(url),
+        getHidden: ({ "site-url": url }) => !/^https:\/\//.test(url),
         widget: HttpsOnlyWidget,
       },
       {
@@ -394,22 +390,6 @@ const SECTIONS = updateSectionsWithPlugins({
     ],
   },
 });
-
-if (MetabaseSettings.isHosted()) {
-  const allSections = Object.values(SECTIONS);
-  const lastSection = _.max(allSections, "order");
-  SECTIONS.cloud = {
-    name: t`Cloud`,
-    order: lastSection.order + 1,
-    settings: [
-      {
-        key: "store-link",
-        display_name: t`Cloud Settings`,
-        widget: SettingsCloudStoreLink,
-      },
-    ],
-  };
-}
 
 export const getSettings = createSelector(
   state => state.admin.settings.settings,
