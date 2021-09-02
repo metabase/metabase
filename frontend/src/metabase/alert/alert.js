@@ -134,7 +134,7 @@ export const DELETE_ALERT = "metabase/alerts/DELETE_ALERT";
 export const deleteAlert = alertId => {
   return async (dispatch, getState) => {
     // Archive alert rather than deleting it
-    await dispatch(updateAlertRequest.trigger({ id: alertId, archived: true}));
+    await dispatch(updateAlertRequest.trigger({ id: alertId, archived: true }));
 
     dispatch(
       addUndo({
