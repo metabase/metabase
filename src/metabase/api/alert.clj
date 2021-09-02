@@ -147,12 +147,12 @@
   "Update a `Alert` with ID."
   [id :as {{:keys [alert_condition card channels alert_first_only alert_above_goal card channels archived]
             :as alert-updates} :body}]
-  {alert_condition     (s/maybe pulse/AlertConditions)
-   alert_first_only    (s/maybe s/Bool)
-   alert_above_goal    (s/maybe s/Bool)
-   card                (s/maybe pulse/CardRef)
-   channels            (s/maybe (su/non-empty [su/Map]))
-   archived            (s/maybe s/Bool)}
+  {alert_condition  (s/maybe pulse/AlertConditions)
+   alert_first_only (s/maybe s/Bool)
+   alert_above_goal (s/maybe s/Bool)
+   card             (s/maybe pulse/CardRef)
+   channels         (s/maybe (su/non-empty [su/Map]))
+   archived         (s/maybe s/Bool)}
   ;; fetch the existing Alert in the DB
   (let [alert-before-update (api/check-404 (pulse/retrieve-alert id))]
     (assert (:card alert-before-update)
@@ -165,12 +165,15 @@
       (api/write-check Card (u/the-id card)))
     ;; Make sure that non-admins cannot explicitly archive an alert or change recipients
     (when (not api/*is-superuser?*)
-      (api/check (not archived)
-                 [400 "Non-admin users are not allowed to explicitly archive an alert"])
+      (api/check (= (-> alert-before-update :creator :id) api/*current-user-id*)
+                 [400 "Non-admin users are only allowed to update alerts that they created"])
+      (api/check (not (contains? alert-updates :archived))
+                 [400 "Non-admin users are not allowed to explicitly change the archive status for an alert"])
       (api/check (or (not (contains? alert-updates :channels))
                      (and (= 1 (count channels))
-                          (= (:recipients (email-channel alert-updates))
-                             (:recipients (email-channel alert-before-update)))))
+                          ;; Non-admin alerts can only include the creator as a recipient
+                          (= [api/*current-user-id*]
+                             (map :id (:recipients (email-channel alert-updates))))))
                  [400 "Non-admin users are not allowed to modify the channels for an alert"]))
     ;; now update the Alert
     (let [updated-alert (pulse/update-alert!
