@@ -229,27 +229,22 @@
                                                    :card             {:id 100, :include_csv false, :include_xls false, :dashboard_card_id nil}
                                                    :channels         ["abc"]}))))
 
-(defn- rasta-new-alert-email [body-map]
-  (mt/email-to :rasta {:subject "You set up an alert",
-                       :body (merge {"https://metabase.com/testmb" true,
-                                     "My question" true}
-                                    body-map)}))
+(defn- new-alert-email [user body-map]
+  (mt/email-to user {:subject "You set up an alert",
+                     :body (merge {"https://metabase.com/testmb" true,
+                                   "My question"                 true}
+                                  body-map)}))
 
-(defn- rasta-added-to-alert-email [body-map]
-  (mt/email-to :rasta {:subject "Crowberto Corv added you to an alert",
-                       :body (merge {"https://metabase.com/testmb" true,
-                                     "now getting alerts" true}
-                                    body-map)}))
+(defn- added-to-alert-email [user body-map]
+  (mt/email-to user {:subject "Crowberto Corv added you to an alert",
+                     :body (merge {"https://metabase.com/testmb" true,
+                                   "now getting alerts" true}
+                                  body-map)}))
 
-(defn- rasta-unsubscribe-email [body-map]
-  (mt/email-to :rasta {:subject "You unsubscribed from an alert",
-                       :body (merge {"https://metabase.com/testmb" true}
-                                    body-map)}))
-
-(defn- rasta-deleted-email [body-map]
-  (mt/email-to :rasta {:subject "Crowberto Corv deleted an alert you created",
-                       :body (merge {"Crowberto Corv deleted an alert" true}
-                                    body-map)}))
+(defn- unsubscribe-email [user body-map]
+  (mt/email-to user {:subject "You unsubscribed from an alert",
+                     :body (merge {"https://metabase.com/testmb" true}
+                                  body-map)}))
 
 (defn- default-alert [card]
   {:id                  true
@@ -293,7 +288,7 @@
                 (assoc-in [:card :include_csv] true)
                 (assoc-in [:card :collection_id] true)
                 (update-in [:channels 0] merge {:schedule_hour 12, :schedule_type "daily", :recipients []}))
-            (rasta-new-alert-email {"has any results" true})]
+            (new-alert-email :rasta {"has any results" true})]
            (tu/with-non-admin-groups-no-root-collection-perms
              (tt/with-temp Collection [collection]
                (db/update! Card (u/the-id card) :collection_id (u/the-id collection))
@@ -329,9 +324,10 @@
                                                               "My question"                  true
                                                               "now getting alerts"           false
                                                               "confirmation that your alert" true}})
-                           (rasta-added-to-alert-email {"My question"                  true
-                                                        "now getting alerts"           true
-                                                        "confirmation that your alert" false}))}
+                           (added-to-alert-email :rasta
+                                                 {"My question"                  true
+                                                  "now getting alerts"           true
+                                                  "confirmation that your alert" false}))}
            (with-alert-setup
              (array-map
               :response (et/with-expected-messages 2
@@ -351,7 +347,7 @@
 
 ;; Check creation of a below goal alert
 (deftest below-goal-alert-test
-  (is (= (rasta-new-alert-email {"goes below its goal" true})
+  (is (= (new-alert-email :rasta {"goes below its goal" true})
          (tu/with-non-admin-groups-no-root-collection-perms
            (tt/with-temp* [Collection [collection]
                            Card       [card {:name          "My question"
@@ -372,7 +368,7 @@
 
 ;; Check creation of a above goal alert
 (deftest above-goal-alert-test
-  (is (= (rasta-new-alert-email {"meets its goal" true})
+  (is (= (new-alert-email :rasta {"meets its goal" true})
          (tu/with-non-admin-groups-no-root-collection-perms
            (tt/with-temp* [Collection [collection]
                            Card       [card {:name          "My question"
@@ -726,7 +722,7 @@
   (format "alert/%d/unsubscribe" (u/the-id alert-or-id)))
 
 (defn- api:unsubscribe! [user-kw expected-status-code alert-or-id]
-  (mt/user-http-request user-kw :put expected-status-code (alert-unsubscribe-url alert-or-id)))
+  (mt/user-http-request user-kw :delete expected-status-code (alert-unsubscribe-url alert-or-id)))
 
 (defn- recipient-emails [results]
   (->> results
@@ -738,13 +734,10 @@
        set))
 
 (deftest unsubscribe-tests
-  (is (= "Admin users are not allowed to unsubscribe from alerts"
-         (api:unsubscribe! :crowberto 400 1)))
-
-  (testing "Alert has two recipients, remove one"
+  (testing "Alert has two recipients, and non-admin unsubscribes"
     (is (= {:recipients-1 #{"crowberto@metabase.com" "rasta@metabase.com"}
             :recipients-2 #{"crowberto@metabase.com"}
-            :emails       (rasta-unsubscribe-email {"Foo" true})}
+            :emails       (unsubscribe-email :rasta {"Foo" true})}
            (tt/with-temp* [Card                  [card  (basic-alert-query)]
                            Pulse                 [alert (basic-alert)]
                            PulseCard             [_     (pulse-card alert card)]
@@ -762,10 +755,30 @@
                   :emails       (et/regex-email-bodies #"https://metabase.com/testmb"
                                                        #"Foo"))))))))
 
-  (testing "Alert should be deleted if the creator unsubscribes and there's no one left"
-    (is (= {:count-1 1
-            :count-2 0
-            :emails  (rasta-unsubscribe-email {"Foo" true})}
+  (testing "Alert has two recipients, and admin unsubscribes"
+    (is (= {:recipients-1 #{"crowberto@metabase.com" "rasta@metabase.com"}
+            :recipients-2 #{"rasta@metabase.com"}
+            :emails       (unsubscribe-email :crowberto {"Foo" true})}
+           (tt/with-temp* [Card                  [card  (basic-alert-query)]
+                           Pulse                 [alert (basic-alert)]
+                           PulseCard             [_     (pulse-card alert card)]
+                           PulseChannel          [pc    (pulse-channel alert)]
+                           PulseChannelRecipient [_     (recipient pc :rasta)]
+                           PulseChannelRecipient [_     (recipient pc :crowberto)]]
+             (with-alerts-in-readable-collection [alert]
+               (with-alert-setup
+                 (array-map
+                  :recipients-1 (recipient-emails ((user->client :rasta) :get 200 (alert-question-url card)))
+                  :recipients-2 (do
+                                  (et/with-expected-messages 1
+                                    (api:unsubscribe! :crowberto 204 alert))
+                                  (recipient-emails ((user->client :crowberto) :get 200 (alert-question-url card))))
+                  :emails       (et/regex-email-bodies #"https://metabase.com/testmb"
+                                                       #"Foo"))))))))
+
+  (testing "Alert should be archived if the last recipient unsubscribes"
+    (is (= {:archived? true
+            :emails    (unsubscribe-email :rasta {"Foo" true})}
            (tt/with-temp* [Card                  [card  (basic-alert-query)]
                            Pulse                 [alert (basic-alert)]
                            PulseCard             [_     (pulse-card alert card)]
@@ -773,19 +786,15 @@
                            PulseChannelRecipient [_     (recipient pc :rasta)]]
              (with-alerts-in-readable-collection [alert]
                (with-alert-setup
+                 (et/with-expected-messages 1 (api:unsubscribe! :rasta 204 alert))
                  (array-map
-                  :count-1 (api:alert-question-count :rasta card)
-                  :count-2 (do
-                             (et/with-expected-messages 1
-                               (api:unsubscribe! :rasta 204 alert))
-                             (api:alert-question-count :crowberto card))
-                  :emails  (et/regex-email-bodies #"https://metabase.com/testmb"
-                                                  #"Foo"))))))))
+                  :archived? (db/select-one-field :archived Pulse :id (u/the-id alert))
+                  :emails    (et/regex-email-bodies #"https://metabase.com/testmb"
+                                                    #"Foo"))))))))
 
-  (testing "Alert should not be deleted if there is a slack channel"
-    (is (= {:count-1 1
-            :count-2 1 ; <-- Alert should not be deleted
-            :emails  (rasta-unsubscribe-email {"Foo" true})}
+  (testing "Alert should not be archived if there is a slack channel"
+    (is (= {:archived? false
+            :emails    (unsubscribe-email :rasta {"Foo" true})}
            (tt/with-temp* [Card                  [card  (basic-alert-query)]
                            Pulse                 [alert (basic-alert)]
                            PulseCard             [_     (pulse-card alert card)]
@@ -794,21 +803,17 @@
                            PulseChannelRecipient [_     (recipient pc-1 :rasta)]]
              (with-alerts-in-readable-collection [alert]
                (with-alert-setup
+                 (et/with-expected-messages 1 (api:unsubscribe! :rasta 204 alert))
                  (array-map
-                  :count-1 (api:alert-question-count :rasta card)
-                  :count-2 (do
-                             (et/with-expected-messages 1
-                               (api:unsubscribe! :rasta 204 alert))
-                             (api:alert-question-count :crowberto card))
-                  :emails  (et/regex-email-bodies #"https://metabase.com/testmb"
-                                                  #"Foo"))))))))
+                  :archived? (db/select-one-field :archived Pulse :id (u/the-id alert))
+                  :emails    (et/regex-email-bodies #"https://metabase.com/testmb"
+                                                    #"Foo"))))))))
 
   (testing "If email is disabled, users should be unsubscribed"
-    (is (= {:count-1 1
-            :count-2 1 ; <-- Alert should not be deleted
-            :emails  (et/email-to :rasta {:subject "You’ve been unsubscribed from an alert",
-                                          :body    {"https://metabase.com/testmb"          true,
-                                                    "letting you know that Crowberto Corv" true}})}
+    (is (= {:archived? false
+            :emails    (et/email-to :rasta {:subject "You’ve been unsubscribed from an alert",
+                                            :body    {"https://metabase.com/testmb"          true,
+                                                      "letting you know that Crowberto Corv" true}})}
            (tt/with-temp* [Card                  [card  (basic-alert-query)]
                            Pulse                 [alert (basic-alert)]
                            PulseCard             [_     (pulse-card alert card)]
@@ -817,22 +822,19 @@
                            PulseChannelRecipient [_     (recipient pc-1 :rasta)]]
              (with-alerts-in-readable-collection [alert]
                (with-alert-setup
+                 (et/with-expected-messages 1
+                   ((alert-client :crowberto)
+                    :put 200 (alert-url alert) (assoc-in (default-alert-req card pc-1) [:channels 0 :enabled] false)))
                  (array-map
-                  :count-1 (api:alert-question-count :rasta card)
-                  :count-2 (do
-                             (et/with-expected-messages 1
-                               ((alert-client :crowberto) :put 200 (alert-url alert)
-                                (assoc-in (default-alert-req card pc-1) [:channels 0 :enabled] false)))
-                             (api:alert-question-count :crowberto card))
-                  :emails  (et/regex-email-bodies #"https://metabase.com/testmb"
-                                                  #"letting you know that Crowberto Corv"))))))))
+                  :archived? (db/select-one-field :archived Pulse :id (u/the-id alert))
+                  :emails    (et/regex-email-bodies #"https://metabase.com/testmb"
+                                                    #"letting you know that Crowberto Corv"))))))))
 
   (testing "Re-enabling email should send users a subscribe notification"
-    (is (= {:count-1 1
-            :count-2 1 ; <-- Alert should not be deleted
-            :emails  (et/email-to :rasta {:subject "Crowberto Corv added you to an alert",
-                                          :body    {"https://metabase.com/testmb"    true,
-                                                    "now getting alerts about .*Foo" true}})}
+    (is (= {:archived? false
+            :emails    (et/email-to :rasta {:subject "Crowberto Corv added you to an alert",
+                                            :body    {"https://metabase.com/testmb"    true,
+                                                      "now getting alerts about .*Foo" true}})}
            (tt/with-temp* [Card                  [card  (basic-alert-query)]
                            Pulse                 [alert (basic-alert)]
                            PulseCard             [_     (pulse-card alert card)]
@@ -841,33 +843,10 @@
                            PulseChannelRecipient [_     (recipient pc-1 :rasta)]]
              (with-alerts-in-readable-collection [alert]
                (with-alert-setup
+                 (et/with-expected-messages 1
+                   ((alert-client :crowberto)
+                    :put 200 (alert-url alert) (assoc-in (default-alert-req card pc-1) [:channels 0 :enabled] true)))
                  (array-map
-                  :count-1 (api:alert-question-count :rasta card)
-                  :count-2 (do
-                             (et/with-expected-messages 1
-                               ((alert-client :crowberto) :put 200 (alert-url alert)
-                                (assoc-in (default-alert-req card pc-1) [:channels 0 :enabled] true)))
-                             (api:alert-question-count :crowberto card))
-                  :emails  (et/regex-email-bodies #"https://metabase.com/testmb"
-                                                  #"now getting alerts about .*Foo"))))))))
-
-  (testing "Alert should not be deleted if the unsubscriber isn't the creator"
-    (is (= {:count-1 1
-            :count-2 1 ; <-- Alert should not be deleted
-            :emails  (rasta-unsubscribe-email {"Foo" true})}
-           (tt/with-temp* [Card                  [card  (basic-alert-query)]
-                           Pulse                 [alert (assoc (basic-alert) :creator_id (user->id :crowberto))]
-                           PulseCard             [_     (pulse-card alert card)]
-                           PulseChannel          [pc-1  (assoc (pulse-channel alert) :channel_type :email)]
-                           PulseChannel          [pc-2  (assoc (pulse-channel alert) :channel_type :slack)]
-                           PulseChannelRecipient [_     (recipient pc-1 :rasta)]]
-             (with-alerts-in-readable-collection [alert]
-               (with-alert-setup
-                 (array-map
-                  :count-1 (api:alert-question-count :rasta card)
-                  :count-2 (do
-                             (et/with-expected-messages 1
-                               (api:unsubscribe! :rasta 204 alert))
-                             (api:alert-question-count :crowberto card))
-                  :emails  (et/regex-email-bodies #"https://metabase.com/testmb"
-                                                  #"Foo")))))))))
+                  :archived? (db/select-one-field :archived Pulse :id (u/the-id alert))
+                  :emails    (et/regex-email-bodies #"https://metabase.com/testmb"
+                                                    #"now getting alerts about .*Foo")))))))))
