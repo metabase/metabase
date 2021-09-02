@@ -13,16 +13,16 @@ describe("StaticChart", () => {
             x: row => row[0],
             y: row => row[1],
           },
-          labels: {
-            left: "Count",
-            bottom: "Category",
-          },
           settings: {
             y: {
               number_style: "currency",
               currency: "USD",
               currency_style: "symbol",
             },
+          },
+          labels: {
+            left: "Count",
+            bottom: "Category",
           },
         }}
       />,
@@ -63,14 +63,14 @@ describe("StaticChart", () => {
             x: row => new Date(row[0]).valueOf(),
             y: row => row[1],
           },
-          labels: {
-            left: "Count",
-            bottom: "Time",
-          },
           settings: {
             x: {
               date_style: "dddd",
             },
+          },
+          labels: {
+            left: "Count",
+            bottom: "Time",
           },
         }}
       />,
@@ -90,14 +90,14 @@ describe("StaticChart", () => {
             x: row => new Date(row[0]).valueOf(),
             y: row => row[1],
           },
-          labels: {
-            left: "Count",
-            bottom: "Time",
-          },
           settings: {
             x: {
               date_style: "dddd",
             },
+          },
+          labels: {
+            left: "Count",
+            bottom: "Time",
           },
         }}
       />,
@@ -117,14 +117,14 @@ describe("StaticChart", () => {
             x: row => new Date(row[0]).valueOf(),
             y: row => row[1],
           },
+          settings: {
+            x: {
+              date_style: "MMM",
+            },
+          },
           labels: {
             left: "Count",
             bottom: "Time",
-          },
-          settings: {
-            x: {
-              date_style: "dddd",
-            },
           },
         }}
       />,

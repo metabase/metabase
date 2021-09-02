@@ -27,8 +27,16 @@ export default function StaticVizPage() {
                 x: row => new Date(row[0]).valueOf(),
                 y: row => row[1],
               },
+              settings: {
+                y: {
+                  number_style: "currency",
+                  currency: "USD",
+                  currency_style: "symbol",
+                  decimals: 0,
+                },
+              },
               labels: {
-                left: "Count",
+                left: "Price",
                 bottom: "Created At",
               },
             }}
@@ -68,6 +76,11 @@ export default function StaticVizPage() {
               accessors: {
                 x: row => new Date(row[0]).valueOf(),
                 y: row => row[1],
+              },
+              settings: {
+                x: {
+                  date_style: "MMM",
+                },
               },
               labels: {
                 left: "Count",
