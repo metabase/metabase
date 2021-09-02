@@ -1,16 +1,14 @@
 (ns metabase.api.alert
   "/api/alert endpoints"
   (:require [clojure.data :as data]
-            [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
             [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.email :as email]
             [metabase.email.messages :as messages]
-            [metabase.events :as events]
             [metabase.models.card :refer [Card]]
             [metabase.models.interface :as mi]
-            [metabase.models.pulse :as pulse :refer [Pulse]]
+            [metabase.models.pulse :as pulse]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
@@ -49,10 +47,10 @@
     :present [:alert_condition :alert_first_only :alert_above_goal :archived]))
 
 (defn- email-channel [alert]
-  (m/find-first #(= :email (:channel_type %)) (:channels alert)))
+  (m/find-first #(= :email (keyword (:channel_type %))) (:channels alert)))
 
 (defn- slack-channel [alert]
-  (m/find-first #(= :slack (:channel_type %)) (:channels alert)))
+  (m/find-first #(= :slack (keyword (:channel_type %))) (:channels alert)))
 
 (defn- key-by [key-fn coll]
   (zipmap (map key-fn coll) coll))
@@ -165,6 +163,15 @@
     ;; if trying to change the card, check perms for that as well
     (when card
       (api/write-check Card (u/the-id card)))
+    ;; Make sure that non-admins cannot explicitly archive an alert or change recipients
+    (when (not api/*is-superuser?*)
+      (api/check (not archived)
+                 [400 "Non-admin users are not allowed to explicitly archive an alert"])
+      (api/check (or (not (contains? alert-updates :channels))
+                     (and (= 1 (count channels))
+                          (= (:recipients (email-channel alert-updates))
+                             (:recipients (email-channel alert-before-update)))))
+                 [400 "Non-admin users are not allowed to modify the channels for an alert"]))
     ;; now update the Alert
     (let [updated-alert (pulse/update-alert!
                          (merge
@@ -188,7 +195,7 @@
       ;; Finally, return the updated Alert
       updated-alert)))
 
-(defn- should-unsubscribe-archive?
+(defn- should-archive-after-unsubscribe?
   "An alert should be archived after a user unsubscribes if
      - they are the only recipient
      - there is no slack channel"
@@ -207,7 +214,7 @@
   (let [alert (pulse/retrieve-alert id)]
     (api/read-check alert)
 
-    (if (should-unsubscribe-archive? alert api/*current-user-id*)
+    (if (should-archive-after-unsubscribe? alert api/*current-user-id*)
       (db/transaction
         (pulse/unsubscribe-from-alert! id api/*current-user-id*)
         (pulse/update-alert! {:id id, :archived true})
