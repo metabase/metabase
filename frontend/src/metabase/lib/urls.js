@@ -231,11 +231,15 @@ export function browseDatabase(database) {
 }
 
 export function browseSchema(table) {
-  return `/browse/${table.db.id}/schema/` + encodeURIComponent(table.schema_name);
+  return (
+    `/browse/${table.db.id}/schema/` + encodeURIComponent(table.schema_name)
+  );
 }
 
 export function browseTable(table) {
-  return `/browse/${table.db.id}/schema/` + encodeURIComponent(table.schema_name);
+  return (
+    `/browse/${table.db.id}/schema/` + encodeURIComponent(table.schema_name)
+  );
 }
 
 export function extractEntityId(slug) {
