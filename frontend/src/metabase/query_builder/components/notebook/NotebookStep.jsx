@@ -211,7 +211,11 @@ export default class NotebookStep extends React.Component {
             />
           )}
 
-          {actionButtons.length > 0 && <Box mt={1}>{actionButtons}</Box>}
+          {actionButtons.length > 0 && (
+            <Box mt={1} data-testid="action-buttons">
+              {actionButtons}
+            </Box>
+          )}
         </Box>
       </ExpandingContent>
     );
