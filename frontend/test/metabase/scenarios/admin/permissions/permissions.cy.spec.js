@@ -509,6 +509,21 @@ describe("scenarios > admin > permissions", () => {
 
     cy.findAllByText("Orders").should("not.exist");
   });
+
+  it.skip("'no self-service' data option should have editable 'native query editing' option (metabase#17738)", () => {
+    cy.visit("/admin/permissions/data/database/1");
+
+    cy.findByText("All Users")
+      .closest("tr")
+      .within(() => {
+        cy.findByText("No self-service");
+        cy.icon("chevrondown").should("have.length", 2);
+
+        cy.findByText("No").click();
+      });
+
+    popover().contains("Yes");
+  });
 });
 
 describeWithToken("scenarios > admin > permissions", () => {
