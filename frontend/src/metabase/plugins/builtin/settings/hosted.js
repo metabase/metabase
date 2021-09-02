@@ -12,7 +12,9 @@ if (MetabaseSettings.isHosted()) {
 
   PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
     updateIn(sections, ["general", "settings"], settings =>
-      _.omit(settings, ["site-url", "redirect-all-requests-to-https"]),
+      _.reject(settings, setting =>
+        ["site-url", "redirect-all-requests-to-https"].includes(setting.key),
+      ),
     ),
   );
 

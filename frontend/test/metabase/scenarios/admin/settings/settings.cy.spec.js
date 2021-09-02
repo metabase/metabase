@@ -356,6 +356,17 @@ describe("scenarios > admin > settings", () => {
       .contains(lastItem);
   });
 
+  it("should hide self-hosted settings when running Metabase Cloud", () => {
+    setupMetabaseCloud();
+    cy.visit("/admin/settings/general");
+
+    cy.findByText("Site Name");
+    cy.findByText("Site URL").should("not.exist");
+
+    cy.findByText("Email").should("not.exist");
+    cy.findByText("Updates").should("not.exist");
+  });
+
   describe(" > slack settings", () => {
     it("should present the form and display errors", () => {
       cy.visit("/admin/settings/slack");
@@ -374,4 +385,10 @@ function configureAuth(providerTitle) {
     .closest(".rounded.bordered")
     .contains("Configure")
     .click();
+}
+
+function setupMetabaseCloud() {
+  cy.request("PUT", "/api/setting/site-url", {
+    value: "https://CYPRESSTESTENVIRONMENT.metabaseapp.com",
+  });
 }
