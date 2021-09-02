@@ -43,6 +43,7 @@ const mapStateToProps = (state, props) => ({
 });
 
 import { DefaultSearchColor } from "metabase/nav/constants";
+import StoreLink from "metabase/nav/components/StoreLink";
 
 const mapDispatchToProps = {
   onChangeLocation: push,
@@ -156,6 +157,7 @@ export default class Navbar extends Component {
             />
           </ul>
 
+          <StoreLink />
           <ProfileLink {...this.props} />
         </div>
         {this.renderModal()}
