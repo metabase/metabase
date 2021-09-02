@@ -21,7 +21,7 @@ export const DataPermissionsHelp = () => (
       <p>{jt`Users can be members of multiple groups, and are given the ${(
         <strong>{t`most permissive`}</strong>
       )} level of access for a database or table across all the groups they’re a member of.`}</p>
-      <p>{t`Unless a user group has “no access” for a given database or table, they’ll be able to view any saved questions based on that data if they have access to the collection it’s saved in.`}</p>
+      <p>{t`Unless a user group has “block” for a given database or table, they’ll be able to view any saved questions based on that data if they have access to the collection it’s saved in.`}</p>
       <h2>{t`Access levels`}</h2>
 
       <h3>
@@ -44,7 +44,7 @@ export const DataPermissionsHelp = () => (
 
       <h3>
         <PermissionIcon name="close" color="danger" />
-        {t`No access`}
+        {t`Block`}
       </h3>
       <p>{t`Ensure users can’t ever see the data from this database regardless of their permissions at the Collection level. Keep in mind that if a user belongs to another group that does have data access, that setting will take precedence, and the user's access will not be blocked.`}</p>
 
