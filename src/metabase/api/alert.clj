@@ -211,17 +211,13 @@
 (api/defendpoint DELETE "/:id/unsubscribe"
   "Unsubscribes a user from the given alert"
   [id]
-  ;; Admins are not allowed to unsubscribe from alerts, they should edit the alert
-  (api/check (not api/*is-superuser?*)
-    [400 "Admin users are not allowed to unsubscribe from alerts"])
   (let [alert (pulse/retrieve-alert id)]
     (api/read-check alert)
 
     (if (should-archive-after-unsubscribe? alert api/*current-user-id*)
       (db/transaction
         (pulse/unsubscribe-from-alert! id api/*current-user-id*)
-        (pulse/update-alert! {:id id, :archived true})
-        (notify-on-archive-if-needed! alert))
+        (pulse/update-alert! {:id id, :archived true}))
       (pulse/unsubscribe-from-alert! id api/*current-user-id*))
     ;; Send emails letting people know they have been unsubscribe
     (when (email/email-configured?)
