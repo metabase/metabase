@@ -52,6 +52,14 @@
                 :order-by [[:avg_running_time :desc]]
                 :limit    10})})
 
+(def latest-qe-subq
+  "QE subquery for only getting the latest QE. Needed to make the QE table blank out properly after running."
+  [:not [:exists {:select [1]
+                  :from [[:query_execution :qe1]]
+                  :where [:and
+                          [:= :card.id :qe1.card_id]
+                          [:> :qe1.started_at :qe.started_at]]}]])
+
 (s/defn ^:internal-query-fn bad-table
   "List of all failing questions"
   ([]
@@ -100,7 +108,8 @@
                              [:metabase_table :t]               [:= :card.table_id :t.id]
                              [:core_user :u]                    [:= :card.creator_id :u.id]
                              [:report_dashboardcard :dash_card] [:= :card.id :dash_card.card_id]
-                             [:query_execution :qe]             [:= :card.id :qe.card_id]]
+                             [:query_execution :qe]             [:and [:= :card.id :qe.card_id]
+                                                                 latest-qe-subq]]
                  :group-by  [:card.id :qe.error]
                  :where     [:and
                              [:= :card.archived false]
