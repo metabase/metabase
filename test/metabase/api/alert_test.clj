@@ -459,21 +459,7 @@
 (defn- alert-url [alert-or-id]
   (format "alert/%d" (u/the-id alert-or-id)))
 
-(deftest update-alerts-test
-  (testing "Non-admin users can update alerts they created *if* they are in the recipient list"
-    (tt/with-temp* [Pulse                 [alert (basic-alert)]
-                    Card                  [card]
-                    PulseCard             [_     (pulse-card alert card)]
-                    PulseChannel          [pc    (pulse-channel alert)]
-                    PulseChannelRecipient [_     (recipient pc :rasta)]]
-      (is (= (-> (default-alert card)
-                 (assoc-in [:card :collection_id] true))
-             (with-alerts-in-writeable-collection [alert]
-               (tu/with-model-cleanup [Pulse]
-                 (alert-response
-                  ((alert-client :rasta) :put 200 (alert-url alert)
-                   (default-alert-req card pc)))))))))
-
+(deftest update-alerts-admin-test
   (testing "Admin users can update any alert"
     (tt/with-temp* [Pulse                 [alert (basic-alert)]
                     Card                  [card]
@@ -522,70 +508,105 @@
                 (et/regex-email-bodies #"https://metabase.com/testmb"
                                        #"now getting alerts")]))))))
 
+(deftest update-alerts-non-admin-test
+  (testing "Non-admin users can update alerts they created"
+    (tt/with-temp* [Pulse                 [alert (basic-alert)]
+                    Card                  [card]
+                    PulseCard             [_     (pulse-card alert card)]
+                    PulseChannel          [pc    (pulse-channel alert)]
+                    PulseChannelRecipient [_     (recipient pc :rasta)]]
+      (is (= (-> (default-alert card)
+                 (assoc-in [:card :collection_id] true))
+             (with-alerts-in-writeable-collection [alert]
+               (tu/with-model-cleanup [Pulse]
+                 (alert-response
+                  ((alert-client :rasta) :put 200 (alert-url alert)
+                   (default-alert-req card pc)))))))))
+
+  (testing "Non-admin users cannot change the recipients of an alert"
+    (tt/with-temp* [Pulse                 [alert (basic-alert)]
+                    Card                  [card]
+                    PulseCard             [_     (pulse-card alert card)]
+                    PulseChannel          [pc    (pulse-channel alert)]
+                    PulseChannelRecipient [_     (recipient pc :rasta)]]
+      (is (= "Non-admin users are not allowed to modify the channels for an alert"
+             (with-alerts-in-writeable-collection [alert]
+               (tu/with-model-cleanup [Pulse]
+                 ((alert-client :rasta) :put 400 (alert-url alert)
+                  (default-alert-req card pc {} [(fetch-user :crowberto)])))))))))
+
 (deftest admin-users-remove-recipient-test
-  (testing "PUT /api/alert/:id"
-    (testing "admin users can remove a recipieint, that recipient should be notified"
-      (mt/with-temp* [Pulse                 [alert (basic-alert)]
-                      Card                  [card]
-                      PulseCard             [_     (pulse-card alert card)]
-                      PulseChannel          [pc    (pulse-channel alert)]
-                      PulseChannelRecipient [_     (recipient pc :crowberto)]
-                      PulseChannelRecipient [_     (recipient pc :rasta)]]
-        (with-alert-setup
-          (testing "API response"
-            (is (= (-> (default-alert card)
-                       (assoc-in [:channels 0 :recipients] [(recipient-details :crowberto)]))
-                   (-> (mt/with-expected-messages 1
-                         ((alert-client :crowberto) :put 200 (alert-url alert)
-                          (default-alert-req card (u/the-id pc) {} [(mt/fetch-user :crowberto)])))
-                       alert-response))))
-          (testing "emails"
-            (is (= (mt/email-to :rasta {:subject "You’ve been unsubscribed from an alert"
-                                        :body    {"https://metabase.com/testmb"          true
-                                                  "letting you know that Crowberto Corv" true}})
-                   (mt/regex-email-bodies #"https://metabase.com/testmb"
-                                          #"letting you know that Crowberto Corv")))))))))
+  (testing "admin users can remove a recipieint, that recipient should be notified"
+    (mt/with-temp* [Pulse                 [alert (basic-alert)]
+                    Card                  [card]
+                    PulseCard             [_     (pulse-card alert card)]
+                    PulseChannel          [pc    (pulse-channel alert)]
+                    PulseChannelRecipient [_     (recipient pc :crowberto)]
+                    PulseChannelRecipient [_     (recipient pc :rasta)]]
+      (with-alert-setup
+        (testing "API response"
+          (is (= (-> (default-alert card)
+                     (assoc-in [:channels 0 :recipients] [(recipient-details :crowberto)]))
+                 (-> (mt/with-expected-messages 1
+                       ((alert-client :crowberto) :put 200 (alert-url alert)
+                                                  (default-alert-req card (u/the-id pc) {} [(mt/fetch-user :crowberto)])))
+                     alert-response))))
+        (testing "emails"
+          (is (= (mt/email-to :rasta {:subject "You’ve been unsubscribed from an alert"
+                                      :body    {"https://metabase.com/testmb"          true
+                                                "letting you know that Crowberto Corv" true}})
+                 (mt/regex-email-bodies #"https://metabase.com/testmb"
+                                        #"letting you know that Crowberto Corv"))))))))
 
 (deftest permissions-test
-  (testing "Non-admin users can't edit alerts they didn't create"
+  (testing "Non-admin users cannot update alerts for cards in a collection they don't have access to"
     (is (= "You don't have permissions to do that."
+         (tu/with-non-admin-groups-no-root-collection-perms
            (tt/with-temp* [Pulse                 [alert (assoc (basic-alert) :creator_id (user->id :crowberto))]
                            Card                  [card]
                            PulseCard             [_     (pulse-card alert card)]
                            PulseChannel          [pc    (pulse-channel alert)]
                            PulseChannelRecipient [_     (recipient pc :rasta)]]
-             (tu/with-non-admin-groups-no-root-collection-perms
-               (with-alert-setup
-                 ((alert-client :rasta) :put 403 (alert-url alert)
-                  (default-alert-req card pc))))))))
-
-  (testing "Non-admin users can't edit alerts if they're not in the recipient list"
-    (is (= "You don't have permissions to do that."
-           (tu/with-non-admin-groups-no-root-collection-perms
-             (tt/with-temp* [Pulse                 [alert (basic-alert)]
-                             Card                  [card]
-                             PulseCard             [_     (pulse-card alert card)]
-                             PulseChannel          [pc    (pulse-channel alert)]
-                             PulseChannelRecipient [_     (recipient pc :crowberto)]]
                (with-alert-setup
                  ((alert-client :rasta) :put 403 (alert-url alert)
                   (default-alert-req card pc)))))))))
 
 (deftest archive-test
-  (testing "Can we archive an Alert?"
-    (is (with-alert-in-collection [_ collection alert]
-          (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
-          ((user->client :rasta) :put 200 (str "alert/" (u/the-id alert))
-           {:archived true})
-          (db/select-one-field :archived Pulse :id (u/the-id alert)))))
+  (testing "An admin should be able to archive an alert"
+    (tt/with-temp* [Pulse                 [alert (basic-alert)]
+                    Card                  [card]
+                    PulseCard             [_     (pulse-card alert card)]
+                    PulseChannel          [pc    (pulse-channel alert)]
+                    PulseChannelRecipient [_     (recipient pc :rasta)]]
+        ((alert-client :crowberto) :put 200 (alert-url alert) {:archived true})
+        (is (db/select-one-field :archived Pulse :id (u/the-id alert)))))
 
-  (testing "Can we unarchive an Alert?"
-    (is (false? (with-alert-in-collection [_ collection alert]
-                  (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
-                  (db/update! Pulse (u/the-id alert) :archived true)
-                  ((user->client :rasta) :put 200 (str "alert/" (u/the-id alert))
-                   {:archived false})
-                  (db/select-one-field :archived Pulse :id (u/the-id alert)))))))
+  (testing "An admin should be able to unarchive an alert"
+    (tt/with-temp* [Pulse                 [alert (assoc (basic-alert) :archived true)]
+                    Card                  [card]
+                    PulseCard             [_     (pulse-card alert card)]
+                    PulseChannel          [pc    (pulse-channel alert)]
+                    PulseChannelRecipient [_     (recipient pc :rasta)]]
+        ((alert-client :crowberto) :put 200 (alert-url alert) {:archived false})
+        (is (false? (db/select-one-field :archived Pulse :id (u/the-id alert))))))
+
+  (testing "A non-admin should not be able to archive an alert"
+    (tt/with-temp* [Pulse                 [alert (basic-alert)]
+                    Card                  [card]
+                    PulseCard             [_     (pulse-card alert card)]
+                    PulseChannel          [pc    (pulse-channel alert)]
+                    PulseChannelRecipient [_     (recipient pc :rasta)]]
+        (is (= "Non-admin users are not allowed to explicitly change the archive status for an alert"
+                ((alert-client :rasta) :put 400 (alert-url alert) {:archived true})))))
+
+  (testing "A non-admin should not be able to unarchive an alert"
+    (tt/with-temp* [Pulse                 [alert (assoc (basic-alert) :archived false)]
+                    Card                  [card]
+                    PulseCard             [_     (pulse-card alert card)]
+                    PulseChannel          [pc    (pulse-channel alert)]
+                    PulseChannelRecipient [_     (recipient pc :rasta)]]
+        (is (= "Non-admin users are not allowed to explicitly change the archive status for an alert"
+                ((alert-client :rasta) :put 400 (alert-url alert) {:archived false}))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            GET /alert/question/:id                                             |
@@ -850,108 +871,3 @@
                              (api:alert-question-count :crowberto card))
                   :emails  (et/regex-email-bodies #"https://metabase.com/testmb"
                                                   #"Foo")))))))))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                             DELETE /api/alert/:id                                              |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- api:delete! [user-kw expected-status-code alert-or-id]
-  ((user->client user-kw) :delete expected-status-code (alert-url alert-or-id)))
-
-(deftest delete-alert-test
-  (testing "Only admins can delete an alert"
-    (is (= {:count    1
-            :response "You don't have permissions to do that."}
-           (tu/with-non-admin-groups-no-root-collection-perms
-             (tt/with-temp* [Card                  [card  (basic-alert-query)]
-                             Pulse                 [alert (basic-alert)]
-                             PulseCard             [_     (pulse-card alert card)]
-                             PulseChannel          [pc    (pulse-channel alert)]
-                             PulseChannelRecipient [_     (recipient pc :rasta)]]
-               (with-alerts-in-readable-collection [alert]
-                 (with-alert-setup
-                   (array-map
-                    :count    (api:alert-question-count :rasta card)
-                    :response (api:delete! :rasta 403 alert)))))))))
-
-  (testing "a user can't delete an admin's alert"
-    (is (= {:count-1  1
-            :response nil
-            :count-2  0}
-           (tu/with-non-admin-groups-no-root-collection-perms
-             (tt/with-temp* [Card                  [card  (basic-alert-query)]
-                             Pulse                 [alert (basic-alert)]
-                             PulseCard             [_     (pulse-card alert card)]
-                             PulseChannel          [pc    (pulse-channel alert)]
-                             PulseChannelRecipient [_     (recipient pc :rasta)]]
-               (with-alert-setup
-                 (let [original-alert-response ((user->client :crowberto) :get 200 (alert-question-url card))]
-
-                   ;; A user can't delete an admin's alert
-                   (api:delete! :rasta 403 alert)
-
-                   (array-map
-                    :count-1  (count original-alert-response)
-                    :response (api:delete! :crowberto 204 alert)
-                    :count-2  (api:alert-question-count :rasta card)))))))))
-
-  (testing "An admin can delete a user's alert"
-    (is (= {:count-1  1
-            :response nil
-            :count-2  0
-            :emails   (rasta-deleted-email {})}
-           (tt/with-temp*  [Card                  [card  (basic-alert-query)]
-                            Pulse                 [alert (basic-alert)]
-                            PulseCard             [_     (pulse-card alert card)]
-                            PulseChannel          [pc    (pulse-channel alert)]
-                            PulseChannelRecipient [_     (recipient pc :rasta)]]
-             (with-alerts-in-readable-collection [alert]
-               (with-alert-setup
-                 (array-map
-                  :count-1  (api:alert-question-count :rasta card)
-                  :response (et/with-expected-messages 1
-                              (api:delete! :crowberto 204 alert))
-                  :count-2  (api:alert-question-count :rasta card)
-                  :emails   (et/regex-email-bodies #"Crowberto Corv deleted an alert"))))))))
-
-  (testing "A deleted alert should notify the creator and any recipients"
-    (is (= {:count-1  1
-            :response nil
-            :count-2  0
-            :emails   (merge
-                       (rasta-deleted-email {"Crowberto Corv unsubscribed you from alerts" false})
-                       (et/email-to :lucky {:subject "You’ve been unsubscribed from an alert",
-                                            :body    {"Crowberto Corv deleted an alert"             false
-                                                      "Crowberto Corv unsubscribed you from alerts" true}}))}
-           (tt/with-temp*  [Card                  [card  (basic-alert-query)]
-                            Pulse                 [alert (basic-alert)]
-                            PulseCard             [_     (pulse-card alert card)]
-                            PulseChannel          [pc    (pulse-channel alert)]
-                            PulseChannelRecipient [_     (recipient pc :rasta)]
-                            PulseChannelRecipient [_     (recipient pc :lucky)]]
-             (with-alerts-in-readable-collection [alert]
-               (with-alert-setup
-                 (array-map
-                  :count-1  (api:alert-question-count :rasta card)
-                  :response (et/with-expected-messages 2
-                              (api:delete! :crowberto 204 alert))
-                  :count-2  (api:alert-question-count :rasta card)
-                  :emails   (et/regex-email-bodies #"Crowberto Corv deleted an alert"
-                                                   #"Crowberto Corv unsubscribed you from alerts"))))))))
-
-  (testing "When an admin deletes their own alert, it should not notify them"
-    (is (= {:count-1  1
-            :response nil
-            :count-2  0
-            :emails   {}}
-           (tt/with-temp* [Card                  [card  (basic-alert-query)]
-                           Pulse                 [alert (assoc (basic-alert) :creator_id (user->id :crowberto))]
-                           PulseCard             [_     (pulse-card alert card)]
-                           PulseChannel          [pc    (pulse-channel alert)]
-                           PulseChannelRecipient [_     (recipient pc :crowberto)]]
-             (with-alert-setup
-               (array-map
-                :count-1  (api:alert-question-count :crowberto card)
-                :response (api:delete! :crowberto 204 alert)
-                :count-2  (api:alert-question-count :crowberto card)
-                :emails   (et/regex-email-bodies #".*"))))))))
