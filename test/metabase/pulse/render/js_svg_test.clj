@@ -7,6 +7,7 @@
   resulting svg."
   (:require [cheshire.core :as json]
             [clojure.set :as set]
+            [clojure.spec.alpha :as s]
             [clojure.test :refer :all]
             [metabase.pulse.render.js-engine :as js]
             [metabase.pulse.render.js-svg :as js-svg])
@@ -100,19 +101,29 @@
   (let [rows     [[#t "2020" 2]
                   [#t "2021" 3]]
         labels   {:left "count" :bottom "year"}
-        settings (json/generate-string {:y {:prefix   "prefix-from-settings"
+        settings (json/generate-string {:y {:prefix   "prefix"
                                             :decimals 4}})]
     (testing "It returns bytes"
       (let [svg-bytes (js-svg/timelineseries-bar rows labels settings)]
         (is (bytes? svg-bytes))))
     (let [svg-string (.asString (js/execute-fn-name @context "timeseries_bar" rows labels settings))
           svg-hiccup (-> svg-string parse-svg document-tag-hiccup)]
-      (validate-svg-string :timelineseries-bar svg-string)
-      (is (= ["#text" "prefix-from-settings0.0000"]
-             (->> svg-hiccup
-                  (tree-seq vector? rest)
-                  (filter text-node?)
-                  first))))))
+      (testing "it returns a valid svg string (no html in it)"
+        (validate-svg-string :timelineseries-bar svg-string))
+      (testing "The svg string has formatted axes"
+        (let [spec (s/cat :y-axis-labels (s/+ (s/tuple
+                                               #{"#text"}
+                                               #(and (string? %)
+                                                     ;; ["#text" "prefix0.0000"]
+                                                     (re-matches #"prefix\d\.\d{4}" %))))
+                          :x-axis-labels (s/+ (s/tuple
+                                               #{"#text"}
+                                               #(and (string? %)
+                                                     ;; ["#text" "1/1/2020"]
+                                                     (re-matches #"\d/\d/\d{4}" %)))))
+              text-nodes (->> svg-hiccup (tree-seq vector? rest) (filter text-node?))]
+          (is (= (s/valid? spec text-nodes) true)
+              text-nodes))))))
 
 (deftest categorical-donut-test
   (let [rows [["apples" 2]
