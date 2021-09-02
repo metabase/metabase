@@ -14,7 +14,7 @@ const propTypes = {
 
 const layout = {
   width: 540,
-  height: 300,
+  height: 540,
   margin: 20,
   thickness: 100,
   cornerRadius: 2,
@@ -22,8 +22,8 @@ const layout = {
 };
 
 const CategoricalDonutChart = ({ data, colors, accessors }) => {
-  const innerWidth = layout.width - layout.margin;
-  const innerHeight = layout.height - layout.margin;
+  const innerWidth = layout.width - layout.margin * 2;
+  const innerHeight = layout.height - layout.margin * 2;
   const outerRadius = Math.min(innerWidth, innerHeight) / 2;
   const innerRadius = outerRadius - layout.thickness;
   const centerX = layout.margin + innerWidth / 2;
