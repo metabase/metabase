@@ -330,7 +330,8 @@ export const AlertApi = {
   get: GET("/api/alert/:id"),
   create: POST("/api/alert"),
   update: PUT("/api/alert/:id"),
-  unsubscribe: DELETE("/api/alert/:id/unsubscribe"),
+  delete: DELETE("/api/alert/:id"),
+  unsubscribe: PUT("/api/alert/:id/unsubscribe"),
 };
 
 export const SegmentApi = {
