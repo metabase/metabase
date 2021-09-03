@@ -85,7 +85,7 @@ Exception in thread "main" org.h2.jdbc.JdbcSQLException: Row not found when tryi
     -   Open a shell on the server where the Metabase instance is running and attempt to recover the corrupted H2 file by running:
         ```
         $ java -cp metabase.jar org.h2.tools.Recover
-        $ mv metabase.db.mv.db metabase.old.db
+        $ mv metabase.db.mv.db metabase-old.db.mv.db
         $ touch metabase.db.mv.db
         $ java -cp target/uberjar/metabase.jar org.h2.tools.RunScript -script metabase.db.h2.sql -url jdbc:h2:`pwd`/metabase.db
         ```
