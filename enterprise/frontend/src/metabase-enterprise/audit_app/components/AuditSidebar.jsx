@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import { t } from "ttag";
 
 import { IndexLink } from "react-router";
 import Link from "metabase/components/Link";
@@ -57,18 +58,22 @@ const AuditAppSidebar = (props: Props) => (
     {/* <AuditSidebarSection>
       <AuditSidebarItem title="Overview" path="/admin/audit/overview" />
     </AuditSidebarSection> */}
-    <AuditSidebarSection title="People">
-      <AuditSidebarItem title="Team members" path="/admin/audit/members" />
+    <AuditSidebarSection title={t`People`}>
+      <AuditSidebarItem title={t`Team members`} path="/admin/audit/members" />
     </AuditSidebarSection>
-    <AuditSidebarSection title="Data">
-      <AuditSidebarItem title="Databases" path="/admin/audit/databases" />
-      <AuditSidebarItem title="Schemas" path="/admin/audit/schemas" />
-      <AuditSidebarItem title="Tables" path="/admin/audit/tables" />
+    <AuditSidebarSection title={t`Data`}>
+      <AuditSidebarItem title={t`Databases`} path="/admin/audit/databases" />
+      <AuditSidebarItem title={t`Schemas`} path="/admin/audit/schemas" />
+      <AuditSidebarItem title={t`Tables`} path="/admin/audit/tables" />
     </AuditSidebarSection>
-    <AuditSidebarSection title="Items">
-      <AuditSidebarItem title="Questions" path="/admin/audit/questions" />
-      <AuditSidebarItem title="Dashboards" path="/admin/audit/dashboards" />
-      <AuditSidebarItem title="Downloads" path="/admin/audit/downloads" />
+    <AuditSidebarSection title={t`Items`}>
+      <AuditSidebarItem title={t`Questions`} path="/admin/audit/questions" />
+      <AuditSidebarItem title={t`Dashboards`} path="/admin/audit/dashboards" />
+      <AuditSidebarItem title={t`Downloads`} path="/admin/audit/downloads" />
+      <AuditSidebarItem
+        title={t`Subscriptions & Alerts`}
+        path="/admin/audit/subscriptions"
+      />
     </AuditSidebarSection>
   </AuditSidebar>
 );
