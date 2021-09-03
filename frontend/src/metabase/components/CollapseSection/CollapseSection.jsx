@@ -1,8 +1,7 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import PropTypes from "prop-types";
-import cx from "classnames";
 
-import Icon from "metabase/components/Icon";
+import { HeaderContainer, Header, ToggleIcon } from "./CollapseSection.styled";
 
 const propTypes = {
   children: PropTypes.node,
@@ -23,43 +22,31 @@ function CollapseSection({
 }) {
   const [isExpanded, setIsExpanded] = useState(initialState === "expanded");
 
+  const toggle = useCallback(() => {
+    setIsExpanded(isExpanded => !isExpanded);
+  }, []);
+
+  const onKeyDown = useCallback(
+    e => {
+      if (e.key === "Enter") {
+        toggle();
+      }
+    },
+    [toggle],
+  );
+
   return (
-    <div
-      className={cx(
-        "collapse-section",
-        isExpanded && "collapse-section--expanded",
-        className,
-      )}
-      role="tab"
-      aria-expanded={isExpanded}
-    >
-      <div
-        role="button"
-        tabIndex="0"
-        className={cx(
-          "collapse-section__header cursor-pointer flex align-center",
-          headerClass,
-        )}
-        onClick={() => setIsExpanded(isExpanded => !isExpanded)}
-        onKeyDown={e =>
-          e.key === "Enter" && setIsExpanded(isExpanded => !isExpanded)
-        }
+    <div className={className} role="tab" aria-expanded={isExpanded}>
+      <HeaderContainer
+        className={headerClass}
+        onClick={toggle}
+        onKeyDown={onKeyDown}
       >
-        <Icon
-          className="mr1"
-          name={isExpanded ? "chevrondown" : "chevronright"}
-          size={12}
-        />
-        <span className="collapse-section__header-text flex align-center">
-          {header}
-        </span>
-      </div>
-      <div role="tabpanel" className="collapse-section__body-container">
-        {isExpanded && (
-          <div className={cx("collapse-section__body-container", bodyClass)}>
-            {children}
-          </div>
-        )}
+        <ToggleIcon isExpanded={isExpanded} />
+        <Header>{header}</Header>
+      </HeaderContainer>
+      <div role="tabpanel">
+        {isExpanded && <div className={bodyClass}>{children}</div>}
       </div>
     </div>
   );
