@@ -1,6 +1,7 @@
 (ns metabase.models.params.chain-filter-test
   (:require [clojure.test :refer :all]
-            [metabase.models :refer [FieldValues]]
+            [metabase.models :refer [Field FieldValues]]
+            [metabase.models.field-values :as field-values]
             [metabase.models.params.chain-filter :as chain-filter]
             [metabase.test :as mt]
             [toucan.db :as db]))
@@ -69,7 +70,7 @@
              (chain-filter venues.price {categories.name ["Bakery" "BBQ"]
                                          users.id        [1 2 3]}))))))
 
-(def megagraph
+(def ^:private megagraph
   "A large graph that is hugely interconnected. All nodes can get to 50 and 50 has an edge to :end. But the fastest
   route is [[:start 50] [50 :end]] and we should quickly identify this last route. Basically handy to demonstrate that
   we are doing breadth first search rather than depth first search. Depth first would identify 1 -> 2 -> 3 ... 49 ->
@@ -87,7 +88,7 @@
                                 (range (inc big)))}
                 {big    {:end [[big :end]]}})))
 
-(def megagraph-single-path
+(def ^:private megagraph-single-path
   "Similar to the megagraph above, this graph only has a single path through a hugely interconnected graph. A naive
   graph traversal will run out of memory or take quite a long time to find the traversal:
 
@@ -403,3 +404,36 @@
     (mt/$ids
       (is (= [:time-interval $checkins.date -32 :week {:include-current false}]
              (#'chain-filter/filter-clause $$checkins %checkins.date "past32weeks"))))))
+
+(mt/defdataset nil-values-dataset
+  [["tbl"
+    [{:field-name "mytype", :base-type :type/Text}
+     {:field-name "myfield", :base-type :type/Text}]
+    [["value" "value"]
+     ["null" nil]
+     ["empty" ""]]]])
+
+(deftest nil-values-test
+  (testing "Chain filter fns should work for fields that have nil or empty values (#17659)"
+    (mt/dataset nil-values-dataset
+      (mt/$ids tbl
+        (letfn [(thunk []
+                  (doseq [[field expected-values] {:mytype  ["empty" "null" "value"]
+                                                   :myfield [nil "" "value"]}]
+                    (testing "chain-filter"
+                      ;; sorting can differ a bit based on whether we use FieldValues or not... not sure why this is
+                      ;; the case, but that's not important for this test anyway. Just sort everything
+                      (is (= expected-values
+                             (sort (chain-filter/chain-filter (mt/id :tbl field) {})))))
+                    (testing "chain-filter-search"
+                      (is (= ["value"]
+                             (chain-filter/chain-filter-search (mt/id :tbl field) {} "val"))))))]
+          (testing "no FieldValues"
+            (thunk))
+          (testing "with FieldValues for myfield"
+            (mt/with-temp FieldValues [_ {:field_id %myfield, :values ["value" nil ""]}]
+              (mt/with-temp-vals-in-db Field %myfield {:has_field_values "auto-list"}
+                (testing "Sanity check: make sure we will actually use the cached FieldValues"
+                  (is (field-values/field-should-have-field-values? %myfield))
+                  (is (#'chain-filter/use-cached-field-values? %myfield {})))
+                (thunk)))))))))
