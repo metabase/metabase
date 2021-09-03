@@ -1,14 +1,19 @@
 import React from "react";
 import PropTypes from "prop-types";
-import { scaleLinear, scaleTime } from "@visx/scale";
-import { GridRows } from "@visx/grid";
 import { AxisBottom, AxisLeft } from "@visx/axis";
+import { GridRows } from "@visx/grid";
+import { scaleLinear, scaleTime } from "@visx/scale";
 import { AreaClosed, LinePath } from "@visx/shape";
 import { formatDate } from "../../lib/formatDate";
 import { formatNumber } from "../../lib/formatNumber";
 
 const propTypes = {
-  data: PropTypes.array.isRequired,
+  series: PropTypes.arrayOf(
+    PropTypes.shape({
+      data: PropTypes.array.isRequired,
+      type: PropTypes.oneOf(["line", "area"]),
+    }),
+  ).isRequired,
   accessors: PropTypes.shape({
     x: PropTypes.func,
     y: PropTypes.func,
@@ -37,7 +42,16 @@ const layout = {
     family: "Lato, sans-serif",
   },
   colors: {
-    brand: "#509ee3",
+    accents: [
+      "#509EE3",
+      "#88BF4D",
+      "#A989C5",
+      "#EF8C8C",
+      "#F9D45C",
+      "#F2A86F",
+      "#98D9D9",
+      "#7172AD",
+    ],
     textLight: "#b8bbc3",
     textMedium: "#949aab",
   },
@@ -47,7 +61,7 @@ const layout = {
   fillOpacity: 0.2,
 };
 
-const TimeSeriesAreaChart = ({ data, accessors, settings, labels }) => {
+const TimeSeriesMultiChart = ({ series, accessors, settings, labels }) => {
   const xMax = layout.width - layout.margin.right;
   const yMax = layout.height - layout.margin.bottom;
   const innerWidth = xMax - layout.margin.left;
@@ -56,17 +70,65 @@ const TimeSeriesAreaChart = ({ data, accessors, settings, labels }) => {
 
   const xScale = scaleTime({
     domain: [
-      Math.min(...data.map(accessors.x)),
-      Math.max(...data.map(accessors.x)),
+      Math.min(...series.flatMap(s => s.data.map(accessors.x))),
+      Math.max(...series.flatMap(s => s.data.map(accessors.x))),
     ],
     range: [layout.margin.left, xMax],
   });
 
   const yScale = scaleLinear({
-    domain: [0, Math.max(...data.map(accessors.y))],
+    domain: [0, Math.max(...series.flatMap(s => s.data.map(accessors.y)))],
     range: [yMax, 0],
     nice: true,
   });
+
+  const getChartShape = (s, index) => {
+    switch (s.type) {
+      case "line":
+        return getLineShape(s.data, index);
+      case "area":
+        return getAreaShape(s.data, index);
+    }
+  };
+
+  const getChartColor = index => {
+    return layout.colors.accents[index % layout.colors.accents.length];
+  };
+
+  const getLineShape = (data, index) => {
+    return [
+      <LinePath
+        key={`line-${index}`}
+        data={data}
+        stroke={getChartColor(index)}
+        strokeWidth={layout.strokeWidth}
+        x={d => xScale(accessors.x(d))}
+        y={d => yScale(accessors.y(d))}
+      />,
+    ];
+  };
+
+  const getAreaShape = (data, index) => {
+    return [
+      <AreaClosed
+        key={`area-fill-${index}`}
+        data={data}
+        yScale={yScale}
+        fill={getChartColor(index)}
+        opacity={layout.fillOpacity}
+        x={d => xScale(accessors.x(d))}
+        y={d => yScale(accessors.y(d))}
+      />,
+      <LinePath
+        key={`area-line-${index}`}
+        data={data}
+        stroke={getChartColor(index)}
+        strokeWidth={layout.strokeWidth}
+        x={d => xScale(accessors.x(d))}
+        y={d => yScale(accessors.y(d))}
+      />,
+    ];
+  };
 
   const getLeftTickLabelProps = () => ({
     fontSize: layout.font.size,
@@ -90,21 +152,7 @@ const TimeSeriesAreaChart = ({ data, accessors, settings, labels }) => {
         width={innerWidth}
         strokeDasharray={layout.strokeDasharray}
       />
-      <AreaClosed
-        data={data}
-        yScale={yScale}
-        fill={layout.colors.brand}
-        opacity={layout.fillOpacity}
-        x={d => xScale(accessors.x(d))}
-        y={d => yScale(accessors.y(d))}
-      />
-      <LinePath
-        data={data}
-        stroke={layout.colors.brand}
-        strokeWidth={layout.strokeWidth}
-        x={d => xScale(accessors.x(d))}
-        y={d => yScale(accessors.y(d))}
-      />
+      {series.flatMap((s, index) => getChartShape(s, index))}
       <AxisLeft
         scale={yScale}
         left={layout.margin.left}
@@ -128,6 +176,6 @@ const TimeSeriesAreaChart = ({ data, accessors, settings, labels }) => {
   );
 };
 
-TimeSeriesAreaChart.propTypes = propTypes;
+TimeSeriesMultiChart.propTypes = propTypes;
 
-export default TimeSeriesAreaChart;
+export default TimeSeriesMultiChart;

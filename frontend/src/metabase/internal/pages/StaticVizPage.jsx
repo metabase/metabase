@@ -90,6 +90,47 @@ export default function StaticVizPage() {
           />
         </Box>
         <Box py={3}>
+          <Subhead>Multi-series chart with timeseries data</Subhead>
+          <StaticChart
+            type="timeseries/multiple"
+            options={{
+              series: [
+                {
+                  data: [
+                    ["2020-01-01", 10],
+                    ["2020-06-01", 60],
+                    ["2020-12-01", 80],
+                  ],
+                  type: "area",
+                },
+                {
+                  data: [
+                    ["2020-01-01", 50],
+                    ["2020-06-01", 40],
+                    ["2020-12-01", 60],
+                  ],
+                  type: "line",
+                },
+                {
+                  data: [
+                    ["2020-01-01", 20],
+                    ["2020-06-01", 50],
+                    ["2020-12-01", 30],
+                  ],
+                  type: "area",
+                },
+              ],
+              accessors: {
+                x: row => new Date(row[0]).valueOf(),
+                y: row => row[1],
+              },
+              labels: {
+                bottom: "Created At",
+              },
+            }}
+          />
+        </Box>
+        <Box py={3}>
           <Subhead>Bar chart with categorical data</Subhead>
           <StaticChart
             type="categorical/bar"
