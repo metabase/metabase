@@ -1,4 +1,8 @@
-import { restore, setupMetabaseCloud } from "__support__/e2e/cypress";
+import {
+  describeWithToken,
+  restore,
+  setupMetabaseCloud,
+} from "__support__/e2e/cypress";
 
 describe("scenarios > admin > troubleshooting > help", () => {
   beforeEach(() => {
@@ -10,5 +14,12 @@ describe("scenarios > admin > troubleshooting > help", () => {
     setupMetabaseCloud();
     cy.visit("/admin/troubleshooting/help");
     cy.findByText("Contact support");
+  });
+
+  describeWithToken("EE", () => {
+    it("should add a support link when running Metabase Enterprise", () => {
+      cy.visit("/admin/troubleshooting/help");
+      cy.findByText("Contact support");
+    });
   });
 });
