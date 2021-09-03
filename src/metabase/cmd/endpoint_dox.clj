@@ -98,7 +98,7 @@
 
 ;;;; Generate API sections
 
-(defn- endpoint-section
+(defn endpoint-section
   "Builds a section with the name, description, table of contents for endpoints in a namespace,
   followed by the endpoint and their parameter descriptions."
   [ep-map]
