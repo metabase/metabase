@@ -120,7 +120,7 @@ export default class Help extends Component {
               description={t`Create a GitHub issue (includes the diagnostic info below)`}
               link={githubIssueLink(detailString)}
             />
-            {MetabaseSettings.isHosted() && (
+            {MetabaseSettings.isPaidPlan() && (
               <HelpLink
                 title={t`Contact support`}
                 description={t`Our team is ready to help you`}
