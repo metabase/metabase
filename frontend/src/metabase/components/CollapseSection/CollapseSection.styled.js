@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled, { css } from "styled-components";
 import Icon from "metabase/components/Icon";
 
 export const HeaderContainer = styled.div.attrs({
@@ -33,5 +33,7 @@ export const ToggleIcon = styled(Icon).attrs({
   },
   size: 12,
 })`
-  margin-right: 0.5rem;
+  ${props => css`
+    margin-${props.position === "left" ? "right" : "left"}: 0.5rem;
+  `};
 `;

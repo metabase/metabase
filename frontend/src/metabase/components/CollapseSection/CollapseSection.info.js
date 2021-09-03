@@ -28,6 +28,11 @@ export const examples = {
       foo foo foo foo foo
     </CollapseSection>
   ),
+  "Icon on the right": (
+    <CollapseSection initialState="collapsed" header="Foo" iconPosition="right">
+      foo foo foo foo foo
+    </CollapseSection>
+  ),
   "Components in header": (
     <CollapseSection
       header={

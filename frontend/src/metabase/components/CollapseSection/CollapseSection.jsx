@@ -11,11 +11,13 @@ const propTypes = {
   bodyClass: PropTypes.string,
   initialState: PropTypes.oneOf(["expanded", "collapsed"]),
   iconVariant: PropTypes.oneOf(["right-down", "up-down"]),
+  iconPosition: PropTypes.oneOf(["left", "right"]),
 };
 
 function CollapseSection({
   initialState = "collapsed",
   iconVariant = "right-down",
+  iconPosition = "left",
   header,
   headerClass,
   className,
@@ -37,6 +39,14 @@ function CollapseSection({
     [toggle],
   );
 
+  const HeaderIcon = (
+    <ToggleIcon
+      isExpanded={isExpanded}
+      variant={iconVariant}
+      position={iconPosition}
+    />
+  );
+
   return (
     <div className={className} role="tab" aria-expanded={isExpanded}>
       <HeaderContainer
@@ -44,8 +54,9 @@ function CollapseSection({
         onClick={toggle}
         onKeyDown={onKeyDown}
       >
-        <ToggleIcon isExpanded={isExpanded} variant={iconVariant} />
+        {iconPosition === "left" && HeaderIcon}
         <Header>{header}</Header>
+        {iconPosition === "right" && HeaderIcon}
       </HeaderContainer>
       <div role="tabpanel">
         {isExpanded && <div className={bodyClass}>{children}</div>}
