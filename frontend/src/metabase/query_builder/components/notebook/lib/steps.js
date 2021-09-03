@@ -110,11 +110,11 @@ const STEPS: StepDefinition[] = [
     revert: (query, index) => query.removeJoin(index),
     clean: (query, index) => {
       const join = query.joins()[index];
-      if (!join || join.isValid()) {
+      if (!join || join.isValid() || join.hasGaps()) {
         return query;
       }
       const cleanJoin = join.clean();
-      if (!cleanJoin.isValid()) {
+      if (cleanJoin.isValid()) {
         return query.updateJoin(index, cleanJoin);
       }
       return query.removeJoin(index);
