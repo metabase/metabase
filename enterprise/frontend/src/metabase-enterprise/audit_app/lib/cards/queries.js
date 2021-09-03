@@ -69,10 +69,7 @@ export const bad_table = (
     visualization_settings: {
       "table.columns": [
         { name: "card_id", enabled: true },
-        { name: "error_substr",
-          enabled: true,
-          markdown_template: "not working`({{value}})`",
-	},
+        { name: "error_substr", enabled: true },
         { name: "collection_id", enabled: true },
         { name: "database_id", enabled: true },
         { name: "schema_id", enabled: true },

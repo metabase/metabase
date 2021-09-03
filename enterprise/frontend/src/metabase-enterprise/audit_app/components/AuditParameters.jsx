@@ -52,7 +52,7 @@ export default class AuditParameters extends React.Component {
     return (
       <div>
         <div className="pt4">
-          {parameters.map(({ key, placeholder }) => (
+          {parameters && parameters.map(({ key, placeholder }) => (
             <input
               className="input mr2"
               key={key}
@@ -64,7 +64,7 @@ export default class AuditParameters extends React.Component {
               }}
             />
           ))}
-          {buttons.map(({ key, onClick, label }) => (
+          {buttons && buttons.map(({ key, onClick, label }) => (
             <Button
               primary
               key={key}

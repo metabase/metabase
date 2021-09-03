@@ -154,6 +154,7 @@ export default class AuditTableVisualization extends React.Component {
                     key={colIndex}
                     className={cx({
                       "text-brand cursor-pointer": clickable,
+                      "text-code": column["code"],
                       "text-right": isColumnRightAligned(column),
                     })}
                     onClick={
