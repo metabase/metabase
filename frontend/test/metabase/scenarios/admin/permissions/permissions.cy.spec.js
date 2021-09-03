@@ -509,6 +509,27 @@ describe("scenarios > admin > permissions", () => {
 
     cy.findAllByText("Orders").should("not.exist");
   });
+
+  it.skip("'block' data permission should not have editable 'native query editing' option (metabase#17738)", () => {
+    cy.visit("/admin/permissions/data/database/1");
+
+    cy.findByText("All Users")
+      .closest("tr")
+      .as("allUsersRow")
+      .within(() => {
+        isPermissionDisabled("No", true);
+        isPermissionDisabled("No self-service", false).click();
+      });
+
+    popover()
+      .contains("Block")
+      .click();
+
+    cy.get("@allUsersRow").within(() => {
+      isPermissionDisabled("Block", false);
+      isPermissionDisabled("No", true);
+    });
+  });
 });
 
 describeWithToken("scenarios > admin > permissions", () => {
@@ -632,4 +653,18 @@ function assertPermissionTable(rows) {
       cy.wrap($permissionEl).should("have.text", permissions[index]);
     });
   });
+}
+
+/**
+ * @param {string} permission
+ * @param {boolean} isDisabled
+ */
+function isPermissionDisabled(permission, isDisabled) {
+  return (
+    cy
+      .findByText(permission)
+      .closest("a")
+      // This assertion works only with strings "true" | "false", and not with booleans.
+      .should("have.attr", "aria-disabled", "" + isDisabled)
+  );
 }
