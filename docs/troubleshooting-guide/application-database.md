@@ -80,8 +80,7 @@ Exception in thread "main" org.h2.jdbc.JdbcSQLException: Row not found when tryi
 
 **How to fix this:** not all H2 errors are recoverable (which is why if you're using H2, _please_ have a backup strategy for the application database file).
 
-1.  Determine whether you are running a recent version of Metabase or an older version:
-2.  If you are running a recent version and using H2, the app database is stored in `metabase.db.mv.db`.
+If you are running a recent version and using H2, the app database is stored in `metabase.db.mv.db`.
     -   Open a shell on the server where the Metabase instance is running and attempt to recover the corrupted H2 file by running:
         ```
         $ java -cp metabase.jar org.h2.tools.Recover
