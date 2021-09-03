@@ -1,18 +1,25 @@
-/* eslint "react/prop-types": 2 */
-
 import React, { useState } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 
+const propTypes = {
+  children: PropTypes.node,
+  className: PropTypes.string,
+  header: PropTypes.node,
+  headerClass: PropTypes.string,
+  bodyClass: PropTypes.string,
+  initialState: PropTypes.oneOf(["expanded", "collapsed"]),
+};
+
 function CollapseSection({
-  children,
-  className,
+  initialState = "collapsed",
   header,
   headerClass,
+  className,
   bodyClass,
-  initialState = "collapsed",
+  children,
 }) {
   const [isExpanded, setIsExpanded] = useState(initialState === "expanded");
 
@@ -58,13 +65,6 @@ function CollapseSection({
   );
 }
 
-CollapseSection.propTypes = {
-  children: PropTypes.node,
-  className: PropTypes.string,
-  header: PropTypes.node,
-  headerClass: PropTypes.string,
-  bodyClass: PropTypes.string,
-  initialState: PropTypes.oneOf(["expanded", "collapsed"]),
-};
+CollapseSection.propTypes = propTypes;
 
 export default CollapseSection;
