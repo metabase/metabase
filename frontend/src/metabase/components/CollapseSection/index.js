@@ -1,1 +1,1 @@
-export { default } from "./CollapsedSection";
+export { default } from "./CollapseSection";
