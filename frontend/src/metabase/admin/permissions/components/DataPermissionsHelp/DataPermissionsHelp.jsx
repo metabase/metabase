@@ -21,7 +21,7 @@ export const DataPermissionsHelp = () => (
       <p>{jt`Users can be members of multiple groups, and are given the ${(
         <strong>{t`most permissive`}</strong>
       )} level of access for a database or table across all the groups they’re a member of.`}</p>
-      <p>{t`Unless a user group has “block” for a given database or table, they’ll be able to view any saved questions based on that data if they have access to the collection it’s saved in.`}</p>
+      <p>{t`Unless a user group's access for a given database is set to “block", they’ll be able to view any saved question based on that data if they have access to the collection it’s saved in.`}</p>
       <h2>{t`Access levels`}</h2>
 
       <h3>
