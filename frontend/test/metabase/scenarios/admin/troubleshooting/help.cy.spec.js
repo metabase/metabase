@@ -20,7 +20,7 @@ describe("scenarios > admin > troubleshooting > help", () => {
   });
 
   describeWithoutToken("OSS", () => {
-    it("should hide the support link when running Metabase Enterprise", () => {
+    it("should hide the support link when running Metabase OSS", () => {
       cy.visit("/admin/troubleshooting/help");
 
       cy.findByText("Metabase Admin");

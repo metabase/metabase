@@ -375,7 +375,7 @@ describe("scenarios > admin > settings", () => {
     cy.visit("/admin/settings/general");
 
     cy.findByText("Metabase Admin");
-    cy.findByAltText("store link").should("not.exist");
+    cy.findByAltText("store icon").should("not.exist");
   });
 
   describeWithoutToken("OSS", () => {
@@ -383,7 +383,7 @@ describe("scenarios > admin > settings", () => {
       cy.visit("/admin/settings/general");
 
       cy.findByText("Metabase Admin");
-      cy.findByAltText("store link");
+      cy.findByAltText("store icon");
     });
   });
 
@@ -400,7 +400,7 @@ describe("scenarios > admin > settings", () => {
       cy.visit("/admin/settings/general");
 
       cy.findByText("Metabase Admin");
-      cy.findByAltText("store link").should("not.exist");
+      cy.findByAltText("store icon").should("not.exist");
     });
   });
 
