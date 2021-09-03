@@ -2,8 +2,9 @@ import styled from "styled-components";
 import { color, darken } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 import Icon, { IconWrapper } from "metabase/components/Icon";
+import ExternalLink from "metabase/components/ExternalLink";
 
-export const StoreIconRoot = styled.a`
+export const StoreIconRoot = styled(ExternalLink)`
   margin-right: ${space(1)};
 `;
 

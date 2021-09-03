@@ -5,6 +5,7 @@ import {
   popover,
   describeWithToken,
   setupMetabaseCloud,
+  describeWithoutToken,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
@@ -369,6 +370,23 @@ describe("scenarios > admin > settings", () => {
     cy.findByText("Updates").should("not.exist");
   });
 
+  it("should hide the store link when running Metabase Cloud", () => {
+    setupMetabaseCloud();
+    cy.visit("/admin/settings/general");
+
+    cy.findByText("Metabase Admin");
+    cy.findByAltText("store link").should("not.exist");
+  });
+
+  describeWithoutToken("OSS", () => {
+    it("should show the store link when running on a self-hosted instance", () => {
+      cy.visit("/admin/settings/general");
+
+      cy.findByText("Metabase Admin");
+      cy.findByAltText("store link");
+    });
+  });
+
   describeWithToken("EE", () => {
     it("should hide Enterprise settings when running Metabase Cloud", () => {
       setupMetabaseCloud();
@@ -376,6 +394,13 @@ describe("scenarios > admin > settings", () => {
 
       cy.findByText("Site Name");
       cy.findByText("Enterprise").should("not.exist");
+    });
+
+    it("should hide the store link when running Metabase Enterprise", () => {
+      cy.visit("/admin/settings/general");
+
+      cy.findByText("Metabase Admin");
+      cy.findByAltText("store link").should("not.exist");
     });
   });
 

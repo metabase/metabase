@@ -6,11 +6,7 @@ import { StoreIcon, StoreIconRoot, StoreIconWrapper } from "./StoreLink.styled";
 const StoreLink = () => {
   return (
     <Tooltip tooltip={t`Explore paid features`}>
-      <StoreIconRoot
-        href="https://metabase.com"
-        target="_blank"
-        rel="noreferrer"
-      >
+      <StoreIconRoot href="https://metabase.com">
         <StoreIconWrapper>
           <StoreIcon />
         </StoreIconWrapper>
