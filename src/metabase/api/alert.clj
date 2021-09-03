@@ -208,7 +208,7 @@
          (= unsubscribing-user-id (:id (first recipients)))
          (nil? (slack-channel alert)))))
 
-(api/defendpoint DELETE "/:id/unsubscribe"
+(api/defendpoint DELETE "/:id/subscription"
   "Unsubscribes a user from the given alert"
   [id]
   (let [alert (pulse/retrieve-alert id)]
