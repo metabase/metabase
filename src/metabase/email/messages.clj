@@ -364,13 +364,8 @@
       (qp.store/fetch-and-store-database! database-id)
       (let [w             (qp.streaming.i/streaming-results-writer export-format os)
             cols          (-> results :data :cols)
-            deduped-cols  (qp.streaming/deduplicate-col-names cols)
             viz-settings  (-> results :data :viz-settings)
-            output-order  (qp.streaming/export-column-order deduped-cols (::mb.viz/table-columns viz-settings))
-            ordered-cols  (if output-order
-                            (let [v (into [] deduped-cols)]
-                              (for [i output-order] (v i)))
-                            deduped-cols)
+            {:keys [ordered-cols output-order]} (qp.streaming/order-cols cols viz-settings)
             viz-settings' (assoc viz-settings :output-order output-order)]
         (qp.streaming.i/begin! w
                                (assoc-in results [:data :ordered-cols] ordered-cols)

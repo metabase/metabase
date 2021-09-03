@@ -19,7 +19,7 @@
          streaming.json/keep-me
          streaming.xlsx/keep-me)
 
-(defn deduplicate-col-names
+(defn- deduplicate-col-names
   "Deduplicate column names that would otherwise conflict.
 
   TODO: This function includes logic that is normally is done by the annotate middleware, but hasn't been run yet
@@ -33,7 +33,7 @@
        cols
        (mbql.u/uniquify-names (map :name cols))))
 
-(defn export-column-order
+(defn- export-column-order
   "For each entry in `table-columns` that is enabled, finds the index of the corresponding
   entry in `cols` by name or id. If a col has been remapped, uses the index of the new column.
 
@@ -69,14 +69,21 @@
           enabled-table-cols)
          (remove nil?))))
 
+(defn order-cols
+  "Dedups and orders `cols` based on the contents of table-columns in the provided viz settings. Also
+  returns a list of indices which map the new order to the original order, and is used to reorder individual rows."
+  [cols viz-settings]
+  (let [deduped-cols  (deduplicate-col-names cols)
+        output-order  (export-column-order deduped-cols (::mb.viz/table-columns viz-settings))
+        ordered-cols  (if output-order
+                        (let [v (into [] deduped-cols)]
+                          (for [i output-order] (v i)))
+                        deduped-cols)]
+    [ordered-cols output-order]))
+
 (defn- streaming-rff [results-writer]
   (fn [{:keys [cols viz-settings] :as initial-metadata}]
-    (let [deduped-cols  (deduplicate-col-names cols)
-          output-order  (export-column-order deduped-cols (::mb.viz/table-columns viz-settings))
-          ordered-cols  (if output-order
-                          (let [v (into [] deduped-cols)]
-                            (for [i output-order] (v i)))
-                          deduped-cols)
+    (let [{:keys [ordered-cols output-order]} (order-cols cols viz-settings)
           viz-settings' (assoc viz-settings :output-order output-order)
           row-count     (volatile! 0)]
       (fn
