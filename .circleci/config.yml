@@ -953,8 +953,9 @@ jobs:
                       name: Restore cached uberjar built in previous step
                       <<: *CacheKeyUberjar
                   - steps: << parameters.before-steps >>
+                # Make both `test-files` and `source-folder` parameters optional. Translates to: if `parameter` => run associated flag (`--spec` and `--folder`, respectively)
                 command: |
-                  run test-cypress-no-build <<# parameters.test-files >> --spec << parameters.test-files >> <</ parameters.test-files >> --folder << parameters.source-folder >>
+                  run test-cypress-no-build <<# parameters.test-files >> --spec << parameters.test-files >> <</ parameters.test-files >> <<# parameters.source-folder >> --folder << parameters.source-folder >> <</ parameters.source-folder >>
                 after-steps:
                   - store_artifacts:
                       path: /home/circleci/metabase/metabase/cypress
