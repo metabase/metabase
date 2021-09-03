@@ -15,8 +15,22 @@ export const Header = styled.span`
   align-items: center;
 `;
 
+const ICON_VARIANTS = {
+  "right-down": {
+    collapsed: "chevronright",
+    expanded: "chevrondown",
+  },
+  "up-down": {
+    collapsed: "chevrondown",
+    expanded: "chevronup",
+  },
+};
+
 export const ToggleIcon = styled(Icon).attrs({
-  name: props => (props.isExpanded ? "chevrondown" : "chevronright"),
+  name: ({ isExpanded, variant }) => {
+    const { collapsed, expanded } = ICON_VARIANTS[variant];
+    return isExpanded ? expanded : collapsed;
+  },
   size: 12,
 })`
   margin-right: 0.5rem;

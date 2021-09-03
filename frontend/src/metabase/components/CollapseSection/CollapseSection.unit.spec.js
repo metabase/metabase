@@ -66,4 +66,11 @@ describe("CollapseSection", () => {
     setup({ header: <h1>Custom Header</h1> });
     expect(screen.queryByText("Custom Header")).toBeInTheDocument();
   });
+
+  it("uses different icons for 'up-down' icon variant", () => {
+    setup({ iconVariant: "up-down" });
+    expect(screen.queryByLabelText("chevrondown icon")).toBeInTheDocument();
+    fireEvent.click(screen.queryByLabelText("chevrondown icon"));
+    expect(screen.queryByLabelText("chevronup icon")).toBeInTheDocument();
+  });
 });

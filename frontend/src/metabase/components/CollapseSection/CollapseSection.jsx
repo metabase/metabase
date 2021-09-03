@@ -10,10 +10,12 @@ const propTypes = {
   headerClass: PropTypes.string,
   bodyClass: PropTypes.string,
   initialState: PropTypes.oneOf(["expanded", "collapsed"]),
+  iconVariant: PropTypes.oneOf(["right-down", "up-down"]),
 };
 
 function CollapseSection({
   initialState = "collapsed",
+  iconVariant = "right-down",
   header,
   headerClass,
   className,
@@ -42,7 +44,7 @@ function CollapseSection({
         onClick={toggle}
         onKeyDown={onKeyDown}
       >
-        <ToggleIcon isExpanded={isExpanded} />
+        <ToggleIcon isExpanded={isExpanded} variant={iconVariant} />
         <Header>{header}</Header>
       </HeaderContainer>
       <div role="tabpanel">

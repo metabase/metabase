@@ -19,6 +19,15 @@ export const examples = {
       foo foo foo foo foo
     </CollapseSection>
   ),
+  "Up-down icon variant": (
+    <CollapseSection
+      initialState="collapsed"
+      header="Foo"
+      iconVariant="up-down"
+    >
+      foo foo foo foo foo
+    </CollapseSection>
+  ),
   "Components in header": (
     <CollapseSection
       header={
