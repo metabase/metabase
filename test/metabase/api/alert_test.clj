@@ -719,7 +719,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- alert-unsubscribe-url [alert-or-id]
-  (format "alert/%d/unsubscribe" (u/the-id alert-or-id)))
+  (format "alert/%d/subscription" (u/the-id alert-or-id)))
 
 (defn- api:unsubscribe! [user-kw expected-status-code alert-or-id]
   (mt/user-http-request user-kw :delete expected-status-code (alert-unsubscribe-url alert-or-id)))
