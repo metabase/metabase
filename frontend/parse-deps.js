@@ -66,7 +66,7 @@ function dependencies() {
         const realName = parts.join(path.sep);
         return realName;
       })
-      .filter(name => name.indexOf("frontend") === 0);
+      .filter(name => name.indexOf("frontend") >= 0);
 
     const source = path.format({
       ...path.parse(fileName),
