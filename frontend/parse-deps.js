@@ -7,7 +7,7 @@ const glob = require("glob");
 const parser = require("@babel/parser");
 const traverse = require("@babel/traverse").default;
 
-const PATTERN = "frontend/src/metabase/**/*.{js,jsx}";
+const PATTERN = "{enterprise/,}frontend/src/**/*.{js,jsx}";
 
 // after webpack.config.js
 const ALIAS = {
