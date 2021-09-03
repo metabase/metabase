@@ -9,6 +9,8 @@
             [metabase.models.collection :as collection]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.interface :as mi]
+            [metabase.models.pulse-channel :refer [channel-types PulseChannel]]
+            [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
             [metabase.models.pulse :as pulse :refer [Pulse]]
             [metabase.models.pulse-channel :refer [channel-types]]
             [metabase.plugins.classloader :as classloader]
