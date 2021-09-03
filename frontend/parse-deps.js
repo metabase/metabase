@@ -36,6 +36,15 @@ const deps = files.map(fileName => {
         if (path.node.type === "ImportDeclaration") {
           importList.push(path.node.source.value);
         }
+        if (path.node.type === "CallExpression") {
+          const callee = path.node.callee;
+          const args = path.node.arguments;
+          if (callee.type === "Identifier" && callee.name === "require") {
+            if (args.length === 1 && args[0].type === "StringLiteral") {
+              importList.push(args[0].value);
+            }
+          }
+        }
       },
     });
   } catch (e) {
