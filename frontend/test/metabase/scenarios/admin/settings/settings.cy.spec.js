@@ -4,6 +4,7 @@ import {
   version,
   popover,
   describeWithToken,
+  setupMetabaseCloud,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
@@ -396,10 +397,4 @@ function configureAuth(providerTitle) {
     .closest(".rounded.bordered")
     .contains("Configure")
     .click();
-}
-
-function setupMetabaseCloud() {
-  cy.request("PUT", "/api/setting/site-url", {
-    value: "https://CYPRESSTESTENVIRONMENT.metabaseapp.com",
-  });
 }
