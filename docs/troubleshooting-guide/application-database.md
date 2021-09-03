@@ -7,6 +7,7 @@ redirect_from:
 You have installed Metabase, but:
 
 - you are trying to migrate the application database from H2 to another database and something has gone wrong,
+- you are trying to downgrade rather than upgrade,
 - it logs a `liquibase` error message when you try to run it,
 - it logs another error message that mentions `H2` or `h2` while it is running, or
 - you are on Windows 10 and get a warning about file permissions.
@@ -17,7 +18,7 @@ You have installed Metabase, but:
 
 **Steps to take:**
 
-1. FIXME how to tell if you're using H2
+1. To check what you're using as the app database, go to **Admin Panel**, open the **Troubleshooting** tab, scroll down to "Diagnostic Info", and look for the `application-database` key in the JSON it displays.
 2. See [Migrating from H2][migrate] for instructions on how to migrate to a more robust app database.
 
 ## Are you trying to migrate the application database from H2 to something else?
@@ -46,6 +47,17 @@ Command failed with exception: Unsupported database file version or invalid file
     ```
 
 If you're using [Metabase Enterprise Edition][enterprise], you can use [serialization][serialization-docs] to snapshot your application database. Serialization is useful when you want to [preload questions and dashboards][serialization-learn] in a new Metabase instance.
+
+## Are you trying to downgrade?
+
+**Root cause:** Metabase does not support downgrading (i.e., reverting to an early version of the application).
+
+**Steps to take:**
+
+1.  Shut down Metabase.
+2.  Restore the backup copy of the app database you made before trying to upgrade or downgrade.
+3.  Restore the JAR file of the older version you want to revert to.
+4.  Restart Metabase.
 
 ## Is the app database locked?
 
