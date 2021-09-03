@@ -49,6 +49,7 @@ const deps = files.map(fileName => {
     });
   } catch (e) {
     console.error(fileName, e.toString());
+    process.exit(-1);
   }
   const base = path.dirname(fileName) + path.sep;
   const absoluteImportList = importList
