@@ -63,7 +63,7 @@ liquibase.exception.DatabaseException: liquibase.exception.LockException: Could 
     java -jar metabase.jar migrate release-locks
     ```
 
-2.  Once this command completes, restart your Metabase instance normally (*without* the `release-locks` flag).
+2.  Once this command completes, restart your Metabase instance normally (*without* the `migrate release-locks` flag).
 
 ## Is the app database corrupted?
 
