@@ -45,7 +45,16 @@ class DashboardDetailsModal extends React.Component {
         }}
         overwriteOnInitialValuesChange
         {...props}
-      />
+      >
+        {({ Form, FormField, FormFooter, onClose, ...rest }) => (
+          <Form>
+            <FormField name="name" />
+            <FormField name="description" />
+            <FormField name="collection_id" />
+            <FormFooter submitTitle={t`Update`} onCancel={onClose} />
+          </Form>
+        )}
+      </Dashboard.ModalForm>
     );
   }
 }
