@@ -33,7 +33,7 @@ class DashboardDetailsModal extends React.Component {
     } = this.props;
     return (
       <Dashboard.ModalForm
-        title={t`Change title and description`}
+        title={t`Edit dashboard details`}
         dashboard={dashboard}
         onClose={onClose}
         onSaved={dashboard => {

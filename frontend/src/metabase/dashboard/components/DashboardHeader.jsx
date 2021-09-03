@@ -306,7 +306,7 @@ export default class DashboardHeader extends Component {
             to={location.pathname + "/details"}
             data-metabase-event={"Dashboard;EditDetails"}
           >
-            {t`Change title and description`}
+            {t`Edit dashboard details`}
           </Link>,
         );
       }

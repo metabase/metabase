@@ -384,7 +384,7 @@ describe("collection permissions", () => {
                 });
 
                 it("should be able to change title and description", () => {
-                  cy.findByText("Change title and description").click();
+                  cy.findByText("Edit dashboard details").click();
                   cy.location("pathname").should("eq", "/dashboard/1/details");
                   cy.findByLabelText("Name")
                     .click()
@@ -549,11 +549,11 @@ describe("collection permissions", () => {
             });
 
             describe("managing dashboard from the dashboard's edit menu", () => {
-              it("should not be offered to change title and description for dashboard in collections they have `read` access to (metabase#15280)", () => {
+              it("should not be offered to edit dashboard details for dashboard in collections they have `read` access to (metabase#15280)", () => {
                 cy.visit("/dashboard/1");
                 cy.icon("ellipsis").click();
                 popover()
-                  .findByText("Change title and description")
+                  .findByText("Edit dashboard details")
                   .should("not.exist");
               });
 
