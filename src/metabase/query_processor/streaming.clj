@@ -21,7 +21,7 @@
 
 ;; HACK: this function includes logic that is normally is done by the annotate middleware, but hasn't been run yet
 ;; at this point in the code. (#17195)
-(defn- deduplicate-col-names
+(defn deduplicate-col-names
   [cols]
   (map (fn [col unique-name]
          (let [col-with-display-name (if (:display_name col)
@@ -31,7 +31,7 @@
        cols
        (mbql.u/uniquify-names (map :name cols))))
 
-(defn- export-column-order
+(defn export-column-order
   "For each entry in `table-columns` that is enabled, finds the index of the corresponding
   entry in `cols` by name or id. If a col has been remapped, uses the index of the new column.
 

@@ -17,7 +17,9 @@
             [metabase.pulse.render.body :as render.body]
             [metabase.pulse.render.style :as render.style]
             [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.streaming :as qp.streaming]
             [metabase.query-processor.streaming.interface :as qp.streaming.i]
+            [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :as i18n :refer [deferred-trs trs tru]]
@@ -360,12 +362,23 @@
   (driver/with-driver (driver.u/database->driver database-id)
     (qp.store/with-store
       (qp.store/fetch-and-store-database! database-id)
-      (let [w (qp.streaming.i/streaming-results-writer export-format os)]
-        (qp.streaming.i/begin! w results {})
+      (let [w             (qp.streaming.i/streaming-results-writer export-format os)
+            cols          (-> results :data :cols)
+            deduped-cols  (qp.streaming/deduplicate-col-names cols)
+            viz-settings  (-> results :data :viz-settings)
+            output-order  (qp.streaming/export-column-order deduped-cols (::mb.viz/table-columns viz-settings))
+            ordered-cols  (if output-order
+                            (let [v (into [] deduped-cols)]
+                              (for [i output-order] (v i)))
+                            deduped-cols)
+            viz-settings' (assoc viz-settings :output-order output-order)]
+        (qp.streaming.i/begin! w
+                               (assoc-in results [:data :ordered-cols] ordered-cols)
+                               viz-settings')
         (dorun
          (map-indexed
           (fn [i row]
-            (qp.streaming.i/write-row! w row i {} {}))
+            (qp.streaming.i/write-row! w row i ordered-cols viz-settings'))
           rows))
         (qp.streaming.i/finish! w results)))))
 
