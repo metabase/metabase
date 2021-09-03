@@ -89,14 +89,6 @@ Exception in thread "main" org.h2.jdbc.JdbcSQLException: Row not found when tryi
         $ touch metabase.db.mv.db
         $ java -cp target/uberjar/metabase.jar org.h2.tools.RunScript -script metabase.db.h2.sql -url jdbc:h2:`pwd`/metabase.db
         ```
-3.  If you are running an older version, the app database is stored in `metabase.db.h2.db`.
-    -   Open a shell on the server where the Metabase instance is running and attempt to recover the corrupted H2 file by running:
-        ```
-        $ java -cp metabase.jar org.h2.tools.Recover
-        $ mv metabase.db.h2.db metabase.old.db
-        $ touch metabase.db.h2.db
-        $ java -cp target/uberjar/metabase.jar org.h2.tools.RunScript -script metabase.db.h2.sql -url jdbc:h2:`pwd`/metabase.db;MV_STORE=FALSE
-        ```
 
 ## Are you running Metabase with H2 on Windows 10?
 
