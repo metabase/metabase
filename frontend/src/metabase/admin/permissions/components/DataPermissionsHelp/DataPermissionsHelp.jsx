@@ -21,32 +21,32 @@ export const DataPermissionsHelp = () => (
       <p>{jt`Users can be members of multiple groups, and are given the ${(
         <strong>{t`most permissive`}</strong>
       )} level of access for a database or table across all the groups they’re a member of.`}</p>
-      <p>{t`Unless a user group has “no access” for a given database or table, they’ll be able to view any saved questions based on that data if they have access to the collection it’s saved in.`}</p>
+      <p>{t`Unless a user group's access for a given database is set to “block", they’ll be able to view any saved question based on that data if they have access to the collection it’s saved in.`}</p>
       <h2>{t`Access levels`}</h2>
 
       <h3>
         <PermissionIcon name="check" style={{ color: color("success") }} />
         {t`Unrestricted access`}
       </h3>
-      <p>{t`Users can use the visual query builder to questions based on all tables in this database. A user group must have Unrestricted access for a database if you want to give them access to the SQL/native query editor.`}</p>
+      <p>{t`Users can use the visual query builder to ask questions based on all tables in this database. A user group must have Unrestricted access for a database if you want to give them access to the SQL/native query editor.`}</p>
 
       <h3>
         <PermissionIcon name="permissions_limited" color="warning" />
         {t`Granular access`}
       </h3>
-      <p>{t`Restrict user access to specific tables in a database. When you select this option, you’ll be taken to the table-level view of that database to make more granular options.`}</p>
+      <p>{t`Restrict user access to specific tables in a database. When you select this option, you’ll be taken to the table-level view of that database to set the access level for each table.`}</p>
 
       <h3>
         <PermissionIcon name="eye" color="accent5" />
         {t`No self-service access`}
       </h3>
-      <p>{t`Prevent users create new ad hoc queries or questions based on that data, or see that data in the Browse Data screen. But users can still see existing saved questions and charts based on that data in Collections that they have access to.`}</p>
+      <p>{t`Prevent users from creating new ad hoc queries or questions based on this data, or from seeing this data in the Browse Data screen. Users with this level of access can still see saved questions and charts based on this data in Collections they have access to.`}</p>
 
       <h3>
         <PermissionIcon name="close" color="danger" />
-        {t`No access`}
+        {t`Block`}
       </h3>
-      <p>{t`Ensure users can’t ever see the data from a certain database regardless of their permissions at the collection level. Keep in mind that if the user is part of another group with data access, it will take precedence and their access will not be blocked.`}</p>
+      <p>{t`Ensure users can’t ever see the data from this database regardless of their permissions at the Collection level. Keep in mind that if a user belongs to another group that does have data access, that setting will take precedence, and the user's access will not be blocked.`}</p>
 
       <p>{t`Only available in certain Metabase plans.`}</p>
     </DataPermissionsHelpContent>
