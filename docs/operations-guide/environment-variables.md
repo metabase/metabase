@@ -684,7 +684,7 @@ Server port, usually 389 or 636 if SSL is used.
 Type: string<br>
 Default: `"none"`
 
-Use SSL, TLS or plain text.
+Use SSL (`"ssl"`), TLS (`"starttls"`) or plain text (`"none"`).
 
 #### `MB_LDAP_SYNC_USER_ATTRIBUTES`
 
