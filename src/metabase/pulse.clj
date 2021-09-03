@@ -273,16 +273,19 @@
     [(alert-or-pulse pulse) (keyword channel_type)]))
 
 (defmethod notification [:pulse :email]
-  [{pulse-id :id, pulse-name :name, :as pulse} results {:keys [recipients] :as channel}]
+  [{pulse-id :id, pulse-name :name, dashboard-id :dashboard_id, :as pulse} results {:keys [recipients] :as channel}]
+  (def my-pulse pulse)
+  (comment (clojure.pprint/pprint my-pulse))
   (log/debug (u/format-color 'cyan (trs "Sending Pulse ({0}: {1}) with {2} Cards via email"
                                         pulse-id (pr-str pulse-name) (count results))))
   (let [email-recipients (filterv u/email? (map :email recipients))
         query-results    (filter :card results)
-        timezone         (-> query-results first :card defaulted-timezone)]
+        timezone         (-> query-results first :card defaulted-timezone)
+        dashboard        (Dashboard :id dashboard-id)]
     {:subject      (subject pulse)
      :recipients   email-recipients
      :message-type :attachments
-     :message      (messages/render-pulse-email timezone pulse results)}))
+     :message      (messages/render-pulse-email timezone pulse dashboard results)}))
 
 (defmethod notification [:pulse :slack]
   [{pulse-id :id, pulse-name :name, :as pulse} results {{channel-id :channel} :details :as channel}]

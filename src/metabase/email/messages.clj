@@ -17,6 +17,8 @@
             [metabase.pulse.render :as render]
             [metabase.pulse.render.body :as render.body]
             [metabase.pulse.render.style :as render.style]
+            [metabase.pulse.render.image-bundle :as image-bundle]
+            [metabase.pulse.render.js-svg :as js-svg]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.streaming.interface :as qp.streaming.i]
             [metabase.util :as u]
@@ -66,6 +68,13 @@
       true                              nil
       (data-uri-svg? url)               (themed-image-url url color)
       :else                             url)))
+
+(defn- dashboard-icon-bundle
+  []
+  (let [color     (public-settings/application-color)
+        png-bytes (js-svg/icon :dashboard color)]
+     (-> (image-bundle/make-image-bundle :attachment png-bytes)
+         (image-bundle/image-bundle->attachment))))
 
 (defn- button-style [color]
   (str "display: inline-block; "
@@ -281,13 +290,16 @@
                               (some :dashboard_id cards))]
     {:pulseLink (url/dashboard-url dashboard-id)}))
 
-(defn- pulse-context [pulse]
+(defn- pulse-context [pulse dashboard]
   (merge (common-context)
-         {:emailType    "pulse"
-          :pulseName    (:name pulse)
-          :sectionStyle (render.style/style (render.style/section-style))
-          :colorGrey4   render.style/color-gray-4
-          :logoFooter   true}
+         {:emailType                 "pulse"
+          :pulseName                 (:name pulse)
+          :dashboardDescription      (:description dashboard)
+          :pulseCreator              (-> pulse :creator :common_name)
+          :sectionStyle              (render.style/style (render.style/section-style))
+          :colorGrey4                render.style/color-gray-4
+          :siteUrl                   (public-settings/site-url)
+          :notificationManagementUrl (url/notification-management-url)}
          (pulse-link-context pulse)
          (random-quote-context)))
 
@@ -393,13 +405,16 @@
     (render/render-pulse-section timezone result)
     {:content (markdown/process-markdown (:text result) :html)}))
 
-(defn- render-message-body [message-template message-context timezone results]
-  (let [rendered-cards (binding [render/*include-title* true]
-                         (mapv #(render-result-card timezone %) results))
-        message-body   (assoc message-context :pulse (html (vec (cons :div (map :content rendered-cards)))))
-        attachments    (apply merge (map :attachments rendered-cards))]
-    (vec (concat [{:type "text/html; charset=utf-8" :content (stencil/render-file message-template message-body)}]
+(defn- render-message-body [message-template message-context timezone dashboard results]
+  (let [rendered-cards  (binding [render/*include-title* true]
+                          (mapv #(render-result-card timezone %) results))
+        icon-attachment (first (map make-message-attachment (dashboard-icon-bundle)))
+        message-body    (assoc message-context :pulse   (html (vec (cons :div (map :content rendered-cards))))
+                                               :iconCid (:content-id icon-attachment))
+        attachments     (apply merge (map :attachments rendered-cards))]
+      (vec (concat [{:type "text/html; charset=utf-8" :content (stencil/render-file message-template message-body)}]
                  (map make-message-attachment attachments)
+                 [icon-attachment]
                  (result-attachments results)))))
 
 (defn- assoc-attachment-booleans [pulse results]
@@ -411,8 +426,8 @@
 
 (defn render-pulse-email
   "Take a pulse object and list of results, returns an array of attachment objects for an email"
-  [timezone pulse results]
-  (render-message-body "metabase/email/pulse" (pulse-context pulse) timezone (assoc-attachment-booleans pulse results)))
+  [timezone pulse dashboard results]
+  (render-message-body "metabase/email/pulse" (pulse-context pulse dashboard) timezone dashboard (assoc-attachment-booleans pulse results)))
 
 (defn pulse->alert-condition-kwd
   "Given an `alert` return a keyword representing what kind of goal needs to be met."

@@ -1,17 +1,159 @@
-{{> metabase/email/_header}}
-  {{#pulseName}}
-    {{#pulseLink}}
-      <a href="{{pulseLink}}" class="title-link">
-        <h1 style="{{sectionStyle}} margin: 24px 0 24px 0;">
-          {{pulseName}}
-        </h1>
-      </a>
-    {{/pulseLink}}
-    {{^pulseLink}}
-      <h1 style="{{sectionStyle}} margin: 16px; color: {{color-brand}};">
-        {{pulseName}}
-      </h1>
-    {{/pulseLink}}
-  {{/pulseName}}
-  {{{pulse}}}
-{{> metabase/email/_footer_pulse}}
+<html>
+  <head>
+   {{!-- TODO: convert most styles to inline styles for wider support --}}
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900&display=swap');
+
+      {{!-- General formatting for Markdown elements --}}
+      * {
+        font-size: 12px;
+        color: #4C5773;
+      }
+
+      h1, h2, h3, h4, h5, h6 {
+        color: #4C5773;
+        font-weight: 900;
+      }
+
+      h1 {
+        font-size: 20px;
+        line-height: 24px;
+      }
+
+      h2 {
+        font-size: 18px;
+        line-height: 22px;
+      }
+
+      h3 {
+        font-size: 16px;
+        line-height: 20px;
+      }
+
+      h4, h5, h6 {
+        font-size: 14px;
+        line-height: 18px;
+      }
+
+
+
+      .whitelabel {
+        color: {{applicationColor}}
+      }
+
+      .text-dark {
+        color: #4C5773;
+      }
+
+      .text-light {
+        color: #B8BBC3;
+      }
+
+      .pulse {
+        font-family: "Lato", "Lucida Grande", "Lucida Sans Unicode", Tahoma, Sans-Serif;
+        padding: 0px;
+      }
+
+      .pulse .background {
+        background-color: #F9F9F9;
+        width: 719px;
+        height: 100%;
+      }
+
+      .pulse .spacer {
+        line-height: 20px;
+        height: 20px;
+      }
+
+      .pulse .container {
+        background-color: #FFFFFF;
+        width: 555px;
+        border-radius: 30px;
+        margin-left: 52px;
+        margin-right: 52px;
+        margin-bottom: 131px;
+        padding: 30px;
+      }
+
+      .icon {
+        padding-right: 16px;
+      }
+
+      hr {
+        border-width: 0;
+        background: #F0F0F0;
+        color: #F0F0F0;
+        height: 1px;
+      }
+
+      a {
+        color: {{applicationColor}};
+        text-decoration: none;
+      }
+
+      a:hover, a:active {
+         text-decoration: underline;
+      }
+
+      @media screen and (max-width:600px) {
+        .pulse .background {
+          background-color: #F9F9F9;
+          width: 635px;
+          height: 100%;
+        }
+        .pulse .container {
+          margin-left: 10px;
+          margin-right: 10px;
+        }
+      }
+
+    </style>
+  </head>
+
+  <body class="pulse">
+    <div class="background">
+      <div class="spacer">&#8202;</div>
+      <div class="container">
+        <table class="header">
+          <tr>
+            <td>
+              <img class="icon" width="20" height="20" src="cid:{{iconCid}}"/>
+            </td>
+            <td>
+              <div class="whitelabel" style="font-size: 20px; font-weight: 700; padding-bottom: 6px;">
+                {{pulseName}}
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>&#8202;</td>
+            <td>
+              <div class="text-dark" style="font-size: 14px; padding-bottom: 6px;">
+                {{dashboardDescription}}
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>&#8202;</td>
+            <td>
+              <div class="text-light" style="font-size: 12px">
+                Sent by {{pulseCreator}}
+              </div>
+            </td>
+          </tr>
+        </table>
+        <hr>
+        {{{pulse}}}
+        <hr>
+        <div style="font-size: 11px; width: max-content; margin: 0 auto">
+          Sent from {{siteUrl}}.
+          <a href="{{notificationManagementUrl}}"
+             style="color: {{applicationColor}}">
+            Manage your subscriptions
+          </a>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
+
