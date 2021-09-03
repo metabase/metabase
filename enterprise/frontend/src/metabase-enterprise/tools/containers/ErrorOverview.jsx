@@ -3,9 +3,12 @@ import { t } from "ttag";
 
 import _ from "underscore";
 
+import { CardApi } from "metabase/services";
+
 import * as Queries from "../../audit_app/lib/cards/queries";
 import AuditTable from "../../audit_app/containers/AuditTable";
 import AuditParameters from "../../audit_app/components/AuditParameters";
+
 
 const getSortOrder = isAscending => (isAscending ? "asc" : "desc");
 
@@ -29,7 +32,8 @@ export default function ErrorOverview(props) {
   };
   const handleReloadSelected = () => {
     const checkedCardIds = Object.values(_.pick(rowToCardId, (member, key) => (rowChecked[key])));
-    console.log(checkedCardIds);
+    checkedCardIds.forEach(member => CardApi.query({ cardId: member}));
+    location.reload();
   }
 
   const handleSortingChange = sorting => setSorting(sorting);
