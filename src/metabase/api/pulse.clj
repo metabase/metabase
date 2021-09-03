@@ -205,4 +205,13 @@
   (p/send-pulse! (assoc body :creator_id api/*current-user-id*))
   {:ok true})
 
+(api/defendpoint DELETE "/:id/subscription"
+  "For users to unsubscribe themselves from a pulse subscription."
+  [id]
+  (api/let-404 [pulse-id (db/select-one-id Pulse :id id)
+                pc-id    (db/select-one-id PulseChannel :pulse_id pulse-id :channel_type "email")
+                pcr-id   (db/select-one-id PulseChannelRecipient :pulse_channel_id pc-id :user_id api/*current-user-id*)]
+    (db/delete! PulseChannelRecipient :id pcr-id))
+  api/generic-204-no-content)
+
 (api/define-routes)
