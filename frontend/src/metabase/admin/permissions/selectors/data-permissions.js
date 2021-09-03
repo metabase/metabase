@@ -302,7 +302,8 @@ const buildTablesPermissions = (
       postActions: {
         controlled: () =>
           push(
-            `/admin/permissions/data/group/${groupId}/database/${entityId.databaseId}/schema/${entityId.schemaName}`,
+            `/admin/permissions/data/group/${groupId}/database/${entityId.databaseId}/schema/` +
+              encodeURIComponent(entityId.schemaName),
           ),
       },
       options: [

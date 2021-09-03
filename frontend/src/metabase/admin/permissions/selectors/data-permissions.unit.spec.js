@@ -190,6 +190,27 @@ describe("getDatabasesSidebar", () => {
             id: "schema:schema_2",
             name: "schema_2",
           },
+          {
+            children: [
+              {
+                entityId: {
+                  databaseId: 2,
+                  schemaName: "schema/4",
+                  tableId: 14,
+                },
+                icon: "table",
+                id: "table:14",
+                name: "Biggie Sightings Cities",
+              },
+            ],
+            entityId: {
+              databaseId: 2,
+              schemaName: "schema/4",
+            },
+            icon: "folder",
+            id: "schema:schema/4",
+            name: "schema/4",
+          },
         ],
       ]);
     });

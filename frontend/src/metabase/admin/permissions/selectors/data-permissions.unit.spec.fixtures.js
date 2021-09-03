@@ -15,6 +15,8 @@ export const normalizedMetadata = {
         7,
         8,
         9,
+        // In schema/4
+        14,
       ],
       id: 2,
     },
@@ -39,6 +41,11 @@ export const normalizedMetadata = {
       id: "3:",
       name: null,
       database: 3,
+    },
+    "4:schema/4": {
+      id: "4:schema/4",
+      name: "schema/4",
+      database: 2,
     },
   },
   tables: {
@@ -113,6 +120,14 @@ export const normalizedMetadata = {
       display_name: "Badminton Mixed Singles Results",
       id: 13,
       db_id: 3,
+    },
+    "14": {
+      schema: "4:schema/4",
+      schema_name: "schema/4",
+      name: "Biggie Sightings Cities",
+      display_name: "Biggie Sightings Cities",
+      id: 14,
+      db_id: 2,
     },
   },
   fields: {
