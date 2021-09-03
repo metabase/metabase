@@ -10,3 +10,4 @@ This guide contains detailed information on how to work on Metabase codebase.
 - [How to work with the frontend code](frontend.md)
 - [How to contribute back to the Metabase project](contributing.md)
 - [How to add support in Metabase for other languages](internationalization.md)
+- [How to use visual tests](visual-tests.md)
