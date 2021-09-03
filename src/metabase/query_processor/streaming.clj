@@ -19,9 +19,11 @@
          streaming.json/keep-me
          streaming.xlsx/keep-me)
 
-;; HACK: this function includes logic that is normally is done by the annotate middleware, but hasn't been run yet
-;; at this point in the code. (#17195)
 (defn deduplicate-col-names
+  "Deduplicate column names that would otherwise conflict.
+
+  TODO: This function includes logic that is normally is done by the annotate middleware, but hasn't been run yet
+  at this point in the code. We should eventually refactor this (#17195)"
   [cols]
   (map (fn [col unique-name]
          (let [col-with-display-name (if (:display_name col)
