@@ -52,17 +52,17 @@
 
 (defn- toc-links
   "Creates a list of links to endpoints in the relevant namespace."
-  [endpoints]
-  (->> (map :endpoint-str endpoints)
-       (map #(str/replace % #"[#+`]" ""))
-       (map str/trim)
-       (map anchor-link)
-       (map #(str "  - " %))))
+  [endpoint]
+  (->> (:endpoint-str endpoint)
+       (#(str/replace % #"[#+`]" ""))
+       (str/trim)
+       (anchor-link)
+       (#(str "  - " %))))
 
 (defn section-toc
   "Generates a table of contents for endpoints in a section."
   [ep-data]
-  (str (str/join "\n" (toc-links ep-data)) "\n\n"))
+  (str (str/join "\n" (map toc-links ep-data)) "\n\n"))
 
 ;;;; API docs section endpoints
 
@@ -92,7 +92,7 @@
     (meta varr)))
 
 (defn- section-endpoints
-  "Builds a list of endpoints and their parameters. Relies on docstring generation in /api/common/internal.clj"
+  "Builds a list of endpoints and their parameters. Relies on docstring generation in /api/common/internal.clj."
   [ep-data]
   (str/join "\n\n" (map :doc ep-data)))
 
