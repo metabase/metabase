@@ -681,10 +681,10 @@ Server port, usually 389 or 636 if SSL is used.
 
 #### `MB_LDAP_SECURITY`
 
-Type: string<br>
+Type: string (`"none"`, `"ssl"`, `"starttls"`)<br>
 Default: `"none"`
 
-Use SSL (`"ssl"`), TLS (`"starttls"`) or plain text (`"none"`).
+Use SSL, TLS or plain text.
 
 #### `MB_LDAP_SYNC_USER_ATTRIBUTES`
 
