@@ -34,10 +34,12 @@ function updateSectionsWithPlugins(sections) {
     // the update functions may change the key ordering inadvertently
     // see: https://github.com/aearly/icepick/issues/48
     // therefore, re-sort the reduced object according to the original key order
-    const reSortFn = ([, aVal], [, bVal]) =>
-      aVal && bVal && aVal.order - bVal.order;
+    const sortByOrder = (
+      [, { order: order1 = 0 }],
+      [, { order: order2 = 0 }],
+    ) => order1 - order2;
 
-    return Object.fromEntries(Object.entries(reduced).sort(reSortFn));
+    return Object.fromEntries(Object.entries(reduced).sort(sortByOrder));
   } else {
     return sections;
   }
