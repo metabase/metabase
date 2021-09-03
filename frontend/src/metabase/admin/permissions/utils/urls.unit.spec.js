@@ -22,6 +22,16 @@ describe("getDatabaseFocusPermissionsUrl", () => {
     expect(url).toEqual("/admin/permissions/data/database/1/schema/my_schema");
   });
 
+  it("when entityId is a schema with a / id it returns database permissions url", () => {
+    const url = getDatabaseFocusPermissionsUrl({
+      databaseId: 1,
+      schemaName: "my/schema",
+    });
+    expect(url).toEqual(
+      "/admin/permissions/data/database/1/schema/my%2Fschema",
+    );
+  });
+
   it("when entityId is a table id with schema it returns table permissions url", () => {
     const url = getDatabaseFocusPermissionsUrl({
       databaseId: 1,
@@ -30,6 +40,17 @@ describe("getDatabaseFocusPermissionsUrl", () => {
     });
     expect(url).toEqual(
       "/admin/permissions/data/database/1/schema/my_schema/table/10",
+    );
+  });
+
+  it("when entityId is a table id with schema with a / it returns table permissions url", () => {
+    const url = getDatabaseFocusPermissionsUrl({
+      databaseId: 1,
+      schemaName: "my/schema",
+      tableId: 10,
+    });
+    expect(url).toEqual(
+      "/admin/permissions/data/database/1/schema/my%2Fschema/table/10",
     );
   });
 
@@ -60,6 +81,16 @@ describe("getGroupFocusPermissionsUrl", () => {
     });
     expect(url).toEqual(
       "/admin/permissions/data/group/1/database/1/schema/my_schema",
+    );
+  });
+
+  it("when entityId is a schema with a / with a id it returns database permissions url", () => {
+    const url = getGroupFocusPermissionsUrl(1, {
+      databaseId: 1,
+      schemaName: "my/schema",
+    });
+    expect(url).toEqual(
+      "/admin/permissions/data/group/1/database/1/schema/my%2Fschema",
     );
   });
 });
