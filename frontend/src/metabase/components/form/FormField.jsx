@@ -35,6 +35,7 @@ const propTypes = {
   ]),
   hasMargin: PropTypes.bool,
   className: PropTypes.string,
+  style: PropTypes.object,
 };
 
 const ALL_DOT_CHARS = /\./g;
@@ -51,6 +52,7 @@ function FormField(props) {
       (formField.horizontal || formField.type === "boolean"),
     children,
     hasMargin = true,
+    style,
   } = props;
 
   if (hidden) {
@@ -76,7 +78,7 @@ function FormField(props) {
   });
 
   return (
-    <div id={formFieldId} className={rootClassNames}>
+    <div id={formFieldId} className={rootClassNames} style={style}>
       {(title || description) && (
         <div>
           <FieldRow>
