@@ -7,9 +7,12 @@ import * as Urls from "metabase/lib/urls";
 import { t } from "ttag";
 
 import Dashboard from "metabase/entities/dashboards";
+import CollapseSection from "metabase/components/CollapseSection";
 
 import { setDashboardAttributes } from "../actions";
 import { getDashboardComplete } from "../selectors";
+
+import { CacheTTLFieldContainer } from "./DashboardDetailsModal.styled";
 
 const mapStateToProps = (state, props) => ({
   dashboard: getDashboardComplete(state, props),
@@ -47,17 +50,44 @@ class DashboardDetailsModal extends React.Component {
         overwriteOnInitialValuesChange
         {...props}
       >
-        {({ Form, FormField, FormFooter, onClose, ...rest }) => (
-          <Form>
-            <FormField name="name" />
-            <FormField name="description" />
-            <FormField name="collection_id" />
-            <FormFooter submitTitle={t`Update`} onCancel={onClose} />
-          </Form>
-        )}
+        {({ Form, FormField, FormFooter, formFields, onClose }) => {
+          const visibleFields = formFields.filter(
+            field => field.name !== "cache_ttl",
+          );
+          const hasCacheTTLField = visibleFields.length !== formFields.length;
+          return (
+            <Form>
+              {visibleFields.map(field => (
+                <FormField key={field.name} name={field.name} />
+              ))}
+              {hasCacheTTLField && (
+                <CollapseSection
+                  header={t`More options`}
+                  iconVariant="up-down"
+                  iconPosition="right"
+                >
+                  <CacheTTLField>
+                    <FormField name="cache_ttl" hasMargin={false} />
+                  </CacheTTLField>
+                </CollapseSection>
+              )}
+              <FormFooter submitTitle={t`Update`} onCancel={onClose} />
+            </Form>
+          );
+        }}
       </Dashboard.ModalForm>
     );
   }
+}
+
+function CacheTTLField({ children }) {
+  return (
+    <CacheTTLFieldContainer>
+      <span>{t`Cache all question results for`}</span>
+      {children}
+      <span>{t`hours`}</span>
+    </CacheTTLFieldContainer>
+  );
 }
 
 export default DashboardDetailsModal;
