@@ -94,5 +94,5 @@ export const PLUGIN_MODERATION = {
 };
 
 export const PLUGIN_CACHING = {
-  cacheTTLFormField: {},
+  cacheTTLFormField: null,
 };
