@@ -5,6 +5,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import xhrMock from "xhr-mock";
 import { getStore } from "__support__/entities-store";
+import { PLUGIN_CACHING } from "metabase/plugins";
 import CreateDashboardModal from "./CreateDashboardModal";
 
 function setup() {
@@ -108,6 +109,39 @@ describe("CreateDashboardModal", () => {
 
     fillForm(FORM);
     fireEvent.click(screen.queryByRole("button", { name: "Create" }));
+  });
+
+  describe("Cache TTL field", () => {
+    describe("OSS", () => {
+      it("is not shown", () => {
+        setup();
+        expect(screen.queryByText("More options")).not.toBeInTheDocument();
+        expect(
+          screen.queryByText("Cache all question results for"),
+        ).not.toBeInTheDocument();
+      });
+    });
+
+    describe("EE", () => {
+      beforeEach(() => {
+        PLUGIN_CACHING.cacheTTLFormField = {
+          name: "cache_ttl",
+          type: "integer",
+        };
+      });
+
+      afterEach(() => {
+        PLUGIN_CACHING.cacheTTLFormField = null;
+      });
+
+      it("is not shown", () => {
+        setup();
+        expect(screen.queryByText("More options")).not.toBeInTheDocument();
+        expect(
+          screen.queryByText("Cache all question results for"),
+        ).not.toBeInTheDocument();
+      });
+    });
   });
 
   test.todo("navigates back to dashboard after an update");
