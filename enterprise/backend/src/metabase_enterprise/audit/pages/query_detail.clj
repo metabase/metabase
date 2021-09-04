@@ -1,5 +1,7 @@
 (ns metabase-enterprise.audit.pages.query-detail
-  "Queries to show details about a (presumably ad-hoc) query." (:require [cheshire.core :as json]
+  "Queries to show details about a (presumably ad-hoc) query."
+  (:require [cheshire.core :as json]
+            [honeysql.core :as hsql]
             [metabase-enterprise.audit.pages.common :as common]
             [metabase.util.schema :as su]
             [ring.util.codec :as codec]
@@ -28,12 +30,15 @@
               [:database_id     {:display_name "Database ID",     :base_type :type/Integer}]
               [:database_name   {:display_name "Database",        :base_type :type/Text}]
               [:dashboard_id    {:display_name "Dashboard Id",    :base_type :type/Integer}]
+              [:dashboard_name  {:display_name "Dashboard Name",  :base_type :type/Text}]
               [:card_query      {:display_name "Query",           :base_type :type/*}]
               [:table_id        {:display_name "Table ID",        :base_type :type/Integer}]
               [:table_name      {:display_name "Table",           :base_type :type/Text}]
+              [:last_run_at     {:display_name "Last run at",     :base_type :type/DateTime}]
               [:user_id         {:display_name "Created By ID",   :base_type :type/Integer}]
               [:user_name       {:display_name "Created By",      :base_type :type/Text}]
-              [:last_error      {:display_name "Error",           :base_type :type/Text}]]
+              [:last_error      {:display_name "Error",           :base_type :type/Text}]
+              [:updated_at      {:display_name "Updated At",      :base_type :type/DateTime}]]
    :results (common/reducible-query
               {:select    [[:card.id :card_id]
                            [:card.name :card_name]
@@ -42,9 +47,11 @@
                            :card.database_id
                            [:db.name :database_name]
                            :dash_card.dashboard_id
+                           :dash_card.dashboard_id
                            :card.dataset_query
                            :card.table_id
                            [:t.name :table_name]
+                           [(hsql/call :max :qe.started_at) :last_run_at]
                            [:card.creator_id :user_id]
                            [(common/user-full-name :u) :user_name]
                            [:qe.error :error]]
@@ -54,5 +61,6 @@
                            [:metabase_table :t]               [:= :card.table_id :t.id]
                            [:core_user :u]                    [:= :card.creator_id :u.id]
                            [:query_execution :qe]             [:= :card.id :qe.id]
-                           [:report_dashboardcard :dash_card] [:= :card.id :dash_card.card_id]]
+                           [:report_dashboardcard :dash_card] [:= :card.id :dash_card.card_id]
+                           [:report_dashboard :dash]          [:= :dash_card.dashboard_id :dash.id]]
                :where     [:= :card.id card-id]})})
