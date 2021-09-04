@@ -12,6 +12,7 @@ MetabaseSettings.isEnterprise = () => true;
 import "./audit_app";
 import "./sandboxes";
 import "./auth";
+import "./caching";
 import "./collections";
 import "./whitelabel";
 import "./embedding";

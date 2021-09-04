@@ -92,3 +92,7 @@ export const PLUGIN_MODERATION = {
   getStatusIcon: object,
   getModerationTimelineEvents: array,
 };
+
+export const PLUGIN_CACHING = {
+  cacheTTLFormField: {},
+};
