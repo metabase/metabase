@@ -20,8 +20,6 @@ const DASHBOARD = {
 
 function setup() {
   const onClose = jest.fn();
-  const mockOnChangeLocation = jest.fn();
-  const setDashboardAttributes = jest.fn();
 
   xhrMock.put(`/api/dashboard/${DASHBOARD.id}`, (req, res) =>
     res.status(200).body(req.body()),
@@ -42,8 +40,6 @@ function setup() {
 
   return {
     onClose,
-    onChangeLocation: mockOnChangeLocation,
-    setDashboardAttributes,
   };
 }
 
