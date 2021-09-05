@@ -1,5 +1,4 @@
 import { assocIn } from "icepick";
-import { t } from "ttag";
 
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
@@ -12,6 +11,8 @@ import {
 } from "metabase/entities/collections";
 
 import { POST, DELETE } from "metabase/lib/api";
+
+import forms from "./questions/forms";
 
 const FAVORITE_ACTION = `metabase/entities/questions/FAVORITE`;
 const UNFAVORITE_ACTION = `metabase/entities/questions/UNFAVORITE`;
@@ -84,36 +85,6 @@ const Questions = createEntity({
     return state;
   },
 
-  forms: {
-    details: {
-      fields: [
-        { name: "name", title: t`Name` },
-        {
-          name: "description",
-          title: t`Description`,
-          type: "text",
-          placeholder: t`It's optional but oh, so helpful`,
-        },
-        {
-          name: "collection_id",
-          title: t`Collection`,
-          type: "collection",
-        },
-      ],
-    },
-    details_without_collection: {
-      fields: [
-        { name: "name", title: t`Name` },
-        {
-          name: "description",
-          title: t`Description`,
-          type: "text",
-          placeholder: t`It's optional but oh, so helpful`,
-        },
-      ],
-    },
-  },
-
   // NOTE: keep in sync with src/metabase/api/card.clj
   writableProperties: [
     "name",
@@ -134,6 +105,8 @@ const Questions = createEntity({
     const type = object && getCollectionType(object.collection_id, getState());
     return type && `collection=${type}`;
   },
+
+  forms,
 });
 
 export default Questions;
