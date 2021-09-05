@@ -4,6 +4,7 @@ import mock from "xhr-mock";
 
 import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
 import Question from "metabase-lib/lib/Question";
+import { PLUGIN_CACHING } from "metabase/plugins";
 
 import {
   SAMPLE_DATASET,
@@ -140,5 +141,47 @@ describe("SaveQuestionModal", () => {
     );
     fireEvent.click(screen.getByText("Save"));
     expect(onSaveMock.mock.calls[0][0].collection_id).toEqual(5);
+  });
+
+  describe("Cache TTL field", () => {
+    const question = Question.create({
+      databaseId: SAMPLE_DATASET.id,
+      tableId: ORDERS.id,
+      metadata,
+    })
+      .query()
+      .aggregate(["count"])
+      .question();
+
+    describe("OSS", () => {
+      it("is not shown", () => {
+        renderSaveQuestionModal(question);
+        expect(screen.queryByText("More options")).not.toBeInTheDocument();
+        expect(
+          screen.queryByText("Cache all question results for"),
+        ).not.toBeInTheDocument();
+      });
+    });
+
+    describe("EE", () => {
+      beforeEach(() => {
+        PLUGIN_CACHING.cacheTTLFormField = {
+          name: "cache_ttl",
+          type: "integer",
+        };
+      });
+
+      afterEach(() => {
+        PLUGIN_CACHING.cacheTTLFormField = null;
+      });
+
+      it("is not shown", () => {
+        renderSaveQuestionModal(question);
+        expect(screen.queryByText("More options")).not.toBeInTheDocument();
+        expect(
+          screen.queryByText("Cache all question results for"),
+        ).not.toBeInTheDocument();
+      });
+    });
   });
 });
