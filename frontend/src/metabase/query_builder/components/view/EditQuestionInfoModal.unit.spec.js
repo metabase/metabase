@@ -1,10 +1,11 @@
 import React from "react";
 import { Provider } from "react-redux";
 import { reducer as form } from "redux-form";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import xhrMock from "xhr-mock";
 import { getStore } from "__support__/entities-store";
+import { PLUGIN_CACHING } from "metabase/plugins";
 import EditQuestionInfoModal from "./EditQuestionInfoModal";
 
 const QUESTION = {
@@ -12,6 +13,7 @@ const QUESTION = {
   name: "Question",
   description: "I'm here for your unit tests",
   collection_id: null,
+  cache_ttl: 0,
   archived: false,
 };
 
@@ -125,7 +127,7 @@ describe("EditQuestionInfoModal", () => {
     fireEvent.click(screen.queryByRole("button", { name: "Save" }));
   });
 
-  it("calls onSave callback on successful update", () => {
+  it("calls onSave callback on successful update", async () => {
     const UPDATES = {
       name: "New fancy question name",
       description: "Just testing if updates work correctly",
@@ -133,9 +135,62 @@ describe("EditQuestionInfoModal", () => {
     const { onSave } = setup();
 
     const question = fillForm(UPDATES);
-    fireEvent.click(screen.queryByRole("button", { name: "Save" }));
+    await act(async () => {
+      await fireEvent.click(screen.queryByRole("button", { name: "Save" }));
+    });
 
     expect(onSave).toHaveBeenCalledTimes(1);
     expect(onSave).toHaveBeenCalledWith(question);
+  });
+
+  describe("Cache TTL field", () => {
+    describe("OSS", () => {
+      it("is not shown", () => {
+        setup();
+        expect(screen.queryByText("More options")).not.toBeInTheDocument();
+        expect(
+          screen.queryByText("Cache all question results for"),
+        ).not.toBeInTheDocument();
+      });
+    });
+
+    describe("EE", () => {
+      beforeEach(() => {
+        PLUGIN_CACHING.cacheTTLFormField = {
+          name: "cache_ttl",
+          title: "Cache TTL",
+          type: "integer",
+        };
+      });
+
+      afterEach(() => {
+        PLUGIN_CACHING.cacheTTLFormField = null;
+      });
+
+      it("is shown", () => {
+        setup();
+        fireEvent.click(screen.queryByText("More options"));
+        expect(
+          screen.queryByText("Cache all question results for"),
+        ).toBeInTheDocument();
+        expect(screen.queryByLabelText("Cache TTL")).toHaveValue("0");
+      });
+
+      it("can be changed", () => {
+        setup();
+
+        xhrMock.put(`/api/card/${QUESTION.id}`, (req, res) => {
+          expect(req.body()).toEqual({
+            ...QUESTION,
+            cache_ttl: 10,
+          });
+          return res.status(200).body(req.body());
+        });
+
+        fireEvent.click(screen.queryByText("More options"));
+        fillForm({ cache_ttl: 10 });
+        fireEvent.click(screen.queryByRole("button", { name: "Save" }));
+      });
+    });
   });
 });
