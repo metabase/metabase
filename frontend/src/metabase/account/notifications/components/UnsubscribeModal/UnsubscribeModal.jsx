@@ -26,7 +26,7 @@ const UnsubscribeModal = ({
 
   const handleArchiveClick = useCallback(async () => {
     try {
-      await onUnsubscribe(item, user);
+      await onUnsubscribe(item);
 
       if (isCreator(item, user)) {
         onArchive(item, type, true);

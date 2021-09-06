@@ -321,6 +321,7 @@ export const PulseApi = {
   test: POST("/api/pulse/test"),
   form_input: GET("/api/pulse/form_input"),
   preview_card: GET("/api/pulse/preview_card_info/:id"),
+  unsubscribe: DELETE("/api/pulse/:id/subscription"),
 };
 
 export const AlertApi = {
@@ -330,7 +331,7 @@ export const AlertApi = {
   create: POST("/api/alert"),
   update: PUT("/api/alert/:id"),
   delete: DELETE("/api/alert/:id"),
-  unsubscribe: PUT("/api/alert/:id/unsubscribe"),
+  unsubscribe: DELETE("/api/alert/:id/subscription"),
 };
 
 export const SegmentApi = {
