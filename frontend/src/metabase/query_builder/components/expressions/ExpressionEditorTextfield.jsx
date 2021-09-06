@@ -254,7 +254,15 @@ export default class ExpressionEditorTextfield extends React.Component {
     });
   }
 
-  onInputBlur = () => {
+  onInputBlur = e => {
+    // Switching to another window also triggers the blur event.
+    // When our window gets focus again, the input will automatically
+    // get focus, so ignore the blue event to avoid showing an
+    // error message when the user is not actually done.
+    if (e.target === document.activeElement) {
+      return;
+    }
+
     this.clearSuggestions();
 
     const { tokenizerError, compileError } = this.state;
