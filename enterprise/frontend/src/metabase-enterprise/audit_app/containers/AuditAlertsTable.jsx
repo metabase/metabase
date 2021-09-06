@@ -1,12 +1,12 @@
 import React from "react";
 import { t } from "ttag";
-import { alerts } from "../lib/cards/alerts";
-import AuditTableWithSearch from "../containers/AuditTableWithSearch";
+import * as AlertCards from "../lib/cards/alerts";
+import AuditTableWithSearch from "./AuditTableWithSearch";
 
 const AuditAlertsTable = () => {
   return (
     <AuditTableWithSearch
-      table={alerts()}
+      table={AlertCards.alerts()}
       placeholder={t`Filter by question name`}
     />
   );

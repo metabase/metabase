@@ -2,8 +2,8 @@ import React from "react";
 import { t } from "ttag";
 
 import AuditContent from "../components/AuditContent";
-import AuditAlertsTable from "../components/AuditAlertsTable";
-import AuditSubscriptionsTable from "../components/AuditSubscriptionsTable";
+import AuditAlertsTable from "../containers/AuditAlertsTable";
+import AuditSubscriptionsTable from "../containers/AuditSubscriptionsTable";
 
 const AuditSubscriptions = props => (
   <AuditContent {...props} tabs={AuditSubscriptions.tabs} />

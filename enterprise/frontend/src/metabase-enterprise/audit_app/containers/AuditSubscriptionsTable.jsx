@@ -1,7 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 import { subscriptions } from "../lib/cards/subscriptions";
-import AuditTableWithSearch from "../containers/AuditTableWithSearch";
+import AuditTableWithSearch from "./AuditTableWithSearch";
 
 const AuditSubscriptionsTable = () => {
   return (
