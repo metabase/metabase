@@ -2,8 +2,8 @@ import React from "react";
 import { t } from "ttag";
 
 import AuditContent from "../components/AuditContent";
-import AuditAlertsTab from "../components/AuditAlertsTab";
-import AuditSubscriptionsTab from "../components/AuditSubscriptionsTab";
+import AuditAlertsTable from "../components/AuditAlertsTable";
+import AuditSubscriptionsTable from "../components/AuditSubscriptionsTable";
 
 const AuditSubscriptions = props => (
   <AuditContent {...props} tabs={AuditSubscriptions.tabs} />
@@ -13,12 +13,12 @@ AuditSubscriptions.tabs = [
   {
     path: "subscriptions",
     title: t`Subscriptions`,
-    component: AuditSubscriptionsTab,
+    component: AuditSubscriptionsTable,
   },
   {
     path: "alerts",
     title: t`Alerts`,
-    component: AuditAlertsTab,
+    component: AuditAlertsTable,
   },
 ];
 
