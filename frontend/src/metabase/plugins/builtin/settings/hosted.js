@@ -22,7 +22,6 @@ if (MetabaseSettings.isHosted()) {
     ...sections,
     cloud: {
       name: t`Cloud`,
-      order: _.max(sections, "order").order + 1,
       settings: [
         {
           key: "store-link",
