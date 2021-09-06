@@ -24,7 +24,7 @@ const UnsubscribeModal = ({
 }) => {
   const [error, setError] = useState();
 
-  const handleArchiveClick = useCallback(async () => {
+  const handleUnsubscribeClick = useCallback(async () => {
     try {
       await onUnsubscribe(item);
 
@@ -46,7 +46,7 @@ const UnsubscribeModal = ({
         <Button key="cancel" onClick={onClose}>
           {t`I changed my mind`}
         </Button>,
-        <Button key="submit" warning onClick={handleArchiveClick}>
+        <Button key="submit" warning onClick={handleUnsubscribeClick}>
           {t`Unsubscribe`}
         </Button>,
       ]}
