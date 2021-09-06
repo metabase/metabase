@@ -250,6 +250,7 @@ export default class ExpressionEditorTextfield extends React.Component {
     this.setState({
       suggestions: [],
       highlightedSuggestionIndex: 0,
+      helpText: null,
     });
   }
 
@@ -265,7 +266,7 @@ export default class ExpressionEditorTextfield extends React.Component {
         displayError.push(compileError);
       }
     }
-    this.setState({ displayError, helpText: null });
+    this.setState({ displayError });
 
     // whenever our input blurs we push the updated expression to our parent if valid
     if (this.state.expression) {
