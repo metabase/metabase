@@ -34,7 +34,6 @@ describe("UnsubscribeModal", () => {
   });
 
   it("should close if unsubscribed successfully", () => {
-    const user = getUser();
     const alert = getAlert();
     const onUnsubscribe = jest.fn();
     const onArchive = jest.fn();
