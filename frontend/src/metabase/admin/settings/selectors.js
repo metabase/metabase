@@ -35,8 +35,8 @@ function updateSectionsWithPlugins(sections) {
     // see: https://github.com/aearly/icepick/issues/48
     // therefore, re-sort the reduced object according to the original key order
     const sortByOrder = (
-      [, { order: order1 = 0 }],
-      [, { order: order2 = 0 }],
+      [, { order: order1 = Number.MAX_VALUE }],
+      [, { order: order2 = Number.MAX_VALUE }],
     ) => order1 - order2;
 
     return Object.fromEntries(Object.entries(reduced).sort(sortByOrder));
