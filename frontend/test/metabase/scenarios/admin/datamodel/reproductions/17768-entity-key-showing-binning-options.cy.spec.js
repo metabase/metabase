@@ -15,12 +15,8 @@ describe.skip("issue 17768", () => {
 
     // Sync "Sample Dataset" schema
     cy.request("POST", `/api/database/1/sync_schema`);
-    /**
-     * This is a bit fragile and may result in the false positive result, depending on the CI machine that runs tests.
-     * However, 3s should be a plenty of time for the sync to finish.
-     * Although the arbitrary waiting is considered a bad practice, we don't have any other way to determine when the sync is finished.
-     */
-    cy.wait(3000);
+
+    waitForSyncToFinish();
 
     cy.request("PUT", `/api/field/${REVIEWS.ID}`, {
       semantic_type: "type/PK",
@@ -43,3 +39,23 @@ describe.skip("issue 17768", () => {
     });
   });
 });
+
+function waitForSyncToFinish(iteration = 0) {
+  // 100 x 100ms should be plenty of time for the sync to finish.
+  // If it doesn't, we have a much bigger problem than this issue.
+  if (iteration === 100) {
+    return;
+  }
+
+  cy.request("GET", `/api/field/${REVIEWS.ID}`).then(
+    ({ body: { fingerprint } }) => {
+      if (fingerprint === null) {
+        cy.wait(100);
+
+        waitForSyncToFinish(++iteration);
+      }
+
+      return;
+    },
+  );
+}
