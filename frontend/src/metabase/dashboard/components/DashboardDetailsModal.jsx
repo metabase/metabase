@@ -2,6 +2,7 @@
 import React from "react";
 import { withRouter } from "react-router";
 import { connect } from "react-redux";
+import _ from "underscore";
 
 import * as Urls from "metabase/lib/urls";
 import { t } from "ttag";
@@ -12,13 +13,13 @@ import CollapseSection from "metabase/components/CollapseSection";
 import { setDashboardAttributes } from "../actions";
 import { getDashboardComplete } from "../selectors";
 
-import { CacheTTLFieldContainer } from "./DashboardDetailsModal.styled";
-
 const mapStateToProps = (state, props) => ({
   dashboard: getDashboardComplete(state, props),
 });
 
 const mapDispatchToProps = { setDashboardAttributes };
+
+const COLLAPSED_FIELDS = ["cache_ttl"];
 
 @withRouter
 @connect(
@@ -51,24 +52,24 @@ class DashboardDetailsModal extends React.Component {
         {...props}
       >
         {({ Form, FormField, FormFooter, formFields, onClose }) => {
-          const visibleFields = formFields.filter(
-            field => field.name !== "cache_ttl",
+          const [visibleFields, collapsedFields] = _.partition(
+            formFields,
+            field => !COLLAPSED_FIELDS.includes(field.name),
           );
-          const hasCacheTTLField = visibleFields.length !== formFields.length;
           return (
             <Form>
               {visibleFields.map(field => (
                 <FormField key={field.name} name={field.name} />
               ))}
-              {hasCacheTTLField && (
+              {collapsedFields.length > 0 && (
                 <CollapseSection
                   header={t`More options`}
                   iconVariant="up-down"
                   iconPosition="right"
                 >
-                  <CacheTTLField>
-                    <FormField name="cache_ttl" hasMargin={false} />
-                  </CacheTTLField>
+                  {collapsedFields.map(field => (
+                    <FormField key={field.name} name={field.name} />
+                  ))}
                 </CollapseSection>
               )}
               <FormFooter submitTitle={t`Update`} onCancel={onClose} />
@@ -78,16 +79,6 @@ class DashboardDetailsModal extends React.Component {
       </Dashboard.ModalForm>
     );
   }
-}
-
-function CacheTTLField({ children }) {
-  return (
-    <CacheTTLFieldContainer>
-      <span>{t`Cache all question results for`}</span>
-      {children}
-      <span>{t`hours`}</span>
-    </CacheTTLFieldContainer>
-  );
 }
 
 export default DashboardDetailsModal;
