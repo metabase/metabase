@@ -2,13 +2,13 @@ import styled from "styled-components";
 import Label from "metabase/components/type/Label";
 import { color, lighten } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
+import { PermissionsSelectOption } from "./PermissionsSelectOption";
 
 export const PermissionsSelectRoot = styled.div`
   display: flex;
   align-items: center;
   width: 180px;
   cursor: ${props => (props.isDisabled ? "default" : "pointer")};
-  opacity: ${props => (props.isDisabled ? "0.6" : "1")};
 `;
 
 export const PermissionsSelectText = styled(Label)`
@@ -53,4 +53,9 @@ export const WarningIcon = styled(Icon).attrs({
 })`
   margin-right: 0.25rem;
   color: ${color("text-light")};
+`;
+
+export const DisabledPermissionOption = styled(PermissionsSelectOption)`
+  color: ${props =>
+    props.isHighlighted ? color("text-medium") : color("text-light")};
 `;

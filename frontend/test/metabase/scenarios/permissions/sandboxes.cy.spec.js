@@ -742,7 +742,7 @@ describeWithToken("formatting > sandboxes", () => {
 
       cy.visit("/admin/permissions/data/database/1/schema/PUBLIC/table/2");
       cy.wait("@tablePermissions");
-      cy.icon("close")
+      cy.icon("eye")
         .eq(1) // No better way of doing this, undfortunately (see table above)
         .click();
       cy.findByText("Sandboxed").click();

@@ -21,7 +21,7 @@ export const PLUGIN_ADMIN_ROUTES = [];
 // functions that update the sections
 export const PLUGIN_ADMIN_SETTINGS_UPDATES = [];
 
-// admin permissions grid
+// admin permissions
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES = [];
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES = [];
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS = [];

@@ -181,14 +181,19 @@ export default class TagEditorParam extends Component {
             <h4 className="text-medium pb1">{t`Filter widget type`}</h4>
             <Select
               className="block"
-              value={tag["widget-type"]}
+              // avoid `undefined` value because it makes the component "uncontrollable"
+              // (see Uncontrollable.jsx, metabase#13825)
+              value={tag["widget-type"] || "none"}
               onChange={e =>
-                this.setParameterAttribute("widget-type", e.target.value)
+                this.setParameterAttribute(
+                  "widget-type",
+                  e.target.value === "none" ? undefined : e.target.value,
+                )
               }
               isInitiallyOpen={!tag["widget-type"] && hasWidgetOptions}
               placeholder={t`Select…`}
             >
-              {[{ name: "None", type: undefined }]
+              {[{ name: "None", type: "none" }]
                 .concat(widgetOptions)
                 .map(widgetOption => (
                   <Option key={widgetOption.type} value={widgetOption.type}>

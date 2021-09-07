@@ -1,6 +1,7 @@
 import styled from "styled-components";
-import { color, alpha } from "metabase/lib/colors";
+import { color, alpha, lighten } from "metabase/lib/colors";
 import Link from "metabase/components/Link";
+import Icon from "metabase/components/Icon";
 
 const HORIZONTAL_PADDING_VARIANTS = {
   sm: "0.5rem",
@@ -17,9 +18,12 @@ export const PermissionsTableRow = styled.tr`
 `;
 
 export const PermissionsTableCell = styled.td`
-  padding: 0.5rem 0.5rem;
+  padding: 0.5rem 1rem;
+  width: auto;
+  min-width: 220px;
 
   &:first-of-type {
+    max-width: 340px;
     padding: 0.5rem
       ${props => HORIZONTAL_PADDING_VARIANTS[props.horizontalPadding]};
   }
@@ -42,3 +46,9 @@ export const EntityNameLink = styled(Link)`
 `;
 
 export const PermissionTableHeaderRow = styled.tr``;
+
+export const HintIcon = styled(Icon).attrs({ name: "info", size: 12 })`
+  color: ${lighten("text-dark", 0.3)};
+  margin-left: 0.375rem;
+  cursor: pointer;
+`;

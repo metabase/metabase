@@ -139,6 +139,7 @@
     "husky": "^6.0.0",
     "jest": "^27.0.6",
     "jest-localstorage-mock": "^2.2.0",
+    "jest-watch-typeahead": "^0.6.4",
     "jsonwebtoken": "^7.2.1",
     "lint-staged": "^3.3.1",
     "mini-css-extract-plugin": "^1.6.0",

@@ -15,7 +15,7 @@ const questionDetails = {
   display: "area",
 };
 
-describe.skip("issue 17547", () => {
+describe("issue 17547", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -39,6 +39,8 @@ describe.skip("issue 17547", () => {
 
     cy.findByText("AM").click();
     cy.button("Save changes").click();
+
+    cy.wait("@alertQuery");
 
     cy.icon("bell").click();
     popover().within(() => {
@@ -71,5 +73,7 @@ function setUpAlert(questionId) {
     skip_if_empty: true,
     parameters: [],
     dashboard_id: null,
+  }).then(({ body: { id: alertId } }) => {
+    cy.intercept("PUT", `/api/alert/${alertId}`).as("alertQuery");
   });
 }

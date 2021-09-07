@@ -8,7 +8,7 @@ import {
 } from "metabase/lib/permissions";
 
 // these are all the permission levels ordered by level of access
-const PERM_LEVELS = ["write", "read", "all", "controlled", "none"];
+const PERM_LEVELS = ["write", "read", "all", "controlled", "none", "block"];
 function hasGreaterPermissions(a, b) {
   return PERM_LEVELS.indexOf(a) - PERM_LEVELS.indexOf(b) < 0;
 }

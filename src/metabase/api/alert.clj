@@ -36,10 +36,12 @@
 
 (api/defendpoint GET "/question/:id"
   "Fetch all questions for the given question (`Card`) id"
-  [id]
+  [id archived]
+  {id       (s/maybe su/IntGreaterThanZero)
+   archived (s/maybe su/BooleanString)}
   (-> (if api/*is-superuser?*
-        (pulse/retrieve-alerts-for-cards id)
-        (pulse/retrieve-user-alerts-for-card id api/*current-user-id*))
+        (pulse/retrieve-alerts-for-cards {:card-ids [id], :archived? (Boolean/parseBoolean archived)})
+        (pulse/retrieve-user-alerts-for-card {:card-id id, :user-id api/*current-user-id*, :archived? (Boolean/parseBoolean archived)}))
       (hydrate :can_write)))
 
 (defn- only-alert-keys [request]
