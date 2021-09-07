@@ -37,8 +37,6 @@ function setup({ databaseCacheTTL = null } = {}) {
     res.status(200).body(req.body()),
   );
 
-  console.log("### databaseCacheTTL", databaseCacheTTL);
-
   const question = {
     card: () => QUESTION,
     database: () => ({
