@@ -1,4 +1,4 @@
-import React, { Fragment, useCallback, useState } from "react";
+import React, { useCallback, useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import Button from "metabase/components/Button";
@@ -10,17 +10,10 @@ const propTypes = {
   item: PropTypes.object,
   type: PropTypes.oneOf(["alert", "pulse"]),
   onUpdate: PropTypes.func,
-  onDelete: PropTypes.func,
   onClose: PropTypes.func,
 };
 
-const AuditNotificationEditModal = ({
-  item,
-  type,
-  onUpdate,
-  onDelete,
-  onClose,
-}) => {
+const AuditNotificationEditModal = ({ item, type, onUpdate, onClose }) => {
   const [channels, setChannels] = useState(item.channels);
   const [error, setError] = useState();
 
@@ -32,10 +25,6 @@ const AuditNotificationEditModal = ({
       setError(error);
     }
   }, [item, channels, onUpdate, onClose]);
-
-  const handleDeleteClick = useCallback(async () => {
-    onDelete(item);
-  }, [item, onDelete]);
 
   const handleRecipientsChange = useCallback(
     (recipients, index) => {
@@ -50,22 +39,15 @@ const AuditNotificationEditModal = ({
   return (
     <ModalContent
       title={getTitleMessage(item, type)}
-      footer={
-        <Fragment>
-          <Button danger onClick={handleDeleteClick}>
-            {t`Delete`}
-          </Button>
-          {error ? <FormMessage key="message" formError={error} /> : null}
-          <Button onClick={onClose}>{t`Cancel`}</Button>,
-          <Button
-            primary
-            disabled={!channels.length}
-            onClick={handleUpdateClick}
-          >
-            {t`Update`}
-          </Button>
-        </Fragment>
-      }
+      footer={[
+        error ? <FormMessage key="message" formError={error} /> : null,
+        <Button key="cancel" onClick={onClose}>
+          {t`Cancel`}
+        </Button>,
+        <Button key="update" primary onClick={handleUpdateClick}>
+          {t`Update`}
+        </Button>,
+      ]}
       onClose={onClose}
     >
       {channels.map((channel, index) => (
