@@ -1,15 +1,20 @@
 import { connect } from "react-redux";
 import _ from "underscore";
+import { t } from "ttag";
 import Alerts from "metabase/entities/alerts";
-import AuditArchiveModal from "../components/AuditArchiveModal";
+import AuditDeleteModal from "../components/AuditDeleteModal";
+import { formatChannels } from "metabase/lib/notifications";
 
 const mapStateToProps = (state, { alert }) => ({
   item: alert,
-  type: "alert",
+  title: t`Delete this alert?`,
+  description: t`This alert will no longer be ${formatChannels(
+    alert.channels,
+  )}.`,
 });
 
 const mapDispatchToProps = {
-  onArchive: Alerts.actions.setArchived,
+  onSubmit: alert => Alerts.actions.setArchived(alert, true),
 };
 
 export default _.compose(
@@ -20,4 +25,4 @@ export default _.compose(
     mapStateToProps,
     mapDispatchToProps,
   ),
-)(AuditArchiveModal);
+)(AuditDeleteModal);

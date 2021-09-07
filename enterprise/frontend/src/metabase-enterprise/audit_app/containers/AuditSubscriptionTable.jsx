@@ -1,15 +1,19 @@
-import React from "react";
+import { connect } from "react-redux";
+import { push } from "react-router-redux";
 import { t } from "ttag";
-import { subscriptions } from "../lib/cards/subscriptions";
+import * as SubscriptionCards from "../lib/cards/subscriptions";
 import AuditTableWithSearch from "./AuditTableWithSearch";
 
-const AuditSubscriptionTable = () => {
-  return (
-    <AuditTableWithSearch
-      table={subscriptions()}
-      placeholder={t`Filter by dashboard name`}
-    />
-  );
+const mapStateToProps = () => ({
+  table: SubscriptionCards.pulses(),
+  placeholder: t`Filter by dashboard name`,
+});
+
+const mapDispatchToProps = {
+  onRemoveRow: ({ id }) => push(`/audit/subscriptions/${id}/delete`),
 };
 
-export default AuditSubscriptionTable;
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(AuditTableWithSearch);

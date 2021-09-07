@@ -1,32 +1,32 @@
 import React, { useCallback, useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import { formatChannel } from "metabase/lib/notifications";
 import Button from "metabase/components/Button";
 import CheckBox from "metabase/components/CheckBox";
 import FormMessage from "metabase/components/form/FormMessage";
 import ModalContent from "metabase/components/ModalContent";
-import { CheckboxLabel } from "./AuditArchiveModal.styled";
+import { CheckboxLabel } from "./AuditDeleteModal.styled";
 
 const propTypes = {
   item: PropTypes.object.isRequired,
-  type: PropTypes.oneOf(["alert", "pulse"]).isRequired,
-  onArchive: PropTypes.func,
+  title: PropTypes.string,
+  description: PropTypes.string,
+  onSubmit: PropTypes.func,
   onClose: PropTypes.func,
 };
 
-const AuditArchiveModal = ({ item, type, onArchive, onClose }) => {
+const AuditDeleteModal = ({ item, title, description, onSubmit, onClose }) => {
   const [error, setError] = useState();
   const [checked, setChecked] = useState(false);
 
   const handleArchiveClick = useCallback(async () => {
     try {
-      await onArchive(item, true);
+      await onSubmit(item);
       onClose();
     } catch (error) {
       setError(error);
     }
-  }, [item, onArchive, onClose]);
+  }, [item, onSubmit, onClose]);
 
   const handleCheckedChange = useCallback(event => {
     setChecked(event.target.checked);
@@ -34,7 +34,7 @@ const AuditArchiveModal = ({ item, type, onArchive, onClose }) => {
 
   return (
     <ModalContent
-      title={getTitleMessage(item, type)}
+      title={title}
       footer={[
         error ? <FormMessage key="message" formError={error} /> : null,
         <Button key="cancel" onClick={onClose}>
@@ -53,7 +53,7 @@ const AuditArchiveModal = ({ item, type, onArchive, onClose }) => {
     >
       <CheckBox
         checked={checked}
-        label={<CheckboxLabel>{getChannelMessage(item, type)}</CheckboxLabel>}
+        label={<CheckboxLabel>{description}</CheckboxLabel>}
         size={20}
         checkedColor="danger"
         uncheckedColor="danger"
@@ -63,26 +63,6 @@ const AuditArchiveModal = ({ item, type, onArchive, onClose }) => {
   );
 };
 
-AuditArchiveModal.propTypes = propTypes;
+AuditDeleteModal.propTypes = propTypes;
 
-const getTitleMessage = (item, type) => {
-  switch (type) {
-    case "alert":
-      return t`Delete this alert?`;
-    case "pulse":
-      return t`Delete this subscription to ${item.name}?`;
-  }
-};
-
-const getChannelMessage = (item, type) => {
-  const channelMessage = formatChannel(item);
-
-  switch (type) {
-    case "alert":
-      return t`This alert will no longer be ${channelMessage}.`;
-    case "pulse":
-      return t`This dashboard will no longer be ${channelMessage}.`;
-  }
-};
-
-export default AuditArchiveModal;
+export default AuditDeleteModal;

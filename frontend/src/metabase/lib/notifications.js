@@ -35,6 +35,10 @@ export const formatChannel = channel => {
   return parts.filter(p => p).join(" ");
 };
 
+export const formatChannels = channels => {
+  return channels.map(channel => formatChannel(channel)).join(", ");
+};
+
 export const formatChannelType = ({ channel_type }) => {
   switch (channel_type) {
     case "email":

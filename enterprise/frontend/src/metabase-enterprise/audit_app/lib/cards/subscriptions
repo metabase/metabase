@@ -1,4 +1,4 @@
-export const subscriptions = dashboardName => ({
+export const pulses = dashboardName => ({
   card: {
     name: "Subscriptions",
     display: "table",
