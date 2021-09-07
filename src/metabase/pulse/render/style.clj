@@ -54,7 +54,7 @@
 
 (def ^:const color-text-medium
   "Color for medium text."
-  "#74838f")
+  "#949AAB")
 
 (def ^:const color-text-dark
   "Color for dark text."

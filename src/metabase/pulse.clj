@@ -89,6 +89,7 @@
                     :run (fn [query info]
                            (qp/process-query-and-save-with-max-results-constraints! (assoc query :async? false) info))))]
       {:card card
+       :dashcard dashcard
        :result result})
     (catch Throwable e
         (log/warn e (trs "Error running query for Card {0}" card-or-id)))))

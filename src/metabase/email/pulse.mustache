@@ -1,43 +1,15 @@
 <html>
   <head>
-   {{!-- TODO: convert most styles to inline styles for wider support --}}
+    {{!--- Empty head to make style element work in Yahoo mail on Android: https://www.caniemail.com/features/html-style/}}
+  </head>
+  <head>
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900&display=swap');
 
-      * {
-        font-size: 12px;
+      body {
+        font-size: 16px;
         color: {{colorTextDark}};
         font-family: "Lato", "Lucida Grande", "Lucida Sans Unicode", Tahoma, Sans-Serif;
-      }
-
-      body {
-        padding: 0px;
-      }
-
-      .background {
-        background-color: #F9F9F9;
-        width: 719px;
-        height: 100%;
-      }
-
-      .container {
-        background-color: #FFFFFF;
-        width: 555px;
-        border-radius: 30px;
-        margin-left: 52px;
-        margin-right: 52px;
-        padding: 30px;
-      }
-
-      .icon {
-        padding-right: 16px;
-      }
-
-      hr {
-        border-width: 0;
-        background: #F0F0F0;
-        color: #F0F0F0;
-        height: 1px;
       }
 
       {{!-- General formatting for links. Marked as important since otherwise Gmail will sometimes override it --}}
@@ -76,30 +48,50 @@
         line-height: 18px;
       }
 
-      {{!-- Adjust layout for mobile clients --}}
-      @media screen and (max-width:600px) {
+      {{!-- Slightly smaller layout for desktop clients. All marked important! to override inline styles. --}}
+      @media screen and (min-width:600px) {
+        body {
+          font-size: 14px !important;
+        }
         .background {
-          width: 100%;
+          width: 719px !important;
         }
         .container {
-          margin-left: 10px;
-          margin-right: 10px;
+          margin-left: 52px !important;
+          margin-right: 52px !important;
+        }
+        .icon {
+          width: 20px !important;
+          padding-top: 4px !important;
+        }
+        .title {
+          font-size: 20px !important;
+        }
+        .description {
+          font-size: 14px !important;
+        }
+        .sender {
+          font-size: 12px !important;
+        }
+        .footer {
+          font-size: 11px !important;
         }
       }
 
     </style>
   </head>
-  <body>
-    <div class="background">
-      <div class="spacer">&#8202;</div>
-      <div class="container">
+  <body style="padding: 0px">
+    <div class="background" style="background-color: #F9F9F9; width: 100%; height: 100%">
+      {{!-- Spacer div to prevent margin collapse --}}
+      <div>&#8202;</div>
+      <div class="container" style="background-color: white; width: 555px; border-radius: 30px; margin-left: 10px; margin-right: 10px; padding: 30px;">
         <table class="header">
           <tr>
             <td>
-              <img class="icon" width="20" height="20" style="padding-top: 4px" src="cid:{{iconCid}}"/>
+              <img class="icon" width="24" style="padding-top: 6px; padding-right: 16px" src="cid:{{iconCid}}"/>
             </td>
             <td>
-              <a href={{dashboardUrl}} style="font-size: 20px; font-weight: 700; padding-bottom: 4px;">
+              <a class="title" href={{dashboardUrl}} style="font-size: 24px; font-weight: 700; padding-bottom: 4px;">
                 {{pulseName}}
               </a>
             </td>
@@ -107,7 +99,7 @@
           <tr>
             <td>&#8202;</td>
             <td>
-              <div style="color: {{colorTextDark}}; font-size: 14px; padding-bottom: 4px;">
+              <div class="description" style="color: {{colorTextDark}}; font-size: 16px; padding-bottom: 4px;">
                 {{dashboardDescription}}
               </div>
             </td>
@@ -115,27 +107,22 @@
           <tr>
             <td>&#8202;</td>
             <td>
-              <div style="color: {{colorTextLight}}; font-size: 12px">
+              <div class="sender" style="color: {{colorTextLight}}; font-size: 14px">
                 Sent by {{pulseCreator}}
               </div>
             </td>
           </tr>
         </table>
-        <hr style="border-width: 0; background: #F0F0F0; color: #F0F0F0; height: 1px; margin-top: 20px; margin-bottom: 20px;">
+        <hr style="border-width: 0; background: #F0F0F0; height: 1px; margin-top: 20px; margin-bottom: 20px;">
         {{{pulse}}}
-        <hr style="border-width: 0; background: #F0F0F0; color: #F0F0F0; height: 1px; margin-top: 20px; margin-bottom: 20px;">
-        <div style="font-size: 11px; width: max-content; margin: 0 auto">
-          Sent from <a href="{{siteUrl}}" style="color: {{applicationColor}}">
-            {{siteUrl}}
-          </a>.
-          <a href="{{notificationManagementUrl}}"
-             style="color: {{applicationColor}}">
-            Manage your subscriptions
-          </a>
+        <hr style="border-width: 0; background: #F0F0F0; height: 1px; margin-top: 20px; margin-bottom: 20px;">
+        <div class="footer" style="font-size: 13px; width: max-content; margin: 0 auto">
+          Sent from <a href="{{siteUrl}}" style="color: {{applicationColor}}">{{siteUrl}}</a>.
+          <a href="{{notificationManagementUrl}}" style="color: {{applicationColor}}"> Manage your subscriptions</a>
         </div>
       </div>
-      <div class="spacer">&#8202;</div>
+      {{!-- Spacer div to prevent margin collapse --}}
+      <div>&#8202;</div>
     </div>
   </body>
 </html>
-
