@@ -146,12 +146,14 @@
          body-attachments :attachments
          text             :render/text}                  (render-pulse-card-body render-type timezone-id card results)]
     (cond-> {:attachments (merge title-attachments body-attachments)
-             :content     [:a {:href   (card-href card)
-                               :target "_blank"
-                               :style  (style/style
-                                        (style/section-style)
-                                        {:display         :block
-                                         :text-decoration :none})}
+             :content     [:a {:href        (card-href card)
+                               :target      "_blank"
+                               ;; prevents entire linked element from dragging when dragging horizontal scrollbar
+                               :ondragstart "return false;"
+                               :style       (style/style
+                                             (style/section-style)
+                                             {:display         :block
+                                              :text-decoration :none})}
                            title
                            description
                            [:div {:style (style/style {:padding-top :10px
