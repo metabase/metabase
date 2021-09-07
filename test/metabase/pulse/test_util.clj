@@ -22,6 +22,10 @@
       (let [[{:keys [result]}] (pulse/send-pulse! pulse)]
         (qp.test/rows result)))))
 
+(comment
+  (def my-pulse (Pulse :id 382))
+  (comment (clojure.pprint/pprint my-pulse))
+  (pulse/send-pulse! my-pulse))
 
 (def card-name "Test card")
 

@@ -293,17 +293,16 @@
 (defn- pulse-context [pulse dashboard]
   (merge (common-context)
          {:emailType                 "pulse"
-          :pulseName                 (:name pulse)
+          :title                     (:name pulse)
+          :titleUrl                  (url/dashboard-url (:id dashboard))
           :dashboardDescription      (:description dashboard)
           :pulseCreator              (-> pulse :creator :common_name)
           :sectionStyle              (render.style/style (render.style/section-style))
           :colorTextDark             render.style/color-text-dark
           :colorTextLight            render.style/color-text-light
           :siteUrl                   (public-settings/site-url)
-          :dashboardUrl              (url/dashboard-url (:id dashboard))
           :notificationManagementUrl (url/notification-management-url)}
-         (pulse-link-context pulse)
-         (random-quote-context)))
+         (pulse-link-context pulse)))
 
 (defn- create-temp-file
   "Separate from `create-temp-file-or-throw` primarily so that we can simulate exceptions in tests"
@@ -407,14 +406,14 @@
     (render/render-pulse-section timezone result)
     {:content (markdown/process-markdown (:text result) :html)}))
 
-(defn- render-message-body [message-template message-context timezone dashboard results]
+(defn- render-message-body [message-type message-context timezone dashboard results]
   (let [rendered-cards  (binding [render/*include-title* true]
                           (mapv #(render-result-card timezone %) results))
         icon-attachment (first (map make-message-attachment (dashboard-icon-bundle)))
         message-body    (assoc message-context :pulse   (html (vec (cons :div (map :content rendered-cards))))
                                                :iconCid (:content-id icon-attachment))
         attachments     (apply merge (map :attachments rendered-cards))]
-      (vec (concat [{:type "text/html; charset=utf-8" :content (stencil/render-file message-template message-body)}]
+      (vec (concat [{:type "text/html; charset=utf-8" :content (stencil/render-file "metabase/email/pulse" message-body)}]
                  (map make-message-attachment attachments)
                  [icon-attachment]
                  (result-attachments results)))))
@@ -429,7 +428,11 @@
 (defn render-pulse-email
   "Take a pulse object and list of results, returns an array of attachment objects for an email"
   [timezone pulse dashboard results]
-  (render-message-body "metabase/email/pulse" (pulse-context pulse dashboard) timezone dashboard (assoc-attachment-booleans pulse results)))
+  (render-message-body :alert
+                       (pulse-context pulse dashboard)
+                       timezone
+                       dashboard
+                       (assoc-attachment-booleans pulse results)))
 
 (defn pulse->alert-condition-kwd
   "Given an `alert` return a keyword representing what kind of goal needs to be met."
@@ -452,13 +455,14 @@
    (default-alert-context alert nil))
   ([alert alert-condition-map]
    (let [{card-id :id, card-name :name} (first-card alert)]
-     (merge {:questionURL (url/card-url card-id)
-             :questionName card-name
-             :emailType    "alert"
-             :sectionStyle (render.style/section-style)
-             :colorGrey4   render.style/color-gray-4
-             :logoFooter   true}
-            (random-quote-context)
+     (merge {:emailType                 "alert"
+             :title                     card-name
+             :titleUrl                  (url/card-url card-id)
+             :sectionStyle              (render.style/section-style)
+             :colorTextDark             render.style/color-text-dark
+             :colorTextLight            render.style/color-text-light
+             :siteUrl                   (public-settings/site-url)
+             :notificationManagementUrl (url/notification-management-url)}
             (when alert-condition-map
               {:alertCondition (get alert-condition-map (pulse->alert-condition-kwd alert))})))))
 
@@ -471,9 +475,10 @@
   "Take a pulse object and list of results, returns an array of attachment objects for an email"
   [timezone {:keys [alert_first_only] :as alert} results goal-value]
   (let [message-ctx  (default-alert-context alert (alert-results-condition-text goal-value))]
-    (render-message-body "metabase/email/alert"
+    (render-message-body :alert
                          (assoc message-ctx :firstRunOnly? alert_first_only)
                          timezone
+                         nil
                          (assoc-attachment-booleans alert results))))
 
 (def ^:private alert-condition-text
