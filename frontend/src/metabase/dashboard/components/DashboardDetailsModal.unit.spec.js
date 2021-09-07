@@ -1,4 +1,5 @@
 import React from "react";
+import _ from "underscore";
 import { Provider } from "react-redux";
 import { reducer as form } from "redux-form";
 import { fireEvent, render, screen } from "@testing-library/react";
@@ -19,6 +20,10 @@ const DASHBOARD = {
   archived: false,
 };
 
+console.warning = jest.fn();
+console.warn = jest.fn();
+console.error = jest.fn();
+
 function mockCachingEnabled(enabled = true) {
   const original = MetabaseSettings.get;
   const spy = jest.spyOn(MetabaseSettings, "get");
@@ -30,12 +35,14 @@ function mockCachingEnabled(enabled = true) {
   });
 }
 
-function setup() {
+function setup({ mockDashboardUpdateResponse = true } = {}) {
   const onClose = jest.fn();
 
-  xhrMock.put(`/api/dashboard/${DASHBOARD.id}`, (req, res) =>
-    res.status(200).body(req.body()),
-  );
+  if (mockDashboardUpdateResponse) {
+    xhrMock.put(`/api/dashboard/${DASHBOARD.id}`, (req, res) =>
+      res.status(200).body(req.body()),
+    );
+  }
 
   const dashboardReducer = () => ({
     dashboardId: DASHBOARD.id,
@@ -55,6 +62,28 @@ function setup() {
   };
 }
 
+function setupUpdateRequestAssertion(
+  doneCallback,
+  changedValues,
+  { hasCacheTTLField = false } = {},
+) {
+  const editableFields = ["name", "description", "collection_id"];
+  if (hasCacheTTLField) {
+    editableFields.push("cache_ttl");
+  }
+  xhrMock.put(`/api/dashboard/${DASHBOARD.id}`, req => {
+    try {
+      expect(JSON.parse(req.body())).toEqual({
+        ..._.pick(DASHBOARD, ...editableFields),
+        ...changedValues,
+      });
+      doneCallback();
+    } catch (err) {
+      doneCallback(err);
+    }
+  });
+}
+
 function fillForm({ name, description, cache_ttl } = {}) {
   const nextDashboardState = { ...DASHBOARD };
   if (name) {
@@ -72,7 +101,8 @@ function fillForm({ name, description, cache_ttl } = {}) {
   if (cache_ttl) {
     const input = screen.getByLabelText("Cache TTL");
     userEvent.clear(input);
-    userEvent.type(input, cache_ttl);
+    userEvent.type(input, String(cache_ttl));
+    input.blur();
     nextDashboardState.cache_ttl = cache_ttl;
   }
   return nextDashboardState;
@@ -132,20 +162,13 @@ describe("DashboardDetailsModal", () => {
     expect(screen.queryByRole("button", { name: "Update" })).toBeDisabled();
   });
 
-  it("submits an update request correctly", () => {
+  it("submits an update request correctly", done => {
     const UPDATES = {
       name: "New fancy dashboard name",
       description: "Just testing if updates work correctly",
     };
-    setup();
-
-    xhrMock.put(`/api/dashboard/${DASHBOARD.id}`, (req, res) => {
-      expect(req.body()).toEqual({
-        ...DASHBOARD,
-        ...UPDATES,
-      });
-      return res.status(200).body(req.body());
-    });
+    setup({ mockDashboardUpdateResponse: false });
+    setupUpdateRequestAssertion(done, UPDATES);
 
     fillForm(UPDATES);
     fireEvent.click(screen.queryByRole("button", { name: "Update" }));
@@ -187,16 +210,13 @@ describe("DashboardDetailsModal", () => {
           expect(screen.queryByLabelText("Cache TTL")).toHaveValue("0");
         });
 
-        it("can be changed", () => {
-          setup();
-
-          xhrMock.put(`/api/dashboard/${DASHBOARD.id}`, (req, res) => {
-            expect(req.body()).toEqual({
-              ...DASHBOARD,
-              cache_ttl: 10,
-            });
-            return res.status(200).body(req.body());
-          });
+        it("can be changed", done => {
+          setup({ mockDashboardUpdateResponse: false });
+          setupUpdateRequestAssertion(
+            done,
+            { cache_ttl: 10 },
+            { hasCacheTTLField: true },
+          );
 
           fireEvent.click(screen.queryByText("More options"));
           fillForm({ cache_ttl: 10 });
@@ -214,16 +234,9 @@ describe("DashboardDetailsModal", () => {
           ).not.toBeInTheDocument();
         });
 
-        it("can still submit the form", () => {
-          setup();
-
-          xhrMock.put(`/api/dashboard/${DASHBOARD.id}`, (req, res) => {
-            expect(req.body()).toEqual({
-              ...DASHBOARD,
-              name: "Test",
-            });
-            return res.status(200).body(req.body());
-          });
+        it("can still submit the form", done => {
+          setup({ mockDashboardUpdateResponse: false });
+          setupUpdateRequestAssertion(done, { name: "Test" });
 
           fillForm({ name: "Test" });
           fireEvent.click(screen.queryByRole("button", { name: "Update" }));
