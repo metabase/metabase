@@ -8,11 +8,21 @@ import CollapseSection from "metabase/components/CollapseSection";
 
 const COLLAPSED_FIELDS = ["cache_ttl"];
 
+function getInitialCacheTTL(question) {
+  // If a question doesn't have an explicitly set cache TTL,
+  // its results can still be cached with a db-level cache TTL
+  // or with an instance level setting
+  return question.card().cache_ttl || question.database().cache_ttl || 0;
+}
+
 const EditQuestionInfoModal = ({ question, onClose, onSave }) => (
   <Questions.ModalForm
     title={t`Edit question`}
     form={Questions.forms.edit}
-    question={question.card()}
+    question={{
+      ...question.card(),
+      cache_ttl: getInitialCacheTTL(question),
+    }}
     onClose={onClose}
     onSaved={async card => {
       await onSave({ ...question.card(), ...card });

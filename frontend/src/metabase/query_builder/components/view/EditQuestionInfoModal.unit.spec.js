@@ -29,7 +29,7 @@ function mockCachingEnabled(enabled = true) {
   });
 }
 
-function setup() {
+function setup({ databaseCacheTTL = null } = {}) {
   const onSave = jest.fn();
   const onClose = jest.fn();
 
@@ -37,10 +37,19 @@ function setup() {
     res.status(200).body(req.body()),
   );
 
+  console.log("### databaseCacheTTL", databaseCacheTTL);
+
+  const question = {
+    card: () => QUESTION,
+    database: () => ({
+      cache_ttl: databaseCacheTTL,
+    }),
+  };
+
   render(
     <Provider store={getStore({ form })}>
       <EditQuestionInfoModal
-        question={{ card: () => QUESTION }}
+        question={question}
         onSave={onSave}
         onClose={onClose}
       />
@@ -189,6 +198,12 @@ describe("EditQuestionInfoModal", () => {
           setup();
           fireEvent.click(screen.queryByText("More options"));
           expect(screen.queryByLabelText("Cache TTL")).toHaveValue("0");
+        });
+
+        it("shows database cache ttl as a default value if question's cache ttl is not set", () => {
+          setup({ databaseCacheTTL: 48 });
+          fireEvent.click(screen.queryByText("More options"));
+          expect(screen.queryByLabelText("Cache TTL")).toHaveValue("48");
         });
 
         it("can be changed", () => {
