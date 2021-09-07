@@ -75,7 +75,12 @@ const NotificationCard = ({ item, type, user, onUnsubscribe, onArchive }) => {
 NotificationCard.propTypes = propTypes;
 
 const getChannelMessage = channel => {
-  return capitalize(formatChannel(channel));
+  return getCapitalizedMessage(formatChannel(channel));
+};
+
+const getCapitalizedMessage = message => {
+  const [firstLetter, ...otherLetters] = message;
+  return [firstLetter.toUpperCase(), ...otherLetters].join("");
 };
 
 const getCreatorMessage = (item, user) => {
