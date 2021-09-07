@@ -5,7 +5,9 @@ import { DatabaseCacheTTLField } from "./DatabaseCacheTTLField";
 
 function setup({ value = null } = {}) {
   const onChange = jest.fn();
-  render(<DatabaseCacheTTLField field={{ value, onChange }} />);
+  render(
+    <DatabaseCacheTTLField field={{ name: "cache_ttl", value, onChange }} />,
+  );
   return { onChange };
 }
 
@@ -36,6 +38,12 @@ describe("DatabaseCacheTTLField", () => {
     expect(screen.queryByLabelText("Cache TTL Field")).not.toBeInTheDocument();
   });
 
+  it("sets 24 hours as a default TTL custom value", () => {
+    const { onChange } = setup();
+    selectMode("custom");
+    expect(onChange).toHaveBeenLastCalledWith(24);
+  });
+
   it("can select and fill custom cache TTL value", () => {
     const { onChange } = setup();
 
@@ -49,7 +57,7 @@ describe("DatabaseCacheTTLField", () => {
 
   it("displays input when cache_ttl has value", () => {
     setup({ value: 4 });
-    expect(screen.queryByDisplayValue("4")).toHaveValue("4");
+    expect(screen.queryByDisplayValue("4")).toBeInTheDocument();
     expect(screen.queryByText("Custom")).toBeInTheDocument();
     expect(
       screen.queryByText("Use instance default (TTL)"),

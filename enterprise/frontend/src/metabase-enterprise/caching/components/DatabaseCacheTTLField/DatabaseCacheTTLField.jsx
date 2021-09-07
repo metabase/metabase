@@ -12,6 +12,9 @@ const MODE = {
   CUSTOM: "custom",
 };
 
+const INSTANCE_DEFAULT_CACHE_TTL = null;
+const DEFAULT_CUSTOM_CACHE_TTL = 24; // hours
+
 const propTypes = {
   field: PropTypes.object.isRequired,
 };
@@ -27,7 +30,9 @@ export function DatabaseCacheTTLField({ field }) {
 
   useEffect(() => {
     if (mode === MODE.INSTANCE_DEFAULT) {
-      field.onChange(null);
+      field.onChange(INSTANCE_DEFAULT_CACHE_TTL);
+    } else if (!field.value) {
+      field.onChange(DEFAULT_CUSTOM_CACHE_TTL);
     }
   }, [field, mode]);
 
