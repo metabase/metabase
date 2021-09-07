@@ -23,6 +23,7 @@ export default class Toggle extends Component {
     const { value, small, className, color, onChange, ...props } = this.props;
     return (
       <a
+        data-testid="toggle"
         {...props}
         role="checkbox"
         aria-checked={value}
