@@ -34,6 +34,18 @@
   [{:keys [id]}]
   (db/count 'DashboardCard, :card_id id))
 
+(defn average-query-time
+  "Average query time of card, taken by query executions which didn't hit cache.
+  If it's nil we don't have any query executions on file"
+  {:hydrate :average_query_time}
+  [{:keys [id]}]
+  (db/query {:select [:%avg.running_time]
+             :from [:query_execution]
+             :where [:and
+                     [:not= :running_time nil]
+                     [:not= :cache_hit true]
+                     [:= :card_id id]]}))
+
 ;; There's more hydration in the shared metabase.moderation namespace, but it needs to be required:
 (comment moderation/keep-me)
 
