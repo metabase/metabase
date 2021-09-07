@@ -1,16 +1,11 @@
 import { connect } from "react-redux";
 import _ from "underscore";
-import { t } from "ttag";
 import Alerts from "metabase/entities/alerts";
 import AuditDeleteModal from "../components/AuditDeleteModal";
-import { formatChannels } from "metabase/lib/notifications";
 
 const mapStateToProps = (state, { alert }) => ({
   item: alert,
-  title: t`Delete this alert?`,
-  description: t`This alert will no longer be ${formatChannels(
-    alert.channels,
-  )}.`,
+  type: "alert",
 });
 
 const mapDispatchToProps = {

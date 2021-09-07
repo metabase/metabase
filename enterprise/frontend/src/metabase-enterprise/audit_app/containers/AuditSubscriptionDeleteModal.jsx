@@ -1,16 +1,11 @@
 import { connect } from "react-redux";
 import _ from "underscore";
-import { t } from "ttag";
 import Pulses from "metabase/entities/pulses";
 import AuditDeleteModal from "../components/AuditDeleteModal";
-import { formatChannels } from "metabase/lib/notifications";
 
 const mapStateToProps = (state, { pulse }) => ({
   item: pulse,
-  title: t`Delete this subscription to ${pulse.name}?`,
-  description: t`This subscription will no longer be ${formatChannels(
-    pulse.channels,
-  )}.`,
+  type: "alert",
 });
 
 const mapDispatchToProps = {

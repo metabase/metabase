@@ -1,32 +1,32 @@
 import React, { useCallback, useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import { formatChannels } from "metabase/lib/notifications";
 import Button from "metabase/components/Button";
 import CheckBox from "metabase/components/CheckBox";
 import FormMessage from "metabase/components/form/FormMessage";
 import ModalContent from "metabase/components/ModalContent";
-import { CheckboxLabel } from "./AuditDeleteModal.styled";
+import { CheckboxLabel } from "metabase/components/DeleteModalWithConfirm.styled";
 
 const propTypes = {
   item: PropTypes.object.isRequired,
-  title: PropTypes.string,
-  description: PropTypes.string,
-  onSubmit: PropTypes.func,
+  type: PropTypes.oneOf(["alert", "pulse"]).isRequired,
+  onArchive: PropTypes.func,
   onClose: PropTypes.func,
 };
 
-const AuditDeleteModal = ({ item, title, description, onSubmit, onClose }) => {
+const AuditDeleteModal = ({ item, type, onArchive, onClose }) => {
   const [error, setError] = useState();
   const [checked, setChecked] = useState(false);
 
   const handleArchiveClick = useCallback(async () => {
     try {
-      await onSubmit(item);
+      await onArchive(item, true);
       onClose();
     } catch (error) {
       setError(error);
     }
-  }, [item, onSubmit, onClose]);
+  }, [item, onArchive, onClose]);
 
   const handleCheckedChange = useCallback(event => {
     setChecked(event.target.checked);
@@ -34,7 +34,7 @@ const AuditDeleteModal = ({ item, title, description, onSubmit, onClose }) => {
 
   return (
     <ModalContent
-      title={title}
+      title={getTitleMessage(item, type)}
       footer={[
         error ? <FormMessage key="message" formError={error} /> : null,
         <Button key="cancel" onClick={onClose}>
@@ -53,7 +53,7 @@ const AuditDeleteModal = ({ item, title, description, onSubmit, onClose }) => {
     >
       <CheckBox
         checked={checked}
-        label={<CheckboxLabel>{description}</CheckboxLabel>}
+        label={<CheckboxLabel>{getChannelMessage(item, type)}</CheckboxLabel>}
         size={20}
         checkedColor="danger"
         uncheckedColor="danger"
@@ -64,5 +64,25 @@ const AuditDeleteModal = ({ item, title, description, onSubmit, onClose }) => {
 };
 
 AuditDeleteModal.propTypes = propTypes;
+
+const getTitleMessage = (item, type) => {
+  switch (type) {
+    case "alert":
+      return t`Delete this alert?`;
+    case "pulse":
+      return t`Delete this subscription to ${item.name}?`;
+  }
+};
+
+const getChannelMessage = (item, type) => {
+  const channelMessage = formatChannels(item.channels);
+
+  switch (type) {
+    case "alert":
+      return t`This alert will no longer be ${channelMessage}.`;
+    case "pulse":
+      return t`This dashboard will no longer be ${channelMessage}.`;
+  }
+};
 
 export default AuditDeleteModal;
