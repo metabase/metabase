@@ -13,10 +13,6 @@ import { getMetadata } from "metabase/selectors/metadata";
 
 @connect(state => ({ metadata: getMetadata(state) }))
 export default class Parameters extends Component {
-  defaultProps = {
-    syncQueryString: false,
-  };
-
   constructor(props) {
     super(props);
 
