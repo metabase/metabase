@@ -5,8 +5,20 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import xhrMock from "xhr-mock";
 import { getStore } from "__support__/entities-store";
+import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import CreateDashboardModal from "./CreateDashboardModal";
+
+function mockCachingEnabled(enabled = true) {
+  const original = MetabaseSettings.get;
+  const spy = jest.spyOn(MetabaseSettings, "get");
+  spy.mockImplementation(key => {
+    if (key === "enable-query-caching") {
+      return enabled;
+    }
+    return original(key);
+  });
+}
 
 function setup() {
   const onClose = jest.fn();
@@ -108,6 +120,10 @@ describe("CreateDashboardModal", () => {
   });
 
   describe("Cache TTL field", () => {
+    beforeEach(() => {
+      mockCachingEnabled();
+    });
+
     describe("OSS", () => {
       it("is not shown", () => {
         setup();

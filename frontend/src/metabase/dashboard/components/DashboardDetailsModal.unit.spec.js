@@ -5,6 +5,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import xhrMock from "xhr-mock";
 import { getStore } from "__support__/entities-store";
+import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import DashboardDetailsModal from "./DashboardDetailsModal";
 
@@ -17,6 +18,17 @@ const DASHBOARD = {
   ordered_cards: [],
   archived: false,
 };
+
+function mockCachingEnabled(enabled = true) {
+  const original = MetabaseSettings.get;
+  const spy = jest.spyOn(MetabaseSettings, "get");
+  spy.mockImplementation(key => {
+    if (key === "enable-query-caching") {
+      return enabled;
+    }
+    return original(key);
+  });
+}
 
 function setup() {
   const onClose = jest.fn();
@@ -142,6 +154,7 @@ describe("DashboardDetailsModal", () => {
   describe("Cache TTL field", () => {
     describe("OSS", () => {
       it("is not shown", () => {
+        mockCachingEnabled();
         setup();
         expect(screen.queryByText("More options")).not.toBeInTheDocument();
         expect(
@@ -163,29 +176,58 @@ describe("DashboardDetailsModal", () => {
         PLUGIN_CACHING.cacheTTLFormField = null;
       });
 
-      it("is shown", () => {
-        setup();
-        fireEvent.click(screen.queryByText("More options"));
-        expect(
-          screen.queryByText("Cache all question results for"),
-        ).toBeInTheDocument();
-        expect(screen.queryByLabelText("Cache TTL")).toHaveValue("0");
-      });
-
-      it("can be changed", () => {
-        setup();
-
-        xhrMock.put(`/api/dashboard/${DASHBOARD.id}`, (req, res) => {
-          expect(req.body()).toEqual({
-            ...DASHBOARD,
-            cache_ttl: 10,
-          });
-          return res.status(200).body(req.body());
+      describe("caching enabled", () => {
+        beforeEach(() => {
+          mockCachingEnabled();
         });
 
-        fireEvent.click(screen.queryByText("More options"));
-        fillForm({ cache_ttl: 10 });
-        fireEvent.click(screen.queryByRole("button", { name: "Update" }));
+        it("is shown", () => {
+          setup();
+          fireEvent.click(screen.queryByText("More options"));
+          expect(screen.queryByLabelText("Cache TTL")).toHaveValue("0");
+        });
+
+        it("can be changed", () => {
+          setup();
+
+          xhrMock.put(`/api/dashboard/${DASHBOARD.id}`, (req, res) => {
+            expect(req.body()).toEqual({
+              ...DASHBOARD,
+              cache_ttl: 10,
+            });
+            return res.status(200).body(req.body());
+          });
+
+          fireEvent.click(screen.queryByText("More options"));
+          fillForm({ cache_ttl: 10 });
+          fireEvent.click(screen.queryByRole("button", { name: "Update" }));
+        });
+      });
+
+      describe("caching disabled", () => {
+        it("is not shown if caching is disabled", () => {
+          mockCachingEnabled(false);
+          setup();
+          expect(screen.queryByText("More options")).not.toBeInTheDocument();
+          expect(
+            screen.queryByText("Cache all question results for"),
+          ).not.toBeInTheDocument();
+        });
+
+        it("can still submit the form", () => {
+          setup();
+
+          xhrMock.put(`/api/dashboard/${DASHBOARD.id}`, (req, res) => {
+            expect(req.body()).toEqual({
+              ...DASHBOARD,
+              name: "Test",
+            });
+            return res.status(200).body(req.body());
+          });
+
+          fillForm({ name: "Test" });
+          fireEvent.click(screen.queryByRole("button", { name: "Update" }));
+        });
       });
     });
   });

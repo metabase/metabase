@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_CACHING } from "metabase/plugins";
 
 const FORM_FIELDS = [
@@ -29,7 +30,18 @@ export default {
     fields: FORM_FIELDS,
   },
   edit: {
-    fields: () =>
-      [...FORM_FIELDS, PLUGIN_CACHING.cacheTTLFormField].filter(Boolean),
+    fields: () => {
+      const fields = [...FORM_FIELDS];
+      if (
+        MetabaseSettings.get("enable-query-caching") &&
+        PLUGIN_CACHING.cacheTTLFormField
+      ) {
+        fields.push({
+          ...PLUGIN_CACHING.cacheTTLFormField,
+          message: t`Cache all question results for`,
+        });
+      }
+      return fields;
+    },
   },
 };

@@ -4,6 +4,7 @@ import mock from "xhr-mock";
 
 import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
 import Question from "metabase-lib/lib/Question";
+import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_CACHING } from "metabase/plugins";
 
 import {
@@ -16,6 +17,17 @@ import { getStore } from "__support__/entities-store";
 
 import { Provider } from "react-redux";
 import { reducer as form } from "redux-form";
+
+function mockCachingEnabled(enabled = true) {
+  const original = MetabaseSettings.get;
+  const spy = jest.spyOn(MetabaseSettings, "get");
+  spy.mockImplementation(key => {
+    if (key === "enable-query-caching") {
+      return enabled;
+    }
+    return original(key);
+  });
+}
 
 const renderSaveQuestionModal = (question, originalQuestion) => {
   const store = getStore({ form });
@@ -144,6 +156,10 @@ describe("SaveQuestionModal", () => {
   });
 
   describe("Cache TTL field", () => {
+    beforeEach(() => {
+      mockCachingEnabled();
+    });
+
     const question = Question.create({
       databaseId: SAMPLE_DATASET.id,
       tableId: ORDERS.id,
