@@ -297,8 +297,10 @@
           :dashboardDescription      (:description dashboard)
           :pulseCreator              (-> pulse :creator :common_name)
           :sectionStyle              (render.style/style (render.style/section-style))
-          :colorGrey4                render.style/color-gray-4
+          :colorTextDark             render.style/color-text-dark
+          :colorTextLight            render.style/color-text-light
           :siteUrl                   (public-settings/site-url)
+          :dashboardUrl              (url/dashboard-url (:id dashboard))
           :notificationManagementUrl (url/notification-management-url)}
          (pulse-link-context pulse)
          (random-quote-context)))

@@ -48,13 +48,17 @@
   "~25% gray."
   "#394340")
 
+(def ^:const color-text-light
+  "Color for light text."
+  "#B8BBC3")
+
 (def ^:const color-text-medium
   "Color for medium text."
   "#74838f")
 
 (def ^:const color-text-dark
   "Color for dark text."
-  "#2E353B")
+  "#4C5773")
 
 (def ^:const color-header-row-border
   "Used as color for the bottom border of table headers for charts with `:table` vizualization."
