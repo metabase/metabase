@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { Fragment, useCallback, useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import Button from "metabase/components/Button";
@@ -38,9 +38,9 @@ const AuditNotificationEditModal = ({
   }, [item, onDelete]);
 
   const handleRecipientsChange = useCallback(
-    (index, name, value) => {
+    (recipients, index) => {
       const newChannels = [...channels];
-      newChannels[index] = { ...channels[index], [name]: value };
+      newChannels[index] = { ...channels[index], recipients };
 
       setChannels(newChannels);
     },
@@ -50,31 +50,31 @@ const AuditNotificationEditModal = ({
   return (
     <ModalContent
       title={getTitleMessage(item, type)}
-      footer={[
-        error ? <FormMessage key="message" formError={error} /> : null,
-        <Button key="delete" warning borderless onClick={handleDeleteClick}>
-          {t`Delete`}
-        </Button>,
-        <Button key="cancel" onClick={onClose}>
-          {t`Cancel`}
-        </Button>,
-        <Button
-          key="update"
-          warning
-          disabled={!channels.length}
-          onClick={handleUpdateClick}
-        >
-          {t`Update`}
-        </Button>,
-      ]}
+      footer={
+        <Fragment>
+          <Button danger onClick={handleDeleteClick}>
+            {t`Delete`}
+          </Button>
+          {error ? <FormMessage key="message" formError={error} /> : null}
+          <Button onClick={onClose}>{t`Cancel`}</Button>,
+          <Button
+            primary
+            disabled={!channels.length}
+            onClick={handleUpdateClick}
+          >
+            {t`Update`}
+          </Button>
+        </Fragment>
+      }
       onClose={onClose}
     >
-      {item.channels.map((channel, index) => (
+      {channels.map((channel, index) => (
         <TokenField
           key={index}
           value={channel.recipients}
           valueRenderer={value => value.common_name || value.email}
-          onChange={handleRecipientsChange}
+          multi
+          onChange={recipients => handleRecipientsChange(recipients, index)}
         />
       ))}
     </ModalContent>

@@ -362,10 +362,14 @@ export default class TokenField extends Component {
 
   onMouseDownCapture = e => {
     const input = this.inputRef.current;
-    input.focus();
-    // prevents clicks from blurring input while still allowing text selection:
-    if (input !== e.target) {
-      e.preventDefault();
+
+    if (input) {
+      input.focus();
+
+      // prevents clicks from blurring input while still allowing text selection:
+      if (input !== e.target) {
+        e.preventDefault();
+      }
     }
   };
 
@@ -487,6 +491,7 @@ export default class TokenField extends Component {
       value,
       placeholder,
       multi,
+      options,
 
       parseFreeformValue,
       updateOnInputChange,
@@ -578,22 +583,24 @@ export default class TokenField extends Component {
             )}
           </li>
         ))}
-        <li className={cx("flex-full flex align-center mr1 mb1 p1")}>
-          <input
-            ref={this.inputRef}
-            style={{ ...defaultStyleValue, ...valueStyle }}
-            className={cx("full no-focus borderless px1")}
-            // set size to be small enough that it fits in a parameter.
-            size={10}
-            placeholder={placeholder}
-            value={inputValue}
-            onKeyDown={this.onInputKeyDown}
-            onChange={this.onInputChange}
-            onFocus={this.onInputFocus}
-            onBlur={this.onInputBlur}
-            onPaste={this.onInputPaste}
-          />
-        </li>
+        {(options || parseFreeformValue) && (
+          <li className={cx("flex-full flex align-center mr1 mb1 p1")}>
+            <input
+              ref={this.inputRef}
+              style={{ ...defaultStyleValue, ...valueStyle }}
+              className={cx("full no-focus borderless px1")}
+              // set size to be small enough that it fits in a parameter.
+              size={10}
+              placeholder={placeholder}
+              value={inputValue}
+              onKeyDown={this.onInputKeyDown}
+              onChange={this.onInputChange}
+              onFocus={this.onInputFocus}
+              onBlur={this.onInputBlur}
+              onPaste={this.onInputPaste}
+            />
+          </li>
+        )}
       </ul>
     );
 
