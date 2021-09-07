@@ -1,7 +1,7 @@
 import { connect } from "react-redux";
 import _ from "underscore";
 import Pulses from "metabase/entities/pulses";
-import AuditDeleteModal from "../components/AuditDeleteModal";
+import AuditNotificationDeleteModal from "../components/AuditNotificationDeleteModal";
 
 const mapStateToProps = (state, { pulse }) => ({
   item: pulse,
@@ -9,7 +9,7 @@ const mapStateToProps = (state, { pulse }) => ({
 });
 
 const mapDispatchToProps = {
-  onSubmit: pulse => Pulses.actions.setArchived(pulse, true),
+  onDelete: pulse => Pulses.actions.setArchived(pulse, true),
 };
 
 export default _.compose(
@@ -20,4 +20,4 @@ export default _.compose(
     mapStateToProps,
     mapDispatchToProps,
   ),
-)(AuditDeleteModal);
+)(AuditNotificationDeleteModal);

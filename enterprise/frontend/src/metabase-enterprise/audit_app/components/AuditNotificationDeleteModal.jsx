@@ -6,27 +6,27 @@ import Button from "metabase/components/Button";
 import CheckBox from "metabase/components/CheckBox";
 import FormMessage from "metabase/components/form/FormMessage";
 import ModalContent from "metabase/components/ModalContent";
-import { CheckboxLabel } from "metabase/components/DeleteModalWithConfirm.styled";
+import { CheckboxLabel } from "./AuditNotificationDeleteModal.styled";
 
 const propTypes = {
   item: PropTypes.object.isRequired,
   type: PropTypes.oneOf(["alert", "pulse"]).isRequired,
-  onArchive: PropTypes.func,
+  onDelete: PropTypes.func,
   onClose: PropTypes.func,
 };
 
-const AuditDeleteModal = ({ item, type, onArchive, onClose }) => {
+const AuditNotificationDeleteModal = ({ item, type, onDelete, onClose }) => {
   const [error, setError] = useState();
   const [checked, setChecked] = useState(false);
 
-  const handleArchiveClick = useCallback(async () => {
+  const handleDeleteClick = useCallback(async () => {
     try {
-      await onArchive(item, true);
+      await onDelete(item, true);
       onClose();
     } catch (error) {
       setError(error);
     }
-  }, [item, onArchive, onClose]);
+  }, [item, onDelete, onClose]);
 
   const handleCheckedChange = useCallback(event => {
     setChecked(event.target.checked);
@@ -44,7 +44,7 @@ const AuditDeleteModal = ({ item, type, onArchive, onClose }) => {
           key="submit"
           warning
           disabled={!checked}
-          onClick={handleArchiveClick}
+          onClick={handleDeleteClick}
         >
           {t`Delete`}
         </Button>,
@@ -63,7 +63,7 @@ const AuditDeleteModal = ({ item, type, onArchive, onClose }) => {
   );
 };
 
-AuditDeleteModal.propTypes = propTypes;
+AuditNotificationDeleteModal.propTypes = propTypes;
 
 const getTitleMessage = (item, type) => {
   switch (type) {
@@ -85,4 +85,4 @@ const getChannelMessage = (item, type) => {
   }
 };
 
-export default AuditDeleteModal;
+export default AuditNotificationDeleteModal;

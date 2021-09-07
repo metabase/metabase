@@ -1,7 +1,7 @@
 import { connect } from "react-redux";
 import _ from "underscore";
 import Alerts from "metabase/entities/alerts";
-import AuditDeleteModal from "../components/AuditDeleteModal";
+import AuditNotificationDeleteModal from "../components/AuditNotificationDeleteModal";
 
 const mapStateToProps = (state, { alert }) => ({
   item: alert,
@@ -9,7 +9,7 @@ const mapStateToProps = (state, { alert }) => ({
 });
 
 const mapDispatchToProps = {
-  onSubmit: alert => Alerts.actions.setArchived(alert, true),
+  onDelete: alert => Alerts.actions.setArchived(alert, true),
 };
 
 export default _.compose(
@@ -20,4 +20,4 @@ export default _.compose(
     mapStateToProps,
     mapDispatchToProps,
   ),
-)(AuditDeleteModal);
+)(AuditNotificationDeleteModal);
