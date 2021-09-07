@@ -599,11 +599,13 @@
                               :aggregation  [["count"]]
                               :breakout     [[:field (mt/id :checkins :date) {:temporal-unit :hour}]]}}})
 
-(defn- alert-question-url [card-or-id]
-  (format "alert/question/%d" (u/the-id card-or-id)))
+(defn- alert-question-url [card-or-id & [archived]]
+  (if archived
+    (format "alert/question/%d?archived=%b" (u/the-id card-or-id) archived)
+    (format "alert/question/%d" (u/the-id card-or-id))))
 
-(defn- api:alert-question-count [user-kw card-or-id]
-  (count ((alert-client user-kw) :get 200 (alert-question-url card-or-id))))
+(defn- api:alert-question-count [user-kw card-or-id & [archived]]
+  (count ((alert-client user-kw) :get 200 (alert-question-url card-or-id archived))))
 
 (deftest get-alert-question-test
   (tt/with-temp* [Card                 [card  (basic-alert-query)]
@@ -622,8 +624,8 @@
            (tu/with-non-admin-groups-no-root-collection-perms
              (with-alert-setup
                (map alert-response
-                (with-alerts-in-readable-collection [alert]
-                  ((alert-client :rasta) :get 200 (alert-question-url card)))))))))
+                    (with-alerts-in-readable-collection [alert]
+                      ((alert-client :rasta) :get 200 (alert-question-url card)))))))))
 
   (testing "Non-admin users shouldn't see alerts they created if they're no longer recipients"
     (is (= {:count-1 1
@@ -663,7 +665,37 @@
                (with-alert-setup
                  (array-map
                   :rasta     (api:alert-question-count :rasta     card)
-                  :crowberto (api:alert-question-count :crowberto card)))))))))
+                  :crowberto (api:alert-question-count :crowberto card))))))))
+
+  (testing "Archived alerts are excluded by default, unless `archived` parameter is sent"
+    (tt/with-temp* [Card                  [card    (basic-alert-query)]
+                    Pulse                 [alert-1 (assoc (basic-alert)
+                                                          :alert_above_goal false
+                                                          :archived         true)]
+                    PulseCard             [_       (pulse-card alert-1 card)]
+                    PulseChannel          [pc-1    (pulse-channel alert-1)]
+                    PulseChannelRecipient [_       (recipient pc-1 :rasta)]
+                    ;; A separate admin created alert
+                    Pulse                 [alert-2 (assoc (basic-alert)
+                                                          :alert_above_goal false
+                                                          :archived         true
+                                                          :creator_id       (user->id :crowberto))]
+                    PulseCard             [_       (pulse-card alert-2 card)]
+                    PulseChannel          [pc-2    (pulse-channel alert-2)]
+                    PulseChannelRecipient [_       (recipient pc-2 :crowberto)]
+                    PulseChannel          [_       (assoc (pulse-channel alert-2) :channel_type "slack")]]
+      (with-alerts-in-readable-collection [alert-1 alert-2]
+        (with-alert-setup
+          (is (= {:rasta     0
+                  :crowberto 0}
+                 (array-map
+                  :rasta     (api:alert-question-count :rasta     card)
+                  :crowberto (api:alert-question-count :crowberto card))))
+          (is (= {:rasta     1
+                  :crowberto 2}
+                 (array-map
+                  :rasta     (api:alert-question-count :rasta     card true)
+                  :crowberto (api:alert-question-count :crowberto card true)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         PUT /api/alert/:id/unsubscribe                                         |

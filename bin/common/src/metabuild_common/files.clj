@@ -135,3 +135,8 @@
      (when delete-on-exit?
        (.deleteOnExit file))
      file)))
+
+(defn absolute?
+  "Whether `file` is an absolute path."
+  [file]
+  (.isAbsolute (io/file file)))

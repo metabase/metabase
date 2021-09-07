@@ -126,7 +126,7 @@
                      version
                      (str/join ", " (map name steps)))
        (doseq [step-name steps
-               :let      [step-fn (or (get all-steps (keyword step-name))
+               :let      [step-fn (or (get all-steps (u/parse-as-keyword step-name))
                                       (throw (ex-info (format "Invalid step: %s" step-name)
                                                       {:step        step-name
                                                        :valid-steps (keys all-steps)})))]]

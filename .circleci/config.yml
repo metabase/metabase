@@ -953,8 +953,9 @@ jobs:
                       name: Restore cached uberjar built in previous step
                       <<: *CacheKeyUberjar
                   - steps: << parameters.before-steps >>
+                # Make both `test-files` and `source-folder` parameters optional. Translates to: if `parameter` => run associated flag (`--spec` and `--folder`, respectively)
                 command: |
-                  run test-cypress-no-build <<# parameters.test-files >> --spec << parameters.test-files >> <</ parameters.test-files >> --folder << parameters.source-folder >>
+                  run test-cypress-no-build <<# parameters.test-files >> --spec << parameters.test-files >> <</ parameters.test-files >> <<# parameters.source-folder >> --folder << parameters.source-folder >> <</ parameters.source-folder >>
                 after-steps:
                   - store_artifacts:
                       path: /home/circleci/metabase/metabase/cypress
@@ -1272,12 +1273,22 @@ workflows:
           matrix:
             parameters:
               edition: ["ee", "oss"]
-              folder: ["admin", "binning", "collections", "dashboard", "dashboard-filters", "dashboard-filters-sql", "moderation", "native", "native-filters", "onboarding", "question", "sharing", "smoketest", "visualizations"]
+              folder: ["admin", "binning", "collections", "dashboard", "dashboard-filters", "dashboard-filters-sql", "moderation", "native", "native-filters", "onboarding", "permissions", "question", "sharing", "smoketest", "visualizations"]
           name: e2e-tests-<< matrix.folder >>-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
           cypress-group: "<< matrix.folder >>-<< matrix.edition >>"
           source-folder: << matrix.folder >>
+
+      - fe-tests-cypress:
+          matrix:
+            parameters:
+              edition: ["ee", "oss"]
+          name: percy-visual-tests-<< matrix.edition >>
+          requires:
+            - build-uberjar-<< matrix.edition >>
+          cypress-group: "percy-visual-<< matrix.edition >>"
+          test-files: "./frontend/test/metabase-visual/**/*.cy.spec.js"
 
       - fe-tests-cypress:
           name: e2e-tests-mongo-4-<< matrix.edition >>

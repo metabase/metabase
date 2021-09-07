@@ -48,4 +48,16 @@ describe("visual tests > dashboard > parameters widget", () => {
 
     cy.percySnapshot();
   });
+
+  it("is sticky in edit mode", () => {
+    cy.findByText("test question");
+
+    cy.icon("pencil").click();
+
+    cy.findByTestId("dashboard-parameters-and-cards")
+      .scrollTo(0, 464)
+      .then(() => {
+        cy.percySnapshot();
+      });
+  });
 });
