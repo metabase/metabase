@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { subscriptions } from "../lib/cards/subscriptions";
 import AuditTableWithSearch from "./AuditTableWithSearch";
 
-const AuditSubscriptionsTable = () => {
+const AuditSubscriptionTable = () => {
   return (
     <AuditTableWithSearch
       table={subscriptions()}
@@ -12,4 +12,4 @@ const AuditSubscriptionsTable = () => {
   );
 };
 
-export default AuditSubscriptionsTable;
+export default AuditSubscriptionTable;

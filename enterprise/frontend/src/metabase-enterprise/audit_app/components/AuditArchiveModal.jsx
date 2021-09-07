@@ -6,7 +6,7 @@ import Button from "metabase/components/Button";
 import CheckBox from "metabase/components/CheckBox";
 import FormMessage from "metabase/components/form/FormMessage";
 import ModalContent from "metabase/components/ModalContent";
-import { CheckboxLabel } from "metabase/components/DeleteModalWithConfirm.styled";
+import { CheckboxLabel } from "./AuditArchiveModal.styled";
 
 const propTypes = {
   item: PropTypes.object.isRequired,
@@ -84,3 +84,5 @@ const getChannelMessage = (item, type) => {
       return t`This dashboard will no longer be ${channelMessage}.`;
   }
 };
+
+export default AuditArchiveModal;

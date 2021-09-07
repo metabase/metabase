@@ -3,7 +3,7 @@ import { t } from "ttag";
 import * as AlertCards from "../lib/cards/alerts";
 import AuditTableWithSearch from "./AuditTableWithSearch";
 
-const AuditAlertsTable = () => {
+const AuditAlertTable = () => {
   return (
     <AuditTableWithSearch
       table={AlertCards.alerts()}
@@ -12,4 +12,4 @@ const AuditAlertsTable = () => {
   );
 };
 
-export default AuditAlertsTable;
+export default AuditAlertTable;
