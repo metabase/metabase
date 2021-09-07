@@ -1,4 +1,5 @@
 import React from "react";
+import _ from "underscore";
 import { Provider } from "react-redux";
 import { reducer as form } from "redux-form";
 import { fireEvent, render, screen } from "@testing-library/react";
@@ -20,12 +21,14 @@ function mockCachingEnabled(enabled = true) {
   });
 }
 
-function setup() {
+function setup({ mockCreateDashboardResponse = true } = {}) {
   const onClose = jest.fn();
 
-  xhrMock.post(`/api/dashboard`, (req, res) =>
-    res.status(200).body(req.body()),
-  );
+  if (mockCreateDashboardResponse) {
+    xhrMock.post(`/api/dashboard`, (req, res) =>
+      res.status(200).body(req.body()),
+    );
+  }
 
   render(
     <Provider store={getStore({ form })}>
@@ -36,6 +39,20 @@ function setup() {
   return {
     onClose,
   };
+}
+
+function setupCreateRequestAssertion(doneCallback, changedValues) {
+  xhrMock.post("/api/dashboard", req => {
+    try {
+      expect(JSON.parse(req.body())).toEqual({
+        ...changedValues,
+        collection_id: null,
+      });
+      doneCallback();
+    } catch (err) {
+      doneCallback(err);
+    }
+  });
 }
 
 function fillForm({ name, description } = {}) {
@@ -103,17 +120,13 @@ describe("CreateDashboardModal", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("submits a create request correctly", () => {
+  it("submits a create request correctly", done => {
     const FORM = {
       name: "New fancy dashboard",
       description: "Just testing the form",
     };
-    setup();
-
-    xhrMock.put(`/api/dashboard`, (req, res) => {
-      expect(req.body()).toEqual(FORM);
-      return res.status(200).body(req.body());
-    });
+    setupCreateRequestAssertion(done, FORM);
+    setup({ mockCreateDashboardResponse: false });
 
     fillForm(FORM);
     fireEvent.click(screen.queryByRole("button", { name: "Create" }));
