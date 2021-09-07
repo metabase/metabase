@@ -53,6 +53,6 @@
   (u/exit-when-finished-nonzero-on-exception
     (check-prereqs/check-prereqs)
     (set-build-options/prompt-and-set-build-options!)
-    (let [steps (or (seq (map keyword steps))
+    (let [steps (or (seq (map u/parse-as-keyword steps))
                     (keys steps*))]
       (do-steps! steps))))
