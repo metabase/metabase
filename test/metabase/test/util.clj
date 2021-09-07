@@ -34,11 +34,8 @@
             [toucan.models :as t.models]
             [toucan.util.test :as tt])
   (:import java.net.ServerSocket
-           [java.security KeyStore KeyStore$PasswordProtection KeyStore$PrivateKeyEntry
-                          KeyStore$ProtectionParameter]
            java.util.concurrent.TimeoutException
            java.util.Locale
-           [javax.crypto SecretKey]
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
 (comment tu.log/keep-me

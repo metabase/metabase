@@ -1,16 +1,14 @@
 (ns metabase.models.secret.keystore-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.java.io :as io]
+            [clojure.test :refer :all]
             [metabase.models :refer [Database Secret]]
-            [metabase.models.secret :as secret]
             [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [clojure.java.io :as io])
-  (:import [java.security KeyStore KeyStore$SecretKeyEntry KeyStore$PasswordProtection]
+            [metabase.test.fixtures :as fixtures])
+  (:import [java.io ByteArrayOutputStream File]
+           java.nio.charset.StandardCharsets
+           [java.security KeyStore KeyStore$PasswordProtection KeyStore$SecretKeyEntry]
            javax.crypto.SecretKey
-           [javax.crypto.spec SecretKeySpec]
-           [java.nio.charset StandardCharsets]
-           [java.io ByteArrayOutputStream File]))
+           javax.crypto.spec.SecretKeySpec))
 
 (use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
 
@@ -41,7 +39,10 @@
     (with-open [out (io/output-stream temp-file)]
       (.write out ks-bytes))
     (.deleteOnExit temp-file)
-    (KeyStore/getInstance temp-file ks-password)))
+    ;; Java 9 added a getInstance method that takes the file and password as params, but since we still support JDK 8,
+    ;; we have to do it this way
+    (doto (KeyStore/getInstance (KeyStore/getDefaultType))
+      (.load (io/input-stream temp-file) ks-password))))
 
 (defn- assert-entries [^String protection-password ^KeyStore ks entries]
   (let [protection (KeyStore$PasswordProtection. (.toCharArray protection-password))]

@@ -1,9 +1,14 @@
 (ns metabase.models.secret
   (:require [cheshire.generate :refer [add-encoder encode-map]]
+            [clojure.java.io :as io]
+            [clojure.tools.logging :as log]
             [metabase.models.interface :as i]
             [metabase.util :as u]
+            [metabase.util.i18n :refer [tru]]
             [toucan.db :as db]
-            [toucan.models :as models]))
+            [toucan.models :as models])
+  (:import java.io.File
+           java.nio.charset.StandardCharsets))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -24,7 +29,34 @@
           :can-write?        i/superuser?}))
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
-;; none yet
+
+(defn value->string
+  "Returns the value of the given `secret` instance as a String."
+  {:added "0.41.0"}
+  ^String [{:keys [^bytes value] :as secret}]
+  (String. value StandardCharsets/UTF_8))
+
+(defn value->file!
+  "Returns the value of the given `secret` instance in the form of a file."
+  {:added "0.41.0"}
+  [{:keys [id ^bytes value] :as secret}]
+  (if (= :file-path (:source secret))
+    (let [secret-val          (value->string secret)
+          ^File existing-file (File. secret-val)]
+      (if (.exists existing-file)
+        existing-file
+        (throw (ex-info (tru "Secret {0} points to non-existent file: {1}" id secret-val)
+                 {:secret-id id
+                  :file-path secret-val}))))
+    (let [^File tmp-file (doto (File/createTempFile "metabase-secret_" nil)
+                           ;; make the file only readable by owner
+                           (.setReadable false false)
+                           (.setReadable true true)
+                           (.deleteOnExit))]
+      (log/tracef "Creating temp file for secret %d value at %s" id (.getAbsolutePath tmp-file))
+      (with-open [out (io/output-stream tmp-file)]
+        (.write out value))
+      tmp-file)))
 
 (def
   ^{:doc "The attributes of a secret which, if changed, will result in a version bump" :private true}
