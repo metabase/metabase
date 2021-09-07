@@ -1,13 +1,9 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover, describeWithToken } from "__support__/e2e/cypress";
 import { USER_GROUPS } from "__support__/e2e/cypress_data";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
 
-describe.skip("issue 17763", () => {
-  // Run only for EE version even when the underlying issue gets fixed.
-  // Do not remove the following line. Only unskip the `describe` block.
-  cy.onlyOn(!!Cypress.env("HAS_ENTERPRISE_TOKEN"));
-
+describeWithToken("issue 17763", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -19,7 +15,7 @@ describe.skip("issue 17763", () => {
     });
   });
 
-  it('should be able to edit tables permissions in granular view after "block" permissions (metabase#17763)', () => {
+  it.skip('should be able to edit tables permissions in granular view after "block" permissions (metabase#17763)', () => {
     cy.visit("/admin/permissions/data/database/1");
 
     cy.findByText("Block").click();
