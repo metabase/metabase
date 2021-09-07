@@ -1273,7 +1273,7 @@ workflows:
           matrix:
             parameters:
               edition: ["ee", "oss"]
-              folder: ["admin", "binning", "collections", "dashboard", "dashboard-filters", "dashboard-filters-sql", "moderation", "native", "native-filters", "onboarding", "question", "sharing", "smoketest", "visualizations"]
+              folder: ["admin", "binning", "collections", "dashboard", "dashboard-filters", "dashboard-filters-sql", "moderation", "native", "native-filters", "onboarding", "permissions", "question", "sharing", "smoketest", "visualizations"]
           name: e2e-tests-<< matrix.folder >>-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
