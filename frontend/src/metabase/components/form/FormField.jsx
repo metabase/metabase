@@ -33,7 +33,6 @@ const propTypes = {
     PropTypes.arrayOf(PropTypes.node),
     PropTypes.node,
   ]),
-  hasMargin: PropTypes.bool,
   className: PropTypes.string,
 };
 
@@ -50,7 +49,6 @@ function FormField(props) {
     horizontal = formField &&
       (formField.horizontal || formField.type === "boolean"),
     children,
-    hasMargin = true,
   } = props;
 
   if (hidden) {
@@ -70,7 +68,6 @@ function FormField(props) {
   }
 
   const rootClassNames = cx("Form-field", className, {
-    "Form-field--margin": hasMargin,
     "Form--fieldError": !!error,
     flex: horizontal,
   });

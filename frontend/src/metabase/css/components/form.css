@@ -12,11 +12,8 @@
 }
 
 .Form-field {
-  color: var(--color-text-medium);
-}
-
-.Form-field--margin {
   margin-bottom: 1.5em;
+  color: var(--color-text-medium);
 }
 
 .Form-field.Form--fieldError {
