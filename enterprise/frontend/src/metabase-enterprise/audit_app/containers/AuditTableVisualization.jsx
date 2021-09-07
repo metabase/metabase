@@ -49,7 +49,7 @@ export default class AuditTableVisualization extends React.Component {
 
   constructor(props) {
     super(props);
-    this.state = { rerender: {}};
+    this.state = { rerender: {} };
   }
 
   handleColumnHeaderClick = column => {
@@ -98,15 +98,15 @@ export default class AuditTableVisualization extends React.Component {
       );
     }
     const handleRowSelectClick = (e, row, rowIndex) => {
-      this.setState({ rerender: {}});
-      onRowSelectClick({...e, row: row, rowIndex: rowIndex});
+      this.setState({ rerender: {} });
+      onRowSelectClick({ ...e, row: row, rowIndex: rowIndex });
     };
 
     return (
       <table className="ContentTable">
         <thead>
           <tr>
-	    {isSelectable && <th>{selectHeader}</th>}
+            {isSelectable && <th>{selectHeader}</th>}
             {columnIndexes.map(colIndex => {
               const column = cols[colIndex];
               const isSortedByColumn =
@@ -138,9 +138,20 @@ export default class AuditTableVisualization extends React.Component {
         <tbody>
           {rows.map((row, rowIndex) => (
             <tr key={rowIndex}>
-              {isSelectable && <td><CheckBox
-                checked={rowChecked[rowIndex]}
-                onChange={(e) => handleRowSelectClick({...e, originRow: rowIndex}, row, rowIndex)}/></td>}
+              {isSelectable && (
+                <td>
+                  <CheckBox
+                    checked={rowChecked[rowIndex]}
+                    onChange={e =>
+                      handleRowSelectClick(
+                        { ...e, originRow: rowIndex },
+                        row,
+                        rowIndex,
+                      )
+                    }
+                  />
+                </td>
+              )}
 
               {columnIndexes.map(colIndex => {
                 const value = row[colIndex];

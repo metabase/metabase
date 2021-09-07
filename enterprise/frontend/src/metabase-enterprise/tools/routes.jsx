@@ -9,7 +9,11 @@ import ErrorOverview from "./containers/ErrorOverview";
 const getRoutes = (store: any) => (
   <Route path="tools" title={t`Tools`} component={ToolsApp}>
     <IndexRedirect to="errors" />
-    <Route path="errors" title={t`Erroring Questions`} component={ErrorOverview} />
+    <Route
+      path="errors"
+      title={t`Erroring Questions`}
+      component={ErrorOverview}
+    />
   </Route>
 );
 

@@ -64,7 +64,13 @@ export const bad_table = (
     dataset_query: {
       type: "internal",
       fn: "metabase-enterprise.audit.pages.queries/bad-table",
-      args: [errorFilter, dbFilter, collectionFilter, sortColumn, sortDirection],
+      args: [
+        errorFilter,
+        dbFilter,
+        collectionFilter,
+        sortColumn,
+        sortDirection,
+      ],
     },
     visualization_settings: {
       "table.columns": [

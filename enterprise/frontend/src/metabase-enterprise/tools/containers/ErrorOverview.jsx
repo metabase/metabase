@@ -9,7 +9,6 @@ import * as Queries from "../../audit_app/lib/cards/queries";
 import AuditTable from "../../audit_app/containers/AuditTable";
 import AuditParameters from "../../audit_app/components/AuditParameters";
 
-
 const getSortOrder = isAscending => (isAscending ? "asc" : "desc");
 
 const CARD_ID_COL = 0;
@@ -20,8 +19,8 @@ export default function ErrorOverview(props) {
     isAscending: true,
   });
 
-  const [rowChecked, setRowChecked] = useState({})
-  const [rowToCardId, setRowToCardId] = useState({})
+  const [rowChecked, setRowChecked] = useState({});
+  const [rowToCardId, setRowToCardId] = useState({});
   const handleRowSelectClick = e => {
     const newRowChecked = rowChecked;
     const newRowToCardId = rowToCardId;
@@ -31,10 +30,12 @@ export default function ErrorOverview(props) {
     setRowToCardId(newRowToCardId);
   };
   const handleReloadSelected = () => {
-    const checkedCardIds = Object.values(_.pick(rowToCardId, (member, key) => (rowChecked[key])));
-    checkedCardIds.forEach(member => CardApi.query({ cardId: member}));
+    const checkedCardIds = Object.values(
+      _.pick(rowToCardId, (member, key) => rowChecked[key]),
+    );
+    checkedCardIds.forEach(member => CardApi.query({ cardId: member }));
     location.reload();
-  }
+  };
 
   const handleSortingChange = sorting => setSorting(sorting);
   return (
@@ -45,7 +46,11 @@ export default function ErrorOverview(props) {
         { key: "collectionFilter", placeholder: t`Collection name` },
       ]}
       buttons={[
-        { key: "reloadSelected", label: t`Reload Selected`, onClick: handleReloadSelected }
+        {
+          key: "reloadSelected",
+          label: t`Reload Selected`,
+          onClick: handleReloadSelected,
+        },
       ]}
     >
       {({ errorFilter, dbFilter, collectionFilter }) => (

@@ -52,28 +52,30 @@ export default class AuditParameters extends React.Component {
     return (
       <div>
         <div className="pt4">
-          {parameters && parameters.map(({ key, placeholder }) => (
-            <input
-              className="input mr2"
-              key={key}
-              type="text"
-              value={inputValues[key] || ""}
-              placeholder={placeholder}
-              onChange={e => {
-                this.changeValue(key, e.target.value);
-              }}
-            />
-          ))}
-          {buttons && buttons.map(({ key, onClick, label }) => (
-            <Button
-              primary
-              key={key}
-              style={{ fontSize: 14 }}
-              onClick={onClick}
-            >
-              {label}
-            </Button>
-          ))}
+          {parameters &&
+            parameters.map(({ key, placeholder }) => (
+              <input
+                className="input mr2"
+                key={key}
+                type="text"
+                value={inputValues[key] || ""}
+                placeholder={placeholder}
+                onChange={e => {
+                  this.changeValue(key, e.target.value);
+                }}
+              />
+            ))}
+          {buttons &&
+            buttons.map(({ key, onClick, label }) => (
+              <Button
+                primary
+                key={key}
+                style={{ fontSize: 14 }}
+                onClick={onClick}
+              >
+                {label}
+              </Button>
+            ))}
         </div>
         {children && children(committedValues)}
       </div>
