@@ -2,7 +2,7 @@ import React, { useCallback } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import Settings from "metabase/lib/settings";
-import { capitalize, formatDateTimeWithUnit } from "metabase/lib/formatting";
+import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import {
   canArchive,
   formatChannel,

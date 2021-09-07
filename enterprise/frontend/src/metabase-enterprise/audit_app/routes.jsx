@@ -48,11 +48,7 @@ function getPageRoutes(path, page: Page) {
   }
   // add sub routes for each tab
   if (page.tabs) {
-    subRoutes.push(
-      ...page.tabs.map(tab => (
-        <Route key={tab.path} path={tab.path} component={tab.component} />
-      )),
-    );
+    subRoutes.push(...getSubRoutes(page.tabs));
   }
   // if path is provided, use that, otherwise use an IndexRoute
   return path ? (
@@ -62,6 +58,14 @@ function getPageRoutes(path, page: Page) {
   ) : (
     <IndexRoute component={page}>{subRoutes}</IndexRoute>
   );
+}
+
+function getSubRoutes(routes) {
+  return routes.map(route => (
+    <Route key={route.path} path={route.path} component={route.component}>
+      {route.children && getSubRoutes(route.children)}
+    </Route>
+  ));
 }
 
 function getDefaultTab(page: Page): ?Tab {
