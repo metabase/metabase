@@ -1,7 +1,8 @@
 import { connect } from "react-redux";
+import { push } from "react-router-redux";
 import _ from "underscore";
 import Alerts from "metabase/entities/alerts";
-import AuditNotificationDeleteModal from "../components/AuditNotificationDeleteModal";
+import AuditNotificationEditModal from "../components/AuditNotificationEditModal";
 
 const mapStateToProps = (state, { alert }) => ({
   item: alert,
@@ -9,7 +10,9 @@ const mapStateToProps = (state, { alert }) => ({
 });
 
 const mapDispatchToProps = {
-  onDelete: alert => Alerts.actions.setArchived(alert, true),
+  onUpdate: (alert, channels) => Alerts.actions.setChannels(alert, channels),
+  onDelete: alert =>
+    push(`/admin/audit/subscriptions/alerts/${alert.id}/delete`),
 };
 
 export default _.compose(
@@ -20,4 +23,4 @@ export default _.compose(
     mapStateToProps,
     mapDispatchToProps,
   ),
-)(AuditNotificationDeleteModal);
+)(AuditNotificationEditModal);
