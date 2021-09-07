@@ -2,8 +2,11 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import { formDomOnlyProps } from "metabase/lib/redux";
-import NumericInput from "metabase/components/NumericInput";
-import { CacheTTLFieldContainer } from "./CacheTTLField.styled";
+import {
+  CacheTTLFieldContainer,
+  FieldText,
+  Input,
+} from "./CacheTTLField.styled";
 
 const propTypes = {
   field: PropTypes.shape({
@@ -16,13 +19,13 @@ const propTypes = {
 export function CacheTTLField({ field, message }) {
   return (
     <CacheTTLFieldContainer>
-      {message && <span>{message}</span>}
-      <NumericInput
+      {message && <FieldText margin="right">{message}</FieldText>}
+      <Input
         aria-labelledby={`${field.name}-label`}
         {...formDomOnlyProps(field)}
         value={field.value || 0}
       />
-      <span>{t`hours`}</span>
+      <FieldText margin="left">{t`hours`}</FieldText>
     </CacheTTLFieldContainer>
   );
 }

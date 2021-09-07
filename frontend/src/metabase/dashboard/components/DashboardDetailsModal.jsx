@@ -66,6 +66,8 @@ class DashboardDetailsModal extends React.Component {
                   header={t`More options`}
                   iconVariant="up-down"
                   iconPosition="right"
+                  headerClass="text-bold text-medium"
+                  bodyClass="pt1"
                 >
                   {collapsedFields.map(field => (
                     <FormField key={field.name} name={field.name} />
