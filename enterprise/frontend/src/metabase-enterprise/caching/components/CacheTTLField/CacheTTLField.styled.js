@@ -13,6 +13,9 @@ export const FieldText = styled.span`
 `;
 
 export const Input = styled(NumericInput)`
+  width: 50px;
+  text-align: center;
+
   color: ${color("text-dark")};
   font-weight: bold;
   padding: 0.75em;
