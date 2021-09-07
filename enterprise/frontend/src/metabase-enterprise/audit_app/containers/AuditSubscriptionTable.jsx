@@ -10,7 +10,10 @@ const mapStateToProps = () => ({
 });
 
 const mapDispatchToProps = {
-  onRemoveRow: ({ id }) => push(`/audit/subscriptions/${id}/delete`),
+  onVisualizationClick: ({ id }) =>
+    push(`/admin/audit/subscriptions/subscriptions/${id}/edit`),
+  onRemoveRow: ({ id }) =>
+    push(`/admin/audit/subscriptions/subscriptions/${id}/delete`),
 };
 
 export default connect(
