@@ -170,6 +170,7 @@
                         :dashboard_count
                         :can_write
                         :average_query_time
+                        :last_query_start
                         :collection [:moderation_reviews :moderator_details])
                api/read-check
                (last-edit/with-last-edit-info :card))

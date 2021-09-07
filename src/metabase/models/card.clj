@@ -46,6 +46,17 @@
                      [:not= :cache_hit true]
                      [:= :card_id id]]}))
 
+(defn last-query-start
+  "Timestamp for start of last query of this card."
+  {:hydrate :last_query_start}
+  [{:keys [id]}]
+  (db/query {:select [:%max.started_at]
+             :from [:query_execution]
+             :where [:and
+                     [:not= :running_time nil]
+                     [:not= :cache_hit true]
+                     [:= :card_id id]]}))
+
 ;; There's more hydration in the shared metabase.moderation namespace, but it needs to be required:
 (comment moderation/keep-me)
 
