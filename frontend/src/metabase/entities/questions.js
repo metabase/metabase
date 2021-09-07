@@ -88,6 +88,7 @@ const Questions = createEntity({
   // NOTE: keep in sync with src/metabase/api/card.clj
   writableProperties: [
     "name",
+    "cache_ttl",
     "dataset_query",
     "display",
     "description",
