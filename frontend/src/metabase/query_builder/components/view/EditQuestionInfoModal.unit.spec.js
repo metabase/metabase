@@ -1,4 +1,5 @@
 import React from "react";
+import _ from "underscore";
 import { Provider } from "react-redux";
 import { reducer as form } from "redux-form";
 import { act, fireEvent, render, screen } from "@testing-library/react";
@@ -29,13 +30,12 @@ function mockCachingEnabled(enabled = true) {
   });
 }
 
-function setup({ databaseCacheTTL = null } = {}) {
+function setup({
+  databaseCacheTTL = null,
+  mockQuestionUpdateResponse = true,
+} = {}) {
   const onSave = jest.fn();
   const onClose = jest.fn();
-
-  xhrMock.put(`/api/card/${QUESTION.id}`, (req, res) =>
-    res.status(200).body(req.body()),
-  );
 
   const question = {
     card: () => QUESTION,
@@ -43,6 +43,12 @@ function setup({ databaseCacheTTL = null } = {}) {
       cache_ttl: databaseCacheTTL,
     }),
   };
+
+  if (mockQuestionUpdateResponse) {
+    xhrMock.put(`/api/card/${QUESTION.id}`, (req, res) =>
+      res.status(200).body(req.body()),
+    );
+  }
 
   render(
     <Provider store={getStore({ form })}>
@@ -60,21 +66,45 @@ function setup({ databaseCacheTTL = null } = {}) {
   };
 }
 
-function fillForm({ name, description } = {}) {
-  const nextQuestionState = { ...QUESTION };
+function setupUpdateRequestAssertion(
+  doneCallback,
+  changedValues,
+  { hasCacheTTLField = false } = {},
+) {
+  const editableFields = ["name", "description"];
+  if (hasCacheTTLField) {
+    editableFields.push("cache_ttl");
+  }
+  xhrMock.put(`/api/card/${QUESTION.id}`, req => {
+    try {
+      expect(JSON.parse(req.body())).toEqual({
+        ..._.pick(QUESTION, ...editableFields),
+        ...changedValues,
+      });
+      doneCallback();
+    } catch (err) {
+      doneCallback(err);
+    }
+  });
+}
+
+function fillForm({ name, description, cache_ttl } = {}) {
   if (name) {
     const input = screen.getByLabelText("Name");
     userEvent.clear(input);
     userEvent.type(input, name);
-    nextQuestionState.name = name;
   }
   if (description) {
     const input = screen.getByLabelText("Description");
     userEvent.clear(input);
     userEvent.type(input, description);
-    nextQuestionState.description = description;
   }
-  return nextQuestionState;
+  if (cache_ttl) {
+    const input = screen.getByLabelText("Cache TTL");
+    userEvent.clear(input);
+    userEvent.type(input, String(cache_ttl));
+    input.blur();
+  }
 }
 
 describe("EditQuestionInfoModal", () => {
@@ -127,22 +157,14 @@ describe("EditQuestionInfoModal", () => {
     expect(screen.queryByRole("button", { name: "Save" })).toBeDisabled();
   });
 
-  it("submits an update request correctly", () => {
+  it("submits an update request correctly", done => {
     const UPDATES = {
       name: "New fancy question name",
       description: "Just testing if updates work correctly",
     };
-    setup();
-
-    xhrMock.put(`/api/card/${QUESTION.id}`, (req, res) => {
-      expect(req.body()).toEqual({
-        ...QUESTION,
-        ...UPDATES,
-      });
-      return res.status(200).body(req.body());
-    });
-
+    setup({ mockQuestionUpdateResponse: false });
     fillForm(UPDATES);
+    setupUpdateRequestAssertion(done, UPDATES);
     fireEvent.click(screen.queryByRole("button", { name: "Save" }));
   });
 
@@ -153,13 +175,16 @@ describe("EditQuestionInfoModal", () => {
     };
     const { onSave } = setup();
 
-    const question = fillForm(UPDATES);
+    fillForm(UPDATES);
     await act(async () => {
       await fireEvent.click(screen.queryByRole("button", { name: "Save" }));
     });
 
     expect(onSave).toHaveBeenCalledTimes(1);
-    expect(onSave).toHaveBeenCalledWith(question);
+    expect(onSave).toHaveBeenCalledWith({
+      ...QUESTION,
+      ...UPDATES,
+    });
   });
 
   describe("Cache TTL field", () => {
@@ -204,16 +229,15 @@ describe("EditQuestionInfoModal", () => {
           expect(screen.queryByLabelText("Cache TTL")).toHaveValue("48");
         });
 
-        it("can be changed", () => {
-          setup();
-
-          xhrMock.put(`/api/card/${QUESTION.id}`, (req, res) => {
-            expect(req.body()).toEqual({
-              ...QUESTION,
+        it("can be changed", done => {
+          setup({ mockQuestionUpdateResponse: false });
+          setupUpdateRequestAssertion(
+            done,
+            {
               cache_ttl: 10,
-            });
-            return res.status(200).body(req.body());
-          });
+            },
+            { hasCacheTTLField: true },
+          );
 
           fireEvent.click(screen.queryByText("More options"));
           fillForm({ cache_ttl: 10 });
@@ -231,15 +255,11 @@ describe("EditQuestionInfoModal", () => {
           ).not.toBeInTheDocument();
         });
 
-        it("can still submit the form", () => {
-          setup();
-
-          xhrMock.put(`/api/card/${QUESTION.id}`, (req, res) => {
-            expect(req.body()).toEqual({
-              ...QUESTION,
-              name: "Test",
-            });
-            return res.status(200).body(req.body());
+        it("can still submit the form", done => {
+          mockCachingEnabled(false);
+          setup({ mockQuestionUpdateResponse: false });
+          setupUpdateRequestAssertion(done, {
+            name: "Test",
           });
 
           fillForm({ name: "Test" });
