@@ -17,24 +17,21 @@ const AuditNotificationEditModal = ({ item, type, onUpdate, onClose }) => {
   const [channels, setChannels] = useState(item.channels);
   const [error, setError] = useState();
 
-  const handleUpdateClick = useCallback(async () => {
+  const handleUpdateClick = async () => {
     try {
       await onUpdate(item, channels);
       onClose();
     } catch (error) {
       setError(error);
     }
-  }, [item, channels, onUpdate, onClose]);
+  };
 
-  const handleRecipientsChange = useCallback(
-    (recipients, index) => {
-      const newChannels = [...channels];
-      newChannels[index] = { ...channels[index], recipients };
+  const handleRecipientsChange = (recipients, index) => {
+    const newChannels = [...channels];
+    newChannels[index] = { ...channels[index], recipients };
 
-      setChannels(newChannels);
-    },
-    [channels],
-  );
+    setChannels(newChannels);
+  };
 
   return (
     <ModalContent

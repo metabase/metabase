@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import { formatChannels } from "metabase/lib/notifications";
@@ -19,18 +19,18 @@ const AuditNotificationDeleteModal = ({ item, type, onDelete, onClose }) => {
   const [error, setError] = useState();
   const [checked, setChecked] = useState(false);
 
-  const handleDeleteClick = useCallback(async () => {
+  const handleDeleteClick = async () => {
     try {
       await onDelete(item, true);
       onClose();
     } catch (error) {
       setError(error);
     }
-  }, [item, onDelete, onClose]);
+  };
 
-  const handleCheckedChange = useCallback(event => {
+  const handleCheckedChange = event => {
     setChecked(event.target.checked);
-  }, []);
+  };
 
   return (
     <ModalContent
