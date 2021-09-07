@@ -6,8 +6,10 @@
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900&display=swap');
 
+      {{!--- Styles are mostly inline for maximum compatibility with email clients.  --}}
+
       body {
-        font-size: 16px;
+        font-size: 14px;
         color: {{colorTextDark}};
         font-family: "Lato", "Lucida Grande", "Lucida Sans Unicode", Tahoma, Sans-Serif;
       }
@@ -22,7 +24,7 @@
          text-decoration: underline;
       }
 
-      {{!-- Formatting for Markdown header elements --}}
+      {{!-- Formatting for header elements of Markdown cards --}}
       h1, h2, h3, h4, h5, h6 {
         color: {{colorTextDark}};
         font-weight: 900;
@@ -48,33 +50,14 @@
         line-height: 18px;
       }
 
-      {{!-- Slightly smaller layout for desktop clients. All marked important! to override inline styles. --}}
+      {{!-- Limit with of background on desktop  --}}
       @media screen and (min-width:600px) {
-        body {
-          font-size: 14px !important;
-        }
         .background {
           width: 719px !important;
         }
         .container {
           margin-left: 52px !important;
           margin-right: 52px !important;
-        }
-        .icon {
-          width: 20px !important;
-          padding-top: 4px !important;
-        }
-        .title {
-          font-size: 20px !important;
-        }
-        .description {
-          font-size: 14px !important;
-        }
-        .sender {
-          font-size: 12px !important;
-        }
-        .footer {
-          font-size: 11px !important;
         }
       }
 
@@ -88,10 +71,10 @@
         <table class="header">
           <tr>
             <td>
-              <img class="icon" width="24" style="padding-top: 6px; padding-right: 16px" src="cid:{{iconCid}}"/>
+              <img class="icon" width="20" style="padding-top: 4px; padding-right: 16px" src="cid:{{iconCid}}"/>
             </td>
             <td>
-              <a class="title" href={{dashboardUrl}} style="font-size: 24px; font-weight: 700; padding-bottom: 4px;">
+              <a class="title" href={{dashboardUrl}} style="font-size: 20px; font-weight: 700; padding-bottom: 4px;">
                 {{pulseName}}
               </a>
             </td>
@@ -99,7 +82,7 @@
           <tr>
             <td>&#8202;</td>
             <td>
-              <div class="description" style="color: {{colorTextDark}}; font-size: 16px; padding-bottom: 4px;">
+              <div class="description" style="color: {{colorTextDark}}; font-size: 14px; padding-bottom: 4px;">
                 {{dashboardDescription}}
               </div>
             </td>
@@ -107,7 +90,7 @@
           <tr>
             <td>&#8202;</td>
             <td>
-              <div class="sender" style="color: {{colorTextLight}}; font-size: 14px">
+              <div class="sender" style="color: {{colorTextLight}}; font-size: 12px">
                 Sent by {{pulseCreator}}
               </div>
             </td>
@@ -116,7 +99,7 @@
         <hr style="border-width: 0; background: #F0F0F0; height: 1px; margin-top: 20px; margin-bottom: 20px;">
         {{{pulse}}}
         <hr style="border-width: 0; background: #F0F0F0; height: 1px; margin-top: 20px; margin-bottom: 20px;">
-        <div class="footer" style="font-size: 13px; width: max-content; margin: 0 auto">
+        <div class="footer" style="font-size: 11px; width: max-content; margin: 0 auto">
           Sent from <a href="{{siteUrl}}" style="color: {{applicationColor}}">{{siteUrl}}</a>.
           <a href="{{notificationManagementUrl}}" style="color: {{applicationColor}}"> Manage your subscriptions</a>
         </div>
