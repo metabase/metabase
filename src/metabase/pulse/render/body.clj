@@ -36,7 +36,7 @@
 
 (def cols-limit
   "Maximum number of columns to render in a Pulse image."
-  10)
+  7)
 
 ;; NOTE: hiccup does not escape content by default so be sure to use "h" to escape any user-controlled content :-/
 

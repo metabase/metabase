@@ -135,12 +135,20 @@
                                :target "_blank"
                                :style  (style/style
                                         (style/section-style)
-                                        {:margin          :16px
-                                         :margin-bottom   :16px
-                                         :display         :block
+                                        {:display         :block
                                          :text-decoration :none})}
                            title
-                           pulse-body]}
+                           [:div {:style (style/style (merge
+                                                       {:padding-top    "20px"
+                                                        :padding-left   "20px"
+                                                        :padding-bottom "10px"
+                                                        :overflow       "hidden"}
+                                                       (when-not (= :table (detect-pulse-chart-type card (:data results)))
+                                                         {:border           "1px solid #dddddd"
+                                                          :border-radius    :2px
+                                                          :background-color :white
+                                                          :box-shadow       "0 1px 2px rgba(0, 0, 0, .08)"})))}
+                            pulse-body]]}
       text (assoc :render/text text))))
 
 (defn render-pulse-card-for-display
@@ -151,21 +159,12 @@
 
 (s/defn render-pulse-section :- common/RenderedPulseCard
   "Render a single Card section of a Pulse to a Hiccup form (representating HTML)."
-  [timezone-id {card :card {:keys [data] :as result} :result}]
+  [timezone-id {card :card, result :result}]
   (let [{:keys [attachments content]} (binding [*include-title* true]
                                         (render-pulse-card :attachment timezone-id card result))]
     {:attachments attachments
-     :content     [:div {:style (style/style (merge
-                                              {:margin-top    :10px
-                                               :margin-bottom :20px}
-                                              ;; Don't include the border on cards rendered with a table as the table
-                                              ;; will be to larger and overrun the border
-                                              (when-not (= :table (detect-pulse-chart-type card data))
-                                                {:border           "1px solid #dddddd"
-                                                 :border-radius    :2px
-                                                 :background-color :white
-                                                 :width            "500px !important"
-                                                 :box-shadow       "0 1px 2px rgba(0, 0, 0, .08)"})))}
+     :content     [:div {:style (style/style {:margin-top    :20px
+                                              :margin-bottom :20px})}
                    content]}))
 
 (s/defn render-pulse-card-to-png :- bytes

@@ -95,9 +95,9 @@
   []
   (merge
    (font-style)
-   {:font-size       :16px
+   {:font-size       :14px
     :font-weight     700
-    :color           color-gray-4
+    :color           (primary-color)
     :text-decoration :none}))
 
 (defn scalar-style
