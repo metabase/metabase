@@ -19,7 +19,8 @@ Timeline.propTypes = {
   items: PropTypes.arrayOf(
     PropTypes.shape({
       timestamp: PropTypes.number.isRequired,
-      icon: PropTypes.string.isRequired,
+      icon: PropTypes.oneOfType([PropTypes.string, PropTypes.object])
+        .isRequired,
       title: PropTypes.string.isRequired,
       description: PropTypes.string,
       renderFooter: PropTypes.bool,
@@ -61,11 +62,16 @@ function Timeline({ className, items = [], renderFooter }) {
         } = item;
         const key = item.key == null ? index : item.key;
         const isNotLastEvent = index !== sortedFormattedItems.length - 1;
+        const iconProps = _.isObject(icon)
+          ? icon
+          : {
+              name: icon,
+            };
 
         return (
           <TimelineItem key={key} leftShift={halfIconSize}>
             {isNotLastEvent && <Border borderShift={halfIconSize} />}
-            <ItemIcon name={icon} size={iconSize} />
+            <ItemIcon {...iconProps} size={iconSize} />
             <ItemBody>
               <ItemHeader>{title}</ItemHeader>
               <Timestamp datetime={timestamp}>{formattedTimestamp}</Timestamp>

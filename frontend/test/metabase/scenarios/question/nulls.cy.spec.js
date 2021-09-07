@@ -54,59 +54,61 @@ describe("scenarios > question > null", () => {
 
       display: "pie",
     }).then(({ body: { id: questionId } }) => {
-      cy.createDashboard("13626D").then(({ body: { id: dashboardId } }) => {
-        // add filter (ID) to the dashboard
-        cy.request("PUT", `/api/dashboard/${dashboardId}`, {
-          parameters: [
-            {
-              id: "1f97c149",
-              name: "ID",
-              slug: "id",
-              type: "id",
-            },
-          ],
-        });
-
-        // add previously created question to the dashboard
-        cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-          cardId: questionId,
-        }).then(({ body: { id: dashCardId } }) => {
-          // connect filter to that question
-          cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
-            cards: [
+      cy.createDashboard({ name: "13626D" }).then(
+        ({ body: { id: dashboardId } }) => {
+          // add filter (ID) to the dashboard
+          cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+            parameters: [
               {
-                id: dashCardId,
-                card_id: questionId,
-                row: 0,
-                col: 0,
-                sizeX: 8,
-                sizeY: 6,
-                parameter_mappings: [
-                  {
-                    parameter_id: "1f97c149",
-                    card_id: questionId,
-                    target: ["dimension", ["field", ORDERS.ID, null]],
-                  },
-                ],
+                id: "1f97c149",
+                name: "ID",
+                slug: "id",
+                type: "id",
               },
             ],
           });
-        });
-        // NOTE: The actual "Assertion" phase begins here
-        cy.visit(`/dashboard/${dashboardId}?id=1`);
-        cy.findByText("13626D");
 
-        cy.log("Reported failing in v0.37.0.2");
-        cy.get(".DashCard").within(() => {
-          cy.get(".LoadingSpinner").should("not.exist");
-          cy.findByText("13626");
-          // [quarantine]: flaking in CircleCI, passing locally
-          // TODO: figure out the cause of the failed test in CI after #13721 is merged
-          // cy.get("svg[class*=PieChart__Donut]");
-          // cy.get("[class*=PieChart__Value]").contains("0");
-          // cy.get("[class*=PieChart__Title]").contains(/total/i);
-        });
-      });
+          // add previously created question to the dashboard
+          cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
+            cardId: questionId,
+          }).then(({ body: { id: dashCardId } }) => {
+            // connect filter to that question
+            cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
+              cards: [
+                {
+                  id: dashCardId,
+                  card_id: questionId,
+                  row: 0,
+                  col: 0,
+                  sizeX: 8,
+                  sizeY: 6,
+                  parameter_mappings: [
+                    {
+                      parameter_id: "1f97c149",
+                      card_id: questionId,
+                      target: ["dimension", ["field", ORDERS.ID, null]],
+                    },
+                  ],
+                },
+              ],
+            });
+          });
+          // NOTE: The actual "Assertion" phase begins here
+          cy.visit(`/dashboard/${dashboardId}?id=1`);
+          cy.findByText("13626D");
+
+          cy.log("Reported failing in v0.37.0.2");
+          cy.get(".DashCard").within(() => {
+            cy.get(".LoadingSpinner").should("not.exist");
+            cy.findByText("13626");
+            // [quarantine]: flaking in CircleCI, passing locally
+            // TODO: figure out the cause of the failed test in CI after #13721 is merged
+            // cy.get("svg[class*=PieChart__Donut]");
+            // cy.get("[class*=PieChart__Value]").contains("0");
+            // cy.get("[class*=PieChart__Title]").contains(/total/i);
+          });
+        },
+      );
     });
   });
 
@@ -121,7 +123,7 @@ describe("scenarios > question > null", () => {
         native: { query: "SELECT 0", "template-tags": {} },
         display: "scalar",
       }).then(({ body: { id: Q2_ID } }) => {
-        cy.createDashboard("13801D").then(({ body: { id: DASHBOARD_ID } }) => {
+        cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
           cy.log("Add both previously created questions to the dashboard");
 
           [Q1_ID, Q2_ID].forEach((questionId, index) => {

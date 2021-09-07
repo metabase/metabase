@@ -107,15 +107,26 @@
   (defn- load-local-plugin-manifest! [^Path path]
     (some-> (slurp (str path)) yaml.core/parse-string initialize/init-plugin-with-info!))
 
+  (defn- driver-manifest-paths []
+    (filter
+     files/exists?
+     (concat
+      (for [path (files/files-seq (files/get-path "modules/drivers/"))]
+        (files/get-path (str path) "/resources/metabase-plugin.yaml"))
+      ;; for hacking on 3rd-party drivers locally: set
+      ;; `-Dmb.dev.additional.driver.manifest.paths=/path/to/whatever/metabase-plugin.yaml` or
+      ;; `MB_DEV_ADDITIONAL_DRIVER_MANIFEST_PATHS=...` to have that plugin manifest get loaded during startup. Specify
+      ;; multiple plugin manifests by comma-separating them.
+      (when-let [additional-paths (env/env :mb-dev-additional-driver-manifest-paths)]
+        (map files/get-path (str/split additional-paths #","))))))
+
   (defn- load-local-plugin-manifests!
     "Load local plugin manifest files when running in dev or test mode, to simulate what would happen when loading those
   same plugins from the uberjar. This is needed because some plugin manifests define driver methods and the like that
   aren't defined elsewhere."
     []
     ;; TODO - this should probably do an actual search in case we ever add any additional directories
-    (doseq [path  (files/files-seq (files/get-path "modules/drivers/"))
-            :let  [manifest-path (files/get-path (str path) "/resources/metabase-plugin.yaml")]
-            :when (files/exists? manifest-path)]
+    (doseq [manifest-path (driver-manifest-paths)]
       (log/info (trs "Loading local plugin manifest at {0}" (str manifest-path)))
       (load-local-plugin-manifest! manifest-path))))
 

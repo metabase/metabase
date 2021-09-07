@@ -1,8 +1,3 @@
-.DashboardHeader {
-  background-color: white;
-  border-bottom: var(--border-size) var(--border-style) var(--color-border);
-}
-
 .Dash-wrapper {
   width: 100%;
 }
@@ -34,10 +29,6 @@
   color: var(--color-text-light);
 }
 
-.Dashboard.Dashboard--fullscreen .DashboardHeader {
-  background-color: transparent;
-  border: none;
-}
 .Dashboard.Dashboard--fullscreen .Header-title-description {
   display: none;
 }
@@ -45,10 +36,6 @@
 /* Night mode */
 .Dashboard.Dashboard--night {
   background-color: var(--color-bg-black);
-}
-
-.Dashboard.Dashboard--night .DashboardHeader {
-  color: var(--color-text-white);
 }
 
 .Dashboard.Dashboard--night .Card {
@@ -106,10 +93,6 @@
 .Dashboard.Dashboard--fullscreen,
 .Dashboard.Dashboard--fullscreen .DashCard .Card {
   transition: background-color 1s linear, border 1s linear;
-}
-
-.DashboardGrid {
-  margin-top: 1em;
 }
 
 .Dash--editing {

@@ -52,7 +52,7 @@
   (classloader/require 'metabase.cmd.dump-to-h2)
   (try
     (let [options        {:keep-existing? (boolean (some #{"--keep-existing"} opts))
-                          :dump-plaintext? (boolean (some #{"--dump-plaintext"} opts)) }]
+                          :dump-plaintext? (boolean (some #{"--dump-plaintext"} opts))}]
       ((resolve 'metabase.cmd.dump-to-h2/dump-to-h2!) h2-filename options)
       (println "Dump complete")
       (system-exit! 0))
@@ -140,7 +140,7 @@
 (defn ^:command load
   "Load serialized metabase instance as created by `dump` command from directory `path`.
 
-   `mode` can be one of `:update` or `:skip` (default)."
+   `--mode` can be one of `:update` or `:skip` (default). `--on-error` can be `:abort` or `:continue` (default)."
   ([path] (load path {"--mode" :skip
                       "--on-error" :continue}))
 

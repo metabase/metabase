@@ -129,6 +129,12 @@ export const onOpenQuestionDetails = createAction(
 export const onCloseQuestionDetails = createAction(
   "metabase/qb/CLOSE_QUESTION_DETAILS",
 );
+export const onOpenQuestionHistory = createAction(
+  "metabase/qb/OPEN_QUESTION_HISTORY",
+);
+export const onCloseQuestionHistory = createAction(
+  "metabase/qb/CLOSE_QUESTION_HISTORY",
+);
 
 export const onCloseChartType = createAction("metabase/qb/CLOSE_CHART_TYPE");
 export const onCloseSidebars = createAction("metabase/qb/CLOSE_SIDEBARS");
@@ -312,10 +318,6 @@ export const initializeQB = (location, params) => {
     // do this immediately to ensure old state is cleared before the user sees it
     dispatch(resetQB());
     dispatch(cancelQuery());
-
-    // preload metadata that's used in DataSelector
-    dispatch(Databases.actions.fetchList({ include: "tables" }));
-    dispatch(Databases.actions.fetchList({ saved: true }));
 
     const { currentUser } = getState();
 
@@ -1131,16 +1133,23 @@ export const queryCompleted = (question, queryResults) => {
     const dirty =
       !originalQuestion ||
       (originalQuestion && question.isDirtyComparedTo(originalQuestion));
+
     if (dirty) {
+      if (question.isNative()) {
+        question = question.syncColumnsAndSettings(
+          originalQuestion,
+          queryResults[0],
+        );
+      }
       // Only update the display if the question is new or has been changed.
       // Otherwise, trust that the question was saved with the correct display.
       question = question
         // if we are going to trigger autoselection logic, check if the locked display no longer is "sensible".
-        .syncColumnsAndSettings(originalQuestion, queryResults[0])
         .maybeUnlockDisplay(getSensibleDisplays(data))
         .setDefaultDisplay()
         .switchTableScalar(data);
     }
+
     dispatch.action(QUERY_COMPLETED, { card: question.card(), queryResults });
   };
 };

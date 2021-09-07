@@ -84,7 +84,9 @@
                        (pulse/send-pulse! (models.pulse/retrieve-notification pulse-id))))
                   (thunk []
                     (if fixture
-                      (fixture {:card-id card-id, :pulse-id pulse-id} thunk*)
+                      (fixture {:dashboard-id dashboard-id,
+                                :card-id card-id,
+                                :pulse-id pulse-id} thunk*)
                       (thunk*)))]
             (case channel-type
               :email (email-test-setup (thunk))
@@ -123,7 +125,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest execute-dashboard-test
-  (testing "it runs for each card"
+  (testing "it runs for each non-virtual card"
     (mt/with-temp* [Card          [{card-id-1 :id}]
                     Card          [{card-id-2 :id}]
                     Dashboard     [{dashboard-id :id} {:name "Birdfeed Usage"}]
@@ -134,7 +136,27 @@
         (is (= (count result) 2))
         (is (schema= [{:card   (s/pred map?)
                        :result (s/pred map?)}]
-                     result))))))
+                     result)))))
+  (testing "dashboard cards are ordered correctly -- by rows, and then by columns (#17419)"
+    (mt/with-temp* [Card          [{card-id-1 :id}]
+                    Card          [{card-id-2 :id}]
+                    Card          [{card-id-3 :id}]
+                    Dashboard     [{dashboard-id :id} {:name "Birdfeed Usage"}]
+                    DashboardCard [dashcard-1 {:dashboard_id dashboard-id :card_id card-id-1 :row 1 :col 0}]
+                    DashboardCard [dashcard-2 {:dashboard_id dashboard-id :card_id card-id-2 :row 0 :col 1}]
+                    DashboardCard [dashcard-3 {:dashboard_id dashboard-id :card_id card-id-3 :row 0 :col 0}]
+                    User [{user-id :id}]]
+      (let [result (pulse/execute-dashboard {:creator_id user-id} dashboard-id)]
+        (is (= [card-id-3 card-id-2 card-id-1]
+               (map #(-> % :card :id) result))))))
+  (testing "virtual (text) cards are returned as a viz settings map"
+    (mt/with-temp* [Card          [{card-id-1 :id}]
+                    Card          [{card-id-2 :id}]
+                    Dashboard     [{dashboard-id :id} {:name "Birdfeed Usage"}]
+                    DashboardCard [dashcard-1 {:dashboard_id dashboard-id
+                                               :visualization_settings {:virtual_card {}, :text "test"}}]
+                    User [{user-id :id}]]
+      (is (= [{:virtual_card {}, :text "test"}] (pulse/execute-dashboard {:creator_id user-id} dashboard-id))))))
 
 (deftest basic-table-test
   (tests {:pulse {:skip_if_empty false}}
@@ -186,3 +208,55 @@
           (testing "attached-results-text should return nil since it's a slack message"
             (is (= [nil]
                    (output @#'render.body/attached-results-text))))))}}))
+
+(deftest virtual-card-test
+  (tests {:pulse {:skip_if_empty false}}
+    "Dashboard subscription that includes a virtual (markdown) card"
+    {:card (checkins-query-card {})
+
+     :fixture
+     (fn [{dashboard-id :dashboard-id} thunk]
+       (mt/with-temp DashboardCard [_ {:dashboard_id dashboard-id, :visualization_settings {:text "# header"}}]
+         (thunk)))
+
+     :assert
+     {:email
+       (fn [_ _]
+         (testing "Markdown cards are not included in email subscriptions"
+           (is (= (rasta-pulse-email {:body [{"Aviary KPIs" true}]})
+                  (mt/summarize-multipart-email #"Aviary KPIs")))))
+
+       :slack
+       (fn [{:keys [card-id]} [pulse-results]]
+         (testing "Markdown cards are included in attachments list as :blocks sublists, and markdown is
+                  converted to mrkdwn (Slack markup language)"
+           (is (= {:channel-id "#general"
+                   :message    "Aviary KPIs"
+                   :attachments
+                   [{:title           card-name
+                     :rendered-info {:attachments false, :content true, :render/text true},
+                     :title_link      (str "https://metabase.com/testmb/question/" card-id)
+                     :attachment-name "image.png"
+                     :channel-id      "FOO"
+                     :fallback        card-name}
+                    {:blocks [{:type "section"
+                               :text {:type "mrkdwn"
+                                      :text "*header*"}}]}]}
+                  (thunk->boolean pulse-results)))))}}))
+
+(deftest mrkdwn-length-limit-test
+  (tests {:pulse {:skip_if_empty false}}
+    "Dashboard subscription that includes a Markdown card that exceeds Slack's length limit when converted to mrkdwn"
+    {:card (checkins-query-card {})
+
+     :fixture
+     (fn [{dashboard-id :dashboard-id} thunk]
+       (mt/with-temp DashboardCard [_ {:dashboard_id dashboard-id, :visualization_settings {:text "abcdefghijklmnopqrstuvwxyz"}}]
+         (binding [pulse/*slack-mrkdwn-length-limit* 10]
+           (thunk))))
+
+     :assert
+     {:slack
+      (fn [{:keys [card-id]} [pulse-results]]
+        (is (= {:blocks [{:type "section" :text {:type "mrkdwn" :text "abcdefghi…"}}]}
+               (-> (thunk->boolean pulse-results) :attachments second))))}}))

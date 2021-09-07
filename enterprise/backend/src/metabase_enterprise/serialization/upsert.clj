@@ -117,8 +117,19 @@
                                  :insert)))))))
 
 (defn maybe-upsert-many!
-  "Batch upsert-or-skip"
-  [{:keys [mode on-error] :as context} model entities]
+  "Batch upsert many entities.
+
+  Within the `context` map, the following keys are recognized:
+  `mode` indicates mode of operation for existing entities (`:upsert` or `:skip`), as per the `identity-condition`
+  `on-error` indicates what to do in case of upsert error (`:continue` or `:abort`)
+  `pre-insert-fn` (optional) is a function to call on each entity to be inserted, before it is inserted
+  `post-insert-fn` (optional) is a function to call on each entity to be inserted, after it is inserted"
+  [{:keys [mode on-error pre-insert-fn post-insert-fn]
+    :or   {pre-insert-fn  identity
+           post-insert-fn identity}
+    :as context}
+   model
+   entities]
   (let [{:keys [update insert skip]} (group-by-action context model entities)]
     (doseq [[_ entity _] insert]
       (log/info (trs "Inserting {0}" (name-for-logging (name model) entity))))
@@ -131,7 +142,8 @@
 
     (->> (concat (for [[position _ existing] skip]
                    [(u/the-id existing) position])
-                 (map vector (maybe-insert-many! model on-error (map second insert))
+                 (map vector (map post-insert-fn
+                                  (maybe-insert-many! model on-error (map (comp pre-insert-fn second) insert)))
                       (map first insert))
                  (for [[position entity existing] update]
                    (let [id (u/the-id existing)]
@@ -143,14 +155,3 @@
                      [id position])))
          (sort-by second)
          (map first))))
-
-(defn maybe-fixup-card-template-ids!
-  "Upserts `entities` that are in `selected-ids`. Cards with template-tags that refer to other cards need a second pass
-  of fixing the card-ids. To not overwrite cards that were skipped in previous step, classify entities and validate
-  against the ones that were just modified."
-  [context model entities selected-ids]
-  (let [{:keys [update _ _]} (group-by-action context model entities)
-        id-set (set selected-ids)
-        final-ents (filter #(id-set (:id (nth % 2))) update)]
-    (maybe-upsert-many! context model
-                        (map second final-ents))))

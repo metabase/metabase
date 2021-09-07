@@ -4,6 +4,7 @@ import {
   describeWithToken,
   popover,
   mockSessionProperty,
+  sidebar,
 } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 const { admin } = USERS;
@@ -15,7 +16,7 @@ describe("scenarios > dashboard > subscriptions", () => {
   });
 
   it("should not allow sharing if there are no dashboard cards", () => {
-    cy.createDashboard("15077D").then(({ body: { id: DASHBOARD_ID } }) => {
+    cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
       cy.visit(`/dashboard/${DASHBOARD_ID}`);
     });
     cy.findByText("This dashboard is looking empty.");
@@ -31,7 +32,7 @@ describe("scenarios > dashboard > subscriptions", () => {
   });
 
   it("should allow sharing if dashboard contains only text cards (metabase#15077)", () => {
-    cy.createDashboard("15077D").then(({ body: { id: DASHBOARD_ID } }) => {
+    cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
       cy.visit(`/dashboard/${DASHBOARD_ID}`);
     });
     cy.icon("pencil").click();
@@ -77,9 +78,26 @@ describe("scenarios > dashboard > subscriptions", () => {
     });
 
     describe("with no existing subscriptions", () => {
+      it.skip("should not enable subscriptions without the recepient (metabase#17657)", () => {
+        openDashboardSubscriptions();
+
+        cy.findByText("Email it").click();
+
+        // Make sure no recipients have been assigned
+        cy.findByPlaceholderText("Enter user names or email addresses");
+
+        // Change the schedule to "Monthly"
+        cy.findByText("Hourly").click();
+        cy.findByText("Monthly").click();
+
+        sidebar().within(() => {
+          cy.button("Done").should("be.disabled");
+        });
+      });
+
       it("should allow creation of a new email subscription", () => {
         createEmailSubscription();
-        cy.findByText("Emailed daily at 8:00 AM");
+        cy.findByText("Emailed hourly");
       });
 
       it("should not render people dropdown outside of the borders of the screen (metabase#17186)", () => {
@@ -96,7 +114,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       beforeEach(createEmailSubscription);
       it("should show existing dashboard subscriptions", () => {
         openDashboardSubscriptions();
-        cy.findByText("Emailed daily at 8:00 AM");
+        cy.findByText("Emailed hourly");
       });
     });
 
@@ -113,7 +131,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       cy.findByText("Questions to attach").click();
       clickButton("Done");
       cy.findByText("Subscriptions");
-      cy.findByText("Emailed daily at 8:00 AM").click();
+      cy.findByText("Emailed hourly").click();
       cy.findByText("Delete this subscription").scrollIntoView();
       cy.findByText("Questions to attach");
       cy.findAllByRole("listitem")
@@ -127,7 +145,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       assignRecipient();
       cy.findByText("To:").click();
       cy.get(".AdminSelect")
-        .contains("Daily")
+        .contains("Hourly")
         .click();
       cy.findByText("Monthly").click();
       cy.get(".AdminSelect")
@@ -162,48 +180,50 @@ describe("scenarios > dashboard > subscriptions", () => {
           },
         },
       }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.createDashboard("15705D").then(({ body: { id: DASHBOARD_ID } }) => {
-          // Add filter to the dashboard
-          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
-            // Using the old dashboard filter syntax
-            parameters: [
-              {
-                name: "Quantity",
-                slug: "quantity",
-                id: "930e4001",
-                type: "category",
-                default: "20",
-              },
-            ],
-          });
-
-          // Add question to the dashboard
-          cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-            cardId: QUESTION_ID,
-          }).then(({ body: { id: DASH_CARD_ID } }) => {
-            // Connect filter to that question
-            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-              cards: [
+        cy.createDashboard({ name: "15705D" }).then(
+          ({ body: { id: DASHBOARD_ID } }) => {
+            // Add filter to the dashboard
+            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+              // Using the old dashboard filter syntax
+              parameters: [
                 {
-                  id: DASH_CARD_ID,
-                  card_id: QUESTION_ID,
-                  row: 0,
-                  col: 0,
-                  sizeX: 12,
-                  sizeY: 10,
-                  parameter_mappings: [
-                    {
-                      parameter_id: "930e4001",
-                      card_id: QUESTION_ID,
-                      target: ["variable", ["template-tag", "qty"]],
-                    },
-                  ],
+                  name: "Quantity",
+                  slug: "quantity",
+                  id: "930e4001",
+                  type: "category",
+                  default: "20",
                 },
               ],
             });
-          });
-          assignRecipient({ dashboard_id: DASHBOARD_ID });
-        });
+
+            // Add question to the dashboard
+            cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+              cardId: QUESTION_ID,
+            }).then(({ body: { id: DASH_CARD_ID } }) => {
+              // Connect filter to that question
+              cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+                cards: [
+                  {
+                    id: DASH_CARD_ID,
+                    card_id: QUESTION_ID,
+                    row: 0,
+                    col: 0,
+                    sizeX: 12,
+                    sizeY: 10,
+                    parameter_mappings: [
+                      {
+                        parameter_id: "930e4001",
+                        card_id: QUESTION_ID,
+                        target: ["variable", ["template-tag", "qty"]],
+                      },
+                    ],
+                  },
+                ],
+              });
+            });
+            assignRecipient({ dashboard_id: DASHBOARD_ID });
+          },
+        );
       });
       // Click anywhere outside to close the popover
       cy.findByText("15705D").click();
@@ -254,7 +274,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       cy.findAllByRole("button", { name: "Done" }).should("not.be.disabled");
     });
 
-    it.skip("should have 'Send to Slack now' button (metabase#14515)", () => {
+    it("should have 'Send to Slack now' button (metabase#14515)", () => {
       cy.findAllByRole("button", { name: "Send to Slack now" }).should(
         "be.disabled",
       );
@@ -319,7 +339,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         assignRecipient();
         clickButton("Done");
 
-        cy.findByText("Emailed daily at 8:00 AM").click();
+        cy.findByText("Emailed hourly").click();
 
         cy.findAllByText("Corbin Mertz")
           .last()
@@ -433,7 +453,7 @@ function mockSlackConfigured() {
         name: "Email",
         allows_recipients: false,
         recipients: ["user", "email"],
-        schedules: ["daily", "weekly", "monthly"],
+        schedules: ["hourly", "daily", "weekly", "monthly"],
         configured: false,
       },
       slack: {

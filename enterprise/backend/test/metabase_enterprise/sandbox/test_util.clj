@@ -62,7 +62,7 @@
 (defn do-with-gtaps-for-user [args-fn test-user-name-or-user-id f]
   (letfn [(thunk []
             ;; remove perms for All Users group
-            (perms/revoke-permissions! (perms-group/all-users) (data/db))
+            (perms/revoke-data-perms! (perms-group/all-users) (data/db))
             ;; create new perms group
             (users/with-group-for-user [group test-user-name-or-user-id]
               (let [{:keys [gtaps attributes]} (s/validate WithGTAPsArgs (args-fn))]

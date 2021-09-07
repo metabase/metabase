@@ -13,7 +13,7 @@
             [metabase.models.interface :as i]
             [metabase.models.params :as params]
             [metabase.models.permissions :as perms]
-            [metabase.models.pulse :refer [Pulse]]
+            [metabase.models.pulse :as pulse :refer [Pulse]]
             [metabase.models.pulse-card :as pulse-card :refer [PulseCard]]
             [metabase.models.revision :as revision]
             [metabase.models.revision.diff :refer [build-sentence]]
@@ -85,7 +85,7 @@
     (collection/check-collection-namespace Dashboard (:collection_id dashboard))))
 
 (defn- update-dashboard-subscription-pulses!
-  "Updates the pulses' names and syncs the PulseCards"
+  "Updates the pulses' names and collection IDs, and syncs the PulseCards"
   [dashboard]
   (let [dashboard-id (u/the-id dashboard)
         affected     (db/query
@@ -121,9 +121,11 @@
                                     :dashboard_card_id dashcard-id
                                     :position          position})]
         (db/transaction
-          (db/update-where! Pulse {:dashboard_id dashboard-id}
-            :name (:name dashboard))
-          (pulse-card/bulk-create! new-pulse-cards))))))
+         (binding [pulse/*allow-moving-dashboard-subscriptions* true]
+           (db/update-where! Pulse {:dashboard_id dashboard-id}
+                             :name (:name dashboard)
+                             :collection_id (:collection_id dashboard))
+           (pulse-card/bulk-create! new-pulse-cards)))))))
 
 (defn- post-update
   [dashboard]

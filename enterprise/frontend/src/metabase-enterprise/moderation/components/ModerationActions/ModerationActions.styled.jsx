@@ -1,9 +1,14 @@
 import styled from "styled-components";
 
 import { color } from "metabase/lib/colors";
-import { getVerifiedIcon } from "metabase-enterprise/moderation/service";
+import {
+  MODERATION_STATUS,
+  getStatusIcon,
+} from "metabase-enterprise/moderation/service";
 
-const { icon: verifiedIcon, iconColor: verifiedIconColor } = getVerifiedIcon();
+const { name: verifiedIconName, color: verifiedIconColor } = getStatusIcon(
+  MODERATION_STATUS.verified,
+);
 
 import Button from "metabase/components/Button";
 
@@ -20,7 +25,7 @@ export const Label = styled.h5`
 `;
 
 export const VerifyButton = styled(Button).attrs({
-  icon: verifiedIcon,
+  icon: verifiedIconName,
   iconSize: 20,
 })`
   border: none;

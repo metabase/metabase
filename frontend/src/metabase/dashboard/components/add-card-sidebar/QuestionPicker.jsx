@@ -84,15 +84,19 @@ function QuestionPicker({
           <SelectList>
             {collections.map(collection => {
               const icon = getCollectionIcon(collection);
+              const iconColor = isRegularCollection(collection)
+                ? "text-light"
+                : icon.color;
               return (
                 <SelectList.Item
-                  hasRightArrow
                   key={collection.id}
                   id={collection.id}
                   name={collection.name}
-                  icon={icon.name}
-                  iconColor={icon.color}
-                  isHighlighted={!isRegularCollection(collection)}
+                  icon={{
+                    ...icon,
+                    color: iconColor,
+                  }}
+                  rightIcon="chevronright"
                   onSelect={collectionId =>
                     setCurrentCollectionId(collectionId)
                   }

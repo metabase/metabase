@@ -38,6 +38,7 @@
   com.google.guava/guava                    {:mvn/version "30.1.1-jre"}         ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
   com.h2database/h2                         {:mvn/version "1.4.197"}            ; embedded SQL database
   com.taoensso/nippy                        {:mvn/version "3.1.1"}              ; Fast serialization (i.e., GZIP) library for Clojure
+  com.vladsch.flexmark/flexmark             {:mvn/version "0.62.2"}             ; Markdown parsing
   commons-codec/commons-codec               {:mvn/version "1.15"}               ; Apache Commons -- useful codec util fns
   commons-io/commons-io                     {:mvn/version "2.11.0"}             ; Apache Commons -- useful IO util fns
   commons-validator/commons-validator       {:mvn/version "1.7"                 ; Apache Commons -- useful validation util fns
@@ -73,7 +74,7 @@
   net.redhogs.cronparser/cron-parser-core   {:mvn/version "3.5"                 ; describe Cron schedule in human-readable language
                                              :exclusions  [joda-time/joda-time  ; exclude joda time 2.3 which has outdated timezone information
                                                            org.slf4j/slf4j-api]}
-  net.sf.cssbox/cssbox                      {:mvn/version "4.12"                ; HTML / CSS rendering
+  net.sf.cssbox/cssbox                      {:mvn/version "5.0.0"               ; HTML / CSS rendering
                                              :exclusions  [org.slf4j/slf4j-api]}
   org.apache.commons/commons-compress       {:mvn/version "1.21"}               ; compression utils
   org.apache.commons/commons-lang3          {:mvn/version "3.12.0"}             ; helper methods for working with java.lang stuff
@@ -88,6 +89,7 @@
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
                                                            org.bouncycastle/bcprov-jdk15on]}
   org.apache.sshd/sshd-core                 {:mvn/version "2.7.0"}              ; ssh tunneling and test server
+  org.apache.xmlgraphics/batik-all          {:mvn/version "1.14"}               ; SVG -> image
   org.clojars.pntblnk/clj-ldap              {:mvn/version "0.0.17"}             ; LDAP client
   org.bouncycastle/bcpkix-jdk15on           {:mvn/version "1.69"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
   org.bouncycastle/bcprov-jdk15on           {:mvn/version "1.69"}
@@ -110,7 +112,6 @@
   org.eclipse.jetty/jetty-server            {:mvn/version "9.4.43.v20210629"}   ; web server
   org.flatland/ordered                      {:mvn/version "1.5.9"}              ; ordered maps & sets
   org.graalvm.js/js                         {:mvn/version "21.2.0"}           ; JavaScript engine
-  org.graalvm.js/js-scriptengine            {:mvn/version "21.2.0"}
   org.liquibase/liquibase-core              {:mvn/version "3.6.3"               ; migration management (Java lib)
                                              :exclusions  [ch.qos.logback/logback-classic]}
   org.mariadb.jdbc/mariadb-java-client      {:mvn/version "2.6.2"}              ; MySQL/MariaDB driver
@@ -252,6 +253,7 @@
   :drivers-dev
   {:extra-paths
    ["modules/drivers/bigquery/test"
+    "modules/drivers/bigquery-cloud-sdk/test"
     "modules/drivers/druid/test"
     "modules/drivers/google/test"
     "modules/drivers/googleanalytics/test"
@@ -289,6 +291,7 @@
                                  "shared/src"
                                  "enterprise/backend/src"
                                  "modules/drivers/bigquery/src"
+                                 "modules/drivers/bigquery-cloud-sdk/src"
                                  "modules/drivers/druid/src"
                                  "modules/drivers/google/src"
                                  "modules/drivers/googleanalytics/src"
@@ -323,6 +326,41 @@
                                  :implicit-dependencies
                                  ;; too many false positives for now
                                  :unused-ret-vals]}}
+
+  ;; clojure -T:whitespace-linter
+  :whitespace-linter
+  {:deps       {com.github.camsaul/whitespace-linter {:sha "b25716745f5875194bc38364e498d0ddda51f4b0"}}
+   :ns-default whitespace-linter
+   :exec-args  {:paths            ["./.dir-locals.el"
+                                   "./deps.edn"
+                                   "./package.json"
+                                   "./shadow-cljs.edn"
+                                   ".circleci"
+                                   ".github"
+                                   "bin"
+                                   "enterprise"
+                                   "frontend"
+                                   "resources"
+                                   "shared"
+                                   "src"
+                                   "test"]
+                :include-patterns ["\\.clj.?$"
+                                   "\\.edn$"
+                                   "\\.el$"
+                                   "\\.html$"
+                                   "\\.json$"
+                                   "\\.jsx?$"
+                                   "\\.sh$"
+                                   "\\.yaml$"
+                                   "\\.yml$"]
+                :exclude-patterns ["resources/i18n/.*\\.edn$"
+                                   "resources/frontend_client"
+                                   "resources/frontend_shared"
+                                   "resources/html-entities.edn"
+                                   "frontend/src/cljs"
+                                   "frontend/test/metabase/lib/urls\\.unit\\.spec\\.js$"
+                                   "frontend/test/metabase/lib/formatting\\.unit\\.spec\\.js$"
+                                   "shared/src/metabase/shared/util/currency\\.cljc$"]}}
 
   ;; clojure -X:dev:ee:ee-dev:test:cloverage
   :cloverage

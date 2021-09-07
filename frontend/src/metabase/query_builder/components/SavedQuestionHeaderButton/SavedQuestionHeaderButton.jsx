@@ -4,8 +4,6 @@ import PropTypes from "prop-types";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { HeaderButton } from "./SavedQuestionHeaderButton.styled";
 
-const { getStatusIconForReviews } = PLUGIN_MODERATION;
-
 export default SavedQuestionHeaderButton;
 
 SavedQuestionHeaderButton.propTypes = {
@@ -17,16 +15,16 @@ SavedQuestionHeaderButton.propTypes = {
 
 function SavedQuestionHeaderButton({ className, question, onClick, isActive }) {
   const {
-    icon: reviewIcon,
-    iconColor: reviewIconColor,
-  } = getStatusIconForReviews(question.getModerationReviews());
+    name: reviewIconName,
+    color: reviewIconColor,
+  } = PLUGIN_MODERATION.getStatusIconForQuestion(question);
 
   return (
     <HeaderButton
       className={className}
       onClick={onClick}
       iconRight="chevrondown"
-      icon={reviewIcon}
+      icon={reviewIconName}
       leftIconColor={reviewIconColor}
       isActive={isActive}
       iconSize={20}

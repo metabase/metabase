@@ -2,6 +2,7 @@ import {
   getIsResultDirty,
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
+  getQuestionDetailsTimelineDrawerState,
 } from "metabase/query_builder/selectors";
 import { state as sampleState } from "__support__/sample_dataset_fixture";
 
@@ -139,5 +140,18 @@ describe("getIsResultDirty", () => {
         }),
       );
     });
+  });
+});
+
+describe("getQuestionDetailsTimelineDrawerState", () => {
+  it("should return a string representing the state of the question history timeline drawer", () => {
+    const state = {
+      qb: {
+        uiControls: {
+          questionDetailsTimelineDrawerState: "foo",
+        },
+      },
+    };
+    expect(getQuestionDetailsTimelineDrawerState(state)).toBe("foo");
   });
 });

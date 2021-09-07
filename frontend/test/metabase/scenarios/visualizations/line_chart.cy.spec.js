@@ -141,7 +141,7 @@ describe("scenarios > visualizations > line chart", () => {
       cy.button("Done").click();
     });
 
-    cy.get(".LegendItem")
+    cy.findAllByTestId("legend-item")
       .should("contain", "cat1 new")
       .and("contain", "cat2")
       .and("contain", "cat3");
@@ -196,7 +196,7 @@ describe("scenarios > visualizations > line chart", () => {
             ],
           ],
         }).then(({ body: { id: question2Id } }) => {
-          cy.createDashboard("16249D").then(({ body: { id: dashboardId } }) => {
+          cy.createDashboard().then(({ body: { id: dashboardId } }) => {
             addBothSeriesToDashboard({
               dashboardId,
               firstCardId: question1Id,
@@ -245,7 +245,7 @@ describe("scenarios > visualizations > line chart", () => {
           },
           display: "line",
         }).then(({ body: { id: question2Id } }) => {
-          cy.createDashboard("16249D").then(({ body: { id: dashboardId } }) => {
+          cy.createDashboard().then(({ body: { id: dashboardId } }) => {
             addBothSeriesToDashboard({
               dashboardId,
               firstCardId: question1Id,
@@ -351,7 +351,7 @@ describe("scenarios > visualizations > line chart", () => {
     }
 
     function assertOnLegendItemsValues() {
-      cy.get(".LegendItem")
+      cy.findAllByTestId("legend-item")
         .should("contain", RENAMED_FIRST_SERIES)
         .and("contain", RENAMED_SECOND_SERIES);
     }
@@ -385,7 +385,7 @@ describe("scenarios > visualizations > line chart", () => {
     });
 
     it.skip("should not drop the chart legend (metabase#4995)", () => {
-      cy.get(".LegendItem").should("contain", "Doohickey");
+      cy.findAllByTestId("legend-item").should("contain", "Doohickey");
     });
 
     it("should display correct axis labels (metabase#12782)", () => {

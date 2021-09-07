@@ -122,11 +122,17 @@ executors:
           # MYSQL_USER: root
           # MYSQL_ALLOW_EMPTY_PASSWORD: yes
 
-  mongo:
+  mongo-4-0:
      working_directory: /home/circleci/metabase/metabase/
      docker:
        - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
        - image: circleci/mongo:4.0
+
+  mongo-latest:
+     working_directory: /home/circleci/metabase/metabase/
+     docker:
+       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+       - image: circleci/mongo:latest
 
   presto-186:
     working_directory: /home/circleci/metabase/metabase/
@@ -194,7 +200,6 @@ executors:
     # Run Docker images with 8GB or RAM instead of the default 4GB for medium instances. The Druid Docker image runs
     # OOM all the time with the default medium size.
     resource_class: large
-
 
   fe-mongo-4:
     working_directory: /home/circleci/metabase/metabase/
@@ -561,6 +566,9 @@ jobs:
             else
                echo '' > .CACHE-PREFIX
             fi
+      - run-yarn-command:
+          command-name: Create static visualization js bundle
+          command: build-static-viz
       - persist_to_workspace:
           root: /home/circleci/
           paths:
@@ -1014,7 +1022,8 @@ workflows:
           after-steps:
             - run:
                 name: Upload code coverage to codecov.io
-                command: bash <(curl -s https://codecov.io/bash)
+                command: bash <(curl -s https://codecov.io/bash) -F back-end
+
           skip-when-no-change: true
 
       - test-driver:
@@ -1022,6 +1031,12 @@ workflows:
           requires:
             - be-tests-ee
           driver: bigquery
+
+      - test-driver:
+          name: be-tests-bigquery-cloud-sdk-ee
+          requires:
+            - be-tests-ee
+          driver: bigquery-cloud-sdk
 
       - test-driver:
           name: be-tests-druid-ee
@@ -1038,9 +1053,18 @@ workflows:
 
       - test-driver:
           name: be-tests-mongo-ee
+          description: "(Mongo 4.0)"
           requires:
             - be-tests-ee
-          e: mongo
+          e: mongo-4-0
+          driver: mongo
+
+      - test-driver:
+          name: be-tests-mongo-latest-ee
+          description: "(Mongo latest)"
+          requires:
+            - be-tests-ee
+          e: mongo-latest
           driver: mongo
 
       - test-driver:
@@ -1248,7 +1272,7 @@ workflows:
           matrix:
             parameters:
               edition: ["ee", "oss"]
-              folder: ["admin", "binning", "collections", "dashboard", "dashboard-filters", "onboarding", "native", "native-filters", "question", "sharing", "smoketest", "visualizations"]
+              folder: ["admin", "binning", "collections", "dashboard", "dashboard-filters", "dashboard-filters-sql", "moderation", "native", "native-filters", "onboarding", "question", "sharing", "smoketest", "visualizations"]
           name: e2e-tests-<< matrix.folder >>-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>

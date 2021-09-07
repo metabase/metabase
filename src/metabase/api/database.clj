@@ -32,7 +32,8 @@
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]])
+            [toucan.hydrate :refer [hydrate]]
+            [toucan.models :as models])
   (:import metabase.models.database.DatabaseInstance))
 
 (def DBEngineString
@@ -124,18 +125,30 @@
   [& {:keys [additional-constraints xform], :or {xform identity}}]
   (when-let [ids-of-dbs-that-support-source-queries (not-empty (ids-of-dbs-that-support-source-queries))]
     (transduce
-     (comp (filter card-can-be-used-as-source-query?) xform)
+     (comp (map (partial models/do-post-select Card))
+           (filter card-can-be-used-as-source-query?)
+           xform)
      (completing conj #(hydrate % :collection))
      []
-     (db/select-reducible [Card :name :description :database_id :dataset_query :id :collection_id :result_metadata]
-       {:where    (into [:and
-                         [:not= :result_metadata nil]
-                         [:= :archived false]
-                         [:in :database_id ids-of-dbs-that-support-source-queries]
-                         (collection/visible-collection-ids->honeysql-filter-clause
-                          (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
-                        additional-constraints)
-       :order-by [[:%lower.name :asc]]}))))
+     (db/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id :result_metadata
+                                     [{:select   [:status]
+                                       :from     [:moderation_review]
+                                       :where    [:and
+                                                  [:= :moderated_item_type "card"]
+                                                  [:= :moderated_item_id :report_card.id]
+                                                  [:= :most_recent true]]
+                                       :order-by [[:id :desc]]
+                                       :limit    1}
+                                      :moderated_status]]
+                          :from     [:report_card]
+                          :where    (into [:and
+                                           [:not= :result_metadata nil]
+                                           [:= :archived false]
+                                           [:in :database_id ids-of-dbs-that-support-source-queries]
+                                           (collection/visible-collection-ids->honeysql-filter-clause
+                                            (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
+                                          additional-constraints)
+                          :order-by [[:%lower.name :asc]]}))))
 
 (defn- source-query-cards-exist?
   "Truthy if a single Card that can be used as a source query exists."
@@ -577,10 +590,10 @@
 
                                                        ;; if user is controlling schedules
                                                        (:let-user-control-scheduling details)
-                                                       (sync.schedules/schedule-map->cron-strings (sync.schedules/scheduling schedules))
+                                                       (sync.schedules/schedule-map->cron-strings (sync.schedules/scheduling schedules))))))
                                                        ;; do nothing in the case that user is not in control of
                                                        ;; scheduling. leave them as they are in the db
-                                                       ))))
+
           (let [db (Database id)]
             (events/publish-event! :database-update db)
             ;; return the DB with the expanded schedules back in place
@@ -671,7 +684,7 @@
   at least some of its tables?)"
   [database-id schema-name]
   (perms/set-has-partial-permissions? @api/*current-user-permissions-set*
-                                      (perms/object-path database-id schema-name)))
+                                      (perms/data-perms-path database-id schema-name)))
 
 (api/defendpoint GET "/:id/schemas"
   "Returns a list of all the schemas found for the database `id`"
@@ -729,5 +742,16 @@
                                       [:in :collection_id (api/check-404 (seq (db/select-ids Collection :name schema)))])])
          (map table-api/card->virtual-table))))
 
+(api/defendpoint GET "/db-ids-with-deprecated-drivers"
+  "Return a list of database IDs using currently deprecated drivers."
+  []
+  (map
+    u/the-id
+    (filter
+      (fn [database]
+        (let [info (driver.u/available-drivers-info)
+              d    (driver.u/database->driver database)]
+          (some? (:superseded-by (d info)))))
+      (db/select-ids Database))))
 
 (api/define-routes)

@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import { t } from "ttag";
 import { Bar } from "@visx/shape";
 import { AxisLeft, AxisBottom } from "@visx/axis";
 import { scaleBand, scaleLinear, scaleOrdinal } from "@visx/scale";
@@ -7,13 +8,14 @@ import { bottomAxisTickStyles, leftAxisTickStyles } from "../utils.js";
 import { GridRows } from "@visx/grid";
 
 export default function TimeseriesBar(
-  { data, yScaleType = scaleLinear, accessors },
+  { data, yScaleType = scaleLinear, accessors, labels },
   layout,
 ) {
+  const leftMargin = 55;
   let multiScale, categories;
   const xAxisScale = scaleBand({
     domain: data.map(accessors.x),
-    range: [40, layout.xMax],
+    range: [leftMargin, layout.xMax],
     round: true,
     padding: 0.2,
   });
@@ -37,8 +39,8 @@ export default function TimeseriesBar(
     <svg width={layout.width} height={layout.height}>
       <GridRows
         scale={yAxisScale}
-        width={layout.width}
-        left={40}
+        width={layout.xMax - leftMargin}
+        left={leftMargin}
         strokeDasharray="4"
       />
       {data.map(d => {
@@ -64,17 +66,19 @@ export default function TimeseriesBar(
           return String(d);
         }}
         scale={yAxisScale}
-        label={"Count"}
-        left={40}
+        label={labels.left || t`Count`}
+        left={leftMargin}
         tickLabelProps={() => leftAxisTickStyles(layout)}
       />
       <AxisBottom
-        hideTicks
+        hideTicks={false}
+        numTicks={5}
         top={layout.yMax}
+        tickStroke={layout.colors.axis.stroke}
         tickFormat={d => new Date(d).toLocaleDateString("en")}
         scale={xAxisScale}
         stroke={layout.colors.axis.stroke}
-        label={"Time"}
+        label={labels.bottom || t`Time`}
         tickLabelProps={() => bottomAxisTickStyles(layout)}
       />
     </svg>

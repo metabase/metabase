@@ -194,7 +194,7 @@ export function embedDashboard(token) {
 }
 
 export function accountSettings() {
-  return `/user/edit_current`;
+  return `/account/profile`;
 }
 
 export function newUser() {

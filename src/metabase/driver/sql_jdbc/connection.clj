@@ -77,8 +77,15 @@
    ;;
    ;; Kill idle connections above the minPoolSize after 5 minutes.
    "maxIdleTimeExcessConnections" (* 5 60)
-   ;; Set the data source name so that the c3p0 JMX bean has a useful identifier
-   "dataSourceName"               (format "db-%d-%s-%s" (u/the-id database) (name driver) (-> database :details :db))})
+   ;; Set the data source name so that the c3p0 JMX bean has a useful identifier, which incorporates the DB ID, driver,
+   ;; and name; to find a "name" in the details, just look for the first key that is set and could make sense, rather
+   ;; than introducing a new driver level multimethod just for this
+   "dataSourceName"               (format "db-%d-%s-%s" (u/the-id database) (name driver) (->> database
+                                                                                               :details
+                                                                                               ((some-fn :db
+                                                                                                         :dbname
+                                                                                                         :sid
+                                                                                                         :catalog))))})
 
 (defn- create-pool!
   "Create a new C3P0 `ComboPooledDataSource` for connecting to the given `database`."

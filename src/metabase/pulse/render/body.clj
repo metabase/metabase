@@ -7,6 +7,7 @@
             [metabase.pulse.render.common :as common]
             [metabase.pulse.render.datetime :as datetime]
             [metabase.pulse.render.image-bundle :as image-bundle]
+            [metabase.pulse.render.js-svg :as js-svg]
             [metabase.pulse.render.sparkline :as sparkline]
             [metabase.pulse.render.style :as style]
             [metabase.pulse.render.table :as table]
@@ -214,24 +215,69 @@
        (list table-body))}))
 
 (s/defmethod render :bar :- common/RenderedPulseCard
-  [_ _ timezone-id :- (s/maybe s/Str) card {:keys [cols] :as data}]
+  [_ render-type _timezone-id :- (s/maybe s/Str) card {:keys [cols rows] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
-        rows                        (common/non-nil-rows x-axis-rowfn y-axis-rowfn (:rows data))
-        row-values                  (map y-axis-rowfn rows)
-        min-value                   (min 0 (apply min row-values))
-        max-value                   (apply max row-values)]
+        rows                        (map (juxt x-axis-rowfn y-axis-rowfn)
+                                         (common/non-nil-rows x-axis-rowfn y-axis-rowfn rows))
+        svg-fn                   (if (isa? (-> cols x-axis-rowfn :effective_type) :type/Temporal)
+                                   js-svg/timelineseries-bar
+                                   js-svg/categorical-bar)
+        image-bundle                (image-bundle/make-image-bundle
+                                      render-type
+                                      (svg-fn
+                                        rows
+                                        {:bottom (-> cols x-axis-rowfn :display_name)
+                                         :left   (-> cols y-axis-rowfn :display_name)}))]
     {:attachments
-     nil
+     (when image-bundle
+       (image-bundle/image-bundle->attachment image-bundle))
 
      :content
      [:div
-      (table/render-table (color/make-color-selector data (:visualization_settings card))
-                          (normalize-bar-value 0 min-value max-value)
-                          (mapv :name cols)
-                          (prep-for-html-rendering timezone-id card data 2 {:bar-column y-axis-rowfn
-                                                                            :min-value  min-value
-                                                                            :max-value  max-value}))
-      (render-truncation-warning 2 (count-displayed-columns cols) rows-limit (count rows))]}))
+      [:img {:style (style/style {:display :block :width :100%})
+             :src   (:image-src image-bundle)}]]}))
+
+(def ^:private colors
+  "Colors to cycle through for charts. These are copied from https://stats.metabase.com/_internal/colors"
+  ["#509EE3" "#88BF4D" "#A989C5" "#EF8C8C" "#F9D45C" "#F2A86F" "#98D9D9" "#7172AD" "#6450e3" "#4dbf5e"
+   "#c589b9" "#efce8c" "#b5f95c" "#e35850" "#554dbf" "#bec589" "#8cefc6" "#5cc2f9" "#55e350" "#bf4d4f"
+   "#89c3c5" "#be8cef" "#f95cd0" "#50e3ae" "#bf974d" "#899bc5" "#ef8cde" "#f95c67"])
+
+(s/defmethod render :categorical/donut :- common/RenderedPulseCard
+  [_ render-type _timezone-id :- (s/maybe s/Str) card {:keys [rows] :as data}]
+  (let [[x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
+        rows                        (map (juxt (comp str x-axis-rowfn) y-axis-rowfn)
+                                         (common/non-nil-rows x-axis-rowfn y-axis-rowfn rows))
+        legend-colors               (zipmap (map first rows) (cycle colors))
+        total                       (apply + (map second rows))
+        percentages                 (into {}
+                                          (for [[label value] rows]
+                                            [label (if (zero? total)
+                                                     (tru "N/A")
+                                                     (let [f (DecimalFormat. "###,###.##%")]
+                                                       (.format f (double (/ value total)))))]))
+        image-bundle                (image-bundle/make-image-bundle
+                                     render-type
+                                     (js-svg/categorical-donut rows legend-colors))]
+    {:attachments
+     (when image-bundle
+       (image-bundle/image-bundle->attachment image-bundle))
+
+     :content
+     [:div
+      [:img {:style (style/style {:display :block :width :100%})
+             :src   (:image-src image-bundle)}]
+      (into [:div {:style (style/style {:clear :both :width "540px" :color "#4C5773"})}]
+            (for [label (map first rows)]
+              [:div {:style (style/style {:float       :left :margin-right "12px"
+                                          :font-family "Lato, sans-serif"
+                                          :font-size   "24px"})}
+               [:span {:style (style/style {:color (legend-colors label)})}
+                "•"]
+               [:span {:style (style/style {:margin-left "6px"})}
+                label]
+               [:span {:style (style/style {:margin-left "6px"})}
+                (percentages label)]]))]}))
 
 (s/defmethod render :scalar :- common/RenderedPulseCard
   [_ _ timezone-id card {:keys [cols rows]}]
@@ -279,15 +325,21 @@
         @error-rendered-info))))
 
 (s/defmethod render :sparkline :- common/RenderedPulseCard
-  [_ render-type timezone-id card {:keys [rows cols] :as data}]
+  [_ render-type timezone-id card {:keys [_rows cols] :as data}]
   (let [[x-axis-rowfn
          y-axis-rowfn] (common/graphing-column-row-fns card data)
         rows           (sparkline/cleaned-rows timezone-id card data)
         last-rows      (reverse (take-last 2 rows))
         values         (for [row last-rows]
                          (some-> row y-axis-rowfn common/format-number))
-        labels         (datetime/format-temporal-string-pair timezone-id (map x-axis-rowfn last-rows) (x-axis-rowfn cols))
-        image-bundle   (sparkline/sparkline-image-bundle render-type timezone-id card {:rows rows, :cols cols})]
+        labels         (datetime/format-temporal-string-pair timezone-id
+                                                             (map x-axis-rowfn last-rows)
+                                                             (x-axis-rowfn cols))
+        image-bundle   (image-bundle/make-image-bundle
+                        render-type
+                        (js-svg/timelineseries-line (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)
+                                                    {:bottom (-> cols x-axis-rowfn :display_name)
+                                                     :left   (-> cols y-axis-rowfn :display_name)}))]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))

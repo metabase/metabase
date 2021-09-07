@@ -8,62 +8,76 @@ import {
   engineSupersedesMap,
 } from "metabase/entities/databases/forms";
 
-import Warnings from "metabase/query_builder/components/Warnings";
-
 import {
   CardContent,
   DriverWarningContainer,
   IconContainer,
+  Link,
+  WarningIcon,
+  WarningParagraph,
 } from "./DriverWarning.styled";
-import ExternalLink from "metabase/components/ExternalLink";
+
+import Icon from "metabase/components/Icon";
 import MetabaseSettings from "metabase/lib/settings";
 
 const propTypes = {
   engine: PropTypes.string.isRequired,
+  hasCircle: PropTypes.bool,
+  onChangeEngine: PropTypes.func.isRequired,
 };
 
 const driverUpgradeHelpLink = MetabaseSettings.docsUrl(
   "administration-guide/01-managing-databases",
 );
 
-function getSupersedesWarningContent(newDriver, supersedesDriver) {
+function getSupersedesWarningContent(
+  newDriver,
+  supersedesDriver,
+  onChangeEngine,
+) {
   return (
     <div>
-      <p className="text-medium m0">
+      <WarningParagraph>
         {t`This is our new ${
           allEngines[newDriver]["driver-name"]
         } driver, which is faster and more reliable.`}
-      </p>
-      <p>{t`The old driver has been deprecated and will be removed in the next release. If you really
-      need to use it, you can select ${
-        allEngines[supersedesDriver]["driver-name"]
-      } now.`}</p>
+      </WarningParagraph>
+
+      <WarningParagraph hasMargin>
+        {t`The old driver has been deprecated and will be removed in the next release. If you really
+      need to use it, you can `}
+        &nbsp;
+        <Link
+          onClick={() => onChangeEngine(supersedesDriver)}
+        >{t`find it here`}</Link>
+        .
+      </WarningParagraph>
     </div>
   );
 }
 
-function getSupersededByWarningContent(engine) {
+function getSupersededByWarningContent(engine, onChangeEngine) {
   return (
     <div>
-      <p className="text-medium m0">
+      <WarningParagraph>
         {t`This driver has been deprecated and will be removed in the next release.`}
-      </p>
-      <p className="text-medium m0">
-        {t`We recommend that you upgrade to the new ${
+      </WarningParagraph>
+      <WarningParagraph hasMargin>
+        {t`We recommend that you upgrade to the`}
+        &nbsp;
+        <Link onClick={() => onChangeEngine(engine)}>{t`new ${
           allEngines[engine]["driver-name"]
-        } driver, which is faster and more reliable.`}
-      </p>
-      <ExternalLink
-        href={driverUpgradeHelpLink}
-        className="text-brand text-bold"
-      >
+        } driver`}</Link>
+        {t`, which is faster and more reliable.`}
+      </WarningParagraph>
+      <Link href={driverUpgradeHelpLink} target={"_blank"}>
         {t`How to upgrade a driver`}
-      </ExternalLink>
+      </Link>
     </div>
   );
 }
 
-function DriverWarning({ engine, ...props }) {
+function DriverWarning({ engine, hasCircle = true, onChangeEngine, ...props }) {
   const supersededBy = engineSupersedesMap["superseded_by"][engine];
   const supersedes = engineSupersedesMap["supersedes"][engine];
 
@@ -71,23 +85,17 @@ function DriverWarning({ engine, ...props }) {
     return null;
   }
 
-  const tooltipWarning = supersedes ? t`New driver` : t`Driver deprecated`;
   const warningContent = supersedes
-    ? getSupersedesWarningContent(engine, supersedes)
-    : getSupersededByWarningContent(supersededBy);
+    ? getSupersedesWarningContent(engine, supersedes, onChangeEngine)
+    : getSupersededByWarningContent(supersededBy, onChangeEngine);
 
   return (
     <DriverWarningContainer p={2} {...props}>
-      <IconContainer>
-        <Warnings
-          className="mx2 text-gold"
-          warnings={[tooltipWarning]}
-          size={20}
-        />
+      <IconContainer hasCircle={hasCircle}>
+        {(supersededBy && <WarningIcon size={20} name="warning" />) ||
+          (supersedes && <Icon size={20} name="info" />)}
       </IconContainer>
-      <CardContent flexDirection="column" justify="center" className="ml2">
-        {warningContent}
-      </CardContent>
+      <CardContent className="ml2">{warningContent}</CardContent>
     </DriverWarningContainer>
   );
 }

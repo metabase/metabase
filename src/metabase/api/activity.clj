@@ -6,6 +6,7 @@
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.interface :as mi]
+            [metabase.models.table :refer [Table]]
             [metabase.models.view-log :refer [ViewLog]]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]))
@@ -62,15 +63,16 @@
   "Get recent activity."
   []
   (filter mi/can-read? (-> (db/select Activity, {:order-by [[:timestamp :desc]], :limit 40})
-                               (hydrate :user :table :database)
-                               add-model-exists-info)))
+                           (hydrate :user :table :database)
+                           add-model-exists-info)))
 
 (defn- view-log-entry->matching-object [{:keys [model model_id]}]
-  (when (contains? #{"card" "dashboard"} model)
+  (when (contains? #{"card" "dashboard" "table"} model)
     (db/select-one
         (case model
           "card"      [Card      :id :name :collection_id :description :display :dataset_query]
-          "dashboard" [Dashboard :id :name :collection_id :description])
+          "dashboard" [Dashboard :id :name :collection_id :description]
+          "table"     [Table     :id :name :db_id :display_name])
         :id model_id)))
 
 (defendpoint GET "/recent_views"
@@ -83,7 +85,7 @@
                    :user_id *current-user-id*
                    {:group-by [:user_id :model :model_id]
                     :order-by [[:max_ts :desc]]
-                    :limit    10})
+                    :limit    5})
         :let     [model-object (view-log-entry->matching-object view-log)]
         :when    (and model-object
                       (mi/can-read? model-object))]

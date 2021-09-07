@@ -57,7 +57,7 @@ describe("scenarios > dashboard > parameters", () => {
   });
 
   it("should search across multiple fields", () => {
-    cy.createDashboard("my dash");
+    cy.createDashboard({ name: "my dash" });
 
     cy.visit("/collection/root");
     cy.findByText("my dash").click();
@@ -65,7 +65,7 @@ describe("scenarios > dashboard > parameters", () => {
     // add the same question twice
     cy.icon("pencil").click();
 
-    cy.get(".DashboardHeader .Icon-add").click();
+    cy.get(".QueryBuilder-section .Icon-add").click();
     addQuestion("Orders, Count");
     addQuestion("Orders, Count");
 
@@ -117,14 +117,14 @@ describe("scenarios > dashboard > parameters", () => {
   });
 
   it("should query with a 2 argument parameter", () => {
-    cy.createDashboard("my dash");
+    cy.createDashboard({ name: "my dash" });
 
     cy.visit("/collection/root");
     cy.findByText("my dash").click();
 
     // add a question
     cy.icon("pencil").click();
-    cy.get(".DashboardHeader .Icon-add").click();
+    cy.get(".QueryBuilder-section .Icon-add").click();
     addQuestion("Orders, Count");
 
     // add a Number - Between filter
@@ -363,7 +363,7 @@ describe("scenarios > dashboard > parameters", () => {
       },
       display: "scalar",
     }).then(({ body: { id: card_id } }) => {
-      cy.createDashboard("16181D").then(({ body: { id: dashboard_id } }) => {
+      cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
         // Add previously created question to the dashboard
         cy.request("POST", `/api/dashboard/${dashboard_id}/cards`, {
           cardId: card_id,

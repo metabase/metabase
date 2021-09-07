@@ -1,6 +1,18 @@
-import { isa, TYPE } from "cljs/metabase.types";
+import { isa as cljs_isa, TYPE } from "cljs/metabase.types";
 
-export { isa, TYPE };
+export { TYPE };
+
+/**
+ * Is x the same as, or a descendant type of, y?
+ *
+ * @example
+ * isa(field.semantic_type, TYPE.Currency);
+ *
+ * @param {string} x
+ * @param {string} y
+ * @return {boolean}
+ */
+export const isa = (x, y) => cljs_isa(x, y);
 
 // convenience functions since these operations are super-common
 // this will also make it easier to tweak how these checks work in the future,

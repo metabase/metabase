@@ -10,14 +10,12 @@ import { Box, Flex } from "grid-styled";
 
 import title from "metabase/hoc/Title";
 
-import DeleteDatabaseModal from "../components/DeleteDatabaseModal";
-import ActionButton from "metabase/components/ActionButton";
 import AddDatabaseHelpCard from "metabase/components/AddDatabaseHelpCard";
 import Button from "metabase/components/Button";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import DriverWarning from "metabase/components/DriverWarning";
 import Radio from "metabase/components/Radio";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import Sidebar from "metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar";
 
 import Databases from "metabase/entities/databases";
 
@@ -38,7 +36,6 @@ import {
   deleteDatabase,
   selectEngine,
 } from "../database";
-import ConfirmContent from "metabase/components/ConfirmContent";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { getIn } from "icepick";
 
@@ -72,10 +69,7 @@ const mapDispatchToProps = {
   selectEngine,
 };
 
-type TabName = "connection" | "scheduling";
-type TabOption = { name: string, value: TabName };
-
-const TABS: TabOption[] = [
+const TABS = [
   {
     name: t`Connection`,
     value: "connection",
@@ -92,19 +86,12 @@ const TABS: TabOption[] = [
 )
 @title(({ database }) => database && database.name)
 export default class DatabaseEditApp extends Component {
-  state: {
-    currentTab: TabName,
-  };
-
   constructor(props, context) {
     super(props, context);
 
     this.state = {
       currentTab: TABS[0].value,
     };
-
-    this.discardSavedFieldValuesModal = React.createRef();
-    this.deleteDatabaseModal = React.createRef();
   }
 
   static propTypes = {
@@ -139,26 +126,30 @@ export default class DatabaseEditApp extends Component {
   render() {
     const {
       database,
+      deleteDatabase,
+      discardSavedFieldValues,
       selectedEngine,
       letUserControlSchedulingSaved,
       letUserControlSchedulingForm,
       initializeError,
+      rescanDatabaseFields,
+      syncDatabaseSchema,
     } = this.props;
     const { currentTab } = this.state;
-    const editingExistingDatabase = database && database.id != null;
+    const editingExistingDatabase = database?.id != null;
     const addingNewDatabase = !editingExistingDatabase;
 
     const showTabs = editingExistingDatabase && letUserControlSchedulingSaved;
 
+    const crumbs = [
+      [t`Databases`, "/admin/databases"],
+      [addingNewDatabase ? t`Add Database` : database.name],
+    ];
+
     return (
       <Box px={[3, 4, 5]} mt={[1, 2, 3]}>
-        <Breadcrumbs
-          className="py4"
-          crumbs={[
-            [t`Databases`, "/admin/databases"],
-            [addingNewDatabase ? t`Add Database` : database.name],
-          ]}
-        />
+        <Breadcrumbs className="py4" crumbs={crumbs} />
+
         <Flex pb={2}>
           <Box>
             <div className="pt0">
@@ -172,139 +163,100 @@ export default class DatabaseEditApp extends Component {
                   />
                 </div>
               )}
-              <Flex>
-                <Box w={620}>
-                  <LoadingAndErrorWrapper
-                    loading={!database}
-                    error={initializeError}
+              <LoadingAndErrorWrapper
+                loading={!database}
+                error={initializeError}
+              >
+                {() => (
+                  <Databases.Form
+                    database={database}
+                    form={Databases.forms[currentTab]}
+                    formName={DATABASE_FORM_NAME}
+                    onSubmit={
+                      addingNewDatabase && currentTab === "connection"
+                        ? this.props.proceedWithDbCreation
+                        : this.props.saveDatabase
+                    }
+                    submitTitle={addingNewDatabase ? t`Save` : t`Save changes`}
+                    renderSubmit={
+                      // override use of ActionButton for the `Next` button, for adding a new database in which
+                      // scheduling is being overridden
+                      addingNewDatabase &&
+                      currentTab === "connection" &&
+                      letUserControlSchedulingForm &&
+                      (({ handleSubmit, canSubmit }) => (
+                        <Button
+                          primary={canSubmit}
+                          disabled={!canSubmit}
+                          onClick={handleSubmit}
+                        >
+                          {t`Next`}
+                        </Button>
+                      ))
+                    }
+                    submitButtonComponent={Button}
                   >
-                    {() => (
-                      <Databases.Form
-                        database={database}
-                        form={Databases.forms[currentTab]}
-                        formName={DATABASE_FORM_NAME}
-                        onSubmit={
-                          addingNewDatabase && currentTab === "connection"
-                            ? this.props.proceedWithDbCreation
-                            : this.props.saveDatabase
-                        }
-                        submitTitle={
-                          addingNewDatabase ? t`Save` : t`Save changes`
-                        }
-                        renderSubmit={
-                          // override use of ActionButton for the `Next` button
-                          addingNewDatabase &&
-                          currentTab === "connection" &&
-                          letUserControlSchedulingForm &&
-                          (({ handleSubmit, canSubmit }) => (
-                            <Button
-                              primary={canSubmit}
-                              disabled={!canSubmit}
-                              onClick={handleSubmit}
-                            >
-                              {t`Next`}
-                            </Button>
-                          ))
-                        }
-                        submitButtonComponent={Button}
-                      />
-                    )}
-                  </LoadingAndErrorWrapper>
-                </Box>
-                <Box>
-                  <DriverWarning
-                    engine={selectedEngine}
-                    ml={26}
-                    data-testid="database-setup-driver-warning"
-                  />
-                  {addingNewDatabase && (
-                    <AddDatabaseHelpCard
-                      engine={selectedEngine}
-                      ml={26}
-                      data-testid="database-setup-help-card"
-                    />
-                  )}
-                </Box>
-              </Flex>
+                    {({
+                      Form,
+                      FormField,
+                      FormMessage,
+                      FormSubmit,
+                      formFields,
+                      onChangeField,
+                      submitTitle,
+                    }) => {
+                      return (
+                        <Flex>
+                          <Box width={620}>
+                            <Form>
+                              {formFields.map(formField => (
+                                <FormField
+                                  key={formField.name}
+                                  name={formField.name}
+                                />
+                              ))}
+                              <FormMessage />
+                              <div className="Form-actions text-centered">
+                                <FormSubmit className="block mb2">
+                                  {submitTitle}
+                                </FormSubmit>
+                              </div>
+                            </Form>
+                          </Box>
+                          <Box>
+                            {addingNewDatabase && (
+                              <AddDatabaseHelpCard
+                                engine={selectedEngine}
+                                ml={26}
+                                data-testid="database-setup-help-card"
+                              />
+                            )}
+                            <DriverWarning
+                              engine={selectedEngine}
+                              ml={26}
+                              onChangeEngine={engine => {
+                                onChangeField("engine", engine);
+                              }}
+                              data-testid="database-setup-driver-warning"
+                            />
+                          </Box>
+                        </Flex>
+                      );
+                    }}
+                  </Databases.Form>
+                )}
+              </LoadingAndErrorWrapper>
             </div>
           </Box>
 
-          {/* Sidebar Actions */}
           {editingExistingDatabase && (
-            <Box ml={[2, 3]} w={420}>
-              <div className="Actions bg-light rounded p3">
-                <div className="Actions-group">
-                  <label className="Actions-groupLabel block text-bold">{t`Actions`}</label>
-                  <ol>
-                    <li>
-                      <ActionButton
-                        actionFn={() =>
-                          this.props.syncDatabaseSchema(database.id)
-                        }
-                        className="Button Button--syncDbSchema"
-                        normalText={t`Sync database schema now`}
-                        activeText={t`Starting…`}
-                        failedText={t`Failed to sync`}
-                        successText={t`Sync triggered!`}
-                      />
-                    </li>
-                    <li className="mt2">
-                      <ActionButton
-                        actionFn={() =>
-                          this.props.rescanDatabaseFields(database.id)
-                        }
-                        className="Button Button--rescanFieldValues"
-                        normalText={t`Re-scan field values now`}
-                        activeText={t`Starting…`}
-                        failedText={t`Failed to start scan`}
-                        successText={t`Scan triggered!`}
-                      />
-                    </li>
-                  </ol>
-                </div>
-
-                <div className="Actions-group">
-                  <label className="Actions-groupLabel block text-bold">{t`Danger Zone`}</label>
-                  <ol>
-                    <li>
-                      <ModalWithTrigger
-                        ref={this.discardSavedFieldValuesModal}
-                        triggerClasses="Button Button--danger Button--discardSavedFieldValues"
-                        triggerElement={t`Discard saved field values`}
-                      >
-                        <ConfirmContent
-                          title={t`Discard saved field values`}
-                          onClose={() =>
-                            this.discardSavedFieldValuesModal.current.toggle()
-                          }
-                          onAction={() =>
-                            this.props.discardSavedFieldValues(database.id)
-                          }
-                        />
-                      </ModalWithTrigger>
-                    </li>
-
-                    <li className="mt2">
-                      <ModalWithTrigger
-                        ref={this.deleteDatabaseModal}
-                        triggerClasses="Button Button--deleteDatabase Button--danger"
-                        triggerElement={t`Remove this database`}
-                      >
-                        <DeleteDatabaseModal
-                          database={database}
-                          onClose={() =>
-                            this.deleteDatabaseModal.current.toggle()
-                          }
-                          onDelete={() =>
-                            this.props.deleteDatabase(database.id, true)
-                          }
-                        />
-                      </ModalWithTrigger>
-                    </li>
-                  </ol>
-                </div>
-              </div>
-            </Box>
+            <Sidebar
+              database={database}
+              deleteDatabase={deleteDatabase}
+              discardSavedFieldValues={discardSavedFieldValues}
+              rescanDatabaseFields={rescanDatabaseFields}
+              syncDatabaseSchema={syncDatabaseSchema}
+            />
           )}
         </Flex>
       </Box>

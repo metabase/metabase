@@ -5,7 +5,8 @@
             [compojure.core :as compojure]
             [honeysql.types :as htypes]
             [medley.core :as m]
-            [metabase.api.common.internal :refer :all]
+            [metabase.api.common.internal :refer [add-route-param-regexes auto-parse route-dox route-fn-name
+                                                  validate-params wrap-response-if-needed]]
             [metabase.models.interface :as mi]
             [metabase.public-settings :as public-settings]
             [metabase.util :as u]
@@ -33,7 +34,8 @@
   false)
 
 (def ^:dynamic *current-user-permissions-set*
-  "Delay to the set of permissions granted to the current user."
+  "Delay to the set of permissions granted to the current user. See documentation in [[metabase.models.permissions]] for
+  more information about the Metabase permissions system."
   (atom #{}))
 
 

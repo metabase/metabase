@@ -8,6 +8,7 @@
             [metabase.api.common :as api]
             [metabase.email :as email]
             [metabase.models.setting :as setting]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]))
 
@@ -21,20 +22,21 @@
 
 (defn- humanize-error-messages
   "Convert raw error message responses from our email functions into our normal api error response structure."
-  [{:keys [error message]}]
-  (when (not= :SUCCESS error)
-    (log/warn "Problem connecting to mail server:" message)
+  [{::email/keys [error]}]
+  (when error
     (let [conn-error  {:errors {:email-smtp-host "Wrong host or port"
                                 :email-smtp-port "Wrong host or port"}}
           creds-error {:errors {:email-smtp-username "Wrong username or password"
-                                :email-smtp-password "Wrong username or password"}}]
-      (condp re-matches message
+                                :email-smtp-password "Wrong username or password"}}
+          message     (str/join ": " (map ex-message (u/full-exception-chain error)))]
+          (log/warn "Problem connecting to mail server:" message)
+      (condp re-find message
         ;; bad host = "Unknown SMTP host: foobar"
         #"^Unknown SMTP host:.*$"
         conn-error
 
         ;; host seems valid, but host/port failed connection = "Could not connect to SMTP host: localhost, port: 123"
-        #"^Could not connect to SMTP host:.*$"
+        #".*Could(?: not)|(?:n't) connect to (?:SMTP )?host.*"
         conn-error
 
         ;; seen this show up on mandrill
@@ -51,7 +53,7 @@
 
         ;; everything else :(
         #".*"
-        {:message "Sorry, something went wrong.  Please try again."}))))
+        {:message (str "Sorry, something went wrong. Please try again. Error: " message)}))))
 
 (defn- humanize-email-corrections
   "Formats warnings when security settings are autocorrected."
@@ -68,20 +70,22 @@
   [:as {settings :body}]
   {settings su/Map}
   (api/check-superuser)
-  (let [email-settings             (select-keys settings (keys mb-to-smtp-settings))
-        smtp-settings              (-> (set/rename-keys email-settings mb-to-smtp-settings)
-                                       (assoc :port (some-> (:email-smtp-port settings) Integer/parseInt)))
-        response                   (email/test-smtp-connection smtp-settings)
-        tested-settings            (merge settings (select-keys response [:port :security]))
-        [_ corrections _]          (data/diff settings tested-settings)
-        properly-named-corrections (set/rename-keys corrections (set/map-invert mb-to-smtp-settings))
-        corrected-settings         (merge email-settings properly-named-corrections)]
-    (if (= :SUCCESS (:error response))
+  (let [settings (-> settings
+                     (select-keys (keys mb-to-smtp-settings))
+                     (set/rename-keys mb-to-smtp-settings))
+        settings (cond-> settings
+                   (string? (:port settings))     (update :port #(Long/parseLong ^String %))
+                   (string? (:security settings)) (update :security keyword))
+        response (email/test-smtp-connection settings)]
+    (if-not (::email/error response)
       ;; test was good, save our settings
-      (assoc (setting/set-many! corrected-settings)
-             :with-corrections (humanize-email-corrections properly-named-corrections))
+      (assoc (setting/set-many! (set/rename-keys response (set/map-invert mb-to-smtp-settings)))
+             :with-corrections  (let [[_ corrections] (data/diff settings response)]
+                                  (-> corrections
+                                      (set/rename-keys (set/map-invert mb-to-smtp-settings))
+                                      humanize-email-corrections)))
       ;; test failed, return response message
-      {:status 500
+      {:status 400
        :body   (humanize-error-messages response)})))
 
 (api/defendpoint DELETE "/"
@@ -92,7 +96,8 @@
   api/generic-204-no-content)
 
 (api/defendpoint POST "/test"
-  "Send a test email. You must be a superuser to do this."
+  "Send a test email using the SMTP Settings. You must be a superuser to do this. Returns `{:ok true}` if we were able
+  to send the message successfully, otherwise a standard 400 error response."
   []
   (api/check-superuser)
   (let [response (email/send-message!
@@ -100,9 +105,9 @@
                    :recipients   [(:email @api/*current-user*)]
                    :message-type :text
                    :message      "Your Metabase emails are working — hooray!")]
-    (if (= :SUCCESS (:error response))
+    (if-not (::email/error response)
       {:ok true}
-      {:status 500
+      {:status 400
        :body   (humanize-error-messages response)})))
 
 (api/define-routes)
