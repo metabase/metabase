@@ -384,6 +384,28 @@
                                            (assoc card :result_metadata   []
                                                        :metadata_checksum md-checksum))))))))
 
+(deftest cache-ttl-save
+  (testing "POST /api/card/:id"
+    (testing "saving cache ttl by post actually saves it"
+      (mt/with-model-cleanup [Card]
+        (let [card        (card-with-name-and-query)]
+          (is (= 1234
+                 (:cache_ttl (mt/user-http-request :rasta
+                                                   :post
+                                                   202
+                                                   "card"
+                                                   (assoc card :cache_ttl 1234)))))))))
+  (testing "PUT /api/card/:id"
+    (testing "saving cache ttl by put actually saves it"
+      (mt/with-temp Card [card]
+        (is (= 1234
+               (:cache_ttl (mt/user-http-request :rasta
+                                     :put
+                                     202
+                                     (str "card/" (u/the-id card))
+                                     {:cache_ttl 1234}))))))))
+
+
 (defn- fingerprint-integers->doubles
   "Converts the min/max fingerprint values to doubles so simulate how the FE will change the metadata when POSTing a
   new card"

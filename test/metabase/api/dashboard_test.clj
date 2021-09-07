@@ -145,6 +145,7 @@
                      :updated_at     true
                      :created_at     true
                      :collection_id  true
+                     :cache_ttl      1234
                      :last-edit-info {:timestamp true :id true :first_name "Rasta"
                                       :last_name "Toucan" :email "rasta@metabase.com"}})
                    (-> (mt/user-http-request :rasta :post 200 "dashboard" {:name          test-dashboard-name
@@ -362,6 +363,7 @@
           (is (= (merge dashboard-defaults {:name           "My Cool Dashboard"
                                             :description    "Some awesome description"
                                             :creator_id     (mt/user->id :rasta)
+                                            :cache_ttl      1234
                                             :last-edit-info {:timestamp true     :id    true :first_name "Rasta"
                                                              :last_name "Toucan" :email "rasta@metabase.com"}
                                             :collection_id true})
@@ -375,6 +377,7 @@
         (testing "GET after update"
           (is (= (merge dashboard-defaults {:name          "My Cool Dashboard"
                                             :description   "Some awesome description"
+                                            :cache_ttl     1234
                                             :creator_id    (mt/user->id :rasta)
                                             :collection_id true})
                  (dashboard-response (Dashboard dashboard-id)))))))))
