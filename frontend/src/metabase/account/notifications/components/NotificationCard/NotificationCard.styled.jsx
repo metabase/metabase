@@ -30,10 +30,20 @@ export const NotificationTitle = styled(Link)`
 `;
 
 export const NotificationDescription = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+`;
+
+export const NotificationMessage = styled.span`
   color: ${color("text-medium")};
   font-size: 0.75rem;
   line-height: 0.875rem;
-  margin-top: 0.25rem;
+
+  &:not(:first-child)::before {
+    content: " · ";
+    white-space: pre;
+  }
 `;
 
 export const NotificationIcon = styled(Icon)`

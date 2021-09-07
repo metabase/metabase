@@ -2,17 +2,19 @@ import React, { useCallback } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import Settings from "metabase/lib/settings";
-import { formatFrame } from "metabase/lib/time";
+import { capitalize, formatDateTimeWithUnit } from "metabase/lib/formatting";
 import {
-  formatDateTimeWithUnit,
-  formatTimeWithUnit,
-} from "metabase/lib/formatting";
-import * as Urls from "metabase/lib/urls";
+  canArchive,
+  formatChannel,
+  formatLink,
+  formatTitle,
+} from "metabase/lib/notifications";
 import {
   NotificationContent,
-  NotificationDescription,
   NotificationIcon,
+  NotificationDescription,
   NotificationItemRoot,
+  NotificationMessage,
   NotificationTitle,
 } from "./NotificationCard.styled";
 
@@ -42,7 +44,14 @@ const NotificationCard = ({ item, type, user, onUnsubscribe, onArchive }) => {
           {formatTitle(item, type)}
         </NotificationTitle>
         <NotificationDescription>
-          {formatDescription(item, user)}
+          {item.channels.map((channel, index) => (
+            <NotificationMessage key={index}>
+              {getChannelMessage(channel)}
+            </NotificationMessage>
+          ))}
+          <NotificationMessage>
+            {getCreatorMessage(item, user)}
+          </NotificationMessage>
         </NotificationDescription>
       </NotificationContent>
       {!hasArchive && (
@@ -65,100 +74,11 @@ const NotificationCard = ({ item, type, user, onUnsubscribe, onArchive }) => {
 
 NotificationCard.propTypes = propTypes;
 
-const canArchive = (item, user) => {
-  const recipients = item.channels.flatMap(channel =>
-    channel.recipients.map(recipient => recipient.id),
-  );
-
-  const isCreator = item.creator?.id === user.id;
-  const isSubscribed = recipients.includes(user.id);
-  const isOnlyRecipient = recipients.length === 1;
-
-  return isCreator && (!isSubscribed || isOnlyRecipient);
+const getChannelMessage = channel => {
+  return capitalize(formatChannel(channel));
 };
 
-const formatTitle = (item, type) => {
-  switch (type) {
-    case "pulse":
-      return item.name;
-    case "alert":
-      return item.card.name;
-  }
-};
-
-const formatLink = (item, type) => {
-  switch (type) {
-    case "pulse":
-      return Urls.dashboard({ id: item.dashboard_id });
-    case "alert":
-      return Urls.question(item.card);
-  }
-};
-
-const formatDescription = (item, user) => {
-  const parts = [
-    ...item.channels.map(formatChannel),
-    formatCreator(item, user),
-  ];
-
-  return parts.join(" · ");
-};
-
-const formatChannel = ({
-  channel_type,
-  schedule_type,
-  schedule_hour,
-  schedule_day,
-  schedule_frame,
-  details,
-}) => {
-  let scheduleString = "";
-  const options = Settings.formattingOptions();
-
-  switch (channel_type) {
-    case "email":
-      scheduleString += t`Emailed `;
-      break;
-    case "slack":
-      scheduleString += t`Slack’d `;
-      break;
-    default:
-      scheduleString += t`Sent`;
-      break;
-  }
-
-  switch (schedule_type) {
-    case "hourly":
-      scheduleString += t`hourly`;
-      break;
-    case "daily": {
-      const ampm = formatTimeWithUnit(schedule_hour, "hour-of-day", options);
-      scheduleString += t`daily at ${ampm}`;
-      break;
-    }
-    case "weekly": {
-      const ampm = formatTimeWithUnit(schedule_hour, "hour-of-day", options);
-      const day = formatDateTimeWithUnit(schedule_day, "day-of-week", options);
-      scheduleString += t`${day} at ${ampm}`;
-      break;
-    }
-    case "monthly": {
-      const ampm = formatTimeWithUnit(schedule_hour, "hour-of-day", options);
-      const day = formatDateTimeWithUnit(schedule_day, "day-of-week", options);
-      const frame = formatFrame(schedule_frame);
-      scheduleString += t`monthly on the ${frame} ${day} at ${ampm}`;
-      break;
-    }
-  }
-
-  if (channel_type === "slack" && details) {
-    scheduleString += t` to ${details.channel}`;
-  }
-
-  return scheduleString;
-};
-
-const formatCreator = (item, user) => {
+const getCreatorMessage = (item, user) => {
   let creatorString = "";
   const options = Settings.formattingOptions();
 

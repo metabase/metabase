@@ -47,8 +47,8 @@ describe("NotificationCard", () => {
     render(<NotificationCard item={alert} type="alert" user={user} />);
 
     screen.getByText("Alert");
-    screen.getByText("Emailed hourly", { exact: false });
-    screen.getByText("Created by you on May 8, 2021", { exact: false });
+    screen.getByText("Emailed hourly");
+    screen.getByText("Created by you on May 8, 2021");
   });
 
   it("should render a pulse", () => {
@@ -58,8 +58,8 @@ describe("NotificationCard", () => {
     render(<NotificationCard item={pulse} type="pulse" user={user} />);
 
     screen.getByText("Pulse");
-    screen.getByText("Emailed hourly", { exact: false });
-    screen.getByText("Created by you on May 8, 2021", { exact: false });
+    screen.getByText("Emailed hourly");
+    screen.getByText("Created by you on May 8, 2021");
   });
 
   it("should render a slack alert", () => {
@@ -70,7 +70,7 @@ describe("NotificationCard", () => {
 
     render(<NotificationCard item={alert} type="alert" user={user} />);
 
-    screen.getByText("Slack’d hourly to @channel", { exact: false });
+    screen.getByText("Slack’d hourly to @channel");
   });
 
   it("should render a daily alert", () => {
@@ -81,7 +81,7 @@ describe("NotificationCard", () => {
 
     render(<NotificationCard item={alert} type="alert" user={user} />);
 
-    screen.getByText("Emailed daily at 8:00 AM", { exact: false });
+    screen.getByText("Emailed daily at 8:00 AM");
   });
 
   it("should render a weekly alert", () => {
@@ -92,7 +92,7 @@ describe("NotificationCard", () => {
 
     render(<NotificationCard item={alert} type="alert" user={user} />);
 
-    screen.getByText("Emailed Monday at 8:00 AM", { exact: false });
+    screen.getByText("Emailed Monday at 8:00 AM");
   });
 
   it("should render a monthly alert", () => {
@@ -103,8 +103,7 @@ describe("NotificationCard", () => {
 
     render(<NotificationCard item={alert} type="alert" user={user} />);
 
-    screen.getByText("Emailed monthly on the first Monday", { exact: false });
-    screen.getByText("at 8:00 AM", { exact: false });
+    screen.getByText("Emailed monthly on the first Monday at 8:00 am");
   });
 
   it("should render an alert created by another user", () => {
@@ -113,7 +112,7 @@ describe("NotificationCard", () => {
 
     render(<NotificationCard item={alert} type="alert" user={user} />);
 
-    screen.getByText("Created by John Doe", { exact: false });
+    screen.getByText("Created by John Doe on May 8, 2021");
   });
 
   it("should unsubscribe when the user is not the creator and subscribed", () => {
