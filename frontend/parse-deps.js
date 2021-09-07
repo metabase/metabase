@@ -6,6 +6,7 @@ const path = require("path");
 const glob = require("glob");
 const parser = require("@babel/parser");
 const traverse = require("@babel/traverse").default;
+const readline = require("readline");
 
 const PATTERN = "{enterprise/,}frontend/src/**/*.{js,jsx}";
 
@@ -93,14 +94,45 @@ function dependents() {
   return dependents;
 }
 
+function filterDependents() {
+  const rl = readline.createInterface({
+    input: process.stdin,
+  });
+
+  const allDependents = dependents();
+  const filteredDependents = [];
+
+  const start = async () => {
+    for await (const line of rl) {
+      const name = line
+        .trim()
+        .replace(/\.js$/, "")
+        .replace(/\.jsx$/, "");
+      if (name.length > 0) {
+        const list = allDependents[name];
+        if (list && Array.isArray(list) && list.length > 0) {
+          filteredDependents.push(...list);
+        }
+      }
+    }
+    console.log(
+      Array.from(new Set(filteredDependents))
+        .sort()
+        .join("\n"),
+    );
+  };
+  start();
+}
+
 const USAGE = `
 parse-deps cmd
 
 cmd must be one of:
 
-        files     Display list of source files
- dependencies     Show the dependencies of each source file
-   dependents     Show the dependents of each source file
+            files   Display list of source files
+     dependencies   Show the dependencies of each source file
+       dependents   Show the dependents of each source file
+filter-dependents   Filter dependents based on stdin
 `;
 
 function main(args) {
@@ -115,6 +147,9 @@ function main(args) {
         break;
       case "dependents":
         console.log(JSON.stringify(dependents(), null, 2));
+        break;
+      case "filter-dependents":
+        filterDependents();
         break;
       default:
         console.log(USAGE);
