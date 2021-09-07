@@ -140,13 +140,14 @@ function categorical_donut (rows, colors) {
     (with-open [is (ByteArrayInputStream. (.getBytes s StandardCharsets/UTF_8))]
       (.createDocument factory "file:///fake.svg" is))))
 
-(def ^:dynamic *svg-render-width*
+(def ^:dynamic ^:private *svg-render-width*
   "Width to render svg images. Intentionally large to improve quality. Consumers should be aware and resize as
   needed. Email should include width tags; slack automatically resizes inline and provides a nice detail view when
   clicked."
   (float 1200))
 
-(def ^:dynamic *svg-render-height*
+(def ^:dynamic ^:private *svg-render-height*
+  "Height to render svg images. If not bound, will preserve aspect ratio of original image."
   nil)
 
 (defn- render-svg
