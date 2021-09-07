@@ -58,7 +58,12 @@ const AuditNotificationEditModal = ({
         <Button key="cancel" onClick={onClose}>
           {t`Cancel`}
         </Button>,
-        <Button key="update" warning onClick={handleUpdateClick}>
+        <Button
+          key="update"
+          warning
+          disabled={!channels.length}
+          onClick={handleUpdateClick}
+        >
           {t`Update`}
         </Button>,
       ]}
