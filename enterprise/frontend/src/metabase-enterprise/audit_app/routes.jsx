@@ -1,6 +1,7 @@
 import React from "react";
 
 import { Route } from "metabase/hoc/Title";
+import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { IndexRoute, IndexRedirect } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
@@ -48,7 +49,20 @@ function getPageRoutes(path, page: Page) {
   }
   // add sub routes for each tab
   if (page.tabs) {
-    subRoutes.push(...getSubRoutes(page.tabs));
+    subRoutes.push(
+      ...page.tabs.map(tab => (
+        <Route key={tab.path} path={tab.path} component={tab.component}>
+          {tab.modals &&
+            tab.modals.map(modal => (
+              <ModalRoute
+                key={modal.path}
+                path={modal.path}
+                modal={modal.modal}
+              />
+            ))}
+        </Route>
+      )),
+    );
   }
   // if path is provided, use that, otherwise use an IndexRoute
   return path ? (
@@ -58,14 +72,6 @@ function getPageRoutes(path, page: Page) {
   ) : (
     <IndexRoute component={page}>{subRoutes}</IndexRoute>
   );
-}
-
-function getSubRoutes(routes) {
-  return routes.map(route => (
-    <Route key={route.path} path={route.path} component={route.component}>
-      {route.children && getSubRoutes(route.children)}
-    </Route>
-  ));
 }
 
 function getDefaultTab(page: Page): ?Tab {

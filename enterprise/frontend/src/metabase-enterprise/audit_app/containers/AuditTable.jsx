@@ -29,15 +29,17 @@ const DEFAULT_PAGE_SIZE = 100;
 AuditTable.propTypes = {
   metadata: PropTypes.object.isRequired,
   table: PropTypes.object.isRequired,
-  onChangeLocation: PropTypes.func.isRequired,
   pageSize: PropTypes.number.isRequired,
+  children: PropTypes.node,
+  onChangeLocation: PropTypes.func.isRequired,
 };
 
 function AuditTable({
   metadata,
   table,
-  onChangeLocation,
   pageSize = DEFAULT_PAGE_SIZE,
+  children,
+  onChangeLocation,
   ...rest
 }) {
   const [loadedCount, setLoadedCount] = useState(0);
@@ -76,6 +78,7 @@ function AuditTable({
           />
         )}
       </div>
+      {children}
     </div>
   );
 }

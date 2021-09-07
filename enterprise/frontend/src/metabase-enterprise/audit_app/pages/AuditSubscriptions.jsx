@@ -16,10 +16,10 @@ AuditSubscriptions.tabs = [
     path: "subscriptions",
     title: t`Subscriptions`,
     component: AuditSubscriptionTable,
-    children: [
+    modals: [
       {
-        path: "delete",
-        component: AuditSubscriptionDeleteModal,
+        path: ":pulseId/delete",
+        modal: AuditSubscriptionDeleteModal,
       },
     ],
   },
@@ -27,10 +27,10 @@ AuditSubscriptions.tabs = [
     path: "alerts",
     title: t`Alerts`,
     component: AuditAlertTable,
-    children: [
+    modals: [
       {
-        path: "delete",
-        component: AuditAlertDeleteModal,
+        path: ":alertId/delete",
+        modal: AuditAlertDeleteModal,
       },
     ],
   },
