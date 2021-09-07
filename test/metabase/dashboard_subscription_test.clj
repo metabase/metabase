@@ -134,8 +134,9 @@
                     User [{user-id :id}]]
       (let [result (pulse/execute-dashboard {:creator_id user-id} dashboard-id)]
         (is (= (count result) 2))
-        (is (schema= [{:card   (s/pred map?)
-                       :result (s/pred map?)}]
+        (is (schema= [{:card     (s/pred map?)
+                       :dashcard (s/pred map?)
+                       :result   (s/pred map?)}]
                      result)))))
   (testing "dashboard cards are ordered correctly -- by rows, and then by columns (#17419)"
     (mt/with-temp* [Card          [{card-id-1 :id}]
@@ -160,8 +161,8 @@
 
 (deftest basic-table-test
   (tests {:pulse {:skip_if_empty false}}
-    "19 results, so no attachment"
-    {:card (checkins-query-card {:aggregation nil, :limit 19})
+    "9 results, so no attachment aside from dashboard icon"
+    {:card (checkins-query-card {:aggregation nil, :limit 9})
 
      :fixture
      (fn [_ thunk]
@@ -178,12 +179,13 @@
                                            ;; Inline table
                                            "ID</th>"                         true
                                            ;; Links to source dashboard
-                                           "<a href=\\\"https://metabase.com/testmb/dashboard/\\d+\\\" class=\\\"title-link\\\">" true}]})
+                                           "<a class=\\\"title\\\" href=\\\"https://metabase.com/testmb/dashboard/\\d+\\\"" true}
+                                          png-attachment]})
                (mt/summarize-multipart-email
                 #"Aviary KPIs"
                 #"More results have been included"
                 #"ID</th>"
-                #"<a href=\"https://metabase.com/testmb/dashboard/\d+\" class=\"title-link\">"))))
+                #"<a class=\"title\" href=\"https://metabase.com/testmb/dashboard/\d+\""))))
 
       :slack
       (fn [{:keys [card-id]} [pulse-results]]
@@ -222,8 +224,9 @@
      :assert
      {:email
        (fn [_ _]
-         (testing "Markdown cards are not included in email subscriptions"
-           (is (= (rasta-pulse-email {:body [{"Aviary KPIs" true}]})
+         (testing "Markdown cards are included in email subscriptions"
+           (is (= (rasta-pulse-email {:body [{"Aviary KPIs" true}
+                                             png-attachment]})
                   (mt/summarize-multipart-email #"Aviary KPIs")))))
 
        :slack

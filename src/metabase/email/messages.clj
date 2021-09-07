@@ -456,8 +456,11 @@
   ([alert alert-condition-map]
    (let [{card-id :id, card-name :name} (first-card alert)]
      (merge {:emailType                 "alert"
+             ;; TODO reduce duplication of context fields
              :title                     card-name
              :titleUrl                  (url/card-url card-id)
+             :questionName              card-name
+             :questionURL               (url/card-url card-id)
              :sectionStyle              (render.style/section-style)
              :colorTextDark             render.style/color-text-dark
              :colorTextLight            render.style/color-text-light

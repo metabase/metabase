@@ -155,7 +155,7 @@
            (let [{{card-id :id, card-name :name, :as card} :card, result :result} card-result]
              (if (and card result)
                {:title           card-name
-                :rendered-info   (render/render-pulse-card :inline (defaulted-timezone card) card result)
+                :rendered-info   (render/render-pulse-card :inline (defaulted-timezone card) card nil result)
                 :title_link      (urls/card-url card-id)
                 :attachment-name "image.png"
                 :channel-id      channel-id
