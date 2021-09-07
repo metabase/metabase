@@ -4,6 +4,10 @@ import { USER_GROUPS } from "__support__/e2e/cypress_data";
 const { ALL_USERS_GROUP } = USER_GROUPS;
 
 describe.skip("issue 17763", () => {
+  // Run only for EE version even when the underlying issue gets fixed.
+  // Do not remove the following line. Only unskip the `describe` block.
+  cy.onlyOn(!!Cypress.env("HAS_ENTERPRISE_TOKEN"));
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
