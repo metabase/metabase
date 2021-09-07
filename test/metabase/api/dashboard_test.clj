@@ -150,6 +150,7 @@
                                       :last_name "Toucan" :email "rasta@metabase.com"}})
                    (-> (mt/user-http-request :rasta :post 200 "dashboard" {:name          test-dashboard-name
                                                                            :parameters    [{:id "abc123", :name "test", :type "date"}]
+                                                                           :cache_ttl     1234
                                                                            :collection_id (u/the-id collection)})
                        dashboard-response)))
             (finally
@@ -371,6 +372,7 @@
                   (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
                                         {:name        "My Cool Dashboard"
                                          :description "Some awesome description"
+                                         :cache_ttl   1234
                                          ;; these things should fail to update
                                          :creator_id  (mt/user->id :trashbird)})))))
 
