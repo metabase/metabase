@@ -174,11 +174,6 @@ class SharingSidebar extends React.Component {
 
   componentDidMount = async () => {
     await this.props.fetchPulseFormInput();
-
-    this.props.setEditingPulse(
-      this.props.pulseId,
-      this.props.initialCollectionId,
-    );
   };
 
   onChannelPropertyChange = (index, name, value) => {
