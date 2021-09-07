@@ -29,6 +29,14 @@ const Pulses = createEntity({
       );
     },
 
+    setChannels: ({ id }, channels, opts) => {
+      return Pulses.actions.update(
+        { id },
+        { channels },
+        undo(opts, t`subscription`, t`updated`),
+      );
+    },
+
     setCollection: ({ id }, collection, opts) => {
       return Pulses.actions.update(
         { id },

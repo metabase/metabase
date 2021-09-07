@@ -29,6 +29,14 @@ const Alerts = createEntity({
       dispatch({ type: UNSUBSCRIBE, payload: { id } });
       dispatch({ type: Alerts.actionTypes.INVALIDATE_LISTS_ACTION });
     },
+
+    setChannels: ({ id }, channels, opts) => {
+      return Alerts.actions.update(
+        { id },
+        { channels },
+        undo(opts, t`alert`, t`updated`),
+      );
+    },
   },
 });
 
