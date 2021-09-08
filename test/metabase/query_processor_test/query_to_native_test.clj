@@ -39,7 +39,7 @@
   (try
     (binding [api/*current-user-id*              Integer/MAX_VALUE
               api/*current-user-permissions-set* (delay (cond-> #{}
-                                                          object-perms? (conj (perms/object-path database-id "PUBLIC" source-table-id))
+                                                          object-perms? (conj (perms/data-perms-path database-id "PUBLIC" source-table-id))
                                                           native-perms? (conj (perms/adhoc-native-query-path database-id))))]
       (qp/query->native query))
     (catch clojure.lang.ExceptionInfo e

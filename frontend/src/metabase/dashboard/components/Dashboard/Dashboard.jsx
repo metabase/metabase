@@ -210,6 +210,9 @@ export default class Dashboard extends Component {
       />
     );
 
+    const shouldRenderParametersWidgetInViewMode =
+      !isEditing && !isFullscreen && parametersWidget;
+
     return (
       <DashboardLoadingAndErrorWrapper
         isFullHeight={isEditing || isSharing}
@@ -235,15 +238,22 @@ export default class Dashboard extends Component {
                 onToggleAddQuestionSidebar={this.onToggleAddQuestionSidebar}
                 showAddQuestionSidebar={showAddQuestionSidebar}
               />
+
+              {isEditing && (
+                <ParametersWidgetContainer isEditing={isEditing}>
+                  {parametersWidget}
+                </ParametersWidgetContainer>
+              )}
             </HeaderContainer>
 
             <DashboardBody isEditingOrSharing={isEditing || isSharing}>
               <ParametersAndCardsContainer
+                data-testid="dashboard-parameters-and-cards"
                 innerRef={element =>
                   (this.parametersAndCardsContainerRef = element)
                 }
               >
-                {!isFullscreen && parametersWidget && (
+                {shouldRenderParametersWidgetInViewMode && (
                   <ParametersWidgetContainer
                     innerRef={element => (this.parametersWidgetRef = element)}
                     isSticky={isParametersWidgetSticky}

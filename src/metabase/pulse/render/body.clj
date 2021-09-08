@@ -3,6 +3,7 @@
             [clojure.string :as str]
             [hiccup.core :refer [h]]
             [medley.core :as m]
+            [metabase.public-settings :as public-settings]
             [metabase.pulse.render.color :as color]
             [metabase.pulse.render.common :as common]
             [metabase.pulse.render.datetime :as datetime]
@@ -14,7 +15,7 @@
             [metabase.types :as types]
             [metabase.util.i18n :refer [trs tru]]
             [schema.core :as s])
-  (:import java.text.DecimalFormat))
+  (:import (java.text DecimalFormat DecimalFormatSymbols)))
 
 (def error-rendered-info
   "Default rendered-info map when there is an error displaying a card. Is a delay due to the call to `trs`."
@@ -215,13 +216,17 @@
        (list table-body))}))
 
 (s/defmethod render :bar :- common/RenderedPulseCard
-  [_ render-type _timezone-id :- (s/maybe s/Str) card {:keys [cols] :as data}]
+  [_ render-type _timezone-id :- (s/maybe s/Str) card {:keys [cols rows] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
-        rows                        (common/non-nil-rows x-axis-rowfn y-axis-rowfn (:rows data))
+        rows                        (map (juxt x-axis-rowfn y-axis-rowfn)
+                                         (common/non-nil-rows x-axis-rowfn y-axis-rowfn rows))
+        svg-fn                   (if (isa? (-> cols x-axis-rowfn :effective_type) :type/Temporal)
+                                   js-svg/timelineseries-bar
+                                   js-svg/categorical-bar)
         image-bundle                (image-bundle/make-image-bundle
                                       render-type
-                                      (js-svg/timelineseries-bar
-                                        (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)
+                                      (svg-fn
+                                        rows
                                         {:bottom (-> cols x-axis-rowfn :display_name)
                                          :left   (-> cols y-axis-rowfn :display_name)}))]
     {:attachments
@@ -239,19 +244,47 @@
    "#c589b9" "#efce8c" "#b5f95c" "#e35850" "#554dbf" "#bec589" "#8cefc6" "#5cc2f9" "#55e350" "#bf4d4f"
    "#89c3c5" "#be8cef" "#f95cd0" "#50e3ae" "#bf974d" "#899bc5" "#ef8cde" "#f95c67"])
 
+(defn format-percentage
+  "Format a percentage which includes site settings for locale. The first arg is a numeric value to format. The second
+  is an optional string of decimal and grouping symbols to be used, ie \".,\". There will soon be a values.clj file
+  that will handle this but this is here in the meantime."
+  ([value]
+   (format-percentage value (get-in (public-settings/custom-formatting) [:type/Number :number_separators])))
+  ([value [decimal grouping]]
+   (let [base "#,###.##%"
+         fmt (if (or decimal grouping)
+               (DecimalFormat. base (doto (DecimalFormatSymbols.)
+                                      (cond-> decimal (.setDecimalSeparator decimal))
+                                      (cond-> grouping (.setGroupingSeparator grouping))))
+               (DecimalFormat. base))]
+     (.format fmt value))))
+
+(defn- donut-info
+  "Process rows with a minimum slice threshold. Collapses any segments below the threshold given as a percentage (the
+  value 25 for 25%) into a single category as \"Other\". "
+  [threshold-percentage rows]
+  (let [total                    (reduce + 0 (map second rows))
+        threshold                (* total (/ threshold-percentage 100))
+        {as-is true clump false} (group-by (comp #(> % threshold) second) rows)
+        rows (cond-> as-is
+               (seq clump)
+               (conj [(tru "Other") (reduce (fnil + 0) 0 (map second clump))]))]
+    {:rows        rows
+     :percentages (into {}
+                        (for [[label value] rows]
+                          [label (if (zero? total)
+                                   (tru "N/A")
+                                   (format-percentage (/ value total)))]))}))
+
 (s/defmethod render :categorical/donut :- common/RenderedPulseCard
   [_ render-type _timezone-id :- (s/maybe s/Str) card {:keys [rows] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
         rows                        (map (juxt (comp str x-axis-rowfn) y-axis-rowfn)
                                          (common/non-nil-rows x-axis-rowfn y-axis-rowfn rows))
+        slice-threshold             (or (get-in card [:visualization_settings :pie.slice_threshold])
+                                        2.5)
+        {:keys [rows percentages]}  (donut-info slice-threshold rows)
         legend-colors               (zipmap (map first rows) (cycle colors))
-        total                       (apply + (map second rows))
-        percentages                 (into {}
-                                          (for [[label value] rows]
-                                            [label (if (zero? total)
-                                                     (tru "N/A")
-                                                     (let [f (DecimalFormat. "###,###.##%")]
-                                                       (.format f (double (/ value total)))))]))
         image-bundle                (image-bundle/make-image-bundle
                                      render-type
                                      (js-svg/categorical-donut rows legend-colors))]
@@ -293,8 +326,7 @@
                                  (isa? (:base_type c) t)))
           (where [f coll] (some #(when (f %) %) coll))
           (percentage [arg] (if (number? arg)
-                              (let [f (DecimalFormat. "###,###.##%")]
-                                (.format f (double arg)))
+                              (format-percentage arg)
                               " - "))
           (format-unit [unit] (str/replace (name unit) "-" " "))]
     (let [[_time-col metric-col] (if (col-of-type :type/Temporal (first cols)) cols (reverse cols))

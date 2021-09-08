@@ -35,7 +35,13 @@
     "/frontend/src/metabase/visualizations/lib/errors.js",
     "/frontend/src/cljs/",
     "/frontend/src/metabase/internal/",
-    "/frontend/test/"
+    "/frontend/test/",
+    ".styled.jsx",
+    ".info.js"
   ],
-  "testEnvironment": "jsdom"
+  "testEnvironment": "jsdom",
+  "watchPlugins": [
+    "jest-watch-typeahead/filename",
+    "jest-watch-typeahead/testname"
+  ]
 }

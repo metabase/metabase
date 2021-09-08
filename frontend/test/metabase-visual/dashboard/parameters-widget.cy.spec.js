@@ -22,8 +22,8 @@ describe("visual tests > dashboard > parameters widget", () => {
     cy.signInAsAdmin();
 
     cy.createQuestionAndDashboard({ questionDetails }).then(
-      ({ body: oldCard }) => {
-        const { dashboard_id } = oldCard;
+      ({ body: card }) => {
+        const { dashboard_id } = card;
 
         cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
           parameters: filters,
@@ -34,7 +34,7 @@ describe("visual tests > dashboard > parameters widget", () => {
           sizeY: 32,
         };
 
-        cy.editDashboardCard(oldCard, updatedSize);
+        cy.editDashboardCard(card, updatedSize);
 
         cy.visit(`/dashboard/${dashboard_id}`);
       },
@@ -47,5 +47,17 @@ describe("visual tests > dashboard > parameters widget", () => {
     cy.scrollTo(0, 264);
 
     cy.percySnapshot();
+  });
+
+  it("is sticky in edit mode", () => {
+    cy.findByText("test question");
+
+    cy.icon("pencil").click();
+
+    cy.findByTestId("dashboard-parameters-and-cards")
+      .scrollTo(0, 464)
+      .then(() => {
+        cy.percySnapshot();
+      });
   });
 });

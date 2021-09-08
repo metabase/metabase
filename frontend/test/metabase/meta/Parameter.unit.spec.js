@@ -14,6 +14,11 @@ import {
   getParameterValuesBySlug,
   buildHiddenParametersSlugSet,
   getVisibleParameters,
+  isDefaultedParameterSpecialCase,
+  removeDefaultedParametersWithEmptyStringValue,
+  treatEmptyStringLikeNilForDefaultedParameters,
+  removeNilValuedPairs,
+  removeUndefaultedNilValuedPairs,
 } from "metabase/meta/Parameter";
 
 MetabaseSettings.get = jest.fn();
@@ -434,6 +439,40 @@ describe("metabase/meta/Parameter", () => {
     });
   });
 
+  describe("isDefaultedParameterSpecialCase", () => {
+    it("should return true when given a parameter with a default value and a parameter value that is an empty string", () => {
+      const parameter = {
+        default: "abc",
+      };
+
+      expect(isDefaultedParameterSpecialCase(parameter, "")).toBe(true);
+    });
+
+    it("should return false when given a parameter with a default value and a nil parameter value", () => {
+      const parameter = {
+        default: "abc",
+      };
+
+      expect(isDefaultedParameterSpecialCase(parameter, null)).toBe(false);
+    });
+
+    it("should return false when given a parameter with a default value and a parameter value that is not an empty string", () => {
+      const parameter = {
+        default: "abc",
+      };
+
+      expect(isDefaultedParameterSpecialCase(parameter, "foo")).toBe(false);
+    });
+
+    it("should return false when given an undefaulted parameter", () => {
+      const parameter = {};
+
+      expect(isDefaultedParameterSpecialCase(parameter, "")).toBe(false);
+      expect(isDefaultedParameterSpecialCase(parameter, "foo")).toBe(false);
+      expect(isDefaultedParameterSpecialCase(parameter, undefined)).toBe(false);
+    });
+  });
+
   describe("parameter collection-building utils", () => {
     // found in queryParams and not defaulted
     const parameter1 = {
@@ -566,6 +605,61 @@ describe("metabase/meta/Parameter", () => {
           [parameter3.id]: "parameter3 default value",
         });
       });
+
+      describe("without transform", () => {
+        it("should treat special cased defaulted parameters + empty string value as NIL and use the defaulted value", () => {
+          const queryParamsWithSpecialCase = {
+            ...queryParams,
+            foo: "", // has no default
+            bar: "", // has a defautl
+          };
+
+          expect(
+            getParameterValuesByIdFromQueryParams(
+              parameters,
+              queryParamsWithSpecialCase,
+            ),
+          ).toEqual({
+            [parameter1.id]: "",
+            [parameter2.id]: "parameter2 default value",
+            [parameter3.id]: "parameter3 default value",
+          });
+
+          expect(
+            getParameterValuesByIdFromQueryParams(
+              parameters,
+              queryParamsWithSpecialCase,
+            ),
+          ).toEqual(
+            getParameterValuesByIdFromQueryParams(
+              parameters,
+              queryParamsWithSpecialCase,
+              treatEmptyStringLikeNilForDefaultedParameters,
+            ),
+          );
+        });
+      });
+
+      describe("with transform", () => {
+        it("should return a result that has been transformed by the given transform function", () => {
+          const queryParamsWithSpecialCase = {
+            ...queryParams,
+            foo: "", // has no default
+            bar: "", // has a defautl
+          };
+
+          expect(
+            getParameterValuesByIdFromQueryParams(
+              parameters,
+              queryParamsWithSpecialCase,
+              removeDefaultedParametersWithEmptyStringValue,
+            ),
+          ).toEqual({
+            [parameter1.id]: "",
+            [parameter3.id]: "parameter3 default value",
+          });
+        });
+      });
     });
 
     describe("getParameterValuesBySlug", () => {
@@ -601,6 +695,69 @@ describe("metabase/meta/Parameter", () => {
           ]),
         ).toEqual({
           [parameter1.slug]: "parameter1 value prop",
+        });
+      });
+
+      describe("without transform", () => {
+        it("should exclude any nil values in the map", () => {
+          const defaultedParameter = {
+            id: 999,
+            slug: "abc",
+            default: 123,
+          };
+
+          const defaultedParameterWithValue = {
+            id: 888,
+            slug: "def",
+            default: 456,
+            value: 789,
+          };
+
+          const parameters = [defaultedParameter, defaultedParameterWithValue];
+
+          expect(getParameterValuesBySlug(parameters, {})).toEqual({
+            [defaultedParameterWithValue.slug]:
+              defaultedParameterWithValue.value,
+          });
+
+          expect(getParameterValuesBySlug(parameters, {})).toEqual(
+            getParameterValuesBySlug(
+              parameters,
+              parameterValues,
+              removeNilValuedPairs,
+            ),
+          );
+        });
+      });
+
+      describe("with transform", () => {
+        it("should return a result that has been transformed by the given transform function", () => {
+          const defaultedParameter = {
+            id: 999,
+            slug: "abc",
+            default: 123,
+          };
+
+          const defaultedParameterWithValue = {
+            id: 888,
+            slug: "def",
+            default: 456,
+            value: 789,
+          };
+
+          const parameters = [defaultedParameter, defaultedParameterWithValue];
+
+          expect(
+            getParameterValuesBySlug(
+              parameters,
+              parameterValues,
+              removeUndefaultedNilValuedPairs,
+            ),
+          ).toEqual({
+            [defaultedParameter.slug]: undefined,
+            [defaultedParameterWithValue.slug]:
+              defaultedParameterWithValue.value,
+          });
         });
       });
     });

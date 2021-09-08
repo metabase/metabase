@@ -33,7 +33,7 @@ function CollectionList({
       {collections
         .filter(c => c.id !== currentUser.personal_collection_id)
         .map(collection => (
-          <GridItem w={w} key={collection.id}>
+          <GridItem width={w} key={collection.id}>
             <CollectionItem
               collection={collection}
               event={`${analyticsContext};Collection List;Collection click`}

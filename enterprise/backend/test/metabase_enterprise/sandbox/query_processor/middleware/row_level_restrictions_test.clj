@@ -295,7 +295,7 @@
         (mt/with-temp* [Collection [collection]
                         Card       [card        {:collection_id (u/the-id collection)}]]
           (mt/with-group [group]
-            (perms/revoke-permissions! (perms-group/all-users) (mt/id))
+            (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
             (perms/grant-collection-read-permissions! group collection)
             (mt/with-test-user :rasta
               (binding [qp.perms/*card-id* (u/the-id card)]
@@ -677,7 +677,7 @@
                        {:gtaps      {:reviews {:remappings {"user_id" [:dimension $product_id]}}}
                         :attributes {"user_id" 1}})
         ;; grant full data perms for products
-        (perms/grant-permissions! (perms-group/all-users) (perms/object-path
+        (perms/grant-permissions! (perms-group/all-users) (perms/data-perms-path
                                                            (mt/id)
                                                            (db/select-one-field :schema Table :id (mt/id :products))
                                                            (mt/id :products)))
@@ -801,7 +801,7 @@
                        {:gtaps      {:orders {:remappings {:user_id [:dimension $orders.user_id]}}}
                         :attributes {:user_id "1"}})
         ;; make sure the sandboxed group can still access the Products table, which is referenced below.
-        (perms/grant-permissions! &group (perms/object-path (mt/id) "PUBLIC" (mt/id :products)))
+        (perms/grant-permissions! &group (perms/data-perms-path (mt/id) "PUBLIC" (mt/id :products)))
         (letfn [(do-tests []
                   ;; create a query based on the sandboxed Table
                   (testing "should be able to run the query. Results should come back with correct metadata"

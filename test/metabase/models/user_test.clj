@@ -68,7 +68,7 @@
                     Table                      [table {:name "Round Table", :db_id db-id}]
                     PermissionsGroup           [{group-id :id}]
                     PermissionsGroupMembership [_ {:group_id group-id, :user_id (mt/user->id :rasta)}]]
-      (perms/revoke-permissions! (group/all-users) db-id (:schema table) (:id table))
+      (perms/revoke-data-perms! (group/all-users) db-id (:schema table) (:id table))
       (perms/grant-permissions! group-id (perms/table-read-path table))
       (is (set/subset?
            #{(perms/table-read-path table)}

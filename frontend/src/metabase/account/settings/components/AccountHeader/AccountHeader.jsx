@@ -29,6 +29,7 @@ const AccountHeader = ({ user, path, onChangeLocation }) => {
         ? [{ name: t`Password`, value: "/account/password" }]
         : []),
       { name: t`Login History`, value: "/account/login-history" },
+      { name: t`Notifications`, value: "/account/notifications" },
     ],
     [hasPasswordChange],
   );

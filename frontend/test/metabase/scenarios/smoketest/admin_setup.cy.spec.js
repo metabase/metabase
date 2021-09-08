@@ -625,26 +625,36 @@ describe("smoketest > admin_setup", () => {
 
       // Data access permissions (table)
 
-      cy.findByText("View tables").click();
+      cy.findByText("All Users").click();
+
+      cy.findByText("Sample Dataset").click();
 
       cy.findByText("Products");
-      cy.findByText("SQL Queries").should("not.exist");
 
       // Turn on data access for all users to Test Table
-      cy.icon("close")
-        .eq(6)
+      cy.icon("eye")
+        .eq(2)
         .click();
-      cy.findByText("Grant unrestricted access").click();
+
+      cy.findAllByRole("option")
+        .contains("Unrestricted")
+        .click();
 
       cy.findByText("Change access to this database to limited?");
 
       cy.findByText("Change").click();
 
+      cy.findByText("Marketing").click();
+
+      cy.findByText("Sample Dataset").click();
+
       // Turn on data access for Marketing users to Products
-      cy.icon("close")
-        .eq(2)
+      cy.icon("eye")
+        .eq(1)
         .click();
-      cy.findByText("Grant unrestricted access").click();
+      cy.findAllByRole("option")
+        .contains("Unrestricted")
+        .click();
 
       cy.findByText("Are you sure you want to do this?");
 
@@ -652,7 +662,7 @@ describe("smoketest > admin_setup", () => {
 
       cy.icon("warning");
 
-      cy.findByText("Save Changes").click();
+      cy.findByText("Save changes").click();
 
       cy.contains(
         "All Users will be given access to 1 table in Sample Dataset.",
@@ -665,12 +675,13 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Data permissions").click();
 
-      cy.icon("sql")
-        .last()
+      cy.findByText("data").click();
+      cy.icon("check")
+        .eq(1)
         .click();
-      cy.findByText("Revoke access").click();
+      cy.findByText("No").click();
 
-      cy.findByText("Save Changes").click();
+      cy.findByText("Save changes").click();
 
       cy.contains(
         "data will no longer be able to read or write native queries for Sample Dataset.",
@@ -745,7 +756,7 @@ describe("smoketest > admin_setup", () => {
         .eq(1)
         .click();
       cy.findByText("View collection").click();
-      cy.findByText("Save Changes").click();
+      cy.findByText("Save changes").click();
 
       cy.findByText("Save permissions?");
 
@@ -766,7 +777,7 @@ describe("smoketest > admin_setup", () => {
       // Revoke data access to sub-collection
       cy.icon("eye").click();
       cy.findByText("Revoke access").click();
-      cy.findByText("Save Changes").click();
+      cy.findByText("Save changes").click();
 
       cy.findByText("Save permissions?");
 
@@ -789,7 +800,6 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Ask a question").click();
 
       cy.findByText("Simple question");
-      cy.findByText("Native query").should("not.exist");
 
       cy.signOut();
       cy.signIn("nocollection");

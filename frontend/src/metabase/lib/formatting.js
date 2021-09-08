@@ -4,7 +4,7 @@ import inflection from "inflection";
 import moment from "moment-timezone";
 import Humanize from "humanize-plus";
 import React from "react";
-import { ngettext, msgid } from "ttag";
+import { msgid, ngettext } from "ttag";
 
 import Mustache from "mustache";
 import ReactMarkdown from "react-markdown";
@@ -12,29 +12,34 @@ import ReactMarkdown from "react-markdown";
 import ExternalLink from "metabase/components/ExternalLink";
 
 import {
-  isDate,
-  isNumber,
   isCoordinate,
+  isDate,
+  isEmail,
   isLatitude,
   isLongitude,
+  isNumber,
   isTime,
   isURL,
-  isEmail,
 } from "metabase/lib/schema_metadata";
-import { parseTimestamp, parseTime } from "metabase/lib/time";
+import { parseTime, parseTimestamp } from "metabase/lib/time";
 import { rangeForValue } from "metabase/lib/dataset";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import { decimalCount } from "metabase/visualizations/lib/numeric";
 
 import {
-  getDataFromClicked,
   clickBehaviorIsValid,
+  getDataFromClicked,
 } from "metabase/lib/click-behavior";
 
+import type {
+  DateStyle,
+  TimeEnabled,
+  TimeStyle,
+} from "metabase/lib/formatting/date";
 import {
   DEFAULT_DATE_STYLE,
-  getDateFormatFromStyle,
   DEFAULT_TIME_STYLE,
+  getDateFormatFromStyle,
   getTimeFormatFromStyle,
   hasHour,
 } from "metabase/lib/formatting/date";
@@ -42,18 +47,12 @@ import {
   renderLinkTextForClick,
   renderLinkURLForClick,
 } from "metabase/lib/formatting/link";
-import { NULL_NUMERIC_VALUE, NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import { NULL_DISPLAY_VALUE, NULL_NUMERIC_VALUE } from "metabase/lib/constants";
 
 import type Field from "metabase-lib/lib/metadata/Field";
 import type { Column, Value } from "metabase-types/types/Dataset";
 import type { DatetimeUnit } from "metabase-types/types/Query";
 import type { Moment } from "metabase-types/types";
-
-import type {
-  DateStyle,
-  TimeStyle,
-  TimeEnabled,
-} from "metabase/lib/formatting/date";
 import type { ClickObject } from "metabase-types/types/Visualization";
 
 // a one or two character string specifying the decimal and grouping separator characters
@@ -533,7 +532,7 @@ export function formatDateTimeWithUnit(
     );
   }
 
-  return formatDateTimeWithFormats(value, dateFormat, timeFormat, options);
+  return formatDateTimeWithFormats(m, dateFormat, timeFormat, options);
 }
 
 export function formatTime(value: Value) {
@@ -543,6 +542,33 @@ export function formatTime(value: Value) {
   } else {
     return m.format("LT");
   }
+}
+
+export function formatTimeWithUnit(
+  value: Value,
+  unit: DatetimeUnit,
+  options: FormattingOptions = {},
+) {
+  const m = parseTimestamp(value, unit, options.local);
+  if (!m.isValid()) {
+    return String(value);
+  }
+
+  const timeStyle = options.time_style
+    ? options.time_style
+    : DEFAULT_TIME_STYLE;
+
+  const timeEnabled = options.time_enabled
+    ? options.time_enabled
+    : hasHour(unit)
+    ? "minutes"
+    : null;
+
+  const timeFormat = options.time_format
+    ? options.time_format
+    : getTimeFormatFromStyle(timeStyle, unit, timeEnabled);
+
+  return m.format(timeFormat);
 }
 
 // https://github.com/angular/angular.js/blob/v1.6.3/src/ng/directive/input.js#L27

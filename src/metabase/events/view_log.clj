@@ -9,7 +9,8 @@
   "The `Set` of event topics which we subscribe to for view counting."
   #{:card-create
     :card-read
-    :dashboard-read})
+    :dashboard-read
+    :table-read})
 
 (defonce ^:private ^{:doc "Channel for receiving event notifications we want to subscribe to for view counting."}
   view-log-channel

@@ -37,8 +37,8 @@
 
 (def ^:private invalid-hosts
   #{"169.254.169.254" ; internal metadata for AWS, OpenStack, and Azure
-    "metadata.google.internal" ; internal metadata for GCP
-    })
+    "metadata.google.internal"}) ; internal metadata for GCP
+
 
 (defn- valid-host?
   [^URL url]

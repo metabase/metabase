@@ -135,8 +135,16 @@ An important distinction to make is that you can use a saved SQL query in the _c
 
 Public questions and dashboards can't be sandboxed. Sandboxing works by filtering data based on the group membership and user attributes of an authenticated user — so since a user doesn't have to log in to see a public question or dashboard, Metabase has no knowledge of who that user is.
 
+## Further reading
+
+- [Learn track on permissions][permissions]
+- [Troubleshooting access to columns and rows][troubleshoot-sandbox]
+
 ---
 
 ## Next: embedding Metabase in your web app
 
 The next section will explain [how to embed](full-app-embedding.md) interactive dashboards and charts, or even whole sections of Metabase within your app.
+
+[permissions]: /learn/permissions/index.html
+[troubleshoot-sandbox]: ../troubleshooting-guide/sandboxing.html

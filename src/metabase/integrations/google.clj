@@ -86,9 +86,9 @@
 (s/defn ^:private google-auth-fetch-or-create-user! :- metabase.models.user.UserInstance
   [first-name last-name email]
   (or (db/select-one [User :id :email :last_login] :%lower.email (u/lower-case-en email))
-                      (google-auth-create-new-user! {:first_name first-name
-                                                     :last_name  last-name
-                                                     :email      email})))
+      (google-auth-create-new-user! {:first_name first-name
+                                     :last_name  last-name
+                                     :email      email})))
 
 (defn do-google-auth
   "Call to Google to perform an authentication"

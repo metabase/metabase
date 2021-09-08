@@ -116,6 +116,7 @@ const getMemoizedEntityQuery = createMemoizedSelector(
 class EntityListLoader extends React.Component {
   state = {
     previousList: [],
+    isReloading: this.props.reload,
   };
 
   constructor(props) {
@@ -142,6 +143,8 @@ class EntityListLoader extends React.Component {
       options,
     ) => {
       const result = await fetchList(entityQuery, options);
+
+      this.setState({ isReloading: false });
 
       if (typeof pageSize === "number" && onChangeHasMorePages) {
         onChangeHasMorePages(
@@ -214,10 +217,15 @@ class EntityListLoader extends React.Component {
   };
 
   render() {
-    const { allFetched, allError } = this.props;
-    const { loadingAndErrorWrapper } = this.props;
+    const { allFetched, allError, loadingAndErrorWrapper } = this.props;
+    const { isReloading } = this.state;
+
     return loadingAndErrorWrapper ? (
-      <LoadingAndErrorWrapper loading={!allFetched} error={allError} noWrapper>
+      <LoadingAndErrorWrapper
+        loading={!allFetched || isReloading}
+        error={allError}
+        noWrapper
+      >
         {this.renderChildren}
       </LoadingAndErrorWrapper>
     ) : (

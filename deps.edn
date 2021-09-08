@@ -38,6 +38,7 @@
   com.google.guava/guava                    {:mvn/version "30.1.1-jre"}         ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
   com.h2database/h2                         {:mvn/version "1.4.197"}            ; embedded SQL database
   com.taoensso/nippy                        {:mvn/version "3.1.1"}              ; Fast serialization (i.e., GZIP) library for Clojure
+  com.vladsch.flexmark/flexmark             {:mvn/version "0.62.2"}             ; Markdown parsing
   commons-codec/commons-codec               {:mvn/version "1.15"}               ; Apache Commons -- useful codec util fns
   commons-io/commons-io                     {:mvn/version "2.11.0"}             ; Apache Commons -- useful IO util fns
   commons-validator/commons-validator       {:mvn/version "1.7"                 ; Apache Commons -- useful validation util fns
@@ -111,7 +112,6 @@
   org.eclipse.jetty/jetty-server            {:mvn/version "9.4.43.v20210629"}   ; web server
   org.flatland/ordered                      {:mvn/version "1.5.9"}              ; ordered maps & sets
   org.graalvm.js/js                         {:mvn/version "21.2.0"}           ; JavaScript engine
-  org.graalvm.js/js-scriptengine            {:mvn/version "21.2.0"}
   org.liquibase/liquibase-core              {:mvn/version "3.6.3"               ; migration management (Java lib)
                                              :exclusions  [ch.qos.logback/logback-classic]}
   org.mariadb.jdbc/mariadb-java-client      {:mvn/version "2.6.2"}              ; MySQL/MariaDB driver
@@ -356,6 +356,7 @@
                 :exclude-patterns ["resources/i18n/.*\\.edn$"
                                    "resources/frontend_client"
                                    "resources/frontend_shared"
+                                   "resources/html-entities.edn"
                                    "frontend/src/cljs"
                                    "frontend/test/metabase/lib/urls\\.unit\\.spec\\.js$"
                                    "frontend/test/metabase/lib/formatting\\.unit\\.spec\\.js$"
