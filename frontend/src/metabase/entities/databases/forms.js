@@ -10,26 +10,26 @@ import MetadataSyncScheduleWidget from "metabase/admin/databases/components/widg
 import CacheFieldValuesScheduleWidget from "metabase/admin/databases/components/widgets/CacheFieldValuesScheduleWidget";
 
 const DATABASE_DETAIL_OVERRIDES = {
-  "tunnel-enabled": (engine, details, id) => ({
+  "tunnel-enabled": () => ({
     title: t`Use an SSH-tunnel for database connections`,
     description: t`Some database installations can only be accessed by connecting through an SSH bastion host. This option also provides an extra layer of security when a VPN is not available. Enabling this is usually slower than a direct connection.`,
   }),
-  "use-jvm-timezone": (engine, details, id) => ({
+  "use-jvm-timezone": () => ({
     title: t`Use the Java Virtual Machine (JVM) timezone`,
     description: t`We suggest you leave this off unless you're doing manual timezone casting in many or most of your queries with this data.`,
   }),
-  "include-user-id-and-hash": (engine, details, id) => ({
+  "include-user-id-and-hash": () => ({
     title: t`Include User ID and query hash in queries`,
     description: t`When on, Metabase User ID and query hash get appended to queries on this database, which can be useful for auditing and debugging. However, this causes each query to look distinct, preventing BigQuery from returning cached results, which may increase your costs.`,
   }),
-  "use-srv": (engine, details, id) => ({
+  "use-srv": () => ({
     title: t`Use DNS SRV when connecting`,
     description: t`Using this option requires that provided host is a FQDN.  If connecting to an Atlas cluster, you might need to enable this option.  If you don't know what this means, leave this disabled.`,
   }),
-  "client-id": (engine, details, id) => ({
+  "client-id": (engine, details) => ({
     description: getClientIdDescription(engine, details),
   }),
-  "auth-code": (engine, details, id) => ({
+  "auth-code": (engine, details) => ({
     description: (
       <div>
         <div>{getAuthCodeLink(engine, details)}</div>
@@ -55,22 +55,22 @@ const DATABASE_DETAIL_OVERRIDES = {
       return null;
     },
   }),
-  "tunnel-private-key": (engine, details, id) => ({
+  "tunnel-private-key": () => ({
     title: t`SSH private key`,
     placeholder: t`Paste the contents of your ssh private key here`,
     type: "text",
   }),
-  "tunnel-private-key-passphrase": (engine, details, id) => ({
+  "tunnel-private-key-passphrase": () => ({
     title: t`Passphrase for the SSH private key`,
   }),
-  "tunnel-auth-option": (engine, details, id) => ({
+  "tunnel-auth-option": () => ({
     title: t`SSH Authentication`,
     options: [
       { name: t`SSH Key`, value: "ssh-key" },
       { name: t`Password`, value: "password" },
     ],
   }),
-  "ssl-cert": (engine, details, id) => ({
+  "ssl-cert": () => ({
     title: t`Server SSL certificate chain`,
     placeholder: t`Paste the contents of the server's SSL certificate chain here`,
     type: "text",
