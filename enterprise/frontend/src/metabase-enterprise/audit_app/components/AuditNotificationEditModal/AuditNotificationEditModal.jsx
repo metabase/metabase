@@ -59,7 +59,7 @@ const AuditNotificationEditModal = ({
           key={index}
           value={channel.recipients}
           users={users}
-          onChange={handleRecipientsChange}
+          onChange={recipients => handleRecipientsChange(recipients, index)}
         />
       ))}
     </ModalContent>

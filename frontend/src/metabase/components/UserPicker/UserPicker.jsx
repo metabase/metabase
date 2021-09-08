@@ -20,6 +20,10 @@ const UserPicker = ({ value, users, onChange }) => {
     return users.map(user => ({ label: user.common_name, value: user }));
   }, [users]);
 
+  const idKey = useCallback(value => {
+    return value.id || value.email;
+  }, []);
+
   const valueRenderer = useCallback(value => {
     return value.common_name || value.email;
   }, []);
@@ -49,6 +53,7 @@ const UserPicker = ({ value, users, onChange }) => {
   return (
     <UserPickerRoot>
       <TokenField
+        idKey={idKey}
         value={value}
         valueRenderer={valueRenderer}
         options={options}
