@@ -109,37 +109,44 @@
    (some #(when (instance? DynamicClassLoader %) %)
          (classloader-hierarchy classloader))))
 
+(defn- require* [& args]
+  ;; during compilation, don't load any namespaces. This is going to totally screw up our compilation because
+  ;; namespaces can end up being compiled twice because the topological sort in the build script doesn't take these
+  ;; calls into account
+  (when-not *compile-files*
+    ;; as elsewhere make sure Clojure is using our context classloader (which should normally be true anyway) because
+    ;; that's the one that will have access to the JARs we've added to the classpath at runtime
+    ;;
+    ;; this is done for side-effects
+    (the-classloader)
+    (try
+      (binding [*use-context-classloader* true]
+        ;; serialize requires
+        (locking clojure.lang.RT/REQUIRE_LOCK
+          (apply clojure.core/require args)))
+      (catch Throwable e
+        (throw (ex-info (.getMessage e)
+                        {:classloader      (the-classloader)
+                         :classpath-urls   (map str (dynapath/all-classpath-urls (the-classloader)))
+                         :system-classpath (sort (str/split (System/getProperty "java.class.path") #"[:;]"))}
+                        e))))))
+
 (defn require
   "Just like vanilla `require`, but ensures we're using our shared classloader to do it. Always use this over vanilla
   `require` -- otherwise namespaces might get loaded by the wrong ClassLoader, resulting in weird, hard-to-debug
   errors.
 
   Added benefit -- this is also thread-safe, unlike vanilla require."
-  [& args]
-  ;; during compilation, don't load any namespaces. This is going to totally screw up our compilation because
-  ;; namespaces can end up being compiled twice
-  (when-not *compile-files*
-    ;; as elsewhere make sure Clojure is using our context classloader (which should normally be true anyway) because
-    ;; that's the one that will have access to the JARs we've added to the classpath at runtime
-    (the-classloader)
-    ;; Check whether the lib is already loaded (we only do this in simple cases where with just one arg -- this is
-    ;; most of the calls anyway). If the lib is already loaded we can skip acquiring the lock and expensive stuff like
-    ;; bindings and the try-catch
-    (let [already-done? (and (= (count args) 1)
-                             (symbol? (first args))
-                             ((loaded-libs) (first args)))]
-      (when-not already-done?
-        (try
-          (binding [*use-context-classloader* true]
-            ;; serialize requires
-            (locking clojure.lang.RT/REQUIRE_LOCK
-              (apply clojure.core/require args)))
-          (catch Throwable e
-            (throw (ex-info (.getMessage e)
-                            {:classloader      (the-classloader)
-                             :classpath-urls   (map str (dynapath/all-classpath-urls (the-classloader)))
-                             :system-classpath (sort (str/split (System/getProperty "java.class.path") #"[:;]"))}
-                            e))))))))
+  ([x]
+   ;; Check whether the lib is already loaded (we only do this in simple cases where with just one arg -- this is
+   ;; most of the calls anyway). If the lib is already loaded we can skip acquiring the lock and expensive stuff like
+   ;; bindings and the try-catch
+   (let [already-loaded? (and (symbol? x)
+                              ((loaded-libs) x))]
+     (when-not already-loaded?
+       (require* x))))
+  ([x & more]
+   (apply require* x more)))
 
 (defonce ^:private already-added (atom #{}))
 
