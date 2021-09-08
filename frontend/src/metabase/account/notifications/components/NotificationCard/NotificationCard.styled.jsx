@@ -3,7 +3,7 @@ import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 
-export const NotificationItemRoot = styled.div`
+export const NotificationCardRoot = styled.div`
   display: flex;
   align-items: center;
   padding: 1rem 1.5rem;
@@ -40,7 +40,7 @@ export const NotificationMessage = styled.span`
   font-size: 0.75rem;
   line-height: 0.875rem;
 
-  &:not(:first-child)::before {
+  &:not(:last-child)::after {
     content: " · ";
     white-space: pre;
   }

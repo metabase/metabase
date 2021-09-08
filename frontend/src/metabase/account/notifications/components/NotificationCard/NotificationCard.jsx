@@ -13,7 +13,7 @@ import {
   NotificationContent,
   NotificationIcon,
   NotificationDescription,
-  NotificationItemRoot,
+  NotificationCardRoot,
   NotificationMessage,
   NotificationTitle,
 } from "./NotificationCard.styled";
@@ -38,7 +38,7 @@ const NotificationCard = ({ item, type, user, onUnsubscribe, onArchive }) => {
   }, [item, type, onArchive]);
 
   return (
-    <NotificationItemRoot>
+    <NotificationCardRoot>
       <NotificationContent>
         <NotificationTitle to={formatLink(item, type)}>
           {formatTitle(item, type)}
@@ -68,7 +68,7 @@ const NotificationCard = ({ item, type, user, onUnsubscribe, onArchive }) => {
           onClick={onArchiveClick}
         />
       )}
-    </NotificationItemRoot>
+    </NotificationCardRoot>
   );
 };
 
