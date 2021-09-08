@@ -18,22 +18,32 @@ describe("scenarios > admin > troubleshooting > help", () => {
     cy.findByText("Metabase Admin");
     cy.findByText("Contact support");
   });
+});
 
-  describeWithoutToken("OSS", () => {
-    it("should hide the support link when running Metabase OSS", () => {
-      cy.visit("/admin/troubleshooting/help");
-
-      cy.findByText("Metabase Admin");
-      cy.findByText("Contact support").should("not.exist");
-    });
+describeWithoutToken("scenarios > admin > troubleshooting > help", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
   });
 
-  describeWithToken("EE", () => {
-    it("should add the support link when running Metabase Enterprise", () => {
-      cy.visit("/admin/troubleshooting/help");
+  it("should hide the support link when running Metabase OSS", () => {
+    cy.visit("/admin/troubleshooting/help");
 
-      cy.findByText("Metabase Admin");
-      cy.findByText("Contact support");
-    });
+    cy.findByText("Metabase Admin");
+    cy.findByText("Contact support").should("not.exist");
+  });
+});
+
+describeWithToken("scenarios > admin > troubleshooting > help (EE)", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should add the support link when running Metabase EE", () => {
+    cy.visit("/admin/troubleshooting/help");
+
+    cy.findByText("Metabase Admin");
+    cy.findByText("Contact support");
   });
 });

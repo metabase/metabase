@@ -378,32 +378,6 @@ describe("scenarios > admin > settings", () => {
     cy.findByLabelText("store icon").should("not.exist");
   });
 
-  describeWithoutToken("OSS", () => {
-    it("should show the store link when running on a self-hosted instance", () => {
-      cy.visit("/admin/settings/general");
-
-      cy.findByText("Metabase Admin");
-      cy.findByLabelText("store icon");
-    });
-  });
-
-  describeWithToken("EE", () => {
-    it("should hide Enterprise settings when running Metabase Cloud", () => {
-      setupMetabaseCloud();
-      cy.visit("/admin/settings/general");
-
-      cy.findByText("Site Name");
-      cy.findByText("Enterprise").should("not.exist");
-    });
-
-    it("should hide the store link when running Metabase Enterprise", () => {
-      cy.visit("/admin/settings/general");
-
-      cy.findByText("Metabase Admin");
-      cy.findByLabelText("store icon").should("not.exist");
-    });
-  });
-
   describe(" > slack settings", () => {
     it("should present the form and display errors", () => {
       cy.visit("/admin/settings/slack");
@@ -414,6 +388,42 @@ describe("scenarios > admin > settings", () => {
       cy.findByText("Save changes").click();
       cy.contains("Looks like we ran into some problems");
     });
+  });
+});
+
+describeWithoutToken("scenarios > admin > settings (OSS)", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should show the store link when running Metabase OSS", () => {
+    cy.visit("/admin/settings/general");
+
+    cy.findByText("Metabase Admin");
+    cy.findByLabelText("store icon");
+  });
+});
+
+describeWithToken("scenarios > admin > settings (EE)", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should hide Enterprise page when running Metabase Cloud", () => {
+    setupMetabaseCloud();
+    cy.visit("/admin/settings/general");
+
+    cy.findByText("Site Name");
+    cy.findByText("Enterprise").should("not.exist");
+  });
+
+  it("should hide the store link when running Metabase EE", () => {
+    cy.visit("/admin/settings/general");
+
+    cy.findByText("Metabase Admin");
+    cy.findByLabelText("store icon").should("not.exist");
   });
 });
 
