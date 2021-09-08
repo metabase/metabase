@@ -20,10 +20,6 @@ const DASHBOARD = {
   archived: false,
 };
 
-console.warning = jest.fn();
-console.warn = jest.fn();
-console.error = jest.fn();
-
 function mockCachingEnabled(enabled = true) {
   const original = MetabaseSettings.get;
   const spy = jest.spyOn(MetabaseSettings, "get");
