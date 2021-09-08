@@ -2,7 +2,7 @@ import { connect } from "react-redux";
 import _ from "underscore";
 import Pulses from "metabase/entities/pulses";
 import Users from "metabase/entities/users";
-import AuditNotificationEditModal from "../components/AuditNotificationEditModal";
+import AuditNotificationEditModal from "../../components/AuditNotificationEditModal";
 
 const mapStateToProps = (state, { pulse }) => ({
   item: pulse,
