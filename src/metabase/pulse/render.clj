@@ -146,19 +146,21 @@
          body-attachments :attachments
          text             :render/text}                  (render-pulse-card-body render-type timezone-id card results)]
     (cond-> {:attachments (merge title-attachments body-attachments)
-             :content     [:a {:href        (card-href card)
-                               :target      "_blank"
-                               ;; prevents entire linked element from dragging when dragging horizontal scrollbar
-                               :ondragstart "return false;"
-                               :style       (style/style
-                                             (style/section-style)
-                                             {:display         :block
-                                              :text-decoration :none})}
-                           title
-                           description
-                           [:div {:style (style/style {:margin-top :10px
-                                                       :overflow-x :auto})}
-                            pulse-body]]}
+             :content [:p
+                       ;; Provide a horizontal scrollbar for tables that overflow container width.
+                       ;; Surrounding <p> element prevents buggy behavior when dragging scrollbar.
+                       [:div {:style (style/style {:overflow-x :auto})}
+                         [:a {:href        (card-href card)
+                              :target      "_blank"
+                              :style       (style/style
+                                            (style/section-style)
+                                            {:display         :block
+                                             :text-decoration :none})}
+                          title
+                          description
+                          [:div {:style (style/style {:display    :block
+                                                      :margin-top :10px})}
+                           pulse-body]]]]}
       text (assoc :render/text text))))
 
 (defn render-pulse-card-for-display
