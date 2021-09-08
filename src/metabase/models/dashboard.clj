@@ -214,6 +214,12 @@
                (nil? (:description dashboard₂)) "removed the description"
                :else (format "changed the description from \"%s\" to \"%s\""
                              (:description dashboard₁) (:description dashboard₂))))
+           (when (:cache_ttl changes)
+             (cond
+               (nil? (:cache_ttl dashboard₁)) "added a cache ttl"
+               (nil? (:cache_ttl dashboard₂)) "removed the cache ttl"
+               :else (format "changed the cache ttl from \"%s\" to \"%s\""
+                             (:cache_ttl dashboard₁) (:cache_ttl dashboard₂))))
            (when (or (:cards changes) (:cards removals))
              (let [num-cards₁  (count (:cards dashboard₁))
                    num-cards₂  (count (:cards dashboard₂))]
