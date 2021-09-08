@@ -31,7 +31,7 @@ export function DatabaseCacheTTLField({ field }) {
   useEffect(() => {
     if (mode === MODE.INSTANCE_DEFAULT) {
       field.onChange(INSTANCE_DEFAULT_CACHE_TTL);
-    } else if (!field.value) {
+    } else if (field.value == null) {
       field.onChange(DEFAULT_CUSTOM_CACHE_TTL);
     }
   }, [field, mode]);
