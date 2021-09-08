@@ -1,11 +1,18 @@
 import _ from "underscore";
-import { restore, popover, setupDummySMTP } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  setupDummySMTP,
+  describeWithToken,
+} from "__support__/e2e/cypress";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
+import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { normal, admin } = USERS;
 const { DATA_GROUP } = USER_GROUPS;
 const TOTAL_USERS = Object.entries(USERS).length;
 const TOTAL_GROUPS = Object.entries(USER_GROUPS).length;
+const { ORDERS_ID } = SAMPLE_DATASET;
 
 describe("scenarios > admin > people", () => {
   beforeEach(() => {
@@ -275,6 +282,43 @@ describe("scenarios > admin > people", () => {
   });
 });
 
+describeWithToken("scenarios > admin > people", () => {
+  const { first_name, last_name } = admin;
+  const fullName = `${first_name} ${last_name}`;
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    cy.getCurrentUser().then(({ body: { id: user_id } }) => {
+      cy.createQuestionAndDashboard({
+        questionDetails: getQuestionDetails(),
+      }).then(({ body: { card_id, dashboard_id } }) => {
+        cy.createAlert(getAlertDetails({ user_id, card_id }));
+        cy.createPulse(getPulseDetails({ card_id, dashboard_id }));
+      });
+    });
+  });
+
+  it("should unsubscribe a user from all subscriptions and alerts", () => {
+    cy.visit("/admin/people");
+    showUserOptions(fullName);
+
+    popover().within(() => {
+      cy.findByText("Unsubscribe from all subscriptions / alerts").click();
+    });
+
+    popover().within(() => {
+      cy.findByText(fullName, { exact: false });
+      cy.findByText("Confirm").click();
+      cy.findByText("Confirm").should("not.exist");
+    });
+
+    cy.visit("/account/notifications");
+    cy.findByText("Question").should("not.exist");
+    cy.findByText("Dashboard").should("not.exist");
+  });
+});
+
 function showUserOptions(full_name) {
   cy.findByText(full_name)
     .closest("tr")
@@ -311,4 +355,56 @@ function generateGroups(count) {
   _.range(count).map(index => {
     cy.request("POST", "api/permissions/group", { name: "Group" + index });
   });
+}
+
+function getQuestionDetails() {
+  return {
+    name: "Question",
+    query: {
+      "source-table": ORDERS_ID,
+    },
+  };
+}
+
+function getAlertDetails({ user_id, card_id }) {
+  return {
+    card: {
+      id: card_id,
+      include_csv: false,
+      include_xls: false,
+    },
+    channels: [
+      {
+        enabled: true,
+        channel_type: "email",
+        schedule_type: "hourly",
+        recipients: [
+          {
+            id: user_id,
+          },
+        ],
+      },
+    ],
+  };
+}
+
+function getPulseDetails({ card_id, dashboard_id }) {
+  return {
+    name: "Dashboard",
+    dashboard_id,
+    cards: [
+      {
+        id: card_id,
+        include_csv: false,
+        include_xls: false,
+      },
+    ],
+    channels: [
+      {
+        enabled: true,
+        channel_type: "slack",
+        schedule_type: "hourly",
+      },
+    ],
+  };
 }
