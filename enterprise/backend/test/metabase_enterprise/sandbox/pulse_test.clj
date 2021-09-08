@@ -118,7 +118,6 @@
                                                                                  :recipients   [{:id    (mt/user->id :rasta)
                                                                                                  :email "rasta@metabase.com"}]}]})
                 (let [[{html :content} {_icon :content} {attachment :content}] (get-in @mt/inbox ["rasta@metabase.com" 0 :body])]
-                  (def my-attachment attachment)
                   (testing "email"
                     (is (= 22
                            (html->row-count html))))

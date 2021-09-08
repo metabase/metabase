@@ -60,7 +60,7 @@
 
 (defn- logo-url []
   (let [url   (public-settings/application-logo-url)
-        color (public-settings/application-color)]
+        color (render.style/primary-color)]
     (cond
       (= url "app/assets/img/logo.svg") "http://static.metabase.com/email_logo.png"
       ;; NOTE: disabling whitelabeled URLs for now since some email clients don't render them correctly
@@ -71,7 +71,7 @@
 
 (defn- icon-bundle
   [icon-name]
-  (let [color     (public-settings/application-color)
+  (let [color     (render.style/primary-color)
         png-bytes (js-svg/icon icon-name color)]
      (-> (image-bundle/make-image-bundle :attachment png-bytes)
          (image-bundle/image-bundle->attachment))))
@@ -91,11 +91,18 @@
 
 ;;; Various Context Helper Fns. Used to build Stencil template context
 
-(defn- common-context []
-  {:applicationName    (public-settings/application-name)
-   :applicationColor   (public-settings/application-color)
-   :applicationLogoUrl (logo-url)
-   :buttonStyle        (button-style (public-settings/application-color))})
+(defn- common-context
+  "Context that is used across multiple email templates, and that is the same for all emails"
+  []
+  {:applicationName           (public-settings/application-name)
+   :applicationColor          (render.style/primary-color)
+   :applicationLogoUrl        (logo-url)
+   :buttonStyle               (button-style (render.style/primary-color))
+   :colorTextLight            render.style/color-text-light
+   :colorTextMedium           render.style/color-text-medium
+   :colorTextDark             render.style/color-text-dark
+   :notificationManagementUrl (url/notification-management-url)
+   :siteUrl                   (public-settings/site-url)})
 
 (defn- random-quote-context []
   (let [data-quote (quotation/random-quote)]
@@ -298,11 +305,7 @@
           :dashboardDescription      (:description dashboard)
           :creator                   (-> pulse :creator :common_name)
           :sectionStyle              (render.style/style (render.style/section-style))
-          :colorTextLight            render.style/color-text-light
-          :colorTextMedium           render.style/color-text-medium
-          :colorTextDark             render.style/color-text-dark
-          :siteUrl                   (public-settings/site-url)
-          :notificationManagementUrl (url/notification-management-url)}
+          :siteUrl                   (public-settings/site-url)}
          (pulse-link-context pulse)))
 
 (defn- create-temp-file
@@ -411,7 +414,7 @@
   (let [rendered-cards  (binding [render/*include-title* true]
                           (mapv #(render-result-card timezone %) results))
         icon-name       (case message-type
-                          :alert :alert
+                          :alert :bell
                           :pulse :dashboard)
         icon-attachment (first (map make-message-attachment (icon-bundle icon-name)))
         message-body    (assoc message-context :pulse   (html (vec (cons :div (map :content rendered-cards))))
@@ -454,26 +457,28 @@
   (or (:card alert)
       (first (:cards alert))))
 
-(defn- default-alert-context
+(defn- common-alert-context
+  "Template context that is applicable to all alert templates, including alert management templates
+  (e.g. the subscribed/unsubscribed emails)"
   ([alert]
-   (default-alert-context alert nil))
+   (common-alert-context alert nil))
   ([alert alert-condition-map]
    (let [{card-id :id, card-name :name} (first-card alert)]
-     (merge {:emailType                 "alert"
-             ;; TODO reduce duplication of context fields
-             :title                     card-name
-             :titleUrl                  (url/card-url card-id)
+     (merge (common-context)
+            {:emailType                 "alert"
              :questionName              card-name
-             :creator                   (-> alert :creator :common_name)
              :questionURL               (url/card-url card-id)
-             :sectionStyle              (render.style/section-style)
-             :colorTextLight            render.style/color-text-light
-             :colorTextMedium           render.style/color-text-medium
-             :colorTextDark             render.style/color-text-dark
-             :siteUrl                   (public-settings/site-url)
-             :notificationManagementUrl (url/notification-management-url)}
+             :sectionStyle              (render.style/section-style)}
             (when alert-condition-map
               {:alertCondition (get alert-condition-map (pulse->alert-condition-kwd alert))})))))
+
+(defn- alert-context
+  "Context that is applicable only to the actual alert template (not alert management templates)"
+  [alert]
+  (let [{card-id :id, card-name :name} (first-card alert)]
+    {:title    card-name
+     :titleUrl (url/card-url card-id)
+     :creator  (-> alert :creator :common_name)}))
 
 (defn- alert-results-condition-text [goal-value]
   {:meets (format "reached its goal of %s" goal-value)
@@ -483,7 +488,9 @@
 (defn render-alert-email
   "Take a pulse object and list of results, returns an array of attachment objects for an email"
   [timezone {:keys [alert_first_only] :as alert} results goal-value]
-  (let [message-ctx  (default-alert-context alert (alert-results-condition-text goal-value))]
+  (let [message-ctx  (merge
+                      (common-alert-context alert (alert-results-condition-text goal-value))
+                      (alert-context alert))]
     (render-message-body :alert
                          (assoc message-ctx :firstRunOnly? alert_first_only)
                          timezone
@@ -523,26 +530,26 @@
   "Send out the initial 'new alert' email to the `creator` of the alert"
   [{:keys [creator] :as alert}]
   (send-email! creator "You set up an alert" new-alert-template
-               (default-alert-context alert alert-condition-text)))
+               (common-alert-context alert alert-condition-text)))
 
 (defn send-you-unsubscribed-alert-email!
   "Send an email to `who-unsubscribed` letting them know they've unsubscribed themselves from `alert`"
   [alert who-unsubscribed]
   (send-email! who-unsubscribed "You unsubscribed from an alert" you-unsubscribed-template
-               (default-alert-context alert)))
+               (common-alert-context alert)))
 
 (defn send-admin-unsubscribed-alert-email!
   "Send an email to `user-added` letting them know `admin` has unsubscribed them from `alert`"
   [alert user-added {:keys [first_name last_name] :as admin}]
   (let [admin-name (format "%s %s" first_name last_name)]
     (send-email! user-added "You’ve been unsubscribed from an alert" admin-unsubscribed-template
-                 (assoc (default-alert-context alert) :adminName admin-name))))
+                 (assoc (common-alert-context alert) :adminName admin-name))))
 
 (defn send-you-were-added-alert-email!
   "Send an email to `user-added` letting them know `admin-adder` has added them to `alert`"
   [alert user-added {:keys [first_name last_name] :as admin-adder}]
   (let [subject (format "%s %s added you to an alert" first_name last_name)]
-    (send-email! user-added subject added-template (default-alert-context alert alert-condition-text))))
+    (send-email! user-added subject added-template (common-alert-context alert alert-condition-text))))
 
 (def ^:private not-working-subject "One of your alerts has stopped working")
 
@@ -550,17 +557,17 @@
   "Email to notify users when a card associated to their alert has been archived"
   [alert user {:keys [first_name last_name] :as archiver}]
   (let [deletion-text (format "the question was archived by %s %s" first_name last_name)]
-    (send-email! user not-working-subject stopped-template (assoc (default-alert-context alert) :deletionCause deletion-text))))
+    (send-email! user not-working-subject stopped-template (assoc (common-alert-context alert) :deletionCause deletion-text))))
 
 (defn send-alert-stopped-because-changed-email!
   "Email to notify users when a card associated to their alert changed in a way that invalidates their alert"
   [alert user {:keys [first_name last_name] :as archiver}]
   (let [edited-text (format "the question was edited by %s %s" first_name last_name)]
-    (send-email! user not-working-subject stopped-template (assoc (default-alert-context alert) :deletionCause edited-text))))
+    (send-email! user not-working-subject stopped-template (assoc (common-alert-context alert) :deletionCause edited-text))))
 
 (defn send-admin-deleted-your-alert!
   "Email to notify users when an admin has deleted their alert"
   [alert user {:keys [first_name last_name] :as deletor}]
   (let [subject (format "%s %s deleted an alert you created" first_name last_name)
         admin-name (format "%s %s" first_name last_name)]
-    (send-email! user subject deleted-template (assoc (default-alert-context alert) :adminName admin-name))))
+    (send-email! user subject deleted-template (assoc (common-alert-context alert) :adminName admin-name))))
