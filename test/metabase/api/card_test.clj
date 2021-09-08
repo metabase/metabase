@@ -58,6 +58,10 @@
    :last_query_start    nil
    :result_metadata     nil})
 
+;; Used in dashboard tests
+(def card-defaults-no-hydrate
+  (dissoc card-defaults :average_query_time :last_query_start))
+
 (defn mbql-count-query
   ([]
    (mbql-count-query (mt/id) (mt/id :venues)))

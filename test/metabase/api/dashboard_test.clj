@@ -224,7 +224,7 @@
                                       :created_at             true
                                       :parameter_mappings     []
                                       :visualization_settings {}
-                                      :card                   (merge card-api-test/card-defaults
+                                      :card                   (merge card-api-test/card-defaults-no-hydrate
                                                                      {:name                   "Dashboard Test Card"
                                                                       :creator_id             (mt/user->id :rasta)
                                                                       :collection_id          true
@@ -273,7 +273,7 @@
                                                                       :parameter_id "foo"
                                                                       :target       ["dimension" ["field" field-id nil]]}]
                                             :visualization_settings {}
-                                            :card                   (merge card-api-test/card-defaults
+                                            :card                   (merge card-api-test/card-defaults-no-hydrate
                                                                            {:name                   "Dashboard Test Card"
                                                                             :creator_id             (mt/user->id :rasta)
                                                                             :collection_id          true
