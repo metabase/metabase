@@ -6,7 +6,7 @@ describe("scenarios > admin > settings > email settings", () => {
     cy.signInAsAdmin();
   });
 
-  it.only("should be able to save email settings (metabase#17615)", () => {
+  it("should be able to save email settings (metabase#17615)", () => {
     cy.visit("/admin/settings/email");
     cy.findByPlaceholderText("smtp.yourservice.com")
       .type("localhost")
