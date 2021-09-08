@@ -2,9 +2,8 @@
   (:require [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.api.common :as api]
-            [metabase.models
-             :refer
-             [Card Collection Dashboard DashboardCard Database Pulse PulseCard PulseChannel PulseChannelRecipient Table User]]
+            [metabase.models :refer [Card Collection Dashboard DashboardCard Database Pulse PulseCard PulseChannel
+                                     PulseChannelRecipient Table User]]
             [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
             [metabase.models.pulse :as pulse]
