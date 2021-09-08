@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo } from "react";
 import PropTypes from "prop-types";
+import { t } from "ttag";
 import TokenField from "metabase/components/TokenField";
 import MetabaseUtils from "metabase/lib/utils";
 import {
@@ -16,6 +17,10 @@ const propTypes = {
 };
 
 const UserPicker = ({ value, users, onChange }) => {
+  const placeholder = !value.length
+    ? t`Enter user names or email addresses`
+    : null;
+
   const options = useMemo(() => {
     return users.map(user => ({ label: user.common_name, value: user }));
   }, [users]);
@@ -60,6 +65,7 @@ const UserPicker = ({ value, users, onChange }) => {
         optionRenderer={optionRenderer}
         filterOption={filterOption}
         parseFreeformValue={parseFreeformValue}
+        placeholder={placeholder}
         multi={true}
         onChange={onChange}
       />
