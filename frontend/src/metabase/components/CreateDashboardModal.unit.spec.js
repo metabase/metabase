@@ -1,5 +1,4 @@
 import React from "react";
-import _ from "underscore";
 import { Provider } from "react-redux";
 import { reducer as form } from "redux-form";
 import { fireEvent, render, screen } from "@testing-library/react";
