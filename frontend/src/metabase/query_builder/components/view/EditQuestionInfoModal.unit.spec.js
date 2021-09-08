@@ -19,12 +19,22 @@ const QUESTION = {
   archived: false,
 };
 
-function mockCachingEnabled(enabled = true) {
+function mockCachingSettings({
+  enabled = true,
+  cacheTTLMultiplier,
+  minCacheThreshold,
+} = {}) {
   const original = MetabaseSettings.get;
   const spy = jest.spyOn(MetabaseSettings, "get");
   spy.mockImplementation(key => {
     if (key === "enable-query-caching") {
       return enabled;
+    }
+    if (enabled && key === "query-caching-ttl-ratio") {
+      return cacheTTLMultiplier();
+    }
+    if (enabled && key === "query-caching-min-ttl") {
+      return minCacheThreshold;
     }
     return original(key);
   });
@@ -33,7 +43,16 @@ function mockCachingEnabled(enabled = true) {
 function setup({
   databaseCacheTTL = null,
   mockQuestionUpdateResponse = true,
+  cachingEnabled = true,
+  cacheTTLMultiplier = 10,
+  minCacheThreshold = 0,
 } = {}) {
+  mockCachingSettings({
+    enabled: cachingEnabled,
+    cacheTTLMultiplier,
+    minCacheThreshold,
+  });
+
   const onSave = jest.fn();
   const onClose = jest.fn();
 
@@ -190,7 +209,6 @@ describe("EditQuestionInfoModal", () => {
   describe("Cache TTL field", () => {
     describe("OSS", () => {
       it("is not shown", () => {
-        mockCachingEnabled();
         setup();
         expect(screen.queryByText("More options")).not.toBeInTheDocument();
         expect(
@@ -200,10 +218,6 @@ describe("EditQuestionInfoModal", () => {
     });
 
     describe("EE", () => {
-      beforeEach(() => {
-        mockCachingEnabled();
-      });
-
       beforeEach(() => {
         PLUGIN_CACHING.cacheTTLFormField = {
           name: "cache_ttl",
@@ -247,8 +261,7 @@ describe("EditQuestionInfoModal", () => {
 
       describe("caching disabled", () => {
         it("is not shown if caching is disabled", () => {
-          mockCachingEnabled(false);
-          setup();
+          setup({ cachingEnabled: false });
           expect(screen.queryByText("More options")).not.toBeInTheDocument();
           expect(
             screen.queryByText("Cache all question results for"),
@@ -256,8 +269,7 @@ describe("EditQuestionInfoModal", () => {
         });
 
         it("can still submit the form", done => {
-          mockCachingEnabled(false);
-          setup({ mockQuestionUpdateResponse: false });
+          setup({ cachingEnabled: false, mockQuestionUpdateResponse: false });
           setupUpdateRequestAssertion(done, {
             name: "Test",
           });
