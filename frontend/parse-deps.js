@@ -124,15 +124,51 @@ function filterDependents() {
   start();
 }
 
+function filterAllDependents() {
+  const rl = readline.createInterface({
+    input: process.stdin,
+  });
+
+  const allDependents = dependents();
+  let filteredDependents = [];
+
+  const start = async () => {
+    for await (const line of rl) {
+      const name = line
+        .trim()
+        .replace(/\.js$/, "")
+        .replace(/\.jsx$/, "");
+      if (name.length > 0) {
+        const list = allDependents[name];
+        if (list && Array.isArray(list) && list.length > 0) {
+          filteredDependents.push(...list);
+        }
+      }
+    }
+    filteredDependents = Array.from(new Set(filteredDependents)); // unique
+    for (let i = 0; i < filteredDependents.length; ++i) {
+      const name = filteredDependents[i];
+      const list = allDependents[name];
+      if (list && Array.isArray(list) && list.length > 0) {
+        const newAddition = list.filter(e => filteredDependents.indexOf(e) < 0);
+        filteredDependents.push(...newAddition);
+      }
+    }
+    console.log(filteredDependents.sort().join("\n"));
+  };
+  start();
+}
+
 const USAGE = `
 parse-deps cmd
 
 cmd must be one of:
 
-            files   Display list of source files
-     dependencies   Show the dependencies of each source file
-       dependents   Show the dependents of each source file
-filter-dependents   Filter dependents based on stdin
+                files   Display list of source files
+         dependencies   Show the dependencies of each source file
+           dependents   Show the dependents of each source file
+    filter-dependents   Filter direct dependents based on stdin
+filter-all-dependents   Filter all inderect and direct dependents based on stdin
 `;
 
 function main(args) {
@@ -150,6 +186,9 @@ function main(args) {
         break;
       case "filter-dependents":
         filterDependents();
+        break;
+      case "filter-all-dependents":
+        filterAllDependents();
         break;
       default:
         console.log(USAGE);
