@@ -69,10 +69,10 @@
       (data-uri-svg? url)               (themed-image-url url color)
       :else                             url)))
 
-(defn- dashboard-icon-bundle
-  []
+(defn- icon-bundle
+  [icon-name]
   (let [color     (public-settings/application-color)
-        png-bytes (js-svg/icon :dashboard color)]
+        png-bytes (js-svg/icon icon-name color)]
      (-> (image-bundle/make-image-bundle :attachment png-bytes)
          (image-bundle/image-bundle->attachment))))
 
@@ -409,7 +409,10 @@
 (defn- render-message-body [message-type message-context timezone dashboard results]
   (let [rendered-cards  (binding [render/*include-title* true]
                           (mapv #(render-result-card timezone %) results))
-        icon-attachment (first (map make-message-attachment (dashboard-icon-bundle)))
+        icon-name       (case message-type
+                          :alert :alert
+                          :pulse :dashboard)
+        icon-attachment (first (map make-message-attachment (icon-bundle icon-name)))
         message-body    (assoc message-context :pulse   (html (vec (cons :div (map :content rendered-cards))))
                                                :iconCid (:content-id icon-attachment))
         attachments     (apply merge (map :attachments rendered-cards))]
@@ -428,7 +431,7 @@
 (defn render-pulse-email
   "Take a pulse object and list of results, returns an array of attachment objects for an email"
   [timezone pulse dashboard results]
-  (render-message-body :alert
+  (render-message-body :pulse
                        (pulse-context pulse dashboard)
                        timezone
                        dashboard
