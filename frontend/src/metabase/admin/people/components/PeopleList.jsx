@@ -6,8 +6,8 @@ import moment from "moment";
 import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
-
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_ADMIN_USER_MENU_ITEMS } from "metabase/plugins";
 
 import EntityMenu from "metabase/components/EntityMenu";
 import Icon from "metabase/components/Icon";
@@ -90,6 +90,36 @@ export default class PeopleList extends Component {
     }
   }
 
+  isCurrentUser(user) {
+    return user.id === this.props.user?.id;
+  }
+
+  getUserMenuItems(user) {
+    const items = [
+      {
+        title: t`Edit user`,
+        link: Urls.editUser(user.id),
+      },
+      {
+        title: t`Reset password`,
+        link: Urls.resetPassword(user.id),
+      },
+      !this.isCurrentUser(user) && {
+        title: t`Deactivate user`,
+        link: Urls.deactivateUser(user.id),
+      },
+    ];
+
+    if (PLUGIN_ADMIN_USER_MENU_ITEMS.length > 0) {
+      return PLUGIN_ADMIN_USER_MENU_ITEMS.reduce(
+        (items, update) => update(items, user),
+        items,
+      );
+    }
+
+    return items;
+  }
+
   componentDidUpdate(prevProps) {
     this.reloadIfUserActivityChanged(prevProps.users, this.props.users);
   }
@@ -108,7 +138,6 @@ export default class PeopleList extends Component {
 
     const { page, pageSize, status } = query;
 
-    const isCurrentUser = u => user && user.id === u.id;
     const showDeactivated = status === USER_STATUS.deactivated;
     const hasUsers = users.length > 0;
 
@@ -183,7 +212,7 @@ export default class PeopleList extends Component {
                         <UserGroupSelect
                           groups={groups}
                           userId={user.id}
-                          isCurrentUser={isCurrentUser(user)}
+                          isCurrentUser={this.isCurrentUser(user)}
                         />
                       </td>
                       <td>
@@ -194,20 +223,7 @@ export default class PeopleList extends Component {
                       <td className="text-right">
                         <EntityMenu
                           triggerIcon="ellipsis"
-                          items={[
-                            {
-                              title: t`Edit user`,
-                              link: Urls.editUser(user.id),
-                            },
-                            {
-                              title: t`Reset password`,
-                              link: Urls.resetPassword(user.id),
-                            },
-                            !isCurrentUser(user) && {
-                              title: t`Deactivate user`,
-                              link: Urls.deactivateUser(user.id),
-                            },
-                          ]}
+                          items={this.getUserMenuItems(user)}
                         />
                       </td>
                     </React.Fragment>

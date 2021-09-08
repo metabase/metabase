@@ -57,6 +57,7 @@ declare module "underscore" {
   declare function contains<T>(a: Array<T>, val: T): boolean;
 
   declare function initial<T>(a: Array<T>, n?: number): Array<T>;
+  declare function last<T>(a: Array<T>, n?: number): Array<T>;
   declare function rest<T>(a: Array<T>, index?: number): Array<T>;
 
   declare function sortBy<T>(a: T[], iteratee: string | ((val: T) => any)): T[];

@@ -5,17 +5,17 @@ import MetabaseSettings from "metabase/lib/settings";
 // NOTE: temporarily use "latest" for Enterprise Edition docs
 MetabaseSettings.docsTag = () => "latest";
 MetabaseSettings.isEnterprise = () => true;
+
 // PLUGINS:
 
-// import "./management";
-
 import "./audit_app";
-import "./sandboxes";
 import "./auth";
 import "./collections";
-import "./whitelabel";
 import "./embedding";
-import "./store";
-import "./snippets";
-import "./sharing";
 import "./moderation";
+import "./notifications";
+import "./sandboxes";
+import "./sharing";
+import "./snippets";
+import "./store";
+import "./whitelabel";
