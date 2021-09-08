@@ -109,7 +109,7 @@
                                                      ;; ["#text" "1/1/2020"]
                                                      (re-matches #"\d+/\d+/\d{4}" %)))))
               text-nodes (->> svg-hiccup (tree-seq vector? rest) (filter text-node?))]
-          (is (= (s/valid? spec text-nodes) true)
+          (is (= true (s/valid? spec text-nodes))
               text-nodes))))))
 
 (deftest timelineseries-bar-test
@@ -137,7 +137,7 @@
                                                      ;; ["#text" "1/1/2020"]
                                                      (re-matches #"\d+/\d+/\d{4}" %)))))
               text-nodes (->> svg-hiccup (tree-seq vector? rest) (filter text-node?))]
-          (is (= (s/valid? spec text-nodes) true)
+          (is (= true (s/valid? spec text-nodes))
               text-nodes))))))
 
 (deftest categorical-donut-test
