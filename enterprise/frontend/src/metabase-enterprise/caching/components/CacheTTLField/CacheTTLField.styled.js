@@ -8,7 +8,7 @@ export const CacheTTLFieldContainer = styled.div`
 `;
 
 export const FieldText = styled.span`
-  color: ${color("text-dark")};
+  color: ${props => color(props.hasError ? "error" : "text-dark")};
   ${props => css`margin-${props.margin}: 10px;`}
 `;
 
@@ -16,7 +16,7 @@ export const Input = styled(NumericInput)`
   width: 50px;
   text-align: center;
 
-  color: ${color("text-dark")};
+  color: ${props => color(props.hasError ? "error" : "text-dark")};
   font-weight: bold;
   padding: 0.75em;
 

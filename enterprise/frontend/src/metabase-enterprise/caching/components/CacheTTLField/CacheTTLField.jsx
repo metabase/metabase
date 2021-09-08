@@ -12,20 +12,27 @@ const propTypes = {
   field: PropTypes.shape({
     name: PropTypes.string.isRequired,
     value: PropTypes.number,
+    error: PropTypes.string,
   }),
   message: PropTypes.string,
 };
 
 export function CacheTTLField({ field, message }) {
+  const hasError = !!field.error;
   return (
     <CacheTTLFieldContainer>
-      {message && <FieldText margin="right">{message}</FieldText>}
+      {message && (
+        <FieldText margin="right" hasError={hasError}>
+          {message}
+        </FieldText>
+      )}
       <Input
         aria-labelledby={`${field.name}-label`}
         {...formDomOnlyProps(field)}
         value={field.value || 0}
+        hasError={hasError}
       />
-      <FieldText margin="left">{t`hours`}</FieldText>
+      <FieldText margin="left" hasError={hasError}>{t`hours`}</FieldText>
     </CacheTTLFieldContainer>
   );
 }
