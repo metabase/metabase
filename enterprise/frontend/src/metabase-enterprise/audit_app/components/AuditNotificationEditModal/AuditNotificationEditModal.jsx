@@ -50,10 +50,10 @@ const AuditNotificationEditModal = ({
     <ModalContent
       title={getTitleMessage(item, type)}
       footer={[
-        <Button key="delete" danger borderless onClick={handleDeleteClick}>
+        error ? <FormMessage key="message" formError={error} /> : null,
+        <Button key="delete" borderless onClick={handleDeleteClick}>
           {getDeleteMessage(type)}
         </Button>,
-        error ? <FormMessage key="message" formError={error} /> : null,
         <Button key="cancel" onClick={onClose}>
           {t`Cancel`}
         </Button>,
