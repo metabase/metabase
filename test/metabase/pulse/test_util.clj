@@ -78,7 +78,6 @@
                                                                  :id   "FOO"})]
      (do-with-site-url (fn [] ~@body))))
 
-
 (def png-attachment
   {:type         :inline
    :content-id   true

@@ -24,7 +24,8 @@
 (defn- rasta-pulse-email [& [email]]
   (mt/email-to :rasta (merge {:subject "Pulse: Pulse Name",
                               :body  [{"Pulse Name" true}
-                                      png-attachment png-attachment]}
+                                      png-attachment
+                                      png-attachment]}
                              email)))
 
 (defn- rasta-alert-email
@@ -186,8 +187,8 @@
 
 (deftest basic-table-test
   (tests {:pulse {:skip_if_empty false}}
-    "19 results, so no attachment"
-    {:card (checkins-query-card {:aggregation nil, :limit 19})
+    "9 results, so no attachment"
+    {:card (checkins-query-card {:aggregation nil, :limit 9})
 
      :fixture
      (fn [_ thunk]
@@ -200,7 +201,8 @@
         (is (= (rasta-pulse-email {:body [{"Pulse Name"                                         true
                                            "More results have been included"                    false
                                            "ID</th>"                                            true
-                                           "<a href=\\\"https://metabase.com/testmb/dashboard/" false}]})
+                                           "<a href=\\\"https://metabase.com/testmb/dashboard/" false}
+                                          png-attachment]})
                (mt/summarize-multipart-email
                 #"Pulse Name"
                 #"More results have been included"
@@ -229,8 +231,8 @@
             (is (= [nil]
                    (output @#'render.body/attached-results-text))))))}}
 
-    "21 results results in a CSV being attached and a table being sent"
-    {:card (checkins-query-card {:aggregation nil, :limit 21})
+    "11 results results in a CSV being attached and a table being sent"
+    {:card (checkins-query-card {:aggregation nil, :limit 11})
 
      :assert
      {:email
@@ -238,6 +240,7 @@
         (is (= (rasta-pulse-email {:body [{"Pulse Name"                      true
                                            "More results have been included" true
                                            "ID</th>"                         true}
+                                          png-attachment
                                           csv-attachment]})
                (mt/summarize-multipart-email
                 #"Pulse Name"
@@ -253,7 +256,7 @@
      {:email
       (fn [_ _]
         (is (= (rasta-alert-email "Pulse: Pulse Name"
-                                  [test-card-result png-attachment csv-attachment])
+                                  [test-card-result png-attachment png-attachment csv-attachment])
                (mt/summarize-multipart-email test-card-regex))))}}
 
     "With a \"rows\" type of pulse (table visualization) we should include the CSV by default"
@@ -263,8 +266,8 @@
      {:email
       (fn [_ _]
         (is (= (-> (rasta-pulse-email)
-                   ;; There's no PNG with a table visualization, remove it from the assert results
-                   (update-in ["rasta@metabase.com" 0 :body] (comp vector first))
+                   ;; There's no PNG with a table visualization, so only assert on one png (the dashboard icon)
+                   (assoc-in ["rasta@metabase.com" 0 :body] [{"Pulse Name" true} png-attachment])
                    (add-rasta-attachment csv-attachment))
                (mt/summarize-multipart-email #"Pulse Name"))))}}))
 
@@ -278,8 +281,8 @@
       {:email
        (fn [_ _]
          (is (= (-> (rasta-pulse-email)
-                    ;; There's no PNG with a table visualization, remove it from the assert results
-                    (update-in ["rasta@metabase.com" 0 :body] (comp vector first))
+                   ;; There's no PNG with a table visualization, so only assert on one png (the dashboard icon)
+                    (assoc-in ["rasta@metabase.com" 0 :body] [{"Pulse Name" true} png-attachment])
                     (add-rasta-attachment xls-attachment))
                 (mt/summarize-multipart-email #"Pulse Name"))))}})))
 
@@ -360,6 +363,7 @@
                                 (mt/email-to user-kwd {:subject "Pulse: Pulse Name",
                                                        :to      #{"rasta@metabase.com" "crowberto@metabase.com"}
                                                        :body    [{"Pulse Name" true}
+                                                                 png-attachment
                                                                  png-attachment]}))
                               [:rasta :crowberto]))
                 (mt/summarize-multipart-email #"Pulse Name"))))}})))
