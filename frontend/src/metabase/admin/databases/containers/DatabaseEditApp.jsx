@@ -146,6 +146,11 @@ export default class DatabaseEditApp extends Component {
       [addingNewDatabase ? t`Add Database` : database.name],
     ];
 
+    function isDetailsFieldHidden(propKey) {
+      console.log("Determining whether" + propKey + " should be hidden");
+      return false;
+    }
+
     return (
       <Box px={[3, 4, 5]} mt={[1, 2, 3]}>
         <Breadcrumbs className="py4" crumbs={crumbs} />
@@ -213,6 +218,7 @@ export default class DatabaseEditApp extends Component {
                                 <FormField
                                   key={formField.name}
                                   name={formField.name}
+                                  hidden={isDetailsFieldHidden(formField.name)}
                                 />
                               ))}
                               <FormMessage />
