@@ -17,6 +17,7 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [medley.core :as m]
+            [metabase.api.common :as api]
             [metabase.events :as events]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection]
@@ -94,8 +95,13 @@
   [notification]
   (boolean (:alert_condition notification)))
 
+(defn- is-dashboard-subscription?
+  "Whether `notification` is a Dashboard Subscription (as opposed to a regular Pulse or an Alert)."
+  [notification]
+  (boolean (:dashboard_id notification)))
+
 (defn- perms-objects-set
-  "Permissions to read or write a *Pulse* are the same as those of its parent Collection.
+  "Permissions to read or write a *Pulse* or *Dashboard Subscription* are the same as those of its parent Collection.
 
   Permissions to read or write an *Alert* are the same as those of its 'parent' *Card*. For all intents and purposes,
   an Alert cannot be put into a Collection."
@@ -103,6 +109,16 @@
   (if (is-alert? notification)
     (i/perms-objects-set (alert->card notification) read-or-write)
     (perms/perms-objects-set-for-parent-collection notification read-or-write)))
+
+(defn- can-write?
+  "A user with read-only permissions for a dashboard should be able to create subscriptions, and update
+  subscriptions that they created, but not edit anyone else's subscriptions."
+  [notification]
+  (if (and (is-dashboard-subscription? notification)
+           (i/current-user-has-full-permissions? :read notification)
+           (not (i/current-user-has-full-permissions? :write notification)))
+    (= api/*current-user-id* (:creator_id notification))
+    (i/current-user-has-full-permissions? :write notification)))
 
 (u/strict-extend (class Pulse)
   models/IModel
@@ -117,7 +133,7 @@
   (merge
    i/IObjectPermissionsDefaults
    {:can-read?         (partial i/current-user-has-full-permissions? :read)
-    :can-write?        (partial i/current-user-has-full-permissions? :write)
+    :can-write?        can-write?
     :perms-objects-set perms-objects-set}))
 
 
