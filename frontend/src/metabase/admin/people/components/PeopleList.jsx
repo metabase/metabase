@@ -126,7 +126,6 @@ export default class PeopleList extends Component {
 
   render() {
     const {
-      user,
       users,
       groups,
       query,
