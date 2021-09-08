@@ -1,19 +1,26 @@
-import React, { useCallback, useState } from "react";
+import React, { useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import Button from "metabase/components/Button";
 import FormMessage from "metabase/components/form/FormMessage";
 import ModalContent from "metabase/components/ModalContent";
-import TokenField from "metabase/components/TokenField";
+import UserPicker from "metabase/components/UserPicker";
 
 const propTypes = {
-  item: PropTypes.object,
-  type: PropTypes.oneOf(["alert", "pulse"]),
+  item: PropTypes.object.isRequired,
+  type: PropTypes.oneOf(["alert", "pulse"]).isRequired,
+  users: PropTypes.array.isRequired,
   onUpdate: PropTypes.func,
   onClose: PropTypes.func,
 };
 
-const AuditNotificationEditModal = ({ item, type, onUpdate, onClose }) => {
+const AuditNotificationEditModal = ({
+  item,
+  type,
+  users,
+  onUpdate,
+  onClose,
+}) => {
   const [channels, setChannels] = useState(item.channels);
   const [error, setError] = useState();
 
@@ -48,12 +55,11 @@ const AuditNotificationEditModal = ({ item, type, onUpdate, onClose }) => {
       onClose={onClose}
     >
       {channels.map((channel, index) => (
-        <TokenField
+        <UserPicker
           key={index}
           value={channel.recipients}
-          valueRenderer={value => value.common_name || value.email}
-          multi
-          onChange={recipients => handleRecipientsChange(recipients, index)}
+          users={users}
+          onChange={handleRecipientsChange}
         />
       ))}
     </ModalContent>
