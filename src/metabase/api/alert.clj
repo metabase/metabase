@@ -1,16 +1,14 @@
 (ns metabase.api.alert
   "/api/alert endpoints"
   (:require [clojure.data :as data]
-            [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
             [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.email :as email]
             [metabase.email.messages :as messages]
-            [metabase.events :as events]
             [metabase.models.card :refer [Card]]
             [metabase.models.interface :as mi]
-            [metabase.models.pulse :as pulse :refer [Pulse]]
+            [metabase.models.pulse :as pulse]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
@@ -49,10 +47,10 @@
     :present [:alert_condition :alert_first_only :alert_above_goal :archived]))
 
 (defn- email-channel [alert]
-  (m/find-first #(= :email (:channel_type %)) (:channels alert)))
+  (m/find-first #(= :email (keyword (:channel_type %))) (:channels alert)))
 
 (defn- slack-channel [alert]
-  (m/find-first #(= :slack (:channel_type %)) (:channels alert)))
+  (m/find-first #(= :slack (keyword (:channel_type %))) (:channels alert)))
 
 (defn- key-by [key-fn coll]
   (zipmap (map key-fn coll) coll))
@@ -138,18 +136,24 @@
     ;; return our new Alert
     new-alert))
 
+(defn- notify-on-archive-if-needed!
+  "When an alert is archived, we notify any recipients that they are no longer going to be receiving that alert"
+  [alert]
+  (when (email/email-configured?)
+    (doseq [recipient (collect-alert-recipients alert)]
+      (messages/send-admin-unsubscribed-alert-email! alert recipient @api/*current-user*))))
 
 (api/defendpoint PUT "/:id"
   "Update a `Alert` with ID."
   [id :as {{:keys [alert_condition card channels alert_first_only alert_above_goal card channels archived]
             :as alert-updates} :body}]
-  {alert_condition     (s/maybe pulse/AlertConditions)
-   alert_first_only    (s/maybe s/Bool)
-   alert_above_goal    (s/maybe s/Bool)
-   card                (s/maybe pulse/CardRef)
-   channels            (s/maybe (su/non-empty [su/Map]))
-   archived            (s/maybe s/Bool)}
-  ;; fethc the existing Alert in the DB
+  {alert_condition  (s/maybe pulse/AlertConditions)
+   alert_first_only (s/maybe s/Bool)
+   alert_above_goal (s/maybe s/Bool)
+   card             (s/maybe pulse/CardRef)
+   channels         (s/maybe (su/non-empty [su/Map]))
+   archived         (s/maybe s/Bool)}
+  ;; fetch the existing Alert in the DB
   (let [alert-before-update (api/check-404 (pulse/retrieve-alert id))]
     (assert (:card alert-before-update)
             (tru "Invalid Alert: Alert does not have a Card associated with it"))
@@ -159,78 +163,66 @@
     ;; if trying to change the card, check perms for that as well
     (when card
       (api/write-check Card (u/the-id card)))
+    ;; Make sure that non-admins cannot explicitly archive an alert or change recipients
+    (when (not api/*is-superuser?*)
+      (api/check (= (-> alert-before-update :creator :id) api/*current-user-id*)
+                 [400 "Non-admin users are only allowed to update alerts that they created"])
+      (api/check (not (contains? alert-updates :archived))
+                 [400 "Non-admin users are not allowed to explicitly change the archive status for an alert"])
+      (api/check (or (not (contains? alert-updates :channels))
+                     (and (= 1 (count channels))
+                          ;; Non-admin alerts can only include the creator as a recipient
+                          (= [api/*current-user-id*]
+                             (map :id (:recipients (email-channel alert-updates))))))
+                 [400 "Non-admin users are not allowed to modify the channels for an alert"]))
     ;; now update the Alert
     (let [updated-alert (pulse/update-alert!
                          (merge
                           (assoc (only-alert-keys alert-updates)
-                            :id id)
+                                 :id id)
                           (when card
                             {:card (pulse/card->ref card)})
                           (when (contains? alert-updates :channels)
-                            {:channels channels})))]
-      ;; Only admins can update recipients
+                            {:channels channels})
+                          ;; automatically archive alert if it now has no recipients
+                          (when (and (contains? alert-updates :channels)
+                                     (not (seq (:recipients (email-channel alert-updates))))
+                                     (not (slack-channel alert-updates)))
+                            {:archived true})))]
+
+      ;; Only admins can update recipients or explicitly archive an alert
       (when (and api/*is-superuser?* (email/email-configured?))
-        (notify-recipient-changes! alert-before-update updated-alert))
+        (if archived
+          (notify-on-archive-if-needed! updated-alert)
+          (notify-recipient-changes! alert-before-update updated-alert)))
       ;; Finally, return the updated Alert
       updated-alert)))
 
-(defn- should-unsubscribe-delete?
-  "An alert should be deleted instead of unsubscribing if
-     - the unsubscriber is the creator
+(defn- should-archive-after-unsubscribe?
+  "An alert should be archived after a user unsubscribes if
      - they are the only recipient
      - there is no slack channel"
   [alert unsubscribing-user-id]
   (let [{:keys [recipients]} (email-channel alert)]
-    (and (= unsubscribing-user-id (:creator_id alert))
-         (= 1 (count recipients))
+    (and (= 1 (count recipients))
          (= unsubscribing-user-id (:id (first recipients)))
          (nil? (slack-channel alert)))))
 
-;; TODO - why is this a *PUT* endpoint???
-(api/defendpoint PUT "/:id/unsubscribe"
+(api/defendpoint DELETE "/:id/subscription"
   "Unsubscribes a user from the given alert"
   [id]
-  ;; Admins are not allowed to unsubscribe from alerts, they should edit the alert
-  (api/check (not api/*is-superuser?*)
-    [400 "Admin users are not allowed to unsubscribe from alerts"])
   (let [alert (pulse/retrieve-alert id)]
     (api/read-check alert)
 
-    (if (should-unsubscribe-delete? alert api/*current-user-id*)
-      ;; No need to unsubscribe if we're just going to delete the Pulse
-      (db/delete! Pulse :id id)
-      ;; There are other receipieints, remove current user only
+    (if (should-archive-after-unsubscribe? alert api/*current-user-id*)
+      (db/transaction
+        (pulse/unsubscribe-from-alert! id api/*current-user-id*)
+        (pulse/update-alert! {:id id, :archived true}))
       (pulse/unsubscribe-from-alert! id api/*current-user-id*))
     ;; Send emails letting people know they have been unsubscribe
     (when (email/email-configured?)
       (messages/send-you-unsubscribed-alert-email! alert @api/*current-user*))
     ;; finally, return a 204 No Content
     api/generic-204-no-content))
-
-(defn- notify-on-delete-if-needed!
-  "When an alert is deleted, we notify the creator that their alert is being deleted and any recipieint that they are
-  no longer going to be receiving that alert"
-  [alert]
-  (when (email/email-configured?)
-    (let [{creator-id :id :as creator} (:creator alert)
-          ;; The creator might also be a recipient, no need to notify them twice
-          recipients (non-creator-recipients alert)]
-
-      (doseq [recipient recipients]
-        (messages/send-admin-unsubscribed-alert-email! alert recipient @api/*current-user*))
-
-      (when-not (= creator-id api/*current-user-id*)
-        (messages/send-admin-deleted-your-alert! alert creator @api/*current-user*)))))
-
-(api/defendpoint DELETE "/:id"
-  "Delete an Alert. (DEPRECATED -- don't delete a Alert anymore -- archive it instead.)"
-  [id]
-  (log/warn (tru "DELETE /api/alert/:id is deprecated. Instead, change its `archived` value via PUT /api/alert/:id."))
-  (api/let-404 [alert (pulse/retrieve-alert id)]
-    (api/write-check Pulse id)
-    (db/delete! Pulse :id id)
-    (events/publish-event! :alert-delete (assoc alert :actor_id api/*current-user-id*))
-    (notify-on-delete-if-needed! alert))
-  api/generic-204-no-content)
 
 (api/define-routes)
