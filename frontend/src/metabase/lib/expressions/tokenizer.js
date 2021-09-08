@@ -325,7 +325,6 @@ export function tokenize(expression) {
             prev && prev.type === TOKEN.Identifier
               ? source.slice(prev.start, prev.end)
               : null;
-          console.log({ prev, ref });
           const message = ref
             ? t`Missing an opening bracket for ${ref}`
             : t`Missing an opening bracket`;

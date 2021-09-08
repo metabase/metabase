@@ -11,7 +11,6 @@ import {
   AddEditEmailSidebar,
 } from "metabase/sharing/components/AddEditSidebar";
 import Sidebar from "metabase/dashboard/components/Sidebar";
-import Collections from "metabase/entities/collections";
 import Pulses from "metabase/entities/pulses";
 import User from "metabase/entities/users";
 import { normalizeParameterValue } from "metabase/meta/Parameter";
@@ -24,11 +23,7 @@ import {
   getPulseParameters,
 } from "metabase/lib/pulse";
 
-import {
-  getPulseId,
-  getEditingPulse,
-  getPulseFormInput,
-} from "metabase/pulse/selectors";
+import { getEditingPulse, getPulseFormInput } from "metabase/pulse/selectors";
 
 import { getUser } from "metabase/selectors/user";
 
@@ -98,14 +93,9 @@ const getEditingPulseWithDefaults = (state, props) => {
 };
 
 const mapStateToProps = (state, props) => ({
-  pulseId: getPulseId(state, props),
   pulse: getEditingPulseWithDefaults(state, props),
   formInput: getPulseFormInput(state, props),
   user: getUser(state),
-  initialCollectionId: Collections.selectors.getInitialCollectionId(
-    state,
-    props,
-  ),
 });
 
 const mapDispatchToProps = {
@@ -138,7 +128,6 @@ class SharingSidebar extends React.Component {
     formInput: PropTypes.object.isRequired,
     initialCollectionId: PropTypes.number,
     pulse: PropTypes.object.isRequired,
-    pulseId: PropTypes.number,
     saveEditingPulse: PropTypes.func.isRequired,
     setEditingPulse: PropTypes.func.isRequired,
     testPulse: PropTypes.func.isRequired,
@@ -174,11 +163,6 @@ class SharingSidebar extends React.Component {
 
   componentDidMount = async () => {
     await this.props.fetchPulseFormInput();
-
-    this.props.setEditingPulse(
-      this.props.pulseId,
-      this.props.initialCollectionId,
-    );
   };
 
   onChannelPropertyChange = (index, name, value) => {

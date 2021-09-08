@@ -54,7 +54,7 @@
               process-query (fn []
                               (binding [qp.perms/*card-id* card-id]
                                 (qp/process-query-and-save-with-max-results-constraints!
-                                 query
+                                 (assoc-in query [:middleware :process-viz-settings?] true)
                                  (merge {:executed-by pulse-creator-id
                                          :context     :pulse
                                          :card-id     card-id}
@@ -85,7 +85,10 @@
                     :dashboard-id  (:id dashboard)
                     :context       :pulse ; TODO - we should support for `:dashboard-subscription` and use that to differentiate the two
                     :export-format :api
+                    :middleware    {:process-viz-settings? true}
                     :parameters    params
+                    :middleware    {:process-viz-settings? true
+                                    :js-int-to-string?     false}
                     :run (fn [query info]
                            (qp/process-query-and-save-with-max-results-constraints! (assoc query :async? false) info))))]
       {:card card

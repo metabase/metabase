@@ -176,6 +176,9 @@
     "QQ"           false
     "QQ="          false
     "QQ=="         true
+    ;; line breaks and spaces should be OK
+    "Q\rQ\n=\r\n=" true
+    " Q Q = = "    true
     ;; padding has to go at the end
     "==QQ"         false))
 

@@ -718,7 +718,7 @@
                          :schema          schema
                          :active          true
                          :visibility_type nil
-                         {:order-by [[:name :asc]]})))
+                         {:order-by [[:display_name :asc]]})))
 
 (api/defendpoint GET "/:id/schema/:schema"
   "Returns a list of Tables for the given Database `id` and `schema`"
