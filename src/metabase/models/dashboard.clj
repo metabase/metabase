@@ -189,42 +189,42 @@
 
 (defn- diff-dashboards-str
   "Describe the difference between two Dashboard instances."
-  [_ dashboard₁ dashboard₂]
-  (let [[removals changes]  (diff dashboard₁ dashboard₂)
+  [_ dashboard1 dashboard2]
+  (let [[removals changes]  (diff dashboard1 dashboard2)
         check-series-change (fn [idx card-changes]
                               (when (and (:series card-changes)
-                                         (get-in dashboard₁ [:cards idx :card_id]))
-                                (let [num-series₁ (count (get-in dashboard₁ [:cards idx :series]))
-                                      num-series₂ (count (get-in dashboard₂ [:cards idx :series]))]
+                                         (get-in dashboard1 [:cards idx :card_id]))
+                                (let [num-series₁ (count (get-in dashboard1 [:cards idx :series]))
+                                      num-series₂ (count (get-in dashboard2 [:cards idx :series]))]
                                   (cond
                                     (< num-series₁ num-series₂)
-                                    (format "added some series to card %d" (get-in dashboard₁ [:cards idx :card_id]))
+                                    (format "added some series to card %d" (get-in dashboard1 [:cards idx :card_id]))
 
                                     (> num-series₁ num-series₂)
-                                    (format "removed some series from card %d" (get-in dashboard₁ [:cards idx :card_id]))
+                                    (format "removed some series from card %d" (get-in dashboard1 [:cards idx :card_id]))
 
                                     :else
-                                    (format "modified the series on card %d" (get-in dashboard₁ [:cards idx :card_id]))))))]
-    (-> [(when (and dashboard₁ (:name changes))
-           (format "renamed it from \"%s\" to \"%s\"" (:name dashboard₁) (:name dashboard₂)))
+                                    (format "modified the series on card %d" (get-in dashboard1 [:cards idx :card_id]))))))]
+    (-> [(when (and dashboard1 (:name changes))
+           (format "renamed it from \"%s\" to \"%s\"" (:name dashboard1) (:name dashboard2)))
          (when (:description changes)
            (cond
-             (nil? (:description dashboard₁)) "added a description"
-             (nil? (:description dashboard₂)) "removed the description"
+             (nil? (:description dashboard1)) "added a description"
+             (nil? (:description dashboard2)) "removed the description"
              :else (format "changed the description from \"%s\" to \"%s\""
-                           (:description dashboard₁) (:description dashboard₂))))
+                           (:description dashboard1) (:description dashboard2))))
          (when (:cache_ttl changes)
            (cond
-             (nil? (:cache_ttl dashboard₁)) "added a cache ttl"
-             (nil? (:cache_ttl dashboard₂)) "removed the cache ttl"
+             (nil? (:cache_ttl dashboard1)) "added a cache ttl"
+             (nil? (:cache_ttl dashboard2)) "removed the cache ttl"
              :else (format "changed the cache ttl from \"%s\" to \"%s\""
-                           (:cache_ttl dashboard₁) (:cache_ttl dashboard₂))))
+                           (:cache_ttl dashboard1) (:cache_ttl dashboard2))))
          (when (or (:cards changes) (:cards removals))
-           (let [num-cards₁  (count (:cards dashboard₁))
-                 num-cards₂  (count (:cards dashboard₂))]
+           (let [num-cards1  (count (:cards dashboard1))
+                 num-cards2  (count (:cards dashboard2))]
              (cond
-               (< num-cards₁ num-cards₂) "added a card"
-               (> num-cards₁ num-cards₂) "removed a card"
+               (< num-cards1 num-cards2) "added a card"
+               (> num-cards1 num-cards2) "removed a card"
                :else                     "rearranged the cards")))]
         (concat (map-indexed check-series-change (:cards changes)))
         (->> (filter identity)
