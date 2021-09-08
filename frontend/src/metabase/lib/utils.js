@@ -143,9 +143,15 @@ const MetabaseUtils = {
     );
   },
 
-  validEmail(email) {
+  isEmail(email) {
     const re = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
     return re.test(email);
+  },
+
+  isEmailList(emails) {
+    return emails
+      ? emails.split(",").every(email => this.isEmail(email))
+      : true;
   },
 
   equals(a, b) {
