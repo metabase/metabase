@@ -369,7 +369,7 @@
                 (mt/summarize-multipart-email #"Pulse Name"))))}})))
 
 (deftest two-cards-in-one-pulse-test
-  (testing "1 pulse that has 2 cards, should contain two attachments"
+  (testing "1 pulse that has 2 cards, should contain two query image attachments (as well as an icon attachment)"
     (do-test
      {:card
       (assoc (checkins-query-card {:breakout [!day.date]}) :name "card 1")
@@ -387,6 +387,7 @@
       {:email
        (fn [_ _]
          (is (= (rasta-pulse-email {:body [{"Pulse Name" true}
+                                           png-attachment
                                            png-attachment
                                            png-attachment]})
                 (mt/summarize-multipart-email #"Pulse Name"))))}})))
