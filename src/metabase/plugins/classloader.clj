@@ -119,21 +119,27 @@
   ;; during compilation, don't load any namespaces. This is going to totally screw up our compilation because
   ;; namespaces can end up being compiled twice
   (when-not *compile-files*
-    ;; done for side-effects to ensure context classloader is the right one
-    (the-classloader)
     ;; as elsewhere make sure Clojure is using our context classloader (which should normally be true anyway) because
     ;; that's the one that will have access to the JARs we've added to the classpath at runtime
-    (try
-      (binding [*use-context-classloader* true]
-        ;; serialize requires
-        (locking clojure.lang.RT/REQUIRE_LOCK
-          (apply clojure.core/require args)))
-      (catch Throwable e
-        (throw (ex-info (.getMessage e)
-                        {:classloader      (the-classloader)
-                         :classpath-urls   (map str (dynapath/all-classpath-urls (the-classloader)))
-                         :system-classpath (sort (str/split (System/getProperty "java.class.path") #"[:;]"))}
-                        e))))))
+    (the-classloader)
+    ;; Check whether the lib is already loaded (we only do this in simple cases where with just one arg -- this is
+    ;; most of the calls anyway). If the lib is already loaded we can skip acquiring the lock and expensive stuff like
+    ;; bindings and the try-catch
+    (let [already-done? (and (= (count args) 1)
+                             (symbol? (first args))
+                             ((loaded-libs) (first args)))]
+      (when-not already-done?
+        (try
+          (binding [*use-context-classloader* true]
+            ;; serialize requires
+            (locking clojure.lang.RT/REQUIRE_LOCK
+              (apply clojure.core/require args)))
+          (catch Throwable e
+            (throw (ex-info (.getMessage e)
+                            {:classloader      (the-classloader)
+                             :classpath-urls   (map str (dynapath/all-classpath-urls (the-classloader)))
+                             :system-classpath (sort (str/split (System/getProperty "java.class.path") #"[:;]"))}
+                            e))))))))
 
 (defonce ^:private already-added (atom #{}))
 
