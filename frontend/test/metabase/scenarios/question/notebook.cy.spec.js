@@ -70,6 +70,16 @@ describe("scenarios > question > notebook", () => {
     cy.contains("Showing 1 row"); // ensure only one user was returned
   });
 
+  it("shouldn't show sub-dimensions for FK (metabase#16787)", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.findByText("Summarize").click();
+    cy.findByText("Pick a column to group by").click();
+    cy.findByText("User ID")
+      .closest(".List-item")
+      .find(".Field-extra")
+      .should("not.have.descendants", "*");
+  });
+
   it("should show the original custom expression filter field on subsequent click (metabase#14726)", () => {
     cy.server();
     cy.route("POST", "/api/dataset").as("dataset");
