@@ -11,6 +11,7 @@ const propTypes = {
   type: PropTypes.oneOf(["alert", "pulse"]).isRequired,
   users: PropTypes.array.isRequired,
   onUpdate: PropTypes.func,
+  onDelete: PropTypes.func,
   onClose: PropTypes.func,
 };
 
@@ -19,10 +20,18 @@ const AuditNotificationEditModal = ({
   type,
   users,
   onUpdate,
+  onDelete,
   onClose,
 }) => {
   const [channels, setChannels] = useState(item.channels);
   const [error, setError] = useState();
+  const hasRecipients = channels.some(c => c.recipients.length > 0);
+
+  const handleRecipientsChange = (recipients, index) => {
+    const newChannels = [...channels];
+    newChannels[index] = { ...channels[index], recipients };
+    setChannels(newChannels);
+  };
 
   const handleUpdateClick = async () => {
     try {
@@ -33,22 +42,27 @@ const AuditNotificationEditModal = ({
     }
   };
 
-  const handleRecipientsChange = (recipients, index) => {
-    const newChannels = [...channels];
-    newChannels[index] = { ...channels[index], recipients };
-
-    setChannels(newChannels);
+  const handleDeleteClick = () => {
+    onDelete(item);
   };
 
   return (
     <ModalContent
       title={getTitleMessage(item, type)}
       footer={[
+        <Button key="delete" danger borderless onClick={handleDeleteClick}>
+          {getDeleteMessage(type)}
+        </Button>,
         error ? <FormMessage key="message" formError={error} /> : null,
         <Button key="cancel" onClick={onClose}>
           {t`Cancel`}
         </Button>,
-        <Button key="update" primary onClick={handleUpdateClick}>
+        <Button
+          key="update"
+          primary
+          disabled={!hasRecipients}
+          onClick={handleUpdateClick}
+        >
           {t`Update`}
         </Button>,
       ]}
@@ -74,6 +88,15 @@ const getTitleMessage = (item, type) => {
       return t`${item.card.name} alert recipients`;
     case "pulse":
       return t`${item.name} recipients`;
+  }
+};
+
+const getDeleteMessage = type => {
+  switch (type) {
+    case "alert":
+      return t`Delete this alert`;
+    case "pulse":
+      return t`Delete this subscription`;
   }
 };
 
