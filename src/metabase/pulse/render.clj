@@ -156,8 +156,7 @@
                                               :text-decoration :none})}
                            title
                            description
-                           [:div {:style (style/style {:padding-top :10px
-                                                       :overflow-x  :auto})}
+                           [:div {:style (style/style {:overflow-x  :auto})}
                             pulse-body]]}
       text (assoc :render/text text))))
 
@@ -171,8 +170,7 @@
   "Render a single Card section of a Pulse to a Hiccup form (representating HTML)."
   [timezone-id {card :card, dashcard :dashcard, result :result}]
   (let [{:keys [attachments content]} (binding [*include-title*       true
-                                                *include-description* true
-                                                body/*cols-limit*     ##Inf]
+                                                *include-description* true]
                                         (render-pulse-card :attachment timezone-id card dashcard result))]
     {:attachments attachments
      :content     [:div {:style (style/style {:margin-top    :20px

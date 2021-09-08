@@ -114,7 +114,8 @@ export default class PulseCardPreview extends Component {
         </div>
         <div
           className="bordered rounded bg-white scroll-x"
-          style={{ display: !cardPreview && "none" }}
+          style={{ display: !cardPreview && "none",
+                   padding: "16px"}}
         >
           {/* Override backend rendering if pulse_card_type == null */}
           {cardPreview && cardPreview.pulse_card_type == null ? (

@@ -35,8 +35,8 @@
   10)
 
 (def ^:dynamic *cols-limit*
-  "Maximum number of columns to render in a Pulse image."
-  10)
+  "Maximum number of columns to render in a Pulse image. Defaults to infinity, so that columns are not truncated."
+  ##Inf)
 
 ;; NOTE: hiccup does not escape content by default so be sure to use "h" to escape any user-controlled content :-/
 
