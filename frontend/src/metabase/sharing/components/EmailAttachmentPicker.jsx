@@ -184,7 +184,11 @@ export default class EmailAttachmentPicker extends Component {
 
     return (
       <div>
-        <Toggle value={isEnabled} onChange={this.toggleAttach} />
+        <Toggle
+          aria-label="Attach results"
+          value={isEnabled}
+          onChange={this.toggleAttach}
+        />
 
         {isEnabled && (
           <div>

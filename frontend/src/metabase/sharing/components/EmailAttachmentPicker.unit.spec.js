@@ -20,9 +20,8 @@ describe("EmailAttachmentPicker", () => {
     });
 
     it("should have a Toggle that is not toggled", () => {
-      const toggle = screen.getByRole("checkbox");
+      const toggle = screen.getByLabelText("Attach results");
       expect(toggle).toBeInTheDocument();
-      expect(toggle.dataset.testid).toEqual("toggle");
       expect(toggle).toHaveAttribute("aria-checked", "false");
     });
 
@@ -32,7 +31,7 @@ describe("EmailAttachmentPicker", () => {
       expect(screen.queryByText("card1")).toBeNull();
       expect(screen.queryByText("card2")).toBeNull();
 
-      const toggle = screen.getByRole("checkbox");
+      const toggle = screen.getByLabelText("Attach results");
       fireEvent.click(toggle);
 
       const csvFormatInput = screen.getByLabelText(".csv");
@@ -66,7 +65,7 @@ describe("EmailAttachmentPicker", () => {
     });
 
     it("should have a toggled Toggle", () => {
-      const toggle = screen.getByTestId("toggle");
+      const toggle = screen.getByLabelText("Attach results");
       expect(toggle).toBeInTheDocument();
       expect(toggle).toHaveAttribute("aria-checked", "true");
     });
@@ -123,7 +122,7 @@ describe("EmailAttachmentPicker", () => {
     });
 
     it("should uncheck all boxes if disabling attachments", () => {
-      const toggle = screen.getByTestId("toggle");
+      const toggle = screen.getByLabelText("Attach results");
       expect(screen.getByLabelText("card1")).toBeChecked();
 
       fireEvent.click(toggle);
