@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 
 const glob = require("glob");
+const minimatch = require("minimatch");
 const parser = require("@babel/parser");
 const traverse = require("@babel/traverse").default;
 const readline = require("readline");
@@ -66,16 +67,25 @@ function dependencies() {
         const realName = parts.join(path.sep);
         return realName;
       })
-      .filter(name => name.indexOf("frontend") >= 0);
+      .map(name => {
+        if (fs.existsSync(name)) {
+          if (
+            fs.lstatSync(name).isDirectory() &&
+            fs.existsSync(name + "/index.js")
+          ) {
+            return name + "/index.js";
+          }
+          return name;
+        } else if (fs.existsSync(name + ".js")) {
+          return name + ".js";
+        } else if (fs.existsSync(name + ".jsx")) {
+          return name + ".jsx";
+        }
+        return name;
+      })
+      .filter(name => minimatch(name, PATTERN));
 
-    const source = path.format({
-      ...path.parse(fileName),
-      ext: null,
-      base: null,
-    });
-    const dependencies = absoluteImportList.sort();
-
-    return { source, dependencies };
+    return { source: fileName, dependencies: absoluteImportList.sort() };
   });
   return deps;
 }
@@ -104,10 +114,7 @@ function filterDependents() {
 
   const start = async () => {
     for await (const line of rl) {
-      const name = line
-        .trim()
-        .replace(/\.js$/, "")
-        .replace(/\.jsx$/, "");
+      const name = line.trim();
       if (name.length > 0) {
         const list = allDependents[name];
         if (list && Array.isArray(list) && list.length > 0) {
@@ -134,10 +141,7 @@ function filterAllDependents() {
 
   const start = async () => {
     for await (const line of rl) {
-      const name = line
-        .trim()
-        .replace(/\.js$/, "")
-        .replace(/\.jsx$/, "");
+      const name = line.trim();
       if (name.length > 0) {
         const list = allDependents[name];
         if (list && Array.isArray(list) && list.length > 0) {
