@@ -83,7 +83,8 @@ export const updateEmailSettings = createThunkAction(
   function(settings) {
     return async function(dispatch, getState) {
       try {
-        return await EmailApi.updateSettings(settings);
+        await EmailApi.updateSettings(settings);
+        await dispatch(reloadSettings());
       } catch (error) {
         console.log("error updating email settings", settings, error);
         throw error;
@@ -119,6 +120,7 @@ export const updateSlackSettings = createThunkAction(
     return async function(dispatch, getState) {
       try {
         await SlackApi.updateSettings(settings);
+        await dispatch(reloadSettings());
       } catch (error) {
         console.log("error updating slack settings", settings, error);
         throw error;
@@ -136,6 +138,7 @@ export const updateLdapSettings = createThunkAction(
     return async function(dispatch, getState) {
       try {
         await LdapApi.updateSettings(settings);
+        await dispatch(reloadSettings());
       } catch (error) {
         console.log("error updating LDAP settings", settings, error);
         throw error;
