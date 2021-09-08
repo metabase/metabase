@@ -23,7 +23,7 @@ describe("EmailAttachmentPicker", () => {
       const toggle = screen.getByRole("checkbox");
       expect(toggle).toBeInTheDocument();
       expect(toggle.dataset.testid).toEqual("toggle");
-      expect(toggle.getAttribute("aria-checked")).toBe("false");
+      expect(toggle).toHaveAttribute("aria-checked", "false");
     });
 
     it("should have a clickable toggle that reveals attachment type and a checkbox per question", () => {
@@ -36,16 +36,16 @@ describe("EmailAttachmentPicker", () => {
       fireEvent.click(toggle);
 
       const csvFormatInput = screen.getByLabelText(".csv");
-      expect(csvFormatInput.checked).toBe(true);
+      expect(csvFormatInput).toBeChecked();
 
       const toggleAllCheckbox = screen.getByLabelText("Questions to attach");
-      expect(toggleAllCheckbox.checked).toBe(false);
+      expect(toggleAllCheckbox).not.toBeChecked();
 
       const card1Checkbox = screen.getByLabelText("card1");
-      expect(card1Checkbox.checked).toBe(false);
+      expect(card1Checkbox).not.toBeChecked();
 
       const card2Checkbox = screen.getByLabelText("card2");
-      expect(card2Checkbox.checked).toBe(false);
+      expect(card2Checkbox).not.toBeChecked();
     });
   });
 
@@ -68,40 +68,40 @@ describe("EmailAttachmentPicker", () => {
     it("should have a toggled Toggle", () => {
       const toggle = screen.getByTestId("toggle");
       expect(toggle).toBeInTheDocument();
-      expect(toggle.getAttribute("aria-checked")).toBe("true");
+      expect(toggle).toHaveAttribute("aria-checked", "true");
     });
 
     it("should have selected the xlsv format", () => {
       const csvFormatInput = screen.getByLabelText(".csv");
-      expect(csvFormatInput.checked).toBe(false);
+      expect(csvFormatInput).not.toBeChecked();
       const xlsxFormatInput = screen.getByLabelText(".xlsx");
-      expect(xlsxFormatInput.checked).toBe(true);
+      expect(xlsxFormatInput).toBeChecked();
     });
 
     it("should show a checked checkbox for the card with an attachment", () => {
       const toggleAllCheckbox = screen.getByLabelText("Questions to attach");
-      expect(toggleAllCheckbox.checked).toBe(false);
+      expect(toggleAllCheckbox).not.toBeChecked();
 
       const card1Checkbox = screen.getByLabelText("card1");
-      expect(card1Checkbox.checked).toBe(true);
+      expect(card1Checkbox).toBeChecked();
 
       const card2Checkbox = screen.getByLabelText("card2");
-      expect(card2Checkbox.checked).toBe(false);
+      expect(card2Checkbox).not.toBeChecked();
     });
 
     it("should let you check or uncheck card checkboxes", () => {
       const card1Checkbox = screen.getByLabelText("card1");
       fireEvent.click(card1Checkbox);
-      expect(card1Checkbox.checked).toBe(false);
+      expect(card1Checkbox).not.toBeChecked();
       fireEvent.click(card1Checkbox);
-      expect(card1Checkbox.checked).toBe(true);
+      expect(card1Checkbox).toBeChecked();
     });
 
     it("should let you check all checkboxes", () => {
       const card2Checkbox = screen.getByLabelText("card2");
       fireEvent.click(card2Checkbox);
-      expect(card2Checkbox.checked).toBe(true);
-      expect(screen.getByLabelText("Questions to attach").checked).toBe(true);
+      expect(card2Checkbox).toBeChecked();
+      expect(screen.getByLabelText("Questions to attach")).toBeChecked();
     });
 
     it("should let you check/uncheck all boxes via the `Questions to attach` toggle", () => {
@@ -111,20 +111,20 @@ describe("EmailAttachmentPicker", () => {
 
       fireEvent.click(toggleAllCheckbox);
 
-      expect(screen.getByLabelText("Questions to attach").checked).toBe(true);
-      expect(card1Checkbox.checked).toBe(true);
-      expect(card2Checkbox.checked).toBe(true);
+      expect(screen.getByLabelText("Questions to attach")).toBeChecked();
+      expect(card1Checkbox).toBeChecked();
+      expect(card2Checkbox).toBeChecked();
 
       fireEvent.click(toggleAllCheckbox);
 
-      expect(screen.getByLabelText("Questions to attach").checked).toBe(false);
-      expect(card1Checkbox.checked).toBe(false);
-      expect(card2Checkbox.checked).toBe(false);
+      expect(screen.getByLabelText("Questions to attach")).not.toBeChecked();
+      expect(card1Checkbox).not.toBeChecked();
+      expect(card2Checkbox).not.toBeChecked();
     });
 
     it("should uncheck all boxes if disabling attachments", () => {
       const toggle = screen.getByTestId("toggle");
-      expect(screen.getByLabelText("card1").checked).toBe(true);
+      expect(screen.getByLabelText("card1")).toBeChecked();
 
       fireEvent.click(toggle);
 
@@ -134,7 +134,7 @@ describe("EmailAttachmentPicker", () => {
       expect(screen.queryByText("card2")).toBeNull();
 
       fireEvent.click(toggle);
-      expect(screen.getByLabelText("card1").checked).toBe(false);
+      expect(screen.getByLabelText("card1")).not.toBeChecked();
     });
   });
 });
