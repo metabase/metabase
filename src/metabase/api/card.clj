@@ -234,7 +234,12 @@
       ;; include same information returned by GET /api/card/:id since frontend replaces the Card it
       ;; currently has with returned one -- See #4283
       (-> card
-          (hydrate :creator :dashboard_count :can_write :collection [:moderation_reviews :moderator_details])
+          (hydrate :creator
+                   :dashboard_count
+                   :can_write
+                   :average_query_time
+                   :last_query_start
+                   :collection [:moderation_reviews :moderator_details])
           (assoc :last-edit-info (last-edit/edit-information-for-user user))))))
 
 (defn- create-card-async!
@@ -433,7 +438,12 @@
       ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently
       ;; has with returned one -- See #4142
       (-> card
-          (hydrate :creator :dashboard_count :can_write :collection [:moderation_reviews :moderator_details])
+          (hydrate :creator
+                   :dashboard_count
+                   :can_write
+                   :average_query_time
+                   :last_query_start
+                   :collection [:moderation_reviews :moderator_details])
           (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))))
 
 (api/defendpoint ^:returns-chan PUT "/:id"

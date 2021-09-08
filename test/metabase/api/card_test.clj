@@ -54,6 +54,8 @@
    :public_uuid         nil
    :query_type          nil
    :cache_ttl           nil
+   :average_query_time  nil
+   :last_query_start    nil
    :result_metadata     nil})
 
 (defn mbql-count-query
