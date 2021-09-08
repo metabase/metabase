@@ -581,8 +581,7 @@
                                                       :description        description
                                                       :caveats            caveats
                                                       :points_of_interest points_of_interest
-                                                      :auto_run_queries   auto_run_queries
-                                                      :cache_ttl          cache_ttl}
+                                                      :auto_run_queries   auto_run_queries}
                                                      (cond
                                                        ;; transition back to metabase managed schedules. the schedule
                                                        ;; details, even if provided, are ignored. database is the
@@ -597,6 +596,9 @@
                                                        (sync.schedules/schedule-map->cron-strings (sync.schedules/scheduling schedules))))))
                                                        ;; do nothing in the case that user is not in control of
                                                        ;; scheduling. leave them as they are in the db
+
+          ;; unlike the other fields, folks might want to nil out cache_ttl
+          (api/check-500 (db/update! Database id {:cache_ttl cache_ttl}))
 
           (let [db (Database id)]
             (events/publish-event! :database-update db)

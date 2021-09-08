@@ -218,7 +218,19 @@
            (let [updates {:auto_run_queries false}]
              ((mt/user->client :crowberto) :put 200 (format "database/%d" db-id) updates))
            (is (= false
-                  (db/select-one-field :auto_run_queries Database, :id db-id)))))))))
+                  (db/select-one-field :auto_run_queries Database, :id db-id)))))))
+    (testing "should be able to unset cache_ttl"
+      (mt/with-temp Database [{db-id :id}]
+        (let [updates1 {:cache_ttl    1337}
+              updates2 {:cache_ttl    nil}
+              updates1! (fn [] ((mt/user->client :crowberto) :put 200 (format "database/%d" db-id) updates1))
+              updates2! (fn [] ((mt/user->client :crowberto) :put 200 (format "database/%d" db-id) updates2))]
+          (updates1!)
+          (let [curr-db (db/select-one [Database :cache_ttl], :id db-id)]
+            (is (= 1337 (:cache_ttl curr-db))))
+          (updates2!)
+          (let [curr-db (db/select-one [Database :cache_ttl], :id db-id)]
+            (is (= nil (:cache_ttl curr-db)))))))))
 
 (deftest fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
