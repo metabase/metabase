@@ -3,13 +3,13 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CacheTTLField } from "./CacheTTLField";
 
-function setup({ name = "cache_ttl", message, value, initialValue }) {
+function setup({ name = "cache_ttl", message, value }) {
   const onChange = jest.fn();
   render(
     <form>
       <span id={`${name}-label`}>Label</span>
       <CacheTTLField
-        field={{ name, value, initialValue, onChange }}
+        field={{ name, value, onChange }}
         message={message}
         onChange={onChange}
       />
@@ -30,16 +30,6 @@ describe("CacheTTLField", () => {
       const { field } = setup({ value });
       expect(field).toHaveValue(expected);
     });
-  });
-
-  it("overwrites value with initialValue if value is null", () => {
-    const { field } = setup({ value: null, initialValue: 4 });
-    expect(field).toHaveValue("4");
-  });
-
-  it("uses value instead of initialValue if value is not null", () => {
-    const { field } = setup({ value: 8, initialValue: 4 });
-    expect(field).toHaveValue("8");
   });
 
   it("displays message", () => {
