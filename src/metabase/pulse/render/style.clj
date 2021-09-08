@@ -107,4 +107,4 @@
    (font-style)
    {:font-size   :24px
     :font-weight 700
-    :color       (primary-color)}))
+    :color       color-text-dark}))

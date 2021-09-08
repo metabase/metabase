@@ -156,7 +156,8 @@
                                               :text-decoration :none})}
                            title
                            description
-                           [:div {:style (style/style {:overflow-x  :auto})}
+                           [:div {:style (style/style {:margin-top :10px
+                                                       :overflow-x :auto})}
                             pulse-body]]}
       text (assoc :render/text text))))
 
