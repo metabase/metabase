@@ -298,8 +298,9 @@
           :dashboardDescription      (:description dashboard)
           :creator                   (-> pulse :creator :common_name)
           :sectionStyle              (render.style/style (render.style/section-style))
-          :colorTextDark             render.style/color-text-dark
           :colorTextLight            render.style/color-text-light
+          :colorTextMedium           render.style/color-text-medium
+          :colorTextDark             render.style/color-text-dark
           :siteUrl                   (public-settings/site-url)
           :notificationManagementUrl (url/notification-management-url)}
          (pulse-link-context pulse)))
@@ -466,8 +467,9 @@
              :creator                   (-> alert :creator :common_name)
              :questionURL               (url/card-url card-id)
              :sectionStyle              (render.style/section-style)
-             :colorTextDark             render.style/color-text-dark
              :colorTextLight            render.style/color-text-light
+             :colorTextMedium           render.style/color-text-medium
+             :colorTextDark             render.style/color-text-dark
              :siteUrl                   (public-settings/site-url)
              :notificationManagementUrl (url/notification-management-url)}
             (when alert-condition-map

@@ -89,6 +89,11 @@
             </table>
             <hr style="border-width: 0; background: #F0F0F0; height: 1px; margin-top: 20px; margin-bottom: 20px;">
             {{{pulse}}}
+            {{#firstRunOnly?}}
+              <p style="color: {{colorTextMedium}}; font-size: 12px; font-weight: 400">
+              We’ll stop sending you alerts about this question now.
+              </p>
+            {{/firstRunOnly?}}
             <hr style="border-width: 0; background: #F0F0F0; height: 1px; margin-top: 20px; margin-bottom: 20px;">
             <div class="footer" style="font-size: 11px; width: max-content; margin: 0 auto">
               Sent from <a href="{{siteUrl}}" style="color: {{applicationColor}}">{{siteUrl}}</a>.
