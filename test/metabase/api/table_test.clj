@@ -664,15 +664,14 @@
                      ["field" nil {:binning {:strategy "num-bins", :num-bins 10}}]}
                    (extract-dimension-options response "price"))))))
 
-      (testing "Relationship fields should not have binning options"
-        (let [fingerprint (db/select-one-field :fingerprint Field {:id (mt/id :venues :price)})]
-          (mt/with-temp-vals-in-db Field (mt/id :venues :id) {:fingerprint fingerprint}
-           (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues)))]
-             (is (= #{}
-                    (extract-dimension-options response "id")))))))
+      (testing "Number columns with a relationship semantic type should not have binning options"
+        (mt/with-temp-vals-in-db Field (mt/id :venues :price) {:semantic_type "type/PK"}
+          (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues)))]
+            (is (= #{}
+                   (extract-dimension-options response "price"))))))
 
       (testing "Numeric fields without min/max values should not have binning options"
-        (let [fingerprint      (db/select-one-field :fingerprint Field {:id (mt/id :venues :latitude)})
+        (let [fingerprint      (db/select-one-field :fingerprint Field :id (mt/id :venues :latitude))
               temp-fingerprint (-> fingerprint
                                    (assoc-in [:type :type/Number :max] nil)
                                    (assoc-in [:type :type/Number :min] nil))]
