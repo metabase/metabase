@@ -28,11 +28,12 @@ describe("scenarios > admin > settings > email settings", () => {
     cy.findByText("Changes saved!");
 
     // This part was added as a repro for metabase#17615
-    cy.findByDisplayValue("localhost");
-    cy.findByDisplayValue("25");
-    cy.findAllByDisplayValue("admin");
-    cy.findByDisplayValue("mailer@metabase.test");
+    cy.findByDisplayValue("smtp.mailtrap.io");
+    cy.findByDisplayValue("2525");
+    cy.findAllByDisplayValue("6100f28480a34f");
+    cy.findByDisplayValue("from@example.com");
   });
+
   it("should show an error if test email fails", () => {
     // Reuse Email setup without relying on the previous test
     cy.request("PUT", "/api/setting", {
