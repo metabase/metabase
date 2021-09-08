@@ -296,7 +296,7 @@
           :title                     (:name pulse)
           :titleUrl                  (url/dashboard-url (:id dashboard))
           :dashboardDescription      (:description dashboard)
-          :pulseCreator              (-> pulse :creator :common_name)
+          :creator                   (-> pulse :creator :common_name)
           :sectionStyle              (render.style/style (render.style/section-style))
           :colorTextDark             render.style/color-text-dark
           :colorTextLight            render.style/color-text-light
@@ -463,6 +463,7 @@
              :title                     card-name
              :titleUrl                  (url/card-url card-id)
              :questionName              card-name
+             :creator                   (-> alert :creator :common_name)
              :questionURL               (url/card-url card-id)
              :sectionStyle              (render.style/section-style)
              :colorTextDark             render.style/color-text-dark

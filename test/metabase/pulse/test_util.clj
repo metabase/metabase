@@ -23,7 +23,7 @@
         (qp.test/rows result)))))
 
 (comment
-  (def my-pulse (Pulse :id 382))
+  (def my-pulse (metabase.models.pulse/retrieve-notification 382))
   (comment (clojure.pprint/pprint my-pulse))
   (pulse/send-pulse! my-pulse))
 
