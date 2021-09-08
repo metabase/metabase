@@ -45,7 +45,11 @@ export function validateCacheTTL(value) {
   if (value === null) {
     return;
   }
-  if (!Number.isSafeInteger(value) || value <= 0) {
+  if (!Number.isSafeInteger(value) || value < 0) {
     return t`Must be a positive integer value`;
   }
+}
+
+export function normalizeCacheTTL(value) {
+  return value === 0 ? null : value;
 }

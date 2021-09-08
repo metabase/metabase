@@ -2,8 +2,8 @@ import MetabaseSettings from "metabase/lib/settings";
 import { getQuestionsImplicitCacheTTL, validateCacheTTL } from "./utils";
 
 describe("validateCacheTTL", () => {
-  const validTestCases = [null, 1, 6, 42];
-  const invalidTestCases = [-1, -1.2, 0, 0.5, 4.3];
+  const validTestCases = [null, 0, 1, 6, 42];
+  const invalidTestCases = [-1, -1.2, 0.5, 4.3];
 
   validTestCases.forEach(value => {
     it(`should be valid for ${value}`, () => {
