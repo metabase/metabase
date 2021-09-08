@@ -3,6 +3,7 @@
     {{!--- Empty head to make style element work in Yahoo mail on Android: https://www.caniemail.com/features/html-style/}}
   </head>
   <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900&display=swap');
 
@@ -49,65 +50,53 @@
         font-size: 14px;
         line-height: 18px;
       }
-
-      {{!-- Limit with of background on desktop  --}}
-      @media screen and (min-width:600px) {
-        .background {
-          width: 719px !important;
-        }
-        .container {
-          margin-left: 52px !important;
-          margin-right: 52px !important;
-        }
-      }
-
     </style>
   </head>
   <body style="padding: 0px">
-    <div class="background" style="background-color: #F9F9F9; width: 100%; height: 100%">
-      {{!-- Spacer div to prevent margin collapse --}}
-      <div>&#8202;</div>
-      <div class="container" style="background-color: white; width: 555px; border-radius: 30px; margin-left: 10px; margin-right: 10px; padding: 30px;">
-        <table class="header">
-          <tr>
-            <td>
-              <img class="icon" width="20" style="padding-top: 4px; padding-right: 16px" src="cid:{{iconCid}}"/>
-            </td>
-            <td>
-              <a class="title" href="{{titleUrl}}" style="font-size: 20px; font-weight: 700; padding-bottom: 4px;">
-                {{title}}
-              </a>
-            </td>
-          </tr>
-          {{#dashboardDescription}}
-            <tr>
-              <td>&#8202;</td>
-              <td>
-                <div class="description" style="color: {{colorTextDark}}; font-size: 14px; padding-bottom: 4px;">
-                  {{dashboardDescription}}
-                </div>
-              </td>
-            </tr>
-          {{/dashboardDescription}}
-          <tr>
-            <td>&#8202;</td>
-            <td>
-              <div class="sender" style="color: {{colorTextLight}}; font-size: 12px">
-                Sent by {{pulseCreator}}
-              </div>
-            </td>
-          </tr>
-        </table>
-        <hr style="border-width: 0; background: #F0F0F0; height: 1px; margin-top: 20px; margin-bottom: 20px;">
-        {{{pulse}}}
-        <hr style="border-width: 0; background: #F0F0F0; height: 1px; margin-top: 20px; margin-bottom: 20px;">
-        <div class="footer" style="font-size: 11px; width: max-content; margin: 0 auto">
-          Sent from <a href="{{siteUrl}}" style="color: {{applicationColor}}">{{siteUrl}}</a>.
-          <a href="{{notificationManagementUrl}}" style="color: {{applicationColor}}"> Manage your subscriptions</a>
-        </div>
-      </div>
-      {{!-- Spacer div to prevent margin collapse --}}
-      <div>&#8202;</div>
-    </div>
+    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #F9F9F9; padding: 20px">
+      <tr>
+        <td>
+          <div class="container" style="background-color: white; max-width: 555px; border-radius: 30px; margin: 0 auto; padding: 30px;">
+            <table class="header">
+              <tr>
+                <td>
+                  <img class="icon" style="padding-top: 4px; padding-right: 16px; width: 100%; height: auto; max-width: 20px" src="cid:{{iconCid}}"/>
+                </td>
+                <td>
+                  <a class="title" href="{{titleUrl}}" style="font-size: 20px; font-weight: 700; padding-bottom: 4px;">
+                    {{title}}
+                  </a>
+                </td>
+              </tr>
+              {{#dashboardDescription}}
+                <tr>
+                  <td>&#8202;</td>
+                  <td>
+                    <div class="description" style="color: {{colorTextDark}}; font-size: 14px; padding-bottom: 4px;">
+                      {{dashboardDescription}}
+                    </div>
+                  </td>
+                </tr>
+              {{/dashboardDescription}}
+              <tr>
+                <td>&#8202;</td>
+                <td>
+                  <div class="sender" style="color: {{colorTextLight}}; font-size: 12px">
+                    Sent by {{pulseCreator}}
+                  </div>
+                </td>
+              </tr>
+            </table>
+            <hr style="border-width: 0; background: #F0F0F0; height: 1px; margin-top: 20px; margin-bottom: 20px;">
+            {{{pulse}}}
+            <hr style="border-width: 0; background: #F0F0F0; height: 1px; margin-top: 20px; margin-bottom: 20px;">
+            <div class="footer" style="font-size: 11px; width: max-content; margin: 0 auto">
+              Sent from <a href="{{siteUrl}}" style="color: {{applicationColor}}">{{siteUrl}}</a>.
+              <a href="{{notificationManagementUrl}}" style="color: {{applicationColor}}"> Manage your subscriptions</a>
+            </div>
+          </div>
+        </td>
+      </tr>
+    </table>
   </body>
 </html>
