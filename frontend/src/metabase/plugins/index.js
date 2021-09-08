@@ -96,4 +96,5 @@ export const PLUGIN_MODERATION = {
 export const PLUGIN_CACHING = {
   cacheTTLFormField: null,
   databaseCacheTTLFormField: null,
+  getQuestionsImplicitCacheTTL: () => null,
 };

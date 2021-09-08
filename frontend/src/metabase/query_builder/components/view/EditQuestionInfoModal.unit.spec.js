@@ -19,38 +19,21 @@ const QUESTION = {
   archived: false,
 };
 
-function mockCachingSettings({
-  enabled = true,
-  cacheTTLMultiplier,
-  minCacheThreshold,
-} = {}) {
-  const original = MetabaseSettings.get;
+function mockCachingSettings({ enabled = true } = {}) {
   const spy = jest.spyOn(MetabaseSettings, "get");
   spy.mockImplementation(key => {
     if (key === "enable-query-caching") {
       return enabled;
     }
-    if (enabled && key === "query-caching-ttl-ratio") {
-      return cacheTTLMultiplier();
-    }
-    if (enabled && key === "query-caching-min-ttl") {
-      return minCacheThreshold;
-    }
-    return original(key);
   });
 }
 
 function setup({
-  databaseCacheTTL = null,
   mockQuestionUpdateResponse = true,
   cachingEnabled = true,
-  cacheTTLMultiplier = 10,
-  minCacheThreshold = 0,
 } = {}) {
   mockCachingSettings({
     enabled: cachingEnabled,
-    cacheTTLMultiplier,
-    minCacheThreshold,
   });
 
   const onSave = jest.fn();
@@ -58,9 +41,6 @@ function setup({
 
   const question = {
     card: () => QUESTION,
-    database: () => ({
-      cache_ttl: databaseCacheTTL,
-    }),
   };
 
   if (mockQuestionUpdateResponse) {
@@ -224,10 +204,12 @@ describe("EditQuestionInfoModal", () => {
           title: "Cache TTL",
           type: "integer",
         };
+        PLUGIN_CACHING.getQuestionsImplicitCacheTTL = () => 0;
       });
 
       afterEach(() => {
         PLUGIN_CACHING.cacheTTLFormField = null;
+        PLUGIN_CACHING.getQuestionsImplicitCacheTTL = () => null;
       });
 
       describe("caching enabled", () => {
@@ -237,10 +219,27 @@ describe("EditQuestionInfoModal", () => {
           expect(screen.queryByLabelText("Cache TTL")).toHaveValue("0");
         });
 
-        it("shows database cache ttl as a default value if question's cache ttl is not set", () => {
-          setup({ databaseCacheTTL: 48 });
+        it("shows implicit cache ttl as a default value if question's cache ttl is not set", () => {
+          PLUGIN_CACHING.getQuestionsImplicitCacheTTL = () => 48;
+          setup();
+
           fireEvent.click(screen.queryByText("More options"));
+
           expect(screen.queryByLabelText("Cache TTL")).toHaveValue("48");
+        });
+
+        it("doesn't submit an implicit cache_ttl value if not changed", done => {
+          PLUGIN_CACHING.getQuestionsImplicitCacheTTL = () => 48;
+          setup({ mockQuestionUpdateResponse: false });
+          setupUpdateRequestAssertion(done, {
+            name: "New name",
+            cache_ttl: QUESTION.cache_ttl,
+          });
+
+          fireEvent.click(screen.queryByText("More options"));
+          fillForm({ name: "New name" });
+
+          fireEvent.click(screen.queryByRole("button", { name: "Save" }));
         });
 
         it("can be changed", done => {
