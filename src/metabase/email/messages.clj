@@ -427,10 +427,10 @@
         message-body    (assoc message-context :pulse   (html (vec (cons :div (map :content rendered-cards))))
                                                :iconCid (:content-id icon-attachment))
         attachments     (apply merge (map :attachments rendered-cards))]
-      (vec (concat [{:type "text/html; charset=utf-8" :content (stencil/render-file "metabase/email/pulse" message-body)}]
-                 (map make-message-attachment attachments)
-                 [icon-attachment]
-                 (result-attachments results)))))
+    (vec (concat [{:type "text/html; charset=utf-8" :content (stencil/render-file "metabase/email/pulse" message-body)}]
+               (map make-message-attachment attachments)
+               [icon-attachment]
+               (result-attachments results)))))
 
 (defn- assoc-attachment-booleans [pulse results]
   (for [{{result-card-id :id} :card :as result} results
