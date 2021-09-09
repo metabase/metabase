@@ -2,8 +2,7 @@
   (:require [clojure.test :refer :all]
             [metabase.config :as config]
             [metabase.pulse.filters :as filters]
-            [metabase.test :as mt]
-            [metabase.public-settings :as public-settings]))
+            [metabase.test :as mt]))
 
 (def ^:private test-subscription
   "A test dashboard subscription with only the :parameters field included. Has one filter which
