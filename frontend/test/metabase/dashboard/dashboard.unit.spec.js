@@ -1,7 +1,7 @@
 import {
   fetchDataOrError,
   syncParametersAndEmbeddingParams,
-} from "metabase/dashboard/dashboard";
+} from "metabase/dashboard/utils";
 
 describe("Dashboard", () => {
   describe("fetchDataOrError()", () => {
