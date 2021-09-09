@@ -3,7 +3,7 @@ import {
   syncParametersAndEmbeddingParams,
 } from "metabase/dashboard/utils";
 
-describe("Dashboard", () => {
+describe("Dashboard utils", () => {
   describe("fetchDataOrError()", () => {
     it("should return data on successful fetch", async () => {
       const data = {
