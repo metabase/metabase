@@ -24,7 +24,8 @@
             [metabase.util.ui-logic :as ui]
             [metabase.util.urls :as urls]
             [schema.core :as s]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [metabase.pulse.filters :as filters])
   (:import metabase.models.card.CardInstance))
 
 
@@ -273,11 +274,11 @@
   "Polymorphoic function for creating notifications. This logic is different for pulse type (i.e. alert vs. pulse) and
   channel_type (i.e. email vs. slack)"
   {:arglists '([alert-or-pulse results channel])}
-  (fn [pulse _ {:keys [channel_type] :as channel}]
+  (fn [pulse _ {:keys [channel_type]}]
     [(alert-or-pulse pulse) (keyword channel_type)]))
 
 (defmethod notification [:pulse :email]
-  [{pulse-id :id, pulse-name :name, dashboard-id :dashboard_id, :as pulse} results {:keys [recipients] :as channel}]
+  [{pulse-id :id, pulse-name :name, dashboard-id :dashboard_id, :as pulse} results {:keys [recipients]}]
   (log/debug (u/format-color 'cyan (trs "Sending Pulse ({0}: {1}) with {2} Cards via email"
                                         pulse-id (pr-str pulse-name) (count results))))
   (let [email-recipients (filterv u/email? (map :email recipients))
@@ -290,12 +291,15 @@
      :message      (messages/render-pulse-email timezone pulse dashboard results)}))
 
 (defmethod notification [:pulse :slack]
-  [{pulse-id :id, pulse-name :name, :as pulse} results {{channel-id :channel} :details :as channel}]
+  [{pulse-id :id, pulse-name :name, dashboard-id :dashboard_id, :as pulse}
+   results
+   {{channel-id :channel} :details}]
   (log/debug (u/format-color 'cyan (trs "Sending Pulse ({0}: {1}) with {2} Cards via Slack"
                                         pulse-id (pr-str pulse-name) (count results))))
-  {:channel-id  channel-id
-   :message     (subject pulse)
-   :attachments (create-slack-attachment-data results)})
+  (let [dashboard (Dashboard :id dashboard-id)]
+    {:channel-id  channel-id
+     :message     (str "<" (filters/dashboard-url pulse dashboard) "|" (subject pulse) ">")
+     :attachments (create-slack-attachment-data results)}))
 
 (defmethod notification [:alert :email]
   [{:keys [id] :as pulse} results {:keys [recipients]}]

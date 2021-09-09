@@ -1,5 +1,6 @@
 (ns metabase.pulse.filters-test
   (:require [clojure.test :refer :all]
+            [metabase.config :as config]
             [metabase.pulse.filters :as filters]))
 
 (def ^:private test-subscription
@@ -37,9 +38,16 @@
      :sectionId "date"}]})
 
 (deftest merge-filters-test
-  (testing "Default filters on the dashboard are merged into filters on the subscription"
-    (is (= ["State" "Quarter and Year"]
-           (map :name (filters/merge-filters test-subscription test-dashboard))))))
+  (testing "On OSS builds, only default dashboard filters are applied"
+    (with-redefs [config/ee-available? false]
+      (is (= [{:name "State"} {:name "Quarter and Year"}]
+             (map #(select-keys % [:name :value])
+                  (filters/merge-filters test-subscription test-dashboard))))))
+  (testing "On EE builds, subscription filters take precedence over default values for dashboard filters"
+    (with-redefs [config/ee-available? true]
+      (is (= [{:name "State", :value ["CA" "NY" "IL"]} {:name "Quarter and Year"}]
+             (map #(select-keys % [:name :value])
+                  (filters/merge-filters test-subscription test-dashboard)))))))
 
 (deftest value-string-test
   (testing "If a filter has multiple values, they are concatenated into a comma-separated string"
@@ -50,3 +58,10 @@
            (filters/value-string (-> test-dashboard :parameters first))))
     (is (= "Q1-2021"
            (filters/value-string (-> test-dashboard :parameters last))))))
+
+(deftest dashboard-url-test
+  (testing "A valid dashboard URL can be generated with filters included"
+    (is (= "https://metabase.com/dashboard/1?state=CA&quarter_and_year=Q1-2021"
+           (filters/dashboard-url "https://metabase.com/dashboard/1" (:parameters test-dashboard))))
+    (is (= "https://metabase.com/dashboard/1?state=CA&state=NY&state=IL"
+           (filters/dashboard-url "https://metabase.com/dashboard/1" (:parameters test-subscription))))))

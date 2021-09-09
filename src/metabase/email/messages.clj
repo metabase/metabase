@@ -303,7 +303,7 @@
   (merge (common-context)
          {:emailType                 "pulse"
           :title                     (:name pulse)
-          :titleUrl                  (url/dashboard-url (:id dashboard))
+          :titleUrl                  (filters/dashboard-url pulse dashboard)
           :dashboardDescription      (:description dashboard)
           :creator                   (-> pulse :creator :common_name)
           :sectionStyle              (render.style/style (render.style/section-style))
