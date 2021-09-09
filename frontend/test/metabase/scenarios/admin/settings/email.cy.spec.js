@@ -24,8 +24,9 @@ describe("scenarios > admin > settings > email settings", () => {
       .blur();
     cy.findByText("Save changes").click();
 
-    cy.findByText("Changes saved!");
+    cy.findByText("Changes saved!", { timeout: 10000 });
   });
+
   it("should show an error if test email fails", () => {
     // Reuse Email setup without relying on the previous test
     cy.request("PUT", "/api/setting", {
