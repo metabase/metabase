@@ -23,9 +23,8 @@ import {
   getPulseParameters,
 } from "metabase/lib/pulse";
 
+import { getUserIsAdmin } from "metabase/selectors/user";
 import { getEditingPulse, getPulseFormInput } from "metabase/pulse/selectors";
-
-import { getUser } from "metabase/selectors/user";
 
 import {
   setEditingPulse,
@@ -34,11 +33,6 @@ import {
   fetchPulseFormInput,
   testPulse,
 } from "metabase/pulse/actions";
-
-export const CHANNEL_ICONS = {
-  email: "mail",
-  slack: "slack",
-};
 
 const cardsFromDashboard = dashboard => {
   if (dashboard === undefined) {
@@ -95,7 +89,7 @@ const getEditingPulseWithDefaults = (state, props) => {
 const mapStateToProps = (state, props) => ({
   pulse: getEditingPulseWithDefaults(state, props),
   formInput: getPulseFormInput(state, props),
-  user: getUser(state),
+  isAdmin: getUserIsAdmin(state),
 });
 
 const mapDispatchToProps = {
@@ -137,6 +131,7 @@ class SharingSidebar extends React.Component {
     setPulseArchived: PropTypes.func.isRequired,
     users: PropTypes.array,
     params: PropTypes.object,
+    isAdmin: PropTypes.bool,
   };
 
   setPulse = pulse => {
@@ -283,6 +278,7 @@ class SharingSidebar extends React.Component {
       testPulse,
       users,
       dashboard,
+      isAdmin,
     } = this.props;
 
     // protect from empty values that will mess this up
@@ -392,6 +388,7 @@ class SharingSidebar extends React.Component {
       return (
         <NewPulseSidebar
           onCancel={this.onCancel}
+          isAdmin={isAdmin}
           emailConfigured={emailConfigured}
           slackConfigured={slackConfigured}
           onNewEmailPulse={() => {
