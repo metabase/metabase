@@ -188,7 +188,9 @@
                          ;; Links to source dashboard
                          "<a class=\\\"title\\\" href=\\\"https://metabase.com/testmb/dashboard/\\d+\\\"" true
                          ;; Links to Metabase instance
-                         "Sent from <a href=\\\"https://metabase.com/testmb\\\"" true}
+                         "Sent from <a href=\\\"https://metabase.com/testmb\\\"" true
+                         ;; Links to subscription management page in account settings
+                         "\\\"https://metabase.com/testmb/account/notifications\\\"" true}
                         png-attachment]})
                (mt/summarize-multipart-email
                 #"Aviary KPIs"
@@ -197,7 +199,8 @@
                 #"More results have been included"
                 #"ID</th>"
                 #"<a class=\"title\" href=\"https://metabase.com/testmb/dashboard/\d+\""
-                #"Sent from <a href=\"https://metabase.com/testmb\""))))
+                #"Sent from <a href=\"https://metabase.com/testmb\""
+                #"\"https://metabase.com/testmb/account/notifications\""))))
       :slack
       (fn [{:keys [card-id]} [pulse-results]]
         ;; If we don't force the thunk, the rendering code will never execute and attached-results-text won't be
