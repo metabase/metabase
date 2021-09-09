@@ -2,7 +2,6 @@
 import React, { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import { connect } from "react-redux";
 
 import Form from "metabase/containers/Form";
 import ModalContent from "metabase/components/ModalContent";
@@ -39,19 +38,14 @@ function cleanValues(question, values) {
     : values;
 }
 
-const mapDispatchToProps = {
-  updateQuestion: Questions.actions.update,
-};
-
-function EditQuestionInfoModal({ question, updateQuestion, onClose, onSave }) {
+function EditQuestionInfoModal({ question, onClose, onSave }) {
   const onSubmit = useCallback(
     async values => {
       const card = cleanValues(question, values);
-      await updateQuestion({ id: card.id }, card);
       await onSave({ ...question.card(), ...card });
       onClose();
     },
-    [question, updateQuestion, onSave, onClose],
+    [question, onSave, onClose],
   );
 
   return (
@@ -96,7 +90,4 @@ function EditQuestionInfoModal({ question, updateQuestion, onClose, onSave }) {
   );
 }
 
-export default connect(
-  null,
-  mapDispatchToProps,
-)(EditQuestionInfoModal);
+export default EditQuestionInfoModal;

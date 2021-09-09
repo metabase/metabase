@@ -1,8 +1,7 @@
 import React from "react";
-import _ from "underscore";
 import { Provider } from "react-redux";
 import { reducer as form } from "redux-form";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import xhrMock from "xhr-mock";
 import { getStore } from "__support__/entities-store";
@@ -28,10 +27,7 @@ function mockCachingSettings({ enabled = true } = {}) {
   });
 }
 
-function setup({
-  mockQuestionUpdateResponse = true,
-  cachingEnabled = true,
-} = {}) {
+function setup({ cachingEnabled = true } = {}) {
   mockCachingSettings({
     enabled: cachingEnabled,
   });
@@ -42,12 +38,6 @@ function setup({
   const question = {
     card: () => QUESTION,
   };
-
-  if (mockQuestionUpdateResponse) {
-    xhrMock.put(`/api/card/${QUESTION.id}`, (req, res) =>
-      res.status(200).body(req.body()),
-    );
-  }
 
   render(
     <Provider store={getStore({ form })}>
@@ -63,28 +53,6 @@ function setup({
     onSave,
     onClose,
   };
-}
-
-function setupUpdateRequestAssertion(
-  doneCallback,
-  changedValues,
-  { hasCacheTTLField = false } = {},
-) {
-  const editableFields = ["name", "description"];
-  if (hasCacheTTLField) {
-    editableFields.push("cache_ttl");
-  }
-  xhrMock.put(`/api/card/${QUESTION.id}`, req => {
-    try {
-      expect(JSON.parse(req.body())).toEqual({
-        ..._.pick(QUESTION, ...editableFields),
-        ...changedValues,
-      });
-      doneCallback();
-    } catch (err) {
-      doneCallback(err);
-    }
-  });
 }
 
 function fillForm({ name, description, cache_ttl } = {}) {
@@ -156,18 +124,7 @@ describe("EditQuestionInfoModal", () => {
     expect(screen.queryByRole("button", { name: "Save" })).toBeDisabled();
   });
 
-  it("submits an update request correctly", done => {
-    const UPDATES = {
-      name: "New fancy question name",
-      description: "Just testing if updates work correctly",
-    };
-    setup({ mockQuestionUpdateResponse: false });
-    fillForm(UPDATES);
-    setupUpdateRequestAssertion(done, UPDATES);
-    fireEvent.click(screen.queryByRole("button", { name: "Save" }));
-  });
-
-  it("calls onSave callback on successful update", async () => {
+  it("calls onSave callback on successful update", () => {
     const UPDATES = {
       name: "New fancy question name",
       description: "Just testing if updates work correctly",
@@ -175,9 +132,7 @@ describe("EditQuestionInfoModal", () => {
     const { onSave } = setup();
 
     fillForm(UPDATES);
-    await act(async () => {
-      await fireEvent.click(screen.queryByRole("button", { name: "Save" }));
-    });
+    fireEvent.click(screen.queryByRole("button", { name: "Save" }));
 
     expect(onSave).toHaveBeenCalledTimes(1);
     expect(onSave).toHaveBeenCalledWith({
@@ -228,33 +183,32 @@ describe("EditQuestionInfoModal", () => {
           expect(screen.queryByLabelText("Cache TTL")).toHaveValue("48");
         });
 
-        it("doesn't submit an implicit cache_ttl value if not changed", done => {
+        it("doesn't submit an implicit cache_ttl value if not changed", () => {
           PLUGIN_CACHING.getQuestionsImplicitCacheTTL = () => 48;
-          setup({ mockQuestionUpdateResponse: false });
-          setupUpdateRequestAssertion(done, {
-            name: "New name",
-            cache_ttl: QUESTION.cache_ttl,
-          });
+          const { onSave } = setup();
 
           fireEvent.click(screen.queryByText("More options"));
           fillForm({ name: "New name" });
-
           fireEvent.click(screen.queryByRole("button", { name: "Save" }));
+
+          expect(onSave).toHaveBeenCalledWith({
+            ...QUESTION,
+            name: "New name",
+            cache_ttl: QUESTION.cache_ttl,
+          });
         });
 
-        it("can be changed", done => {
-          setup({ mockQuestionUpdateResponse: false });
-          setupUpdateRequestAssertion(
-            done,
-            {
-              cache_ttl: 10,
-            },
-            { hasCacheTTLField: true },
-          );
+        it("can be changed", () => {
+          const { onSave } = setup();
 
           fireEvent.click(screen.queryByText("More options"));
           fillForm({ cache_ttl: 10 });
           fireEvent.click(screen.queryByRole("button", { name: "Save" }));
+
+          expect(onSave).toHaveBeenCalledWith({
+            ...QUESTION,
+            cache_ttl: 10,
+          });
         });
       });
 
@@ -267,14 +221,18 @@ describe("EditQuestionInfoModal", () => {
           ).not.toBeInTheDocument();
         });
 
-        it("can still submit the form", done => {
-          setup({ cachingEnabled: false, mockQuestionUpdateResponse: false });
-          setupUpdateRequestAssertion(done, {
-            name: "Test",
+        it("can still submit the form", () => {
+          const { onSave } = setup({
+            cachingEnabled: false,
           });
 
           fillForm({ name: "Test" });
           fireEvent.click(screen.queryByRole("button", { name: "Save" }));
+
+          expect(onSave).toHaveBeenCalledWith({
+            ...QUESTION,
+            name: "Test",
+          });
         });
       });
     });
