@@ -171,6 +171,35 @@
                                      :text (truncate-mrkdwn mrkdwn)}}]})))))
          (remove nil?))))
 
+(defn- subject
+  [{:keys [name cards dashboard_id]}]
+  (if (or dashboard_id
+          (some :dashboard_id cards))
+    name
+    (trs "Pulse: {0}" name)))
+
+(defn- slack-dashboard-info
+  "Returns a block element that includes a dashboard's name, creator, and filters, for inclusion in a
+  Slack dashboard subscription"
+  [pulse dashboard]
+  (let [header-section  {:type "header"
+                         :text {:type "plain_text"
+                                :text (subject pulse)
+                                :emoji true}}
+        creator-section {:type   "section"
+                         :fields [{:type "mrkdwn"
+                                   :text (str "Sent by " (-> pulse :creator :common_name))}]}
+        merged-filters  (filters/merge-filters pulse dashboard)
+        filter-fields   (for [filter merged-filters]
+                          {:type "mrkdwn"
+                           :text (str "*" (:name filter) "*\n" (filters/value-string filter))})
+        filter-section  (when (seq filter-fields)
+                          {:type   "section"
+                           :fields filter-fields})]
+    (if filter-section
+      {:blocks [header-section filter-section creator-section]}
+      {:blocks [header-section creator-section]})))
+
 (def slack-width
   "Width of the rendered png of html to be sent to slack."
   1200)
@@ -185,13 +214,14 @@
   ([attachments slack-attachment-uploader]
    (letfn [(f [a] (select-keys a [:title :title_link :fallback]))]
      (reduce (fn [processed {:keys [rendered-info attachment-name channel-id] :as attachment-data}]
+               (def my-attachment-data attachment-data)
                (conj processed (if (:blocks attachment-data)
                                  attachment-data
                                  (if (:render/text rendered-info)
                                    (-> (f attachment-data)
                                        (assoc :text (:render/text rendered-info)))
                                    (let [image-bytes (render/png-from-render-info rendered-info slack-width)
-                                         image-url (slack-attachment-uploader image-bytes attachment-name channel-id)]
+                                         image-url   (slack-attachment-uploader image-bytes attachment-name channel-id)]
                                      (-> (f attachment-data)
                                          (assoc :image_url image-url)))))))
              []
@@ -236,13 +266,6 @@
   (if (:alert_condition pulse)
     :alert
     :pulse))
-
-(defn- subject
-  [{:keys [name cards dashboard_id]}]
-  (if (or dashboard_id
-          (some :dashboard_id cards))
-    name
-    (trs "Pulse: {0}" name)))
 
 (defmulti ^:private should-send-notification?
   "Returns true if given the pulse type and resultset a new notification (pulse or alert) should be sent"
@@ -298,10 +321,8 @@
                                         pulse-id (pr-str pulse-name) (count results))))
   (let [dashboard (Dashboard :id dashboard-id)]
     {:channel-id  channel-id
-     :message     (if dashboard
-                    (str "<" (filters/dashboard-url pulse dashboard) "|" (subject pulse) ">")
-                    (subject pulse))
-     :attachments (create-slack-attachment-data results)}))
+     :attachments (cons (slack-dashboard-info pulse dashboard)
+                        (create-slack-attachment-data results))}))
 
 (defmethod notification [:alert :email]
   [{:keys [id] :as pulse} results {:keys [recipients]}]
@@ -322,8 +343,11 @@
   [pulse results {{channel-id :channel} :details}]
   (log/debug (u/format-color 'cyan (trs "Sending Alert ({0}: {1}) via Slack" (:id pulse) (:name pulse))))
   {:channel-id  channel-id
-   :message     (trs "Alert: {0}" (first-question-name pulse))
-   :attachments (create-slack-attachment-data results)})
+   :attachments (cons {:blocks [{:type "header"
+                                 :text {:type "plain_text"
+                                        :text (str "🔔 " (first-question-name pulse))
+                                        :emoji true}}]}
+                      (create-slack-attachment-data results))})
 
 (defmethod notification :default
   [_ _ {:keys [channel_type]}]
