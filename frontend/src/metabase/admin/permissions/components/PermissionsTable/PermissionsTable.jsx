@@ -2,7 +2,6 @@ import React, { useState, useRef } from "react";
 import PropTypes from "prop-types";
 
 import Label from "metabase/components/type/Label";
-import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import Modal from "metabase/components/Modal";
 import ConfirmContent from "metabase/components/ConfirmContent";
@@ -15,6 +14,7 @@ import {
   EntityNameCell,
   EntityNameLink,
   EntityName,
+  HintIcon,
 } from "./PermissionsTable.styled";
 
 const propTypes = {
@@ -77,21 +77,18 @@ export function PermissionsTable({
         <thead>
           <tr>
             {columns.map((column, index) => {
-              const isFirst = index === 0;
-              const isLast = index === columns.length - 1;
-
-              const width = isFirst ? "340px" : isLast ? null : "200px";
-
               return (
                 <PermissionsTableCell
                   key={column}
-                  style={{ width }}
                   horizontalPadding={horizontalPadding}
                 >
                   <Label>{column}</Label>
                 </PermissionsTableCell>
               );
             })}
+            <PermissionsTableCell
+              style={{ width: "100%", minWidth: "unset" }}
+            />
           </tr>
         </thead>
         <tbody>
@@ -108,11 +105,8 @@ export function PermissionsTable({
                   )}
 
                   {entity.hint && (
-                    <Tooltip tooltip="text">
-                      <Icon
-                        style={{ marginLeft: "0.25rem", cursor: "pointer" }}
-                        name="question"
-                      />
+                    <Tooltip tooltip={entity.hint}>
+                      <HintIcon />
                     </Tooltip>
                   )}
                 </EntityNameCell>
