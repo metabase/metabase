@@ -355,14 +355,14 @@
       (not= :table (render/detect-pulse-chart-type card result-data))
       (no "we've determined it should not be rendered as a table")
 
-      (= (count (take render.body/*cols-limit* cols)) render.body/*cols-limit*)
-      (yes "the results have >= %d columns" render.body/*cols-limit*)
+      (= (count (take render.body/cols-limit cols)) render.body/cols-limit)
+      (yes "the results have >= %d columns" render.body/cols-limit)
 
       (= (count (take render.body/rows-limit rows)) render.body/rows-limit)
       (yes "the results have >= %d rows" render.body/rows-limit)
 
       :else
-      (no "less than %d columns, %d rows in results" render.body/*cols-limit* render.body/rows-limit))))
+      (no "less than %d columns, %d rows in results" render.body/cols-limit render.body/rows-limit))))
 
 (defn- stream-api-results-to-export-format
   "For legacy compatability. Takes QP results in the normal `:api` response format and streams them to a different

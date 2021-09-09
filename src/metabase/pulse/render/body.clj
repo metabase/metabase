@@ -36,8 +36,9 @@
   "Maximum number of rows to render in a Pulse image."
   10)
 
-(def ^:dynamic *cols-limit*
-  "Maximum number of columns to render in a Pulse image. Defaults to infinity, so that columns are not truncated."
+(def cols-limit
+  "Maximum number of columns to render in a Pulse image. Set to infinity, so that columns are not truncated.
+  TODO: we should eventually remove the column limiting logic if it's not used anywhere."
   ##Inf)
 
 ;; NOTE: hiccup does not escape content by default so be sure to use "h" to escape any user-controlled content :-/
@@ -183,9 +184,9 @@
 
 (defn- attached-results-text
   "Returns hiccup structures to indicate truncated results are available as an attachment"
-  [render-type cols *cols-limit* rows rows-limit]
+  [render-type cols cols-limit rows rows-limit]
   (when (and (not= :inline render-type)
-             (or (< *cols-limit* (count-displayed-columns cols))
+             (or (< cols-limit (count-displayed-columns cols))
                  (< rows-limit (count rows))))
     [:div {:style (style/style {:color         style/color-gray-2
                                 :margin-bottom :16px})}
@@ -207,13 +208,13 @@
                     (table/render-table
                      (color/make-color-selector data (:visualization_settings card))
                      (mapv :name (:cols data))
-                     (prep-for-html-rendering timezone-id card data *cols-limit*))
-                    (render-truncation-warning *cols-limit* (count-displayed-columns cols) rows-limit (count rows))]]
+                     (prep-for-html-rendering timezone-id card data cols-limit))
+                    (render-truncation-warning cols-limit (count-displayed-columns cols) rows-limit (count rows))]]
     {:attachments
      nil
 
      :content
-     (if-let [results-attached (attached-results-text render-type cols *cols-limit* rows rows-limit)]
+     (if-let [results-attached (attached-results-text render-type cols cols-limit rows rows-limit)]
        (list results-attached table-body)
        (list table-body))}))
 
