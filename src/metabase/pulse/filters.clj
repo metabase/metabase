@@ -38,9 +38,3 @@
                             (str (:slug filter) "=" value))))]
     (str base-url (when (seq url-params)
                     (str "?" (str/join "&" url-params))))))
-
-;; TODO
-(defn humanize-filter
-  "Given a filter, returns a best-effort human-readable string representation of the filter name and value"
-  [filter]
-  "")

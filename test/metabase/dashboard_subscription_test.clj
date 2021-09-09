@@ -1,5 +1,6 @@
 (ns metabase.dashboard-subscription-test
   (:require [clojure.test :refer :all]
+            [metabase.config :as config]
             [metabase.models :refer [Card Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient User]]
             [metabase.models.pulse :as models.pulse]
             [metabase.pulse :as pulse]
@@ -18,9 +19,9 @@
     :or   {channel :email}}
    f]
   (mt/with-temp* [Pulse         [{pulse-id :id, :as pulse}
-                                 (-> pulse
-                                     (merge {:name         "Aviary KPIs"
-                                             :dashboard_id (u/the-id dashboard)}))]
+                                 (->> pulse
+                                      (merge {:name         "Aviary KPIs"
+                                              :dashboard_id (u/the-id dashboard)}))]
                   PulseCard     [_ (merge {:pulse_id pulse-id
                                            :card_id  (u/the-id card)
                                            :position 0}
@@ -64,15 +65,16 @@
       :assert {:slack (fn [{:keys [pulse-id]} response]
                         (is (= {:sent pulse-id}
                                response)))}})"
-  [{:keys [card pulse pulse-card fixture], assertions :assert}]
+  [{:keys [card dashboard pulse pulse-card fixture], assertions :assert}]
   {:pre [(map? assertions) ((some-fn :email :slack) assertions)]}
   (doseq [channel-type [:email :slack]
           :let         [f (get assertions channel-type)]
           :when        f]
     (assert (fn? f))
     (testing (format "sent to %s channel" channel-type)
-      (mt/with-temp* [Dashboard     [{dashboard-id :id} {:name "Aviary KPIs"
-                                                         :description "How are the birds doing today?"}]
+      (mt/with-temp* [Dashboard     [{dashboard-id :id} (->> dashboard
+                                                             (merge {:name "Aviary KPIs"
+                                                                     :description "How are the birds doing today?"}))]
                       Card          [{card-id :id} (merge {:name card-name} card)]]
         (with-dashboard-sub-for-card [{pulse-id :id}
                                       {:card       card-id
@@ -266,6 +268,45 @@
                                :text {:type "mrkdwn"
                                       :text "*header*"}}]}]}
                   (thunk->boolean pulse-results)))))}}))
+
+(deftest dashboard-filter-test
+  (tests {:pulse     {:skip_if_empty false
+                      :parameters    (:parameters test-subscription)}
+          :dashboard test-dashboard}
+    "Dashboard subscription that includes a dashboard filters"
+    {:card (checkins-query-card {})
+
+     :fixture
+     (fn [_ thunk]
+       (with-redefs [config/ee-available? true]
+         (thunk)))
+
+     :assert
+     {:email
+       (fn [_ _]
+         (testing "Markdown cards are included in email subscriptions"
+           (is (= (rasta-pulse-email {:body [{"Aviary KPIs" true
+                                              "<a class=\\\"title\\\" href=\\\"https://metabase.com/testmb/dashboard/\\d+\\?state=CA&amp;state=NY&amp;quarter_and_year=Q1-2021\\\"" true}
+                                             png-attachment]})
+                  (mt/summarize-multipart-email #"Aviary KPIs"
+                                                #"<a class=\"title\" href=\"https://metabase.com/testmb/dashboard/\d+\?state=CA&amp;state=NY&amp;quarter_and_year=Q1-2021\"")))))
+
+      :slack
+      (fn [{:keys [card-id dashboard-id]} [pulse-results]]
+        (testing "Markdown cards are included in attachments list as :blocks sublists, and markdown is
+                  converted to mrkdwn (Slack markup language)"
+          (is (= {:channel-id "#general"
+                  :message    (str "<https://metabase.com/testmb/dashboard/"
+                                   dashboard-id
+                                   "?state=CA&state=NY&quarter_and_year=Q1-2021|Aviary KPIs>")
+                  :attachments
+                  [{:title           card-name
+                    :rendered-info   {:attachments false, :content true, :render/text true},
+                    :title_link      (str "https://metabase.com/testmb/question/" card-id)
+                    :attachment-name "image.png"
+                    :channel-id      "FOO"
+                    :fallback        card-name}]}
+                 (thunk->boolean pulse-results)))))}}))
 
 (deftest mrkdwn-length-limit-test
   (tests {:pulse {:skip_if_empty false}}
