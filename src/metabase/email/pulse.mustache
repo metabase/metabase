@@ -50,13 +50,24 @@
         font-size: 14px;
         line-height: 18px;
       }
+
+      @media screen and (max-width: 320px) {
+        .background {
+          background-color: white !important;
+        }
+      }
+      @media screen and (min-width: 640px) {
+        .container {
+          border-radius: 30px !important;
+        }
+      }
     </style>
   </head>
   <body style="padding: 0px">
-    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #F9F9F9; padding: 20px">
+    <table class="background" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #F9F9F9; padding: 20px; table-layout: fixed;">
       <tr>
         <td>
-          <div class="container" style="background-color: white; max-width: 555px; border-radius: 30px; margin: 0 auto; padding: 30px;">
+          <div class="container" style="background-color: white; max-width: 555px; border-radius: 10px; margin: 0 auto; padding: 30px;">
             <table class="header">
               <tr>
                 <td>
