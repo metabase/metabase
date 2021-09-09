@@ -42,7 +42,7 @@
    :results (common/reducible-query
               {:select    [[:card.id :card_id]
                            [:card.name :card_name]
-                           :collection_id
+                           [:coll.id :collection_id]
                            [:coll.name :collection_name]
                            :card.database_id
                            [:db.name :database_name]
