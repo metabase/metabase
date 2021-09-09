@@ -1,11 +1,11 @@
 (ns metabase-enterprise.audit.pages.query-detail
   "Queries to show details about a (presumably ad-hoc) query."
   (:require [cheshire.core :as json]
+            [metabase-enterprise.audit.interface :as audit.i]
             [metabase-enterprise.audit.pages.common :as common]
             [metabase.util.schema :as su]
             [ring.util.codec :as codec]
-            [schema.core :as s]
-            [metabase-enterprise.audit.interface :as audit.i]))
+            [schema.core :as s]))
 
 ;; Details about a specific query (currently just average execution time).
 (s/defmethod audit.i/internal-query ::details

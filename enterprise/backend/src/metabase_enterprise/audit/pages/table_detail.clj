@@ -1,9 +1,9 @@
 (ns metabase-enterprise.audit.pages.table-detail
-  (:require [metabase-enterprise.audit.pages.common :as common]
+  (:require [metabase-enterprise.audit.interface :as audit.i]
+            [metabase-enterprise.audit.pages.common :as common]
             [metabase.util.schema :as su]
             [ring.util.codec :as codec]
-            [schema.core :as s]
-            [metabase-enterprise.audit.interface :as audit.i]))
+            [schema.core :as s]))
 
 ;; View log for a specific Table.
 (s/defmethod audit.i/internal-query ::audit-log
