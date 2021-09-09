@@ -176,21 +176,22 @@
       (fn [_ _]
         (is (= (rasta-pulse-email
                 {:body [{;; No "Pulse:" prefix
-                         "Aviary KPIs"                     true
+                         "Aviary KPIs" true
                          ;; Includes dashboard description
-                         "How are the birds doing today?"  true
+                         "How are the birds doing today?" true
                          ;; Includes name of subscription creator
-                         "Sent by Rasta Toucan"            true
+                         "Sent by Rasta Toucan" true
                          ;; Includes everything
                          "More results have been included" false
                          ;; Inline table
-                         "ID</th>"                         true
+                         "ID</th>" true
                          ;; Links to source dashboard
                          "<a class=\\\"title\\\" href=\\\"https://metabase.com/testmb/dashboard/\\d+\\\"" true
                          ;; Links to Metabase instance
                          "Sent from <a href=\\\"https://metabase.com/testmb\\\"" true
                          ;; Links to subscription management page in account settings
-                         "\\\"https://metabase.com/testmb/account/notifications\\\"" true}
+                         "\\\"https://metabase.com/testmb/account/notifications\\\"" true
+                         "Manage your subscriptions" true}
                         png-attachment]})
                (mt/summarize-multipart-email
                 #"Aviary KPIs"
@@ -200,7 +201,8 @@
                 #"ID</th>"
                 #"<a class=\"title\" href=\"https://metabase.com/testmb/dashboard/\d+\""
                 #"Sent from <a href=\"https://metabase.com/testmb\""
-                #"\"https://metabase.com/testmb/account/notifications\""))))
+                #"\"https://metabase.com/testmb/account/notifications\""
+                #"Manage your subscriptions"))))
       :slack
       (fn [{:keys [card-id]} [pulse-results]]
         ;; If we don't force the thunk, the rendering code will never execute and attached-results-text won't be
