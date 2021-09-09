@@ -25,7 +25,7 @@
   (throw (ex-info (str (tru "Unable to run internal query function: cannot resolve {0}" query-type))
                   {:status-code 400})))
 
-(defn invoke-internal-query
+(defn resolve-internal-query
   "Invoke the internal query with `query-type` (invokes the corresponding implementation of [[internal-query]])."
   [query-type & args]
   (let [query-type (keyword query-type)

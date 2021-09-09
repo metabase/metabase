@@ -118,8 +118,8 @@
     (throw (ex-info (tru "Audit App queries are not enabled on this instance.")
                     {:type error-type/invalid-query})))
   (binding [*additional-query-params* (dissoc query :fn :args)]
-    (let [results (apply audit.i/invoke-internal-query qualified-fn-str args)]
-      (reduce-results rff context results))))
+    (let [resolved (apply audit.i/resolve-internal-query qualified-fn-str args)]
+      (reduce-results rff context resolved))))
 
 (defn handle-internal-queries
   "Middleware that handles `internal` type queries."
