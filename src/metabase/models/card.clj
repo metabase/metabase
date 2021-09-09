@@ -40,11 +40,11 @@
   {:hydrate :average_query_time}
   [{:keys [id]}]
   (-> (db/query {:select [:%avg.running_time]
-             :from [:query_execution]
-             :where [:and
-                     [:not= :running_time nil]
-                     [:not= :cache_hit true]
-                     [:= :card_id id]]})
+                 :from [:query_execution]
+                 :where [:and
+                         [:not= :running_time nil]
+                         [:not= :cache_hit true]
+                         [:= :card_id id]]})
       first vals first))
 
 (defn last-query-start
