@@ -12,6 +12,7 @@
             [metabase.models.database :refer [Database]]
             [metabase.models.pulse :as pulse :refer [Pulse]]
             [metabase.plugins.classloader :as classloader]
+            [metabase.pulse.filters :as filters]
             [metabase.pulse.interface :as i]
             [metabase.pulse.markdown :as markdown]
             [metabase.pulse.render :as render]
@@ -24,8 +25,7 @@
             [metabase.util.ui-logic :as ui]
             [metabase.util.urls :as urls]
             [schema.core :as s]
-            [toucan.db :as db]
-            [metabase.pulse.filters :as filters])
+            [toucan.db :as db])
   (:import metabase.models.card.CardInstance))
 
 
