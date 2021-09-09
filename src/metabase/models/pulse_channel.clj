@@ -42,7 +42,7 @@
 (defn schedule-frame?
   "Is `frame` a valid schedule frame?"
   [frame]
-  (schedule-frames frame))
+  (contains? schedule-frames frame))
 
 (def ^:private schedule-types
   "Set of the possible schedule-types allowed for a PulseChannel."
