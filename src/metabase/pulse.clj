@@ -214,7 +214,6 @@
   ([attachments slack-attachment-uploader]
    (letfn [(f [a] (select-keys a [:title :title_link :fallback]))]
      (reduce (fn [processed {:keys [rendered-info attachment-name channel-id] :as attachment-data}]
-               (def my-attachment-data attachment-data)
                (conj processed (if (:blocks attachment-data)
                                  attachment-data
                                  (if (:render/text rendered-info)
