@@ -104,52 +104,51 @@ function dependents() {
   return dependents;
 }
 
-function filterDependents() {
-  const rl = readline.createInterface({
-    input: process.stdin,
+function getDependents(sources) {
+  const allDependents = dependents();
+  let filteredDependents = [];
+
+  sources.forEach(name => {
+    const list = allDependents[name];
+    if (list && Array.isArray(list) && list.length > 0) {
+      filteredDependents.push(...list);
+    }
   });
 
-  const allDependents = dependents();
-  const filteredDependents = [];
+  return Array.from(new Set(filteredDependents)).sort(); // unique
+}
+
+function filterDependents() {
+  const rl = readline.createInterface({ input: process.stdin });
 
   const start = async () => {
+    let sources = [];
     for await (const line of rl) {
       const name = line.trim();
       if (name.length > 0) {
-        const list = allDependents[name];
-        if (list && Array.isArray(list) && list.length > 0) {
-          filteredDependents.push(...list);
-        }
+        sources.push(name);
       }
     }
-    console.log(
-      Array.from(new Set(filteredDependents))
-        .sort()
-        .join("\n"),
-    );
+    const filteredDependents = getDependents(sources);
+    console.log(filteredDependents.join("\n"));
   };
   start();
 }
 
 function filterAllDependents() {
-  const rl = readline.createInterface({
-    input: process.stdin,
-  });
-
-  const allDependents = dependents();
-  let filteredDependents = [];
+  const rl = readline.createInterface({ input: process.stdin });
 
   const start = async () => {
+    let sources = [];
     for await (const line of rl) {
       const name = line.trim();
       if (name.length > 0) {
-        const list = allDependents[name];
-        if (list && Array.isArray(list) && list.length > 0) {
-          filteredDependents.push(...list);
-        }
+        sources.push(name);
       }
     }
-    filteredDependents = Array.from(new Set(filteredDependents)); // unique
+    let filteredDependents = getDependents(sources);
+
+    const allDependents = dependents();
     for (let i = 0; i < filteredDependents.length; ++i) {
       const name = filteredDependents[i];
       const list = allDependents[name];
