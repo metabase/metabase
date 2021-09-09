@@ -40,9 +40,9 @@
   #{:first :mid :last})
 
 (defn schedule-frame?
-  "Is FRAME a valid schedule frame?"
+  "Is `frame` a valid schedule frame?"
   [frame]
-  (contains? schedule-frames frame))
+  (schedule-frames frame))
 
 (def ^:private schedule-types
   "Set of the possible schedule-types allowed for a PulseChannel."
