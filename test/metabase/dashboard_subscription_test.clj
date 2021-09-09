@@ -214,9 +214,10 @@
         (testing "\"more results in attachment\" text should not be present for Slack Pulses"
           (testing "Pulse results"
             (is (= {:channel-id "#general"
-                    :message    (str "<https://metabase.com/testmb/dashboard/" dashboard-id "|Aviary KPIs>")
                     :attachments
-                    [{:title           card-name
+                    [{:blocks [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
+                               {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
+                     {:title           card-name
                       :rendered-info   {:attachments false
                                         :content     true}
                       :title_link      (str "https://metabase.com/testmb/question/" card-id)
@@ -256,17 +257,16 @@
          (testing "Markdown cards are included in attachments list as :blocks sublists, and markdown is
                   converted to mrkdwn (Slack markup language)"
            (is (= {:channel-id "#general"
-                   :message    (str "<https://metabase.com/testmb/dashboard/" dashboard-id "|Aviary KPIs>")
                    :attachments
-                   [{:title           card-name
+                   [{:blocks [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
+                              {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
+                    {:title           card-name
                      :rendered-info   {:attachments false, :content true, :render/text true},
                      :title_link      (str "https://metabase.com/testmb/question/" card-id)
                      :attachment-name "image.png"
                      :channel-id      "FOO"
                      :fallback        card-name}
-                    {:blocks [{:type "section"
-                               :text {:type "mrkdwn"
-                                      :text "*header*"}}]}]}
+                    {:blocks [{:type "section" :text {:type "mrkdwn" :text "*header*"}}]}]}
                   (thunk->boolean pulse-results)))))}}))
 
 (deftest dashboard-filter-test
@@ -296,11 +296,13 @@
         (testing "Markdown cards are included in attachments list as :blocks sublists, and markdown is
                   converted to mrkdwn (Slack markup language)"
           (is (= {:channel-id "#general"
-                  :message    (str "<https://metabase.com/testmb/dashboard/"
-                                   dashboard-id
-                                   "?state=CA&state=NY&quarter_and_year=Q1-2021|Aviary KPIs>")
                   :attachments
-                  [{:title           card-name
+                  [{:blocks [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
+                             {:type "section",
+                              :fields [{:type "mrkdwn", :text "*State*\nCA, NY"}
+                                       {:type "mrkdwn", :text "*Quarter and Year*\nQ1-2021"}]}
+                             {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
+                   {:title           card-name
                     :rendered-info   {:attachments false, :content true, :render/text true},
                     :title_link      (str "https://metabase.com/testmb/question/" card-id)
                     :attachment-name "image.png"
@@ -323,4 +325,4 @@
      {:slack
       (fn [{:keys [card-id]} [pulse-results]]
         (is (= {:blocks [{:type "section" :text {:type "mrkdwn" :text "abcdefghi…"}}]}
-               (-> (thunk->boolean pulse-results) :attachments second))))}}))
+               (-> (thunk->boolean pulse-results) :attachments last))))}}))
