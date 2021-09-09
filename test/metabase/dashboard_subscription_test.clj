@@ -71,10 +71,12 @@
           :when        f]
     (assert (fn? f))
     (testing (format "sent to %s channel" channel-type)
-      (mt/with-temp* [Dashboard     [{dashboard-id :id} {:name "Aviary KPIs"}]
+      (mt/with-temp* [Dashboard     [{dashboard-id :id} {:name "Aviary KPIs"
+                                                         :description "How are the birds doing today?"}]
                       Card          [{card-id :id} (merge {:name card-name} card)]]
         (with-dashboard-sub-for-card [{pulse-id :id}
                                       {:card       card-id
+                                       :creator_id (mt/user->id :rasta)
                                        :dashboard  dashboard-id
                                        :pulse      pulse
                                        :pulse-card pulse-card
@@ -172,21 +174,33 @@
      :assert
      {:email
       (fn [_ _]
-        (is (= (rasta-pulse-email {:body [{;; No "Pulse:" prefix
-                                           "Aviary KPIs"                     true
-                                           ;; Includes everything
-                                           "More results have been included" false
-                                           ;; Inline table
-                                           "ID</th>"                         true
-                                           ;; Links to source dashboard
-                                           "<a class=\\\"title\\\" href=\\\"https://metabase.com/testmb/dashboard/\\d+\\\"" true}
-                                          png-attachment]})
+        (is (= (rasta-pulse-email
+                {:body [{;; No "Pulse:" prefix
+                         "Aviary KPIs"                     true
+                         ;; Includes dashboard description
+                         "How are the birds doing today?"  true
+                         ;; Includes name of subscription creator
+                         "Sent by Rasta Toucan"            true
+                         ;; Includes everything
+                         "More results have been included" false
+                         ;; Inline table
+                         "ID</th>"                         true
+                         ;; Links to source dashboard
+                         "<a class=\\\"title\\\" href=\\\"https://metabase.com/testmb/dashboard/\\d+\\\"" true
+                         ;; Links to Metabase instance
+                         "Sent from <a href=\\\"https://metabase.com/testmb\\\"" true
+                         ;; Links to subscription management page in account settings
+                         "<a href=\\\"https://metabase.com/testmb/account/notifications.*>Manage your subscriptions</a>" true}
+                        png-attachment]})
                (mt/summarize-multipart-email
                 #"Aviary KPIs"
+                #"How are the birds doing today?"
+                #"Sent by Rasta Toucan"
                 #"More results have been included"
                 #"ID</th>"
-                #"<a class=\"title\" href=\"https://metabase.com/testmb/dashboard/\d+\""))))
-
+                #"<a class=\"title\" href=\"https://metabase.com/testmb/dashboard/\d+\""
+                #"Sent from <a href=\"https://metabase.com/testmb\""
+                #"<a href=\"https://metabase.com/testmb/account/notifications.*>Manage your subscriptions</a>"))))
       :slack
       (fn [{:keys [card-id]} [pulse-results]]
         ;; If we don't force the thunk, the rendering code will never execute and attached-results-text won't be
@@ -225,9 +239,11 @@
      {:email
        (fn [_ _]
          (testing "Markdown cards are included in email subscriptions"
-           (is (= (rasta-pulse-email {:body [{"Aviary KPIs" true}
+           (is (= (rasta-pulse-email {:body [{"Aviary KPIs" true
+                                              "header"      true}
                                              png-attachment]})
-                  (mt/summarize-multipart-email #"Aviary KPIs")))))
+                  (mt/summarize-multipart-email #"Aviary KPIs"
+                                                #"header")))))
 
        :slack
        (fn [{:keys [card-id]} [pulse-results]]
