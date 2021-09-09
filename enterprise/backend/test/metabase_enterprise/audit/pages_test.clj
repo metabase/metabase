@@ -21,8 +21,8 @@
 
 (deftest preconditions-test
   (classloader/require 'metabase-enterprise.audit.pages.dashboards)
-  (testing "the query should exist"
-    (is (some? (resolve (symbol "metabase-enterprise.audit.pages.dashboards/most-popular-with-avg-speed")))))
+  (testing "the method should exist"
+    (is (fn? (get-method audit.i/internal-query :metabase-enterprise.audit.pages.dashboards/most-popular-with-avg-speed))))
 
   (testing "test that a query will fail if not ran by an admin"
     (metastore-test/with-metastore-token-features #{:audit-app}
