@@ -158,8 +158,8 @@
 
 (deftest all-queries-test
   (mt/with-test-user :crowberto
-     (with-temp-objects [objects]
-       (metastore-test/with-metastore-token-features #{:audit-app}
-         (doseq [query-type (all-query-methods)]
-           (testing query-type
-             (do-tests-for-query-type query-type objects)))))))
+    (with-temp-objects [objects]
+      (metastore-test/with-metastore-token-features #{:audit-app}
+        (doseq [query-type (all-query-methods)]
+          (testing query-type
+            (do-tests-for-query-type query-type objects)))))))

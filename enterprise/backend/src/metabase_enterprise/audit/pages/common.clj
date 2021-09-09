@@ -109,7 +109,6 @@
                 cols     (sql-jdbc.execute/column-metadata driver rsmeta)
                 metadata {:cols cols}
                 rf       (rff metadata)]
-
             (reduce rf init (sql-jdbc.execute/reducible-rows driver rs rsmeta canceled-chan))))
         (catch InterruptedException e
           (a/>!! canceled-chan :cancel)
