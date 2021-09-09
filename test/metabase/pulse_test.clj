@@ -174,9 +174,10 @@
      :slack
      (fn [{:keys [card-id]} [pulse-results]]
        (is (= {:channel-id "#general"
-               :message    "Pulse: Pulse Name"
                :attachments
-               [{:title           card-name
+               [{:blocks [{:type "header", :text {:type "plain_text", :text "Pulse: Pulse Name", :emoji true}}
+                          {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
+                {:title           card-name
                  :rendered-info   {:attachments false
                                    :content     true}
                  :title_link      (str "https://metabase.com/testmb/question/" card-id)
@@ -718,19 +719,19 @@
                  slack-data (m/find-first #(contains? % :channel-id) pulse-data)
                  email-data (m/find-first #(contains? % :subject) pulse-data)]
              (is (= {:channel-id  "#general"
-                     :message     "Pulse: Pulse Name"
                      :attachments [{:blocks
                                     [{:type "header", :text {:type "plain_text", :text "Pulse: Pulse Name", :emoji true}}
-                                     {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}                                    {:title           card-name}
-                                   {:title_link      (str "https://metabase.com/testmb/question/" card-id)
-                                     :rendered-info   {:attachments false
-                                                       :content     true}
-                                     :attachment-name "image.png"
-                                     :channel-id      "FOO"
-                                     :fallback        card-name}]}
+                                     {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
+                                   {:title           card-name
+                                    :title_link      (str "https://metabase.com/testmb/question/" card-id)
+                                    :rendered-info   {:attachments false
+                                                      :content     true}
+                                    :attachment-name "image.png"
+                                    :channel-id      "FOO"
+                                    :fallback        card-name}]}
                     (thunk->boolean slack-data)))
              (is (= [true]
-                    (map (comp some? :content :rendered-info) (:attachments slack-data))))
+                    (map (comp some? :content :rendered-info) (rest (:attachments slack-data)))))
              (is (= {:subject "Pulse: Pulse Name", :recipients ["rasta@metabase.com"], :message-type :attachments}
                     (select-keys email-data [:subject :recipients :message-type])))
              (is (= 3
