@@ -25,13 +25,13 @@ describe("scenarios > admin > settings > email settings", () => {
       .blur();
     cy.findByText("Save changes").click();
 
-    cy.findByText("Changes saved!");
+    cy.findByText("Changes saved!", { timeout: 10000 });
 
     // This part was added as a repro for metabase#17615
-    cy.findByDisplayValue("smtp.mailtrap.io");
-    cy.findByDisplayValue("2525");
-    cy.findAllByDisplayValue("6100f28480a34f");
-    cy.findByDisplayValue("from@example.com");
+    cy.findByDisplayValue("localhost");
+    cy.findByDisplayValue("25");
+    cy.findAllByDisplayValue("admin");
+    cy.findByDisplayValue("mailer@metabase.test");
   });
 
   it("should show an error if test email fails", () => {
