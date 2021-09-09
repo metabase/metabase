@@ -48,4 +48,4 @@
 (defn notification-management-url
   "URL for the notification management page in account settings."
   []
-  (str (public-settings/site-url) "account/notifications"))
+  (str (public-settings/site-url) "/account/notifications"))
