@@ -1,7 +1,9 @@
 (ns metabase.pulse.filters-test
   (:require [clojure.test :refer :all]
             [metabase.config :as config]
-            [metabase.pulse.filters :as filters]))
+            [metabase.pulse.filters :as filters]
+            [metabase.test :as mt]
+            [metabase.public-settings :as public-settings]))
 
 (def ^:private test-subscription
   "A test dashboard subscription with only the :parameters field included. Has one filter which
@@ -61,7 +63,7 @@
 
 (deftest dashboard-url-test
   (testing "A valid dashboard URL can be generated with filters included"
-    (is (= "https://metabase.com/dashboard/1?state=CA&quarter_and_year=Q1-2021"
-           (filters/dashboard-url "https://metabase.com/dashboard/1" (:parameters test-dashboard))))
-    (is (= "https://metabase.com/dashboard/1?state=CA&state=NY&state=IL"
-           (filters/dashboard-url "https://metabase.com/dashboard/1" (:parameters test-subscription))))))
+    (with-redefs [config/ee-available? true]
+      (mt/with-temporary-setting-values [site-url "https://metabase.com"]
+        (is (= "https://metabase.com/dashboard/null?state=CA&state=NY&state=IL&quarter_and_year=Q1-2021"
+               (filters/dashboard-url test-subscription test-dashboard)))))))
