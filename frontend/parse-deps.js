@@ -162,6 +162,44 @@ function filterAllDependents() {
   start();
 }
 
+function countDependents() {
+  const allDependents = dependents();
+  const sources = Object.keys(allDependents).sort();
+  const tally = sources.map(name => {
+    return { name, count: allDependents[name].length };
+  });
+  console.log(tally.map(({ name, count }) => `${count} ${name}`).join("\n"));
+}
+
+function countAllDependents() {
+  const allDependents = dependents();
+  const sources = Object.keys(allDependents).sort();
+  const tally = sources.map(name => {
+    const list = allDependents[name];
+    for (let i = 0; i < list.length; ++i) {
+      const deps = allDependents[list[i]];
+      if (deps && Array.isArray(deps) && deps.length > 1) {
+        const newAddition = deps.filter(e => list.indexOf(e) < 0);
+        list.push(...newAddition);
+      }
+    }
+    return { name, count: list.length };
+  });
+  console.log(tally.map(({ name, count }) => `${count} ${name}`).join("\n"));
+}
+
+function matrix() {
+  const allDependents = dependents();
+  const sources = Object.keys(allDependents).sort();
+  const width = Math.max(...sources.map(s => s.length));
+  const rows = sources.map(name => {
+    const list = allDependents[name];
+    const checks = sources.map(dep => (list.indexOf(dep) < 0 ? " " : "x"));
+    return name.padEnd(width) + " | " + checks.join("");
+  });
+  console.log(rows.join("\n"));
+}
+
 const USAGE = `
 parse-deps cmd
 
@@ -171,7 +209,10 @@ cmd must be one of:
          dependencies   Show the dependencies of each source file
            dependents   Show the dependents of each source file
     filter-dependents   Filter direct dependents based on stdin
-filter-all-dependents   Filter all inderect and direct dependents based on stdin
+filter-all-dependents   Filter all indirect and direct dependents based on stdin
+     count-dependents   List the total count of direct dependents
+ count-all-dependents   List the total count of its direct and indirect dependents
+               matrix   Display 2-D matrix of dependent relationship
 `;
 
 function main(args) {
@@ -192,6 +233,15 @@ function main(args) {
         break;
       case "filter-all-dependents":
         filterAllDependents();
+        break;
+      case "count-dependents":
+        countDependents();
+        break;
+      case "count-all-dependents":
+        countAllDependents();
+        break;
+      case "matrix":
+        matrix();
         break;
       default:
         console.log(USAGE);
