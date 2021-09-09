@@ -150,17 +150,18 @@
                        ;; Provide a horizontal scrollbar for tables that overflow container width.
                        ;; Surrounding <p> element prevents buggy behavior when dragging scrollbar.
                        [:div {:style (style/style {:overflow-x :auto})}
-                         [:a {:href        (card-href card)
-                              :target      "_blank"
-                              :style       (style/style
-                                            (style/section-style)
-                                            {:display         :block
-                                             :text-decoration :none})}
-                          title
-                          description
-                          [:div {:style (style/style {:display    :block
-                                                      :margin-top :10px})}
-                           pulse-body]]]]}
+                        [:a {:href        (card-href card)
+                             :target      "_blank"
+                             :style       (style/style
+                                           (style/section-style)
+                                           {:display         :block
+                                            :text-decoration :none})}
+                         title
+                         description
+                         [:div {:class "pulse-body"
+                                :style (style/style {:display :block
+                                                     :margin  :16px})}
+                          pulse-body]]]]}
       text (assoc :render/text text))))
 
 (defn render-pulse-card-for-display

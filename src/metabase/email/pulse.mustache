@@ -15,6 +15,11 @@
         font-family: "Lato", "Lucida Grande", "Lucida Sans Unicode", Tahoma, Sans-Serif;
       }
 
+      {{!-- Override margin of pulse charts/tables since it's not required for email (it is for Slack) --}}
+      .pulse-body {
+        margin: 0px !important;
+      }
+
       {{!-- General formatting for links. Marked as important since otherwise Gmail will sometimes override it --}}
       a {
         color: {{applicationColor}} !important;
