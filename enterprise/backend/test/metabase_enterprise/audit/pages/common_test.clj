@@ -1,5 +1,6 @@
 (ns metabase-enterprise.audit.pages.common-test
   (:require [clojure.test :refer :all]
+            [metabase-enterprise.audit.interface :as audit.i]
             [metabase-enterprise.audit.pages.common :as pages.common]
             [metabase.db :as mdb]
             [metabase.public-settings.metastore-test :as metastore-test]
@@ -15,8 +16,8 @@
                                         (format "%s/%s" (ns-name (:ns mta)) (:name mta)))}
                                additional-query-params)))))
 
-(defn- ^:private ^:internal-query-fn legacy-format-query-fn
-  [a1]
+(defmethod audit.i/internal-query ::legacy-format-query-fn
+  [_ a1]
   (let [h2? (= (mdb/db-type) :h2)]
     {:metadata [[:A {:display_name "A", :base_type :type/DateTime}]
                 [:B {:display_name "B", :base_type :type/Integer}]]
@@ -24,8 +25,8 @@
                 {:union-all [{:select [[a1 :A] [2 :B]]}
                              {:select [[3 :A] [4 :B]]}]})}))
 
-(defn- ^:private ^:internal-query-fn reducible-format-query-fn
-  [a1]
+(defmethod audit.i/internal-query ::reducible-format-query-fn
+  [_ a1]
   {:metadata [[:A {:display_name "A", :base_type :type/DateTime}]
               [:B {:display_name "B", :base_type :type/Integer}]]
    :results  (pages.common/reducible-query

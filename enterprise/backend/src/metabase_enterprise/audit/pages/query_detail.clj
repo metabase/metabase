@@ -4,11 +4,12 @@
             [metabase-enterprise.audit.pages.common :as common]
             [metabase.util.schema :as su]
             [ring.util.codec :as codec]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [metabase-enterprise.audit.interface :as audit.i]))
 
-(s/defn ^:internal-query-fn details
-  "Details about a specific query (currently just average execution time)."
-  [query-hash :- su/NonBlankString]
+;; Details about a specific query (currently just average execution time).
+(s/defmethod audit.i/internal-query ::details
+  [_ query-hash :- su/NonBlankString]
   {:metadata [[:query                  {:display_name "Query",                :base_type :type/Dictionary}]
               [:average_execution_time {:display_name "Avg. Exec. Time (ms)", :base_type :type/Number}]]
    :results  (common/reducible-query
