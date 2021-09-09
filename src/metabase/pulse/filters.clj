@@ -36,7 +36,8 @@
                         (for [filter merged-filters]
                           (for [value (u/one-or-many (or (:value filter) (:default filter)))]
                             (str (:slug filter) "=" value))))]
-    (str base-url "?" (str/join "&" url-params))))
+    (str base-url (when (seq url-params)
+                    (str "?" (str/join "&" url-params))))))
 
 ;; TODO
 (defn humanize-filter

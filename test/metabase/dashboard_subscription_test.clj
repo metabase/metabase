@@ -82,7 +82,9 @@
                                        :pulse-card pulse-card
                                        :channel    channel-type}]
           (letfn [(thunk* []
-                    (f {:card-id card-id, :pulse-id pulse-id}
+                    (f {:dashboard-id dashboard-id,
+                        :card-id card-id,
+                        :pulse-id pulse-id}
                        (pulse/send-pulse! (models.pulse/retrieve-notification pulse-id))))
                   (thunk []
                     (if fixture
@@ -204,13 +206,13 @@
                 #"\"https://metabase.com/testmb/account/notifications\""
                 #"Manage your subscriptions"))))
       :slack
-      (fn [{:keys [card-id]} [pulse-results]]
+      (fn [{:keys [card-id dashboard-id]} [pulse-results]]
         ;; If we don't force the thunk, the rendering code will never execute and attached-results-text won't be
         ;; called
         (testing "\"more results in attachment\" text should not be present for Slack Pulses"
           (testing "Pulse results"
             (is (= {:channel-id "#general"
-                    :message    "Aviary KPIs"
+                    :message    (str "<https://metabase.com/testmb/dashboard/" dashboard-id "|Aviary KPIs>")
                     :attachments
                     [{:title           card-name
                       :rendered-info   {:attachments false
@@ -248,14 +250,14 @@
                                                 #"header")))))
 
        :slack
-       (fn [{:keys [card-id]} [pulse-results]]
+       (fn [{:keys [card-id dashboard-id]} [pulse-results]]
          (testing "Markdown cards are included in attachments list as :blocks sublists, and markdown is
                   converted to mrkdwn (Slack markup language)"
            (is (= {:channel-id "#general"
-                   :message    "Aviary KPIs"
+                   :message    (str "<https://metabase.com/testmb/dashboard/" dashboard-id "|Aviary KPIs>")
                    :attachments
                    [{:title           card-name
-                     :rendered-info {:attachments false, :content true, :render/text true},
+                     :rendered-info   {:attachments false, :content true, :render/text true},
                      :title_link      (str "https://metabase.com/testmb/question/" card-id)
                      :attachment-name "image.png"
                      :channel-id      "FOO"

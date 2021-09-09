@@ -298,7 +298,9 @@
                                         pulse-id (pr-str pulse-name) (count results))))
   (let [dashboard (Dashboard :id dashboard-id)]
     {:channel-id  channel-id
-     :message     (str "<" (filters/dashboard-url pulse dashboard) "|" (subject pulse) ">")
+     :message     (if dashboard
+                    (str "<" (filters/dashboard-url pulse dashboard) "|" (subject pulse) ">")
+                    (subject pulse))
      :attachments (create-slack-attachment-data results)}))
 
 (defmethod notification [:alert :email]
