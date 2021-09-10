@@ -62,7 +62,7 @@
   (sorted-results
    [(make-result "dashboard test dashboard", :model "dashboard", :favorite false)
     test-collection
-    (make-result "card test card", :model "card", :favorite false, :dataset_query "{}", :dashboardcard_count 0)
+    (make-result "card test card", :model "card", :favorite false, :dataset_query nil, :dashboardcard_count 0)
     (make-result "pulse test pulse", :model "pulse", :archived nil, :updated_at false)
     (merge
      (make-result "metric test metric", :model "metric", :description "Lookin' for a blueberry")
@@ -210,7 +210,13 @@
       (is (= 2 (count (search-request-data :crowberto :q "test" :limit "2" :offset "0"))))))
   (testing "It offsets matches properly"
     (with-search-items-in-root-collection "test"
-      (is (= 4 (count (search-request-data :crowberto :q "test" :limit "100" :offset "2"))))))
+      (is (<= 4 (count (search-request-data :crowberto :q "test" :limit "100" :offset "2"))))))
+  (testing "It offsets without limit properly"
+    (with-search-items-in-root-collection "test"
+      (is (= 4 (count (search-request-data :crowberto :q "test" :offset "2"))))))
+  (testing "It limits without offset properly"
+    (with-search-items-in-root-collection "test"
+      (is (= 2 (count (search-request-data :crowberto :q "test" :limit "2"))))))
   (testing "It subsets matches for model"
     (with-search-items-in-root-collection "test"
       (is (= 0 (count (search-request-data :crowberto :q "test" :models "database"))))
@@ -232,7 +238,7 @@
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]
             (make-result (str "dashboard-count " dashboard-count) :dashboardcard_count dashboard-count,
-                         :model "card", :favorite false, :dataset_query "{}"))]
+                         :model "card", :favorite false, :dataset_query nil))]
     (set [(make-card 5)
           (make-card 3)
           (make-card 0)])))

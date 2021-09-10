@@ -4,6 +4,7 @@ import {
   describeWithToken,
   popover,
   mockSessionProperty,
+  sidebar,
 } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 const { admin } = USERS;
@@ -77,9 +78,42 @@ describe("scenarios > dashboard > subscriptions", () => {
     });
 
     describe("with no existing subscriptions", () => {
+      it("should not enable subscriptions without the recipient (metabase#17657)", () => {
+        openDashboardSubscriptions();
+
+        cy.findByText("Email it").click();
+
+        // Make sure no recipients have been assigned
+        cy.findByPlaceholderText("Enter user names or email addresses");
+
+        /**
+         * Change the schedule to "Monthly"
+         *
+         * Please note: This test was modified for the `release-x.40.x` branch specifically.
+         *              The default schedule on `master` is "hourly".
+         *              That change was introduced in https://github.com/metabase/metabase/pull/17425.
+         */
+
+        cy.findByText("Daily").click();
+        cy.findByText("Monthly").click();
+
+        sidebar().within(() => {
+          cy.button("Done").should("be.disabled");
+        });
+      });
+
       it("should allow creation of a new email subscription", () => {
         createEmailSubscription();
         cy.findByText("Emailed daily at 8:00 AM");
+      });
+
+      it("should not render people dropdown outside of the borders of the screen (metabase#17186)", () => {
+        openDashboardSubscriptions();
+
+        cy.findByText("Email it").click();
+        cy.findByPlaceholderText("Enter user names or email addresses").click();
+
+        popover().isRenderedWithinViewport();
       });
     });
 

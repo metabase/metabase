@@ -595,7 +595,8 @@
              (mt/format-rows-by [int str]
                (field-api/search-values (Field (mt/id :venues :id))
                                         (Field (mt/id :venues :name))
-                                        "Red")))))
+                                        "Red"
+                                        nil)))))
     (tqp.test/test-timeseries-drivers
       (is (= [["139" "Red Medicine"]
               ["148" "Fred 62"]
@@ -608,7 +609,16 @@
               ["977" "Fred 62"]]
              (field-api/search-values (Field (mt/id :checkins :id))
                                       (Field (mt/id :checkins :venue_name))
-                                      "Red"))))))
+                                      "Red"
+                                      nil)))))
+  (testing "make sure limit works"
+    (mt/test-drivers (mt/normal-drivers)
+      (is (= [[1 "Red Medicine"]]
+             (mt/format-rows-by [int str]
+                                (field-api/search-values (Field (mt/id :venues :id))
+                                                         (Field (mt/id :venues :name))
+                                                         "Red"
+                                                         1)))))))
 
 (deftest search-values-with-field-same-as-search-field-test
   (testing "make sure it also works if you use the same Field twice"
@@ -616,9 +626,11 @@
       (is (= [["Fred 62" "Fred 62"] ["Red Medicine" "Red Medicine"]]
              (field-api/search-values (Field (mt/id :venues :name))
                                       (Field (mt/id :venues :name))
-                                      "Red"))))
+                                      "Red"
+                                      nil))))
     (tqp.test/test-timeseries-drivers
       (is (= [["Fred 62" "Fred 62"] ["Red Medicine" "Red Medicine"]]
              (field-api/search-values (Field (mt/id :checkins :venue_name))
                                       (Field (mt/id :checkins :venue_name))
-                                      "Red"))))))
+                                      "Red"
+                                      nil))))))

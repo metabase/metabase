@@ -179,16 +179,18 @@
 (deftest create-dashboard-subscription-test
   (testing "Make sure that the dashboard_id is set correctly when creating a Dashboard Subscription pulse"
     (mt/with-model-cleanup [Pulse]
-      (mt/with-temp* [Dashboard     [{dashboard-id :id}]
+      (mt/with-temp* [Collection    [{collection-id :id}]
+                      Dashboard     [{dashboard-id :id} {:collection_id collection-id}]
                       Card          [{card-id :id, :as card}]
                       DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]]
-        (is (schema= {:name         (s/eq "Abnormal Pulse")
-                      :dashboard_id (s/eq dashboard-id)
-                      :cards        [(s/one {:dashboard_id      (s/eq dashboard-id)
-                                             :dashboard_card_id (s/eq dashcard-id)
-                                             s/Keyword          s/Any}
-                                            "pulse card")]
-                      s/Keyword     s/Any}
+        (is (schema= {:name          (s/eq "Abnormal Pulse")
+                      :dashboard_id  (s/eq dashboard-id)
+                      :collection_id (s/eq collection-id)
+                      :cards         [(s/one {:dashboard_id      (s/eq dashboard-id)
+                                              :dashboard_card_id (s/eq dashcard-id)
+                                              s/Keyword          s/Any}
+                                             "pulse card")]
+                      s/Keyword      s/Any}
                      (create-pulse-then-select!
                       "Abnormal Pulse"
                       (mt/user->id :rasta)
@@ -251,6 +253,16 @@
                                                          :recipients    [{:email "foo@bar.com"}
                                                                          {:id (mt/user->id :crowberto)}]}]
                                         :skip_if_empty false}))))))
+
+(deftest dashboard-subscription-update-test
+  (testing "collection_id and dashboard_id of a dashboard subscription cannot be directly modified"
+      (mt/with-temp* [Collection [{collection-id :id}]
+                      Dashboard  [{dashboard-id :id}]
+                      Pulse      [{pulse-id :id} {:dashboard_id dashboard-id :collection_id collection-id}]]
+        (is (thrown-with-msg? Exception #"collection ID of a dashboard subscription cannot be directly modified"
+              (db/update! Pulse pulse-id {:collection_id (inc collection-id)})))
+        (is (thrown-with-msg? Exception #"dashboard ID of a dashboard subscription cannot be modified"
+              (db/update! Pulse pulse-id {:dashboard_id (inc dashboard-id)}))))))
 
 (deftest no-archived-cards-test
   (testing "make sure fetching a Pulse doesn't return any archived cards"
