@@ -105,7 +105,7 @@
     :display-name "SSH tunnel password"
     :type         :password
     :placeholder  "******"
-    :visible-if   {"tunnel-enabled" true}}
+    :visible-if   {"tunnel-auth-option" "password"}}
    {:name         "tunnel-private-key"
     :display-name "SSH private key to connect to the tunnel"
     :type         :string
