@@ -1,11 +1,11 @@
-export const pulses = dashboardName => ({
+export const table = () => ({
   card: {
     name: "Subscriptions",
     display: "table",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit.pages.subscriptions/subscriptions-table",
-      args: [dashboardName],
+      fn: "metabase-enterprise.audit.pages.dashboard-subscriptions/table",
+      args: [],
     },
     visualization_settings: {
       "table.columns": [

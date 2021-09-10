@@ -5,7 +5,7 @@ import * as SubscriptionCards from "../../lib/cards/subscriptions";
 import AuditTableWithSearch from "../AuditTableWithSearch";
 
 const mapStateToProps = () => ({
-  table: SubscriptionCards.pulses(),
+  table: SubscriptionCards.table(),
   placeholder: t`Filter by dashboard name`,
 });
 
