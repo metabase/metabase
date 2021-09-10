@@ -22,7 +22,6 @@ DashboardSidebars.propTypes = {
   onReplaceAllDashCardVisualizationSettings: PropTypes.func.isRequired,
   onUpdateDashCardVisualizationSettings: PropTypes.func.isRequired,
   onUpdateDashCardColumnSettings: PropTypes.func.isRequired,
-  hideClickBehaviorSidebar: PropTypes.func.isRequired,
   setEditingParameter: PropTypes.func.isRequired,
   setParameter: PropTypes.func.isRequired,
   setParameterName: PropTypes.func.isRequired,
@@ -54,7 +53,6 @@ export function DashboardSidebars({
   onReplaceAllDashCardVisualizationSettings,
   onUpdateDashCardVisualizationSettings,
   onUpdateDashCardColumnSettings,
-  hideClickBehaviorSidebar,
   setEditingParameter,
   setParameter,
   setParameterName,
@@ -103,7 +101,7 @@ export function DashboardSidebars({
             onUpdateDashCardVisualizationSettings
           }
           onUpdateDashCardColumnSettings={onUpdateDashCardColumnSettings}
-          hideClickBehaviorSidebar={hideClickBehaviorSidebar}
+          hideClickBehaviorSidebar={closeSidebar}
           onReplaceAllDashCardVisualizationSettings={
             onReplaceAllDashCardVisualizationSettings
           }

@@ -167,10 +167,6 @@ export const showClickBehaviorSidebar = dashcardId => dispatch => {
   }
 };
 
-export const hideClickBehaviorSidebar = () => dispatch => {
-  dispatch(closeSidebar());
-};
-
 export const setEditingParameter = parameterId => dispatch => {
   if (parameterId != null) {
     dispatch(
