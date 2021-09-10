@@ -6,6 +6,7 @@ import {
   formatValue,
   formatUrl,
   formatDateTimeWithUnit,
+  formatTimeWithUnit,
   slugify,
 } from "metabase/lib/formatting";
 import ExternalLink from "metabase/components/ExternalLink";
@@ -463,8 +464,63 @@ describe("formatting", () => {
         ).toEqual("julio 7, 2019 – julio 13, 2019");
       } finally {
         // globally reset locale
-        moment.locale(false);
+        moment.locale("en");
       }
+    });
+
+    it("should format days of week with default options", () => {
+      expect(formatDateTimeWithUnit("mon", "day-of-week")).toEqual("Monday");
+    });
+
+    it("should format days of week with compact option", () => {
+      const options = {
+        compact: true,
+      };
+
+      expect(formatDateTimeWithUnit("sun", "day-of-week", options)).toEqual(
+        "Sun",
+      );
+    });
+  });
+
+  describe("formatTimeWithUnit", () => {
+    it("should format hour-of day with default options", () => {
+      expect(formatTimeWithUnit(8, "hour-of-day")).toEqual("8:00 AM");
+    });
+
+    it("should format hour-of-day with 12 hour clock", () => {
+      const options = {
+        time_style: "h:mm A",
+      };
+
+      expect(formatTimeWithUnit(14, "hour-of-day", options)).toEqual("2:00 PM");
+    });
+
+    it("should format hour-of-day with 24 hour clock", () => {
+      const options = {
+        time_style: "HH:mm",
+      };
+
+      expect(formatTimeWithUnit(14, "hour-of-day", options)).toEqual("14:00");
+    });
+
+    it("should format hour-of-day with custom precision", () => {
+      const options = {
+        time_style: "HH:mm",
+        time_enabled: "seconds",
+      };
+
+      expect(formatTimeWithUnit(14.4, "hour-of-day", options)).toEqual(
+        "14:00:00",
+      );
+    });
+
+    it("should format hour-of-day with a custom format", () => {
+      const options = {
+        time_format: "HH",
+      };
+
+      expect(formatTimeWithUnit(14.4, "hour-of-day", options)).toEqual("14");
     });
   });
 

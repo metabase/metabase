@@ -108,7 +108,11 @@ export default class DimensionList extends Component {
       onRemoveDimension,
     } = this.props;
     const subDimensions =
-      enableSubDimensions && item.dimension && item.dimension.dimensions();
+      enableSubDimensions &&
+      item.dimension &&
+      // Do not display sub dimension if this is an FK (metabase#16787)
+      !item.dimension.field().isFK() &&
+      item.dimension.dimensions();
 
     const multiSelect = !!(onAddDimension || onRemoveDimension);
 

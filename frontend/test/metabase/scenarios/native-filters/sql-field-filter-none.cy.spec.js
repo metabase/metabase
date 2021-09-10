@@ -45,7 +45,7 @@ describe("scenarios > filters > sql filters > field filter > None", () => {
     cy.findByText("Showing 200 rows");
   });
 
-  it.skip("should let you change the field filter type to something else and restore the filter widget (metabase#13825)", () => {
+  it("should let you change the field filter type to something else and restore the filter widget (metabase#13825)", () => {
     FieldFilter.setWidgetType("String contains");
 
     FieldFilter.openEntryForm();

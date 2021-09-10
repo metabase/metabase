@@ -47,7 +47,7 @@ function SchemaBrowser(props) {
           ) : (
             <Grid>
               {schemas.map(schema => (
-                <GridItem w={ITEM_WIDTHS} key={schema.id}>
+                <GridItem width={ITEM_WIDTHS} key={schema.id}>
                   <Link
                     to={`/browse/${dbId}/schema/${schema.name}`}
                     mb={1}

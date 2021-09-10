@@ -1,6 +1,7 @@
 (ns metabase.pulse
   "Public API for sending Pulses."
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [metabase.api.card :as card-api]
             [metabase.email :as email]
             [metabase.email.messages :as messages]
@@ -12,6 +13,7 @@
             [metabase.models.pulse :as pulse :refer [Pulse]]
             [metabase.plugins.classloader :as classloader]
             [metabase.pulse.interface :as i]
+            [metabase.pulse.markdown :as markdown]
             [metabase.pulse.render :as render]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -52,7 +54,7 @@
               process-query (fn []
                               (binding [qp.perms/*card-id* card-id]
                                 (qp/process-query-and-save-with-max-results-constraints!
-                                 query
+                                 (assoc-in query [:middleware :process-viz-settings?] true)
                                  (merge {:executed-by pulse-creator-id
                                          :context     :pulse
                                          :card-id     card-id}
@@ -83,7 +85,10 @@
                     :dashboard-id  (:id dashboard)
                     :context       :pulse ; TODO - we should support for `:dashboard-subscription` and use that to differentiate the two
                     :export-format :api
+                    :middleware    {:process-viz-settings? true}
                     :parameters    params
+                    :middleware    {:process-viz-settings? true
+                                    :js-int-to-string?     false}
                     :run (fn [query info]
                            (qp/process-query-and-save-with-max-results-constraints! (assoc query :async? false) info))))]
       {:card card
@@ -100,14 +105,17 @@
     (compare (:col dashcard-1) (:col dashcard-2))))
 
 (defn execute-dashboard
-  "Execute all the cards in a dashboard for a Pulse"
+  "Fetch all the dashcards in a dashboard for a Pulse, and execute non-text cards"
   [{pulse-creator-id :creator_id, :as pulse} dashboard-or-id & {:as options}]
   (let [dashboard-id      (u/the-id dashboard-or-id)
         dashboard         (Dashboard :id dashboard-id)
-        dashcards         (db/select DashboardCard :dashboard_id dashboard-id, :card_id [:not= nil])
+        dashcards         (db/select DashboardCard :dashboard_id dashboard-id)
         ordered-dashcards (sort dashcard-comparator dashcards)]
     (for [dashcard ordered-dashcards]
-      (execute-dashboard-subscription-card pulse-creator-id dashboard dashcard (:card_id dashcard) (i/the-parameters parameters-impl pulse dashboard)))))
+      (if-let [card-id (:card_id dashcard)]
+        (execute-dashboard-subscription-card pulse-creator-id dashboard dashcard card-id (i/the-parameters parameters-impl pulse dashboard))
+        ;; For virtual cards, return the viz settings map directly
+        (-> dashcard :visualization_settings)))))
 
 (defn- database-id [card]
   (or (:database_id card)
@@ -128,44 +136,75 @@
     :below (trs "gone below its goal")
     :rows  (trs "results")))
 
+(def ^:private ^:dynamic *slack-mrkdwn-length-limit*
+  3000)
+
+(defn- truncate-mrkdwn
+  "If a mrkdwn string is greater than Slack's length limit, truncates it to fit the limit and
+  adds an ellipsis character to the end."
+  [mrkdwn]
+  (if (> (count mrkdwn) *slack-mrkdwn-length-limit*)
+    (-> mrkdwn
+        (subs 0 (dec *slack-mrkdwn-length-limit*))
+        (str "…"))
+    mrkdwn))
+
 (defn create-slack-attachment-data
   "Returns a seq of slack attachment data structures, used in `create-and-upload-slack-attachments!`"
   [card-results]
   (let [{channel-id :id} (slack/files-channel)]
-    (for [{{card-id :id, card-name :name, :as card} :card, result :result} card-results]
-      {:title           card-name
-       :rendered-info   (render/render-pulse-card :inline (defaulted-timezone card) card result)
-       :title_link      (urls/card-url card-id)
-       :attachment-name "image.png"
-       :channel-id      channel-id
-       :fallback        card-name})))
+    (->> (for [card-result card-results]
+           (let [{{card-id :id, card-name :name, :as card} :card, result :result} card-result]
+             (if (and card result)
+               {:title           card-name
+                :rendered-info   (render/render-pulse-card :inline (defaulted-timezone card) card result)
+                :title_link      (urls/card-url card-id)
+                :attachment-name "image.png"
+                :channel-id      channel-id
+                :fallback        card-name}
+               (let [mrkdwn (markdown/process-markdown (:text card-result) :mrkdwn)]
+                 (when (not (str/blank? mrkdwn))
+                   {:blocks [{:type "section"
+                              :text {:type "mrkdwn"
+                                     :text (truncate-mrkdwn mrkdwn)}}]})))))
+         (remove nil?))))
+
+(def slack-width
+  "Width of the rendered png of html to be sent to slack."
+  1200)
 
 (defn create-and-upload-slack-attachments!
   "Create an attachment in Slack for a given Card by rendering its result into an image and uploading
   it. Slack-attachment-uploader is a function which takes image-bytes and an attachment name, uploads the file, and
-  returns an image url, defaulting to slack/upload-file!."
+  returns an image url, defaulting to slack/upload-file!.
+
+  Nested `blocks` lists containing text cards are passed through unmodified."
   ([attachments] (create-and-upload-slack-attachments! attachments slack/upload-file!))
   ([attachments slack-attachment-uploader]
    (letfn [(f [a] (select-keys a [:title :title_link :fallback]))]
      (reduce (fn [processed {:keys [rendered-info attachment-name channel-id] :as attachment-data}]
-               (conj processed (if (:render/text rendered-info)
-                                 (-> (f attachment-data)
-                                     (assoc :text (:render/text rendered-info)))
-                                 (let [image-bytes (render/png-from-render-info rendered-info)
-                                       image-url (slack-attachment-uploader image-bytes attachment-name channel-id)]
+               (conj processed (if (:blocks attachment-data)
+                                 attachment-data
+                                 (if (:render/text rendered-info)
                                    (-> (f attachment-data)
-                                       (assoc :image_url image-url))))))
+                                       (assoc :text (:render/text rendered-info)))
+                                   (let [image-bytes (render/png-from-render-info rendered-info slack-width)
+                                         image-url (slack-attachment-uploader image-bytes attachment-name channel-id)]
+                                     (-> (f attachment-data)
+                                         (assoc :image_url image-url)))))))
              []
              attachments))))
 
 (defn- is-card-empty?
   "Check if the card is empty"
   [card]
-  (let [result (:result card)]
+  (if-let [result (:result card)]
     (or (zero? (-> result :row_count))
         ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
         (= [[nil]]
-           (-> result :data :rows)))))
+           (-> result :data :rows)))
+    ;; Text cards have no result; treat as empty
+    true))
 
 (defn- are-all-cards-empty?
   "Do none of the cards have any results?"
@@ -241,11 +280,12 @@
   (log/debug (u/format-color 'cyan (trs "Sending Pulse ({0}: {1}) with {2} Cards via email"
                                         pulse-id (pr-str pulse-name) (count results))))
   (let [email-recipients (filterv u/email? (map :email recipients))
-        timezone         (-> results first :card defaulted-timezone)]
+        query-results    (filter :card results)
+        timezone         (-> query-results first :card defaulted-timezone)]
     {:subject      (subject pulse)
      :recipients   email-recipients
      :message-type :attachments
-     :message      (messages/render-pulse-email timezone pulse results)}))
+     :message      (messages/render-pulse-email timezone pulse query-results)}))
 
 (defmethod notification [:pulse :slack]
   [{pulse-id :id, pulse-name :name, :as pulse} results {{channel-id :channel} :details :as channel}]

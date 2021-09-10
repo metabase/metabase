@@ -109,21 +109,35 @@
   (defn- load-local-plugin-manifest! [^Path path]
     (some-> (slurp (str path)) yaml.core/parse-string initialize/init-plugin-with-info!))
 
+  (defn- driver-manifest-paths
+    "Return a sequence of [[java.io.File]] paths for `metabase-plugin.yaml` plugin manifests for drivers on the classpath."
+    []
+    ;; only include plugin manifests if they're on the system classpath.
+    (concat
+     (for [^File file (classpath/system-classpath)
+           :when      (and (.isDirectory file)
+                           (not (.isHidden file))
+                           (str/includes? (str file) "modules/drivers")
+                           (str/ends-with? (str file) "resources"))
+           :let       [manifest-file (io/file file "metabase-plugin.yaml")]
+           :when      (.exists manifest-file)]
+       manifest-file)
+     ;; for hacking on 3rd-party drivers locally: set
+     ;; `-Dmb.dev.additional.driver.manifest.paths=/path/to/whatever/metabase-plugin.yaml` or
+     ;; `MB_DEV_ADDITIONAL_DRIVER_MANIFEST_PATHS=...` to have that plugin manifest get loaded during startup. Specify
+     ;; multiple plugin manifests by comma-separating them.
+     (when-let [additional-paths (env/env :mb-dev-additional-driver-manifest-paths)]
+       (map files/get-path (str/split additional-paths #",")))))
+
   (defn- load-local-plugin-manifests!
     "Load local plugin manifest files when running in dev or test mode, to simulate what would happen when loading those
   same plugins from the uberjar. This is needed because some plugin manifests define driver methods and the like that
   aren't defined elsewhere."
     []
-    (doseq [^File file (classpath/system-classpath)
-            :when      (and (.isDirectory file)
-                            (not (.isHidden file))
-                            (str/includes? (str file) "modules/drivers")
-                            (str/ends-with? (str file) "resources"))
-            :let       [manifest-file (io/file file "metabase-plugin.yaml")]
-            :when      (.exists manifest-file)
-            :let       [info (yaml/parse-string (slurp manifest-file))]]
-      (log/info (trs "Loading local plugin manifest at {0}" (str manifest-file)))
-      (load-local-plugin-manifest! manifest-file))))
+    ;; TODO - this should probably do an actual search in case we ever add any additional directories
+    (doseq [manifest-path (driver-manifest-paths)]
+      (log/info (trs "Loading local plugin manifest at {0}" (str manifest-path)))
+      (load-local-plugin-manifest! manifest-path))))
 
 (defn- has-manifest? ^Boolean [^Path path]
   (boolean (files/file-exists-in-archive? path "metabase-plugin.yaml")))

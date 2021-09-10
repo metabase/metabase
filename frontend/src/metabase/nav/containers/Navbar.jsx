@@ -13,6 +13,7 @@ import { Flex, Box } from "grid-styled";
 
 import * as Urls from "metabase/lib/urls";
 import { color, darken } from "metabase/lib/colors";
+import MetabaseSettings from "metabase/lib/settings";
 
 import Icon, { IconWrapper } from "metabase/components/Icon";
 import EntityMenu from "metabase/components/EntityMenu";
@@ -43,6 +44,7 @@ const mapStateToProps = (state, props) => ({
 });
 
 import { DefaultSearchColor } from "metabase/nav/constants";
+import StoreLink from "metabase/nav/components/StoreLink";
 
 const mapDispatchToProps = {
   onChangeLocation: push,
@@ -156,6 +158,7 @@ export default class Navbar extends Component {
             />
           </ul>
 
+          {!MetabaseSettings.isPaidPlan() && <StoreLink />}
           <ProfileLink {...this.props} />
         </div>
         {this.renderModal()}
@@ -216,7 +219,7 @@ export default class Navbar extends Component {
           </Link>
         </Flex>
         <Flex className="flex-full z1" pr={2} align="center">
-          <Box width={1} style={{ maxWidth: 512 }}>
+          <Box width={1} style={{ maxWidth: 500 }}>
             <SearchBar
               location={this.props.location}
               onChangeLocation={this.props.onChangeLocation}

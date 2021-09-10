@@ -76,7 +76,7 @@
   (sorted-results
    [(make-result "dashboard test dashboard", :model "dashboard", :favorite false)
     test-collection
-    (make-result "card test card", :model "card", :favorite false, :dataset_query "{}", :dashboardcard_count 0)
+    (make-result "card test card", :model "card", :favorite false, :dataset_query nil, :dashboardcard_count 0)
     (make-result "pulse test pulse", :model "pulse", :archived nil, :updated_at false)
     (merge
      (make-result "metric test metric", :model "metric", :description "Lookin' for a blueberry")
@@ -250,7 +250,7 @@
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]
             (make-result (str "dashboard-count " dashboard-count) :dashboardcard_count dashboard-count,
-                         :model "card", :favorite false, :dataset_query "{}"))]
+                         :model "card", :favorite false, :dataset_query nil))]
     (set [(make-card 5)
           (make-card 3)
           (make-card 0)])))
@@ -360,7 +360,7 @@
                                               :schema nil}]
                     Metric   [_ {:table_id table-id
                                  :name     "test metric"}]]
-      (perms/revoke-permissions! (group/all-users) db-id)
+      (perms/revoke-data-perms! (group/all-users) db-id)
       (is (= []
              (search-request-data :rasta :q "test")))))
 
@@ -370,7 +370,7 @@
                                               :schema nil}]
                     Segment  [_ {:table_id table-id
                                  :name     "test segment"}]]
-      (perms/revoke-permissions! (group/all-users) db-id)
+      (perms/revoke-data-perms! (group/all-users) db-id)
       (is (= []
              (search-request-data :rasta :q "test"))))))
 
@@ -502,7 +502,7 @@
   (testing "you should not be able to see a Table if the current user doesn't have permissions for that Table"
     (mt/with-temp* [Database [{db-id :id}]
                     Table    [table {:db_id db-id}]]
-      (perms/revoke-permissions! (group/all-users) db-id)
+      (perms/revoke-data-perms! (group/all-users) db-id)
       (is (= []
              (binding [*search-request-results-database-id* db-id]
                (search-request-data :rasta :q (:name table))))))))
@@ -514,7 +514,7 @@
                     Table                      [table {:name "Round Table", :db_id db-id}]
                     PermissionsGroup           [{group-id :id}]
                     PermissionsGroupMembership [_ {:group_id group-id, :user_id (mt/user->id :rasta)}]]
-      (perms/revoke-permissions! (group/all-users) db-id (:schema table) (:id table))
+      (perms/revoke-data-perms! (group/all-users) db-id (:schema table) (:id table))
       (perms/grant-permissions! group-id (perms/table-read-path table))
       (do-test-users [user [:crowberto :rasta]]
         (is (= [(default-table-search-row "Round Table")]
@@ -525,7 +525,7 @@
   (testing "If the All Users group doesn't have perms to view a Table they sholdn't see it (#16855)"
     (mt/with-temp* [Database                   [{db-id :id}]
                     Table                      [table {:name "Round Table", :db_id db-id}]]
-      (perms/revoke-permissions! (group/all-users) db-id (:schema table) (:id table))
+      (perms/revoke-data-perms! (group/all-users) db-id (:schema table) (:id table))
       (is (= []
              (filter #(= (:name %) "Round Table")
                      (binding [*search-request-results-database-id* db-id]

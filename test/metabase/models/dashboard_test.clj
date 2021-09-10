@@ -34,6 +34,7 @@
                   DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]]
     (is (= {:name         "Test Dashboard"
             :description  nil
+            :cache_ttl    nil
             :cards        [{:sizeX   2
                             :sizeY   2
                             :row     0
@@ -75,11 +76,12 @@
                           :card_id 1
                           :series  []}]})))
 
-  (is (= "rearranged the cards, modified the series on card 1 and added some series to card 2."
+  (is (= "changed the cache ttl from \"333\" to \"1227\", rearranged the cards, modified the series on card 1 and added some series to card 2."
          (#'dashboard/diff-dashboards-str
           nil
           {:name        "Diff Test"
            :description nil
+           :cache_ttl   333
            :cards       [{:sizeX   2
                           :sizeY   2
                           :row     0
@@ -96,6 +98,7 @@
                           :series  []}]}
           {:name        "Diff Test"
            :description nil
+           :cache_ttl   1227
            :cards       [{:sizeX   2
                           :sizeY   2
                           :row     0
@@ -128,6 +131,7 @@
       (testing "original state"
         (is (= {:name         "Test Dashboard"
                 :description  nil
+                :cache_ttl    nil
                 :cards        [{:sizeX   2
                                 :sizeY   2
                                 :row     0
@@ -144,12 +148,14 @@
         (testing "capture updated Dashboard state"
           (is (= {:name        "Revert Test"
                   :description "something"
+                  :cache_ttl   nil
                   :cards       []}
                  (serialize-dashboard (Dashboard dashboard-id))))))
       (testing "now do the reversion; state should return to original"
         (#'dashboard/revert-dashboard! nil dashboard-id (users/user->id :crowberto) serialized-dashboard)
         (is (= {:name         "Test Dashboard"
                 :description  nil
+                :cache_ttl    nil
                 :cards        [{:sizeX   2
                                 :sizeY   2
                                 :row     0
@@ -173,15 +179,19 @@
                  (:public_uuid dashboard))))))))
 
 (deftest post-update-test
-  (tt/with-temp* [Dashboard           [{dashboard-id :id} {:name "Lucky the Pigeon's Lucky Stuff"}]
+  (tt/with-temp* [Collection          [{collection-id-1 :id}]
+                  Collection          [{collection-id-2 :id}]
+                  Dashboard           [{dashboard-id :id} {:name "Lucky the Pigeon's Lucky Stuff", :collection_id collection-id-1}]
                   Card                [{card-id :id}]
-                  Pulse               [{pulse-id :id} {:dashboard_id dashboard-id}]
+                  Pulse               [{pulse-id :id} {:dashboard_id dashboard-id, :collection_id collection-id-1}]
                   DashboardCard       [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
                   PulseCard           [{pulse-card-id :id} {:pulse_id pulse-id, :card_id card-id, :dashboard_card_id dashcard-id}]]
-    (testing "Pulse name updates"
-      (db/update! Dashboard dashboard-id :name "Lucky's Close Shaves")
+    (testing "Pulse name and collection-id updates"
+      (db/update! Dashboard dashboard-id :name "Lucky's Close Shaves" :collection_id collection-id-2)
       (is (= "Lucky's Close Shaves"
-             (db/select-one-field :name Pulse :id pulse-id))))
+             (db/select-one-field :name Pulse :id pulse-id)))
+      (is (= collection-id-2
+             (db/select-one-field :collection_id Pulse :id pulse-id))))
     (testing "PulseCard syncing"
       (tt/with-temp Card [{new-card-id :id}]
         (add-dashcard! dashboard-id new-card-id)
@@ -224,7 +234,7 @@
     (testing (str "Check that if a Dashboard is in a Collection, someone who would otherwise be able to see it under "
                   "the old artifact-permissions regime will *NOT* be able to see it if they don't have permissions for "
                   "that Collection"))
-    (binding [api/*current-user-permissions-set* (atom #{(perms/object-path (u/the-id db))})]
+    (binding [api/*current-user-permissions-set* (atom #{(perms/data-perms-path (u/the-id db))})]
       (is (= false
              (mi/can-read? dash))))
 

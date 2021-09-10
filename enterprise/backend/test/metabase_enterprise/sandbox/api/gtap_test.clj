@@ -4,17 +4,14 @@
             [metabase.http-client :as http]
             [metabase.models :refer [Card Field PermissionsGroup Table]]
             [metabase.public-settings.metastore :as metastore]
+            [metabase.public-settings.metastore-test :as metastore-test]
             [metabase.server.middleware.util :as middleware.u]
             [metabase.test :as mt]
             [schema.core :as s]))
 
-(defmacro ^:private with-sandboxes-enabled [& body]
-  `(with-redefs [metastore/enable-sandboxes? (constantly true)]
-     ~@body))
-
 (deftest require-auth-test
   (testing "Must be authenticated to query for GTAPs"
-    (with-sandboxes-enabled
+    (metastore-test/with-metastore-token-features #{:sandboxes}
       (is (= (get middleware.u/response-unauthentic :body)
              (http/client :get 401 "mt/gtap")))
 
@@ -32,7 +29,7 @@
   "Invokes `body` ensuring any `GroupTableAccessPolicy` created will be removed afterward. Leaving behind a GTAP can
   case referential integrity failures for any related `Card` that would be cleaned up as part of a `with-temp*` call"
   [& body]
-  `(with-sandboxes-enabled
+  `(metastore-test/with-metastore-token-features #{:sandboxes}
      (mt/with-model-cleanup [GroupTableAccessPolicy]
        ~@body)))
 
@@ -120,7 +117,7 @@
     (mt/with-temp* [Table                  [{table-id :id}]
                     PermissionsGroup       [{group-id :id}]
                     Card                   [{card-id :id}]]
-      (with-sandboxes-enabled
+      (metastore-test/with-metastore-token-features #{:sandboxes}
         (testing "Test that we can update only the attribute remappings for a GTAP"
           (mt/with-temp GroupTableAccessPolicy [{gtap-id :id} {:table_id             table-id
                                                                :group_id             group-id

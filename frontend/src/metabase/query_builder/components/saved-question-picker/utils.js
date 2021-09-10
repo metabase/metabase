@@ -4,17 +4,13 @@ export function buildCollectionTree(collections) {
   if (collections == null) {
     return [];
   }
-  return collections.map(collection => {
-    const icon = getCollectionIcon(collection);
-    return {
-      id: collection.id,
-      name: collection.name,
-      schemaName: collection.originalName || collection.name,
-      icon: icon.name,
-      iconColor: icon.color,
-      children: buildCollectionTree(collection.children),
-    };
-  });
+  return collections.map(collection => ({
+    id: collection.id,
+    name: collection.name,
+    schemaName: collection.originalName || collection.name,
+    icon: getCollectionIcon(collection),
+    children: buildCollectionTree(collection.children),
+  }));
 }
 
 export const findCollectionByName = (collections, name) => {

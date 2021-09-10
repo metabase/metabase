@@ -63,11 +63,13 @@ type Props = {
   isDashboard: boolean,
   isEditing: boolean,
   isSettings: boolean,
+  isQueryBuilder: boolean,
 
   headerIcon?: {
     name: string,
     color?: string,
     size?: Number,
+    tooltip?: string,
   },
 
   actionButtons: React.Element<any>,
@@ -160,6 +162,7 @@ export default class Visualization extends React.PureComponent {
     isDashboard: false,
     isEditing: false,
     isSettings: false,
+    isQueryBuilder: false,
     onUpdateVisualizationSettings: () => {},
     // prefer passing in a function that doesn't cause the application to reload
     onChangeLocation: location => {

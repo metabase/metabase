@@ -1,8 +1,8 @@
 import { restore, popover } from "__support__/e2e/cypress";
 
 describe("visual tests > notebook > major UI elements", () => {
-  const VIEWPORT_WIDTH = 2200;
-  const VIEWPORT_HEIGHT = 1200;
+  const VIEWPORT_WIDTH = 2500;
+  const VIEWPORT_HEIGHT = 1500;
 
   beforeEach(() => {
     restore();
@@ -18,6 +18,14 @@ describe("visual tests > notebook > major UI elements", () => {
 
     addJoin({
       rightTable: "Products",
+    });
+    addJoinDimensions({
+      currentJoinsCount: 1,
+      leftField: "Created At",
+      rightField: "Created At",
+    });
+    addJoinDimensions({
+      currentJoinsCount: 2,
     });
 
     addCustomColumn({
@@ -56,6 +64,19 @@ function addJoin({ rightTable }) {
     .click();
 
   selectFromDropdown(rightTable).click();
+}
+
+function addJoinDimensions({ currentJoinsCount, leftField, rightField }) {
+  const lastJoinIndex = currentJoinsCount - 1;
+
+  cy.findByTestId(`join-dimensions-pair-${lastJoinIndex}`).within(() => {
+    cy.icon("add").click();
+  });
+
+  if (leftField && rightField) {
+    selectFromDropdown(leftField).click();
+    selectFromDropdown(rightField).click();
+  }
 }
 
 function addCustomColumn({ name, formula }) {

@@ -48,7 +48,7 @@
 (defn- interleave-all
   [& colls]
   (lazy-seq
-   (when-not (empty? colls)
+   (when (seq colls)
      (concat (map first colls) (apply interleave-all (keep (comp seq rest) colls))))))
 
 (defn- sort-by-interestingness
@@ -116,8 +116,7 @@
   "Return filter type for a given field."
   [{:keys [base_type semantic_type] :as field}]
   (cond
-    (temporal? field
-     )                   "date/all-options"
+    (temporal? field)                   "date/all-options"
     (isa? semantic_type :type/State)    "location/state"
     (isa? semantic_type :type/Country)  "location/country"
     (isa? semantic_type :type/Category) "category"))

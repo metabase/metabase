@@ -25,7 +25,7 @@
             [toucan.db :as db]
             [toucan.hydrate :as hydrate]))
 
-(use-fixtures :once (fixtures/initialize :db :plugins))
+(use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
 
 ;; HELPER FNS
 
@@ -186,6 +186,7 @@
         (let [updates {:name         "Cam's Awesome Toucan Database"
                        :engine       "h2"
                        :is_full_sync false
+                       :cache_ttl    1337
                        :details      {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}}
               update! (fn [expected-status-code]
                         (mt/user-http-request :crowberto :put expected-status-code (format "database/%d" db-id) updates))]
@@ -197,10 +198,11 @@
             (with-redefs [driver/can-connect? (constantly true)]
               (is (= nil
                      (:valid (update! 200))))
-              (let [curr-db (db/select-one [Database :name :engine :details :is_full_sync], :id db-id)]
+              (let [curr-db (db/select-one [Database :name :engine :cache_ttl :details :is_full_sync], :id db-id)]
                 (is (=
                      {:details      {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}
                       :engine       :h2
+                      :cache_ttl    1337
                       :name         "Cam's Awesome Toucan Database"
                       :is_full_sync false
                       :features     (driver.u/features :h2 curr-db)}
@@ -216,7 +218,19 @@
             (let [updates {:auto_run_queries false}]
               (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates))
             (is (= false
-                   (db/select-one-field :auto_run_queries Database, :id db-id)))))))))
+                   (db/select-one-field :auto_run_queries Database, :id db-id)))))))
+    (testing "should be able to unset cache_ttl"
+      (mt/with-temp Database [{db-id :id}]
+        (let [updates1 {:cache_ttl    1337}
+              updates2 {:cache_ttl    nil}
+              updates1! (fn [] (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates1))
+              updates2! (fn [] (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates2))]
+          (updates1!)
+          (let [curr-db (db/select-one [Database :cache_ttl], :id db-id)]
+            (is (= 1337 (:cache_ttl curr-db))))
+          (updates2!)
+          (let [curr-db (db/select-one [Database :cache_ttl], :id db-id)]
+            (is (= nil (:cache_ttl curr-db)))))))))
 
 (deftest fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
@@ -779,14 +793,14 @@
                  (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id)))))
 
         (testing "...or full schema perms..."
-          (perms/revoke-permissions! (perms-group/all-users) db-id)
+          (perms/revoke-data-perms! (perms-group/all-users) db-id)
           (perms/grant-permissions!  (perms-group/all-users) db-id "schema1")
           (is (= ["schema1"]
                  (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id)))))
 
         (testing "...or just table read perms..."
-          (perms/revoke-permissions! (perms-group/all-users) db-id)
-          (perms/revoke-permissions! (perms-group/all-users) db-id "schema1")
+          (perms/revoke-data-perms! (perms-group/all-users) db-id)
+          (perms/revoke-data-perms! (perms-group/all-users) db-id "schema1")
           (perms/grant-permissions!  (perms-group/all-users) db-id "schema1" t1)
           (perms/grant-permissions!  (perms-group/all-users) db-id "schema1" t2)
           (is (= ["schema1"]
@@ -835,14 +849,14 @@
                  (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1"))))))
 
         (testing "if we have full schema perms"
-          (perms/revoke-permissions! (perms-group/all-users) db-id)
+          (perms/revoke-data-perms! (perms-group/all-users) db-id)
           (perms/grant-permissions!  (perms-group/all-users) db-id "schema1")
           (is (= ["t1" "t3"]
                  (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1"))))))
 
         (testing "if we have full Table perms"
-          (perms/revoke-permissions! (perms-group/all-users) db-id)
-          (perms/revoke-permissions! (perms-group/all-users) db-id "schema1")
+          (perms/revoke-data-perms! (perms-group/all-users) db-id)
+          (perms/revoke-data-perms! (perms-group/all-users) db-id "schema1")
           (perms/grant-permissions!  (perms-group/all-users) db-id "schema1" t1)
           (perms/grant-permissions!  (perms-group/all-users) db-id "schema1" t3)
           (is (= ["t1" "t3"]
@@ -851,7 +865,7 @@
     (testing "should return a 403 for a user that doesn't have read permissions"
       (mt/with-temp* [Database [{database-id :id}]
                       Table    [_ {:db_id database-id, :schema "test"}]]
-        (perms/revoke-permissions! (perms-group/all-users) database-id)
+        (perms/revoke-data-perms! (perms-group/all-users) database-id)
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403 (format "database/%s/schemas" database-id))))))
 
@@ -859,7 +873,7 @@
       (mt/with-temp* [Database [{database-id :id}]
                       Table    [_ {:db_id database-id, :schema "schema-with-perms"}]
                       Table    [_ {:db_id database-id, :schema "schema-without-perms"}]]
-        (perms/revoke-permissions! (perms-group/all-users) database-id)
+        (perms/revoke-data-perms! (perms-group/all-users) database-id)
         (perms/grant-permissions!  (perms-group/all-users) database-id "schema-with-perms")
         (is (= ["schema-with-perms"]
                (mt/user-http-request :rasta :get 200 (format "database/%s/schemas" database-id))))))
@@ -868,7 +882,7 @@
       (testing "for the DB"
         (mt/with-temp* [Database [{database-id :id}]
                         Table    [{table-id :id} {:db_id database-id, :schema "test"}]]
-          (perms/revoke-permissions! (perms-group/all-users) database-id)
+          (perms/revoke-data-perms! (perms-group/all-users) database-id)
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "database/%s/schema/%s" database-id "test"))))))
 
@@ -876,7 +890,7 @@
         (mt/with-temp* [Database [{database-id :id}]
                         Table    [_ {:db_id database-id, :schema "schema-with-perms"}]
                         Table    [_ {:db_id database-id, :schema "schema-without-perms"}]]
-          (perms/revoke-permissions! (perms-group/all-users) database-id)
+          (perms/revoke-data-perms! (perms-group/all-users) database-id)
           (perms/grant-permissions!  (perms-group/all-users) database-id "schema-with-perms")
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "database/%s/schema/%s" database-id "schema-without-perms")))))))
@@ -891,7 +905,7 @@
       (mt/with-temp* [Database [{database-id :id}]
                       Table    [table-with-perms {:db_id database-id, :schema "public", :name "table-with-perms"}]
                       Table    [_                {:db_id database-id, :schema "public", :name "table-without-perms"}]]
-        (perms/revoke-permissions! (perms-group/all-users) database-id)
+        (perms/revoke-data-perms! (perms-group/all-users) database-id)
         (perms/grant-permissions!  (perms-group/all-users) database-id "public" table-with-perms)
         (is (= ["table-with-perms"]
                (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public")))))))
@@ -1091,3 +1105,14 @@
                                                   :tunnel-private-key-passphrase protected-password
                                                   :access-token                  protected-password
                                                   :refresh-token                 protected-password})))))
+
+
+(deftest db-ids-with-deprecated-drivers-test
+  (mt/with-driver :driver-deprecation-test-legacy
+    (testing "GET /api/database/db-ids-with-deprecated-drivers"
+      (mt/with-temp Database [{db-id :id} {:engine :driver-deprecation-test-legacy}]
+        (is (not-empty (filter #(= % db-id) (mt/user-http-request
+                                             :crowberto
+                                             :get
+                                             200
+                                             "database/db-ids-with-deprecated-drivers"))))))))

@@ -188,6 +188,7 @@ export class UnconnectedDataSelector extends Component {
     tableFilter: PropTypes.func,
     hasTableSearch: PropTypes.bool,
     canChangeDatabase: PropTypes.bool,
+    containerClassName: PropTypes.string,
   };
 
   static defaultProps = {
@@ -766,10 +767,10 @@ export class UnconnectedDataSelector extends Component {
     return (
       <PopoverWithTrigger
         id="DataPopover"
-        containerClassName="DataPopoverContainer"
         autoWidth
         ref={this.popover}
         isInitiallyOpen={this.props.isInitiallyOpen}
+        containerClassName={this.props.containerClassName}
         triggerElement={this.getTriggerElement()}
         triggerClasses={this.getTriggerClasses()}
         horizontalAttachments={["center", "left", "right"]}
@@ -1009,7 +1010,10 @@ const TablePicker = ({
       },
     ];
     return (
-      <div style={{ width: 300, overflowY: "auto" }}>
+      <div
+        style={{ width: 300, overflowY: "auto" }}
+        data-testid="data-selector"
+      >
         <AccordionList
           id="TablePicker"
           key="tablePicker"

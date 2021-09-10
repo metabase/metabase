@@ -173,24 +173,24 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Can we include no Fields (with `:none`)"
       (is (= {:columns (mapv mt/format-name ["id" "name" "flock_id"])
-              :rows    [[2  "Big Red"          5  ]
-                        [7  "Callie Crow"      4  ]
+              :rows    [[2  "Big Red"          5]
+                        [7  "Callie Crow"      4]
                         [3  "Camellia Crow"    nil]
-                        [16 "Carson Crow"      4  ]
-                        [12 "Chicken Little"   5  ]
+                        [16 "Carson Crow"      4]
+                        [12 "Chicken Little"   5]
                         [5  "Geoff Goose"      nil]
-                        [9  "Gerald Goose"     1  ]
-                        [6  "Greg Goose"       1  ]
-                        [14 "McNugget"         5  ]
+                        [9  "Gerald Goose"     1]
+                        [6  "Greg Goose"       1]
+                        [14 "McNugget"         5]
                         [17 "Olita Owl"        nil]
-                        [18 "Oliver Owl"       3  ]
-                        [15 "Orville Owl"      3  ]
+                        [18 "Oliver Owl"       3]
+                        [15 "Orville Owl"      3]
                         [11 "Oswald Owl"       nil]
                         [10 "Pamela Pelican"   nil]
                         [8  "Patricia Pelican" nil]
-                        [13 "Paul Pelican"     2  ]
-                        [4  "Peter Pelican"    2  ]
-                        [1  "Russell Crow"     4  ]]}
+                        [13 "Paul Pelican"     2]
+                        [4  "Peter Pelican"    2]
+                        [1  "Russell Crow"     4]]}
              (mt/format-rows-by [#(some-> % int) str #(some-> % int)]
                (mt/rows+column-names
                  (mt/dataset bird-flocks

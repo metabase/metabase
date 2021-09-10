@@ -124,6 +124,7 @@
    :made_public_by_id       nil
    :parameters              []
    :points_of_interest      nil
+   :cache_ttl               nil
    :position                nil
    :public_uuid             nil
    :show_in_getting_started false
@@ -144,10 +145,12 @@
                      :updated_at     true
                      :created_at     true
                      :collection_id  true
+                     :cache_ttl      1234
                      :last-edit-info {:timestamp true :id true :first_name "Rasta"
                                       :last_name "Toucan" :email "rasta@metabase.com"}})
                    (-> (mt/user-http-request :rasta :post 200 "dashboard" {:name          test-dashboard-name
                                                                            :parameters    [{:id "abc123", :name "test", :type "date"}]
+                                                                           :cache_ttl     1234
                                                                            :collection_id (u/the-id collection)})
                        dashboard-response)))
             (finally
@@ -221,7 +224,7 @@
                                       :created_at             true
                                       :parameter_mappings     []
                                       :visualization_settings {}
-                                      :card                   (merge card-api-test/card-defaults
+                                      :card                   (merge card-api-test/card-defaults-no-hydrate
                                                                      {:name                   "Dashboard Test Card"
                                                                       :creator_id             (mt/user->id :rasta)
                                                                       :collection_id          true
@@ -270,7 +273,7 @@
                                                                       :parameter_id "foo"
                                                                       :target       ["dimension" ["field" field-id nil]]}]
                                             :visualization_settings {}
-                                            :card                   (merge card-api-test/card-defaults
+                                            :card                   (merge card-api-test/card-defaults-no-hydrate
                                                                            {:name                   "Dashboard Test Card"
                                                                             :creator_id             (mt/user->id :rasta)
                                                                             :collection_id          true
@@ -316,7 +319,7 @@
 (deftest param-values-test
   (testing "Don't return `param_values` for Fields for which the current User has no data perms."
     (mt/with-temp-copy-of-db
-      (perms/revoke-permissions! (group/all-users) (mt/id))
+      (perms/revoke-data-perms! (group/all-users) (mt/id))
       (perms/grant-permissions! (group/all-users) (perms/table-read-path (Table (mt/id :venues))))
       (mt/with-temp* [Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]
                       Card          [{card-id :id}      {:name "Dashboard Test Card"}]
@@ -361,6 +364,7 @@
           (is (= (merge dashboard-defaults {:name           "My Cool Dashboard"
                                             :description    "Some awesome description"
                                             :creator_id     (mt/user->id :rasta)
+                                            :cache_ttl      1234
                                             :last-edit-info {:timestamp true     :id    true :first_name "Rasta"
                                                              :last_name "Toucan" :email "rasta@metabase.com"}
                                             :collection_id true})
@@ -368,12 +372,14 @@
                   (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
                                         {:name        "My Cool Dashboard"
                                          :description "Some awesome description"
+                                         :cache_ttl   1234
                                          ;; these things should fail to update
                                          :creator_id  (mt/user->id :trashbird)})))))
 
         (testing "GET after update"
           (is (= (merge dashboard-defaults {:name          "My Cool Dashboard"
                                             :description   "Some awesome description"
+                                            :cache_ttl     1234
                                             :creator_id    (mt/user->id :rasta)
                                             :collection_id true})
                  (dashboard-response (Dashboard dashboard-id)))))))))
@@ -388,6 +394,7 @@
                                             :collection_id           true
                                             :caveats                 ""
                                             :points_of_interest      ""
+                                            :cache_ttl               1337
                                             :last-edit-info
                                             {:timestamp true, :id true, :first_name "Rasta",
                                              :last_name "Toucan", :email "rasta@metabase.com"}
@@ -395,6 +402,7 @@
                  (dashboard-response (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
                                                            {:caveats                 ""
                                                             :points_of_interest      ""
+                                                            :cache_ttl               1337
                                                             :show_in_getting_started true})))))))))
 
 (deftest update-dashboard-clear-description-test
@@ -923,7 +931,7 @@
                :user         (-> (user-details (mt/fetch-user :rasta))
                                  (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
                :diff         nil
-               :description  nil}]
+               :description  "added a card."}]
              (doall (for [revision (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/revisions" dashboard-id))]
                       (dissoc revision :timestamp :id))))))))
 
@@ -987,7 +995,7 @@
                :user         (-> (user-details (mt/fetch-user :rasta))
                                  (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
                :diff         nil
-               :description  nil}]
+               :description  "rearranged the cards."}]
              (doall (for [revision (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/revisions" dashboard-id))]
                       (dissoc revision :timestamp :id))))))))
 
@@ -1315,7 +1323,7 @@
     (testing "should check perms for the Fields in question"
       (mt/with-temp-copy-of-db
         (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
-          (perms/revoke-permissions! (group/all-users) (mt/id))
+          (perms/revoke-data-perms! (group/all-users) (mt/id))
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (chain-filter-values-url (:id dashboard) (:category-name param-keys))))))))))
 
@@ -1470,6 +1478,6 @@
       (testing "should check perms for the Fields in question"
         (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard}]
           (mt/with-temp-copy-of-db
-            (perms/revoke-permissions! (group/all-users) (mt/id))
+            (perms/revoke-data-perms! (group/all-users) (mt/id))
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :get 403 (mt/$ids (url [%venues.price] [%categories.name])))))))))))

@@ -236,15 +236,15 @@
   You probably don't want to consume the results of this function directly -- most of the time, the reason you are
   calling this function in the first place is because you want add a `FILTER` clause to an application DB query (e.g.
   to only fetch Cards that belong to Collections visible to the current User). Use
-  `visible-collection-ids->honeysql-filter-clause` to generate a filter clause that handles all possible outputs of
+  [[visible-collection-ids->honeysql-filter-clause]] to generate a filter clause that handles all possible outputs of
   this function correctly.
 
   !!! IMPORTANT NOTE !!!
 
   Because the result may include `nil` for the Root Collection, or may be `:all`, MAKE SURE YOU HANDLE THOSE
   SITUATIONS CORRECTLY before using these IDs to make a DB call. Better yet, use
-  `visible-collection-ids->honeysql-filter-clause` to generate appropriate HoneySQL."
-  [permissions-set :- #{perms/UserPath}]
+  [[visible-collection-ids->honeysql-filter-clause]] to generate appropriate HoneySQL."
+  [permissions-set :- #{perms/Path}]
   (if (contains? permissions-set "/")
     :all
     (set
@@ -293,7 +293,7 @@
   (let [parent-id           (or (:id parent-collection) "")
         child-literal       (if (collection.root/is-root-collection? parent-collection)
                               "/"
-                              (format "%%/%s/" (str parent-id))) ]
+                              (format "%%/%s/" (str parent-id)))]
     (into
       ; if the collection-ids are empty, the whole into turns into nil and we have a dangling [:and] clause in query.
       ; the [:= 1 1] is to prevent this
@@ -303,7 +303,7 @@
         ; meaning, the effective children are always the direct children. So check for being a direct child.
         [[:like :location (hx/literal child-literal)]]
         (let [to-disj-ids         (location-path->ids (or (:effective_location parent-collection) "/"))
-              disj-collection-ids (apply disj collection-ids (conj to-disj-ids parent-id)) ]
+              disj-collection-ids (apply disj collection-ids (conj to-disj-ids parent-id))]
           (for [visible-collection-id disj-collection-ids]
             [:not-like :location (hx/literal (format "%%/%s/%%" (str visible-collection-id)))]))))))
 
@@ -368,7 +368,7 @@
   "Get the immediate parent `collection` id, if set."
   {:hydrate :parent_id}
   [{:keys [location]} :- CollectionWithLocationOrRoot]
-  (if location (location-path->parent-id location)))
+  (some-> location location-path->parent-id))
 
 (s/defn children-location :- LocationPath
   "Given a `collection` return a location path that should match the `:location` value of all the children of the
@@ -497,7 +497,7 @@
 ;;; |                                    Recursive Operations: Moving & Archiving                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn perms-for-archiving :- #{perms/ObjectPath}
+(s/defn perms-for-archiving :- #{perms/Path}
   "Return the set of Permissions needed to archive or unarchive a `collection`. Since archiving a Collection is
   *recursive* (i.e., it applies to all the descendant Collections of that Collection), we require write ('curate')
   permissions for the Collection itself and all its descendants, but not for its parent Collection.
@@ -526,7 +526,7 @@
                             (db/select-ids Collection :location [:like (str (children-location collection) "%")])))]
      (perms/collection-readwrite-path collection-or-id))))
 
-(s/defn perms-for-moving :- #{perms/ObjectPath}
+(s/defn perms-for-moving :- #{perms/Path}
   "Return the set of Permissions needed to move a `collection`. Like archiving, moving is recursive, so we require
   perms for both the Collection and its descendants; we additionally require permissions for its new parent Collection.
 

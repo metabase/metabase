@@ -455,7 +455,7 @@
                                   exception-classes (u/full-exception-chain caught-exception)
                                   abandon?          (some true? (for [ex      exception-classes
                                                                       test-ex exception-classes-not-to-retry]
-                                                        (= (.. ^Object ex getClass getName) (.. ^Class test-ex getName))))]
+                                                                 (= (.. ^Object ex getClass getName) (.. ^Class test-ex getName))))]
                               (cond abandon? new-result
                                     (not (seq rest-defns)) new-result
                                     :else (recur rest-defns new-result)))

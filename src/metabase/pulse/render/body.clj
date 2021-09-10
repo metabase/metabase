@@ -3,17 +3,21 @@
             [clojure.string :as str]
             [hiccup.core :refer [h]]
             [medley.core :as m]
+            [metabase.public-settings :as public-settings]
             [metabase.pulse.render.color :as color]
             [metabase.pulse.render.common :as common]
             [metabase.pulse.render.datetime :as datetime]
             [metabase.pulse.render.image-bundle :as image-bundle]
+            [metabase.pulse.render.js-svg :as js-svg]
             [metabase.pulse.render.sparkline :as sparkline]
             [metabase.pulse.render.style :as style]
             [metabase.pulse.render.table :as table]
+            [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.types :as types]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [schema.core :as s])
-  (:import java.text.DecimalFormat))
+  (:import (java.text DecimalFormat DecimalFormatSymbols)))
 
 (def error-rendered-info
   "Default rendered-info map when there is an error displaying a card. Is a delay due to the call to `trs`."
@@ -213,25 +217,150 @@
        (list results-attached table-body)
        (list table-body))}))
 
+(def ^:private default-date-styles
+  {:year "YYYY"
+   :quarter "[Q]Q - YYYY"
+   :minute-of-hour "m"
+   :day-of-week "dddd"
+   :day-of-month "D"
+   :day-of-year "DDD"
+   :week-of-year "wo"
+   :month-of-year "MMMM"
+   :quarter-of-year "[Q]Q"})
+
+(def ^:private override-date-styles
+  {"M/D/YYYY" {:month "M/YYYY"}
+   "D/M/YYYY" {:month "M/YYYY"}
+   "YYYY/M/D" {:month "YYYY/M"
+               :quarter "YYYY - [Q]Q"}
+   "MMMM D, YYYY" {:month "MMMM, YYYY"}
+   "D MMMM, YYYY" {:month "MMMM, YYYY"}
+   "dddd, MMMM D, YYYY" {:week "MMMM D, YYYY"
+                         :month "MMMM, YYYY"}})
+
+(defn- ->js-viz
+  "Include viz settings for js.
+
+  - there are some date overrides done from lib/formatting.js
+  - chop off and underscore the nasty keys in our map
+  - backfill currency to the default of USD if not present"
+  [x-col y-col {::mb.viz/keys [column-settings] :as _viz-settings}]
+  (letfn [(settings [col] (or (get column-settings {::mb.viz/field-id (:id col)})
+                              (get column-settings {::mb.viz/column-name (:name col)})))
+          (update-date-style [date-style unit]
+            (let [unit (or unit :default)]
+              (or (get-in override-date-styles [date-style unit])
+                  (get-in default-date-styles [unit])
+                  date-style)))
+          (backfill-currency [{:keys [number_style currency] :as settings}]
+            (cond-> settings
+              (and (= number_style "currency") (nil? currency))
+              (assoc :currency "USD")))
+          (for-js [col-settings col]
+            (-> (m/map-keys (fn [k] (-> k name (str/replace #"-" "_") keyword)) col-settings)
+                (backfill-currency)
+                (u/update-when :date_style update-date-style (:unit col))))]
+    (let [x-col-settings (settings x-col)
+          y-col-settings (settings y-col)]
+      (cond-> {}
+        x-col-settings
+        (assoc :x (for-js x-col-settings x-col))
+        y-col-settings
+        (assoc :y (for-js y-col-settings y-col))))))
+
 (s/defmethod render :bar :- common/RenderedPulseCard
-  [_ _ timezone-id :- (s/maybe s/Str) card {:keys [cols] :as data}]
+  [_ render-type _timezone-id :- (s/maybe s/Str) card {:keys [cols rows viz-settings] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
-        rows                        (common/non-nil-rows x-axis-rowfn y-axis-rowfn (:rows data))
-        row-values                  (map y-axis-rowfn rows)
-        min-value                   (min 0 (apply min row-values))
-        max-value                   (apply max row-values)]
+        rows                        (map (juxt x-axis-rowfn y-axis-rowfn)
+                                         (common/non-nil-rows x-axis-rowfn y-axis-rowfn rows))
+        [x-col y-col]               ((juxt x-axis-rowfn y-axis-rowfn) cols)
+        labels                      {:bottom (:display_name x-col)
+                                     :left   (:display_name y-col)}
+        image-bundle                (image-bundle/make-image-bundle
+                                     render-type
+                                     (if (isa? (-> cols x-axis-rowfn :effective_type) :type/Temporal)
+                                       (js-svg/timelineseries-bar rows labels
+                                                                  (->js-viz x-col y-col viz-settings))
+                                       (js-svg/categorical-bar rows labels
+                                                               (->js-viz x-col y-col viz-settings))))]
     {:attachments
-     nil
+     (when image-bundle
+       (image-bundle/image-bundle->attachment image-bundle))
 
      :content
      [:div
-      (table/render-table (color/make-color-selector data (:visualization_settings card))
-                          (normalize-bar-value 0 min-value max-value)
-                          (mapv :name cols)
-                          (prep-for-html-rendering timezone-id card data 2 {:bar-column y-axis-rowfn
-                                                                            :min-value  min-value
-                                                                            :max-value  max-value}))
-      (render-truncation-warning 2 (count-displayed-columns cols) rows-limit (count rows))]}))
+      [:img {:style (style/style {:display :block :width :100%})
+             :src   (:image-src image-bundle)}]]}))
+
+(def ^:private colors
+  "Colors to cycle through for charts. These are copied from https://stats.metabase.com/_internal/colors"
+  ["#509EE3" "#88BF4D" "#A989C5" "#EF8C8C" "#F9D45C" "#F2A86F" "#98D9D9" "#7172AD" "#6450e3" "#4dbf5e"
+   "#c589b9" "#efce8c" "#b5f95c" "#e35850" "#554dbf" "#bec589" "#8cefc6" "#5cc2f9" "#55e350" "#bf4d4f"
+   "#89c3c5" "#be8cef" "#f95cd0" "#50e3ae" "#bf974d" "#899bc5" "#ef8cde" "#f95c67"])
+
+(defn format-percentage
+  "Format a percentage which includes site settings for locale. The first arg is a numeric value to format. The second
+  is an optional string of decimal and grouping symbols to be used, ie \".,\". There will soon be a values.clj file
+  that will handle this but this is here in the meantime."
+  ([value]
+   (format-percentage value (get-in (public-settings/custom-formatting) [:type/Number :number_separators])))
+  ([value [decimal grouping]]
+   (let [base "#,###.##%"
+         fmt (if (or decimal grouping)
+               (DecimalFormat. base (doto (DecimalFormatSymbols.)
+                                      (cond-> decimal (.setDecimalSeparator decimal))
+                                      (cond-> grouping (.setGroupingSeparator grouping))))
+               (DecimalFormat. base))]
+     (.format fmt value))))
+
+(defn- donut-info
+  "Process rows with a minimum slice threshold. Collapses any segments below the threshold given as a percentage (the
+  value 25 for 25%) into a single category as \"Other\". "
+  [threshold-percentage rows]
+  (let [total                    (reduce + 0 (map second rows))
+        threshold                (* total (/ threshold-percentage 100))
+        {as-is true clump false} (group-by (comp #(> % threshold) second) rows)
+        rows (cond-> as-is
+               (seq clump)
+               (conj [(tru "Other") (reduce (fnil + 0) 0 (map second clump))]))]
+    {:rows        rows
+     :percentages (into {}
+                        (for [[label value] rows]
+                          [label (if (zero? total)
+                                   (tru "N/A")
+                                   (format-percentage (/ value total)))]))}))
+
+(s/defmethod render :categorical/donut :- common/RenderedPulseCard
+  [_ render-type _timezone-id :- (s/maybe s/Str) card {:keys [rows] :as data}]
+  (let [[x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
+        rows                        (map (juxt (comp str x-axis-rowfn) y-axis-rowfn)
+                                         (common/non-nil-rows x-axis-rowfn y-axis-rowfn rows))
+        slice-threshold             (or (get-in card [:visualization_settings :pie.slice_threshold])
+                                        2.5)
+        {:keys [rows percentages]}  (donut-info slice-threshold rows)
+        legend-colors               (zipmap (map first rows) (cycle colors))
+        image-bundle                (image-bundle/make-image-bundle
+                                     render-type
+                                     (js-svg/categorical-donut rows legend-colors))]
+    {:attachments
+     (when image-bundle
+       (image-bundle/image-bundle->attachment image-bundle))
+
+     :content
+     [:div
+      [:img {:style (style/style {:display :block :width :100%})
+             :src   (:image-src image-bundle)}]
+      (into [:div {:style (style/style {:clear :both :width "540px" :color "#4C5773"})}]
+            (for [label (map first rows)]
+              [:div {:style (style/style {:float       :left :margin-right "12px"
+                                          :font-family "Lato, sans-serif"
+                                          :font-size   "24px"})}
+               [:span {:style (style/style {:color (legend-colors label)})}
+                "•"]
+               [:span {:style (style/style {:margin-left "6px"})}
+                label]
+               [:span {:style (style/style {:margin-left "6px"})}
+                (percentages label)]]))]}))
 
 (s/defmethod render :scalar :- common/RenderedPulseCard
   [_ _ timezone-id card {:keys [cols rows]}]
@@ -251,8 +380,7 @@
                                  (isa? (:base_type c) t)))
           (where [f coll] (some #(when (f %) %) coll))
           (percentage [arg] (if (number? arg)
-                              (let [f (DecimalFormat. "###,###.##%")]
-                                (.format f (double arg)))
+                              (format-percentage arg)
                               " - "))
           (format-unit [unit] (str/replace (name unit) "-" " "))]
     (let [[_time-col metric-col] (if (col-of-type :type/Temporal (first cols)) cols (reverse cols))
@@ -279,15 +407,23 @@
         @error-rendered-info))))
 
 (s/defmethod render :sparkline :- common/RenderedPulseCard
-  [_ render-type timezone-id card {:keys [rows cols] :as data}]
+  [_ render-type timezone-id card {:keys [_rows cols viz-settings] :as data}]
   (let [[x-axis-rowfn
          y-axis-rowfn] (common/graphing-column-row-fns card data)
+        [x-col y-col]  ((juxt x-axis-rowfn y-axis-rowfn) cols)
         rows           (sparkline/cleaned-rows timezone-id card data)
         last-rows      (reverse (take-last 2 rows))
         values         (for [row last-rows]
                          (some-> row y-axis-rowfn common/format-number))
-        labels         (datetime/format-temporal-string-pair timezone-id (map x-axis-rowfn last-rows) (x-axis-rowfn cols))
-        image-bundle   (sparkline/sparkline-image-bundle render-type timezone-id card {:rows rows, :cols cols})]
+        labels         (datetime/format-temporal-string-pair timezone-id
+                                                             (map x-axis-rowfn last-rows)
+                                                             (x-axis-rowfn cols))
+        image-bundle   (image-bundle/make-image-bundle
+                        render-type
+                        (js-svg/timelineseries-line (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)
+                                                    {:bottom (:display_name x-col)
+                                                     :left   (:display_name y-col)}
+                                                    (->js-viz x-col y-col viz-settings)))]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))

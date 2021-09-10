@@ -1,7 +1,7 @@
 (ns metabase-enterprise.serialization.test-util
   (:require [metabase-enterprise.serialization.names :as names]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database Field Metric
-                                     NativeQuerySnippet Pulse PulseCard Segment Table User]]
+            [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database Dependency
+                                     Field Metric NativeQuerySnippet Pulse PulseCard Segment Table User]]
             [metabase.models.collection :as collection]
             [metabase.query-processor.store :as qp.store]
             [metabase.shared.models.visualization-settings :as mb.viz]
@@ -121,6 +121,11 @@
                                                                              [:field
                                                                               ~'category-pk-field-id
                                                                               {:join-alias "cat"}]]}]}}}]
+                   Dependency [{~'dependency-id :id} {:model "Card"
+                                                      :model_id ~'card-id
+                                                      :dependent_on_model "Segment"
+                                                      :dependent_on_id ~'segment-id
+                                                      :created_at :%now}]
                    Card       [{~'card-arch-id :id}
                                {;:archived true
                                 :table_id ~'table-id

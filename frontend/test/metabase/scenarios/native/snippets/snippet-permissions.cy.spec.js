@@ -196,14 +196,15 @@ describeWithToken("scenarios > question > snippets", () => {
 
       // Update permissions for "All users"
       modal().within(() => {
-        cy.findAllByRole("grid")
-          .last()
+        cy.findByTestId("permission-table")
           .find(".Icon-close")
           .first()
           .click();
       });
 
-      cy.findByText("Grant View access").click();
+      cy.findAllByRole("option")
+        .contains("View")
+        .click();
       cy.button("Save").click();
 
       cy.wait("@updatePermissions");

@@ -9,7 +9,8 @@ ARG MB_EDITION=oss
 WORKDIR /home/circleci
 
 COPY --chown=circleci . .
-RUN NODE_ENV=production MB_EDITION=$MB_EDITION yarn --frozen-lockfile && yarn build && bin/i18n/build-translation-resources
+RUN NODE_ENV=production MB_EDITION=$MB_EDITION yarn --frozen-lockfile && \
+    yarn build && yarn build-static-viz && bin/i18n/build-translation-resources
 
 ###################
 # STAGE 1.4: main builder

@@ -10,9 +10,6 @@ import admin from "metabase/admin/admin";
 /* setup */
 import * as setup from "metabase/setup/reducers";
 
-/* user settings */
-import * as user from "metabase/user/reducers";
-
 /* dashboards */
 import dashboard from "metabase/dashboard/dashboard";
 import * as home from "metabase/home/reducers";
@@ -44,6 +41,5 @@ export default {
   reference,
   revisions,
   setup: combineReducers(setup),
-  user: combineReducers(user),
   admin,
 };

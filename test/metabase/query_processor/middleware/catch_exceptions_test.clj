@@ -126,7 +126,7 @@
 
 (deftest permissions-test
   (data/with-temp-copy-of-db
-    (perms/revoke-permissions! (group/all-users) (data/id))
+    (perms/revoke-data-perms! (group/all-users) (data/id))
     (perms/grant-permissions! (group/all-users) (data/id) "PUBLIC" (data/id :venues))
     (testing (str "If someone doesn't have native query execution permissions, they shouldn't see the native version of "
                   "the query in the error response")

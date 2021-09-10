@@ -44,7 +44,7 @@ export default class Aggregation extends MBQLClause {
     return this._query.removeAggregation(this._index);
   }
 
-  canRemove(): boolean {
+  canRemove() {
     return this.remove()
       .clean()
       .isValid();
@@ -131,7 +131,7 @@ export default class Aggregation extends MBQLClause {
   /**
    * Predicate function to test if a given aggregation clause is valid
    */
-  isValid(): boolean {
+  isValid() {
     if (this.hasOptions()) {
       return this.aggregation().isValid();
     } else if (this.isStandard() && this.dimension()) {
@@ -159,21 +159,21 @@ export default class Aggregation extends MBQLClause {
   /**
    * Returns true if this is a "standard" metric
    */
-  isStandard(): boolean {
+  isStandard() {
     return AGGREGATION.isStandard(this);
   }
 
   /**
    * Returns true if this is a metric
    */
-  isMetric(): boolean {
+  isMetric() {
     return AGGREGATION.isMetric(this);
   }
 
   /**
    * Returns true if this is custom expression created with the expression editor
    */
-  isCustom(): boolean {
+  isCustom() {
     return AGGREGATION.isCustom(this);
   }
 

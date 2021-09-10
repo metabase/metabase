@@ -87,8 +87,9 @@ jobs:
     needs: [pr_info, get_latest_release_branch]
     if: ${{ needs.pr_info.outputs.should_backport == 'true' }}
     env:
-      RELEASE_BRANCH: ${{ needs.get_latest_release_branch.outputs.branch_name }}
-      ORIGINAL_PR_TITLE: ${{ needs.pr_info.outputs.title }}
+      TARGET_BRANCH: ${{ needs.get_latest_release_branch.outputs.branch_name }}
+      ORIGINAL_PULL_REQUEST_NUMBER: ${{ needs.pr_info.outputs.number }}
+      ORIGINAL_TITLE: ${{ needs.pr_info.outputs.title }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v2
@@ -99,14 +100,16 @@ jobs:
           git config --global user.email "metabase-github-automation@metabase.com"
           git config --global user.name "$GITHUB_ACTOR"
 
-          PR_BRANCH="backport-$GITHUB_SHA"
+          BACKPORT_BRANCH="backport-$GITHUB_SHA"
 
           git fetch --all
-          git checkout -b "${PR_BRANCH}" origin/"${RELEASE_BRANCH}"
+          git checkout -b "${BACKPORT_BRANCH}" origin/"${TARGET_BRANCH}"
           git cherry-pick "${GITHUB_SHA}"
-          git push -u origin "${PR_BRANCH}"
+          git push -u origin "${BACKPORT_BRANCH}"
 
-          hub pull-request -b "${RELEASE_BRANCH}" -h "${PR_BRANCH}" -l "auto-created-backport" -a "${GITHUB_ACTOR}" -m "backported \"${ORIGINAL_PR_TITLE}\""
+          hub pull-request -b "${TARGET_BRANCH}" -h "${BACKPORT_BRANCH}" -l "auto-backported" -a "${GITHUB_ACTOR}" -F- <<<"🤖 backported \"${ORIGINAL_TITLE}\"
+
+          #${ORIGINAL_PULL_REQUEST_NUMBER}"
 
   notify_when_failed:
     runs-on: ubuntu-latest
@@ -117,9 +120,12 @@ jobs:
       - uses: actions/github-script@v4
         with:
           script: |
+            const { GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_RUN_ID } = process.env;
+            const runUrl = `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}`
+
             github.issues.createComment({
               issue_number: ${{ needs.pr_info.outputs.number }},
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '@${{ needs.pr_info.outputs.author }} could not automatically create a backport PR 😩'
+              body: `@${{ needs.pr_info.outputs.author }} could not automatically create a backport PR 😩 [[Logs]](${runUrl})`
             })

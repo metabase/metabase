@@ -17,6 +17,7 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [medley.core :as m]
+            [metabase.api.common :as api]
             [metabase.events :as events]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection]
@@ -44,13 +45,35 @@
                     {:parameters parameters}))))
 
 (defn- pre-insert [notification]
-  (let [defaults     {:parameters []}
-        notification (apply merge defaults (for [[k v] notification :when (some? v)] {k v}))]
+  (let [defaults      {:parameters []}
+        dashboard-id  (:dashboard_id notification)
+        collection-id (if dashboard-id
+                        (db/select-one-field :collection_id 'Dashboard, :id dashboard-id)
+                        (:collection_id notification))
+        notification  (->> (for [[k v] notification
+                                 :when (some? v)]
+                             {k v})
+                           (apply merge defaults {:collection_id collection-id}))]
     (u/prog1 notification
       (assert-valid-parameters notification)
       (collection/check-collection-namespace Pulse (:collection_id notification)))))
 
+(def ^:dynamic *allow-moving-dashboard-subscriptions*
+  "If true, allows the collection_id on a dashboard subscription to be modified. This should
+  only be done when the associated dashboard is being moved to a new collection."
+  false)
+
 (defn- pre-update [notification]
+  (let [{:keys [collection_id dashboard_id]} (db/select-one [Pulse :collection_id :dashboard_id] :id (u/the-id notification))]
+    (when (and dashboard_id
+               (contains? notification :collection_id)
+               (not= (:collection_id notification) collection_id)
+               (not *allow-moving-dashboard-subscriptions*))
+      (throw (ex-info (tru "collection ID of a dashboard subscription cannot be directly modified") notification)))
+    (when (and dashboard_id
+               (contains? notification :dashboard_id)
+               (not= (:dashboard_id notification) dashboard_id))
+      (throw (ex-info (tru "dashboard ID of a dashboard subscription cannot be modified") notification))))
   (u/prog1 notification
     (assert-valid-parameters notification)
     (collection/check-collection-namespace Pulse (:collection_id notification))))
@@ -72,8 +95,13 @@
   [notification]
   (boolean (:alert_condition notification)))
 
+(defn- is-dashboard-subscription?
+  "Whether `notification` is a Dashboard Subscription (as opposed to a regular Pulse or an Alert)."
+  [notification]
+  (boolean (:dashboard_id notification)))
+
 (defn- perms-objects-set
-  "Permissions to read or write a *Pulse* are the same as those of its parent Collection.
+  "Permissions to read or write a *Pulse* or *Dashboard Subscription* are the same as those of its parent Collection.
 
   Permissions to read or write an *Alert* are the same as those of its 'parent' *Card*. For all intents and purposes,
   an Alert cannot be put into a Collection."
@@ -81,6 +109,16 @@
   (if (is-alert? notification)
     (i/perms-objects-set (alert->card notification) read-or-write)
     (perms/perms-objects-set-for-parent-collection notification read-or-write)))
+
+(defn- can-write?
+  "A user with read-only permissions for a dashboard should be able to create subscriptions, and update
+  subscriptions that they created, but not edit anyone else's subscriptions."
+  [notification]
+  (if (and (is-dashboard-subscription? notification)
+           (i/current-user-has-full-permissions? :read notification)
+           (not (i/current-user-has-full-permissions? :write notification)))
+    (= api/*current-user-id* (:creator_id notification))
+    (i/current-user-has-full-permissions? :write notification)))
 
 (u/strict-extend (class Pulse)
   models/IModel
@@ -95,7 +133,7 @@
   (merge
    i/IObjectPermissionsDefaults
    {:can-read?         (partial i/current-user-has-full-permissions? :read)
-    :can-write?        (partial i/current-user-has-full-permissions? :write)
+    :can-write?        can-write?
     :perms-objects-set perms-objects-set}))
 
 
@@ -218,38 +256,60 @@
           hydrate-notification
           notification->alert))
 
+(defn- query-as [model query]
+  (db/do-post-select model (db/query query)))
+
 (s/defn retrieve-alerts :- [PulseInstance]
   "Fetch all Alerts."
   ([]
    (retrieve-alerts nil))
 
-  ([{:keys [archived?]
+  ([{:keys [archived? user-id]
      :or   {archived? false}}]
-   (for [alert (hydrate-notifications (db/select Pulse
-                                        :alert_condition [:not= nil]
-                                        :archived        archived?
-                                        {:order-by [[:%lower.name :asc]]}))
-         :let [alert (notification->alert alert)]
-         ;; if for whatever reason the Alert doesn't have a Card associated with it (e.g. the Card was deleted) don't
-         ;; return the Alert -- it's basically orphaned/invalid at this point. See #13575 -- we *should* be deleting
-         ;; Alerts if their associated PulseCard is deleted, but that's not currently the case.
-         :when (:card alert)]
-     alert)))
-
-(defn- query-as [model query]
-  (db/do-post-select model (db/query query)))
+   (assert boolean? archived?)
+   (let [query {:select    [:p.* [:%lower.p.name :lower-name]]
+                :modifiers [:distinct]
+                :from      [[Pulse :p]]
+                :left-join (when user-id
+                             [[PulseChannel :pchan] [:= :p.id :pchan.pulse_id]
+                              [PulseChannelRecipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]])
+                :where     [:and
+                            [:not= :p.alert_condition nil]
+                            [:= :p.archived archived?]
+                            (when user-id
+                              [:or
+                               [:= :p.creator_id user-id]
+                               [:= :pcr.user_id user-id]])]
+                :order-by  [[:lower-name :asc]]}]
+     (for [alert (hydrate-notifications (query-as Pulse query))
+           :let [alert (notification->alert alert)]
+          ;; if for whatever reason the Alert doesn't have a Card associated with it (e.g. the Card was deleted) don't
+          ;; return the Alert -- it's basically orphaned/invalid at this point. See #13575 -- we *should* be deleting
+          ;; Alerts if their associated PulseCard is deleted, but that's not currently the case.
+           :when (:card alert)]
+       alert))))
 
 (s/defn retrieve-pulses :- [PulseInstance]
   "Fetch all `Pulses`."
-  [{:keys [archived? dashboard-id]
+  [{:keys [archived? dashboard-id user-id]
     :or   {archived? false}}]
   (let [query {:select    [:p.* [:%lower.p.name :lower-name]]
                :modifiers [:distinct]
                :from      [[Pulse :p]]
+               :left-join (when user-id
+                            [[PulseChannel :pchan] [:= :p.id :pchan.pulse_id]
+                             [PulseChannelRecipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]])
                :where     [:and
                            [:= :p.alert_condition nil]
                            [:= :p.archived archived?]
-                           [:= :p.dashboard_id dashboard-id]]
+                           (when dashboard-id
+                             [:= :p.dashboard_id dashboard-id])
+                           (when user-id
+                             [:and
+                              [:not= :p.dashboard_id nil]
+                              [:or
+                               [:= :p.creator_id user-id]
+                               [:= :pcr.user_id user-id]]])]
                :order-by  [[:lower-name :asc]]}]
     (for [pulse (query-as Pulse query)]
       (-> pulse
@@ -259,7 +319,9 @@
 
 (defn retrieve-user-alerts-for-card
   "Find all alerts for `card-id` that `user-id` is set to receive"
-  [card-id user-id]
+  [{:keys [archived? card-id user-id]
+    :or   {archived? false}}]
+  (assert boolean? archived?)
   (map (comp notification->alert hydrate-notification)
        (query-as Pulse
                  {:select [:p.*]
@@ -270,11 +332,13 @@
                   :where  [:and
                            [:not= :p.alert_condition nil]
                            [:= :pc.card_id card-id]
-                           [:= :pcr.user_id user-id]]})))
+                           [:= :pcr.user_id user-id]
+                           [:= :p.archived archived?]]})))
 
 (defn retrieve-alerts-for-cards
   "Find all alerts for `card-ids`, used for admin users"
-  [& card-ids]
+  [{:keys [archived? card-ids]
+    :or   {archived? false}}]
   (when (seq card-ids)
     (map (comp notification->alert hydrate-notification)
          (query-as Pulse
@@ -283,7 +347,8 @@
                     :join   [[PulseCard :pc] [:= :p.id :pc.pulse_id]]
                     :where  [:and
                              [:not= :p.alert_condition nil]
-                             [:in :pc.card_id card-ids]]}))))
+                             [:in :pc.card_id card-ids]
+                             [:= :p.archived archived?]]}))))
 
 (s/defn card->ref :- CardRef
   "Create a card reference from a card or id"

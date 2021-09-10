@@ -72,10 +72,11 @@
 
 (api/defendpoint POST "/"
   "Create a new Dashboard."
-  [:as {{:keys [name description parameters collection_id collection_position], :as dashboard} :body}]
+  [:as {{:keys [name description parameters cache_ttl collection_id collection_position], :as dashboard} :body}]
   {name                su/NonBlankString
    parameters          [su/Map]
    description         (s/maybe s/Str)
+   cache_ttl           (s/maybe su/IntGreaterThanZero)
    collection_id       (s/maybe su/IntGreaterThanZero)
    collection_position (s/maybe su/IntGreaterThanZero)}
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
@@ -84,6 +85,7 @@
                         :description         description
                         :parameters          (or parameters [])
                         :creator_id          api/*current-user-id*
+                        :cache_ttl           cache_ttl
                         :collection_id       collection_id
                         :collection_position collection_position}]
     (let [dash (db/transaction
@@ -122,7 +124,7 @@
 ;; Adding the average execution time to all of the Cards in a Dashboard efficiently is somewhat involved. There are a
 ;; few things that make this tricky:
 ;;
-;; 1. Queries are usually executed with `:constraints` that different from how they're actually definied, but not
+;; 1. Queries are usually executed with `:constraints` that different from how they're actually defined, but not
 ;;    always. This means we should look up hashes for both the query as-is and for the query with
 ;;    `default-query-constraints` and use whichever one we find
 ;;
@@ -208,7 +210,7 @@
       ;; i'm a bit worried that this is an n+1 situation here. The cards can be batch hydrated i think because they
       ;; have a hydration key and an id. moderation_reviews currently aren't batch hydrated but i'm worried they
       ;; cannot be in this situation
-      (hydrate [:ordered_cards [:card :moderation_reviews] :series] :collection_authority_level :can_write :param_fields :param_values)
+      (hydrate [:ordered_cards [:card [:moderation_reviews :moderator_details]] :series] :collection_authority_level :can_write :param_fields :param_values)
       api/read-check
       api/check-not-archived
       hide-unreadable-cards
@@ -269,7 +271,7 @@
   permissions for the Cards belonging to this Dashboard), but to change the value of `enable_embedding` you must be a
   superuser."
   [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started enable_embedding
-                   embedding_params position archived collection_id collection_position]
+                   embedding_params position archived collection_id collection_position cache_ttl]
             :as dash-updates} :body}]
   {name                    (s/maybe su/NonBlankString)
    description             (s/maybe s/Str)
@@ -282,7 +284,8 @@
    position                (s/maybe su/IntGreaterThanZero)
    archived                (s/maybe s/Bool)
    collection_id           (s/maybe su/IntGreaterThanZero)
-   collection_position     (s/maybe su/IntGreaterThanZero)}
+   collection_position     (s/maybe su/IntGreaterThanZero)
+   cache_ttl               (s/maybe su/IntGreaterThanZero)}
   (let [dash-before-update (api/write-check Dashboard id)]
     ;; Do various permissions checks as needed
     (collection/check-allowed-to-change-collection dash-before-update dash-updates)
@@ -295,12 +298,12 @@
        (api/maybe-reconcile-collection-position! dash-before-update dash-updates)
 
        (db/update! Dashboard id
-         ;; description, position, collection_id, and collection_position are allowed to be `nil`. Everything else
-         ;; must be non-nil
+         ;; description, position, collection_id, and collection_position are allowed to be `nil`.
+         ;; Everything else must be non-nil
          (u/select-keys-when dash-updates
            :present #{:description :position :collection_id :collection_position}
            :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
-                      :embedding_params :archived})))))
+                      :embedding_params :archived :cache_ttl})))))
   ;; now publish an event and return the updated Dashboard
   (let [dashboard (Dashboard id)]
     (events/publish-event! :dashboard-update (assoc dashboard :actor_id api/*current-user-id*))

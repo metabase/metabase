@@ -1,26 +1,20 @@
 import { restore, popover } from "__support__/e2e/cypress";
 
+const questionDetails = {
+  name: "SQL Binning",
+  native: {
+    query:
+      "SELECT ORDERS.CREATED_AT, ORDERS.TOTAL, PEOPLE.LONGITUDE FROM ORDERS JOIN PEOPLE ON orders.user_id = people.id",
+  },
+};
+
 describe("scenarios > binning > from a saved sql question", () => {
   beforeEach(() => {
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.intercept("POST", "/api/dataset").as("dataset");
 
     restore();
     cy.signInAsAdmin();
-    cy.createNativeQuestion({
-      name: "SQL Binning",
-      native: {
-        query:
-          "SELECT ORDERS.CREATED_AT, ORDERS.TOTAL, PEOPLE.LONGITUDE FROM ORDERS JOIN PEOPLE ON orders.user_id = people.id",
-      },
-    }).then(({ body }) => {
-      /**
-       * We need to visit the question and to wait for the result metadata to load first.
-       * Please see: https://github.com/metabase/metabase/pull/16707#issuecomment-866126310
-       */
-      cy.visit(`/question/${body.id}`);
-      cy.wait("@cardQuery");
-    });
+    cy.createNativeQuestion(questionDetails, { loadMetadata: true });
   });
 
   context("via simple question", () => {

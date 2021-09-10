@@ -10,10 +10,10 @@ const Tooltipify = ComposedComponent =>
       (ComposedComponent.displayName || ComposedComponent.name) +
       "]";
     render() {
-      const { tooltip, ...props } = this.props;
+      const { tooltip, targetOffsetX, ...props } = this.props;
       if (tooltip) {
         return (
-          <Tooltip tooltip={tooltip}>
+          <Tooltip tooltip={tooltip} targetOffsetX={targetOffsetX}>
             <ComposedComponent {...props} />
           </Tooltip>
         );

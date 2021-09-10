@@ -1,17 +1,14 @@
 import Question from "../Question";
 
 import Base from "./Base";
-import Table from "./Table";
-import Schema from "./Schema";
 
 import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
 
 import { generateSchemaId } from "metabase/schema";
 
-import type { SchemaName } from "metabase-types/types/Table";
-import type { DatabaseFeature } from "metabase-types/types/Database";
-
-type VirtualDatabaseFeature = "join";
+/**
+ * @typedef { import("./metadata").SchemaName } SchemaName
+ */
 
 /**
  * Wrapper class for database metadata objects. Contains {@link Schema}s, {@link Table}s, {@link Metric}s, {@link Segment}s.
@@ -21,26 +18,33 @@ type VirtualDatabaseFeature = "join";
 export default class Database extends Base {
   // TODO Atte Keinänen 6/11/17: List all fields here (currently only in types/Database)
 
-  name: string;
-  description: ?string;
-
-  tables: Table[];
-  schemas: Schema[];
-
-  auto_run_queries: boolean;
-
-  displayName(): string {
+  displayName() {
     return this.name;
   }
 
   // SCHEMAS
 
-  schema(schemaName: ?SchemaName) {
+  /**
+   * @param {SchemaName} [schemaName]
+   */
+  schema(schemaName) {
     return this.metadata.schema(generateSchemaId(this.id, schemaName));
   }
 
-  schemaNames(): SchemaName[] {
+  schemaNames() {
     return this.schemas.map(s => s.name).sort((a, b) => a.localeCompare(b));
+  }
+
+  getSchemas() {
+    return this.schemas;
+  }
+
+  schemasCount() {
+    return this.schemas.length;
+  }
+
+  getTables() {
+    return this.tables;
   }
 
   // TABLES
@@ -57,9 +61,12 @@ export default class Database extends Base {
 
   // FEATURES
 
-  hasFeature(
-    feature: null | DatabaseFeature | VirtualDatabaseFeature,
-  ): boolean {
+  /**
+   * @typedef {import("./metadata").DatabaseFeature} DatabaseFeature
+   * @typedef {"join"} VirtualDatabaseFeature
+   * @param {DatabaseFeature | VirtualDatabaseFeature} [feature]
+   */
+  hasFeature(feature) {
     if (!feature) {
       return true;
     }
@@ -82,13 +89,13 @@ export default class Database extends Base {
 
   // QUESTIONS
 
-  newQuestion(): Question {
+  newQuestion() {
     return this.question()
       .setDefaultQuery()
       .setDefaultDisplay();
   }
 
-  question(query = { "source-table": null }): Question {
+  question(query = { "source-table": null }) {
     return Question.create({
       metadata: this.metadata,
       dataset_query: {
@@ -99,7 +106,7 @@ export default class Database extends Base {
     });
   }
 
-  nativeQuestion(native = {}): Question {
+  nativeQuestion(native = {}) {
     return Question.create({
       metadata: this.metadata,
       dataset_query: {
@@ -119,7 +126,35 @@ export default class Database extends Base {
   }
 
   /** Returns a database containing only the saved questions from the same database, if any */
-  savedQuestionsDatabase(): ?Database {
+  savedQuestionsDatabase() {
     return this.metadata.databasesList().find(db => db.is_saved_questions);
+  }
+
+  /**
+   * @private
+   * @param {number} id
+   * @param {string} name
+   * @param {?string} description
+   * @param {Table[]} tables
+   * @param {Schema[]} schemas
+   * @param {Metadata} metadata
+   * @param {boolean} auto_run_queries
+   */
+  _constructor(
+    id,
+    name,
+    description,
+    tables,
+    schemas,
+    metadata,
+    auto_run_queries,
+  ) {
+    this.id = id;
+    this.name = name;
+    this.description = description;
+    this.tables = tables;
+    this.schemas = schemas;
+    this.metadata = metadata;
+    this.auto_run_queries = auto_run_queries;
   }
 }

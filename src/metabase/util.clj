@@ -99,7 +99,7 @@
   {:style/indent 1, :arglists '([klass] [klass xs])}
   [klass & [objects]]
   (vary-meta `(into-array ~klass ~objects)
-             assoc :tag (format "[L%s;" (.getCanonicalName ^Class (ns-resolve *ns* klass)))))
+             assoc :tag (format "[L%s;" (.getTypeName ^Class (ns-resolve *ns* klass)))))
 
 (defn email?
   "Is `s` a valid email address string?"
@@ -431,9 +431,10 @@
    (str/join (take max-length (slugify s)))))
 
 (defn full-exception-chain
-  "Gather the full exception chain into a single vector."
+  "Gather the full exception chain into a sequence."
   [e]
-  (take-while some? (iterate #(.getCause ^Throwable %) e)))
+  (when (instance? Throwable e)
+    (take-while some? (iterate ex-cause e))))
 
 (defn all-ex-data
   "Like `ex-data`, but merges `ex-data` from causes. If duplicate keys exist, the keys from the highest level are
@@ -565,7 +566,9 @@
   "Is `s` a Base-64 encoded string?"
   ^Boolean [s]
   (boolean (when (string? s)
-             (re-matches #"^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$" s))))
+             (as-> s s
+                   (str/replace s #"\s" "")
+                   (re-matches #"^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$" s)))))
 
 (defn decode-base64
   "Decodes a Base64 string to a UTF-8 string"

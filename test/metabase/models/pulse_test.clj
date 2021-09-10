@@ -179,16 +179,18 @@
 (deftest create-dashboard-subscription-test
   (testing "Make sure that the dashboard_id is set correctly when creating a Dashboard Subscription pulse"
     (mt/with-model-cleanup [Pulse]
-      (mt/with-temp* [Dashboard     [{dashboard-id :id}]
+      (mt/with-temp* [Collection    [{collection-id :id}]
+                      Dashboard     [{dashboard-id :id} {:collection_id collection-id}]
                       Card          [{card-id :id, :as card}]
                       DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]]
-        (is (schema= {:name         (s/eq "Abnormal Pulse")
-                      :dashboard_id (s/eq dashboard-id)
-                      :cards        [(s/one {:dashboard_id      (s/eq dashboard-id)
-                                             :dashboard_card_id (s/eq dashcard-id)
-                                             s/Keyword          s/Any}
-                                            "pulse card")]
-                      s/Keyword     s/Any}
+        (is (schema= {:name          (s/eq "Abnormal Pulse")
+                      :dashboard_id  (s/eq dashboard-id)
+                      :collection_id (s/eq collection-id)
+                      :cards         [(s/one {:dashboard_id      (s/eq dashboard-id)
+                                              :dashboard_card_id (s/eq dashcard-id)
+                                              s/Keyword          s/Any}
+                                             "pulse card")]
+                      s/Keyword      s/Any}
                      (create-pulse-then-select!
                       "Abnormal Pulse"
                       (mt/user->id :rasta)
@@ -252,6 +254,16 @@
                                                                          {:id (mt/user->id :crowberto)}]}]
                                         :skip_if_empty false}))))))
 
+(deftest dashboard-subscription-update-test
+  (testing "collection_id and dashboard_id of a dashboard subscription cannot be directly modified"
+      (mt/with-temp* [Collection [{collection-id :id}]
+                      Dashboard  [{dashboard-id :id}]
+                      Pulse      [{pulse-id :id} {:dashboard_id dashboard-id :collection_id collection-id}]]
+        (is (thrown-with-msg? Exception #"collection ID of a dashboard subscription cannot be directly modified"
+              (db/update! Pulse pulse-id {:collection_id (inc collection-id)})))
+        (is (thrown-with-msg? Exception #"dashboard ID of a dashboard subscription cannot be modified"
+              (db/update! Pulse pulse-id {:dashboard_id (inc dashboard-id)}))))))
+
 (deftest no-archived-cards-test
   (testing "make sure fetching a Pulse doesn't return any archived cards"
     (mt/with-temp* [Pulse     [pulse]
@@ -263,7 +275,7 @@
              (count (:cards (pulse/retrieve-pulse (u/the-id pulse)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                         Collections Permissions Tests                                          |
+;;; |                                   Pulse Collections Permissions Tests                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn do-with-pulse-in-collection [f]
@@ -279,7 +291,7 @@
       (f db collection pulse card))))
 
 (defmacro with-pulse-in-collection
-  "Execute `body` with a temporary Pulse, in a Colleciton, containing a single Card."
+  "Execute `body` with a temporary Pulse, in a Collection, containing a single Card."
   {:style/indent 1}
   [[db-binding collection-binding pulse-binding card-binding] & body]
   `(do-with-pulse-in-collection
@@ -298,7 +310,7 @@
 (deftest no-permissions-test
   (is (= false
          (with-pulse-in-collection [db _ pulse]
-           (binding [api/*current-user-permissions-set* (atom #{(perms/object-path (u/the-id db))})]
+           (binding [api/*current-user-permissions-set* (atom #{(perms/data-perms-path (u/the-id db))})]
              (mi/can-read? pulse))))))
 
 (deftest validate-collection-namespace-test
@@ -319,3 +331,48 @@
              clojure.lang.ExceptionInfo
              #"A Pulse can only go in Collections in the \"default\" namespace"
              (db/update! Pulse card-id {:collection_id collection-id})))))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                         Dashboard Subscription Collections Permissions Tests                                   |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- do-with-dashboard-subscription-in-collection [f]
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp* [Collection [collection]
+                    Dashboard  [dashboard {:collection_id (u/the-id collection)}]
+                    Pulse      [pulse     {:collection_id (u/the-id collection)
+                                           :dashboard_id  (u/the-id dashboard)
+                                           :creator_id    (mt/user->id :rasta)}]
+                    Database   [db        {:engine :h2}]]
+      (f db collection dashboard pulse))))
+
+(defmacro with-dashboard-subscription-in-collection
+  "Execute `body` with a temporary Dashboard Subscription for a Dashboard in a Collection"
+  {:style/indent 1}
+  [[db-binding collection-binding dashboard-binding subscription-binding] & body]
+  `(do-with-dashboard-subscription-in-collection
+    (fn [~(or db-binding '_) ~(or collection-binding '_) ~(or dashboard-binding '_) ~(or subscription-binding '_)]
+      ~@body)))
+
+(deftest dashboard-subscription-permissions-test
+  (with-dashboard-subscription-in-collection [_ collection _ subscription]
+    (testing "If we have read and write access to a collection, we have read and write access to
+             a dashboard subscription"
+      (binding [api/*current-user-permissions-set* (atom #{(perms/collection-readwrite-path collection)})]
+        (is (mi/can-read? subscription))
+        (is (mi/can-write? subscription))))
+
+    (testing "If we have read-only access to a collection, we can create dashboard subscriptions, or
+             modify subscriptions that we have created"
+      (binding [api/*current-user-permissions-set* (atom #{(perms/collection-read-path collection)})
+                api/*current-user-id*              (:creator_id subscription)]
+        (is (mi/can-read? subscription))
+        (is (mi/can-write? subscription))
+        (is (not (mi/can-write? (assoc subscription :creator_id (mt/user->id :lucky)))))))
+
+    (testing "If we have no access to a collection, we cannot read or write dashboard subscriptions,
+             even if we created them"
+      (binding [api/*current-user-id* (:creator_id subscription)]
+        (is (not (mi/can-read? subscription)))
+        (is (not (mi/can-write? subscription)))))))

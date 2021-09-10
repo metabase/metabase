@@ -111,6 +111,10 @@
   ([table-kw cols]
    (mapv (partial col table-kw) cols)))
 
+(defn- backfill-effective-type [{:keys [base_type effective_type] :as col}]
+  (cond-> col
+    (and (nil? effective_type) base_type) (assoc :effective_type base_type)))
+
 (defn aggregate-col
   "Return the column information we'd expect for an aggregate column. For all columns besides `:count`, you'll need to
   pass the `Field` in question as well.
@@ -119,13 +123,16 @@
     (aggregate-col :avg (col :venues :id))
     (aggregate-col :avg :venues :id)"
   ([ag-type]
-   (tx/aggregate-column-info (tx/driver) ag-type))
+   (backfill-effective-type
+    (tx/aggregate-column-info (tx/driver) ag-type)))
 
   ([ag-type field]
-   (tx/aggregate-column-info (tx/driver) ag-type field))
+   (backfill-effective-type
+    (tx/aggregate-column-info (tx/driver) ag-type field)))
 
   ([ag-type table-kw field-kw]
-   (tx/aggregate-column-info (tx/driver) ag-type (col table-kw field-kw))))
+   (backfill-effective-type
+    (tx/aggregate-column-info (tx/driver) ag-type (col table-kw field-kw)))))
 
 (defn breakout-col
   "Return expected `:cols` info for a Field used as a breakout.
@@ -410,12 +417,12 @@
     (is (= {:database 1, :type :query, :query {:source-query {:source-query {:native "wow"}}}}
            (nest-query {:database 1, :type :native, :native {:query "wow"}} 2)))))
 
-(defn do-with-bigquery-fks [f]
-  (if-not (= driver/*driver* :bigquery)
+(defn do-with-bigquery-fks [d f]
+  (if-not (= driver/*driver* d)
     (f)
     (let [supports? driver/supports?]
       (with-redefs [driver/supports? (fn [driver feature]
-                                       (if (= [driver feature] [:bigquery :foreign-keys])
+                                       (if (= [driver feature] [d :foreign-keys])
                                          true
                                          (supports? driver feature)))]
         (let [thunk (reduce
@@ -432,8 +439,8 @@
 
 (defmacro with-bigquery-fks
   "Execute `body` with test-data `checkins.user_id`, `checkins.venue_id`, and `venues.category_id` marked as foreign
-  keys and with `:foreign-keys` a supported feature when testing against BigQuery. BigQuery does not support Foreign
-  Key constraints, but we still let people mark them manually. The macro helps replicate the situation where somebody
-  has manually marked FK relationships for BigQuery."
-  [& body]
-  `(do-with-bigquery-fks (fn [] ~@body)))
+  keys and with `:foreign-keys` a supported feature when testing against BigQuery, for the BigQuery based driver `d`.
+  BigQuery does not support Foreign Key constraints, but we still let people mark them manually. The macro helps
+  replicate the situation where somebody has manually marked FK relationships for BigQuery."
+  [d & body]
+  `(do-with-bigquery-fks ~d (fn [] ~@body)))

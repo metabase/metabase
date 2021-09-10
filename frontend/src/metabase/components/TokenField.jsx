@@ -452,6 +452,8 @@ export default class TokenField extends Component {
   }
 
   componentDidUpdate(prevProps: Props, prevState: State) {
+    const input = this.inputRef.current;
+
     if (
       prevState.selectedOptionValue !== this.state.selectedOptionValue &&
       this.scrollElement != null
@@ -461,12 +463,21 @@ export default class TokenField extends Component {
         element.scrollIntoView({ block: "nearest" });
       }
     }
+
     // if we added a value then scroll to the last item (the input)
     if (this.props.value.length > prevProps.value.length) {
-      const input = this.inputRef.current;
       if (input && isObscured(input)) {
         input.scrollIntoView({ block: "nearest" });
       }
+    }
+
+    // We focus on the input here, and not on the input itself as a prop
+    // (say by passing prop autoFocus={isFocused})
+    // because certain TokenFields will live in position: fixed containers.
+    // Autofocusing like that would make the page jump in scroll position.
+    // One example: parameter filters in dashboard pages.
+    if (this.state.isFocused) {
+      input.focus({ preventScroll: true });
     }
   }
 
@@ -575,7 +586,6 @@ export default class TokenField extends Component {
             size={10}
             placeholder={placeholder}
             value={inputValue}
-            autoFocus={isFocused}
             onKeyDown={this.onInputKeyDown}
             onChange={this.onInputChange}
             onFocus={this.onInputFocus}

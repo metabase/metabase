@@ -1016,7 +1016,7 @@
 (deftest chain-filter-ignore-current-user-permissions-test
   (testing "Should not fail if request is authenticated but current user does not have data permissions"
     (mt/with-temp-copy-of-db
-      (perms/revoke-permissions! (group/all-users) (mt/db))
+      (perms/revoke-data-perms! (group/all-users) (mt/db))
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (dashboard-api-test/with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
           (let [uuid (str (UUID/randomUUID))]

@@ -128,9 +128,9 @@
         [{:select   [:status]
           :from     [:moderation_review]
           :where    [:and
-                  [:= :moderated_item_type "card"]
-                  [:= :moderated_item_id :card.id]
-                  [:= :most_recent true]]
+                     [:= :moderated_item_type "card"]
+                     [:= :moderated_item_id :card.id]
+                     [:= :most_recent true]]
           ;; order by and limit just in case a bug lets the invariant of only one most_recent is violated. we dont'
           ;; want to error in this query
           :order-by [[:id :desc]]

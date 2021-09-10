@@ -23,12 +23,53 @@ driver:
     - name: schema
       display-name: Schema (optional)
       required: false
-    - user
-    - password
+    - merge:
+        - user
+        - required: false
+    - merge:
+        - password
+        - required: false
     - ssl
     - merge:
         - additional-options
         - placeholder: "trustServerCertificate=false"
+    - name: kerberos
+      type: boolean
+      display-name: Authenticate with Kerberos?
+      default: false
+    - name: kerberos-principal
+      display-name: Kerberos principal
+      placeholder: service/instance@REALM
+      required: false
+    - name: kerberos-remote-service-name
+      display-name: Kerberos coordinator service
+      placeholder: presto
+      required: false
+    - name: kerberos-use-canonical-hostname
+      type: boolean
+      display-name: Use canonical hostname
+      default: false
+      required: false
+    - name: kerberos-credential-cache-path
+      display-name: Kerberos credential cache file
+      placeholder: /tmp/kerberos-credential-cache
+      required: false
+    - name: kerberos-keytab-path
+      display-name: Kerberos keytab file
+      placeholder: /path/to/kerberos.keytab
+      required: false
+    - name: kerberos-config-path
+      display-name: Kerberos configuration file
+      placeholder: /etc/krb5.conf
+      required: false
+    - name: kerberos-service-principal-pattern
+      display-name: Presto coordinator Kerberos service principal pattern
+      placeholder: ${SERVICE}@${HOST}. ${SERVICE}
+      required: false
+    - name: additional-options
+      display-name: Additional JDBC options
+      placeholder: SSLKeyStorePath=/path/to/keystore.jks&SSLKeyStorePassword=whatever
+      required: false
 init:
   - step: load-namespace
     namespace: metabase.driver.presto-common

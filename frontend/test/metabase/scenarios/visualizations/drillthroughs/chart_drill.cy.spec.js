@@ -52,9 +52,9 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
       // drag across to filter
       cy.get(".Visualization")
-        .trigger("mousedown", 100, 200)
-        .trigger("mousemove", 210, 200)
-        .trigger("mouseup", 210, 200);
+        .trigger("mousedown", 120, 200)
+        .trigger("mousemove", 230, 200)
+        .trigger("mouseup", 230, 200);
 
       // new filter applied
       // Note: Test was flaking because apparently mouseup doesn't always happen at the same position.
@@ -91,60 +91,62 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         },
         display: "line",
       }).then(({ body: { id: Q2_ID } }) => {
-        cy.createDashboard("11442D").then(({ body: { id: DASHBOARD_ID } }) => {
-          cy.log("Add the first question to the dashboard");
+        cy.createDashboard({ name: "11442D" }).then(
+          ({ body: { id: DASHBOARD_ID } }) => {
+            cy.log("Add the first question to the dashboard");
 
-          cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-            cardId: Q1_ID,
-          }).then(({ body: { id: DASH_CARD_ID } }) => {
-            cy.log(
-              "Add additional series combining it with the second question",
-            );
+            cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+              cardId: Q1_ID,
+            }).then(({ body: { id: DASH_CARD_ID } }) => {
+              cy.log(
+                "Add additional series combining it with the second question",
+              );
 
-            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-              cards: [
-                {
-                  id: DASH_CARD_ID,
-                  card_id: Q1_ID,
-                  row: 0,
-                  col: 0,
-                  sizeX: 16,
-                  sizeY: 12,
-                  series: [
-                    {
-                      id: Q2_ID,
-                      model: "card",
-                    },
-                  ],
-                  visualization_settings: {},
-                  parameter_mappings: [],
-                },
-              ],
+              cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+                cards: [
+                  {
+                    id: DASH_CARD_ID,
+                    card_id: Q1_ID,
+                    row: 0,
+                    col: 0,
+                    sizeX: 16,
+                    sizeY: 12,
+                    series: [
+                      {
+                        id: Q2_ID,
+                        model: "card",
+                      },
+                    ],
+                    visualization_settings: {},
+                    parameter_mappings: [],
+                  },
+                ],
+              });
             });
-          });
 
-          cy.visit(`/dashboard/${DASHBOARD_ID}`);
+            cy.visit(`/dashboard/${DASHBOARD_ID}`);
 
-          cy.log("The first series line");
-          cy.get(".sub.enable-dots._0")
-            .find(".dot")
-            .eq(0)
-            .click({ force: true });
-          cy.findByText(/Zoom in/i);
-          cy.findByText(/View these Orders/i);
+            cy.log("The first series line");
+            cy.get(".sub.enable-dots._0")
+              .find(".dot")
+              .eq(0)
+              .click({ force: true });
+            cy.findByText(/Zoom in/i);
+            cy.findByText(/View these Orders/i);
 
-          // Click anywhere else to close the first action panel
-          cy.findByText("11442D").click();
+            // Click anywhere else to close the first action panel
+            cy.findByText("11442D").click();
 
-          // Second line from the second question
-          cy.log("The second series line");
-          cy.get(".sub.enable-dots._1")
-            .find(".dot")
-            .eq(0)
-            .click({ force: true });
-          cy.findByText(/Zoom in/i);
-          cy.findByText(/View these Products/i);
-        });
+            // Second line from the second question
+            cy.log("The second series line");
+            cy.get(".sub.enable-dots._1")
+              .find(".dot")
+              .eq(0)
+              .click({ force: true });
+            cy.findByText(/Zoom in/i);
+            cy.findByText(/View these Products/i);
+          },
+        );
       });
     });
   });
@@ -171,60 +173,62 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         },
         display: "line",
       }).then(({ body: { id: Q2_ID } }) => {
-        cy.createDashboard("13457D").then(({ body: { id: DASHBOARD_ID } }) => {
-          cy.log("Add the first question to the dashboard");
+        cy.createDashboard({ name: "13457D" }).then(
+          ({ body: { id: DASHBOARD_ID } }) => {
+            cy.log("Add the first question to the dashboard");
 
-          cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-            cardId: Q1_ID,
-          }).then(({ body: { id: DASH_CARD_ID } }) => {
-            cy.log(
-              "Add additional series combining it with the second question",
-            );
+            cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+              cardId: Q1_ID,
+            }).then(({ body: { id: DASH_CARD_ID } }) => {
+              cy.log(
+                "Add additional series combining it with the second question",
+              );
 
-            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-              cards: [
-                {
-                  id: DASH_CARD_ID,
-                  card_id: Q1_ID,
-                  row: 0,
-                  col: 0,
-                  sizeX: 16,
-                  sizeY: 12,
-                  series: [
-                    {
-                      id: Q2_ID,
-                      model: "card",
-                    },
-                  ],
-                  visualization_settings: {},
-                  parameter_mappings: [],
-                },
-              ],
+              cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+                cards: [
+                  {
+                    id: DASH_CARD_ID,
+                    card_id: Q1_ID,
+                    row: 0,
+                    col: 0,
+                    sizeX: 16,
+                    sizeY: 12,
+                    series: [
+                      {
+                        id: Q2_ID,
+                        model: "card",
+                      },
+                    ],
+                    visualization_settings: {},
+                    parameter_mappings: [],
+                  },
+                ],
+              });
             });
-          });
 
-          cy.visit(`/dashboard/${DASHBOARD_ID}`);
+            cy.visit(`/dashboard/${DASHBOARD_ID}`);
 
-          cy.log("The first series line");
-          cy.get(".sub.enable-dots._0")
-            .find(".dot")
-            .eq(0)
-            .click({ force: true });
-          cy.findByText(/Zoom in/i);
-          cy.findByText(/View these Orders/i);
+            cy.log("The first series line");
+            cy.get(".sub.enable-dots._0")
+              .find(".dot")
+              .eq(0)
+              .click({ force: true });
+            cy.findByText(/Zoom in/i);
+            cy.findByText(/View these Orders/i);
 
-          // Click anywhere else to close the first action panel
-          cy.findByText("13457D").click();
+            // Click anywhere else to close the first action panel
+            cy.findByText("13457D").click();
 
-          // Second line from the second question
-          cy.log("The third series line");
-          cy.get(".sub.enable-dots._2")
-            .find(".dot")
-            .eq(0)
-            .click({ force: true });
-          cy.findByText(/Zoom in/i);
-          cy.findByText(/View these Orders/i);
-        });
+            // Second line from the second question
+            cy.log("The third series line");
+            cy.get(".sub.enable-dots._2")
+              .find(".dot")
+              .eq(0)
+              .click({ force: true });
+            cy.findByText(/Zoom in/i);
+            cy.findByText(/View these Orders/i);
+          },
+        );
       });
     });
   });
@@ -532,7 +536,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       },
       display: "pie",
     }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.createDashboard("15250D").then(({ body: { id: DASHBOARD_ID } }) => {
+      cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
           cardId: QUESTION_ID,
         }).then(({ body: { id: DASH_CARD_ID } }) => {

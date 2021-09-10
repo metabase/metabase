@@ -16,6 +16,7 @@
             [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.test.data.bigquery :as bigquery.tx]
+            [metabase.test.util :as tu]
             [metabase.test.util.timezone :as tu.tz]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
@@ -38,16 +39,19 @@
                :display_name "venue_id"
                :source       :native
                :base_type    :type/Integer
+               :effective_type :type/Integer
                :field_ref    [:field "venue_id" {:base-type :type/Integer}]}
               {:name         "user_id"
                :display_name "user_id"
                :source       :native
                :base_type    :type/Integer
+               :effective_type :type/Integer
                :field_ref    [:field "user_id" {:base-type :type/Integer}]}
               {:name         "checkins_id"
                :display_name "checkins_id"
                :source       :native
                :base_type    :type/Integer
+               :effective_type :type/Integer
                :field_ref    [:field "checkins_id" {:base-type :type/Integer}]}]
              (qp.test/cols
                (qp/process-query
@@ -138,7 +142,7 @@
     (testing (str "Make sure that BigQuery properly aliases the names generated for Join Tables. It's important to use "
                   "the right alias, e.g. something like `categories__via__category_id`, which is considerably "
                   "different  what other SQL databases do. (#4218)")
-      (mt/with-bigquery-fks
+      (mt/with-bigquery-fks :bigquery
         (let [results (mt/run-mbql-query venues
                         {:aggregation [:count]
                          :breakout    [$category_id->categories.name]})]
@@ -220,27 +224,27 @@
 (deftest remove-remark-test
   (mt/test-driver :bigquery
     (is (=  (str
-            "SELECT `v3_test_data.venues`.`id` AS `id`,"
-            " `v3_test_data.venues`.`name` AS `name` "
-            "FROM `v3_test_data.venues` "
-            "LIMIT 1")
-    (tt/with-temp* [Database [db {:engine :bigquery
-                                  :details (assoc (:details (mt/db))
-                                                  :include-user-id-and-hash false)}]
-                    Table    [table {:name "venues" :db_id (u/the-id db)}]
-                    Field    [_     {:table_id (u/the-id table)
-                                    :name "id"
-                                    :base_type "type/Integer"}]
-                    Field    [_     {:table_id (u/the-id table)
-                                    :name "name"
-                                    :base_type "type/Text"}]]
-      (query->native
-        {:database (u/the-id db)
-        :type     :query
-        :query    {:source-table (u/the-id table)
-                    :limit        1}
-        :info     {:executed-by 1000
-                    :query-hash  (byte-array [1 2 3 4])}}))))))
+             "SELECT `v3_test_data.venues`.`id` AS `id`,"
+             " `v3_test_data.venues`.`name` AS `name` "
+             "FROM `v3_test_data.venues` "
+             "LIMIT 1")
+            (tt/with-temp* [Database [db {:engine :bigquery
+                                          :details (assoc (:details (mt/db))
+                                                          :include-user-id-and-hash false)}]
+                            Table    [table {:name "venues" :db_id (u/the-id db)}]
+                            Field    [_     {:table_id (u/the-id table)
+                                             :name "id"
+                                             :base_type "type/Integer"}]
+                            Field    [_     {:table_id (u/the-id table)
+                                             :name "name"
+                                             :base_type "type/Text"}]]
+              (query->native
+                {:database (u/the-id db)
+                 :type     :query
+                 :query    {:source-table (u/the-id table)
+                            :limit        1}
+                 :info     {:executed-by 1000
+                            :query-hash  (byte-array [1 2 3 4])}}))))))
 
 (deftest unprepare-params-test
   (mt/test-driver :bigquery
@@ -484,7 +488,7 @@
 
 (defn- do-with-datetime-timestamp-table [f]
   (driver/with-driver :bigquery
-    (let [table-name (name (munge (gensym "table_")))]
+    (let [table-name (format "table_%s" (tu/random-name))]
       (mt/with-temp-copy-of-db
         (try
           (bigquery.tx/execute!
@@ -701,6 +705,24 @@
                                   "WHERE `v3_test_data.venues`.`name` = ?")
                      :params ["x\\\\' OR 1 = 1 -- "]})))))))))
 
+(deftest acceptable-dataset-test
+  (mt/test-driver :bigquery
+    (testing "Make sure validation of dataset's name works correctly"
+      (testing "acceptable names"
+        (are [name] (= true (#'bigquery.qp/valid-bigquery-identifier? name))
+              "0"
+              "a"
+              "_"
+              "apple"
+              "banana.apple"
+              "my-fruits.orange"
+              (apply str (repeat 1054 "a"))))
+      (testing "rejected names"
+        (are [name] (= false (#'bigquery.qp/valid-bigquery-identifier? name))
+              "have:dataset"
+              ""
+              (apply str (repeat 1055 "a")))))))
+
 (deftest ->valid-field-identifier-test
   (testing "`->valid-field-identifier` should generate valid field identifiers"
     (testing "no need to change anything"
@@ -734,7 +756,7 @@
 (deftest remove-diacriticals-from-field-aliases-test
   (mt/test-driver :bigquery
     (testing "We should remove diacriticals and other disallowed characters from field aliases (#14933)"
-      (mt/with-bigquery-fks
+      (mt/with-bigquery-fks :bigquery
         (let [query (mt/mbql-query checkins
                       {:fields [$id $venue_id->venues.name]})]
           (mt/with-temp-vals-in-db Table (mt/id :venues) {:name "Organização"}
