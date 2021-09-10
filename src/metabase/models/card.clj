@@ -52,11 +52,11 @@
   {:hydrate :last_query_start}
   [{:keys [id]}]
   (-> (db/query {:select [:%max.started_at]
-             :from [:query_execution]
-             :where [:and
-                     [:not= :running_time nil]
-                     [:not= :cache_hit true]
-                     [:= :card_id id]]})
+                 :from [:query_execution]
+                 :where [:and
+                         [:not= :running_time nil]
+                         [:not= :cache_hit true]
+                         [:= :card_id id]]})
       first vals first))
 
 ;; There's more hydration in the shared metabase.moderation namespace, but it needs to be required:
