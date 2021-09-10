@@ -281,7 +281,7 @@
 
 (defmethod driver/supports? [:bigquery-cloud-sdk :percentile-aggregations] [_ _] false)
 
-(defmethod driver/supports? [:bigquery-cloud-sdk :expressions] [_ _] false)
+(defmethod driver/supports? [:bigquery-cloud-sdk :expressions] [_ _] true)
 
 (defmethod driver/supports? [:bigquery-cloud-sdk :foreign-keys] [_ _] true)
 
