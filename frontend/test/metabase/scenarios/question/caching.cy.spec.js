@@ -32,7 +32,20 @@ describeWithToken("scenarios > question > caching", () => {
     openEditingModalForm();
     modal().within(() => {
       cy.findByText("More options").click();
-      cy.findByDisplayValue("48");
+      cy.findByDisplayValue("48")
+        .clear()
+        .type("0")
+        .blur();
+      cy.button("Save").click();
+    });
+
+    cy.wait("@updateQuestion");
+    cy.reload();
+
+    openEditingModalForm();
+    modal().within(() => {
+      cy.findByText("More options").click();
+      cy.findByDisplayValue("0");
     });
   });
 });
