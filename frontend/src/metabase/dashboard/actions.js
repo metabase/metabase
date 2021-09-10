@@ -23,6 +23,7 @@ import {
   removeDefaultedParametersWithEmptyStringValue,
 } from "metabase/meta/Parameter";
 import * as Urls from "metabase/lib/urls";
+import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
 import type {
   DashboardWithCards,
@@ -146,7 +147,7 @@ export const setSharing = isSharing => dispatch => {
   if (isSharing) {
     dispatch(
       setSidebar({
-        name: "sharing",
+        name: SIDEBAR_NAME.sharing,
       }),
     );
   } else {
@@ -158,7 +159,7 @@ export const showClickBehaviorSidebar = dashcardId => dispatch => {
   if (dashcardId != null) {
     dispatch(
       setSidebar({
-        name: "click-behavior",
+        name: SIDEBAR_NAME.clickBehavior,
         props: { dashcardId },
       }),
     );
@@ -171,7 +172,7 @@ export const setEditingParameter = parameterId => dispatch => {
   if (parameterId != null) {
     dispatch(
       setSidebar({
-        name: "edit-parameter",
+        name: SIDEBAR_NAME.editParameter,
         props: {
           parameterId,
         },
@@ -185,7 +186,7 @@ export const setEditingParameter = parameterId => dispatch => {
 export const openAddQuestionSidebar = () => dispatch => {
   dispatch(
     setSidebar({
-      name: "add-question",
+      name: SIDEBAR_NAME.addQuestion,
     }),
   );
 };
@@ -807,7 +808,7 @@ export const addParameter = createThunkAction(
 
     dispatch(
       setSidebar({
-        name: "edit-parameter",
+        name: SIDEBAR_NAME.editParameter,
         props: {
           parameterId: parameter.id,
         },
@@ -826,7 +827,7 @@ export const removeParameter = createThunkAction(
     if (parameterId != null) {
       dispatch(
         setSidebar({
-          name: "edit-parameter",
+          name: SIDEBAR_NAME.editParameter,
           props: {
             parameterId,
           },

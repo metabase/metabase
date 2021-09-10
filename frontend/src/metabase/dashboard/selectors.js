@@ -8,6 +8,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import * as Dashboard from "metabase/meta/Dashboard";
 
 import { getParameterTargetFieldId } from "metabase/meta/Parameter";
+import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
 import type { CardId, Card } from "metabase-types/types/Card";
 import type { DashCardId } from "metabase-types/types/Dashboard";
@@ -38,7 +39,7 @@ export const getIsEditing = state => !!state.dashboard.isEditing;
 export const getDashboardBeforeEditing = state => state.dashboard.isEditing;
 export const getClickBehaviorSidebarDashcard = state => {
   const { sidebar, dashcards } = state.dashboard;
-  return sidebar.name === "click-behavior"
+  return sidebar.name === SIDEBAR_NAME.clickBehavior
     ? dashcards[sidebar.props.dashcardId]
     : null;
 };
@@ -52,12 +53,13 @@ export const getLoadingStartTime = state =>
 export const getIsAddParameterPopoverOpen = state =>
   state.dashboard.isAddParameterPopoverOpen;
 
-export const getIsSharing = state => state.dashboard.sidebar.name === "sharing";
+export const getIsSharing = state =>
+  state.dashboard.sidebar.name === SIDEBAR_NAME.sharing;
 export const getSidebar = state => state.dashboard.sidebar;
 
 export const getShowAddQuestionSidebar = createSelector(
   [getSidebar],
-  sidebar => sidebar.name === "add-question",
+  sidebar => sidebar.name === SIDEBAR_NAME.addQuestion,
 );
 
 export const getDashboard = createSelector(
@@ -96,7 +98,9 @@ export const getIsDirty = createSelector(
 export const getEditingParameterId = createSelector(
   [getSidebar],
   sidebar => {
-    return sidebar.name === "edit-parameter" ? sidebar.props.parameterId : null;
+    return sidebar.name === SIDEBAR_NAME.editParameter
+      ? sidebar.props.parameterId
+      : null;
   },
 );
 

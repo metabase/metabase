@@ -2,6 +2,8 @@ import React, { useCallback } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 
+import { SIDEBAR_NAME } from "metabase/dashboard/constants";
+
 import ClickBehaviorSidebar from "./ClickBehaviorSidebar";
 import ParameterSidebar from "metabase/parameters/components/ParameterSidebar";
 import SharingSidebar from "metabase/sharing/components/SharingSidebar";
@@ -83,14 +85,14 @@ export function DashboardSidebars({
   }
 
   switch (sidebar.name) {
-    case "add-question":
+    case SIDEBAR_NAME.addQuestion:
       return (
         <AddCardSidebar
           initialCollection={dashboard.collection_id}
           onSelect={handleAddCard}
         />
       );
-    case "click-behavior":
+    case SIDEBAR_NAME.clickBehavior:
       return (
         <ClickBehaviorSidebar
           dashboard={dashboard}
@@ -107,7 +109,7 @@ export function DashboardSidebars({
           }
         />
       );
-    case "edit-parameter": {
+    case SIDEBAR_NAME.editParameter: {
       const { id: editingParameterId } = editingParameter || {};
       const [[parameter], otherParameters] = _.partition(
         parameters,
@@ -134,7 +136,7 @@ export function DashboardSidebars({
         />
       );
     }
-    case "sharing":
+    case SIDEBAR_NAME.sharing:
       return (
         <SharingSidebar
           dashboard={dashboard}
