@@ -12,6 +12,7 @@
             [metabase.models.table :as table :refer [Table]]
             [metabase.query-processor :as qp]
             [metabase.related :as related]
+            [metabase.server.middleware.offset-paging :as offset-paging]
             [metabase.types :as types]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
@@ -21,7 +22,10 @@
             [toucan.hydrate :refer [hydrate]])
   (:import java.text.NumberFormat))
 
+
 ;;; --------------------------------------------- Basic CRUD Operations ----------------------------------------------
+
+(def ^:private default-max-field-search-limit 1000)
 
 (def ^:private FieldVisibilityType
   "Schema for a valid `Field` visibility type."
@@ -136,7 +140,6 @@
             :non-nil #{:display_name :settings})))))
     ;; return updated field
     (hydrate (Field id) :dimensions)))
-
 
 ;;; ------------------------------------------------- Field Metadata -------------------------------------------------
 
@@ -297,6 +300,7 @@
     (db/select-one Field :id fk-target-field-id)
     field))
 
+
 (defn- search-values-query
   "Generate the MBQL query used to power FieldValues search in `search-values` below. The actual query generated differs
   slightly based on whether the two Fields are the same Field."
@@ -326,9 +330,10 @@
       ;; -> ((14 \"Marilyne Mohr\")
              (36 \"Margot Farrell\")
              (48 \"Maryam Douglas\"))"
-  [field search-field value & [limit]]
+  [field search-field value maybe-limit]
   (try
     (let [field   (follow-fks field)
+          limit   (or maybe-limit default-max-field-search-limit)
           results (qp/process-query (search-values-query field search-field value limit))
           rows    (get-in results [:data :rows])]
       ;; if the two Fields are different, we'll get results like [[v1 v2] [v1 v2]]. That is the expected format and we can
@@ -344,17 +349,17 @@
       (log/debug e (trs "Error searching field values"))
       nil)))
 
+
 (api/defendpoint GET "/:id/search/:search-id"
   "Search for values of a Field with `search-id` that start with `value`. See docstring for
   `metabase.api.field/search-values` for a more detailed explanation."
-  [id search-id value limit]
-  {value su/NonBlankString
-   limit (s/maybe su/IntStringGreaterThanZero)}
+  [id search-id value]
+  {value su/NonBlankString}
   (let [field        (api/check-404 (Field id))
         search-field (api/check-404 (Field search-id))]
     (throw-if-no-read-or-segmented-perms field)
     (throw-if-no-read-or-segmented-perms search-field)
-    (search-values field search-field value (when limit (Integer/parseInt limit)))))
+    (search-values field search-field value offset-paging/*limit*)))
 
 (defn remapped-value
   "Search for one specific remapping where the value of `field` exactly matches `value`. Returns a pair like

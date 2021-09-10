@@ -61,17 +61,33 @@
                                :parameterMapping {}
                                :targetId         target-id}
           db-click-bhv-map    {:click_behavior db-click-behavior}
+          col-nm-map          {:show_mini_bar true
+                               :column_title "Name Column"}
           db-col-settings     {(fmt "[\"ref\",[\"field\",%d,{\"base-type\":\"type/Integer\"}]]" f-id) db-click-bhv-map
-                               (fmt "[\"name\",\"%s\"]" col-name)                                     db-click-bhv-map}
-          db-viz-settings     {:column_settings db-col-settings}
+                               (fmt "[\"name\",\"%s\"]" col-name)                                     col-nm-map}
+          db-viz-settings     {:column_settings db-col-settings
+                               :table.columns   [{:name     "ID"
+                                                  :fieldRef [:field f-id nil]
+                                                  :enabled  true}
+                                                 {:name     "Name"
+                                                  :fieldRef [:expression col-name]
+                                                  :enabled  true}]}
           norm-click-behavior {::mb.viz/click-behavior-type ::mb.viz/link
                                ::mb.viz/link-type           ::mb.viz/card
                                ::mb.viz/parameter-mapping   {}
                                ::mb.viz/link-target-id      target-id}
+          norm-col-nm         {::mb.viz/column-title       "Name Column"
+                               ::mb.viz/show-mini-barchart true}
           norm-click-bhvr-map {::mb.viz/click-behavior norm-click-behavior}
           norm-col-settings {(mb.viz/field-id->column-ref f-id {"base-type" "type/Integer"}) norm-click-bhvr-map
-                             (mb.viz/column-name->column-ref col-name)                       norm-click-bhvr-map}
-          norm-viz-settings   {::mb.viz/column-settings norm-col-settings}]
+                             (mb.viz/column-name->column-ref col-name)                       norm-col-nm}
+          norm-viz-settings   {::mb.viz/column-settings norm-col-settings
+                               ::mb.viz/table-columns [{::mb.viz/table-column-name      "ID"
+                                                        ::mb.viz/table-column-field-ref [:field f-id nil]
+                                                        ::mb.viz/table-column-enabled   true}
+                                                       {::mb.viz/table-column-name      "Name"
+                                                        ::mb.viz/table-column-field-ref [:expression col-name]
+                                                        ::mb.viz/table-column-enabled   true}]}]
       (doseq [[db-form norm-form] [[db-viz-settings norm-viz-settings]]]
         (let [to-norm (mb.viz/db->norm db-form)]
           (t/is (= norm-form to-norm))

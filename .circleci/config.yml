@@ -1213,11 +1213,11 @@ workflows:
           matrix:
             parameters:
               edition: ["ee", "oss"]
-          name: e2e-tests-filters-<< matrix.edition >>
+          name: e2e-tests-dashboard-filters-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
-          cypress-group: "filters-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios/filters
+          cypress-group: "dashboard-filters-<< matrix.edition >>"
+          source-folder: frontend/test/metabase/scenarios/dashboard-filters
 
       - fe-tests-cypress:
           matrix:
@@ -1238,6 +1238,16 @@ workflows:
             - build-uberjar-<< matrix.edition >>
           cypress-group: "native-<< matrix.edition >>"
           source-folder: frontend/test/metabase/scenarios/native
+
+      - fe-tests-cypress:
+          matrix:
+            parameters:
+              edition: ["ee", "oss"]
+          name: e2e-tests-native-filters-<< matrix.edition >>
+          requires:
+            - build-uberjar-<< matrix.edition >>
+          cypress-group: "native-filters-<< matrix.edition >>"
+          source-folder: frontend/test/metabase/scenarios/native-filters
 
       - fe-tests-cypress:
           matrix:

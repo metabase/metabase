@@ -49,7 +49,7 @@ export default class ProfileLink extends Component {
         admin && [
           {
             title: t`Manage Metabase Cloud`,
-            link: "https://store.metabase.com/login",
+            link: MetabaseSettings.storeUrl("login"),
             event: `Navbar;Profile Dropdown;ManageHosting ${tag}`,
             externalLink: true,
           },

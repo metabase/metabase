@@ -142,11 +142,11 @@ export default class CustomGeoJSONWidget extends Component {
 
     return (
       <div className="flex-full">
-        <div className="flex">
+        <div className="flex justify-between">
           <SettingHeader setting={setting} />
           {!this.state.map && (
             <button
-              className="Button Button--primary flex-align-right"
+              className="Button Button--primary ml1"
               onClick={() =>
                 this.setState({
                   map: {

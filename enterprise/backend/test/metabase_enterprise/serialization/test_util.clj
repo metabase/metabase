@@ -1,7 +1,7 @@
 (ns metabase-enterprise.serialization.test-util
   (:require [metabase-enterprise.serialization.names :as names]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database Field Metric
-                                     NativeQuerySnippet Pulse PulseCard Segment Table User]]
+            [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database Dependency
+                                     Field Metric NativeQuerySnippet Pulse PulseCard Segment Table User]]
             [metabase.models.collection :as collection]
             [metabase.query-processor.store :as qp.store]
             [metabase.shared.models.visualization-settings :as mb.viz]
@@ -122,6 +122,11 @@
                                                                              [:field
                                                                               ~'category-pk-field-id
                                                                               {:join-alias "cat"}]]}]}}}]
+                   Dependency [{~'dependency-id :id} {:model "Card"
+                                                      :model_id ~'card-id
+                                                      :dependent_on_model "Segment"
+                                                      :dependent_on_id ~'segment-id
+                                                      :created_at :%now}]
                    Card       [{~'card-arch-id :id}
                                {;:archived true
                                 :table_id ~'table-id
@@ -146,7 +151,16 @@
                                 :collection_id ~'collection-id
                                 :dataset_query {:type :query
                                                 :database ~'db-id
-                                                :query {:source-table (str "card__" ~'card-id)}}}]
+                                                :query {:source-table (str "card__" ~'card-id)}}
+                                :visualization_settings
+                                {:table.columns [{:name "Venue Category"
+                                                  :fieldRef [:field ~'category-field-id nil]
+                                                  :enabled true}]
+                                 :column_settings {(keyword (format
+                                                             "[\"ref\",[\"field\",%d,null]]"
+                                                              ~'latitude-field-id))
+                                                   {:show_mini_bar true
+                                                    :column_title "Parallel"}}}}]
                    Card       [{~'card-id-nested-query :id}
                                {:table_id ~'table-id
                                 :name "My Nested Query Card"
