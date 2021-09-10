@@ -133,7 +133,7 @@ function Radio({
                 aria-labelledby={labelId}
               />
               {showButtons && <RadioButton checked={selected} />}
-              {optionNameFn(option)}
+              <span data-testid={`${id}-name`}>{optionNameFn(option)}</span>
             </Item>
           </li>
         );
