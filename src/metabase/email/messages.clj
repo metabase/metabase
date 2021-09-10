@@ -17,6 +17,7 @@
             [metabase.pulse.render.body :as render.body]
             [metabase.pulse.render.style :as render.style]
             [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.streaming :as qp.streaming]
             [metabase.query-processor.streaming.interface :as qp.streaming.i]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
@@ -360,12 +361,18 @@
   (driver/with-driver (driver.u/database->driver database-id)
     (qp.store/with-store
       (qp.store/fetch-and-store-database! database-id)
-      (let [w (qp.streaming.i/streaming-results-writer export-format os)]
-        (qp.streaming.i/begin! w results {})
+      (let [w                           (qp.streaming.i/streaming-results-writer export-format os)
+            cols                        (-> results :data :cols)
+            viz-settings                (-> results :data :viz-settings)
+            [ordered-cols output-order] (qp.streaming/order-cols cols viz-settings)
+            viz-settings'               (assoc viz-settings :output-order output-order)]
+        (qp.streaming.i/begin! w
+                               (assoc-in results [:data :ordered-cols] ordered-cols)
+                               viz-settings')
         (dorun
          (map-indexed
           (fn [i row]
-            (qp.streaming.i/write-row! w row i {} {}))
+            (qp.streaming.i/write-row! w row i ordered-cols viz-settings'))
           rows))
         (qp.streaming.i/finish! w results)))))
 

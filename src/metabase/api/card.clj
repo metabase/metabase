@@ -376,7 +376,8 @@
   "If there are multiple breakouts and a goal, we don't know which breakout to compare to the goal, so it invalidates
   the alert"
   [{:keys [display] :as new-card}]
-  (and (or (line-area-bar? display)
+  (and (get-in new-card [:visualization_settings :graph.goal_value])
+       (or (line-area-bar? display)
            (progress? display))
        (< 1 (count (get-in new-card [:dataset_query :query :breakout])))))
 
@@ -399,7 +400,7 @@
 
 (defn- delete-alerts-if-needed! [old-card {card-id :id :as new-card}]
   ;; If there are alerts, we need to check to ensure the card change doesn't invalidate the alert
-  (when-let [alerts (seq (pulse/retrieve-alerts-for-cards card-id))]
+  (when-let [alerts (seq (pulse/retrieve-alerts-for-cards {:card-ids [card-id]}))]
     (cond
 
       (card-archived? old-card new-card)

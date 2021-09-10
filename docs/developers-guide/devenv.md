@@ -72,6 +72,18 @@ yarn test
 
 which will run unit and Cypress end-to-end tests in sequence.
 
+## Frontend debugging
+
+By default, we use a simple source mapping option that is optimized for speed.
+
+If you run into issues with breakpoints, especially inside jsx, please set env variable `BETTER_SOURCE_MAPS` to true before you run the server.
+
+Example:
+
+```
+BETTER_SOURCE_MAPS=true yarn dev
+```
+
 ### Cypress end-to-end tests
 
 End-to-end tests simulate realistic sequences of user interactions. Read more about how we approach end-to-end testing with Cypress in our [wiki page](https://github.com/metabase/metabase/wiki/E2E-Tests-with-Cypress).

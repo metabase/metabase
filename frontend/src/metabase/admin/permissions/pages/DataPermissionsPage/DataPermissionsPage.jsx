@@ -13,6 +13,7 @@ import {
   initializeDataPermissions,
 } from "../../permissions";
 import PermissionsPageLayout from "../../components/PermissionsPageLayout/PermissionsPageLayout";
+import { DataPermissionsHelp } from "../../components/DataPermissionsHelp/DataPermissionsHelp";
 
 const mapDispatchToProps = {
   loadPermissions: loadDataPermissions,
@@ -56,6 +57,7 @@ function DataPermissionsPage({
       diff={diff}
       isDirty={isDirty}
       route={route}
+      helpContent={<DataPermissionsHelp />}
     >
       {children}
     </PermissionsPageLayout>

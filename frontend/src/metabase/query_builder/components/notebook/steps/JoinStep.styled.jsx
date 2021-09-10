@@ -1,7 +1,12 @@
 import styled from "styled-components";
 import { color } from "metabase/lib/colors";
-import { space } from "metabase/styled-components/theme";
+import { space, breakpointMaxMedium } from "metabase/styled-components/theme";
 import Icon from "metabase/components/Icon";
+
+export const Row = styled.div`
+  display: flex;
+  align-items: center;
+`;
 
 export const JoinStepRoot = styled.div`
   display: flex;
@@ -20,7 +25,6 @@ export const JoinClauseContainer = styled.div`
 
 export const JoinClauseRoot = styled.div`
   display: flex;
-  align-items: center;
   margin-bottom: ${props => (props.isLast ? 0 : "2px")};
 `;
 
@@ -61,18 +65,57 @@ export const JoinTypeIcon = styled(Icon).attrs({ size: 24 })`
   color: ${props => (props.isSelected ? color("text-white") : color("brand"))};
 `;
 
+export const JoinDimensionControlsContainer = styled.div`
+  display: flex;
+  flex: 1;
+  align-items: center;
+
+  margin-top: ${props => (props.isFirst ? 0 : space(1))};
+
+  ${breakpointMaxMedium} {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+`;
+
+export const JoinWhereConditionLabelContainer = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 60px;
+`;
+
 export const JoinWhereConditionLabel = styled.span.attrs({ children: "on" })`
   color: ${color("brand")};
   font-weight: bold;
   margin: 0 ${space(2)};
 `;
 
-export const JoinOnConditionLabel = styled.span.attrs({ children: "=" })`
+export const JoinConditionLabel = styled.span`
   font-size: 20;
   font-weight: bold;
   color: ${color("text-medium")};
   margin-left: 2px;
   margin-right: 6px;
+`;
+
+export const DimensionContainer = styled.div`
+  display: flex;
+  align-items: center;
+`;
+
+export const DimensionSourceName = styled.div`
+  display: block;
+  font-size: 11px;
+  color: ${color("text-white")};
+  opacity: 0.65;
+`;
+
+export const RemoveDimensionIcon = styled(Icon).attrs({ name: "close" })`
+  cursor: pointer;
+  color: ${color("text-white")};
+  opacity: 0.65;
+  margin-left: 12px;
 `;
 
 export const RemoveJoinIcon = styled(Icon).attrs({ name: "close", size: 18 })`

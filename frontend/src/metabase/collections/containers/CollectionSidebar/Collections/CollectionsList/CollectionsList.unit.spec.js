@@ -3,6 +3,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
+import { Router, Route } from "react-router";
+import { createMemoryHistory } from "history";
 
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 
@@ -10,15 +12,22 @@ import CollectionsList from "./CollectionsList";
 
 describe("CollectionsList", () => {
   function setup({ collections = [], openCollections = [], ...props } = {}) {
-    render(
+    const Page = () => (
       <DragDropContextProvider backend={HTML5Backend}>
         <CollectionsList
           collections={collections}
           openCollections={openCollections}
           filter={() => true}
+          handleToggleMobileSidebar={() => false}
           {...props}
         />
-      </DragDropContextProvider>,
+      </DragDropContextProvider>
+    );
+
+    render(
+      <Router history={createMemoryHistory()}>
+        <Route path="/" component={Page} />
+      </Router>,
     );
   }
 
@@ -48,7 +57,7 @@ describe("CollectionsList", () => {
     expect(screen.queryByText("Collection name")).toBeVisible();
   });
 
-  it("opens child collection when user clicks on chevron button", () => {
+  it("opens child collection when user clicks on collection name", () => {
     const onOpen = jest.fn();
     setup({
       collections: [
@@ -67,7 +76,7 @@ describe("CollectionsList", () => {
       onOpen,
     });
 
-    userEvent.click(screen.getByLabelText("chevronright icon"));
+    userEvent.click(screen.getByText("Parent collection name"));
 
     expect(onOpen).toHaveBeenCalled();
   });

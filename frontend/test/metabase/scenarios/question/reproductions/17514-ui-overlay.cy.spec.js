@@ -167,7 +167,7 @@ function openNotebookMode() {
 function removeJoinedTable() {
   cy.findAllByText("Join data")
     .parent()
-    .find(".Icon-close")
+    .findByTestId("remove-step")
     .click({ force: true });
 }
 

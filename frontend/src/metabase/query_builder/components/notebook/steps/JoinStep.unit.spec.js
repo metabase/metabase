@@ -8,6 +8,7 @@ import {
   within,
   waitForElementToBeRemoved,
 } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import xhrMock from "xhr-mock";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { getStore } from "__support__/entities-store";
@@ -19,7 +20,8 @@ import {
 } from "__support__/sample_dataset_fixture";
 import JoinStep from "./JoinStep";
 
-jest.setTimeout(10000);
+// Workaround for timeouts on CI
+jest.setTimeout(15000);
 
 describe("Notebook Editor > Join Step", () => {
   const TEST_QUERY = {
@@ -45,7 +47,7 @@ describe("Notebook Editor > Join Step", () => {
     );
   }
 
-  function setup() {
+  async function setup({ joinTable } = {}) {
     const query = new StructuredQuery(ORDERS.question(), TEST_QUERY);
     const onQueryChange = jest.fn();
 
@@ -74,10 +76,17 @@ describe("Notebook Editor > Join Step", () => {
       </Provider>,
     );
 
+    if (joinTable) {
+      await selectTable(new RegExp(joinTable, "i"));
+    }
+
     return { onQueryChange };
   }
 
   function toFieldRef(field, joinedTable) {
+    if (!field) {
+      return null;
+    }
     return [
       "field",
       field.id,
@@ -108,6 +117,40 @@ describe("Notebook Editor > Join Step", () => {
               toFieldRef(leftField),
               toFieldRef(rightField, joinedTable),
             ],
+          }),
+        ],
+      },
+    };
+  }
+
+  function expectedMultiFieldsJoin({
+    fields = "all",
+    joinedTable,
+    dimensions,
+  }) {
+    const joinFields = Array.isArray(fields)
+      ? fields.map(field => toFieldRef(field, joinedTable))
+      : fields;
+
+    const condition = ["and"];
+    dimensions.forEach(pair => {
+      const [leftField, rightField] = pair;
+      condition.push([
+        "=",
+        toFieldRef(leftField),
+        toFieldRef(rightField, joinedTable),
+      ]);
+    });
+
+    return {
+      ...TEST_QUERY,
+      query: {
+        ...TEST_QUERY.query,
+        joins: [
+          expect.objectContaining({
+            fields: joinFields,
+            "source-table": joinedTable.id,
+            condition,
           }),
         ],
       },
@@ -152,14 +195,14 @@ describe("Notebook Editor > Join Step", () => {
     xhrMock.teardown();
   });
 
-  it("displays a source table and suggests to pick a join table", () => {
-    setup();
+  it("displays a source table and suggests to pick a join table", async () => {
+    await setup();
     expect(screen.queryByText("Orders")).toBeInTheDocument();
     expect(screen.queryByText("Pick a table...")).toBeInTheDocument();
   });
 
   it("opens a schema browser by default", async () => {
-    setup();
+    await setup();
 
     fireEvent.click(screen.queryByText(/Sample Dataset/i));
     const dataSelector = await screen.findByTestId("data-selector");
@@ -171,7 +214,7 @@ describe("Notebook Editor > Join Step", () => {
   });
 
   it("automatically sets join fields if possible", async () => {
-    const { onQueryChange } = setup();
+    const { onQueryChange } = await setup();
 
     await selectTable(/Products/i);
 
@@ -190,8 +233,7 @@ describe("Notebook Editor > Join Step", () => {
 
   it("shows a parent dimension's join field picker", async () => {
     const ordersFields = Object.values(ORDERS.fieldsLookup());
-    setup();
-    await selectTable(/Products/i);
+    await setup({ joinTable: "Products" });
 
     fireEvent.click(screen.getByTestId("parent-dimension"));
 
@@ -207,8 +249,7 @@ describe("Notebook Editor > Join Step", () => {
   });
 
   it("can change parent dimension's join field", async () => {
-    const { onQueryChange } = setup();
-    await selectTable(/Products/i);
+    const { onQueryChange } = await setup({ joinTable: "Products" });
     const picker = await openDimensionPicker("parent");
 
     fireEvent.click(within(picker).getByText("Tax"));
@@ -224,8 +265,7 @@ describe("Notebook Editor > Join Step", () => {
 
   it("shows a join dimension's field picker", async () => {
     const productsFields = Object.values(PRODUCTS.fieldsLookup());
-    setup();
-    await selectTable(/Products/i);
+    await setup({ joinTable: "Products" });
 
     fireEvent.click(screen.getByTestId("join-dimension"));
 
@@ -241,8 +281,7 @@ describe("Notebook Editor > Join Step", () => {
   });
 
   it("can change join dimension's field", async () => {
-    const { onQueryChange } = setup();
-    await selectTable(/Products/i);
+    const { onQueryChange } = await setup({ joinTable: "Products" });
     const picker = await openDimensionPicker("join");
 
     fireEvent.click(within(picker).getByText("Category"));
@@ -257,9 +296,7 @@ describe("Notebook Editor > Join Step", () => {
   });
 
   it("automatically opens dimensions picker if can't automatically set join fields", async () => {
-    setup();
-
-    await selectTable(/Reviews/i);
+    await setup({ joinTable: "Reviews" });
 
     const picker = await screen.findByRole("rowgroup");
     expect(picker).toBeInTheDocument();
@@ -268,8 +305,7 @@ describe("Notebook Editor > Join Step", () => {
   });
 
   it("can select fields to select from a joined table", async () => {
-    const { onQueryChange } = setup();
-    await selectTable(/Products/i);
+    const { onQueryChange } = await setup({ joinTable: "Products" });
 
     fireEvent.click(screen.getByLabelText("table icon"));
     fireEvent.click(screen.getByText("Select None"));
@@ -283,5 +319,150 @@ describe("Notebook Editor > Join Step", () => {
         fields: [PRODUCTS.CATEGORY],
       }),
     );
+  });
+
+  it("can clear selected parent dimension", async () => {
+    const { onQueryChange } = await setup({ joinTable: "Products" });
+    const parentDimensionPicker = screen.getByTestId("parent-dimension");
+
+    fireEvent.click(
+      within(parentDimensionPicker).queryByLabelText("close icon"),
+    );
+
+    expect(screen.getByTestId("parent-dimension")).toHaveTextContent(
+      "Pick a column...",
+    );
+    expect(screen.queryByRole("rowgroup")).toBe(null);
+    expect(onQueryChange).toHaveBeenLastCalledWith(
+      expectedJoin({
+        joinedTable: PRODUCTS,
+        rightField: PRODUCTS.ID,
+      }),
+    );
+  });
+
+  it("can clear selected join dimension", async () => {
+    const { onQueryChange } = await setup({ joinTable: "Products" });
+    const joinDimensionPicker = screen.getByTestId("join-dimension");
+
+    fireEvent.click(within(joinDimensionPicker).queryByLabelText("close icon"));
+
+    expect(screen.getByTestId("join-dimension")).toHaveTextContent(
+      "Pick a column...",
+    );
+    expect(screen.queryByRole("rowgroup")).toBe(null);
+    expect(onQueryChange).toHaveBeenLastCalledWith(
+      expectedJoin({
+        joinedTable: PRODUCTS,
+        leftField: ORDERS.PRODUCT_ID,
+      }),
+    );
+  });
+
+  it("hides icons for removing dimensions if dimensions are not set yet", async () => {
+    await setup({ joinTable: "Reviews" });
+
+    expect(screen.queryAllByLabelText("close icon")).toHaveLength(0);
+  });
+
+  it("shows the fields picker tooltip on control hover", async () => {
+    await setup({ joinTable: "Products" });
+
+    userEvent.hover(screen.getByLabelText("table icon"));
+
+    const tooltip = screen.queryByRole("tooltip");
+    expect(tooltip).toBeInTheDocument();
+    expect(tooltip).toHaveTextContent("Pick columns");
+  });
+
+  it("hides the fields picker tooltip when the picker opens", async () => {
+    await setup({ joinTable: "Products" });
+
+    userEvent.click(screen.getByLabelText("table icon"));
+    userEvent.hover(screen.getByLabelText("table icon"));
+
+    expect(screen.queryByRole("tooltip")).toBe(null);
+  });
+
+  describe("joins on multiple fields", () => {
+    it("does not display a new dimensions pair control until first pair is valid", async () => {
+      await setup({ joinTable: "Reviews" });
+
+      expect(screen.queryAllByText("Pick a column...")).toHaveLength(2);
+      expect(screen.queryByLabelText("add icon")).toBe(null);
+    });
+
+    it("can add a new dimension pair", async () => {
+      await setup({ joinTable: "Products" });
+
+      fireEvent.click(screen.queryByLabelText("add icon"));
+
+      expect(screen.queryAllByText("Pick a column...")).toHaveLength(2);
+    });
+
+    it("automatically opens a parent dimension picker for new fields pair", async () => {
+      await setup({ joinTable: "Products" });
+
+      fireEvent.click(screen.queryByLabelText("add icon"));
+
+      const picker = await screen.findByRole("rowgroup");
+      expect(picker).toBeInTheDocument();
+      expect(picker).toBeVisible();
+      expect(within(picker).queryByText("Order")).toBeInTheDocument();
+    });
+
+    it("automatically opens a join dimension picker for new fields pair", async () => {
+      await setup({ joinTable: "Products" });
+
+      fireEvent.click(screen.queryByLabelText("add icon"));
+      let picker = await screen.findByRole("rowgroup");
+      fireEvent.click(within(picker).queryByText("Created At"));
+
+      picker = await screen.findByRole("rowgroup");
+      expect(picker).toBeInTheDocument();
+      expect(picker).toBeVisible();
+      expect(within(picker).queryByText("Product")).toBeInTheDocument();
+    });
+
+    it("correctly updates join when adding multiple conditions", async () => {
+      const { onQueryChange } = await setup({ joinTable: "Products" });
+      fireEvent.click(screen.queryByLabelText("add icon"));
+
+      let picker = await screen.findByRole("rowgroup");
+      fireEvent.click(within(picker).queryByText("Tax"));
+      picker = await screen.findByRole("rowgroup");
+      fireEvent.click(within(picker).queryByText("Price"));
+
+      expect(onQueryChange).toHaveBeenLastCalledWith(
+        expectedMultiFieldsJoin({
+          dimensions: [
+            [ORDERS.PRODUCT_ID, PRODUCTS.ID],
+            [ORDERS.TAX, PRODUCTS.PRICE],
+          ],
+          joinedTable: PRODUCTS,
+        }),
+      );
+    });
+
+    it("does not display a new dimensions pair control for a new empty pair", async () => {
+      await setup({ joinTable: "Products" });
+
+      fireEvent.click(screen.queryByLabelText("add icon"));
+
+      expect(screen.queryByLabelText("add icon")).toBe(null);
+    });
+
+    it("can remove an empty dimension pair", async () => {
+      await setup({ joinTable: "Products" });
+      fireEvent.click(screen.queryByLabelText("add icon"));
+
+      fireEvent.click(screen.queryByTestId("remove-dimension-pair"));
+
+      expect(screen.queryAllByText("Pick a column...")).toEqual([]);
+      expect(screen.getByTestId("parent-dimension")).toHaveTextContent(
+        /Product ID/i,
+      );
+      expect(screen.getByTestId("join-dimension")).toHaveTextContent(/ID/i);
+    });
   });
 });
