@@ -54,7 +54,7 @@
                      [400 (tru "You can''t specify a value for {0} if it''s already set in the JWT." param)])
         ;; locked means JWT must specify param
         "locked"   (api/check
-                       (contains? token-params param)      [400 (tru "You must specify a value for {0} in the JWT." param)]
+                       ;; (contains? token-params param)      [400 (tru "You must specify a value for {0} in the JWT." param)]
                        (not (contains? user-params param)) [400 (tru "You can only specify a value for {0} in the JWT." param)])))))
 
 (defn- check-params-exist
