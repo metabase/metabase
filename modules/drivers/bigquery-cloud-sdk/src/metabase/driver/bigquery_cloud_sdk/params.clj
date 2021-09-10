@@ -37,7 +37,19 @@
 (defmethod ->QueryParameterValue clojure.lang.BigInt  [v] (param "INT64" v))
 (defmethod ->QueryParameterValue Float                [v] (param "FLOAT64" v))
 (defmethod ->QueryParameterValue Double               [v] (param "FLOAT64" v))
-(defmethod ->QueryParameterValue java.math.BigDecimal [v] (param "FLOAT64" v))
+
+;; use the min and max values for the NUMERIC types to figure out if we need to set decimal params as NUMERIC
+;; or BIGNUMERIC
+(def ^:private ^:const ^BigDecimal max-bq-numeric-val (bigdec "9.9999999999999999999999999999999999999E+28"))
+(def ^:private ^:const ^BigDecimal min-bq-numeric-val (.negate max-bq-numeric-val))
+
+(defmethod ->QueryParameterValue java.math.BigDecimal [^BigDecimal v]
+  (if (or (and (< 0 (.signum v))
+            (< 0 (.compareTo v min-bq-numeric-val)))
+        (and (> 0 (.signum v))
+             (> 0 (.compareTo v max-bq-numeric-val))))
+    (param "BIGNUMERIC" v)
+    (param "NUMERIC" v)))
 
 (defmethod ->QueryParameterValue java.time.LocalDate      [t] (param "DATE" (u.date/format t)))
 (defmethod ->QueryParameterValue java.time.LocalDateTime  [t] (param "DATETIME" (u.date/format t)))
