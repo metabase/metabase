@@ -1,89 +1,76 @@
-## Setting Data Access Permissions
+# Permissions overview 
 
 There are always going to be sensitive bits of information in your databases and tables, and thankfully Metabase provides a simple way to ensure that people on your team only see the data they’re supposed to.
 
-### How permissions work in Metabase
+## How permissions work in Metabase
 
-Metabase uses a group-based approach to set permissions and restrictions on your databases and tables. At a high level, to set up permissions in your Metabase instance you’ll need to create one or more groups, add members to those groups, and then choose what level of database and SQL access those groups should have.
+Metabase uses a group-based approach to set permissions. You can set permissions on:
 
-A user can be a member of multiple groups, and if one of the groups they’re in has access to a particular database or table, but another group they’re a member of does not, then they **will** have access to that database.
+- [Databases connected to Metabase][data-permissions]
+- [Tables in those databases][table-permissions]
+- [Collections of questions and dashboards][collections]
+- [SQL snippet folders][sql-snippet-folders]
+- [Rows and columns of a table][data-sandboxing]
 
-In addition to setting permissions on your databases and tables, you can also [set access permissions on the collections](06-collections.md) where your dashboards, questions, and pulses are saved. Collection permissions can be set and edited from the collection itself, or the Admin Panel.
+To determine who has access to what, you’ll need to create one or more groups, choose which level of access that group has to different databases, collections, and so on, then add people to that group.
 
-### Groups
+### Key points regarding permissions
 
-To view and manage your groups, go to the Admin Panel, click on the People section, and then click on Groups from the side menu.
+Some key things to keep in mind when thinking about permissions in Metabase:
+
+- Permissions are granted to groups, not people.
+- People can be in more than one group.
+- If a person is in multiple groups, they will have the most permissive access granted to them across all of their groups. For example, if they are part of three groups, and two of those groups don't have permissions to a database, but the third group they're in can query that database, then that person will have access to that database.
+
+## Groups
+
+To view and manage your groups, go to the __Admin Panel__ > __People__, and then click on __Groups__ from the side menu.
 
 ![Groups](images/groups.png)
 
-#### Special default groups
+### Special default groups
 
-You’ll notice that you already have two default groups: Administrators and All Users. These are special groups that can’t be removed.
+Every Metabase has two default groups: Administrators and All Users. These are special groups that can’t be removed.
 
-You’ll also see that you’re a member of the **Administrators** group — that’s why you were able to go to the Admin Panel in the first place. So, to make someone an admin of Metabase you just need to add them to this group. Metabase admins can log into the Admin Panel and make changes there, and they always have unrestricted access to all data that you have in your Metabase instance. So be careful who you add to the Administrator group!
+#### Administrators
+
+You’re a member of the **Administrators** group — that’s why you were able to go to the Admin Panel in the first place. To make someone an admin of Metabase, you just need to add them to this group. Metabase admins can log into the Admin Panel and make changes there, and they always have unrestricted access to all data that you have in your Metabase instance. So be careful who you add to the Administrator group!
+
+#### All users
 
 The **All Users** group is another special one. Every Metabase user is always a member of this group, though they can also be a member of as many other groups as you want. We recommend using the All Users group as a way to set default access levels for new Metabase users. If you have [Google single sign-on](10-single-sign-on.md) enabled, new users who join that way will be automatically added to the All Users group.
 
-#### An important note on the All Users group
+As we mentioned above, a person is given the _most permissive_ setting she has for a given database/schema/table across _all_ groups she's in. Because of that, it's important that your All Users group should never have _greater_ access for an item than a group for which you're trying to restrict access — otherwise the more permissive setting will win out. This goes for both data access as well as [collection permission](06-collections.md) settings.
 
-As we mentioned above, a user is given the _most permissive_ setting she has for a given database/schema/table across _all_ groups she is in. Because of that, it is important that your All Users group should never have _greater_ access for an item than a group for which you're trying to restrict access — otherwise the more permissive setting will win out. This goes for both data access as well as [collection permission](06-collections.md) settings.
+### Managing groups
 
-If you’ve set up the [Slack integration](09-setting-up-slack.md) and enabled [Metabot](../users-guide/11-metabot.md), you’ll also see a special **Metabot** group, which will allow you to restrict which questions your users will be able to access in Slack via Metabot.
+#### Creating a group and adding people to it
 
-#### Managing groups
-
-From the Groups section, click the `Add a group` button to create a new group. We recommend creating groups that correspond to the teams your company or organization has, such as Human Resources, Engineering, Finance, etc. Click the X icon to the right of a group in the list to remove it (remember, you can’t remove the special default groups). By default, newly created groups don’t have access to anything.
+From the Admin > Groups tab, click the **Add a group** button to create a new group. We recommend creating groups that correspond to the teams your company or organization has, such as Human Resources, Engineering, Finance, and so on. By default, newly created groups don’t have access to anything.
 
 Click into a group and then click `Add members` to add users to that group. Click on the X on the right side of a group member to remove them from that group. You can also add and remove users from groups from the People list using the dropdown in the Groups column.
 
-### Permissions view
+#### Removing a group
 
-Now that you have some groups, you’ll want to control their data access by going to the `Permissions` section of the Admin Panel. You’ll see an interactive table that displays all of your databases and all of your groups, and the level of access your groups have for each database.
+To remove a group, click the X icon to the right of a group in the list to remove it (remember, you can’t remove the special default groups).
 
-![Permissions view](images/permissions.png)
+## Further reading
 
-You can click on any cell in the table to change a group’s access level. When you’re done making your changes, just click the `save changes` button in the top-right, and you’ll see a confirmation dialog summarizing the changes.
-
-![Changing access level](images/change-access.png)
-
-At the database level, there are two different kinds of access you can set: data access, and SQL (or native query) access.
-
-#### Data access
-
-- **Unrestricted access:** can access data from all tables (within all namespaces/schemas, if your database uses those), including any tables that might get added to this database in the future.
-- **Limited access:** can only access the tables that you explicitly select within namespaces/schemas you explicitly select. If a new table gets added to this database in the future, access to it will not automatically be given. Saved questions based on tables the user doesn’t have access to won’t show up in the list of saved questions, dashboard cards based on those questions won’t appear, and they won’t be able to ask new questions about those tables. If every card on a dashboard is hidden for a user, then that dashboard won’t be shown to them in the dashboard list.
-- **No access:** can’t see anything based on data contained in this database. Won’t see saved questions based on tables contained in this database, and won’t be able to ask new questions about those tables.
-
-#### SQL (or native query) access
-
-- **Write raw queries:** can write new SQL/native queries using the SQL editor. This access level requires the group to additionally have Unrestricted data access for the database in question, since SQL queries can circumvent table-level permissions.
-- **No access**: can't view, write, or edit SQL/native queries. Users will still be able to view the results of questions created from SQL/native queries, but not the code itself. They also won't see the "View the SQL" button when composing custom questions in the notebook editor.
-
-If you select `Limit access` for one of your databases, your view will change to show the contents of that database. If the database utilizes namespaces or schemas, you’ll see a list of all the schemas in the database, and the level of data access each group has for them. Similarly, if you select `Limit access` on one of your schemas, you’ll drill down a level and see all the tables within it. From these views, you can navigate back by using the breadcrumb links in the top-left, and you can always drill down into a database or schema using the link under its name in the left column.
-
-![Table permissions](images/table-permissions.png)
-
-Data access levels for schemas follows the same pattern as for databases:
-
-- **Unrestricted access:** can access all tables in this schema, including any tables that might get added in the future.
-- **Limited access:** can only access the tables that you explicitly select.
-- **No access:** can’t access any tables in this schema.
-
-Lastly, data access levels for tables are almost exactly the same as well:
-
-- **Unrestricted access:** can ask questions about this table and see saved questions and dashboard cards using this table.
-- **No access:** can’t ask questions about this table or see saved questions or dashboard cards using this table.
-
-_Note: you’ll notice that tables don’t have the option for limited access. If you need to set column-level or row-level data permissions, check out the [data sandboxing](https://www.metabase.com/docs/latest/enterprise-guide/data-sandboxes.html) feature of the [Enterprise Edition](https://www.metabase.com/enterprise/)._
-
-For more, check out our [Guide to data permissions](https://www.metabase.com/learn/organization/organization/data-permissions.html).
-
-### A note about Pulses
-
-Pulses act a bit differently with regard to permissions. When a user creates a new Pulse, they will only have the option to include saved questions that they have permission to view. Note, however, that they are not prevented from emailing that Pulse to anyone, or posting that Pulse to a Slack channel (if you have Slack integration set up), regardless of the recipients’ permissions. Unlike dashboards, where individual cards are blocked based on a user’s permissions, a Pulse will always render all of its cards.
+Checkout our track on [Permissions][permissions] in Learn Metabase.
 
 ---
 
-## Next: collections
+## Next: Data permissions
 
-Metabase lets you create and set permissions on collections of dashboards and questions. [Learn how](06-collections.md).
+Metabase lets you [set permissions on databases and their tables][data-permissions].
+
+[collections]: 06-collections.md
+[dashboard-subscriptions]: ../users-guide/dashboard-subscriptions.md
+[data-permissions]: data-permissions.md
+[pulses]: ../users-guide/10-pulses.md
+[data-sandboxing]: ../enterprise-guide/data-sandboxes.md
+[permissions]: /learn/permissions/
+[sandbox-columns]: /learn/permissions/data-sandboxing-column-permissions.html
+[sandbox-rows]: /learn/permissions/data-sandboxing-row-permissions.html
+[sql-snippet-folders]: ../enterprise-guide/sql-snippets.md
+[table-permissions]: data-permissions.md#table-permissions
