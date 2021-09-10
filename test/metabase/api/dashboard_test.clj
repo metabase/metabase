@@ -931,7 +931,7 @@
                :user         (-> (user-details (mt/fetch-user :rasta))
                                  (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
                :diff         nil
-               :description  nil}]
+               :description  "added a card."}]
              (doall (for [revision (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/revisions" dashboard-id))]
                       (dissoc revision :timestamp :id))))))))
 
@@ -995,7 +995,7 @@
                :user         (-> (user-details (mt/fetch-user :rasta))
                                  (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
                :diff         nil
-               :description  nil}]
+               :description  "rearranged the cards."}]
              (doall (for [revision (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/revisions" dashboard-id))]
                       (dissoc revision :timestamp :id))))))))
 
