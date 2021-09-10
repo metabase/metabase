@@ -83,7 +83,6 @@ const dashboard = new schema.Entity("dashboard", {
 export const INITIALIZE = "metabase/dashboard/INITIALIZE";
 
 export const SET_EDITING_DASHBOARD = "metabase/dashboard/SET_EDITING_DASHBOARD";
-export const SET_SHARING = "metabase/dashboard/SET_SHARING";
 
 // NOTE: this is used in metabase/redux/metadata but can't be imported directly due to circular reference
 export const FETCH_DASHBOARD = "metabase/dashboard/FETCH_DASHBOARD";
@@ -120,8 +119,6 @@ export const CLEAR_CARD_DATA = "metabase/dashboard/CLEAR_CARD_DATA";
 
 export const MARK_NEW_CARD_SEEN = "metabase/dashboard/MARK_NEW_CARD_SEEN";
 
-export const SET_EDITING_PARAMETER_ID =
-  "metabase/dashboard/SET_EDITING_PARAMETER_ID";
 export const ADD_PARAMETER = "metabase/dashboard/ADD_PARAMETER";
 export const REMOVE_PARAMETER = "metabase/dashboard/REMOVE_PARAMETER";
 export const SET_PARAMETER_MAPPING = "metabase/dashboard/SET_PARAMETER_MAPPING";
@@ -136,25 +133,70 @@ export const SHOW_ADD_PARAMETER_POPOVER =
 export const HIDE_ADD_PARAMETER_POPOVER =
   "metabase/dashboard/HIDE_ADD_PARAMETER_POPOVER";
 
-export const SHOW_CLICK_BEHAVIOR_SIDEBAR =
-  "metabase/dashboard/SHOW_CLICK_BEHAVIOR_SIDEBAR";
-export const HIDE_CLICK_BEHAVIOR_SIDEBAR =
-  "metabase/dashboard/HIDE_CLICK_BEHAVIOR_SIDEBAR";
+export const SET_SIDEBAR = "metabase/dashboard/SET_SIDEBAR";
+export const CLOSE_SIDEBAR = "metabase/dashboard/CLOSE_SIDEBAR";
 
 export const initialize = createAction(INITIALIZE);
 export const setEditingDashboard = createAction(SET_EDITING_DASHBOARD);
-export const setSharing = createAction(SET_SHARING);
+
+export const setSidebar = createAction(SET_SIDEBAR);
+export const closeSidebar = createAction(CLOSE_SIDEBAR);
+
+export const setSharing = isSharing => dispatch => {
+  if (isSharing) {
+    dispatch(
+      setSidebar({
+        name: "sharing",
+      }),
+    );
+  } else {
+    dispatch(closeSidebar());
+  }
+};
+
+export const showClickBehaviorSidebar = dashcardId => dispatch => {
+  if (dashcardId != null) {
+    dispatch(
+      setSidebar({
+        name: "click-behavior",
+        props: { dashcardId },
+      }),
+    );
+  } else {
+    dispatch(closeSidebar());
+  }
+};
+
+export const hideClickBehaviorSidebar = () => dispatch => {
+  dispatch(closeSidebar());
+};
+
+export const setEditingParameter = parameterId => dispatch => {
+  if (parameterId != null) {
+    dispatch(
+      setSidebar({
+        name: "edit-parameter",
+        props: {
+          parameterId,
+        },
+      }),
+    );
+  } else {
+    dispatch(closeSidebar());
+  }
+};
+
+export const openAddQuestionSidebar = () => dispatch => {
+  dispatch(
+    setSidebar({
+      name: "add-question",
+    }),
+  );
+};
 
 export const markNewCardSeen = createAction(MARK_NEW_CARD_SEEN);
 export const showAddParameterPopover = createAction(SHOW_ADD_PARAMETER_POPOVER);
 export const hideAddParameterPopover = createAction(HIDE_ADD_PARAMETER_POPOVER);
-export const showClickBehaviorSidebar = createAction(
-  SHOW_CLICK_BEHAVIOR_SIDEBAR,
-);
-export const hideClickBehaviorSidebar = createAction(
-  HIDE_CLICK_BEHAVIOR_SIDEBAR,
-);
-
 // these operations don't get saved to server immediately
 export const setDashboardAttributes = createAction(SET_DASHBOARD_ATTRIBUTES);
 export const setDashCardAttributes = createAction(SET_DASHCARD_ATTRIBUTES);
@@ -706,7 +748,6 @@ export const onReplaceAllDashCardVisualizationSettings = createAction(
   (id, settings) => ({ id, settings }),
 );
 
-export const setEditingParameter = createAction(SET_EDITING_PARAMETER_ID);
 export const setParameterMapping = createThunkAction(
   SET_PARAMETER_MAPPING,
   (parameter_id, dashcard_id, card_id, target) => (dispatch, getState) => {
@@ -767,7 +808,15 @@ export const addParameter = createThunkAction(
       parameter = createParameter(parameterOption, parameters);
       return parameters.concat(parameter);
     });
-    return parameter;
+
+    dispatch(
+      setSidebar({
+        name: "edit-parameter",
+        props: {
+          parameterId: parameter.id,
+        },
+      }),
+    );
   },
 );
 
@@ -777,7 +826,19 @@ export const removeParameter = createThunkAction(
     updateParameters(dispatch, getState, parameters =>
       parameters.filter(p => p.id !== parameterId),
     );
-    return { id: parameterId };
+
+    if (parameterId != null) {
+      dispatch(
+        setSidebar({
+          name: "edit-parameter",
+          props: {
+            parameterId,
+          },
+        }),
+      );
+    } else {
+      dispatch(closeSidebar());
+    }
   },
 );
 

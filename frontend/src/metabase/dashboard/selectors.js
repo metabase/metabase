@@ -35,11 +35,12 @@ export type MappingsByParameter = {
 
 export const getDashboardId = state => state.dashboard.dashboardId;
 export const getIsEditing = state => !!state.dashboard.isEditing;
-export const getIsSharing = state => !!state.dashboard.isSharing;
 export const getDashboardBeforeEditing = state => state.dashboard.isEditing;
 export const getClickBehaviorSidebarDashcard = state => {
-  const { clickBehaviorSidebarDashcardId, dashcards } = state.dashboard;
-  return dashcards[clickBehaviorSidebarDashcardId];
+  const { sidebar, dashcards } = state.dashboard;
+  return sidebar.name === "click-behavior"
+    ? dashcards[sidebar.props.dashcardId]
+    : null;
 };
 export const getDashboards = state => state.dashboard.dashboards;
 export const getDashcards = state => state.dashboard.dashcards;
@@ -50,6 +51,14 @@ export const getLoadingStartTime = state =>
   state.dashboard.loadingDashCards.startTime;
 export const getIsAddParameterPopoverOpen = state =>
   state.dashboard.isAddParameterPopoverOpen;
+
+export const getIsSharing = state => state.dashboard.sidebar.name === "sharing";
+export const getSidebar = state => state.dashboard.sidebar;
+
+export const getShowAddQuestionSidebar = createSelector(
+  [getSidebar],
+  sidebar => sidebar.name === "add-question",
+);
 
 export const getDashboard = createSelector(
   [getDashboardId, getDashboards],
@@ -84,8 +93,17 @@ export const getIsDirty = createSelector(
     ),
 );
 
-export const getEditingParameterId = state =>
-  state.dashboard.editingParameterId;
+export const getEditingParameterId = createSelector(
+  [getSidebar],
+  sidebar => {
+    return sidebar.name === "edit-parameter" ? sidebar.props.parameterId : null;
+  },
+);
+
+export const getIsEditingParameter = createSelector(
+  [getEditingParameterId],
+  parameterId => parameterId != null,
+);
 
 export const getEditingParameter = createSelector(
   [getDashboard, getEditingParameterId],
@@ -94,9 +112,6 @@ export const getEditingParameter = createSelector(
       ? _.findWhere(dashboard.parameters, { id: editingParameterId })
       : null,
 );
-
-export const getIsEditingParameter = state =>
-  state.dashboard.editingParameterId != null;
 
 const getCard = (state, props) => props.card;
 const getDashCard = (state, props) => props.dashcard;
