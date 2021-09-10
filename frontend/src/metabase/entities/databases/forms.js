@@ -209,15 +209,15 @@ function getEngineInfo(engine, details, id) {
 function shouldShowEngineProvidedField(field, details) {
   const detailAndValueRequiredToShowField = field["visible-if"];
 
-  if (!detailAndValueRequiredToShowField) {
-    return true;
+  if (detailAndValueRequiredToShowField) {
+    const [detail, expectedDetailValue] = Object.entries(
+      detailAndValueRequiredToShowField,
+    )[0];
+
+    return details[detail] === expectedDetailValue;
   }
 
-  const [detail, expectedDetailValue] = Object.entries(
-    detailAndValueRequiredToShowField,
-  )[0];
-
-  return details[detail] === expectedDetailValue;
+  return true;
 }
 
 function getDefaultValue(field) {
