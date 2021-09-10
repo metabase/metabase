@@ -56,7 +56,7 @@ If you're using [Metabase Enterprise Edition][enterprise], you can use [serializ
 
 1.  Shut down Metabase.
 2.  Restore the backup copy of the app database you made before trying to upgrade or downgrade.
-3.  Restore the JAR file of the older version you want to revert to.
+3.  Restore the JAR file or container of the older version you want to revert to.
 4.  Restart Metabase.
 
 ## Is the app database locked?
@@ -114,6 +114,16 @@ Exception in thread "main" java.lang.AssertionError: Assert failed: Unable to co
 1.  Right-click on the Metabase JAR file (*not* the app database file).
 2.  Select "Properties".
 3.  Select "Unblock."
+
+## Is the application database taking too long to load?
+
+**Root cause:** You are using H2 as your app database, and the app database is so large that it can't be loaded in less than 5 seconds (which is the default timeout value). You can tell this is happening because the message "Timeout" appears in the console when you try to start Metabase.
+
+**Steps to take:**
+
+1.  Use a production-quality database such as PostgreSQL for the app database (preferred).
+2.  Go to the **Admin Panel** and increase the timeout setting for the app database.
+3.  Move Metabase to a faster server (in particular, a server with faster disks).
 
 [backup]: ../operations-guide/backing-up-metabase-application-data.md
 [enterprise]: /enterprise/
