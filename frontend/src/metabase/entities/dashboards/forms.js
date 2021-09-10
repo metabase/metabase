@@ -38,6 +38,7 @@ export default {
       ) {
         fields.push({
           ...PLUGIN_CACHING.cacheTTLFormField,
+          type: "dashboardCacheTTL",
           message: t`Cache all question results for`,
         });
       }

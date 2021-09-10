@@ -32,7 +32,8 @@ export default {
       ) {
         fields.push({
           ...PLUGIN_CACHING.cacheTTLFormField,
-          message: t`Cache results for`,
+          title: t`Caching`,
+          type: "questionCacheTTL",
         });
       }
       return fields;

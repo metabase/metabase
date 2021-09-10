@@ -94,7 +94,8 @@ export const PLUGIN_MODERATION = {
 };
 
 export const PLUGIN_CACHING = {
-  cacheTTLFormField: null,
+  dashboardCacheTTLFormField: null,
   databaseCacheTTLFormField: null,
+  questionCacheTTLFormField: null,
   getQuestionsImplicitCacheTTL: () => null,
 };

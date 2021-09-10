@@ -4,6 +4,7 @@ import { PLUGIN_CACHING, PLUGIN_FORM_WIDGETS } from "metabase/plugins";
 import Link from "metabase/components/Link";
 import { CacheTTLField } from "./components/CacheTTLField";
 import { DatabaseCacheTTLField } from "./components/DatabaseCacheTTLField";
+import { QuestionCacheTTLField } from "./components/QuestionCacheTTLField";
 import {
   getQuestionsImplicitCacheTTL,
   validateCacheTTL,
@@ -14,7 +15,6 @@ PLUGIN_CACHING.getQuestionsImplicitCacheTTL = getQuestionsImplicitCacheTTL;
 
 PLUGIN_CACHING.cacheTTLFormField = {
   name: "cache_ttl",
-  type: "cacheTTL",
   validate: validateCacheTTL,
   normalize: normalizeCacheTTL,
 };
@@ -42,5 +42,6 @@ PLUGIN_CACHING.databaseCacheTTLFormField = {
   normalize: normalizeCacheTTL,
 };
 
-PLUGIN_FORM_WIDGETS.cacheTTL = CacheTTLField;
+PLUGIN_FORM_WIDGETS.dashboardCacheTTL = CacheTTLField;
 PLUGIN_FORM_WIDGETS.databaseCacheTTL = DatabaseCacheTTLField;
+PLUGIN_FORM_WIDGETS.questionCacheTTL = QuestionCacheTTLField;
