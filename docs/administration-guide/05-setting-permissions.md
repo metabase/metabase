@@ -42,6 +42,9 @@ The **All Users** group is another special one. Every Metabase user is always a 
 
 As we mentioned above, a person is given the _most permissive_ setting she has for a given database/schema/table across _all_ groups she's in. Because of that, it's important that your All Users group should never have _greater_ access for an item than a group for which you're trying to restrict access — otherwise the more permissive setting will win out. This goes for both data access as well as [collection permission](06-collections.md) settings.
 
+### Metabot group
+If you’ve set up the [Slack integration][slack-integration] and enabled Metabot, you’ll also see a special Metabot group, which will allow you to restrict which questions your users will be able to access in Slack via Metabot.
+
 ### Managing groups
 
 #### Creating a group and adding people to it
@@ -72,5 +75,6 @@ Metabase lets you [set permissions on databases and their tables][data-permissio
 [permissions]: /learn/permissions/
 [sandbox-columns]: /learn/permissions/data-sandboxing-column-permissions.html
 [sandbox-rows]: /learn/permissions/data-sandboxing-row-permissions.html
+[slack-integration]: 09-setting-up-slack.md
 [sql-snippet-folders]: ../enterprise-guide/sql-snippets.md
 [table-permissions]: data-permissions.md#table-permissions
