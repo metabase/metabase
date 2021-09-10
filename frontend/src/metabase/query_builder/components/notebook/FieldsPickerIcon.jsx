@@ -1,26 +1,47 @@
 import React from "react";
+import PropTypes from "prop-types";
 import styled from "styled-components";
 import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
+import { NotebookCell } from "./NotebookCell";
+
+export const FieldPickerContentContainer = styled.div`
+  padding: ${NotebookCell.CONTAINER_PADDING};
+`;
 
 const StyledIcon = styled(Icon)`
   opacity: 0.5;
 `;
 
-export function FieldsPickerIcon() {
+const propTypes = {
+  isTriggeredComponentOpen: PropTypes.bool,
+};
+
+export function FieldsPickerIcon({ isTriggeredComponentOpen }) {
   return (
-    <Tooltip tooltip={<span>{t`Pick columns`}</span>}>
-      <StyledIcon name="table" size={14} />
+    <Tooltip
+      tooltip={<span>{t`Pick columns`}</span>}
+      isEnabled={!isTriggeredComponentOpen}
+    >
+      <FieldPickerContentContainer>
+        <StyledIcon name="table" size={14} />
+      </FieldPickerContentContainer>
     </Tooltip>
   );
 }
 
+FieldsPickerIcon.propTypes = propTypes;
+
 export const FIELDS_PICKER_STYLES = {
   notebookItemContainer: {
+    padding: 0,
+  },
+  notebookRightItemContainer: {
     width: 37,
     height: 37,
+    padding: 0,
   },
   trigger: {
     marginTop: 1,

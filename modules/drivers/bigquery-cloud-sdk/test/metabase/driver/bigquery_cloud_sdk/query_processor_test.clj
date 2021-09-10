@@ -16,6 +16,7 @@
             [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
+            [metabase.test.util :as tu]
             [metabase.test.util.timezone :as tu.tz]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
@@ -38,16 +39,19 @@
                :display_name "venue_id"
                :source       :native
                :base_type    :type/Integer
+               :effective_type :type/Integer
                :field_ref    [:field "venue_id" {:base-type :type/Integer}]}
               {:name         "user_id"
                :display_name "user_id"
                :source       :native
                :base_type    :type/Integer
+               :effective_type :type/Integer
                :field_ref    [:field "user_id" {:base-type :type/Integer}]}
               {:name         "checkins_id"
                :display_name "checkins_id"
                :source       :native
                :base_type    :type/Integer
+               :effective_type :type/Integer
                :field_ref    [:field "checkins_id" {:base-type :type/Integer}]}]
              (qp.test/cols
                (qp/process-query
@@ -484,7 +488,7 @@
 
 (defn- do-with-datetime-timestamp-table [f]
   (driver/with-driver :bigquery-cloud-sdk
-    (let [table-name (name (munge (gensym "table_")))]
+    (let [table-name (format "table_%s" (tu/random-name))]
       (mt/with-temp-copy-of-db
         (try
           (bigquery.tx/execute!
@@ -791,3 +795,29 @@
                     "have:dataset"
                     ""
                     (apply str (repeat 1055 "a")))))))
+
+(defn- project-id-prefix-if-set []
+  (if-let [proj-id (mt/db-test-env-var :bigquery-cloud-sdk :project-id)]
+    (str proj-id \.)
+    ""))
+
+(deftest multiple-counts-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "Count of count grouping works (#15074)"
+      (is (= {:query      (format (str "SELECT `source`.`count` AS `count`, count(*) AS `count` FROM "
+                                       "(SELECT date_trunc(`%1$sv3_test_data.checkins`.`date`, month) "
+                                       "AS `date`, "
+                                       "count(*) AS `count` FROM `%1$sv3_test_data.checkins` "
+                                       "GROUP BY `date` ORDER BY `date` ASC) `source` GROUP BY `source`.`count` "
+                                       "ORDER BY `source`.`count` ASC")
+                                  (project-id-prefix-if-set))
+              :params     nil
+              :table-name "source"
+              :mbql?      true}
+            (qp/query->native
+              (mt/mbql-query checkins
+                {:aggregation  [[:count]],
+                 :breakout     [[:field "count" {:base-type :type/Integer}]],
+                 :source-query {:source-table (mt/id :checkins)
+                                :aggregation  [[:count]]
+                                :breakout     [!month.date]}})))))))

@@ -220,7 +220,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (p.types/defprotocol+ IObjectPermissions
-  "Methods for determining whether the current user has read/write permissions for a given object."
+  "Methods for determining whether the current user has read/write permissions for a given object. See documentation
+  for [[metabase.models.permissions]] for a high-level overview of the Metabase permissions system."
 
   (perms-objects-set [instance ^clojure.lang.Keyword read-or-write]
     "Return a set of permissions object paths that a user must have access to in order to access this object. This

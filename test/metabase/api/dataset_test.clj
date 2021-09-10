@@ -206,7 +206,7 @@
         (testing "with data perms"
           (do-test))
         (testing "with collection perms only"
-          (perms/revoke-permissions! (group/all-users) (mt/db))
+          (perms/revoke-data-perms! (group/all-users) (mt/db))
           (do-test))))))
 
 (deftest formatted-results-ignore-query-constraints
@@ -245,7 +245,7 @@
     (mt/with-temp-copy-of-db
       ;; give all-users *partial* permissions for the DB, so we know we're checking more than just read permissions for
       ;; the Database
-      (perms/revoke-permissions! (group/all-users) (mt/id))
+      (perms/revoke-data-perms! (group/all-users) (mt/id))
       (perms/grant-permissions! (group/all-users) (mt/id) "schema_that_does_not_exist")
       (is (schema= {:status   (s/eq "failed")
                     :error    (s/eq "You do not have permissions to run this query.")
@@ -280,7 +280,7 @@
         (mt/suppress-output
           (mt/with-temp-copy-of-db
             ;; Give All Users permissions to see the `venues` Table, but not ad-hoc native perms
-            (perms/revoke-permissions! (group/all-users) (mt/id))
+            (perms/revoke-data-perms! (group/all-users) (mt/id))
             (perms/grant-permissions! (group/all-users) (mt/id) "PUBLIC" (mt/id :venues))
             (is (schema= {:permissions-error? (s/eq true)
                           :message            (s/eq "You do not have permissions to run this query.")
@@ -341,6 +341,7 @@
                         "test-expr"]
                        (map :display_name cols)))
                 (is (= {:base_type       "type/Integer"
+                        :effective_type  "type/Integer"
                         :name            "pivot-grouping"
                         :display_name    "pivot-grouping"
                         :expression_name "pivot-grouping"

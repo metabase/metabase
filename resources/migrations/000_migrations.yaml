@@ -8464,6 +8464,37 @@ databaseChangeLog:
                 UPDATE setting SET value='simple' WHERE key='humanization-strategy'
                 AND value='advanced'
 
+  - changeSet:
+      id: 312
+      author: noahmoss
+      comment: Added 0.41.0 Backfill collection_id for dashboard subscriptions
+      changes:
+        - sql:
+            dbms: mariadb,mysql
+            sql: >-
+              UPDATE pulse p
+              INNER JOIN report_dashboard d
+              ON p.dashboard_id = d.id
+              SET p.collection_id = d.collection_id;
+        - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE pulse p
+              SET collection_id = d.collection_id
+              FROM report_dashboard d
+              WHERE p.dashboard_id = d.id
+              AND p.dashboard_id IS NOT NULL;
+        - sql:
+            dbms: h2
+            sql: >-
+              UPDATE pulse p
+              SET collection_id = (
+                SELECT d.collection_id
+                FROM report_dashboard d
+                WHERE d.id = p.dashboard_id
+              )
+              WHERE dashboard_id IS NOT NULL;
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

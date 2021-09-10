@@ -145,7 +145,7 @@
 
 ;; by default, archived Alerts should be excluded
 
-(deftest get-alert-tests
+(deftest get-alerts-test
   (testing "archived alerts should be excluded"
     (is (= #{"Not Archived"}
            (with-alert-in-collection [_ _ not-archived-alert]
@@ -153,7 +153,7 @@
                (db/update! Pulse (u/the-id not-archived-alert) :name "Not Archived")
                (db/update! Pulse (u/the-id archived-alert)     :name "Archived", :archived true)
                (with-alerts-in-readable-collection [not-archived-alert archived-alert]
-                 (set (map :name ((user->client :rasta) :get 200 "alert")))))))))
+                 (set (map :name (mt/user-http-request :rasta :get 200 "alert")))))))))
 
   (testing "fetch archived alerts"
     (is (= #{"Archived"}
@@ -162,7 +162,39 @@
                (db/update! Pulse (u/the-id not-archived-alert) :name "Not Archived")
                (db/update! Pulse (u/the-id archived-alert)     :name "Archived", :archived true)
                (with-alerts-in-readable-collection [not-archived-alert archived-alert]
-                 (set (map :name ((user->client :rasta) :get 200 "alert?archived=true"))))))))))
+                 (set (map :name (mt/user-http-request :rasta :get 200 "alert?archived=true")))))))))
+
+  (testing "fetch alerts by user ID -- should return alerts created by the user,
+           or alerts for which the user is a known recipient"
+    (with-alert-in-collection [_ _ creator-alert]
+      (with-alert-in-collection [_ _ recipient-alert]
+        (with-alert-in-collection [_ _ other-alert]
+          (with-alerts-in-readable-collection [creator-alert recipient-alert other-alert]
+            (db/update! Pulse (u/the-id creator-alert) :name "LuckyCreator" :creator_id (mt/user->id :lucky))
+            (db/update! Pulse (u/the-id recipient-alert) :name "LuckyRecipient")
+            (db/update! Pulse (u/the-id other-alert) :name "Other")
+            (mt/with-temp* [PulseChannel [pulse-channel {:pulse_id (u/the-id recipient-alert)}]
+                            PulseChannelRecipient [_ {:pulse_channel_id (u/the-id pulse-channel), :user_id (mt/user->id :lucky)}]]
+              (is (= #{"LuckyCreator" "LuckyRecipient"}
+                      (set (map :name (mt/user-http-request :rasta :get 200 (str "alert?user_id=" (mt/user->id :lucky)))))))
+              (is (= #{"LuckyRecipient" "Other"}
+                      (set (map :name (mt/user-http-request :rasta :get 200 (str "alert?user_id=" (mt/user->id :rasta)))))))
+              (is (= #{}
+                      (set (map :name (mt/user-http-request :rasta :get 200 (str "alert?user_id=" (mt/user->id :trashbird))))))))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               GET /api/alert/:id                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest get-alert-test
+  (testing "an alert can be fetched by ID"
+    (with-alert-in-collection [_ _ alert]
+      (with-alerts-in-readable-collection [alert]
+        (is (= (u/the-id alert)
+               (:id (mt/user-http-request :rasta :get 200 (str "alert/" (u/the-id alert)))))))))
+
+  (testing "fetching a non-existing alert returns an error"
+    (mt/user-http-request :rasta :get 404 (str "alert/" 123))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                POST /api/alert                                                 |
@@ -567,11 +599,13 @@
                               :aggregation  [["count"]]
                               :breakout     [[:field (mt/id :checkins :date) {:temporal-unit :hour}]]}}})
 
-(defn- alert-question-url [card-or-id]
-  (format "alert/question/%d" (u/the-id card-or-id)))
+(defn- alert-question-url [card-or-id & [archived]]
+  (if archived
+    (format "alert/question/%d?archived=%b" (u/the-id card-or-id) archived)
+    (format "alert/question/%d" (u/the-id card-or-id))))
 
-(defn- api:alert-question-count [user-kw card-or-id]
-  (count ((alert-client user-kw) :get 200 (alert-question-url card-or-id))))
+(defn- api:alert-question-count [user-kw card-or-id & [archived]]
+  (count ((alert-client user-kw) :get 200 (alert-question-url card-or-id archived))))
 
 (deftest get-alert-question-test
   (tt/with-temp* [Card                 [card  (basic-alert-query)]
@@ -590,8 +624,8 @@
            (tu/with-non-admin-groups-no-root-collection-perms
              (with-alert-setup
                (map alert-response
-                (with-alerts-in-readable-collection [alert]
-                  ((alert-client :rasta) :get 200 (alert-question-url card)))))))))
+                    (with-alerts-in-readable-collection [alert]
+                      ((alert-client :rasta) :get 200 (alert-question-url card)))))))))
 
   (testing "Non-admin users shouldn't see alerts they created if they're no longer recipients"
     (is (= {:count-1 1
@@ -631,7 +665,37 @@
                (with-alert-setup
                  (array-map
                   :rasta     (api:alert-question-count :rasta     card)
-                  :crowberto (api:alert-question-count :crowberto card)))))))))
+                  :crowberto (api:alert-question-count :crowberto card))))))))
+
+  (testing "Archived alerts are excluded by default, unless `archived` parameter is sent"
+    (tt/with-temp* [Card                  [card    (basic-alert-query)]
+                    Pulse                 [alert-1 (assoc (basic-alert)
+                                                          :alert_above_goal false
+                                                          :archived         true)]
+                    PulseCard             [_       (pulse-card alert-1 card)]
+                    PulseChannel          [pc-1    (pulse-channel alert-1)]
+                    PulseChannelRecipient [_       (recipient pc-1 :rasta)]
+                    ;; A separate admin created alert
+                    Pulse                 [alert-2 (assoc (basic-alert)
+                                                          :alert_above_goal false
+                                                          :archived         true
+                                                          :creator_id       (user->id :crowberto))]
+                    PulseCard             [_       (pulse-card alert-2 card)]
+                    PulseChannel          [pc-2    (pulse-channel alert-2)]
+                    PulseChannelRecipient [_       (recipient pc-2 :crowberto)]
+                    PulseChannel          [_       (assoc (pulse-channel alert-2) :channel_type "slack")]]
+      (with-alerts-in-readable-collection [alert-1 alert-2]
+        (with-alert-setup
+          (is (= {:rasta     0
+                  :crowberto 0}
+                 (array-map
+                  :rasta     (api:alert-question-count :rasta     card)
+                  :crowberto (api:alert-question-count :crowberto card))))
+          (is (= {:rasta     1
+                  :crowberto 2}
+                 (array-map
+                  :rasta     (api:alert-question-count :rasta     card true)
+                  :crowberto (api:alert-question-count :crowberto card true)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         PUT /api/alert/:id/unsubscribe                                         |

@@ -16,6 +16,7 @@
             [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.test.data.bigquery :as bigquery.tx]
+            [metabase.test.util :as tu]
             [metabase.test.util.timezone :as tu.tz]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
@@ -38,16 +39,19 @@
                :display_name "venue_id"
                :source       :native
                :base_type    :type/Integer
+               :effective_type :type/Integer
                :field_ref    [:field "venue_id" {:base-type :type/Integer}]}
               {:name         "user_id"
                :display_name "user_id"
                :source       :native
                :base_type    :type/Integer
+               :effective_type :type/Integer
                :field_ref    [:field "user_id" {:base-type :type/Integer}]}
               {:name         "checkins_id"
                :display_name "checkins_id"
                :source       :native
                :base_type    :type/Integer
+               :effective_type :type/Integer
                :field_ref    [:field "checkins_id" {:base-type :type/Integer}]}]
              (qp.test/cols
                (qp/process-query
@@ -220,27 +224,27 @@
 (deftest remove-remark-test
   (mt/test-driver :bigquery
     (is (=  (str
-            "SELECT `v3_test_data.venues`.`id` AS `id`,"
-            " `v3_test_data.venues`.`name` AS `name` "
-            "FROM `v3_test_data.venues` "
-            "LIMIT 1")
-    (tt/with-temp* [Database [db {:engine :bigquery
-                                  :details (assoc (:details (mt/db))
-                                                  :include-user-id-and-hash false)}]
-                    Table    [table {:name "venues" :db_id (u/the-id db)}]
-                    Field    [_     {:table_id (u/the-id table)
-                                    :name "id"
-                                    :base_type "type/Integer"}]
-                    Field    [_     {:table_id (u/the-id table)
-                                    :name "name"
-                                    :base_type "type/Text"}]]
-      (query->native
-        {:database (u/the-id db)
-        :type     :query
-        :query    {:source-table (u/the-id table)
-                    :limit        1}
-        :info     {:executed-by 1000
-                    :query-hash  (byte-array [1 2 3 4])}}))))))
+             "SELECT `v3_test_data.venues`.`id` AS `id`,"
+             " `v3_test_data.venues`.`name` AS `name` "
+             "FROM `v3_test_data.venues` "
+             "LIMIT 1")
+            (tt/with-temp* [Database [db {:engine :bigquery
+                                          :details (assoc (:details (mt/db))
+                                                          :include-user-id-and-hash false)}]
+                            Table    [table {:name "venues" :db_id (u/the-id db)}]
+                            Field    [_     {:table_id (u/the-id table)
+                                             :name "id"
+                                             :base_type "type/Integer"}]
+                            Field    [_     {:table_id (u/the-id table)
+                                             :name "name"
+                                             :base_type "type/Text"}]]
+              (query->native
+                {:database (u/the-id db)
+                 :type     :query
+                 :query    {:source-table (u/the-id table)
+                            :limit        1}
+                 :info     {:executed-by 1000
+                            :query-hash  (byte-array [1 2 3 4])}}))))))
 
 (deftest unprepare-params-test
   (mt/test-driver :bigquery
@@ -484,7 +488,7 @@
 
 (defn- do-with-datetime-timestamp-table [f]
   (driver/with-driver :bigquery
-    (let [table-name (name (munge (gensym "table_")))]
+    (let [table-name (format "table_%s" (tu/random-name))]
       (mt/with-temp-copy-of-db
         (try
           (bigquery.tx/execute!

@@ -18,6 +18,9 @@ import {
 import DashboardGrid from "../DashboardGrid";
 import ParametersWidget from "./ParametersWidget/ParametersWidget";
 import DashboardEmptyState from "./DashboardEmptyState/DashboardEmptyState";
+import { updateParametersWidgetStickiness } from "./stickyParameters";
+
+const SCROLL_THROTTLE_INTERVAL = 1000 / 24;
 
 // NOTE: move DashboardControls HoC to container
 @DashboardControls
@@ -25,6 +28,7 @@ export default class Dashboard extends Component {
   state = {
     error: null,
     showAddQuestionSidebar: false,
+    isParametersWidgetSticky: false,
   };
 
   static propTypes = {
@@ -74,9 +78,27 @@ export default class Dashboard extends Component {
     isSharing: false,
   };
 
+  constructor(props) {
+    super(props);
+    this.parametersWidgetRef = React.createRef();
+    this.parametersAndCardsContainerRef = React.createRef();
+  }
+
   // NOTE: all of these lifecycle methods should be replaced with DashboardData HoC in container
   componentDidMount() {
     this.loadDashboard(this.props.dashboardId);
+
+    const throttleParameterWidgetStickiness = _.throttle(
+      () => updateParametersWidgetStickiness(this),
+      SCROLL_THROTTLE_INTERVAL,
+    );
+
+    window.addEventListener("scroll", throttleParameterWidgetStickiness, {
+      passive: true,
+    });
+    window.addEventListener("resize", throttleParameterWidgetStickiness, {
+      passive: true,
+    });
   }
 
   UNSAFE_componentWillReceiveProps(nextProps) {
@@ -92,6 +114,9 @@ export default class Dashboard extends Component {
 
   componentWillUnmount() {
     this.props.cancelFetchDashboardCardData();
+
+    window.removeEventListener("scroll", updateParametersWidgetStickiness);
+    window.removeEventListener("resize", updateParametersWidgetStickiness);
   }
 
   async loadDashboard(dashboardId) {
@@ -169,7 +194,11 @@ export default class Dashboard extends Component {
       isSharing,
     } = this.props;
 
-    const { error, showAddQuestionSidebar } = this.state;
+    const {
+      error,
+      isParametersWidgetSticky,
+      showAddQuestionSidebar,
+    } = this.state;
 
     const shouldRenderAsNightMode = isNightMode && isFullscreen;
     const dashboardHasCards = dashboard => dashboard.ordered_cards.length > 0;
@@ -180,6 +209,9 @@ export default class Dashboard extends Component {
         {...this.props}
       />
     );
+
+    const shouldRenderParametersWidgetInViewMode =
+      !isEditing && !isFullscreen && parametersWidget;
 
     return (
       <DashboardLoadingAndErrorWrapper
@@ -206,12 +238,26 @@ export default class Dashboard extends Component {
                 onToggleAddQuestionSidebar={this.onToggleAddQuestionSidebar}
                 showAddQuestionSidebar={showAddQuestionSidebar}
               />
+
+              {isEditing && (
+                <ParametersWidgetContainer isEditing={isEditing}>
+                  {parametersWidget}
+                </ParametersWidgetContainer>
+              )}
             </HeaderContainer>
 
             <DashboardBody isEditingOrSharing={isEditing || isSharing}>
-              <ParametersAndCardsContainer>
-                {!isFullscreen && parametersWidget && (
-                  <ParametersWidgetContainer>
+              <ParametersAndCardsContainer
+                data-testid="dashboard-parameters-and-cards"
+                innerRef={element =>
+                  (this.parametersAndCardsContainerRef = element)
+                }
+              >
+                {shouldRenderParametersWidgetInViewMode && (
+                  <ParametersWidgetContainer
+                    innerRef={element => (this.parametersWidgetRef = element)}
+                    isSticky={isParametersWidgetSticky}
+                  >
                     {parametersWidget}
                   </ParametersWidgetContainer>
                 )}

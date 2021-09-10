@@ -90,6 +90,11 @@ const STEP_UI = {
   },
 };
 
+function getTestId(step) {
+  const { type, stageIndex, itemIndex } = step;
+  return `step-${type}-${stageIndex || 0}-${itemIndex || 0}`;
+}
+
 const CONTENT_WIDTH = [11 / 12, 8 / 12];
 
 export default class NotebookStep extends React.Component {
@@ -147,7 +152,12 @@ export default class NotebookStep extends React.Component {
 
     return (
       <ExpandingContent isInitiallyOpen={!isLastOpened} isOpen>
-        <Box mb={[1, 2]} pb={[1, 2]} className="hover-parent hover--visibility">
+        <Box
+          mb={[1, 2]}
+          pb={[1, 2]}
+          className="hover-parent hover--visibility"
+          data-testid={getTestId(step)}
+        >
           {(title || onRemove) && (
             <Flex
               mb={1}
@@ -162,6 +172,7 @@ export default class NotebookStep extends React.Component {
                   className="ml-auto cursor-pointer text-light text-medium-hover hover-child"
                   tooltip={t`Remove`}
                   onClick={onRemove}
+                  data-testid="remove-step"
                 />
               )}
             </Flex>

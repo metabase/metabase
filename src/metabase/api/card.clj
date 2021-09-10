@@ -165,7 +165,7 @@
   "Get `Card` with ID."
   [id]
   (u/prog1 (-> (Card id)
-               (hydrate :creator :dashboard_count :can_write :collection :moderation_reviews)
+               (hydrate :creator :dashboard_count :can_write :collection [:moderation_reviews :moderator_details])
                api/read-check
                (last-edit/with-last-edit-info :card))
     (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))
@@ -228,7 +228,7 @@
       ;; include same information returned by GET /api/card/:id since frontend replaces the Card it
       ;; currently has with returned one -- See #4283
       (-> card
-          (hydrate :creator :dashboard_count :can_write :collection :moderation_reviews)
+          (hydrate :creator :dashboard_count :can_write :collection [:moderation_reviews :moderator_details])
           (assoc :last-edit-info (last-edit/edit-information-for-user user))))))
 
 (defn- create-card-async!
@@ -364,7 +364,8 @@
   "If there are multiple breakouts and a goal, we don't know which breakout to compare to the goal, so it invalidates
   the alert"
   [{:keys [display] :as new-card}]
-  (and (or (line-area-bar? display)
+  (and (get-in new-card [:visualization_settings :graph.goal_value])
+       (or (line-area-bar? display)
            (progress? display))
        (< 1 (count (get-in new-card [:dataset_query :query :breakout])))))
 
@@ -387,7 +388,7 @@
 
 (defn- delete-alerts-if-needed! [old-card {card-id :id :as new-card}]
   ;; If there are alerts, we need to check to ensure the card change doesn't invalidate the alert
-  (when-let [alerts (seq (pulse/retrieve-alerts-for-cards card-id))]
+  (when-let [alerts (seq (pulse/retrieve-alerts-for-cards {:card-ids [card-id]}))]
     (cond
 
       (card-archived? old-card new-card)
@@ -426,7 +427,7 @@
       ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently
       ;; has with returned one -- See #4142
       (-> card
-          (hydrate :creator :dashboard_count :can_write :collection :moderation_reviews)
+          (hydrate :creator :dashboard_count :can_write :collection [:moderation_reviews :moderator_details])
           (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))))
 
 (api/defendpoint ^:returns-chan PUT "/:id"

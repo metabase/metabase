@@ -14,7 +14,7 @@ const StoreIconWrapper = ({ children, color }) => (
     p={2}
     bg={color || colors["brand"]}
     color="white"
-    w={WRAPPER_SIZE}
+    width={WRAPPER_SIZE}
     style={{ borderRadius: 99, height: WRAPPER_SIZE }}
   >
     {children}

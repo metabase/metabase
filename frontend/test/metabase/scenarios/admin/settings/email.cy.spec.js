@@ -5,7 +5,8 @@ describe("scenarios > admin > settings > email settings", () => {
     restore();
     cy.signInAsAdmin();
   });
-  it("should be able to save email settings", () => {
+
+  it.skip("should be able to save email settings (metabase#17615)", () => {
     cy.visit("/admin/settings/email");
     cy.findByPlaceholderText("smtp.yourservice.com")
       .type("localhost")
@@ -25,6 +26,12 @@ describe("scenarios > admin > settings > email settings", () => {
     cy.findByText("Save changes").click();
 
     cy.findByText("Changes saved!");
+
+    // This part was added as a repro for metabase#17615
+    cy.findByDisplayValue("localhost");
+    cy.findByDisplayValue("25");
+    cy.findAllByDisplayValue("admin");
+    cy.findByDisplayValue("mailer@metabase.test");
   });
   it("should show an error if test email fails", () => {
     // Reuse Email setup without relying on the previous test
@@ -82,7 +89,9 @@ describe("scenarios > admin > settings > email settings", () => {
     cy.button("Save changes").should("be.disabled");
   });
 
-  it.skip("should not reset previously populated fields when validation fails for just one of them (metabase#16226)", () => {
+  it("should not reset previously populated fields when validation fails for just one of them (metabase#16226)", () => {
+    cy.intercept("PUT", "/api/email").as("updateSettings");
+
     cy.visit("/admin/settings/email");
 
     // First we fill out wrong settings
@@ -104,7 +113,9 @@ describe("scenarios > admin > settings > email settings", () => {
 
     // Trying to save will trigger the error (as it should)
     cy.button("Save changes").click();
-    cy.findByText("Sorry, something went wrong. Please try again.");
+
+    cy.wait("@updateSettings");
+    cy.contains("Wrong host or port");
 
     // But it shouldn't delete field values
     cy.findByDisplayValue("mailer@metabase.test");

@@ -1,2 +1,2 @@
 {:paths                         ["src" "resources"]
- :metabase.build-driver/parents #{:presto-common}}
+ :metabase.driver/parents #{:presto-common}}

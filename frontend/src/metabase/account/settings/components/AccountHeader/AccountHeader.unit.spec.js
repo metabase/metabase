@@ -36,6 +36,7 @@ describe("AccountHeader", () => {
     screen.getByText("Profile");
     screen.getByText("Password");
     screen.getByText("Login History");
+    screen.getByText("Notifications");
   });
 
   it("should show the password tab if it is enabled by a plugin", () => {

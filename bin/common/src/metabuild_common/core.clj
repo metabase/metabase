@@ -35,6 +35,7 @@
   env-or-throw]
 
  [files
+  absolute?
   assert-file-exists
   copy-file!
   create-directory-unless-exists!
@@ -56,6 +57,7 @@
   yes-or-no-prompt]
 
  [misc
+  parse-as-keyword
   varargs]
 
  [output
