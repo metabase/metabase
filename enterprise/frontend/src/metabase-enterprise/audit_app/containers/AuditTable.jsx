@@ -30,6 +30,7 @@ AuditTable.propTypes = {
   metadata: PropTypes.object.isRequired,
   table: PropTypes.object.isRequired,
   pageSize: PropTypes.number.isRequired,
+  reload: PropTypes.bool,
   children: PropTypes.node,
   onChangeLocation: PropTypes.func.isRequired,
 };

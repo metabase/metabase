@@ -22,7 +22,7 @@ const AuditNotificationDeleteModal = ({ item, type, onDelete, onClose }) => {
   const handleDeleteClick = async () => {
     try {
       await onDelete(item, true);
-      onClose();
+      onClose(true);
     } catch (error) {
       setError(error);
     }

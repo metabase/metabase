@@ -36,7 +36,7 @@ const AuditNotificationEditModal = ({
   const handleUpdateClick = async () => {
     try {
       await onUpdate(item, channels);
-      onClose();
+      onClose(true);
     } catch (error) {
       setError(error);
     }

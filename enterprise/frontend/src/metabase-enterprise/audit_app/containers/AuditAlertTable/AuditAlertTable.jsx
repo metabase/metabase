@@ -4,14 +4,13 @@ import { t } from "ttag";
 import * as AlertCards from "../../lib/cards/alerts";
 import AuditTableWithSearch from "../AuditTableWithSearch";
 
-const mapStateToProps = () => ({
+const mapStateToProps = (state, props) => ({
   table: AlertCards.table(),
   placeholder: t`Filter by question name`,
+  reload: props.location.state,
 });
 
 const mapDispatchToProps = {
-  onVisualizationClick: ({ id }) =>
-    push(`/admin/audit/subscriptions/alerts/${id}/edit`),
   onRemoveRow: ({ id }) =>
     push(`/admin/audit/subscriptions/alerts/${id}/delete`),
 };

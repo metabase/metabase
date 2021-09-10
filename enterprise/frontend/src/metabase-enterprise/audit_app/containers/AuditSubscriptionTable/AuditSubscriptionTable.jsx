@@ -4,9 +4,10 @@ import { t } from "ttag";
 import * as SubscriptionCards from "../../lib/cards/subscriptions";
 import AuditTableWithSearch from "../AuditTableWithSearch";
 
-const mapStateToProps = () => ({
+const mapStateToProps = (state, props) => ({
   table: SubscriptionCards.table(),
   placeholder: t`Filter by dashboard name`,
+  reload: props.location.state,
 });
 
 const mapDispatchToProps = {
