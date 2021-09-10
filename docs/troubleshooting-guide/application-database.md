@@ -2,7 +2,7 @@
 redirect_from:
   - ./loading-from-h2.html
 ---
-# The application database isn't working
+# Using or migrating from an H2 application database
 
 You have installed Metabase, but:
 
