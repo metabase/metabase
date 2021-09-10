@@ -46,7 +46,8 @@
     :metadata_sync_schedule      "0 50 * * * ? *"
     :options                     nil
     :refingerprint               nil
-    :auto_run_queries            true}))
+    :auto_run_queries            true
+    :cache_ttl                   nil}))
 
 (defn- table-defaults []
   (merge

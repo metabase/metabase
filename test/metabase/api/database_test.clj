@@ -186,6 +186,7 @@
         (let [updates {:name         "Cam's Awesome Toucan Database"
                        :engine       "h2"
                        :is_full_sync false
+                       :cache_ttl    1337
                        :details      {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}}
               update! (fn [expected-status-code]
                         ((mt/user->client :crowberto) :put expected-status-code (format "database/%d" db-id) updates))]
@@ -197,10 +198,11 @@
             (with-redefs [driver/can-connect? (constantly true)]
               (is (= nil
                      (:valid (update! 200))))
-              (let [curr-db (db/select-one [Database :name :engine :details :is_full_sync], :id db-id)]
+              (let [curr-db (db/select-one [Database :name :engine :cache_ttl :details :is_full_sync], :id db-id)]
                 (is (=
                      {:details      {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}
                       :engine       :h2
+                      :cache_ttl    1337
                       :name         "Cam's Awesome Toucan Database"
                       :is_full_sync false
                       :features     (driver.u/features :h2 curr-db)}
@@ -216,7 +218,19 @@
            (let [updates {:auto_run_queries false}]
              ((mt/user->client :crowberto) :put 200 (format "database/%d" db-id) updates))
            (is (= false
-                  (db/select-one-field :auto_run_queries Database, :id db-id)))))))))
+                  (db/select-one-field :auto_run_queries Database, :id db-id)))))))
+    (testing "should be able to unset cache_ttl"
+      (mt/with-temp Database [{db-id :id}]
+        (let [updates1 {:cache_ttl    1337}
+              updates2 {:cache_ttl    nil}
+              updates1! (fn [] ((mt/user->client :crowberto) :put 200 (format "database/%d" db-id) updates1))
+              updates2! (fn [] ((mt/user->client :crowberto) :put 200 (format "database/%d" db-id) updates2))]
+          (updates1!)
+          (let [curr-db (db/select-one [Database :cache_ttl], :id db-id)]
+            (is (= 1337 (:cache_ttl curr-db))))
+          (updates2!)
+          (let [curr-db (db/select-one [Database :cache_ttl], :id db-id)]
+            (is (= nil (:cache_ttl curr-db)))))))))
 
 (deftest fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
