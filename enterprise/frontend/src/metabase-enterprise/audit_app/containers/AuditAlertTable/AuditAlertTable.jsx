@@ -7,7 +7,6 @@ import AuditTableWithSearch from "../AuditTableWithSearch";
 const mapStateToProps = () => ({
   table: AlertCards.table(),
   placeholder: t`Filter by question name`,
-  visualizationIsClickable: () => true,
 });
 
 const mapDispatchToProps = {
