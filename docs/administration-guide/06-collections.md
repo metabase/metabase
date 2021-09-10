@@ -70,6 +70,10 @@ Here's what you can do with dashboard subscriptions based on Collection permissi
 - **View access**: You can view all subscriptions for that dashboard. You can also create subscriptions and edit ones that you’ve created, but you can’t edit ones that other people created. You can also unsubscribe from a subscription that somebody else created.
 - **No access**: You can’t view any of the dashboard's subscriptions, including, for example, subscriptions you created before an administrator revoked your access to the collection.
 
+### Metabot group
+
+If you’ve set up the [Slack integration][slack-integration] and enabled Metabot, you’ll also see a special Metabot group when assigning permissions to collections, which will allow you to restrict which questions your users will be able to access in Slack via Metabot.
+
 ## A note about Pulses
 
 If you're using [Pulses][pulses], we recommend switching to [dashboard subscriptions][dashboard-subscriptions].
