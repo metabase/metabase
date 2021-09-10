@@ -57,7 +57,7 @@ export function PermissionsEditor({
 
   return (
     <PermissionsEditorRoot>
-      <Box px="3rem" pt={2}>
+      <Box px="3rem">
         <Subhead>
           {title}{" "}
           {breadcrumbs && (

@@ -65,9 +65,10 @@
 (defn- pre-update [notification]
   (let [{:keys [collection_id dashboard_id]} (db/select-one [Pulse :collection_id :dashboard_id] :id (u/the-id notification))]
     (when (and dashboard_id
+               (contains? notification :collection_id)
                (not= (:collection_id notification) collection_id)
                (not *allow-moving-dashboard-subscriptions*))
-      (throw (ex-info (tru "collection ID of dashboard subscription cannot be directly modified") notification)))
+      (throw (ex-info (tru "collection ID of a dashboard subscription cannot be directly modified") notification)))
     (when (and dashboard_id
                (contains? notification :dashboard_id)
                (not= (:dashboard_id notification) dashboard_id))
@@ -249,6 +250,7 @@
 
   ([{:keys [archived? user-id]
      :or   {archived? false}}]
+   (assert boolean? archived?)
    (let [query {:select    [:p.* [:%lower.p.name :lower-name]]
                 :modifiers [:distinct]
                 :from      [[Pulse :p]]
@@ -287,9 +289,11 @@
                            (when dashboard-id
                              [:= :p.dashboard_id dashboard-id])
                            (when user-id
-                             [:or
-                              [:= :p.creator_id user-id]
-                              [:= :pcr.user_id user-id]])]
+                             [:and
+                              [:not= :p.dashboard_id nil]
+                              [:or
+                               [:= :p.creator_id user-id]
+                               [:= :pcr.user_id user-id]]])]
                :order-by  [[:lower-name :asc]]}]
     (for [pulse (query-as Pulse query)]
       (-> pulse
@@ -299,7 +303,9 @@
 
 (defn retrieve-user-alerts-for-card
   "Find all alerts for `card-id` that `user-id` is set to receive"
-  [card-id user-id]
+  [{:keys [archived? card-id user-id]
+    :or   {archived? false}}]
+  (assert boolean? archived?)
   (map (comp notification->alert hydrate-notification)
        (query-as Pulse
                  {:select [:p.*]
@@ -310,11 +316,13 @@
                   :where  [:and
                            [:not= :p.alert_condition nil]
                            [:= :pc.card_id card-id]
-                           [:= :pcr.user_id user-id]]})))
+                           [:= :pcr.user_id user-id]
+                           [:= :p.archived archived?]]})))
 
 (defn retrieve-alerts-for-cards
   "Find all alerts for `card-ids`, used for admin users"
-  [& card-ids]
+  [{:keys [archived? card-ids]
+    :or   {archived? false}}]
   (when (seq card-ids)
     (map (comp notification->alert hydrate-notification)
          (query-as Pulse
@@ -323,7 +331,8 @@
                     :join   [[PulseCard :pc] [:= :p.id :pc.pulse_id]]
                     :where  [:and
                              [:not= :p.alert_condition nil]
-                             [:in :pc.card_id card-ids]]}))))
+                             [:in :pc.card_id card-ids]
+                             [:= :p.archived archived?]]}))))
 
 (s/defn card->ref :- CardRef
   "Create a card reference from a card or id"

@@ -184,7 +184,7 @@ describe("scenarios > admin > databases > add", () => {
     );
   });
 
-  it.skip("should respect users' decision to manually sync large database (metabase#17450)", () => {
+  it("should respect users' decision to manually sync large database (metabase#17450)", () => {
     const H2_CONNECTION_STRING =
       "zip:./target/uberjar/metabase.jar!/sample-dataset.db;USER=GUEST;PASSWORD=guest";
 

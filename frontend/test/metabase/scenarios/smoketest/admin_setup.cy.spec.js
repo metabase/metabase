@@ -630,15 +630,14 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Sample Dataset").click();
 
       cy.findByText("Products");
-      cy.findByText("Native query editing").should("not.exist");
 
       // Turn on data access for all users to Test Table
-      cy.icon("close")
+      cy.icon("eye")
         .eq(2)
         .click();
 
       cy.findAllByRole("option")
-        .contains("Allowed")
+        .contains("Unrestricted")
         .click();
 
       cy.findByText("Change access to this database to limited?");
@@ -650,11 +649,11 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Sample Dataset").click();
 
       // Turn on data access for Marketing users to Products
-      cy.icon("close")
+      cy.icon("eye")
         .eq(1)
         .click();
       cy.findAllByRole("option")
-        .contains("Allowed")
+        .contains("Unrestricted")
         .click();
 
       cy.findByText("Are you sure you want to do this?");
@@ -680,7 +679,7 @@ describe("smoketest > admin_setup", () => {
       cy.icon("check")
         .eq(1)
         .click();
-      cy.findByText("No access").click();
+      cy.findByText("No").click();
 
       cy.findByText("Save changes").click();
 
@@ -801,7 +800,6 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Ask a question").click();
 
       cy.findByText("Simple question");
-      cy.findByText("Native query").should("not.exist");
 
       cy.signOut();
       cy.signIn("nocollection");
