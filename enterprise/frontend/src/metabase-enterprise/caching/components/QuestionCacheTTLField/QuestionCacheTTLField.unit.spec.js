@@ -5,11 +5,10 @@ import MetabaseSettings from "metabase/lib/settings";
 import { QuestionCacheTTLField } from "./QuestionCacheTTLField";
 
 const TEN_MINUTES = 10 * 60 * 1000;
-const CACHE_MULTIPLIER = 10;
 
 function setup({
   value = null,
-  avgQueryDuration = TEN_MINUTES,
+  avgQueryDuration,
   databaseCacheTTL = null,
   cacheTTLMultiplier,
   minCacheThreshold,
@@ -68,16 +67,14 @@ function fillValue(input, value) {
   input.blur();
 }
 
-function msToHours(ms) {
+function msToMinutes(ms) {
   const seconds = ms / 1000;
-  const minutes = seconds / 60;
-  const hours = minutes / 60;
-  return Math.round(hours);
+  return seconds / 60;
 }
 
-function getExpectedMagicCacheTTL(avgQueryDurationMs, multiplier) {
-  const hours = msToHours(avgQueryDurationMs * multiplier);
-  return hours >= 1 ? hours : (hours / 60).toFixed(2);
+function msToHours(ms) {
+  const hours = msToMinutes(ms) / 60;
+  return hours;
 }
 
 const DEFAULT_MODE_TEXT_TEST_ID = /radio-[0-9]+-default-name/;
@@ -101,17 +98,26 @@ describe("QuestionCacheTTLField", () => {
   });
 
   it("displays default caching value if question is cached on an instance level", () => {
-    const { avgQueryDuration } = setup({
+    setup({
+      avgQueryDuration: TEN_MINUTES,
       minCacheThreshold: 0,
-      cacheTTLMultiplier: CACHE_MULTIPLIER,
+      cacheTTLMultiplier: 100,
     });
-    const expectedTTL = getExpectedMagicCacheTTL(
-      avgQueryDuration,
-      CACHE_MULTIPLIER,
-    );
-    console.log("### EXPECTED", expectedTTL);
+    const expectedTTL = Math.round(msToHours(TEN_MINUTES * 100));
     expect(screen.queryByTestId(DEFAULT_MODE_TEXT_TEST_ID)).toHaveTextContent(
       `Use default (${expectedTTL} hours)`,
+    );
+  });
+
+  it("handles if cache duration is in minutes", () => {
+    setup({
+      avgQueryDuration: 14400,
+      minCacheThreshold: 0,
+      cacheTTLMultiplier: 100,
+    });
+    const expectedTTL = Math.round(msToMinutes(14400 * 100));
+    expect(screen.queryByTestId(DEFAULT_MODE_TEXT_TEST_ID)).toHaveTextContent(
+      `Use default (${expectedTTL} minutes)`,
     );
   });
 

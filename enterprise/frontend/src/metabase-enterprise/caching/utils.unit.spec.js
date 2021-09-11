@@ -22,11 +22,12 @@ describe("getQuestionsImplicitCacheTTL", () => {
   const TEN_MINUTES = 10 * 60 * 1000;
   const DEFAULT_CACHE_TTL_MULTIPLIER = 10;
 
-  function msToHours(ms) {
-    const seconds = ms / 1000;
-    const minutes = seconds / 60;
-    const hours = minutes / 60;
-    return Math.round(hours);
+  function hoursToSeconds(hours) {
+    return hours * 60 * 60;
+  }
+
+  function msToSeconds(ms) {
+    return ms / 1000;
   }
 
   function setup({
@@ -61,14 +62,14 @@ describe("getQuestionsImplicitCacheTTL", () => {
 
   it("returns database's cache TTL if set", () => {
     const question = setup({ databaseCacheTTL: 10 });
-    expect(getQuestionsImplicitCacheTTL(question)).toBe(10);
+    expect(getQuestionsImplicitCacheTTL(question)).toBe(hoursToSeconds(10));
   });
 
   it("returns 'magic TTL' if there is no prior caching strategy", () => {
     const question = setup({ avgQueryTime: TEN_MINUTES });
 
     expect(getQuestionsImplicitCacheTTL(question)).toBe(
-      msToHours(TEN_MINUTES * DEFAULT_CACHE_TTL_MULTIPLIER),
+      msToSeconds(TEN_MINUTES * DEFAULT_CACHE_TTL_MULTIPLIER),
     );
   });
 
@@ -82,7 +83,7 @@ describe("getQuestionsImplicitCacheTTL", () => {
 
   it("prefers database cache TTL over instance-level one", () => {
     const question = setup({ databaseCacheTTL: 10, avgQueryTime: TEN_MINUTES });
-    expect(getQuestionsImplicitCacheTTL(question)).toBe(10);
+    expect(getQuestionsImplicitCacheTTL(question)).toBe(hoursToSeconds(10));
   });
 
   it("returns null if caching disabled, but instance level caching parameters are present", () => {

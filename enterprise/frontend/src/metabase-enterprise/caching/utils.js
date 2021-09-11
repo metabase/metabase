@@ -5,12 +5,6 @@ function msToSeconds(ms) {
   return ms / 1000;
 }
 
-function secondsToHours(seconds) {
-  const minutes = seconds / 60;
-  const hours = minutes / 60;
-  return Math.round(hours);
-}
-
 /**
  * If a question doesn't have an explicitly set cache TTL,
  * its results can still be cached with a db-level cache TTL
@@ -20,14 +14,15 @@ function secondsToHours(seconds) {
  * https://www.metabase.com/docs/latest/administration-guide/14-caching.html
  *
  * @param {Question} metabase-lib Question instance
- * @returns {number} — cache TTL value (from db or instance default) that will be used
+ * @returns {number} — cache TTL value in seconds (from db or instance default) that will be used
  */
 export function getQuestionsImplicitCacheTTL(question) {
   if (!MetabaseSettings.get("enable-query-caching")) {
     return null;
   }
   if (question.database().cache_ttl) {
-    return question.database().cache_ttl;
+    // Database's cache TTL is in hours, need to convert that to seconds
+    return question.database().cache_ttl * 60 * 60;
   }
   const avgQueryDuration = msToSeconds(question.card().average_query_time);
   const minQueryDurationThreshold = MetabaseSettings.get(
@@ -36,7 +31,7 @@ export function getQuestionsImplicitCacheTTL(question) {
   const canBeCached = avgQueryDuration > minQueryDurationThreshold;
   if (canBeCached) {
     const cacheTTLMultiplier = MetabaseSettings.get("query-caching-ttl-ratio");
-    return secondsToHours(avgQueryDuration * cacheTTLMultiplier);
+    return avgQueryDuration * cacheTTLMultiplier;
   }
   return null;
 }

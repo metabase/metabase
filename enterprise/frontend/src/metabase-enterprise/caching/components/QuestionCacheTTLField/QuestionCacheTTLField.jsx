@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { t, ngettext, msgid } from "ttag";
+import { t } from "ttag";
 import PropTypes from "prop-types";
+import { duration } from "metabase/lib/formatting";
 import { getQuestionsImplicitCacheTTL } from "../../utils";
 import {
   CacheTTLInput,
@@ -48,6 +49,9 @@ export function QuestionCacheTTLField({ field, question, ...props }) {
     return <CacheTTLInput field={field} />;
   }
 
+  // implicitCacheTTL is in seconds and duration works with milliseconds
+  const defaultCachingLabel = duration(implicitCacheTTL * 1000);
+
   return (
     <div {...props}>
       <StyledRadio
@@ -55,11 +59,7 @@ export function QuestionCacheTTLField({ field, question, ...props }) {
         onChange={val => setMode(val)}
         options={[
           {
-            name: ngettext(
-              msgid`Use default (${implicitCacheTTL} hour)`,
-              `Use default (${implicitCacheTTL} hours)`,
-              implicitCacheTTL,
-            ),
+            name: t`Use default` + ` (${defaultCachingLabel})`,
             value: MODE.DEFAULT,
           },
           { name: t`Custom`, value: MODE.CUSTOM },
