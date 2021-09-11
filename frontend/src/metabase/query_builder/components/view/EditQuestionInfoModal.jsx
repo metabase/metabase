@@ -43,15 +43,13 @@ function EditQuestionInfoModal({ question, onClose, onSave }) {
                   iconVariant="up-down"
                   iconPosition="right"
                   headerClass="text-bold text-medium"
-                  bodyClass="pt1"
+                  bodyClass="pt2"
                 >
-                  {collapsedFields.map(field => (
-                    <FormField
-                      key={field.name}
-                      name={field.name}
-                      question={question}
-                    />
-                  ))}
+                  <FormField
+                    name="cache_ttl"
+                    question={question}
+                    className="mt1"
+                  />
                 </CollapseSection>
               )}
               <FormFooter submitTitle={t`Save`} onCancel={onClose} />

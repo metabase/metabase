@@ -1,9 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { t } from "ttag";
+import { t, ngettext, msgid } from "ttag";
 import PropTypes from "prop-types";
-import Radio from "metabase/components/Radio";
-import { CacheTTLField } from "../CacheTTLField";
 import { getQuestionsImplicitCacheTTL } from "../../utils";
+import {
+  CacheTTLInput,
+  CacheTTLExpandedField,
+  StyledRadio,
+} from "./QuestionCacheTTLField.styled";
 
 const propTypes = {
   field: PropTypes.shape({
@@ -20,10 +23,6 @@ const MODE = {
   CUSTOM: "custom",
 };
 
-function CacheTTLInput(props) {
-  return <CacheTTLField {...props} message={t`Cache results for`} />;
-}
-
 function getInitialMode(question, implicitCacheTTL) {
   if (question.card().cache_ttl > 0 || !implicitCacheTTL) {
     return MODE.CUSTOM;
@@ -31,7 +30,7 @@ function getInitialMode(question, implicitCacheTTL) {
   return MODE.DEFAULT;
 }
 
-export function QuestionCacheTTLField({ field, question }) {
+export function QuestionCacheTTLField({ field, question, ...props }) {
   const implicitCacheTTL = useMemo(
     () => getQuestionsImplicitCacheTTL(question),
     [question],
@@ -50,13 +49,17 @@ export function QuestionCacheTTLField({ field, question }) {
   }
 
   return (
-    <div>
-      <Radio
+    <div {...props}>
+      <StyledRadio
         value={mode}
         onChange={val => setMode(val)}
         options={[
           {
-            name: `Use default (${implicitCacheTTL} hours)`,
+            name: ngettext(
+              msgid`Use default (${implicitCacheTTL} hour)`,
+              `Use default (${implicitCacheTTL} hours)`,
+              implicitCacheTTL,
+            ),
             value: MODE.DEFAULT,
           },
           { name: t`Custom`, value: MODE.CUSTOM },
@@ -64,7 +67,7 @@ export function QuestionCacheTTLField({ field, question }) {
         vertical
         showButtons
       />
-      {mode === MODE.CUSTOM && <CacheTTLInput field={field} />}
+      {mode === MODE.CUSTOM && <CacheTTLExpandedField field={field} />}
     </div>
   );
 }

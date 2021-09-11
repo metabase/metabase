@@ -17,10 +17,10 @@ const propTypes = {
   message: PropTypes.string,
 };
 
-export function CacheTTLField({ field, message }) {
+export function CacheTTLField({ field, message, ...props }) {
   const hasError = !!field.error;
   return (
-    <CacheTTLFieldContainer>
+    <CacheTTLFieldContainer {...props}>
       {message && (
         <FieldText margin="right" hasError={hasError}>
           {message}
