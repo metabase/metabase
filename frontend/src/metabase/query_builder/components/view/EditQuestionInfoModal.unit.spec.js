@@ -5,7 +5,8 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import xhrMock from "xhr-mock";
 import { getStore } from "__support__/entities-store";
-import { PLUGIN_CACHING } from "metabase/plugins";
+import { PLUGIN_CACHING, PLUGIN_FORM_WIDGETS } from "metabase/plugins";
+import NumericFormField from "metabase/components/form/widgets/FormNumericInputWidget";
 import MetabaseSettings from "metabase/lib/settings";
 import EditQuestionInfoModal from "./EditQuestionInfoModal";
 
@@ -67,7 +68,7 @@ function fillForm({ name, description, cache_ttl } = {}) {
     userEvent.type(input, description);
   }
   if (cache_ttl) {
-    const input = screen.getByLabelText("Cache TTL");
+    const input = screen.getByLabelText("Caching");
     userEvent.clear(input);
     userEvent.type(input, String(cache_ttl));
     input.blur();
@@ -156,46 +157,20 @@ describe("EditQuestionInfoModal", () => {
       beforeEach(() => {
         PLUGIN_CACHING.cacheTTLFormField = {
           name: "cache_ttl",
-          title: "Cache TTL",
-          type: "integer",
         };
-        PLUGIN_CACHING.getQuestionsImplicitCacheTTL = () => 0;
+        PLUGIN_FORM_WIDGETS.questionCacheTTL = NumericFormField;
       });
 
       afterEach(() => {
         PLUGIN_CACHING.cacheTTLFormField = null;
-        PLUGIN_CACHING.getQuestionsImplicitCacheTTL = () => null;
+        PLUGIN_FORM_WIDGETS.questionCacheTTL = null;
       });
 
       describe("caching enabled", () => {
         it("is shown", () => {
           setup();
           fireEvent.click(screen.queryByText("More options"));
-          expect(screen.queryByLabelText("Cache TTL")).toHaveValue("0");
-        });
-
-        it("shows implicit cache ttl as a default value if question's cache ttl is not set", () => {
-          PLUGIN_CACHING.getQuestionsImplicitCacheTTL = () => 48;
-          setup();
-
-          fireEvent.click(screen.queryByText("More options"));
-
-          expect(screen.queryByLabelText("Cache TTL")).toHaveValue("48");
-        });
-
-        it("doesn't submit an implicit cache_ttl value if not changed", () => {
-          PLUGIN_CACHING.getQuestionsImplicitCacheTTL = () => 48;
-          const { onSave } = setup();
-
-          fireEvent.click(screen.queryByText("More options"));
-          fillForm({ name: "New name" });
-          fireEvent.click(screen.queryByRole("button", { name: "Save" }));
-
-          expect(onSave).toHaveBeenCalledWith({
-            ...QUESTION,
-            name: "New name",
-            cache_ttl: QUESTION.cache_ttl,
-          });
+          expect(screen.queryByLabelText("Caching")).toHaveValue("0");
         });
 
         it("can be changed", () => {

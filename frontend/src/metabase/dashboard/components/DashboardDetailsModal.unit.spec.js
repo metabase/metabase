@@ -7,7 +7,8 @@ import userEvent from "@testing-library/user-event";
 import xhrMock from "xhr-mock";
 import { getStore } from "__support__/entities-store";
 import MetabaseSettings from "metabase/lib/settings";
-import { PLUGIN_CACHING } from "metabase/plugins";
+import { PLUGIN_CACHING, PLUGIN_FORM_WIDGETS } from "metabase/plugins";
+import NumericFormField from "metabase/components/form/widgets/FormNumericInputWidget";
 import DashboardDetailsModal from "./DashboardDetailsModal";
 
 const DASHBOARD = {
@@ -187,12 +188,13 @@ describe("DashboardDetailsModal", () => {
         PLUGIN_CACHING.cacheTTLFormField = {
           name: "cache_ttl",
           title: "Cache TTL",
-          type: "integer",
         };
+        PLUGIN_FORM_WIDGETS.dashboardCacheTTL = NumericFormField;
       });
 
       afterEach(() => {
         PLUGIN_CACHING.cacheTTLFormField = null;
+        PLUGIN_FORM_WIDGETS.dashboardCacheTTL = null;
       });
 
       describe("caching enabled", () => {
