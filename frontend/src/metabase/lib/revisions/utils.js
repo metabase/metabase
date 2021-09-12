@@ -1,4 +1,5 @@
 import { t, ngettext, msgid } from "ttag";
+import _ from "underscore";
 
 const CHANGE_TYPE = {
   ADD: "new",
@@ -43,10 +44,6 @@ function getChangeType(field, before, after) {
     return CHANGE_TYPE.REMOVE;
   }
   return CHANGE_TYPE.UPDATE;
-}
-
-function getFieldValue(obj) {
-  return Object.entries(obj)[0];
 }
 
 function getSeriesChangeMessage(prevCards, cards) {
@@ -110,6 +107,15 @@ const MESSAGES = {
   },
 };
 
+function formatChangeMessages(messages) {
+  if (messages.length === 1) {
+    return messages[0];
+  }
+  const lastMessage = _.last(messages);
+  const messagesExceptLast = messages.slice(0, messages.length - 1);
+  return messagesExceptLast.join(", ") + " " + t`and` + " " + lastMessage;
+}
+
 export function getRevisionMessage(revision) {
   const { diff, is_creation, is_reversion } = revision;
   if (is_creation) {
@@ -118,16 +124,20 @@ export function getRevisionMessage(revision) {
   if (is_reversion) {
     return t`reverted to an earlier revision`;
   }
-  const { before, after } = diff;
-  const [fieldName, valueBefore] = getFieldValue(before);
-  const [, valueAfter] = getFieldValue(after);
-  const changeType = getChangeType(fieldName, valueBefore, valueAfter);
 
-  const messageGetter = MESSAGES[fieldName][changeType];
-  const message =
-    typeof messageGetter === "function"
+  const { before, after } = diff;
+  const changedFields = Object.keys(before);
+
+  const changes = changedFields.map(fieldName => {
+    const valueBefore = before[fieldName];
+    const valueAfter = after[fieldName];
+    const changeType = getChangeType(fieldName, valueBefore, valueAfter);
+
+    const messageGetter = MESSAGES[fieldName][changeType];
+    return typeof messageGetter === "function"
       ? messageGetter(valueBefore, valueAfter)
       : messageGetter;
+  });
 
-  return message;
+  return formatChangeMessages(changes);
 }

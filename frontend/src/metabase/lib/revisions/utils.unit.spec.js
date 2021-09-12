@@ -88,6 +88,40 @@ describe("getRevisionMessage | common", () => {
     expect(getRevisionMessage(revision)).toBe("unarchived this");
   });
 
+  it("batches two changes in a single message", () => {
+    const revision = getRevision({
+      before: {
+        name: "Orders",
+        archived: true,
+      },
+      after: {
+        name: "Orders by Month",
+        archived: false,
+      },
+    });
+    expect(getRevisionMessage(revision)).toBe(
+      "renamed this to Orders by Month and unarchived this",
+    );
+  });
+
+  it("batches many changes in a single message", () => {
+    const revision = getRevision({
+      before: {
+        name: "Orders",
+        description: null,
+        archived: true,
+      },
+      after: {
+        name: "Orders by Month",
+        description: "Test",
+        archived: false,
+      },
+    });
+    expect(getRevisionMessage(revision)).toBe(
+      "renamed this to Orders by Month, added a description and unarchived this",
+    );
+  });
+
   it.todo("handles item move revision (between collections)");
 });
 
