@@ -114,3 +114,68 @@ describe("getRevisionMessage | questions", () => {
     );
   });
 });
+
+describe("getRevisionMessage | dashboards", () => {
+  it("handles added card revision", () => {
+    const revision = getSimpleRevision({
+      field: "cards",
+      before: [1, 2],
+      after: [1, 2, 3],
+    });
+    expect(getRevisionMessage(revision)).toBe("added a card");
+  });
+
+  it("handles added multiple cards revision", () => {
+    const revision = getSimpleRevision({
+      field: "cards",
+      before: [1, 2],
+      after: [1, 2, 3, 4, 5],
+    });
+    expect(getRevisionMessage(revision)).toBe("added 3 cards");
+  });
+
+  it("handles first card added revision", () => {
+    const revision = getSimpleRevision({
+      field: "cards",
+      before: null,
+      after: [1],
+    });
+    expect(getRevisionMessage(revision)).toBe("added a card");
+  });
+
+  it("handles removed cards revision", () => {
+    const revision = getSimpleRevision({
+      field: "cards",
+      before: [1, 2],
+      after: [1],
+    });
+    expect(getRevisionMessage(revision)).toBe("removed a card");
+  });
+
+  it("handles removed cards revision", () => {
+    const revision = getSimpleRevision({
+      field: "cards",
+      before: [1, 2, 3],
+      after: [1],
+    });
+    expect(getRevisionMessage(revision)).toBe("removed 2 cards");
+  });
+
+  it("handles all cards removed revision", () => {
+    const revision = getSimpleRevision({
+      field: "cards",
+      before: [1, 2, 3],
+      after: null,
+    });
+    expect(getRevisionMessage(revision)).toBe("removed 3 cards");
+  });
+
+  it("handles rearranged cards revision", () => {
+    const revision = getSimpleRevision({
+      field: "cards",
+      before: [1, 2, 3],
+      after: [2, 1, 3],
+    });
+    expect(getRevisionMessage(revision)).toBe("moved cards around");
+  });
+});
