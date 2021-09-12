@@ -1,10 +1,10 @@
-import { getRevisionMessage } from "./utils";
+import { getRevisionMessage, isValidRevision } from "./utils";
 
 function getRevision({
   isCreation = false,
   isReversion = false,
-  before = {},
-  after = {},
+  before,
+  after,
 } = {}) {
   return {
     diff: {
@@ -256,5 +256,46 @@ describe("getRevisionMessage | dashboards", () => {
       after: [{ series: [5, 4] }],
     });
     expect(getRevisionMessage(revision)).toBe("modified question's series");
+  });
+});
+
+describe("isValidRevision", () => {
+  it("returns false if there is no diff and it's not creation or reversion action", () => {
+    const revision = getRevision({
+      isCreation: false,
+      isReversion: false,
+      before: null,
+      after: null,
+    });
+    expect(isValidRevision(revision)).toBe(false);
+  });
+
+  it("returns true for creation revision", () => {
+    const revision = getRevision({
+      isCreation: true,
+      isReversion: false,
+      before: null,
+      after: null,
+    });
+    expect(isValidRevision(revision)).toBe(true);
+  });
+
+  it("returns true for reversion revision", () => {
+    const revision = getRevision({
+      isCreation: false,
+      isReversion: true,
+      before: null,
+      after: null,
+    });
+    expect(isValidRevision(revision)).toBe(true);
+  });
+
+  it("returns true for change revision", () => {
+    const revision = getSimpleRevision({
+      field: "name",
+      before: "orders",
+      after: "Orders",
+    });
+    expect(isValidRevision(revision)).toBe(true);
   });
 });

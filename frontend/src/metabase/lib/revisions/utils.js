@@ -141,3 +141,10 @@ export function getRevisionMessage(revision) {
 
   return formatChangeMessages(changes);
 }
+
+export function isValidRevision(revision) {
+  if (revision.is_creation || revision.is_reversion) {
+    return true;
+  }
+  return !!(revision.diff && revision.diff.before && revision.diff.after);
+}
