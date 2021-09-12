@@ -14,6 +14,15 @@ function getCardsArraySafe(cards) {
   return Array.isArray(cards) ? cards.filter(Boolean) : [];
 }
 
+function hasSeries(card) {
+  // card can be null or an object
+  return typeof card.series !== "undefined";
+}
+
+function hasSeriesChange(cards) {
+  return cards.some(hasSeries);
+}
+
 function getDashboardCardsChangeType(_prevCards, _cards) {
   const prevCards = getCardsArraySafe(_prevCards);
   const cards = getCardsArraySafe(_cards);
@@ -38,6 +47,18 @@ function getChangeType(field, before, after) {
 
 function getFieldValue(obj) {
   return Object.entries(obj)[0];
+}
+
+function getSeriesChangeMessage(prevCards, cards) {
+  const changedCardIndex = prevCards.findIndex(hasSeries);
+  const seriesBefore = prevCards[changedCardIndex].series || [];
+  const seriesAfter = cards[changedCardIndex].series || [];
+  if (seriesBefore.length === seriesAfter.length) {
+    return t`modified question's series`;
+  }
+  return seriesAfter.length > seriesBefore.length
+    ? t`added series to a question`
+    : t`removed series from a question`;
 }
 
 const MESSAGES = {
@@ -72,7 +93,14 @@ const MESSAGES = {
       const count = cards.length - prevCards.length;
       return ngettext(msgid`added a card`, `added ${count} cards`, count);
     },
-    [CHANGE_TYPE.UPDATE]: t`moved cards around`,
+    [CHANGE_TYPE.UPDATE]: (_prevCards, _cards) => {
+      const prevCards = getCardsArraySafe(_prevCards);
+      const cards = getCardsArraySafe(_cards);
+      if (hasSeriesChange(prevCards) || hasSeriesChange(cards)) {
+        return getSeriesChangeMessage(prevCards, cards);
+      }
+      return t`moved cards around`;
+    },
     [CHANGE_TYPE.REMOVE]: (_prevCards, _cards) => {
       const prevCards = getCardsArraySafe(_prevCards);
       const cards = getCardsArraySafe(_cards);

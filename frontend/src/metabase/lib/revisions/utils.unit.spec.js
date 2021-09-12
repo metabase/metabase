@@ -196,4 +196,31 @@ describe("getRevisionMessage | dashboards", () => {
     });
     expect(getRevisionMessage(revision)).toBe("moved cards around");
   });
+
+  it("handles added series revision", () => {
+    const revision = getSimpleRevision({
+      field: "cards",
+      before: [{ series: null }],
+      after: [{ series: [4] }],
+    });
+    expect(getRevisionMessage(revision)).toBe("added series to a question");
+  });
+
+  it("handles removed series revision", () => {
+    const revision = getSimpleRevision({
+      field: "cards",
+      before: [{ series: [4] }],
+      after: [{ series: null }],
+    });
+    expect(getRevisionMessage(revision)).toBe("removed series from a question");
+  });
+
+  it("handles modified series revision", () => {
+    const revision = getSimpleRevision({
+      field: "cards",
+      before: [{ series: [4, 5] }],
+      after: [{ series: [5, 4] }],
+    });
+    expect(getRevisionMessage(revision)).toBe("modified question's series");
+  });
 });
