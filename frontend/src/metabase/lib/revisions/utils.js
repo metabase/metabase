@@ -109,20 +109,31 @@ const MESSAGES = {
 
 function formatChangeMessages(messages) {
   if (messages.length === 1) {
-    return messages[0];
+    return {
+      title: messages[0],
+    };
   }
   const lastMessage = _.last(messages);
   const messagesExceptLast = messages.slice(0, messages.length - 1);
-  return messagesExceptLast.join(", ") + " " + t`and` + " " + lastMessage;
+  const combinedMessage =
+    messagesExceptLast.join(", ") + " " + t`and` + " " + lastMessage;
+  return {
+    title: t`edited this`,
+    description: combinedMessage,
+  };
 }
 
 export function getRevisionMessage(revision) {
   const { diff, is_creation, is_reversion } = revision;
   if (is_creation) {
-    return t`created this`;
+    return {
+      title: t`created this`,
+    };
   }
   if (is_reversion) {
-    return t`reverted to an earlier revision`;
+    return {
+      title: t`reverted to an earlier revision`,
+    };
   }
 
   const { before, after } = diff;

@@ -31,14 +31,14 @@ function getSimpleRevision({ field, before, after, ...rest }) {
 describe("getRevisionMessage | common", () => {
   it("handles initial revision (entity created)", () => {
     const revision = getRevision({ isCreation: true });
-    expect(getRevisionMessage(revision)).toBe("created this");
+    expect(getRevisionMessage(revision)).toEqual({ title: "created this" });
   });
 
   it("handles reversions", () => {
     const revision = getRevision({ isReversion: true });
-    expect(getRevisionMessage(revision)).toBe(
-      "reverted to an earlier revision",
-    );
+    expect(getRevisionMessage(revision)).toEqual({
+      title: "reverted to an earlier revision",
+    });
   });
 
   it("handles renames", () => {
@@ -47,9 +47,9 @@ describe("getRevisionMessage | common", () => {
       before: "Orders",
       after: "Orders by Month",
     });
-    expect(getRevisionMessage(revision)).toBe(
-      "renamed this to Orders by Month",
-    );
+    expect(getRevisionMessage(revision)).toEqual({
+      title: "renamed this to Orders by Month",
+    });
   });
 
   it("handles description added", () => {
@@ -58,7 +58,9 @@ describe("getRevisionMessage | common", () => {
       before: null,
       after: "Hello there",
     });
-    expect(getRevisionMessage(revision)).toBe("added a description");
+    expect(getRevisionMessage(revision)).toEqual({
+      title: "added a description",
+    });
   });
 
   it("handles description change", () => {
@@ -67,7 +69,9 @@ describe("getRevisionMessage | common", () => {
       before: "Hello",
       after: "Hello there",
     });
-    expect(getRevisionMessage(revision)).toBe("changed the description");
+    expect(getRevisionMessage(revision)).toEqual({
+      title: "changed the description",
+    });
   });
 
   it("handles archive revision", () => {
@@ -76,7 +80,7 @@ describe("getRevisionMessage | common", () => {
       before: false,
       after: true,
     });
-    expect(getRevisionMessage(revision)).toBe("archived this");
+    expect(getRevisionMessage(revision)).toEqual({ title: "archived this" });
   });
 
   it("handles unarchive revision", () => {
@@ -85,7 +89,7 @@ describe("getRevisionMessage | common", () => {
       before: true,
       after: false,
     });
-    expect(getRevisionMessage(revision)).toBe("unarchived this");
+    expect(getRevisionMessage(revision)).toEqual({ title: "unarchived this" });
   });
 
   it("batches two changes in a single message", () => {
@@ -99,9 +103,10 @@ describe("getRevisionMessage | common", () => {
         archived: false,
       },
     });
-    expect(getRevisionMessage(revision)).toBe(
-      "renamed this to Orders by Month and unarchived this",
-    );
+    expect(getRevisionMessage(revision)).toEqual({
+      title: "edited this",
+      description: "renamed this to Orders by Month and unarchived this",
+    });
   });
 
   it("batches many changes in a single message", () => {
@@ -117,9 +122,12 @@ describe("getRevisionMessage | common", () => {
         archived: false,
       },
     });
-    expect(getRevisionMessage(revision)).toBe(
-      "renamed this to Orders by Month, added a description and unarchived this",
-    );
+    expect(getRevisionMessage(revision)).toEqual({
+      title: "edited this",
+      description:
+        "renamed this to Orders by Month, added a description and unarchived this",
+    });
+  });
   });
 
   it.todo("handles item move revision (between collections)");
@@ -133,7 +141,9 @@ describe("getRevisionMessage | questions", () => {
       after: { "source-table": 2 },
     });
 
-    expect(getRevisionMessage(revision)).toBe("edited the question");
+    expect(getRevisionMessage(revision)).toEqual({
+      title: "edited the question",
+    });
   });
 
   it("handles visualization settings changes revision", () => {
@@ -143,9 +153,9 @@ describe("getRevisionMessage | questions", () => {
       after: { "table.pivot": true },
     });
 
-    expect(getRevisionMessage(revision)).toBe(
-      "changed the visualization settings",
-    );
+    expect(getRevisionMessage(revision)).toEqual({
+      title: "changed the visualization settings",
+    });
   });
 });
 
@@ -156,7 +166,7 @@ describe("getRevisionMessage | dashboards", () => {
       before: [1, 2],
       after: [1, 2, 3],
     });
-    expect(getRevisionMessage(revision)).toBe("added a card");
+    expect(getRevisionMessage(revision)).toEqual({ title: "added a card" });
   });
 
   it("handles added multiple cards revision", () => {
@@ -165,7 +175,7 @@ describe("getRevisionMessage | dashboards", () => {
       before: [1, 2],
       after: [1, 2, 3, 4, 5],
     });
-    expect(getRevisionMessage(revision)).toBe("added 3 cards");
+    expect(getRevisionMessage(revision)).toEqual({ title: "added 3 cards" });
   });
 
   it("filters null card values for new card revision", () => {
@@ -174,7 +184,7 @@ describe("getRevisionMessage | dashboards", () => {
       before: null,
       after: [null, null, 1],
     });
-    expect(getRevisionMessage(revision)).toBe("added a card");
+    expect(getRevisionMessage(revision)).toEqual({ title: "added a card" });
   });
 
   it("handles first card added revision", () => {
@@ -183,7 +193,7 @@ describe("getRevisionMessage | dashboards", () => {
       before: null,
       after: [1],
     });
-    expect(getRevisionMessage(revision)).toBe("added a card");
+    expect(getRevisionMessage(revision)).toEqual({ title: "added a card" });
   });
 
   it("handles removed cards revision", () => {
@@ -192,7 +202,7 @@ describe("getRevisionMessage | dashboards", () => {
       before: [1, 2],
       after: [1],
     });
-    expect(getRevisionMessage(revision)).toBe("removed a card");
+    expect(getRevisionMessage(revision)).toEqual({ title: "removed a card" });
   });
 
   it("filters null card values for removed card revision", () => {
@@ -201,7 +211,7 @@ describe("getRevisionMessage | dashboards", () => {
       before: [null, 1, 2],
       after: [null, 1],
     });
-    expect(getRevisionMessage(revision)).toBe("removed a card");
+    expect(getRevisionMessage(revision)).toEqual({ title: "removed a card" });
   });
 
   it("handles removed cards revision", () => {
@@ -210,7 +220,7 @@ describe("getRevisionMessage | dashboards", () => {
       before: [1, 2, 3],
       after: [1],
     });
-    expect(getRevisionMessage(revision)).toBe("removed 2 cards");
+    expect(getRevisionMessage(revision)).toEqual({ title: "removed 2 cards" });
   });
 
   it("handles all cards removed revision", () => {
@@ -219,7 +229,7 @@ describe("getRevisionMessage | dashboards", () => {
       before: [1, 2, 3],
       after: null,
     });
-    expect(getRevisionMessage(revision)).toBe("removed 3 cards");
+    expect(getRevisionMessage(revision)).toEqual({ title: "removed 3 cards" });
   });
 
   it("handles rearranged cards revision", () => {
@@ -228,7 +238,9 @@ describe("getRevisionMessage | dashboards", () => {
       before: [1, 2, 3],
       after: [2, 1, 3],
     });
-    expect(getRevisionMessage(revision)).toBe("moved cards around");
+    expect(getRevisionMessage(revision)).toEqual({
+      title: "moved cards around",
+    });
   });
 
   it("handles added series revision", () => {
@@ -237,7 +249,9 @@ describe("getRevisionMessage | dashboards", () => {
       before: [{ series: null }],
       after: [{ series: [4] }],
     });
-    expect(getRevisionMessage(revision)).toBe("added series to a question");
+    expect(getRevisionMessage(revision)).toEqual({
+      title: "added series to a question",
+    });
   });
 
   it("handles removed series revision", () => {
@@ -246,7 +260,9 @@ describe("getRevisionMessage | dashboards", () => {
       before: [{ series: [4] }],
       after: [{ series: null }],
     });
-    expect(getRevisionMessage(revision)).toBe("removed series from a question");
+    expect(getRevisionMessage(revision)).toEqual({
+      title: "removed series from a question",
+    });
   });
 
   it("handles modified series revision", () => {
@@ -255,7 +271,9 @@ describe("getRevisionMessage | dashboards", () => {
       before: [{ series: [4, 5] }],
       after: [{ series: [5, 4] }],
     });
-    expect(getRevisionMessage(revision)).toBe("modified question's series");
+    expect(getRevisionMessage(revision)).toEqual({
+      title: "modified question's series",
+    });
   });
 });
 
