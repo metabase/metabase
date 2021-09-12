@@ -6,21 +6,17 @@ const CHANGE_TYPE = {
   REMOVE: "remove",
 };
 
-function isEmptyArray(array) {
-  return !Array.isArray(array) || array.length === 0;
+function getCardsArraySafe(cards) {
+  // Cards diff will contain null values for cards that were not changed
+  // Also for e.g. new card revision, the 'before' state can be just null
+  // like { before: null, after: [ null, null, { ...cardInfo } ] }
+  // So we need to filter out null values to get a correct revision message
+  return Array.isArray(cards) ? cards.filter(Boolean) : [];
 }
 
-function getArrayLengthSafe(array) {
-  return array?.length || 0;
-}
-
-function getDashboardCardsChangeType(prevCards, cards) {
-  if (isEmptyArray(prevCards) && !isEmptyArray(cards)) {
-    return CHANGE_TYPE.ADD;
-  }
-  if (isEmptyArray(cards) && !isEmptyArray(prevCards)) {
-    return CHANGE_TYPE.REMOVE;
-  }
+function getDashboardCardsChangeType(_prevCards, _cards) {
+  const prevCards = getCardsArraySafe(_prevCards);
+  const cards = getCardsArraySafe(_cards);
   if (prevCards.length === cards.length) {
     return CHANGE_TYPE.UPDATE;
   }
@@ -70,13 +66,17 @@ const MESSAGES = {
 
   // Dashboards
   cards: {
-    [CHANGE_TYPE.ADD]: (prevCards, cards) => {
-      const count = getArrayLengthSafe(cards) - getArrayLengthSafe(prevCards);
+    [CHANGE_TYPE.ADD]: (_prevCards, _cards) => {
+      const prevCards = getCardsArraySafe(_prevCards);
+      const cards = getCardsArraySafe(_cards);
+      const count = cards.length - prevCards.length;
       return ngettext(msgid`added a card`, `added ${count} cards`, count);
     },
     [CHANGE_TYPE.UPDATE]: t`moved cards around`,
-    [CHANGE_TYPE.REMOVE]: (prevCards, cards) => {
-      const count = getArrayLengthSafe(prevCards) - getArrayLengthSafe(cards);
+    [CHANGE_TYPE.REMOVE]: (_prevCards, _cards) => {
+      const prevCards = getCardsArraySafe(_prevCards);
+      const cards = getCardsArraySafe(_cards);
+      const count = prevCards.length - cards.length;
       return ngettext(msgid`removed a card`, `removed ${count} cards`, count);
     },
   },

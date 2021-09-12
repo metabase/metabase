@@ -134,6 +134,15 @@ describe("getRevisionMessage | dashboards", () => {
     expect(getRevisionMessage(revision)).toBe("added 3 cards");
   });
 
+  it("filters null card values for new card revision", () => {
+    const revision = getSimpleRevision({
+      field: "cards",
+      before: null,
+      after: [null, null, 1],
+    });
+    expect(getRevisionMessage(revision)).toBe("added a card");
+  });
+
   it("handles first card added revision", () => {
     const revision = getSimpleRevision({
       field: "cards",
@@ -148,6 +157,15 @@ describe("getRevisionMessage | dashboards", () => {
       field: "cards",
       before: [1, 2],
       after: [1],
+    });
+    expect(getRevisionMessage(revision)).toBe("removed a card");
+  });
+
+  it("filters null card values for removed card revision", () => {
+    const revision = getSimpleRevision({
+      field: "cards",
+      before: [null, 1, 2],
+      after: [null, 1],
     });
     expect(getRevisionMessage(revision)).toBe("removed a card");
   });
