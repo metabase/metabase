@@ -301,9 +301,9 @@
          ;; description, position, collection_id, and collection_position are allowed to be `nil`.
          ;; Everything else must be non-nil
          (u/select-keys-when dash-updates
-           :present #{:description :position :collection_id :collection_position}
+           :present #{:description :position :collection_id :collection_position :cache_ttl}
            :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
-                      :embedding_params :archived :cache_ttl})))))
+                      :embedding_params :archived})))))
   ;; now publish an event and return the updated Dashboard
   (let [dashboard (Dashboard id)]
     (events/publish-event! :dashboard-update (assoc dashboard :actor_id api/*current-user-id*))

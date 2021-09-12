@@ -409,8 +409,15 @@
                                      :put
                                      202
                                      (str "card/" (u/the-id card))
-                                     {:cache_ttl 1234}))))))))
-
+                                     {:cache_ttl 1234}))))))
+    (testing "nilling out cache ttl works"
+      (mt/with-temp Card [card]
+        (is (= nil
+               (do
+               (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:cache_ttl 1234})
+               (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:cache_ttl nil})
+               (:cache_ttl (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card))))
+               )))))))
 
 (defn- fingerprint-integers->doubles
   "Converts the min/max fingerprint values to doubles so simulate how the FE will change the metadata when POSTing a
