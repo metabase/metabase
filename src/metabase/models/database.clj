@@ -84,7 +84,8 @@
         value-kw    (keyword (str conn-prop-nm "-value"))
         value       (value-kw details)
         kind        (:secret-kind conn-prop)
-        source      nil] ; TODO: set from frontend when appropriate
+        source-kw   (keyword (str conn-prop-nm "-source"))
+        source      (source-kw details)]
     (if (nil? value) ;; secret value for this conn prop was not changed
       details
       (let [new-secret (secret/upsert-secret-value!
