@@ -317,6 +317,18 @@ describe("isValidRevision", () => {
     expect(isValidRevision(revision)).toBe(false);
   });
 
+  it("returns false if diff contains only unknown fields", () => {
+    const revision = getRevision({
+      before: {
+        not_registered_field: 1,
+      },
+      after: {
+        not_registered_field: 2,
+      },
+    });
+    expect(isValidRevision(revision)).toBe(false);
+  });
+
   it("returns true for creation revision", () => {
     const revision = getRevision({
       isCreation: true,

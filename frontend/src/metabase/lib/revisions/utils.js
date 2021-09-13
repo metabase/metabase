@@ -169,5 +169,5 @@ export function isValidRevision(revision) {
   if (revision.is_creation || revision.is_reversion) {
     return true;
   }
-  return !!(revision.diff && revision.diff.before && revision.diff.after);
+  return getChangedFields(revision).length > 0;
 }
