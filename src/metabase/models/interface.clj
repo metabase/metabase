@@ -123,9 +123,12 @@
                (cond-> form
                  (mbql-field-clause? form) normalize/normalize))
              form))]
-    (cond-> (walk/keywordize-keys (dissoc viz-settings "column_settings"))
+    (cond-> (walk/keywordize-keys (dissoc viz-settings "column_settings" "graph.metrics"))
       (get viz-settings "column_settings") (assoc :column_settings (normalize-column-settings (get viz-settings "column_settings")))
-      true                                 normalize-mbql-clauses)))
+      true                                 normalize-mbql-clauses
+      ;; exclude graph.metrics from normalization as it may start with
+      ;; the word "expression" but it is not MBQL (metabase#15882)
+      (get viz-settings "graph.metrics")   (assoc :graph.metrics (get viz-settings "graph.metrics")))))
 
 (models/add-type! :visualization-settings
   :in  json-in
