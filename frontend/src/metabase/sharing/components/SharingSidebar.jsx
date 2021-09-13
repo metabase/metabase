@@ -294,6 +294,7 @@ class SharingSidebar extends React.Component {
       return (
         <PulsesListSidebar
           pulses={pulses}
+          formInput={formInput}
           createSubscription={this.createSubscription}
           onCancel={this.onCancel}
           editPulse={this.editPulse}
