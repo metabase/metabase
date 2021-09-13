@@ -108,6 +108,25 @@ const MESSAGES = {
   },
 };
 
+export function hasDiff(revision) {
+  return Boolean(
+    revision.diff && (revision.diff.before || revision.diff.after),
+  );
+}
+
+export function getChangedFields(revision) {
+  if (!hasDiff(revision)) {
+    return [];
+  }
+  const registeredFields = Object.keys(MESSAGES);
+
+  // There are cases when either 'before' or 'after' states are null
+  // So we need to pick another one
+  const fields = Object.keys(revision.diff.before || revision.diff.after);
+
+  return fields.filter(field => registeredFields.includes(field));
+}
+
 function formatChangeMessages(messages) {
   if (!messages.length) {
     return null;
@@ -130,45 +149,17 @@ export function getRevisionMessage(revision) {
   }
 
   const { before, after } = diff;
-  const changedFields = Object.keys(before || after);
-
-  const changes = changedFields
-    .map(fieldName => {
-      const valueBefore = before?.[fieldName];
-      const valueAfter = after?.[fieldName];
-      const changeType = getChangeType(fieldName, valueBefore, valueAfter);
-
-      const messageGetter = MESSAGES[fieldName]?.[changeType];
-      if (!messageGetter) {
-        return;
-      }
-
-      return typeof messageGetter === "function"
-        ? messageGetter(valueBefore, valueAfter)
-        : messageGetter;
-    })
-    .filter(Boolean);
+  const changes = getChangedFields(revision).map(fieldName => {
+    const valueBefore = before?.[fieldName];
+    const valueAfter = after?.[fieldName];
+    const changeType = getChangeType(fieldName, valueBefore, valueAfter);
+    const messageGetter = MESSAGES[fieldName]?.[changeType];
+    return typeof messageGetter === "function"
+      ? messageGetter(valueBefore, valueAfter)
+      : messageGetter;
+  });
 
   return formatChangeMessages(changes);
-}
-
-export function hasDiff(revision) {
-  return Boolean(
-    revision.diff && (revision.diff.before || revision.diff.after),
-  );
-}
-
-export function getChangedFields(revision) {
-  if (!hasDiff(revision)) {
-    return [];
-  }
-  const registeredFields = Object.keys(MESSAGES);
-
-  // There are cases when either 'before' or 'after' states are null
-  // So we need to pick another one
-  const fields = Object.keys(revision.diff.before || revision.diff.after);
-
-  return fields.filter(field => registeredFields.includes(field));
 }
 
 export function isValidRevision(revision) {
