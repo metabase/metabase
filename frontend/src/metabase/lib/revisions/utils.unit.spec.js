@@ -170,11 +170,35 @@ describe("getRevisionMessage | questions", () => {
     });
   });
 
+  it("handles added visualization settings revision", () => {
+    const revision = getSimpleRevision({
+      field: "visualization_settings",
+      before: null,
+      after: { "table.pivot": true },
+    });
+
+    expect(getRevisionMessage(revision)).toEqual({
+      title: "changed the visualization settings",
+    });
+  });
+
   it("handles visualization settings changes revision", () => {
     const revision = getSimpleRevision({
       field: "visualization_settings",
       before: {},
       after: { "table.pivot": true },
+    });
+
+    expect(getRevisionMessage(revision)).toEqual({
+      title: "changed the visualization settings",
+    });
+  });
+
+  it("handles removed visualization settings revision", () => {
+    const revision = getSimpleRevision({
+      field: "visualization_settings",
+      before: { "table.pivot": true },
+      after: null,
     });
 
     expect(getRevisionMessage(revision)).toEqual({

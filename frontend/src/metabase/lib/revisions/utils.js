@@ -78,8 +78,9 @@ const MESSAGES = {
     [CHANGE_TYPE.UPDATE]: t`edited the question`,
   },
   visualization_settings: {
-    [CHANGE_TYPE.NEW]: t`changed the visualization settings`,
+    [CHANGE_TYPE.ADD]: t`changed the visualization settings`,
     [CHANGE_TYPE.UPDATE]: t`changed the visualization settings`,
+    [CHANGE_TYPE.REMOVE]: t`changed the visualization settings`,
   },
 
   // Dashboards
