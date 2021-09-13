@@ -65,7 +65,7 @@ export default class HistoryModal extends Component {
                 hasSkippedMostRecentRevisionRevertButton = true;
 
                 return (
-                  <tr key={revision.id}>
+                  <tr key={revision.id} data-testid="revision-history-row">
                     <td className={cellClassName}>
                       {formatDate(revision.timestamp)}
                     </td>
