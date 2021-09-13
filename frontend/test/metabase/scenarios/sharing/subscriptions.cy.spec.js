@@ -78,14 +78,6 @@ describe("scenarios > dashboard > subscriptions", () => {
     });
 
     describe("with no existing subscriptions", () => {
-      it("should not prompt to configure slack for a non-admin user (#17446)", () => {
-        cy.signInAsSandboxedUser();
-        openDashboardSubscriptions();
-
-        cy.findByText("Email it");
-        cy.findByText("configure Slack").should("not.exist");
-      });
-
       it("should not enable subscriptions without the recipient (metabase#17657)", () => {
         openDashboardSubscriptions();
 
@@ -120,7 +112,6 @@ describe("scenarios > dashboard > subscriptions", () => {
 
     describe("with existing subscriptions", () => {
       beforeEach(createEmailSubscription);
-
       it("should show existing dashboard subscriptions", () => {
         openDashboardSubscriptions();
         cy.findByText("Emailed hourly");
