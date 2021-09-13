@@ -5,7 +5,7 @@ import { GridRows } from "@visx/grid";
 import { scaleBand, scaleLinear } from "@visx/scale";
 import { Bar } from "@visx/shape";
 import { Text } from "@visx/text";
-import { formatNumber } from "../../lib/formatNumber";
+import { formatNumber } from "../../lib/numbers";
 
 const propTypes = {
   data: PropTypes.array.isRequired,

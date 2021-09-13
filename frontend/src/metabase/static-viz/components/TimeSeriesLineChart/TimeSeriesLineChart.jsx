@@ -4,8 +4,8 @@ import { scaleLinear, scaleTime } from "@visx/scale";
 import { GridRows } from "@visx/grid";
 import { AxisBottom, AxisLeft } from "@visx/axis";
 import { LinePath } from "@visx/shape";
-import { formatDate } from "../../lib/formatDate";
-import { formatNumber } from "../../lib/formatNumber";
+import { formatDate } from "../../lib/dates";
+import { formatNumber } from "../../lib/numbers";
 
 const propTypes = {
   data: PropTypes.array.isRequired,
