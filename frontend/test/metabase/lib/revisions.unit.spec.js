@@ -59,6 +59,17 @@ describe("revisions", () => {
       userName: "Bar",
     });
 
+    const changeEvent = getRevision({
+      diff: {
+        before: {
+          description: null,
+        },
+        after: {
+          description: "some description is now here",
+        },
+      },
+    });
+
     const creationEvent = getRevision({
       isCreation: true,
       description: "foo",
@@ -73,7 +84,7 @@ describe("revisions", () => {
       };
     }
 
-    const revisionEvents = [latestRevisionEvent, creationEvent];
+    const revisionEvents = [latestRevisionEvent, changeEvent, creationEvent];
 
     it("should convert a revision object into an object for use in a <Timeline /> component", () => {
       const canWrite = false;
@@ -87,6 +98,11 @@ describe("revisions", () => {
           title: "Bar reverted to an earlier revision",
           isRevertable: false,
           revision: latestRevisionEvent,
+        }),
+        getExpectedEvent({
+          title: "Foo added a description",
+          isRevertable: false,
+          revision: changeEvent,
         }),
         getExpectedEvent({
           title: "Foo created this",
