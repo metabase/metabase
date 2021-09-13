@@ -62,7 +62,7 @@ const MESSAGES = {
   // Common
   name: {
     [CHANGE_TYPE.UPDATE]: (oldName, newName) =>
-      t`renamed this to` + " " + newName,
+      t`renamed this to` + " " + `"${newName}"`,
   },
   description: {
     [CHANGE_TYPE.ADD]: t`added a description`,

@@ -48,7 +48,7 @@ describe("getRevisionMessage | common", () => {
       after: "Orders by Month",
     });
     expect(getRevisionMessage(revision)).toEqual({
-      title: "renamed this to Orders by Month",
+      title: 'renamed this to "Orders by Month"',
     });
   });
 
@@ -105,7 +105,7 @@ describe("getRevisionMessage | common", () => {
     });
     expect(getRevisionMessage(revision)).toEqual({
       title: "edited this",
-      description: "renamed this to Orders by Month and unarchived this",
+      description: 'renamed this to "Orders by Month" and unarchived this',
     });
   });
 
@@ -125,7 +125,7 @@ describe("getRevisionMessage | common", () => {
     expect(getRevisionMessage(revision)).toEqual({
       title: "edited this",
       description:
-        "renamed this to Orders by Month, added a description and unarchived this",
+        'renamed this to "Orders by Month", added a description and unarchived this',
     });
   });
 
@@ -150,7 +150,7 @@ describe("getRevisionMessage | common", () => {
       },
     });
     expect(getRevisionMessage(revision)).toEqual({
-      title: "renamed this to Orders",
+      title: 'renamed this to "Orders"',
     });
   });
 
