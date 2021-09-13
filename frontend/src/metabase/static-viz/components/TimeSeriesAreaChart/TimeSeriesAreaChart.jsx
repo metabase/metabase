@@ -6,6 +6,7 @@ import { AxisBottom, AxisLeft } from "@visx/axis";
 import { AreaClosed, LinePath } from "@visx/shape";
 import { formatDate } from "../../lib/dates";
 import { formatNumber } from "../../lib/numbers";
+import { getYAxisWidth } from "metabase/static-viz/lib/axes";
 
 const propTypes = {
   data: PropTypes.array.isRequired,
@@ -44,13 +45,17 @@ const layout = {
   },
   numTicks: 5,
   strokeWidth: 2,
+  labelPadding: 8,
   strokeDasharray: "4",
 };
 
 const TimeSeriesAreaChart = ({ data, accessors, settings, labels }) => {
+  const yAxisWidth = getYAxisWidth(data, accessors, settings, layout);
+  const yLabelOffset = yAxisWidth + layout.labelPadding;
+  const xMin = yLabelOffset + layout.font.size * 1.5;
   const xMax = layout.width - layout.margin.right;
   const yMax = layout.height - layout.margin.bottom;
-  const innerWidth = xMax - layout.margin.left;
+  const innerWidth = xMax - xMin;
   const leftLabel = labels?.left;
   const bottomLabel = labels?.bottom;
 
@@ -59,7 +64,7 @@ const TimeSeriesAreaChart = ({ data, accessors, settings, labels }) => {
       Math.min(...data.map(accessors.x)),
       Math.max(...data.map(accessors.x)),
     ],
-    range: [layout.margin.left, xMax],
+    range: [xMin, xMax],
   });
 
   const yScale = scaleLinear({
@@ -86,7 +91,7 @@ const TimeSeriesAreaChart = ({ data, accessors, settings, labels }) => {
     <svg width={layout.width} height={layout.height}>
       <GridRows
         scale={yScale}
-        left={layout.margin.left}
+        left={xMin}
         width={innerWidth}
         strokeDasharray={layout.strokeDasharray}
       />
@@ -106,8 +111,9 @@ const TimeSeriesAreaChart = ({ data, accessors, settings, labels }) => {
       />
       <AxisLeft
         scale={yScale}
-        left={layout.margin.left}
+        left={xMin}
         label={leftLabel}
+        labelOffset={yLabelOffset}
         hideTicks
         hideAxisLine
         tickFormat={value => formatNumber(value, settings?.y)}
