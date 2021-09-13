@@ -152,6 +152,7 @@
                        [:div {:style (style/style {:overflow-x :auto})}
                         [:a {:href        (card-href card)
                              :target      "_blank"
+                             :rel         "noopener noreferrer"
                              :style       (style/style
                                            (style/section-style)
                                            {:display         :block
