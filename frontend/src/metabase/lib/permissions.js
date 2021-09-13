@@ -10,14 +10,16 @@ import Table from "metabase-lib/lib/metadata/Table";
 
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_PERMISSION_VALUE,
-  PLUGIN_ADMIN_PERMISSIONS_DATABASE_RESTRICTIVE_OPTIONS,
+  PLUGIN_ADMIN_PERMISSIONS_DATABASE_BLOCK_OPTIONS,
 } from "metabase/plugins";
 
-export const isRestrictivePermission = value =>
-  value === "none" ||
-  PLUGIN_ADMIN_PERMISSIONS_DATABASE_RESTRICTIVE_OPTIONS.some(
+export const isBlockPermission = value =>
+  PLUGIN_ADMIN_PERMISSIONS_DATABASE_BLOCK_OPTIONS.some(
     option => option.value === value,
   );
+
+export const isRestrictivePermission = value =>
+  isBlockPermission(value) || value === "none";
 
 import type {
   Group,
