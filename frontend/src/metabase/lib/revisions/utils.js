@@ -110,7 +110,7 @@ const CHANGE_DESCRIPTIONS = {
       if (hasSeriesChange(prevCards) || hasSeriesChange(cards)) {
         return getSeriesChangeDescription(prevCards, cards);
       }
-      return t`moved cards around`;
+      return t`rearranged the cards`;
     },
     [CHANGE_TYPE.REMOVE]: (_prevCards, _cards) => {
       const prevCards = getCardsArraySafe(_prevCards);

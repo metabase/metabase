@@ -309,7 +309,7 @@ describe("getRevisionDescription | dashboards", () => {
       before: [1, 2, 3],
       after: [2, 1, 3],
     });
-    expect(getRevisionDescription(revision)).toBe("moved cards around");
+    expect(getRevisionDescription(revision)).toBe("rearranged the cards");
   });
 
   it("handles added series revision", () => {
