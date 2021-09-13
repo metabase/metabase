@@ -1,7 +1,9 @@
+import React from "react";
 import {
   REVISION_EVENT_ICON,
   getRevisionEventsForTimeline,
 } from "metabase/lib/revisions";
+import { RevisionTitle } from "./components";
 
 describe("revisions", () => {
   describe("getRevisionEvents", () => {
@@ -49,7 +51,6 @@ describe("revisions", () => {
 
     function getExpectedEvent(opts) {
       return {
-        description: undefined,
         timestamp: epochTimestamp,
         icon: REVISION_EVENT_ICON,
         ...opts,
@@ -67,17 +68,22 @@ describe("revisions", () => {
 
       expect(timelineEvents).toEqual([
         getExpectedEvent({
-          title: "Bar reverted to an earlier revision",
+          title: (
+            <RevisionTitle
+              username="Bar"
+              message="reverted to an earlier revision"
+            />
+          ),
           isRevertable: false,
           revision: latestRevisionEvent,
         }),
         getExpectedEvent({
-          title: "Foo added a description",
+          title: <RevisionTitle username="Foo" message="added a description" />,
           isRevertable: false,
           revision: changeEvent,
         }),
         getExpectedEvent({
-          title: "Foo created this",
+          title: <RevisionTitle username="Foo" message="created this" />,
           isRevertable: false,
           revision: creationEvent,
         }),
@@ -105,25 +111,6 @@ describe("revisions", () => {
       expect(timelineEvents[1].isRevertable).toBe(true);
     });
 
-    it("should capitalize descriptions", () => {
-      const [event] = getRevisionEventsForTimeline([
-        getRevision({
-          diff: {
-            before: {
-              description: null,
-              archived: true,
-            },
-            after: {
-              description: "Please do not archive this anymore",
-              archived: false,
-            },
-          },
-        }),
-      ]);
-
-      expect(event.description).toBe("Added a description and unarchived this");
-    });
-
     it("should drop invalid revisions", () => {
       const canWrite = true;
       const timelineEvents = getRevisionEventsForTimeline(
@@ -137,7 +124,7 @@ describe("revisions", () => {
       );
       expect(timelineEvents).toEqual([
         getExpectedEvent({
-          title: "Foo added a description",
+          title: <RevisionTitle username="Foo" message="added a description" />,
           isRevertable: false,
           revision: changeEvent,
         }),
@@ -162,7 +149,7 @@ describe("revisions", () => {
       );
       expect(timelineEvents).toEqual([
         getExpectedEvent({
-          title: "Foo added a description",
+          title: <RevisionTitle username="Foo" message="added a description" />,
           isRevertable: false,
           revision: changeEvent,
         }),

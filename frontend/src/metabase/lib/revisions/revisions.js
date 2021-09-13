@@ -1,4 +1,6 @@
+import React from "react";
 import { t } from "ttag";
+import { RevisionTitle, RevisionBatchedDescription } from "./components";
 import {
   isValidRevision,
   getChangedFields,
@@ -13,7 +15,14 @@ export function getRevisionEventsForTimeline(revisions = [], canWrite) {
     .map((revision, index) => {
       const isRevertable = canWrite && index !== 0;
       const username = getRevisionUsername(revision);
-      const message = getRevisionDescription(revision);
+      const changes = getRevisionDescription(revision);
+
+      const event = {
+        timestamp: getRevisionEpochTimestamp(revision),
+        icon: REVISION_EVENT_ICON,
+        isRevertable,
+        revision,
+      };
 
       // If > 1 item's fields are changed in a single revision,
       // the changes are batched into a single string like:
@@ -22,22 +31,15 @@ export function getRevisionEventsForTimeline(revisions = [], canWrite) {
       // we want to show the changelog in a description and set a title to just "User edited this"
       // If only one field is changed, we just show everything in the title
       // like "John added a description"
-      const areMultipleFieldsChanged = getChangedFields(revision).length > 1;
-      const title = areMultipleFieldsChanged
-        ? username + " " + t`edited this`
-        : `${username} ${message}`;
-      const description = areMultipleFieldsChanged
-        ? capitalize(message)
-        : undefined;
 
-      return {
-        timestamp: getRevisionEpochTimestamp(revision),
-        icon: REVISION_EVENT_ICON,
-        title,
-        description,
-        isRevertable,
-        revision,
-      };
+      if (getChangedFields(revision).length > 1) {
+        event.title = username + " " + t`edited this`;
+        event.description = <RevisionBatchedDescription changes={changes} />;
+      } else {
+        event.title = <RevisionTitle username={username} message={changes} />;
+      }
+
+      return event;
     })
     .filter(Boolean);
 }
@@ -48,8 +50,4 @@ function getRevisionUsername(revision) {
 
 function getRevisionEpochTimestamp(revision) {
   return new Date(revision.timestamp).valueOf();
-}
-
-function capitalize(str) {
-  return str.charAt(0).toUpperCase() + str.slice(1);
 }
