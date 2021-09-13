@@ -206,32 +206,18 @@ function getEngineInfo(engine, details, id) {
   }
 }
 
-function isHiddenField(field, details) {
-  // NOTE: special case to hide tunnel settings if tunnel is disabled
-  const isDisabledTunnelSettingsField =
-    field.name.startsWith("tunnel-") &&
-    field.name !== "tunnel-enabled" &&
-    !details["tunnel-enabled"];
+function shouldShowEngineProvidedField(field, details) {
+  const detailAndValueRequiredToShowField = field["visible-if"];
 
-  // hide the auth settings based on which auth method is selected
-  // private key auth needs tunnel-private-key and tunnel-private-key-passphrase
-  const isTunnelPrivateFieldWithoutProperAuthMethod =
-    field.name.startsWith("tunnel-private-") &&
-    details["tunnel-auth-option"] !== "ssh-key";
+  if (detailAndValueRequiredToShowField) {
+    const [detail, expectedDetailValue] = Object.entries(
+      detailAndValueRequiredToShowField,
+    )[0];
 
-  // username / password auth uses tunnel-pass
-  const isTunnelPassFieldWithoutProperAuthMethod =
-    field.name === "tunnel-pass" && details["tunnel-auth-option"] === "ssh-key";
+    return details[detail] === expectedDetailValue;
+  }
 
-  // NOTE: special case to hide the SSL cert field if SSL is disabled
-  const isDisabledSslField = field.name === "ssl-cert" && !details["ssl"];
-
-  return (
-    isDisabledTunnelSettingsField ||
-    isTunnelPrivateFieldWithoutProperAuthMethod ||
-    isTunnelPassFieldWithoutProperAuthMethod ||
-    isDisabledSslField
-  );
+  return true;
 }
 
 function getDefaultValue(field) {
@@ -257,7 +243,7 @@ function getEngineFormFields(engine, details, id) {
 
   // convert database details-fields to Form fields
   return engineFields
-    .filter(field => !isHiddenField(field, details))
+    .filter(field => shouldShowEngineProvidedField(field, details))
     .map(field => {
       const overrides = DATABASE_DETAIL_OVERRIDES[field.name];
 

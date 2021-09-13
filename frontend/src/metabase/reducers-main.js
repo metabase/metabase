@@ -11,7 +11,7 @@ import admin from "metabase/admin/admin";
 import * as setup from "metabase/setup/reducers";
 
 /* dashboards */
-import dashboard from "metabase/dashboard/dashboard";
+import dashboard from "metabase/dashboard/reducers";
 import * as home from "metabase/home/reducers";
 
 /* query builder */

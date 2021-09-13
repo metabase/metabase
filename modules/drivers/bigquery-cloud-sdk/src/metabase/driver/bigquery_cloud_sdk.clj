@@ -92,16 +92,17 @@
 
 (defn- bigquery-type->base-type [field-type]
   (case field-type
-    "BOOLEAN"   :type/Boolean
-    "FLOAT"     :type/Float
-    "INTEGER"   :type/Integer
-    "RECORD"    :type/Dictionary ; RECORD -> field has a nested schema
-    "STRING"    :type/Text
-    "DATE"      :type/Date
-    "DATETIME"  :type/DateTime
-    "TIMESTAMP" :type/DateTimeWithLocalTZ
-    "TIME"      :type/Time
-    "NUMERIC"   :type/Decimal
+    "BOOLEAN"    :type/Boolean
+    "FLOAT"      :type/Float
+    "INTEGER"    :type/Integer
+    "RECORD"     :type/Dictionary ; RECORD -> field has a nested schema
+    "STRING"     :type/Text
+    "DATE"       :type/Date
+    "DATETIME"   :type/DateTime
+    "TIMESTAMP"  :type/DateTimeWithLocalTZ
+    "TIME"       :type/Time
+    "NUMERIC"    :type/Decimal
+    "BIGNUMERIC" :type/Decimal
     :type/*))
 
 (s/defn ^:private table-schema->metabase-field-info
@@ -281,7 +282,7 @@
 
 (defmethod driver/supports? [:bigquery-cloud-sdk :percentile-aggregations] [_ _] false)
 
-(defmethod driver/supports? [:bigquery-cloud-sdk :expressions] [_ _] false)
+(defmethod driver/supports? [:bigquery-cloud-sdk :expressions] [_ _] true)
 
 (defmethod driver/supports? [:bigquery-cloud-sdk :foreign-keys] [_ _] true)
 

@@ -76,7 +76,7 @@ export function PermissionsTable({
       <PermissionsTableRoot data-testid="permission-table">
         <thead>
           <tr>
-            {columns.map((column, index) => {
+            {columns.map(column => {
               return (
                 <PermissionsTableCell
                   key={column}

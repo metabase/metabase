@@ -137,7 +137,7 @@ Pass a form definition to the `form` prop:
 
 ```javascript
 <Form
-  form={{
+  form={%raw%}{{
     fields: [
       {
         name: "email",
@@ -150,7 +150,7 @@ Pass a form definition to the `form` prop:
         validate: validate.required().passwordComplexity(),
       },
     ],
-  }}
+  }}{%endraw%}
   onSubmit={values => alert(JSON.stringify(values))}
 />
 ```
@@ -529,7 +529,7 @@ const Foo = () =>
 
 ```javascript
 const Foo = ({ color ) =>
-  <div style={{ color: color }} />
+  <div style={%raw%}{{ color: color }}{%endraw%} />
 ```
 
 ### CSS modules (deprecated)

@@ -13,8 +13,8 @@ function addAbbreviatedLocale() {
     relativeTime: {
       future: "in %s",
       past: "%s",
-      s: "%d s",
-      ss: "%d s",
+      s: t`just now`,
+      ss: t`just now`,
       m: "%d m",
       mm: "%d m",
       h: "%d h",
