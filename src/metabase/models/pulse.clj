@@ -136,6 +136,20 @@
     :can-write?        can-write?
     :perms-objects-set perms-objects-set}))
 
+(def ^:private ^:dynamic *automatically-archive-when-last-channel-is-deleted*
+  "Should we automatically archive a Pulse when its last `PulseChannel` is deleted? Normally we do, but this is disabled
+  in [[update-notification-channels!]] which creates/deletes/updates several channels sequentially."
+  true)
+
+(defn will-delete-channel
+  "This function is called by [[metabase.models.pulse-channel/pre-delete]] when the `PulseChannel` is about to be
+  deleted. Archives `Pulse` if the channel being deleted is its last channel."
+  [{pulse-id :pulse_id, pulse-channel-id :id, :as pulse-channel}]
+  (when *automatically-archive-when-last-channel-is-deleted*
+    (let [other-channels-count (db/count PulseChannel :pulse_id pulse-id, :id [:not= pulse-channel-id])]
+      (when (zero? other-channels-count)
+        (db/update! Pulse pulse-id :archived true)))))
+
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 
@@ -362,13 +376,12 @@
 ;;; ------------------------------------------ Other Persistence Functions -------------------------------------------
 
 (s/defn update-notification-cards!
-  "Update the PulseCards for a given `notification-or-id`.
-   `card-refs` should be a definitive collection of *all* Cards for the Notification in the desired order. They should
-  have keys like `id`, `include_csv`, and `include_xls`.
+  "Update the PulseCards for a given `notification-or-id`. `card-refs` should be a definitive collection of *all* Cards
+  for the Notification in the desired order. They should have keys like `id`, `include_csv`, and `include_xls`.
 
-   *  If a Card ID in `card-refs` has no corresponding existing `PulseCard` object, one will be created.
-   *  If an existing `PulseCard` has no corresponding ID in CARD-IDs, it will be deleted.
-   *  All cards will be updated with a `position` according to their place in the collection of `card-ids`"
+  *  If a Card ID in `card-refs` has no corresponding existing `PulseCard` object, one will be created.
+  *  If an existing `PulseCard` has no corresponding ID in CARD-IDs, it will be deleted.
+  *  All cards will be updated with a `position` according to their place in the collection of `card-ids`"
   [notification-or-id, card-refs :- (s/maybe [CardRef])]
   ;; first off, just delete any cards associated with this pulse (we add them again below)
   (db/delete! PulseCard :pulse_id (u/the-id notification-or-id))
@@ -384,9 +397,9 @@
                              card-refs)]
       (db/insert-many! PulseCard cards))))
 
-
 (defn- create-update-delete-channel!
-  "Utility function which determines how to properly update a single pulse channel."
+  "Utility function used by [[update-notification-channels!]] which determines how to properly update a single pulse
+  channel."
   [notification-or-id new-channel existing-channel]
   ;; NOTE that we force the :id of the channel being updated to the :id we *know* from our
   ;;      existing list of PulseChannels pulled from the db to ensure we affect the right record
@@ -426,9 +439,12 @@
                                                        (first (get old-channels %)))]
     (assert (zero? (count (get new-channels nil)))
       "Cannot have channels without a :channel_type attribute")
-    ;; for each of our possible channel types call our handler function
-    (doseq [[channel-type] pulse-channel/channel-types]
-      (handle-channel channel-type))))
+    ;; don't automatically archive this Pulse if we end up deleting its last PulseChannel -- we're probably replacing
+    ;; it with a new one immediately thereafter.
+    (binding [*automatically-archive-when-last-channel-is-deleted* false]
+      ;; for each of our possible channel types call our handler function
+      (doseq [[channel-type] pulse-channel/channel-types]
+        (handle-channel channel-type)))))
 
 (s/defn ^:private create-notification-and-add-cards-and-channels!
   "Create a new Pulse/Alert with the properties specified in `notification`; add the `card-refs` to the Notification and
