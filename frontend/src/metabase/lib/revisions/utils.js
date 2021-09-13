@@ -135,7 +135,7 @@ export function getChangedFields(revision) {
 
   // There are cases when either 'before' or 'after' states are null
   // So we need to pick another one
-  const fields = Object.keys(revision.diff.before || revision.diff.after);
+  const fields = Object.keys(revision.diff.after || revision.diff.before);
 
   return fields.filter(field => registeredFields.includes(field));
 }

@@ -166,7 +166,22 @@ describe("getRevisionDescription | common", () => {
     expect(getRevisionDescription(revision)).toBe('renamed this to "Orders"');
   });
 
-  it.todo("handles item move revision (between collections)");
+  it("prefers 'after' state to find changed fields", () => {
+    const revision = getRevision({
+      before: {
+        display: "table",
+      },
+      after: {
+        display: "bar",
+        visualization_settings: { "some-flag": true },
+        dataset_query: {},
+      },
+    });
+    expect(getRevisionDescription(revision)).toEqual([
+      "changed the visualization settings",
+      "edited the question",
+    ]);
+  });
 });
 
 describe("getRevisionDescription | questions", () => {
