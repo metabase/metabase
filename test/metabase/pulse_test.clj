@@ -143,7 +143,7 @@
 (defn- email-body? [{message-type :type, ^String content :content}]
   (and (= "text/html; charset=utf-8" message-type)
        (string? content)
-       (.startsWith content "<html>")))
+       (.startsWith content "<!doctype html>")))
 
 (defn- attachment? [{message-type :type, content-type :content-type, content :content}]
   (and (= :inline message-type)
