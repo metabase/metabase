@@ -1,17 +1,124 @@
-{{> metabase/email/_header}}
-  {{#pulseName}}
-    {{#pulseLink}}
-      <a href="{{pulseLink}}" class="title-link">
-        <h1 style="{{sectionStyle}} margin: 24px 0 24px 0;">
-          {{pulseName}}
-        </h1>
-      </a>
-    {{/pulseLink}}
-    {{^pulseLink}}
-      <h1 style="{{sectionStyle}} margin: 16px; color: {{color-brand}};">
-        {{pulseName}}
-      </h1>
-    {{/pulseLink}}
-  {{/pulseName}}
-  {{{pulse}}}
-{{> metabase/email/_footer_pulse}}
+<!doctype html>
+<html>
+  <head>
+    {{!--- Empty head to make style element work in Yahoo mail on Android: https://www.caniemail.com/features/html-style/}}
+  </head>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900&display=swap');
+
+      {{!--- Styles are mostly inline for maximum compatibility with email clients.  --}}
+
+      body {
+        font-size: 14px;
+        color: {{colorTextDark}};
+        font-family: "Lato", "Lucida Grande", "Lucida Sans Unicode", Tahoma, Sans-Serif;
+      }
+
+      {{!-- Override margin of pulse charts/tables since it's not required for email (it is for Slack) --}}
+      .pulse-body {
+        margin: 0px !important;
+      }
+
+      {{!-- General formatting for links. Marked as important since otherwise Gmail will sometimes override it --}}
+      a {
+        color: {{applicationColor}} !important;
+        text-decoration: none !important;
+      }
+
+      a:hover, a:active {
+         text-decoration: underline;
+      }
+
+      {{!-- Formatting for header elements of Markdown cards --}}
+      h1, h2, h3, h4, h5, h6 {
+        color: {{colorTextDark}};
+        font-weight: 900;
+      }
+
+      h1 {
+        font-size: 20px;
+        line-height: 24px;
+      }
+
+      h2 {
+        font-size: 18px;
+        line-height: 22px;
+      }
+
+      h3 {
+        font-size: 16px;
+        line-height: 20px;
+      }
+
+      h4, h5, h6 {
+        font-size: 14px;
+        line-height: 18px;
+      }
+
+      {{!-- Emails on smaller devices should have less of our UI chrome to make the content easier to read --}}
+      @media screen and (max-width: 420px) {
+        .background {
+          background-color: #ffffff !important;
+          padding: 0px !important;
+        }
+        .container {
+          padding: 10px !important;
+        }
+      }
+    </style>
+  </head>
+  <body style="padding: 0px">
+    <table class="background" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #F9F9F9; padding: 20px; table-layout: fixed;">
+      <tr>
+        <td>
+          <div class="container" style="background-color: white; max-width: 555px; border-radius: 24px; margin: 0 auto; padding: 30px;">
+            <table class="header">
+              <tr>
+                <td>
+                  <img class="icon" style="padding-top: 4px; padding-right: 16px; width: 100%; height: auto; max-width: 20px" src="cid:{{iconCid}}"/>
+                </td>
+                <td>
+                  <a class="title" href="{{titleUrl}}" style="font-size: 20px; font-weight: 700; padding-bottom: 4px;">
+                    {{title}}
+                  </a>
+                </td>
+              </tr>
+              {{#dashboardDescription}}
+              <tr>
+                <td>&#8202;</td>
+                <td>
+                  <div class="description" style="color: {{colorTextDark}}; font-size: 14px">
+                    {{dashboardDescription}}
+                  </div>
+                </td>
+              </tr>
+              {{/dashboardDescription}}
+              <tr>
+                <td>&#8202;</td>
+                <td>
+                  <div class="sender" style="color: {{colorTextLight}}; font-size: 12px">
+                    Sent by {{creator}}
+                  </div>
+                </td>
+              </tr>
+            </table>
+            <hr style="border-width: 0; background: #F0F0F0; height: 1px; margin-top: 20px; margin-bottom: 20px;">
+            {{{pulse}}}
+            {{#firstRunOnly?}}
+            <p style="color: {{colorTextMedium}}; font-size: 12px; font-weight: 400">
+            We’ll stop sending you alerts about this question now.
+            </p>
+            {{/firstRunOnly?}}
+            <hr style="border-width: 0; background: #F0F0F0; height: 1px; margin-top: 20px; margin-bottom: 20px;">
+            <div class="footer" style="font-size: 11px; width: max-content; margin: 0 auto">
+              Sent from <a href="{{siteUrl}}" style="color: {{applicationColor}}">{{siteUrl}}</a>.
+              <a href="{{notificationManagementUrl}}" style="color: {{applicationColor}}">Manage your subscriptions</a>
+            </div>
+          </div>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

@@ -22,7 +22,6 @@
       (let [[{:keys [result]}] (pulse/send-pulse! pulse)]
         (qp.test/rows result)))))
 
-
 (def card-name "Test card")
 
 (defn checkins-query-card*
@@ -73,7 +72,6 @@
                  slack/files-channel                (constantly {:name "metabase_files"
                                                                  :id   "FOO"})]
      (do-with-site-url (fn [] ~@body))))
-
 
 (def png-attachment
   {:type         :inline
