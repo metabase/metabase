@@ -113,31 +113,20 @@ function formatChangeMessages(messages) {
     return null;
   }
   if (messages.length === 1) {
-    return {
-      title: messages[0],
-    };
+    return messages[0];
   }
   const lastMessage = _.last(messages);
   const messagesExceptLast = messages.slice(0, messages.length - 1);
-  const combinedMessage =
-    messagesExceptLast.join(", ") + " " + t`and` + " " + lastMessage;
-  return {
-    title: t`edited this`,
-    description: combinedMessage,
-  };
+  return messagesExceptLast.join(", ") + " " + t`and` + " " + lastMessage;
 }
 
 export function getRevisionMessage(revision) {
   const { diff, is_creation, is_reversion } = revision;
   if (is_creation) {
-    return {
-      title: t`created this`,
-    };
+    return t`created this`;
   }
   if (is_reversion) {
-    return {
-      title: t`reverted to an earlier revision`,
-    };
+    return t`reverted to an earlier revision`;
   }
 
   const { before, after } = diff;
