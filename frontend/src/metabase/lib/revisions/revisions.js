@@ -3,16 +3,6 @@ import { isValidRevision, getChangedFields, getRevisionMessage } from "./utils";
 
 export const REVISION_EVENT_ICON = "pencil";
 
-export function getRevisionDescription(revision) {
-  if (isCreationEvent(revision)) {
-    return "First revision.";
-  } else if (isReversionEvent(revision)) {
-    return t`Reverted to an earlier revision and ${revision.description}`;
-  } else {
-    return revision.description;
-  }
-}
-
 export function getRevisionEventsForTimeline(revisions = [], canWrite) {
   return revisions
     .filter(isValidRevision)
@@ -46,14 +36,6 @@ export function getRevisionEventsForTimeline(revisions = [], canWrite) {
       };
     })
     .filter(Boolean);
-}
-
-function isCreationEvent(revision) {
-  return revision.is_creation;
-}
-
-function isReversionEvent(revision) {
-  return revision.is_reversion;
 }
 
 function getRevisionUsername(revision) {

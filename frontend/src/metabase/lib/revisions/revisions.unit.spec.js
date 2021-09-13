@@ -1,37 +1,9 @@
 import {
   REVISION_EVENT_ICON,
-  getRevisionDescription,
   getRevisionEventsForTimeline,
 } from "metabase/lib/revisions";
 
 describe("revisions", () => {
-  describe("getRevisionDescription", () => {
-    it("should return the description for a creation event", () => {
-      const description = getRevisionDescription({
-        is_creation: true,
-      });
-
-      expect(description).toEqual("First revision.");
-    });
-
-    it("should return the description for a revision event", () => {
-      const description = getRevisionDescription({
-        is_reversion: true,
-        description: "foo",
-      });
-
-      expect(description).toEqual("Reverted to an earlier revision and foo");
-    });
-
-    it("should return the description for other revision events", () => {
-      const description = getRevisionDescription({
-        description: "foo",
-      });
-
-      expect(description).toEqual("foo");
-    });
-  });
-
   describe("getRevisionEvents", () => {
     const timestamp = "2016-05-08T02:02:07.441Z";
     const epochTimestamp = new Date(timestamp).valueOf();
