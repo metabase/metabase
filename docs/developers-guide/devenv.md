@@ -86,7 +86,7 @@ BETTER_SOURCE_MAPS=true yarn dev
 
 ### Cypress end-to-end tests
 
-End-to-end tests simulate realistic sequences of user interactions. Read more about how we approach end-to-end testing with Cypress [here](https://github.com/metabase/metabase/blob/master/docs/developers-guide/e2e-tests.md).
+End-to-end tests simulate realistic sequences of user interactions. Read more about how we approach [end-to-end testing with Cypress](./e2e-tests.md).
 
 Cypress end-to-end tests use an enforced file naming convention `<test-suite-name>.cy.spec.js` to separate them from unit tests.
 
