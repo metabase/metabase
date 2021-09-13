@@ -606,7 +606,7 @@ describe("collection permissions", () => {
 
         openRevisionHistory();
 
-        cy.findByText("First revision.");
+        cy.findByText("created this");
 
         cy.findAllByText("Revert").should("not.exist");
       });
@@ -654,7 +654,7 @@ describe("collection permissions", () => {
 
               it("should be able to get to the dashboard revision modal directly via url", () => {
                 cy.visit("/dashboard/1/history");
-                cy.findByText("First revision.");
+                cy.findByText("created this");
                 cy.findAllByRole("button", { name: "Revert" });
               });
 
@@ -662,7 +662,7 @@ describe("collection permissions", () => {
                 cy.visit("/dashboard/1");
                 cy.icon("ellipsis").click();
                 cy.findByText("Revision history").click();
-                clickRevert("First revision.");
+                clickRevert("created this");
                 cy.wait("@revert").then(xhr => {
                   expect(xhr.status).to.eq(200);
                   expect(xhr.cause).not.to.exist;
