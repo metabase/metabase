@@ -75,6 +75,7 @@ const CHANGE_DESCRIPTIONS = {
 
   // Questions
   dataset_query: {
+    [CHANGE_TYPE.ADD]: t`edited the question`,
     [CHANGE_TYPE.UPDATE]: t`edited the question`,
   },
   visualization_settings: {

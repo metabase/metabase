@@ -163,6 +163,16 @@ describe("getRevisionDescription | questions", () => {
     expect(getRevisionDescription(revision)).toBe("edited the question");
   });
 
+  it("handles query change revision when before state is null", () => {
+    const revision = getSimpleRevision({
+      field: "dataset_query",
+      before: null,
+      after: { "source-table": 2 },
+    });
+
+    expect(getRevisionDescription(revision)).toBe("edited the question");
+  });
+
   it("handles added visualization settings revision", () => {
     const revision = getSimpleRevision({
       field: "visualization_settings",
