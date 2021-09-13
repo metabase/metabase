@@ -128,6 +128,30 @@ describe("getRevisionMessage | common", () => {
         "renamed this to Orders by Month, added a description and unarchived this",
     });
   });
+
+  it("returns null if can't find a friendly message", () => {
+    const revision = getSimpleRevision({
+      field: "some_field",
+      before: 1,
+      after: 2,
+    });
+    expect(getRevisionMessage(revision)).toBe(null);
+  });
+
+  it("filters out messages for unknown fields from a complex diff", () => {
+    const revision = getRevision({
+      before: {
+        some_field: 1,
+        name: "orders",
+      },
+      after: {
+        some_field: 2,
+        name: "Orders",
+      },
+    });
+    expect(getRevisionMessage(revision)).toEqual({
+      title: "renamed this to Orders",
+    });
   });
 
   it.todo("handles item move revision (between collections)");

@@ -108,6 +108,9 @@ const MESSAGES = {
 };
 
 function formatChangeMessages(messages) {
+  if (!messages.length) {
+    return null;
+  }
   if (messages.length === 1) {
     return {
       title: messages[0],
@@ -139,16 +142,22 @@ export function getRevisionMessage(revision) {
   const { before, after } = diff;
   const changedFields = Object.keys(before);
 
-  const changes = changedFields.map(fieldName => {
-    const valueBefore = before[fieldName];
-    const valueAfter = after[fieldName];
-    const changeType = getChangeType(fieldName, valueBefore, valueAfter);
+  const changes = changedFields
+    .map(fieldName => {
+      const valueBefore = before[fieldName];
+      const valueAfter = after[fieldName];
+      const changeType = getChangeType(fieldName, valueBefore, valueAfter);
 
-    const messageGetter = MESSAGES[fieldName][changeType];
-    return typeof messageGetter === "function"
-      ? messageGetter(valueBefore, valueAfter)
-      : messageGetter;
-  });
+      const messageGetter = MESSAGES[fieldName]?.[changeType];
+      if (!messageGetter) {
+        return;
+      }
+
+      return typeof messageGetter === "function"
+        ? messageGetter(valueBefore, valueAfter)
+        : messageGetter;
+    })
+    .filter(Boolean);
 
   return formatChangeMessages(changes);
 }
