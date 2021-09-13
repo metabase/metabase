@@ -53,9 +53,9 @@ const layout = {
 };
 
 const TimeSeriesBarChart = ({ data, accessors, settings, labels }) => {
-  const yWidth = getYAxisWidth(data, accessors, settings, layout);
-  const yOffset = yWidth + layout.labelPadding;
-  const xMin = yOffset + layout.font.size * 1.5;
+  const yAxisWidth = getYAxisWidth(data, accessors, settings, layout);
+  const yLabelOffset = yAxisWidth + layout.labelPadding;
+  const xMin = yLabelOffset + layout.font.size * 1.5;
   const xMax = layout.width - layout.margin.right;
   const yMax = layout.height - layout.margin.bottom;
   const innerWidth = xMax - xMin;
@@ -100,7 +100,7 @@ const TimeSeriesBarChart = ({ data, accessors, settings, labels }) => {
         scale={yScale}
         left={xMin}
         label={leftLabel}
-        labelOffset={yOffset}
+        labelOffset={yLabelOffset}
         hideTicks
         hideAxisLine
         tickFormat={value => formatNumber(value, settings?.y)}

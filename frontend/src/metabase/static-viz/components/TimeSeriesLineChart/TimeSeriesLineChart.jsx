@@ -4,6 +4,11 @@ import { scaleLinear, scaleTime } from "@visx/scale";
 import { GridRows } from "@visx/grid";
 import { AxisBottom, AxisLeft } from "@visx/axis";
 import { LinePath } from "@visx/shape";
+import {
+  getXTickLabelProps,
+  getYAxisWidth,
+  getYTickLabelProps,
+} from "../../lib/axes";
 import { formatDate } from "../../lib/dates";
 import { formatNumber } from "../../lib/numbers";
 
@@ -42,14 +47,18 @@ const layout = {
     textMedium: "#949aab",
   },
   numTicks: 5,
+  labelPadding: 8,
   strokeWidth: 2,
   strokeDasharray: "4",
 };
 
 const TimeSeriesLineChart = ({ data, accessors, settings, labels }) => {
+  const yAxisWidth = getYAxisWidth(data, accessors, settings, layout);
+  const yLabelOffset = yAxisWidth + layout.labelPadding;
+  const xMin = yLabelOffset + layout.font.size * 1.5;
   const xMax = layout.width - layout.margin.right;
   const yMax = layout.height - layout.margin.bottom;
-  const innerWidth = xMax - layout.margin.left;
+  const innerWidth = xMax - xMin;
   const leftLabel = labels?.left;
   const bottomLabel = labels?.bottom;
 
@@ -58,7 +67,7 @@ const TimeSeriesLineChart = ({ data, accessors, settings, labels }) => {
       Math.min(...data.map(accessors.x)),
       Math.max(...data.map(accessors.x)),
     ],
-    range: [layout.margin.left, xMax],
+    range: [xMin, xMax],
   });
 
   const yScale = scaleLinear({
@@ -67,25 +76,11 @@ const TimeSeriesLineChart = ({ data, accessors, settings, labels }) => {
     nice: true,
   });
 
-  const getLeftTickLabelProps = () => ({
-    fontSize: layout.font.size,
-    fontFamily: layout.font.family,
-    fill: layout.colors.textMedium,
-    textAnchor: "end",
-  });
-
-  const getBottomTickLabelProps = () => ({
-    fontSize: layout.font.size,
-    fontFamily: layout.font.family,
-    fill: layout.colors.textMedium,
-    textAnchor: "middle",
-  });
-
   return (
     <svg width={layout.width} height={layout.height}>
       <GridRows
         scale={yScale}
-        left={layout.margin.left}
+        left={xMin}
         width={innerWidth}
         strokeDasharray={layout.strokeDasharray}
       />
@@ -98,12 +93,13 @@ const TimeSeriesLineChart = ({ data, accessors, settings, labels }) => {
       />
       <AxisLeft
         scale={yScale}
-        left={layout.margin.left}
+        left={xMin}
         label={leftLabel}
+        labelOffset={yLabelOffset}
         hideTicks
         hideAxisLine
         tickFormat={value => formatNumber(value, settings?.y)}
-        tickLabelProps={() => getLeftTickLabelProps()}
+        tickLabelProps={() => getYTickLabelProps(layout)}
       />
       <AxisBottom
         scale={xScale}
@@ -113,7 +109,7 @@ const TimeSeriesLineChart = ({ data, accessors, settings, labels }) => {
         stroke={layout.colors.textLight}
         tickStroke={layout.colors.textLight}
         tickFormat={value => formatDate(value, settings?.x)}
-        tickLabelProps={() => getBottomTickLabelProps()}
+        tickLabelProps={() => getXTickLabelProps(layout)}
       />
     </svg>
   );
