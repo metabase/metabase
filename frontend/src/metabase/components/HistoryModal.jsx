@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import ActionButton from "metabase/components/ActionButton";
 import ModalContent from "metabase/components/ModalContent";
-import { getRevisionDescription } from "metabase/lib/revisions";
+import { isValidRevision, getRevisionMessage } from "metabase/lib/revisions";
 
 import moment from "moment";
 
@@ -18,6 +18,10 @@ function formatDate(date) {
   }
 }
 
+function capitalize(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
 export default class HistoryModal extends Component {
   static propTypes = {
     revisions: PropTypes.array,
@@ -25,26 +29,9 @@ export default class HistoryModal extends Component {
     onClose: PropTypes.func.isRequired,
   };
 
-  shouldRenderRevisionEntry({ diff }) {
-    // diff may be null in "First revision"
-    // or in the earliest revision kept in store
-    if (diff === null) {
-      return true;
-    }
-
-    const { before, after } = diff;
-    return before !== null || after !== null;
-  }
-
   render() {
     const { revisions, onRevert, onClose } = this.props;
     const cellClassName = "p1 border-bottom";
-
-    // We must keep track of having skipped the Revert button
-    // because we are omitting certain revision entries,
-    // see function shouldRenderRevisionEntry
-    // They may be the very top entry so we have to use dedicated logic.
-    let hasSkippedMostRecentRevisionRevertButton = false;
 
     return (
       <ModalContent title={t`Revision history`} onClose={onClose}>
@@ -58,39 +45,29 @@ export default class HistoryModal extends Component {
             </tr>
           </thead>
           <tbody>
-            {revisions.map((revision, index) => {
-              if (this.shouldRenderRevisionEntry(revision)) {
-                const shouldRenderRevertButton =
-                  onRevert && hasSkippedMostRecentRevisionRevertButton;
-                hasSkippedMostRecentRevisionRevertButton = true;
-
-                return (
-                  <tr key={revision.id} data-testid="revision-history-row">
-                    <td className={cellClassName}>
-                      {formatDate(revision.timestamp)}
-                    </td>
-                    <td className={cellClassName}>
-                      {revision.user.common_name}
-                    </td>
-                    <td className={cellClassName}>
-                      <span>{getRevisionDescription(revision)}</span>
-                    </td>
-                    <td className={cellClassName}>
-                      {shouldRenderRevertButton && (
-                        <ActionButton
-                          actionFn={() => onRevert(revision)}
-                          className="Button Button--small Button--danger text-uppercase"
-                          normalText={t`Revert`}
-                          activeText={t`Reverting…`}
-                          failedText={t`Revert failed`}
-                          successText={t`Reverted`}
-                        />
-                      )}
-                    </td>
-                  </tr>
-                );
-              }
-            })}
+            {revisions.filter(isValidRevision).map((revision, index) => (
+              <tr key={revision.id} data-testid="revision-history-row">
+                <td className={cellClassName}>
+                  {formatDate(revision.timestamp)}
+                </td>
+                <td className={cellClassName}>{revision.user.common_name}</td>
+                <td className={cellClassName}>
+                  <span>{capitalize(getRevisionMessage(revision))}</span>
+                </td>
+                <td className={cellClassName}>
+                  {index !== 0 && (
+                    <ActionButton
+                      actionFn={() => onRevert(revision)}
+                      className="Button Button--small Button--danger text-uppercase"
+                      normalText={t`Revert`}
+                      activeText={t`Reverting…`}
+                      failedText={t`Revert failed`}
+                      successText={t`Reverted`}
+                    />
+                  )}
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </ModalContent>

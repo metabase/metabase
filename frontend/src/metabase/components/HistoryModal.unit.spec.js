@@ -70,14 +70,11 @@ function setup({ revisions = REVISIONS } = {}) {
 describe("HistoryModal", () => {
   it("displays revisions", () => {
     setup();
-    expect(screen.queryByText("First revision.")).toBeInTheDocument();
+    expect(screen.queryByText("Created this")).toBeInTheDocument();
+    expect(screen.queryByText("Added a description")).toBeInTheDocument();
+    expect(screen.queryByText("Archived this")).toBeInTheDocument();
     expect(
-      screen.queryByText(
-        'changed description from "null" to "Very helpful dashboard"',
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText('changed archived from "false" to "true"'),
+      screen.queryByText("Reverted to an earlier revision"),
     ).toBeInTheDocument();
     expect(screen.getAllByTestId("revision-history-row")).toHaveLength(4);
   });
