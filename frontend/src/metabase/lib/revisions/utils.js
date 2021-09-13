@@ -130,12 +130,12 @@ export function getRevisionMessage(revision) {
   }
 
   const { before, after } = diff;
-  const changedFields = Object.keys(before);
+  const changedFields = Object.keys(before || after);
 
   const changes = changedFields
     .map(fieldName => {
-      const valueBefore = before[fieldName];
-      const valueAfter = after[fieldName];
+      const valueBefore = before?.[fieldName];
+      const valueAfter = after?.[fieldName];
       const changeType = getChangeType(fieldName, valueBefore, valueAfter);
 
       const messageGetter = MESSAGES[fieldName]?.[changeType];
@@ -153,7 +153,9 @@ export function getRevisionMessage(revision) {
 }
 
 export function hasDiff(revision) {
-  return Boolean(revision.diff && revision.diff.before && revision.diff.after);
+  return Boolean(
+    revision.diff && (revision.diff.before || revision.diff.after),
+  );
 }
 
 export function getChangedFields(revision) {
@@ -161,7 +163,11 @@ export function getChangedFields(revision) {
     return [];
   }
   const registeredFields = Object.keys(MESSAGES);
-  const fields = Object.keys(revision.diff.before);
+
+  // There are cases when either 'before' or 'after' states are null
+  // So we need to pick another one
+  const fields = Object.keys(revision.diff.before || revision.diff.after);
+
   return fields.filter(field => registeredFields.includes(field));
 }
 

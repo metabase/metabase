@@ -216,19 +216,21 @@ describe("getRevisionMessage | dashboards", () => {
   });
 
   it("filters null card values for new card revision", () => {
-    const revision = getSimpleRevision({
-      field: "cards",
+    const revision = getRevision({
       before: null,
-      after: [null, null, 1],
+      after: {
+        cards: [null, null, 1],
+      },
     });
     expect(getRevisionMessage(revision)).toBe("added a card");
   });
 
   it("handles first card added revision", () => {
-    const revision = getSimpleRevision({
-      field: "cards",
+    const revision = getRevision({
       before: null,
-      after: [1],
+      after: {
+        cards: [1],
+      },
     });
     expect(getRevisionMessage(revision)).toBe("added a card");
   });
@@ -261,9 +263,10 @@ describe("getRevisionMessage | dashboards", () => {
   });
 
   it("handles all cards removed revision", () => {
-    const revision = getSimpleRevision({
-      field: "cards",
-      before: [1, 2, 3],
+    const revision = getRevision({
+      before: {
+        cards: [1, 2, 3],
+      },
       after: null,
     });
     expect(getRevisionMessage(revision)).toBe("removed 3 cards");
@@ -357,6 +360,26 @@ describe("isValidRevision", () => {
     });
     expect(isValidRevision(revision)).toBe(true);
   });
+
+  it("returns true if 'before' state is null, but 'after' state is present", () => {
+    const revision = getRevision({
+      before: null,
+      after: {
+        cards: [1],
+      },
+    });
+    expect(isValidRevision(revision)).toBe(true);
+  });
+
+  it("returns true if 'after' state is null, but 'before' state is present", () => {
+    const revision = getRevision({
+      before: {
+        cards: [1],
+      },
+      after: null,
+    });
+    expect(isValidRevision(revision)).toBe(true);
+  });
 });
 
 describe("getChangedFields", () => {
@@ -372,6 +395,26 @@ describe("getChangedFields", () => {
       },
     });
     expect(getChangedFields(revision)).toEqual(["name", "description"]);
+  });
+
+  it("returns a list of changed fields if 'before' state is null", () => {
+    const revision = getRevision({
+      before: null,
+      after: {
+        cards: [1],
+      },
+    });
+    expect(getChangedFields(revision)).toEqual(["cards"]);
+  });
+
+  it("returns a list of changed fields if 'after' state is null", () => {
+    const revision = getRevision({
+      before: {
+        cards: [1],
+      },
+      after: null,
+    });
+    expect(getChangedFields(revision)).toEqual(["cards"]);
   });
 
   it("returns a list with a single changed field", () => {
