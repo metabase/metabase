@@ -32,7 +32,11 @@ export function getRevisionEventsForTimeline(revisions = [], canWrite) {
       // If only one field is changed, we just show everything in the title
       // like "John added a description"
 
-      if (getChangedFields(revision).length > 1) {
+      if (
+        !revision.is_creation &&
+        !revision.is_reversion &&
+        getChangedFields(revision).length > 1
+      ) {
         event.title = username + " " + t`edited this`;
         event.description = <RevisionBatchedDescription changes={changes} />;
       } else {
