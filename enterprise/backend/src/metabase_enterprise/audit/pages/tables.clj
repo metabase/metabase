@@ -1,5 +1,6 @@
 (ns metabase-enterprise.audit.pages.tables
-  (:require [metabase-enterprise.audit.pages.common :as common]
+  (:require [metabase-enterprise.audit.interface :as audit.i]
+            [metabase-enterprise.audit.pages.common :as common]
             [metabase.util.honeysql-extensions :as hx]
             [schema.core :as s]))
 
@@ -39,23 +40,21 @@
                       [:metabase_database :db] [:= :t.db_id :db.id]]
                :order-by [[:executions asc-or-desc]]})})
 
-(defn ^:internal-query-fn most-queried
-  "Query that returns the top-10 most-queried Tables, in descending order."
-  []
+;; Query that returns the top-10 most-queried Tables, in descending order.
+(defmethod audit.i/internal-query ::most-queried
+  [_]
   (query-counts :desc))
 
-(defn ^:internal-query-fn least-queried
-  "Query that returns the top-10 least-queried Tables (with at least one query execution), in ascending order."
-  []
+;; Query that returns the top-10 least-queried Tables (with at least one query execution), in ascending order.
+(defmethod audit.i/internal-query ::least-queried
+  [_]
   (query-counts :asc))
 
-
-
-(s/defn ^:internal-query-fn table
-  "A table of Tables."
-  ([]
-   (table nil))
-  ([query-string :- (s/maybe s/Str)]
+;; A table of Tables.
+(s/defmethod audit.i/internal-query ::table
+  ([query-type]
+   (audit.i/internal-query query-type nil))
+  ([_ query-string :- (s/maybe s/Str)]
    {:metadata [[:database_id        {:display_name "Database ID",        :base_type :type/Integer, :remapped_to   :database_name}]
                [:database_name      {:display_name "Database",           :base_type :type/Text,    :remapped_from :database_id}]
                [:schema_id          {:display_name "Schema ID",          :base_type :type/Text,   :remapped_to   :schema_name}]
@@ -64,18 +63,18 @@
                [:table_name         {:display_name "Table Name in DB",   :base_type :type/Name,    :remapped_from :table_id}]
                [:table_display_name {:display_name "Table Display Name", :base_type :type/Text}]]
     :results (common/reducible-query
-               (->
-                {:select   [[:db.id :database_id]
-                            [:db.name :database_name]
-                            [(hx/concat :db.id (hx/literal ".") :t.schema) :schema_id]
-                            [:t.schema :table_schema]
-                            [:t.id :table_id]
-                            [:t.name :table_name]
-                            [:t.display_name :table_display_name]]
-                 :from     [[:metabase_table :t]]
-                 :join     [[:metabase_database :db] [:= :t.db_id :db.id]]
-                 :order-by [[:%lower.db.name  :asc]
-                            [:%lower.t.schema :asc]
-                            [:%lower.t.name   :asc]]
-                 :where    [:= :t.active true]}
-                (common/add-search-clause query-string :db.name :t.schema :t.name :t.display_name)))}))
+              (->
+               {:select   [[:db.id :database_id]
+                           [:db.name :database_name]
+                           [(hx/concat :db.id (hx/literal ".") :t.schema) :schema_id]
+                           [:t.schema :table_schema]
+                           [:t.id :table_id]
+                           [:t.name :table_name]
+                           [:t.display_name :table_display_name]]
+                :from     [[:metabase_table :t]]
+                :join     [[:metabase_database :db] [:= :t.db_id :db.id]]
+                :order-by [[:%lower.db.name  :asc]
+                           [:%lower.t.schema :asc]
+                           [:%lower.t.name   :asc]]
+                :where    [:= :t.active true]}
+               (common/add-search-clause query-string :db.name :t.schema :t.name :t.display_name)))}))

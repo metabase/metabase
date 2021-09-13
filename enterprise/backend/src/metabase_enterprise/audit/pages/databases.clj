@@ -1,5 +1,6 @@
 (ns metabase-enterprise.audit.pages.databases
   (:require [honeysql.core :as hsql]
+            [metabase-enterprise.audit.interface :as audit.i]
             [metabase-enterprise.audit.pages.common :as common]
             [metabase.util.cron :as cron]
             [schema.core :as s]))
@@ -15,9 +16,11 @@
 ;; JOIN metabase_database db ON t.db_id = db.id
 ;; GROUP BY db.id
 ;; ORDER BY lower(db.name) ASC
-(defn ^:internal-query-fn ^:deprecated total-query-executions-by-db
-  "Return Databases with the total number of queries ran against them and the average running time for all queries."
-  []
+;;
+;; DEPRECATED Return Databases with the total number of queries ran against them and the average running time for all
+;; queries.
+(defmethod audit.i/internal-query ::total-query-executions-by-db
+  [_]
   {:metadata [[:database_id      {:display_name "Database ID",            :base_type :type/Integer, :remapped_to   :database_name}]
               [:database_name    {:display_name "Database",               :base_type :type/Text,    :remapped_from :database_id}]
               [:queries          {:display_name "Queries",                :base_type :type/Integer}]
@@ -34,9 +37,9 @@
                :group-by [:db.id]
                :order-by [[:%lower.db.name :asc]]})})
 
-(s/defn ^:internal-query-fn query-executions-by-time
-  "Query that returns count of query executions grouped by Database and a `datetime-unit`."
-  [datetime-unit :- common/DateTimeUnitStr]
+;; Query that returns count of query executions grouped by Database and a `datetime-unit`.
+(s/defmethod audit.i/internal-query ::query-executions-by-time
+  [_ datetime-unit :- common/DateTimeUnitStr]
   {:metadata [[:date          {:display_name "Date",          :base_type (common/datetime-unit-str->base-type datetime-unit)}]
               [:database_id   {:display_name "Database ID",   :base_type :type/Integer, :remapped_to   :database_name}]
               [:database_name {:display_name "Database Name", :base_type :type/Name,    :remapped_from :database_id}]
@@ -63,17 +66,17 @@
                            [:%lower.db.name :asc]
                            [:qx.database_id :asc]]})})
 
-(defn ^:deprecated ^:internal-query-fn query-executions-per-db-per-day
-  "Query that returns count of query executions grouped by Database and day."
-  []
-  (query-executions-by-time "day"))
+;; DEPRECATED Use `::query-executions-by-time` instead. Query that returns count of query executions grouped by
+;; Database and day.
+(defmethod audit.i/internal-query ::query-executions-per-db-per-day
+  [_]
+  (audit.i/internal-query ::query-executions-by-time "day"))
 
-
-(s/defn ^:internal-query-fn table
-  "Table with information and statistics about all the data warehouse Databases in this Metabase instance."
-  ([]
-   (table nil))
-  ([query-string :- (s/maybe s/Str)]
+;; Table with information and statistics about all the data warehouse Databases in this Metabase instance.
+(s/defmethod audit.i/internal-query ::table
+  ([query-type]
+   (audit.i/internal-query query-type nil))
+  ([_ query-string :- (s/maybe s/Str)]
    ;; TODO - Should we convert sync_schedule from a cron string into English? Not sure that's going to be feasible for
    ;; really complicated schedules
    {:metadata [[:database_id   {:display_name "Database ID", :base_type :type/Integer, :remapped_to :title}]

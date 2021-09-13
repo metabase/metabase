@@ -41,7 +41,7 @@
   #{:first :mid :last})
 
 (defn schedule-frame?
-  "Is FRAME a valid schedule frame?"
+  "Is `frame` a valid schedule frame?"
   [frame]
   (contains? schedule-frames frame))
 
