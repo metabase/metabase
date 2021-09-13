@@ -6,6 +6,14 @@ describe("visual tests > internal > components", () => {
     cy.signInAsNormalUser();
   });
 
+  it("ClampedText", () => {
+    cy.visit("/_internal");
+
+    cy.findByText("ClampedText").click();
+
+    cy.percySnapshot();
+  });
+
   it("UserAvatar", () => {
     cy.visit("/_internal");
 
