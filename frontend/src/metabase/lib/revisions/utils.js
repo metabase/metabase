@@ -163,6 +163,19 @@ export function getRevisionMessage(revision) {
   return formatChangeMessages(changes);
 }
 
+export function hasDiff(revision) {
+  return Boolean(revision.diff && revision.diff.before && revision.diff.after);
+}
+
+export function getChangedFields(revision) {
+  if (!hasDiff(revision)) {
+    return [];
+  }
+  const registeredFields = Object.keys(MESSAGES);
+  const fields = Object.keys(revision.diff.before);
+  return fields.filter(field => registeredFields.includes(field));
+}
+
 export function isValidRevision(revision) {
   if (revision.is_creation || revision.is_reversion) {
     return true;

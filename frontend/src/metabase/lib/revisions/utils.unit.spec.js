@@ -1,4 +1,4 @@
-import { getRevisionMessage, isValidRevision } from "./utils";
+import { getRevisionMessage, getChangedFields, isValidRevision } from "./utils";
 
 function getRevision({
   isCreation = false,
@@ -363,5 +363,60 @@ describe("isValidRevision", () => {
       after: "Orders",
     });
     expect(isValidRevision(revision)).toBe(true);
+  });
+});
+
+describe("getChangedFields", () => {
+  it("returns a list of changed fields", () => {
+    const revision = getRevision({
+      before: {
+        name: "Orders",
+        description: null,
+      },
+      after: {
+        name: "Orders by Month",
+        description: "Hello",
+      },
+    });
+    expect(getChangedFields(revision)).toEqual(["name", "description"]);
+  });
+
+  it("returns a list with a single changed field", () => {
+    const revision = getRevision({
+      before: {
+        description: null,
+      },
+      after: {
+        description: "Hello",
+      },
+    });
+    expect(getChangedFields(revision)).toEqual(["description"]);
+  });
+
+  it("filters out unknown fields", () => {
+    const revision = getRevision({
+      before: {
+        dont_know_this_field: null,
+      },
+      after: {
+        dont_know_this_field: "Hello",
+      },
+    });
+    expect(getChangedFields(revision)).toEqual([]);
+  });
+
+  it("returns empty array if diff is missing", () => {
+    const revision = {
+      diff: null,
+    };
+    expect(getChangedFields(revision)).toEqual([]);
+  });
+
+  it("returns empty array if 'before' and 'after' states missing", () => {
+    const revision = getRevision({
+      before: null,
+      after: null,
+    });
+    expect(getChangedFields(revision)).toEqual([]);
   });
 });
