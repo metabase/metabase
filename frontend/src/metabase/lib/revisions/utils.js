@@ -11,7 +11,7 @@ function getCardsArraySafe(cards) {
   // Cards diff will contain null values for cards that were not changed
   // Also for e.g. new card revision, the 'before' state can be just null
   // like { before: null, after: [ null, null, { ...cardInfo } ] }
-  // So we need to filter out null values to get a correct revision message
+  // So we need to filter out null values to get a correct revision description
   return Array.isArray(cards) ? cards.filter(Boolean) : [];
 }
 
@@ -46,7 +46,7 @@ function getChangeType(field, before, after) {
   return CHANGE_TYPE.UPDATE;
 }
 
-function getSeriesChangeMessage(prevCards, cards) {
+function getSeriesChangeDescription(prevCards, cards) {
   const changedCardIndex = prevCards.findIndex(hasSeries);
   const seriesBefore = prevCards[changedCardIndex].series || [];
   const seriesAfter = cards[changedCardIndex].series || [];
@@ -58,7 +58,7 @@ function getSeriesChangeMessage(prevCards, cards) {
     : t`removed series from a question`;
 }
 
-const MESSAGES = {
+const CHANGE_DESCRIPTIONS = {
   // Common
   name: {
     [CHANGE_TYPE.UPDATE]: (oldName, newName) =>
@@ -95,7 +95,7 @@ const MESSAGES = {
       const prevCards = getCardsArraySafe(_prevCards);
       const cards = getCardsArraySafe(_cards);
       if (hasSeriesChange(prevCards) || hasSeriesChange(cards)) {
-        return getSeriesChangeMessage(prevCards, cards);
+        return getSeriesChangeDescription(prevCards, cards);
       }
       return t`moved cards around`;
     },
@@ -118,7 +118,7 @@ export function getChangedFields(revision) {
   if (!hasDiff(revision)) {
     return [];
   }
-  const registeredFields = Object.keys(MESSAGES);
+  const registeredFields = Object.keys(CHANGE_DESCRIPTIONS);
 
   // There are cases when either 'before' or 'after' states are null
   // So we need to pick another one
@@ -127,19 +127,21 @@ export function getChangedFields(revision) {
   return fields.filter(field => registeredFields.includes(field));
 }
 
-function formatChangeMessages(messages) {
-  if (!messages.length) {
+function formatChangeDescriptions(descriptions) {
+  if (!descriptions.length) {
     return null;
   }
-  if (messages.length === 1) {
-    return messages[0];
+  if (descriptions.length === 1) {
+    return descriptions[0];
   }
-  const lastMessage = _.last(messages);
-  const messagesExceptLast = messages.slice(0, messages.length - 1);
-  return messagesExceptLast.join(", ") + " " + t`and` + " " + lastMessage;
+  const last = _.last(descriptions);
+  const exceptLast = descriptions.slice(0, descriptions.length - 1);
+
+  // Makes sure the last description is separated with "and" word rather than a comma
+  return exceptLast.join(", ") + " " + t`and` + " " + last;
 }
 
-export function getRevisionMessage(revision) {
+export function getRevisionDescription(revision) {
   const { diff, is_creation, is_reversion } = revision;
   if (is_creation) {
     return t`created this`;
@@ -153,13 +155,13 @@ export function getRevisionMessage(revision) {
     const valueBefore = before?.[fieldName];
     const valueAfter = after?.[fieldName];
     const changeType = getChangeType(fieldName, valueBefore, valueAfter);
-    const messageGetter = MESSAGES[fieldName]?.[changeType];
-    return typeof messageGetter === "function"
-      ? messageGetter(valueBefore, valueAfter)
-      : messageGetter;
+    const description = CHANGE_DESCRIPTIONS[fieldName]?.[changeType];
+    return typeof description === "function"
+      ? description(valueBefore, valueAfter)
+      : description;
   });
 
-  return formatChangeMessages(changes);
+  return formatChangeDescriptions(changes);
 }
 
 export function isValidRevision(revision) {

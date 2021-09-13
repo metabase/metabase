@@ -1,4 +1,8 @@
-import { getRevisionMessage, getChangedFields, isValidRevision } from "./utils";
+import {
+  getRevisionDescription,
+  getChangedFields,
+  isValidRevision,
+} from "./utils";
 
 function getRevision({
   isCreation = false,
@@ -28,15 +32,15 @@ function getSimpleRevision({ field, before, after, ...rest }) {
   });
 }
 
-describe("getRevisionMessage | common", () => {
+describe("getRevisionDescription | common", () => {
   it("handles initial revision (entity created)", () => {
     const revision = getRevision({ isCreation: true });
-    expect(getRevisionMessage(revision)).toBe("created this");
+    expect(getRevisionDescription(revision)).toBe("created this");
   });
 
   it("handles reversions", () => {
     const revision = getRevision({ isReversion: true });
-    expect(getRevisionMessage(revision)).toBe(
+    expect(getRevisionDescription(revision)).toBe(
       "reverted to an earlier revision",
     );
   });
@@ -47,7 +51,7 @@ describe("getRevisionMessage | common", () => {
       before: "Orders",
       after: "Orders by Month",
     });
-    expect(getRevisionMessage(revision)).toBe(
+    expect(getRevisionDescription(revision)).toBe(
       'renamed this to "Orders by Month"',
     );
   });
@@ -58,7 +62,7 @@ describe("getRevisionMessage | common", () => {
       before: null,
       after: "Hello there",
     });
-    expect(getRevisionMessage(revision)).toBe("added a description");
+    expect(getRevisionDescription(revision)).toBe("added a description");
   });
 
   it("handles description change", () => {
@@ -67,7 +71,7 @@ describe("getRevisionMessage | common", () => {
       before: "Hello",
       after: "Hello there",
     });
-    expect(getRevisionMessage(revision)).toBe("changed the description");
+    expect(getRevisionDescription(revision)).toBe("changed the description");
   });
 
   it("handles archive revision", () => {
@@ -76,7 +80,7 @@ describe("getRevisionMessage | common", () => {
       before: false,
       after: true,
     });
-    expect(getRevisionMessage(revision)).toBe("archived this");
+    expect(getRevisionDescription(revision)).toBe("archived this");
   });
 
   it("handles unarchive revision", () => {
@@ -85,7 +89,7 @@ describe("getRevisionMessage | common", () => {
       before: true,
       after: false,
     });
-    expect(getRevisionMessage(revision)).toBe("unarchived this");
+    expect(getRevisionDescription(revision)).toBe("unarchived this");
   });
 
   it("batches two changes in a single message", () => {
@@ -99,7 +103,7 @@ describe("getRevisionMessage | common", () => {
         archived: false,
       },
     });
-    expect(getRevisionMessage(revision)).toBe(
+    expect(getRevisionDescription(revision)).toBe(
       'renamed this to "Orders by Month" and unarchived this',
     );
   });
@@ -117,7 +121,7 @@ describe("getRevisionMessage | common", () => {
         archived: false,
       },
     });
-    expect(getRevisionMessage(revision)).toBe(
+    expect(getRevisionDescription(revision)).toBe(
       'renamed this to "Orders by Month", added a description and unarchived this',
     );
   });
@@ -128,7 +132,7 @@ describe("getRevisionMessage | common", () => {
       before: 1,
       after: 2,
     });
-    expect(getRevisionMessage(revision)).toBe(null);
+    expect(getRevisionDescription(revision)).toBe(null);
   });
 
   it("filters out messages for unknown fields from a complex diff", () => {
@@ -142,13 +146,13 @@ describe("getRevisionMessage | common", () => {
         name: "Orders",
       },
     });
-    expect(getRevisionMessage(revision)).toBe('renamed this to "Orders"');
+    expect(getRevisionDescription(revision)).toBe('renamed this to "Orders"');
   });
 
   it.todo("handles item move revision (between collections)");
 });
 
-describe("getRevisionMessage | questions", () => {
+describe("getRevisionDescription | questions", () => {
   it("handles query change revision", () => {
     const revision = getSimpleRevision({
       field: "dataset_query",
@@ -156,7 +160,7 @@ describe("getRevisionMessage | questions", () => {
       after: { "source-table": 2 },
     });
 
-    expect(getRevisionMessage(revision)).toBe("edited the question");
+    expect(getRevisionDescription(revision)).toBe("edited the question");
   });
 
   it("handles added visualization settings revision", () => {
@@ -166,7 +170,7 @@ describe("getRevisionMessage | questions", () => {
       after: { "table.pivot": true },
     });
 
-    expect(getRevisionMessage(revision)).toBe(
+    expect(getRevisionDescription(revision)).toBe(
       "changed the visualization settings",
     );
   });
@@ -178,7 +182,7 @@ describe("getRevisionMessage | questions", () => {
       after: { "table.pivot": true },
     });
 
-    expect(getRevisionMessage(revision)).toBe(
+    expect(getRevisionDescription(revision)).toBe(
       "changed the visualization settings",
     );
   });
@@ -190,20 +194,20 @@ describe("getRevisionMessage | questions", () => {
       after: null,
     });
 
-    expect(getRevisionMessage(revision)).toBe(
+    expect(getRevisionDescription(revision)).toBe(
       "changed the visualization settings",
     );
   });
 });
 
-describe("getRevisionMessage | dashboards", () => {
+describe("getRevisionDescription | dashboards", () => {
   it("handles added card revision", () => {
     const revision = getSimpleRevision({
       field: "cards",
       before: [1, 2],
       after: [1, 2, 3],
     });
-    expect(getRevisionMessage(revision)).toBe("added a card");
+    expect(getRevisionDescription(revision)).toBe("added a card");
   });
 
   it("handles added multiple cards revision", () => {
@@ -212,7 +216,7 @@ describe("getRevisionMessage | dashboards", () => {
       before: [1, 2],
       after: [1, 2, 3, 4, 5],
     });
-    expect(getRevisionMessage(revision)).toBe("added 3 cards");
+    expect(getRevisionDescription(revision)).toBe("added 3 cards");
   });
 
   it("filters null card values for new card revision", () => {
@@ -222,7 +226,7 @@ describe("getRevisionMessage | dashboards", () => {
         cards: [null, null, 1],
       },
     });
-    expect(getRevisionMessage(revision)).toBe("added a card");
+    expect(getRevisionDescription(revision)).toBe("added a card");
   });
 
   it("handles first card added revision", () => {
@@ -232,7 +236,7 @@ describe("getRevisionMessage | dashboards", () => {
         cards: [1],
       },
     });
-    expect(getRevisionMessage(revision)).toBe("added a card");
+    expect(getRevisionDescription(revision)).toBe("added a card");
   });
 
   it("handles removed cards revision", () => {
@@ -241,7 +245,7 @@ describe("getRevisionMessage | dashboards", () => {
       before: [1, 2],
       after: [1],
     });
-    expect(getRevisionMessage(revision)).toBe("removed a card");
+    expect(getRevisionDescription(revision)).toBe("removed a card");
   });
 
   it("filters null card values for removed card revision", () => {
@@ -250,7 +254,7 @@ describe("getRevisionMessage | dashboards", () => {
       before: [null, 1, 2],
       after: [null, 1],
     });
-    expect(getRevisionMessage(revision)).toBe("removed a card");
+    expect(getRevisionDescription(revision)).toBe("removed a card");
   });
 
   it("handles removed cards revision", () => {
@@ -259,7 +263,7 @@ describe("getRevisionMessage | dashboards", () => {
       before: [1, 2, 3],
       after: [1],
     });
-    expect(getRevisionMessage(revision)).toBe("removed 2 cards");
+    expect(getRevisionDescription(revision)).toBe("removed 2 cards");
   });
 
   it("handles all cards removed revision", () => {
@@ -269,7 +273,7 @@ describe("getRevisionMessage | dashboards", () => {
       },
       after: null,
     });
-    expect(getRevisionMessage(revision)).toBe("removed 3 cards");
+    expect(getRevisionDescription(revision)).toBe("removed 3 cards");
   });
 
   it("handles rearranged cards revision", () => {
@@ -278,7 +282,7 @@ describe("getRevisionMessage | dashboards", () => {
       before: [1, 2, 3],
       after: [2, 1, 3],
     });
-    expect(getRevisionMessage(revision)).toBe("moved cards around");
+    expect(getRevisionDescription(revision)).toBe("moved cards around");
   });
 
   it("handles added series revision", () => {
@@ -287,7 +291,7 @@ describe("getRevisionMessage | dashboards", () => {
       before: [{ series: null }],
       after: [{ series: [4] }],
     });
-    expect(getRevisionMessage(revision)).toBe("added series to a question");
+    expect(getRevisionDescription(revision)).toBe("added series to a question");
   });
 
   it("handles removed series revision", () => {
@@ -296,7 +300,9 @@ describe("getRevisionMessage | dashboards", () => {
       before: [{ series: [4] }],
       after: [{ series: null }],
     });
-    expect(getRevisionMessage(revision)).toBe("removed series from a question");
+    expect(getRevisionDescription(revision)).toBe(
+      "removed series from a question",
+    );
   });
 
   it("handles modified series revision", () => {
@@ -305,7 +311,7 @@ describe("getRevisionMessage | dashboards", () => {
       before: [{ series: [4, 5] }],
       after: [{ series: [5, 4] }],
     });
-    expect(getRevisionMessage(revision)).toBe("modified question's series");
+    expect(getRevisionDescription(revision)).toBe("modified question's series");
   });
 });
 

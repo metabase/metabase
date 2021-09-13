@@ -1,5 +1,9 @@
 import { t } from "ttag";
-import { isValidRevision, getChangedFields, getRevisionMessage } from "./utils";
+import {
+  isValidRevision,
+  getChangedFields,
+  getRevisionDescription,
+} from "./utils";
 
 export const REVISION_EVENT_ICON = "pencil";
 
@@ -9,7 +13,7 @@ export function getRevisionEventsForTimeline(revisions = [], canWrite) {
     .map((revision, index) => {
       const isRevertable = canWrite && index !== 0;
       const username = getRevisionUsername(revision);
-      const message = getRevisionMessage(revision);
+      const message = getRevisionDescription(revision);
 
       // If > 1 item's fields are changed in a single revision,
       // the changes are batched into a single string like:

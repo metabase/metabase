@@ -3,7 +3,10 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import ActionButton from "metabase/components/ActionButton";
 import ModalContent from "metabase/components/ModalContent";
-import { isValidRevision, getRevisionMessage } from "metabase/lib/revisions";
+import {
+  isValidRevision,
+  getRevisionDescription,
+} from "metabase/lib/revisions";
 
 import moment from "moment";
 
@@ -52,7 +55,7 @@ export default class HistoryModal extends Component {
                 </td>
                 <td className={cellClassName}>{revision.user.common_name}</td>
                 <td className={cellClassName}>
-                  <span>{capitalize(getRevisionMessage(revision))}</span>
+                  <span>{capitalize(getRevisionDescription(revision))}</span>
                 </td>
                 <td className={cellClassName}>
                   {index !== 0 && (
