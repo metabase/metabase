@@ -10,6 +10,7 @@ function getRevision({
   ...rest
 } = {}) {
   return {
+    id: Math.random(),
     is_reversion: isReversion,
     is_creation: isCreation,
     user: {
@@ -70,11 +71,11 @@ function setup({ revisions = REVISIONS } = {}) {
 describe("HistoryModal", () => {
   it("displays revisions", () => {
     setup();
-    expect(screen.queryByText("Created this")).toBeInTheDocument();
-    expect(screen.queryByText("Added a description")).toBeInTheDocument();
-    expect(screen.queryByText("Archived this")).toBeInTheDocument();
+    expect(screen.queryByText("created this")).toBeInTheDocument();
+    expect(screen.queryByText("added a description")).toBeInTheDocument();
+    expect(screen.queryByText("archived this")).toBeInTheDocument();
     expect(
-      screen.queryByText("Reverted to an earlier revision"),
+      screen.queryByText("reverted to an earlier revision"),
     ).toBeInTheDocument();
     expect(screen.getAllByTestId("revision-history-row")).toHaveLength(4);
   });

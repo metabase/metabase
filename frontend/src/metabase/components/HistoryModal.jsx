@@ -21,10 +21,6 @@ function formatDate(date) {
   }
 }
 
-function capitalize(str) {
-  return str.charAt(0).toUpperCase() + str.slice(1);
-}
-
 export default class HistoryModal extends Component {
   static propTypes = {
     revisions: PropTypes.array,
@@ -55,7 +51,7 @@ export default class HistoryModal extends Component {
                 </td>
                 <td className={cellClassName}>{revision.user.common_name}</td>
                 <td className={cellClassName}>
-                  <span>{capitalize(getRevisionDescription(revision))}</span>
+                  <span>{getRevisionDescription(revision)}</span>
                 </td>
                 <td className={cellClassName}>
                   {index !== 0 && (
