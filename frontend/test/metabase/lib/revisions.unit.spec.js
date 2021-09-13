@@ -36,23 +36,42 @@ describe("revisions", () => {
     const timestamp = "2016-05-08T02:02:07.441Z";
     const epochTimestamp = new Date(timestamp).valueOf();
 
-    const latestRevisionEvent = {
-      is_reversion: true,
-      description: "bar",
-      timestamp,
-      user: {
-        common_name: "Bar",
-      },
-    };
+    function getRevision({
+      isReversion = false,
+      isCreation = false,
+      userName = "Foo",
+      ...rest
+    } = {}) {
+      return {
+        is_reversion: isReversion,
+        is_creation: isCreation,
+        user: {
+          common_name: userName,
+        },
+        timestamp,
+        ...rest,
+      };
+    }
 
-    const creationEvent = {
-      is_creation: true,
+    const latestRevisionEvent = getRevision({
+      isReversion: true,
+      description: "bar",
+      userName: "Bar",
+    });
+
+    const creationEvent = getRevision({
+      isCreation: true,
       description: "foo",
-      timestamp,
-      user: {
-        common_name: "Foo",
-      },
-    };
+    });
+
+    function getExpectedEvent(opts) {
+      return {
+        description: undefined,
+        timestamp: epochTimestamp,
+        icon: REVISION_EVENT_ICON,
+        ...opts,
+      };
+    }
 
     const revisionEvents = [latestRevisionEvent, creationEvent];
 
@@ -64,22 +83,16 @@ describe("revisions", () => {
       );
 
       expect(timelineEvents).toEqual([
-        {
-          timestamp: epochTimestamp,
-          icon: REVISION_EVENT_ICON,
-          title: "Bar edited this",
-          description: getRevisionDescription(latestRevisionEvent),
+        getExpectedEvent({
+          title: "Bar reverted to an earlier revision",
           isRevertable: false,
           revision: latestRevisionEvent,
-        },
-        {
-          timestamp: epochTimestamp,
-          icon: REVISION_EVENT_ICON,
+        }),
+        getExpectedEvent({
           title: "Foo created this",
-          description: undefined,
           isRevertable: false,
           revision: creationEvent,
-        },
+        }),
       ]);
     });
 
