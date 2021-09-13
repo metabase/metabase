@@ -53,7 +53,7 @@ const layout = {
 };
 
 const TimeSeriesLineChart = ({ data, accessors, settings, labels }) => {
-  const yAxisWidth = getYAxisWidth(data, accessors, settings, layout);
+  const yAxisWidth = getYAxisWidth(data, accessors, settings);
   const yLabelOffset = yAxisWidth + layout.labelPadding;
   const xMin = yLabelOffset + layout.font.size * 1.5;
   const xMax = layout.width - layout.margin.right;
