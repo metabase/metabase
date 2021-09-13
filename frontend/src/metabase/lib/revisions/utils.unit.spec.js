@@ -92,7 +92,7 @@ describe("getRevisionDescription | common", () => {
     expect(getRevisionDescription(revision)).toBe("unarchived this");
   });
 
-  it("batches two changes in a single message", () => {
+  it("returns an array of two changes", () => {
     const revision = getRevision({
       before: {
         name: "Orders",
@@ -103,12 +103,13 @@ describe("getRevisionDescription | common", () => {
         archived: false,
       },
     });
-    expect(getRevisionDescription(revision)).toBe(
-      'renamed this to "Orders by Month" and unarchived this',
-    );
+    expect(getRevisionDescription(revision)).toEqual([
+      'renamed this to "Orders by Month"',
+      "unarchived this",
+    ]);
   });
 
-  it("batches many changes in a single message", () => {
+  it("returns an array of multiple changes", () => {
     const revision = getRevision({
       before: {
         name: "Orders",
@@ -121,18 +122,20 @@ describe("getRevisionDescription | common", () => {
         archived: false,
       },
     });
-    expect(getRevisionDescription(revision)).toBe(
-      'renamed this to "Orders by Month", added a description and unarchived this',
-    );
+    expect(getRevisionDescription(revision)).toEqual([
+      'renamed this to "Orders by Month"',
+      "added a description",
+      "unarchived this",
+    ]);
   });
 
-  it("returns null if can't find a friendly message", () => {
+  it("returns an empty array if can't find a friendly message", () => {
     const revision = getSimpleRevision({
       field: "some_field",
       before: 1,
       after: 2,
     });
-    expect(getRevisionDescription(revision)).toBe(null);
+    expect(getRevisionDescription(revision)).toEqual([]);
   });
 
   it("filters out unknown change types", () => {

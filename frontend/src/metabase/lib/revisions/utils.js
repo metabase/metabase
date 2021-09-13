@@ -140,20 +140,6 @@ export function getChangedFields(revision) {
   return fields.filter(field => registeredFields.includes(field));
 }
 
-function formatChangeDescriptions(descriptions) {
-  if (!descriptions.length) {
-    return null;
-  }
-  if (descriptions.length === 1) {
-    return descriptions[0];
-  }
-  const last = _.last(descriptions);
-  const exceptLast = descriptions.slice(0, descriptions.length - 1);
-
-  // Makes sure the last description is separated with "and" word rather than a comma
-  return exceptLast.join(", ") + " " + t`and` + " " + last;
-}
-
 export function getRevisionDescription(revision) {
   const { diff, is_creation, is_reversion } = revision;
   if (is_creation) {
@@ -176,7 +162,7 @@ export function getRevisionDescription(revision) {
     })
     .filter(Boolean);
 
-  return formatChangeDescriptions(changes);
+  return changes.length === 1 ? changes[0] : changes;
 }
 
 export function isValidRevision(revision) {
