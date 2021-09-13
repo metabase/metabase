@@ -12,7 +12,9 @@
             [metabase.pulse.render.sparkline :as sparkline]
             [metabase.pulse.render.style :as style]
             [metabase.pulse.render.table :as table]
+            [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.types :as types]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [schema.core :as s])
   (:import (java.text DecimalFormat DecimalFormatSymbols)))
@@ -215,20 +217,72 @@
        (list results-attached table-body)
        (list table-body))}))
 
+(def ^:private default-date-styles
+  {:year "YYYY"
+   :quarter "[Q]Q - YYYY"
+   :minute-of-hour "m"
+   :day-of-week "dddd"
+   :day-of-month "D"
+   :day-of-year "DDD"
+   :week-of-year "wo"
+   :month-of-year "MMMM"
+   :quarter-of-year "[Q]Q"})
+
+(def ^:private override-date-styles
+  {"M/D/YYYY" {:month "M/YYYY"}
+   "D/M/YYYY" {:month "M/YYYY"}
+   "YYYY/M/D" {:month "YYYY/M"
+               :quarter "YYYY - [Q]Q"}
+   "MMMM D, YYYY" {:month "MMMM, YYYY"}
+   "D MMMM, YYYY" {:month "MMMM, YYYY"}
+   "dddd, MMMM D, YYYY" {:week "MMMM D, YYYY"
+                         :month "MMMM, YYYY"}})
+
+(defn- ->js-viz
+  "Include viz settings for js.
+
+  - there are some date overrides done from lib/formatting.js
+  - chop off and underscore the nasty keys in our map
+  - backfill currency to the default of USD if not present"
+  [x-col y-col {::mb.viz/keys [column-settings] :as _viz-settings}]
+  (letfn [(settings [col] (or (get column-settings {::mb.viz/field-id (:id col)})
+                              (get column-settings {::mb.viz/column-name (:name col)})))
+          (update-date-style [date-style unit]
+            (let [unit (or unit :default)]
+              (or (get-in override-date-styles [date-style unit])
+                  (get-in default-date-styles [unit])
+                  date-style)))
+          (backfill-currency [{:keys [number_style currency] :as settings}]
+            (cond-> settings
+              (and (= number_style "currency") (nil? currency))
+              (assoc :currency "USD")))
+          (for-js [col-settings col]
+            (-> (m/map-keys (fn [k] (-> k name (str/replace #"-" "_") keyword)) col-settings)
+                (backfill-currency)
+                (u/update-when :date_style update-date-style (:unit col))))]
+    (let [x-col-settings (settings x-col)
+          y-col-settings (settings y-col)]
+      (cond-> {}
+        x-col-settings
+        (assoc :x (for-js x-col-settings x-col))
+        y-col-settings
+        (assoc :y (for-js y-col-settings y-col))))))
+
 (s/defmethod render :bar :- common/RenderedPulseCard
-  [_ render-type _timezone-id :- (s/maybe s/Str) card {:keys [cols rows] :as data}]
+  [_ render-type _timezone-id :- (s/maybe s/Str) card {:keys [cols rows viz-settings] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
         rows                        (map (juxt x-axis-rowfn y-axis-rowfn)
                                          (common/non-nil-rows x-axis-rowfn y-axis-rowfn rows))
-        svg-fn                   (if (isa? (-> cols x-axis-rowfn :effective_type) :type/Temporal)
-                                   js-svg/timelineseries-bar
-                                   js-svg/categorical-bar)
+        [x-col y-col]               ((juxt x-axis-rowfn y-axis-rowfn) cols)
+        labels                      {:bottom (:display_name x-col)
+                                     :left   (:display_name y-col)}
         image-bundle                (image-bundle/make-image-bundle
-                                      render-type
-                                      (svg-fn
-                                        rows
-                                        {:bottom (-> cols x-axis-rowfn :display_name)
-                                         :left   (-> cols y-axis-rowfn :display_name)}))]
+                                     render-type
+                                     (if (isa? (-> cols x-axis-rowfn :effective_type) :type/Temporal)
+                                       (js-svg/timelineseries-bar rows labels
+                                                                  (->js-viz x-col y-col viz-settings))
+                                       (js-svg/categorical-bar rows labels
+                                                               (->js-viz x-col y-col viz-settings))))]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))
@@ -353,9 +407,10 @@
         @error-rendered-info))))
 
 (s/defmethod render :sparkline :- common/RenderedPulseCard
-  [_ render-type timezone-id card {:keys [_rows cols] :as data}]
+  [_ render-type timezone-id card {:keys [_rows cols viz-settings] :as data}]
   (let [[x-axis-rowfn
          y-axis-rowfn] (common/graphing-column-row-fns card data)
+        [x-col y-col]  ((juxt x-axis-rowfn y-axis-rowfn) cols)
         rows           (sparkline/cleaned-rows timezone-id card data)
         last-rows      (reverse (take-last 2 rows))
         values         (for [row last-rows]
@@ -366,8 +421,9 @@
         image-bundle   (image-bundle/make-image-bundle
                         render-type
                         (js-svg/timelineseries-line (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)
-                                                    {:bottom (-> cols x-axis-rowfn :display_name)
-                                                     :left   (-> cols y-axis-rowfn :display_name)}))]
+                                                    {:bottom (:display_name x-col)
+                                                     :left   (:display_name y-col)}
+                                                    (->js-viz x-col y-col viz-settings)))]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))

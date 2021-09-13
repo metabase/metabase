@@ -1,4 +1,8 @@
-import { parseTime, parseTimestamp } from "metabase/lib/time";
+import {
+  parseTime,
+  parseTimestamp,
+  getRelativeTimeAbbreviated,
+} from "metabase/lib/time";
 import moment from "moment";
 
 describe("time", () => {
@@ -63,6 +67,36 @@ describe("time", () => {
 
       expect(moment.isMoment(result)).toBe(true);
       expect(result.format("h:mm A")).toBe("1:02 AM");
+    });
+  });
+
+  describe("getRelativeTimeAbbreviated", () => {
+    it("should show 'just now' for timestamps from the immediate past", () => {
+      expect(
+        getRelativeTimeAbbreviated(
+          moment()
+            .subtract(30, "s")
+            .toString(),
+        ),
+      ).toEqual("just now");
+    });
+
+    it("should show a shortened string for times 1 minute+", () => {
+      expect(
+        getRelativeTimeAbbreviated(
+          moment()
+            .subtract(61, "s")
+            .toString(),
+        ),
+      ).toEqual("1 m");
+
+      expect(
+        getRelativeTimeAbbreviated(
+          moment()
+            .subtract(5, "d")
+            .toString(),
+        ),
+      ).toEqual("5 d");
     });
   });
 });

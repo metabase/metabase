@@ -23,7 +23,7 @@
               [5 "Brite Spot Family Restaurant" 20 34.0778 -118.261 2 4.0]]
              (mt/formatted-rows [int str int 4.0 4.0 int float]
                (mt/run-mbql-query venues
-                 {:expressions {:my-cool-new-field [:+ $price 2]}
+                 {:expressions {:my_cool_new_field [:+ $price 2]}
                   :limit       5
                   :order-by    [[:asc $id]]})))))))
 
@@ -35,7 +35,7 @@
               [3 "The Apple Pan"         11 34.0406 -118.428 2 1.0]]
              (mt/formatted-rows [int str int 4.0 4.0 int float]
                (mt/run-mbql-query venues
-                 {:expressions {:my-cool-new-field [:/ $price 2]}
+                 {:expressions {:my_cool_new_field [:/ $price 2]}
                   :limit       3
                   :order-by    [[:asc $id]]})))))
 
@@ -45,9 +45,9 @@
               [0.5]]
              (mt/formatted-rows [1.0]
                (mt/run-mbql-query venues
-                 {:expressions {:big-price         [:+ $price 2]
-                                :my-cool-new-field [:/ $price [:expression "big-price"]]}
-                  :fields      [[:expression "my-cool-new-field"]]
+                 {:expressions {:big_price         [:+ $price 2]
+                                :my_cool_new_field [:/ $price [:expression "big_price"]]}
+                  :fields      [[:expression "my_cool_new_field"]]
                   :limit       3
                   :order-by    [[:asc $id]]})))))))
 
@@ -87,14 +87,20 @@
                   :limit       3
                   :order-by    [[:asc $id]]})))))))
 
+(def ^:private limited-char-drivers #{:bigquery-cloud-sdk})
+
 (deftest dont-return-expressions-if-fields-is-explicit-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (let [query (mt/mbql-query venues
-                  {:expressions {"Price + 1" [:+ $price 1]
-                                 "1 + 1"     [:+ 1 1]}
-                   :fields      [$price [:expression "1 + 1"]]
-                   :order-by    [[:asc $id]]
-                   :limit       3})]
+    ;; bigquery doesn't let you have hypthens in field, table, etc names
+    (let [priceplusone (if (= driver/*driver* :bigquery-cloud-sdk) "price_plus_1" "Price + 1")
+          oneplusone   (if (= driver/*driver* :bigquery-cloud-sdk) "one_plus_one" "1 + 1")
+          query        (mt/mbql-query venues
+                         {:expressions {priceplusone [:+ $price 1]
+                                        oneplusone   [:+ 1 1]}
+                          :fields      [$price [:expression oneplusone]]
+                          :order-by    [[:asc $id]]
+                          :limit       3})
+          ]
       (testing "If an explicit `:fields` clause is present, expressions *not* in that clause should not come back"
         (is (= [[3 2] [2 2] [2 2]]
                (mt/formatted-rows [int int]
@@ -111,11 +117,11 @@
         (is (= [[2 22] [3 59] [4 13]]
                (mt/formatted-rows [int int]
                  (mt/run-mbql-query venues
-                   {:expressions {"Price + 1" [:+ $price 1]
-                                  "1 + 1"     [:+ 1 1]}
+                   {:expressions {priceplusone [:+ $price 1]
+                                  oneplusone   [:+ 1 1]}
                     :aggregation [:count]
-                    :breakout    [[:expression "Price + 1"]]
-                    :order-by    [[:asc [:expression "Price + 1"]]]
+                    :breakout    [[:expression priceplusone]]
+                    :order-by    [[:asc [:expression priceplusone]]]
                     :limit       3}))))))))
 
 (deftest expressions-in-order-by-test
@@ -183,7 +189,10 @@
        (calculate-bird-scarcity* ~formula ~filter-clause))))
 
 (deftest nulls-and-zeroes-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :expressions)
+                         ;; bigquery doesn't let you have hypthens in field, table, etc names
+                         ;; therefore a different macro is tested in bigquery driver tests
+                         :bigquery-cloud-sdk)
     (testing (str "hey... expressions should work if they are just a Field! (Also, this lets us take a peek at the "
                   "raw values being used to calculate the formulas below, so we can tell at a glance if they're right "
                   "without referring to the EDN def)")
@@ -331,7 +340,11 @@
                   ffirst))))))
 
 (deftest expression-with-slashes
-  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+  (mt/test-drivers (disj
+                     (mt/normal-drivers-with-feature :expressions)
+                     ;; Slashes documented as not allowed in BQ
+                     ;; https://cloud.google.com/bigquery/docs/reference/standard-sql/lexical
+                     :bigquery-cloud-sdk)
     (testing "Make sure an expression with a / in its name works (#12305)"
       (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3 4.0]
               [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 3.0]
@@ -355,7 +368,7 @@
                                                 [:max (mt/id :venues :price)]]
                                  :breakout     [[:field (mt/id :venues :name) nil]]
                                  :limit        3}
-                  :expressions  {:price-range [:-
+                  :expressions  {:price_range [:-
                                                [:field "max" {:base-type :type/Number}]
                                                [:field "min" {:base-type :type/Number}]]}})))))))
 

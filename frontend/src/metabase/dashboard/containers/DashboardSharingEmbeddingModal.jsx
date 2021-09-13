@@ -15,7 +15,7 @@ import {
   deletePublicLink,
   updateEnableEmbedding,
   updateEmbeddingParams,
-} from "../dashboard";
+} from "../actions";
 
 const defaultProps = {
   isLinkEnabled: true,

@@ -3,7 +3,8 @@
   which has charting library. This namespace has some wrapper functions to invoke those functions. Interop is very
   strange, as the jvm datastructures, not just serialized versions are used. This is why we have the `toJSArray` and
   `toJSMap` functions to turn Clojure's normal datastructures into js native structures."
-  (:require [clojure.string :as str]
+  (:require [cheshire.core :as json]
+            [clojure.string :as str]
             [metabase.pulse.render.js-engine :as js])
   (:import [java.io ByteArrayInputStream ByteArrayOutputStream]
            java.nio.charset.StandardCharsets
@@ -13,86 +14,19 @@
            org.graalvm.polyglot.Context
            [org.w3c.dom Element Node]))
 
+;; the bundle path goes through webpack. Changes require a `yarn build-static-viz`
 (def ^:private bundle-path
   "frontend_client/app/dist/lib-static-viz.bundle.js")
 
-(def ^:private src-api
-  "API for calling to the javascript bundle. Entry points are the functions
-  - timeseries_line
-  - timeseries_bar
-  - categorical_donut
-  "
-  "
-
-const toJSArray = (a) => {
-  var jsArray = [];
-  for (var i = 0; i < a.length; i++) {
-    jsArray[i] = a[i];
-  }
-  return jsArray;
-}
-
-function toJSMap(m) {
-  var o = {};
-  for (var i = 0; i < m.length; i++) {
-    o[m[i][0]] = m[i][1];
-  }
-  return o;
-}
-
-const date_accessors = {
-  x: (row) => new Date(row[0]).valueOf(),
-  y: (row) => row[1],
-}
-
-const positional_accessors = {
-  x: (row) => row[0],
-  y: (row) => row[1],
-}
-
-const dimension_accessors = {
-  dimension: (row) => row[0],
-  metric: (row) => row[1],
-}
-
-function timeseries_line (data, labels) {
-  return StaticViz.RenderChart(\"timeseries/line\", {
-    data: toJSArray(data),
-    labels: toJSMap(labels),
-    accessors: date_accessors
- })
-}
-
-function timeseries_bar (data, labels) {
-  return StaticViz.RenderChart(\"timeseries/bar\", {
-    data: toJSArray(data),
-    labels: toJSMap(labels),
-    accessors: date_accessors
- })
-}
-
-function categorical_bar (data, labels) {
-  return StaticViz.RenderChart(\"categorical/bar\", {
-    data: toJSArray(data),
-    labels: toJSMap(labels),
-    accessors: positional_accessors
- })
-}
-
-function categorical_donut (rows, colors) {
-  return StaticViz.RenderChart(\"categorical/donut\", {
-    data: toJSArray(rows),
-    colors: toJSMap(colors),
-    accessors: dimension_accessors
- })
-}
-
-")
+;; the interface file does not go through webpack. Feel free to quickly change as needed and then re-require this
+;; namespace to redef the `context`.
+(def ^:private interface-path
+  "frontend_shared/static_viz_interface.js")
 
 (defn- load-viz-bundle [^Context context]
   (doto context
     (js/load-resource bundle-path)
-    (js/load-js-string src-api "src call")))
+    (js/load-resource interface-path)))
 
 (defn- static-viz-context
   "Load the static viz js bundle into a new graal js context."
@@ -163,25 +97,28 @@ function categorical_donut (rows, colors) {
 (defn timelineseries-line
   "Clojure entrypoint to render a timeseries line char. Rows should be tuples of [datetime numeric-value]. Labels is a
   map of {:left \"left-label\" :right \"right-label\"}. Returns a byte array of a png file."
-  [rows labels]
+  [rows labels settings]
   (let [svg-string (.asString (js/execute-fn-name @context "timeseries_line" rows
-                                                  (map (fn [[k v]] [(name k) v]) labels)))]
+                                                  (map (fn [[k v]] [(name k) v]) labels)
+                                                  (json/generate-string settings)))]
     (svg-string->bytes svg-string)))
 
 (defn timelineseries-bar
   "Clojure entrypoint to render a timeseries bar char. Rows should be tuples of [datetime numeric-value]. Labels is a
   map of {:left \"left-label\" :right \"right-label\"}. Returns a byte array of a png file."
-  [rows labels]
+  [rows labels settings]
   (let [svg-string (.asString (js/execute-fn-name @context "timeseries_bar" rows
-                                                  (map (fn [[k v]] [(name k) v]) labels)))]
+                                                  (map (fn [[k v]] [(name k) v]) labels)
+                                                  (json/generate-string settings)))]
     (svg-string->bytes svg-string)))
 
 (defn categorical-bar
   "Clojure entrypoint to render a categorical bar chart. Rows should be tuples of [stringable numeric-value]. Labels is
   a map of {:left \"left-label\" :right \"right-label\". Returns a byte array of a png file. "
-  [rows labels]
+  [rows labels settings]
   (let [svg-string (.asString (js/execute-fn-name @context "categorical_bar" rows
-                                                  (map (fn [[k v]] [(name k) v]) labels)))]
+                                                  (map (fn [[k v]] [(name k) v]) labels)
+                                                  (json/generate-string settings)))]
     (svg-string->bytes svg-string)))
 
 (defn categorical-donut

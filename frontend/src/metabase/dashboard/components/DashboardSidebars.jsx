@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 
@@ -62,13 +62,16 @@ export function DashboardSidebars({
   onCancel,
   params,
 }) {
-  const handleAddCard = cardId => {
-    addCardToDashboard({
-      dashId: dashboard.id,
-      cardId: cardId,
-    });
-    MetabaseAnalytics.trackEvent("Dashboard", "Add Card");
-  };
+  const handleAddCard = useCallback(
+    cardId => {
+      addCardToDashboard({
+        dashId: dashboard.id,
+        cardId: cardId,
+      });
+      MetabaseAnalytics.trackEvent("Dashboard", "Add Card");
+    },
+    [addCardToDashboard, dashboard.id],
+  );
 
   if (showAddQuestionSidebar) {
     return (

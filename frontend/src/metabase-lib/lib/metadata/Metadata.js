@@ -115,6 +115,7 @@ export default class Metadata extends Base {
    * @param {Object.<number, Metric>} metrics
    * @param {Object.<number, Segment>} segments
    */
+  /* istanbul ignore next */
   _constructor(databases, tables, fields, metrics, segments) {
     this.databases = databases;
     this.tables = tables;

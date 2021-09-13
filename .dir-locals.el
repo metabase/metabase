@@ -1,52 +1,77 @@
-((nil . ((indent-tabs-mode . nil)       ; always use spaces for tabs
-         (require-final-newline . t)))  ; add final newline on save
- (js2-mode . ((js2-mode-show-parse-errors . nil)      ; these settings will let flycheck do everything through eslint,
-              (js2-mode-show-strict-warnings . nil))) ; because js2-mode can't handle flowtype
- (clojure-mode . ((eval . (progn
-                            ;; Specify which arg is the docstring for certain macros
-                            ;; (Add more as needed)
-                            (put 'defendpoint 'clojure-doc-string-elt 3)
-                            (put 'defendpoint-async 'clojure-doc-string-elt 3)
-                            (put 'api/defendpoint 'clojure-doc-string-elt 3)
-                            (put 'api/defendpoint-async 'clojure-doc-string-elt 3)
-                            (put 'defsetting 'clojure-doc-string-elt 2)
-                            (put 'setting/defsetting 'clojure-doc-string-elt 2)
-                            (put 's/defn 'clojure-doc-string-elt 2)
-                            (put 'p.types/defprotocol+ 'clojure-doc-string-elt 2)
+((nil
+  ;; always use spaces for tabs
+  (indent-tabs-mode . nil)
+  ;; add final newline on save
+  (require-final-newline . t)
+  ;; prefer keeping source width about ~118, GitHub seems to cut off stuff at either 119 or 120 and it's nicer
+  ;; to look at code in GH when you don't have to scroll back and forth
+  (fill-column . 118)
+  ;; tell find-things-fast to always use this directory as project root regardless of presence of other
+  ;; deps.edn files
+  (ftf-project-finders . (ftf-get-top-git-dir)))
 
-                            ;; Define custom indentation for functions inside metabase.
-                            ;; This list isn't complete; add more forms as we come across them.
-                            (define-clojure-indent
-                              (db/insert-many! 1)
-                              (let-404)
-                              (macros/case 0)
-                              (match 1)
-                              (c/step 1)
-                              (mbql.match/match 1)
-                              (mt/test-drivers 1)
-                              (mt/query 1)
-                              (mt/dataset 1)
-                              (mbql.match/match-one 1)
-                              (mbql.match/replace 1)
-                              (mbql.match/replace-in 2)
-                              (impl/test-migrations 2)
-                              (l/matche '(1 (:defn)))
-                              (l/matcha '(1 (:defn)))
-                              (p/defprotocol+ '(1 (:defn)))
-                              (p.types/defprotocol+ '(1 (:defn)))
-                              (p.types/def-abstract-type '(1 (:defn)))
-                              (p.types/deftype+ '(2 nil nil (:defn)))
-                              (p/def-map-type '(2 nil nil (:defn)))
-                              (p.types/defrecord+ '(2 nil nil (:defn)))
-                              (qp.streaming/streaming-response 1)
-                              (prop/for-all 1)
-                              (tools.macro/macrolet '(1 (:defn))))))
-                  (cider-clojure-cli-aliases . "dev:drivers:drivers-dev:ee:ee-dev:user")
-                  (clojure-indent-style . always-align)
-                  ;; if you're using clj-refactor (highly recommended!)
-                  (cljr-favor-prefix-notation . nil)
-                  ;; prefer keeping source width about ~118, GitHub seems to cut off stuff at either 119 or 120 and
-                  ;; it's nicer to look at code in GH when you don't have to scroll back and forth
-                  (fill-column . 118)
-                  (clojure-docstring-fill-column . 118)
-                  (cider-preferred-build-tool . clojure-cli))))
+ (js2-mode
+  ;; these settings will let flycheck do everything through eslint,
+  (js2-mode-show-parse-errors . nil)
+  ;; because js2-mode can't handle flowtype
+  (js2-mode-show-strict-warnings . nil))
+
+ (clojure-mode
+  ;; Specify which arg is the docstring for certain macros
+  ;; (Add more as needed)
+  (eval . (put 'defendpoint 'clojure-doc-string-elt 3))
+  (eval . (put 'defendpoint-async 'clojure-doc-string-elt 3))
+  (eval . (put 'api/defendpoint 'clojure-doc-string-elt 3))
+  (eval . (put 'api/defendpoint-async 'clojure-doc-string-elt 3))
+  (eval . (put 'defsetting 'clojure-doc-string-elt 2))
+  (eval . (put 'setting/defsetting 'clojure-doc-string-elt 2))
+  (eval . (put 's/defn 'clojure-doc-string-elt 2))
+  (eval . (put 'p.types/defprotocol+ 'clojure-doc-string-elt 2))
+  ;; Define custom indentation for functions inside metabase.
+  ;; This list isn't complete; add more forms as we come across them.
+  ;;
+  ;; `put-clojure-indent' is a safe-local-eval-function, so use a bunch of calls to that
+  ;; instead of one call to `define-clojure-indent'
+  (eval . (put-clojure-indent 'c/step 1))
+  (eval . (put-clojure-indent 'db/insert-many! 1))
+  (eval . (put-clojure-indent 'impl/test-migrations 2))
+  (eval . (put-clojure-indent 'let-404 0))
+  (eval . (put-clojure-indent 'macros/case 0))
+  (eval . (put-clojure-indent 'match 1))
+  (eval . (put-clojure-indent 'mbql.match/match 1))
+  (eval . (put-clojure-indent 'mbql.match/match-one 1))
+  (eval . (put-clojure-indent 'mbql.match/replace 1))
+  (eval . (put-clojure-indent 'mbql.match/replace-in 2))
+  (eval . (put-clojure-indent 'mt/dataset 1))
+  (eval . (put-clojure-indent 'mt/query 1))
+  (eval . (put-clojure-indent 'mt/test-drivers 1))
+  (eval . (put-clojure-indent 'prop/for-all 1))
+  (eval . (put-clojure-indent 'qp.streaming/streaming-response 1))
+  ;; these ones have to be done with `define-clojure-indent' for now because of upstream bug
+  ;; https://github.com/clojure-emacs/clojure-mode/issues/600 once that's resolved we should use `put-clojure-indent'
+  ;; instead. Please don't add new entries unless they don't work with `put-clojure-indent'
+  (eval . (define-clojure-indent
+            (l/matcha '(1 (:defn)))
+            (l/matche '(1 (:defn)))
+            (p.types/def-abstract-type '(1 (:defn)))
+            (p.types/defprotocol+ '(1 (:defn)))
+            (p.types/defrecord+ '(2 nil nil (:defn)))
+            (p.types/deftype+ '(2 nil nil (:defn)))
+            (p/def-map-type '(2 nil nil (:defn)))
+            (p/defprotocol+ '(1 (:defn)))
+            (tools.macro/macrolet '(1 ((:defn)) :form))))
+  (cider-clojure-cli-aliases . "dev:drivers:drivers-dev:ee:ee-dev:user")
+  (clojure-indent-style . always-align)
+  (cljr-favor-prefix-notation . nil)
+  (clojure-docstring-fill-column . 118)
+  (cider-preferred-build-tool . clojure-cli))
+
+ ("shared"
+  (clojure-mode
+   (cider-default-cljs-repl . shadow-select)
+   (cider-shadow-default-options . "node-repl")
+   (cider-preferred-build-tool . shadow-cljs)))
+
+ ("bin"
+  (clojure-mode
+   (cider-clojure-cli-aliases . "dev"))))

@@ -6,7 +6,7 @@ import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 
 const propTypes = {
-  to: PropTypes.oneOfType([PropTypes.string, PropTypes.boolean]),
+  to: PropTypes.oneOfType([PropTypes.string, PropTypes.bool]),
 };
 
 function RawMaybeLink({ to, ...props }) {

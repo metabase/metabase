@@ -17,7 +17,12 @@
                             [(bigint 100)                               {:base-type :type/Integer}]
                             [(float 100.0)                              {:base-type :type/Float}]
                             [(double 100.0)                             {:base-type :type/Float}]
-                            [(bigdec 100.0)                             {:base-type :type/Float, :v 100.0}]
+                            ;; one case for NUMERIC/DECIMAL
+                            [(bigdec "-2.3E+16")                        {:base-type :type/Decimal
+                                                                         :v         "-23000000000000000"}]
+                            ;; and one for BIGNUMERIC/BIGDECIMAL
+                            [(bigdec "1.6E+31")                         {:base-type :type/Decimal
+                                                                         :v         "16000000000000000000000000000000"}]
                             ;; LocalDate
                             [#t "2020-05-26"                            {:base-type :type/Date
                                                                          :v         #t "2020-05-26T00:00Z[UTC]"}]
