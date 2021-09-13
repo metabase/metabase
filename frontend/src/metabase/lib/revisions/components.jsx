@@ -39,15 +39,6 @@ export function RevisionBatchedDescription({ changes }) {
       result.push(isFirst ? capitalizeChangeRecord(change) : change);
       const isLast = i === changes.length - 1;
       const isBeforeLast = i === changes.length - 2;
-      console.log({
-        change,
-        i,
-        changes,
-        length: changes.length,
-        isFirst,
-        isBeforeLast,
-        isLast,
-      });
       if (isBeforeLast) {
         result.push(" " + t`and` + " ");
       } else if (!isLast) {
