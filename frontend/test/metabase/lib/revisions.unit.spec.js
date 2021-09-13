@@ -133,6 +133,25 @@ describe("revisions", () => {
       expect(timelineEvents[1].isRevertable).toBe(true);
     });
 
+    it("should capitalize descriptions", () => {
+      const [event] = getRevisionEventsForTimeline([
+        getRevision({
+          diff: {
+            before: {
+              description: null,
+              archived: true,
+            },
+            after: {
+              description: "Please do not archive this anymore",
+              archived: false,
+            },
+          },
+        }),
+      ]);
+
+      expect(event.description).toBe("Added a description and unarchived this");
+    });
+
     it("should drop invalid revisions", () => {
       const canWrite = true;
       const timelineEvents = getRevisionEventsForTimeline(

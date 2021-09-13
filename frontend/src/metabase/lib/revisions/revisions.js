@@ -28,7 +28,7 @@ export function getRevisionEventsForTimeline(revisions = [], canWrite) {
         timestamp: getRevisionEpochTimestamp(revision),
         icon: REVISION_EVENT_ICON,
         title: `${username} ${title}`,
-        description,
+        description: description && capitalize(description),
         isRevertable,
         revision,
       };
@@ -50,4 +50,8 @@ function getRevisionUsername(revision) {
 
 function getRevisionEpochTimestamp(revision) {
   return new Date(revision.timestamp).valueOf();
+}
+
+function capitalize(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1);
 }
