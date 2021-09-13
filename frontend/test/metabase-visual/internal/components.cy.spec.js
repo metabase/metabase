@@ -9,6 +9,8 @@ describe("visual tests > internal > components", () => {
   it("ClampedText", () => {
     cy.visit("/_internal/components/clampedtext");
 
+    cy.findByText("No 'See more' button when all text visible:");
+
     cy.percySnapshot();
   });
 
