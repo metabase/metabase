@@ -7,9 +7,7 @@ describe("visual tests > internal > components", () => {
   });
 
   it("ClampedText", () => {
-    cy.visit("/_internal");
-
-    cy.findByText("ClampedText").click();
+    cy.visit("/_internal/components/clampedtext");
 
     cy.percySnapshot();
   });
