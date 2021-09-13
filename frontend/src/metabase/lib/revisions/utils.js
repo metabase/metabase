@@ -152,15 +152,17 @@ export function getRevisionDescription(revision) {
   }
 
   const { before, after } = diff;
-  const changes = getChangedFields(revision).map(fieldName => {
-    const valueBefore = before?.[fieldName];
-    const valueAfter = after?.[fieldName];
-    const changeType = getChangeType(fieldName, valueBefore, valueAfter);
-    const description = CHANGE_DESCRIPTIONS[fieldName]?.[changeType];
-    return typeof description === "function"
-      ? description(valueBefore, valueAfter)
-      : description;
-  });
+  const changes = getChangedFields(revision)
+    .map(fieldName => {
+      const valueBefore = before?.[fieldName];
+      const valueAfter = after?.[fieldName];
+      const changeType = getChangeType(fieldName, valueBefore, valueAfter);
+      const description = CHANGE_DESCRIPTIONS[fieldName]?.[changeType];
+      return typeof description === "function"
+        ? description(valueBefore, valueAfter)
+        : description;
+    })
+    .filter(Boolean);
 
   return formatChangeDescriptions(changes);
 }

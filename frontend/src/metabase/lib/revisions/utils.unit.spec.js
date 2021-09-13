@@ -135,6 +135,20 @@ describe("getRevisionDescription | common", () => {
     expect(getRevisionDescription(revision)).toBe(null);
   });
 
+  it("filters out unknown change types", () => {
+    const revision = getRevision({
+      before: {
+        description: null,
+        archived: null,
+      },
+      after: {
+        description: "Test",
+        archived: false,
+      },
+    });
+    expect(getRevisionDescription(revision)).toBe("added a description");
+  });
+
   it("filters out messages for unknown fields from a complex diff", () => {
     const revision = getRevision({
       before: {
