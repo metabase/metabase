@@ -1,5 +1,6 @@
-import { t, ngettext, msgid } from "ttag";
-import _ from "underscore";
+import React from "react";
+import { t, jt, ngettext, msgid } from "ttag";
+import { EntityLink } from "./components";
 
 const CHANGE_TYPE = {
   ADD: "new",
@@ -58,6 +59,12 @@ function getSeriesChangeDescription(prevCards, cards) {
     : t`removed series from a question`;
 }
 
+function getCollectionChangeDescription(prevCollectionId, collectionId) {
+  return jt`moved this to ${(
+    <EntityLink entityId={collectionId || "root"} entityType="collections" />
+  )}`;
+}
+
 const CHANGE_DESCRIPTIONS = {
   // Common
   name: {
@@ -71,6 +78,11 @@ const CHANGE_DESCRIPTIONS = {
   archived: {
     [CHANGE_TYPE.UPDATE]: (wasArchived, isArchived) =>
       isArchived ? t`archived this` : t`unarchived this`,
+  },
+  collection_id: {
+    [CHANGE_TYPE.ADD]: getCollectionChangeDescription,
+    [CHANGE_TYPE.UPDATE]: getCollectionChangeDescription,
+    [CHANGE_TYPE.REMOVE]: getCollectionChangeDescription,
   },
 
   // Questions
