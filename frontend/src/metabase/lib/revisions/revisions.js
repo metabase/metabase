@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import { getRevisionMessage } from "./utils";
+import { isValidRevision, getRevisionMessage } from "./utils";
 
 export const REVISION_EVENT_ICON = "pencil";
 
@@ -14,19 +14,26 @@ export function getRevisionDescription(revision) {
 }
 
 export function getRevisionEventsForTimeline(revisions = [], canWrite) {
-  return revisions.map((revision, index) => {
-    const isRevertable = canWrite && index !== 0;
-    const username = getRevisionUsername(revision);
-    const { title, description } = getRevisionMessage(revision);
-    return {
-      timestamp: getRevisionEpochTimestamp(revision),
-      icon: REVISION_EVENT_ICON,
-      title: `${username} ${title}`,
-      description: description && capitalize(description),
-      isRevertable,
-      revision,
-    };
-  });
+  return revisions
+    .filter(isValidRevision)
+    .map((revision, index) => {
+      const isRevertable = canWrite && index !== 0;
+      const username = getRevisionUsername(revision);
+      const message = getRevisionMessage(revision);
+      if (!message) {
+        return;
+      }
+      const { title, description } = message;
+      return {
+        timestamp: getRevisionEpochTimestamp(revision),
+        icon: REVISION_EVENT_ICON,
+        title: `${username} ${title}`,
+        description,
+        isRevertable,
+        revision,
+      };
+    })
+    .filter(Boolean);
 }
 
 function isCreationEvent(revision) {

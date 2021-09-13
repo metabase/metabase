@@ -132,5 +132,50 @@ describe("revisions", () => {
       expect(timelineEvents[0].isRevertable).toBe(false);
       expect(timelineEvents[1].isRevertable).toBe(true);
     });
+
+    it("should drop invalid revisions", () => {
+      const canWrite = true;
+      const timelineEvents = getRevisionEventsForTimeline(
+        [
+          changeEvent,
+          getRevision({
+            diff: { before: null, after: null },
+          }),
+        ],
+        canWrite,
+      );
+      expect(timelineEvents).toEqual([
+        getExpectedEvent({
+          title: "Foo added a description",
+          isRevertable: false,
+          revision: changeEvent,
+        }),
+      ]);
+    });
+
+    it("should drop revisions with not registered fields", () => {
+      const canWrite = true;
+      const timelineEvents = getRevisionEventsForTimeline(
+        [
+          changeEvent,
+          getRevision({
+            diff: {
+              before: {
+                "dont-know-this-field": 1,
+              },
+              after: { "dont-know-this-field": 2 },
+            },
+          }),
+        ],
+        canWrite,
+      );
+      expect(timelineEvents).toEqual([
+        getExpectedEvent({
+          title: "Foo added a description",
+          isRevertable: false,
+          revision: changeEvent,
+        }),
+      ]);
+    });
   });
 });
