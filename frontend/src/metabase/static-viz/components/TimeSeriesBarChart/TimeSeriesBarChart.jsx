@@ -12,7 +12,7 @@ import {
 } from "../../lib/axes";
 import { formatDate } from "../../lib/dates";
 import { formatNumber } from "../../lib/numbers";
-import { truncateText } from "metabase/static-viz/lib/text";
+import { truncateText } from "../../lib/text";
 
 const propTypes = {
   data: PropTypes.array.isRequired,
@@ -88,8 +88,10 @@ const TimeSeriesBarChart = ({ data, accessors, settings, labels }) => {
   };
 
   const getXTickProps = ({ formattedValue, ...props }) => {
-    const text = truncateText(formattedValue, xScale.bandwidth());
-    return { ...props, children: text };
+    const textWidth = xScale.bandwidth();
+    const truncatedText = truncateText(formattedValue, textWidth);
+
+    return { ...props, children: truncatedText };
   };
 
   return (

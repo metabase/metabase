@@ -13,6 +13,7 @@ import {
   getXTickHeight,
 } from "../../lib/axes";
 import { formatNumber } from "../../lib/numbers";
+import { truncateText } from "../../lib/text";
 
 const propTypes = {
   data: PropTypes.array.isRequired,
@@ -50,12 +51,13 @@ const layout = {
   },
   barPadding: 0.2,
   labelPadding: 12,
+  maxTickWidth: 100,
   strokeDasharray: "4",
 };
 
 const CategoricalBarChart = ({ data, accessors, settings, labels }) => {
   const isVertical = data.length > 10;
-  const xTickWidth = getXTickWidth(data, accessors);
+  const xTickWidth = getXTickWidth(data, accessors, layout.maxTickWidth);
   const xTickHeight = getXTickHeight(xTickWidth);
   const yTickWidth = getYTickWidth(data, accessors, settings);
   const xLabelOffset = xTickHeight + layout.labelPadding + layout.font.size;
@@ -66,6 +68,7 @@ const CategoricalBarChart = ({ data, accessors, settings, labels }) => {
   const yMax = layout.height - yMin;
   const innerWidth = xMax - xMin;
   const innerHeight = yMax - layout.margin.top;
+  const textBaseline = Math.floor(layout.font.size / 2);
   const leftLabel = labels?.left;
   const bottomLabel = !isVertical ? labels?.bottom : undefined;
 
@@ -92,12 +95,13 @@ const CategoricalBarChart = ({ data, accessors, settings, labels }) => {
   };
 
   const getXTickProps = ({ x, y, formattedValue, ...props }) => {
-    const baseline = Math.floor(layout.font.size / 2);
+    const textWidth = isVertical ? xTickWidth : xScale.bandwidth();
+    const truncatedText = truncateText(formattedValue, textWidth);
     const transform = isVertical
-      ? `rotate(45, ${x} ${y}) translate(-${baseline} 0)`
+      ? `rotate(45, ${x} ${y}) translate(-${textBaseline} 0)`
       : undefined;
 
-    return { ...props, x, y, transform, children: formattedValue };
+    return { ...props, x, y, transform, children: truncatedText };
   };
 
   return (
