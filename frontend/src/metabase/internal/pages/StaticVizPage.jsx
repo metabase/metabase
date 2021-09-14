@@ -94,14 +94,27 @@ export default function StaticVizPage() {
           <StaticChart
             type="categorical/bar"
             options={{
-              data: [["Gadget", 20], ["Widget", 31]],
+              data: [
+                ["Alden Sparks", 70],
+                ["Areli Guerra", 30],
+                ["Arturo Hopkins", 80],
+                ["Beatrice Lane", 120],
+                ["Brylee Davenport", 100],
+                ["Cali Nixon", 60],
+                ["Dane Terrell", 150],
+                ["Deshawn Rollins", 40],
+                ["Isabell Bright", 70],
+                ["Kaya Rowe", 20],
+                ["Roderick Herman", 50],
+                ["Ruth Dougherty", 75],
+              ],
               accessors: {
                 x: row => row[0],
                 y: row => row[1],
               },
               labels: {
-                left: "Count",
-                bottom: "Category",
+                left: "Tasks",
+                bottom: "People",
               },
             }}
           />
