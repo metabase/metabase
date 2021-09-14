@@ -91,13 +91,12 @@ const CategoricalBarChart = ({ data, accessors, settings, labels }) => {
   };
 
   const getXTickProps = ({ x, y, formattedValue, ...props }) => {
-    const text = truncateText(formattedValue, xScale.bandwidth());
     const baseline = Math.floor(layout.font.size / 2);
     const transform = isVertical
       ? `rotate(45, ${x} ${y}) translate(-${baseline} 0)`
       : undefined;
 
-    return { ...props, x, y, transform, children: text };
+    return { ...props, x, y, transform, children: formattedValue };
   };
 
   return (
