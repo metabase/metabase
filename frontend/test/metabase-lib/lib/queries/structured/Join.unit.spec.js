@@ -178,6 +178,24 @@ describe("Join", () => {
       });
     });
 
+    it("removes the dimensions", () => {
+      let join = getJoin({
+        query: getOrdersJoinQuery({
+          condition: ORDERS_PRODUCT_JOIN_CONDITION,
+        }),
+      });
+
+      join = join.setParentDimension({
+        dimension: null,
+      });
+
+      expect(join).toEqual({
+        alias: "Products",
+        condition: ["=", null, PRODUCTS_ID_JOIN_FIELD_REF],
+        "source-table": PRODUCTS.id,
+      });
+    });
+
     it("sets a dimension for multi-dimension condition by index", () => {
       let join = getJoin({
         query: getOrdersJoinQuery({
@@ -254,6 +272,24 @@ describe("Join", () => {
       expect(join).toEqual({
         alias: "Products",
         condition: ORDERS_PRODUCT_JOIN_CONDITION,
+        "source-table": PRODUCTS.id,
+      });
+    });
+
+    it("removes the dimensions", () => {
+      let join = getJoin({
+        query: getOrdersJoinQuery({
+          condition: ORDERS_PRODUCT_JOIN_CONDITION,
+        }),
+      });
+
+      join = join.setJoinDimension({
+        dimension: null,
+      });
+
+      expect(join).toEqual({
+        alias: "Products",
+        condition: ["=", ORDERS_PRODUCT_ID_FIELD_REF, null],
         "source-table": PRODUCTS.id,
       });
     });
