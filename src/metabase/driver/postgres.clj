@@ -79,15 +79,15 @@
 
 (defmethod driver/connection-properties :postgres
   [_]
-  (ssh/with-tunnel-config
-    [driver.common/default-host-details
-     (assoc driver.common/default-port-details :placeholder 5432)
-     driver.common/default-dbname-details
-     driver.common/default-user-details
-     driver.common/default-password-details
-     driver.common/default-ssl-details
-     (assoc driver.common/default-additional-options-details
-            :placeholder "prepareThreshold=0")]))
+  ((ssh/with-tunnel-config
+    (driver.common/with-ssl-config
+      [driver.common/default-host-details
+       (assoc driver.common/default-port-details :placeholder 5432)
+       driver.common/default-dbname-details
+       driver.common/default-user-details
+       driver.common/default-password-details
+       (assoc driver.common/default-additional-options-details
+              :placeholder "prepareThreshold=0")])))
 
 (defmethod driver/db-start-of-week :postgres
   [_]

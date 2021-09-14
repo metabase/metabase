@@ -97,10 +97,47 @@
 
 (def default-ssl-details
   "Map of the db ssl details field, useful for `connection-properties` implementations"
-  {:name         "ssl"
-   :display-name (deferred-tru "Use a secure connection (SSL)?")
-   :type         :boolean
-   :default      false})
+  [{:name         "ssl"
+    :display-name (deferred-tru "Use SSL?")
+    :type         :boolean
+    :default      false}
+   {:name        "ssl-use-keystore"
+    :display-name "Use SSL server certificate?"
+    :type         :boolean
+    :visible-if   {"ssl" true}}
+   {:name         "ssl-keystore"
+    :display-name "Keystore File"
+    :type         "secret"
+    :secret-kind  "keystore"
+    :required     false
+    :visible-if   {"ssl-keystore" true}}
+   {:name         "ssl-keystore-password"
+    :display-name "Keystore Password"
+    :type         "secret"
+    :secret-kind  "password"
+    :required     false
+    :visible-if   {"ssl-keystore" true}}
+   {:name         "ssl-use-truststore"
+    :display-name "Use trust store?"
+    :type         :boolean
+    :visible-if   {"ssl" true}}
+   {:name         "ssl-truststore"
+    :display-name "Truststore File"
+    :type         "secret"
+    :secret-kind  "keystore"
+    :required     false
+    :visible-if   {"ssl-truststore" true}}
+   {:name         "ssl-truststore-password"
+    :display-name "Truststore Password"
+    :type "secret"
+    :secret-kind "password"
+    :required false
+    :visible-if {"ssl-truststore" true}}])
+
+(defn with-ssl-config
+  "Add preferences for ssl to a drivers :connection-properties"
+  [driver-options]
+  (concat driver-options default-ssl-details))
 
 (def default-additional-options-details
   "Map of the db `additional-options` details field, useful for `connection-properties` implementations. Should assoc a
