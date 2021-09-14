@@ -34,6 +34,9 @@ export default function StaticVizPage() {
                 y: row => row[1],
               },
               settings: {
+                x: {
+                  date_style: "MMMM DD, YYYY",
+                },
                 y: {
                   number_style: "currency",
                   currency: "USD",

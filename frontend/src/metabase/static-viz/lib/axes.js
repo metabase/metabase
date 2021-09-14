@@ -1,13 +1,17 @@
 import { formatNumber } from "./numbers";
 import { measureText } from "./text";
 
-export const getXTickHeight = (data, accessors) => {
+export const getXTickWidth = (data, accessors, maxWidth) => {
   const tickWidth = data
     .map(accessors.x)
     .map(tick => String(tick))
     .map(tick => measureText(tick))
     .reduce((a, b) => Math.max(a, b), 0);
 
+  return Math.min(tickWidth, maxWidth);
+};
+
+export const getXTickHeight = tickWidth => {
   return Math.ceil(Math.sqrt(Math.pow(tickWidth, 2) / 2));
 };
 
