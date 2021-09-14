@@ -368,14 +368,17 @@
   :getter     (constantly config/mb-version-info))
 
 (defsetting premium-features
-  "Premium EE features enabled for this instance."
+  "Premium  features enabled for this instance."
   :visibility :public
   :setter     :none
-  :getter     (fn [] {:embedding  (premium-features/hide-embed-branding?)
-                      :whitelabel (premium-features/enable-whitelabeling?)
-                      :audit_app  (premium-features/enable-audit-app?)
-                      :sandboxes  (premium-features/enable-sandboxes?)
-                      :sso        (premium-features/enable-sso?)}))
+  :getter     (fn [] {:embedding            (premium-features/hide-embed-branding?)
+                      :whitelabel           (premium-features/enable-whitelabeling?)
+                      :audit_app            (premium-features/enable-audit-app?)
+                      :sandboxes            (premium-features/enable-sandboxes?)
+                      :sso                  (premium-features/enable-sso?)
+                      :advanced_config      (premium-features/enable-advanced-config?)
+                      :advanced_permissions (premium-features/enable-advanced-permissions?)
+                      :content_management   (premium-features/enable-content-management?)}))
 
 (defsetting redirect-all-requests-to-https
   (deferred-tru "Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS")
