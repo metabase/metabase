@@ -62,9 +62,9 @@
                           [:= :card.id :qe1.card_id]
                           [:> :qe1.started_at :qe.started_at]]}]])
 
+;; List of all failing questions
 (defmethod audit.i/internal-query ::bad-table
-  "List of all failing questions"
-  ([]
+  ([_]
    (bad-table nil nil nil nil nil))
   ([errorFilter      :- (s/maybe s/Str)
     dbFilter         :- (s/maybe s/Str)
