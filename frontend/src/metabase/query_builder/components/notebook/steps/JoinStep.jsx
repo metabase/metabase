@@ -537,6 +537,16 @@ function getDimensionSourceName(dimension) {
     .displayName();
 }
 
+function getDimensionDisplayName(dimension) {
+  if (!dimension) {
+    return t`Pick a column...`;
+  }
+  if (dimension.temporalUnit()) {
+    return `${dimension.displayName()}: ${dimension.subDisplayName()}`;
+  }
+  return dimension.displayName();
+}
+
 function JoinDimensionCellItem({ dimension, color, testID, onRemove }) {
   return (
     <NotebookCellItem color={color} inactive={!dimension} data-testid={testID}>
@@ -547,7 +557,7 @@ function JoinDimensionCellItem({ dimension, color, testID, onRemove }) {
               {getDimensionSourceName(dimension)}
             </DimensionSourceName>
           )}
-          {dimension?.displayName() || t`Pick a column...`}
+          {getDimensionDisplayName(dimension)}
         </div>
         {dimension && <RemoveDimensionIcon onClick={onRemove} />}
       </DimensionContainer>

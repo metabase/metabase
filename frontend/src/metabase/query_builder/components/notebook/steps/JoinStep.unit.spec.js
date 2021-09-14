@@ -384,6 +384,24 @@ describe("Notebook Editor > Join Step", () => {
     expect(screen.queryByRole("tooltip")).toBe(null);
   });
 
+  it("shows temporal unit for date-time fields", async () => {
+    await setup({ joinTable: "Products" });
+
+    fireEvent.click(screen.getByTestId("parent-dimension"));
+    let picker = await screen.findByRole("rowgroup");
+    fireEvent.click(within(picker).queryByText("Created At"));
+    fireEvent.click(screen.getByTestId("join-dimension"));
+    picker = await screen.findByRole("rowgroup");
+    fireEvent.click(within(picker).queryByText("Created At"));
+
+    expect(screen.getByTestId("parent-dimension")).toHaveTextContent(
+      "Created At: Day",
+    );
+    expect(screen.getByTestId("join-dimension")).toHaveTextContent(
+      "Created At: Day",
+    );
+  });
+
   describe("joins on multiple fields", () => {
     it("does not display a new dimensions pair control until first pair is valid", async () => {
       await setup({ joinTable: "Reviews" });
