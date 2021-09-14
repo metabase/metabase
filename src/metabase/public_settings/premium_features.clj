@@ -151,23 +151,31 @@
 (defn- has-feature? [feature]
   (contains? (token-features) (name feature)))
 
-(defmacro define-premium-feature [setting-name docstring feature & {:keys [requires-ee-code? getter]
-                                                                    :or   {requires-ee-code? true}}]
-  `(defsetting ~setting-name
-     ~docstring
-     :type       :boolean
-     :visibility :public
-     :setter     :none
-     :getter     ~(or getter
-                      (if requires-ee-code?
-                        `#(and config/ee-available? (has-feature? ~(name feature)))
-                        `#(has-feature? ~(name feature))))))
+(defn- default-premium-feature-getter [feature]
+  (fn []
+    (and config/ee-available?
+         (has-feature? feature))))
+
+(defmacro ^:private define-premium-feature
+  "Convenience for generating a [[metabase.models.setting/defsetting]] form for a premium token feature. (The Settings
+  definitions for Premium token features all look more or less the same, so this prevents a lot of code duplication.)"
+  [setting-name docstring feature & {:as options}]
+  (let [options (merge {:type       :boolean
+                        :visibility :public
+                        :setter     :none
+                        :getter     `(default-premium-feature-getter ~(some-> feature name))}
+                       options)]
+    `(defsetting ~setting-name
+       ~docstring
+       ~@(mapcat identity options))))
 
 (define-premium-feature hide-embed-branding?
   "Logo Removal and Full App Embedding. Should we hide the 'Powered by Metabase' attribution on the embedding pages?
    `true` if we have a valid premium embedding token."
   :embedding
-  :requires-ee-code? false)
+  ;; This specific feature DOES NOT require the EE code to be present in order for it to return truthy, unlike
+  ;; everything else.
+  :getter #(has-feature? :embedding))
 
 (define-premium-feature enable-whitelabeling?
   "Should we allow full whitelabel embedding (reskinning the entire interface?)"
