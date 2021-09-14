@@ -509,27 +509,6 @@ describe("scenarios > admin > permissions", () => {
 
     cy.findAllByText("Orders").should("not.exist");
   });
-
-  it("'block' data permission should not have editable 'native query editing' option (metabase#17738)", () => {
-    cy.visit("/admin/permissions/data/database/1");
-
-    cy.findByText("All Users")
-      .closest("tr")
-      .as("allUsersRow")
-      .within(() => {
-        isPermissionDisabled("No", true);
-        isPermissionDisabled("No self-service", false).click();
-      });
-
-    popover()
-      .contains("Block")
-      .click();
-
-    cy.get("@allUsersRow").within(() => {
-      isPermissionDisabled("Block", false);
-      isPermissionDisabled("No", true);
-    });
-  });
 });
 
 describeWithToken("scenarios > admin > permissions", () => {
@@ -596,6 +575,27 @@ describeWithToken("scenarios > admin > permissions", () => {
       ["nosql", "Unrestricted", "No"],
       ["readonly", "No self-service", "No"],
     ]);
+  });
+
+  it("'block' data permission should not have editable 'native query editing' option (metabase#17738)", () => {
+    cy.visit("/admin/permissions/data/database/1");
+
+    cy.findByText("All Users")
+      .closest("tr")
+      .as("allUsersRow")
+      .within(() => {
+        isPermissionDisabled("No", true);
+        isPermissionDisabled("No self-service", false).click();
+      });
+
+    popover()
+      .contains("Block")
+      .click();
+
+    cy.get("@allUsersRow").within(() => {
+      isPermissionDisabled("Block", false);
+      isPermissionDisabled("No", true);
+    });
   });
 });
 
