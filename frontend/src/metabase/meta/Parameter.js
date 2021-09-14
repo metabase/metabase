@@ -698,6 +698,17 @@ export function getParameterValuesByIdFromQueryParams(
   return Object.fromEntries(idValuePairs);
 }
 
+export function getParameterValuesByIdFromPreviousValues(
+  parameters,
+  parameterValues,
+) {
+  const parameterEntries = parameters
+    .map(p => [p.id, parameterValues[p.id]])
+    .filter(([id, value]) => value != null);
+
+  return Object.fromEntries(parameterEntries);
+}
+
 export function getParameterValuesBySlug(
   parameters,
   parameterValuesById,

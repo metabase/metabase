@@ -21,6 +21,7 @@ import {
   getParameterValuesBySlug,
   getParameterValuesByIdFromQueryParams,
   removeDefaultedParametersWithEmptyStringValue,
+  getParameterValuesByIdFromPreviousValues,
 } from "metabase/meta/Parameter";
 import * as Urls from "metabase/lib/urls";
 
@@ -596,6 +597,7 @@ export const markCardAsSlow = createAction(MARK_CARD_AS_SLOW, card => ({
 export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
   dashId,
   queryParams,
+  preserveParameters,
 ) {
   let result;
   return async function(dispatch, getState) {
@@ -665,11 +667,16 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
       dispatch(addFields(result.param_fields));
     }
 
-    const parameterValuesById = getParameterValuesByIdFromQueryParams(
-      result.parameters,
-      queryParams,
-      removeDefaultedParametersWithEmptyStringValue,
-    );
+    const parameterValuesById = preserveParameters
+      ? getParameterValuesByIdFromPreviousValues(
+          result.parameters,
+          getParameterValues(getState()),
+        )
+      : getParameterValuesByIdFromQueryParams(
+          result.parameters,
+          queryParams,
+          removeDefaultedParametersWithEmptyStringValue,
+        );
 
     return {
       ...normalize(result, dashboard), // includes `result` and `entities`
