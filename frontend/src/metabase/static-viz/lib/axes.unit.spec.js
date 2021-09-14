@@ -1,11 +1,11 @@
-import { getXTickHeight, getYTickWidth } from "./axes";
+import { getXTickWidth, getYTickWidth } from "./axes";
 
-describe("getXTickHeight", () => {
+describe("getXTickWidth", () => {
   it("should get tick height assuming 6px char width and 45deg rotation", () => {
     const data = [{ x: 1 }, { x: 20 }, { x: 15 }];
     const accessors = { x: d => d.x };
 
-    const xTickHeight = getXTickHeight(data, accessors);
+    const xTickHeight = getXTickWidth(data, accessors);
 
     expect(xTickHeight).toBe(9);
   });

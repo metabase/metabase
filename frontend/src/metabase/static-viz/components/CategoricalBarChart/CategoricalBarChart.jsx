@@ -6,13 +6,13 @@ import { scaleBand, scaleLinear } from "@visx/scale";
 import { Bar } from "@visx/shape";
 import { Text } from "@visx/text";
 import {
-  getXTickHeight,
+  getXTickWidth,
   getXTickLabelProps,
   getYTickLabelProps,
   getYTickWidth,
+  getXTickHeight,
 } from "../../lib/axes";
 import { formatNumber } from "../../lib/numbers";
-import { truncateText } from "metabase/static-viz/lib/text";
 
 const propTypes = {
   data: PropTypes.array.isRequired,
@@ -55,7 +55,8 @@ const layout = {
 
 const CategoricalBarChart = ({ data, accessors, settings, labels }) => {
   const isVertical = data.length > 10;
-  const xTickHeight = getXTickHeight(data, accessors);
+  const xTickWidth = getXTickWidth(data, accessors);
+  const xTickHeight = getXTickHeight(xTickWidth);
   const yTickWidth = getYTickWidth(data, accessors, settings);
   const xLabelOffset = xTickHeight + layout.labelPadding + layout.font.size;
   const yLabelOffset = yTickWidth + layout.labelPadding;
