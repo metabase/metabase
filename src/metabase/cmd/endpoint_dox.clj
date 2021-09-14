@@ -7,7 +7,7 @@
 
 ;;;; API docs intro
 
-(defn- api-docs-intro!
+(defn- api-docs-intro
   "Exists just so we can write the intro in Markdown."
   []
   (str (slurp "src/metabase/cmd/resources/api-intro.md") "\n\n"))
@@ -18,11 +18,11 @@
   "Creates a name for endpoints in a namespace, like all the endpoints for Alerts."
   [endpoint]
   (->> (:ns endpoint)
-       (ns-name)
-       (name)
+       ns-name
+       name
        (#(str/split % #"\."))
-       (last)
-       (str/capitalize)))
+       last
+       str/capitalize))
 
 (defn- section-title
   "Creates a section title for a set of endpoints."
@@ -35,7 +35,8 @@
   "If there is a namespace docstring, include the docstring with a paragraph break."
   [ep-data]
   (let [desc (u/add-period (:doc (meta (:ns (first ep-data)))))]
-    (if (str/blank? desc) desc
+    (if (str/blank? desc) 
+        desc
         (str desc "\n\n"))))
 
 ;;;; API docs section table of contents
@@ -53,11 +54,11 @@
 (defn- toc-links
   "Creates a list of links to endpoints in the relevant namespace."
   [endpoint]
-  (->> (:endpoint-str endpoint)
-       (#(str/replace % #"[#+`]" ""))
-       (str/trim)
-       (anchor-link)
-       (#(str "  - " %))))
+  (-> (:endpoint-str endpoint)
+      (str/replace #"[#+`]" "")
+      str/trim
+      anchor-link
+      (#(str "  - " %))))
 
 (defn section-toc
   "Generates a table of contents for endpoints in a section."
@@ -69,10 +70,10 @@
 (defn- endpoint-str
   "Creates a name for an endpoint: VERB /path/to/endpoint. Used to build anchor links in the table of contents."
   [endpoint]
-  (->> (:doc endpoint)
-       (#(str/split % #"\n"))
-       (first)
-       (str/trim)))
+  (-> (:doc endpoint)
+      (str/split #"\n")
+      first
+      str/trim))
 
 (defn- process-endpoint
   "Decorates endpoints with strings for building api endpoint sections."
@@ -112,13 +113,13 @@
 (defn- dox
   "Generate a Markdown string containing documentation for all Metabase API endpoints."
   []
-  (str (api-docs-intro!)
+  (str (api-docs-intro)
        (str/join "\n\n\n"
                  (->> (collect-endpoints)
                       (map process-endpoint)
                       (group-by :ns-name)
                       (into (sorted-map))
-                      (endpoint-section)))))
+                      endpoint-section))))
 
 (defn generate-dox!
   "Write markdown file containing documentation for all the API endpoints to `docs/api-documentation.md`."

@@ -35,9 +35,7 @@
   "Fixes strings that don't terminate in a period."
   [s]
   (if (or (str/blank? s)
-          (str/ends-with? s ".")
-          (str/ends-with? s "?")
-          (str/ends-with? s "!"))
+          (#{\. \? \!} (last s)))
     s
     (str s ".")))
 
