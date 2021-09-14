@@ -7,7 +7,7 @@
             [metabase.driver.util :as driver.u]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings.metastore :as metastore]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
             [metabase.util.i18n :as i18n :refer [available-locales-with-names deferred-tru trs tru]]
             [metabase.util.password :as password]
@@ -15,7 +15,7 @@
   (:import java.util.UUID))
 
 ;; These modules register settings but are otherwise unused. They still must be imported.
-(comment metabase.public-settings.metastore/keep-me)
+(comment metabase.public-settings.premium-features/keep-me)
 
 (defn- google-auth-configured? []
   (boolean (setting/get :google-auth-client-id)))
@@ -371,11 +371,11 @@
   "Premium EE features enabled for this instance."
   :visibility :public
   :setter     :none
-  :getter     (fn [] {:embedding  (metastore/hide-embed-branding?)
-                      :whitelabel (metastore/enable-whitelabeling?)
-                      :audit_app  (metastore/enable-audit-app?)
-                      :sandboxes  (metastore/enable-sandboxes?)
-                      :sso        (metastore/enable-sso?)}))
+  :getter     (fn [] {:embedding  (premium-features/hide-embed-branding?)
+                      :whitelabel (premium-features/enable-whitelabeling?)
+                      :audit_app  (premium-features/enable-audit-app?)
+                      :sandboxes  (premium-features/enable-sandboxes?)
+                      :sso        (premium-features/enable-sso?)}))
 
 (defsetting redirect-all-requests-to-https
   (deferred-tru "Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS")

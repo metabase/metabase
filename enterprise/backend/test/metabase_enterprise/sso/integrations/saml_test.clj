@@ -1,7 +1,6 @@
 (ns metabase-enterprise.sso.integrations.saml-test
   (:require [clojure.set :as set]
             [clojure.string :as str]
-            [clojure.test :refer :all]
             [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
             [metabase.config :as config]
             [metabase.http-client :as http]
@@ -9,7 +8,7 @@
             [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
             [metabase.models.user :refer [User]]
             [metabase.public-settings :as public-settings]
-            [metabase.public-settings.metastore-test :as metastore-test]
+            [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.server.middleware.session :as mw.session]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
@@ -32,11 +31,11 @@
 
 (use-fixtures :each disable-other-sso-types)
 
-(defmacro with-valid-metastore-token
-  "Stubs the `metastore/enable-sso?` function to simulate a valid token. This needs to be included to test any of the
+(defmacro with-valid-premium-features-token
+  "Stubs the `premium-features/enable-sso?` function to simulate a valid token. This needs to be included to test any of the
   SSO features"
   [& body]
-  `(metastore-test/with-metastore-token-features #{:sso}
+  `(premium-features-test/with-premium-features #{:sso}
      ~@body))
 
 (defn client
@@ -107,26 +106,26 @@ g9oYBkdxlhK9zZvkjCgaLCen+0aY67A=")
   (testing "make sure our test certificate is actually valid"
     (is (some? (#'sso-settings/validate-saml-idp-cert default-idp-cert)))))
 
-(deftest require-valid-metastore-token-test
-  (testing "SSO requests fail if they don't have a valid metastore token"
-    (metastore-test/with-metastore-token-features #{}
+(deftest require-valid-premium-features-token-test
+  (testing "SSO requests fail if they don't have a valid premium-features token"
+    (premium-features-test/with-premium-features #{}
       (is (= "SSO requires a valid token"
              (client :get 403 "/auth/sso"))))))
 
 (deftest require-saml-enabled-test
   (testing "SSO requests fail if SAML hasn't been enabled"
-    (with-valid-metastore-token
+    (with-valid-premium-features-token
       (mt/with-temporary-setting-values [saml-enabled false]
         (is (some? (client :get 400 "/auth/sso"))))))
 
   (testing "SSO requests fail if SAML is enabled but hasn't been configured"
-    (with-valid-metastore-token
+    (with-valid-premium-features-token
       (mt/with-temporary-setting-values [saml-enabled               true
                                          saml-identity-provider-uri nil]
         (is (some? (client :get 400 "/auth/sso"))))))
 
   (testing "The IDP provider certificate must also be included for SSO to be configured"
-    (with-valid-metastore-token
+    (with-valid-premium-features-token
       (mt/with-temporary-setting-values [saml-enabled                       true
                                          saml-identity-provider-uri         default-idp-uri
                                          saml-identity-provider-certificate nil]
@@ -148,7 +147,7 @@ g9oYBkdxlhK9zZvkjCgaLCen+0aY67A=")
       (u/ignore-exceptions (db/update-where! User {} :login_attributes nil)))))
 
 (defmacro ^:private with-saml-default-setup [& body]
-  `(with-valid-metastore-token
+  `(with-valid-premium-features-token
      (call-with-login-attributes-cleared!
       (fn []
         (call-with-default-saml-config

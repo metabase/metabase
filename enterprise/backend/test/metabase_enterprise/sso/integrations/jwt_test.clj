@@ -2,14 +2,13 @@
   (:require [buddy.sign.jwt :as jwt]
             [buddy.sign.util :as buddy-util]
             [clojure.string :as str]
-            [clojure.test :refer :all]
             [crypto.random :as crypto-random]
             [metabase-enterprise.sso.integrations.jwt :as mt.jwt]
             [metabase-enterprise.sso.integrations.saml-test :as saml-test]
             [metabase.models.permissions-group :as group :refer [PermissionsGroup]]
             [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
             [metabase.models.user :refer [User]]
-            [metabase.public-settings.metastore-test :as metastore-test]
+            [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
@@ -32,23 +31,23 @@
 (deftest sso-prereqs-test
   (testing "SSO requests fail if SAML hasn't been enabled"
     (mt/with-temporary-setting-values [jwt-enabled false]
-      (saml-test/with-valid-metastore-token
+      (saml-test/with-valid-premium-features-token
         (is (= "SSO has not been enabled and/or configured"
                (saml-test/client :get 400 "/auth/sso"))))
 
-      (testing "SSO requests fail if they don't have a valid metastore token"
-        (metastore-test/with-metastore-token-features nil
+      (testing "SSO requests fail if they don't have a valid premium-features token"
+        (premium-features-test/with-premium-features nil
           (is (= "SSO requires a valid token"
                  (saml-test/client :get 403 "/auth/sso")))))))
 
   (testing "SSO requests fail if SAML is enabled but hasn't been configured"
-    (saml-test/with-valid-metastore-token
+    (saml-test/with-valid-premium-features-token
       (mt/with-temporary-setting-values [jwt-enabled true]
         (is (= "JWT SSO has not been enabled and/or configured"
                (saml-test/client :get 400 "/auth/sso"))))))
 
   (testing "The IdP provider certificate must also be included for SSO to be configured"
-    (saml-test/with-valid-metastore-token
+    (saml-test/with-valid-premium-features-token
       (mt/with-temporary-setting-values [jwt-enabled               true
                                          jwt-identity-provider-uri default-idp-uri]
         (is (= "JWT SSO has not been enabled and/or configured"
@@ -63,7 +62,7 @@
 (defmacro ^:private with-jwt-default-setup [& body]
   `(disable-other-sso-types
     (fn []
-      (saml-test/with-valid-metastore-token
+      (saml-test/with-valid-premium-features-token
         (saml-test/call-with-login-attributes-cleared!
          (fn []
            (call-with-default-jwt-config

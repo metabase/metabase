@@ -15,7 +15,7 @@
             [metabase.api.geojson :as geojson]
             [metabase.api.ldap :as ldap]
             [metabase.api.login-history :as login-history]
-            [metabase.api.metastore :as metastore]
+            [metabase.api.premium-features :as premium-features]
             [metabase.api.metric :as metric]
             [metabase.api.native-query-snippet :as native-query-snippet]
             [metabase.api.notify :as notify]
@@ -83,7 +83,7 @@
   (context "/geojson"              [] geojson/routes)
   (context "/ldap"                 [] (+auth ldap/routes))
   (context "/login-history"        [] (+auth login-history/routes))
-  (context "/metastore"            [] (+auth metastore/routes))
+  (context "/premium-features"            [] (+auth premium-features/routes))
   (context "/metric"               [] (+auth metric/routes))
   (if-some [moderation-routes (some-> (resolve 'ee.moderation.review/routes) var-get)]
     (context "/moderation-review"  [] (+auth moderation-routes))

@@ -1,8 +1,7 @@
 (ns metabase-enterprise.audit.query-processor.middleware.handle-audit-queries-test
   "Additional tests for this namespace can be found in `metabase-enterprise.audit.pages-test`."
-  (:require [clojure.test :refer :all]
-            [metabase-enterprise.audit.interface :as audit.i]
-            [metabase.public-settings.metastore-test :as metastore-test]
+  (:require [metabase-enterprise.audit.interface :as audit.i]
+            [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
             [metabase.util :as u]))
@@ -10,7 +9,7 @@
 (defn- run-query
   [query-type & {:as additional-query-params}]
   (mt/with-test-user :crowberto
-    (metastore-test/with-metastore-token-features #{:audit-app}
+    (premium-features-test/with-premium-features #{:audit-app}
       (qp/process-query (merge {:type :internal
                                 :fn   (u/qualified-name query-type)}
                                additional-query-params)))))
