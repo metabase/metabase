@@ -15,9 +15,10 @@
 
                                 (bytes? expected)
                                 (= (seq expected) (seq v)))))]
-      (mt/with-temp Secret [{:keys [id] :as secret} {:name  name
-                                                     :kind  kind
-                                                     :value value}]
+      (mt/with-temp Secret [{:keys [id] :as secret} {:name       name
+                                                     :kind       kind
+                                                     :value      value
+                                                     :creator_id (mt/user->id :crowberto)}]
          (is (= name (:name secret)))
          (is (= kind (:kind secret)))
          (is (val-equals? value secret))
