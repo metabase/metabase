@@ -34,7 +34,7 @@ const propTypes = {
   }),
   isSelectable: PropTypes.bool,
   selectHeader: PropTypes.string,
-  rowChecked: PropTypes.array,
+  rowChecked: PropTypes.object,
   onRowSelectClick: PropTypes.func,
 };
 
