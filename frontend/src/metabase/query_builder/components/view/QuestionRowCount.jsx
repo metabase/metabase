@@ -31,7 +31,11 @@ const QuestionRowCount = ({
   const limitMessage =
     query instanceof StructuredQuery
       ? query.limit() == null || query.limit() >= HARD_ROW_LIMIT
-        ? cappedMessage
+        ? typeof result.row_count === "number"
+          ? // The query has been altered but we might still have the old result set,
+            // so show that instead of a generic HARD_ROW_LIMIT
+            t`Showing ${formatRowCount(result.row_count)}`
+          : cappedMessage
         : t`Show ${formatRowCount(query.limit())}`
       : null;
 
