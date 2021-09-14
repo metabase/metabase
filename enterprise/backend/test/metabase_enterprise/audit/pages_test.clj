@@ -132,6 +132,8 @@
                :query-string      "toucans"
                :question-filter   "bird sales"
                :collection-filter "coin collection"
+               :error-filter      "a"
+               :db-filter         "PU"
                :sort-column       "card.id"
                :sort-direction    "desc"))}))
 

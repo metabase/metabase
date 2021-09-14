@@ -65,12 +65,13 @@
 ;; List of all failing questions
 (defmethod audit.i/internal-query ::bad-table
   ([_]
-   (bad-table nil nil nil nil nil))
-  ([errorFilter
-    dbFilter
-    collectionFilter
-    sortColumn 
-    sortDirection]
+   (audit.i/internal-query ::bad-table nil nil nil nil nil))
+  ([_
+    error-filter
+    db-filter
+    collection-filter
+    sort-column
+    sort-direction]
   {:metadata [[:card_id         {:display_name "Card ID",            :base_type :type/Integer :remapped_to   :card_name}]
               [:card_name       {:display_name "Question",           :base_type :type/Name    :remapped_from :card_id}]
               [:error_substr    {:display_name "Error",              :base_type :type/Text    :code          true}]
@@ -116,37 +117,37 @@
                  :where     [:and
                              [:= :card.archived false]
                              [:<> :qe.error nil]]}
-                (common/add-search-clause errorFilter :qe.error)
-                (common/add-search-clause dbFilter :db.name)
-                (common/add-search-clause collectionFilter :coll.name)
+                (common/add-search-clause error-filter :qe.error)
+                (common/add-search-clause db-filter :db.name)
+                (common/add-search-clause collection-filter :coll.name)
                 (common/add-sort-clause
-                  (or sortColumn "card.name")
-                  (or sortDirection "asc"))))}))
+                  (or sort-column "card.name")
+                  (or sort-direction "asc"))))}))
 
-(s/defmethod audit.i/internal-query ::table
-  "A list of all questions.
-
-  Three possible argument lists. All arguments are always nullable.
-
-  - [] :
-  Dump them all, sort by name ascending
-
-  - [question-filter] :
-  Dump all filtered by the question-filter string, sort by name ascending.
-  question-filter filters on the `name` column in `cards` table.
-
-  - [question-filter, collection-filter, sort-column, sort-direction] :
-  Dump all filtered by both question-filter and collection-filter,
-  sort by the given column and sort direction.
-  question-filter filters on the `name` column in `cards` table.
-  collection-filter filters on the `name` column in `collections` table.
-
-  Sort column is given over in keyword form to honeysql. Default `card.name`
-
-  Sort direction can be `asc` or `desc`, ascending and descending respectively. Default `asc`.
-
-  All inputs have to be strings because that's how the magic middleware
-  that turns these functions into clojure-backed 'datasets' works."
+;; A list of all questions.
+;;
+;; Three possible argument lists. All arguments are always nullable.
+;;
+;; - [] :
+;; Dump them all, sort by name ascending
+;;
+;; - [question-filter] :
+;; Dump all filtered by the question-filter string, sort by name ascending.
+;; question-filter filters on the `name` column in `cards` table.
+;;
+;; - [question-filter, collection-filter, sort-column, sort-direction] :
+;; Dump all filtered by both question-filter and collection-filter,
+;; sort by the given column and sort direction.
+;; question-filter filters on the `name` column in `cards` table.
+;; collection-filter filters on the `name` column in `collections` table.
+;;
+;; Sort column is given over in keyword form to honeysql. Default `card.name`
+;;
+;; Sort direction can be `asc` or `desc`, ascending and descending respectively. Default `asc`.
+;;
+;; All inputs have to be strings because that's how the magic middleware
+;; that turns these functions into clojure-backed 'datasets' works.
+(defmethod audit.i/internal-query ::table
   ([query-type]
    (audit.i/internal-query query-type nil nil nil nil))
 
