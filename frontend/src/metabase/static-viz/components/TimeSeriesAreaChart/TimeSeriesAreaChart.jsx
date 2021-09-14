@@ -6,7 +6,7 @@ import { AxisBottom, AxisLeft } from "@visx/axis";
 import { AreaClosed, LinePath } from "@visx/shape";
 import { formatDate } from "../../lib/dates";
 import { formatNumber } from "../../lib/numbers";
-import { getYAxisWidth } from "metabase/static-viz/lib/axes";
+import { getYTickWidth } from "metabase/static-viz/lib/axes";
 
 const propTypes = {
   data: PropTypes.array.isRequired,
@@ -50,8 +50,8 @@ const layout = {
 };
 
 const TimeSeriesAreaChart = ({ data, accessors, settings, labels }) => {
-  const yAxisWidth = getYAxisWidth(data, accessors, settings);
-  const yLabelOffset = yAxisWidth + layout.labelPadding;
+  const yTickWidth = getYTickWidth(data, accessors, settings);
+  const yLabelOffset = yTickWidth + layout.labelPadding;
   const xMin = yLabelOffset + layout.font.size * 1.5;
   const xMax = layout.width - layout.margin.right;
   const yMax = layout.height - layout.margin.bottom;

@@ -6,7 +6,7 @@ import { AxisBottom, AxisLeft } from "@visx/axis";
 import { LinePath } from "@visx/shape";
 import {
   getXTickLabelProps,
-  getYAxisWidth,
+  getYTickWidth,
   getYTickLabelProps,
 } from "../../lib/axes";
 import { formatDate } from "../../lib/dates";
@@ -53,8 +53,8 @@ const layout = {
 };
 
 const TimeSeriesLineChart = ({ data, accessors, settings, labels }) => {
-  const yAxisWidth = getYAxisWidth(data, accessors, settings);
-  const yLabelOffset = yAxisWidth + layout.labelPadding;
+  const yTickWidth = getYTickWidth(data, accessors, settings);
+  const yLabelOffset = yTickWidth + layout.labelPadding;
   const xMin = yLabelOffset + layout.font.size * 1.5;
   const xMax = layout.width - layout.margin.right;
   const yMax = layout.height - layout.margin.bottom;

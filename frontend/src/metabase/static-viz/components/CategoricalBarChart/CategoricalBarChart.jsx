@@ -5,7 +5,7 @@ import { GridRows } from "@visx/grid";
 import { scaleBand, scaleLinear } from "@visx/scale";
 import { Bar } from "@visx/shape";
 import { Text } from "@visx/text";
-import { getYAxisWidth } from "../../lib/axes";
+import { getXTickHeight, getYTickWidth } from "../../lib/axes";
 import { formatNumber } from "../../lib/numbers";
 
 const propTypes = {
@@ -48,14 +48,17 @@ const layout = {
 };
 
 const CategoricalBarChart = ({ data, accessors, settings, labels }) => {
-  const yAxisWidth = getYAxisWidth(data, accessors, settings);
-  const yLabelOffset = yAxisWidth + layout.labelPadding;
+  const isVertical = data.length > 10;
+  const xTickHeight = getXTickHeight(data, accessors);
+  const yTickWidth = getYTickWidth(data, accessors, settings);
+  const xLabelOffset = xTickHeight + layout.labelPadding + layout.font.size;
+  const yLabelOffset = yTickWidth + layout.labelPadding;
   const xMin = yLabelOffset + layout.font.size * 1.5;
   const xMax = layout.width - layout.margin.right;
-  const yMax = layout.height - layout.margin.bottom;
+  const yMin = isVertical ? xLabelOffset : layout.margin.bottom;
+  const yMax = layout.height - yMin;
   const innerWidth = xMax - xMin;
   const innerHeight = yMax - layout.margin.top;
-  const isVertical = data.length > 10;
   const leftLabel = labels?.left;
   const bottomLabel = !isVertical ? labels?.bottom : undefined;
 
