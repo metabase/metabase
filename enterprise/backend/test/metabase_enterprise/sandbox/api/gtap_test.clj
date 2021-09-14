@@ -1,5 +1,6 @@
 (ns metabase-enterprise.sandbox.api.gtap-test
-  (:require [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
+  (:require [clojure.test :refer :all]
+            [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
             [metabase.http-client :as http]
             [metabase.models :refer [Card Field PermissionsGroup Table]]
             [metabase.public-settings.premium-features :as premium-features]

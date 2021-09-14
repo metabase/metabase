@@ -1,6 +1,7 @@
 (ns metabase-enterprise.sso.integrations.saml-test
   (:require [clojure.set :as set]
             [clojure.string :as str]
+            [clojure.test :refer :all]
             [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
             [metabase.config :as config]
             [metabase.http-client :as http]

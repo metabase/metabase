@@ -2,6 +2,7 @@
   (:require [clojure.java.classpath :as classpath]
             [clojure.java.io :as io]
             [clojure.string :as str]
+            [clojure.test :refer :all]
             [clojure.tools.namespace.find :as ns-find]
             [clojure.tools.reader :as tools.reader]
             [metabase-enterprise.audit.interface :as audit.i]

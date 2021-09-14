@@ -2,6 +2,7 @@
   (:require [buddy.sign.jwt :as jwt]
             [buddy.sign.util :as buddy-util]
             [clojure.string :as str]
+            [clojure.test :refer :all]
             [crypto.random :as crypto-random]
             [metabase-enterprise.sso.integrations.jwt :as mt.jwt]
             [metabase-enterprise.sso.integrations.saml-test :as saml-test]
