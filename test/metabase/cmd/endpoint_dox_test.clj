@@ -28,4 +28,3 @@
 (deftest endpoint-section-test
   (is (= (first (endpoint-dox/endpoint-section endpoints))
          section-markdown)))
-

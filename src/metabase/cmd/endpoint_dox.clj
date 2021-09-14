@@ -35,7 +35,7 @@
   "If there is a namespace docstring, include the docstring with a paragraph break."
   [ep-data]
   (let [desc (u/add-period (:doc (meta (:ns (first ep-data)))))]
-    (if (str/blank? desc) 
+    (if (str/blank? desc)
         desc
         (str desc "\n\n"))))
 
