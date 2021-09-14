@@ -125,26 +125,26 @@
 
 (s/defmethod audit.i/internal-query ::table
   "A list of all questions.
-  
+
   Three possible argument lists. All arguments are always nullable.
-  
+
   - [] :
   Dump them all, sort by name ascending
-  
+
   - [question-filter] :
   Dump all filtered by the question-filter string, sort by name ascending.
   question-filter filters on the `name` column in `cards` table.
-  
+
   - [question-filter, collection-filter, sort-column, sort-direction] :
   Dump all filtered by both question-filter and collection-filter,
   sort by the given column and sort direction.
   question-filter filters on the `name` column in `cards` table.
   collection-filter filters on the `name` column in `collections` table.
-  
+
   Sort column is given over in keyword form to honeysql. Default `card.name`
-  
+
   Sort direction can be `asc` or `desc`, ascending and descending respectively. Default `asc`.
-  
+
   All inputs have to be strings because that's how the magic middleware
   that turns these functions into clojure-backed 'datasets' works."
   ([query-type]
