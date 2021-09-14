@@ -48,7 +48,7 @@ export default function ErrorOverview(props) {
       buttons={[
         {
           key: "reloadSelected",
-          label: t`Reload Selected`,
+          label: t`Rerun Selected`,
           onClick: handleReloadSelected,
         },
       ]}
@@ -59,7 +59,7 @@ export default function ErrorOverview(props) {
           pageSize={50}
           isSortable
           isSelectable
-          selectHeader={"Reload?"}
+          selectHeader={t`Rerun?`}
           rowChecked={rowChecked}
           sorting={sorting}
           onSortingChange={handleSortingChange}
