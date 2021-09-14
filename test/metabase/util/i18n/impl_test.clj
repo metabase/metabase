@@ -18,6 +18,14 @@
       (is (= expected
              (impl/normalized-locale-string s))))))
 
+(deftest migrate-legacy-locale-string-test
+  (doseq [[s expected] {"pt"    "pt_BR"
+                        "pt_BR" "pt_BR"
+                        "en"    "en"}]
+    (testing (pr-str (list 'migrate-legacy-locale-string s))
+      (is (= expected
+             (impl/migrate-legacy-locale-string s))))))
+
 (deftest locale-test
   (testing "Should be able to coerce various types of objects to Locales"
     (doseq [arg-type [:str :keyword]

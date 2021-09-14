@@ -31,6 +31,15 @@
           (str language \_ (some-> country str/upper-case))
           language)))))
 
+(defn migrate-legacy-locale-string
+  "Convert locale from legacy name (which may be saved in the database from an old version)
+   to the current name."
+  ^String [s]
+  (case s
+    ;; x.39.x changed pt to pt_BR (metabase#15630)
+    "pt" "pt_BR"
+    s))
+
 (extend-protocol CoerceToLocale
   nil
   (locale [_] nil)
@@ -40,7 +49,9 @@
 
   String
   (locale [^String s]
-    (some-> (normalized-locale-string s) LocaleUtils/toLocale))
+    (some-> (normalized-locale-string s)
+            (migrate-legacy-locale-string)
+            LocaleUtils/toLocale))
 
   ;; Support namespaced keywords like `:en/US` and `:en/UK` because we can
   clojure.lang.Keyword
