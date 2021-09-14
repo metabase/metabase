@@ -314,7 +314,7 @@ const sidebar = handleActions(
       next: () => ({}),
     },
     [SET_EDITING_DASHBOARD]: {
-      next: (state, { payload }) => (payload ? state : {}),
+      next: (state, { payload: isEditing }) => (isEditing ? state : {}),
     },
   },
   {},

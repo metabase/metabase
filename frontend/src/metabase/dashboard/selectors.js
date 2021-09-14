@@ -53,9 +53,11 @@ export const getLoadingStartTime = state =>
 export const getIsAddParameterPopoverOpen = state =>
   state.dashboard.isAddParameterPopoverOpen;
 
-export const getIsSharing = state =>
-  state.dashboard.sidebar.name === SIDEBAR_NAME.sharing;
 export const getSidebar = state => state.dashboard.sidebar;
+export const getIsSharing = createSelector(
+  [getSidebar],
+  sidebar => sidebar.name === SIDEBAR_NAME.sharing,
+);
 
 export const getShowAddQuestionSidebar = createSelector(
   [getSidebar],
@@ -99,7 +101,7 @@ export const getEditingParameterId = createSelector(
   [getSidebar],
   sidebar => {
     return sidebar.name === SIDEBAR_NAME.editParameter
-      ? sidebar.props.parameterId
+      ? sidebar.props?.parameterId
       : null;
   },
 );
