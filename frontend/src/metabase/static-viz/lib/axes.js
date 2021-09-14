@@ -19,11 +19,11 @@ export const getYTickWidth = (data, accessors, settings) => {
     .reduce((a, b) => Math.max(a, b), 0);
 };
 
-export const getXTickLabelProps = layout => ({
+export const getXTickLabelProps = (layout, isVertical) => ({
   fontSize: layout.font.size,
   fontFamily: layout.font.family,
   fill: layout.colors.textMedium,
-  textAnchor: "middle",
+  textAnchor: isVertical ? "start" : "middle",
 });
 
 export const getYTickLabelProps = layout => ({

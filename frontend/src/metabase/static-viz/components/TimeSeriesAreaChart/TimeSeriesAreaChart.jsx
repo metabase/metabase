@@ -4,9 +4,13 @@ import { scaleLinear, scaleTime } from "@visx/scale";
 import { GridRows } from "@visx/grid";
 import { AxisBottom, AxisLeft } from "@visx/axis";
 import { AreaClosed, LinePath } from "@visx/shape";
+import {
+  getXTickLabelProps,
+  getYTickLabelProps,
+  getYTickWidth,
+} from "../../lib/axes";
 import { formatDate } from "../../lib/dates";
 import { formatNumber } from "../../lib/numbers";
-import { getYTickWidth } from "metabase/static-viz/lib/axes";
 
 const propTypes = {
   data: PropTypes.array.isRequired,
@@ -73,20 +77,6 @@ const TimeSeriesAreaChart = ({ data, accessors, settings, labels }) => {
     nice: true,
   });
 
-  const getLeftTickLabelProps = () => ({
-    fontSize: layout.font.size,
-    fontFamily: layout.font.family,
-    fill: layout.colors.textMedium,
-    textAnchor: "end",
-  });
-
-  const getBottomTickLabelProps = () => ({
-    fontSize: layout.font.size,
-    fontFamily: layout.font.family,
-    fill: layout.colors.textMedium,
-    textAnchor: "middle",
-  });
-
   return (
     <svg width={layout.width} height={layout.height}>
       <GridRows
@@ -117,7 +107,7 @@ const TimeSeriesAreaChart = ({ data, accessors, settings, labels }) => {
         hideTicks
         hideAxisLine
         tickFormat={value => formatNumber(value, settings?.y)}
-        tickLabelProps={() => getLeftTickLabelProps()}
+        tickLabelProps={() => getYTickLabelProps(layout)}
       />
       <AxisBottom
         scale={xScale}
@@ -127,7 +117,7 @@ const TimeSeriesAreaChart = ({ data, accessors, settings, labels }) => {
         stroke={layout.colors.textLight}
         tickStroke={layout.colors.textLight}
         tickFormat={value => formatDate(value, settings?.x)}
-        tickLabelProps={() => getBottomTickLabelProps()}
+        tickLabelProps={() => getXTickLabelProps(layout)}
       />
     </svg>
   );

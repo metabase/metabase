@@ -4,13 +4,15 @@ import { AxisBottom, AxisLeft } from "@visx/axis";
 import { GridRows } from "@visx/grid";
 import { scaleBand, scaleLinear } from "@visx/scale";
 import { Bar } from "@visx/shape";
+import { Text } from "@visx/text";
 import {
   getXTickLabelProps,
-  getYTickWidth,
   getYTickLabelProps,
+  getYTickWidth,
 } from "../../lib/axes";
 import { formatDate } from "../../lib/dates";
 import { formatNumber } from "../../lib/numbers";
+import { truncateText } from "metabase/static-viz/lib/text";
 
 const propTypes = {
   data: PropTypes.array.isRequired,
@@ -85,6 +87,11 @@ const TimeSeriesBarChart = ({ data, accessors, settings, labels }) => {
     return { x, y, width, height, fill: layout.colors.brand };
   };
 
+  const getXTickProps = ({ formattedValue, ...props }) => {
+    const text = truncateText(formattedValue, xScale.bandwidth());
+    return { ...props, children: text };
+  };
+
   return (
     <svg width={layout.width} height={layout.height}>
       <GridRows
@@ -114,6 +121,7 @@ const TimeSeriesBarChart = ({ data, accessors, settings, labels }) => {
         stroke={layout.colors.textLight}
         tickStroke={layout.colors.textLight}
         tickFormat={value => formatDate(value, settings?.x)}
+        tickComponent={props => <Text {...getXTickProps(props)} />}
         tickLabelProps={() => getXTickLabelProps(layout)}
       />
     </svg>

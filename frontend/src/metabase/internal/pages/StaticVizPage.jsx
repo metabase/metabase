@@ -22,7 +22,13 @@ export default function StaticVizPage() {
           <StaticChart
             type="timeseries/bar"
             options={{
-              data: [["2010-11-07", 20], ["2020-11-08", 30]],
+              data: [
+                ["2020-10-21", 20],
+                ["2020-10-22", 30],
+                ["2020-10-23", 25],
+                ["2020-10-24", 10],
+                ["2020-10-25", 15],
+              ],
               accessors: {
                 x: row => new Date(row[0]).valueOf(),
                 y: row => row[1],
