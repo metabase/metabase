@@ -48,7 +48,7 @@ const layout = {
   },
   numTicks: 5,
   barPadding: 0.2,
-  labelPadding: 8,
+  labelPadding: 12,
   strokeDasharray: "4",
 };
 

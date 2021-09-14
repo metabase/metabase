@@ -43,7 +43,7 @@ const layout = {
     textMedium: "#949aab",
   },
   barPadding: 0.2,
-  labelPadding: 8,
+  labelPadding: 12,
   strokeDasharray: "4",
 };
 

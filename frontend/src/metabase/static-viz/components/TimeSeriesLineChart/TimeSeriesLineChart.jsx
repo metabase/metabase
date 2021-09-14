@@ -47,7 +47,7 @@ const layout = {
     textMedium: "#949aab",
   },
   numTicks: 5,
-  labelPadding: 8,
+  labelPadding: 12,
   strokeWidth: 2,
   strokeDasharray: "4",
 };
