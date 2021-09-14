@@ -69,16 +69,20 @@
       node)))
 
 (defn- parse-svg-string [^String s]
-  (let [s       (str/replace s #"<svg " "<svg xmlns=\"http://www.w3.org/2000/svg\" ")
+  (let [s       (str/replace s #"<svg" "<svg xmlns=\"http://www.w3.org/2000/svg\"")
         factory (SAXSVGDocumentFactory. "org.apache.xerces.parsers.SAXParser")]
     (with-open [is (ByteArrayInputStream. (.getBytes s StandardCharsets/UTF_8))]
       (.createDocument factory "file:///fake.svg" is))))
 
-(def svg-render-width
+(def ^:dynamic ^:private *svg-render-width*
   "Width to render svg images. Intentionally large to improve quality. Consumers should be aware and resize as
   needed. Email should include width tags; slack automatically resizes inline and provides a nice detail view when
   clicked."
   (float 1200))
+
+(def ^:dynamic ^:private *svg-render-height*
+  "Height to render svg images. If not bound, will preserve aspect ratio of original image."
+  nil)
 
 (defn- render-svg
   ^bytes [^SVGOMDocument svg-document]
@@ -87,7 +91,9 @@
           in                           (TranscoderInput. fixed-svg-doc)
           out                          (TranscoderOutput. os)
           transcoder                   (PNGTranscoder.)]
-      (.addTranscodingHint transcoder PNGTranscoder/KEY_WIDTH svg-render-width)
+      (.addTranscodingHint transcoder PNGTranscoder/KEY_WIDTH *svg-render-width*)
+      (when *svg-render-height*
+        (.addTranscodingHint transcoder PNGTranscoder/KEY_HEIGHT *svg-render-height*))
       (.transcode transcoder in out))
     (.toByteArray os)))
 
@@ -127,3 +133,19 @@
   [rows colors]
   (let [svg-string (.asString (js/execute-fn-name @context "categorical_donut" rows (seq colors)))]
     (svg-string->bytes svg-string)))
+
+(def ^:private icon-paths
+  {:dashboard "M32 28a4 4 0 0 1-4 4H4a4.002 4.002 0 0 1-3.874-3H0V4a4 4 0 0 1 4-4h25a3 3 0 0 1 3 3v25zm-4 0V8H4v20h24zM7.273 18.91h10.182v4.363H7.273v-4.364zm0-6.82h17.454v4.365H7.273V12.09zm13.09 6.82h4.364v4.363h-4.363v-4.364z"
+   :bell      "M14.254 5.105c-7.422.874-8.136 7.388-8.136 11.12 0 4.007 0 5.61-.824 6.411-.549.535-1.647.802-3.294.802v4.006h28v-4.006c-1.647 0-2.47 0-3.294-.802-.55-.534-.824-3.205-.824-8.013-.493-5.763-3.205-8.936-8.136-9.518a2.365 2.365 0 0 0 .725-1.701C18.47 2.076 17.364 1 16 1s-2.47 1.076-2.47 2.404c0 .664.276 1.266.724 1.7zM11.849 29c.383 1.556 1.793 2.333 4.229 2.333s3.845-.777 4.229-2.333h-8.458z"})
+
+(defn- icon-svg-string
+  [icon-name color]
+  (str "<svg><path d=\"" (get icon-paths icon-name) "\" fill=\"" color "\"/></svg>"))
+
+(defn icon
+  "Entrypoint for rendering an SVG icon as a PNG, with a specific color"
+  [icon-name color]
+  (let [svg-string (icon-svg-string icon-name color)]
+    (binding [*svg-render-width*  (float 33)
+              *svg-render-height* (float 33)]
+      (svg-string->bytes svg-string))))

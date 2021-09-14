@@ -19,6 +19,10 @@
   "Should the rendered pulse include a title? (default: `false`)"
   false)
 
+(def ^:dynamic *include-description*
+  "Should the rendered pulse include a card description? (default: `false`)"
+  false)
+
 (s/defn ^:private make-title-if-needed :- (s/maybe common/RenderedPulseCard)
   [render-type card]
   (when *include-title*
@@ -40,6 +44,16 @@
                           [:img {:style (style/style {:width :16px})
                                  :width 16
                                  :src   (:image-src image-bundle)}])]]]]})))
+
+(s/defn ^:private make-description-if-needed :- (s/maybe common/RenderedPulseCard)
+  [dashcard]
+  (when *include-description*
+    (when-let [description (-> dashcard :visualization_settings :card.description)]
+      {:attachments {}
+       :content [:div {:style (style/style {:color style/color-text-medium
+                                            :font-size :12px
+                                            :margin-bottom :8px})}
+                 description]})))
 
 (defn- number-field?
   [{base-type :base_type, semantic-type :semantic_type}]
@@ -125,53 +139,53 @@
 - content (a hiccup form suitable for rending on rich clients or rendering into an image)
 - render/text : raw text suitable for substituting on clients when text is preferable. (Currently slack uses this for
   scalar results where text is preferable to an image of a div of a single result."
-  [render-type timezone-id :- (s/maybe s/Str) card results]
+  [render-type timezone-id :- (s/maybe s/Str) card dashcard results]
   (let [{title :content, title-attachments :attachments} (make-title-if-needed render-type card)
+        {description :content}                           (make-description-if-needed dashcard)
         {pulse-body       :content
          body-attachments :attachments
          text             :render/text}                  (render-pulse-card-body render-type timezone-id card results)]
     (cond-> {:attachments (merge title-attachments body-attachments)
-             :content     [:a {:href   (card-href card)
-                               :target "_blank"
-                               :style  (style/style
-                                        (style/section-style)
-                                        {:margin          :16px
-                                         :margin-bottom   :16px
-                                         :display         :block
-                                         :text-decoration :none})}
-                           title
-                           pulse-body]}
+             :content [:p
+                       ;; Provide a horizontal scrollbar for tables that overflow container width.
+                       ;; Surrounding <p> element prevents buggy behavior when dragging scrollbar.
+                       [:div {:style (style/style {:overflow-x :auto})}
+                        [:a {:href        (card-href card)
+                             :target      "_blank"
+                             :rel         "noopener noreferrer"
+                             :style       (style/style
+                                           (style/section-style)
+                                           {:display         :block
+                                            :text-decoration :none})}
+                         title
+                         description
+                         [:div {:class "pulse-body"
+                                :style (style/style {:display :block
+                                                     :margin  :16px})}
+                          pulse-body]]]]}
       text (assoc :render/text text))))
 
 (defn render-pulse-card-for-display
   "Same as `render-pulse-card` but isn't intended for an email, rather for previewing so there is no need for
   attachments"
   [timezone-id card results]
-  (:content (render-pulse-card :inline timezone-id card results)))
+  (:content (render-pulse-card :inline timezone-id card nil results)))
 
 (s/defn render-pulse-section :- common/RenderedPulseCard
   "Render a single Card section of a Pulse to a Hiccup form (representating HTML)."
-  [timezone-id {card :card {:keys [data] :as result} :result}]
-  (let [{:keys [attachments content]} (binding [*include-title* true]
-                                        (render-pulse-card :attachment timezone-id card result))]
+  [timezone-id {card :card, dashcard :dashcard, result :result}]
+  (let [{:keys [attachments content]} (binding [*include-title*       true
+                                                *include-description* true]
+                                        (render-pulse-card :attachment timezone-id card dashcard result))]
     {:attachments attachments
-     :content     [:div {:style (style/style (merge
-                                              {:margin-top    :10px
-                                               :margin-bottom :20px}
-                                              ;; Don't include the border on cards rendered with a table as the table
-                                              ;; will be to larger and overrun the border
-                                              (when-not (= :table (detect-pulse-chart-type card data))
-                                                {:border           "1px solid #dddddd"
-                                                 :border-radius    :2px
-                                                 :background-color :white
-                                                 :width            "500px !important"
-                                                 :box-shadow       "0 1px 2px rgba(0, 0, 0, .08)"})))}
+     :content     [:div {:style (style/style {:margin-top    :20px
+                                              :margin-bottom :20px})}
                    content]}))
 
 (s/defn render-pulse-card-to-png :- bytes
   "Render a `pulse-card` as a PNG. `data` is the `:data` from a QP result (I think...)"
   [timezone-id :- (s/maybe s/Str) pulse-card result width]
-  (png/render-html-to-png (render-pulse-card :inline timezone-id pulse-card result) width))
+  (png/render-html-to-png (render-pulse-card :inline timezone-id pulse-card nil result) width))
 
 (s/defn png-from-render-info :- bytes
   "Create a PNG file (as a byte array) from rendering info."

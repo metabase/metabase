@@ -22,12 +22,21 @@ export default function StaticVizPage() {
           <StaticChart
             type="timeseries/bar"
             options={{
-              data: [["2010-11-07", 20], ["2020-11-08", 30]],
+              data: [
+                ["2020-10-21", 20],
+                ["2020-10-22", 30],
+                ["2020-10-23", 25],
+                ["2020-10-24", 10],
+                ["2020-10-25", 15],
+              ],
               accessors: {
                 x: row => new Date(row[0]).valueOf(),
                 y: row => row[1],
               },
               settings: {
+                x: {
+                  date_style: "MMMM DD, YYYY",
+                },
                 y: {
                   number_style: "currency",
                   currency: "USD",
@@ -94,14 +103,27 @@ export default function StaticVizPage() {
           <StaticChart
             type="categorical/bar"
             options={{
-              data: [["Gadget", 20], ["Widget", 31]],
+              data: [
+                ["Alden Sparks", 70],
+                ["Areli Guerra", 30],
+                ["Arturo Hopkins", 80],
+                ["Beatrice Lane", 120],
+                ["Brylee Davenport", 100],
+                ["Cali Nixon", 60],
+                ["Dane Terrell", 150],
+                ["Deshawn Rollins", 40],
+                ["Isabell Bright", 70],
+                ["Kaya Rowe", 20],
+                ["Roderick Herman", 50],
+                ["Ruth Dougherty", 75],
+              ],
               accessors: {
                 x: row => row[0],
                 y: row => row[1],
               },
               labels: {
-                left: "Count",
-                bottom: "Category",
+                left: "Tasks",
+                bottom: "People",
               },
             }}
           />

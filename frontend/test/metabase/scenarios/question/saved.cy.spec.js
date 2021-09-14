@@ -104,7 +104,7 @@ describe("scenarios > question > saved", () => {
     });
   });
 
-  it.skip("should be able to use integer filter on a saved native query (metabase#15808)", () => {
+  it("should be able to use integer filter on a saved native query (metabase#15808)", () => {
     cy.createNativeQuestion({
       name: "15808",
       native: { query: "select * from products" },
@@ -113,7 +113,9 @@ describe("scenarios > question > saved", () => {
     cy.findByText("Simple question").click();
     cy.findByText("Saved Questions").click();
     cy.findByText("15808").click();
-    cy.findByText("Filter").click();
+    cy.findAllByText("Filter")
+      .first()
+      .click();
     cy.findByTestId("sidebar-right")
       .findByText(/Rating/i)
       .click();
