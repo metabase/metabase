@@ -248,6 +248,58 @@ describe("Join", () => {
         "source-table": PRODUCTS.id,
       });
     });
+
+    it("inherits join dimension's temporal unit", () => {
+      const joinDimension = getDateFieldRef(PRODUCTS.CREATED_AT, {
+        joinAlias: "Products",
+        temporalUnit: "day",
+      });
+      let join = getJoin({
+        query: getOrdersJoinQuery({
+          condition: ["=", null, joinDimension],
+        }),
+      });
+
+      join = join.setParentDimension({
+        dimension: ORDERS_CREATED_AT_FIELD_REF,
+      });
+
+      expect(join).toEqual({
+        alias: "Products",
+        condition: [
+          "=",
+          getDateFieldRef(ORDERS.CREATED_AT, { temporalUnit: "day" }),
+          joinDimension,
+        ],
+        "source-table": PRODUCTS.id,
+      });
+    });
+
+    it("overwrites join dimension's temporal unit if flag provided", () => {
+      let join = getJoin({
+        query: getOrdersJoinQuery({
+          condition: ["=", null, PRODUCTS_CREATED_AT_JOIN_FIELD_REF],
+        }),
+      });
+
+      join = join.setParentDimension({
+        dimension: getDateFieldRef(ORDERS.CREATED_AT, { temporalUnit: "week" }),
+        overwriteTemporalUnit: true,
+      });
+
+      expect(join).toEqual({
+        alias: "Products",
+        condition: [
+          "=",
+          getDateFieldRef(ORDERS.CREATED_AT, { temporalUnit: "week" }),
+          getDateFieldRef(PRODUCTS.CREATED_AT, {
+            joinAlias: "Products",
+            temporalUnit: "week",
+          }),
+        ],
+        "source-table": PRODUCTS.id,
+      });
+    });
   });
 
   describe("setJoinDimension", () => {
@@ -342,6 +394,63 @@ describe("Join", () => {
           "and",
           ORDERS_PRODUCT_JOIN_CONDITION,
           ["=", null, PRODUCTS_CREATED_AT_FIELD_REF],
+        ],
+        "source-table": PRODUCTS.id,
+      });
+    });
+
+    it("inherits parent dimension's temporal unit", () => {
+      const parentDimension = getDateFieldRef(ORDERS.CREATED_AT, {
+        temporalUnit: "day",
+      });
+      let join = getJoin({
+        query: getOrdersJoinQuery({
+          condition: ["=", parentDimension, null],
+        }),
+      });
+
+      join = join.setJoinDimension({
+        dimension: PRODUCTS_CREATED_AT_JOIN_FIELD_REF,
+      });
+
+      expect(join).toEqual({
+        alias: "Products",
+        condition: [
+          "=",
+          parentDimension,
+          getDateFieldRef(PRODUCTS.CREATED_AT, {
+            temporalUnit: "day",
+            joinAlias: "Products",
+          }),
+        ],
+        "source-table": PRODUCTS.id,
+      });
+    });
+
+    it("overwrites parent dimension's temporal unit if flag provided", () => {
+      let join = getJoin({
+        query: getOrdersJoinQuery({
+          condition: ["=", ORDERS_CREATED_AT_FIELD_REF, null],
+        }),
+      });
+
+      join = join.setJoinDimension({
+        dimension: getDateFieldRef(PRODUCTS.CREATED_AT, {
+          temporalUnit: "week",
+          joinAlias: "Products",
+        }),
+        overwriteTemporalUnit: true,
+      });
+
+      expect(join).toEqual({
+        alias: "Products",
+        condition: [
+          "=",
+          getDateFieldRef(ORDERS.CREATED_AT, { temporalUnit: "week" }),
+          getDateFieldRef(PRODUCTS.CREATED_AT, {
+            temporalUnit: "week",
+            joinAlias: "Products",
+          }),
         ],
         "source-table": PRODUCTS.id,
       });

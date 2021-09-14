@@ -406,23 +406,59 @@ export default class Join extends MBQLObjectClause {
     }
   }
 
-  setJoinDimension({ index = 0, dimension }) {
+  setJoinDimension({ index = 0, dimension, overwriteTemporalUnit = false }) {
     const condition = this.getConditionByIndex(index);
-    const newCondition = [
-      "=",
-      condition ? condition[PARENT_DIMENSION_INDEX] : null,
-      this._convertDimensionIntoMBQL(dimension),
-    ];
+    let joinDimension = this._convertDimensionIntoMBQL(dimension);
+    let parentDimension = condition ? condition[PARENT_DIMENSION_INDEX] : null;
+
+    if (
+      joinDimension &&
+      parentDimension &&
+      isDateTimeField(joinDimension) &&
+      isDateTimeField(parentDimension)
+    ) {
+      if (overwriteTemporalUnit) {
+        parentDimension = setTemporalUnit(
+          parentDimension,
+          getFieldTemporalUnit(joinDimension),
+        );
+      } else {
+        joinDimension = setTemporalUnit(
+          joinDimension,
+          getFieldTemporalUnit(parentDimension),
+        );
+      }
+    }
+
+    const newCondition = ["=", parentDimension, joinDimension];
     return this.setConditionByIndex({ index, condition: newCondition });
   }
 
-  setParentDimension({ index = 0, dimension }) {
+  setParentDimension({ index = 0, dimension, overwriteTemporalUnit = false }) {
     const condition = this.getConditionByIndex(index);
-    const newCondition = [
-      "=",
-      this._convertDimensionIntoMBQL(dimension),
-      condition ? condition[JOIN_DIMENSION_INDEX] : null,
-    ];
+    let parentDimension = this._convertDimensionIntoMBQL(dimension);
+    let joinDimension = condition ? condition[JOIN_DIMENSION_INDEX] : null;
+
+    if (
+      joinDimension &&
+      parentDimension &&
+      isDateTimeField(joinDimension) &&
+      isDateTimeField(parentDimension)
+    ) {
+      if (overwriteTemporalUnit) {
+        joinDimension = setTemporalUnit(
+          joinDimension,
+          getFieldTemporalUnit(parentDimension),
+        );
+      } else {
+        parentDimension = setTemporalUnit(
+          parentDimension,
+          getFieldTemporalUnit(joinDimension),
+        );
+      }
+    }
+
+    const newCondition = ["=", parentDimension, joinDimension];
     return this.setConditionByIndex({ index, condition: newCondition });
   }
 
@@ -584,4 +620,25 @@ export default class Join extends MBQLObjectClause {
 
     return join.clean();
   }
+}
+
+function getFieldTemporalUnit(fieldRef) {
+  const [, , opts] = fieldRef;
+  return opts?.["temporal-unit"];
+}
+
+function setTemporalUnit(fieldRef, value) {
+  const [field, id, opts] = fieldRef;
+  return [
+    field,
+    id,
+    {
+      ...opts,
+      "temporal-unit": value,
+    },
+  ];
+}
+
+function isDateTimeField(fieldRef) {
+  return Boolean(getFieldTemporalUnit(fieldRef));
 }
