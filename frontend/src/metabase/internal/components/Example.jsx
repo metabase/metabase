@@ -9,7 +9,12 @@ import Label from "metabase/components/type/Label";
 import Card from "metabase/components/Card";
 
 const Example = ({ children }) => {
-  const code = reactElementToJSXString(children);
+  const filterProps = ["blacklist", "is"];
+  const showDefaultProps = false;
+  const code = reactElementToJSXString(children, {
+    filterProps,
+    showDefaultProps,
+  });
   return (
     <Box my={3} width={"100%"}>
       <Label color="medium">Example</Label>
