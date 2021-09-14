@@ -39,12 +39,7 @@ const Revision = createEntity({
       }
     }
 
-    return (
-      action.type === this.actionTypes.CREATE ||
-      action.type === this.actionTypes.DELETE ||
-      action.type === this.actionTypes.UPDATE ||
-      action.type === this.actionTypes.INVALIDATE_LISTS_ACTION
-    );
+    return action.type === this.actionTypes.INVALIDATE_LISTS_ACTION;
   },
 });
 
