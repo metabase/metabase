@@ -1,6 +1,6 @@
 (ns metabase.cmd.endpoint-dox-test
-  (:require [metabase.cmd.endpoint-dox :as endpoint-dox]
-            [clojure.test :refer :all]))
+  (:require [clojure.test :refer :all]
+            [metabase.cmd.endpoint-dox :as endpoint-dox]))
 
 (def endpoints {"Activity"
                 [{:ns (find-ns 'metabase.api.activity),
