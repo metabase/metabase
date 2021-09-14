@@ -66,11 +66,11 @@
 (defmethod audit.i/internal-query ::bad-table
   ([_]
    (bad-table nil nil nil nil nil))
-  ([errorFilter      :- (s/maybe s/Str)
-    dbFilter         :- (s/maybe s/Str)
-    collectionFilter :- (s/maybe s/Str)
-    sortColumn       :- (s/maybe s/Str)
-    sortDirection    :- (s/maybe (s/enum "asc" "desc"))]
+  ([errorFilter
+    dbFilter
+    collectionFilter
+    sortColumn 
+    sortDirection]
   {:metadata [[:card_id         {:display_name "Card ID",            :base_type :type/Integer :remapped_to   :card_name}]
               [:card_name       {:display_name "Question",           :base_type :type/Name    :remapped_from :card_id}]
               [:error_substr    {:display_name "Error",              :base_type :type/Text    :code          true}]
@@ -150,14 +150,14 @@
   ([query-type]
    (audit.i/internal-query query-type nil nil nil nil))
 
-  ([query-type question-filter :- (s/maybe s/Str)]
+  ([query-type question-filter]
    (audit.i/internal-query query-type question-filter nil nil nil))
 
   ([_
-    question-filter   :- (s/maybe s/Str)
-    collection-filter :- (s/maybe s/Str)
-    sort-column       :- (s/maybe s/Str)
-    sort-direction    :- (s/maybe (s/enum "asc" "desc"))]
+    question-filter
+    collection-filter
+    sort-column
+    sort-direction]
    {:metadata [[:card_id         {:display_name "Card ID",              :base_type :type/Integer, :remapped_to   :card_name}]
                [:card_name       {:display_name "Name",                 :base_type :type/Name,    :remapped_from :card_id}]
                [:collection_id   {:display_name "Collection ID",        :base_type :type/Integer, :remapped_to   :collection_name}]
