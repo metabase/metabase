@@ -12,6 +12,7 @@ import {
   getYTickWidth,
 } from "../../lib/axes";
 import { formatNumber } from "../../lib/numbers";
+import { truncateText } from "metabase/static-viz/lib/text";
 
 const propTypes = {
   data: PropTypes.array.isRequired,
@@ -89,13 +90,14 @@ const CategoricalBarChart = ({ data, accessors, settings, labels }) => {
     return { x, y, width, height, fill: layout.colors.brand };
   };
 
-  const getBottomTickProps = ({ x, y, formattedValue, ...props }) => {
-    const fontShift = Math.floor(layout.font.size / 2);
+  const getXTickProps = ({ x, y, formattedValue, ...props }) => {
+    const text = truncateText(formattedValue, xScale.bandwidth());
+    const baseline = Math.floor(layout.font.size / 2);
     const transform = isVertical
-      ? `rotate(45, ${x} ${y}) translate(-${fontShift} 0)`
+      ? `rotate(45, ${x} ${y}) translate(-${baseline} 0)`
       : undefined;
 
-    return { ...props, x, y, transform, children: formattedValue };
+    return { ...props, x, y, transform, children: text };
   };
 
   return (
@@ -126,7 +128,7 @@ const CategoricalBarChart = ({ data, accessors, settings, labels }) => {
         numTicks={data.length}
         stroke={layout.colors.textLight}
         tickStroke={layout.colors.textLight}
-        tickComponent={props => <Text {...getBottomTickProps(props)} />}
+        tickComponent={props => <Text {...getXTickProps(props)} />}
         tickLabelProps={() => getXTickLabelProps(layout, isVertical)}
       />
     </svg>
