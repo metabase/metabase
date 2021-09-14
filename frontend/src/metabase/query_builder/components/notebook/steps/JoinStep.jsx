@@ -165,9 +165,13 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
     }
   }
 
-  function onParentDimensionChange(index, fieldRef) {
+  function onParentDimensionChange(index, fieldRef, { overwrite } = {}) {
     join
-      .setParentDimension({ index, dimension: fieldRef })
+      .setParentDimension({
+        index,
+        dimension: fieldRef,
+        overwriteTemporalUnit: overwrite,
+      })
       .setDefaultAlias()
       .parent()
       .update(updateQuery);
@@ -176,9 +180,13 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
     }
   }
 
-  function onJoinDimensionChange(index, fieldRef) {
+  function onJoinDimensionChange(index, fieldRef, { overwrite } = {}) {
     join
-      .setJoinDimension({ index, dimension: fieldRef })
+      .setJoinDimension({
+        index,
+        dimension: fieldRef,
+        overwriteTemporalUnit: overwrite,
+      })
       .parent()
       .update(updateQuery);
   }
@@ -268,8 +276,8 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
                       query={query}
                       dimension={parentDimensions[index]}
                       options={parentDimensionOptions}
-                      onChange={fieldRef =>
-                        onParentDimensionChange(index, fieldRef)
+                      onChange={(fieldRef, opts) =>
+                        onParentDimensionChange(index, fieldRef, opts)
                       }
                       onRemove={removeParentDimension}
                       ref={ref =>
@@ -285,8 +293,8 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
                       query={query}
                       dimension={joinDimensions[index]}
                       options={joinDimensionOptions}
-                      onChange={fieldRef =>
-                        onJoinDimensionChange(index, fieldRef)
+                      onChange={(fieldRef, opts) =>
+                        onJoinDimensionChange(index, fieldRef, opts)
                       }
                       onRemove={removeJoinDimension}
                       ref={ref =>
@@ -585,6 +593,12 @@ class JoinDimensionPicker extends React.Component {
   open() {
     this._popover.open();
   }
+
+  hasTemporalUnit = fieldRef => {
+    const [, , opts] = fieldRef;
+    return !!opts?.["temporal-unit"];
+  };
+
   render() {
     const { dimension, onChange, onRemove, options, query, color } = this.props;
     const testID = this.props["data-testid"] || "join-dimension";
@@ -613,8 +627,17 @@ class JoinDimensionPicker extends React.Component {
             fieldOptions={options}
             table={query.table()}
             query={query}
-            onFieldChange={field => {
-              onChange(field);
+            onFieldChange={(field, item) => {
+              if (this.hasTemporalUnit(field)) {
+                // When we set a default temporal unit by just clicking the dimension name,
+                // FieldList provides a second argument to onFieldChange callback
+                // When a temporal unit is selected explicitly (like by Week, Quarter, Year, etc.)
+                // the item argument is undefined
+                // In this case we want to make sure the second dimension will use the same unit
+                onChange(field, { overwrite: !item });
+              } else {
+                onChange(field);
+              }
               onClose();
             }}
             enableSubDimensions
