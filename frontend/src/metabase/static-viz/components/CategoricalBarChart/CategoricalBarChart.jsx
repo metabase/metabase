@@ -5,6 +5,7 @@ import { GridRows } from "@visx/grid";
 import { scaleBand, scaleLinear } from "@visx/scale";
 import { Bar } from "@visx/shape";
 import { Text } from "@visx/text";
+import { getYAxisWidth } from "../../lib/axes";
 import { formatNumber } from "../../lib/numbers";
 
 const propTypes = {
@@ -42,13 +43,17 @@ const layout = {
     textMedium: "#949aab",
   },
   barPadding: 0.2,
+  labelPadding: 8,
   strokeDasharray: "4",
 };
 
 const CategoricalBarChart = ({ data, accessors, settings, labels }) => {
+  const yAxisWidth = getYAxisWidth(data, accessors, settings);
+  const yLabelOffset = yAxisWidth + layout.labelPadding;
+  const xMin = yLabelOffset + layout.font.size * 1.5;
   const xMax = layout.width - layout.margin.right;
   const yMax = layout.height - layout.margin.bottom;
-  const innerWidth = xMax - layout.margin.left;
+  const innerWidth = xMax - xMin;
   const innerHeight = yMax - layout.margin.top;
   const isVertical = data.length > 10;
   const leftLabel = labels?.left;
@@ -56,7 +61,7 @@ const CategoricalBarChart = ({ data, accessors, settings, labels }) => {
 
   const xScale = scaleBand({
     domain: data.map(accessors.x),
-    range: [layout.margin.left, xMax],
+    range: [xMin, xMax],
     round: true,
     padding: layout.barPadding,
   });
@@ -103,7 +108,7 @@ const CategoricalBarChart = ({ data, accessors, settings, labels }) => {
     <svg width={layout.width} height={layout.height}>
       <GridRows
         scale={yScale}
-        left={layout.margin.left}
+        left={xMin}
         width={innerWidth}
         strokeDasharray={layout.strokeDasharray}
       />
@@ -112,8 +117,9 @@ const CategoricalBarChart = ({ data, accessors, settings, labels }) => {
       ))}
       <AxisLeft
         scale={yScale}
-        left={layout.margin.left}
+        left={xMin}
         label={leftLabel}
+        labelOffset={yLabelOffset}
         hideTicks
         hideAxisLine
         tickFormat={value => formatNumber(value, settings?.y)}
