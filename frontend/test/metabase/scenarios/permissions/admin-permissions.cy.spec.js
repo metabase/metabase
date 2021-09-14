@@ -510,7 +510,7 @@ describe("scenarios > admin > permissions", () => {
     cy.findAllByText("Orders").should("not.exist");
   });
 
-  it.skip("'block' data permission should not have editable 'native query editing' option (metabase#17738)", () => {
+  it("'block' data permission should not have editable 'native query editing' option (metabase#17738)", () => {
     cy.visit("/admin/permissions/data/database/1");
 
     cy.findByText("All Users")
