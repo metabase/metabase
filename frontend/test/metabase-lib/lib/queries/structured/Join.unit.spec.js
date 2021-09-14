@@ -17,13 +17,21 @@ function getJoin({ query = getOrdersJoinQuery() } = {}) {
   return query.joins()[0];
 }
 
+function getDateFieldRef(field, { temporalUnit = "month", joinAlias } = {}) {
+  const opts = { "temporal-unit": temporalUnit };
+  if (joinAlias) {
+    opts["join-alias"] = joinAlias;
+  }
+  return ["field", field.id, opts];
+}
+
 const ORDERS_PRODUCT_ID_FIELD_REF = ["field", ORDERS.PRODUCT_ID.id, null];
 
-const ORDERS_CREATED_AT_FIELD_REF = ["field", ORDERS.CREATED_AT.id, null];
+const ORDERS_CREATED_AT_FIELD_REF = getDateFieldRef(ORDERS.CREATED_AT);
 
 const PRODUCTS_ID_FIELD_REF = ["field", PRODUCTS.ID.id, null];
 
-const PRODUCTS_CREATED_AT_FIELD_REF = ["field", PRODUCTS.CREATED_AT.id, null];
+const PRODUCTS_CREATED_AT_FIELD_REF = getDateFieldRef(PRODUCTS.CREATED_AT);
 
 const PRODUCTS_ID_JOIN_FIELD_REF = [
   "field",
@@ -31,11 +39,10 @@ const PRODUCTS_ID_JOIN_FIELD_REF = [
   { "join-alias": "Products" },
 ];
 
-const PRODUCTS_CREATED_AT_JOIN_FIELD_REF = [
-  "field",
-  PRODUCTS.CREATED_AT.id,
-  { "join-alias": "Products" },
-];
+const PRODUCTS_CREATED_AT_JOIN_FIELD_REF = getDateFieldRef(
+  PRODUCTS.CREATED_AT,
+  { joinAlias: "Products" },
+);
 
 const ORDERS_PRODUCT_JOIN_CONDITION = [
   "=",
