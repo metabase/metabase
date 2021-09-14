@@ -1,12 +1,13 @@
 (ns metabase-enterprise.audit.pages.table-detail
-  (:require [metabase-enterprise.audit.pages.common :as common]
+  (:require [metabase-enterprise.audit.interface :as audit.i]
+            [metabase-enterprise.audit.pages.common :as common]
             [metabase.util.schema :as su]
             [ring.util.codec :as codec]
             [schema.core :as s]))
 
-(s/defn ^:internal-query-fn audit-log
-  "View log for a specific Table."
-  [table-id :- su/IntGreaterThanZero]
+;; View log for a specific Table.
+(s/defmethod audit.i/internal-query ::audit-log
+  [_ table-id :- su/IntGreaterThanZero]
   {:metadata [[:started_at {:display_name "Viewed on",  :base_type :type/DateTime}]
               [:card_id    {:display_name "Card ID",    :base_type :type/Integer, :remapped_to   :query}]
               [:query      {:display_name "Query",      :base_type :type/Text,    :remapped_from :card_id}]

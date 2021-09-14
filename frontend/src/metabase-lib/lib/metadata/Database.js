@@ -140,6 +140,7 @@ export default class Database extends Base {
    * @param {Metadata} metadata
    * @param {boolean} auto_run_queries
    */
+  /* istanbul ignore next */
   _constructor(
     id,
     name,

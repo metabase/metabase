@@ -318,7 +318,6 @@ export const PulseApi = {
   create: POST("/api/pulse"),
   get: GET("/api/pulse/:pulseId"),
   update: PUT("/api/pulse/:id"),
-  delete: DELETE("/api/pulse/:pulseId"),
   test: POST("/api/pulse/test"),
   form_input: GET("/api/pulse/form_input"),
   preview_card: GET("/api/pulse/preview_card_info/:id"),

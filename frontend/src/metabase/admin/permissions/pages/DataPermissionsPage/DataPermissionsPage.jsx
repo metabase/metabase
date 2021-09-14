@@ -5,6 +5,7 @@ import { connect } from "react-redux";
 
 import Databases from "metabase/entities/databases";
 import Groups from "metabase/entities/groups";
+import { PLUGIN_ADMIN_PERMISSIONS_HELP } from "metabase/plugins";
 
 import { getIsDirty, getDiff } from "../../selectors/data-permissions";
 import {
@@ -56,6 +57,11 @@ function DataPermissionsPage({
       diff={diff}
       isDirty={isDirty}
       route={route}
+      helpContent={
+        PLUGIN_ADMIN_PERMISSIONS_HELP.Component ? (
+          <PLUGIN_ADMIN_PERMISSIONS_HELP.Component />
+        ) : null
+      }
     >
       {children}
     </PermissionsPageLayout>

@@ -27,7 +27,7 @@ import {
   getParameterValues,
 } from "metabase/dashboard/selectors";
 
-import * as dashboardActions from "metabase/dashboard/dashboard";
+import * as dashboardActions from "metabase/dashboard/actions";
 
 import {
   setPublicDashboardEndpoints,

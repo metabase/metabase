@@ -1,30 +1,31 @@
 (ns metabase-enterprise.audit.pages.dashboard-detail
   "Detail page for a single dashboard."
-  (:require [metabase-enterprise.audit.pages.common :as common]
+  (:require [metabase-enterprise.audit.interface :as audit.i]
+            [metabase-enterprise.audit.pages.common :as common]
             [metabase-enterprise.audit.pages.common.card-and-dashboard-detail :as card-and-dash-detail]
             [metabase-enterprise.audit.pages.common.cards :as cards]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
-(s/defn ^:internal-query-fn views-by-time
-  "Get views of a Dashboard broken out by a time `unit`, e.g. `day` or `day-of-week`."
-  [dashboard-id :- su/IntGreaterThanZero, datetime-unit :- common/DateTimeUnitStr]
+;; Get views of a Dashboard broken out by a time `unit`, e.g. `day` or `day-of-week`.
+(s/defmethod audit.i/internal-query ::views-by-time
+  [_ dashboard-id  :- su/IntGreaterThanZero datetime-unit :- common/DateTimeUnitStr]
   (card-and-dash-detail/views-by-time "dashboard" dashboard-id datetime-unit))
 
-(s/defn ^:internal-query-fn revision-history
-  "Revision history for a specific Dashboard."
-  [dashboard-id :- su/IntGreaterThanZero]
+;; Revision history for a specific Dashboard.
+(s/defmethod audit.i/internal-query ::revision-history
+  [_ dashboard-id :- su/IntGreaterThanZero]
   (card-and-dash-detail/revision-history Dashboard dashboard-id))
 
-(s/defn ^:internal-query-fn audit-log
-  "View log for a specific Dashboard."
-  [dashboard-id :- su/IntGreaterThanZero]
+;; View log for a specific Dashboard.
+(s/defmethod audit.i/internal-query ::audit-log
+  [_ dashboard-id :- su/IntGreaterThanZero]
   (card-and-dash-detail/audit-log "dashboard" dashboard-id))
 
-(s/defn ^:internal-query-fn cards
-  "Information about the Saved Questions (Cards) in this instance."
-  [dashboard-id :- su/IntGreaterThanZero]
+;; Information about the Saved Questions (Cards) in this instance.
+(s/defmethod audit.i/internal-query ::cards
+  [_ dashboard-id :- su/IntGreaterThanZero]
   {:metadata [[:card_id             {:display_name "Card ID",              :base_type :type/Integer, :remapped_to   :card_name}]
               [:card_name           {:display_name "Title",                :base_type :type/Name,    :remapped_from :card_id}]
               [:collection_id       {:display_name "Collection ID",        :base_type :type/Integer, :remapped_to   :collection_name}]

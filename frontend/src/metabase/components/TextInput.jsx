@@ -23,6 +23,7 @@ TextInput.propTypes = {
   padding: PropTypes.oneOf(["sm", "md"]),
   borderRadius: PropTypes.oneOf(["sm", "md"]),
   colorScheme: PropTypes.oneOf(["default", "admin"]),
+  innerRef: PropTypes.object,
 };
 
 function TextInput({
@@ -37,6 +38,7 @@ function TextInput({
   autoFocus = false,
   padding = "md",
   borderRadius = "md",
+  innerRef,
   ...rest
 }) {
   const handleClearClick = () => {
@@ -49,6 +51,7 @@ function TextInput({
     <TextInputRoot className={className}>
       {icon && <IconWrapper>{icon}</IconWrapper>}
       <Input
+        innerRef={innerRef}
         colorScheme={colorScheme}
         autoFocus={autoFocus}
         hasClearButton={hasClearButton}
@@ -71,6 +74,6 @@ function TextInput({
   );
 }
 
-export default forwardRef(function TextInputWithForwardedRef(props, ref) {
-  return <TextInput forwardedRef={ref} {...props} />;
+export default forwardRef(function TextInputForwardRef(props, ref) {
+  return <TextInput {...props} innerRef={ref} />;
 });

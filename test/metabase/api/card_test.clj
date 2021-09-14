@@ -16,6 +16,7 @@
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.revision :as revision :refer [Revision]]
             [metabase.models.user :refer [User]]
+            [metabase.public-settings :as public-settings]
             [metabase.query-processor :as qp]
             [metabase.query-processor.async :as qp.async]
             [metabase.query-processor.middleware.constraints :as constraints]
@@ -53,7 +54,13 @@
    :public_uuid         nil
    :query_type          nil
    :cache_ttl           nil
+   :average_query_time  nil
+   :last_query_start    nil
    :result_metadata     nil})
+
+;; Used in dashboard tests
+(def card-defaults-no-hydrate
+  (dissoc card-defaults :average_query_time :last_query_start))
 
 (defn mbql-count-query
   ([]
@@ -382,6 +389,35 @@
                                            "card"
                                            (assoc card :result_metadata   []
                                                        :metadata_checksum md-checksum))))))))
+
+(deftest cache-ttl-save
+  (testing "POST /api/card/:id"
+    (testing "saving cache ttl by post actually saves it"
+      (mt/with-model-cleanup [Card]
+        (let [card        (card-with-name-and-query)]
+          (is (= 1234
+                 (:cache_ttl (mt/user-http-request :rasta
+                                                   :post
+                                                   202
+                                                   "card"
+                                                   (assoc card :cache_ttl 1234)))))))))
+  (testing "PUT /api/card/:id"
+    (testing "saving cache ttl by put actually saves it"
+      (mt/with-temp Card [card]
+        (is (= 1234
+               (:cache_ttl (mt/user-http-request :rasta
+                                     :put
+                                     202
+                                     (str "card/" (u/the-id card))
+                                     {:cache_ttl 1234}))))))
+    (testing "nilling out cache ttl works"
+      (mt/with-temp Card [card]
+        (is (= nil
+               (do
+               (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:cache_ttl 1234})
+               (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:cache_ttl nil})
+               (:cache_ttl (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card))))
+               )))))))
 
 (defn- fingerprint-integers->doubles
   "Converts the min/max fingerprint values to doubles so simulate how the FE will change the metadata when POSTing a
@@ -1054,28 +1090,47 @@
                            :body    body-map}))
 
 (deftest alert-deletion-test
-  (doseq [{:keys [message card expected-email f]}
+  (doseq [{:keys [message card deleted? expected-email f]}
           [{:message        "Archiving a Card should trigger Alert deletion"
+            :deleted?       true
             :expected-email "the question was archived by Rasta Toucan"
             :f              (fn [{:keys [card]}]
                               (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:archived true}))}
            {:message        "Validate changing a display type triggers alert deletion"
             :card           {:display :table}
+            :deleted?       true
             :expected-email "the question was edited by Rasta Toucan"
             :f              (fn [{:keys [card]}]
                               (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:display :line}))}
            {:message        "Changing the display type from line to table should force a delete"
             :card           {:display :line}
+            :deleted?       true
             :expected-email "the question was edited by Rasta Toucan"
             :f              (fn [{:keys [card]}]
                               (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:display :table}))}
            {:message        "Removing the goal value will trigger the alert to be deleted"
             :card           {:display                :line
                              :visualization_settings {:graph.goal_value 10}}
+            :deleted?       true
             :expected-email "the question was edited by Rasta Toucan"
             :f              (fn [{:keys [card]}]
                               (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:visualization_settings {:something "else"}}))}
-           {:message        "Adding an additional breakout will cause the alert to be removed"
+           {:message        "Adding an additional breakout does not cause the alert to be removed if no goal is set"
+            :card           {:display                :line
+                             :visualization_settings {}
+                             :dataset_query          (assoc-in
+                                                      (mbql-count-query (mt/id) (mt/id :checkins))
+                                                      [:query :breakout]
+                                                      [[:field
+                                                        (mt/id :checkins :date)
+                                                        {:temporal-unit :hour}]])}
+            :deleted?       false
+            :f              (fn [{:keys [card]}]
+                              (mt/user-http-request :crowberto :put 202 (str "card/" (u/the-id card))
+                                                    {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
+                                                                              [:query :breakout] [[:datetime-field (mt/id :checkins :date) "hour"]
+                                                                                                  [:datetime-field (mt/id :checkins :date) "minute"]])}))}
+           {:message        "Adding an additional breakout will cause the alert to be removed if a goal is set"
             :card           {:display                :line
                              :visualization_settings {:graph.goal_value 10}
                              :dataset_query          (assoc-in
@@ -1084,6 +1139,7 @@
                                                       [[:field
                                                         (mt/id :checkins :date)
                                                         {:temporal-unit :hour}]])}
+            :deleted?       true
             :expected-email "the question was edited by Crowberto Corv"
             :f              (fn [{:keys [card]}]
                               (mt/user-http-request :crowberto :put 202 (str "card/" (u/the-id card))
@@ -1107,16 +1163,19 @@
                                                     :pulse_channel_id (u/the-id pc)}]]
         (with-cards-in-writeable-collection card
           (mt/with-fake-inbox
-            (u/with-timeout 5000
-              (mt/with-expected-messages 2
-                (f {:card card})))
-            (is (= (merge (crowberto-alert-not-working {expected-email true})
-                          (rasta-alert-not-working     {expected-email true}))
-                   (mt/regex-email-bodies (re-pattern expected-email)))
-                (format "Email containing %s should have been sent to Crowberto and Rasta" (pr-str expected-email)))
-            (is (= nil
-                   (Pulse (u/the-id pulse)))
-                "Alert should have been deleted")))))))
+            (when deleted?
+              (u/with-timeout 5000
+                (mt/with-expected-messages 2
+                  (f {:card card}))
+               (is (= (merge (crowberto-alert-not-working {expected-email true})
+                             (rasta-alert-not-working     {expected-email true}))
+                      (mt/regex-email-bodies (re-pattern expected-email)))
+                   (format "Email containing %s should have been sent to Crowberto and Rasta" (pr-str expected-email)))))
+            (if deleted?
+              (is (= nil (Pulse (u/the-id pulse)))
+                  "Alert should have been deleted")
+              (is (not= nil (Pulse (u/the-id pulse)))
+                  "Alert should not have been deleted"))))))))
 
 (deftest changing-the-display-type-from-line-to-area-bar-is-fine-and-doesnt-delete-the-alert
   (is (= {:emails-1 {}
@@ -1302,6 +1361,23 @@
                           "check to make sure the `with-redefs` in the test above actually works)")
               (is (= {:constraints {:max-results 10, :max-results-bare-rows 10}}
                      (mt/user-http-request :rasta :post 200 (format "card/%d/query" (u/the-id card))))))))))))
+
+(deftest query-cache-ttl-hierarchy-test
+  (mt/discard-setting-changes [enable-query-caching]
+    (public-settings/enable-query-caching true)
+    (testing "card ttl only"
+      (mt/with-temp* [Card [card {:cache_ttl 1337}]]
+        (is (= 1337 (:cache-ttl (card-api/query-for-card card {} {} {}))))))
+    (testing "multiple ttl, dash wins"
+      (mt/with-temp* [Database [db {:cache_ttl 1337}]
+                      Dashboard [dash {:cache_ttl 1338}]
+                      Card [card {:database_id (u/the-id db)}]]
+        (is (= 1338 (:cache-ttl (card-api/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))
+    (testing "no ttl, nil res"
+      (mt/with-temp* [Database [db]
+                      Dashboard [dash]
+                      Card [card {:database_id (u/the-id db)}]]
+        (is (= nil (:cache-ttl (card-api/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))))
 
 (defn- test-download-response-headers
   [url]

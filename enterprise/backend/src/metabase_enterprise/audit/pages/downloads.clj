@@ -2,62 +2,54 @@
   "Audit queries returning info about query downloads. Query downloads are any query executions whose results are returned
   as CSV/JSON/XLS."
   (:require [honeysql.core :as hsql]
+            [metabase-enterprise.audit.interface :as audit.i]
             [metabase-enterprise.audit.pages.common :as common]
             [metabase.db :as mdb]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.util.honeysql-extensions :as hx]
-            [schema.core :as s]))
+            [metabase.util.honeysql-extensions :as hx]))
 
-;;; ------------------------------------------------ per-day-by-size -------------------------------------------------
-
-(s/defn ^:internal-query-fn per-day-by-size
-  "Pairs of count of rows downloaded and date downloaded for the 1000 largest (in terms of row count) queries over the
-  past 30 days. Intended to power scatter plot."
-  []
+;; Pairs of count of rows downloaded and date downloaded for the 1000 largest (in terms of row count) queries over the
+;; past 30 days. Intended to power scatter plot.
+(defmethod audit.i/internal-query ::per-day-by-size
+  [_]
   {:metadata [[:date      {:display_name "Day",           :base_type :type/DateTime}]
               [:rows      {:display_name "Rows in Query", :base_type :type/Integer}]
               [:user_id   {:display_name "User ID",       :base_type :type/Integer, :remapped_to :user_name}]
               [:user_name {:display_name "User",          :base_type :type/Text,    :remapped_from :user_id}]]
    :results  (common/reducible-query
-               {:select   [[:qe.started_at :date]
-                           [:qe.result_rows :rows]
-                           [:qe.executor_id :user_id]
-                           [(common/user-full-name :u) :user_name]]
-                :from     [[:query_execution :qe]]
-                :left-join [[:core_user :u] [:= :qe.executor_id :u.id]]
-                :where    [:and
-                           [:> :qe.started_at (sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -30 :day)]
-                           (common/query-execution-is-download :qe)]
-                :order-by [[:qe.result_rows :desc]]
-                :limit    1000})})
+              {:select   [[:qe.started_at :date]
+                          [:qe.result_rows :rows]
+                          [:qe.executor_id :user_id]
+                          [(common/user-full-name :u) :user_name]]
+               :from     [[:query_execution :qe]]
+               :left-join [[:core_user :u] [:= :qe.executor_id :u.id]]
+               :where    [:and
+                          [:> :qe.started_at (sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -30 :day)]
+                          (common/query-execution-is-download :qe)]
+               :order-by [[:qe.result_rows :desc]]
+               :limit    1000})})
 
-
-;;; ---------------------------------------------------- per-user ----------------------------------------------------
-
-(s/defn ^:internal-query-fn per-user
-  "Total count of query downloads broken out by user, ordered by highest total, for the top 10 users."
-  []
+;; Total count of query downloads broken out by user, ordered by highest total, for the top 10 users.
+(defmethod audit.i/internal-query ::per-user
+  [_]
   {:metadata [[:user_id   {:display_name "User ID",   :base_type :type/Integer, :remapped_to :user_name}]
               [:user_name {:display_name "User",      :base_type :type/Text,    :remapped_from :user_id}]
               [:downloads {:display_name "Downloads", :base_type :type/Integer}]]
    :results  (common/reducible-query
-               {:with     [[:downloads_by_user
-                            {:select   [[:qe.executor_id :user_id]
-                                        [:%count.* :downloads]]
-                             :from     [[:query_execution :qe]]
-                             :where    (common/query-execution-is-download :qe)
-                             :group-by [:qe.executor_id]
-                             :order-by [[:%count.* :desc]]
-                             :limit    10}]]
-                :select   [[:d.user_id :user_id]
-                           [(common/user-full-name :u) :user_name]
-                           [:d.downloads :downloads]]
-                :from     [[:downloads_by_user :d]]
-                :join     [[:core_user :u] [:= :d.user_id :u.id]]
-                :order-by [[:d.downloads :desc]]})})
-
-
-;;; ---------------------------------------------------- by-size -----------------------------------------------------
+              {:with     [[:downloads_by_user
+                           {:select   [[:qe.executor_id :user_id]
+                                       [:%count.* :downloads]]
+                            :from     [[:query_execution :qe]]
+                            :where    (common/query-execution-is-download :qe)
+                            :group-by [:qe.executor_id]
+                            :order-by [[:%count.* :desc]]
+                            :limit    10}]]
+               :select   [[:d.user_id :user_id]
+                          [(common/user-full-name :u) :user_name]
+                          [:d.downloads :downloads]]
+               :from     [[:downloads_by_user :d]]
+               :join     [[:core_user :u] [:= :d.user_id :u.id]]
+               :order-by [[:d.downloads :desc]]})})
 
 (def ^:private bucket-maxes
   "Add/remove numbers here to adjust buckets returned by the `by-size` query."
@@ -111,31 +103,28 @@
                           [[:= :rows_bucket_max -1]
                            (hx/literal (format "> %s" (format-number-add-commas (last bucket-maxes))))])))
 
-(s/defn ^:internal-query-fn by-size
-  "Query download count broken out by bucketed number of rows of query. E.g. 10 downloads of queries with 0-10 rows, 15
-  downloads of queries with 11-100, etc. Intended to power bar chart."
-  []
+;; Query download count broken out by bucketed number of rows of query. E.g. 10 downloads of queries with 0-10 rows,
+;; 15 downloads of queries with 11-100, etc. Intended to power bar chart.
+(defmethod audit.i/internal-query ::by-size
+  [_]
   {:metadata [[:rows      {:display_name "Rows Downloaded", :base_type :type/Text}]
               [:downloads {:display_name "Downloads",       :base_type :type/Integer}]]
    :results  (common/reducible-query
-               {:with     [[:bucketed_downloads
-                            {:select [[rows->bucket-case-expression :rows_bucket_max]]
-                             :from   [:query_execution]
-                             :where  [:and
-                                      (common/query-execution-is-download :query_execution)
-                                      [:not= :result_rows nil]]}]]
-                :select   [[bucket->range-str-case-expression :rows]
-                           [:%count.* :downloads]]
-                :from     [:bucketed_downloads]
-                :group-by [:rows_bucket_max]
-                :order-by [[:rows_bucket_max :asc]]})})
+              {:with     [[:bucketed_downloads
+                           {:select [[rows->bucket-case-expression :rows_bucket_max]]
+                            :from   [:query_execution]
+                            :where  [:and
+                                     (common/query-execution-is-download :query_execution)
+                                     [:not= :result_rows nil]]}]]
+               :select   [[bucket->range-str-case-expression :rows]
+                          [:%count.* :downloads]]
+               :from     [:bucketed_downloads]
+               :group-by [:rows_bucket_max]
+               :order-by [[:rows_bucket_max :asc]]})})
 
-
-;;; ----------------------------------------------------- table ------------------------------------------------------
-
-(s/defn ^:internal-query-fn table
-  "Table showing all query downloads ordered by most recent."
-  []
+;; Table showing all query downloads ordered by most recent.
+(defmethod audit.i/internal-query ::table
+  [_]
   {:metadata [[:downloaded_at   {:display_name "Downloaded At",   :base_type :type/DateTime}]
               [:rows_downloaded {:display_name "Rows Downloaded", :base_type :type/Integer}]
               [:card_id         {:display_name "Card ID",         :base_type :type/Integer, :remapped_to :card_name}]

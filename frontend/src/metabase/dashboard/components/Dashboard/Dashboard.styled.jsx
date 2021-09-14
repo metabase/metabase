@@ -82,6 +82,12 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
   padding-bottom: ${space(1)};
   z-index: 4;
 
+  ${({ isEditing }) =>
+    isEditing &&
+    css`
+      border-top: 1px solid ${color("border")};
+    `}
+
   ${({ isSticky }) =>
     isSticky &&
     css`

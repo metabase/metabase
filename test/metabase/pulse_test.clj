@@ -24,6 +24,7 @@
 (defn- rasta-pulse-email [& [email]]
   (mt/email-to :rasta (merge {:subject "Pulse: Pulse Name",
                               :body  [{"Pulse Name" true}
+                                      png-attachment
                                       png-attachment]}
                              email)))
 
@@ -142,7 +143,7 @@
 (defn- email-body? [{message-type :type, ^String content :content}]
   (and (= "text/html; charset=utf-8" message-type)
        (string? content)
-       (.startsWith content "<html>")))
+       (.startsWith content "<!doctype html>")))
 
 (defn- attachment? [{message-type :type, content-type :content-type, content :content}]
   (and (= :inline message-type)
@@ -186,8 +187,8 @@
 
 (deftest basic-table-test
   (tests {:pulse {:skip_if_empty false}}
-    "19 results, so no attachment"
-    {:card (checkins-query-card {:aggregation nil, :limit 19})
+    "9 results, so no attachment"
+    {:card (checkins-query-card {:aggregation nil, :limit 9})
 
      :fixture
      (fn [_ thunk]
@@ -200,7 +201,8 @@
         (is (= (rasta-pulse-email {:body [{"Pulse Name"                                         true
                                            "More results have been included"                    false
                                            "ID</th>"                                            true
-                                           "<a href=\\\"https://metabase.com/testmb/dashboard/" false}]})
+                                           "<a href=\\\"https://metabase.com/testmb/dashboard/" false}
+                                          png-attachment]})
                (mt/summarize-multipart-email
                 #"Pulse Name"
                 #"More results have been included"
@@ -229,8 +231,8 @@
             (is (= [nil]
                    (output @#'render.body/attached-results-text))))))}}
 
-    "21 results results in a CSV being attached and a table being sent"
-    {:card (checkins-query-card {:aggregation nil, :limit 21})
+    "11 results results in a CSV being attached and a table being sent"
+    {:card (checkins-query-card {:aggregation nil, :limit 11})
 
      :assert
      {:email
@@ -238,6 +240,7 @@
         (is (= (rasta-pulse-email {:body [{"Pulse Name"                      true
                                            "More results have been included" true
                                            "ID</th>"                         true}
+                                          png-attachment
                                           csv-attachment]})
                (mt/summarize-multipart-email
                 #"Pulse Name"
@@ -253,7 +256,7 @@
      {:email
       (fn [_ _]
         (is (= (rasta-alert-email "Pulse: Pulse Name"
-                                  [test-card-result png-attachment csv-attachment])
+                                  [test-card-result png-attachment png-attachment csv-attachment])
                (mt/summarize-multipart-email test-card-regex))))}}
 
     "With a \"rows\" type of pulse (table visualization) we should include the CSV by default"
@@ -263,8 +266,8 @@
      {:email
       (fn [_ _]
         (is (= (-> (rasta-pulse-email)
-                   ;; There's no PNG with a table visualization, remove it from the assert results
-                   (update-in ["rasta@metabase.com" 0 :body] (comp vector first))
+                   ;; There's no PNG with a table visualization, so only assert on one png (the dashboard icon)
+                   (assoc-in ["rasta@metabase.com" 0 :body] [{"Pulse Name" true} png-attachment])
                    (add-rasta-attachment csv-attachment))
                (mt/summarize-multipart-email #"Pulse Name"))))}}))
 
@@ -278,8 +281,8 @@
       {:email
        (fn [_ _]
          (is (= (-> (rasta-pulse-email)
-                    ;; There's no PNG with a table visualization, remove it from the assert results
-                    (update-in ["rasta@metabase.com" 0 :body] (comp vector first))
+                   ;; There's no PNG with a table visualization, so only assert on one png (the dashboard icon)
+                    (assoc-in ["rasta@metabase.com" 0 :body] [{"Pulse Name" true} png-attachment])
                     (add-rasta-attachment xls-attachment))
                 (mt/summarize-multipart-email #"Pulse Name"))))}})))
 
@@ -360,12 +363,13 @@
                                 (mt/email-to user-kwd {:subject "Pulse: Pulse Name",
                                                        :to      #{"rasta@metabase.com" "crowberto@metabase.com"}
                                                        :body    [{"Pulse Name" true}
+                                                                 png-attachment
                                                                  png-attachment]}))
                               [:rasta :crowberto]))
                 (mt/summarize-multipart-email #"Pulse Name"))))}})))
 
 (deftest two-cards-in-one-pulse-test
-  (testing "1 pulse that has 2 cards, should contain two attachments"
+  (testing "1 pulse that has 2 cards, should contain two query image attachments (as well as an icon attachment)"
     (do-test
      {:card
       (assoc (checkins-query-card {:breakout [!day.date]}) :name "card 1")
@@ -383,6 +387,7 @@
       {:email
        (fn [_ _]
          (is (= (rasta-pulse-email {:body [{"Pulse Name" true}
+                                           png-attachment
                                            png-attachment
                                            png-attachment]})
                 (mt/summarize-multipart-email #"Pulse Name"))))}})))
@@ -416,7 +421,7 @@
           (is (= (rasta-alert-email
                   "Metabase alert: Test card has results"
                   [(assoc test-card-result "More results have been included" false)
-                   png-attachment])
+                   png-attachment png-attachment])
                  (mt/summarize-multipart-email test-card-regex #"More results have been included"))))
 
         :slack
@@ -454,7 +459,7 @@
                                     [(merge test-card-result
                                             {"More results have been included" true
                                              "ID</th>"                         true})
-                                     csv-attachment])
+                                     png-attachment csv-attachment])
                  (mt/summarize-multipart-email test-card-regex
                                                #"More results have been included"
                                                #"ID</th>"))))}}
@@ -468,7 +473,7 @@
        {:email
         (fn [_ _]
           (is (= (rasta-alert-email "Metabase alert: Test card has results"
-                                    [test-card-result png-attachment csv-attachment xls-attachment])
+                                    [test-card-result png-attachment png-attachment csv-attachment xls-attachment])
                  (mt/summarize-multipart-email test-card-regex))))}})))
 
 (deftest alert-first-run-only-test
@@ -481,9 +486,11 @@
      {:email
       (fn [{:keys [pulse-id]} _]
         (is (= (rasta-alert-email "Metabase alert: Test card has results"
-                                  [(assoc test-card-result "stop sending you alerts" true)
+                                  [;(assoc test-card-result "stop sending you alerts" true)
+                                   test-card-result
+                                   png-attachment
                                    png-attachment])
-               (mt/summarize-multipart-email test-card-regex #"stop sending you alerts")))
+               (mt/summarize-multipart-email test-card-regex))) ;#"stop sending you alerts")))
         (testing "Pulse should be deleted"
           (is (= false
                  (db/exists? Pulse :id pulse-id)))))}}
@@ -518,7 +525,7 @@
        {:email
         (fn [_ _]
           (is (= (rasta-alert-email "Metabase alert: Test card has reached its goal"
-                                    [test-card-result, png-attachment])
+                                    [test-card-result png-attachment png-attachment])
                  (mt/summarize-multipart-email test-card-regex))))}}
 
       "no data"
@@ -544,7 +551,7 @@
        {:email
         (fn [_ _]
           (is (= (rasta-alert-email "Metabase alert: Test card has reached its goal"
-                                    [test-card-result])
+                                    [test-card-result png-attachment])
                  (mt/summarize-multipart-email test-card-regex))))}})))
 
 (deftest below-goal-alert-test
@@ -563,7 +570,7 @@
        {:email
         (fn [_ _]
           (is (= (rasta-alert-email "Metabase alert: Test card has gone below its goal"
-                                    [test-card-result png-attachment])
+                                    [test-card-result png-attachment png-attachment])
                  (mt/summarize-multipart-email test-card-regex))))}}
 
       "with no satisfying data"
@@ -587,7 +594,7 @@
        {:email
         (fn [_ _]
           (is (= (rasta-alert-email "Metabase alert: Test card has gone below its goal"
-                                    [test-card-result])
+                                    [test-card-result png-attachment])
                  (mt/summarize-multipart-email test-card-regex))))}})))
 
 (deftest native-query-with-user-specified-axes-test
@@ -609,7 +616,7 @@
         (email-test-setup
          (pulse/send-pulse! (models.pulse/retrieve-notification pulse-id))
          (is (= (rasta-alert-email "Metabase alert: Test card has reached its goal"
-                                   [test-card-result png-attachment])
+                                   [test-card-result png-attachment png-attachment])
                 (mt/summarize-multipart-email test-card-regex))))))))
 
 (deftest basic-slack-test-2
@@ -720,7 +727,7 @@
                     (map (comp some? :content :rendered-info) (:attachments slack-data))))
              (is (= {:subject "Pulse: Pulse Name", :recipients ["rasta@metabase.com"], :message-type :attachments}
                     (select-keys email-data [:subject :recipients :message-type])))
-             (is (= 2
+             (is (= 3
                     (count (:message email-data))))
              (is (email-body? (first (:message email-data))))
              (is (attachment? (second (:message email-data)))))))))))

@@ -76,7 +76,7 @@
   (sorted-results
    [(make-result "dashboard test dashboard", :model "dashboard", :favorite false)
     test-collection
-    (make-result "card test card", :model "card", :favorite false, :dataset_query "{}", :dashboardcard_count 0)
+    (make-result "card test card", :model "card", :favorite false, :dataset_query nil, :dashboardcard_count 0)
     (make-result "pulse test pulse", :model "pulse", :archived nil, :updated_at false)
     (merge
      (make-result "metric test metric", :model "metric", :description "Lookin' for a blueberry")
@@ -250,7 +250,7 @@
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]
             (make-result (str "dashboard-count " dashboard-count) :dashboardcard_count dashboard-count,
-                         :model "card", :favorite false, :dataset_query "{}"))]
+                         :model "card", :favorite false, :dataset_query nil))]
     (set [(make-card 5)
           (make-card 3)
           (make-card 0)])))
@@ -481,6 +481,12 @@
       (do-test-users [user [:crowberto :rasta]]
         (is (= [(default-table-search-row "Round Table")]
                (search-request-data user :q "Round Table"))))))
+  (testing "You should not see hidden tables"
+    (mt/with-temp* [Table [normal {:name "Foo Visible"}]
+                    Table [hidden {:name "Foo Hidden", :visibility_type "hidden"}]]
+      (do-test-users [user [:crowberto :rasta]]
+        (is (= [(default-table-search-row "Foo Visible")]
+               (search-request-data user :q "Foo"))))))
   (testing "You should be able to search by their display name"
     (let [lancelot "Lancelot's Favorite Furniture"]
       (mt/with-temp Table [table {:name "Round Table" :display_name lancelot}]

@@ -28,6 +28,9 @@ const JOIN_STRATEGY_OPTIONS = [
   { value: "full-join", name: t`Full outer join`, icon: "join_full_outer" },
 ];
 
+const PARENT_DIMENSION_INDEX = 1;
+const JOIN_DIMENSION_INDEX = 2;
+
 export default class Join extends MBQLObjectClause {
   strategy: ?JoinStrategy;
   alias: ?JoinAlias;
@@ -131,21 +134,30 @@ export default class Join extends MBQLObjectClause {
   setAlias(alias: JoinAlias) {
     alias = this._uniqueAlias(alias);
     if (alias !== this.alias) {
-      const join = this.set({ ...this, alias });
+      let join = this.set({ ...this, alias });
       // propagate alias change to join dimension
-      const joinDimension = join.joinDimension();
-      if (
-        joinDimension instanceof FieldDimension &&
-        joinDimension.joinAlias() &&
-        joinDimension.joinAlias() === this.alias
-      ) {
-        const newDimension = joinDimension.withJoinAlias(alias);
-        return join.setJoinDimension(newDimension);
-      } else {
-        return join;
-      }
+      const joinDimensions = join.joinDimensions();
+
+      joinDimensions.forEach((joinDimension, i) => {
+        if (
+          joinDimension instanceof FieldDimension &&
+          joinDimension.joinAlias() &&
+          joinDimension.joinAlias() === this.alias
+        ) {
+          const newDimension = joinDimension.withJoinAlias(alias);
+          join = join.setJoinDimension({ index: i, dimension: newDimension });
+        }
+      });
+
+      return join;
     }
     return this;
+  }
+
+  _getParentDimensionForAlias() {
+    return this.parentDimensions().find(
+      dimension => dimension && dimension.field().isFK(),
+    );
   }
 
   setDefaultAlias() {
@@ -164,11 +176,9 @@ export default class Join extends MBQLObjectClause {
 
     const tableName = table && table.display_name;
 
-    const parentDimension = this.parentDimension();
+    const parentDimension = this._getParentDimensionForAlias();
     const fieldName =
-      parentDimension &&
-      parentDimension.field().isFK() &&
-      parentDimension.field().targetObjectName();
+      parentDimension && parentDimension.field().targetObjectName();
 
     const similarTableAndFieldNames =
       tableName &&
@@ -192,6 +202,17 @@ export default class Join extends MBQLObjectClause {
     return this.setAlias(alias);
   }
 
+  getConditions() {
+    if (!this.condition) {
+      return [];
+    }
+    if (this.isSingleConditionJoin()) {
+      return [this.condition];
+    }
+    const [, ...conditions] = this.condition;
+    return conditions;
+  }
+
   // STRATEGY
   setStrategy(strategy: JoinStrategy) {
     return this.set({ ...this, strategy });
@@ -211,10 +232,71 @@ export default class Join extends MBQLObjectClause {
     );
   }
 
-  // CONDITION
+  // CONDITIONS
+
+  isSingleConditionJoin() {
+    const { condition } = this;
+    return Array.isArray(condition) && condition[0] === "=";
+  }
+
+  isMultipleConditionsJoin() {
+    const { condition } = this;
+    return Array.isArray(condition) && condition[0] === "and";
+  }
+
+  getConditionByIndex(index) {
+    if (!this.condition) {
+      return null;
+    }
+    if (this.isSingleConditionJoin() && !index) {
+      return this.condition;
+    }
+    if (this.isMultipleConditionsJoin()) {
+      const [, ...conditions] = this.condition;
+      return conditions[index];
+    }
+    return null;
+  }
+
   setCondition(condition: JoinCondition): Join {
     return this.set({ ...this, condition });
   }
+
+  setConditionByIndex({ index = 0, condition }): Join {
+    if (!this.condition) {
+      return this.setCondition(condition);
+    }
+    if (this.isSingleConditionJoin()) {
+      if (index === 0) {
+        return this.setCondition(condition);
+      } else {
+        return this.setCondition(["and", this.condition, condition]);
+      }
+    }
+    const conditions = [...this.condition];
+    conditions[index + 1] = condition;
+    return this.setCondition(conditions);
+  }
+
+  removeCondition(index) {
+    if (index == null || !this.getConditionByIndex(index)) {
+      return this;
+    }
+    if (this.isSingleConditionJoin()) {
+      return this.setCondition(null);
+    }
+    const filteredCondition = this.condition.filter((_, i) => {
+      // Adding 1 because the first element of a condition is an operator ("and")
+      return i !== index + 1;
+    });
+    const [, ...conditions] = filteredCondition;
+    const isSingleNewCondition = conditions.length === 1;
+    if (isSingleNewCondition) {
+      return this.setCondition(conditions[0]);
+    }
+    return this.setCondition(filteredCondition);
+  }
+
   setDefaultCondition() {
     const { dimensions } = this.parentDimensionOptions();
     // look for foreign keys linking the two tables
@@ -225,12 +307,37 @@ export default class Join extends MBQLObjectClause {
         return target && target.table && target.table.id === joinedTable.id;
       });
       if (fk) {
-        return this.setParentDimension(fk).setJoinDimension(
-          this.joinedDimension(fk.field().target.dimension()),
-        );
+        return this.setParentDimension({
+          index: 0,
+          dimension: fk,
+        }).setJoinDimension({
+          index: 0,
+          dimension: this.joinedDimension(fk.field().target.dimension()),
+        });
       }
     }
     return this;
+  }
+
+  _convertDimensionIntoMBQL(dimension: Dimension | ConcreteField) {
+    return dimension instanceof Dimension ? dimension.mbql() : dimension;
+  }
+
+  _getJoinDimensionFromCondition(condition) {
+    const [, , joinDimension] = condition;
+    const joinedQuery = this.joinedQuery();
+    return (
+      joinedQuery &&
+      joinDimension &&
+      joinedQuery.parseFieldReference(joinDimension)
+    );
+  }
+
+  _getJoinDimensionsFromMultipleConditions() {
+    const [, ...conditions] = this.condition;
+    return conditions.map(condition =>
+      this._getJoinDimensionFromCondition(condition),
+    );
   }
 
   // simplified "=" join condition helpers:
@@ -239,12 +346,27 @@ export default class Join extends MBQLObjectClause {
   // and joinDimension refers to the right-hand side
   // TODO: should we rename them to lhsDimension/rhsDimension etc?
 
-  parentDimension() {
-    const { condition } = this;
-    if (Array.isArray(condition) && condition[0] === "=" && condition[1]) {
-      return this.query().parseFieldReference(condition[1]);
-    }
+  _getParentDimensionFromCondition(condition) {
+    const [, parentDimension] = condition;
+    return parentDimension && this.query().parseFieldReference(parentDimension);
   }
+
+  _getParentDimensionsFromMultipleConditions() {
+    const [, ...conditions] = this.condition;
+    return conditions.map(condition =>
+      this._getParentDimensionFromCondition(condition),
+    );
+  }
+
+  parentDimensions() {
+    if (!this.condition) {
+      return [];
+    }
+    return this.isSingleConditionJoin()
+      ? [this._getParentDimensionFromCondition(this.condition)]
+      : this._getParentDimensionsFromMultipleConditions();
+  }
+
   parentDimensionOptions() {
     const query = this.query();
     const dimensions = query.dimensions();
@@ -262,37 +384,48 @@ export default class Join extends MBQLObjectClause {
     }
     return new DimensionOptions(options);
   }
-  // TODO -- in what way is this setting a "parent dimension"? These names make no sense
-  setParentDimension(dimension: Dimension | ConcreteField): Join {
-    if (dimension instanceof Dimension) {
-      dimension = dimension.mbql();
+
+  joinDimensions() {
+    if (!this.condition) {
+      return [];
     }
-    const joinDimension = this.joinDimension();
-    return this.setCondition([
-      "=",
-      dimension,
-      joinDimension instanceof Dimension ? joinDimension.mbql() : null,
-    ]);
+
+    return this.isSingleConditionJoin()
+      ? [this._getJoinDimensionFromCondition(this.condition)]
+      : this._getJoinDimensionsFromMultipleConditions();
   }
 
-  joinDimension() {
-    const { condition } = this;
-    if (Array.isArray(condition) && condition[0] === "=" && condition[2]) {
-      const joinedQuery = this.joinedQuery();
-      return joinedQuery && joinedQuery.parseFieldReference(condition[2]);
+  addEmptyDimensionsPair() {
+    if (!this.condition) {
+      return this.setCondition([]);
+    }
+    if (this.isSingleConditionJoin()) {
+      return this.setCondition(["and", this.condition, []]);
+    } else {
+      return this.setCondition([...this.condition, []]);
     }
   }
-  setJoinDimension(dimension: Dimension | ConcreteField): Join {
-    if (dimension instanceof Dimension) {
-      dimension = dimension.mbql();
-    }
-    const parentDimension = this.parentDimension();
-    return this.setCondition([
+
+  setJoinDimension({ index = 0, dimension }) {
+    const condition = this.getConditionByIndex(index);
+    const newCondition = [
       "=",
-      parentDimension instanceof Dimension ? parentDimension.mbql() : null,
-      dimension,
-    ]);
+      condition ? condition[PARENT_DIMENSION_INDEX] : null,
+      this._convertDimensionIntoMBQL(dimension),
+    ];
+    return this.setConditionByIndex({ index, condition: newCondition });
   }
+
+  setParentDimension({ index = 0, dimension }) {
+    const condition = this.getConditionByIndex(index);
+    const newCondition = [
+      "=",
+      this._convertDimensionIntoMBQL(dimension),
+      condition ? condition[JOIN_DIMENSION_INDEX] : null,
+    ];
+    return this.setConditionByIndex({ index, condition: newCondition });
+  }
+
   joinDimensionOptions() {
     const dimensions = this.joinedDimensions();
     return new DimensionOptions({
@@ -303,6 +436,19 @@ export default class Join extends MBQLObjectClause {
   }
 
   // HELPERS
+
+  getDimensions() {
+    const conditions = this.getConditions();
+    return conditions.map(condition => {
+      const [, parentDimension, joinDimension] = condition;
+      return [
+        parentDimension
+          ? this.query().parseFieldReference(parentDimension)
+          : null,
+        joinDimension ? this.query().parseFieldReference(joinDimension) : null,
+      ];
+    });
+  }
 
   joinedQuery() {
     const sourceTable = this.joinSourceTableId();
@@ -389,11 +535,53 @@ export default class Join extends MBQLObjectClause {
     return this._query.removeJoin(this._index);
   }
 
-  isValid(): boolean {
-    return !!(
-      this.joinedTable() &&
-      this.parentDimension() &&
-      this.joinDimension()
+  hasGaps() {
+    if (!this.joinedTable()) {
+      return true;
+    }
+    const parentDimensions = this.parentDimensions();
+    const joinDimensions = this.joinDimensions();
+    return (
+      parentDimensions.length === 0 ||
+      joinDimensions.length === 0 ||
+      parentDimensions.length !== joinDimensions.length ||
+      parentDimensions.some(dimension => dimension == null) ||
+      joinDimensions.some(dimension => dimension == null)
     );
+  }
+
+  isValid() {
+    if (this.hasGaps()) {
+      return false;
+    }
+    const dimensionOptions = this.parent().dimensionOptions();
+    const dimensions = [...this.parentDimensions(), ...this.joinDimensions()];
+    return dimensions.every(dimension =>
+      dimensionOptions.hasDimension(dimension),
+    );
+  }
+
+  clean() {
+    const invalidAndCantFix = !this.condition || !this.joinedTable();
+    if (invalidAndCantFix || this.isValid()) {
+      return this;
+    }
+    let join = this;
+
+    let invalidDimensionIndex = this.parentDimensions().findIndex(
+      dimension => dimension == null,
+    );
+    if (invalidDimensionIndex >= 0) {
+      join = this.removeCondition(invalidDimensionIndex);
+    }
+
+    invalidDimensionIndex = this.joinDimensions().findIndex(
+      dimension => dimension == null,
+    );
+    if (invalidDimensionIndex >= 0) {
+      join = this.removeCondition(invalidDimensionIndex);
+    }
+
+    return join.clean();
   }
 }

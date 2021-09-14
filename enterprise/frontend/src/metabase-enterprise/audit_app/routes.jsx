@@ -42,7 +42,9 @@ function getPageRoutes(path, page: Page) {
   // add a redirect for the default tab
   const defaultTab = getDefaultTab(page);
   if (defaultTab) {
-    subRoutes.push(<IndexRedirect to={defaultTab.path} />);
+    subRoutes.push(
+      <IndexRedirect key={defaultTab.path} to={defaultTab.path} />,
+    );
   }
   // add sub routes for each tab
   if (page.tabs) {
@@ -72,7 +74,7 @@ function getDefaultTab(page: Page): ?Tab {
 }
 
 const getRoutes = (store: any) => (
-  <Route path="audit" title={t`Audit`} component={AuditApp}>
+  <Route key="audit" path="audit" title={t`Audit`} component={AuditApp}>
     {/* <IndexRedirect to="overview" /> */}
     <IndexRedirect to="members" />
 

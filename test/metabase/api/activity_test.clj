@@ -7,6 +7,7 @@
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.interface :as models]
+            [metabase.models.table :refer [Table]]
             [metabase.models.view-log :refer [ViewLog]]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
@@ -106,6 +107,7 @@
                   Dashboard [dash1 {:name        "rand-name"
                                     :description "rand-name"
                                     :creator_id  (mt/user->id :crowberto)}]
+                  Table     [table1 {:name        "rand-name"}]
                   Card      [card2 {:name                   "rand-name"
                                     :creator_id             (mt/user->id :crowberto)
                                     :display                "table"
@@ -114,8 +116,17 @@
     (create-view! (mt/user->id :crowberto) "dashboard" (:id dash1))
     (create-view! (mt/user->id :crowberto) "card"      (:id card1))
     (create-view! (mt/user->id :crowberto) "card"      36478)
+    (create-view! (mt/user->id :crowberto) "table"     (:id table1))
     (create-view! (mt/user->id :rasta)     "card"      (:id card1))
-    (is (= [{:cnt          1
+    (is (= [{:cnt          1,
+             :model        "table",
+             :model_id     (:id table1),
+             :model_object {:db_id         (:db_id table1),
+                            :id            (:id table1),
+                            :name          (:name table1)
+                            :display_name  (:display_name table1)},
+             :user_id      (mt/user->id :crowberto)}
+            {:cnt          1
              :user_id      (mt/user->id :crowberto)
              :model        "card"
              :model_id     (:id card1)

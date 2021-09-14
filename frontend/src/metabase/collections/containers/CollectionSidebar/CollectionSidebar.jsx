@@ -18,6 +18,7 @@ import Collections from "./Collections/Collections";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import { getParentPath } from "metabase/collections/utils";
+import { updateOpenCollectionList } from "./updateOpenCollectionList";
 
 const getCurrentUser = ({ currentUser }) => ({ currentUser });
 
@@ -53,11 +54,16 @@ class CollectionSidebar extends React.Component {
   };
 
   onClose = id => {
-    this.setState({
-      openCollections: this.state.openCollections.filter(c => {
-        return c !== id;
-      }),
-    });
+    const { openCollections } = this.state;
+    const { collections } = this.props;
+
+    const newOpenCollections = updateOpenCollectionList(
+      id,
+      collections,
+      openCollections,
+    );
+
+    this.setState({ openCollections: newOpenCollections });
   };
 
   renderContent = () => {

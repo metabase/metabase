@@ -11,7 +11,7 @@ describe("visual tests > internal > static-viz", () => {
 
     cy.findByText("Bar chart with timeseries data");
     cy.findByText("Line chart with timeseries data");
-    cy.findByText("Donut chart showing categorical data");
+    cy.findByText("Donut chart with categorical data");
 
     cy.percySnapshot();
   });

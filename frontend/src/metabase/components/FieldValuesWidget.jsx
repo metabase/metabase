@@ -478,7 +478,7 @@ export class FieldValuesWidget extends Component {
           multi={multi}
           autoFocus={autoFocus}
           color={color}
-          style={style}
+          style={{ ...style, minWidth: "inherit" }}
           className={className}
           parameter={this.props.parameter}
           optionsStyle={!parameter ? { maxHeight: "none" } : {}}

@@ -3,15 +3,23 @@
             [clojure.string :as str]
             [clojure.test :refer :all]
             [metabase.http-client :as http]
-            [metabase.models.collection :as collection :refer [Collection]]
+            [metabase.models
+             :refer
+             [Collection
+              Database
+              PermissionsGroup
+              PermissionsGroupMembership
+              Pulse
+              PulseChannel
+              PulseChannelRecipient
+              Session
+              Table
+              User]]
+            [metabase.models.collection :as collection]
             [metabase.models.collection-test :as collection-test]
-            [metabase.models.database :refer [Database]]
             [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as group :refer [PermissionsGroup]]
-            [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
-            [metabase.models.session :refer [Session]]
-            [metabase.models.table :refer [Table]]
-            [metabase.models.user :as user :refer [User]]
+            [metabase.models.permissions-group :as group]
+            [metabase.models.user :as user]
             [metabase.test :as mt]
             [metabase.test.data.users :as test-users]
             [metabase.util :as u]
@@ -433,3 +441,21 @@
         (db/update! User user-id :locale "en-GB")
         (is (= "en_GB"
                (db/select-one-field :locale User :id user-id)))))))
+
+(deftest delete-pulse-subscriptions-when-archived-test
+  (testing "Delete a User's Pulse/Alert/Dashboard Subscription subscriptions when they get archived"
+    (mt/with-temp* [User                  [{user-id :id}]
+                    Pulse                 [{pulse-id :id}]
+                    PulseChannel          [{pulse-channel-id :id} {:pulse_id pulse-id}]
+                    PulseChannelRecipient [_ {:pulse_channel_id pulse-channel-id, :user_id user-id}]]
+      (letfn [(subscription-exists? []
+                (db/exists? PulseChannelRecipient :pulse_channel_id pulse-channel-id, :user_id user-id))]
+        (testing "Sanity check: subscription should exist"
+          (is (subscription-exists?)))
+        (testing "user is updated but not archived: don't delete the subscription"
+          (is (db/update! User user-id :is_active true))
+          (is (subscription-exists?)))
+        (testing "archive the user"
+          (is (db/update! User user-id :is_active false)))
+        (testing "subscription should no longer exist"
+          (is (not (subscription-exists?))))))))

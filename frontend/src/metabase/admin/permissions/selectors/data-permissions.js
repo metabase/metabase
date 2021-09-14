@@ -18,12 +18,15 @@ import {
   getSchemasPermission,
   getTablesPermission,
   diffPermissions,
+  isRestrictivePermission,
+  isBlockPermission,
 } from "metabase/lib/permissions";
 import {
   DATA_ACCESS_IS_REQUIRED,
   UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
 } from "../constants/messages";
 import {
+  PLUGIN_ADMIN_PERMISSIONS_DATABASE_BLOCK_OPTIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION,
@@ -44,6 +47,12 @@ import {
   getDatabaseFocusPermissionsUrl,
   getGroupFocusPermissionsUrl,
 } from "../utils/urls";
+import { limitDatabasePermission } from "../permissions";
+
+const getGroupsWithoutMetabot = createSelector(
+  Group.selectors.getList,
+  groups => groups.filter(group => !isMetaBotGroup(group)),
+);
 
 export const getIsDirty = createSelector(
   state => state.admin.permissions.dataPermissions,
@@ -54,7 +63,7 @@ export const getIsDirty = createSelector(
 
 export const getDiff = createSelector(
   getMetadata,
-  Group.selectors.getList,
+  getGroupsWithoutMetabot,
   state => state.admin.permissions.dataPermissions,
   state => state.admin.permissions.originalDataPermissions,
   (metadata, groups, permissions, originalPermissions) =>
@@ -94,12 +103,14 @@ export const getDatabasesSidebar = createSelector(
     const { databaseId, schemaName, tableId } = params;
 
     if (databaseId == null) {
-      const entities = Object.values(metadata.databases).map(database => ({
-        id: database.id,
-        name: database.name,
-        entityId: getDatabaseEntityId(database),
-        icon: "database",
-      }));
+      const entities = Object.values(metadata.databases)
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map(database => ({
+          id: database.id,
+          name: database.name,
+          entityId: getDatabaseEntityId(database),
+          icon: "database",
+        }));
 
       return {
         entityGroups: [entities],
@@ -118,20 +129,26 @@ export const getDatabasesSidebar = createSelector(
       selectedId = getSchemaId(schemaName);
     }
 
-    let entities = database.getSchemas().map(schema => {
-      return {
-        id: getSchemaId(schema.name),
-        name: schema.name,
-        entityId: getSchemaEntityId(schema),
-        icon: "folder",
-        children: schema.getTables().map(table => ({
-          id: getTableId(table.id),
-          entityId: getTableEntityId(table),
-          name: table.displayName(),
-          icon: "table",
-        })),
-      };
-    });
+    let entities = database
+      .getSchemas()
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map(schema => {
+        return {
+          id: getSchemaId(schema.name),
+          name: schema.name,
+          entityId: getSchemaEntityId(schema),
+          icon: "folder",
+          children: schema
+            .getTables()
+            .sort((a, b) => a.displayName().localeCompare(b.displayName()))
+            .map(table => ({
+              id: getTableId(table.id),
+              entityId: getTableEntityId(table),
+              name: table.displayName(),
+              icon: "table",
+            })),
+        };
+      });
 
     const shouldIncludeSchemas = database.schemasCount() > 1;
     if (!shouldIncludeSchemas) {
@@ -191,12 +208,17 @@ const getGroupsDataEditorBreadcrumbs = (params, metadata) => {
   );
 };
 
-const getGroupsWithoutMetabot = createSelector(
-  Group.selectors.getList,
-  groups => groups.filter(group => !isMetaBotGroup(group)),
-);
-
 const getDataPermissions = state => state.admin.permissions.dataPermissions;
+
+const NATIVE_QUERIES_OPTIONS = [
+  DATA_PERMISSION_OPTIONS.write,
+  DATA_PERMISSION_OPTIONS.none,
+];
+
+const shouldIncludeRestrictivePluginOptions = value =>
+  PLUGIN_ADMIN_PERMISSIONS_DATABASE_BLOCK_OPTIONS.some(
+    option => option.value === value,
+  );
 
 const buildFieldsPermissions = (
   entityId,
@@ -242,18 +264,32 @@ const buildFieldsPermissions = (
   return [
     {
       name: "access",
-      isDisabled: isAdmin,
+      isDisabled: isAdmin || isBlockPermission(value),
       disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
+      isHighlighted: isAdmin,
       value,
       warning,
       options: [
         DATA_PERMISSION_OPTIONS.all,
         ...PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
-        DATA_PERMISSION_OPTIONS.none,
+        DATA_PERMISSION_OPTIONS.noSelfService,
+        ...(shouldIncludeRestrictivePluginOptions(value)
+          ? PLUGIN_ADMIN_PERMISSIONS_DATABASE_BLOCK_OPTIONS
+          : []),
       ],
       actions: PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS,
       postActions: PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION,
       confirmations,
+    },
+    {
+      name: "native",
+      isDisabled: true,
+      disabledTooltip: isAdmin
+        ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS
+        : DATA_ACCESS_IS_REQUIRED,
+      isHighlighted: isAdmin,
+      value: getNativePermission(permissions, groupId, entityId),
+      options: NATIVE_QUERIES_OPTIONS,
     },
   ];
 };
@@ -294,7 +330,8 @@ const buildTablesPermissions = (
   return [
     {
       name: "access",
-      isDisabled: isAdmin,
+      isDisabled: isAdmin || isBlockPermission(value),
+      isHighlighted: isAdmin,
       disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
       value,
       warning,
@@ -308,13 +345,26 @@ const buildTablesPermissions = (
       options: [
         DATA_PERMISSION_OPTIONS.all,
         DATA_PERMISSION_OPTIONS.controlled,
-        DATA_PERMISSION_OPTIONS.none,
+        DATA_PERMISSION_OPTIONS.noSelfService,
+        ...(shouldIncludeRestrictivePluginOptions(value)
+          ? PLUGIN_ADMIN_PERMISSIONS_DATABASE_BLOCK_OPTIONS
+          : []),
       ],
+    },
+    {
+      name: "native",
+      isDisabled: true,
+      disabledTooltip: isAdmin
+        ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS
+        : DATA_ACCESS_IS_REQUIRED,
+      isHighlighted: isAdmin,
+      value: getNativePermission(permissions, groupId, entityId),
+      options: NATIVE_QUERIES_OPTIONS,
     },
   ];
 };
 
-const buildDatabasePermissions = (
+const buildSchemasPermissions = (
   entityId,
   groupId,
   isAdmin,
@@ -379,36 +429,46 @@ const buildDatabasePermissions = (
     getRawQueryWarningModal(permissions, groupId, entityId, newValue),
   ];
 
+  const isNativePermissionDisabled =
+    isAdmin || isRestrictivePermission(accessPermissionValue);
+
   return [
     {
       name: "access",
       isDisabled: isAdmin,
       disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
+      isHighlighted: isAdmin,
       value: accessPermissionValue,
       warning: accessPermissionWarning,
       confirmations: accessPermissionConfirmations,
       options: [
         DATA_PERMISSION_OPTIONS.all,
         DATA_PERMISSION_OPTIONS.controlled,
-        DATA_PERMISSION_OPTIONS.none,
+        DATA_PERMISSION_OPTIONS.noSelfService,
+        ...PLUGIN_ADMIN_PERMISSIONS_DATABASE_BLOCK_OPTIONS,
       ],
       postActions: {
         controlled: () =>
-          push(
-            `/admin/permissions/data/group/${groupId}/database/${entityId.databaseId}`,
+          limitDatabasePermission(
+            groupId,
+            entityId,
+            isBlockPermission(accessPermissionValue)
+              ? DATA_PERMISSION_OPTIONS.noSelfService.value
+              : null,
           ),
       },
     },
     {
       name: "native",
-      isDisabled: isAdmin || accessPermissionValue === "none",
+      isDisabled: isNativePermissionDisabled,
       disabledTooltip: isAdmin
         ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS
         : DATA_ACCESS_IS_REQUIRED,
+      isHighlighted: isAdmin,
       value: nativePermissionValue,
       warning: nativePermissionWarning,
       confirmations: nativePermissionConfirmations,
-      options: [DATA_PERMISSION_OPTIONS.write, DATA_PERMISSION_OPTIONS.none],
+      options: NATIVE_QUERIES_OPTIONS,
     },
   ];
 };
@@ -427,12 +487,7 @@ export const getGroupsDataPermissionEditor = createSelector(
 
     const defaultGroup = _.find(groups, isDefaultGroup);
 
-    const isDatabaseLevelPermission = tableId == null && schemaName == null;
-    const columns = [
-      t`Group name`,
-      t`Data access`,
-      isDatabaseLevelPermission ? t`Native query editing` : null,
-    ].filter(Boolean);
+    const columns = [t`Group name`, t`Data access`, t`Native query editing`];
 
     const entities = groups.map(group => {
       const isAdmin = isAdminGroup(group);
@@ -463,7 +518,7 @@ export const getGroupsDataPermissionEditor = createSelector(
           defaultGroup,
         );
       } else if (databaseId != null) {
-        groupPermissions = buildDatabasePermissions(
+        groupPermissions = buildSchemasPermissions(
           {
             databaseId,
           },
@@ -478,6 +533,9 @@ export const getGroupsDataPermissionEditor = createSelector(
       return {
         id: group.id,
         name: group.name,
+        hint: isAdmin
+          ? t`The Administrators group is special, and always has Unrestricted access.`
+          : null,
         entityId: params,
         permissions: groupPermissions,
       };
@@ -506,7 +564,7 @@ const isPinnedGroup = group =>
   isAdminGroup(group) || isDefaultGroup(group) || isMetaBotGroup(group);
 
 export const getGroupsSidebar = createSelector(
-  Group.selectors.getList,
+  getGroupsWithoutMetabot,
   getGroupRouteParams,
   (groups, params) => {
     const { groupId } = params;
@@ -576,12 +634,11 @@ export const getDatabasesPermissionEditor = createSelector(
       databaseId != null &&
       metadata.database(databaseId).getSchemas().length === 1;
 
-    const isDatabaseLevelPermission = schemaName == null && databaseId == null;
     const columns = [
       getEditorEntityName(params, hasSingleSchema),
       t`Data access`,
-      isDatabaseLevelPermission ? t`Native query editing` : null,
-    ].filter(Boolean);
+      t`Native query editing`,
+    ];
 
     let entities = [];
 
@@ -636,7 +693,7 @@ export const getDatabasesPermissionEditor = createSelector(
             name: database.name,
             entityId,
             canSelect: true,
-            permissions: buildDatabasePermissions(
+            permissions: buildSchemasPermissions(
               entityId,
               groupId,
               isAdmin,

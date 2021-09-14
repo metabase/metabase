@@ -608,13 +608,46 @@
 
 (deftest root-permissions-graph-test
   (testing "A \"/\" permission grants all dataset permissions"
-    (mt/with-temp Database [{db_id :id}]
-      (let [{:keys [group_id]} (db/select-one 'Permissions {:object "/"})]
-        (is (= {db_id {:native  :write
+    (mt/with-temp Database [{db-id :id}]
+      (let [{:keys [group_id]} (db/select-one Permissions {:object "/"})]
+        (is (= {db-id {:native  :write
                        :schemas :all}}
                (-> (perms/data-perms-graph)
                    (get-in [:groups group_id])
-                   (select-keys [db_id]))))))))
+                   (select-keys [db-id]))))))))
+
+(deftest update-graph-validate-db-perms-test
+  (testing "Check that validation of DB `:schemas` and `:native` perms doesn't fail if only one of them changes"
+    (mt/with-temp Database [{db-id :id}]
+      (perms/revoke-data-perms! (group/all-users) db-id)
+      (let [ks [:groups (u/the-id (group/all-users)) db-id]]
+        (letfn [(perms []
+                  (get-in (perms/data-perms-graph) ks))
+                (set-perms! [new-perms]
+                  (perms/update-data-perms-graph! (assoc-in (perms/data-perms-graph) ks new-perms))
+                  (perms))]
+          (testing "Should initially have no perms"
+            (is (= nil
+                   (perms))))
+          (testing "grant schema perms"
+            (is (= {:schemas :all}
+                   (set-perms! {:schemas :all}))))
+          (testing "grant native perms"
+            (is (= {:schemas :all, :native :write}
+                   (set-perms! {:schemas :all, :native :write}))))
+          (testing "revoke native perms"
+            (is (= {:schemas :all}
+                   (set-perms! {:schemas :all, :native :none}))))
+          (testing "revoke schema perms"
+            (is (= nil
+                   (set-perms! {:schemas :none}))))
+          (testing "disallow schemas :none + :native :write"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"DB permissions with a valid combination of values for :native and :schemas"
+                 (set-perms! {:schemas :none, :native :write})))
+            (is (= nil
+                   (perms)))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -663,7 +696,7 @@
 (deftest grant-revoke-root-collection-permissions-test
   (mt/with-temp PermissionsGroup [{group-id :id}]
     (letfn [(perms []
-              (db/select-field :object 'Permissions :group_id group-id))]
+              (db/select-field :object Permissions :group_id group-id))]
       (is (= nil
              (perms)))
       (testing "Should be able to grant Root Collection perms"

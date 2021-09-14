@@ -4,16 +4,26 @@ import {
   PRODUCTS,
 } from "__support__/sample_dataset_fixture";
 
-const JOIN = {
-  "source-table": PRODUCTS.id,
-  alias: "join1234",
-  condition: [
-    "=",
-    ["field", ORDERS.ID.id, null],
-    ["field", PRODUCTS.ID.id, { "join-alias": "join1234" }],
-  ],
-  fields: "all",
-};
+const ORDERS_PRODUCT_ID_FIELD_REF = ["field", ORDERS.ID.id, null];
+const PRODUCT_ID_FIELD_REF = [
+  "field",
+  PRODUCTS.ID.id,
+  { "join-alias": "Products" },
+];
+
+function getJoin({
+  sourceTable = PRODUCTS.id,
+  alias = "Products",
+  condition = ["=", ORDERS_PRODUCT_ID_FIELD_REF, PRODUCT_ID_FIELD_REF],
+  fields = "all",
+} = {}) {
+  return {
+    "source-table": sourceTable,
+    alias,
+    condition,
+    fields,
+  };
+}
 
 describe("StructuredQuery", () => {
   describe("clean", () => {
@@ -24,26 +34,57 @@ describe("StructuredQuery", () => {
 
     describe("joins", () => {
       it("should not remove join referencing valid field ID", () => {
-        const q = ORDERS.query().join(JOIN);
+        const q = ORDERS.query().join(getJoin());
         expect(q.clean().query()).toEqual(q.query());
-        expect(q.clean() === q).toBe(true);
       });
 
-      xit("should remove join referencing invalid source-table", () => {
-        const q = ORDERS.query()
-          .setTableId(12345)
-          .join([JOIN]);
-        expect(q.query()).toEqual({ "source-table": 12345, join: [JOIN] });
-        expect(q.clean().query()).toEqual({ "source-table": 12345 });
+      it("should clean invalid parts of multiple field joins and keep the valid ones", () => {
+        const VALID_CONDITION = [
+          "=",
+          ORDERS_PRODUCT_ID_FIELD_REF,
+          PRODUCT_ID_FIELD_REF,
+        ];
+        const join = getJoin({
+          condition: [
+            "and",
+            VALID_CONDITION,
+            ["=", ORDERS_PRODUCT_ID_FIELD_REF, null],
+            ["=", null, PRODUCT_ID_FIELD_REF],
+            ["=", null, null],
+          ],
+        });
+        const q = ORDERS.query().join(join);
+
+        expect(q.clean().query()).toEqual({
+          "source-table": ORDERS.id,
+          joins: [{ ...join, condition: VALID_CONDITION }],
+        });
       });
 
-      xit("should remove join referencing invalid source field", () => {
-        const q = ORDERS.query().join(JOIN);
+      it("should remove join without any condition", () => {
+        const q = ORDERS.query().join(getJoin({ condition: null }));
         expect(q.clean().query()).toEqual({ "source-table": ORDERS.id });
       });
 
-      xit("should remove join referencing invalid join field", () => {
-        const q = ORDERS.query().join(JOIN);
+      it.skip("should remove join referencing invalid source-table", () => {
+        const q = ORDERS.query()
+          .setTableId(12345)
+          .join([getJoin()]);
+        expect(q.query()).toEqual({ "source-table": 12345, join: [getJoin()] });
+        expect(q.clean().query()).toEqual({ "source-table": 12345 });
+      });
+
+      it("should remove join referencing invalid source field", () => {
+        const q = ORDERS.query().join(
+          getJoin({ condition: ["=", null, PRODUCT_ID_FIELD_REF] }),
+        );
+        expect(q.clean().query()).toEqual({ "source-table": ORDERS.id });
+      });
+
+      it("should remove join referencing invalid join field", () => {
+        const q = ORDERS.query().join(
+          getJoin({ condition: ["=", ORDERS_PRODUCT_ID_FIELD_REF, null] }),
+        );
         expect(q.clean().query()).toEqual({ "source-table": ORDERS.id });
       });
     });
@@ -98,7 +139,7 @@ describe("StructuredQuery", () => {
           expect(q.clean().query()).toEqual(q.query());
           expect(q.clean() === q).toBe(true);
         });
-        xit("should remove invalid named aggregations", () => {
+        it.skip("should remove invalid named aggregations", () => {
           const q = ORDERS.query().aggregate([
             "aggregation-option",
             ["invalid"],
@@ -139,7 +180,7 @@ describe("StructuredQuery", () => {
           expect(q.clean().query()).toEqual(q.query());
           expect(q.clean() === q).toBe(true);
         });
-        xit("should remove aggregations referencing invalid field ID", () => {
+        it.skip("should remove aggregations referencing invalid field ID", () => {
           const q = ORDERS.query().aggregate([
             ["+", ["avg", ["field", 12345, null]], 1],
           ]);
@@ -175,10 +216,9 @@ describe("StructuredQuery", () => {
 
       it("should not remove breakout referencing valid joined fields", () => {
         const q = ORDERS.query()
-          .join(JOIN)
-          .breakout(["field", PRODUCTS.TITLE.id, { "join-alias": "join1234" }]);
+          .join(getJoin())
+          .breakout(["field", PRODUCTS.TITLE.id, { "join-alias": "Products" }]);
         expect(q.clean().query()).toEqual(q.query());
-        expect(q.clean() === q).toBe(true);
       });
       it("should remove breakout referencing invalid field ID", () => {
         const q = ORDERS.query().breakout(["field", 12345, null]);
@@ -196,7 +236,7 @@ describe("StructuredQuery", () => {
         expect(q.clean() === q).toBe(true);
       });
 
-      xit("should remove sort referencing invalid field ID", () => {
+      it.skip("should remove sort referencing invalid field ID", () => {
         const q = ORDERS.query().sort(["asc", ["field", 12345, null]]);
         expect(q.clean().query()).toEqual({ "source-table": ORDERS.id });
       });

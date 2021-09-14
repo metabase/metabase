@@ -1,11 +1,9 @@
 (ns metabase.api.pulse
   "/api/pulse endpoints."
-  (:require [clojure.tools.logging :as log]
-            [compojure.core :refer [DELETE GET POST PUT]]
+  (:require [compojure.core :refer [GET POST PUT]]
             [hiccup.core :refer [html]]
             [metabase.api.common :as api]
             [metabase.email :as email]
-            [metabase.events :as events]
             [metabase.integrations.slack :as slack]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection]
@@ -20,7 +18,6 @@
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [metabase.util.urls :as urls]
             [schema.core :as s]
@@ -65,11 +62,13 @@
    parameters          [su/Map]}
   ;; make sure we are allowed to *read* all the Cards we want to put in this Pulse
   (check-card-read-permissions cards)
-  ;; if we're trying to create this Pulse inside a Collection, make sure we have write permissions for that collection
-  (collection/check-write-perms-for-collection collection_id)
-  ;; prohibit sending dashboard subs for unauthorized dashboards
+  ;; if we're trying to create this Pulse inside a Collection, and it is not a dashboard subscription,
+  ;; make sure we have write permissions for that collection
+  (when-not dashboard_id
+    (collection/check-write-perms-for-collection collection_id))
+  ;; prohibit creating dashboard subs if the the user doesn't have at least read access for the dashboard
   (when dashboard_id
-    (api/write-check Dashboard dashboard_id))
+    (api/read-check Dashboard dashboard_id))
   (let [pulse-data {:name                name
                     :creator_id          api/*current-user-id*
                     :skip_if_empty       skip_if_empty
@@ -117,18 +116,6 @@
               :id id))))
   ;; return updated Pulse
   (pulse/retrieve-pulse id))
-
-
-(api/defendpoint DELETE "/:id"
-  "Delete a Pulse. (DEPRECATED -- don't delete a Pulse anymore -- archive it instead.)"
-  [id]
-  (log/warn (tru "DELETE /api/pulse/:id is deprecated. Instead, change its `archived` value via PUT /api/pulse/:id."))
-  (api/let-404 [pulse (Pulse id)]
-    (api/write-check Pulse id)
-    (db/delete! Pulse :id id)
-    (events/publish-event! :pulse-delete (assoc pulse :actor_id api/*current-user-id*)))
-  api/generic-204-no-content)
-
 
 (api/defendpoint GET "/form_input"
   "Provides relevant configuration information and user choices for creating/updating Pulses."
@@ -221,7 +208,7 @@
   (p/send-pulse! (assoc body :creator_id api/*current-user-id*))
   {:ok true})
 
-(api/defendpoint DELETE "/:id/subscription/email"
+(api/defendpoint DELETE "/:id/subscription"
   "For users to unsubscribe themselves from a pulse subscription."
   [id]
   (api/let-404 [pulse-id (db/select-one-id Pulse :id id)

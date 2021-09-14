@@ -2,7 +2,7 @@ import { getIn } from "icepick";
 import _ from "underscore";
 
 import Question from "metabase-lib/lib/Question";
-import { setOrUnsetParameterValues } from "metabase/dashboard/dashboard";
+import { setOrUnsetParameterValues } from "metabase/dashboard/actions";
 import {
   getDataFromClicked,
   getTargetForQueryParams,

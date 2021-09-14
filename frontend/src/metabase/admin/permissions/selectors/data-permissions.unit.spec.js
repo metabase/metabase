@@ -155,16 +155,6 @@ describe("getDatabasesSidebar", () => {
                 entityId: {
                   databaseId: 2,
                   schemaName: "schema_2",
-                  tableId: 7,
-                },
-                icon: "table",
-                id: "table:7",
-                name: "Tupac Sightings Sightings",
-              },
-              {
-                entityId: {
-                  databaseId: 2,
-                  schemaName: "schema_2",
                   tableId: 8,
                 },
                 icon: "table",
@@ -180,6 +170,16 @@ describe("getDatabasesSidebar", () => {
                 icon: "table",
                 id: "table:9",
                 name: "Tupac Sightings Cities",
+              },
+              {
+                entityId: {
+                  databaseId: 2,
+                  schemaName: "schema_2",
+                  tableId: 7,
+                },
+                icon: "table",
+                id: "table:7",
+                name: "Tupac Sightings Sightings",
               },
             ],
             entityId: {
@@ -226,21 +226,21 @@ describe("getDatabasesSidebar", () => {
             entityId: {
               databaseId: 3,
               schemaName: null,
-              tableId: 12,
-            },
-            icon: "table",
-            id: "table:12",
-            name: "Badminton Women's Singles Results",
-          },
-          {
-            entityId: {
-              databaseId: 3,
-              schemaName: null,
               tableId: 13,
             },
             icon: "table",
             id: "table:13",
             name: "Badminton Mixed Singles Results",
+          },
+          {
+            entityId: {
+              databaseId: 3,
+              schemaName: null,
+              tableId: 12,
+            },
+            icon: "table",
+            id: "table:12",
+            name: "Badminton Women's Singles Results",
           },
         ],
       ]);
@@ -291,19 +291,19 @@ describe("getGroupsDataPermissionEditor", () => {
       {
         icon: "check",
         iconColor: "success",
-        label: "Allowed",
+        label: "Unrestricted",
         value: "all",
       },
       {
         icon: "permissions_limited",
         iconColor: "warning",
-        label: "Limited",
+        label: "Granular",
         value: "controlled",
       },
       {
-        icon: "close",
-        iconColor: "danger",
-        label: "No access",
+        icon: "eye",
+        iconColor: "accent5",
+        label: "No self-service",
         value: "none",
       },
     ]);
@@ -313,13 +313,13 @@ describe("getGroupsDataPermissionEditor", () => {
       {
         icon: "check",
         iconColor: "success",
-        label: "Allowed",
+        label: "Yes",
         value: "write",
       },
       {
         icon: "close",
         iconColor: "danger",
-        label: "No access",
+        label: "No",
         value: "none",
       },
     ]);
