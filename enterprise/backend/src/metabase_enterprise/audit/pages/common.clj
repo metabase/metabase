@@ -19,6 +19,7 @@
             [metabase.query-processor.timezone :as qp.tz]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.i18n :refer [tru]]
             [metabase.util.urls :as urls]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -91,12 +92,20 @@
     (fn []
       (timezone (mdb/db-type) (db/connection)))))
 
+(defn- compile-honeysql [driver honeysql-query]
+  (try
+    (let [honeysql-query (cond-> honeysql-query
+                           ;; MySQL 5.x does not support CTEs, so convert them to subselects instead
+                           (= driver :mysql) CTEs->subselects)]
+      (db/honeysql->sql (add-default-params honeysql-query)))
+    (catch Throwable e
+      (throw (ex-info (tru "Error compiling audit query: {0}" (ex-message e))
+                      {:driver driver, :honeysql-query honeysql-query}
+                      e)))))
+
 (defn- reduce-results* [honeysql-query context rff init]
   (let [driver         (mdb/db-type)
-        honeysql-query (cond-> honeysql-query
-                         ;; MySQL 5.x does not support CTEs, so convert them to subselects instead
-                         (= driver :mysql) CTEs->subselects)
-        [sql & params] (db/honeysql->sql (add-default-params honeysql-query))
+        [sql & params] (compile-honeysql driver honeysql-query)
         canceled-chan  (context/canceled-chan context)]
     ;; MySQL driver normalizies timestamps. Setting `*results-timezone-id-override*` is a shortcut
     ;; instead of mocking up a chunk of regular QP pipeline.
@@ -112,7 +121,14 @@
             (reduce rf init (sql-jdbc.execute/reducible-rows driver rs rsmeta canceled-chan))))
         (catch InterruptedException e
           (a/>!! canceled-chan :cancel)
-          (throw e))))))
+          (throw e))
+        (catch Throwable e
+          (throw (ex-info (tru "Error running audit query: {0}" (ex-message e))
+                          {:driver         driver
+                           :honeysql-query honeysql-query
+                           :sql            sql
+                           :params         params}
+                          e)))))))
 
 (defn reducible-query
   "Return a function with the signature
