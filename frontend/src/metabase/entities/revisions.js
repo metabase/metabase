@@ -4,6 +4,8 @@ import { GET, POST } from "metabase/lib/api";
 
 const listRevisions = GET("/api/revision");
 
+const ASSOCIATED_ENTITY_TYPES = ["questions", "dashboards"];
+
 const Revision = createEntity({
   name: "revisions",
   api: {
@@ -27,6 +29,22 @@ const Revision = createEntity({
         id: revision.model_id,
         revision_id: revision.id,
       }),
+  },
+
+  actionShouldInvalidateLists(action) {
+    const entities = require("metabase/entities");
+    for (const type of ASSOCIATED_ENTITY_TYPES) {
+      if (entities[type].actionShouldInvalidateLists(action)) {
+        return true;
+      }
+    }
+
+    return (
+      action.type === this.actionTypes.CREATE ||
+      action.type === this.actionTypes.DELETE ||
+      action.type === this.actionTypes.UPDATE ||
+      action.type === this.actionTypes.INVALIDATE_LISTS_ACTION
+    );
   },
 });
 
