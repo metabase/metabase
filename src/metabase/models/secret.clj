@@ -2,6 +2,7 @@
   (:require [cheshire.generate :refer [add-encoder encode-map]]
             [clojure.java.io :as io]
             [clojure.tools.logging :as log]
+            [metabase.api.common :as api]
             [metabase.models.interface :as i]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
@@ -78,11 +79,12 @@
   {:added "0.41.0"}
   [existing-id nm kind source value]
   (let [insert-new     (fn [id v]
-                         (let [inserted (db/insert! Secret (cond-> {:version  v
-                                                                    :name    nm
-                                                                    :kind    kind
-                                                                    :source  source
-                                                                    :value   value}
+                         (let [inserted (db/insert! Secret (cond-> {:version    v
+                                                                    :name       nm
+                                                                    :kind       kind
+                                                                    :source     source
+                                                                    :value      value
+                                                                    :creator_id api/*current-user-id*}
                                                              id
                                                              (assoc :id id)))]
                            ;; Toucan doesn't support composite primary keys, so adding a new record with incremented

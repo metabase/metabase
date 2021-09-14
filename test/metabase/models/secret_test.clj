@@ -25,9 +25,10 @@
           val-equals? (fn [expected secret]
                         (if-let [v (:value secret)]
                           (is (value-matches? expected v))))]
-      (mt/with-temp Secret [{:keys [id] :as secret} {:name  name
-                                                     :kind  kind
-                                                     :value value}]
+      (mt/with-temp Secret [{:keys [id] :as secret} {:name       name
+                                                     :kind       kind
+                                                     :value      value
+                                                     :creator_id (mt/user->id :crowberto)}]
          (is (= name (:name secret)))
          (is (= kind (:kind secret)))
          (is (val-equals? value secret))

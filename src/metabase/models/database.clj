@@ -1,6 +1,7 @@
 (ns metabase.models.database
   (:require [cheshire.generate :refer [add-encoder encode-map]]
             [clojure.tools.logging :as log]
+            [java-time :as t]
             [medley.core :as m]
             [metabase.api.common :refer [*current-user*]]
             [metabase.db.util :as mdb.u]
@@ -15,7 +16,6 @@
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]
             [toucan.models :as models]))
-
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -76,28 +76,32 @@
   each iteration step, if there is a -value suffixed property set in the details to be persisted, then we instead insert
   (or update an existing) Secret instance and point to the inserted -id instead."
   [database details conn-prop-nm conn-prop]
-  (let [id-kw       (keyword (str conn-prop-nm "-id"))
-        new-name    (format "%s for %s" (:display-name conn-prop) (:name database))
+  (let [sub-prop  (fn [suffix]
+                    (keyword (str conn-prop-nm suffix)))
+        id-kw     (sub-prop "-id")
+        new-name  (format "%s for %s" (:display-name conn-prop) (:name database))
         ;; in the future, when secret values can simply be changed by passing
         ;; in a new ID (as opposed to a new value), this behavior will change,
         ;; but for now, we should simply look for the value
-        value-kw    (keyword (str conn-prop-nm "-value"))
-        value       (value-kw details)
-        kind        (:secret-kind conn-prop)
-        source-kw   (keyword (str conn-prop-nm "-source"))
-        source      (source-kw details)]
+        value-kw  (sub-prop "-value")
+        value     (value-kw details)
+        kind      (:secret-kind conn-prop)
+        source-kw (sub-prop "-source")
+        source    (source-kw details)]
     (if (nil? value) ;; secret value for this conn prop was not changed
       details
-      (let [new-secret (secret/upsert-secret-value!
-                         (id-kw details)
-                         new-name
-                         kind
-                         source
-                         value)]
+      (let [{:keys [id creator_id created_at]} (secret/upsert-secret-value!
+                                                 (id-kw details)
+                                                 new-name
+                                                 kind
+                                                 source
+                                                 value)]
         ;; remove the -value keyword (since in the persisted details blob, we only ever want to store the -id)
         (-> details
           (dissoc value-kw)
-          (assoc id-kw (u/the-id new-secret)))))))
+          (assoc id-kw id)
+          (assoc (sub-prop "-creator-id") creator_id)
+          (assoc (sub-prop "-created-at") (t/format :iso-offset-date-time created_at)))))))
 
 (defn- handle-secrets-changes [{:keys [details] :as database}]
   (let [conn-props-fn (get-method driver/connection-properties (driver.u/database->driver database))]

@@ -8522,10 +8522,19 @@ databaseChangeLog:
                   type: int
               - column:
                   constraints:
+                    deferrable: false
+                    foreignKeyName: fk_secret_ref_user_id
+                    initiallyDeferred: false
+                    nullable: false
+                    references: core_user(id)
+                  name: creator_id
+                  type: int
+              - column:
+                  constraints:
                     nullable: false
                   name: created_at
                   remarks: Timestamp for when this secret record was created
-                  type: DATETIME
+                  type: ${timestamp_type}
               - column:
                   constraints:
                     nullable: true
@@ -8533,7 +8542,7 @@ databaseChangeLog:
                   remarks: >-
                     Timestamp for when this secret record was updated. Only relevant when non-value field changes
                     since a value change will result in a new version being inserted.
-                  type: DATETIME
+                  type: ${timestamp_type}
               - column:
                   constraints:
                     nullable: false
