@@ -617,6 +617,7 @@ class JoinDimensionPicker extends React.Component {
               onChange(field);
               onClose();
             }}
+            enableSubDimensions
             data-testid={`${testID}-picker`}
           />
         )}
