@@ -916,6 +916,15 @@ export const updateQuestion = (
     }
     // </PIVOT LOGIC>
 
+    // Native query should never be in notebook mode (metabase#12651)
+    if (getQueryBuilderMode(getState()) !== "view" && newQuestion.isNative()) {
+      await dispatch(
+        setQueryBuilderMode("view", {
+          shouldUpdateUrl: false,
+        }),
+      );
+    }
+
     // Replace the current question with a new one
     await dispatch.action(UPDATE_QUESTION, { card: newQuestion.card() });
 
