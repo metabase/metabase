@@ -5,11 +5,15 @@ import {
 } from "__support__/sample_dataset_fixture";
 
 const ORDERS_PRODUCT_ID_FIELD_REF = ["field", ORDERS.ID.id, null];
-const PRODUCT_ID_FIELD_REF = ["field", PRODUCTS.ID.id, null];
+const PRODUCT_ID_FIELD_REF = [
+  "field",
+  PRODUCTS.ID.id,
+  { "join-alias": "Products" },
+];
 
 function getJoin({
   sourceTable = PRODUCTS.id,
-  alias = "join1234",
+  alias = "Products",
   condition = ["=", ORDERS_PRODUCT_ID_FIELD_REF, PRODUCT_ID_FIELD_REF],
   fields = "all",
 } = {}) {
@@ -213,7 +217,7 @@ describe("StructuredQuery", () => {
       it("should not remove breakout referencing valid joined fields", () => {
         const q = ORDERS.query()
           .join(getJoin())
-          .breakout(["field", PRODUCTS.TITLE.id, { "join-alias": "join1234" }]);
+          .breakout(["field", PRODUCTS.TITLE.id, { "join-alias": "Products" }]);
         expect(q.clean().query()).toEqual(q.query());
       });
       it("should remove breakout referencing invalid field ID", () => {
