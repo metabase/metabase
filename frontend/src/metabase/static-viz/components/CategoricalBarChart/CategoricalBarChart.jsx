@@ -5,7 +5,12 @@ import { GridRows } from "@visx/grid";
 import { scaleBand, scaleLinear } from "@visx/scale";
 import { Bar } from "@visx/shape";
 import { Text } from "@visx/text";
-import { getXTickHeight, getYTickWidth } from "../../lib/axes";
+import {
+  getXTickHeight,
+  getXTickLabelProps,
+  getYTickLabelProps,
+  getYTickWidth,
+} from "../../lib/axes";
 import { formatNumber } from "../../lib/numbers";
 
 const propTypes = {
@@ -93,20 +98,6 @@ const CategoricalBarChart = ({ data, accessors, settings, labels }) => {
     return { ...props, x, y, transform, children: formattedValue };
   };
 
-  const getLeftTickLabelProps = () => ({
-    fontSize: layout.font.size,
-    fontFamily: layout.font.family,
-    fill: layout.colors.textMedium,
-    textAnchor: "end",
-  });
-
-  const getBottomTickLabelProps = () => ({
-    fontSize: layout.font.size,
-    fontFamily: layout.font.family,
-    fill: layout.colors.textMedium,
-    textAnchor: isVertical ? "start" : "middle",
-  });
-
   return (
     <svg width={layout.width} height={layout.height}>
       <GridRows
@@ -126,7 +117,7 @@ const CategoricalBarChart = ({ data, accessors, settings, labels }) => {
         hideTicks
         hideAxisLine
         tickFormat={value => formatNumber(value, settings?.y)}
-        tickLabelProps={() => getLeftTickLabelProps()}
+        tickLabelProps={() => getYTickLabelProps(layout)}
       />
       <AxisBottom
         scale={xScale}
@@ -136,7 +127,7 @@ const CategoricalBarChart = ({ data, accessors, settings, labels }) => {
         stroke={layout.colors.textLight}
         tickStroke={layout.colors.textLight}
         tickComponent={props => <Text {...getBottomTickProps(props)} />}
-        tickLabelProps={() => getBottomTickLabelProps()}
+        tickLabelProps={() => getXTickLabelProps(layout, isVertical)}
       />
     </svg>
   );
