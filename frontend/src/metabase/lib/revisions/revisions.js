@@ -37,7 +37,7 @@ export function getRevisionEventsForTimeline(revisions = [], canWrite) {
         !revision.is_reversion &&
         getChangedFields(revision).length > 1
       ) {
-        event.title = username + " " + t`edited this`;
+        event.title = t`${username} edited this`;
         event.description = <RevisionBatchedDescription changes={changes} />;
       } else {
         event.title = <RevisionTitle username={username} message={changes} />;

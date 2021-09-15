@@ -68,8 +68,7 @@ function getCollectionChangeDescription(prevCollectionId, collectionId) {
 const CHANGE_DESCRIPTIONS = {
   // Common
   name: {
-    [CHANGE_TYPE.UPDATE]: (oldName, newName) =>
-      t`renamed this to` + " " + `"${newName}"`,
+    [CHANGE_TYPE.UPDATE]: (oldName, newName) => t`renamed this to ${newName}`,
   },
   description: {
     [CHANGE_TYPE.ADD]: t`added a description`,
