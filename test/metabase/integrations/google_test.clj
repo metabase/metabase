@@ -1,5 +1,6 @@
 (ns metabase.integrations.google-test
-  (:require [metabase.email-test :as et]
+  (:require [clojure.test :refer :all]
+            [metabase.email-test :as et]
             [metabase.integrations.google :as google]
             [metabase.integrations.google.interface :as google.i]
             [metabase.models.user :refer [User]]
