@@ -24,16 +24,25 @@ export function getQuestionsImplicitCacheTTL(question) {
     // Database's cache TTL is in hours, need to convert that to seconds
     return question.database().cache_ttl * 60 * 60;
   }
-  const avgQueryDuration = msToSeconds(question.card().average_query_time);
-  const minQueryDurationThreshold = MetabaseSettings.get(
-    "query-caching-min-ttl",
+  const avgQueryDurationInSeconds = msToSeconds(
+    question.card().average_query_time,
   );
-  const canBeCached = avgQueryDuration > minQueryDurationThreshold;
-  if (canBeCached) {
-    const cacheTTLMultiplier = MetabaseSettings.get("query-caching-ttl-ratio");
-    return avgQueryDuration * cacheTTLMultiplier;
+  if (checkQuestionWillBeCached(avgQueryDurationInSeconds)) {
+    return calcQuestionMagicCacheDuration(avgQueryDurationInSeconds);
   }
   return null;
+}
+
+function checkQuestionWillBeCached(avgQueryDurationInSeconds) {
+  const minQueryDurationThresholdSeconds = MetabaseSettings.get(
+    "query-caching-min-ttl",
+  );
+  return avgQueryDurationInSeconds > minQueryDurationThresholdSeconds;
+}
+
+function calcQuestionMagicCacheDuration(avgQueryDurationInSeconds) {
+  const cacheTTLMultiplier = MetabaseSettings.get("query-caching-ttl-ratio");
+  return avgQueryDurationInSeconds * cacheTTLMultiplier;
 }
 
 export function validateCacheTTL(value) {
