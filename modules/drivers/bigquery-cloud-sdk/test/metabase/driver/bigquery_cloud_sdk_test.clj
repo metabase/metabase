@@ -315,3 +315,18 @@
                                          :target [:field (mt/id tbl-nm col-nm)]
                                          :value  [param-v]}]}))
                     first))))))))
+
+(deftest sync-table-with-array-test
+  (testing "Tables with ARRAY (REPEATED) columns can be synced successfully"
+    (do-with-temp-obj "table_array_type_%s"
+      (fn [tbl-nm] ["CREATE TABLE `v3_test_data.%s` AS SELECT 1 AS int_col, GENERATE_ARRAY(1,10) AS array_col"
+                    tbl-nm])
+      (fn [tbl-nm] ["DROP TABLE IF EXISTS `v3_test_data.%s`" tbl-nm])
+      (fn [tbl-nm]
+        (is (= {:schema nil
+                :name   tbl-nm
+                :fields #{{:name "int_col", :database-type "INTEGER", :base-type :type/Integer, :database-position 0}
+                          {:name "array_col", :database-type "INTEGER", :base-type :type/Array, :database-position 1}}}
+              (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm}))
+          "`describe-table` should detect the correct base-type for array type columns")))))
+
