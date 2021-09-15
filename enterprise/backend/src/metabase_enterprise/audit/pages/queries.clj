@@ -113,7 +113,7 @@
                              [:report_dashboardcard :dash_card] [:= :card.id :dash_card.card_id]
                              [:query_execution :qe]             [:and [:= :card.id :qe.card_id]
                                                                  latest-qe-subq]]
-                 :group-by  [:card.id :qe.error]
+                 :group-by  [:card.id :coll.name :qe.error]
                  :where     [:and
                              [:= :card.archived false]
                              [:<> :qe.error nil]]}
