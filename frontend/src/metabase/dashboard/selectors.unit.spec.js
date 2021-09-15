@@ -1,5 +1,13 @@
-// import { getMetadata } from "metabase/selectors/metadata";
-import { getParameters } from "metabase/dashboard/selectors";
+import {
+  getParameters,
+  getSidebar,
+  getShowAddQuestionSidebar,
+  getIsSharing,
+  getEditingParameterId,
+  getIsEditingParameter,
+  getClickBehaviorSidebarDashcard,
+} from "metabase/dashboard/selectors";
+import { SIDEBAR_NAME } from "./constants";
 
 import { chain } from "icepick";
 
@@ -22,6 +30,7 @@ const STATE = {
         parameter_mappings: [],
       },
     },
+    sidebar: {},
   },
   entities: {
     databases: {},
@@ -158,6 +167,135 @@ describe("dashboard/selectors", () => {
           hasOnlyFieldTargets: true,
         },
       ]);
+    });
+  });
+
+  describe("getSidebar", () => {
+    it("should return the sidebar property", () => {
+      expect(getSidebar(STATE)).toBe(STATE.dashboard.sidebar);
+    });
+  });
+
+  describe("getShowAddQuestionSidebar", () => {
+    it("should return false when sidebar is not set to the add question sidebar", () => {
+      expect(getShowAddQuestionSidebar(STATE)).toBe(false);
+    });
+
+    it("should returnftrue when the sidebar is set to the add question sidebar", () => {
+      const state = {
+        ...STATE,
+        dashboard: {
+          ...STATE.dashboard,
+          sidebar: {
+            name: SIDEBAR_NAME.addQuestion,
+          },
+        },
+      };
+
+      expect(getShowAddQuestionSidebar(state)).toBe(true);
+    });
+  });
+
+  describe("getIsSharing", () => {
+    it("should return false when dashboard is not shared", () => {
+      expect(getIsSharing(STATE)).toBe(false);
+    });
+
+    it("should return true when dashboard is shared", () => {
+      const state = {
+        ...STATE,
+        dashboard: {
+          ...STATE.dashboard,
+          sidebar: {
+            name: SIDEBAR_NAME.sharing,
+          },
+        },
+      };
+
+      expect(getIsSharing(state)).toBe(true);
+    });
+  });
+
+  describe("getEditingParameterId", () => {
+    it("should return null when the edit parameter sidebar is not open", () => {
+      expect(getEditingParameterId(STATE)).toBe(null);
+    });
+
+    it("should return the editing parameter id", () => {
+      const state = {
+        ...STATE,
+        dashboard: {
+          ...STATE.dashboard,
+          sidebar: {
+            name: SIDEBAR_NAME.editParameter,
+            props: { parameterId: 1 },
+          },
+        },
+      };
+
+      expect(getEditingParameterId(state)).toBe(1);
+    });
+  });
+
+  describe("getIsEditingParameterId", () => {
+    it("should return false when the edit parameter sidebar is not open", () => {
+      expect(getIsEditingParameter(STATE)).toBe(false);
+    });
+
+    it("should return false when the edit parameter sidebar is open but there is no set parameterId", () => {
+      const state = {
+        ...STATE,
+        dashboard: {
+          ...STATE.dashboard,
+          sidebar: {
+            name: SIDEBAR_NAME.editParameter,
+          },
+        },
+      };
+
+      expect(getIsEditingParameter(state)).toBe(false);
+    });
+
+    it("should return true when the edit parameter sidebar is open and there is a set parameterId", () => {
+      const state = {
+        ...STATE,
+        dashboard: {
+          ...STATE.dashboard,
+          sidebar: {
+            name: SIDEBAR_NAME.editParameter,
+            props: {
+              parameterId: 0,
+            },
+          },
+        },
+      };
+
+      expect(getIsEditingParameter(state)).toBe(true);
+    });
+  });
+
+  describe("getClickBehaviorSidebarDashcard", () => {
+    it("should return null when the click behavior sidebar is not open", () => {
+      expect(getClickBehaviorSidebarDashcard(STATE)).toBe(null);
+    });
+
+    it("should return the dashboard associated with the given set dashcardId if the click behavior sidebar is open", () => {
+      const state = {
+        ...STATE,
+        dashboard: {
+          ...STATE.dashboard,
+          sidebar: {
+            name: SIDEBAR_NAME.clickBehavior,
+            props: {
+              dashcardId: 1,
+            },
+          },
+        },
+      };
+
+      expect(getClickBehaviorSidebarDashcard(state)).toEqual(
+        state.dashboard.dashcards[1],
+      );
     });
   });
 });

@@ -19,7 +19,19 @@
   ;; TODO -- there's not really a reason that we can't use with-temp in parallel tests -- it depends on the test -- so
   ;; once we're a little more comfortable with the current parallel stuff we should remove this restriction.
   (test-runner.parallel/assert-test-is-not-parallel "with-temp")
-  (apply orig-do-with-temp args))
+  ;; catch any Exceptions thrown by the original call and rethrow them with some extra context to make them a little
+  ;; easier to debug.
+  (try
+    (apply orig-do-with-temp args)
+    (catch Throwable e
+      ;; only wrap the Exception with additional context if it's not already wrapped. We don't need a bunch of nested
+      ;; `do-with-temp` calls that didn't fail wrapping the Exception from the one that did and adding a bunch of
+      ;; noise
+      (if (::with-temp-error (ex-data e))
+        (throw e)
+        (throw (ex-info (str "with-temp error: " (ex-message e))
+                        {:args args, ::with-temp-error true}
+                        e))))))
 
 (alter-var-root #'tt/do-with-temp (constantly do-with-temp))
 

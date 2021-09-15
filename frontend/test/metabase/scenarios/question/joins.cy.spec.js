@@ -1,4 +1,9 @@
-import { restore, openProductsTable, popover } from "__support__/e2e/cypress";
+import {
+  restore,
+  openOrdersTable,
+  openProductsTable,
+  popover,
+} from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATASET;
@@ -39,5 +44,40 @@ describe("scenarios > question > joined questions", () => {
     cy.wait("@dataset").then(xhr => {
       expect(xhr.response.body.error).not.to.exist;
     });
+  });
+
+  it("should allow joins on multiple dimensions", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    openOrdersTable({ mode: "notebook" });
+
+    cy.findByText("Join data").click();
+    popover()
+      .findByText("Products")
+      .click();
+
+    cy.findByTestId("step-join-0-0").within(() => {
+      cy.icon("add").click();
+    });
+
+    popover()
+      .findByText("Created At")
+      .click();
+    popover()
+      .findByText("Created At")
+      .click();
+
+    cy.icon("join_left_outer")
+      .first()
+      .click();
+    popover()
+      .findByText("Inner join")
+      .click();
+
+    cy.button("Visualize").click();
+    cy.wait("@dataset");
+
+    // 415 rows mean the join is done correctly,
+    // (join on product's FK + join on the same "created_at" field)
+    cy.findByText("Showing 415 rows");
   });
 });

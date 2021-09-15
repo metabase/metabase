@@ -15,7 +15,7 @@ describeWithToken("issue 17763", () => {
     });
   });
 
-  it.skip('should be able to edit tables permissions in granular view after "block" permissions (metabase#17763)', () => {
+  it('should be able to edit tables permissions in granular view after "block" permissions (metabase#17763)', () => {
     cy.visit("/admin/permissions/data/database/1");
 
     cy.findByText("Block").click();

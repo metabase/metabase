@@ -5,6 +5,7 @@
             [metabase.models.interface :as i]
             [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
             [metabase.models.user :as user :refer [User]]
+            [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [schema.core :as s]
             [toucan.db :as db]
@@ -40,7 +41,7 @@
   #{:first :mid :last})
 
 (defn schedule-frame?
-  "Is FRAME a valid schedule frame?"
+  "Is `frame` a valid schedule frame?"
   [frame]
   (contains? schedule-frames frame))
 
@@ -83,7 +84,7 @@
   {:email {:type              "email"
            :name              "Email"
            :allows_recipients true
-           :recipients        ["user", "email"]
+           :recipients        ["user" "email"]
            :schedules         [:hourly :daily :weekly :monthly]}
    :slack {:type              "slack"
            :name              "Slack"
@@ -126,19 +127,41 @@
                 :order-by [[:u.id :asc]]})]
      (user/add-common-name user))))
 
+(defn- pre-delete [pulse-channel]
+  ;; Call [[metabase.models.pulse/will-delete-channel]] to let it know we're about to delete a PulseChannel; that
+  ;; function will decide whether or not to automatically archive the Pulse as well.
+  (classloader/require 'metabase.models.pulse)
+  ((resolve 'metabase.models.pulse/will-delete-channel) pulse-channel))
+
 (u/strict-extend (class PulseChannel)
   models/IModel
   (merge
    models/IModelDefaults
    {:hydration-keys (constantly [:pulse_channel])
     :types          (constantly {:details :json, :channel_type :keyword, :schedule_type :keyword, :schedule_frame :keyword})
-    :properties     (constantly {:timestamped? true})})
+    :properties     (constantly {:timestamped? true})
+    :pre-delete     pre-delete})
 
   i/IObjectPermissions
   (merge
    i/IObjectPermissionsDefaults
    {:can-read?  (constantly true)
     :can-write? i/superuser?}))
+
+(defn will-delete-recipient
+  "This function is called by [[metabase.models.pulse-channel-recipient/pre-delete]] when a `PulseChannelRecipient` is
+  about to be deleted. Deletes `PulseChannel` if the recipient being deleted is its last recipient. (This only applies
+  to PulseChannels with User subscriptions; Slack PulseChannels and ones with email address subscriptions are not
+  automatically deleted.)"
+  [{channel-id :pulse_channel_id, pulse-channel-recipient-id :id}]
+  (let [other-recipients-count (db/count PulseChannelRecipient :pulse_channel_id channel-id, :id [:not= pulse-channel-recipient-id])
+        last-recipient?        (zero? other-recipients-count)]
+    (when last-recipient?
+      ;; make sure this channel doesn't have any email-address (non-User) recipients.
+      (let [details              (db/select-one-field :details PulseChannel :id channel-id)
+            has-email-addresses? (seq (:emails details))]
+        (when-not has-email-addresses?
+          (db/delete! PulseChannel :id channel-id))))))
 
 
 ;; ## Persistence Functions
@@ -171,18 +194,18 @@
                                       weekday)]
     (db/select [PulseChannel :id :pulse_id :schedule_type :channel_type]
       {:where [:and [:= :enabled true]
-                    [:or [:= :schedule_type "hourly"]
-                         [:and [:= :schedule_type "daily"]
-                               [:= :schedule_hour hour]]
-                         [:and [:= :schedule_type "weekly"]
-                               [:= :schedule_hour hour]
-                               [:= :schedule_day weekday]]
-                         [:and [:= :schedule_type "monthly"]
-                               [:= :schedule_hour hour]
-                               [:= :schedule_frame schedule-frame]
-                               [:or [:= :schedule_day weekday]
-                                    ;; this is here specifically to allow for cases where day doesn't have to match
-                                    [:= :schedule_day monthly-schedule-day-or-nil]]]]]})))
+               [:or [:= :schedule_type "hourly"]
+                [:and [:= :schedule_type "daily"]
+                 [:= :schedule_hour hour]]
+                [:and [:= :schedule_type "weekly"]
+                 [:= :schedule_hour hour]
+                 [:= :schedule_day weekday]]
+                [:and [:= :schedule_type "monthly"]
+                 [:= :schedule_hour hour]
+                 [:= :schedule_frame schedule-frame]
+                 [:or [:= :schedule_day weekday]
+                  ;; this is here specifically to allow for cases where day doesn't have to match
+                  [:= :schedule_day monthly-schedule-day-or-nil]]]]]})))
 
 
 (defn update-recipients!

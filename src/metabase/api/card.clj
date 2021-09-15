@@ -14,6 +14,7 @@
             [metabase.models.card :as card :refer [Card]]
             [metabase.models.card-favorite :refer [CardFavorite]]
             [metabase.models.collection :as collection :refer [Collection]]
+            [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.database :refer [Database]]
             [metabase.models.interface :as mi]
             [metabase.models.pulse :as pulse :refer [Pulse]]
@@ -165,7 +166,12 @@
   "Get `Card` with ID."
   [id]
   (u/prog1 (-> (Card id)
-               (hydrate :creator :dashboard_count :can_write :collection [:moderation_reviews :moderator_details])
+               (hydrate :creator
+                        :dashboard_count
+                        :can_write
+                        :average_query_time
+                        :last_query_start
+                        :collection [:moderation_reviews :moderator_details])
                api/read-check
                (last-edit/with-last-edit-info :card))
     (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))
@@ -228,7 +234,12 @@
       ;; include same information returned by GET /api/card/:id since frontend replaces the Card it
       ;; currently has with returned one -- See #4283
       (-> card
-          (hydrate :creator :dashboard_count :can_write :collection [:moderation_reviews :moderator_details])
+          (hydrate :creator
+                   :dashboard_count
+                   :can_write
+                   :average_query_time
+                   :last_query_start
+                   :collection [:moderation_reviews :moderator_details])
           (assoc :last-edit-info (last-edit/edit-information-for-user user))))))
 
 (defn- create-card-async!
@@ -238,7 +249,7 @@
   ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required by
   ;; `api/maybe-reconcile-collection-position!`
   (let [data-keys            [:dataset_query :description :display :name
-                              :visualization_settings :collection_id :collection_position]
+                              :visualization_settings :collection_id :collection_position :cache_ttl]
         card-data            (assoc (zipmap data-keys (map card-data data-keys))
                                     :creator_id api/*current-user-id*)
         result-metadata-chan (result-metadata-async dataset_query result_metadata metadata_checksum)
@@ -259,7 +270,7 @@
 (api/defendpoint ^:returns-chan POST "/"
   "Create a new `Card`."
   [:as {{:keys [collection_id collection_position dataset_query description display metadata_checksum name
-                result_metadata visualization_settings], :as body} :body}]
+                result_metadata visualization_settings cache_ttl], :as body} :body}]
   {name                   su/NonBlankString
    description            (s/maybe su/NonBlankString)
    display                su/NonBlankString
@@ -267,7 +278,8 @@
    collection_id          (s/maybe su/IntGreaterThanZero)
    collection_position    (s/maybe su/IntGreaterThanZero)
    result_metadata        (s/maybe qr/ResultsMetadata)
-   metadata_checksum      (s/maybe su/NonBlankString)}
+   metadata_checksum      (s/maybe su/NonBlankString)
+   cache_ttl              (s/maybe su/IntGreaterThanZero)}
   ;; check that we have permissions to run the query that we're trying to save
   (check-data-permissions-for-query dataset_query)
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
@@ -417,7 +429,7 @@
         ;; `collection_id` and `description` can be `nil` (in order to unset them). Other values should only be
         ;; modified if they're passed in as non-nil
         (u/select-keys-when card-updates
-          :present #{:collection_id :collection_position :description}
+          :present #{:collection_id :collection_position :description :cache_ttl}
           :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding
                      :embedding_params :result_metadata})))
     ;; Fetch the updated Card from the DB
@@ -427,13 +439,18 @@
       ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently
       ;; has with returned one -- See #4142
       (-> card
-          (hydrate :creator :dashboard_count :can_write :collection [:moderation_reviews :moderator_details])
+          (hydrate :creator
+                   :dashboard_count
+                   :can_write
+                   :average_query_time
+                   :last_query_start
+                   :collection [:moderation_reviews :moderator_details])
           (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))))
 
 (api/defendpoint ^:returns-chan PUT "/:id"
   "Update a `Card`."
   [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id
-                   collection_position enable_embedding embedding_params result_metadata metadata_checksum]
+                   collection_position enable_embedding embedding_params result_metadata metadata_checksum cache_ttl]
             :as   card-updates} :body}]
   {name                   (s/maybe su/NonBlankString)
    dataset_query          (s/maybe su/Map)
@@ -446,7 +463,8 @@
    collection_id          (s/maybe su/IntGreaterThanZero)
    collection_position    (s/maybe su/IntGreaterThanZero)
    result_metadata        (s/maybe qr/ResultsMetadata)
-   metadata_checksum      (s/maybe su/NonBlankString)}
+   metadata_checksum      (s/maybe su/NonBlankString)
+   cache_ttl              (s/maybe su/IntGreaterThanZero)}
   (let [card-before-update (api/write-check Card id)]
     ;; Do various permissions checks
     (collection/check-allowed-to-change-collection card-before-update card-updates)
@@ -595,19 +613,27 @@
                   (u/emoji "💾"))
         ttl-seconds))))
 
+(defn- ttl-hierarchy
+  [card dashboard database query]
+  (when (public-settings/enable-query-caching)
+    (let [ttls (map :cache_ttl [card dashboard database])
+          most-granular-ttl (first (filter some? ttls))]
+      (or most-granular-ttl
+          (query-magic-ttl query)))))
+
 (defn query-for-card
   "Generate a query for a saved Card"
   [{query :dataset_query
-    :as   card} parameters constraints middleware]
-  (let [query (-> query
-                  ;; don't want default constraints overridding anything that's already there
-                  (m/dissoc-in [:middleware :add-default-userland-constraints?])
-                  (assoc :constraints constraints
-                         :parameters  parameters
-                         :middleware  middleware))
-        ttl   (when (public-settings/enable-query-caching)
-                (or (:cache_ttl card)
-                    (query-magic-ttl query)))]
+    :as   card} parameters constraints middleware & [ids]]
+  (let [query     (-> query
+                      ;; don't want default constraints overridding anything that's already there
+                      (m/dissoc-in [:middleware :add-default-userland-constraints?])
+                      (assoc :constraints constraints
+                             :parameters  parameters
+                             :middleware  middleware))
+        dashboard (db/select-one [Dashboard :cache_ttl] :id (:dashboard-id ids))
+        database  (db/select-one [Database :cache_ttl] :id (:database_id card))
+        ttl       (ttl-hierarchy card dashboard database query)]
     (assoc query :cache-ttl ttl)))
 
 (defn run-query-for-card-async
@@ -628,7 +654,7 @@
                      (binding [qp.perms/*card-id* card-id]
                        (qp-runner query info context)))))
         card  (api/read-check (db/select-one [Card :name :dataset_query :cache_ttl :collection_id] :id card-id))
-        query (-> (assoc (query-for-card card parameters constraints middleware)
+        query (-> (assoc (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
                          :async? true)
                   (update :middleware (fn [middleware]
                                         (merge
@@ -644,12 +670,14 @@
 
 (api/defendpoint ^:streaming POST "/:card-id/query"
   "Run the query associated with a Card."
-  [card-id :as {{:keys [parameters ignore_cache], :or {ignore_cache false}} :body}]
-  {ignore_cache (s/maybe s/Bool)}
+  [card-id :as {{:keys [parameters ignore_cache dashboard_id], :or {ignore_cache false dashboard_id nil}} :body}]
+  {ignore_cache (s/maybe s/Bool)
+   dashboard_id (s/maybe su/IntGreaterThanZero)}
   (run-query-for-card-async
    card-id :api
    :parameters parameters,
    :ignore_cache ignore_cache
+   :dashboard-id dashboard_id
    :middleware {:process-viz-settings? false}))
 
 (api/defendpoint ^:streaming POST "/:card-id/query/:export-format"

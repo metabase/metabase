@@ -128,6 +128,7 @@ export default class DashboardHeader extends Component {
     this.props.fetchDashboard(
       this.props.dashboard.id,
       this.props.location.query,
+      true,
     );
   }
 

@@ -61,6 +61,7 @@ export default class Metric extends Base {
    * @param {StructuredQuery} definition
    * @param {boolean} archived
    */
+  /* istanbul ignore next */
   _constructor(name, description, database, table, id, definition, archived) {
     this.name = name;
     this.description = description;

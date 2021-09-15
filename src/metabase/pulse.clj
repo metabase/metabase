@@ -54,7 +54,7 @@
               process-query (fn []
                               (binding [qp.perms/*card-id* card-id]
                                 (qp/process-query-and-save-with-max-results-constraints!
-                                 query
+                                 (assoc-in query [:middleware :process-viz-settings?] true)
                                  (merge {:executed-by pulse-creator-id
                                          :context     :pulse
                                          :card-id     card-id}
@@ -85,12 +85,14 @@
                     :dashboard-id  (:id dashboard)
                     :context       :pulse ; TODO - we should support for `:dashboard-subscription` and use that to differentiate the two
                     :export-format :api
+                    :middleware    {:process-viz-settings? true}
                     :parameters    params
                     :middleware    {:process-viz-settings? true
                                     :js-int-to-string?     false}
                     :run (fn [query info]
                            (qp/process-query-and-save-with-max-results-constraints! (assoc query :async? false) info))))]
       {:card card
+       :dashcard dashcard
        :result result})
     (catch Throwable e
         (log/warn e (trs "Error running query for Card {0}" card-or-id)))))
@@ -156,7 +158,7 @@
            (let [{{card-id :id, card-name :name, :as card} :card, result :result} card-result]
              (if (and card result)
                {:title           card-name
-                :rendered-info   (render/render-pulse-card :inline (defaulted-timezone card) card result)
+                :rendered-info   (render/render-pulse-card :inline (defaulted-timezone card) card nil result)
                 :title_link      (urls/card-url card-id)
                 :attachment-name "image.png"
                 :channel-id      channel-id
@@ -275,16 +277,17 @@
     [(alert-or-pulse pulse) (keyword channel_type)]))
 
 (defmethod notification [:pulse :email]
-  [{pulse-id :id, pulse-name :name, :as pulse} results {:keys [recipients] :as channel}]
+  [{pulse-id :id, pulse-name :name, dashboard-id :dashboard_id, :as pulse} results {:keys [recipients] :as channel}]
   (log/debug (u/format-color 'cyan (trs "Sending Pulse ({0}: {1}) with {2} Cards via email"
                                         pulse-id (pr-str pulse-name) (count results))))
   (let [email-recipients (filterv u/email? (map :email recipients))
         query-results    (filter :card results)
-        timezone         (-> query-results first :card defaulted-timezone)]
+        timezone         (-> query-results first :card defaulted-timezone)
+        dashboard        (Dashboard :id dashboard-id)]
     {:subject      (subject pulse)
      :recipients   email-recipients
      :message-type :attachments
-     :message      (messages/render-pulse-email timezone pulse query-results)}))
+     :message      (messages/render-pulse-email timezone pulse dashboard results)}))
 
 (defmethod notification [:pulse :slack]
   [{pulse-id :id, pulse-name :name, :as pulse} results {{channel-id :channel} :details :as channel}]

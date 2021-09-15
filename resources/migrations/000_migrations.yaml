@@ -8495,6 +8495,36 @@ databaseChangeLog:
               )
               WHERE dashboard_id IS NOT NULL;
 
+  - changeSet:
+      id: 314
+      author: howonlee
+      comment: Added 0.41.0 Fine grained caching controls
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: cache_ttl
+                  type: integer
+                  remarks: "Granular cache TTL for specific database."
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: 315
+      author: howonlee
+      comment: Added 0.41.0 Fine grained caching controls, pt 2
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: cache_ttl
+                  type: integer
+                  remarks: "Granular cache TTL for specific dashboard."
+                  constraints:
+                    nullable: true
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
