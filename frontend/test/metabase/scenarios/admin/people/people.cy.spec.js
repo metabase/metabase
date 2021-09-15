@@ -284,9 +284,6 @@ describe("scenarios > admin > people", () => {
 });
 
 describeWithToken("scenarios > admin > people", () => {
-  const { first_name, last_name } = admin;
-  const fullName = `${first_name} ${last_name}`;
-
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -301,6 +298,9 @@ describeWithToken("scenarios > admin > people", () => {
   });
 
   it("should unsubscribe a user from all subscriptions and alerts", () => {
+    const { first_name, last_name } = admin;
+    const fullName = `${first_name} ${last_name}`;
+
     cy.visit("/admin/people");
     showUserOptions(fullName);
 
