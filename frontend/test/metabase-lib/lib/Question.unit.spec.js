@@ -297,6 +297,30 @@ describe("Question", () => {
         expect(question.display()).toBe("scalar");
       });
     });
+
+    describe("maybeUnlockDisplay", () => {
+      it("should keep display locked when it was locked with unsensible display", () => {
+        const sensibleDisplays = ["table", "scalar"];
+        const previousSensibleDisplays = sensibleDisplays;
+        const question = new Question(orders_count_card, metadata)
+          .setDisplay("funnel")
+          .lockDisplay()
+          .maybeUnlockDisplay(sensibleDisplays, previousSensibleDisplays);
+
+        expect(question.displayIsLocked()).toBe(true);
+      });
+
+      it("should unlock display it was locked with sensible display which has become unsensible", () => {
+        const previousSensibleDisplays = ["funnel"];
+        const sensibleDisplays = ["table", "scalar"];
+        const question = new Question(orders_count_card, metadata)
+          .setDisplay("funnel")
+          .lockDisplay()
+          .maybeUnlockDisplay(sensibleDisplays, previousSensibleDisplays);
+
+        expect(question.displayIsLocked()).toBe(false);
+      });
+    });
   });
 
   // TODO: These are mode-dependent and should probably be tied to modes
