@@ -4,6 +4,7 @@ import React from "react";
 import { PLUGIN_FORM_WIDGETS } from "metabase/plugins";
 
 import FormInputWidget from "./widgets/FormInputWidget";
+import FormSecretWidget from "./widgets/FormSecretWidget";
 import FormEmailWidget from "./widgets/FormEmailWidget";
 import FormTextAreaWidget from "./widgets/FormTextAreaWidget";
 import FormPasswordWidget from "./widgets/FormPasswordWidget";
@@ -19,6 +20,7 @@ import FormTextFileWidget from "./widgets/FormTextFileWidget";
 
 const WIDGETS = {
   input: FormInputWidget,
+  secret: FormSecretWidget,
   email: FormEmailWidget,
   text: FormTextAreaWidget,
   checkbox: FormCheckBoxWidget,

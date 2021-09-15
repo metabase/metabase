@@ -26,8 +26,50 @@ driver:
       placeholder: Optional TNS alias
     - user
     - password
-    - ssl
+    - name: ssl
+      display-name: Use SSL?
+      type: boolean
+    - name: ssl-use-keystore
+      display-name: Use SSL server certificate?
+      type: boolean
+      visible-if:
+        ssl: true
+    - name: ssl-keystore
+      display-name: Keystore File
+      type: secret
+      secret-kind: keystore
+      required: false
+      visible-if:
+        ssl-use-keystore: true
+    - name: ssl-keystore-password
+      display-name: Keystore Password
+      type: secret
+      secret-kind: password
+      required: false
+      visible-if:
+        ssl-use-keystore: true
+    - name: ssl-use-truststore
+      display-name: Use trust store?
+      type: boolean
+      visible-if:
+        ssl: true
+    - name: ssl-truststore
+      display-name: Truststore File
+      type: secret
+      secret-kind: keystore
+      required: false
+      visible-if:
+        ssl-use-truststore: true
+    - name: ssl-truststore-password
+      display-name: Truststore Password
+      type: secret
+      secret-kind: password
+      required: false
+      visible-if:
+        ssl-use-truststore: true
+
   connection-properties-include-tunnel-config: true
+
 init:
   - step: load-namespace
     namespace: metabase.driver.oracle
