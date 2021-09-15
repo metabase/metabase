@@ -167,6 +167,4 @@ describe("CreateDashboardModal", () => {
       });
     });
   });
-
-  test.todo("navigates back to dashboard after an update");
 });
