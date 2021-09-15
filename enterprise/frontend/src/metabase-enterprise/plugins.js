@@ -18,4 +18,4 @@ import "./store";
 import "./snippets";
 import "./sharing";
 import "./moderation";
-import "./notifications";
+import "./advanced_config";
