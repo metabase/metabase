@@ -51,7 +51,7 @@ function TextInput({
     <TextInputRoot className={className}>
       {icon && <IconWrapper>{icon}</IconWrapper>}
       <Input
-        innerRef={innerRef}
+        ref={innerRef}
         colorScheme={colorScheme}
         autoFocus={autoFocus}
         hasClearButton={hasClearButton}
