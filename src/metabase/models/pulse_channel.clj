@@ -133,6 +133,21 @@
   (classloader/require 'metabase.models.pulse)
   ((resolve 'metabase.models.pulse/will-delete-channel) pulse-channel))
 
+(def ^:private ^{:arglists '([pulse-channel])} validate-email-domains
+  "For channels that are being sent to raw email addresses: check that the domains in the emails are allowed by
+  the [[metabase-enterprise.advanced-config.models.pulse-channel/subscription-allowed-domains]] Setting, if set. This
+  will no-op if `subscription-allowed-domains` is unset or if we do not have a premium token with the
+  `:advanced-config` feature."
+  (let [validate* (delay
+                    (u/ignore-exceptions
+                      (classloader/require 'metabase-enterprise.advanced-config.models.pulse-channel)
+                      (resolve 'metabase-enterprise.advanced-config.models.pulse-channel/validate-email-domains)))]
+    (fn [{{:keys [emails]} :details, :as pulse-channel}]
+      (u/prog1 pulse-channel
+        (when (seq emails)
+          (when-let [validate @validate*]
+            (validate emails)))))))
+
 (u/strict-extend (class PulseChannel)
   models/IModel
   (merge
@@ -140,7 +155,9 @@
    {:hydration-keys (constantly [:pulse_channel])
     :types          (constantly {:details :json, :channel_type :keyword, :schedule_type :keyword, :schedule_frame :keyword})
     :properties     (constantly {:timestamped? true})
-    :pre-delete     pre-delete})
+    :pre-delete     pre-delete
+    :pre-insert     validate-email-domains
+    :pre-update     validate-email-domains})
 
   i/IObjectPermissions
   (merge
