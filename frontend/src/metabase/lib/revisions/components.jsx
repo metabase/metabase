@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import styled from "styled-components";
 import { t } from "ttag";
 import { color } from "metabase/lib/colors";
+import { capitalize } from "metabase/lib/formatting";
 import RawEntityLink from "metabase/entities/containers/EntityLink";
 
 export const EntityLink = styled(RawEntityLink)`
@@ -55,13 +56,9 @@ export function RevisionBatchedDescription({ changes }) {
 function capitalizeChangeRecord(change) {
   if (Array.isArray(change)) {
     const [first, ...rest] = change;
-    return [capitalize(first), ...rest];
+    return [capitalize(first, { lowercase: false }), ...rest];
   }
-  return capitalize(change);
-}
-
-function capitalize(str) {
-  return str.charAt(0).toUpperCase() + str.slice(1);
+  return capitalize(change, { lowercase: false });
 }
 
 RevisionBatchedDescription.propTypes = revisionBatchedDescriptionPropTypes;
