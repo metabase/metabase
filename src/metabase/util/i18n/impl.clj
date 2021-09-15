@@ -57,7 +57,17 @@
    (when-let [locale (locale locale-or-name)]
      (LocaleUtils/isAvailableLocale locale))))
 
-(declare available-locale-names locale)
+(defn- available-locale-names*
+  []
+  (log/info "Reading available locales from locales.clj...")
+  (some-> (io/resource "locales.clj") slurp edn/read-string :locales (->> (apply sorted-set))))
+
+(def ^{:arglists '([])} available-locale-names
+  "Return sorted set of available locales, as Strings.
+
+    (available-locale-names) ; -> #{\"en\" \"nl\" \"pt-BR\" \"zh\"}"
+  (let [locales (delay (available-locale-names*))]
+    (fn [] @locales)))
 
 (defn- find-fallback-locale*
   ^Locale [a-locale]
@@ -164,18 +174,6 @@
           (catch Throwable _
             (log/errorf e "Invalid format string %s" (pr-str format-string))
             format-string))))))
-
-(defn- available-locale-names*
-  []
-  (log/info "Reading available locales from locales.clj...")
-  (some-> (io/resource "locales.clj") slurp edn/read-string :locales (->> (apply sorted-set))))
-
-(def ^{:arglists '([])} available-locale-names
-  "Return set of available locales, as Strings.
-
-    (available-locale-names) ; -> #{\"nl\" \"pt\" \"en\" \"zh\"}"
-  (let [locales (delay (available-locale-names*))]
-    (fn [] @locales)))
 
 ;; We can't fetch the system locale until the application DB has been initiailized. Once that's done, we don't need to
 ;; do the check anymore -- swapping out the getter fn with the simpler one speeds things up substantially
