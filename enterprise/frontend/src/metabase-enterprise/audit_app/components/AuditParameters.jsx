@@ -70,7 +70,6 @@ export default class AuditParameters extends React.Component {
               <Button
                 primary
                 key={key}
-                style={{ fontSize: 14 }}
                 onClick={onClick}
               >
                 {label}
