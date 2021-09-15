@@ -56,6 +56,12 @@ function setup({ cachingEnabled = true } = {}) {
   };
 }
 
+function fillNumericInput(input, value) {
+  userEvent.clear(input);
+  userEvent.type(input, String(value));
+  input.blur();
+}
+
 function fillForm({ name, description, cache_ttl } = {}) {
   if (name) {
     const input = screen.getByLabelText("Name");
@@ -69,9 +75,7 @@ function fillForm({ name, description, cache_ttl } = {}) {
   }
   if (cache_ttl) {
     const input = screen.getByLabelText("Caching");
-    userEvent.clear(input);
-    userEvent.type(input, String(cache_ttl));
-    input.blur();
+    fillNumericInput(input, cache_ttl);
   }
 }
 
@@ -170,14 +174,14 @@ describe("EditQuestionInfoModal", () => {
         it("is shown", () => {
           setup();
           fireEvent.click(screen.queryByText("More options"));
-          expect(screen.queryByLabelText("Caching")).toHaveValue("0");
+          expect(screen.getByDisplayValue("0")).toBeInTheDocument();
         });
 
         it("can be changed", () => {
           const { onSave } = setup();
 
           fireEvent.click(screen.queryByText("More options"));
-          fillForm({ cache_ttl: 10 });
+          fillNumericInput(screen.getByDisplayValue("0"), 10);
           fireEvent.click(screen.queryByRole("button", { name: "Save" }));
 
           expect(onSave).toHaveBeenCalledWith({
