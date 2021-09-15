@@ -8,12 +8,12 @@ MetabaseSettings.isEnterprise = () => true;
 
 // PLUGINS:
 
-import "./advanced_config";
 import "./audit_app";
 import "./auth";
 import "./collections";
 import "./embedding";
 import "./moderation";
+import "./notifications";
 import "./sandboxes";
 import "./sharing";
 import "./snippets";
