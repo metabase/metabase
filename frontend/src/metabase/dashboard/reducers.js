@@ -5,7 +5,6 @@ import {
   INITIALIZE,
   FETCH_DASHBOARD,
   SET_EDITING_DASHBOARD,
-  SET_SHARING,
   SET_DASHBOARD_ATTRIBUTES,
   ADD_CARD_TO_DASH,
   CREATE_PUBLIC_LINK,
@@ -19,8 +18,6 @@ import {
   REPLACE_ALL_DASHCARD_VISUALIZATION_SETTINGS,
   REMOVE_CARD_FROM_DASH,
   MARK_NEW_CARD_SEEN,
-  SET_EDITING_PARAMETER_ID,
-  ADD_PARAMETER,
   REMOVE_PARAMETER,
   FETCH_CARD_DATA,
   CLEAR_CARD_DATA,
@@ -31,8 +28,8 @@ import {
   CANCEL_FETCH_CARD_DATA,
   SHOW_ADD_PARAMETER_POPOVER,
   HIDE_ADD_PARAMETER_POPOVER,
-  SHOW_CLICK_BEHAVIOR_SIDEBAR,
-  HIDE_CLICK_BEHAVIOR_SIDEBAR,
+  SET_SIDEBAR,
+  CLOSE_SIDEBAR,
 } from "./actions";
 
 import { isVirtualDashCard, syncParametersAndEmbeddingParams } from "./utils";
@@ -52,16 +49,6 @@ const isEditing = handleActions(
     [INITIALIZE]: { next: state => null },
     [SET_EDITING_DASHBOARD]: {
       next: (state, { payload }) => (payload ? payload : null),
-    },
-  },
-  {},
-);
-
-const isSharing = handleActions(
-  {
-    [INITIALIZE]: { next: state => false },
-    [SET_SHARING]: {
-      next: (state, { payload }) => payload || false,
     },
   },
   {},
@@ -206,22 +193,6 @@ const dashcards = handleActions(
   {},
 );
 
-const editingParameterId = handleActions(
-  {
-    [SET_EDITING_PARAMETER_ID]: { next: (state, { payload }) => payload },
-    [ADD_PARAMETER]: { next: (state, { payload: { id } }) => id },
-    // possibly clear state:
-    [REMOVE_PARAMETER]: {
-      next: (state, { payload: { id } }) => (state === id ? null : state),
-    },
-    [SET_EDITING_DASHBOARD]: {
-      next: (state, { payload }) => (payload ? state : null),
-    },
-    [INITIALIZE]: { next: state => null },
-  },
-  null,
-);
-
 const isAddParameterPopoverOpen = handleActions(
   {
     [SHOW_ADD_PARAMETER_POPOVER]: () => true,
@@ -229,20 +200,6 @@ const isAddParameterPopoverOpen = handleActions(
     [INITIALIZE]: () => false,
   },
   false,
-);
-
-const clickBehaviorSidebarDashcardId = handleActions(
-  {
-    [SHOW_CLICK_BEHAVIOR_SIDEBAR]: (state, { payload }) => payload,
-    [HIDE_CLICK_BEHAVIOR_SIDEBAR]: state => null,
-    // possibly clear state:
-    [SET_EDITING_DASHBOARD]: (state, { payload }) => (payload ? state : null),
-    [SET_EDITING_PARAMETER_ID]: (state, { payload }) =>
-      payload != null ? null : state,
-    [ADD_PARAMETER]: (state, { payload }) => null,
-    [INITIALIZE]: state => null,
-  },
-  null,
 );
 
 const dashcardData = handleActions(
@@ -342,17 +299,36 @@ const loadingDashCards = handleActions(
   { dashcardIds: [], loadingIds: [], startTime: null },
 );
 
+const sidebar = handleActions(
+  {
+    [SET_SIDEBAR]: {
+      next: (state, { payload: { name, props } }) => ({
+        name,
+        props: props || {},
+      }),
+    },
+    [CLOSE_SIDEBAR]: {
+      next: () => ({}),
+    },
+    [INITIALIZE]: {
+      next: () => ({}),
+    },
+    [SET_EDITING_DASHBOARD]: {
+      next: (state, { payload: isEditing }) => (isEditing ? state : {}),
+    },
+  },
+  {},
+);
+
 export default combineReducers({
   dashboardId,
   isEditing,
-  isSharing,
   dashboards,
   dashcards,
-  editingParameterId,
-  clickBehaviorSidebarDashcardId,
   dashcardData,
   slowCards,
   parameterValues,
   loadingDashCards,
   isAddParameterPopoverOpen,
+  sidebar,
 });

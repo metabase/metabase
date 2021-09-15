@@ -8,7 +8,7 @@
             [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
             [metabase.api.common :as api]
             [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings.metastore :as metastore]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [stencil.core :as stencil]))
@@ -48,15 +48,15 @@
   [_]
   (throw-not-configured-error))
 
-(defn- throw-if-no-metastore-token []
-  (when-not (metastore/enable-sso?)
+(defn- throw-if-no-premium-features-token []
+  (when-not (premium-features/enable-sso?)
     (throw (ex-info (str (tru "SSO requires a valid token"))
              {:status-code 403}))))
 
 (api/defendpoint GET "/"
   "SSO entry-point for an SSO user that has not logged in yet"
   {:as req}
-  (throw-if-no-metastore-token)
+  (throw-if-no-premium-features-token)
   (try
     (sso-get req)
     (catch Throwable e
@@ -76,7 +76,7 @@
 (api/defendpoint POST "/"
   "Route the SSO backends call with successful login details"
   {:as req}
-  (throw-if-no-metastore-token)
+  (throw-if-no-premium-features-token)
   (try
     (sso-post req)
     (catch Throwable e

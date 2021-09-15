@@ -3,7 +3,7 @@
             [metabase.integrations.ldap :as ldap]
             [metabase.integrations.ldap.default-implementation :as default-impl]
             [metabase.models.user :as user :refer [User]]
-            [metabase.public-settings.metastore :as metastore]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.test :as mt]
             [metabase.test.integrations.ldap :as ldap.test]
             [toucan.db :as db])
@@ -75,7 +75,7 @@
 
 (deftest find-test
   ;; there are EE-specific versions of this test in `metabase-enterprise.enhancements.integrations.ldap-test`
-  (with-redefs [metastore/enable-enhancements? (constantly false)]
+  (with-redefs [premium-features/enable-enhancements? (constantly false)]
     (ldap.test/with-ldap-server
       (testing "find by username"
         (is (= {:dn         "cn=John Smith,ou=People,dc=metabase,dc=com"
@@ -130,7 +130,7 @@
 
 (deftest fetch-or-create-user-test
   ;; there are EE-specific versions of this test in `metabase-enterprise.enhancements.integrations.ldap-test`
-  (with-redefs [metastore/enable-enhancements? (constantly false)]
+  (with-redefs [premium-features/enable-enhancements? (constantly false)]
     (ldap.test/with-ldap-server
       (testing "a new user is created when they don't already exist"
         (try

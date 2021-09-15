@@ -154,7 +154,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
   } else if (join.parentDimensions().length > 0) {
     // subsequent can be one of the previously joined tables
     // NOTE: `lhsDimension` would probably be a better name for `parentDimension`
-    lhsTable = join.parentDimensions()[0].field().table;
+    lhsTable = join.parentDimensions()[0]?.field().table;
   }
 
   function onSourceTableSet(newJoin) {

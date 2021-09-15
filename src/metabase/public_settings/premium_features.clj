@@ -1,5 +1,5 @@
-(ns metabase.public-settings.metastore
-  "Settings related to checking token validity and accessing the MetaStore."
+(ns metabase.public-settings.premium-features
+  "Settings related to checking premium token validity and which premium features it allows."
   (:require [cheshire.core :as json]
             [clj-http.client :as http]
             [clojure.core.memoize :as memoize]
@@ -15,12 +15,12 @@
             [toucan.db :as db]))
 
 (def ^:private ValidToken
-  "Schema for a valid metastore token. Must be 64 lower-case hex characters."
+  "Schema for a valid premium token. Must be 64 lower-case hex characters."
   #"^[0-9a-f]{64}$")
 
 (def store-url
   "URL to the MetaStore. Hardcoded by default but for development purposes you can use a local server. Specify the env
-   var `METASTORE_DEV_SERVER_URL`."
+  var `METASTORE_DEV_SERVER_URL`."
   (or
    ;; only enable the changing the store url during dev because we don't want people switching it out in production!
    (when config/is-dev?
@@ -148,41 +148,90 @@
       (log/debug e (trs "Error validating token"))
       #{})))
 
-(defsetting hide-embed-branding?
-  "Should we hide the 'Powered by Metabase' attribution on the embedding pages? `true` if we have a valid premium
-   embedding token."
-  :type       :boolean
-  :visibility :public
-  :setter     :none
-  :getter     (fn [] (boolean ((token-features) "embedding"))))
+(defn- has-feature? [feature]
+  (contains? (token-features) (name feature)))
 
-(defsetting enable-whitelabeling?
+(defn- default-premium-feature-getter [feature]
+  (fn []
+    (and config/ee-available?
+         (has-feature? feature))))
+
+(defmacro ^:private define-premium-feature
+  "Convenience for generating a [[metabase.models.setting/defsetting]] form for a premium token feature. (The Settings
+  definitions for Premium token features all look more or less the same, so this prevents a lot of code duplication.)"
+  [setting-name docstring feature & {:as options}]
+  (let [options (merge {:type       :boolean
+                        :visibility :public
+                        :setter     :none
+                        :getter     `(default-premium-feature-getter ~(some-> feature name))}
+                       options)]
+    `(defsetting ~setting-name
+       ~docstring
+       ~@(mapcat identity options))))
+
+(define-premium-feature hide-embed-branding?
+  "Logo Removal and Full App Embedding. Should we hide the 'Powered by Metabase' attribution on the embedding pages?
+   `true` if we have a valid premium embedding token."
+  :embedding
+  ;; This specific feature DOES NOT require the EE code to be present in order for it to return truthy, unlike
+  ;; everything else.
+  :getter #(has-feature? :embedding))
+
+(define-premium-feature enable-whitelabeling?
   "Should we allow full whitelabel embedding (reskinning the entire interface?)"
-  :type       :boolean
-  :visibility :public
-  :setter     :none
-  :getter     (fn [] (and config/ee-available? (boolean ((token-features) "whitelabel")))))
+  :whitelabel)
 
-(defsetting enable-audit-app?
-  "Should we allow use of the audit app?"
-  :type       :boolean
-  :visibility :public
-  :setter     :none
-  :getter     (fn [] (and config/ee-available? (boolean ((token-features) "audit-app")))))
+(define-premium-feature enable-audit-app?
+  "Should we enable the Audit Logs interface in the Admin UI?"
+  :audit-app)
 
-(defsetting enable-sandboxes?
-  "Should we enable data sandboxes (row and column-level permissions?"
-  :type       :boolean
-  :visibility :public
-  :setter     :none
-  :getter     (fn [] (and config/ee-available? (boolean ((token-features) "sandboxes")))))
+(define-premium-feature enable-sandboxes?
+  "Should we enable data sandboxes (row-level permissions)?"
+  :sandboxes)
 
-(defsetting enable-sso?
-  "Should we enable SAML/JWT sign-in?"
-  :type       :boolean
-  :visibility :public
-  :setter     :none
-  :getter     (fn [] (and config/ee-available? (boolean ((token-features) "sso")))))
+(define-premium-feature enable-sso?
+  "Should we enable advanced SSO features (SAML and JWT authentication; role and group mapping)?"
+  :sso)
+
+(defn- has-any-features?
+  "True if we have a valid premium features token with ANY features."
+  []
+  (boolean (seq (token-features))))
+
+;; The three new 0.41 features below are not yet live. The Setting getters currently return true if the user has a
+;; token with ANY valid features.
+;;
+;; Once https://github.com/metabase/harbormaster/issues/1956 is merged and the features are live we can remove the
+;; deprecated functions below and check these features the same way we check the other premium features.
+;;
+;; this needs to happen before 0.41.0 goes live.
+
+(def ^:private ^:deprecated enable-41-feature-checks?
+  false)
+
+(defn-  ^:deprecated has-41-feature? [feature]
+  (and config/ee-available?
+       (if enable-41-feature-checks?
+         (has-feature? feature)
+         (has-any-features?))))
+
+(define-premium-feature ^{:added "0.41.0"} enable-advanced-config?
+  "Should we enable knobs and levers for more complex orgs (granular caching controls, allow-lists email domains for
+  notifications, more in the future)?"
+  :advanced-config
+  :getter #(has-41-feature? :advanced-config))
+
+(define-premium-feature ^{:added "0.41.0"} enable-advanced-permissions?
+  "Should we enable extra knobs around permissions (block access, and in the future, moderator roles, feature-level
+  permissions, etc.)?"
+  :advanced-permissions
+  :getter #(has-41-feature? :advanced-permissions))
+
+(define-premium-feature ^{:added "0.41.0"} enable-content-management?
+  "Should we enable official Collections, Question verifications (and more in the future, like workflows, forking,
+  etc.)?"
+  :content-management
+  :getter #(has-41-feature? :content-management))
 
 ;; `enhancements` are not currently a specific "feature" that EE tokens can have or not have. Instead, it's a
 ;; catch-all term for various bits of EE functionality that we assume all EE licenses include. (This may change in the
@@ -190,9 +239,10 @@
 ;;
 ;; By checking whether `(token-features)` is non-empty we can see whether we have a valid EE token. If the token is
 ;; valid, we can enable EE enhancements.
-(defsetting enable-enhancements?
+;;
+;; DEPRECATED -- it should now be possible to use the new 0.41.0+ features for everything previously covered by
+;; 'enhancements'.
+(define-premium-feature ^:deprecated enable-enhancements?
   "Should we various other enhancements, e.g. NativeQuerySnippet collection permissions?"
-  :type       :boolean
-  :visibility :public
-  :setter     :none
-  :getter     (fn [] (and config/ee-available? (boolean (seq (token-features))))))
+  nil
+  :getter #(and config/ee-available? (has-any-features?)))
