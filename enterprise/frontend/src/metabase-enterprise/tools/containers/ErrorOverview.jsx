@@ -29,11 +29,11 @@ export default function ErrorOverview(props) {
     setRowChecked(newRowChecked);
     setRowToCardId(newRowToCardId);
   };
-  const handleReloadSelected = () => {
+  const handleReloadSelected = async () => {
     const checkedCardIds = Object.values(
       _.pick(rowToCardId, (member, key) => rowChecked[key]),
     );
-    checkedCardIds.forEach(member => CardApi.query({ cardId: member }));
+    await Promise.all(checkedCardIds.map(async (member) => await CardApi.query({ cardId: member })));
     location.reload();
   };
 
