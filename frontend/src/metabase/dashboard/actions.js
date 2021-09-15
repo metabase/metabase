@@ -1,21 +1,7 @@
-import {
-  assoc,
-  dissoc,
-  assocIn,
-  dissocIn,
-  updateIn,
-  getIn,
-  chain,
-  merge,
-} from "icepick";
+import { assoc, assocIn, dissocIn, getIn } from "icepick";
 import _ from "underscore";
 
-import {
-  handleActions,
-  combineReducers,
-  createAction,
-  createThunkAction,
-} from "metabase/lib/redux";
+import { createAction, createThunkAction } from "metabase/lib/redux";
 import { open } from "metabase/lib/dom";
 import { defer } from "metabase/lib/promise";
 import { normalize, schema } from "normalizr";
@@ -35,8 +21,10 @@ import {
   getParameterValuesBySlug,
   getParameterValuesByIdFromQueryParams,
   removeDefaultedParametersWithEmptyStringValue,
+  getParameterValuesByIdFromPreviousValues,
 } from "metabase/meta/Parameter";
 import * as Urls from "metabase/lib/urls";
+import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
 import type {
   DashboardWithCards,
@@ -76,6 +64,14 @@ import {
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 
+import {
+  expandInlineDashboard,
+  isVirtualDashCard,
+  getAllDashboardCards,
+  getDashboardType,
+  fetchDataOrError,
+} from "./utils";
+
 const DATASET_SLOW_TIMEOUT = 15 * 1000;
 
 // normalizr schemas
@@ -89,7 +85,6 @@ const dashboard = new schema.Entity("dashboard", {
 export const INITIALIZE = "metabase/dashboard/INITIALIZE";
 
 export const SET_EDITING_DASHBOARD = "metabase/dashboard/SET_EDITING_DASHBOARD";
-export const SET_SHARING = "metabase/dashboard/SET_SHARING";
 
 // NOTE: this is used in metabase/redux/metadata but can't be imported directly due to circular reference
 export const FETCH_DASHBOARD = "metabase/dashboard/FETCH_DASHBOARD";
@@ -126,8 +121,6 @@ export const CLEAR_CARD_DATA = "metabase/dashboard/CLEAR_CARD_DATA";
 
 export const MARK_NEW_CARD_SEEN = "metabase/dashboard/MARK_NEW_CARD_SEEN";
 
-export const SET_EDITING_PARAMETER_ID =
-  "metabase/dashboard/SET_EDITING_PARAMETER_ID";
 export const ADD_PARAMETER = "metabase/dashboard/ADD_PARAMETER";
 export const REMOVE_PARAMETER = "metabase/dashboard/REMOVE_PARAMETER";
 export const SET_PARAMETER_MAPPING = "metabase/dashboard/SET_PARAMETER_MAPPING";
@@ -142,42 +135,66 @@ export const SHOW_ADD_PARAMETER_POPOVER =
 export const HIDE_ADD_PARAMETER_POPOVER =
   "metabase/dashboard/HIDE_ADD_PARAMETER_POPOVER";
 
-export const SHOW_CLICK_BEHAVIOR_SIDEBAR =
-  "metabase/dashboard/SHOW_CLICK_BEHAVIOR_SIDEBAR";
-export const HIDE_CLICK_BEHAVIOR_SIDEBAR =
-  "metabase/dashboard/HIDE_CLICK_BEHAVIOR_SIDEBAR";
-
-function getDashboardType(id) {
-  if (id == null || typeof id === "object") {
-    // HACK: support inline dashboards
-    return "inline";
-  } else if (Utils.isUUID(id)) {
-    return "public";
-  } else if (Utils.isJWT(id)) {
-    return "embed";
-  } else if (/\/auto\/dashboard/.test(id)) {
-    return "transient";
-  } else {
-    return "normal";
-  }
-}
-
-// action creators
+export const SET_SIDEBAR = "metabase/dashboard/SET_SIDEBAR";
+export const CLOSE_SIDEBAR = "metabase/dashboard/CLOSE_SIDEBAR";
 
 export const initialize = createAction(INITIALIZE);
 export const setEditingDashboard = createAction(SET_EDITING_DASHBOARD);
-export const setSharing = createAction(SET_SHARING);
+
+export const setSidebar = createAction(SET_SIDEBAR);
+export const closeSidebar = createAction(CLOSE_SIDEBAR);
+
+export const setSharing = isSharing => dispatch => {
+  if (isSharing) {
+    dispatch(
+      setSidebar({
+        name: SIDEBAR_NAME.sharing,
+      }),
+    );
+  } else {
+    dispatch(closeSidebar());
+  }
+};
+
+export const showClickBehaviorSidebar = dashcardId => dispatch => {
+  if (dashcardId != null) {
+    dispatch(
+      setSidebar({
+        name: SIDEBAR_NAME.clickBehavior,
+        props: { dashcardId },
+      }),
+    );
+  } else {
+    dispatch(closeSidebar());
+  }
+};
+
+export const setEditingParameter = parameterId => dispatch => {
+  if (parameterId != null) {
+    dispatch(
+      setSidebar({
+        name: SIDEBAR_NAME.editParameter,
+        props: {
+          parameterId,
+        },
+      }),
+    );
+  } else {
+    dispatch(closeSidebar());
+  }
+};
+
+export const openAddQuestionSidebar = () => dispatch => {
+  dispatch(
+    setSidebar({
+      name: SIDEBAR_NAME.addQuestion,
+    }),
+  );
+};
 
 export const markNewCardSeen = createAction(MARK_NEW_CARD_SEEN);
 export const showAddParameterPopover = createAction(SHOW_ADD_PARAMETER_POPOVER);
 export const hideAddParameterPopover = createAction(HIDE_ADD_PARAMETER_POPOVER);
-export const showClickBehaviorSidebar = createAction(
-  SHOW_CLICK_BEHAVIOR_SIDEBAR,
-);
-export const hideClickBehaviorSidebar = createAction(
-  HIDE_CLICK_BEHAVIOR_SIDEBAR,
-);
-
 // these operations don't get saved to server immediately
 export const setDashboardAttributes = createAction(SET_DASHBOARD_ATTRIBUTES);
 export const setDashCardAttributes = createAction(SET_DASHCARD_ATTRIBUTES);
@@ -405,7 +422,7 @@ export const saveDashboardAndCards = createThunkAction(
       await dispatch(Dashboards.actions.update(dashboard));
 
       // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
-      dispatch(fetchDashboard(dashboard.id, null, true)); // disable using query parameters when saving
+      dispatch(fetchDashboard(dashboard.id, null)); // disable using query parameters when saving
     };
   },
 );
@@ -421,29 +438,6 @@ export const clearCardData = createAction(
   CLEAR_CARD_DATA,
   (cardId, dashcardId) => ({ cardId, dashcardId }),
 );
-
-export async function fetchDataOrError(dataPromise) {
-  try {
-    return await dataPromise;
-  } catch (error) {
-    return { error };
-  }
-}
-
-function getAllDashboardCards(dashboard) {
-  const results = [];
-  if (dashboard) {
-    for (const dashcard of dashboard.ordered_cards) {
-      const cards = [dashcard.card].concat(dashcard.series || []);
-      results.push(...cards.map(card => ({ card, dashcard })));
-    }
-  }
-  return results;
-}
-
-export function isVirtualDashCard(dashcard) {
-  return _.isObject(dashcard.visualization_settings.virtual_card);
-}
 
 export const fetchDashboardCardData = createThunkAction(
   FETCH_DASHBOARD_CARD_DATA,
@@ -639,34 +633,10 @@ export const markCardAsSlow = createAction(MARK_CARD_AS_SLOW, card => ({
   result: true,
 }));
 
-// This adds default properties and placeholder IDs for an inline dashboard
-function expandInlineDashboard(dashboard) {
-  return {
-    name: "",
-    parameters: [],
-    ...dashboard,
-    ordered_cards: dashboard.ordered_cards.map(dashcard => ({
-      visualization_settings: {},
-      parameter_mappings: [],
-      ...dashcard,
-      id: _.uniqueId("dashcard"),
-      card: expandInlineCard(dashcard.card),
-      series: (dashcard.series || []).map(card => expandInlineCard(card)),
-    })),
-  };
-}
-function expandInlineCard(card) {
-  return {
-    name: "",
-    visualization_settings: {},
-    ...card,
-    id: _.uniqueId("card"),
-  };
-}
-
 export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
   dashId,
   queryParams,
+  preserveParameters,
 ) {
   let result;
   return async function(dispatch, getState) {
@@ -736,11 +706,16 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
       dispatch(addFields(result.param_fields));
     }
 
-    const parameterValuesById = getParameterValuesByIdFromQueryParams(
-      result.parameters,
-      queryParams,
-      removeDefaultedParametersWithEmptyStringValue,
-    );
+    const parameterValuesById = preserveParameters
+      ? getParameterValuesByIdFromPreviousValues(
+          result.parameters,
+          getParameterValues(getState()),
+        )
+      : getParameterValuesByIdFromQueryParams(
+          result.parameters,
+          queryParams,
+          removeDefaultedParametersWithEmptyStringValue,
+        );
 
     return {
       ...normalize(result, dashboard), // includes `result` and `entities`
@@ -750,13 +725,15 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
   };
 });
 
-const UPDATE_ENABLE_EMBEDDING = "metabase/dashboard/UPDATE_ENABLE_EMBEDDING";
+export const UPDATE_ENABLE_EMBEDDING =
+  "metabase/dashboard/UPDATE_ENABLE_EMBEDDING";
 export const updateEnableEmbedding = createAction(
   UPDATE_ENABLE_EMBEDDING,
   ({ id }, enable_embedding) => DashboardApi.update({ id, enable_embedding }),
 );
 
-const UPDATE_EMBEDDING_PARAMS = "metabase/dashboard/UPDATE_EMBEDDING_PARAMS";
+export const UPDATE_EMBEDDING_PARAMS =
+  "metabase/dashboard/UPDATE_EMBEDDING_PARAMS";
 export const updateEmbeddingParams = createAction(
   UPDATE_EMBEDDING_PARAMS,
   ({ id }, embedding_params) => DashboardApi.update({ id, embedding_params }),
@@ -775,7 +752,6 @@ export const onReplaceAllDashCardVisualizationSettings = createAction(
   (id, settings) => ({ id, settings }),
 );
 
-export const setEditingParameter = createAction(SET_EDITING_PARAMETER_ID);
 export const setParameterMapping = createThunkAction(
   SET_PARAMETER_MAPPING,
   (parameter_id, dashcard_id, card_id, target) => (dispatch, getState) => {
@@ -836,7 +812,15 @@ export const addParameter = createThunkAction(
       parameter = createParameter(parameterOption, parameters);
       return parameters.concat(parameter);
     });
-    return parameter;
+
+    dispatch(
+      setSidebar({
+        name: SIDEBAR_NAME.editParameter,
+        props: {
+          parameterId: parameter.id,
+        },
+      }),
+    );
   },
 );
 
@@ -846,7 +830,19 @@ export const removeParameter = createThunkAction(
     updateParameters(dispatch, getState, parameters =>
       parameters.filter(p => p.id !== parameterId),
     );
-    return { id: parameterId };
+
+    if (parameterId != null) {
+      dispatch(
+        setSidebar({
+          name: SIDEBAR_NAME.editParameter,
+          props: {
+            parameterId,
+          },
+        }),
+      );
+    } else {
+      dispatch(closeSidebar());
+    }
   },
 );
 
@@ -1010,333 +1006,6 @@ export const navigateToNewCardFromDashboard = createThunkAction(
   },
 );
 
-// reducers
-
-const dashboardId = handleActions(
-  {
-    [INITIALIZE]: { next: state => null },
-    [FETCH_DASHBOARD]: {
-      next: (state, { payload: { dashboardId } }) => dashboardId,
-    },
-  },
-  null,
-);
-
-const isEditing = handleActions(
-  {
-    [INITIALIZE]: { next: state => null },
-    [SET_EDITING_DASHBOARD]: {
-      next: (state, { payload }) => (payload ? payload : null),
-    },
-  },
-  {},
-);
-
-const isSharing = handleActions(
-  {
-    [INITIALIZE]: { next: state => false },
-    [SET_SHARING]: {
-      next: (state, { payload }) => payload || false,
-    },
-  },
-  {},
-);
-
-export function syncParametersAndEmbeddingParams(before, after) {
-  if (after.parameters && before.embedding_params) {
-    return Object.keys(before.embedding_params).reduce((memo, embedSlug) => {
-      const slugParam = _.find(before.parameters, param => {
-        return param.slug === embedSlug;
-      });
-      if (slugParam) {
-        const slugParamId = slugParam && slugParam.id;
-        const newParam = _.findWhere(after.parameters, { id: slugParamId });
-        if (newParam) {
-          memo[newParam.slug] = before.embedding_params[embedSlug];
-        }
-      }
-      return memo;
-    }, {});
-  } else {
-    return before.embedding_params;
-  }
-}
-
-function newDashboard(before, after) {
-  return {
-    ...before,
-    ...after,
-    embedding_params: syncParametersAndEmbeddingParams(before, after),
-    isDirty: true,
-  };
-}
-
-const dashboards = handleActions(
-  {
-    [FETCH_DASHBOARD]: {
-      next: (state, { payload }) => ({
-        ...state,
-        ...payload.entities.dashboard,
-      }),
-    },
-    [SET_DASHBOARD_ATTRIBUTES]: {
-      next: (state, { payload: { id, attributes } }) => {
-        return {
-          ...state,
-          [id]: newDashboard(state[id], attributes),
-        };
-      },
-    },
-    [ADD_CARD_TO_DASH]: (state, { payload: dashcard }) => ({
-      ...state,
-      [dashcard.dashboard_id]: {
-        ...state[dashcard.dashboard_id],
-        ordered_cards: [
-          ...state[dashcard.dashboard_id].ordered_cards,
-          dashcard.id,
-        ],
-      },
-    }),
-    [CREATE_PUBLIC_LINK]: {
-      next: (state, { payload }) =>
-        assocIn(state, [payload.id, "public_uuid"], payload.uuid),
-    },
-    [DELETE_PUBLIC_LINK]: {
-      next: (state, { payload }) =>
-        assocIn(state, [payload.id, "public_uuid"], null),
-    },
-    [UPDATE_EMBEDDING_PARAMS]: {
-      next: (state, { payload }) =>
-        assocIn(
-          state,
-          [payload.id, "embedding_params"],
-          payload.embedding_params,
-        ),
-    },
-    [UPDATE_ENABLE_EMBEDDING]: {
-      next: (state, { payload }) =>
-        assocIn(
-          state,
-          [payload.id, "enable_embedding"],
-          payload.enable_embedding,
-        ),
-    },
-  },
-  {},
-);
-
-const dashcards = handleActions(
-  {
-    [FETCH_DASHBOARD]: {
-      next: (state, { payload }) => ({
-        ...state,
-        ...payload.entities.dashcard,
-      }),
-    },
-    [SET_DASHCARD_ATTRIBUTES]: {
-      next: (state, { payload: { id, attributes } }) => ({
-        ...state,
-        [id]: { ...state[id], ...attributes, isDirty: true },
-      }),
-    },
-    [SET_MULTIPLE_DASHCARD_ATTRIBUTES]: {
-      next: (state, { payload: dashcards }) => {
-        const nextState = { ...state };
-        dashcards.forEach(({ id, attributes }) => {
-          nextState[id] = {
-            ...state[id],
-            ...attributes,
-            isDirty: true,
-          };
-        });
-        return nextState;
-      },
-    },
-    [UPDATE_DASHCARD_VISUALIZATION_SETTINGS]: {
-      next: (state, { payload: { id, settings } }) =>
-        chain(state)
-          .updateIn([id, "visualization_settings"], (value = {}) => ({
-            ...value,
-            ...settings,
-          }))
-          .assocIn([id, "isDirty"], true)
-          .value(),
-    },
-    [UPDATE_DASHCARD_VISUALIZATION_SETTINGS_FOR_COLUMN]: {
-      next: (state, { payload: { column, id, settings } }) =>
-        chain(state)
-          .updateIn([id, "visualization_settings"], (value = {}) =>
-            updateIn(
-              merge({ column_settings: {} }, value),
-              ["column_settings", column],
-              columnSettings => ({
-                ...columnSettings,
-                ...settings,
-              }),
-            ),
-          )
-          .assocIn([id, "isDirty"], true)
-          .value(),
-    },
-    [REPLACE_ALL_DASHCARD_VISUALIZATION_SETTINGS]: {
-      next: (state, { payload: { id, settings } }) =>
-        chain(state)
-          .assocIn([id, "visualization_settings"], settings)
-          .assocIn([id, "isDirty"], true)
-          .value(),
-    },
-    [ADD_CARD_TO_DASH]: (state, { payload: dashcard }) => ({
-      ...state,
-      [dashcard.id]: { ...dashcard, isAdded: true, justAdded: true },
-    }),
-    [REMOVE_CARD_FROM_DASH]: (state, { payload: { dashcardId } }) => ({
-      ...state,
-      [dashcardId]: { ...state[dashcardId], isRemoved: true },
-    }),
-    [MARK_NEW_CARD_SEEN]: (state, { payload: dashcardId }) => ({
-      ...state,
-      [dashcardId]: { ...state[dashcardId], justAdded: false },
-    }),
-  },
-  {},
-);
-
-const editingParameterId = handleActions(
-  {
-    [SET_EDITING_PARAMETER_ID]: { next: (state, { payload }) => payload },
-    [ADD_PARAMETER]: { next: (state, { payload: { id } }) => id },
-    // possibly clear state:
-    [REMOVE_PARAMETER]: {
-      next: (state, { payload: { id } }) => (state === id ? null : state),
-    },
-    [SET_EDITING_DASHBOARD]: {
-      next: (state, { payload }) => (payload ? state : null),
-    },
-    [INITIALIZE]: { next: state => null },
-  },
-  null,
-);
-
-const isAddParameterPopoverOpen = handleActions(
-  {
-    [SHOW_ADD_PARAMETER_POPOVER]: () => true,
-    [HIDE_ADD_PARAMETER_POPOVER]: () => false,
-    [INITIALIZE]: () => false,
-  },
-  false,
-);
-
-const clickBehaviorSidebarDashcardId = handleActions(
-  {
-    [SHOW_CLICK_BEHAVIOR_SIDEBAR]: (state, { payload }) => payload,
-    [HIDE_CLICK_BEHAVIOR_SIDEBAR]: state => null,
-    // possibly clear state:
-    [SET_EDITING_DASHBOARD]: (state, { payload }) => (payload ? state : null),
-    [SET_EDITING_PARAMETER_ID]: (state, { payload }) =>
-      payload != null ? null : state,
-    [ADD_PARAMETER]: (state, { payload }) => null,
-    [INITIALIZE]: state => null,
-  },
-  null,
-);
-
-const dashcardData = handleActions(
-  {
-    // clear existing dashboard data when loading a dashboard
-    [INITIALIZE]: { next: state => ({}) },
-    [FETCH_CARD_DATA]: {
-      next: (state, { payload: { dashcard_id, card_id, result } }) =>
-        assocIn(state, [dashcard_id, card_id], result),
-    },
-    [CLEAR_CARD_DATA]: {
-      next: (state, { payload: { cardId, dashcardId } }) =>
-        assocIn(state, [dashcardId, cardId]),
-    },
-    [UPDATE_DASHCARD_ID]: {
-      next: (state, { payload: { oldDashcardId, newDashcardId } }) =>
-        chain(state)
-          .assoc(newDashcardId, state[oldDashcardId])
-          .dissoc(oldDashcardId)
-          .value(),
-    },
-  },
-  {},
-);
-
-const slowCards = handleActions(
-  {
-    [MARK_CARD_AS_SLOW]: {
-      next: (state, { payload: { id, result } }) => ({
-        ...state,
-        [id]: result,
-      }),
-    },
-  },
-  {},
-);
-
-const parameterValues = handleActions(
-  {
-    [INITIALIZE]: { next: () => ({}) }, // reset values
-    [SET_PARAMETER_VALUE]: {
-      next: (state, { payload: { id, value } }) => assoc(state, id, value),
-    },
-    [REMOVE_PARAMETER]: {
-      next: (state, { payload: { id } }) => dissoc(state, id),
-    },
-    [FETCH_DASHBOARD]: {
-      next: (state, { payload: { parameterValues } }) => parameterValues,
-    },
-  },
-  {},
-);
-
-const loadingDashCards = handleActions(
-  {
-    [FETCH_DASHBOARD]: {
-      next: (state, { payload }) => ({
-        ...state,
-        dashcardIds: Object.values(payload.entities.dashcard || {})
-          .filter(dc => !isVirtualDashCard(dc))
-          .map(dc => dc.id),
-      }),
-    },
-    [FETCH_DASHBOARD_CARD_DATA]: {
-      next: state => ({
-        ...state,
-        loadingIds: state.dashcardIds,
-        startTime:
-          state.dashcardIds.length > 0 &&
-          // check that performance is defined just in case
-          typeof performance === "object"
-            ? performance.now()
-            : null,
-      }),
-    },
-    [FETCH_CARD_DATA]: {
-      next: (state, { payload: { dashcard_id } }) => {
-        const loadingIds = state.loadingIds.filter(id => id !== dashcard_id);
-        return {
-          ...state,
-          loadingIds,
-          ...(loadingIds.length === 0 ? { startTime: null } : {}),
-        };
-      },
-    },
-    [CANCEL_FETCH_CARD_DATA]: {
-      next: (state, { payload: { dashcard_id } }) => {
-        const loadingIds = state.loadingIds.filter(id => id !== dashcard_id);
-        return {
-          ...state,
-          loadingIds,
-          ...(loadingIds.length === 0 ? { startTime: null } : {}),
-        };
-      },
-    },
-  },
-  { dashcardIds: [], loadingIds: [], startTime: null },
-);
-
 const loadMetadataForDashboard = dashCards => (dispatch, getState) => {
   const metadata = getMetadata(getState());
 
@@ -1347,18 +1016,3 @@ const loadMetadataForDashboard = dashCards => (dispatch, getState) => {
 
   return dispatch(loadMetadataForQueries(queries));
 };
-
-export default combineReducers({
-  dashboardId,
-  isEditing,
-  isSharing,
-  dashboards,
-  dashcards,
-  editingParameterId,
-  clickBehaviorSidebarDashcardId,
-  dashcardData,
-  slowCards,
-  parameterValues,
-  loadingDashCards,
-  isAddParameterPopoverOpen,
-});

@@ -71,10 +71,12 @@
           :when        f]
     (assert (fn? f))
     (testing (format "sent to %s channel" channel-type)
-      (mt/with-temp* [Dashboard     [{dashboard-id :id} {:name "Aviary KPIs"}]
+      (mt/with-temp* [Dashboard     [{dashboard-id :id} {:name "Aviary KPIs"
+                                                         :description "How are the birds doing today?"}]
                       Card          [{card-id :id} (merge {:name card-name} card)]]
         (with-dashboard-sub-for-card [{pulse-id :id}
                                       {:card       card-id
+                                       :creator_id (mt/user->id :rasta)
                                        :dashboard  dashboard-id
                                        :pulse      pulse
                                        :pulse-card pulse-card
@@ -134,8 +136,9 @@
                     User [{user-id :id}]]
       (let [result (pulse/execute-dashboard {:creator_id user-id} dashboard-id)]
         (is (= (count result) 2))
-        (is (schema= [{:card   (s/pred map?)
-                       :result (s/pred map?)}]
+        (is (schema= [{:card     (s/pred map?)
+                       :dashcard (s/pred map?)
+                       :result   (s/pred map?)}]
                      result)))))
   (testing "dashboard cards are ordered correctly -- by rows, and then by columns (#17419)"
     (mt/with-temp* [Card          [{card-id-1 :id}]
@@ -160,8 +163,8 @@
 
 (deftest basic-table-test
   (tests {:pulse {:skip_if_empty false}}
-    "19 results, so no attachment"
-    {:card (checkins-query-card {:aggregation nil, :limit 19})
+    "9 results, so no attachment aside from dashboard icon"
+    {:card (checkins-query-card {:aggregation nil, :limit 9})
 
      :fixture
      (fn [_ thunk]
@@ -171,20 +174,35 @@
      :assert
      {:email
       (fn [_ _]
-        (is (= (rasta-pulse-email {:body [{;; No "Pulse:" prefix
-                                           "Aviary KPIs"                     true
-                                           ;; Includes everything
-                                           "More results have been included" false
-                                           ;; Inline table
-                                           "ID</th>"                         true
-                                           ;; Links to source dashboard
-                                           "<a href=\\\"https://metabase.com/testmb/dashboard/\\d+\\\" class=\\\"title-link\\\">" true}]})
+        (is (= (rasta-pulse-email
+                {:body [{;; No "Pulse:" prefix
+                         "Aviary KPIs" true
+                         ;; Includes dashboard description
+                         "How are the birds doing today?" true
+                         ;; Includes name of subscription creator
+                         "Sent by Rasta Toucan" true
+                         ;; Includes everything
+                         "More results have been included" false
+                         ;; Inline table
+                         "ID</th>" true
+                         ;; Links to source dashboard
+                         "<a class=\\\"title\\\" href=\\\"https://metabase.com/testmb/dashboard/\\d+\\\"" true
+                         ;; Links to Metabase instance
+                         "Sent from <a href=\\\"https://metabase.com/testmb\\\"" true
+                         ;; Links to subscription management page in account settings
+                         "\\\"https://metabase.com/testmb/account/notifications\\\"" true
+                         "Manage your subscriptions" true}
+                        png-attachment]})
                (mt/summarize-multipart-email
                 #"Aviary KPIs"
+                #"How are the birds doing today?"
+                #"Sent by Rasta Toucan"
                 #"More results have been included"
                 #"ID</th>"
-                #"<a href=\"https://metabase.com/testmb/dashboard/\d+\" class=\"title-link\">"))))
-
+                #"<a class=\"title\" href=\"https://metabase.com/testmb/dashboard/\d+\""
+                #"Sent from <a href=\"https://metabase.com/testmb\""
+                #"\"https://metabase.com/testmb/account/notifications\""
+                #"Manage your subscriptions"))))
       :slack
       (fn [{:keys [card-id]} [pulse-results]]
         ;; If we don't force the thunk, the rendering code will never execute and attached-results-text won't be
@@ -222,9 +240,12 @@
      :assert
      {:email
        (fn [_ _]
-         (testing "Markdown cards are not included in email subscriptions"
-           (is (= (rasta-pulse-email {:body [{"Aviary KPIs" true}]})
-                  (mt/summarize-multipart-email #"Aviary KPIs")))))
+         (testing "Markdown cards are included in email subscriptions"
+           (is (= (rasta-pulse-email {:body [{"Aviary KPIs" true
+                                              "header"      true}
+                                             png-attachment]})
+                  (mt/summarize-multipart-email #"Aviary KPIs"
+                                                #"header")))))
 
        :slack
        (fn [{:keys [card-id]} [pulse-results]]

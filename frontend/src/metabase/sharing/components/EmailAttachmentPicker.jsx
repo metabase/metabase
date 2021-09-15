@@ -22,6 +22,7 @@ export default class EmailAttachmentPicker extends Component {
   static propTypes = {
     pulse: PropTypes.object.isRequired,
     setPulse: PropTypes.func.isRequired,
+    cards: PropTypes.array.isRequired,
   };
 
   componentDidMount() {
@@ -115,6 +116,10 @@ export default class EmailAttachmentPicker extends Component {
    * Called when attachments are enabled/disabled at all
    */
   toggleAttach = includeAttachment => {
+    if (!includeAttachment) {
+      this.disableAllCards();
+    }
+
     this.setState({ isEnabled: includeAttachment });
   };
 
@@ -159,6 +164,12 @@ export default class EmailAttachmentPicker extends Component {
     });
   };
 
+  disableAllCards() {
+    const selectedCardIds = new Set();
+    this.updatePulseCards(this.state.selectedAttachmentType, selectedCardIds);
+    this.setState({ selectedCardIds });
+  }
+
   areAllSelected(allCards, selectedCardSet) {
     return allCards.length === selectedCardSet.size;
   }
@@ -173,7 +184,11 @@ export default class EmailAttachmentPicker extends Component {
 
     return (
       <div>
-        <Toggle value={isEnabled} onChange={this.toggleAttach} />
+        <Toggle
+          aria-label={t`Attach results`}
+          value={isEnabled}
+          onChange={this.toggleAttach}
+        />
 
         {isEnabled && (
           <div>

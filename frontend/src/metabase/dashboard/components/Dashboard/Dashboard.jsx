@@ -27,7 +27,6 @@ const SCROLL_THROTTLE_INTERVAL = 1000 / 24;
 export default class Dashboard extends Component {
   state = {
     error: null,
-    showAddQuestionSidebar: false,
     isParametersWidgetSticky: false,
   };
 
@@ -71,6 +70,14 @@ export default class Dashboard extends Component {
 
     onSharingClick: PropTypes.func,
     onEmbeddingClick: PropTypes.any,
+
+    sidebar: PropTypes.shape({
+      name: PropTypes.string,
+      props: PropTypes.object,
+    }).isRequired,
+    closeSidebar: PropTypes.func.isRequired,
+    openAddQuestionSidebar: PropTypes.func.isRequired,
+    showAddQuestionSidebar: PropTypes.bool.isRequired,
   };
 
   static defaultProps = {
@@ -155,10 +162,6 @@ export default class Dashboard extends Component {
   setEditing = isEditing => {
     this.props.onRefreshPeriodChange(null);
     this.props.setEditingDashboard(isEditing);
-
-    this.setState({
-      showAddQuestionSidebar: false,
-    });
   };
 
   setDashboardAttribute = (attribute, value) => {
@@ -169,9 +172,11 @@ export default class Dashboard extends Component {
   };
 
   onToggleAddQuestionSidebar = () => {
-    this.setState(prev => ({
-      showAddQuestionSidebar: !prev.showAddQuestionSidebar,
-    }));
+    if (this.props.showAddQuestionSidebar) {
+      this.props.closeSidebar();
+    } else {
+      this.props.openAddQuestionSidebar();
+    }
   };
 
   onCancel = () => {
@@ -192,13 +197,10 @@ export default class Dashboard extends Component {
       isFullscreen,
       isNightMode,
       isSharing,
+      showAddQuestionSidebar,
     } = this.props;
 
-    const {
-      error,
-      isParametersWidgetSticky,
-      showAddQuestionSidebar,
-    } = this.state;
+    const { error, isParametersWidgetSticky } = this.state;
 
     const shouldRenderAsNightMode = isNightMode && isFullscreen;
     const dashboardHasCards = dashboard => dashboard.ordered_cards.length > 0;

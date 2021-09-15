@@ -5,7 +5,7 @@ describe("smoketest > user", () => {
   before(restore);
   beforeEach(cy.signInAsNormalUser);
 
-  it("should be able to ask a custom questions", () => {
+  it("should be able to ask a custom question", () => {
     cy.visit("/");
     cy.findByText("Ask a question").click();
     cy.findByText("Custom question").click();

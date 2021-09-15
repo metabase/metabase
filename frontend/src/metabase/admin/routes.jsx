@@ -140,10 +140,12 @@ const getRoutes = (store, IsAdmin) => (
     </Route>
 
     {/* PERMISSIONS */}
-    {getAdminPermissionsRoutes(store)}
+    <React.Fragment>{getAdminPermissionsRoutes(store)}</React.Fragment>
 
     {/* PLUGINS */}
-    {PLUGIN_ADMIN_ROUTES.map(getRoutes => getRoutes(store))}
+    <React.Fragment>
+      {PLUGIN_ADMIN_ROUTES.map(getRoutes => getRoutes(store))}
+    </React.Fragment>
   </Route>
 );
 

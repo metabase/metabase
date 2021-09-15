@@ -1,14 +1,16 @@
 (ns metabase-enterprise.audit.pages.users
   (:require [honeysql.core :as hsql]
+            [metabase-enterprise.audit.interface :as audit.i]
             [metabase-enterprise.audit.pages.common :as common]
             [metabase.util.honeysql-extensions :as hx]
             [ring.util.codec :as codec]
             [schema.core :as s]))
 
-(defn ^:internal-query-fn ^:deprecated active-users-and-queries-by-day
-  "Query that returns data for a two-series timeseries: the number of DAU (a User is considered active for purposes of
-  this query if they ran at least one query that day), and total number of queries ran. Broken out by day."
-  []
+;; DEPRECATED Query that returns data for a two-series timeseries: the number of DAU (a User is considered active for
+;; purposes of this query if they ran at least one query that day), and total number of queries ran. Broken out by
+;; day.
+(defmethod audit.i/internal-query ::active-users-and-queries-by-day
+  [_]
   {:metadata [[:users   {:display_name "Users",   :base_type :type/Integer}]
               [:queries {:display_name "Queries", :base_type :type/Integer}]
               [:day     {:display_name "Date",    :base_type :type/Date}]]
@@ -25,27 +27,26 @@
                :group-by [:day]
                :order-by [[:day :asc]]})})
 
-
-(s/defn ^:internal-query-fn active-and-new-by-time
-  "Two-series timeseries that returns number of active Users (Users who ran at least one query) and number of new Users,
-  broken out by `datetime-unit`."
-  [datetime-unit :- common/DateTimeUnitStr]
+;; Two-series timeseries that returns number of active Users (Users who ran at least one query) and number of new
+;; Users, broken out by `datetime-unit`.
+(s/defmethod audit.i/internal-query ::active-and-new-by-time
+  [_ datetime-unit :- common/DateTimeUnitStr]
   {:metadata [[:date         {:display_name "Date",         :base_type (common/datetime-unit-str->base-type datetime-unit)}]
               [:active_users {:display_name "Active Users", :base_type :type/Integer}]
               [:new_users    {:display_name "New Users",    :base_type :type/Integer}]]
    ;; this is so nice and easy to implement in a single query with FULL OUTER JOINS but unfortunately only pg supports
    ;; them(!)
    :results  (let [active       (common/query
-                                  {:select   [[(common/grouped-datetime datetime-unit :started_at) :date]
-                                              [:%distinct-count.executor_id :count]]
-                                   :from     [:query_execution]
-                                   :group-by [(common/grouped-datetime datetime-unit :started_at)]})
+                                 {:select   [[(common/grouped-datetime datetime-unit :started_at) :date]
+                                             [:%distinct-count.executor_id :count]]
+                                  :from     [:query_execution]
+                                  :group-by [(common/grouped-datetime datetime-unit :started_at)]})
                    date->active (zipmap (map :date active) (map :count active))
                    new          (common/query
-                                  {:select   [[(common/grouped-datetime datetime-unit :date_joined) :date]
-                                              [:%count.* :count]]
-                                   :from     [:core_user]
-                                   :group-by [(common/grouped-datetime datetime-unit :date_joined)]})
+                                 {:select   [[(common/grouped-datetime datetime-unit :date_joined) :date]
+                                             [:%count.* :count]]
+                                  :from     [:core_user]
+                                  :group-by [(common/grouped-datetime datetime-unit :date_joined)]})
                    date->new    (zipmap (map :date new) (map :count new))
                    all-dates    (sort (keep identity (distinct (concat (keys date->active)
                                                                        (keys date->new)))))]
@@ -54,10 +55,9 @@
                   :active_users (date->active date 0)
                   :new_users    (date->new   date 0)}))})
 
-
-(defn ^:internal-query-fn most-active
-  "Query that returns the 10 most active Users (by number of query executions) in descending order."
-  []
+;; Query that returns the 10 most active Users (by number of query executions) in descending order.
+(defmethod audit.i/internal-query ::most-active
+  [_]
   {:metadata [[:user_id {:display_name "User ID",          :base_type :type/Integer, :remapped_to   :name}]
               [:name    {:display_name "Name",             :base_type :type/Name,    :remapped_from :user_id}]
               [:count   {:display_name "Query Executions", :base_type :type/Integer}]]
@@ -79,74 +79,72 @@
                            [:%lower.u.first_name :asc]]
                :limit     10})})
 
-
-(defn ^:internal-query-fn most-saves
-  "Query that returns the 10 Users with the most saved objects in descending order."
-  []
+;; Query that returns the 10 Users with the most saved objects in descending order.
+(defmethod audit.i/internal-query ::most-saves
+  [_]
   {:metadata [[:user_id   {:display_name "User ID",       :base_type :type/Integer, :remapped_to :user_name}]
               [:user_name {:display_name "Name",          :base_type :type/Name,    :remapped_from :user_id}]
               [:saves     {:display_name "Saved Objects", :base_type :type/Integer}]]
    :results  (common/reducible-query
-               {:with      [[:card_saves       {:select   [:creator_id
-                                                           [:%count.* :count]]
-                                                :from     [:report_card]
-                                                :group-by [:creator_id]}]
-                            [:dashboard_saves {:select   [:creator_id
+              {:with      [[:card_saves       {:select   [:creator_id
                                                           [:%count.* :count]]
-                                               :from     [:report_dashboard]
+                                               :from     [:report_card]
                                                :group-by [:creator_id]}]
-                            [:pulse_saves     {:select   [:creator_id
-                                                          [:%count.* :count]]
-                                               :from     [:pulse]
-                                               :group-by [:creator_id]}]]
-                :select    [[:u.id :user_id]
-                            [(common/user-full-name :u) :user_name]
-                            [(hx/+ (common/zero-if-null :card_saves.count)
-                                   (common/zero-if-null :dashboard_saves.count)
-                                   (common/zero-if-null :pulse_saves.count))
-                             :saves]]
-                :from      [[:core_user :u]]
-                :left-join [:card_saves      [:= :u.id :card_saves.creator_id]
-                            :dashboard_saves [:= :u.id :dashboard_saves.creator_id]
-                            :pulse_saves     [:= :u.id :pulse_saves.creator_id]]
-                :order-by  [[:saves :desc]
-                            [:u.last_name :asc]
-                            [:u.first_name :asc]]
-                :limit     10})})
+                           [:dashboard_saves {:select   [:creator_id
+                                                         [:%count.* :count]]
+                                              :from     [:report_dashboard]
+                                              :group-by [:creator_id]}]
+                           [:pulse_saves     {:select   [:creator_id
+                                                         [:%count.* :count]]
+                                              :from     [:pulse]
+                                              :group-by [:creator_id]}]]
+               :select    [[:u.id :user_id]
+                           [(common/user-full-name :u) :user_name]
+                           [(hx/+ (common/zero-if-null :card_saves.count)
+                                  (common/zero-if-null :dashboard_saves.count)
+                                  (common/zero-if-null :pulse_saves.count))
+                            :saves]]
+               :from      [[:core_user :u]]
+               :left-join [:card_saves      [:= :u.id :card_saves.creator_id]
+                           :dashboard_saves [:= :u.id :dashboard_saves.creator_id]
+                           :pulse_saves     [:= :u.id :pulse_saves.creator_id]]
+               :order-by  [[:saves :desc]
+                           [:u.last_name :asc]
+                           [:u.first_name :asc]]
+               :limit     10})})
 
-
-(defn ^:internal-query-fn query-execution-time-per-user
-  "Query that returns the total time spent executing queries, broken out by User, for the top 10 Users."
-  []
+;; Query that returns the total time spent executing queries, broken out by User, for the top 10 Users.
+(defmethod audit.i/internal-query ::query-execution-time-per-user
+  [_]
   {:metadata [[:user_id           {:display_name "User ID",                   :base_type :type/Integer, :remapped_to   :name}]
               [:name              {:display_name "Name",                      :base_type :type/Name,    :remapped_from :user_id}]
               [:execution_time_ms {:display_name "Total Execution Time (ms)", :base_type :type/Decimal}]]
    :results  (common/reducible-query
-               {:with      [[:exec_time {:select   [[:%sum.running_time :execution_time_ms]
-                                                    :qe.executor_id]
-                                         :from     [[:query_execution :qe]]
-                                         :where    [:not= nil :qe.executor_id]
-                                         :group-by [:qe.executor_id]
-                                         :order-by [[:%sum.running_time :desc]]
-                                         :limit    10}]]
-                :select    [[:u.id :user_id]
-                            [(common/user-full-name :u) :name]
-                            [(hsql/call :case [:not= :exec_time.execution_time_ms nil] :exec_time.execution_time_ms
-                                        :else 0)
-                             :execution_time_ms]]
-                :from      [[:core_user :u]]
-                :left-join [:exec_time [:= :exec_time.executor_id :u.id]]
-                :order-by  [[:execution_time_ms :desc]
-                            [:%lower.u.last_name :asc]
-                            [:%lower.u.first_name :asc]]
-                :limit     10})})
+              {:with      [[:exec_time {:select   [[:%sum.running_time :execution_time_ms]
+                                                   :qe.executor_id]
+                                        :from     [[:query_execution :qe]]
+                                        :where    [:not= nil :qe.executor_id]
+                                        :group-by [:qe.executor_id]
+                                        :order-by [[:%sum.running_time :desc]]
+                                        :limit    10}]]
+               :select    [[:u.id :user_id]
+                           [(common/user-full-name :u) :name]
+                           [(hsql/call :case [:not= :exec_time.execution_time_ms nil] :exec_time.execution_time_ms
+                              :else 0)
+                            :execution_time_ms]]
+               :from      [[:core_user :u]]
+               :left-join [:exec_time [:= :exec_time.executor_id :u.id]]
+               :order-by  [[:execution_time_ms :desc]
+                           [:%lower.u.last_name :asc]
+                           [:%lower.u.first_name :asc]]
+               :limit     10})})
 
-(s/defn ^:internal-query-fn table
-  "A table of all the Users for this instance, and various statistics about them (see metadata below)."
-  ([]
-   (table nil))
+;; A table of all the Users for this instance, and various statistics about them (see metadata below).
+(s/defmethod audit.i/internal-query ::table
+  ([query-type]
+   (audit.i/internal-query query-type nil))
 
-  ([query-string :- (s/maybe s/Str)]
+  ([_ query-string :- (s/maybe s/Str)]
    {:metadata [[:user_id          {:display_name "User ID",          :base_type :type/Integer, :remapped_to :name}]
                [:name             {:display_name "Name",             :base_type :type/Name,    :remapped_from :user_id}]
                [:role             {:display_name "Role",             :base_type :type/Text}]
@@ -222,11 +220,10 @@
                              [:%lower.u.first_name :asc]]}
                 (common/add-search-clause query-string :u.first_name :u.last_name)))}))
 
-
-(defn ^:internal-query-fn query-views
-  "Return a log of all query executions, including information about the Card associated with the query and the
-  Collection it is in (both, if applicable) and Database/Table referenced by the query."
-  []
+;; Return a log of all query executions, including information about the Card associated with the query and the
+;; Collection it is in (both, if applicable) and Database/Table referenced by the query.
+(defmethod audit.i/internal-query ::query-views
+  [_]
   {:metadata [[:viewed_on     {:display_name "Viewed On",       :base_type :type/DateTime}]
               [:card_id       {:display_name "Card ID"          :base_type :type/Integer, :remapped_to   :card_name}]
               [:card_name     {:display_name "Query",           :base_type :type/Text,    :remapped_from :card_id}]
@@ -268,9 +265,9 @@
               :order-by  [[:qe.started_at :desc]]})
    :xform (map #(update (vec %) 3 codec/base64-encode))})
 
-(defn ^:internal-query-fn dashboard-views
-  "Return a log of when all Dashboard views, including the Collection the Dashboard belongs to."
-  []
+;; Return a log of when all Dashboard views, including the Collection the Dashboard belongs to.
+(defmethod audit.i/internal-query ::dashboard-views
+  [_]
   {:metadata [[:timestamp       {:display_name "Viewed on",     :base_type :type/DateTime}]
               [:dashboard_id    {:display_name "Dashboard ID",  :base_type :type/Integer, :remapped_to   :dashboard_name}]
               [:dashboard_name  {:display_name "Dashboard",     :base_type :type/Text,    :remapped_from :dashboard_id}]

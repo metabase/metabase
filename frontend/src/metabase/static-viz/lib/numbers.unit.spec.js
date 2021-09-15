@@ -1,4 +1,4 @@
-import { formatNumber } from "./formatNumber";
+import { formatNumber } from "./numbers";
 
 describe("formatNumber", () => {
   it("should format a number with default options", () => {

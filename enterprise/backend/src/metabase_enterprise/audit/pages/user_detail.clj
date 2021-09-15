@@ -1,5 +1,6 @@
 (ns metabase-enterprise.audit.pages.user-detail
   (:require [honeysql.core :as hsql]
+            [metabase-enterprise.audit.interface :as audit.i]
             [metabase-enterprise.audit.pages.common :as common]
             [metabase-enterprise.audit.pages.common.cards :as cards]
             [metabase-enterprise.audit.pages.common.dashboards :as dashboards]
@@ -9,11 +10,12 @@
             [ring.util.codec :as codec]
             [schema.core :as s]))
 
-(s/defn ^:internal-query-fn table
-  "Query that probides a single row of information about a given User, similar to the `users/table` query but restricted
-  to a single result.
-  (TODO - in the designs, this is pivoted; should we do that here in Clojure-land?)"
-  [user-id :- su/IntGreaterThanZero]
+;; Query that probides a single row of information about a given User, similar to the `users/table` query but
+;; restricted to a single result.
+;;
+;; (TODO - in the designs, this is pivoted; should we do that here in Clojure-land?)
+(s/defmethod audit.i/internal-query ::table
+  [_ user-id :- su/IntGreaterThanZero]
   {:metadata [[:name             {:display_name "Name",             :base_type :type/Name}]
               [:role             {:display_name "Role",             :base_type :type/Text}]
               [:groups           {:display_name "Groups",           :base_type :type/Text}]
@@ -42,18 +44,18 @@
                                         :where  [:= :creator_id user-id]}]
                         [:users {:select [[(common/user-full-name :u) :name]
                                           [(hsql/call :case
-                                                      [:= :u.is_superuser true]
-                                                      (hx/literal "Admin")
-                                                      :else
-                                                      (hx/literal "User"))
+                                             [:= :u.is_superuser true]
+                                             (hx/literal "Admin")
+                                             :else
+                                             (hx/literal "User"))
                                            :role]
                                           :id
                                           :date_joined
                                           [(hsql/call :case
-                                                      [:= nil :u.sso_source]
-                                                      (hx/literal "Email")
-                                                      :else
-                                                      :u.sso_source)
+                                             [:= nil :u.sso_source]
+                                             (hx/literal "Email")
+                                             :else
+                                             :u.sso_source)
                                            :signup_method]
                                           :last_name]
                                  :from   [[:core_user :u]]
@@ -74,9 +76,9 @@
                         :dashboards_saved
                         :pulses_saved]})})
 
-(s/defn ^:internal-query-fn most-viewed-dashboards
-  "Return the 10 most-viewed Dashboards for a given User, in descending order."
-  [user-id :- su/IntGreaterThanZero]
+;; Return the 10 most-viewed Dashboards for a given User, in descending order.
+(s/defmethod audit.i/internal-query ::most-viewed-dashboards
+  [_ user-id :- su/IntGreaterThanZero]
   {:metadata [[:dashboard_id   {:display_name "Dashboard ID", :base_type :type/Integer, :remapped_to   :dashboard_name}]
               [:dashboard_name {:display_name "Dashboard",    :base_type :type/Name,    :remapped_from :dashboard_id}]
               [:count          {:display_name "Views",        :base_type :type/Integer}]]
@@ -93,9 +95,9 @@
                :order-by  [[:%count.* :desc]]
                :limit     10})})
 
-(s/defn ^:internal-query-fn most-viewed-questions
-  "Return the 10 most-viewed Questions for a given User, in descending order."
-  [user-id :- su/IntGreaterThanZero]
+;; Return the 10 most-viewed Questions for a given User, in descending order.
+(s/defmethod audit.i/internal-query ::most-viewed-questions
+  [_ user-id :- su/IntGreaterThanZero]
   {:metadata [[:card_id   {:display_name "Card ID", :base_type :type/Integer, :remapped_to   :card_name}]
               [:card_name {:display_name "Query",   :base_type :type/Name,    :remapped_from :card_id}]
               [:count     {:display_name "Views",   :base_type :type/Integer}]]
@@ -112,9 +114,9 @@
                :order-by  [[:%count.* :desc]]
                :limit     10})})
 
-(s/defn ^:internal-query-fn query-views
-  "Query views by a specific User."
-  [user-id :- su/IntGreaterThanZero]
+;; Query views by a specific User.
+(s/defmethod audit.i/internal-query ::query-views
+  [_ user-id :- su/IntGreaterThanZero]
   {:metadata [[:viewed_on     {:display_name "Viewed On",      :base_type :type/DateTime}]
               [:card_id       {:display_name "Card ID"         :base_type :type/Integer, :remapped_to   :card_name}]
               [:card_name     {:display_name "Query",          :base_type :type/Text,    :remapped_from :card_id}]
@@ -152,9 +154,9 @@
               :order-by  [[:qe.started_at :desc]]})
    :xform    (map #(update (vec %) 3 codec/base64-encode))})
 
-(s/defn ^:internal-query-fn dashboard-views
-  "Dashboard views by a specific User."
-  [user-id :- su/IntGreaterThanZero]
+;; Dashboard views by a specific User.
+(s/defmethod audit.i/internal-query ::dashboard-views
+  [_ user-id :- su/IntGreaterThanZero]
   {:metadata [[:timestamp       {:display_name "Viewed on",     :base_type :type/DateTime}]
               [:dashboard_id    {:display_name "Dashboard ID",  :base_type :type/Integer, :remapped_to   :dashboard_name}]
               [:dashboard_name  {:display_name "Dashboard",     :base_type :type/Text,    :remapped_from :dashboard_id}]
@@ -174,9 +176,12 @@
               :left-join [[:collection :coll] [:= :dash.collection_id :coll.id]]
               :order-by  [[:vl.timestamp :desc]]})})
 
-(s/defn ^:internal-query-fn object-views-by-time
-  "Timeseries chart that shows the number of Question or Dashboard views for a User, broken out by `datetime-unit`."
-  [user-id :- su/IntGreaterThanZero, model :- (s/enum "card" "dashboard"), datetime-unit :- common/DateTimeUnitStr]
+;; Timeseries chart that shows the number of Question or Dashboard views for a User, broken out by `datetime-unit`.
+(s/defmethod audit.i/internal-query ::object-views-by-time
+  [_
+   user-id       :- su/IntGreaterThanZero
+   model         :- (s/enum "card" "dashboard")
+   datetime-unit :- common/DateTimeUnitStr]
   {:metadata [[:date {:display_name "Date",   :base_type (common/datetime-unit-str->base-type datetime-unit)}]
               [:views {:display_name "Views", :base_type :type/Integer}]]
    :results (common/reducible-query
@@ -189,16 +194,16 @@
               :group-by [(common/grouped-datetime datetime-unit :timestamp)]
               :order-by [[(common/grouped-datetime datetime-unit :timestamp) :asc]]})})
 
-(s/defn ^:internal-query-fn created-dashboards
-  "Dashboards created by a specific User."
-  ([user-id]
-   (created-dashboards user-id nil))
-  ([user-id :- su/IntGreaterThanZero, query-string :- (s/maybe s/Str)]
+;; Dashboards created by a specific User.
+(s/defmethod audit.i/internal-query ::created-dashboards
+  ([query-type user-id]
+   (audit.i/internal-query query-type user-id nil))
+  ([_ user-id :- su/IntGreaterThanZero query-string :- (s/maybe s/Str)]
    (dashboards/table query-string [:= :u.id user-id])))
 
-(s/defn ^:internal-query-fn created-questions
-  "Questions created by a specific User."
-  [user-id :- su/IntGreaterThanZero]
+;; Questions created by a specific User.
+(s/defmethod audit.i/internal-query ::created-questions
+  [_ user-id :- su/IntGreaterThanZero]
   {:metadata [[:card_id             {:display_name "Card ID",              :base_type :type/Integer, :remapped_to   :card_name}]
               [:card_name           {:display_name "Title",                :base_type :type/Name,    :remapped_from :card_id}]
               [:collection_id       {:display_name "Collection ID",        :base_type :type/Integer, :remapped_to   :collection_name}]
@@ -240,10 +245,10 @@
                :where     [:= :card.creator_id user-id]
                :order-by  [[:%lower.card.name :asc]]})})
 
-(s/defn ^:internal-query-fn downloads
-  "Table of query downloads (i.e., queries whose results are returned as CSV/JSON/XLS) done by this user, ordered by
-  most recent."
-  [user-id :- su/IntGreaterThanZero]
+;; Table of query downloads (i.e., queries whose results are returned as CSV/JSON/XLS) done by this user, ordered by
+;; most recent.
+(s/defmethod audit.i/internal-query ::downloads
+  [_ user-id :- su/IntGreaterThanZero]
   {:metadata [[:downloaded_at   {:display_name "Downloaded At",   :base_type :type/DateTime}]
               [:rows_downloaded {:display_name "Rows Downloaded", :base_type :type/Integer}]
               [:card_id         {:display_name "Card ID",         :base_type :type/Integer, :remapped_to :card_name}]
@@ -254,20 +259,20 @@
               [:table_id        {:display_name "Table ID",        :base_type :type/Integer, :remapped_to :source_table}]
               [:source_table    {:display_name "Source Table",    :base_type :type/Text,    :remapped_from :table_id}]]
    :results  (common/reducible-query
-               {:select    [[:qe.started_at :downloaded_at]
-                            [:qe.result_rows :rows_downloaded]
-                            [:card.id :card_id]
-                            [(common/card-name-or-ad-hoc :card) :card_name]
-                            [(common/native-or-gui :qe) :query_type]
-                            [:db.id :database_id]
-                            [:db.name :database]
-                            [:t.id :table_id]
-                            [:t.name :source_table]]
-                :from      [[:query_execution :qe]]
-                :left-join [[:report_card :card] [:= :card.id :qe.card_id]
-                            [:metabase_database :db] [:= :qe.database_id :db.id]
-                            [:metabase_table :t] [:= :card.table_id :t.id]]
-                :where     [:and
-                            [:= :executor_id user-id]
-                            (common/query-execution-is-download :qe)]
-                :order-by  [[:qe.started_at :desc]]})})
+              {:select    [[:qe.started_at :downloaded_at]
+                           [:qe.result_rows :rows_downloaded]
+                           [:card.id :card_id]
+                           [(common/card-name-or-ad-hoc :card) :card_name]
+                           [(common/native-or-gui :qe) :query_type]
+                           [:db.id :database_id]
+                           [:db.name :database]
+                           [:t.id :table_id]
+                           [:t.name :source_table]]
+               :from      [[:query_execution :qe]]
+               :left-join [[:report_card :card] [:= :card.id :qe.card_id]
+                           [:metabase_database :db] [:= :qe.database_id :db.id]
+                           [:metabase_table :t] [:= :card.table_id :t.id]]
+               :where     [:and
+                           [:= :executor_id user-id]
+                           (common/query-execution-is-download :qe)]
+               :order-by  [[:qe.started_at :desc]]})})

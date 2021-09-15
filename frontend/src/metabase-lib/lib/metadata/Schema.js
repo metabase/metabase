@@ -20,6 +20,7 @@ export default class Schema extends Base {
    * @param {Database} database
    * @param {Table[]} tables
    */
+  /* istanbul ignore next */
   _constructor(name, database, tables) {
     this.name = name;
     this.database = database;

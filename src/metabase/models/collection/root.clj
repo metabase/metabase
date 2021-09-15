@@ -1,7 +1,7 @@
 (ns metabase.models.collection.root
   (:require [metabase.models.interface :as i]
             [metabase.models.permissions :as perms]
-            [metabase.public-settings.metastore :as settings.metastore]
+            [metabase.public-settings.premium-features :as settings.premium-features]
             [metabase.util :as u]
             [potemkin.types :as p.types]
             [toucan.models :as models]))
@@ -20,7 +20,7 @@
   {:pre [(map? collection)]}
   ;; HACK Collections in the "snippets" namespace have no-op permissions unless EE enhancements are enabled
   (if (and (= (u/qualified-name (:namespace collection)) "snippets")
-           (not (settings.metastore/enable-enhancements?)))
+           (not (settings.premium-features/enable-enhancements?)))
     #{}
     #{((case read-or-write
          :read  perms/collection-read-path

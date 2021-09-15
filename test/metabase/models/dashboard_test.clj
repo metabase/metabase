@@ -34,6 +34,7 @@
                   DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]]
     (is (= {:name         "Test Dashboard"
             :description  nil
+            :cache_ttl    nil
             :cards        [{:sizeX   2
                             :sizeY   2
                             :row     0
@@ -75,11 +76,12 @@
                           :card_id 1
                           :series  []}]})))
 
-  (is (= "rearranged the cards, modified the series on card 1 and added some series to card 2."
+  (is (= "changed the cache ttl from \"333\" to \"1227\", rearranged the cards, modified the series on card 1 and added some series to card 2."
          (#'dashboard/diff-dashboards-str
           nil
           {:name        "Diff Test"
            :description nil
+           :cache_ttl   333
            :cards       [{:sizeX   2
                           :sizeY   2
                           :row     0
@@ -96,6 +98,7 @@
                           :series  []}]}
           {:name        "Diff Test"
            :description nil
+           :cache_ttl   1227
            :cards       [{:sizeX   2
                           :sizeY   2
                           :row     0
@@ -128,6 +131,7 @@
       (testing "original state"
         (is (= {:name         "Test Dashboard"
                 :description  nil
+                :cache_ttl    nil
                 :cards        [{:sizeX   2
                                 :sizeY   2
                                 :row     0
@@ -144,12 +148,14 @@
         (testing "capture updated Dashboard state"
           (is (= {:name        "Revert Test"
                   :description "something"
+                  :cache_ttl   nil
                   :cards       []}
                  (serialize-dashboard (Dashboard dashboard-id))))))
       (testing "now do the reversion; state should return to original"
         (#'dashboard/revert-dashboard! nil dashboard-id (users/user->id :crowberto) serialized-dashboard)
         (is (= {:name         "Test Dashboard"
                 :description  nil
+                :cache_ttl    nil
                 :cards        [{:sizeX   2
                                 :sizeY   2
                                 :row     0

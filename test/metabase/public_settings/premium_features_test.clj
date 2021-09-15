@@ -1,37 +1,37 @@
-(ns metabase.public-settings.metastore-test
+(ns metabase.public-settings.premium-features-test
   (:require [cheshire.core :as json]
             [clj-http.fake :as http-fake]
             [clojure.test :refer :all]
             [metabase.models.user :refer [User]]
-            [metabase.public-settings.metastore :as metastore]
+            [metabase.public-settings.premium-features :as premium-features]
             [toucan.util.test :as tt]))
 
-(defn do-with-metastore-token-features [features f]
+(defn do-with-premium-features [features f]
   (let [features (set (map name features))]
-    (testing (format "\nWith EE token features = %s" (pr-str features))
-      (with-redefs [metastore/token-features (constantly features)]
+    (testing (format "\nWith premium token features = %s" (pr-str features))
+      (with-redefs [premium-features/token-features (constantly features)]
         (f)))))
 
 ;; TODO -- move this to a shared `metabase-enterprise.test` namespace. Consider adding logic that will alias stuff in
 ;; `metabase-enterprise.test` in `metabase.test` as well *if* EE code is available
-(defmacro with-metastore-token-features
-  "Execute `body` with the allowed premium features for the MetaStore token set to `features`. Intended for use testing
+(defmacro with-premium-features
+  "Execute `body` with the allowed premium features for the Premium-Features token set to `features`. Intended for use testing
   feature-flagging.
 
-    (with-metastore-token-features #{:audit-app}
+    (with-premium-features #{:audit-app}
       ;; audit app will be enabled for body, but no other premium features
       ...)"
   {:style/indent 1}
   [features & body]
-  `(do-with-metastore-token-features ~features (fn [] ~@body)))
+  `(do-with-premium-features ~features (fn [] ~@body)))
 
 (defn- token-status-response
-  [token metastore-response]
+  [token premium-features-response]
   (http-fake/with-fake-routes-in-isolation
-    {{:address      (#'metastore/token-status-url token)
-      :query-params {:users (str (#'metastore/active-user-count))}}
-     (constantly metastore-response)}
-    (#'metastore/fetch-token-status* token)))
+    {{:address      (#'premium-features/token-status-url token)
+      :query-params {:users (str (#'premium-features/active-user-count))}}
+     (constantly premium-features-response)}
+    (#'premium-features/fetch-token-status* token)))
 
 (def ^:private token-response-fixture
   (json/encode {:valid    true

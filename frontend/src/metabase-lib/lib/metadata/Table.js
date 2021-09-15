@@ -127,6 +127,7 @@ export default class Table extends Base {
    * @param {Field[]} fields
    * @param {EntityType} entity_type
    */
+  /* istanbul ignore next */
   _constructor(description, db, schema, schema_name, fields, entity_type) {
     this.description = description;
     this.db = db;

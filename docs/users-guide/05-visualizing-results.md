@@ -21,7 +21,7 @@ In Metabase, an answer to a question can be visualized in a number of ways:
 - [Funnel](#funnel)
 - [Map](#maps)
 
-To change how the answer to your question is displayed, click on the **Visualization** button in the bottom-right of the screen to open the visualization sidebar.
+To change how the answer to your question is displayed, click on the **Visualization** button in the bottom-left of the screen to open the visualization sidebar.
 
 ![Visualization options](images/VisualizeChoices.png)
 

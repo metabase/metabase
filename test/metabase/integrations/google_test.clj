@@ -4,7 +4,7 @@
             [metabase.integrations.google :as google]
             [metabase.integrations.google.interface :as google.i]
             [metabase.models.user :refer [User]]
-            [metabase.public-settings.metastore :as metastore]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.test :as mt]
             [toucan.db :as db]))
 
@@ -25,7 +25,7 @@
     true  "cam.saul+1@metabase.com"   "metabase.com"))
 
 (deftest allow-autocreation-test
-  (with-redefs [metastore/enable-sso? (constantly false)]
+  (with-redefs [premium-features/enable-sso? (constantly false)]
     (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com"]
       (are [allowed? email] (is (= allowed?
                                    (#'google/autocreate-user-allowed-for-email? email))
@@ -35,13 +35,13 @@
 
 (deftest google-auth-auto-create-accounts-domain-test
   (testing "multiple domains cannot be set if EE SSO is not enabled"
-    (with-redefs [metastore/enable-sso? (constantly false)]
+    (with-redefs [premium-features/enable-sso? (constantly false)]
       (is (thrown?
            clojure.lang.ExceptionInfo
            (google.i/google-auth-auto-create-accounts-domain "metabase.com, example.com"))))))
 
 (deftest google-auth-create-new-user!-test
-  (with-redefs [metastore/enable-sso? (constantly false)]
+  (with-redefs [premium-features/enable-sso? (constantly false)]
     (testing "shouldn't be allowed to create a new user via Google Auth if their email doesn't match the auto-create accounts domain"
       (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"]
         (is (thrown?
@@ -118,7 +118,7 @@
 ;;; --------------------------------------- google-auth-fetch-or-create-user! ----------------------------------------
 
 (deftest google-auth-fetch-or-create-user!-test
-  (with-redefs [metastore/enable-sso? (constantly false)]
+  (with-redefs [premium-features/enable-sso? (constantly false)]
     (testing "test that an existing user can log in with Google auth even if the auto-create accounts domain is different from"
       (mt/with-temp User [user {:email "cam@sf-toucannery.com"}]
         (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com"]

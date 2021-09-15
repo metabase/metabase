@@ -8,7 +8,7 @@ import { t } from "ttag";
 
 import Dashboard from "metabase/entities/dashboards";
 
-import { setDashboardAttributes } from "../dashboard";
+import { setDashboardAttributes } from "../actions";
 import { getDashboardComplete } from "../selectors";
 
 const mapStateToProps = (state, props) => ({

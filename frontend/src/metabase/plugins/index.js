@@ -22,6 +22,10 @@ export const PLUGIN_ADMIN_ROUTES = [];
 export const PLUGIN_ADMIN_SETTINGS_UPDATES = [];
 
 // admin permissions
+export const PLUGIN_ADMIN_PERMISSIONS_HELP = {
+  Component: null,
+};
+export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_BLOCK_OPTIONS = [];
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES = [];
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES = [];
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS = [];

@@ -32,6 +32,7 @@ export default class Segment extends Base {
    * @param {number} id
    * @param {boolean} archived
    */
+  /* istanbul ignore next */
   _constructor(name, description, database, table, id, archived) {
     this.name = name;
     this.description = description;

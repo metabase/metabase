@@ -9,6 +9,7 @@
             [metabase.integrations.ldap :as ldap]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.permissions-group :as group]
+            [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
             [metabase.models.user :as user :refer [User]]
             [metabase.plugins.classloader :as classloader]
             [metabase.server.middleware.offset-paging :as offset-paging]
@@ -319,6 +320,14 @@
           join-url    (str (user/form-password-reset-url reset-token) "#new")]
       (email/send-new-user-email! user @api/*current-user* join-url)))
   {:success true})
+
+(api/defendpoint DELETE "/:id/subscriptions"
+  "Delete all Alert and DashboardSubscription subscriptions for a User. Only allowed for admins or for the current
+  user."
+  [id]
+  (check-self-or-superuser id)
+  (db/delete! PulseChannelRecipient :user_id id)
+  api/generic-204-no-content)
 
 
 (api/define-routes)
