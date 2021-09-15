@@ -301,7 +301,7 @@ describe("scenarios > question > new", () => {
       });
     });
 
-    it.skip("should remove `/notebook` from URL when converting question to SQL/Native (metabase#12651)", () => {
+    it("should remove `/notebook` from URL when converting question to SQL/Native (metabase#12651)", () => {
       cy.server();
       cy.route("POST", "/api/dataset").as("dataset");
       openOrdersTable();

@@ -31,6 +31,14 @@
  [shared.u
   qualified-name])
 
+(defn add-period
+  "Fixes strings that don't terminate in a period."
+  [s]
+  (if (or (str/blank? s)
+          (#{\. \? \!} (last s)))
+    s
+    (str s ".")))
+
 (defn lower-case-en
   "Locale-agnostic version of `clojure.string/lower-case`.
   `clojure.string/lower-case` uses the default locale in conversions, turning

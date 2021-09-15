@@ -26,6 +26,8 @@ import {
   getLoadingStartTime,
   getClickBehaviorSidebarDashcard,
   getIsAddParameterPopoverOpen,
+  getSidebar,
+  getShowAddQuestionSidebar,
 } from "../selectors";
 import { getDatabases, getMetadata } from "metabase/selectors/metadata";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -57,6 +59,8 @@ const mapStateToProps = (state, props) => {
     loadingStartTime: getLoadingStartTime(state),
     clickBehaviorSidebarDashcard: getClickBehaviorSidebarDashcard(state),
     isAddParameterPopoverOpen: getIsAddParameterPopoverOpen(state),
+    sidebar: getSidebar(state),
+    showAddQuestionSidebar: getShowAddQuestionSidebar(state),
   };
 };
 

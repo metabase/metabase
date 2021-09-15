@@ -1,4 +1,4 @@
-import { formatDate } from "./formatDate";
+import { formatDate } from "./dates";
 
 describe("formatDate", () => {
   it("should format a date with default settings", () => {

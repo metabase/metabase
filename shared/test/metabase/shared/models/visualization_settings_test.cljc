@@ -44,12 +44,15 @@
   (t/testing "Column ref strings are parsed correctly"
     (let [f-qual-nm "/databases/MY_DB/tables/MY_TBL/fields/COL1"
           f-id      42
-          col-nm    "Year"]
+          col-nm    "Year"
+          expn-nm   "Calculated Column"]
       (doseq [[input-str expected] [[(fmt "[\"ref\",[\"field\",%d,null]]" f-id) {::mb.viz/field-id f-id}]
                                     [(fmt "[\"ref\",[\"field\",\"%s\",null]]" f-qual-nm)
                                      {::mb.viz/field-str f-qual-nm}]
                                     [(fmt "[\"name\",\"Year\"]" col-nm)
-                                     {::mb.viz/column-name col-nm}]]]
+                                     {::mb.viz/column-name col-nm}]
+                                    [(fmt "[\"ref\",[\"expression\",\"%s\"]]" expn-nm)
+                                     {::mb.viz/column-name expn-nm}]]]
         (t/is (= expected (mb.viz/parse-db-column-ref input-str)))))))
 
 (t/deftest form-conversion-test

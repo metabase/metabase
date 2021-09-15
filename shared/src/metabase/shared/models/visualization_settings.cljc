@@ -52,11 +52,15 @@
 (s/def ::click-behavior (s/keys))
 (s/def ::visualization-settings (s/keys :opt [::column-settings ::click-behavior]))
 
-(s/def ::field-id-vec (s/tuple (partial = "ref") (s/tuple (partial = "field")
-                                                   (s/or :field-id int? :field-str string?)
-                                                   (s/or :field-metadata map? :nil nil?))))
+(s/def ::field-id-vec (s/tuple #{"ref"}
+                               (s/tuple #{"field"}
+                                        (s/or :field-id int? :field-str string?)
+                                        (s/or :field-metadata map? :nil nil?))))
+
+(s/def ::expression-vec (s/tuple #{"ref"} (s/tuple #{"expression"} string?)))
 
 (s/def ::db-column-ref-vec (s/or :field ::field-id-vec
+                                 :expression ::expression-vec
                                  :column-name (s/tuple (partial = "name") string?)))
 
 (s/def ::click-behavior-type keyword? #_(s/or :cross-filter ::cross-filter
@@ -196,7 +200,10 @@
                       :field-str {::field-str v})
                     (some? field-md) (assoc ::field-metadata field-md)))
           :column-name
-          {::column-name (nth parts 1)})))))
+          {::column-name (nth parts 1)}
+          :expression
+          (let [[_expression [_ref [_expression column-name]]] parsed]
+           {::column-name column-name}))))))
 
 (s/fdef db->norm-column-ref
   :args (s/cat :column-ref ::db-column-ref-vec)
