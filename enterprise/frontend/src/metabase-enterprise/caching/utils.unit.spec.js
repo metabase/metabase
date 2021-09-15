@@ -1,3 +1,4 @@
+import { msToSeconds, hoursToSeconds } from "metabase/lib/time";
 import MetabaseSettings from "metabase/lib/settings";
 import { getQuestionsImplicitCacheTTL, validateCacheTTL } from "./utils";
 
@@ -21,14 +22,6 @@ describe("validateCacheTTL", () => {
 describe("getQuestionsImplicitCacheTTL", () => {
   const TEN_MINUTES = 10 * 60 * 1000;
   const DEFAULT_CACHE_TTL_MULTIPLIER = 10;
-
-  function hoursToSeconds(hours) {
-    return hours * 60 * 60;
-  }
-
-  function msToSeconds(ms) {
-    return ms / 1000;
-  }
 
   function setup({
     cachingEnabled = true,

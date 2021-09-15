@@ -1,6 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { msToMinutes, msToHours } from "metabase/lib/time";
 import MetabaseSettings from "metabase/lib/settings";
 import { QuestionCacheTTLField } from "./QuestionCacheTTLField";
 
@@ -65,16 +66,6 @@ function fillValue(input, value) {
   userEvent.clear(input);
   userEvent.type(input, String(value));
   input.blur();
-}
-
-function msToMinutes(ms) {
-  const seconds = ms / 1000;
-  return seconds / 60;
-}
-
-function msToHours(ms) {
-  const hours = msToMinutes(ms) / 60;
-  return hours;
 }
 
 const DEFAULT_MODE_TEXT_TEST_ID = /radio-[0-9]+-default-name/;

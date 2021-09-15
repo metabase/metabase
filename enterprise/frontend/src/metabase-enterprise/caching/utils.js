@@ -1,9 +1,6 @@
 import { t } from "ttag";
+import { msToSeconds } from "metabase/lib/time";
 import MetabaseSettings from "metabase/lib/settings";
-
-function msToSeconds(ms) {
-  return ms / 1000;
-}
 
 /**
  * If a question doesn't have an explicitly set cache TTL,
