@@ -70,7 +70,7 @@
     (fn [] @locales)))
 
 (defn- find-fallback-locale*
-  ^Locale [a-locale]
+  ^Locale [^Locale a-locale]
   (some (fn [locale-name]
           (let [try-locale (locale locale-name)]
             ;; The language-only Locale is tried first by virtue of the
