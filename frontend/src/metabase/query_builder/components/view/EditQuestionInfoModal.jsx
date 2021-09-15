@@ -7,6 +7,7 @@ import Form from "metabase/containers/Form";
 import ModalContent from "metabase/components/ModalContent";
 import CollapseSection from "metabase/components/CollapseSection";
 
+import { PLUGIN_CACHING } from "metabase/plugins";
 import Questions from "metabase/entities/questions";
 
 const COLLAPSED_FIELDS = ["cache_ttl"];
@@ -26,6 +27,9 @@ function EditQuestionInfoModal({ question, onClose, onSave }) {
     [question, onSave, onClose],
   );
 
+  const isCachedImplicitly =
+    PLUGIN_CACHING.getQuestionsImplicitCacheTTL(question) > 0;
+
   return (
     <ModalContent title={t`Edit question`} onClose={onClose}>
       <Form
@@ -38,6 +42,14 @@ function EditQuestionInfoModal({ question, onClose, onSave }) {
             formFields,
             field => !COLLAPSED_FIELDS.includes(field.name),
           );
+
+          const cacheFieldExtraProps = {};
+          if (isCachedImplicitly) {
+            cacheFieldExtraProps.className = "mt1";
+          } else {
+            cacheFieldExtraProps.title = null;
+          }
+
           return (
             <Form>
               {visibleFields.map(field => (
@@ -54,7 +66,7 @@ function EditQuestionInfoModal({ question, onClose, onSave }) {
                   <FormField
                     name="cache_ttl"
                     question={question}
-                    className="mt1"
+                    {...cacheFieldExtraProps}
                   />
                 </CollapseSection>
               )}
