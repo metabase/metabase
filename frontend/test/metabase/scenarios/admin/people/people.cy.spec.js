@@ -314,6 +314,7 @@ describeWithToken("scenarios > admin > people", () => {
     });
 
     cy.visit("/account/notifications");
+    cy.findByLabelText("If you subscribe", { exact: false });
     cy.findByText("Question").should("not.exist");
     cy.findByText("Dashboard").should("not.exist");
   });

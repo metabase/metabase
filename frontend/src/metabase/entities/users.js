@@ -17,6 +17,7 @@ export const PASSWORD_RESET_EMAIL =
 export const PASSWORD_RESET_MANUAL =
   "metabase/entities/users/RESET_PASSWORD_MANUAL";
 export const RESEND_INVITE = "metabase/entities/users/RESEND_INVITE";
+export const UNSUBSCRIBE = "metabase/entities/users/UNSUBSCRIBE";
 
 // TODO: It'd be nice to import loadMemberships, but we need to resolve a circular dependency
 function loadMemberships() {
@@ -39,6 +40,7 @@ const Users = createEntity({
     PASSWORD_RESET_EMAIL,
     PASSWORD_RESET_MANUAL,
     RESEND_INVITE,
+    UNSUBSCRIBE,
   },
 
   actionDecorators: {
@@ -102,6 +104,11 @@ const Users = createEntity({
       // TODO: move these APIs from services to this file
       const user = await UserApi.reactivate({ userId: id });
       return { type: REACTIVATE, payload: user };
+    },
+    unsubscribe: async ({ id }) => {
+      MetabaseAnalytics.trackEvent("People Admin", "User Unsubscribed");
+      await UserApi.unsubscribe({ id });
+      return { type: UNSUBSCRIBE, payload: { id } };
     },
   },
 
