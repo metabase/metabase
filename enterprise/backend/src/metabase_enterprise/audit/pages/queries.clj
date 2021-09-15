@@ -104,7 +104,7 @@
                              [:%distinct-count.dash_card.card_id :num_dashboards]
                              [:card.creator_id :user_id]
                              [(common/user-full-name :u) :user_name]
-                             :card.updated_at]
+                             [(hsql/call :max :card.updated_at) :updated_at]]
                  :from      [[:report_card :card]]
                  :left-join [[:collection :coll]                [:= :card.collection_id :coll.id]
                              [:metabase_database :db]           [:= :card.database_id :db.id]
@@ -113,7 +113,7 @@
                              [:report_dashboardcard :dash_card] [:= :card.id :dash_card.card_id]
                              [:query_execution :qe]             [:and [:= :card.id :qe.card_id]
                                                                  latest-qe-subq]]
-                 :group-by  [:card.id :coll.name :qe.error]
+                 :group-by  [:card.id :card.creator_id :coll.name :db.name :t.name :qe.error]
                  :where     [:and
                              [:= :card.archived false]
                              [:<> :qe.error nil]]}
