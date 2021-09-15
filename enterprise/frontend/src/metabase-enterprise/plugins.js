@@ -9,12 +9,12 @@ MetabaseSettings.isEnterprise = () => true;
 
 // import "./management";
 
+import "./advanced_configuration";
 import "./audit_app";
 import "./auth";
 import "./collections";
 import "./embedding";
 import "./moderation";
-import "./notifications";
 import "./sandboxes";
 import "./sharing";
 import "./snippets";
