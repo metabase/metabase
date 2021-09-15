@@ -1,5 +1,5 @@
-/* eslint-disable react/prop-types */
 import React, { useCallback } from "react";
+import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -10,6 +10,12 @@ import CollapseSection from "metabase/components/CollapseSection";
 import Questions from "metabase/entities/questions";
 
 const COLLAPSED_FIELDS = ["cache_ttl"];
+
+const propTypes = {
+  question: PropTypes.object.isRequired, // metabase-lib Question instance
+  onSave: PropTypes.func.isRequired,
+  onClose: PropTypes.func.isRequired,
+};
 
 function EditQuestionInfoModal({ question, onClose, onSave }) {
   const onSubmit = useCallback(
@@ -60,5 +66,7 @@ function EditQuestionInfoModal({ question, onClose, onSave }) {
     </ModalContent>
   );
 }
+
+EditQuestionInfoModal.propTypes = propTypes;
 
 export default EditQuestionInfoModal;
