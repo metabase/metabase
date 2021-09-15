@@ -6,7 +6,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
   updateIn(sections, ["email", "settings"], settings => [
     ...settings,
     {
-      key: "email-approved-domains",
+      key: "subscription-allowed-domains",
       display_name: t`Approved domains for notifications`,
       type: "string",
       validations: [
