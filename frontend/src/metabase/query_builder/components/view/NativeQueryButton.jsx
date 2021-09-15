@@ -58,7 +58,7 @@ export default class NativeQueryButton extends React.Component {
         native: { query: this.getFormattedQuery() },
         database: this.state.datasetQuery.database,
       })
-      .update();
+      .update(null, { shouldUpdateUrl: true });
   };
 
   getFormattedQuery() {
