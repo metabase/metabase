@@ -7,8 +7,8 @@
             [metabase.public-settings.metastore-test :as metastore-test]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [metabase.util.honeysql-extensions :as hx]))
 
 (defn- run-query
   [query-type & {:as additional-query-params}]

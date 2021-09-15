@@ -3,8 +3,7 @@
             [metabase-enterprise.audit.interface :as audit.i]
             [metabase-enterprise.audit.pages.common :as common]
             [metabase-enterprise.audit.pages.common.cards :as cards]
-            [metabase.util.honeysql-extensions :as hx]
-            [schema.core :as s]))
+            [metabase.util.honeysql-extensions :as hx]))
 
 ;; DEPRECATED Query that returns data for a two-series timeseries chart with number of queries ran and average query
 ;; running time broken out by day.
