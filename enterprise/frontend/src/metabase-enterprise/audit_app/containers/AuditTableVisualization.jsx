@@ -15,10 +15,9 @@ import EmptyState from "metabase/components/EmptyState";
 import Icon from "metabase/components/Icon";
 import CheckBox from "metabase/components/CheckBox";
 import { RemoveRowButton } from "./AuditTableVisualization.styled";
+import { getRowValuesByColumns, getColumnName } from "../lib/util";
 
 import NoResults from "assets/img/no_results.svg";
-
-const getColumnName = column => column.remapped_to || column.name;
 
 const propTypes = {
   series: PropTypes.array,
@@ -76,15 +75,9 @@ export default class AuditTableVisualization extends React.Component {
     onRowSelectClick({ ...e, row: row, rowIndex: rowIndex });
   };
 
-  handleRemoveRowClick = (row, cols, columnIndexes) => {
-    const rowMap = columnIndexes.reduce((acc, index) => {
-      const columnName = getColumnName(cols[index]);
-      return {
-        ...acc,
-        [columnName]: row[index],
-      };
-    }, {});
-    this.props.onRemoveRow(rowMap);
+  handleRemoveRowClick = (row, cols) => {
+    const rowData = getRowValuesByColumns(row, cols);
+    this.props.onRemoveRow(rowData);
   };
 
   render() {
@@ -106,7 +99,6 @@ export default class AuditTableVisualization extends React.Component {
     } = this.props;
 
     const canRemoveRows = !!onRemoveRow;
-
     const columnIndexes = settings["table.columns"]
       .filter(({ enabled }) => enabled)
       .map(({ name }) => _.findIndex(cols, col => col.name === name));
@@ -205,9 +197,7 @@ export default class AuditTableVisualization extends React.Component {
               {canRemoveRows && (
                 <td>
                   <RemoveRowButton
-                    onClick={() =>
-                      this.handleRemoveRowClick(row, cols, columnIndexes)
-                    }
+                    onClick={() => this.handleRemoveRowClick(row, cols)}
                   >
                     <Icon name="close" color="text-light" />
                   </RemoveRowButton>

@@ -11,10 +11,9 @@ const mapStateToProps = (state, props) => ({
 });
 
 const mapDispatchToProps = {
-  onVisualizationClick: ({ id }) =>
-    push(`/admin/audit/subscriptions/subscriptions/${id}/edit`),
-  onRemoveRow: ({ id }) =>
-    push(`/admin/audit/subscriptions/subscriptions/${id}/delete`),
+  getExtraDataForClick: () => ({ type: "subscription" }),
+  onRemoveRow: ({ pulse_id }) =>
+    push(`/admin/audit/subscriptions/subscriptions/${pulse_id}/delete`),
 };
 
 export default connect(

@@ -32,12 +32,14 @@ const AuditNotificationDeleteModal = ({ item, type, onDelete, onClose }) => {
     setChecked(event.target.checked);
   };
 
+  const handleClose = () => onClose(true);
+
   return (
     <ModalContent
       title={getTitleMessage(item, type)}
       footer={[
         error ? <FormMessage key="message" formError={error} /> : null,
-        <Button key="cancel" onClick={onClose}>
+        <Button key="cancel" onClick={handleClose}>
           {t`Cancel`}
         </Button>,
         <Button
@@ -49,7 +51,7 @@ const AuditNotificationDeleteModal = ({ item, type, onDelete, onClose }) => {
           {t`Delete`}
         </Button>,
       ]}
-      onClose={onClose}
+      onClose={handleClose}
     >
       <CheckBox
         checked={checked}

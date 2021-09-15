@@ -15,14 +15,11 @@ import { usePagination } from "metabase/hooks/use-pagination";
 import { AuditMode } from "../lib/mode";
 import QuestionLoadAndDisplay from "./QuestionLoadAndDisplay";
 import "./AuditTableVisualization";
+import { PaginationControlsContainer } from "./AuditTable.styled";
 
 const mapStateToProps = state => ({
   metadata: getMetadata(state),
 });
-
-const mapDispatchToProps = {
-  onChangeLocation: push,
-};
 
 const DEFAULT_PAGE_SIZE = 100;
 
@@ -32,7 +29,7 @@ AuditTable.propTypes = {
   pageSize: PropTypes.number.isRequired,
   reload: PropTypes.bool,
   children: PropTypes.node,
-  onChangeLocation: PropTypes.func.isRequired,
+  dispatch: PropTypes.func.isRequired,
 };
 
 function AuditTable({
@@ -40,7 +37,7 @@ function AuditTable({
   table,
   pageSize = DEFAULT_PAGE_SIZE,
   children,
-  onChangeLocation,
+  dispatch,
   ...rest
 }) {
   const [loadedCount, setLoadedCount] = useState(0);
@@ -54,6 +51,7 @@ function AuditTable({
 
   const question = new Question(card, metadata);
   const shouldShowPagination = page > 0 || loadedCount === pageSize;
+  const handleChangeLocation = url => dispatch(push(url));
 
   return (
     <div>
@@ -63,12 +61,13 @@ function AuditTable({
         question={question}
         metadata={metadata}
         mode={AuditMode}
-        onChangeLocation={onChangeLocation}
+        onChangeLocation={handleChangeLocation}
         onChangeCardAndRun={() => {}}
         onLoad={results => setLoadedCount(results[0].row_count)}
+        dispatch={dispatch}
         {...rest}
       />
-      <div className="mt1 pt2 border-top flex justify-end">
+      <PaginationControlsContainer>
         {shouldShowPagination && (
           <PaginationControls
             page={page}
@@ -78,15 +77,10 @@ function AuditTable({
             onPreviousPage={handlePreviousPage}
           />
         )}
-      </div>
+      </PaginationControlsContainer>
       {children}
     </div>
   );
 }
 
-export default _.compose(
-  connect(
-    mapStateToProps,
-    mapDispatchToProps,
-  ),
-)(AuditTable);
+export default _.compose(connect(mapStateToProps))(AuditTable);

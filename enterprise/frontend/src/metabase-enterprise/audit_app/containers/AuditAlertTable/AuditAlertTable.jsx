@@ -11,8 +11,9 @@ const mapStateToProps = (state, props) => ({
 });
 
 const mapDispatchToProps = {
-  onRemoveRow: ({ id }) =>
-    push(`/admin/audit/subscriptions/alerts/${id}/delete`),
+  getExtraDataForClick: () => ({ type: "alert" }),
+  onRemoveRow: ({ pulse_id }) =>
+    push(`/admin/audit/subscriptions/alerts/${pulse_id}/delete`),
 };
 
 export default connect(

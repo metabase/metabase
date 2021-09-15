@@ -7,5 +7,25 @@ export const table = () => ({
       fn: "metabase-enterprise.audit.pages.dashboard-subscriptions/table",
       args: [],
     },
+    visualization_settings: {
+      "table.columns": [
+        { name: "dashboard_id", enabled: true },
+        { name: "pulse_id", enabled: false },
+        { name: "recipients", enabled: true },
+        { name: "subscription_type", enabled: true },
+        { name: "collection_id", enabled: true },
+        { name: "frequency", enabled: true },
+        { name: "creator_id", enabled: true },
+        {
+          name: "created_at",
+          enabled: true,
+          date_format: "M/D/YYYY",
+        },
+        {
+          name: "num_filters",
+          enabled: true,
+        },
+      ],
+    },
   },
 });

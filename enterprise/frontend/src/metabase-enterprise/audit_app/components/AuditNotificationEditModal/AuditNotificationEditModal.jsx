@@ -46,6 +46,8 @@ const AuditNotificationEditModal = ({
     onDelete(item);
   };
 
+  const handleClose = () => onClose(true);
+
   return (
     <ModalContent
       title={getTitleMessage(item, type)}
@@ -54,7 +56,7 @@ const AuditNotificationEditModal = ({
         <Button key="delete" borderless onClick={handleDeleteClick}>
           {getDeleteMessage(type)}
         </Button>,
-        <Button key="cancel" onClick={onClose}>
+        <Button key="cancel" onClick={handleClose}>
           {t`Cancel`}
         </Button>,
         <Button
@@ -66,7 +68,7 @@ const AuditNotificationEditModal = ({
           {t`Update`}
         </Button>,
       ]}
-      onClose={onClose}
+      onClose={handleClose}
     >
       {channels.map((channel, index) => (
         <UserPicker
