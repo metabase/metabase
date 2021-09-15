@@ -13,7 +13,7 @@ import "./auth";
 import "./collections";
 import "./embedding";
 import "./moderation";
-import "./notifications";
+import "./configuration";
 import "./sandboxes";
 import "./sharing";
 import "./snippets";
