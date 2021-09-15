@@ -18,11 +18,12 @@ export default class HistoryModalContainer extends React.Component {
   };
 
   onRevert = async revision => {
-    const { onReverted } = this.props;
+    const { onReverted, reload } = this.props;
     await revision.revert();
     if (onReverted) {
       onReverted();
     }
+    await reload();
   };
 
   render() {

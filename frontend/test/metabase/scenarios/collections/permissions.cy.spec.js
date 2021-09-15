@@ -658,7 +658,7 @@ describe("collection permissions", () => {
                 cy.findAllByRole("button", { name: "Revert" });
               });
 
-              it.skip("should be able to revert the dashboard (metabase#15237)", () => {
+              it("should be able to revert the dashboard (metabase#15237)", () => {
                 cy.visit("/dashboard/1");
                 cy.icon("ellipsis").click();
                 cy.findByText("Revision history").click();
@@ -670,6 +670,15 @@ describe("collection permissions", () => {
                 cy.findAllByText(/Revert/).should("not.exist");
                 // We reverted the dashboard to the state prior to adding any cards to it
                 cy.findByText("This dashboard is looking empty.");
+
+                // Should be able to revert back again
+                cy.findByText("Revision history").click();
+                clickRevert("rearranged the cards.");
+                cy.wait("@revert").then(xhr => {
+                  expect(xhr.status).to.eq(200);
+                  expect(xhr.cause).not.to.exist;
+                });
+                cy.findByText("117.03");
               });
 
               it("should be able to access the question's revision history via the revision history button in the header of the query builder", () => {
