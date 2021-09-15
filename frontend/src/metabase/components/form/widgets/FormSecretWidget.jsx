@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import React, { useState } from "react";
 import styled from "styled-components";
 import { t } from "ttag";
 
@@ -27,19 +27,21 @@ const FormSecretWidget = ({
   readOnly,
   autoFocus,
 }) => {
-  // const handleSelectChange = () => {
-  //   console.log("🚀", "handleSelectChange");
-  // };
+  const [inputToShow, setInputToShow] = useState("textInput");
+
+  const handleSelectChange = () => {
+    const newInputToShow =
+      inputToShow === "textInput" ? "fileInput" : "textInput";
+
+    setInputToShow(newInputToShow);
+  };
 
   return (
     <Container>
       <StyledSelect
         defaultValue={"local"}
         placeholder={placeholder}
-        onChange={e => {
-          console.log("🚀", "heyheyheyhey");
-        }}
-        style={{ width: 100 }}
+        onChange={handleSelectChange}
       >
         <Option key={`secret-select-option1`} value={"local"}>
           {t`Local file`}
@@ -49,15 +51,19 @@ const FormSecretWidget = ({
         </Option>
       </StyledSelect>
 
-      <Input
-        className="Form-input"
-        type={type}
-        placeholder={placeholder}
-        aria-labelledby={`${field.name}-label`}
-        readOnly={readOnly}
-        autoFocus={autoFocus}
-        {...formDomOnlyProps(field)}
-      />
+      {inputToShow === "textInput" && (
+        <Input
+          className="Form-input"
+          type={type}
+          placeholder={placeholder}
+          aria-labelledby={`${field.name}-label`}
+          readOnly={readOnly}
+          autoFocus={autoFocus}
+          {...formDomOnlyProps(field)}
+        />
+      )}
+
+      {inputToShow === "fileInput" && <div>File input</div>}
     </Container>
   );
 };

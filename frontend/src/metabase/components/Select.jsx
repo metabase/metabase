@@ -14,11 +14,11 @@ import { createSelector } from "reselect";
 
 import { color } from "metabase/lib/colors";
 
-import Uncontrollable from "metabase/hoc/Uncontrollable";
+// import Uncontrollable from "metabase/hoc/Uncontrollable";
 
 const MIN_ICON_WIDTH = 20;
 
-@Uncontrollable()
+// @Uncontrollable()
 export default class Select extends Component {
   static propTypes = {
     className: PropTypes.string,
@@ -126,6 +126,7 @@ export default class Select extends Component {
 
   handleChange = option => {
     const { multiple, onChange } = this.props;
+
     const optionValue = this.props.optionValueFn(option);
     let value;
     if (multiple) {
