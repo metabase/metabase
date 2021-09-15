@@ -60,8 +60,13 @@ function getSeriesChangeDescription(prevCards, cards) {
 }
 
 function getCollectionChangeDescription(prevCollectionId, collectionId) {
+  const key = `collection-from-${prevCollectionId}-to-${collectionId}`;
   return jt`moved this to ${(
-    <EntityLink entityId={collectionId || "root"} entityType="collections" />
+    <EntityLink
+      key={key}
+      entityId={collectionId || "root"}
+      entityType="collections"
+    />
   )}`;
 }
 
