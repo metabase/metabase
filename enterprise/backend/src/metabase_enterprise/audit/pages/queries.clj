@@ -112,7 +112,13 @@
                              [:report_dashboardcard :dash_card] [:= :card.id :dash_card.card_id]
                              [:query_execution :qe]             [:and [:= :card.id :qe.card_id]
                                                                  latest-qe-subq]]
-                 :group-by  [:card.id :card.creator_id :coll.name :db.name :t.name :qe.error]
+                 :group-by  [(common/user-full-name :u)
+                             :card.id
+                             :card.creator_id
+                             :coll.name
+                             :db.name
+                             :t.name
+                             :qe.error]
                  :where     [:and
                              [:= :card.archived false]
                              [:<> :qe.error nil]]}
