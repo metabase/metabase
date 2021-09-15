@@ -1,6 +1,7 @@
 import _ from "underscore";
 import {
   restore,
+  modal,
   popover,
   setupDummySMTP,
   describeWithToken,
@@ -307,7 +308,7 @@ describeWithToken("scenarios > admin > people", () => {
       cy.findByText("Unsubscribe from all subscriptions / alerts").click();
     });
 
-    popover().within(() => {
+    modal().within(() => {
       cy.findByText(fullName, { exact: false });
       cy.findByText("Confirm").click();
       cy.findByText("Confirm").should("not.exist");
