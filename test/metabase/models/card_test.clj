@@ -249,6 +249,10 @@
 
     (testing "Don't normalize key-value pairs in maps that could be interpreted as MBQL clauses"
       (let [original {:field-id 1}]
+        (f original original)))
+
+    (testing "Don't normalize array in graph.metrics that could be interpreted as MBQL clauses"
+      (let [original {:graph.metrics ["expression" "sum" "count"]}]
         (f original original)))))
 
 (deftest normalize-visualization-settings-test
