@@ -18,14 +18,6 @@
       (is (= expected
              (impl/normalized-locale-string s))))))
 
-(deftest migrate-legacy-locale-string-test
-  (doseq [[s expected] {"pt"    "pt_BR"
-                        "pt_BR" "pt_BR"
-                        "en"    "en"}]
-    (testing (pr-str (list 'migrate-legacy-locale-string s))
-      (is (= expected
-             (impl/migrate-legacy-locale-string s))))))
-
 (deftest locale-test
   (testing "Should be able to coerce various types of objects to Locales"
     (doseq [arg-type [:str :keyword]
@@ -63,18 +55,21 @@
       (is (= expected
              (impl/available-locale? locale))))))
 
-(deftest parent-locale-test
-  (doseq [[locale expected] {nil                                       nil
-                             :es                                       nil
-                             "es"                                      nil
+(deftest fallback-locale-test
+  (doseq [[locale expected] {nil                             nil
+                             :es                             nil
+                             "es"                            nil
                              (Locale/forLanguageTag "es")    nil
-                             "es-MX"                                   (Locale/forLanguageTag "es")
-                             "es_MX"                                   (Locale/forLanguageTag "es")
-                             :es/MX                                    (Locale/forLanguageTag "es")
-                             (Locale/forLanguageTag "es-MX") (Locale/forLanguageTag "es")}]
+                             "es-MX"                         (Locale/forLanguageTag "es")
+                             "es_MX"                         (Locale/forLanguageTag "es")
+                             :es/MX                          (Locale/forLanguageTag "es")
+                             (Locale/forLanguageTag "es-MX") (Locale/forLanguageTag "es")
+                             ;; 0.39 changed pt to pt_BR (metabase#15630)
+                             "pt"                            (Locale/forLanguageTag "pt-BR")
+                             "pt-PT"                         (Locale/forLanguageTag "pt-BR")}]
     (testing locale
       (is (= expected
-             (impl/parent-locale locale))))))
+             (impl/fallback-locale locale))))))
 
 (deftest graceful-fallback-test
   (testing "If a resource bundle doesn't exist, we should gracefully fall back to English"
