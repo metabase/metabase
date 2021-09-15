@@ -24,6 +24,7 @@ function getDatabaseCacheTTLFieldDescription() {
     <span>
       {jt`How long to keep question results. By default, Metabase will use the value you supply on the ${(
         <Link
+          key="caching-link"
           className="text-brand"
           href="/admin/settings/caching"
         >{t`cache settings page`}</Link>
