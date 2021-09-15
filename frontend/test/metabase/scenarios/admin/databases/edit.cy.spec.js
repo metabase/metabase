@@ -86,10 +86,12 @@ describe("scenarios > admin > databases > edit", () => {
           .blur();
 
         cy.button("Save changes").click();
-        cy.wait("@databaseUpdate").then(({ request }) => {
+        cy.wait("@databaseUpdate").then(({ request, response }) => {
           expect(request.body.cache_ttl).to.equal(32);
+          expect(response.body.cache_ttl).to.equal(32);
 
-          cy.reload();
+          cy.visit("/admin/databases");
+          cy.findByText("Sample Dataset").click();
 
           cy.findByText("Custom").click();
           popover()
