@@ -6,7 +6,7 @@
             [metabase.models :refer [Card Collection Database Permissions PermissionsGroup PermissionsGroupMembership User]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
-            [metabase.public-settings.metastore-test :as metastore-test]
+            [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.test :as mt]
@@ -100,7 +100,7 @@
 
 (deftest update-graph-delete-sandboxes-test
   (testing "When setting `:block` permissions any GTAP rows for that Group/Database should get deleted."
-    (metastore-test/with-metastore-token-features #{:sandboxes}
+    (premium-features-test/with-premium-features #{:sandboxes}
       (mt/with-model-cleanup [Permissions]
         (mt/with-temp* [PermissionsGroup       [{group-id :id}]
                         GroupTableAccessPolicy [_ {:table_id (mt/id :venues)
@@ -167,7 +167,7 @@
                       Card                       [{card-id :id} {:collection_id collection-id
                                                                  :dataset_query query}]
                       Permissions                [_ {:group_id group-id, :object (perms/collection-read-path collection-id)}]]
-        (metastore-test/with-metastore-token-features #{:enhancements}
+        (premium-features-test/with-premium-features #{:enhancements}
           (perms/revoke-data-perms! (group/all-users) (mt/id))
           (perms/revoke-data-perms! group-id (mt/id))
           (letfn [(run-ad-hoc-query []
@@ -193,7 +193,7 @@
             ;; 'grant' the block permissions.
             (mt/with-temp Permissions [_ {:group_id group-id, :object (perms/database-block-perms-path (mt/id))}]
               (testing "if EE token does not have the `:enhancements` feature: should not do check"
-                (metastore-test/with-metastore-token-features #{}
+                (premium-features-test/with-premium-features #{}
                   (is (= ::block-perms/enhancements-not-enabled
                          (check-block-perms)))))
               (testing "disallow running the query"
@@ -217,7 +217,7 @@
                           (testing message
                             (is (f)))))))
                   (testing "\nSandboxed permissions"
-                    (metastore-test/with-metastore-token-features #{:enhancements :sandboxing}
+                    (premium-features-test/with-premium-features #{:enhancements :sandboxing}
                       (mt/with-temp* [Permissions            [_ {:group_id group-2-id
                                                                  :object   (perms/table-segmented-query-path (mt/id :venues))}]
                                       GroupTableAccessPolicy [_ {:table_id (mt/id :venues), :group_id group-id}]]

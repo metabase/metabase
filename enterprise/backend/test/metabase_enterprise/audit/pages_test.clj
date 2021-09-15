@@ -8,7 +8,7 @@
             [metabase-enterprise.audit.interface :as audit.i]
             [metabase.models :refer [Card Dashboard DashboardCard Database Table]]
             [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings.metastore-test :as metastore-test]
+            [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.query-processor :as qp]
             [metabase.query-processor.util :as qp-util]
             [metabase.test :as mt]
@@ -25,7 +25,7 @@
     (is (fn? (get-method audit.i/internal-query :metabase-enterprise.audit.pages.dashboards/most-popular-with-avg-speed))))
 
   (testing "test that a query will fail if not ran by an admin"
-    (metastore-test/with-metastore-token-features #{:audit-app}
+    (premium-features-test/with-premium-features #{:audit-app}
       (is (= {:status "failed", :error "You don't have permissions to do that."}
              (-> (mt/user-http-request :lucky :post 202 "dataset"
                                        {:type :internal
@@ -33,7 +33,7 @@
                  (select-keys [:status :error]))))))
 
   (testing "ok, now try to run it. Should fail because we don't have audit-app enabled"
-    (metastore-test/with-metastore-token-features nil
+    (premium-features-test/with-premium-features nil
       (is (= {:status "failed", :error "Audit App queries are not enabled on this instance."}
              (-> (mt/user-http-request :crowberto :post 202 "dataset"
                                        {:type :internal
@@ -161,7 +161,7 @@
 (deftest all-queries-test
   (mt/with-test-user :crowberto
     (with-temp-objects [objects]
-      (metastore-test/with-metastore-token-features #{:audit-app}
+      (premium-features-test/with-premium-features #{:audit-app}
         (doseq [query-type (all-query-methods)]
           (testing query-type
             (do-tests-for-query-type query-type objects)))))))

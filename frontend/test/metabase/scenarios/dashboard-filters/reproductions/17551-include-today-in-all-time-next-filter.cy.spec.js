@@ -1,7 +1,7 @@
 import { restore, filterWidget } from "__support__/e2e/cypress";
 import { setAdHocFilter } from "../../native-filters/helpers/e2e-date-filter-helpers";
 
-describe.skip("issue 17551", () => {
+describe("issue 17551", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

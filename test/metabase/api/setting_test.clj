@@ -1,7 +1,7 @@
 (ns metabase.api.setting-test
   (:require [clojure.test :refer :all]
             [metabase.models.setting-test :refer [test-sensitive-setting test-setting-1 test-setting-2 test-setting-3]]
-            [metabase.public-settings.metastore-test :as metastore-test]
+            [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [schema.core :as s]))
@@ -50,7 +50,7 @@
 (deftest fetch-calculated-settings-test
   (testing "GET /api/setting"
     (testing "Should return the correct `:value` for Settings with no underlying DB/env var value"
-      (metastore-test/with-metastore-token-features #{:embedding}
+      (premium-features-test/with-premium-features #{:embedding}
         (is (schema= {:key            (s/eq "hide-embed-branding?")
                       :value          (s/eq true)
                       :is_env_setting (s/eq false)

@@ -2,6 +2,8 @@ import React, { useCallback } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 
+import { SIDEBAR_NAME } from "metabase/dashboard/constants";
+
 import ClickBehaviorSidebar from "./ClickBehaviorSidebar";
 import ParameterSidebar from "metabase/parameters/components/ParameterSidebar";
 import SharingSidebar from "metabase/sharing/components/SharingSidebar";
@@ -22,7 +24,6 @@ DashboardSidebars.propTypes = {
   onReplaceAllDashCardVisualizationSettings: PropTypes.func.isRequired,
   onUpdateDashCardVisualizationSettings: PropTypes.func.isRequired,
   onUpdateDashCardColumnSettings: PropTypes.func.isRequired,
-  hideClickBehaviorSidebar: PropTypes.func.isRequired,
   setEditingParameter: PropTypes.func.isRequired,
   setParameter: PropTypes.func.isRequired,
   setParameterName: PropTypes.func.isRequired,
@@ -34,6 +35,11 @@ DashboardSidebars.propTypes = {
   isFullscreen: PropTypes.bool.isRequired,
   onCancel: PropTypes.func.isRequired,
   params: PropTypes.object,
+  sidebar: PropTypes.shape({
+    name: PropTypes.string,
+    props: PropTypes.object,
+  }).isRequired,
+  closeSidebar: PropTypes.func.isRequired,
 };
 
 export function DashboardSidebars({
@@ -49,7 +55,6 @@ export function DashboardSidebars({
   onReplaceAllDashCardVisualizationSettings,
   onUpdateDashCardVisualizationSettings,
   onUpdateDashCardColumnSettings,
-  hideClickBehaviorSidebar,
   setEditingParameter,
   setParameter,
   setParameterName,
@@ -61,6 +66,8 @@ export function DashboardSidebars({
   isFullscreen,
   onCancel,
   params,
+  sidebar,
+  closeSidebar,
 }) {
   const handleAddCard = useCallback(
     cardId => {
@@ -73,72 +80,71 @@ export function DashboardSidebars({
     [addCardToDashboard, dashboard.id],
   );
 
-  if (showAddQuestionSidebar) {
-    return (
-      <AddCardSidebar
-        initialCollection={dashboard.collection_id}
-        onSelect={handleAddCard}
-      />
-    );
+  if (isFullscreen) {
+    return null;
   }
 
-  if (clickBehaviorSidebarDashcard) {
-    return (
-      <ClickBehaviorSidebar
-        dashboard={dashboard}
-        dashcard={clickBehaviorSidebarDashcard}
-        parameters={parameters}
-        dashcardData={dashcardData[clickBehaviorSidebarDashcard.id]}
-        onUpdateDashCardVisualizationSettings={
-          onUpdateDashCardVisualizationSettings
-        }
-        onUpdateDashCardColumnSettings={onUpdateDashCardColumnSettings}
-        hideClickBehaviorSidebar={hideClickBehaviorSidebar}
-        onReplaceAllDashCardVisualizationSettings={
-          onReplaceAllDashCardVisualizationSettings
-        }
-      />
-    );
+  switch (sidebar.name) {
+    case SIDEBAR_NAME.addQuestion:
+      return (
+        <AddCardSidebar
+          initialCollection={dashboard.collection_id}
+          onSelect={handleAddCard}
+        />
+      );
+    case SIDEBAR_NAME.clickBehavior:
+      return (
+        <ClickBehaviorSidebar
+          dashboard={dashboard}
+          dashcard={clickBehaviorSidebarDashcard}
+          parameters={parameters}
+          dashcardData={dashcardData[clickBehaviorSidebarDashcard.id]}
+          onUpdateDashCardVisualizationSettings={
+            onUpdateDashCardVisualizationSettings
+          }
+          onUpdateDashCardColumnSettings={onUpdateDashCardColumnSettings}
+          hideClickBehaviorSidebar={closeSidebar}
+          onReplaceAllDashCardVisualizationSettings={
+            onReplaceAllDashCardVisualizationSettings
+          }
+        />
+      );
+    case SIDEBAR_NAME.editParameter: {
+      const { id: editingParameterId } = editingParameter || {};
+      const [[parameter], otherParameters] = _.partition(
+        parameters,
+        p => p.id === editingParameterId,
+      );
+      return (
+        <ParameterSidebar
+          parameter={parameter}
+          otherParameters={otherParameters}
+          remove={() => {
+            closeSidebar();
+            removeParameter(editingParameterId);
+          }}
+          done={() => closeSidebar()}
+          showAddParameterPopover={showAddParameterPopover}
+          setParameter={setParameter}
+          setName={name => setParameterName(editingParameterId, name)}
+          setDefaultValue={value =>
+            setParameterDefaultValue(editingParameterId, value)
+          }
+          setFilteringParameters={ids =>
+            setParameterFilteringParameters(editingParameterId, ids)
+          }
+        />
+      );
+    }
+    case SIDEBAR_NAME.sharing:
+      return (
+        <SharingSidebar
+          dashboard={dashboard}
+          params={params}
+          onCancel={onCancel}
+        />
+      );
+    default:
+      return null;
   }
-
-  if (isEditingParameter) {
-    const { id: editingParameterId } = editingParameter || {};
-    const [[parameter], otherParameters] = _.partition(
-      parameters,
-      p => p.id === editingParameterId,
-    );
-    return (
-      <ParameterSidebar
-        parameter={parameter}
-        otherParameters={otherParameters}
-        remove={() => {
-          setEditingParameter(null);
-          removeParameter(editingParameterId);
-        }}
-        done={() => setEditingParameter(null)}
-        showAddParameterPopover={showAddParameterPopover}
-        setParameter={setParameter}
-        setName={name => setParameterName(editingParameterId, name)}
-        setDefaultValue={value =>
-          setParameterDefaultValue(editingParameterId, value)
-        }
-        setFilteringParameters={ids =>
-          setParameterFilteringParameters(editingParameterId, ids)
-        }
-      />
-    );
-  }
-
-  const shouldShowSidebar = !isEditing && !isFullscreen && isSharing;
-  if (shouldShowSidebar) {
-    return (
-      <SharingSidebar
-        dashboard={dashboard}
-        params={params}
-        onCancel={onCancel}
-      />
-    );
-  }
-
-  return null;
 }

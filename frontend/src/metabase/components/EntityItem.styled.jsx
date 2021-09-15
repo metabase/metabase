@@ -39,7 +39,6 @@ export const EntityIconWrapper = styled(IconButtonWrapper)`
 `;
 
 export const EntityItemWrapper = styled(Flex)`
-  border-bottom: 1px solid ${color("bg-medium")};
   align-items: center;
   &:hover {
     color: ${color("brand")};
