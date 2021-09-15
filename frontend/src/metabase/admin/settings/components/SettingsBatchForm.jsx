@@ -23,7 +23,7 @@ const VALIDATIONS = {
     validate: value => MetabaseUtils.isEmail(value),
     message: t`That's not a valid email address`,
   },
-  emailList: {
+  emails: {
     validate: value => MetabaseUtils.isEmailList(value),
     message: t`That's not a valid email address list`,
   },
