@@ -7,7 +7,6 @@ import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
-import Settings from "metabase/lib/settings";
 
 import EntityMenu from "metabase/components/EntityMenu";
 import Icon from "metabase/components/Icon";
