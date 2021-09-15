@@ -13,7 +13,7 @@ Both components are built and assembled together into a single jar file which ru
 
 ## 3rd party dependencies
 
-Metabase depends on lots of third-party libraries to run, so you'll need to keep those up to date. Clojure will automatically fetch the dependencies when needed. With JavaScript dependencies, however, you'll need to kick off the installation process manually. 
+Metabase depends on lots of third-party libraries to run, so you'll need to keep those up to date. The Clojure CLI will automatically fetch the dependencies when needed. With JavaScript dependencies, however, you'll need to kick off the installation process manually.
 
 ```sh
 # javascript dependencies
