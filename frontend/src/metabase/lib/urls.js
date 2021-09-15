@@ -221,6 +221,10 @@ export function reactivateUser(userId) {
   return `/admin/people/${userId}/reactivate`;
 }
 
+export function unsubscribeUser(userId) {
+  return `/admin/people/${userId}/unsubscribe`;
+}
+
 export function browseDatabase(database) {
   const name =
     database.id === SAVED_QUESTIONS_VIRTUAL_DB_ID

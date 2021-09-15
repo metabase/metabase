@@ -43,7 +43,6 @@ export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_PERMISSION_VALUE = {
 export const PLUGIN_ADMIN_USER_FORM_FIELDS = [];
 
 // menu items in people management tab
-export const PLUGIN_ADMIN_USER_MENU_ITEMS = [];
 export const PLUGIN_ADMIN_USER_MENU_ROUTES = [];
 
 // authentication providers
