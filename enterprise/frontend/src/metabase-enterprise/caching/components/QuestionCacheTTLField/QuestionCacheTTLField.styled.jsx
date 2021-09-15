@@ -1,6 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 import styled from "styled-components";
+import { space } from "metabase/styled-components/theme";
 import Radio from "metabase/components/Radio";
 import { CacheTTLField } from "../CacheTTLField";
 
@@ -14,7 +15,7 @@ export const CacheTTLExpandedField = styled(CacheTTLInput)`
 
 export const StyledRadio = styled(Radio)`
   li {
-    margin-top: 4px;
+    margin-top: ${space(0)};
     font-weight: bold;
   }
 `;
