@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import PropTypes from "prop-types";
+import { t } from "ttag";
 import Select, { Option } from "metabase/components/Select";
 import { CacheTTLField } from "../CacheTTLField";
 import {
@@ -40,9 +41,9 @@ export function DatabaseCacheTTLField({ field }) {
     <FieldContainer>
       <Select value={mode} onChange={onModeChange}>
         <Option value={MODE.INSTANCE_DEFAULT}>
-          Use instance default (TTL)
+          {t`Use instance default (TTL)`}
         </Option>
-        <Option value={MODE.CUSTOM}>Custom</Option>
+        <Option value={MODE.CUSTOM}>{t`Custom`}</Option>
       </Select>
       {mode === MODE.CUSTOM && (
         <CacheFieldContainer>

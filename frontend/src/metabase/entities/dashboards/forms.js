@@ -8,7 +8,7 @@ const FORM_FIELDS = [
     title: t`Name`,
     placeholder: t`What is the name of your dashboard?`,
     autoFocus: true,
-    validate: name => (!name ? "Name is required" : null),
+    validate: name => (!name ? t`Name is required` : null),
   },
   {
     name: "description",
@@ -21,7 +21,7 @@ const FORM_FIELDS = [
     title: t`Which collection should this go in?`,
     type: "collection",
     validate: collectionId =>
-      collectionId === undefined ? "Collection is required" : null,
+      collectionId === undefined ? `Collection is required` : null,
   },
 ];
 
