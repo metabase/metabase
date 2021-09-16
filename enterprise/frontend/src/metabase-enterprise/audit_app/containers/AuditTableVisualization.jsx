@@ -47,9 +47,12 @@ export default class AuditTableVisualization extends React.Component {
   static settings = Table.settings;
   static columnSettings = Table.columnSettings;
 
+  state = {
+    rerender: {},
+  }
+
   constructor(props) {
     super(props);
-    this.state = { rerender: {} };
   }
 
   handleColumnHeaderClick = column => {
@@ -65,6 +68,12 @@ export default class AuditTableVisualization extends React.Component {
       column: columnName,
       isAscending: columnName !== sorting.column || !sorting.isAscending,
     });
+  };
+
+  handleRowSelectClick = (e, row, rowIndex) => {
+    const { onRowSelectClick } = this.props;
+    this.setState({ rerender: {} });
+    onRowSelectClick({ ...e, row: row, rowIndex: rowIndex });
   };
 
   render() {
@@ -97,11 +106,6 @@ export default class AuditTableVisualization extends React.Component {
         />
       );
     }
-    const handleRowSelectClick = (e, row, rowIndex) => {
-      this.setState({ rerender: {} });
-      onRowSelectClick({ ...e, row: row, rowIndex: rowIndex });
-    };
-
     return (
       <table className="ContentTable">
         <thead>
