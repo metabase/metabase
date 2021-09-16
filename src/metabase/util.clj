@@ -933,3 +933,20 @@
            q))
        (doto q
          (.offer item))))))
+
+(defn email->domain
+  "Extract the domain portion of an `email-address`.
+
+    (email->domain \"cam@toucan.farm\") ; -> \"toucan.farm\""
+  ^String [email-address]
+  (when (string? email-address)
+    (last (re-find #"^.*@(.*$)" email-address))))
+
+(defn email-in-domain?
+  "Is `email-address` in `domain`?
+
+    (email-in-domain? \"cam@toucan.farm\" \"toucan.farm\")  ; -> true
+    (email-in-domain? \"cam@toucan.farm\" \"metabase.com\") ; -> false"
+  [email-address domain]
+  {:pre [(email? email-address)]}
+  (= (email->domain email-address) domain))
