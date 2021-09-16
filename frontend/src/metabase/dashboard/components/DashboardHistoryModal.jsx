@@ -1,12 +1,12 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import { connect } from "react-redux";
 import { withRouter } from "react-router";
 
 import HistoryModal from "metabase/containers/HistoryModal";
 import * as Urls from "metabase/lib/urls";
-import * as dashboardActions from "metabase/dashboard/actions";
+import { fetchDashboard, fetchDashboardCardData } from "metabase/dashboard/actions";
 import Dashboards from "metabase/entities/dashboards";
-import connect from "react-redux/lib/connect/connect";
 
 @withRouter
 @Dashboards.load({
@@ -15,7 +15,7 @@ import connect from "react-redux/lib/connect/connect";
 })
 @connect(
   null,
-  dashboardActions,
+  { fetchDashboard, fetchDashboardCardData },
 )
 export default class DashboardHistoryModal extends React.Component {
   render() {
