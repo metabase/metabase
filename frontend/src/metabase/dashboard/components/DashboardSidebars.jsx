@@ -20,7 +20,7 @@ DashboardSidebars.propTypes = {
   editingParameter: PropTypes.object,
   isEditingParameter: PropTypes.bool.isRequired,
   showAddQuestionSidebar: PropTypes.bool.isRequired,
-  clickBehaviorSidebarDashcard: PropTypes.object.isRequired,
+  clickBehaviorSidebarDashcard: PropTypes.object, // only defined when click-behavior sidebar is open
   onReplaceAllDashCardVisualizationSettings: PropTypes.func.isRequired,
   onUpdateDashCardVisualizationSettings: PropTypes.func.isRequired,
   onUpdateDashCardColumnSettings: PropTypes.func.isRequired,

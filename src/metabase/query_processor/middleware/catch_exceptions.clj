@@ -113,6 +113,7 @@
      (when (seq more)
        {:via (vec more)}))))
 
+
 (defn- query-info
   "Map of about `query` to add to the exception response."
   [{query-type :type, :as query} {:keys [preprocessed native]}]
@@ -126,7 +127,7 @@
                       native)})))
 
 (defn- query-execution-info [query-execution]
-  (dissoc query-execution :result_rows :hash :executor_id :card_id :dashboard_id :pulse_id :native :start_time_millis))
+  (dissoc query-execution :result_rows :hash :executor_id :dashboard_id :pulse_id :native :start_time_millis))
 
 (defn- format-exception*
   "Format a `Throwable` into the usual userland error-response format."

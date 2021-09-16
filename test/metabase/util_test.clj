@@ -341,3 +341,19 @@
          (transduce (map identity)
                     (u/sorted-take size kompare)
                     coll)))))
+(deftest email->domain-test
+  (are [domain email] (is (= domain
+                             (u/email->domain email))
+                          (format "Domain of email address '%s'" email))
+    nil              nil
+    "metabase.com"   "cam@metabase.com"
+    "metabase.co.uk" "cam@metabase.co.uk"
+    "metabase.com"   "cam.saul+1@metabase.com"))
+
+(deftest email-in-domain-test
+  (are [in-domain? email domain] (is (= in-domain?
+                                        (u/email-in-domain? email domain))
+                                     (format "Is email '%s' in domain '%s'?" email domain))
+    true  "cam@metabase.com"          "metabase.com"
+    false "cam.saul+1@metabase.co.uk" "metabase.com"
+    true  "cam.saul+1@metabase.com"   "metabase.com"))

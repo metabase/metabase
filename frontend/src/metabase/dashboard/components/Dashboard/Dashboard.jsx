@@ -67,10 +67,8 @@ export default class Dashboard extends Component {
     onReplaceAllDashCardVisualizationSettings: PropTypes.func.isRequired,
 
     onChangeLocation: PropTypes.func.isRequired,
-
     onSharingClick: PropTypes.func,
     onEmbeddingClick: PropTypes.any,
-
     sidebar: PropTypes.shape({
       name: PropTypes.string,
       props: PropTypes.object,
@@ -187,8 +185,6 @@ export default class Dashboard extends Component {
     this.props.setSharing(true);
   };
 
-  onEmbeddingClick = () => {};
-
   render() {
     const {
       addParameter,
@@ -236,7 +232,6 @@ export default class Dashboard extends Component {
                 addParameter={addParameter}
                 parametersWidget={parametersWidget}
                 onSharingClick={this.onSharingClick}
-                onEmbeddingClick={this.onEmbeddingClick}
                 onToggleAddQuestionSidebar={this.onToggleAddQuestionSidebar}
                 showAddQuestionSidebar={showAddQuestionSidebar}
               />
