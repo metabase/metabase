@@ -8,6 +8,7 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 import FieldList from "metabase/query_builder/components/FieldList";
 import Join from "metabase-lib/lib/queries/structured/Join";
+import { isDateTimeField } from "metabase/lib/query/field_ref";
 
 import {
   NotebookCell,
@@ -594,11 +595,6 @@ class JoinDimensionPicker extends React.Component {
     this._popover.open();
   }
 
-  hasTemporalUnit = fieldRef => {
-    const [, , opts] = fieldRef;
-    return !!opts?.["temporal-unit"];
-  };
-
   render() {
     const { dimension, onChange, onRemove, options, query, color } = this.props;
     const testID = this.props["data-testid"] || "join-dimension";
@@ -628,13 +624,14 @@ class JoinDimensionPicker extends React.Component {
             table={query.table()}
             query={query}
             onFieldChange={(field, item) => {
-              if (this.hasTemporalUnit(field)) {
+              if (isDateTimeField(field)) {
                 // When we set a default temporal unit by just clicking the dimension name,
                 // FieldList provides a second argument to onFieldChange callback
                 // When a temporal unit is selected explicitly (like by Week, Quarter, Year, etc.)
                 // the item argument is undefined
                 // In this case we want to make sure the second dimension will use the same unit
-                onChange(field, { overwrite: !item });
+                const isSubDimension = !item;
+                onChange(field, { overwrite: !isSubDimension });
               } else {
                 onChange(field);
               }
