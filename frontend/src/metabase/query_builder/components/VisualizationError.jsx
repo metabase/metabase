@@ -46,8 +46,11 @@ export function adjustPositions(error, origSql) {
   // there also seem to be cases where remarks don't get in...
   const commentPos = chompedSql.search("--");
   const newLinePos = chompedSql.search("\n");
+  // 5 is a heuristic: this indicates that this is almost certainly an initial remark comment
   if (commentPos !== -1 && commentPos < 5) {
-    adjustmentLength += newLinePos + 2; // 2 for \n itself
+    // There will be a \n after the redshift comment,
+    // which is why there needs to be a 2 added
+    adjustmentLength += newLinePos + 2;
   }
 
   return error.replace(/Position: (\d+)/, function(_, p1) {
