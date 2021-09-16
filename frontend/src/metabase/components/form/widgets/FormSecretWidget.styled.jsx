@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled, { css } from "styled-components";
 
 import Select from "metabase/components/Select";
 
@@ -13,4 +13,10 @@ export const StyledSelect = styled(Select)`
 
 export const Input = styled.input`
   width: calc(70% - 10px);
+
+  ${({ isFullWidth }) =>
+    isFullWidth &&
+    css`
+      width: 100%;
+    `}
 `;
