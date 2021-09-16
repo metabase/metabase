@@ -4,6 +4,7 @@ import {
   SET_EDITING_DASHBOARD,
   SET_SIDEBAR,
   CLOSE_SIDEBAR,
+  REMOVE_PARAMETER,
 } from "./actions";
 
 describe("dashboard reducers", () => {
@@ -26,7 +27,7 @@ describe("dashboard reducers", () => {
         startTime: null,
       },
       parameterValues: {},
-      sidebar: {},
+      sidebar: { props: {} },
       slowCards: {},
     });
   });
@@ -114,6 +115,24 @@ describe("dashboard reducers", () => {
           payload: false,
         }),
       ).toEqual({ ...initState, isEditing: null });
+    });
+  });
+
+  describe("REMOVE_PARAMETER", () => {
+    it("should clear sidebar state and remove the associated parameter value", () => {
+      expect(
+        reducer(
+          {
+            ...initState,
+            sidebar: { name: "foo", props: { abc: 123 } },
+            parameterValues: { 123: "abc", 456: "def" },
+          },
+          {
+            type: REMOVE_PARAMETER,
+            payload: { id: 123 },
+          },
+        ),
+      ).toEqual({ ...initState, parameterValues: { 456: "def" } });
     });
   });
 });
