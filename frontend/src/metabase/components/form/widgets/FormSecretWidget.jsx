@@ -1,24 +1,12 @@
 /* eslint-disable react/prop-types */
 import React, { useState } from "react";
-import styled from "styled-components";
 import { t } from "ttag";
 
-import Select, { Option } from "metabase/components/Select";
+import { Option } from "metabase/components/Select";
+
+import { Container, Input, StyledSelect } from "./FormSecretWidget.styled";
 
 import { formDomOnlyProps } from "metabase/lib/redux";
-
-const Container = styled.div`
-  display: flex;
-  justify-content: space-between;
-`;
-
-const StyledSelect = styled(Select)`
-  width: 30%;
-`;
-
-const Input = styled.input`
-  width: calc(70% - 10px);
-`;
 
 const FormSecretWidget = ({
   type = "text",
@@ -63,7 +51,13 @@ const FormSecretWidget = ({
         />
       )}
 
-      {inputToShow === "fileInput" && <div>File input</div>}
+      {inputToShow === "fileInput" && (
+        <Input
+          type="file"
+          className={"Form-file-input"}
+          aria-labelledby={`${field.name}-label`}
+        />
+      )}
     </Container>
   );
 };
