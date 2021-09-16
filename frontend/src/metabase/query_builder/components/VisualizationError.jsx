@@ -23,7 +23,7 @@ const EmailAdmin = () => {
   );
 };
 
-function adjustPositions(error, origSql) {
+export function adjustPositions(error, origSql) {
   /* Positions in error messages are borked coming in for Postgres errors.
    * Previously, you would see "blahblahblah bombed out, Position: 119" in a 10-character invalid query.
    * This is because MB shoves in 'remarks' into the original query and we get the exception from the query with remarks.
@@ -55,7 +55,7 @@ function adjustPositions(error, origSql) {
   });
 }
 
-function stripRemarks(error) {
+export function stripRemarks(error) {
   /* SQL snippets in error messages are borked coming in for errors in many DBs.
    * You're expecting something with just your sql in the message,
    * but the whole error contains these remarks that MB added in. Confusing!
