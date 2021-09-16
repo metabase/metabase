@@ -2,35 +2,39 @@
 
 ## How to save a question
 
-Whenever you’ve arrived at an answer that you want to save for later, click the **SAVE** button in the top right of the screen. This will also save the visualization option you’ve chosen for your answer.
+Whenever you’ve arrived at an answer that you want to save for later, click the **Save** button in the top right of the screen. This will also save the visualization option you’ve chosen for your answer.
 
 ![Save button](images/sharing-answers/save-button.png)
 
-A pop-up box will appear, prompting you to give your question a name and description, and to pick which collection to save it in. Note that your administrator might have set things up so that you're only allowed to save questions in certain collections, but you can always save things in your Personal Collection. After saving your question, you'll be asked if you want to add it to a new or existing dashboard.
+A pop-up box will appear, prompting you to give your question a name and description, and to pick which [collection](#collection) to save it in. Note that your administrator might have set things up so that you're only allowed to [save questions in certain collection](#collection-permissions), but you can always save things in your Personal Collection. After saving your question, you'll be asked if you want to add it to a new or existing dashboard.
 
 Now, whenever you want to refer to your question again you can find it by searching for it in the search bar at the top of Metabase, or by navigating to the collection where you saved it.
 
 ## Editing your question
 
-Once you save your question, a down arrow will appear to the right of the question's title. Clicking on it will bring up the __Question detail sidebar__, which gives you some options:
+Once you save your question, a down arrow will appear to the right of the question's title. Clicking on the down arrow will bring up the **Question detail sidebar**, which gives you some options:
 
 ![Question detail sidebar](images/sharing-answers/question-details-sidebar.png)
 
-- __Edit details__ (Pencil icon). Change the title of the question, and add some description for context. Adding a description will also make the question easier to find using the search bar.
-- __Add to dashbboard__ (Dashboard icon with plus symbol). See [dashboards][dashboards].
-- __Move__ (Document icon with right arrow). Relocate the question to a different [collection](#collections).
-- __Duplicate__ (Square with little square). Create a copy of the question. Keep in mind that whenever you start editing a saved question, Metabase will create a copy of the question. You can either save your edits as a new question, or overwrite the original saved question.
-- __Archive__ (Folder with down arrow). See [Archiving items](#archiving-items).
+- **Edit details** (Pencil icon). Change the title of the question, and add some description for context. Adding a description will also make the question easier to find using the search bar.
+- **Add to dashbboard** (Dashboard icon with plus symbol). See [dashboards][dashboards].
+- **Move** (Document icon with right arrow). Relocate the question to a different [collection](#collections).
+- **Duplicate** (Square with little square). Create a copy of the question. Keep in mind that whenever you start editing a saved question, Metabase will create a copy of the question. You can either save your edits as a new question, or overwrite the original saved question.
+- **Archive** (Folder with down arrow). See [Archiving items](#archiving-items).
 
-## Moderation
+### Moderation
 
-Administrators can __Verify__ a question by clicking on the __Verify checkmark__ in the __Moderation__ section of the __Question detail sidebar__. Verifying a question is a simple way for an administrator to signal that they've reviewed the question and deemed it to be trustworthy. That is: the question is filtering the right columns, or summarizing the right metrics, and querying records from the right tables. Once verified, the question will have a verified question next to the question's title.
+Administrators can **Verify** a question by clicking on the __Verify checkmark__ in the __Moderation__ section of the __Question detail sidebar__. Verifying a question is a simple way for an administrator to signal that they've reviewed the question and deemed it to be trustworthy. That is: the question is filtering the right columns, or summarizing the right metrics, and querying records from the right tables. Once verified, the question will have a verified icon next to the question's title.
 
-![Verified question](images/sharing-answers/verified-icon.png)
+![Verified icon](images/sharing-answers/verified-icon.png)
 
-## History
+If someone modifies a verified question, the question will lose its verified status, and an administrator will need to review and verify the question again to restore its verified status.
 
-You can see the history of a question, including edits and verification, in the __History__ section of the __Question detail sidebar__.
+### History
+
+You can see the history of a question, including edits and verifications, in the __History__ section of the __Question detail sidebar__.
+
+Below each edit entry in the timeline, you can click on **Revert** to reinstate the question at the time of the edit.
 
 ## Sharing questions with public links
 
@@ -40,15 +44,24 @@ If your Metabase administrator has enabled [public sharing](../administration-gu
 
 To share a question, click on the arrow pointing up and to the right in the bottom right of the question.
 
-## Organizing and finding your saved questions
+## Collections
 
-After your team has been using Metabase for a while, you’ll probably end up with lots of saved questions. Metabase has several ways to help you organize things and find what you’re looking for.
+ After your team has been using Metabase for a while, you’ll probably end up with lots of saved questions.
 
 ![Our analytics](images/sharing-answers/our-analytics-page.png)
 
-### Collections
+Collections are the main way to organize questions, as well as dashboards and pulses. You can think of them like folders or directories. You can nest collections in other collections, and move collections around. One thing to note is that a single item, like a question or dashboard, can only be in one collection at a time (excluding parent collections).
 
-Collections are the main way to organize questions, as well as dashboards and pulses. [Administrators can give you different kinds of access](../administration-guide/06-collections.md) to each collection:
+### Collection types
+
+- **Regular collections**. They're just basic collections. You can put stuff in them.
+- **Official collections**. These are special collections, in that they have a badge to let people know that the items in this collection are the ones people should be looking at (or whatever "official" means to you). Questions and dashboards in official collections are also more likely to show up at the top of search results.
+
+![Official collections](images/sharing-answers/official-collection.png)
+
+### Collection permissions
+
+[Administrators can give you different kinds of access](../administration-guide/06-collections.md) to each collection:
 
 - **View access:** you can see the collection and its contents, but you can't modify anything or put anything new into the collection.
 - **Curate access:** you can edit, move, or archive the collection and its contents. You can also move or save new things in it and create new collections inside of it, and can also pin items in the collection to the top of the screen. Only administrators can edit permissions for collections, however.
@@ -68,6 +81,14 @@ In each collection, you can pin important or useful dashboards or questions to m
 
 Any dashboards that are pinned in the main "Our analytics" collection will also show up on the homepage.
 
+### Moving items from collection to collection
+
+To move a question, dashboard, or pulse into a collection, or from one collection to another, just click and drag it onto the collection where you want it to go. You can also click on the `…` menu to the right of the question and pick the Move action. If you're trying to move several things at once, click on the items' icons to select them, then click the Move action that pops up at the bottom of the screen.
+
+![Selecting questions](images/sharing-answers/question-checkbox.png)
+
+Note that you have to have Curate permission for the collection that you're moving a question into _and_ the collection you're moving the question out of.
+
 ### Search
 
 ![Search results](./images/sharing-answers/search-results.gif)
@@ -77,14 +98,6 @@ Use the search bar to find dashboards, questions, collections, and pulses. You c
 Searches take into account items’ titles, descriptions, and other metadata — you can even search the contents of your SQL queries. For example, you can search for things like `SELECT escape_pod FROM mothership` and find that one question you worked on six months ago. The results will display an item’s description, which collection it’s saved in, what kind of object it is, and whether it’s pinned. Note that you'll only ever see items in collections you have permission to view.
 
 ![Search results](./images/sharing-answers/search-results.png)
-
-### Moving items from collection to collection
-
-To move a question, dashboard, or pulse into a collection, or from one collection to another, just click and drag it onto the collection where you want it to go. You can also click on the `…` menu to the right of the question and pick the Move action. If you're trying to move several things at once, click on the items' icons to select them, then click the Move action that pops up at the bottom of the screen.
-
-![Selecting questions](images/sharing-answers/question-checkbox.png)
-
-Note that you have to have Curate permission for the collection that you're moving a question into _and_ the collection you're moving the question out of.
 
 ### Archiving items
 
@@ -99,6 +112,5 @@ If you have second thoughts and want to bring an archived item back, you can see
 ## Next: creating dashboards
 
 Next, we'll learn about [creating dashboards and adding questions to them](07-dashboards.md).
-
 
 [dashboards]: 07-dashboards.md
