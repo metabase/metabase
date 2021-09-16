@@ -148,8 +148,35 @@
       (log/debug e (trs "Error validating token"))
       #{})))
 
-(defn- has-feature? [feature]
-  (contains? (token-features) (name feature)))
+(defn- has-any-features?
+  "True if we have a valid premium features token with ANY features."
+  []
+  (boolean (seq (token-features))))
+
+(def ^:private ^:deprecated PLACEHOLDER-DO-NOT-RELEASE-new-41-features
+  "The following features are not yet live and thus no actual tokens have them. Until they're live (see
+  https://github.com/metabase/harbormaster/issues/2006) we will 'simulate' these features by pretending we have them
+  if we have a token with _any_ other features.
+
+  This is temporary code and needs to be removed entirely before the 0.41.0 release.
+
+  DO NOT RELEASE 0.41.0 WITH THIS CODE STILL IN PLACE!!!
+
+  @camsaul will remove this in the next week or so unless he dies. If he dies, please remove it in memory of him and
+  bury him with it."
+  #{:advanced-config
+    :advanced-permissions
+    :content-management})
+
+(defn has-feature?
+  "Does this instance's premium token have `feature`?
+
+    (has-feature? :sandboxes)          ; -> true
+    (has-feature? :toucan-management)  ; -> false"
+  [feature]
+  (if (PLACEHOLDER-DO-NOT-RELEASE-new-41-features (keyword feature))
+    (has-any-features?)
+    (contains? (token-features) (name feature))))
 
 (defn- default-premium-feature-getter [feature]
   (fn []
@@ -193,45 +220,20 @@
   "Should we enable advanced SSO features (SAML and JWT authentication; role and group mapping)?"
   :sso)
 
-(defn- has-any-features?
-  "True if we have a valid premium features token with ANY features."
-  []
-  (boolean (seq (token-features))))
-
-;; The three new 0.41 features below are not yet live. The Setting getters currently return true if the user has a
-;; token with ANY valid features.
-;;
-;; Once https://github.com/metabase/harbormaster/issues/1956 is merged and the features are live we can remove the
-;; deprecated functions below and check these features the same way we check the other premium features.
-;;
-;; this needs to happen before 0.41.0 goes live.
-
-(def ^:private ^:deprecated enable-41-feature-checks?
-  false)
-
-(defn-  ^:deprecated has-41-feature? [feature]
-  (and config/ee-available?
-       (if enable-41-feature-checks?
-         (has-feature? feature)
-         (has-any-features?))))
-
 (define-premium-feature ^{:added "0.41.0"} enable-advanced-config?
   "Should we enable knobs and levers for more complex orgs (granular caching controls, allow-lists email domains for
   notifications, more in the future)?"
-  :advanced-config
-  :getter #(has-41-feature? :advanced-config))
+  :advanced-config)
 
 (define-premium-feature ^{:added "0.41.0"} enable-advanced-permissions?
   "Should we enable extra knobs around permissions (block access, and in the future, moderator roles, feature-level
   permissions, etc.)?"
-  :advanced-permissions
-  :getter #(has-41-feature? :advanced-permissions))
+  :advanced-permissions)
 
 (define-premium-feature ^{:added "0.41.0"} enable-content-management?
   "Should we enable official Collections, Question verifications (and more in the future, like workflows, forking,
   etc.)?"
-  :content-management
-  :getter #(has-41-feature? :content-management))
+  :content-management)
 
 ;; `enhancements` are not currently a specific "feature" that EE tokens can have or not have. Instead, it's a
 ;; catch-all term for various bits of EE functionality that we assume all EE licenses include. (This may change in the
