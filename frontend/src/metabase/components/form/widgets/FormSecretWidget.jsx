@@ -36,7 +36,7 @@ const FormSecretWidget = ({
     <Container>
       {isApplicationRunningInCloud || (
         <StyledSelect
-          defaultValue={inputToShow}
+          value={inputToShow}
           placeholder={placeholder}
           onChange={handleSelectChange}
         >
