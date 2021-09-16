@@ -104,6 +104,28 @@ describe("scenarios > question > saved", () => {
     });
   });
 
+  it("should revert a saved question to a previous version", () => {
+    cy.intercept("PUT", "/api/card/**").as("updateQuestion");
+
+    cy.visit("/question/1");
+    cy.findByTestId("saved-question-header-button").click();
+    cy.findByText("History").click();
+
+    cy.findByTestId("edit-details-button").click();
+    cy.findByLabelText("Description")
+      .click()
+      .type("This is a question");
+
+    cy.button("Save").click();
+    cy.wait("@updateQuestion");
+
+    cy.findByText(/changed description/i);
+
+    cy.findByRole("button", { name: "Revert" }).click();
+
+    cy.findByText(/^Reverted to an earlier revision/i);
+  });
+
   it("should be able to use integer filter on a saved native query (metabase#15808)", () => {
     cy.createNativeQuestion({
       name: "15808",
