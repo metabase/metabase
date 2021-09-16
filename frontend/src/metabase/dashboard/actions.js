@@ -20,7 +20,6 @@ import { applyParameters, questionUrlWithParameters } from "metabase/meta/Card";
 import {
   getParameterValuesBySlug,
   getParameterValuesByIdFromQueryParams,
-  removeDefaultedParametersWithEmptyStringValue,
 } from "metabase/meta/Parameter";
 import * as Urls from "metabase/lib/urls";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
@@ -707,11 +706,9 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
 
     const parameterValuesById = preserveParameters
       ? getParameterValues(getState())
-      : getParameterValuesByIdFromQueryParams(
-          result.parameters,
-          queryParams,
-          removeDefaultedParametersWithEmptyStringValue,
-        );
+      : getParameterValuesByIdFromQueryParams(result.parameters, queryParams, {
+          forcefullyUnsetDefaultedParametersWithEmptyStringValue: true,
+        });
 
     return {
       ...normalize(result, dashboard), // includes `result` and `entities`
