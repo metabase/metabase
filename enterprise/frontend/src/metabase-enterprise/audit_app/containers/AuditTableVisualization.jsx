@@ -91,7 +91,6 @@ export default class AuditTableVisualization extends React.Component {
       isSelectable,
       selectHeader,
       rowChecked,
-      onRowSelectClick,
     } = this.props;
 
     const columnIndexes = settings["table.columns"]
@@ -147,7 +146,7 @@ export default class AuditTableVisualization extends React.Component {
                   <CheckBox
                     checked={rowChecked[rowIndex]}
                     onChange={e =>
-                      handleRowSelectClick(
+                      this.handleRowSelectClick(
                         { ...e, originRow: rowIndex },
                         row,
                         rowIndex,
