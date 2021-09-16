@@ -66,6 +66,12 @@
 
 ;;; -------------------------------------------------- Loading Data --------------------------------------------------
 
+(defn- dash->underscore [nm]
+  (str/replace nm #"-" "_"))
+
+(defmethod tx/format-name :bigquery-cloud-sdk [_ table-or-field-name]
+  (dash->underscore table-or-field-name))
+
 (defn- create-dataset! [^String dataset-id]
   {:pre [(seq dataset-id)]}
   (.create (bigquery) (DatasetInfo/of (DatasetId/of (project-id) dataset-id)) (u/varargs BigQuery$DatasetOption))

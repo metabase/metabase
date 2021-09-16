@@ -74,7 +74,7 @@
 (defn- calculate-bird-scarcity* [formula filter-clause]
   (mt/formatted-rows [2.0]
     (mt/dataset daily-bird-counts
-      (mt/run-mbql-query bird_count
+      (mt/run-mbql-query bird-count
         {:expressions {"bird_scarcity" formula}
          :fields      [[:expression "bird_scarcity"]]
          :filter      filter-clause
@@ -83,7 +83,7 @@
 
 (defmacro ^:private calculate-bird-scarcity [formula & [filter-clause]]
   `(mt/dataset ~'daily-bird-counts
-     (mt/$ids ~'bird_count
+     (mt/$ids ~'bird-count
        (calculate-bird-scarcity* ~formula ~filter-clause))))
 
 (deftest nulls-and-zeroes-test

@@ -499,3 +499,22 @@
             (is (= [[600]]
                    (mt/formatted-rows [int]
                      (mt/run-mbql-query airport {:aggregation [:count], :filter [:not-empty $code]}))))))))))
+
+(deftest order-by-nulls-test
+  (testing "Check that we can sort by numeric columns that contain NULLs (#6615)"
+    (mt/dataset daily-bird-counts
+      (mt/test-drivers (mt/normal-drivers)
+        ;; the rows returned should be the ones with a nil count, in increasing ID order
+        (is (= (if (mt/sorts-nil-first? driver/*driver*)
+                 ;; if nils come first, we expect the first three rows having a nil count, in id ascending order
+                 [[1 "2018-09-20T00:00:00Z" nil]
+                  [8 "2018-09-27T00:00:00Z" nil]
+                  [15 "2018-10-04T00:00:00Z" nil]]
+                 ;; if nils come last, we expect the first three rows having a count of 0, in id ascending order
+                 [[2 "2018-09-21T00:00:00Z" 0]
+                  [3 "2018-09-22T00:00:00Z" 0]
+                  [9 "2018-09-28T00:00:00Z" 0]])
+              (mt/formatted-rows [int identity identity]
+                (mt/run-mbql-query bird-count
+                  {:order-by [[:asc $count] [:asc $id]]
+                   :limit    3}))))))))
