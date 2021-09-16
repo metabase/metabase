@@ -1,4 +1,4 @@
-(ns metabase-enterprise.audit.pages.common
+(ns metabase-enterprise.audit-app.pages.common
   "Shared functions used by audit internal queries across different namespaces."
   (:require [clojure.core.async :as a]
             [clojure.core.memoize :as memoize]
@@ -10,7 +10,7 @@
             [honeysql.helpers :as h]
             [java-time :as t]
             [medley.core :as m]
-            [metabase-enterprise.audit.query-processor.middleware.handle-audit-queries :as qp.middleware.audit]
+            [metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries :as qp.middleware.audit]
             [metabase.db :as mdb]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -130,7 +130,7 @@
 (defn query
   "Run a internal audit query, automatically including limits and offsets for paging. This function returns results
   directly as a series of maps (the 'legacy results' format as described in
-  `metabase-enterprise.audit.query-processor.middleware.handle-audit-queries.internal-queries`)"
+  `metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries.internal-queries`)"
   [honeysql-query]
   (let [context {:canceled-chan (a/promise-chan)}
         rff     (fn [{:keys [cols]}]

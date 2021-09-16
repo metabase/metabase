@@ -1,9 +1,9 @@
-(ns metabase-enterprise.audit.pages.dashboard-detail
+(ns metabase-enterprise.audit-app.pages.dashboard-detail
   "Detail page for a single dashboard."
-  (:require [metabase-enterprise.audit.interface :as audit.i]
-            [metabase-enterprise.audit.pages.common :as common]
-            [metabase-enterprise.audit.pages.common.card-and-dashboard-detail :as card-and-dash-detail]
-            [metabase-enterprise.audit.pages.common.cards :as cards]
+  (:require [metabase-enterprise.audit-app.interface :as audit.i]
+            [metabase-enterprise.audit-app.pages.common :as common]
+            [metabase-enterprise.audit-app.pages.common.card-and-dashboard-detail :as card-and-dash-detail]
+            [metabase-enterprise.audit-app.pages.common.cards :as cards]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.util.schema :as su]
             [schema.core :as s]))

@@ -1,6 +1,6 @@
-(ns metabase-enterprise.audit.pages.schemas
-  (:require [metabase-enterprise.audit.interface :as audit.i]
-            [metabase-enterprise.audit.pages.common :as common]
+(ns metabase-enterprise.audit-app.pages.schemas
+  (:require [metabase-enterprise.audit-app.interface :as audit.i]
+            [metabase-enterprise.audit-app.pages.common :as common]
             [metabase.util.honeysql-extensions :as hx]
             [schema.core :as s]))
 

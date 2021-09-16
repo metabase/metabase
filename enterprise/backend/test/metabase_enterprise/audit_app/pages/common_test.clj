@@ -1,8 +1,8 @@
-(ns metabase-enterprise.audit.pages.common-test
+(ns metabase-enterprise.audit-app.pages.common-test
   (:require [clojure.test :refer :all]
             [honeysql.core :as hsql]
-            [metabase-enterprise.audit.interface :as audit.i]
-            [metabase-enterprise.audit.pages.common :as pages.common]
+            [metabase-enterprise.audit-app.interface :as audit.i]
+            [metabase-enterprise.audit-app.pages.common :as pages.common]
             [metabase.db :as mdb]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.query-processor :as qp]

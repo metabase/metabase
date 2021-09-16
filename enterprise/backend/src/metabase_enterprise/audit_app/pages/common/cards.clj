@@ -1,5 +1,5 @@
-(ns metabase-enterprise.audit.pages.common.cards
-  (:require [metabase-enterprise.audit.pages.common :as common]
+(ns metabase-enterprise.audit-app.pages.common.cards
+  (:require [metabase-enterprise.audit-app.pages.common :as common]
             [metabase.util.honeysql-extensions :as hx]))
 
 (def avg-exec-time

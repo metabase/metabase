@@ -1,7 +1,7 @@
-(ns metabase-enterprise.audit.pages.databases
+(ns metabase-enterprise.audit-app.pages.databases
   (:require [honeysql.core :as hsql]
-            [metabase-enterprise.audit.interface :as audit.i]
-            [metabase-enterprise.audit.pages.common :as common]
+            [metabase-enterprise.audit-app.interface :as audit.i]
+            [metabase-enterprise.audit-app.pages.common :as common]
             [metabase.util.cron :as cron]
             [schema.core :as s]))
 

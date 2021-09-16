@@ -1,7 +1,7 @@
-(ns metabase-enterprise.audit.pages.common.card-and-dashboard-detail
+(ns metabase-enterprise.audit-app.pages.common.card-and-dashboard-detail
   "Common queries used by both Card (Question) and Dashboard detail pages."
   (:require [honeysql.core :as hsql]
-            [metabase-enterprise.audit.pages.common :as common]
+            [metabase-enterprise.audit-app.pages.common :as common]
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.revision :as revision]

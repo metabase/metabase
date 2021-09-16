@@ -1,7 +1,7 @@
-(ns metabase-enterprise.audit.pages.common.dashboards
+(ns metabase-enterprise.audit-app.pages.common.dashboards
   (:require [honeysql.core :as hsql]
             [honeysql.helpers :as h]
-            [metabase-enterprise.audit.pages.common :as common]
+            [metabase-enterprise.audit-app.pages.common :as common]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.urls :as urls]))
 

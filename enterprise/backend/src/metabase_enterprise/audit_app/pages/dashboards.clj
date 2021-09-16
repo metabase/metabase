@@ -1,8 +1,8 @@
-(ns metabase-enterprise.audit.pages.dashboards
+(ns metabase-enterprise.audit-app.pages.dashboards
   "Dashboards overview page."
-  (:require [metabase-enterprise.audit.interface :as audit.i]
-            [metabase-enterprise.audit.pages.common :as common]
-            [metabase-enterprise.audit.pages.common.dashboards :as dashboards]
+  (:require [metabase-enterprise.audit-app.interface :as audit.i]
+            [metabase-enterprise.audit-app.pages.common :as common]
+            [metabase-enterprise.audit-app.pages.common.dashboards :as dashboards]
             [metabase.util.honeysql-extensions :as hx]
             [schema.core :as s]))
 

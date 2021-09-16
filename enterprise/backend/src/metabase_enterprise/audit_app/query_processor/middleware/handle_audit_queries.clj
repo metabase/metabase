@@ -1,11 +1,11 @@
-(ns metabase-enterprise.audit.query-processor.middleware.handle-audit-queries
+(ns metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries
   "Middleware that handles special `internal` type queries. `internal` queries are implemented directly by various
-  implementations of the [[metabase-enterprise.audit.interface/internal-query]] multimethod, and do not necessarily
+  implementations of the [[metabase-enterprise.audit-app.interface/internal-query]] multimethod, and do not necessarily
   need to query a database to provide results; by default, they completely skip the rest of the normal QP pipeline.
   `internal` queries as passed to the Query Processor should look like the following:
 
     {:type :internal
-     :fn   \"metabase-enterprise.audit.pages.dashboards/table\"
+     :fn   \"metabase-enterprise.audit-app.pages.dashboards/table\"
      :args []} ; optional vector of args to pass to the fn above
 
   To run an `internal` query, you must have superuser permissions. This middleware will automatically resolve the
@@ -20,7 +20,7 @@
 
   LEGACY FORMAT:
 
-  *  `:metadata` is a series of [col-name metadata-map] pairs. See [[metabase-enterprise.audit.interface/ResultsMetadata]]
+  *  `:metadata` is a series of [col-name metadata-map] pairs. See [[metabase-enterprise.audit-app.interface/ResultsMetadata]]
   *  `:results` is a series of maps.
 
     {:metadata [[:title {:display_name \"Title\", :base_type :type/Text}]
@@ -38,7 +38,7 @@
      :results  (fn [context] ...)
      :xform    ...}"
   (:require [clojure.data :as data]
-            [metabase-enterprise.audit.interface :as audit.i]
+            [metabase-enterprise.audit-app.interface :as audit.i]
             [metabase.api.common :as api]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.query-processor.context :as context]

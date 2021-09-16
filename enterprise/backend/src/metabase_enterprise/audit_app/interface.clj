@@ -1,4 +1,4 @@
-(ns metabase-enterprise.audit.interface
+(ns metabase-enterprise.audit-app.interface
   (:require [metabase.plugins.classloader :as classloader]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
@@ -14,7 +14,7 @@
 (defmulti internal-query
   "Define a new internal query type. Conventionally `query-type` should be a namespaced keyword with the namespace in
   which the method is defined. See docstring
-  for [[metabase-enterprise.audit.query-processor.middleware.handle-audit-queries]] for a description of what this
+  for [[metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries]] for a description of what this
   method should return."
   {:arglists '([query-type & args])}
   (fn [query-type & _]

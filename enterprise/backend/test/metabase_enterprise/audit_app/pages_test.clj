@@ -1,11 +1,11 @@
-(ns metabase-enterprise.audit.pages-test
+(ns metabase-enterprise.audit-app.pages-test
   (:require [clojure.java.classpath :as classpath]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.test :refer :all]
             [clojure.tools.namespace.find :as ns-find]
             [clojure.tools.reader :as tools.reader]
-            [metabase-enterprise.audit.interface :as audit.i]
+            [metabase-enterprise.audit-app.interface :as audit.i]
             [metabase.models :refer [Card Dashboard DashboardCard Database Table]]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings.premium-features-test :as premium-features-test]
@@ -20,16 +20,16 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (deftest preconditions-test
-  (classloader/require 'metabase-enterprise.audit.pages.dashboards)
+  (classloader/require 'metabase-enterprise.audit-app.pages.dashboards)
   (testing "the method should exist"
-    (is (fn? (get-method audit.i/internal-query :metabase-enterprise.audit.pages.dashboards/most-popular-with-avg-speed))))
+    (is (fn? (get-method audit.i/internal-query :metabase-enterprise.audit-app.pages.dashboards/most-popular-with-avg-speed))))
 
   (testing "test that a query will fail if not ran by an admin"
     (premium-features-test/with-premium-features #{:audit-app}
       (is (= {:status "failed", :error "You don't have permissions to do that."}
              (-> (mt/user-http-request :lucky :post 202 "dataset"
                                        {:type :internal
-                                        :fn   "metabase-enterprise.audit.pages.dashboards/most-popular-with-avg-speed"})
+                                        :fn   "metabase-enterprise.audit-app.pages.dashboards/most-popular-with-avg-speed"})
                  (select-keys [:status :error]))))))
 
   (testing "ok, now try to run it. Should fail because we don't have audit-app enabled"
@@ -37,22 +37,22 @@
       (is (= {:status "failed", :error "Audit App queries are not enabled on this instance."}
              (-> (mt/user-http-request :crowberto :post 202 "dataset"
                                        {:type :internal
-                                        :fn   "metabase-enterprise.audit.pages.dashboards/most-popular-with-avg-speed"})
+                                        :fn   "metabase-enterprise.audit-app.pages.dashboards/most-popular-with-avg-speed"})
                  (select-keys [:status :error])))))))
 
 (defn- all-query-methods
   "Return a set of all audit/internal query types (excluding test/`:default` impls)."
   []
-  ;; load all `metabase-enterprise.audit.pages` namespaces.
+  ;; load all `metabase-enterprise.audit-app.pages` namespaces.
   (doseq [ns-symb  (ns-find/find-namespaces (classpath/system-classpath))
-          :when    (and (str/starts-with? (name ns-symb) "metabase-enterprise.audit.pages")
+          :when    (and (str/starts-with? (name ns-symb) "metabase-enterprise.audit-app.pages")
                         (not (str/ends-with? (name ns-symb) "-test")))]
     (classloader/require ns-symb))
-  ;; now find all the impls of [[metabase-enterprise.audit.interface/internal-query]] from the pages namespaces
+  ;; now find all the impls of [[metabase-enterprise.audit-app.interface/internal-query]] from the pages namespaces
   (into (sorted-set)
         (filter (fn [query-type]
                   (when-let [ns-str (namespace query-type)]
-                    (and (str/starts-with? ns-str "metabase-enterprise.audit.pages.")
+                    (and (str/starts-with? ns-str "metabase-enterprise.audit-app.pages.")
                          (not (str/ends-with? ns-str "-test"))))))
         (keys (methods audit.i/internal-query))))
 

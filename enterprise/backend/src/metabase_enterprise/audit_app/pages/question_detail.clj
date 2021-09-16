@@ -1,8 +1,8 @@
-(ns metabase-enterprise.audit.pages.question-detail
+(ns metabase-enterprise.audit-app.pages.question-detail
   "Detail page for a single Card (Question)."
-  (:require [metabase-enterprise.audit.interface :as audit.i]
-            [metabase-enterprise.audit.pages.common :as common]
-            [metabase-enterprise.audit.pages.common.card-and-dashboard-detail :as card-and-dash-detail]
+  (:require [metabase-enterprise.audit-app.interface :as audit.i]
+            [metabase-enterprise.audit-app.pages.common :as common]
+            [metabase-enterprise.audit-app.pages.common.card-and-dashboard-detail :as card-and-dash-detail]
             [metabase.models.card :refer [Card]]
             [metabase.util.schema :as su]
             [schema.core :as s]))

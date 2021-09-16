@@ -1,9 +1,9 @@
-(ns metabase-enterprise.audit.pages.downloads
+(ns metabase-enterprise.audit-app.pages.downloads
   "Audit queries returning info about query downloads. Query downloads are any query executions whose results are returned
   as CSV/JSON/XLS."
   (:require [honeysql.core :as hsql]
-            [metabase-enterprise.audit.interface :as audit.i]
-            [metabase-enterprise.audit.pages.common :as common]
+            [metabase-enterprise.audit-app.interface :as audit.i]
+            [metabase-enterprise.audit-app.pages.common :as common]
             [metabase.db :as mdb]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.util.honeysql-extensions :as hx]))

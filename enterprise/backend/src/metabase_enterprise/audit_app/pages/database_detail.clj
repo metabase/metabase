@@ -1,6 +1,6 @@
-(ns metabase-enterprise.audit.pages.database-detail
-  (:require [metabase-enterprise.audit.interface :as audit.i]
-            [metabase-enterprise.audit.pages.common :as common]
+(ns metabase-enterprise.audit-app.pages.database-detail
+  (:require [metabase-enterprise.audit-app.interface :as audit.i]
+            [metabase-enterprise.audit-app.pages.common :as common]
             [metabase.util.schema :as su]
             [ring.util.codec :as codec]
             [schema.core :as s]))
