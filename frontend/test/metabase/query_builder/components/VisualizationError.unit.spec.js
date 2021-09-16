@@ -33,6 +33,12 @@ describe("VisualizationError", () => {
     );
   });
 
+  it("unremarked query should be a noop", () => {
+    expect(adjustPositions(unadjustedError, unremarkedQuery)).toEqual(
+      unadjustedError,
+    );
+  });
+
   it("error adjusted line numbers should be a noop", () => {
     expect(adjustPositions(errorLineNumbers, remarkedQuery)).toEqual(
       errorLineNumbers,
