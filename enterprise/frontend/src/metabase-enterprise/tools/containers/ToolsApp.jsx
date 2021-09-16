@@ -8,7 +8,7 @@ import AdminLayout from "metabase/components/AdminLayout";
 
 export default class ToolsApp extends Component {
   static propTypes = {
-    children: PropTypes.any,
+    children: PropTypes.node,
   };
 
   render() {
