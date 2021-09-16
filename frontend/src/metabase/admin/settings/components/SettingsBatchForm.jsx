@@ -20,7 +20,7 @@ const VALIDATIONS = {
     message: t`That's not a valid integer`,
   },
   email: {
-    validate: value => MetabaseUtils.isEmail(value),
+    validate: value => MetabaseUtils.validEmail(value),
     message: t`That's not a valid email address`,
   },
   emails: {

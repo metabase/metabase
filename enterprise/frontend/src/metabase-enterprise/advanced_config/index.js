@@ -15,9 +15,6 @@ if (hasPremiumFeature("advanced_config")) {
           key: "subscription-allowed-domains",
           display_name: t`Approved domains for notifications`,
           type: "string",
-          validations: [
-            ["emails", t`Looks like one of your domains isn’t valid`],
-          ],
         },
         ..._.tail(settings, index + 1),
       ];

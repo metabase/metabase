@@ -71,7 +71,7 @@ const ForgotPasswordLink = ({ credentials = {} }) => (
   <Link
     to={
       "/auth/forgot_password" +
-      (Utils.isEmail(credentials.username)
+      (Utils.validEmail(credentials.username)
         ? "?email=" + encodeURIComponent(credentials.username)
         : "")
     }
