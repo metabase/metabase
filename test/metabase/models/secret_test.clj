@@ -69,7 +69,7 @@
                                                  :source "file-path"
                                                  :value  (.getAbsolutePath tmp-file)}]]]
         (testing (format " with a %s value" value-kind)
-          (mt/with-temp Secret [{:keys [id value] :as secret} secret-map]
+          (mt/with-temp Secret [{:keys [id value] :as secret} (assoc secret-map :creator_id (mt/user->id :crowberto))]
             (let [val-file (secret/value->file! secret)]
               (is (value-matches? (or exp-val value)
                                   (let [result (byte-array (.length val-file))]
