@@ -193,6 +193,7 @@ export default class Dashboard extends Component {
       isFullscreen,
       isNightMode,
       isSharing,
+      parameters,
       showAddQuestionSidebar,
     } = this.props;
 
@@ -209,7 +210,7 @@ export default class Dashboard extends Component {
     );
 
     const shouldRenderParametersWidgetInViewMode =
-      !isEditing && !isFullscreen && parametersWidget;
+      !isEditing && !isFullscreen && parameters.length > 0;
 
     return (
       <DashboardLoadingAndErrorWrapper
