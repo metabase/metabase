@@ -9,9 +9,12 @@ describe("VisualizationError", () => {
   const unremarkedQuery = "";
 
   const errorPgSql = "";
-  const errorMySql = "";
-  const errorMsSql = "";
-  const errorH2 = "";
+  const errorLineNumbers = "";
+
+  const errorH2Unstripped = `
+  Syntax error in SQL statement " FWEFWEF[*] "; expected "FROM, {"; SQL statement: -- Metabase:: userID: 1 queryType: native queryHash: 9863b8284f269ce8763ad59b04cec26407a1dd74eebeb16cffdf1ef3e23b325a\nfwefwef [42001-197]`
+  const errorH2Stripped = `
+  Syntax error in SQL statement " FWEFWEF[*] "; expected "FROM, {"; SQL statement: fwefwef [42001-197]`
 
   it("error adjusted pg", () => {
     expect(stripRemarks(remarkedQuery)).toEqual("some shit");
@@ -21,23 +24,21 @@ describe("VisualizationError", () => {
     expect(stripRemarks(remarkedQuery)).toEqual("some shit");
   });
 
-  it("error adjusted mysql", () => {
+  it("error adjusted line numbers", () => {
     expect(stripRemarks(remarkedQuery)).toEqual("some shit");
   });
 
-  it("error adjusted mssql", () => {
-    expect(stripRemarks(remarkedQuery)).toEqual("some shit");
-  });
+  it("should just not adjust if there's nothing to adjust (pg)", () => {
+  })
 
-  it("error adjusted h2", () => {
-    expect(stripRemarks(remarkedQuery)).toEqual("some shit");
-  });
-
-  it("unremarked errors unchanged", () => {
-    expect(stripRemarks(remarkedQuery)).toEqual("some shit");
-  });
+  it("should just not adjust if there's nothing to adjust (line numbers)", () => {
+  })
 
   it("should strip remarks from query with stripRemarks", () => {
-    expect(stripRemarks(remarkedQuery)).toEqual("some shit");
+    expect(stripRemarks(errorH2Unstripped)).toEqual(errorH2Stripped);
+  });
+
+  it("stripping stripped errors unchanged", () => {
+    expect(stripRemarks(errorH2Stripped)).toEqual(errorH2Stripped);
   });
 });
