@@ -271,7 +271,7 @@ export function onRenderValueLabels(
         .attr("class", klass)
         .text(({ y, seriesIndex }) => {
           const options = {
-            extent: [0, Number.MIN_VALUE],
+            extent: [],
             negativeInParentheses: displays[seriesIndex] === "waterfall",
             compact: compact === null ? compactForSeries[seriesIndex] : compact,
           };
