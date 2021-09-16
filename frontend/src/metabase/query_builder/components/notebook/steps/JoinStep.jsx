@@ -623,15 +623,9 @@ class JoinDimensionPicker extends React.Component {
             fieldOptions={options}
             table={query.table()}
             query={query}
-            onFieldChange={(field, item) => {
+            onFieldChange={(field, { isSubDimension = false } = {}) => {
               if (isDateTimeField(field)) {
-                // When we set a default temporal unit by just clicking the dimension name,
-                // FieldList provides a second argument to onFieldChange callback
-                // When a temporal unit is selected explicitly (like by Week, Quarter, Year, etc.)
-                // the item argument is undefined
-                // In this case we want to make sure the second dimension will use the same unit
-                const isSubDimension = !item;
-                onChange(field, { overwrite: !isSubDimension });
+                onChange(field, { overwrite: isSubDimension });
               } else {
                 onChange(field);
               }
