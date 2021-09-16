@@ -2,11 +2,16 @@
   "Entrypoint for `bin/build-drivers.sh`. Builds all drivers, if needed."
   (:require [build-drivers.build-driver :as build-driver]
             [clojure.java.io :as io]
-            [metabuild-common.core :as u]))
+            [metabuild-common.core :as u])
+  (:import java.io.File))
 
 (defn- all-drivers []
   (->> (.listFiles (io/file (u/filename u/project-root-directory "modules" "drivers")))
-       (filter #(.isDirectory %)) ;; watch for errant DS_Store files on os_x
+       (filter (fn [^File d]
+                 (and (.isDirectory d) ;; watch for errant DS_Store files on os_x
+                   ;; only consider a directory to be a driver if it contains a lein or deps build file
+                   (some true? (map (fn [f]
+                                      (.exists (io/file d f))) ["project.clj" "deps.edn"])))))
        (map (comp keyword #(.getName %)))))
 
 (defn build-drivers! [edition]

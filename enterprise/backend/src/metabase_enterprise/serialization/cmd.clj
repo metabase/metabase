@@ -61,7 +61,8 @@
                   (reload-fn))))
           (log/info (trs "END LOAD from {0} with context {1}" path context))))
       (catch Throwable e
-        (log/error e (trs "ERROR LOAD from {0}: {1}" path (.getMessage e)))))))
+        (log/error e (trs "ERROR LOAD from {0}: {1}" path (.getMessage e)))
+        (throw e)))))
 
 (defn- select-entities-in-collections
   ([model collections]
@@ -104,13 +105,15 @@
                                                                    [:= :personal_owner_id
                                                                        (some-> users first u/the-id)]]
                                                               state-filter]})]
-     (-> (db/select Collection
-                           {:where [:and
-                                    (reduce (fn [acc coll]
-                                              (conj acc [:like :location (format "/%d/%%" (:id coll))]))
-                                            [:or] base-collections)
-                                    state-filter]})
-         (into base-collections)))))
+     (if (empty? base-collections)
+       []
+       (-> (db/select Collection
+                             {:where [:and
+                                      (reduce (fn [acc coll]
+                                                (conj acc [:like :location (format "/%d/%%" (:id coll))]))
+                                              [:or] base-collections)
+                                      state-filter]})
+           (into base-collections))))))
 
 
 (defn dump

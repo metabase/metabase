@@ -52,6 +52,7 @@ const SearchInput = styled.input`
 `;
 
 const ALLOWED_SEARCH_FOCUS_ELEMENTS = new Set(["BODY", "A"]);
+const SEARCH_LIMIT = 50;
 
 export default class SearchBar extends React.Component {
   state = {
@@ -152,7 +153,7 @@ export default class SearchBar extends React.Component {
                   py={1}
                 >
                   <Search.ListLoader
-                    query={{ q: searchText.trim() }}
+                    query={{ q: searchText.trim(), limit: SEARCH_LIMIT }}
                     wrapped
                     reload
                     debounced

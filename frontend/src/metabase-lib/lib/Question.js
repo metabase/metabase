@@ -624,8 +624,11 @@ export default class Question {
 
     const validVizSettings = vizSettings.filter(colSetting => {
       const hasColumn = findColumnIndexForColumnSetting(cols, colSetting) >= 0;
-      return hasColumn;
+      const isMutatingColumn =
+        findColumnIndexForColumnSetting(addedColumns, colSetting) >= 0;
+      return hasColumn && !isMutatingColumn;
     });
+
     const noColumnsRemoved = validVizSettings.length === vizSettings.length;
 
     if (noColumnsRemoved && addedColumns.length === 0) {

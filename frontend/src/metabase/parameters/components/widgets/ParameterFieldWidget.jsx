@@ -130,7 +130,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
 
     const footerClassName = cx(
       "flex mt1 px1 pb1 PopoverFooter PopoverParameterFieldWidgetFooter",
-      isEqualsOp && "mr1 mb1",
+      isEqualsOp ? "mr1 mb1" : "PopoverFooterWhenIsNotEqualOps",
     );
 
     const placeholder = isEditing

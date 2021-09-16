@@ -92,6 +92,10 @@ export default class DashCard extends Component {
     }));
   };
 
+  preventDragging = e => {
+    e.stopPropagation();
+  };
+
   render() {
     const {
       dashcard,
@@ -177,7 +181,7 @@ export default class DashCard extends Component {
         }
       >
         {isEditingDashboardLayout ? (
-          <DashboardCardActionsPanel className="drag-disabled">
+          <DashboardCardActionsPanel onMouseDown={this.preventDragging}>
             <DashCardActionButtons
               series={series}
               hasError={!!errorMessage}

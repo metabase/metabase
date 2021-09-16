@@ -590,10 +590,7 @@ export default class TokenField extends Component {
       filteredOptions.length === 0 ? null : (
         <ul
           className={cx(optionsClassName, "overflow-auto pl1 my1 scroll-hide")}
-          style={{
-            ...optionsStyle,
-            maxHeight: this.props.parameter ? 300 : "none",
-          }}
+          style={{ maxHeight: 300, ...optionsStyle }}
           onMouseEnter={() => this.setState({ listIsHovered: true })}
           onMouseLeave={() => this.setState({ listIsHovered: false })}
         >
@@ -637,10 +634,6 @@ export default class TokenField extends Component {
     });
   }
 }
-
-TokenField.propTypes = {
-  parameter: PropTypes.object,
-};
 
 const dedup = array => Array.from(new Set(array));
 

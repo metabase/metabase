@@ -17,9 +17,9 @@ export default class AuditContent extends React.Component {
         {tabs && (
           <div className="border-bottom px4 mt1">
             <Radio
-              underlined
+              variant="underlined"
               value={this.props.router.location.pathname}
-              options={tabs.filter(tab => tab.component)} // hide tabs that aren't implemented
+              options={tabs.filter(tab => tab.component)} // hide tabs that are not implemented
               optionValueFn={tab => `${pagePath}/${tab.path}`}
               optionNameFn={tab => tab.title}
               optionKeyFn={tab => tab.path}

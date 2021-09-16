@@ -206,8 +206,7 @@
   },
   "lint-staged": {
     "frontend/**/*.{js,jsx,css}": [
-      "prettier --write",
-      "git add"
+      "prettier --write"
     ]
   },
   "resolutions": {

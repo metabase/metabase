@@ -775,6 +775,7 @@ export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
   } else if (value == null) {
     return null;
   } else if (
+    options.view_as !== "image" &&
     options.click_behavior &&
     clickBehaviorIsValid(options.click_behavior) &&
     options.jsx

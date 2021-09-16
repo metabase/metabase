@@ -51,7 +51,7 @@ PLUGIN_SNIPPET_SIDEBAR_MODALS.push(
       >
         <CollectionPermissionsModal
           params={{
-            collectionId: snippetSidebar.state.permissionsModalCollectionId,
+            slug: snippetSidebar.state.permissionsModalCollectionId,
           }}
           onClose={() =>
             snippetSidebar.setState({ permissionsModalCollectionId: null })

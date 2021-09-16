@@ -48,16 +48,10 @@ describe("scenarios > admin > datamodel > field > field type", () => {
     getFKTargetField("Products → ID");
   });
 
-  it.skip("should let you change the type to 'Number' (metabase#16781)", () => {
+  it("should not let you change the type to 'Number' (metabase#16781)", () => {
     visitAlias("@ORDERS_PRODUCT_ID_URL");
 
-    setFieldType({ oldValue: "Foreign Key", newValue: "Number" });
-
-    waitAndAssertOnResponse("fieldUpdate");
-
-    cy.reload();
-
-    getFieldType("Number");
+    checkNoFieldType({ oldValue: "Foreign Key", newValue: "Number" });
   });
 });
 
@@ -77,13 +71,25 @@ function getFieldType(type) {
 
 function setFieldType({ oldValue, newValue } = {}) {
   getFieldType(oldValue).click();
+
   popover().within(() => {
-    cy.get(".ReactVirtualized__Grid").scrollTo(0, 0); // HACK: scroll to the top of the list. Ideally we should probably disable AccordionList virtualization
-    cy.findByPlaceholderText("Find...").type(newValue);
-    cy.get(".List-item")
-      .contains(newValue)
-      .click();
+    searchFieldType(newValue);
+    cy.findByText(newValue).click();
   });
+}
+
+function checkNoFieldType({ oldValue, newValue } = {}) {
+  getFieldType(oldValue).click();
+
+  popover().within(() => {
+    searchFieldType(newValue);
+    cy.queryByText(newValue).should("not.exist");
+  });
+}
+
+function searchFieldType(type) {
+  cy.get(".ReactVirtualized__Grid").scrollTo(0, 0); // HACK: scroll to the top of the list. Ideally we should probably disable AccordionList virtualization
+  cy.findByPlaceholderText("Find...").type(type);
 }
 
 function getFKTargetField(targetField) {
