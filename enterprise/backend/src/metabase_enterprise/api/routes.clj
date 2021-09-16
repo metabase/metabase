@@ -5,8 +5,8 @@
   These routes should generally live under prefixes like `/api/ee/<feature>/` -- see the
   `enterprise/backend/README.md` for more details."
   (:require [compojure.core :as compojure]
-            [metabase-enterprise.advanced-config.api.routes :as advanced-config]
             [metabase-enterprise.api.routes.common :as ee.api.common]
+            [metabase-enterprise.audit-app.api.routes :as audit-app]
             [metabase-enterprise.content-management.api.routes :as content-management]
             [metabase-enterprise.sandbox.api.routes :as sandbox]))
 
@@ -22,5 +22,5 @@
   (compojure/context
    "/ee" []
    (compojure/context
-    "/advanced-config" []
-    (ee.api.common/+require-premium-feature :advanced-config advanced-config/routes))))
+    "/audit-app" []
+    (ee.api.common/+require-premium-feature :audit-app audit-app/routes))))

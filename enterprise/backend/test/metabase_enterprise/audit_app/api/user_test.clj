@@ -1,4 +1,4 @@
-(ns metabase-enterprise.advanced-config.api.user-test
+(ns metabase-enterprise.audit-app.api.user-test
   (:require [clojure.test :refer :all]
             [metabase.models :refer [Card Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient User]]
             [metabase.public-settings.premium-features-test :as premium-features-test]
@@ -6,16 +6,16 @@
             [toucan.db :as db]))
 
 (deftest delete-subscriptions-test
-  (testing "DELETE /api/ee/advanced-config/user/:id/subscriptions"
-    (testing "Should require a token with `:advanced-config`"
+  (testing "DELETE /api/ee/audit-app/user/:id/subscriptions"
+    (testing "Should require a token with `:audit-app`"
       (premium-features-test/with-premium-features #{}
         (mt/with-temp User [{user-id :id}]
-          (is (= "This API endpoint is only enabled if you have a premium token with the :advanced-config feature."
+          (is (= "This API endpoint is only enabled if you have a premium token with the :audit-app feature."
                  (mt/user-http-request user-id
                                        :delete 402
-                                       (format "ee/advanced-config/user/%d/subscriptions" user-id)))))))
+                                       (format "ee/audit-app/user/%d/subscriptions" user-id)))))))
 
-    (premium-features-test/with-premium-features #{:advanced-config}
+    (premium-features-test/with-premium-features #{:audit-app}
       (doseq [run-type [:admin :non-admin]]
         (mt/with-temp* [User                  [{user-id :id}]
                         Card                  [{card-id :id}]
@@ -46,7 +46,7 @@
                   (api-delete-subscriptions! [request-user-name-or-id expected-status-code]
                     (mt/user-http-request request-user-name-or-id
                                           :delete expected-status-code
-                                          (format "ee/advanced-config/user/%d/subscriptions" user-id)))]
+                                          (format "ee/audit-app/user/%d/subscriptions" user-id)))]
             (testing "Sanity check: User should have 2 subscriptions (1 Alert, 1 DashboardSubscription)"
               (is (= {:num-subscriptions                2
                       :alert-archived?                  false

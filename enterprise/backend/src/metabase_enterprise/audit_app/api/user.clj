@@ -1,6 +1,5 @@
-(ns metabase-enterprise.advanced-config.api.user
-  "`/api/ee/advanced-config/user` endpoints. These only work if you have a premium token with the `:advanced-config`
-  feature."
+(ns metabase-enterprise.audit-app.api.user
+  "`/api/ee/audit-app/user` endpoints. These only work if you have a premium token with the `:audit-app` feature."
   (:require [compojure.core :refer [DELETE]]
             [metabase.api.common :as api]
             [metabase.api.user :as api.user]
