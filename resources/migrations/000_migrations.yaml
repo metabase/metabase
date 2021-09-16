@@ -8528,12 +8528,13 @@ databaseChangeLog:
                     nullable: false
                     references: core_user(id)
                   name: creator_id
+                  remarks: User ID who created this secret instance
                   type: int
               - column:
                   constraints:
                     nullable: false
                   name: created_at
-                  remarks: Timestamp for when this secret record was created
+                  remarks: Timestamp for when this secret instance was created
                   type: ${timestamp_type}
               - column:
                   constraints:
