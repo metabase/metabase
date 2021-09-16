@@ -43,7 +43,7 @@ driver:
         ssl-use-keystore: true
     - name: ssl-keystore-password
       display-name: Keystore Password
-      type: secret
+      type: password
       secret-kind: password
       required: false
       visible-if:
@@ -62,7 +62,7 @@ driver:
         ssl-use-truststore: true
     - name: ssl-truststore-password
       display-name: Truststore Password
-      type: secret
+      type: password
       secret-kind: password
       required: false
       visible-if:
