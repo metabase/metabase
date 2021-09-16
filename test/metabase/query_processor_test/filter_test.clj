@@ -514,7 +514,7 @@
                  [[2 "2018-09-21T00:00:00Z" 0]
                   [3 "2018-09-22T00:00:00Z" 0]
                   [9 "2018-09-28T00:00:00Z" 0]])
-              (mt/formatted-rows [int identity identity]
+              (mt/formatted-rows [int identity int]
                 (mt/run-mbql-query bird-count
                   {:order-by [[:asc $count] [:asc $id]]
                    :limit    3}))))))))

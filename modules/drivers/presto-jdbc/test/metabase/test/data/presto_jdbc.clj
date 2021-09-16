@@ -15,6 +15,8 @@
 
 (sql-jdbc.tx/add-test-extensions! :presto-jdbc)
 
+(defmethod tx/sorts-nil-first? :presto-jdbc [_] false)
+
 ;; during unit tests don't treat presto as having FK support
 (defmethod driver/supports? [:presto-jdbc :foreign-keys] [_ _] (not config/is-test?))
 

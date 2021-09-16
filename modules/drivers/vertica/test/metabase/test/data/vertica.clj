@@ -18,7 +18,7 @@
 
 (sql-jdbc.tx/add-test-extensions! :vertica)
 
-(defmethod tx/sorts-nil-first? :vertica [_] false)
+(defmethod tx/sorts-nil-first? :vertica [_] true)
 
 (doseq [[base-type sql-type] {:type/BigInteger     "BIGINT"
                               :type/Boolean        "BOOLEAN"
