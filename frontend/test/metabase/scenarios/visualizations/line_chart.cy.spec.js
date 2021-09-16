@@ -36,7 +36,7 @@ describe("scenarios > visualizations > line chart", () => {
     cy.get(Y_AXIS_RIGHT_SELECTOR);
   });
 
-  it.skip("should be able to format data point values style independently on multi-series chart (metabase#13095)", () => {
+  it("should be able to format data point values style independently on multi-series chart (metabase#13095)", () => {
     visitQuestionAdhoc({
       dataset_query: {
         type: "query",
