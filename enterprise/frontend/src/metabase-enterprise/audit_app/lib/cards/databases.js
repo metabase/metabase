@@ -43,7 +43,8 @@ export const queryExecutionsByTime = () => ({
     display: "line",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit-app.pages.databases/query-executions-by-time",
+      fn:
+        "metabase-enterprise.audit-app.pages.databases/query-executions-by-time",
       args: ["day"],
     },
     visualization_settings: {

@@ -81,7 +81,8 @@ export const queryExecutionTimePerUser = () => ({
     display: "row",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit-app.pages.users/query-execution-time-per-user",
+      fn:
+        "metabase-enterprise.audit-app.pages.users/query-execution-time-per-user",
       args: [],
     },
   },

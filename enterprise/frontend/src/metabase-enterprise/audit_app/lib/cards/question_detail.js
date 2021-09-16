@@ -46,7 +46,8 @@ export const revisionHistory = (questionId: number) => ({
     display: "table",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit-app.pages.question-detail/revision-history",
+      fn:
+        "metabase-enterprise.audit-app.pages.question-detail/revision-history",
       args: [questionId],
     },
     visualization_settings: {

@@ -4,7 +4,8 @@ export const viewsAndSavesByTime = () => ({
     display: "line",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit-app.pages.dashboards/views-and-saves-by-time",
+      fn:
+        "metabase-enterprise.audit-app.pages.dashboards/views-and-saves-by-time",
       args: ["day"],
     },
     visualization_settings: {
@@ -32,7 +33,8 @@ export const mostCommonQuestions = () => ({
     display: "table",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit-app.pages.dashboards/most-common-questions",
+      fn:
+        "metabase-enterprise.audit-app.pages.dashboards/most-common-questions",
       args: [],
     },
   },
