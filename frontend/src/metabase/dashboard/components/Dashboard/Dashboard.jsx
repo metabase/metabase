@@ -3,11 +3,11 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 
-import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import DashboardControls from "../../hoc/DashboardControls";
 import { DashboardSidebars } from "../DashboardSidebars";
 import DashboardHeader from "../DashboardHeader";
 import {
+  CardsContainer,
   DashboardStyled,
   DashboardLoadingAndErrorWrapper,
   DashboardBody,
@@ -190,6 +190,7 @@ export default class Dashboard extends Component {
       addParameter,
       dashboard,
       isEditing,
+      isEditingParameter,
       isFullscreen,
       isNightMode,
       isSharing,
@@ -214,6 +215,10 @@ export default class Dashboard extends Component {
 
     const shouldRenderParametersWidgetInEditMode =
       isEditing && parameters.length > 0;
+
+    const cardsContainerShouldHaveMarginTop =
+      !shouldRenderParametersWidgetInViewMode &&
+      (!isEditing || isEditingParameter);
 
     return (
       <DashboardLoadingAndErrorWrapper
@@ -263,7 +268,9 @@ export default class Dashboard extends Component {
                   </ParametersWidgetContainer>
                 )}
 
-                <FullWidthContainer>
+                <CardsContainer
+                  addMarginTop={cardsContainerShouldHaveMarginTop}
+                >
                   {dashboardHasCards(dashboard) ? (
                     <DashboardGrid
                       {...this.props}
@@ -274,7 +281,7 @@ export default class Dashboard extends Component {
                       isNightMode={shouldRenderAsNightMode}
                     />
                   )}
-                </FullWidthContainer>
+                </CardsContainer>
               </ParametersAndCardsContainer>
 
               <DashboardSidebars
