@@ -49,7 +49,7 @@ export default class AuditTableVisualization extends React.Component {
 
   state = {
     rerender: {},
-  }
+  };
 
   constructor(props) {
     super(props);
