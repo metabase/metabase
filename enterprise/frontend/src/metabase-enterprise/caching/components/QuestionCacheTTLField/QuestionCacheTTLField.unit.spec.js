@@ -71,9 +71,9 @@ function fillValue(input, value) {
 const DEFAULT_MODE_TEXT_TEST_ID = /radio-[0-9]+-default-name/;
 
 describe("QuestionCacheTTLField", () => {
-  it("displays 0 if question is not cached", () => {
+  it("displays a placeholder if question is not cached", () => {
     setup();
-    expect(screen.getByLabelText("Label")).toHaveValue("0");
+    expect(screen.getByLabelText("Label")).toHaveAttribute("placeholder", "24");
   });
 
   it("displays question's cache TTL value", () => {

@@ -29,7 +29,8 @@ export function CacheTTLField({ field, message, ...props }) {
       <Input
         aria-labelledby={`${field.name}-label`}
         {...formDomOnlyProps(field)}
-        value={field.value || 0}
+        value={field.value}
+        placeholder="24"
         hasError={hasError}
       />
       <FieldText margin="left" hasError={hasError}>{t`hours`}</FieldText>

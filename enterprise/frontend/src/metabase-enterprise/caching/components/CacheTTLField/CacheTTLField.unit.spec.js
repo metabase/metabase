@@ -24,12 +24,18 @@ describe("CacheTTLField", () => {
     { value: 0, expected: "0" },
     { value: 1, expected: "1" },
     { value: 12, expected: "12" },
-    { value: null, expected: "0" },
   ].forEach(({ value, expected }) => {
     it(`displays ${value} value as ${expected}`, () => {
       const { field } = setup({ value });
       expect(field).toHaveValue(expected);
     });
+  });
+
+  it("displays a placeholder for null values", () => {
+    const { field } = setup({ value: null });
+
+    expect(field).toHaveAttribute("placeholder", "24");
+    expect(field).toHaveValue("");
   });
 
   it("displays message", () => {

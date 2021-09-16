@@ -48,7 +48,7 @@ describe("DatabaseCacheTTLField", () => {
     const { onChange } = setup();
 
     selectMode("custom");
-    const input = screen.getByDisplayValue("0");
+    const input = screen.getByPlaceholderText("24");
     userEvent.type(input, "{selectall}{backspace}14");
     input.blur();
 
