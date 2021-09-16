@@ -19,7 +19,7 @@ describeWithToken("scenarios > dashboard > caching", () => {
     openEditingModalForm();
     modal().within(() => {
       cy.findByText("More options").click();
-      cy.findByDisplayValue("0")
+      cy.findByPlaceholderText("24")
         .clear()
         .type("48")
         .blur();
@@ -45,7 +45,7 @@ describeWithToken("scenarios > dashboard > caching", () => {
     openEditingModalForm();
     modal().within(() => {
       cy.findByText("More options").click();
-      cy.findByDisplayValue("0");
+      cy.findByPlaceholderText("24");
     });
   });
 });
