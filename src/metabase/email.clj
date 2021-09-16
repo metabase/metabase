@@ -19,10 +19,6 @@
   (deferred-tru "Email address you want to use as the sender of Metabase.")
   :default "notifications@metabase.com")
 
-(defsetting email-approved-domains
-  (deferred-tru "If you need to allow multiple domains, you can separate items with a “,” <br>
-                 Leaving this blank will allow notifications to be sent to any email address."))
-
 (defsetting email-smtp-host
   (deferred-tru "The address of the SMTP server that handles your emails."))
 

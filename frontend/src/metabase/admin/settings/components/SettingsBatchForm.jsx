@@ -15,17 +15,13 @@ import SettingsSetting from "./SettingsSetting";
 import { updateSettings as defaultUpdateSettings } from "../settings";
 
 const VALIDATIONS = {
-  integer: {
-    validate: value => !isNaN(parseInt(value)),
-    message: t`That's not a valid integer`,
-  },
   email: {
     validate: value => MetabaseUtils.validEmail(value),
     message: t`That's not a valid email address`,
   },
-  emails: {
-    validate: value => MetabaseUtils.isEmailList(value),
-    message: t`That's not a valid email address list`,
+  integer: {
+    validate: value => !isNaN(parseInt(value)),
+    message: t`That's not a valid integer`,
   },
 };
 
