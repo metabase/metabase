@@ -41,9 +41,13 @@
   being executed. See documentation for `mbql->native` and #2386.
   for more information.
 
-  Note that this messes up the visualization errors for native queries.
-  Therefore there is a very very long-distance dependency that this causes on the VisualizationErrors
-  for native queries.
+  So this turns your average 10, 20, 30 character query into a 110, 120, 130 etc character query.
+  One leaky-abstraction part of this is that this will confuse the bejeezus out of
+  people who first encounter their passed-through RDBMS error messages.
+
+  'Hey, this is a 20 character query! What's it talking about, error at position 120?'
+  This gets fixed, but in a spooky-action-at-a-distance way, in
+  `frontend/src/metabase/query_builder/components/VisualizationError.jsx`
   "
   {:arglists '(^String [driver query])}
   driver/dispatch-on-initialized-driver
