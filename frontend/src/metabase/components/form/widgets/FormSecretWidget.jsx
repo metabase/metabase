@@ -27,14 +27,14 @@ const FormSecretWidget = ({
   return (
     <Container>
       <StyledSelect
-        defaultValue={"local"}
+        defaultValue={inputToShow}
         placeholder={placeholder}
         onChange={handleSelectChange}
       >
-        <Option key={`secret-select-option1`} value={"local"}>
+        <Option key={`secret-select-option1`} value={"textInput"}>
           {t`Local file`}
         </Option>
-        <Option key={`secret-select-option2`} value={"uploaded"}>
+        <Option key={`secret-select-option2`} value={"fileInput"}>
           {t`Uploaded file`}
         </Option>
       </StyledSelect>
