@@ -77,7 +77,7 @@ jobs:
     strategy:
       matrix:
         edition: [ee, oss]
-        java-version: [8, 11, 16]
+        java-version: [8, 11, 17]
     steps:
     - name: Prepare JRE (Java Run-time Environment)
       uses: actions/setup-java@v1
