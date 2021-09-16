@@ -486,10 +486,12 @@ export function getYValueFormatter(chart, series, yExtent) {
   if (chart.settings["stackable.stack_type"] === "normalized") {
     return value => Math.round(value * 100) + "%";
   }
-  const metricColumn = series[0].data.cols[1];
-  const columnSettings = chart.settings.column(metricColumn);
-  return (value, options) => {
-    const roundedValue = maybeRoundValueToZero(value, yExtent);
+
+  return (value, options, seriesIndex = 0) => {
+    const metricColumn = series[seriesIndex].data.cols[1];
+    const columnSettings = chart.settings.column(metricColumn);
+    const columnExtent = options.extent ?? yExtent;
+    const roundedValue = maybeRoundValueToZero(value, columnExtent);
     return formatValue(roundedValue, { ...columnSettings, ...options });
   };
 }
