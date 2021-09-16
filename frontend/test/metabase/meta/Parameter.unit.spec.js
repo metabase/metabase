@@ -610,8 +610,8 @@ describe("metabase/meta/Parameter", () => {
         it("should treat special cased defaulted parameters + empty string value as NIL and use the defaulted value", () => {
           const queryParamsWithSpecialCase = {
             ...queryParams,
-            foo: "", // has no default
-            bar: "", // has a defautl
+            [parameter1.slug]: "", // this parameter has no default
+            [parameter2.slug]: "", // this parameter has a default
           };
 
           expect(
@@ -620,7 +620,6 @@ describe("metabase/meta/Parameter", () => {
               queryParamsWithSpecialCase,
             ),
           ).toEqual({
-            [parameter1.id]: "",
             [parameter2.id]: "parameter2 default value",
             [parameter3.id]: "parameter3 default value",
           });
@@ -644,8 +643,8 @@ describe("metabase/meta/Parameter", () => {
         it("should return a result that has been transformed by the given transform function", () => {
           const queryParamsWithSpecialCase = {
             ...queryParams,
-            foo: "", // has no default
-            bar: "", // has a defautl
+            [parameter1.slug]: "", // this parameter has no default
+            [parameter2.slug]: "", // this parameter has a default
           };
 
           expect(
@@ -655,7 +654,6 @@ describe("metabase/meta/Parameter", () => {
               removeDefaultedParametersWithEmptyStringValue,
             ),
           ).toEqual({
-            [parameter1.id]: "",
             [parameter3.id]: "parameter3 default value",
           });
         });

@@ -627,17 +627,18 @@ export function isDefaultedParameterSpecialCase(parameter, value) {
 }
 
 export function removeDefaultedParametersWithEmptyStringValue(pairs) {
-  return pairs.filter(
-    ([parameter, value]) => !isDefaultedParameterSpecialCase(parameter, value),
-  );
+  return pairs
+    .map(([parameter, value]) => [parameter, value === "" ? undefined : value])
+    .filter(([parameter, value]) => hasParameterValue(value));
 }
 
-export function treatEmptyStringLikeNilForDefaultedParameters(pairs) {
-  return pairs.map(([parameter, value]) =>
-    isDefaultedParameterSpecialCase(parameter, value)
-      ? [parameter, parameter.default]
-      : [parameter, value],
-  );
+export function removeUndefaultedEmptyStringParameters(pairs) {
+  return pairs
+    .map(([parameter, value]) => [
+      parameter,
+      value === "" ? parameter.default : value,
+    ])
+    .filter(([, value]) => hasParameterValue(value));
 }
 
 export function removeNilValuedPairs(pairs) {
@@ -688,7 +689,7 @@ export function getParameterValuesByIdFromQueryParams(
 
   const transformedPairs = _.isFunction(transform)
     ? transform(parameterValuePairs)
-    : treatEmptyStringLikeNilForDefaultedParameters(parameterValuePairs);
+    : removeUndefaultedEmptyStringParameters(parameterValuePairs);
 
   const idValuePairs = transformedPairs.map(([parameter, value]) => [
     parameter.id,
@@ -696,17 +697,6 @@ export function getParameterValuesByIdFromQueryParams(
   ]);
 
   return Object.fromEntries(idValuePairs);
-}
-
-export function getParameterValuesByIdFromPreviousValues(
-  parameters,
-  parameterValues,
-) {
-  const parameterEntries = parameters
-    .map(p => [p.id, parameterValues[p.id]])
-    .filter(([id, value]) => value != null);
-
-  return Object.fromEntries(parameterEntries);
 }
 
 export function getParameterValuesBySlug(

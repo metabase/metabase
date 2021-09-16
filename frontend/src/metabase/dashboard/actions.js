@@ -21,7 +21,6 @@ import {
   getParameterValuesBySlug,
   getParameterValuesByIdFromQueryParams,
   removeDefaultedParametersWithEmptyStringValue,
-  getParameterValuesByIdFromPreviousValues,
 } from "metabase/meta/Parameter";
 import * as Urls from "metabase/lib/urls";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
@@ -707,10 +706,7 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
     }
 
     const parameterValuesById = preserveParameters
-      ? getParameterValuesByIdFromPreviousValues(
-          result.parameters,
-          getParameterValues(getState()),
-        )
+      ? getParameterValues(getState())
       : getParameterValuesByIdFromQueryParams(
           result.parameters,
           queryParams,
