@@ -67,11 +67,7 @@ export default class AuditParameters extends React.Component {
             ))}
           {buttons &&
             buttons.map(({ key, onClick, label }) => (
-              <Button
-                primary
-                key={key}
-                onClick={onClick}
-              >
+              <Button primary key={key} onClick={onClick}>
                 {label}
               </Button>
             ))}

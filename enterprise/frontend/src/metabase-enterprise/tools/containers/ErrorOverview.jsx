@@ -33,7 +33,11 @@ export default function ErrorOverview(props) {
     const checkedCardIds = Object.values(
       _.pick(rowToCardId, (member, key) => rowChecked[key]),
     );
-    await Promise.all(checkedCardIds.map(async (member) => await CardApi.query({ cardId: member })));
+    await Promise.all(
+      checkedCardIds.map(
+        async member => await CardApi.query({ cardId: member }),
+      ),
+    );
     location.reload();
   };
 
