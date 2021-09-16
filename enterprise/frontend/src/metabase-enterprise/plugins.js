@@ -20,3 +20,4 @@ import "./snippets";
 import "./sharing";
 import "./moderation";
 import "./advanced_config";
+import "./advanced_permissions";
