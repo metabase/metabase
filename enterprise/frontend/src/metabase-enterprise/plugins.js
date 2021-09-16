@@ -10,6 +10,7 @@ MetabaseSettings.isEnterprise = () => true;
 // import "./management";
 
 import "./audit_app";
+import "./tools";
 import "./sandboxes";
 import "./auth";
 import "./collections";
