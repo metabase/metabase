@@ -4,6 +4,9 @@ describe("visual tests > internal > components", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
+
+    cy.visit("/_internal");
+    cy.reload(true);
   });
 
   it("UserAvatar", () => {
