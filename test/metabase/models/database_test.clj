@@ -2,6 +2,7 @@
   (:require [cheshire.core :refer [decode encode]]
             [clojure.string :as str]
             [clojure.test :refer :all]
+            [metabase.api.common :as api]
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
             [metabase.models :refer [Database]]
@@ -15,8 +16,7 @@
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [schema.core :as s]
-            [toucan.db :as db]
-            [metabase.api.common :as api]))
+            [toucan.db :as db]))
 
 (use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
 
