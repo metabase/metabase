@@ -21,7 +21,7 @@ const FORM_FIELDS = [
     title: t`Which collection should this go in?`,
     type: "collection",
     validate: collectionId =>
-      collectionId === undefined ? `Collection is required` : null,
+      collectionId === undefined ? t`Collection is required` : null,
   },
 ];
 
