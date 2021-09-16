@@ -60,7 +60,7 @@ function EditQuestionInfoModal({ question, onClose, onSave }) {
                   header={t`More options`}
                   iconVariant="up-down"
                   iconPosition="right"
-                  headerClass="text-bold text-medium"
+                  headerClass="text-bold text-medium text-brand-hover"
                   bodyClass="pt2"
                 >
                   <FormField
