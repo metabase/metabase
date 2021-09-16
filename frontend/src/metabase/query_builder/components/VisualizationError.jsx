@@ -126,10 +126,12 @@ class VisualizationError extends Component {
     ) {
       // always show errors for native queries
       let processedError = error;
-      const origSql = getIn(via, [via.length - 1, "ex-data", "sql"]);
+      const origSql = getIn(via, [(via || "").length - 1, "ex-data", "sql"]);
       if (typeof error === "string" && typeof origSql === "string") {
-        const adjustedError = adjustPositions(error, origSql);
-        processedError = stripRemarks(adjustedError);
+        processedError = adjustPositions(error, origSql);
+      }
+      if (typeof error === "string") {
+        processedError = stripRemarks(processedError);
       }
       return (
         <div
