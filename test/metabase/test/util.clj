@@ -997,3 +997,9 @@
                  (macroexpand form))
       `(with-temp-file [])
       `(with-temp-file (+ 1 2)))))
+
+(defn dash->underscore
+  "Replaces dashes with underscores in `nm`. Intended for use in driver test data classes, to remap database, table,
+  etc. names in DBs that don't support having dashes in the identifier."
+  [nm]
+  (str/replace nm #"-" "_"))

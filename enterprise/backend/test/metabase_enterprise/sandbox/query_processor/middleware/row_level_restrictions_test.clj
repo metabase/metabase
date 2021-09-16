@@ -941,7 +941,7 @@
                          [nil       "Widget" 1 498.59]
                          ["Twitter" nil      2 900.1]
                          [nil       nil      3 900.1]]
-                        (sort-by (let [nil-first? (mt/sorts-nil-first? driver/*driver*)
+                        (sort-by (let [nil-first? (mt/sorts-nil-first? driver/*driver* :type/Text)
                                        sort-str   (fn [s]
                                                     (cond
                                                       (some? s)  s

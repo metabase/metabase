@@ -1061,7 +1061,7 @@
                   ["Twitter" nil 0 407.93]]
                  (cond-> [["Twitter" "Widget" 0 498.59]
                           ["Twitter" nil      0 401.51]]
-                   (mt/sorts-nil-first? driver/*driver*) reverse))
+                   (mt/sorts-nil-first? driver/*driver* :type/Text) reverse))
                (mt/formatted-rows [str str int 2.0]
                  (mt/run-mbql-query orders
                    {:source-query {:source-table $$orders

@@ -505,7 +505,7 @@
     (mt/dataset daily-bird-counts
       (mt/test-drivers (mt/normal-drivers)
         ;; the rows returned should be the ones with a nil count, in increasing ID order
-        (is (= (if (mt/sorts-nil-first? driver/*driver*)
+        (is (= (if (mt/sorts-nil-first? driver/*driver* :type/Integer)
                  ;; if nils come first, we expect the first three rows having a nil count, in id ascending order
                  [[1 "2018-09-20T00:00:00Z" nil]
                   [8 "2018-09-27T00:00:00Z" nil]

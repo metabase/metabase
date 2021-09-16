@@ -15,7 +15,7 @@
 
 (sql.tx/add-test-extensions! :presto)
 
-(defmethod tx/sorts-nil-first? :presto [_] false)
+(defmethod tx/sorts-nil-first? :presto [_ _] false)
 
 ;; during unit tests don't treat presto as having FK support
 (defmethod driver/supports? [:presto :foreign-keys] [_ _] (not config/is-test?))
