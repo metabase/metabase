@@ -72,7 +72,7 @@
     sort-column
     sort-direction]
   {:metadata [[:card_id         {:display_name "Card ID",            :base_type :type/Integer :remapped_to   :card_name}]
-              [:card_name       {:display_name "Question",           :base_type :type/Name    :remapped_from :card_id}]
+              [:card_name       {:display_name "Question",           :base_type :type/Text    :remapped_from :card_id}]
               [:error_substr    {:display_name "Error",              :base_type :type/Text    :code          true}]
               [:collection_id   {:display_name "Collection ID",      :base_type :type/Integer :remapped_to   :collection_name}]
               [:collection_name {:display_name "Collection",         :base_type :type/Text    :remapped_from :collection_id}]
