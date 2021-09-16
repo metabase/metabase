@@ -212,6 +212,9 @@ export default class Dashboard extends Component {
     const shouldRenderParametersWidgetInViewMode =
       !isEditing && !isFullscreen && parameters.length > 0;
 
+    const shouldRenderParametersWidgetInEditMode =
+      isEditing && parameters.length > 0;
+
     return (
       <DashboardLoadingAndErrorWrapper
         isFullHeight={isEditing || isSharing}
@@ -237,7 +240,7 @@ export default class Dashboard extends Component {
                 showAddQuestionSidebar={showAddQuestionSidebar}
               />
 
-              {isEditing && (
+              {shouldRenderParametersWidgetInEditMode && (
                 <ParametersWidgetContainer isEditing={isEditing}>
                   {parametersWidget}
                 </ParametersWidgetContainer>
