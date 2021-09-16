@@ -1,12 +1,14 @@
 (ns metabase-enterprise.audit.pages.common-test
   (:require [clojure.test :refer :all]
+            [honeysql.core :as hsql]
             [metabase-enterprise.audit.interface :as audit.i]
             [metabase-enterprise.audit.pages.common :as pages.common]
             [metabase.db :as mdb]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [metabase.util.honeysql-extensions :as hx]))
 
 (defn- run-query
   [query-type & {:as additional-query-params}]
@@ -50,6 +52,22 @@
             (testing "rows"
               (is (= expected-rows
                      (mt/rows @results))))))))))
+
+(deftest add-45-days-clause-test
+  (testing "add 45 days clause"
+    (is (=
+          {:where
+           [:>
+            (hx/with-type-info
+              (hsql/call :cast :bob.dobbs #honeysql.types.SqlRaw{:s "date"})
+              {::hx/database-type "date"})
+            nil]}
+          (assoc-in (#'pages.common/add-45-days-clause {} :bob.dobbs) [:where 2] nil)))))
+
+(deftest add-search-clause-test
+  (testing "add search clause"
+    (is (= {:where '(:or [:like :%lower.t.name "%birds%"] [:like :%lower.db.name "%birds%"])}
+           (#'pages.common/add-search-clause {} "birds" :t.name :db.name)))))
 
 (deftest query-limit-and-offset-test
   (testing "Make sure params passed in as part of the query map are respected"

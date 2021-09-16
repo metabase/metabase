@@ -7,16 +7,15 @@ MetabaseSettings.docsTag = () => "latest";
 MetabaseSettings.isEnterprise = () => true;
 // PLUGINS:
 
-// import "./management";
-
-import "./advanced_config";
 import "./audit_app";
+import "./tools";
+import "./sandboxes";
 import "./auth";
 import "./collections";
-import "./embedding";
-import "./moderation";
-import "./sandboxes";
-import "./sharing";
-import "./snippets";
-import "./store";
 import "./whitelabel";
+import "./embedding";
+import "./store";
+import "./snippets";
+import "./sharing";
+import "./moderation";
+import "./advanced_config";

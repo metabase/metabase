@@ -18,7 +18,7 @@ const filter = {
   sectionId: "location",
 };
 
-describe.skip("issue 17211", () => {
+describe("issue 17211", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

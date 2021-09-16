@@ -398,6 +398,7 @@ export class FieldValuesWidget extends Component {
     optionsList,
     isFocused,
     isAllSelected,
+    isFiltered,
   }: LayoutRendererProps) {
     const { alwaysShowOptions, fields } = this.props;
     const { loadingState } = this.state;
@@ -411,7 +412,7 @@ export class FieldValuesWidget extends Component {
       } else if (this.isSearchable()) {
         if (loadingState === "LOADING") {
           return <LoadingState />;
-        } else if (loadingState === "LOADED") {
+        } else if (loadingState === "LOADED" && isFiltered) {
           return <NoMatchState fields={fields.map(this.searchField)} />;
         }
       }

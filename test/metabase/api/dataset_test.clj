@@ -147,7 +147,7 @@
                         :result_rows  (s/eq 0)
                         :row_count    (s/eq 0)
                         :context      (s/eq :ad-hoc)
-                        :error        (s/eq "Error executing query")
+                        :error        #"Syntax error in SQL statement"
                         :database_id  (s/eq (mt/id))
                         :executor_id  (s/eq (mt/user->id :rasta))
                         :native       (s/eq true)

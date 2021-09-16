@@ -1,9 +1,9 @@
 (ns metabase-enterprise.audit.pages.queries
-  (:require [metabase-enterprise.audit.interface :as audit.i]
+  (:require [honeysql.core :as hsql]
+            [metabase-enterprise.audit.interface :as audit.i]
             [metabase-enterprise.audit.pages.common :as common]
             [metabase-enterprise.audit.pages.common.cards :as cards]
-            [metabase.util.honeysql-extensions :as hx]
-            [schema.core :as s]))
+            [metabase.util.honeysql-extensions :as hx]))
 
 ;; DEPRECATED Query that returns data for a two-series timeseries chart with number of queries ran and average query
 ;; running time broken out by day.
@@ -53,6 +53,82 @@
                :order-by [[:avg_running_time :desc]]
                :limit    10})})
 
+(def latest-qe-subq
+  "QE subquery for only getting the latest QE. Needed to make the QE table blank out properly after running."
+  [:not [:exists {:select [1]
+                  :from [[:query_execution :qe1]]
+                  :where [:and
+                          [:= :card.id :qe1.card_id]
+                          [:> :qe1.started_at :qe.started_at]]}]])
+
+;; List of all failing questions
+(defmethod audit.i/internal-query ::bad-table
+  ([_]
+   (audit.i/internal-query ::bad-table nil nil nil nil nil))
+  ([_
+    error-filter
+    db-filter
+    collection-filter
+    sort-column
+    sort-direction]
+  {:metadata [[:card_id         {:display_name "Card ID",            :base_type :type/Integer :remapped_to   :card_name}]
+              [:card_name       {:display_name "Question",           :base_type :type/Text    :remapped_from :card_id}]
+              [:error_substr    {:display_name "Error",              :base_type :type/Text    :code          true}]
+              [:collection_id   {:display_name "Collection ID",      :base_type :type/Integer :remapped_to   :collection_name}]
+              [:collection_name {:display_name "Collection",         :base_type :type/Text    :remapped_from :collection_id}]
+              [:database_id     {:display_name "Database ID",        :base_type :type/Integer :remapped_to   :database_name}]
+              [:database_name   {:display_name "Database",           :base_type :type/Text    :remapped_from :database_id}]
+              [:table_id        {:display_name "Table ID",           :base_type :type/Integer :remapped_to   :table_name}]
+              [:table_name      {:display_name "Table",              :base_type :type/Text    :remapped_from :table_id}]
+              [:last_run_at     {:display_name "Last run at",        :base_type :type/DateTime}]
+              [:total_runs      {:display_name "Total runs",         :base_type :type/Integer}]
+              ;; if it appears a billion times each in 2 dashboards, that's 2 billion appearances
+              [:num_dashboards  {:display_name "Dashboards it's in", :base_type :type/Integer}]
+              [:user_id         {:display_name "Created By ID",      :base_type :type/Integer :remapped_to   :user_name}]
+              [:user_name       {:display_name "Created By",         :base_type :type/Text    :remapped_from :user_id}]
+              [:updated_at      {:display_name "Updated At",         :base_type :type/DateTime}]]
+   :results (common/reducible-query
+              (->
+                {:select    [[:card.id :card_id]
+                             [:card.name :card_name]
+                             [(hsql/call :concat (hsql/call :substring :qe.error 0 60) "...") :error_substr]
+                             :collection_id
+                             [:coll.name :collection_name]
+                             :card.database_id
+                             [:db.name :database_name]
+                             :card.table_id
+                             [:t.name :table_name]
+                             [(hsql/call :max :qe.started_at) :last_run_at]
+                             [:%distinct-count.qe.id :total_runs]
+                             [:%distinct-count.dash_card.card_id :num_dashboards]
+                             [:card.creator_id :user_id]
+                             [(common/user-full-name :u) :user_name]
+                             [(hsql/call :max :card.updated_at) :updated_at]]
+                 :from      [[:report_card :card]]
+                 :left-join [[:collection :coll]                [:= :card.collection_id :coll.id]
+                             [:metabase_database :db]           [:= :card.database_id :db.id]
+                             [:metabase_table :t]               [:= :card.table_id :t.id]
+                             [:core_user :u]                    [:= :card.creator_id :u.id]
+                             [:report_dashboardcard :dash_card] [:= :card.id :dash_card.card_id]
+                             [:query_execution :qe]             [:and [:= :card.id :qe.card_id]
+                                                                 latest-qe-subq]]
+                 :group-by  [(common/user-full-name :u)
+                             :card.id
+                             :card.creator_id
+                             :coll.name
+                             :db.name
+                             :t.name
+                             :qe.error]
+                 :where     [:and
+                             [:= :card.archived false]
+                             [:<> :qe.error nil]]}
+                (common/add-search-clause error-filter :qe.error)
+                (common/add-search-clause db-filter :db.name)
+                (common/add-search-clause collection-filter :coll.name)
+                (common/add-sort-clause
+                  (or sort-column "card.name")
+                  (or sort-direction "asc"))))}))
+
 ;; A list of all questions.
 ;;
 ;; Three possible argument lists. All arguments are always nullable.
@@ -76,18 +152,18 @@
 ;;
 ;; All inputs have to be strings because that's how the magic middleware
 ;; that turns these functions into clojure-backed 'datasets' works.
-(s/defmethod audit.i/internal-query ::table
+(defmethod audit.i/internal-query ::table
   ([query-type]
    (audit.i/internal-query query-type nil nil nil nil))
 
-  ([query-type question-filter :- (s/maybe s/Str)]
+  ([query-type question-filter]
    (audit.i/internal-query query-type question-filter nil nil nil))
 
   ([_
-    question-filter   :- (s/maybe s/Str)
-    collection-filter :- (s/maybe s/Str)
-    sort-column       :- (s/maybe s/Str)
-    sort-direction    :- (s/maybe (s/enum "asc" "desc"))]
+    question-filter
+    collection-filter
+    sort-column
+    sort-direction]
    {:metadata [[:card_id         {:display_name "Card ID",              :base_type :type/Integer, :remapped_to   :card_name}]
                [:card_name       {:display_name "Name",                 :base_type :type/Name,    :remapped_from :card_id}]
                [:collection_id   {:display_name "Collection ID",        :base_type :type/Integer, :remapped_to   :collection_name}]
