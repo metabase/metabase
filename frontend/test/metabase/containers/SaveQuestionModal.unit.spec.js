@@ -207,41 +207,55 @@ describe("SaveQuestionModal", () => {
     });
   });
 
-  it("should call onSave correctly for a dirty, saved question", async () => {
-    const originalQuestion = getQuestion({ isSaved: true });
-    const dirtyQuestion = getDirtyQuestion(originalQuestion);
-    const { onSaveMock } = renderSaveQuestionModal(
-      dirtyQuestion,
-      originalQuestion,
-    );
+  describe("overwriting a saved question", () => {
+    it("should call onSave correctly when form is submitted", () => {
+      const originalQuestion = getQuestion({ isSaved: true });
+      const dirtyQuestion = getDirtyQuestion(originalQuestion);
+      const { onSaveMock } = renderSaveQuestionModal(
+        dirtyQuestion,
+        originalQuestion,
+      );
 
-    userEvent.click(screen.getByText("Save"));
+      userEvent.click(screen.getByText("Save"));
 
-    expect(onSaveMock).toHaveBeenCalledTimes(1);
-    expect(onSaveMock).toHaveBeenCalledWith({
-      ...dirtyQuestion.card(),
-      id: originalQuestion.id(),
+      expect(onSaveMock).toHaveBeenCalledTimes(1);
+      expect(onSaveMock).toHaveBeenCalledWith({
+        ...dirtyQuestion.card(),
+        id: originalQuestion.id(),
+      });
     });
-  });
 
-  it("should preserve the collection_id of a question in overwrite mode", async () => {
-    const originalQuestion = getQuestion({
-      isSaved: true,
-      collection_id: 5,
+    it("should preserve original question's collection id", () => {
+      const originalQuestion = getQuestion({
+        isSaved: true,
+        collection_id: 5,
+      });
+      const { onSaveMock } = renderSaveQuestionModal(
+        getDirtyQuestion(originalQuestion),
+        originalQuestion,
+      );
+
+      userEvent.click(screen.getByText("Save"));
+
+      expect(onSaveMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          collection_id: originalQuestion.collectionId(),
+        }),
+      );
     });
-    const { onSaveMock } = renderSaveQuestionModal(
-      getDirtyQuestion(originalQuestion),
-      originalQuestion,
-    );
 
-    userEvent.click(screen.getByText("Save"));
+    it("shouldn't call onCreate when form is submitted", () => {
+      const originalQuestion = getQuestion({ isSaved: true });
+      const dirtyQuestion = getDirtyQuestion(originalQuestion);
+      const { onCreateMock } = renderSaveQuestionModal(
+        dirtyQuestion,
+        originalQuestion,
+      );
 
-    expect(onSaveMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        collection_id: originalQuestion.collectionId(),
-      }),
-    );
-  });
+      userEvent.click(screen.getByText("Save"));
+
+      expect(onCreateMock).not.toHaveBeenCalled();
+    });
   });
 
   describe("Cache TTL field", () => {
