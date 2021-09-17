@@ -95,6 +95,19 @@ function getDirtyQuestion(originalQuestion) {
   });
 }
 
+function fillForm({ name, description }) {
+  if (name) {
+    const input = screen.getByLabelText("Name");
+    userEvent.clear(input);
+    userEvent.type(input, name);
+  }
+  if (description) {
+    const input = screen.getByLabelText("Description");
+    userEvent.clear(input);
+    userEvent.type(input, description);
+  }
+}
+
 describe("SaveQuestionModal", () => {
   const TEST_COLLECTIONS = [
     {
@@ -130,18 +143,67 @@ describe("SaveQuestionModal", () => {
     mock.teardown();
   });
 
-  it("should call onCreate correctly for a new question", async () => {
-    const question = getQuestion();
-    const { onCreateMock } = renderSaveQuestionModal(question);
+  describe("new question", () => {
+    it("should suggest a name for structured queries", () => {
+      renderSaveQuestionModal(getQuestion());
+      expect(screen.getByLabelText("Name")).toHaveValue(
+        EXPECTED_SUGGESTED_NAME,
+      );
+    });
 
-    userEvent.click(screen.getByText("Save"));
+    it("should display empty description input", () => {
+      renderSaveQuestionModal(getQuestion());
+      expect(screen.getByLabelText("Description")).toHaveValue("");
+    });
 
-    expect(onCreateMock).toHaveBeenCalledTimes(1);
-    expect(onCreateMock).toHaveBeenCalledWith({
-      ...question.card(),
-      name: EXPECTED_SUGGESTED_NAME,
-      description: null,
-      collection_id: undefined,
+    it("should call onCreate correctly with default form values", () => {
+      const question = getQuestion();
+      const { onCreateMock } = renderSaveQuestionModal(question);
+
+      userEvent.click(screen.getByText("Save"));
+
+      expect(onCreateMock).toHaveBeenCalledTimes(1);
+      expect(onCreateMock).toHaveBeenCalledWith({
+        ...question.card(),
+        name: EXPECTED_SUGGESTED_NAME,
+        description: null,
+        collection_id: undefined,
+      });
+    });
+
+    it("should call onCreate correctly with edited form", () => {
+      const question = getQuestion();
+      const { onCreateMock } = renderSaveQuestionModal(question);
+
+      fillForm({ name: "My favorite orders", description: "So many of them" });
+      userEvent.click(screen.getByText("Save"));
+
+      expect(onCreateMock).toHaveBeenCalledTimes(1);
+      expect(onCreateMock).toHaveBeenCalledWith({
+        ...question.card(),
+        name: "My favorite orders",
+        description: "So many of them",
+        collection_id: undefined,
+      });
+    });
+
+    it("shouldn't call onSave when form is submitted", () => {
+      const question = getQuestion();
+      const { onSaveMock } = renderSaveQuestionModal(question);
+
+      userEvent.click(screen.getByText("Save"));
+
+      expect(onSaveMock).not.toHaveBeenCalled();
+    });
+
+    it("shouldn't show a control to overwrite a saved question", () => {
+      renderSaveQuestionModal(getQuestion());
+      expect(
+        screen.queryByText("Save as new question"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/Replace original question, ".*"/),
+      ).not.toBeInTheDocument();
     });
   });
 
