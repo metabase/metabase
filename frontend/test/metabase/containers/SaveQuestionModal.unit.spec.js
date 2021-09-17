@@ -12,7 +12,6 @@ import { PLUGIN_CACHING } from "metabase/plugins";
 import {
   SAMPLE_DATASET,
   ORDERS,
-  PEOPLE,
   metadata,
 } from "__support__/sample_dataset_fixture";
 import { getStore } from "__support__/entities-store";
@@ -46,6 +45,48 @@ const renderSaveQuestionModal = (question, originalQuestion) => {
   );
   return { store, onSaveMock, onCreateMock };
 };
+
+const EXPECTED_SUGGESTED_NAME = "Orders, Count";
+
+function getQuestion({
+  isSaved,
+  name = "Q1",
+  description = "Example",
+  collection_id = 12,
+} = {}) {
+  const extraCardParams = {};
+
+  if (isSaved) {
+    extraCardParams.id = 1; // if a card has an id, it means it's saved
+    extraCardParams.name = name;
+    extraCardParams.description = description;
+    extraCardParams.collection_id = collection_id;
+  }
+
+  return new Question(
+    {
+      ...extraCardParams,
+      display: "table",
+      visualization_settings: {},
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DATASET.id,
+        query: {
+          "source-table": ORDERS.id,
+          aggregation: [["count"]],
+        },
+      },
+    },
+    metadata,
+  );
+}
+
+function getDirtyQuestion(originalQuestion) {
+  return originalQuestion
+    .query()
+    .breakout(["field", ORDERS.TOTAL.id, null])
+    .question();
+}
 
 describe("SaveQuestionModal", () => {
   const TEST_COLLECTIONS = [
@@ -83,75 +124,52 @@ describe("SaveQuestionModal", () => {
   });
 
   it("should call onCreate correctly for a new question", async () => {
-    const newQuestion = Question.create({
-      databaseId: SAMPLE_DATASET.id,
-      tableId: ORDERS.id,
-      metadata,
-    })
-      .query()
-      .aggregate(["count"])
-      .question();
-
-    // Use the count aggregation as an example case (this is equally valid for filters and groupings)
-    const { onCreateMock } = renderSaveQuestionModal(newQuestion, null);
+    const question = getQuestion();
+    const { onCreateMock } = renderSaveQuestionModal(question);
 
     fireEvent.click(screen.getByText("Save"));
+
     expect(onCreateMock).toHaveBeenCalledTimes(1);
+    expect(onCreateMock).toHaveBeenCalledWith({
+      ...question.card(),
+      name: EXPECTED_SUGGESTED_NAME,
+      description: null,
+      collection_id: undefined,
+    });
   });
 
   it("should call onSave correctly for a dirty, saved question", async () => {
-    const originalQuestion = Question.create({
-      databaseId: SAMPLE_DATASET.id,
-      tableId: ORDERS.id,
-      metadata,
-    })
-      .query()
-      .aggregate(["count"])
-      .question();
-    // "Save" the question
-    originalQuestion.card.id = 5;
-
-    const dirtyQuestion = originalQuestion
-      .query()
-      .breakout(["field", ORDERS.TOTAL.id, null])
-      .question();
-
-    // Use the count aggregation as an example case (this is equally valid for filters and groupings)
+    const originalQuestion = getQuestion({ isSaved: true });
+    const dirtyQuestion = getDirtyQuestion(originalQuestion);
     const { onSaveMock } = renderSaveQuestionModal(
       dirtyQuestion,
       originalQuestion,
     );
+
     fireEvent.click(screen.getByText("Save"));
+
     expect(onSaveMock).toHaveBeenCalledTimes(1);
+    expect(onSaveMock).toHaveBeenCalledWith(dirtyQuestion.card());
   });
 
   it("should preserve the collection_id of a question in overwrite mode", async () => {
-    let originalQuestion = Question.create({
-      databaseId: SAMPLE_DATASET.id,
-      tableId: PEOPLE.id,
-      metadata,
-    })
-      .query()
-      .aggregate(["count"])
-      .question();
-
-    // set the collection_id of the original question
-    originalQuestion = originalQuestion.setCard({
-      ...originalQuestion.card(),
+    const originalQuestion = getQuestion({
+      isSaved: true,
       collection_id: 5,
     });
-
-    const dirtyQuestion = originalQuestion
-      .query()
-      .breakout(["field", ORDERS.TOTAL.id, null])
-      .question();
-
     const { onSaveMock } = renderSaveQuestionModal(
-      dirtyQuestion,
+      getDirtyQuestion(originalQuestion),
       originalQuestion,
     );
+
     fireEvent.click(screen.getByText("Save"));
-    expect(onSaveMock.mock.calls[0][0].collection_id).toEqual(5);
+
+    expect(onSaveMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection_id: originalQuestion.collectionId(),
+      }),
+    );
+  });
   });
 
   describe("Cache TTL field", () => {
