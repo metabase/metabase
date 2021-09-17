@@ -437,5 +437,5 @@ function showTooltipForFirstCircleInSeries(series_index) {
     .as("firstSeries")
     .find("circle")
     .first()
-    .trigger("mousemove", { force: true });
+    .realHover();
 }
