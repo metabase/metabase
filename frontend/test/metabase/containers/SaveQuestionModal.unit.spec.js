@@ -368,6 +368,7 @@ describe("SaveQuestionModal", () => {
     userEvent.click(screen.getByLabelText("close icon"));
     expect(onCloseMock).toHaveBeenCalledTimes(1);
   });
+
   describe("Cache TTL field", () => {
     beforeEach(() => {
       mockCachingEnabled();
