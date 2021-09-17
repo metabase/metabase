@@ -245,6 +245,15 @@ describe("SaveQuestionModal", () => {
       );
     });
 
+    it("shouldn't allow to save a question if form is invalid", () => {
+      renderSaveQuestionModal(getQuestion());
+
+      userEvent.clear(screen.getByLabelText("Name"));
+      userEvent.clear(screen.getByLabelText("Description"));
+
+      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    });
+
     it("shouldn't call onCreate when form is submitted", () => {
       const originalQuestion = getQuestion({ isSaved: true });
       const dirtyQuestion = getDirtyQuestion(originalQuestion);
