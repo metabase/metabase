@@ -35,7 +35,7 @@
 
  :aliases
  {:aot
-  {:deps       {io.github.clojure/tools.build {:git/tag "v0.1.6" :git/sha "5636e61"}}
+  {:deps       {io.github.clojure/tools.build {:git/tag "v0.5.0", :git/sha "7d77952"}}
    :ns-default build}
 
   ;; dependencies needed for AOT compilation. Same as deps above but without all the exclusions.
