@@ -82,10 +82,16 @@ function getQuestion({
 }
 
 function getDirtyQuestion(originalQuestion) {
-  return originalQuestion
+  const question = originalQuestion
     .query()
     .breakout(["field", ORDERS.TOTAL.id, null])
     .question();
+  return question.setCard({
+    ...question.card(),
+    // After a saved question is edited, the ID gets removed
+    // and a user can either overwrite a question or save it as a new one
+    id: undefined,
+  });
 }
 
 describe("SaveQuestionModal", () => {
@@ -149,7 +155,10 @@ describe("SaveQuestionModal", () => {
     fireEvent.click(screen.getByText("Save"));
 
     expect(onSaveMock).toHaveBeenCalledTimes(1);
-    expect(onSaveMock).toHaveBeenCalledWith(dirtyQuestion.card());
+    expect(onSaveMock).toHaveBeenCalledWith({
+      ...dirtyQuestion.card(),
+      id: originalQuestion.id(),
+    });
   });
 
   it("should preserve the collection_id of a question in overwrite mode", async () => {
