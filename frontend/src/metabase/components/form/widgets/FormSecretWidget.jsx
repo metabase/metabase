@@ -24,12 +24,18 @@ const FormSecretWidget = ({
   autoFocus,
 }) => {
   const [inputToShow, setInputToShow] = useState(inputToShowOnRender);
+  const [value, setValue] = useState();
 
   const handleSelectChange = () => {
     const newInputToShow =
       inputToShow === "textInput" ? "fileInput" : "textInput";
 
     setInputToShow(newInputToShow);
+  };
+
+  const handleTextInputChange = e => {
+    setValue(e.target.value);
+    console.log("🚀", e.target.value);
   };
 
   return (
@@ -49,22 +55,29 @@ const FormSecretWidget = ({
         </StyledSelect>
       )}
 
+      <Input
+        type="text"
+        {...formDomOnlyProps(field)}
+        aria-labelledby={`${field.name}-label`}
+        style={{ display: "none" }}
+        value={value}
+      />
+
       {inputToShow === "textInput" && (
         <Input
           className="Form-input"
-          type={type}
+          type="text"
           placeholder={placeholder}
-          aria-labelledby={`${field.name}-label`}
           readOnly={readOnly}
           autoFocus={autoFocus}
-          {...formDomOnlyProps(field)}
+          onChange={handleTextInputChange}
         />
       )}
 
       {inputToShow === "fileInput" && (
         <Input
           type="file"
-          className={"Form-file-input"}
+          className="Form-file-input"
           aria-labelledby={`${field.name}-label`}
           isFullWidth={isApplicationRunningInCloud}
         />
