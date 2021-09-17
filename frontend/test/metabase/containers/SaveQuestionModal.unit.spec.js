@@ -82,6 +82,7 @@ function getQuestion({
     metadata,
   );
 }
+const EXPECTED_DIRTY_SUGGESTED_NAME = "Orders, Count, Grouped by Total";
 
 function getDirtyQuestion(originalQuestion) {
   const question = originalQuestion
@@ -268,6 +269,93 @@ describe("SaveQuestionModal", () => {
     });
   });
 
+  describe("saving as a new question", () => {
+    it("should offer to replace the original question by default", () => {
+      const originalQuestion = getQuestion({ isSaved: true });
+      renderSaveQuestionModal(
+        getDirtyQuestion(originalQuestion),
+        originalQuestion,
+      );
+
+      expect(
+        screen.getByLabelText(/Replace original question, ".*"/),
+      ).toBeChecked();
+      expect(screen.getByText("Save as new question")).not.toBeChecked();
+    });
+
+    it("should switch to the new question form", () => {
+      const CARD = {
+        name: "Q1",
+        description: "Example description",
+        collection_id: null,
+      };
+      const originalQuestion = getQuestion({ isSaved: true, ...CARD });
+      const dirtyQuestion = getDirtyQuestion(originalQuestion);
+      renderSaveQuestionModal(dirtyQuestion, originalQuestion);
+
+      userEvent.click(screen.getByText("Save as new question"));
+
+      expect(screen.getByLabelText("Name")).toHaveValue(
+        EXPECTED_DIRTY_SUGGESTED_NAME,
+      );
+      expect(screen.getByLabelText("Description")).toHaveValue(
+        CARD.description,
+      );
+      expect(screen.queryByText("Our analytics")).toBeInTheDocument();
+    });
+
+    it("should allow to save a question with default form values", () => {
+      const originalQuestion = getQuestion({ isSaved: true });
+      const dirtyQuestion = getDirtyQuestion(originalQuestion);
+      const { onCreateMock } = renderSaveQuestionModal(
+        dirtyQuestion,
+        originalQuestion,
+      );
+
+      userEvent.click(screen.getByText("Save as new question"));
+      userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      expect(onCreateMock).toHaveBeenCalledTimes(1);
+      expect(onCreateMock).toHaveBeenCalledWith({
+        ...dirtyQuestion.card(),
+        name: EXPECTED_DIRTY_SUGGESTED_NAME,
+      });
+    });
+
+    it("show allow to save a question with an edited form", () => {
+      const originalQuestion = getQuestion({ isSaved: true });
+      const dirtyQuestion = getDirtyQuestion(originalQuestion);
+      const { onCreateMock } = renderSaveQuestionModal(
+        dirtyQuestion,
+        originalQuestion,
+      );
+
+      userEvent.click(screen.getByText("Save as new question"));
+      fillForm({ name: "My Q", description: "Sample" });
+      userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      expect(onCreateMock).toHaveBeenCalledTimes(1);
+      expect(onCreateMock).toHaveBeenCalledWith({
+        ...dirtyQuestion.card(),
+        name: "My Q",
+        description: "Sample",
+      });
+    });
+
+    it("shouldn't allow to save a question if form is invalid", () => {
+      const originalQuestion = getQuestion({ isSaved: true });
+      renderSaveQuestionModal(
+        getDirtyQuestion(originalQuestion),
+        originalQuestion,
+      );
+
+      userEvent.click(screen.getByText("Save as new question"));
+      userEvent.clear(screen.getByLabelText("Name"));
+      userEvent.clear(screen.getByLabelText("Description"));
+
+      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    });
+  });
 
   it("should call onClose when Cancel button is clicked", () => {
     const { onCloseMock } = renderSaveQuestionModal(getQuestion());
