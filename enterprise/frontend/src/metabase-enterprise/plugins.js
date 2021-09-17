@@ -13,6 +13,7 @@ import "./audit_app";
 import "./tools";
 import "./sandboxes";
 import "./auth";
+import "./caching";
 import "./collections";
 import "./whitelabel";
 import "./embedding";

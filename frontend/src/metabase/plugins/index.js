@@ -92,3 +92,10 @@ export const PLUGIN_MODERATION = {
   getStatusIcon: object,
   getModerationTimelineEvents: array,
 };
+
+export const PLUGIN_CACHING = {
+  dashboardCacheTTLFormField: null,
+  databaseCacheTTLFormField: null,
+  questionCacheTTLFormField: null,
+  getQuestionsImplicitCacheTTL: () => null,
+};

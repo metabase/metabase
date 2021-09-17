@@ -4,6 +4,8 @@ import mock from "xhr-mock";
 
 import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
 import Question from "metabase-lib/lib/Question";
+import MetabaseSettings from "metabase/lib/settings";
+import { PLUGIN_CACHING } from "metabase/plugins";
 
 import {
   SAMPLE_DATASET,
@@ -15,6 +17,17 @@ import { getStore } from "__support__/entities-store";
 
 import { Provider } from "react-redux";
 import { reducer as form } from "redux-form";
+
+function mockCachingEnabled(enabled = true) {
+  const original = MetabaseSettings.get;
+  const spy = jest.spyOn(MetabaseSettings, "get");
+  spy.mockImplementation(key => {
+    if (key === "enable-query-caching") {
+      return enabled;
+    }
+    return original(key);
+  });
+}
 
 const renderSaveQuestionModal = (question, originalQuestion) => {
   const store = getStore({ form });
@@ -140,5 +153,51 @@ describe("SaveQuestionModal", () => {
     );
     fireEvent.click(screen.getByText("Save"));
     expect(onSaveMock.mock.calls[0][0].collection_id).toEqual(5);
+  });
+
+  describe("Cache TTL field", () => {
+    beforeEach(() => {
+      mockCachingEnabled();
+    });
+
+    const question = Question.create({
+      databaseId: SAMPLE_DATASET.id,
+      tableId: ORDERS.id,
+      metadata,
+    })
+      .query()
+      .aggregate(["count"])
+      .question();
+
+    describe("OSS", () => {
+      it("is not shown", () => {
+        renderSaveQuestionModal(question);
+        expect(screen.queryByText("More options")).not.toBeInTheDocument();
+        expect(
+          screen.queryByText("Cache all question results for"),
+        ).not.toBeInTheDocument();
+      });
+    });
+
+    describe("EE", () => {
+      beforeEach(() => {
+        PLUGIN_CACHING.cacheTTLFormField = {
+          name: "cache_ttl",
+          type: "integer",
+        };
+      });
+
+      afterEach(() => {
+        PLUGIN_CACHING.cacheTTLFormField = null;
+      });
+
+      it("is not shown", () => {
+        renderSaveQuestionModal(question);
+        expect(screen.queryByText("More options")).not.toBeInTheDocument();
+        expect(
+          screen.queryByText("Cache all question results for"),
+        ).not.toBeInTheDocument();
+      });
+    });
   });
 });
