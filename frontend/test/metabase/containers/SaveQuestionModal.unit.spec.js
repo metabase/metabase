@@ -1,7 +1,8 @@
 import React from "react";
 import { Provider } from "react-redux";
 import { reducer as form } from "redux-form";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import mock from "xhr-mock";
 
 import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
@@ -133,7 +134,7 @@ describe("SaveQuestionModal", () => {
     const question = getQuestion();
     const { onCreateMock } = renderSaveQuestionModal(question);
 
-    fireEvent.click(screen.getByText("Save"));
+    userEvent.click(screen.getByText("Save"));
 
     expect(onCreateMock).toHaveBeenCalledTimes(1);
     expect(onCreateMock).toHaveBeenCalledWith({
@@ -152,7 +153,7 @@ describe("SaveQuestionModal", () => {
       originalQuestion,
     );
 
-    fireEvent.click(screen.getByText("Save"));
+    userEvent.click(screen.getByText("Save"));
 
     expect(onSaveMock).toHaveBeenCalledTimes(1);
     expect(onSaveMock).toHaveBeenCalledWith({
@@ -171,7 +172,7 @@ describe("SaveQuestionModal", () => {
       originalQuestion,
     );
 
-    fireEvent.click(screen.getByText("Save"));
+    userEvent.click(screen.getByText("Save"));
 
     expect(onSaveMock).toHaveBeenCalledWith(
       expect.objectContaining({
