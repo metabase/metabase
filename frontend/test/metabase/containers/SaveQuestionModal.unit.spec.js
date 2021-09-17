@@ -209,66 +209,6 @@ describe("SaveQuestionModal", () => {
     });
   });
 
-  describe("overwriting a saved question", () => {
-    it("should call onSave correctly when form is submitted", () => {
-      const originalQuestion = getQuestion({ isSaved: true });
-      const dirtyQuestion = getDirtyQuestion(originalQuestion);
-      const { onSaveMock } = renderSaveQuestionModal(
-        dirtyQuestion,
-        originalQuestion,
-      );
-
-      userEvent.click(screen.getByText("Save"));
-
-      expect(onSaveMock).toHaveBeenCalledTimes(1);
-      expect(onSaveMock).toHaveBeenCalledWith({
-        ...dirtyQuestion.card(),
-        id: originalQuestion.id(),
-      });
-    });
-
-    it("should preserve original question's collection id", () => {
-      const originalQuestion = getQuestion({
-        isSaved: true,
-        collection_id: 5,
-      });
-      const { onSaveMock } = renderSaveQuestionModal(
-        getDirtyQuestion(originalQuestion),
-        originalQuestion,
-      );
-
-      userEvent.click(screen.getByText("Save"));
-
-      expect(onSaveMock).toHaveBeenCalledWith(
-        expect.objectContaining({
-          collection_id: originalQuestion.collectionId(),
-        }),
-      );
-    });
-
-    it("shouldn't allow to save a question if form is invalid", () => {
-      renderSaveQuestionModal(getQuestion());
-
-      userEvent.clear(screen.getByLabelText("Name"));
-      userEvent.clear(screen.getByLabelText("Description"));
-
-      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
-    });
-
-    it("shouldn't call onCreate when form is submitted", () => {
-      const originalQuestion = getQuestion({ isSaved: true });
-      const dirtyQuestion = getDirtyQuestion(originalQuestion);
-      const { onCreateMock } = renderSaveQuestionModal(
-        dirtyQuestion,
-        originalQuestion,
-      );
-
-      userEvent.click(screen.getByText("Save"));
-
-      expect(onCreateMock).not.toHaveBeenCalled();
-    });
-  });
-
   describe("saving as a new question", () => {
     it("should offer to replace the original question by default", () => {
       const originalQuestion = getQuestion({ isSaved: true });
@@ -354,6 +294,66 @@ describe("SaveQuestionModal", () => {
       userEvent.clear(screen.getByLabelText("Description"));
 
       expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    });
+  });
+
+  describe("overwriting a saved question", () => {
+    it("should call onSave correctly when form is submitted", () => {
+      const originalQuestion = getQuestion({ isSaved: true });
+      const dirtyQuestion = getDirtyQuestion(originalQuestion);
+      const { onSaveMock } = renderSaveQuestionModal(
+        dirtyQuestion,
+        originalQuestion,
+      );
+
+      userEvent.click(screen.getByText("Save"));
+
+      expect(onSaveMock).toHaveBeenCalledTimes(1);
+      expect(onSaveMock).toHaveBeenCalledWith({
+        ...dirtyQuestion.card(),
+        id: originalQuestion.id(),
+      });
+    });
+
+    it("should preserve original question's collection id", () => {
+      const originalQuestion = getQuestion({
+        isSaved: true,
+        collection_id: 5,
+      });
+      const { onSaveMock } = renderSaveQuestionModal(
+        getDirtyQuestion(originalQuestion),
+        originalQuestion,
+      );
+
+      userEvent.click(screen.getByText("Save"));
+
+      expect(onSaveMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          collection_id: originalQuestion.collectionId(),
+        }),
+      );
+    });
+
+    it("shouldn't allow to save a question if form is invalid", () => {
+      renderSaveQuestionModal(getQuestion());
+
+      userEvent.clear(screen.getByLabelText("Name"));
+      userEvent.clear(screen.getByLabelText("Description"));
+
+      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    });
+
+    it("shouldn't call onCreate when form is submitted", () => {
+      const originalQuestion = getQuestion({ isSaved: true });
+      const dirtyQuestion = getDirtyQuestion(originalQuestion);
+      const { onCreateMock } = renderSaveQuestionModal(
+        dirtyQuestion,
+        originalQuestion,
+      );
+
+      userEvent.click(screen.getByText("Save"));
+
+      expect(onCreateMock).not.toHaveBeenCalled();
     });
   });
 
