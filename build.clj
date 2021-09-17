@@ -125,8 +125,8 @@
                :manifest manifest-entries
 
                ;; exclude license.* from jar. We compile 3rd party licenses elsewhere and run into issues on osx due
-               ;; to case insensitive collisions with META-INF/license and META-INF/LICENSE/license.txt
-               :exclude [#"license.*"]})
+               ;; to case insensitive collisions with LICENSE (a file) and license/*.txt
+               :exclude [#"LICENSE"]})
       (c/announce "Created uberjar in %.1f seconds." (/ duration-ms 1000.0)))))
 
 ;; clojure -T:build uberjar :edition <edition>
