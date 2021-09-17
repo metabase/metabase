@@ -68,6 +68,32 @@ describe("scenarios > visualizations > line chart", () => {
     cy.get(".value-labels").contains("30%");
   });
 
+  it("should display an error message when there are more series than the chart supports", () => {
+    visitQuestionAdhoc({
+      display: "line",
+      dataset_query: {
+        database: 1,
+        type: "query",
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", PRODUCTS.CREATED_AT, { "temporal-unit": "year" }],
+            ["field", PRODUCTS.TITLE, null],
+          ],
+        },
+      },
+      visualization_settings: {
+        "graph.dimensions": ["CREATED_AT", "TITLE"],
+        "graph.metrics": ["count"],
+      },
+    });
+
+    cy.findByText(
+      "This chart type doesn't support more than 100 series of data.",
+    );
+  });
+
   it("should correctly display tooltip values when X-axis is numeric and style is 'Ordinal' (metabase#15998)", () => {
     visitQuestionAdhoc({
       dataset_query: {
