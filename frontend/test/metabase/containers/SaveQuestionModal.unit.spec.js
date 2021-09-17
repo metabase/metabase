@@ -82,6 +82,7 @@ function getQuestion({
     metadata,
   );
 }
+
 const EXPECTED_DIRTY_SUGGESTED_NAME = "Orders, Count, Grouped by Total";
 
 function getDirtyQuestion(originalQuestion) {
@@ -151,6 +152,26 @@ describe("SaveQuestionModal", () => {
       expect(screen.getByLabelText("Name")).toHaveValue(
         EXPECTED_SUGGESTED_NAME,
       );
+    });
+
+    it("should not suggest a name for native queries", () => {
+      renderSaveQuestionModal(
+        new Question(
+          {
+            dataset_query: {
+              type: "native",
+              database: ORDERS.id,
+              native: {
+                query: "select * from orders",
+              },
+              display: "table",
+            },
+          },
+          metadata,
+        ),
+      );
+
+      expect(screen.getByLabelText("Name")).toHaveValue("");
     });
 
     it("should display empty description input", () => {
