@@ -32,11 +32,13 @@ export function getClickHoverObject(
   const isBar = classList.includes("bar");
   const isSingleSeriesBar = isBar && !isMultiseries;
 
-  function getColumnDisplayName(col) {
-    const title = getIn(settings, ["series_settings", col.name, "title"]);
+  function getColumnDisplayName(col, colIndex, card) {
+    const colKey = seriesIndex > 0 && colIndex === 1 ? card.name : col.name;
+    const colTitle = getIn(settings, ["series_settings", colKey, "title"]);
+
     // don't replace with series title for breakout multiseries since the series title is shown in the breakout value
-    if (!isBreakoutMultiseries && title) {
-      return title;
+    if (!isBreakoutMultiseries && colTitle) {
+      return colTitle;
     }
 
     return getFriendlyName(col);
@@ -114,7 +116,7 @@ export function getClickHoverObject(
           };
         }
         return {
-          key: getColumnDisplayName(col),
+          key: getColumnDisplayName(col, i, card),
           value: formatNull(aggregatedRow[i]),
           col: col,
         };
