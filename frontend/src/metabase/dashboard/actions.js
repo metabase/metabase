@@ -831,19 +831,6 @@ export const removeParameter = createThunkAction(
     updateParameters(dispatch, getState, parameters =>
       parameters.filter(p => p.id !== parameterId),
     );
-
-    if (parameterId != null) {
-      dispatch(
-        setSidebar({
-          name: SIDEBAR_NAME.editParameter,
-          props: {
-            parameterId,
-          },
-        }),
-      );
-    } else {
-      dispatch(closeSidebar());
-    }
   },
 );
 

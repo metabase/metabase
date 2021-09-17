@@ -299,6 +299,7 @@ const loadingDashCards = handleActions(
   { dashcardIds: [], loadingIds: [], startTime: null },
 );
 
+const DEFAULT_SIDEBAR = { props: {} };
 const sidebar = handleActions(
   {
     [SET_SIDEBAR]: {
@@ -308,16 +309,20 @@ const sidebar = handleActions(
       }),
     },
     [CLOSE_SIDEBAR]: {
-      next: () => ({}),
+      next: () => DEFAULT_SIDEBAR,
     },
     [INITIALIZE]: {
-      next: () => ({}),
+      next: () => DEFAULT_SIDEBAR,
     },
     [SET_EDITING_DASHBOARD]: {
-      next: (state, { payload: isEditing }) => (isEditing ? state : {}),
+      next: (state, { payload: isEditing }) =>
+        isEditing ? state : DEFAULT_SIDEBAR,
+    },
+    [REMOVE_PARAMETER]: {
+      next: () => DEFAULT_SIDEBAR,
     },
   },
-  {},
+  DEFAULT_SIDEBAR,
 );
 
 export default combineReducers({
