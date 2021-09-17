@@ -99,7 +99,7 @@
              (> @row-sample-count 1)
              (types/temporal-field? @col-1)
              (number-field? @col-2)
-             (= chart-type :line))
+             (not= display-type :waterfall))
         (chart-type :sparkline "result has 2 cols (%s (temporal) and %s (number)) and > 1 row" (col-description @col-1) (col-description @col-2))
 
         (and (= @col-sample-count 2)
