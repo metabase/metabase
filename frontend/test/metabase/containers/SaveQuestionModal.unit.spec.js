@@ -96,7 +96,7 @@ describe("SaveQuestionModal", () => {
     const { onCreateMock } = renderSaveQuestionModal(newQuestion, null);
 
     fireEvent.click(screen.getByText("Save"));
-    expect(onCreateMock.mock.calls).toHaveLength(1);
+    expect(onCreateMock).toHaveBeenCalledTimes(1);
   });
 
   it("should call onSave correctly for a dirty, saved question", async () => {
@@ -122,7 +122,7 @@ describe("SaveQuestionModal", () => {
       originalQuestion,
     );
     fireEvent.click(screen.getByText("Save"));
-    expect(onSaveMock.mock.calls.length).toBe(1);
+    expect(onSaveMock).toHaveBeenCalledTimes(1);
   });
 
   it("should preserve the collection_id of a question in overwrite mode", async () => {
