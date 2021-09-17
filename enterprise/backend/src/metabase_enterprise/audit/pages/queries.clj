@@ -99,8 +99,8 @@
                              :card.table_id
                              [:t.name :table_name]
                              [(hsql/call :max :qe.started_at) :last_run_at]
-                             [:%count.qe.id :total_runs]
-                             [:%count.dash_card.card_id :num_dashboards]
+                             [:%count.qe_nonuniq.id :total_runs]
+                             [:%distinct-count.dash_card.id :num_dashboards]
                              [:card.creator_id :user_id]
                              [(common/user-full-name :u) :user_name]
                              [(hsql/call :max :card.updated_at) :updated_at]]
@@ -111,7 +111,8 @@
                              [:core_user :u]                    [:= :card.creator_id :u.id]
                              [:report_dashboardcard :dash_card] [:= :card.id :dash_card.card_id]
                              [:query_execution :qe]             [:and [:= :card.id :qe.card_id]
-                                                                 latest-qe-subq]]
+                                                                 latest-qe-subq]
+                             [:query_execution :qe_nonuniq]     [:= :card.id :qe.card_id]]
                  :group-by  [(common/user-full-name :u)
                              :card.id
                              :card.creator_id
