@@ -32,6 +32,7 @@ const renderSaveQuestionModal = (question, originalQuestion) => {
   const store = getStore({ form });
   const onCreateMock = jest.fn(() => Promise.resolve());
   const onSaveMock = jest.fn(() => Promise.resolve());
+  const onCloseMock = jest.fn();
   render(
     <Provider store={store}>
       <SaveQuestionModal
@@ -40,11 +41,11 @@ const renderSaveQuestionModal = (question, originalQuestion) => {
         tableMetadata={question.table()}
         onCreate={onCreateMock}
         onSave={onSaveMock}
-        onClose={() => {}}
+        onClose={onCloseMock}
       />
     </Provider>,
   );
-  return { store, onSaveMock, onCreateMock };
+  return { store, onSaveMock, onCreateMock, onCloseMock };
 };
 
 const EXPECTED_SUGGESTED_NAME = "Orders, Count";
@@ -258,6 +259,18 @@ describe("SaveQuestionModal", () => {
     });
   });
 
+
+  it("should call onClose when Cancel button is clicked", () => {
+    const { onCloseMock } = renderSaveQuestionModal(getQuestion());
+    userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(onCloseMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("should call onClose when close icon is clicked", () => {
+    const { onCloseMock } = renderSaveQuestionModal(getQuestion());
+    userEvent.click(screen.getByLabelText("close icon"));
+    expect(onCloseMock).toHaveBeenCalledTimes(1);
+  });
   describe("Cache TTL field", () => {
     beforeEach(() => {
       mockCachingEnabled();
