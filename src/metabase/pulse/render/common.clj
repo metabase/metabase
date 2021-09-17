@@ -27,6 +27,8 @@
   (toString [_] num-str))
 
 (defn number-formatter
+  "Return a function that will take a number and format it according to its column viz settings. Useful to compute the
+  format string once and then apply it over many values."
   ([col-viz]
    (number-formatter col-viz (mb.viz/db->norm-column-settings-entries
                               (:type/Number (public-settings/custom-formatting)))))
