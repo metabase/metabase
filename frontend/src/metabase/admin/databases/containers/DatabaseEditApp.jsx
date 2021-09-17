@@ -210,6 +210,10 @@ export default class DatabaseEditApp extends Component {
                           <Box width={620}>
                             <Form>
                               {formFields.map(formField => {
+                                if (formField.type === "secret") {
+                                  console.log("🚀", { formField });
+                                }
+
                                 return (
                                   <FormField
                                     key={formField.name}
