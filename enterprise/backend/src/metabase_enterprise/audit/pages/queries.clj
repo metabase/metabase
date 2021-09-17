@@ -99,8 +99,8 @@
                              :card.table_id
                              [:t.name :table_name]
                              [(hsql/call :max :qe.started_at) :last_run_at]
-                             [:%distinct-count.qe.id :total_runs]
-                             [:%distinct-count.dash_card.card_id :num_dashboards]
+                             [:%count.qe.id :total_runs]
+                             [:%count.dash_card.card_id :num_dashboards]
                              [:card.creator_id :user_id]
                              [(common/user-full-name :u) :user_name]
                              [(hsql/call :max :card.updated_at) :updated_at]]
