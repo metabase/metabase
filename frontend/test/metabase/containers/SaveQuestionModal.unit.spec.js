@@ -427,6 +427,41 @@ describe("SaveQuestionModal", () => {
 
       expect(onCreateMock).not.toHaveBeenCalled();
     });
+
+    it("should keep 'save as new' form values while switching saving modes", () => {
+      const originalQuestion = getQuestion({ isSaved: true });
+      renderSaveQuestionModal(
+        getDirtyQuestion(originalQuestion),
+        originalQuestion,
+      );
+
+      userEvent.click(screen.getByText("Save as new question"));
+      fillForm({
+        name: "Should not be erased",
+        description: "This should not be erased too",
+      });
+      userEvent.click(screen.getByText(/Replace original question, ".*"/));
+      userEvent.click(screen.getByText("Save as new question"));
+
+      expect(screen.getByLabelText("Name")).toHaveValue("Should not be erased");
+      expect(screen.getByLabelText("Description")).toHaveValue(
+        "This should not be erased too",
+      );
+    });
+
+    it("should allow to replace the question if new question form is invalid (metabase#13817", () => {
+      const originalQuestion = getQuestion({ isSaved: true });
+      renderSaveQuestionModal(
+        getDirtyQuestion(originalQuestion),
+        originalQuestion,
+      );
+
+      userEvent.click(screen.getByText("Save as new question"));
+      userEvent.clear(screen.getByLabelText("Name"));
+      userEvent.click(screen.getByText(/Replace original question, ".*"/));
+
+      expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+    });
   });
 
   it("should call onClose when Cancel button is clicked", () => {
