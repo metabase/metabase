@@ -1,5 +1,7 @@
 (ns metabase.driver.bigquery-cloud-sdk-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.core.async :as a]
+            [clojure.test :refer :all]
+            [clojure.tools.logging :as log]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
             [metabase.driver.bigquery-cloud-sdk :as bigquery]
@@ -47,7 +49,7 @@
    (testing "with pagination"
      (let [pages-retrieved (atom 0)
            page-callback   (fn [] (swap! pages-retrieved inc))]
-       (with-bindings {#'bigquery/*max-results-per-page*  25
+       (with-bindings {#'bigquery/*page-size*             25
                        #'bigquery/*page-callback*         page-callback
                        ;; for this test, set timeout to 0 to prevent setting it
                        ;; so that the "fast" query path can be used (so that the max-results-per-page actually takes
@@ -346,3 +348,33 @@
           (table-rows-sample-test)
           ;; make sure that the fake exception was thrown, and thus the query execution was retried
           (is (true? @fake-execute-called)))))))
+
+(deftest query-cancel-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "BigQuery queries can be canceled successfully"
+      (mt/with-open-channels [canceled-chan (a/promise-chan)]
+        (binding [bigquery/*page-size*     1000  ; set a relatively small pageSize
+                  bigquery/*page-callback* (fn []
+                                             (log/debug "*page-callback* called, sending cancel message")
+                                             (a/>!! canceled-chan ::cancel))]
+          (mt/dataset sample-dataset
+            (let [rows      (mt/rows (mt/process-query (mt/query orders) {:canceled-chan canceled-chan}))
+                  row-count (count rows)]
+              (log/debugf "Loaded %d rows before BigQuery query was canceled" row-count)
+              (testing "Somewhere between 0 and the size of the orders table rows were loaded before cancellation"
+                (is (< 0 row-count 10000))))))))))
+
+(deftest global-max-rows-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "The limit middleware prevents us from fetching more pages than are necessary to fulfill query max-rows"
+      (mt/with-open-channels [canceled-chan (a/promise-chan)]
+        (let [page-size          100
+              max-rows           1000
+              num-page-callbacks (atom 0)]
+          (binding [bigquery/*page-size*     page-size
+                    bigquery/*page-callback* (fn []
+                                               (swap! num-page-callbacks inc))]
+            (mt/dataset sample-dataset
+              (let [rows (mt/rows (mt/process-query (mt/query orders {:query {:limit max-rows}})))]
+                (is (= max-rows (count rows)))
+                (is (= (/ max-rows page-size) @num-page-callbacks))))))))))

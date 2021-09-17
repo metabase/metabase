@@ -86,8 +86,7 @@
     (let [sql (apply format format-string args)]
       (printf "[BigQuery] %s\n" sql)
       (flush)
-      (bigquery/with-finished-response [response (#'bigquery/execute-bigquery-on-db (data/db) sql nil)]
-        response))))
+      (#'bigquery/execute-bigquery-on-db (data/db) sql nil))))
 
 (def ^:private valid-field-types
   #{:BOOLEAN :DATE :DATETIME :FLOAT :INTEGER :NUMERIC :RECORD :STRING :TIME :TIMESTAMP})
