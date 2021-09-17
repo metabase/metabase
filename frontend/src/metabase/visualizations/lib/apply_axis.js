@@ -490,7 +490,7 @@ export function getYValueFormatter(chart, series, yExtent) {
   return (value, options, seriesIndex = 0) => {
     const metricColumn = series[seriesIndex].data.cols[1];
     const columnSettings = chart.settings.column(metricColumn);
-    const columnExtent = options.extent ?? yExtent;
+    const columnExtent = options.extent || yExtent;
     const roundedValue = maybeRoundValueToZero(value, columnExtent);
     return formatValue(roundedValue, { ...columnSettings, ...options });
   };
