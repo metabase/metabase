@@ -167,7 +167,7 @@ export default class ParameterValueWidget extends Component {
       parameter,
       dashboard,
     );
-    const isDashParamWithoutMappingText = t`In order to use this filter it needs to be connected with a card on the dashboard.`;
+    const isDashParamWithoutMappingText = t`This filter needs to be connected to a card.`;
     const WidgetDefinition = getWidgetDefinition(metadata, parameter);
     const { noPopover } = WidgetDefinition;
     const showTypeIcon = !isEditing && !hasValue && !isFocused;
