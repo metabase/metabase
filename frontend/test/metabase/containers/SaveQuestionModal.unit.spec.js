@@ -1,4 +1,6 @@
 import React from "react";
+import { Provider } from "react-redux";
+import { reducer as form } from "redux-form";
 import { render, screen, fireEvent } from "@testing-library/react";
 import mock from "xhr-mock";
 
@@ -14,9 +16,6 @@ import {
   metadata,
 } from "__support__/sample_dataset_fixture";
 import { getStore } from "__support__/entities-store";
-
-import { Provider } from "react-redux";
-import { reducer as form } from "redux-form";
 
 function mockCachingEnabled(enabled = true) {
   const original = MetabaseSettings.get;
