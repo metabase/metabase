@@ -88,12 +88,6 @@ function checkSeriesIsValid({ series, maxSeries }) {
   if (getFirstNonEmptySeries(series).data.cols.length < 2) {
     throw new Error(t`This chart type requires at least 2 columns.`);
   }
-
-  if (series.length > maxSeries) {
-    throw new Error(
-      t`This chart type doesn't support more than ${maxSeries} series of data.`,
-    );
-  }
 }
 
 function getXAxisProps(props, datas, warn) {
@@ -807,6 +801,8 @@ export default function lineAreaBar(
     warnings[key] = warnings[key] || text;
   };
 
+  // cut data instead of throw error
+  props.series = props.series.slice(props.series.length - props.maxSeries);
   checkSeriesIsValid(props);
 
   // force histogram to be ordinal axis with zero-filled missing points
