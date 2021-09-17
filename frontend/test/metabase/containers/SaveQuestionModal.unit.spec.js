@@ -298,6 +298,19 @@ describe("SaveQuestionModal", () => {
   });
 
   describe("overwriting a saved question", () => {
+    it("should display original question's name on save mode control", () => {
+      const originalQuestion = getQuestion({
+        isSaved: true,
+        name: "Beautiful Orders",
+      });
+      const dirtyQuestion = getDirtyQuestion(originalQuestion);
+      renderSaveQuestionModal(dirtyQuestion, originalQuestion);
+
+      expect(
+        screen.queryByText('Replace original question, "Beautiful Orders"'),
+      ).toBeInTheDocument();
+    });
+
     it("should call onSave correctly when form is submitted", () => {
       const originalQuestion = getQuestion({ isSaved: true });
       const dirtyQuestion = getDirtyQuestion(originalQuestion);
@@ -306,6 +319,25 @@ describe("SaveQuestionModal", () => {
         originalQuestion,
       );
 
+      userEvent.click(screen.getByText("Save"));
+
+      expect(onSaveMock).toHaveBeenCalledTimes(1);
+      expect(onSaveMock).toHaveBeenCalledWith({
+        ...dirtyQuestion.card(),
+        id: originalQuestion.id(),
+      });
+    });
+
+    it("should allow switching to 'save as new' and back", () => {
+      const originalQuestion = getQuestion({ isSaved: true });
+      const dirtyQuestion = getDirtyQuestion(originalQuestion);
+      const { onSaveMock } = renderSaveQuestionModal(
+        dirtyQuestion,
+        originalQuestion,
+      );
+
+      userEvent.click(screen.getByText("Save as new question"));
+      userEvent.click(screen.getByText(/Replace original question, ".*"/));
       userEvent.click(screen.getByText("Save"));
 
       expect(onSaveMock).toHaveBeenCalledTimes(1);
