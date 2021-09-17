@@ -189,6 +189,25 @@ describe("SaveQuestionModal", () => {
       });
     });
 
+    it("should trim name and description", () => {
+      const question = getQuestion();
+      const { onCreateMock } = renderSaveQuestionModal(question);
+
+      fillForm({
+        name: "    My favorite orders ",
+        description: "  So many of them   ",
+      });
+      userEvent.click(screen.getByText("Save"));
+
+      expect(onCreateMock).toHaveBeenCalledTimes(1);
+      expect(onCreateMock).toHaveBeenCalledWith({
+        ...question.card(),
+        name: "My favorite orders",
+        description: "So many of them",
+        collection_id: undefined,
+      });
+    });
+
     it("shouldn't call onSave when form is submitted", () => {
       const question = getQuestion();
       const { onSaveMock } = renderSaveQuestionModal(question);
