@@ -1,14 +1,16 @@
 (ns metabase-enterprise.audit.pages.query-detail
   "Queries to show details about a (presumably ad-hoc) query."
   (:require [cheshire.core :as json]
+            [honeysql.core :as hsql]
             [metabase-enterprise.audit.interface :as audit.i]
             [metabase-enterprise.audit.pages.common :as common]
+            [metabase.util.honeysql-extensions :as hx]
             [metabase.util.schema :as su]
             [ring.util.codec :as codec]
             [schema.core :as s]))
 
-(defmethod audit.i/internal-query ::bad-table
-  ([_ card-id]
+(defmethod audit.i/internal-query ::bad-card
+  [_ card-id]
   {:metadata [[:card_name       {:display_name "Question",           :base_type :type/Text    :remapped_from :card_id}]
               [:error_substr    {:display_name "Error",              :base_type :type/Text    :code          true}]
               [:collection_id   {:display_name "Collection ID",      :base_type :type/Integer :remapped_to   :collection_name}]
@@ -45,11 +47,10 @@
                              [:metabase_table :t]               [:= :card.table_id :t.id]
                              [:core_user :u]                    [:= :card.creator_id :u.id]
                              [:report_dashboardcard :dash_card] [:= :card.id :dash_card.card_id]
-                             [:query_execution :qe]             [:and [:= :card.id :qe.card_id]
-                                                                 latest-qe-subq]]
+                             [:query_execution :qe]             [:= :card.id :qe.card_id]]
                  :where     [:and
                              [:= :card.id card-id]
-                             [:<> :qe.error nil]]}))}))
+                             [:<> :qe.error nil]]}))})
 
 ;; Details about a specific query (currently just average execution time).
 (s/defmethod audit.i/internal-query ::details
