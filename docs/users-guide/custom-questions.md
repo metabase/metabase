@@ -1,8 +1,8 @@
-## Creating custom questions with the notebook editor
+# Creating custom questions with the notebook editor
 
 If you have a question that's a bit more involved than a [simple question](04-asking-questions.md), you can create a custom question using the notebook editor. You can get there by clicking the Ask a Question button in the top nav bar and selecting Custom Question. If you started from a Simple question or a saved question, you can get back to the custom question notebook editor by clicking the icon in the top-right of the screen.
 
-### The parts of the notebook
+## The parts of the notebook
 
 ![The notebook](./images/notebook/notebook-ui.png)
 
@@ -10,7 +10,7 @@ The notebook is made up of a sequence of individual steps. Under each step you'l
 
 ![Previewing results](./images/notebook/preview-table.png)
 
-#### Picking your starting data
+### Picking your starting data
 
 This first step is required, and is where you pick the data that you want to base your question on. In most cases you'll pick one of the tables in your database, but you can also choose a previously saved question's result as the starting point for your new question. What this means in practice is that you can do things like use complex SQL queries to create new tables that can be used as starting data in a question just like any other table in your database.
 
@@ -24,7 +24,7 @@ There are some kinds of saved questions that can't be used as source data:
 - questions that use `Cumulative Sum` or `Cumulative Count` aggregations
 - questions that have columns that are named the same or similar thing, like `Count` and `Count 2`
 
-#### Filtering
+### Filtering
 
 ![Filtering](./images/notebook/filter-step.png)
 
@@ -38,7 +38,7 @@ You can add subsequent filter steps after every Summarize step. This lets you do
 
 If you have a more complex filter you're trying to express, you can pick "Custom Expression" from the add-filter menu create a filter expression. You can use comparison operators like greater than (>) or less than (<), as well as spreadsheet-like functions. For example, `[Subtotal] > 100 OR median([Age]) < 40`. [Learn more about writing expressions](./expressions.md)
 
-#### Summarizing
+### Summarizing
 
 ![Summarizing](./images/notebook/summarize-step.png)
 
@@ -48,13 +48,13 @@ If you summarize and add a grouping you can then summarize _again_. You can also
 
 ![Multiple summarize steps](./images/notebook/multiple-summarize-steps.png)
 
-**Custom expressions**
+### Custom expressions
 
 ![Custom expression](./images/expressions/aggregation-expression.png)
 
 Custom expressions allow you to use spreadsheet-like functions and simple arithmetic within or between aggregation functions. For example, you could do `Average(sqrt[FieldX]) + Sum([FieldY])` or `Max(floor([FieldX] - [FieldY]))`, where `FieldX` and `FieldY` are fields in the currently selected table. [Learn more about writing expressions](./expressions.md)
 
-#### Creating custom columns
+### Creating custom columns
 
 ![Custom column](./images/expressions/custom-column.png)
 
@@ -62,17 +62,17 @@ Custom columns are helpful when you need to create a new column based on a calcu
 
 You can use the following math operators in your formulas: `+`, `–`, `*` (multiplication), and `/` (division), along with a whole host of spreadsheet-like functions. You can also use parentheses to clarify the order of operations. You can [learn more about writing expressions here](./expressions.md).
 
-#### Sorting results
+### Sorting results
 
 ![Sorting](./images/notebook/sort-step.png)
 
 The sorting step lets you pick one or more columns to sort your results by. For each column you pick, you can also choose whether to sort ascending or descending; just click the arrow to change from ascending (up arrow) to descending (down arrow).
 
-#### Setting a row limit
+### Setting a row limit
 
 The row limit step lets you limit how many rows you want from the previous results. When used in conjunction with sorting, this can let you do things like create a top-10 list, by first sorting by one of the columns in your result, then adding a row limit of 10. Unlike other steps, the row limit step can only be added at the end of your question.
 
-#### Joining data
+### Joining data
 
 ![Joining](./images/notebook/join-step.png)
 
@@ -97,13 +97,19 @@ Here are the basic types of joins:
 
 **A left outer join example:** If Table A is Orders and Table B is Customers, and assuming you do a join where the `customer_id` column in Orders is equal to the `ID` column in Customers, when you do a left outer join your results will be a full list of all your orders, and each order row will also display the columns of the customer who placed that order. Since a single customer can place many orders, a given customer's information might be repeated many times for different order rows. If there isn't a corresponding customer for a given order, the order's information will be shown, but the customer columns will just be blank for that row.
 
-##### Multiple stages of joins
+### Multiple stages of joins
 
 In many cases you might have tables A, B, and C, where A and B have a connection, and B and C have a connection, but A and C don't. If you want to join A to B to C, all you have to do is add multiple join steps. Click on Join Data, join table A to table B, then click the Join Data step below that completed join block to add a second join step, and join the results of your last join to table C.
 
 ![An A to B to C join](./images/notebook/join-a-b-c.png)
 
 See [Joins in Metabase](https://www.metabase.com/blog/joining-tables/index.html) to learn more.
+
+### Joining on multiple columns
+
+You can also join data on multiple columns to further refine your results.
+
+![Joining tables on multiple columns](./images/notebook/joining-on-multiple-columns.png)
 
 ### Viewing the SQL that powers your question
 
