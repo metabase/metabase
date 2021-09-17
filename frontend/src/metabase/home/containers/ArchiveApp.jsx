@@ -50,7 +50,7 @@ export default class ArchiveApp extends Component {
         <Box mt={2} py={2}>
           <PageHeading>{t`Archive`}</PageHeading>
         </Box>
-        <Box width={2 / 3}>
+        <Box width={2 / 3} pb={4}>
           <Card
             style={{
               height: list.length > 0 ? ROW_HEIGHT * list.length : "auto",
