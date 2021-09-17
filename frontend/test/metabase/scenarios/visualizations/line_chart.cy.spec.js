@@ -197,7 +197,7 @@ describe("scenarios > visualizations > line chart", () => {
       .should("have.length", 2);
   });
 
-  describe.only("tooltip of combined dashboard cards (multi-series) should show the correct column title (metabase#16249", () => {
+  describe.skip("tooltip of combined dashboard cards (multi-series) should show the correct column title (metabase#16249", () => {
     const RENAMED_FIRST_SERIES = "Foo";
     const RENAMED_SECOND_SERIES = "Bar";
 
