@@ -4,7 +4,7 @@ export const table = () => ({
     display: "table",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit.pages.alerts/table",
+      fn: "metabase-enterprise.audit-app.pages.alerts/table",
       args: [],
     },
     visualization_settings: {
