@@ -36,6 +36,7 @@ const propTypes = {
   selectHeader: PropTypes.string,
   rowChecked: PropTypes.object,
   onRowSelectClick: PropTypes.func,
+  onRowClick: PropTypes.func,
 };
 
 export default class AuditTableVisualization extends React.Component {
@@ -75,6 +76,16 @@ export default class AuditTableVisualization extends React.Component {
     this.setState({ rerender: {} });
     onRowSelectClick({ ...e, row: row, rowIndex: rowIndex });
   };
+
+  handleRowClick = (clickable, clicked) => {
+    const { onRowClick } = this.props;
+    if (onRowClick) {
+      onRowClick(clicked);
+    } else if (clickable) {
+      onVisualizationClick(clicked);
+    }
+    // else do nothing
+  }
 
   render() {
     const {
@@ -171,9 +182,7 @@ export default class AuditTableVisualization extends React.Component {
                       "text-code": column["code"],
                       "text-right": isColumnRightAligned(column),
                     })}
-                    onClick={
-                      clickable ? () => onVisualizationClick(clicked) : null
-                    }
+                    onClick={() => handleRowClick(clickable, clicked)}
                   >
                     {formatValue(value, {
                       ...columnSettings,
