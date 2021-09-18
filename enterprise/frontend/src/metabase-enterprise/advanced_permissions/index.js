@@ -11,9 +11,7 @@ const BLOCK_PERMISSION_OPTION = {
   iconColor: "danger",
 };
 
-// TODO: replace when the BE merged
-// if (hasPremiumFeature("advanced-permissions")) {
-if (hasPremiumFeature("sandboxes")) {
+if (hasPremiumFeature("advanced_permissions")) {
   PLUGIN_ADVANCED_PERMISSIONS.DataPermissionsHelp = DataPermissionsHelp;
 
   const addBlockPermissionWhenSelected = (options, value) =>
