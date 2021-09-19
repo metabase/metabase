@@ -8,7 +8,7 @@ import { CardApi } from "metabase/services";
 import * as Queries from "../../audit_app/lib/cards/queries";
 import AuditTable from "../../audit_app/containers/AuditTable";
 import AuditParameters from "../../audit_app/components/AuditParameters";
-import { handleErrorDrill } from "./ErrorModal";
+import { ErrorMode } from "./ErrorModal";
 
 const getSortOrder = isAscending => (isAscending ? "asc" : "desc");
 
@@ -70,7 +70,7 @@ export default function ErrorOverview(props) {
           sorting={sorting}
           onSortingChange={handleSortingChange}
           onRowSelectClick={handleRowSelectClick}
-          onRowClick={handleErrorDrill}
+          mode={ErrorMode}
           table={Queries.bad_table(
             errorFilter,
             dbFilter,

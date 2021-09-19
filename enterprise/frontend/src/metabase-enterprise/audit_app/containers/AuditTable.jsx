@@ -31,6 +31,7 @@ AuditTable.propTypes = {
   table: PropTypes.object.isRequired,
   onChangeLocation: PropTypes.func.isRequired,
   pageSize: PropTypes.number.isRequired,
+  mode: PropTypes.array.isRequired,
 };
 
 function AuditTable({
@@ -38,6 +39,7 @@ function AuditTable({
   table,
   onChangeLocation,
   pageSize = DEFAULT_PAGE_SIZE,
+  mode = AuditMode,
   ...rest
 }) {
   const [loadedCount, setLoadedCount] = useState(0);
@@ -59,7 +61,7 @@ function AuditTable({
         className="mt3"
         question={question}
         metadata={metadata}
-        mode={AuditMode}
+        mode={mode}
         onChangeLocation={onChangeLocation}
         onChangeCardAndRun={() => {}}
         onLoad={results => setLoadedCount(results[0].row_count)}

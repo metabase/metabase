@@ -1,17 +1,12 @@
-
-
 const CARD_ID_ROW_IDX = 0;
-
-export const handleErrorDrill = (clicked) => {
+const ErrorDrill = ({clicked}) => {
   if (!clicked) {
     return [];
   }
 
-  console.log(clicked);
-
   const cardId = clicked.origin.row[CARD_ID_ROW_IDX];
 
-  console.log([
+  return [
     {
       name: "detail",
       title: `View this`,
@@ -20,6 +15,10 @@ export const handleErrorDrill = (clicked) => {
         return `/admin/tools/modal/${cardId}`;
       },
     },
-  ]);
+  ];
 };
 
+export const ErrorMode = {
+  name: "error",
+  drills: () => [ErrorDrill],
+};
