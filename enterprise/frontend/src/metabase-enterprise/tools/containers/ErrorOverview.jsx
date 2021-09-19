@@ -29,6 +29,12 @@ export default function ErrorOverview(props) {
     setRowChecked(newRowChecked);
     setRowToCardId(newRowToCardId);
   };
+
+  const handleRowClick = clicked => {
+    console.log(clicked);
+    // traverse to the modal... want to finish traversing to the modal today, display the thing sunday, PR up monday morning
+  }
+
   const handleReloadSelected = async () => {
     const checkedCardIds = Object.values(
       _.pick(rowToCardId, (member, key) => rowChecked[key]),
@@ -68,6 +74,7 @@ export default function ErrorOverview(props) {
           sorting={sorting}
           onSortingChange={handleSortingChange}
           onRowSelectClick={handleRowSelectClick}
+          onRowClick={handleRowClick}
           table={Queries.bad_table(
             errorFilter,
             dbFilter,
