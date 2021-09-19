@@ -8,6 +8,7 @@ import { CardApi } from "metabase/services";
 import * as Queries from "../../audit_app/lib/cards/queries";
 import AuditTable from "../../audit_app/containers/AuditTable";
 import AuditParameters from "../../audit_app/components/AuditParameters";
+import { handleErrorDrill } from "./ErrorModal";
 
 const getSortOrder = isAscending => (isAscending ? "asc" : "desc");
 
@@ -29,11 +30,6 @@ export default function ErrorOverview(props) {
     setRowChecked(newRowChecked);
     setRowToCardId(newRowToCardId);
   };
-
-  const handleRowClick = clicked => {
-    console.log(clicked);
-    // traverse to the modal... want to finish traversing to the modal today, display the thing sunday, PR up monday morning
-  }
 
   const handleReloadSelected = async () => {
     const checkedCardIds = Object.values(
@@ -74,7 +70,7 @@ export default function ErrorOverview(props) {
           sorting={sorting}
           onSortingChange={handleSortingChange}
           onRowSelectClick={handleRowSelectClick}
-          onRowClick={handleRowClick}
+          onRowClick={handleErrorDrill}
           table={Queries.bad_table(
             errorFilter,
             dbFilter,
