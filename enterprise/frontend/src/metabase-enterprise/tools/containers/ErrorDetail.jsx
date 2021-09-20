@@ -34,9 +34,12 @@ function ErrorDetailDisplay(props) {
   const { result } = props;
   const resRow = getIn(result, ["data", "rows", 0]);
   const resCols = getIn(result, ["data", "cols"]);
-  console.log(resCols);
   if (resRow && resCols) {
-    return <div>bleh</div>;
+    return resRow.map((member, idx) =>
+      <div key={idx}>
+      <div>{resCols[idx].display_name}</div>
+      <div>{member}</div>
+      </div>);
   } else {
     return null;
   }
