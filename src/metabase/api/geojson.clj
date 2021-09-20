@@ -110,8 +110,8 @@
   [{{:keys [url]} :params} respond raise]
   {url su/NonBlankString}
   (let [decoded-url (rc/url-decode url)]
-    (or (valid-geojson-url? decoded-url)
-        (raise (ex-info (invalid-location-msg) {:status-code 400})))
+    (when-not (valid-geojson-url? decoded-url)
+      (raise (ex-info (invalid-location-msg) {:status-code 400})))
     (try
       (with-open [reader (io/reader (or (io/resource decoded-url)
                                         decoded-url))
