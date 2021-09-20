@@ -6,8 +6,6 @@ import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_PERMISSION_VALUE,
-  PLUGIN_ADMIN_PERMISSIONS_DATABASE_BLOCK_OPTIONS,
-  PLUGIN_ADMIN_PERMISSIONS_HELP,
 } from "metabase/plugins";
 
 import React from "react";
@@ -23,20 +21,12 @@ import { ModalRoute } from "metabase/hoc/ModalRoute";
 
 import LoginAttributesWidget from "./components/LoginAttributesWidget";
 import GTAPModal from "./components/GTAPModal";
-import { DataPermissionsHelp } from "./components/DataPermissionsHelp/DataPermissionsHelp";
 
 const OPTION_SEGMENTED = {
   label: t`Sandboxed`,
   value: "controlled",
   icon: "permissions_limited",
   iconColor: "brand",
-};
-
-const BLOCK_PERMISSION_OPTION = {
-  label: t`Block`,
-  value: "block",
-  icon: "close",
-  iconColor: "danger",
 };
 
 const getDatabaseViewSandboxModalUrl = (entityId, groupId) => {
@@ -95,6 +85,4 @@ if (hasPremiumFeature("sandboxes")) {
     read: "all",
     query: "segmented",
   };
-  PLUGIN_ADMIN_PERMISSIONS_DATABASE_BLOCK_OPTIONS.push(BLOCK_PERMISSION_OPTION);
-  PLUGIN_ADMIN_PERMISSIONS_HELP.Component = DataPermissionsHelp;
 }
