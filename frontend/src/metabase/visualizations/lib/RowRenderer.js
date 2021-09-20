@@ -119,6 +119,13 @@ export default function rowRenderer(
     .group(group)
     .ordering(d => d.index);
 
+  chart.xAxis().tickFormat(value => {
+    return formatValue(value, {
+      ...settings.column(cols[1]),
+      type: "axis",
+    });
+  });
+
   const labelPadHorizontal = 5;
   let labelsOutside = false;
 
