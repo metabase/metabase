@@ -1,3 +1,5 @@
+import React from "react";
+
 const CARD_ID_ROW_IDX = 0;
 const ErrorDrill = ({clicked}) => {
   if (!clicked) {
@@ -12,7 +14,7 @@ const ErrorDrill = ({clicked}) => {
       title: `View this`,
       default: true,
       url() {
-        return `/admin/tools/modal/${cardId}`;
+        return `/admin/tools/errors/${cardId}`;
       },
     },
   ];
@@ -22,3 +24,9 @@ export const ErrorMode = {
   name: "error",
   drills: () => [ErrorDrill],
 };
+
+export default function ErrorDetail(props) {
+  const { cardId } = props;
+  ///// how to query the thingy?
+  return (<div></div>)
+}
