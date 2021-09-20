@@ -3,7 +3,7 @@
             [clojure.test :refer :all]
             [metabase-enterprise.audit-app.pages.alerts :as audit.alerts]
             [metabase.models :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
-            [metabase.public-settings.metastore-test :as metastore-test]
+            [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
             [metabase.util :as u]
@@ -11,7 +11,7 @@
 
 (defn- alerts [card-name]
   (mt/with-test-user :crowberto
-    (metastore-test/with-metastore-token-features #{:audit-app}
+    (premium-features-test/with-premium-features #{:audit-app}
       (qp/process-query
        {:type :internal
         :fn   (u/qualified-name ::audit.alerts/table)
