@@ -5,7 +5,7 @@
             [metabase.shared.models.visualization-settings :as mb.viz]))
 
 (defn format [value viz]
-  (str ((common/number-formatter viz nil) value)))
+  (str ((common/number-formatter nil viz nil) value)))
 
 (deftest number-formatting-test
   (let [value 12345.5432
@@ -48,6 +48,15 @@
              (fmt {::mb.viz/number-style "percent"
                    ::mb.viz/decimals 4
                    ::mb.viz/number-separators ",."}))))
+    (testing "Column Settings"
+      (letfn [(fmt-with-type [type value]
+                (str ((common/number-formatter {:effective_type type} nil nil) value)))]
+        (is (= "3" (fmt-with-type :type/Integer 3)))
+        (is (= "3.00" (fmt-with-type :type/Decimal 3)))
+        (is (= "3.10" (fmt-with-type :type/Decimal 3.1)))))
     (testing "Does not throw on nils"
       (is (nil?
-           ((common/number-formatter {::mb.viz/number-style "percent"} nil) nil))))))
+           ((common/number-formatter {::mb.viz/number-style "percent"} nil nil) nil))))
+    (testing "Does not throw on non-numeric types"
+      (is (= "bob"
+             ((common/number-formatter {::mb.viz/number-style "percent"} nil nil) "bob"))))))
