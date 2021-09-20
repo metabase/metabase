@@ -15,10 +15,7 @@ const getRoutes = (store: any) => (
       title={t`Erroring Questions`}
       component={ErrorOverview}
     />
-    <Route
-      path="errors/:cardId"
-      component={ErrorDetail}
-    />
+    <Route path="errors/:cardId" component={ErrorDetail} />
   </Route>
 );
 

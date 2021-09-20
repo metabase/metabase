@@ -6,7 +6,7 @@ import Question from "metabase-lib/lib/Question";
 import { QuestionResultLoader } from "metabase/containers/QuestionResultLoader";
 
 const CARD_ID_ROW_IDX = 0;
-const ErrorDrill = ({clicked}) => {
+const ErrorDrill = ({ clicked }) => {
   if (!clicked) {
     return [];
   }
@@ -53,14 +53,14 @@ export default function ErrorDetail(props) {
       fn: "metabase-enterprise.audit.pages.query-detail/bad-card",
       args: [cardId],
     },
-  }
+  };
   const question = new Question(card, null);
 
-  return <QuestionResultLoader question={question}>
-            {({ rawSeries, result }) => (
-              <ErrorDetailDisplay result={result} />
-            )}
-          </QuestionResultLoader>
+  return (
+    <QuestionResultLoader question={question}>
+      {({ rawSeries, result }) => <ErrorDetailDisplay result={result} />}
+    </QuestionResultLoader>
+  );
 }
 
 ErrorDetail.propTypes = {
