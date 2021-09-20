@@ -21,6 +21,7 @@ const LeafletChoropleth = ({
   onRenderError,
 }) => (
   <CardRenderer
+    card={{ display: "map" }}
     series={series}
     className="spread"
     renderer={(element, props) => {

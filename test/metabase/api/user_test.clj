@@ -2,10 +2,9 @@
   "Tests for /api/user endpoints."
   (:require [clojure.test :refer :all]
             [metabase.http-client :as http]
-            [metabase.models.collection :as collection :refer [Collection]]
-            [metabase.models.permissions-group :as group :refer [PermissionsGroup]]
-            [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
-            [metabase.models.user :refer [User]]
+            [metabase.models :refer [Collection PermissionsGroup PermissionsGroupMembership User]]
+            [metabase.models.collection :as collection]
+            [metabase.models.permissions-group :as group]
             [metabase.models.user-test :as user-test]
             [metabase.server.middleware.util :as middleware.u]
             [metabase.test :as mt]

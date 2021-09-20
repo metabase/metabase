@@ -34,11 +34,12 @@
 
 (def rows-limit
   "Maximum number of rows to render in a Pulse image."
-  20)
+  10)
 
 (def cols-limit
-  "Maximum number of columns to render in a Pulse image."
-  10)
+  "Maximum number of columns to render in a Pulse image. Set to infinity, so that columns are not truncated.
+  TODO: we should eventually remove the column limiting logic if it's not used anywhere."
+  ##Inf)
 
 ;; NOTE: hiccup does not escape content by default so be sure to use "h" to escape any user-controlled content :-/
 
@@ -435,7 +436,7 @@
              :src   (:image-src image-bundle)}]
       [:table
        [:tr
-        [:td {:style (style/style {:color         (style/primary-color)
+        [:td {:style (style/style {:color         style/color-text-dark
                                    :font-size     :24px
                                    :font-weight   700
                                    :padding-right :16px})}
@@ -445,7 +446,7 @@
                                    :font-weight 700})}
          (second values)]]
        [:tr
-        [:td {:style (style/style {:color         (style/primary-color)
+        [:td {:style (style/style {:color         style/color-text-dark
                                    :font-size     :16px
                                    :font-weight   700
                                    :padding-right :16px})}

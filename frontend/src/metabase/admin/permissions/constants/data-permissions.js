@@ -19,12 +19,6 @@ export const DATA_PERMISSION_OPTIONS = {
     icon: "eye",
     iconColor: "accent5",
   },
-  block: {
-    label: t`Block`,
-    value: "block",
-    icon: "close",
-    iconColor: "danger",
-  },
   none: {
     label: t`No`,
     value: "none",

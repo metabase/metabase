@@ -88,3 +88,18 @@ export const PLUGIN_MODERATION = {
   getStatusIcon: object,
   getModerationTimelineEvents: array,
 };
+
+export const PLUGIN_CACHING = {
+  dashboardCacheTTLFormField: null,
+  databaseCacheTTLFormField: null,
+  questionCacheTTLFormField: null,
+  getQuestionsImplicitCacheTTL: () => null,
+};
+
+export const PLUGIN_ADVANCED_PERMISSIONS = {
+  DataPermissionsHelp: null,
+  addDatabasePermissionOptions: (permissions, _value) => permissions,
+  addSchemaPermissionOptions: (permissions, _value) => permissions,
+  addTablePermissionOptions: (permissions, _value) => permissions,
+  isBlockPermission: _value => false,
+};

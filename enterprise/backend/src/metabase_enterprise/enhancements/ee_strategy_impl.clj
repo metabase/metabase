@@ -65,7 +65,7 @@
 
     ;; For `MyProtocol` methods: invoke `ee-impl` if EE enhancements are enabled, otherwise invoke `oss-impl`
     (def impl
-      (reify-ee-strategy-impl #'settings.metastore/enable-enhancements? ee-impl oss-impl
+      (reify-ee-strategy-impl #'settings.premium-features/enable-enhancements? ee-impl oss-impl
         MyProtocol))
 
   At the time of this writing, this only works with first-class Clojure Protocols (as opposed to plain Java

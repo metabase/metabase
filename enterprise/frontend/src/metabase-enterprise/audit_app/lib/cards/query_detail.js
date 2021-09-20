@@ -4,7 +4,7 @@ export const details = (queryHash: string) => ({
     display: "table",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit.pages.query-detail/details",
+      fn: "metabase-enterprise.audit-app.pages.query-detail/details",
       args: [queryHash],
     },
   },

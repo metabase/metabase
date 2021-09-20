@@ -1,4 +1,6 @@
 (ns metabase.models.moderation-review
+  "TODO -- this should be moved to `metabase-enterprise.content-management.models.moderation-review` since it's a
+  premium-only model."
   (:require [metabase.models.interface :as i]
             [metabase.models.permissions :as perms]
             [metabase.moderation :as moderation]

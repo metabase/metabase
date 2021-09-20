@@ -304,10 +304,16 @@ export default class Question {
     return this._card && this._card.displayIsLocked;
   }
 
-  // If we're locked to a display that is no longer "sensible", unlock it.
-  maybeUnlockDisplay(sensibleDisplays): Question {
-    const locked =
-      this.displayIsLocked() && sensibleDisplays.includes(this.display());
+  // If we're locked to a display that is no longer "sensible", unlock it
+  // unless it was locked in unsensible
+  maybeUnlockDisplay(sensibleDisplays, previousSensibleDisplays): Question {
+    const wasSensible =
+      previousSensibleDisplays == null ||
+      previousSensibleDisplays.includes(this.display());
+    const isSensible = sensibleDisplays.includes(this.display());
+
+    const shouldUnlock = wasSensible && !isSensible;
+    const locked = this.displayIsLocked() && !shouldUnlock;
     return this.setDisplayIsLocked(locked);
   }
 

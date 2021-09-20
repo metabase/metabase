@@ -43,7 +43,9 @@
   "Returns all locale abbreviations and their full names"
   []
   (for [locale-name (impl/available-locale-names)]
-    [locale-name (.getDisplayName (locale locale-name))]))
+    ;; Abbreviation must be normalized or the language picker will show incorrect saved value
+    ;; because the locale is normalized before saving (metabase#15657, metabase#16654)
+    [(normalized-locale-string locale-name) (.getDisplayName (locale locale-name))]))
 
 (defn translate-site-locale
   "Translate a string with the System locale."

@@ -206,5 +206,5 @@
         (when-not (initialized? driver)
           (log/info (u/format-color 'yellow (trs "Initializing driver {0}..." driver)))
           (log/debug (trs "Reason:") (u/pprint-to-str 'blue (drop 5 (u/filtered-stacktrace (Thread/currentThread)))))
-          (swap! initialized-drivers conj driver)
-          (init-fn driver))))))
+          (init-fn driver)
+          (swap! initialized-drivers conj driver))))))
