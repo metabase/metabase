@@ -117,11 +117,11 @@ export class MBQLObjectClause {
   }
 
   raw() {
-    const entries = Object.entries(this).filter(entry => {
+    const entriesWithDefinedValue = Object.entries(this).filter(entry => {
       const [, value] = entry;
       return value !== undefined;
     });
-    return Object.fromEntries(entries);
+    return Object.fromEntries(entriesWithDefinedValue);
   }
 }
 
