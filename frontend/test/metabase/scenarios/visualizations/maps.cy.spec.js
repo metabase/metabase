@@ -140,4 +140,49 @@ describe("scenarios > visualizations > maps", () => {
     cy.findByText("State is TX");
     cy.findByText("171 Olive Oyle Lane"); // Address in the first row
   });
+
+  it("should display a tooltip for a grid map without a metric column (metabase#17940)", () => {
+    visitQuestionAdhoc({
+      display: "map",
+      dataset_query: {
+        database: 1,
+        type: "query",
+        query: {
+          "source-table": PEOPLE_ID,
+          breakout: [
+            [
+              "field",
+              PEOPLE.LONGITUDE,
+              {
+                binning: {
+                  strategy: "default",
+                },
+              },
+            ],
+            [
+              "field",
+              PEOPLE.LATITUDE,
+              {
+                binning: {
+                  strategy: "default",
+                },
+              },
+            ],
+          ],
+          limit: 1,
+        },
+      },
+      visualization_settings: {
+        "map.type": "grid",
+        "table.pivot_column": "LATITUDE",
+        "table.cell_column": "LONGITUDE",
+      },
+    });
+
+    cy.get(".leaflet-interactive").trigger("mousemove");
+
+    cy.findByText("Latitude:");
+    cy.findByText("Longitude:");
+    cy.findByText("1");
+  });
 });

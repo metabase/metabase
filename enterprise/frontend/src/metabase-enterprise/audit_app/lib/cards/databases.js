@@ -5,7 +5,7 @@ export const totalQueryExecutionsByDb = () => ({
     dataset_query: {
       type: "internal",
       fn:
-        "metabase-enterprise.audit.pages.databases/total-query-executions-by-db",
+        "metabase-enterprise.audit-app.pages.databases/total-query-executions-by-db",
       args: [],
     },
     visualization_settings: {
@@ -27,7 +27,7 @@ export const queryExecutionsPerDbPerDay = () => ({
     dataset_query: {
       type: "internal",
       fn:
-        "metabase-enterprise.audit.pages.databases/query-executions-per-db-per-day",
+        "metabase-enterprise.audit-app.pages.databases/query-executions-per-db-per-day",
       args: [],
     },
     visualization_settings: {
@@ -43,7 +43,8 @@ export const queryExecutionsByTime = () => ({
     display: "line",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit.pages.databases/query-executions-by-time",
+      fn:
+        "metabase-enterprise.audit-app.pages.databases/query-executions-by-time",
       args: ["day"],
     },
     visualization_settings: {
@@ -59,7 +60,7 @@ export const table = (searchString?: string) => ({
     display: "table",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit.pages.databases/table",
+      fn: "metabase-enterprise.audit-app.pages.databases/table",
       args: searchString ? [searchString] : [],
     },
     visualization_settings: {

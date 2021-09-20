@@ -24,19 +24,20 @@
 
 (defn- check-perms-for-rasta
   "Check permissions for `query` with rasta as the current user."
-  {:style/indent 0}
   [query]
   (do-with-rasta (fn [] (check-perms query))))
 
-(def ^:private perms-error-msg #"^You do not have permissions to run this query\.")
+(def ^:private perms-error-msg #"You do not have permissions to run this query\.")
 
 (deftest native-query-perms-test
   (testing "Make sure the NATIVE query fails to run if current user doesn't have perms"
-    (is (thrown-with-msg? ExceptionInfo perms-error-msg
-          (check-perms-for-rasta
-           {:database 1000
-            :type     :native
-            :native   {:query "SELECT * FROM VENUES"}}))))
+    (is (thrown-with-msg?
+         ExceptionInfo
+         perms-error-msg
+         (check-perms-for-rasta
+          {:database 1000
+           :type     :native
+           :native   {:query "SELECT * FROM VENUES"}}))))
 
   (testing "...but it should work if user has perms"
     (mt/with-temp Database [db]
@@ -51,15 +52,17 @@
 
 (deftest mbql-query-perms-test
   (testing "Make sure the MBQL query fails to run if current user doesn't have perms"
-    (is (thrown-with-msg? ExceptionInfo perms-error-msg
-          (mt/with-temp* [Database [db]
-                          Table    [table {:db_id (u/the-id db)}]]
-            ;; All users get perms for all new DBs by default
-            (perms/revoke-data-perms! (perms-group/all-users) (u/the-id db))
-            (check-perms-for-rasta
-             {:database (u/the-id db)
-              :type     :query
-              :query    {:source-table (u/the-id table)}})))))
+    (is (thrown-with-msg?
+         ExceptionInfo
+         perms-error-msg
+         (mt/with-temp* [Database [db]
+                         Table    [table {:db_id (u/the-id db)}]]
+           ;; All users get perms for all new DBs by default
+           (perms/revoke-data-perms! (perms-group/all-users) (u/the-id db))
+           (check-perms-for-rasta
+            {:database (u/the-id db)
+             :type     :query
+             :query    {:source-table (u/the-id table)}})))))
 
   (testing "...but it should work if user has perms [MBQL]"
     (mt/with-temp* [Database [db]
@@ -75,11 +78,13 @@
 
 (deftest nested-native-query-test
   (testing "Make sure nested native query fails to run if current user doesn't have perms"
-    (is (thrown-with-msg? ExceptionInfo perms-error-msg
-          (check-perms-for-rasta
-           {:database 1000
-            :type     :query
-            :query   {:source-query {:native "SELECT * FROM VENUES"}}}))))
+    (is (thrown-with-msg?
+         ExceptionInfo
+         perms-error-msg
+         (check-perms-for-rasta
+          {:database 1000
+           :type     :query
+           :query   {:source-query {:native "SELECT * FROM VENUES"}}}))))
 
   (testing "...but it should work if user has perms [nested native queries]"
     (mt/with-temp Database [db]
@@ -94,15 +99,17 @@
 
 (deftest nested-mbql-query-test
   (testing "Make sure nested MBQL query fails to run if current user doesn't have perms"
-    (is (thrown-with-msg? ExceptionInfo perms-error-msg
-          (mt/with-temp* [Database [db]
-                          Table    [table {:db_id (u/the-id db)}]]
-            ;; All users get perms for all new DBs by default
-            (perms/revoke-data-perms! (perms-group/all-users) (u/the-id db))
-            (check-perms-for-rasta
-             {:database (u/the-id db)
-              :type     :query
-              :query    {:source-query {:source-table (u/the-id table)}}})))))
+    (is (thrown-with-msg?
+         ExceptionInfo
+         perms-error-msg
+         (mt/with-temp* [Database [db]
+                         Table    [table {:db_id (u/the-id db)}]]
+           ;; All users get perms for all new DBs by default
+           (perms/revoke-data-perms! (perms-group/all-users) (u/the-id db))
+           (check-perms-for-rasta
+            {:database (u/the-id db)
+             :type     :query
+             :query    {:source-query {:source-table (u/the-id table)}}})))))
 
   (testing "...but it should work if user has perms [nested MBQL queries]"
     (mt/with-temp* [Database [db]
@@ -117,23 +124,25 @@
 
 (deftest template-tags-referenced-queries-test
   (testing "Fails for MBQL query referenced in template tag, when user has no perms to referenced query"
-    (is (thrown-with-msg? ExceptionInfo perms-error-msg
-          (mt/with-temp* [Database [db]
-                          Table    [table-1 {:db_id (u/the-id db)}]
-                          Table    [table-2 {:db_id (u/the-id db)}]
-                          Card     [card    {:dataset_query {:database (u/the-id db), :type :query,
-                                                             :query {:source-table (u/the-id table-2)}}}]]
-            ;; All users get perms for all new DBs by default
-            (perms/revoke-data-perms! (perms-group/all-users) (u/the-id db) nil (u/the-id table-2))
-            (let [card-id  (:id card)
-                  tag-name (str "#" card-id)]
-              (check-perms-for-rasta
-               {:database (u/the-id db)
-                :type     :native
-                :native   {:query         (format "SELECT * FROM {{%s}} AS x" tag-name)
-                           :template-tags {tag-name
-                                           {:id tag-name, :name tag-name, :display-name tag-name,
-                                            :type "card", :card card-id}}}}))))))
+    (is (thrown-with-msg?
+         ExceptionInfo
+         perms-error-msg
+         (mt/with-temp* [Database [db]
+                         Table    [table-1 {:db_id (u/the-id db)}]
+                         Table    [table-2 {:db_id (u/the-id db)}]
+                         Card     [card    {:dataset_query {:database (u/the-id db), :type :query,
+                                                            :query {:source-table (u/the-id table-2)}}}]]
+           ;; All users get perms for all new DBs by default
+           (perms/revoke-data-perms! (perms-group/all-users) (u/the-id db) nil (u/the-id table-2))
+           (let [card-id  (:id card)
+                 tag-name (str "#" card-id)]
+             (check-perms-for-rasta
+              {:database (u/the-id db)
+               :type     :native
+               :native   {:query         (format "SELECT * FROM {{%s}} AS x" tag-name)
+                          :template-tags {tag-name
+                                          {:id tag-name, :name tag-name, :display-name tag-name,
+                                           :type "card", :card card-id}}}}))))))
 
   (testing "...but it should work if user has perms [template tag referenced query]"
     (mt/with-temp* [Database [db]
@@ -159,22 +168,24 @@
                                              :type "card", :card card-id}}}}))))))
 
   (testing "Fails for native query referenced in template tag, when user has no perms to referenced query"
-    (is (thrown-with-msg? ExceptionInfo perms-error-msg
-          (mt/with-temp* [Database [db]
-                          Card     [card {:dataset_query
-                                          {:database (u/the-id db), :type :native,
-                                           :native {:query "SELECT 1 AS \"foo\", 2 AS \"bar\", 3 AS \"baz\""}}}]]
-            ;; All users get perms for all new DBs by default
-            (perms/revoke-data-perms! (perms-group/all-users) (u/the-id db))
-            (let [card-id  (:id card)
-                  tag-name (str "#" card-id)]
-              (check-perms-for-rasta
-               {:database (u/the-id db)
-                :type     :native
-                :native   {:query         (format "SELECT * FROM {{%s}} AS x" tag-name)
-                           :template-tags {tag-name
-                                           {:id tag-name, :name tag-name, :display-name tag-name,
-                                            :type "card", :card card-id}}}}))))))
+    (is (thrown-with-msg?
+         ExceptionInfo
+         perms-error-msg
+         (mt/with-temp* [Database [db]
+                         Card     [card {:dataset_query
+                                         {:database (u/the-id db), :type :native,
+                                          :native {:query "SELECT 1 AS \"foo\", 2 AS \"bar\", 3 AS \"baz\""}}}]]
+           ;; All users get perms for all new DBs by default
+           (perms/revoke-data-perms! (perms-group/all-users) (u/the-id db))
+           (let [card-id  (:id card)
+                 tag-name (str "#" card-id)]
+             (check-perms-for-rasta
+              {:database (u/the-id db)
+               :type     :native
+               :native   {:query         (format "SELECT * FROM {{%s}} AS x" tag-name)
+                          :template-tags {tag-name
+                                          {:id tag-name, :name tag-name, :display-name tag-name,
+                                           :type "card", :card card-id}}}}))))))
 
   (testing "...but it should work if user has perms [template tag referenced query]"
     (mt/with-temp* [Database [db]

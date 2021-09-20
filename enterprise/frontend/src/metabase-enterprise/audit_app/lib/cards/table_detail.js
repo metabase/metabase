@@ -4,7 +4,7 @@ export const auditLog = (tableId: number) => ({
     display: "table",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit.pages.table-detail/audit-log",
+      fn: "metabase-enterprise.audit-app.pages.table-detail/audit-log",
       args: [tableId],
     },
     visualization_settings: {

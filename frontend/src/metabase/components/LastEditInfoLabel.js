@@ -27,7 +27,8 @@ LastEditInfoLabel.propTypes = {
   user: PropTypes.shape({
     id: PropTypes.number,
   }).isRequired,
-  onClick: PropTypes.func.isRequired,
+  onClick: PropTypes.func,
+  className: PropTypes.string,
 };
 
 function formatEditorName(firstName, lastName) {
@@ -35,7 +36,7 @@ function formatEditorName(firstName, lastName) {
   return `${firstName} ${lastNameFirstLetter}.`;
 }
 
-function LastEditInfoLabel({ item, user, onClick, ...props }) {
+function LastEditInfoLabel({ item, user, onClick, className }) {
   const { first_name, last_name, id: editorId, timestamp } = item[
     "last-edit-info"
   ];
@@ -47,9 +48,9 @@ function LastEditInfoLabel({ item, user, onClick, ...props }) {
   return (
     <TextButton
       size="small"
+      className={className}
       onClick={onClick}
       data-testid="revision-history-button"
-      {...props}
     >{t`Edited ${time} by ${editor}`}</TextButton>
   );
 }

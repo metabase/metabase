@@ -107,3 +107,7 @@ export function getDatetimeUnit(fieldClause) {
     return dimension && dimension.temporalUnit();
   }
 }
+
+export function isDateTimeField(fieldClause) {
+  return Boolean(getDatetimeUnit(fieldClause));
+}

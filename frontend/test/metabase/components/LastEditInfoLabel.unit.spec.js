@@ -38,7 +38,7 @@ describe("LastEditInfoLabel", () => {
 
     return render(
       <Provider store={store}>
-        <LastEditInfoLabel item={testItem} data-testid="label" />
+        <LastEditInfoLabel item={testItem} />
       </Provider>,
     );
   }
@@ -74,7 +74,7 @@ describe("LastEditInfoLabel", () => {
     it(`should display "${expectedTimestamp}" timestamp correctly`, () => {
       mockDate.set(date.toDate(), 0);
       const { getByTestId } = setup();
-      expect(getByTestId("label")).toHaveTextContent(
+      expect(getByTestId("revision-history-button")).toHaveTextContent(
         new RegExp(`Edited ${expectedTimestamp} by .*`, "i"),
       );
     });
@@ -86,14 +86,14 @@ describe("LastEditInfoLabel", () => {
     const expectedName = `${first_name} ${last_name.charAt(0)}.`;
 
     const { getByTestId } = setup();
-    expect(getByTestId("label")).toHaveTextContent(
+    expect(getByTestId("revision-history-button")).toHaveTextContent(
       new RegExp(`Edited .* by ${expectedName}`),
     );
   });
 
   it("should display if user is the last editor", () => {
     const { getByTestId } = setup({ isLastEditedByCurrentUser: true });
-    expect(getByTestId("label")).toHaveTextContent(
+    expect(getByTestId("revision-history-button")).toHaveTextContent(
       new RegExp(`Edited .* by you`),
     );
   });

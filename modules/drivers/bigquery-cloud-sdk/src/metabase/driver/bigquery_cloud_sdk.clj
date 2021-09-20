@@ -17,8 +17,8 @@
             [schema.core :as s])
   (:import com.google.auth.oauth2.ServiceAccountCredentials
            [com.google.cloud.bigquery BigQuery BigQuery$DatasetOption BigQuery$JobOption BigQuery$TableListOption
-                                      BigQuery$TableOption BigQueryOptions DatasetId EmptyTableResult Field FieldValue
-                                      FieldValueList QueryJobConfiguration Schema Table TableId TableResult]
+                                      BigQuery$TableOption BigQueryOptions DatasetId EmptyTableResult Field Field$Mode
+                                      FieldValue FieldValueList QueryJobConfiguration Schema Table TableId TableResult]
            java.io.ByteArrayInputStream
            java.util.Collections))
 
@@ -90,28 +90,38 @@
      (.getTable client (TableId/of project-id dataset-id table-id) empty-table-options)
      (.getTable client dataset-id table-id empty-table-options))))
 
-(defn- bigquery-type->base-type [field-type]
-  (case field-type
-    "BOOLEAN"    :type/Boolean
-    "FLOAT"      :type/Float
-    "INTEGER"    :type/Integer
-    "RECORD"     :type/Dictionary ; RECORD -> field has a nested schema
-    "STRING"     :type/Text
-    "DATE"       :type/Date
-    "DATETIME"   :type/DateTime
-    "TIMESTAMP"  :type/DateTimeWithLocalTZ
-    "TIME"       :type/Time
-    "NUMERIC"    :type/Decimal
-    "BIGNUMERIC" :type/Decimal
-    :type/*))
+(defn- bigquery-type->base-type
+  "Returns the base type for the given BigQuery field's `field-mode` and `field-type`. In BQ, an ARRAY of INTEGER has
+  \"REPEATED\" as the mode, and \"INTEGER\" as the type name.
+
+  If/when we are able to represent complex types more precisely, we may want to capture that information separately.
+  For now, though, we will check if the `field-mode` is \"REPEATED\" and return our :type/Array for that case, then
+  proceed to check the `field-type` otherwise."
+  [field-mode field-type]
+  (if (= Field$Mode/REPEATED field-mode)
+    :type/Array
+    (case field-type
+      "BOOLEAN"    :type/Boolean
+      "FLOAT"      :type/Float
+      "INTEGER"    :type/Integer
+      "RECORD"     :type/Dictionary ; RECORD -> field has a nested schema
+      "STRING"     :type/Text
+      "DATE"       :type/Date
+      "DATETIME"   :type/DateTime
+      "TIMESTAMP"  :type/DateTimeWithLocalTZ
+      "TIME"       :type/Time
+      "NUMERIC"    :type/Decimal
+      "BIGNUMERIC" :type/Decimal
+      :type/*)))
 
 (s/defn ^:private table-schema->metabase-field-info
   [schema :- Schema]
   (for [[idx ^Field field] (m/indexed (.getFields schema))]
-    (let [type-name (.. field getType name)]
+    (let [type-name (.. field getType name)
+          f-mode    (.getMode field)]
       {:name              (.getName field)
        :database-type     type-name
-       :base-type         (bigquery-type->base-type type-name)
+       :base-type         (bigquery-type->base-type f-mode type-name)
        :database-position idx})))
 
 (defmethod driver/describe-table :bigquery-cloud-sdk
@@ -146,8 +156,11 @@
   com.google.api.services.bigquery.model.GetQueryResultsResponse
   (job-complete? [this] (.getJobComplete ^com.google.api.services.bigquery.model.GetQueryResultsResponse this))
 
+  TableResult
+  (job-complete? [_] true)
+
   EmptyTableResult
-  (job-complete? [this] true))
+  (job-complete? [_] true))
 
 (defn do-with-finished-response
   "Impl for `with-finished-response`."
