@@ -11,7 +11,7 @@ describe("scenarios > question > saved", () => {
     cy.signInAsNormalUser();
   });
 
-  it.skip("should should correctly display 'Save' modal (metabase#13817)", () => {
+  it("should should correctly display 'Save' modal (metabase#13817)", () => {
     openOrdersTable({ mode: "notebook" });
     cy.findByText("Summarize").click();
     cy.findByText("Count of rows").click();
