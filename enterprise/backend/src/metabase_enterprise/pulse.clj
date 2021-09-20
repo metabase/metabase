@@ -1,4 +1,6 @@
 (ns metabase-enterprise.pulse
+  "TODO -- this should be moved to `metabase-enterprise.<feature>.pulse` once we figure out which feature this belongs
+  to."
   (:require [metabase-enterprise.enhancements.ee-strategy-impl :as ee-strategy-impl]
             [metabase.public-settings.premium-features :as settings.premium-features]
             [metabase.pulse.interface :as i])
