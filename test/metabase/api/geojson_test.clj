@@ -103,7 +103,12 @@
              ((mt/user->client :rasta) :get 200 "geojson" :url test-geojson-url))))
     (testing "error is returned if URL connection fails"
       (is (= "GeoJSON URL failed to load"
-             ((mt/user->client :rasta) :get 400 "geojson" :url test-broken-geojson-url))))))
+             ((mt/user->client :rasta) :get 400 "geojson" :url test-broken-geojson-url))))
+    (testing "error is returned if URL is invalid"
+      (is (= (str "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to "
+                  "a file on the classpath. URLs referring to hosts that supply internal hosting metadata are "
+                  "prohibited.")
+             ((mt/user->client :rasta) :get 400 "geojson" :url "file://tmp"))))))
 
 (deftest key-proxy-endpoint-test
   (testing "GET /api/geojson/:key"
@@ -120,9 +125,9 @@
         (is (= {:type        "Point"
                 :coordinates [37.77986 -122.429]}
                (client/client :get 200 "geojson/middle-earth"))))
-        (testing "try fetching an invalid key; should fail"
-          (is (= "Invalid custom GeoJSON key: invalid-key"
-                 ((mt/user->client :rasta) :get 400 "geojson/invalid-key")))))
+      (testing "try fetching an invalid key; should fail"
+        (is (= "Invalid custom GeoJSON key: invalid-key"
+               ((mt/user->client :rasta) :get 400 "geojson/invalid-key")))))
     (mt/with-temporary-setting-values [custom-geojson test-broken-custom-geojson]
       (testing "fetching a broken URL should fail"
         (is (= "GeoJSON URL failed to load"
