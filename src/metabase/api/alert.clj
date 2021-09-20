@@ -198,27 +198,12 @@
       ;; Finally, return the updated Alert
       updated-alert)))
 
-(defn- should-archive-after-unsubscribe?
-  "An alert should be archived after a user unsubscribes if
-     - they are the only recipient
-     - there is no slack channel"
-  [alert unsubscribing-user-id]
-  (let [{:keys [recipients]} (email-channel alert)]
-    (and (= 1 (count recipients))
-         (= unsubscribing-user-id (:id (first recipients)))
-         (nil? (slack-channel alert)))))
-
 (api/defendpoint DELETE "/:id/subscription"
   "Unsubscribes a user from the given alert"
   [id]
   (let [alert (pulse/retrieve-alert id)]
     (api/read-check alert)
-
-    (if (should-archive-after-unsubscribe? alert api/*current-user-id*)
-      (db/transaction
-        (pulse/unsubscribe-from-alert! id api/*current-user-id*)
-        (pulse/update-alert! {:id id, :archived true}))
-      (pulse/unsubscribe-from-alert! id api/*current-user-id*))
+    (pulse/unsubscribe-from-alert! id api/*current-user-id*)
     ;; Send emails letting people know they have been unsubscribe
     (when (email/email-configured?)
       (messages/send-you-unsubscribed-alert-email! alert @api/*current-user*))
