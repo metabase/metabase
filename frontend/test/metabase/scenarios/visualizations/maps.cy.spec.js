@@ -208,6 +208,16 @@ describe("scenarios > visualizations > maps", () => {
       },
     });
 
+    // Ensure chart is rendered
     cy.get(".leaflet-interactive");
+
+    cy.findByText("Visualization").click();
+
+    // Ensure the Map visualization is sensible
+    cy.findByTestId("Map-button").should(
+      "have.attr",
+      "data-is-sensible",
+      "true",
+    );
   });
 });
