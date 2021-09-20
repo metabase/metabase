@@ -1,7 +1,13 @@
 import Question from "metabase-lib/lib/Question";
+import Aggregation from "metabase-lib/lib/queries/structured/Aggregation";
+import Breakout from "metabase-lib/lib/queries/structured/Breakout";
+import Filter from "metabase-lib/lib/queries/structured/Filter";
+import Join from "metabase-lib/lib/queries/structured/Join";
+import OrderBy from "metabase-lib/lib/queries/structured/OrderBy";
 import {
   SAMPLE_DATASET,
   ORDERS,
+  PRODUCTS,
   metadata,
 } from "__support__/sample_dataset_fixture";
 import { normalizeQuery } from "./selectors";
@@ -58,6 +64,17 @@ const FEW_ORDERS_TABLE_FIELDS = [
   ORDERS.CREATED_AT,
 ].map(toFieldRef);
 
+const TEST_CLAUSE = {
+  AGGREGATION: ["count"],
+  BREAKOUT: toFieldRef(ORDERS.CREATED_AT),
+  FILTER: [">=", toFieldRef(ORDERS.TOTAL), 20],
+  ORDER_BY: ["asc", ["aggregation", 0]],
+  JOIN: {
+    alias: "Products",
+    condition: ["=", toFieldRef(ORDERS.PRODUCT_ID), toFieldRef(PRODUCTS.ID)],
+  },
+};
+
 describe("normalizeQuery", () => {
   it("does nothing if query is nullish", () => {
     expect(normalizeQuery(null)).toBe(null);
@@ -98,6 +115,55 @@ describe("normalizeQuery", () => {
       const normalizedQuery = normalizeQuery(datasetQuery);
 
       expect(normalizedQuery).toEqual(datasetQuery);
+    });
+
+    it("converts clauses into plain MBQL objects", () => {
+      const { datasetQuery } = setup({
+        query: {
+          aggregation: [new Aggregation(TEST_CLAUSE.AGGREGATION)],
+          breakout: [new Breakout(TEST_CLAUSE.BREAKOUT)],
+          filter: [new Filter(TEST_CLAUSE.FILTER)],
+          joins: [new Join(TEST_CLAUSE.JOIN)],
+          "order-by": [new OrderBy(TEST_CLAUSE.ORDER_BY)],
+        },
+      });
+
+      const { query: normalizedQuery } = normalizeQuery(datasetQuery);
+
+      expect(normalizedQuery).toEqual({
+        ...datasetQuery.query,
+        aggregation: [TEST_CLAUSE.AGGREGATION],
+        breakout: [TEST_CLAUSE.BREAKOUT],
+        filter: [TEST_CLAUSE.FILTER],
+        joins: [TEST_CLAUSE.JOIN],
+        "order-by": [TEST_CLAUSE.ORDER_BY],
+      });
+      expect(normalizedQuery.aggregation[0]).not.toBeInstanceOf(Aggregation);
+      expect(normalizedQuery.breakout[0]).not.toBeInstanceOf(Breakout);
+      expect(normalizedQuery.filter[0]).not.toBeInstanceOf(Filter);
+      expect(normalizedQuery.joins[0]).not.toBeInstanceOf(Join);
+      expect(normalizedQuery["order-by"][0]).not.toBeInstanceOf(OrderBy);
+    });
+
+    it("does nothing to clauses if they're plain MBQL already", () => {
+      const { datasetQuery } = setup({
+        query: {
+          aggregation: [TEST_CLAUSE.AGGREGATION],
+          breakout: [TEST_CLAUSE.BREAKOUT],
+          filter: [TEST_CLAUSE.FILTER],
+          joins: [TEST_CLAUSE.JOIN],
+          "order-by": [TEST_CLAUSE.ORDER_BY],
+        },
+      });
+
+      const { query: normalizedQuery } = normalizeQuery(datasetQuery);
+
+      expect(normalizedQuery).toEqual(datasetQuery.query);
+      expect(normalizedQuery.aggregation[0]).not.toBeInstanceOf(Aggregation);
+      expect(normalizedQuery.breakout[0]).not.toBeInstanceOf(Breakout);
+      expect(normalizedQuery.filter[0]).not.toBeInstanceOf(Filter);
+      expect(normalizedQuery.joins[0]).not.toBeInstanceOf(Join);
+      expect(normalizedQuery["order-by"][0]).not.toBeInstanceOf(OrderBy);
     });
   });
 

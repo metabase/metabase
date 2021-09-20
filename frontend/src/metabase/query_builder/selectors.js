@@ -162,23 +162,38 @@ const getNextRunParameterValues = createSelector(
       .filter(p => p !== undefined),
 );
 
+function normalizeClause(clause) {
+  return typeof clause.raw === "function" ? clause.raw() : clause;
+}
+
 // Certain differences in a query should be ignored. `normalizeQuery`
 // standardizes the query before comparison in `getIsResultDirty`.
 export function normalizeQuery(query, tableMetadata) {
   if (!query) {
     return query;
   }
-  if (query.query && tableMetadata) {
-    query = updateIn(query, ["query", "fields"], fields => {
-      fields = fields
-        ? // if the query has fields, copy them before sorting
-          [...fields]
-        : // if the fields aren't set, we get them from the table metadata
-          tableMetadata.fields.map(({ id }) => ["field", id, null]);
-      return fields.sort((a, b) =>
-        JSON.stringify(b).localeCompare(JSON.stringify(a)),
-      );
-    });
+  if (query.query) {
+    if (tableMetadata) {
+      query = updateIn(query, ["query", "fields"], fields => {
+        fields = fields
+          ? // if the query has fields, copy them before sorting
+            [...fields]
+          : // if the fields aren't set, we get them from the table metadata
+            tableMetadata.fields.map(({ id }) => ["field", id, null]);
+        return fields.sort((a, b) =>
+          JSON.stringify(b).localeCompare(JSON.stringify(a)),
+        );
+      });
+    }
+    ["aggregation", "breakout", "filter", "joins", "order-by"].forEach(
+      clauseList => {
+        if (query.query[clauseList]) {
+          query = updateIn(query, ["query", clauseList], clauses =>
+            clauses.map(normalizeClause),
+          );
+        }
+      },
+    );
   }
   if (query.native && query.native["template-tags"] == null) {
     query = assocIn(query, ["native", "template-tags"], {});

@@ -115,6 +115,14 @@ export class MBQLObjectClause {
   metadata() {
     return this._query.metadata();
   }
+
+  raw() {
+    const entries = Object.entries(this).filter(entry => {
+      const [, value] = entry;
+      return value !== undefined;
+    });
+    return Object.fromEntries(entries);
+  }
 }
 
 function _private(object, key, value) {
