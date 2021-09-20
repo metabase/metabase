@@ -3,6 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { getValues } from "redux-form";
+import styled from "styled-components";
 
 import { t } from "ttag";
 
@@ -210,9 +211,40 @@ export default class DatabaseEditApp extends Component {
                           <Box width={620}>
                             <Form>
                               {formFields.map(formField => {
-                                console.log("🚀", formField);
+                                const InlinedSelectFormField = styled(
+                                  FormField,
+                                )`
+                                  float: left;
+                                  width: 30%;
+                                `;
+
+                                const InlinedInputFormField = styled(FormField)`
+                                  float: right;
+                                  margin-left: 0px;
+                                  width: 66%;
+                                  clear: none;
+                                `;
+
+                                let FormFieldComponent;
+                                switch (formField.name) {
+                                  case "details.ssl-keystore-file-options":
+                                  case "details.ssl-truststore-file-options":
+                                    FormFieldComponent = InlinedSelectFormField;
+                                    break;
+
+                                  case "details.ssl-keystore-file-blob":
+                                  case "details.ssl-keystore-file-path":
+                                  case "details.ssl-truststore-file-blob":
+                                  case "details.ssl-truststore-file-path":
+                                    FormFieldComponent = InlinedInputFormField;
+                                    break;
+
+                                  default:
+                                    FormFieldComponent = FormField;
+                                }
+
                                 return (
-                                  <FormField
+                                  <FormFieldComponent
                                     key={formField.name}
                                     name={formField.name}
                                   />

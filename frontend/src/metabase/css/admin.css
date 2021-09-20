@@ -192,7 +192,7 @@
   padding: 0.6em;
   border: 1px solid var(--color-border);
   background-color: var(--color-bg-white);
-  border-radius: var(--default-border-radius);
+  border-radius: 4px;
   font-weight: 700;
   min-width: 104px;
 }

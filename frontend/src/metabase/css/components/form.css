@@ -12,6 +12,7 @@
 }
 
 .Form-field {
+  clear: both;
   margin-bottom: 1.5em;
   color: var(--color-text-medium);
 }
@@ -105,6 +106,7 @@
 }
 
 .Form-field .AdminSelect {
+  padding: 15px;
   border-color: var(--form-field-border-color);
 }
 
