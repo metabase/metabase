@@ -2,8 +2,7 @@
   (:refer-clojure :exclude [format])
   (:require [clojure.test :refer :all]
             [metabase.pulse.render.common :as common]
-            [metabase.shared.models.visualization-settings :as mb.viz]
-            [metabase.test :as mt]))
+            [metabase.shared.models.visualization-settings :as mb.viz]))
 
 (defn format [value viz]
   (str ((common/number-formatter viz nil) value)))
