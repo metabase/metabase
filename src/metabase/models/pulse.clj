@@ -15,7 +15,6 @@
   code in line with the rest of the codebase, but for the time being, it probably makes sense to follow the existing
   patterns in this namespace rather than further confuse things."
   (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.events :as events]
