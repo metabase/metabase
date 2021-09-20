@@ -419,7 +419,9 @@
   [driver [_ arg p]]
   (let [[offset quantiles] (percentile->quantile p)]
     (hsql/raw (format "APPROX_QUANTILES(%s, %s)[OFFSET(%s)]"
-                      (hformat/to-sql (sql.qp/->honeysql driver arg))
+                      (-> (sql.qp/->honeysql driver arg)
+                          (hformat/format :quoting (sql.qp/quote-style driver))
+                          first)
                       quantiles
                       offset))))
 
