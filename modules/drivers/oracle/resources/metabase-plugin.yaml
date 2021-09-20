@@ -34,13 +34,31 @@ driver:
       type: boolean
       visible-if:
         ssl: true
-    - name: ssl-keystore
-      display-name: Keystore file
-      type: secret
+    - name: ssl-keystore-file-options
+      display-name: "astarst"
+      type: select
+      options:
+        - name: Blob
+          value: blob
+        - name: File
+          value: file
+      visible-if:
+        ssl-use-keystore: true
+      default: blob
+    - name: ssl-keystore-file-blob
+      display-name: Keystore file blob
+      type: file
       secret-kind: keystore
       required: false
       visible-if:
-        ssl-use-keystore: true
+        ssl-keystore-file-options: blob
+    - name: ssl-keystore-file-path
+      display-name: Keystore file path
+      type: string
+      secret-kind: keystore
+      required: false
+      visible-if:
+        ssl-keystore-file-options: file
     - name: ssl-keystore-password
       display-name: Keystore password
       type: password
