@@ -139,6 +139,38 @@ describe("binning related reproductions", () => {
     cy.findByText("2018");
   });
 
+  it.skip("should not remove order-by (sort) when changing the breakout field on an SQL saved question (metabase#17975)", () => {
+    cy.createNativeQuestion(
+      {
+        name: "17975",
+        native: {
+          query: "SELECT * FROM ORDERS",
+        },
+      },
+      { loadMetadata: true },
+    );
+
+    cy.visit("/question/new");
+    cy.findByText("Custom question").click();
+    cy.findByText("Saved Questions").click();
+    cy.findByText("17975").click();
+
+    cy.findByText("Pick the metric you want to see").click();
+    cy.findByText("Count of rows").click();
+    cy.findByText("Pick a column to group by").click();
+    cy.findByText("CREATED_AT").click();
+
+    cy.findByText("Sort").click();
+    cy.findByText("CREATED_AT").click();
+
+    // Change the binning of the breakout field
+    cy.findByText("CREATED_AT: Month").click();
+    cy.findByText("by month").click();
+    cy.findByText("Quarter").click();
+
+    cy.findByText("CREATED_AT");
+  });
+
   describe("binning should work on nested question based on question that has aggregation (metabase#16379)", () => {
     beforeEach(() => {
       cy.createQuestion({
