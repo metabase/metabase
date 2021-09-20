@@ -238,13 +238,13 @@
                            Field    [_     {:table_id (u/the-id table)
                                             :name "name"
                                             :base_type "type/Text"}]]
-             (mt/with-log-level :trace (query->native
-                                         {:database (u/the-id db)
-                                          :type     :query
-                                          :query    {:source-table (u/the-id table)
-                                                     :limit        1}
-                                          :info     {:executed-by 1000
-                                                     :query-hash  (byte-array [1 2 3 4])}})))))))
+             (query->native
+               {:database (u/the-id db)
+                :type     :query
+                :query    {:source-table (u/the-id table)
+                           :limit        1}
+                :info     {:executed-by 1000
+                           :query-hash  (byte-array [1 2 3 4])}}))))))
 
 (deftest unprepare-params-test
   (mt/test-driver :bigquery-cloud-sdk

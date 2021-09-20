@@ -330,12 +330,12 @@
     (let [fake-execute-called (atom false)
           orig-fn             @#'bigquery/execute-bigquery]
       (testing "Retry functionality works as expected"
-        (with-redefs [bigquery/execute-bigquery (fn [^BigQuery client ^String sql parameters]
+        (with-redefs [bigquery/execute-bigquery (fn [^BigQuery client ^String sql parameters _ _]
                                                   (if-not @fake-execute-called
                                                     (do (reset! fake-execute-called true)
                                                         ;; simulate a transient error being thrown
                                                         (throw (ex-info "Transient error" {:retryable? true})))
-                                                    (orig-fn client sql parameters)))]
+                                                    (orig-fn client sql parameters nil nil)))]
           ;; run any other test that requires a successful query execution
           (table-rows-sample-test)
           ;; make sure that the fake exception was thrown, and thus the query execution was retried
