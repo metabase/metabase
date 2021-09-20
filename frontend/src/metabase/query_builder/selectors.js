@@ -163,8 +163,8 @@ const getNextRunParameterValues = createSelector(
 );
 
 // Certain differences in a query should be ignored. `normalizeQuery`
-// standardizes the query before comparision in `getIsResultDirty`.
 function normalizeQuery(query, tableMetadata) {
+// standardizes the query before comparison in `getIsResultDirty`.
   if (!query) {
     return query;
   }
