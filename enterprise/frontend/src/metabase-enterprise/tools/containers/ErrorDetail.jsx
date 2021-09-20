@@ -1,4 +1,9 @@
 import React from "react";
+import PropTypes from "prop-types";
+import { getIn } from "icepick";
+
+import Question from "metabase-lib/lib/Question";
+import { QuestionResultLoader } from "metabase/containers/QuestionResultLoader";
 
 const CARD_ID_ROW_IDX = 0;
 const ErrorDrill = ({clicked}) => {
@@ -25,8 +30,42 @@ export const ErrorMode = {
   drills: () => [ErrorDrill],
 };
 
-export default function ErrorDetail(props) {
-  const { cardId } = props;
-  ///// how to query the thingy?
-  return (<div></div>)
+function ErrorDetailDisplay(props) {
+  const { result } = props;
+  const resRow = getIn(result, ["data", "rows", 0]);
+  const resCols = getIn(result, ["data", "cols"]);
+  console.log(resCols);
+  if (resRow && resCols) {
+    return <div>bleh</div>;
+  } else {
+    return null;
+  }
 }
+
+export default function ErrorDetail(props) {
+  const { params } = props;
+  const cardId = parseInt(params.cardId);
+  // not the card in question, the card we're creating to query for the error details
+  const card = {
+    name: "Card Errors",
+    dataset_query: {
+      type: "internal",
+      fn: "metabase-enterprise.audit.pages.query-detail/bad-card",
+      args: [cardId],
+    },
+  }
+  const question = new Question(card, null);
+
+  return <QuestionResultLoader question={question}>
+            {({ rawSeries, result }) => (
+              <ErrorDetailDisplay result={result} />
+            )}
+          </QuestionResultLoader>
+}
+
+ErrorDetail.propTypes = {
+  params: PropTypes.object,
+};
+ErrorDetailDisplay.propTypes = {
+  result: PropTypes.object,
+};
