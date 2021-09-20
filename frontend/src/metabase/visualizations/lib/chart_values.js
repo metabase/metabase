@@ -22,11 +22,14 @@ export function onRenderValueLabels(
     chart.settings.series(chart.series[seriesIndex]),
   );
 
-  // See if each series is enabled. Fall back to the chart-level setting if undefined.
+  // See if each series is enabled, fall back to the chart-level setting if undefined.
+  // Scatter charts should not have labels, the setting could be enabled when switching between chart types.
   let showSeries = seriesSettings.map(
-    ({ show_series_values = chart.settings["graph.show_values"] }) =>
-      show_series_values,
+    ({ display, show_series_values = chart.settings["graph.show_values"] }) =>
+      show_series_values && !isScatter(display),
   );
+
+  let displays = seriesSettings.map(settings => settings.display);
 
   if (
     showSeries.every(s => s === false) || // every series setting is off
@@ -35,7 +38,6 @@ export function onRenderValueLabels(
     return;
   }
 
-  let displays = seriesSettings.map(settings => settings.display);
   if (chart.settings["stackable.stack_type"] === "stacked") {
     // When stacked, flatten datas into one series. We'll sum values on the same x point later.
     datas = [datas.flat()];
@@ -48,6 +50,10 @@ export function onRenderValueLabels(
 
   function isBarLike(display) {
     return display === "bar" || display === "waterfall";
+  }
+
+  function isScatter(display) {
+    return display === "scatter";
   }
 
   let barWidth;
