@@ -1,16 +1,3 @@
-//  DEPRECATED: use `views-and-saves-by-time ` instead.
-export const viewsPerDay = () => ({
-  card: {
-    name: "Total dashboard views per day",
-    display: "line",
-    dataset_query: {
-      type: "internal",
-      fn: "metabase-enterprise.audit.pages.dashboards/views-per-day",
-      args: [],
-    },
-  },
-});
-
 export const viewsAndSavesByTime = () => ({
   card: {
     name: "Dashboard views and saves per day",

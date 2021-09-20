@@ -138,7 +138,7 @@
                :message      nil
                :user         @rasta-revision-info
                :diff         nil
-               :description  nil}]
+               :description  "rearranged the cards."}]
              (do
                (create-dashboard-revision! dash true :rasta)
                (let [dashcard (db/insert! DashboardCard :dashboard_id id :card_id (:id card))]

@@ -1,26 +1,25 @@
 import styled from "styled-components";
 import { Flex } from "grid-styled";
-import { height } from "styled-system";
+import { color, height, width } from "styled-system";
 
-import { color } from "metabase/lib/colors";
+import { color as brandColor } from "metabase/lib/colors";
 
-const Avatar = styled(Flex).attrs({
-  align: "center",
-  justifyContent: "center",
-  height: ({ size }) => size,
-  width: ({ size }) => size,
-  fontSize: ({ size }) => size * 0.75,
-})`
-  ${height};
+const Avatar = styled(Flex)`
+  justify-content: center;
+  align-items: center;
   border-radius: 999px;
   font-weight: 900;
   line-height: 1;
+  ${height};
+  ${width};
+  ${color};
 `;
 
 Avatar.defaultProps = {
-  bg: color("brand"),
+  bg: brandColor("brand"),
   color: "white",
-  size: ["3em"],
+  height: ["3em"],
+  width: ["3em"],
 };
 
 function initial(name) {

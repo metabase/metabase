@@ -635,6 +635,26 @@ describe("scenarios > question > custom columns", () => {
     cy.findByText("round([Temperature])");
     cy.findByText(/Field formula/i).click(); // Click outside of formula field instead of blur
     cy.findByText("round([Temperature])").should("not.exist");
+
+    // Should also work with escape key
+    popover().within(() => cy.get("[contenteditable='true']").click());
+    cy.findByText("round([Temperature])");
+    popover().within(() => cy.get("[contenteditable='true']").type("{esc}"));
+    cy.findByText("round([Temperature])").should("not.exist");
+  });
+
+  it("custom expression helper shouldn't be hidden when clicked on (metabase#17548)", () => {
+    openPeopleTable({ mode: "notebook" });
+    cy.findByText("Custom column").click();
+    popover().within(() => {
+      cy.get("[contenteditable='true']").type(`rou{enter}`, {
+        delay: 100,
+      });
+    });
+
+    // Shouldn't hide on click
+    cy.findByText("round([Temperature])").click();
+    cy.findByText("round([Temperature])");
   });
 
   it.skip("should work with `isNull` function (metabase#15922)", () => {

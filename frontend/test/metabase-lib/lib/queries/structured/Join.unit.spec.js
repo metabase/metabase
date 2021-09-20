@@ -31,6 +31,12 @@ const PRODUCTS_ID_JOIN_FIELD_REF = [
   { "join-alias": "Products" },
 ];
 
+const PRODUCTS_CREATED_AT_JOIN_FIELD_REF = [
+  "field",
+  PRODUCTS.CREATED_AT.id,
+  { "join-alias": "Products" },
+];
+
 const ORDERS_PRODUCT_JOIN_CONDITION = [
   "=",
   ORDERS_PRODUCT_ID_FIELD_REF,
@@ -40,7 +46,7 @@ const ORDERS_PRODUCT_JOIN_CONDITION = [
 const ORDERS_PRODUCT_JOIN_CONDITION_BY_CREATED_AT = [
   "=",
   ORDERS_CREATED_AT_FIELD_REF,
-  PRODUCTS_CREATED_AT_FIELD_REF,
+  PRODUCTS_CREATED_AT_JOIN_FIELD_REF,
 ];
 
 const ORDERS_PRODUCT_MULTI_FIELD_JOIN_CONDITION = [
@@ -178,7 +184,7 @@ describe("Join", () => {
           condition: [
             "and",
             ORDERS_PRODUCT_JOIN_CONDITION,
-            ["=", null, PRODUCTS_CREATED_AT_FIELD_REF],
+            ["=", null, PRODUCTS_CREATED_AT_JOIN_FIELD_REF],
           ],
         }),
       });
@@ -265,7 +271,7 @@ describe("Join", () => {
 
       join = join.setJoinDimension({
         index: 1,
-        dimension: PRODUCTS_CREATED_AT_FIELD_REF,
+        dimension: PRODUCTS_CREATED_AT_JOIN_FIELD_REF,
       });
 
       expect(join).toEqual({
@@ -424,8 +430,96 @@ describe("Join", () => {
     });
   });
 
+  const invalidTestCases = [
+    [
+      "missing source table",
+      {
+        sourceTable: null,
+      },
+    ],
+    [
+      "missing condition",
+      {
+        condition: null,
+      },
+    ],
+    [
+      "missing both dimensions",
+      {
+        condition: ["=", null, null],
+      },
+    ],
+    [
+      "missing parent dimension",
+      {
+        condition: ["=", null, PRODUCTS_ID_FIELD_REF],
+      },
+    ],
+    [
+      "missing join dimension",
+      {
+        condition: ["=", ORDERS_PRODUCT_ID_FIELD_REF, null],
+      },
+    ],
+    [
+      "second condition is empty",
+      {
+        condition: ["and", ORDERS_PRODUCT_JOIN_CONDITION, ["=", null, null]],
+      },
+    ],
+    [
+      "missing parent dimension in second condition",
+      {
+        condition: [
+          "and",
+          ORDERS_PRODUCT_JOIN_CONDITION,
+          ["=", null, PRODUCTS_CREATED_AT_FIELD_REF],
+        ],
+      },
+    ],
+    [
+      "missing join dimension in second condition",
+      {
+        condition: [
+          "and",
+          ORDERS_PRODUCT_JOIN_CONDITION,
+          ["=", ORDERS_CREATED_AT_FIELD_REF, null],
+        ],
+      },
+    ],
+  ];
+
+  describe("hasGaps", () => {
+    it("should return 'false' for complete one-fields pair join", () => {
+      const join = getJoin({
+        query: getOrdersJoinQuery({
+          condition: ORDERS_PRODUCT_JOIN_CONDITION,
+        }),
+      });
+      expect(join.hasGaps()).toBe(false);
+    });
+
+    it("should return 'false' for complete multi-fields join", () => {
+      const join = getJoin({
+        query: getOrdersJoinQuery({
+          condition: ORDERS_PRODUCT_MULTI_FIELD_JOIN_CONDITION,
+        }),
+      });
+      expect(join.hasGaps()).toBe(false);
+    });
+
+    invalidTestCases.forEach(([invalidReason, queryOpts]) => {
+      it(`should return 'true' when ${invalidReason}`, () => {
+        const join = getJoin({
+          query: getOrdersJoinQuery(queryOpts),
+        });
+        expect(join.hasGaps()).toBe(true);
+      });
+    });
+  });
+
   describe("isValid", () => {
-    it("should return true for complete one-fields pair join", () => {
+    it("should return 'true' for complete one-fields pair join", () => {
       const join = getJoin({
         query: getOrdersJoinQuery({
           condition: ORDERS_PRODUCT_JOIN_CONDITION,
@@ -434,7 +528,7 @@ describe("Join", () => {
       expect(join.isValid()).toBe(true);
     });
 
-    it("should return true for complete multi-fields join", () => {
+    it("should return 'true' for complete multi-fields join", () => {
       const join = getJoin({
         query: getOrdersJoinQuery({
           condition: ORDERS_PRODUCT_MULTI_FIELD_JOIN_CONDITION,
@@ -443,64 +537,19 @@ describe("Join", () => {
       expect(join.isValid()).toBe(true);
     });
 
-    const invalidTestCases = [
-      [
-        "missing source table",
-        {
-          sourceTable: null,
-        },
-      ],
-      [
-        "missing condition",
-        {
-          condition: null,
-        },
-      ],
-      [
-        "missing both dimensions",
-        {
-          condition: ["=", null, null],
-        },
-      ],
-      [
-        "missing parent dimension",
-        {
-          condition: ["=", null, PRODUCTS_ID_FIELD_REF],
-        },
-      ],
-      [
-        "missing join dimension",
-        {
-          condition: ["=", ORDERS_PRODUCT_ID_FIELD_REF, null],
-        },
-      ],
-      [
-        "second condition is empty",
-        {
-          condition: ["and", ORDERS_PRODUCT_JOIN_CONDITION, ["=", null, null]],
-        },
-      ],
-      [
-        "missing parent dimension in second condition",
-        {
+    it("should return 'false' if references unavailable field", () => {
+      const join = getJoin({
+        query: getOrdersJoinQuery({
           condition: [
             "and",
             ORDERS_PRODUCT_JOIN_CONDITION,
-            ["=", null, PRODUCTS_CREATED_AT_FIELD_REF],
+            ["=", ["field", 111222333444, null], PRODUCTS_CREATED_AT_FIELD_REF],
           ],
-        },
-      ],
-      [
-        "missing join dimension in second condition",
-        {
-          condition: [
-            "and",
-            ORDERS_PRODUCT_JOIN_CONDITION,
-            ["=", ORDERS_CREATED_AT_FIELD_REF, null],
-          ],
-        },
-      ],
-    ];
+        }),
+      });
+
+      expect(join.isValid()).toBe(false);
+    });
 
     invalidTestCases.forEach(([invalidReason, queryOpts]) => {
       it(`should return 'false' when ${invalidReason}`, () => {

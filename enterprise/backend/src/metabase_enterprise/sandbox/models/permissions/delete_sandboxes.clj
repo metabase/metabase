@@ -4,7 +4,7 @@
             [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
             [metabase.models.permissions.delete-sandboxes :as delete-sandboxes]
             [metabase.models.table :refer [Table]]
-            [metabase.public-settings.metastore :as settings.metastore]
+            [metabase.public-settings.premium-features :as settings.premium-features]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [pretty.core :as pretty]
@@ -132,7 +132,7 @@
 (def ee-strategy-impl
   "EE impl for Sandbox (GTAP) deletion behavior. Don't use this directly."
   (ee-strategy-impl/reify-ee-strategy-impl
-    #'settings.metastore/enable-sandboxes?
+    #'settings.premium-features/enable-sandboxes?
     impl
     delete-sandboxes/oss-default-impl
     delete-sandboxes/DeleteSandboxes))

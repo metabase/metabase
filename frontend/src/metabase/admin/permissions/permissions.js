@@ -1,4 +1,7 @@
 import { t } from "ttag";
+import { push } from "react-router-redux";
+import { assocIn } from "icepick";
+
 import {
   createAction,
   createThunkAction,
@@ -16,7 +19,7 @@ import {
   updateTablesPermission,
 } from "metabase/lib/permissions";
 import { getMetadata } from "metabase/selectors/metadata";
-import { assocIn } from "icepick";
+import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 
 const INITIALIZE_DATA_PERMISSIONS =
   "metabase/admin/permissions/INITIALIZE_DATA_PERMISSIONS";
@@ -59,6 +62,26 @@ export const loadCollectionPermissions = createThunkAction(
   },
 );
 
+export const LIMIT_DATABASE_PERMISSION =
+  "metabase/admin/permissions/LIMIT_DATABASE_PERMISSION";
+export const limitDatabasePermission = createThunkAction(
+  LIMIT_DATABASE_PERMISSION,
+  (groupId, entityId, newValue) => dispatch => {
+    if (newValue) {
+      dispatch(
+        updateDataPermission({
+          groupId,
+          permission: { name: "access" },
+          value: newValue,
+          entityId,
+        }),
+      );
+    }
+
+    dispatch(push(getGroupFocusPermissionsUrl(groupId, entityId)));
+  },
+);
+
 const UPDATE_DATA_PERMISSION =
   "metabase/admin/permissions/UPDATE_DATA_PERMISSION";
 export const updateDataPermission = createThunkAction(
@@ -74,7 +97,7 @@ export const updateDataPermission = createThunkAction(
         );
         if (action) {
           dispatch(action);
-          return null;
+          return;
         }
       }
 

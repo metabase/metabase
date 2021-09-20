@@ -82,6 +82,12 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
   padding-bottom: ${space(1)};
   z-index: 4;
 
+  ${({ isEditing }) =>
+    isEditing &&
+    css`
+      border-top: 1px solid ${color("border")};
+    `}
+
   ${({ isSticky }) =>
     isSticky &&
     css`
@@ -89,5 +95,13 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
       position: fixed;
       top: 0;
       left: 0;
+    `}
+`;
+
+export const CardsContainer = styled(FullWidthContainer)`
+  ${({ addMarginTop }) =>
+    addMarginTop &&
+    css`
+      margin-top: ${space(2)};
     `}
 `;

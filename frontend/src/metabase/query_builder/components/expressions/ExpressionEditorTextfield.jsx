@@ -51,31 +51,34 @@ const HelpText = ({ helpText, width }) =>
       style={{ width: width }}
       isOpen
     >
-      <p
-        className="p2 m0 text-monospace text-bold"
-        style={{ background: colors["bg-yellow"] }}
-      >
-        {helpText.structure}
-      </p>
-      <div className="p2 border-top">
-        <p className="mt0 text-bold">{helpText.description}</p>
-        <p className="text-code m0 text-body">{helpText.example}</p>
-      </div>
-      <div className="p2 border-top">
-        {helpText.args.map(({ name, description }, index) => (
-          <div key={index}>
-            <h4 className="text-medium">{name}</h4>
-            <p className="mt1 text-bold">{description}</p>
-          </div>
-        ))}
-        <ExternalLink
-          className="link text-bold block my1"
-          target="_blank"
-          href={MetabaseSettings.docsUrl("users-guide/expressions")}
+      {/* Prevent stealing focus from input box causing the help text to be closed (metabase#17548) */}
+      <div onMouseDown={e => e.preventDefault()}>
+        <p
+          className="p2 m0 text-monospace text-bold"
+          style={{ background: colors["bg-yellow"] }}
         >
-          <Icon name="reference" size={12} className="mr1" />
-          {t`Learn more`}
-        </ExternalLink>
+          {helpText.structure}
+        </p>
+        <div className="p2 border-top">
+          <p className="mt0 text-bold">{helpText.description}</p>
+          <p className="text-code m0 text-body">{helpText.example}</p>
+        </div>
+        <div className="p2 border-top">
+          {helpText.args.map(({ name, description }, index) => (
+            <div key={index}>
+              <h4 className="text-medium">{name}</h4>
+              <p className="mt1 text-bold">{description}</p>
+            </div>
+          ))}
+          <ExternalLink
+            className="link text-bold block my1"
+            target="_blank"
+            href={MetabaseSettings.docsUrl("users-guide/expressions")}
+          >
+            <Icon name="reference" size={12} className="mr1" />
+            {t`Learn more`}
+          </ExternalLink>
+        </div>
       </div>
     </Popover>
   ) : null;
@@ -250,10 +253,19 @@ export default class ExpressionEditorTextfield extends React.Component {
     this.setState({
       suggestions: [],
       highlightedSuggestionIndex: 0,
+      helpText: null,
     });
   }
 
-  onInputBlur = () => {
+  onInputBlur = e => {
+    // Switching to another window also triggers the blur event.
+    // When our window gets focus again, the input will automatically
+    // get focus, so ignore the blue event to avoid showing an
+    // error message when the user is not actually done.
+    if (e.target === document.activeElement) {
+      return;
+    }
+
     this.clearSuggestions();
 
     const { tokenizerError, compileError } = this.state;
@@ -265,7 +277,7 @@ export default class ExpressionEditorTextfield extends React.Component {
         displayError.push(compileError);
       }
     }
-    this.setState({ displayError, helpText: null });
+    this.setState({ displayError });
 
     // whenever our input blurs we push the updated expression to our parent if valid
     if (this.state.expression) {

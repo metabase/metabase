@@ -4,8 +4,15 @@ import { AxisBottom, AxisLeft } from "@visx/axis";
 import { GridRows } from "@visx/grid";
 import { scaleBand, scaleLinear } from "@visx/scale";
 import { Bar } from "@visx/shape";
-import { formatDate } from "../../lib/formatDate";
-import { formatNumber } from "../../lib/formatNumber";
+import { Text } from "@visx/text";
+import {
+  getXTickLabelProps,
+  getYTickLabelProps,
+  getYTickWidth,
+} from "../../lib/axes";
+import { formatDate } from "../../lib/dates";
+import { formatNumber } from "../../lib/numbers";
+import { truncateText } from "../../lib/text";
 
 const propTypes = {
   data: PropTypes.array.isRequired,
@@ -43,20 +50,24 @@ const layout = {
   },
   numTicks: 5,
   barPadding: 0.2,
+  labelPadding: 12,
   strokeDasharray: "4",
 };
 
 const TimeSeriesBarChart = ({ data, accessors, settings, labels }) => {
+  const yTickWidth = getYTickWidth(data, accessors, settings);
+  const yLabelOffset = yTickWidth + layout.labelPadding;
+  const xMin = yLabelOffset + layout.font.size * 1.5;
   const xMax = layout.width - layout.margin.right;
   const yMax = layout.height - layout.margin.bottom;
-  const innerWidth = xMax - layout.margin.left;
+  const innerWidth = xMax - xMin;
   const innerHeight = yMax - layout.margin.top;
   const leftLabel = labels?.left;
   const bottomLabel = labels?.bottom;
 
   const xScale = scaleBand({
     domain: data.map(accessors.x),
-    range: [layout.margin.left, xMax],
+    range: [xMin, xMax],
     round: true,
     padding: layout.barPadding,
   });
@@ -76,25 +87,18 @@ const TimeSeriesBarChart = ({ data, accessors, settings, labels }) => {
     return { x, y, width, height, fill: layout.colors.brand };
   };
 
-  const getLeftTickLabelProps = () => ({
-    fontSize: layout.font.size,
-    fontFamily: layout.font.family,
-    fill: layout.colors.textMedium,
-    textAnchor: "end",
-  });
+  const getXTickProps = ({ formattedValue, ...props }) => {
+    const textWidth = xScale.bandwidth();
+    const truncatedText = truncateText(formattedValue, textWidth);
 
-  const getBottomTickLabelProps = () => ({
-    fontSize: layout.font.size,
-    fontFamily: layout.font.family,
-    fill: layout.colors.textMedium,
-    textAnchor: "middle",
-  });
+    return { ...props, children: truncatedText };
+  };
 
   return (
     <svg width={layout.width} height={layout.height}>
       <GridRows
         scale={yScale}
-        left={layout.margin.left}
+        left={xMin}
         width={innerWidth}
         strokeDasharray={layout.strokeDasharray}
       />
@@ -103,12 +107,13 @@ const TimeSeriesBarChart = ({ data, accessors, settings, labels }) => {
       ))}
       <AxisLeft
         scale={yScale}
-        left={layout.margin.left}
+        left={xMin}
         label={leftLabel}
+        labelOffset={yLabelOffset}
         hideTicks
         hideAxisLine
         tickFormat={value => formatNumber(value, settings?.y)}
-        tickLabelProps={() => getLeftTickLabelProps()}
+        tickLabelProps={() => getYTickLabelProps(layout)}
       />
       <AxisBottom
         scale={xScale}
@@ -118,7 +123,8 @@ const TimeSeriesBarChart = ({ data, accessors, settings, labels }) => {
         stroke={layout.colors.textLight}
         tickStroke={layout.colors.textLight}
         tickFormat={value => formatDate(value, settings?.x)}
-        tickLabelProps={() => getBottomTickLabelProps()}
+        tickComponent={props => <Text {...getXTickProps(props)} />}
+        tickLabelProps={() => getXTickLabelProps(layout)}
       />
     </svg>
   );

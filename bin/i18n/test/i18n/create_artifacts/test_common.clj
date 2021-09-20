@@ -50,12 +50,23 @@
    :source-references ["frontend/src/metabase/admin/datamodel/components/database/MetadataTableList.jsx:77"]
    :comment           nil})
 
+(def plural-message-frontend-with-empty
+  {:id                "{0} metric"
+   :id-plural         "{0} metrics"
+   :str               nil
+   :str-plural        ["{0} metrik" ""]
+   :fuzzy?            false
+   :plural?           true
+   :source-references ["frontend/src/metabase/query_builder/components/view/QuestionDescription.jsx:20"]
+   :comment           nil})
+
 (def messages
   [singular-message-frontend
    singular-message-backend
    singular-template-message-frontend
    singular-template-message-backend
-   plural-message-frontend])
+   plural-message-frontend
+   plural-message-frontend-with-empty])
 
 (def po-contents
   {:headers  {"MIME-Version"              "1.0",

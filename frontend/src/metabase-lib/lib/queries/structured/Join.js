@@ -535,18 +535,29 @@ export default class Join extends MBQLObjectClause {
     return this._query.removeJoin(this._index);
   }
 
-  isValid() {
+  hasGaps() {
     if (!this.joinedTable()) {
-      return false;
+      return true;
     }
     const parentDimensions = this.parentDimensions();
     const joinDimensions = this.joinDimensions();
     return (
-      parentDimensions.length > 0 &&
-      joinDimensions.length > 0 &&
-      parentDimensions.every(Boolean) &&
-      joinDimensions.every(Boolean) &&
-      parentDimensions.length === joinDimensions.length
+      parentDimensions.length === 0 ||
+      joinDimensions.length === 0 ||
+      parentDimensions.length !== joinDimensions.length ||
+      parentDimensions.some(dimension => dimension == null) ||
+      joinDimensions.some(dimension => dimension == null)
+    );
+  }
+
+  isValid() {
+    if (this.hasGaps()) {
+      return false;
+    }
+    const dimensionOptions = this.parent().dimensionOptions();
+    const dimensions = [...this.parentDimensions(), ...this.joinDimensions()];
+    return dimensions.every(dimension =>
+      dimensionOptions.hasDimension(dimension),
     );
   }
 

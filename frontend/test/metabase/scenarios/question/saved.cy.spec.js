@@ -104,7 +104,29 @@ describe("scenarios > question > saved", () => {
     });
   });
 
-  it.skip("should be able to use integer filter on a saved native query (metabase#15808)", () => {
+  it("should revert a saved question to a previous version", () => {
+    cy.intercept("PUT", "/api/card/**").as("updateQuestion");
+
+    cy.visit("/question/1");
+    cy.findByTestId("saved-question-header-button").click();
+    cy.findByText("History").click();
+
+    cy.findByTestId("edit-details-button").click();
+    cy.findByLabelText("Description")
+      .click()
+      .type("This is a question");
+
+    cy.button("Save").click();
+    cy.wait("@updateQuestion");
+
+    cy.findByText(/changed description/i);
+
+    cy.findByRole("button", { name: "Revert" }).click();
+
+    cy.findByText(/^Reverted to an earlier revision/i);
+  });
+
+  it("should be able to use integer filter on a saved native query (metabase#15808)", () => {
     cy.createNativeQuestion({
       name: "15808",
       native: { query: "select * from products" },
@@ -113,7 +135,9 @@ describe("scenarios > question > saved", () => {
     cy.findByText("Simple question").click();
     cy.findByText("Saved Questions").click();
     cy.findByText("15808").click();
-    cy.findByText("Filter").click();
+    cy.findAllByText("Filter")
+      .first()
+      .click();
     cy.findByTestId("sidebar-right")
       .findByText(/Rating/i)
       .click();

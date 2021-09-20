@@ -80,36 +80,43 @@
    {:name         "tunnel-host"
     :display-name "SSH tunnel host"
     :placeholder  "What hostname do you use to connect to the SSH tunnel?"
-    :required     true}
+    :required     true
+    :visible-if   {"tunnel-enabled" true}}
    {:name         "tunnel-port"
     :display-name "SSH tunnel port"
     :type         :integer
     :default      22
-    :required     false}
+    :required     false
+    :visible-if   {"tunnel-enabled" true}}
    {:name         "tunnel-user"
     :display-name "SSH tunnel username"
     :placeholder  "What username do you use to login to the SSH tunnel?"
-    :required     true}
+    :required     true
+    :visible-if   {"tunnel-enabled" true}}
    ;; this is entirely a UI flag
    {:name         "tunnel-auth-option"
     :display-name "SSH Authentication"
     :type         :select
     :options      [{:name "SSH Key" :value "ssh-key"}
                    {:name "Password" :value "password"}]
-    :default      "ssh-key"}
+    :default      "ssh-key"
+    :visible-if   {"tunnel-enabled" true}}
    {:name         "tunnel-pass"
     :display-name "SSH tunnel password"
     :type         :password
-    :placeholder  "******"}
+    :placeholder  "******"
+    :visible-if   {"tunnel-auth-option" "password"}}
    {:name         "tunnel-private-key"
     :display-name "SSH private key to connect to the tunnel"
     :type         :string
     :placeholder  "Paste the contents of an ssh private key here"
-    :required     true}
+    :required     true
+    :visible-if   {"tunnel-auth-option" "ssh-key"}}
    {:name         "tunnel-private-key-passphrase"
     :display-name "Passphrase for SSH private key"
     :type         :password
-    :placeholder  "******"}])
+    :placeholder  "******"
+    :visible-if   {"tunnel-auth-option" "ssh-key"}}])
 
 (defn with-tunnel-config
   "Add preferences for ssh tunnels to a drivers :connection-properties"

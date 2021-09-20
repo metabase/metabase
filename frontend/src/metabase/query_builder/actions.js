@@ -49,6 +49,7 @@ import {
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
   getSnippetCollectionId,
+  getQueryResults,
 } from "./selectors";
 
 import { MetabaseApi, CardApi, UserApi } from "metabase/services";
@@ -916,6 +917,15 @@ export const updateQuestion = (
     }
     // </PIVOT LOGIC>
 
+    // Native query should never be in notebook mode (metabase#12651)
+    if (getQueryBuilderMode(getState()) !== "view" && newQuestion.isNative()) {
+      await dispatch(
+        setQueryBuilderMode("view", {
+          shouldUpdateUrl: false,
+        }),
+      );
+    }
+
     // Replace the current question with a new one
     await dispatch.action(UPDATE_QUESTION, { card: newQuestion.card() });
 
@@ -1129,6 +1139,7 @@ export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
 export const queryCompleted = (question, queryResults) => {
   return async (dispatch, getState) => {
     const [{ data }] = queryResults;
+    const [{ data: prevData }] = getQueryResults(getState()) || [{}];
     const originalQuestion = getOriginalQuestion(getState());
     const dirty =
       !originalQuestion ||
@@ -1145,7 +1156,10 @@ export const queryCompleted = (question, queryResults) => {
       // Otherwise, trust that the question was saved with the correct display.
       question = question
         // if we are going to trigger autoselection logic, check if the locked display no longer is "sensible".
-        .maybeUnlockDisplay(getSensibleDisplays(data))
+        .maybeUnlockDisplay(
+          getSensibleDisplays(data),
+          prevData && getSensibleDisplays(prevData),
+        )
         .setDefaultDisplay()
         .switchTableScalar(data);
     }

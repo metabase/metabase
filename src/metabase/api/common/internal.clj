@@ -62,7 +62,7 @@
           (log/warn
            (u/format-color 'red (str "We don't have a nice error message for schema: %s defined at %s\n"
                                      "Consider wrapping it in `su/with-api-error-message`.")
-             (u/pprint-to-str schema) route-str))))))
+             (u/pprint-to-str schema) (u/add-period route-str)))))))
 
 (defn- param-name
   "Return the appropriate name for this `param-symb` based on its `schema`. Usually this is just the name of the
@@ -84,9 +84,9 @@
 (defn- format-route-dox
   "Return a markdown-formatted string to be used as documentation for a `defendpoint` function."
   [route-str docstr param->schema]
-  (str (format "## `%s`" route-str)
+  (str (format "### `%s`" route-str)
        (when (seq docstr)
-         (str "\n\n" docstr))
+         (str "\n\n" (u/add-period docstr)))
        (format-route-schema-dox param->schema route-str)))
 
 (defn- contains-superuser-check?
@@ -100,7 +100,7 @@
   "Generate a documentation string for a `defendpoint` route."
   [method route docstr args param->schema body]
   (format-route-dox (endpoint-name method route)
-                    (str docstr (when (contains-superuser-check? body)
+                    (str (u/add-period docstr) (when (contains-superuser-check? body)
                                   "\n\nYou must be a superuser to do this."))
                     (merge (args-form-symbols args)
                            param->schema)))

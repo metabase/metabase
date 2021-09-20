@@ -139,7 +139,7 @@
   (let [{:keys [email]} (user/fetch-user user-kwd)]
     {email [(merge {:from (email/email-from-address)
                     :to #{email}}
-                    email-map)]}))
+                   email-map)]}))
 
 (defn temp-csv
   [file-basename content]
