@@ -68,7 +68,7 @@
     (datetime/format-temporal-str timezone-id value col)
 
     (number? value)
-    (common/format-number value visualization-settings)
+    (common/format-number value col visualization-settings)
 
     :else
     (str value)))
@@ -84,7 +84,7 @@
     ;; todo integer columns with a unit
     (or (isa? (:effective_type col) :type/Number)
         (isa? (:base_type col) :type/Number))
-    (common/number-formatter visualization-settings)
+    (common/number-formatter col visualization-settings)
 
     :else
     str))

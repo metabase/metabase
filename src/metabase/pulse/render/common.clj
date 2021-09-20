@@ -29,10 +29,12 @@
 (defn number-formatter
   "Return a function that will take a number and format it according to its column viz settings. Useful to compute the
   format string once and then apply it over many values."
-  ([col-viz]
-   (number-formatter col-viz (mb.viz/db->norm-column-settings-entries
-                              (:type/Number (public-settings/custom-formatting)))))
-  ([col-viz site-settings]
+  ([column col-viz]
+   (number-formatter column
+                     col-viz
+                     (mb.viz/db->norm-column-settings-entries
+                      (:type/Number (public-settings/custom-formatting)))))
+  ([{:keys [effective_type base_type] :as _column} col-viz site-settings]
    (let [{::mb.viz/keys [number-separators decimals scale number-style
                          prefix suffix currency-style currency]} (merge site-settings col-viz)
 
@@ -48,13 +50,16 @@
          base               (if (= number-style "scientific") "0" "#,###")
          fmt-str            (cond-> (cond
                                       decimals  (apply str base "." (repeat decimals "0"))
-                                      currency? (str base ".00")
-                                      :else     (str base ".##"))
+
+                                      (isa? (or effective_type base_type) :type/Integer)
+                                      base
+
+                                      :else     (str base ".00"))
                               (= number-style "scientific") (str "E0")
                               (= number-style "percent")    (str "%"))
          fmtr               (DecimalFormat. fmt-str symbols)]
      (fn [value]
-       (when value
+       (if (number? value)
          (NumericWrapper.
           (str (when prefix prefix)
                (when (and currency? (or (nil? currency-style)
@@ -65,15 +70,16 @@
                (.format fmtr (* value (or scale 1)))
                (when (and currency? (= currency-style "name"))
                  (str \space (get-in currency/currency [(keyword (or currency "USD")) :name_plural])))
-               (when suffix suffix))))))))
+               (when suffix suffix)))
+         value)))))
 
 (s/defn format-number :- NumericWrapper
   "Format a number `n` and return it as a NumericWrapper; this type is used to do special formatting in other
   `pulse.render` namespaces."
   ([n :- s/Num]
    (NumericWrapper. (cl-format nil (if (integer? n) "~:d" "~,2f") n)))
-  ([value col-viz]
-   (let [fmttr (number-formatter col-viz)]
+  ([value column col-viz]
+   (let [fmttr (number-formatter column col-viz)]
      (fmttr value))))
 
 (defn graphing-column-row-fns
