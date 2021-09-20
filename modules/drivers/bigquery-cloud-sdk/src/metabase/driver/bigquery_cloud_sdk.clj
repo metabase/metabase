@@ -19,10 +19,8 @@
             [schema.core :as s])
   (:import com.google.auth.oauth2.ServiceAccountCredentials
            [com.google.cloud.bigquery BigQuery BigQuery$DatasetOption BigQuery$JobOption BigQuery$TableListOption
-                                      BigQuery$TableOption BigQueryException BigQueryOptions DatasetId EmptyTableResult
-                                      Field Field$Mode FieldValue FieldValueList JobId QueryJobConfiguration QueryRequestInfo Schema
-                                      Table
-                                      TableId TableResult]
+                                      BigQuery$TableOption BigQueryException BigQueryOptions DatasetId Field Field$Mode FieldValue
+                                      FieldValueList QueryJobConfiguration Schema Table TableId TableResult]
            java.io.ByteArrayInputStream
            java.util.Collections))
 
@@ -138,8 +136,6 @@
 ;;; |                                                Running Queries                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private ^:dynamic ^Integer *query-timeout-seconds* 60)
-
 (def ^:private ^:dynamic ^Long *page-size*
   "Maximum number of rows to return per page in a query. Leave unset (i.e. falling to the library default) by default,
   but override for testing."
@@ -171,18 +167,19 @@
           ;; following the fast query path (i.e. RPC)
           ;; check out com.google.cloud.bigquery.QueryRequestInfo.isFastQuerySupported for full details
           res-fut (future (.query client (.build request) (u/varargs BigQuery$JobOption)))]
-      (future ; this needs to run in a separate thread, because the <!! operation blocks forever
-        (when (a/<!! cancel-chan)
-          (log/debugf "Received a message on the cancel channel; attempting to stop the BigQuery query execution")
-          (reset! cancel-requested? true) ; signal the page iteration fn to stop
-          (if-not (or (future-cancelled? res-fut) (future-done? res-fut))
-            ;; somehow, even the FIRST page hasn't come back yet (i.e. the .query call above), so cancel the future to
-            ;; interrupt the thread waiting on that response to come back
-            ;; unfortunately, with this particular overload of .query, we have no access to (nor the ability to control)
-            ;; the jobId, so we have no way to use the BigQuery client to cancel any job that might be running
-            (future-cancel res-fut)
-            (if (future-done? res-fut) ; canceled received after it was finished; may as well return it
-              @res-fut))))
+      (when cancel-chan
+        (future ; this needs to run in a separate thread, because the <!! operation blocks forever
+          (when (a/<!! cancel-chan)
+            (log/debugf "Received a message on the cancel channel; attempting to stop the BigQuery query execution")
+            (reset! cancel-requested? true) ; signal the page iteration fn to stop
+            (if-not (or (future-cancelled? res-fut) (future-done? res-fut))
+              ;; somehow, even the FIRST page hasn't come back yet (i.e. the .query call above), so cancel the future to
+              ;; interrupt the thread waiting on that response to come back
+              ;; unfortunately, with this particular overload of .query, we have no access to (nor the ability to control)
+              ;; the jobId, so we have no way to use the BigQuery client to cancel any job that might be running
+              (future-cancel res-fut)
+              (if (future-done? res-fut) ; canceled received after it was finished; may as well return it
+                @res-fut)))))
       @res-fut)
     (catch BigQueryException e
       (if (.isRetryable e)

@@ -191,7 +191,7 @@
 ;; if I run a BigQuery query, does it get a remark added to it?
 (defn- query->native [query]
   (let [native-query (atom nil)]
-    (with-redefs [bigquery/process-native* (fn [_ _ sql _]
+    (with-redefs [bigquery/process-native* (fn [_ _ sql _ _]
                                              (reset! native-query sql)
                                              (throw (Exception. "Done.")))]
       (u/ignore-exceptions
@@ -238,13 +238,13 @@
                            Field    [_     {:table_id (u/the-id table)
                                             :name "name"
                                             :base_type "type/Text"}]]
-             (query->native
-               {:database (u/the-id db)
-                :type     :query
-                :query    {:source-table (u/the-id table)
-                           :limit        1}
-                :info     {:executed-by 1000
-                           :query-hash  (byte-array [1 2 3 4])}}))))))
+             (mt/with-log-level :trace (query->native
+                                         {:database (u/the-id db)
+                                          :type     :query
+                                          :query    {:source-table (u/the-id table)
+                                                     :limit        1}
+                                          :info     {:executed-by 1000
+                                                     :query-hash  (byte-array [1 2 3 4])}})))))))
 
 (deftest unprepare-params-test
   (mt/test-driver :bigquery-cloud-sdk

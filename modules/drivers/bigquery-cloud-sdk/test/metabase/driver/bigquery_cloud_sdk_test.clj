@@ -50,11 +50,7 @@
      (let [pages-retrieved (atom 0)
            page-callback   (fn [] (swap! pages-retrieved inc))]
        (with-bindings {#'bigquery/*page-size*             25
-                       #'bigquery/*page-callback*         page-callback
-                       ;; for this test, set timeout to 0 to prevent setting it
-                       ;; so that the "fast" query path can be used (so that the max-results-per-page actually takes
-                       ;; effect); see com.google.cloud.bigquery.QueryRequestInfo.isFastQuerySupported
-                       #'bigquery/*query-timeout-seconds* 0}
+                       #'bigquery/*page-callback*         page-callback}
          (let [actual (->> (metadata-queries/table-rows-sample (Table (mt/id :venues))
                              [(Field (mt/id :venues :id))
                               (Field (mt/id :venues :name))]
@@ -224,17 +220,13 @@
 (deftest return-errors-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "If a Query fails, we should return the error right away (#14918)"
-      (let [before-ms (System/currentTimeMillis)]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Error executing query"
-             (qp/process-query
-              {:database (mt/id)
-               :type     :native
-               :native   {:query "SELECT abc FROM 123;"}})))
-        (testing "Should return the error *before* the query timeout"
-          (let [duration-ms (- (System/currentTimeMillis) before-ms)]
-            (is (< duration-ms (u/seconds->ms @#'bigquery/*query-timeout-seconds*)))))))))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Error executing query"
+           (qp/process-query
+            {:database (mt/id)
+             :type     :native
+             :native   {:query "SELECT abc FROM 123;"}}))))))
 
 (deftest project-id-override-test
   (mt/test-driver :bigquery-cloud-sdk
