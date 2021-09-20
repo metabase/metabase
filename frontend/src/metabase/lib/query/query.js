@@ -28,8 +28,6 @@ import * as E from "./expression";
 import * as FIELD from "./field";
 import * as FIELD_REF from "./field_ref";
 
-import _ from "underscore";
-
 // AGGREGATION
 
 export const getAggregations = (query: SQ) =>
@@ -184,7 +182,7 @@ function setBreakoutClause(query: SQ, breakoutClause: ?BreakoutClause): SQ {
     const sortId = FIELD_REF.getFieldTargetId(sortField);
     if (sortId != null) {
       // Remove invalid field reference
-      if (!_.contains(breakoutIds, sortId)) {
+      if (!breakoutIds.includes(sortId)) {
         query = removeOrderBy(query, index);
       } else {
         // Update the field, since it can change its binning, temporal unit, etc
