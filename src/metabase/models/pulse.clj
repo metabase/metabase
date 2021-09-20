@@ -552,24 +552,3 @@
   ;; fetch the fully updated pulse and return it (and fire off an event)
   (->> (retrieve-alert (u/the-id alert))
        (events/publish-event! :pulse-update)))
-
-(defn unsubscribe-from-alert!
-  "Unsubscribe a User with `user-id` from an Alert with `alert-id`."
-  [alert-id user-id]
-  (let [[result] (db/execute! {:delete-from PulseChannelRecipient
-                               ;; The below select * clause is required for the query to work on MySQL (PG and H2 work
-                               ;; without it). MySQL will fail if the delete has an implicit join. By wrapping the
-                               ;; query in a select *, it forces that query to use a temp table rather than trying to
-                               ;; make the join directly, which works in MySQL, PG and H2
-                               :where [:= :id {:select [:*]
-                                               :from [[{:select [:pcr.id]
-                                                        :from [[PulseChannelRecipient :pcr]]
-                                                        :join [[PulseChannel :pchan] [:= :pchan.id :pcr.pulse_channel_id]
-                                                               [Pulse :p] [:= :p.id :pchan.pulse_id]]
-                                                        :where [:and
-                                                                [:= :p.id alert-id]
-                                                                [:not= :p.alert_condition nil]
-                                                                [:= :pcr.user_id user-id]]} "r"]]}]})]
-    (when (zero? result)
-      (log/warnf "Failed to remove user-id '%s' from alert-id '%s'" user-id alert-id))
-    result))

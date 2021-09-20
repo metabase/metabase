@@ -5,6 +5,8 @@
             [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.email :as email]
+            [metabase.models.pulse-channel :refer [channel-types PulseChannel]]
+            [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
             [metabase.email.messages :as messages]
             [metabase.models.card :refer [Card]]
             [metabase.models.interface :as mi]
@@ -203,7 +205,10 @@
   [id]
   (let [alert (pulse/retrieve-alert id)]
     (api/read-check alert)
-    (pulse/unsubscribe-from-alert! id api/*current-user-id*)
+    (api/let-404 [alert-id (u/the-id alert)
+                  pc-id    (db/select-one-id PulseChannel :pulse_id alert-id :channel_type "email")
+                  pcr-id   (db/select-one-id PulseChannelRecipient :pulse_channel_id pc-id :user_id api/*current-user-id*)]
+      (db/delete! PulseChannelRecipient :id pcr-id))
     ;; Send emails letting people know they have been unsubscribe
     (when (email/email-configured?)
       (messages/send-you-unsubscribed-alert-email! alert @api/*current-user*))
