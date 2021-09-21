@@ -57,7 +57,7 @@ driver:
         ssl-keystore-file-options: local
 
     - name: ssl-keystore-file-blob
-      type: file
+      type: textFile
       secret-kind: keystore
       required: false
       visible-if:
@@ -98,7 +98,7 @@ driver:
         ssl-truststore-file-options: local
 
     - name: ssl-truststore-file-blob
-      type: file
+      type: textFile
       secret-kind: truststore
       required: false
       visible-if:
