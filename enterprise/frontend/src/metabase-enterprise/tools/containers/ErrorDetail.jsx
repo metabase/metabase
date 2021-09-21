@@ -87,10 +87,15 @@ function ErrorDetailDisplay(props) {
   }
 }
 
+function ErrorRetryButton(props) {
+  return null;
+}
+
 export default function ErrorDetail(props) {
   const { params } = props;
   const cardId = parseInt(params.cardId);
-  // not the card in question, the card we're creating to query for the error details
+  // below card is not the card in question, but
+  // the card we're creating to query for the error details
   const card = {
     name: "Card Errors",
     dataset_query: {
@@ -106,6 +111,7 @@ export default function ErrorDetail(props) {
     <QuestionResultLoader question={question}>
       {({ rawSeries, result }) => <ErrorDetailDisplay result={result} />}
     </QuestionResultLoader>
+    <ErrorRetryButton cardId={cardId} />
     </div>
   );
 }
@@ -115,4 +121,7 @@ ErrorDetail.propTypes = {
 };
 ErrorDetailDisplay.propTypes = {
   result: PropTypes.object,
+};
+ErrorRetryButton.propTypes = {
+  cardId: PropTypes.integer,
 };
