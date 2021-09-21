@@ -413,20 +413,24 @@
         cells   (mapcat
                  (fn [filter] [[:td
                                 {:style (render.style/style {:color render.style/color-text-medium
-                                                             :min-width "88px"})}
+                                                             :min-width "100px"
+                                                             :padding "4px 4px 4px 0"
+                                                             :vertical-align "baseline"})}
                                 (:name filter)]
                                [:td
                                 {:style (render.style/style {:color render.style/color-text-dark
-                                                             :min-width "88px"
-                                                             :padding-left "5px"
-                                                             :font-weight 700})}
+                                                             :min-width "100px"
+                                                             :padding "4px 16px 4px 8px"
+                                                             :vertical-align "baseline"})}
                                 (filters/value-string filter)]])
                  filters)
         rows    (partition 4 4 nil cells)]
     (html
      [:table {:style (render.style/style {:table-layout :fixed
                                           :border-collapse :collapse
+                                          :width "100%"
                                           :font-size  "12px"
+                                          :font-weight 700
                                           :margin-top "8px"})}
       (for [row rows]
         [:tr {} row])])))
