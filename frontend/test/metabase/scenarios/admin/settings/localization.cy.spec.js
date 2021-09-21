@@ -134,7 +134,7 @@ describe("scenarios > admin > localization", () => {
       dataset_query: {
         type: "native",
         native: {
-          query: "SELECT 10 as a",
+          query: "SELECT 10 as A",
           "template-tags": {},
         },
         database: 1,
