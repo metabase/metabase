@@ -146,7 +146,9 @@ export default class DimensionList extends Component {
                 dimension={sectionDimension}
                 dimensions={subDimensions}
                 onChangeDimension={dimension => {
-                  this.props.onChangeDimension(dimension);
+                  this.props.onChangeDimension(dimension, {
+                    isSubDimension: true,
+                  });
                   onClose();
                 }}
               />

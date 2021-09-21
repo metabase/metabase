@@ -3,6 +3,7 @@
 import crossfilter from "crossfilter";
 import d3 from "d3";
 import dc from "dc";
+import { t } from "ttag";
 
 import { formatValue } from "metabase/lib/formatting";
 
@@ -117,7 +118,15 @@ export default function rowRenderer(
     .elasticX(true)
     .dimension(dimension)
     .group(group)
-    .ordering(d => d.index);
+    .ordering(d => d.index)
+    .othersLabel(t`Others`);
+
+  chart.xAxis().tickFormat(value => {
+    return formatValue(value, {
+      ...settings.column(cols[1]),
+      type: "axis",
+    });
+  });
 
   const labelPadHorizontal = 5;
   let labelsOutside = false;

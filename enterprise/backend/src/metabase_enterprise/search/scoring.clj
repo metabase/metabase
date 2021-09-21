@@ -1,4 +1,5 @@
 (ns metabase-enterprise.search.scoring
+  ;; TODO -- move to `metabase-enterprise.<feature>.*`
   (:require [metabase-enterprise.enhancements.ee-strategy-impl :as ee-strategy-impl]
             [metabase.public-settings.premium-features :as settings.premium-features]
             [metabase.search.scoring :as scoring]))

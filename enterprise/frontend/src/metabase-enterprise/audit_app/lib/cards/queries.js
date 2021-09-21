@@ -5,7 +5,7 @@ export const viewsAndAvgExecutionTimeByDay = () => ({
     dataset_query: {
       type: "internal",
       fn:
-        "metabase-enterprise.audit.pages.queries/views-and-avg-execution-time-by-day",
+        "metabase-enterprise.audit-app.pages.queries/views-and-avg-execution-time-by-day",
       args: [],
     },
     visualization_settings: {
@@ -25,7 +25,7 @@ export const mostPopular = () => ({
     display: "row",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit.pages.queries/most-popular",
+      fn: "metabase-enterprise.audit-app.pages.queries/most-popular",
       args: [],
     },
     visualization_settings: {
@@ -41,7 +41,7 @@ export const slowest = () => ({
     display: "row",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit.pages.queries/slowest",
+      fn: "metabase-enterprise.audit-app.pages.queries/slowest",
       args: [],
     },
     visualization_settings: {
@@ -63,7 +63,7 @@ export const bad_table = (
     display: "table",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit.pages.queries/bad-table",
+      fn: "metabase-enterprise.audit-app.pages.queries/bad-table",
       args: [
         errorFilter,
         dbFilter,
@@ -101,7 +101,7 @@ export const table = (
     display: "table",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit.pages.queries/table",
+      fn: "metabase-enterprise.audit-app.pages.queries/table",
       args: [questionFilter, collectionFilter, sortColumn, sortDirection],
     },
     visualization_settings: {

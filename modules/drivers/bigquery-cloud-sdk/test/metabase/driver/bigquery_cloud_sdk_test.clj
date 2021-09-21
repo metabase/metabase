@@ -10,7 +10,8 @@
             [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
             [metabase.test.util :as tu]
             [metabase.util :as u]
-            [toucan.db :as db]))
+            [toucan.db :as db])
+  (:import com.google.cloud.bigquery.BigQuery))
 
 (deftest can-connect?-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -330,3 +331,18 @@
               (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm}))
           "`describe-table` should detect the correct base-type for array type columns")))))
 
+(deftest retry-certain-exceptions-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (let [fake-execute-called (atom false)
+          orig-fn             @#'bigquery/execute-bigquery]
+      (testing "Retry functionality works as expected"
+        (with-redefs [bigquery/execute-bigquery (fn [^BigQuery client ^String sql parameters]
+                                                  (if-not @fake-execute-called
+                                                    (do (reset! fake-execute-called true)
+                                                        ;; simulate a transient error being thrown
+                                                        (throw (ex-info "Transient error" {:retryable? true})))
+                                                    (orig-fn client sql parameters)))]
+          ;; run any other test that requires a successful query execution
+          (table-rows-sample-test)
+          ;; make sure that the fake exception was thrown, and thus the query execution was retried
+          (is (true? @fake-execute-called)))))))

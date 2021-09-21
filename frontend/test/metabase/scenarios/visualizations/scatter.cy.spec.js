@@ -70,6 +70,21 @@ describe("scenarios > visualizations > scatter", () => {
       cy.findByText("Products count:");
     });
   });
+
+  it("should not display data points even when enabled in settings (metabase#13247)", () => {
+    visitQuestionAdhoc({
+      display: "scatter",
+      dataset_query: testQuery,
+      visualization_settings: {
+        "graph.metrics": ["count"],
+        "graph.dimensions": ["CREATED_AT"],
+        "graph.show_values": true,
+      },
+    });
+
+    cy.findByText("Visualization");
+    cy.findAllByText("79").should("not.exist");
+  });
 });
 
 function triggerPopoverForBubble(index = 13) {

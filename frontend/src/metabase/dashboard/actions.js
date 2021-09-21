@@ -611,6 +611,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
             cardId: card.id,
             parameters: datasetQuery.parameters,
             ignore_cache: ignoreCache,
+            dashboard_id: dashcard.dashboard_id,
           },
           queryOptions,
         ),
@@ -830,19 +831,6 @@ export const removeParameter = createThunkAction(
     updateParameters(dispatch, getState, parameters =>
       parameters.filter(p => p.id !== parameterId),
     );
-
-    if (parameterId != null) {
-      dispatch(
-        setSidebar({
-          name: SIDEBAR_NAME.editParameter,
-          props: {
-            parameterId,
-          },
-        }),
-      );
-    } else {
-      dispatch(closeSidebar());
-    }
   },
 );
 

@@ -28,6 +28,14 @@ export default class SaveQuestionModal extends Component {
     multiStep: PropTypes.bool,
   };
 
+  validateName = (name, context) => {
+    if (context.form.saveType.value !== "overwrite") {
+      // We don't care if the form is valid when overwrite mode is enabled,
+      // as original question's data will be submitted instead of the form values
+      return validate.required()(name);
+    }
+  };
+
   handleSubmit = async details => {
     // TODO Atte Keinäenn 31/1/18 Refactor this
     // I think that the primary change should be that
@@ -105,7 +113,10 @@ export default class SaveQuestionModal extends Component {
           initialValues={initialValues}
           fields={[
             { name: "saveType" },
-            { name: "name" },
+            {
+              name: "name",
+              validate: this.validateName,
+            },
             { name: "description" },
             { name: "collection_id" },
           ]}
@@ -133,11 +144,6 @@ export default class SaveQuestionModal extends Component {
                       name="name"
                       title={t`Name`}
                       placeholder={t`What is the name of your card?`}
-                      validate={
-                        values.saveType === "create"
-                          ? validate.required()
-                          : null
-                      }
                     />
                     <FormField
                       name="description"

@@ -19,17 +19,16 @@ import {
   getTablesPermission,
   diffPermissions,
   isRestrictivePermission,
-  isBlockPermission,
 } from "metabase/lib/permissions";
 import {
   DATA_ACCESS_IS_REQUIRED,
   UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
 } from "../constants/messages";
 import {
-  PLUGIN_ADMIN_PERMISSIONS_DATABASE_BLOCK_OPTIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION,
+  PLUGIN_ADVANCED_PERMISSIONS,
 } from "metabase/plugins";
 import {
   getPermissionWarning,
@@ -215,11 +214,6 @@ const NATIVE_QUERIES_OPTIONS = [
   DATA_PERMISSION_OPTIONS.none,
 ];
 
-const shouldIncludeRestrictivePluginOptions = value =>
-  PLUGIN_ADMIN_PERMISSIONS_DATABASE_BLOCK_OPTIONS.some(
-    option => option.value === value,
-  );
-
 const buildFieldsPermissions = (
   entityId,
   groupId,
@@ -264,19 +258,20 @@ const buildFieldsPermissions = (
   return [
     {
       name: "access",
-      isDisabled: isAdmin || isBlockPermission(value),
+      isDisabled:
+        isAdmin || PLUGIN_ADVANCED_PERMISSIONS.isBlockPermission(value),
       disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
       isHighlighted: isAdmin,
       value,
       warning,
-      options: [
-        DATA_PERMISSION_OPTIONS.all,
-        ...PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
-        DATA_PERMISSION_OPTIONS.noSelfService,
-        ...(shouldIncludeRestrictivePluginOptions(value)
-          ? PLUGIN_ADMIN_PERMISSIONS_DATABASE_BLOCK_OPTIONS
-          : []),
-      ],
+      options: PLUGIN_ADVANCED_PERMISSIONS.addTablePermissionOptions(
+        [
+          DATA_PERMISSION_OPTIONS.all,
+          ...PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
+          DATA_PERMISSION_OPTIONS.noSelfService,
+        ],
+        value,
+      ),
       actions: PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS,
       postActions: PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION,
       confirmations,
@@ -330,7 +325,8 @@ const buildTablesPermissions = (
   return [
     {
       name: "access",
-      isDisabled: isAdmin || isBlockPermission(value),
+      isDisabled:
+        isAdmin || PLUGIN_ADVANCED_PERMISSIONS.isBlockPermission(value),
       isHighlighted: isAdmin,
       disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
       value,
@@ -342,14 +338,14 @@ const buildTablesPermissions = (
             `/admin/permissions/data/group/${groupId}/database/${entityId.databaseId}/schema/${entityId.schemaName}`,
           ),
       },
-      options: [
-        DATA_PERMISSION_OPTIONS.all,
-        DATA_PERMISSION_OPTIONS.controlled,
-        DATA_PERMISSION_OPTIONS.noSelfService,
-        ...(shouldIncludeRestrictivePluginOptions(value)
-          ? PLUGIN_ADMIN_PERMISSIONS_DATABASE_BLOCK_OPTIONS
-          : []),
-      ],
+      options: PLUGIN_ADVANCED_PERMISSIONS.addSchemaPermissionOptions(
+        [
+          DATA_PERMISSION_OPTIONS.all,
+          DATA_PERMISSION_OPTIONS.controlled,
+          DATA_PERMISSION_OPTIONS.noSelfService,
+        ],
+        value,
+      ),
     },
     {
       name: "native",
@@ -441,18 +437,17 @@ const buildSchemasPermissions = (
       value: accessPermissionValue,
       warning: accessPermissionWarning,
       confirmations: accessPermissionConfirmations,
-      options: [
+      options: PLUGIN_ADVANCED_PERMISSIONS.addDatabasePermissionOptions([
         DATA_PERMISSION_OPTIONS.all,
         DATA_PERMISSION_OPTIONS.controlled,
         DATA_PERMISSION_OPTIONS.noSelfService,
-        ...PLUGIN_ADMIN_PERMISSIONS_DATABASE_BLOCK_OPTIONS,
-      ],
+      ]),
       postActions: {
         controlled: () =>
           limitDatabasePermission(
             groupId,
             entityId,
-            isBlockPermission(accessPermissionValue)
+            PLUGIN_ADVANCED_PERMISSIONS.isBlockPermission(accessPermissionValue)
               ? DATA_PERMISSION_OPTIONS.noSelfService.value
               : null,
           ),

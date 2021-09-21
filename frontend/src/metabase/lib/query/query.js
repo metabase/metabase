@@ -28,8 +28,6 @@ import * as E from "./expression";
 import * as FIELD from "./field";
 import * as FIELD_REF from "./field_ref";
 
-import _ from "underscore";
-
 // AGGREGATION
 
 export const getAggregations = (query: SQ) =>
@@ -180,9 +178,23 @@ function setBreakoutClause(query: SQ, breakoutClause: ?BreakoutClause): SQ {
     .map(b => FIELD_REF.getFieldTargetId(b))
     .filter(id => id != null);
   for (const [index, sort] of getOrderBys(query).entries()) {
-    const sortId = FIELD_REF.getFieldTargetId(sort[1]);
-    if (sortId != null && !_.contains(breakoutIds, sortId)) {
-      query = removeOrderBy(query, index);
+    const sortField = sort[1];
+    const sortId = FIELD_REF.getFieldTargetId(sortField);
+    if (sortId != null) {
+      // Remove invalid field reference
+      if (!breakoutIds.includes(sortId)) {
+        query = removeOrderBy(query, index);
+      } else {
+        // Update the field, since it can change its binning, temporal unit, etc
+        const breakoutFields = B.getBreakouts(breakoutClause);
+        const breakoutField = breakoutFields.find(
+          field => FIELD_REF.getFieldTargetId(field) === sortId,
+        );
+        if (breakoutField) {
+          const direction = sort[0];
+          query = updateOrderBy(query, index, [direction, breakoutField]);
+        }
+      }
     }
   }
   // clear fields when changing breakouts

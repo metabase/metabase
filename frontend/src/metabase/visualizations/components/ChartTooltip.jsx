@@ -34,7 +34,7 @@ export default class ChartTooltip extends Component {
         dimensions.push({ value: hovered.value, column: hovered.column });
       }
       return dimensions.map(({ value, column }) => ({
-        key: getFriendlyName(column),
+        key: column && getFriendlyName(column),
         value: value,
         col: column,
       }));
