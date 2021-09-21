@@ -100,15 +100,18 @@
     (testing "test the endpoint that fetches JSON files given a URL"
       (is (= {:type        "Point"
               :coordinates [37.77986 -122.429]}
-             ((mt/user->client :rasta) :get 200 "geojson" :url test-geojson-url))))
+             ((mt/user->client :crowberto) :get 200 "geojson" :url test-geojson-url))))
     (testing "error is returned if URL connection fails"
       (is (= "GeoJSON URL failed to load"
-             ((mt/user->client :rasta) :get 400 "geojson" :url test-broken-geojson-url))))
+             ((mt/user->client :crowberto) :get 400 "geojson" :url test-broken-geojson-url))))
     (testing "error is returned if URL is invalid"
       (is (= (str "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to "
                   "a file on the classpath. URLs referring to hosts that supply internal hosting metadata are "
                   "prohibited.")
-             ((mt/user->client :rasta) :get 400 "geojson" :url "file://tmp"))))))
+             ((mt/user->client :crowberto) :get 400 "geojson" :url "file://tmp"))))
+    (testing "cannot be called by non-admins"
+      (is (= "You don't have permissions to do that."
+             ((mt/user->client :rasta) :get 403 "geojson" :url test-geojson-url))))))
 
 (deftest key-proxy-endpoint-test
   (testing "GET /api/geojson/:key"

@@ -109,6 +109,7 @@
   This behaves similarly to /api/geojson/:key but doesn't require the custom map to be saved to the DB first."
   [{{:keys [url]} :params} respond raise]
   {url su/NonBlankString}
+  (api/check-superuser)
   (let [decoded-url (rc/url-decode url)]
     (when-not (valid-geojson-url? decoded-url)
       (raise (ex-info (invalid-location-msg) {:status-code 400})))
