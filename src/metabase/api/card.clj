@@ -2,7 +2,9 @@
   "/api/card endpoints."
   (:require [cheshire.core :as json]
             [clojure.core.async :as a]
+            [clojure.data :as data]
             [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
             [compojure.core :refer [DELETE GET POST PUT]]
             [medley.core :as m]
             [metabase.api.common :as api]
@@ -17,6 +19,7 @@
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.database :refer [Database]]
             [metabase.models.interface :as mi]
+            [metabase.models.moderation-review :as moderation-review]
             [metabase.models.pulse :as pulse :refer [Pulse]]
             [metabase.models.query :as query]
             [metabase.models.query.permissions :as query-perms]
@@ -415,6 +418,46 @@
       :else
       nil)))
 
+(defn- card-is-verified?
+  "Return true if card is verified, false otherwise. Assumes that moderation reviews are ordered so that the most recent
+  is the first. This is the case from the hydration function for moderation_reviews."
+  [card]
+  (-> card :moderation_reviews first :status #{"verified"} boolean))
+
+(defn- changed?
+  "Return whether there were any changes other than ignored values.
+
+  returns false because changes to collection_id are ignored:
+  (changed? {:collection_id 1 :description \"foo\"}
+            {:collection_id 2}
+            {:ignore #{:collection_id}})
+
+  returns true:
+  (changed? {:collection_id 1 :description \"foo\"}
+            {:collection_id 2 :description \"diff\"}
+            {:ignore #{:collection_id}})"
+  [card-before updates {:keys [ignore]}]
+  ;; have to ignore keyword vs strings over api. `{:type :query}` vs `{:type "query"}`
+  (let [prepare              (fn prepare [card] (walk/prewalk (fn [x] (if (keyword? x)
+                                                                        (name x)
+                                                                        x))
+                                                              card))
+        before               (apply dissoc card-before ignore)
+        after                (apply dissoc updates ignore)
+        [_ changes-in-after] (data/diff (prepare before) (prepare after))]
+    (boolean (seq changes-in-after))))
+
+
+
+(def card-compare-ignores
+  "Keys to ignore when comparing card changes to the existing card."
+  #{:result_metadata ;; not interested in changes here
+    ;; ignore collection changes, pinning, and public changes
+    :collection_id :collection_position
+    :public_uuid :made_public_by_id
+    ;; compares java.time objects vs strings over api
+    :created_at :updated_at})
+
 (defn- update-card-async!
   "Update a Card asynchronously. Returns a `core.async` promise channel that will return updated Card."
   [{:keys [id], :as card-before-update} {:keys [archived], :as card-updates}]
@@ -424,6 +467,16 @@
     (db/transaction
       (api/maybe-reconcile-collection-position! card-before-update card-updates)
 
+      (when (and (card-is-verified? card-before-update)
+                 (changed? card-before-update card-updates
+                           {:ignore card-compare-ignores}))
+        ;; this is an enterprise feature but we don't care if enterprise is enabled here. If there is a review we need
+        ;; to remove it regardless if enterprise edition is present at the moment.
+        (moderation-review/create-review! {:moderated_item_id   id
+                                           :moderated_item_type "card"
+                                           :moderator_id        api/*current-user-id*
+                                           :status              nil
+                                           :text                (tru "Unverified due to edit")}))
       ;; ok, now save the Card
       (db/update! Card id
         ;; `collection_id` and `description` can be `nil` (in order to unset them). Other values should only be
@@ -465,7 +518,8 @@
    result_metadata        (s/maybe qr/ResultsMetadata)
    metadata_checksum      (s/maybe su/NonBlankString)
    cache_ttl              (s/maybe su/IntGreaterThanZero)}
-  (let [card-before-update (api/write-check Card id)]
+  (let [card-before-update (hydrate (api/write-check Card id)
+                                    [:moderation_reviews :moderator_details])]
     ;; Do various permissions checks
     (collection/check-allowed-to-change-collection card-before-update card-updates)
     (check-allowed-to-modify-query                 card-before-update card-updates)
