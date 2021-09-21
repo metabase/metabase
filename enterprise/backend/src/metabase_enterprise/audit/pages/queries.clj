@@ -81,7 +81,9 @@
               [:updated_at      {:display_name "Updated At",         :base_type :type/DateTime}]]
    :results (common/reducible-query
               (->
-                {:select    [[:card.id :card_id]
+                {:with      [cards/query-runs
+                             cards/dashboards]
+                 :select    [[:card.id :card_id]
                              [:card.name :card_name]
                              [(hsql/call :concat (hsql/call :substring :qe.error 0 60) "...") :error_substr]
                              :collection_id
@@ -90,8 +92,8 @@
                              [:db.name :database_name]
                              :card.table_id
                              [:t.name :table_name]
-                             [:qe.started_at :last_run_at]
-                             [:%count.qe.id :total_runs]
+                             [:query_runs.last :last_run_at]
+                             [:query_runs.count :total_runs]
                              [:%distinct-count.dash_card.dashboard_id :num_dashboards]
                              [:card.creator_id :user_id]
                              [(common/user-full-name :u) :user_name]
@@ -101,8 +103,9 @@
                              [:metabase_database :db]           [:= :card.database_id :db.id]
                              [:metabase_table :t]               [:= :card.table_id :t.id]
                              [:core_user :u]                    [:= :card.creator_id :u.id]
-                             [:report_dashboardcard :dash_card] [:= :card.id :dash_card.card_id]
-                             [:query_execution :qe]             [:= :card.id :qe.card_id]]
+                             [:query_execution :qe]             [:= :card.id :qe.card_id]
+                             :query_runs                        [:= :card.id :query_runs.card_id]
+                             :dash_card                         [:= :card.id :dash_card.card_id]]
                  :where     [:and
                              [:= :card.archived false]
                              [:<> :qe.error nil]]}
