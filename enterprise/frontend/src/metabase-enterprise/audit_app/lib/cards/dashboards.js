@@ -56,6 +56,7 @@ export const table = (searchString?: string) => ({
         { name: "average_execution_time_ms", enabled: true },
         { name: "cards", enabled: true },
         { name: "saved_by_id", enabled: true },
+        { name: "cache_ttl", enabled: true },
         {
           name: "public_link",
           enabled: true,
