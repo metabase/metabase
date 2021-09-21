@@ -117,7 +117,7 @@ describe("scenarios > account > notifications", () => {
       cy.findByText("Question").should("not.exist");
     });
 
-    it.only("should be able to unsubscribe from an alert when the user has not created it", () => {
+    it("should be able to unsubscribe from an alert when the user has not created it", () => {
       cy.signOut();
       cy.signInAsAdmin();
       cy.visit("/account/notifications");
