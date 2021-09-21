@@ -30,7 +30,7 @@
   [:latest_qe {:select [:id :card_id :error]
         :from [:query_execution]
         :where [:in :started_at {:select [:%max.started_at] :from [:query_execution]}]
-        :group-by [:card_id]}])
+        :group-by [:card_id :error]}])
 
 (def query-runs
   "HoneySQL for a CTE to include the total number of queries for each Card forever."
