@@ -43,7 +43,7 @@
 
 (def dashboards
   "HoneySQL for a CTE to enumerate the dashboards for a Card."
-  [:dash_card {:select [:dashboard_id :card_id]
+  [:dash_card {:select [:dashboard_id :card_id [:%count.* :count]]
                :from [:report_dashboardcard]
                :group-by [:card_id]}])
 

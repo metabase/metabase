@@ -94,7 +94,7 @@
                              [:t.name :table_name]
                              [:query_runs.last :last_run_at]
                              [:query_runs.count :total_runs]
-                             [:%distinct-count.dash_card.dashboard_id :num_dashboards]
+                             [:dash_card.count :num_dashboards]
                              [:card.creator_id :user_id]
                              [(common/user-full-name :u) :user_name]
                              [:card.updated_at :updated_at]]
