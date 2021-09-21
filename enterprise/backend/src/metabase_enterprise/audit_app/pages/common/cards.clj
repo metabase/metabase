@@ -25,6 +25,13 @@
                        :group-by [:card_id]}
                       (common/add-45-days-clause :started_at))])
 
+(def latest-qe
+  "HoneySQL for a CTE to get latest QueryExecution for a Card."
+  [:latest_qe {:select [:id :card_id :error]
+        :from [:query_execution]
+        :where [:in :started_at {:select [:%max.started_at] :from [:query_execution]}]
+        :group-by [:card_id]}])
+
 (def query-runs
   "HoneySQL for a CTE to include the total number of queries for each Card forever."
   [:query_runs {:select   [:card_id
