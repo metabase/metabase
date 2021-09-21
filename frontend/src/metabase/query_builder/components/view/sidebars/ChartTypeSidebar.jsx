@@ -105,6 +105,8 @@ const ChartTypeOption = ({
         borderRadius: 10,
         padding: 12,
       }}
+      data-testid={`${visualization.uiName}-button`}
+      data-is-sensible={isSensible}
     >
       <Icon name={visualization.iconName} size={20} />
     </Flex>
