@@ -1,9 +1,5 @@
 import Dimension from "metabase-lib/lib/Dimension";
-import {
-  getParameterValueFromQueryParams,
-  getParameterValuePairsFromQueryParams,
-  hasParameterValue,
-} from "metabase/meta/Parameter";
+import { getParameterValuesByIdFromQueryParams } from "metabase/meta/Parameter";
 
 export const syncQueryParamsWithURL = props => {
   props.commitImmediately
@@ -17,13 +13,15 @@ const syncForInternalQuestion = props => {
   if (!setParameterValue) {
     return;
   }
+  const parameterValuesById = getParameterValuesByIdFromQueryParams(
+    parameters,
+    query,
+  );
 
   parameters.forEach(parameter => {
-    const parameterValue = getParameterValueFromQueryParams(parameter, query);
-
-    if (hasParameterValue(parameterValue)) {
+    if (parameter.id in parameterValuesById) {
       const parsedParameterValue = parseQueryParams(
-        parameterValue,
+        parameterValuesById[parameter.id],
         parameter,
         metadata,
       );
@@ -39,15 +37,22 @@ const syncForPublicQuestion = props => {
     return;
   }
 
-  const parameterIdValuePairs = getParameterValuePairsFromQueryParams(
+  const parameterValuesById = getParameterValuesByIdFromQueryParams(
     parameters,
     query,
-  ).map(([parameter, value]) => [
-    parameter.id,
-    parseQueryParams(value, parameter, metadata),
-  ]);
+  );
 
-  const parameterValuesById = Object.fromEntries(parameterIdValuePairs);
+  parameters.forEach(parameter => {
+    if (parameter.id in parameterValuesById) {
+      const parsedParameterValue = parseQueryParams(
+        parameterValuesById[parameter.id],
+        parameter,
+        metadata,
+      );
+
+      parameterValuesById[parameter.id] = parsedParameterValue;
+    }
+  });
 
   setMultipleParameterValues(parameterValuesById);
 };
