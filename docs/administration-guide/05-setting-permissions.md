@@ -1,16 +1,19 @@
-# Permissions overview 
+# Permissions overview
 
 There are always going to be sensitive bits of information in your databases and tables, and thankfully Metabase provides a simple way to ensure that people on your team only see the data they’re supposed to.
 
 ## How permissions work in Metabase
 
-Metabase uses a group-based approach to set permissions. You can set permissions on:
+Metabase uses a group-based approach to set permissions. At a high-level, you can set permissions on two things: data and collections. **Data permissions** are about defining what raw data groups are allowed to use when creating new questions (i.e., self-service analytics). &**Collection permissions** determine what existing dashboards and questions groups can see. On some plans, you can also sandbox data, which "filters" what data people can see when they view a particular questions, such as limiting the rows or columns they can see.
+
+You can set permissions on:
 
 - [Databases connected to Metabase][data-permissions]
-- [Tables in those databases][table-permissions]
+- [Tables and schemas in those databases][table-permissions]
+- [Rows and columns of a table][data-sandboxing] (only on some plans)
 - [Collections of questions and dashboards][collections]
-- [SQL snippet folders][sql-snippet-folders]
-- [Rows and columns of a table][data-sandboxing]
+
+For plans that include [SQL Snippet Folders][sql-snippet-folders], you can also set permissions on those folders.
 
 To determine who has access to what, you’ll need to create one or more groups, choose which level of access that group has to different databases, collections, and so on, then add people to that group.
 
