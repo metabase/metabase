@@ -212,7 +212,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
   return (
     <JoinClauseRoot>
       <NotebookCell color={color} flex={1} alignSelf="start">
-        <NotebookCellItem color={color}>
+        <NotebookCellItem color={color} data-testid="left-table">
           {lhsTable?.displayName() || t`Previous results`}
         </NotebookCellItem>
 
@@ -416,6 +416,7 @@ function JoinTablePicker({
       }
       containerStyle={FIELDS_PICKER_STYLES.notebookItemContainer}
       rightContainerStyle={FIELDS_PICKER_STYLES.notebookRightItemContainer}
+      data-testid="right-table"
     >
       <DatabaseSchemaAndTableDataSelector
         hasTableSearch
