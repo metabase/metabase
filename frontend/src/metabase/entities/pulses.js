@@ -51,7 +51,8 @@ const Pulses = createEntity({
     unsubscribe: ({ id }) => async dispatch => {
       await PulseApi.unsubscribe({ id });
       dispatch(addUndo({ message: t`Successfully unsubscribed` }));
-      return { type: UNSUBSCRIBE };
+      dispatch({ type: UNSUBSCRIBE, payload: { id } });
+      dispatch({ type: Pulses.actionTypes.INVALIDATE_LISTS_ACTION });
     },
   },
 

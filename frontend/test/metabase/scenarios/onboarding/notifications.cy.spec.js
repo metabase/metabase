@@ -98,7 +98,7 @@ describe("scenarios > account > notifications", () => {
       cy.findByText("Created by you", { exact: false });
     });
 
-    it("should be able to unsubscribe and delete an alert", () => {
+    it("should be able to unsubscribe and delete an alert when the user created it", () => {
       cy.visit("/account/notifications");
 
       cy.findByText("Question");
@@ -112,6 +112,22 @@ describe("scenarios > account > notifications", () => {
       modal().within(() => {
         cy.findByText("You’re unsubscribed. Delete this alert as well?");
         cy.findByText("Delete this alert").click();
+      });
+
+      cy.findByText("Question").should("not.exist");
+    });
+
+    it.only("should be able to unsubscribe from an alert when the user has not created it", () => {
+      cy.signOut();
+      cy.signInAsAdmin();
+      cy.visit("/account/notifications");
+
+      cy.findByText("Question");
+      cy.findByLabelText("close icon").click();
+
+      modal().within(() => {
+        cy.findByText("Confirm you want to unsubscribe");
+        cy.findByText("Unsubscribe").click();
       });
 
       cy.findByText("Question").should("not.exist");
@@ -150,7 +166,7 @@ describe("scenarios > account > notifications", () => {
       cy.findByText("Created by you", { exact: false });
     });
 
-    it("should be able to unsubscribe and delete a pulse", () => {
+    it("should be able to unsubscribe and delete a pulse when the user has created it", () => {
       cy.visit("/account/notifications");
 
       cy.findByText("Subscription");
