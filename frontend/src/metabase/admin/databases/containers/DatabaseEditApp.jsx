@@ -211,40 +211,40 @@ export default class DatabaseEditApp extends Component {
                           <Box width={620}>
                             <Form>
                               {formFields.map(formField => {
-                                const InlinedSelectFormField = styled(
-                                  FormField,
-                                )`
-                                  float: left;
-                                  width: 30%;
-                                `;
+                                // const InlinedSelectFormField = styled(
+                                //   FormField,
+                                // )`
+                                //   float: left;
+                                //   width: 30%;
+                                // `;
 
-                                const InlinedInputFormField = styled(FormField)`
-                                  float: right;
-                                  margin-left: 0px;
-                                  width: 66%;
-                                  clear: none;
-                                `;
+                                // const InlinedInputFormField = styled(FormField)`
+                                //   float: right;
+                                //   margin-left: 0px;
+                                //   width: 66%;
+                                //   clear: none;
+                                // `;
 
-                                let FormFieldComponent;
-                                switch (formField.name) {
-                                  case "details.ssl-keystore-file-options":
-                                  case "details.ssl-truststore-file-options":
-                                    FormFieldComponent = InlinedSelectFormField;
-                                    break;
+                                // let FormFieldComponent;
+                                // switch (formField.name) {
+                                //   case "details.ssl-keystore-file-options":
+                                //   case "details.ssl-truststore-file-options":
+                                //     FormFieldComponent = InlinedSelectFormField;
+                                //     break;
 
-                                  case "details.ssl-keystore-file-blob":
-                                  case "details.ssl-keystore-file-path":
-                                  case "details.ssl-truststore-file-blob":
-                                  case "details.ssl-truststore-file-path":
-                                    FormFieldComponent = InlinedInputFormField;
-                                    break;
+                                //   case "details.ssl-keystore-file-blob":
+                                //   case "details.ssl-keystore-file-path":
+                                //   case "details.ssl-truststore-file-blob":
+                                //   case "details.ssl-truststore-file-path":
+                                //     FormFieldComponent = InlinedInputFormField;
+                                //     break;
 
-                                  default:
-                                    FormFieldComponent = FormField;
-                                }
+                                //   default:
+                                //     FormFieldComponent = FormField;
+                                // }
 
                                 return (
-                                  <FormFieldComponent
+                                  <FormField
                                     key={formField.name}
                                     name={formField.name}
                                   />

@@ -45,6 +45,10 @@
   outline: none;
 }
 
+.Form-input[type="file"] {
+  padding: 9px 10px 10px;
+}
+
 .Form-file-input::-webkit-file-upload-button {
   visibility: hidden;
   padding-right: 32px;
@@ -106,7 +110,7 @@
 }
 
 .Form-field .AdminSelect {
-  padding: 15px;
+  padding: 13px;
   border-color: var(--form-field-border-color);
 }
 

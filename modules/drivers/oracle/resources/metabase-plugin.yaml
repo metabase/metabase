@@ -40,27 +40,29 @@ driver:
     - name: ssl-keystore-file-options
       type: select
       options:
-        - name: Blob
-          value: blob
-        - name: File
-          value: file
+        - name: Local file path
+          value: local
+        - name: Uploaded file path
+          value: uploaded
+      placeholder: path/to/file.crt
       visible-if:
         ssl-use-keystore: true
-      default: blob
-
-    - name: ssl-keystore-file-blob
-      type: file
-      secret-kind: keystore
-      required: false
-      visible-if:
-        ssl-keystore-file-options: blob
+      default: local
 
     - name: ssl-keystore-file-path
       type: string
       secret-kind: keystore
       required: false
       visible-if:
-        ssl-keystore-file-options: file
+        ssl-keystore-file-options: local
+
+    - name: ssl-keystore-file-blob
+      type: file
+      secret-kind: keystore
+      required: false
+      visible-if:
+        ssl-keystore-file-options: uploaded
+
 
     - name: ssl-keystore-password
       display-name: Keystore password
@@ -79,27 +81,28 @@ driver:
     - name: ssl-truststore-file-options
       type: select
       options:
-        - name: Blob
-          value: blob
-        - name: File
-          value: file
+        - name: Local file path
+          value: local
+        - name: Uploaded file path
+          value: uploaded
       visible-if:
         ssl-use-truststore: true
-      default: blob
+      default: local
+
+    - name: ssl-truststore-file-path
+      type: string
+      secret-kind: truststore
+      required: false
+      placeholder: path/to/file.crt
+      visible-if:
+        ssl-truststore-file-options: local
 
     - name: ssl-truststore-file-blob
       type: file
       secret-kind: truststore
       required: false
       visible-if:
-        ssl-truststore-file-options: blob
-
-    - name: ssl-truststore-file-path
-      type: string
-      secret-kind: truststore
-      required: false
-      visible-if:
-        ssl-truststore-file-options: file
+        ssl-truststore-file-options: uploaded
 
     - name: ssl-truststore-password
       display-name: Truststore password
