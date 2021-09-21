@@ -540,10 +540,7 @@ const joinDimensionCellItemPropTypes = {
 };
 
 function getDimensionSourceName(dimension) {
-  return dimension
-    .query()
-    .table()
-    .displayName();
+  return dimension.field()?.table?.display_name || t`Previous results`;
 }
 
 function getDimensionDisplayName(dimension) {
