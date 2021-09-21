@@ -8,22 +8,6 @@
             [metabase.test :as mt]
             [toucan.db :as db]))
 
-(deftest email->domain-test
-  (are [domain email] (is (= domain
-                             (#'google/email->domain email))
-                          (format "Domain of email address '%s'" email))
-    "metabase.com"   "cam@metabase.com"
-    "metabase.co.uk" "cam@metabase.co.uk"
-    "metabase.com"   "cam.saul+1@metabase.com"))
-
-(deftest email-in-domain-test
-  (are [in-domain? email domain] (is (= in-domain?
-                                        (#'google/email-in-domain? email domain))
-                                     (format "Is email '%s' in domain '%s'?" email domain))
-    true  "cam@metabase.com"          "metabase.com"
-    false "cam.saul+1@metabase.co.uk" "metabase.com"
-    true  "cam.saul+1@metabase.com"   "metabase.com"))
-
 (deftest allow-autocreation-test
   (with-redefs [premium-features/enable-sso? (constantly false)]
     (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com"]

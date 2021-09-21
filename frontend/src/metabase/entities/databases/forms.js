@@ -3,6 +3,7 @@ import { t, jt } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
 import ExternalLink from "metabase/components/ExternalLink";
+import { PLUGIN_CACHING } from "metabase/plugins";
 import getFieldsForBigQuery from "./big-query-fields";
 import getFieldsForMongo from "./mongo-fields";
 
@@ -309,65 +310,74 @@ function getEngineOptions(currentEngine) {
   });
 }
 
+function getDatabaseCachingField() {
+  const hasField =
+    PLUGIN_CACHING.databaseCacheTTLFormField &&
+    MetabaseSettings.get("enable-query-caching");
+  return hasField ? PLUGIN_CACHING.databaseCacheTTLFormField : null;
+}
+
 const forms = {
   details: {
-    fields: ({ id, engine, details = {} } = {}) => [
-      {
-        name: "engine",
-        title: t`Database type`,
-        type: "select",
-        options: getEngineOptions(engine),
-        placeholder: t`Select a database`,
-      },
-      {
-        name: "name",
-        title: t`Name`,
-        placeholder: t`How would you like to refer to this database?`,
-        validate: value => !value && t`required`,
-        hidden: !engine,
-      },
-      ...(getEngineFormFields(engine, details, id) || []),
-      {
-        name: "auto_run_queries",
-        type: "boolean",
-        title: t`Automatically run queries when doing simple filtering and summarizing`,
-        description: t`When this is on, Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries.`,
-        hidden: !engine,
-      },
-      {
-        name: "details.let-user-control-scheduling",
-        type: "boolean",
-        title: t`This is a large database, so let me choose when Metabase syncs and scans`,
-        description: t`By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen.`,
-        hidden: !engine,
-      },
-      {
-        name: "refingerprint",
-        type: "boolean",
-        title: t`Periodically refingerprint tables`,
-        description: t`When syncing with this database, Metabase will scan a subset of values of fields to gather statistics that enable things like improved binning behavior in charts, and to generally make your Metabase instance smarter.`,
-        hidden: !engine,
-      },
-      { name: "is_full_sync", type: "hidden" },
-      { name: "is_on_demand", type: "hidden" },
-      {
-        name: "schedules.metadata_sync",
-        type: MetadataSyncScheduleWidget,
-        title: t`Database syncing`,
-        description: t`This is a lightweight process that checks for updates to this database’s schema. In most cases, you should be fine leaving this set to sync hourly.`,
-        hidden: !engine || !details["let-user-control-scheduling"],
-      },
-      {
-        name: "schedules.cache_field_values",
-        type: CacheFieldValuesScheduleWidget,
-        title: t`Scanning for Filter Values`,
-        description:
-          t`Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database.` +
-          " " +
-          t`When should Metabase automatically scan and cache field values?`,
-        hidden: !engine || !details["let-user-control-scheduling"],
-      },
-    ],
+    fields: ({ id, engine, details = {} } = {}) =>
+      [
+        {
+          name: "engine",
+          title: t`Database type`,
+          type: "select",
+          options: getEngineOptions(engine),
+          placeholder: t`Select a database`,
+        },
+        {
+          name: "name",
+          title: t`Name`,
+          placeholder: t`How would you like to refer to this database?`,
+          validate: value => !value && t`required`,
+          hidden: !engine,
+        },
+        ...(getEngineFormFields(engine, details, id) || []),
+        {
+          name: "auto_run_queries",
+          type: "boolean",
+          title: t`Automatically run queries when doing simple filtering and summarizing`,
+          description: t`When this is on, Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries.`,
+          hidden: !engine,
+        },
+        {
+          name: "details.let-user-control-scheduling",
+          type: "boolean",
+          title: t`This is a large database, so let me choose when Metabase syncs and scans`,
+          description: t`By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen.`,
+          hidden: !engine,
+        },
+        {
+          name: "refingerprint",
+          type: "boolean",
+          title: t`Periodically refingerprint tables`,
+          description: t`When syncing with this database, Metabase will scan a subset of values of fields to gather statistics that enable things like improved binning behavior in charts, and to generally make your Metabase instance smarter.`,
+          hidden: !engine,
+        },
+        getDatabaseCachingField(),
+        { name: "is_full_sync", type: "hidden" },
+        { name: "is_on_demand", type: "hidden" },
+        {
+          name: "schedules.metadata_sync",
+          type: MetadataSyncScheduleWidget,
+          title: t`Database syncing`,
+          description: t`This is a lightweight process that checks for updates to this database’s schema. In most cases, you should be fine leaving this set to sync hourly.`,
+          hidden: !engine || !details["let-user-control-scheduling"],
+        },
+        {
+          name: "schedules.cache_field_values",
+          type: CacheFieldValuesScheduleWidget,
+          title: t`Scanning for Filter Values`,
+          description:
+            t`Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database.` +
+            " " +
+            t`When should Metabase automatically scan and cache field values?`,
+          hidden: !engine || !details["let-user-control-scheduling"],
+        },
+      ].filter(Boolean),
     normalize: function(database) {
       if (!database.details["let-user-control-scheduling"]) {
         // TODO Atte Keinänen 8/15/17: Implement engine-specific scheduling defaults

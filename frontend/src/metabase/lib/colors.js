@@ -199,7 +199,7 @@ export function lighten(
 }
 
 const PREFERRED_COLORS = {
-  [colors["success"]]: [
+  success: [
     "success",
     "succeeded",
     "pass",
@@ -211,7 +211,7 @@ const PREFERRED_COLORS = {
     "active",
     "profit",
   ],
-  [colors["error"]]: [
+  error: [
     "error",
     "fail",
     "failed",
@@ -225,10 +225,10 @@ const PREFERRED_COLORS = {
     "deleted",
     "pending",
   ],
-  [colors["warning"]]: ["warn", "warning", "incomplete", "unstable"],
-  [colors["brand"]]: ["count"],
-  [colors["accent1"]]: ["sum"],
-  [colors["accent2"]]: ["average"],
+  warning: ["warn", "warning", "incomplete", "unstable"],
+  brand: ["count"],
+  accent1: ["sum"],
+  accent2: ["average"],
 };
 
 const PREFERRED_COLORS_MAP = {};
@@ -244,7 +244,7 @@ for (const color in PREFERRED_COLORS) {
 type Key = string;
 
 function getPreferredColor(key: Key) {
-  return PREFERRED_COLORS_MAP[key.toLowerCase()];
+  return color(PREFERRED_COLORS_MAP[key.toLowerCase()]);
 }
 
 // returns a mapping of deterministically assigned colors to keys, optionally with a fixed value mapping

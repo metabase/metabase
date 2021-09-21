@@ -7,13 +7,27 @@ import {
   showClickBehaviorSidebar,
   setEditingParameter,
   openAddQuestionSidebar,
+  removeParameter,
+  SET_DASHBOARD_ATTRIBUTES,
 } from "./actions";
 import { SIDEBAR_NAME } from "./constants";
 
 describe("dashboard actions", () => {
   let dispatch;
+  let getState;
   beforeEach(() => {
     dispatch = jest.fn();
+    getState = () => ({
+      dashboard: {
+        dashboardId: 1,
+        dashboards: {
+          1: {
+            id: 1,
+            parameters: [{ id: 123 }, { id: 456 }],
+          },
+        },
+      },
+    });
   });
 
   describe("setSidebar", () => {
@@ -100,6 +114,36 @@ describe("dashboard actions", () => {
           name: SIDEBAR_NAME.addQuestion,
         }),
       );
+    });
+  });
+
+  describe("removeParameter", () => {
+    it("should remove the parameter from the dashboard with the given parameterId", () => {
+      removeParameter(123)(dispatch, getState);
+
+      expect(dispatch).toHaveBeenCalledWith({
+        type: SET_DASHBOARD_ATTRIBUTES,
+        payload: {
+          id: 1,
+          attributes: {
+            parameters: [{ id: 456 }],
+          },
+        },
+      });
+    });
+
+    it("should not remove any parameters if the given parameterId does not match a parameter on the dashboard", () => {
+      removeParameter(999)(dispatch, getState);
+
+      expect(dispatch).toHaveBeenCalledWith({
+        type: SET_DASHBOARD_ATTRIBUTES,
+        payload: {
+          id: 1,
+          attributes: {
+            parameters: getState().dashboard.dashboards[1].parameters,
+          },
+        },
+      });
     });
   });
 });

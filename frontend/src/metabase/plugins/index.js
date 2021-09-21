@@ -22,10 +22,6 @@ export const PLUGIN_ADMIN_ROUTES = [];
 export const PLUGIN_ADMIN_SETTINGS_UPDATES = [];
 
 // admin permissions
-export const PLUGIN_ADMIN_PERMISSIONS_HELP = {
-  Component: null,
-};
-export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_BLOCK_OPTIONS = [];
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES = [];
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES = [];
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS = [];
@@ -95,4 +91,19 @@ export const PLUGIN_MODERATION = {
   getStatusIconForQuestion: object,
   getStatusIcon: object,
   getModerationTimelineEvents: array,
+};
+
+export const PLUGIN_CACHING = {
+  dashboardCacheTTLFormField: null,
+  databaseCacheTTLFormField: null,
+  questionCacheTTLFormField: null,
+  getQuestionsImplicitCacheTTL: () => null,
+};
+
+export const PLUGIN_ADVANCED_PERMISSIONS = {
+  DataPermissionsHelp: null,
+  addDatabasePermissionOptions: (permissions, _value) => permissions,
+  addSchemaPermissionOptions: (permissions, _value) => permissions,
+  addTablePermissionOptions: (permissions, _value) => permissions,
+  isBlockPermission: _value => false,
 };

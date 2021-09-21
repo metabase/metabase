@@ -6,7 +6,6 @@ import { iconPropTypes } from "metabase/components/Icon";
 import { BadgeIcon, MaybeLink } from "./Badge.styled";
 
 const propTypes = {
-  name: PropTypes.string.isRequired,
   to: PropTypes.string,
   icon: PropTypes.shape(iconPropTypes),
   activeColor: PropTypes.string,
@@ -16,7 +15,7 @@ const propTypes = {
 
 const DEFAULT_ICON_SIZE = 12;
 
-function Badge({ name, icon, activeColor = "brand", children, ...props }) {
+function Badge({ icon, activeColor = "brand", children, ...props }) {
   const extraIconProps = {};
   if (icon && !icon.size && !icon.width && !icon.height) {
     extraIconProps.size = DEFAULT_ICON_SIZE;

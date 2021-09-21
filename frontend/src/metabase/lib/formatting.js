@@ -930,13 +930,20 @@ export function conjunct(list: string[], conjunction: string) {
 }
 
 export function duration(milliseconds: number) {
-  if (milliseconds < 60000) {
-    const seconds = Math.round(milliseconds / 1000);
-    return ngettext(msgid`${seconds} second`, `${seconds} seconds`, seconds);
-  } else {
-    const minutes = Math.round(milliseconds / 1000 / 60);
+  const SECOND = 1000;
+  const MINUTE = 60 * SECOND;
+  const HOUR = 60 * MINUTE;
+
+  if (milliseconds >= HOUR) {
+    const hours = Math.round(milliseconds / HOUR);
+    return ngettext(msgid`${hours} hour`, `${hours} hours`, hours);
+  }
+  if (milliseconds >= MINUTE) {
+    const minutes = Math.round(milliseconds / MINUTE);
     return ngettext(msgid`${minutes} minute`, `${minutes} minutes`, minutes);
   }
+  const seconds = Math.round(milliseconds / SECOND);
+  return ngettext(msgid`${seconds} second`, `${seconds} seconds`, seconds);
 }
 
 // Removes trailing "id" from field names

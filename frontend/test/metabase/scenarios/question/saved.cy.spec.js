@@ -11,7 +11,7 @@ describe("scenarios > question > saved", () => {
     cy.signInAsNormalUser();
   });
 
-  it.skip("should should correctly display 'Save' modal (metabase#13817)", () => {
+  it("should should correctly display 'Save' modal (metabase#13817)", () => {
     openOrdersTable({ mode: "notebook" });
     cy.findByText("Summarize").click();
     cy.findByText("Count of rows").click();
@@ -102,6 +102,28 @@ describe("scenarios > question > saved", () => {
       cy.findByText("Duplicate").click();
       cy.wait("@cardCreate");
     });
+  });
+
+  it("should revert a saved question to a previous version", () => {
+    cy.intercept("PUT", "/api/card/**").as("updateQuestion");
+
+    cy.visit("/question/1");
+    cy.findByTestId("saved-question-header-button").click();
+    cy.findByText("History").click();
+
+    cy.findByTestId("edit-details-button").click();
+    cy.findByLabelText("Description")
+      .click()
+      .type("This is a question");
+
+    cy.button("Save").click();
+    cy.wait("@updateQuestion");
+
+    cy.findByText(/changed description/i);
+
+    cy.findByRole("button", { name: "Revert" }).click();
+
+    cy.findByText(/^Reverted to an earlier revision/i);
   });
 
   it("should be able to use integer filter on a saved native query (metabase#15808)", () => {

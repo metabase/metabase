@@ -45,12 +45,12 @@
         (mt/with-temp* [Table            [{table-id :id}]
                         PermissionsGroup [{group-id :id}]
                         Card             [{card-id :id}]]
-          (is (re= #".*sandboxing is not enabled.*"
-                   (mt/user-http-request :crowberto :post 403 "mt/gtap"
-                                         {:table_id             table-id
-                                          :group_id             group-id
-                                          :card_id              card-id
-                                          :attribute_remappings {"foo" 1}}))))))))
+          (is (= "This API endpoint is only enabled if you have a premium token with the :sandboxes feature."
+                 (mt/user-http-request :crowberto :post 402 "mt/gtap"
+                                       {:table_id             table-id
+                                        :group_id             group-id
+                                        :card_id              card-id
+                                        :attribute_remappings {"foo" 1}}))))))))
 (deftest create-gtap-test
   (testing "POST /api/mt/gtap"
     (mt/with-temp* [Table            [{table-id :id}]

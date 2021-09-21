@@ -4,7 +4,8 @@ export const viewsAndSavesByTime = () => ({
     display: "line",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit.pages.dashboards/views-and-saves-by-time",
+      fn:
+        "metabase-enterprise.audit-app.pages.dashboards/views-and-saves-by-time",
       args: ["day"],
     },
     visualization_settings: {
@@ -20,7 +21,7 @@ export const mostPopularAndSpeed = () => ({
     dataset_query: {
       type: "internal",
       fn:
-        "metabase-enterprise.audit.pages.dashboards/most-popular-with-avg-speed",
+        "metabase-enterprise.audit-app.pages.dashboards/most-popular-with-avg-speed",
       args: [],
     },
   },
@@ -32,7 +33,8 @@ export const mostCommonQuestions = () => ({
     display: "table",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit.pages.dashboards/most-common-questions",
+      fn:
+        "metabase-enterprise.audit-app.pages.dashboards/most-common-questions",
       args: [],
     },
   },
@@ -44,7 +46,7 @@ export const table = (searchString?: string) => ({
     display: "table",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit.pages.dashboards/table",
+      fn: "metabase-enterprise.audit-app.pages.dashboards/table",
       args: [],
     },
     visualization_settings: {
