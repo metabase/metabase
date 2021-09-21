@@ -21,31 +21,7 @@ describe("scenarios > dashboard > parameters", () => {
     cy.findByText("Baker").should("not.exist");
 
     // Add a filter
-    cy.icon("pencil").click();
-    cy.icon("filter").click();
-    cy.findByText("Location").click();
-    cy.findByText("Dropdown").click();
-
-    // Link that filter to the card
-    cy.findByText("Select…").click();
-    popover().within(() => {
-      cy.findByText("City").click();
-    });
-
-    // Create a default value and save filter
-    cy.findByText("No default").click();
-    cy.findByPlaceholderText("Search by City")
-      .click()
-      .type("B");
-    cy.findByText("Baker").click();
-    cy.findByText("Add filter").click();
-    cy.get(".Button--primary")
-      .contains("Done")
-      .click();
-
-    cy.findByText("Save").click();
-    cy.findByText("You're editing this dashboard.").should("not.exist");
-    cy.findByText("Baker");
+    addCityFilterWithDefault();
 
     cy.log(
       "**Filter should be set and applied after we leave and back to the dashboard**",
@@ -400,6 +376,21 @@ describe("scenarios > dashboard > parameters", () => {
     cy.findByText("Text contains").click();
     cy.findByText("No valid fields");
   });
+
+  it("should be removable from dashboard", () => {
+    cy.visit("/dashboard/1");
+    // Add a filter
+    addCityFilterWithDefault();
+
+    // Remove the filter from the dashboard
+    cy.icon("pencil").click();
+    cy.findByText("Location").click();
+    cy.findByText("Remove").click();
+    cy.findByText("Save").click();
+    cy.findByText("You're editing this dashboard.").should("not.exist");
+
+    cy.findByText("Baker").should("not.exist");
+  });
 });
 
 function selectFilter(selection, filterName) {
@@ -413,4 +404,32 @@ function addQuestion(name) {
   sidebar()
     .contains(name)
     .click();
+}
+
+function addCityFilterWithDefault() {
+  cy.icon("pencil").click();
+  cy.icon("filter").click();
+  cy.findByText("Location").click();
+  cy.findByText("Dropdown").click();
+
+  // Link that filter to the card
+  cy.findByText("Select…").click();
+  popover().within(() => {
+    cy.findByText("City").click();
+  });
+
+  // Create a default value and save filter
+  cy.findByText("No default").click();
+  cy.findByPlaceholderText("Search by City")
+    .click()
+    .type("B");
+  cy.findByText("Baker").click();
+  cy.findByText("Add filter").click();
+  cy.get(".Button--primary")
+    .contains("Done")
+    .click();
+
+  cy.findByText("Save").click();
+  cy.findByText("You're editing this dashboard.").should("not.exist");
+  cy.findByText("Baker");
 }

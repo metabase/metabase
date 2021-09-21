@@ -168,8 +168,8 @@
               (let [dt-res (maybe-reduce-resolution unit dt)]
                 (unit-range (t/plus dt-res (to-period (if (seq include-current?) 0 1)))
                             (t/plus dt-res (to-period int-value)))))
-    :filter (fn [{:keys [unit int-value]} field-clause]
-              [:time-interval field-clause int-value (keyword unit)])}
+    :filter (fn [{:keys [unit int-value include-current?]} field-clause]
+              [:time-interval field-clause int-value (keyword unit) {:include-current (boolean (seq include-current?))}])}
 
    {:parser (regex->parser #"last(second|minute|hour|day|week|month|year)" [:unit])
     :range  (fn [{:keys [unit unit-range to-period]} dt]

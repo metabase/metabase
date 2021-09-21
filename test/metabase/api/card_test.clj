@@ -16,6 +16,7 @@
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.revision :as revision :refer [Revision]]
             [metabase.models.user :refer [User]]
+            [metabase.public-settings :as public-settings]
             [metabase.query-processor :as qp]
             [metabase.query-processor.async :as qp.async]
             [metabase.query-processor.middleware.constraints :as constraints]
@@ -53,7 +54,13 @@
    :public_uuid         nil
    :query_type          nil
    :cache_ttl           nil
+   :average_query_time  nil
+   :last_query_start    nil
    :result_metadata     nil})
+
+;; Used in dashboard tests
+(def card-defaults-no-hydrate
+  (dissoc card-defaults :average_query_time :last_query_start))
 
 (defn mbql-count-query
   ([]
@@ -382,6 +389,35 @@
                                            "card"
                                            (assoc card :result_metadata   []
                                                        :metadata_checksum md-checksum))))))))
+
+(deftest cache-ttl-save
+  (testing "POST /api/card/:id"
+    (testing "saving cache ttl by post actually saves it"
+      (mt/with-model-cleanup [Card]
+        (let [card        (card-with-name-and-query)]
+          (is (= 1234
+                 (:cache_ttl (mt/user-http-request :rasta
+                                                   :post
+                                                   202
+                                                   "card"
+                                                   (assoc card :cache_ttl 1234)))))))))
+  (testing "PUT /api/card/:id"
+    (testing "saving cache ttl by put actually saves it"
+      (mt/with-temp Card [card]
+        (is (= 1234
+               (:cache_ttl (mt/user-http-request :rasta
+                                     :put
+                                     202
+                                     (str "card/" (u/the-id card))
+                                     {:cache_ttl 1234}))))))
+    (testing "nilling out cache ttl works"
+      (mt/with-temp Card [card]
+        (is (= nil
+               (do
+               (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:cache_ttl 1234})
+               (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:cache_ttl nil})
+               (:cache_ttl (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card))))
+               )))))))
 
 (defn- fingerprint-integers->doubles
   "Converts the min/max fingerprint values to doubles so simulate how the FE will change the metadata when POSTing a
@@ -1325,6 +1361,23 @@
                           "check to make sure the `with-redefs` in the test above actually works)")
               (is (= {:constraints {:max-results 10, :max-results-bare-rows 10}}
                      (mt/user-http-request :rasta :post 200 (format "card/%d/query" (u/the-id card))))))))))))
+
+(deftest query-cache-ttl-hierarchy-test
+  (mt/discard-setting-changes [enable-query-caching]
+    (public-settings/enable-query-caching true)
+    (testing "card ttl only"
+      (mt/with-temp* [Card [card {:cache_ttl 1337}]]
+        (is (= 1337 (:cache-ttl (card-api/query-for-card card {} {} {}))))))
+    (testing "multiple ttl, dash wins"
+      (mt/with-temp* [Database [db {:cache_ttl 1337}]
+                      Dashboard [dash {:cache_ttl 1338}]
+                      Card [card {:database_id (u/the-id db)}]]
+        (is (= 1338 (:cache-ttl (card-api/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))
+    (testing "no ttl, nil res"
+      (mt/with-temp* [Database [db]
+                      Dashboard [dash]
+                      Card [card {:database_id (u/the-id db)}]]
+        (is (= nil (:cache-ttl (card-api/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))))
 
 (defn- test-download-response-headers
   [url]

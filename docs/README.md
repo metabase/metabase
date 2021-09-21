@@ -28,7 +28,7 @@ Here’s where to go for help using the features included in [Metabase Enterpris
 
 ## For developers
 
-### [Developers Guide](developers-guide/index.md)
+### [Developers Guide](developers-guide/start.md)
 
 Learn how to contribute to the Metabase open source project. 
 

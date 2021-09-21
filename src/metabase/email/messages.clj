@@ -26,7 +26,6 @@
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :as i18n :refer [deferred-trs trs tru]]
-            [metabase.util.quotation :as quotation]
             [metabase.util.urls :as url]
             [stencil.core :as stencil]
             [stencil.loader :as stencil-loader]
@@ -106,11 +105,6 @@
    :notificationManagementUrl (url/notification-management-url)
    :siteUrl                   (public-settings/site-url)})
 
-(defn- random-quote-context []
-  (let [data-quote (quotation/random-quote)]
-    {:quotation       (:quote data-quote)
-     :quotationAuthor (:author data-quote)}))
-
 (def ^:private notification-context
   {:emailType  "notification"
    :logoHeader true})
@@ -143,8 +137,7 @@
                                :company      company
                                :joinUrl      join-url
                                :today        (t/format "MMM'&nbsp;'dd,'&nbsp;'yyyy" (t/zoned-date-time))
-                               :logoHeader   true}
-                              (random-quote-context)))]
+                               :logoHeader   true}))]
     (email/send-message!
       :subject      (str (trs "You''re invited to join {0}''s {1}" company (app-name-trs)))
       :recipients   [(:email invited)]
@@ -180,8 +173,7 @@
                               :joinedUserEmail   (:email new-user)
                               :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13". TODO - is this what we want?
                               :adminEmail        (first recipients)
-                              :joinedUserEditUrl (str (public-settings/site-url) "/admin/people")}
-                             (random-quote-context))))))
+                              :joinedUserEditUrl (str (public-settings/site-url) "/admin/people")})))))
 
 (defn send-password-reset-email!
   "Format and send an email informing the user how to reset their password."
@@ -257,8 +249,7 @@
   [email context]
   {:pre [(u/email? email) (map? context)]}
   (let [context      (merge (update context :dependencies build-dependencies)
-                            notification-context
-                            (random-quote-context))
+                            notification-context)
         message-body (stencil/render-file "metabase/email/notification"
                                           (merge (common-context) context))]
     (email/send-message!
@@ -275,7 +266,6 @@
                             (trs "[{0}] Help make [{1}] better." (app-name-trs) (app-name-trs))
                             (trs "[{0}] Tell us how things are going." (app-name-trs))))
         context      (merge notification-context
-                            (random-quote-context)
                             (if (= "abandon" msg-type)
                               (abandonment-context)
                               (follow-up-context)))
@@ -306,8 +296,7 @@
           :titleUrl                  (filters/dashboard-url pulse dashboard)
           :dashboardDescription      (:description dashboard)
           :creator                   (-> pulse :creator :common_name)
-          :sectionStyle              (render.style/style (render.style/section-style))
-          :siteUrl                   (public-settings/site-url)}
+          :sectionStyle              (render.style/style (render.style/section-style))}
          (pulse-link-context pulse)))
 
 (defn- create-temp-file
@@ -453,8 +442,8 @@
         filters         (when dashboard
                           (render-filters notification dashboard))
         message-body    (assoc message-context :pulse   (html (vec (cons :div (map :content rendered-cards))))
-                                               :filters filters
-                                               :iconCid (:content-id icon-attachment))
+                               :filters filters
+                               :iconCid (:content-id icon-attachment))
         attachments     (apply merge (map :attachments rendered-cards))]
     (vec (concat [{:type "text/html; charset=utf-8" :content (stencil/render-file "metabase/email/pulse" message-body)}]
                (map make-message-attachment attachments)

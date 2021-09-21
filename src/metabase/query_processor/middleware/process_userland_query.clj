@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.process-userland-query
   "Middleware related to doing extra steps for queries that are ran via API endpoints (i.e., most of them -- as opposed
-  to queries ran internally e.g. as part of the sync process). These include things like saving QueryExecutions and
-  formatting the results."
+  to queries ran internally e.g. as part of the sync process).
+  These include things like saving QueryExecutions, storing exceptions and formatting the results."
   (:require [clojure.tools.logging :as log]
             [java-time :as t]
             [metabase.models.query :as query]
@@ -125,7 +125,11 @@
       (letfn [(rff* [metadata]
                 (add-and-save-execution-info-xform! execution-info (rff metadata)))
               (raisef* [^Throwable e context]
-                (save-failed-query-execution! execution-info (.getMessage e))
+                (save-failed-query-execution!
+                  execution-info
+                  (or
+                    (some-> e (.getCause) (.getMessage))
+                    (.getMessage e)))
                 (raisef (ex-info (.getMessage e)
                           {:query-execution execution-info}
                           e)

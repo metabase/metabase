@@ -57,10 +57,18 @@ if (hasPremiumFeature("sandboxes")) {
     type: LoginAttributesWidget,
   });
   PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES.push(
-    <ModalRoute path=":tableId/segmented" modal={GTAPModal} />,
+    <ModalRoute
+      key=":tableId/segmented"
+      path=":tableId/segmented"
+      modal={GTAPModal}
+    />,
   );
   PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES.push(
-    <ModalRoute path="segmented/group/:groupId" modal={GTAPModal} />,
+    <ModalRoute
+      key="segmented/group/:groupId"
+      path="segmented/group/:groupId"
+      modal={GTAPModal}
+    />,
   );
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS.push(OPTION_SEGMENTED);
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS["controlled"].push({

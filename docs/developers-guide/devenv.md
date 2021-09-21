@@ -13,7 +13,7 @@ Both components are built and assembled together into a single jar file which ru
 
 ## 3rd party dependencies
 
-Metabase depends on lots of other 3rd party libraries to run, so as you are developing you'll need to keep those up to date. Leiningen will automatically fetch Clojure dependencies when needed, but for JavaScript dependencies you'll need to kick off the installation process manually when needed.
+Metabase depends on lots of third-party libraries to run, so you'll need to keep those up to date. The Clojure CLI will automatically fetch the dependencies when needed. With JavaScript dependencies, however, you'll need to kick off the installation process manually.
 
 ```sh
 # javascript dependencies
@@ -86,7 +86,7 @@ BETTER_SOURCE_MAPS=true yarn dev
 
 ### Cypress end-to-end tests
 
-End-to-end tests simulate realistic sequences of user interactions. Read more about how we approach end-to-end testing with Cypress in our [wiki page](https://github.com/metabase/metabase/wiki/E2E-Tests-with-Cypress).
+End-to-end tests simulate realistic sequences of user interactions. Read more about how we approach [end-to-end testing with Cypress](./e2e-tests.md).
 
 Cypress end-to-end tests use an enforced file naming convention `<test-suite-name>.cy.spec.js` to separate them from unit tests.
 
@@ -103,7 +103,7 @@ yarn test-unit-watch # Watch for file changes
 
 ## Backend development
 
-Leiningen and your REPL are the main development tools for the backend. There are some directions below on how to setup your REPL for easier development.
+Clojure REPL is the main development tool for the backend. There are some directions below on how to setup your REPL for easier development.
 
 And of course your Jetty development server is available via
 
@@ -129,7 +129,7 @@ to them. You can build drivers as follows:
 
 ### Including driver source paths for development or other tasks
 
-For development when running various Leiningen tasks you can add the `drivers` and `drivers-dev` aliases to merge the
+For development when running various Clojure tasks you can add the `drivers` and `drivers-dev` aliases to merge the
 drivers' dependencies and source paths into the Metabase project:
 
 ```
@@ -245,7 +245,7 @@ Steps:
 2. Launch VS Code and open your cloned Metabase repository
 
 3. From the _View_ menu, choose _Command Palette..._ and then find _Remote-Container: Reopen in Container_. (VS Code may also prompt you to do this with an "Open in container" popup).
-**Note**: VS Code will create the container for the first time and it may take some time. Subsequent loads should be much faster. 
+**Note**: VS Code will create the container for the first time and it may take some time. Subsequent loads should be much faster.
 
 4. Use the menu _View_, _Command Palette_, search for and choose _Tasks: Run Build Task_ (alternatively, use the shortcut `Ctrl+Shift+B`).
 

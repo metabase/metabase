@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import PropTypes from "prop-types";
 
 import Icon from "metabase/components/Icon";
+import Tooltip from "metabase/components/Tooltip";
 
 import {
   IconContainer,
@@ -18,14 +19,29 @@ export const optionShape = {
 const propTypes = {
   ...optionShape,
   className: PropTypes.string,
+  hint: PropTypes.string,
 };
 
-export function PermissionsSelectOption({ label, icon, iconColor, className }) {
+export function PermissionsSelectOption({
+  label,
+  icon,
+  iconColor,
+  className,
+  hint,
+}) {
+  const [shouldShowTooltip, setShouldShowTooltip] = useState(false);
+
   return (
-    <PermissionsSelectOptionRoot className={className}>
-      <IconContainer color={iconColor}>
-        <Icon name={icon} size={14} />
-      </IconContainer>
+    <PermissionsSelectOptionRoot
+      className={className}
+      onMouseEnter={() => setShouldShowTooltip(true)}
+      onMouseLeave={() => setShouldShowTooltip(false)}
+    >
+      <Tooltip tooltip={hint} isOpen={shouldShowTooltip}>
+        <IconContainer color={iconColor}>
+          <Icon name={icon} size={14} />
+        </IconContainer>
+      </Tooltip>
       <PermissionsSelectLabel>{label}</PermissionsSelectLabel>
     </PermissionsSelectOptionRoot>
   );

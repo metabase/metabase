@@ -9,16 +9,10 @@ import {
   getTemplateTagParameters,
   getValuePopulatedParameters,
   getParameterValueFromQueryParams,
-  getParameterValuePairsFromQueryParams,
   getParameterValuesByIdFromQueryParams,
   getParameterValuesBySlug,
   buildHiddenParametersSlugSet,
   getVisibleParameters,
-  isDefaultedParameterSpecialCase,
-  removeDefaultedParametersWithEmptyStringValue,
-  treatEmptyStringLikeNilForDefaultedParameters,
-  removeNilValuedPairs,
-  removeUndefaultedNilValuedPairs,
 } from "metabase/meta/Parameter";
 
 MetabaseSettings.get = jest.fn();
@@ -439,40 +433,6 @@ describe("metabase/meta/Parameter", () => {
     });
   });
 
-  describe("isDefaultedParameterSpecialCase", () => {
-    it("should return true when given a parameter with a default value and a parameter value that is an empty string", () => {
-      const parameter = {
-        default: "abc",
-      };
-
-      expect(isDefaultedParameterSpecialCase(parameter, "")).toBe(true);
-    });
-
-    it("should return false when given a parameter with a default value and a nil parameter value", () => {
-      const parameter = {
-        default: "abc",
-      };
-
-      expect(isDefaultedParameterSpecialCase(parameter, null)).toBe(false);
-    });
-
-    it("should return false when given a parameter with a default value and a parameter value that is not an empty string", () => {
-      const parameter = {
-        default: "abc",
-      };
-
-      expect(isDefaultedParameterSpecialCase(parameter, "foo")).toBe(false);
-    });
-
-    it("should return false when given an undefaulted parameter", () => {
-      const parameter = {};
-
-      expect(isDefaultedParameterSpecialCase(parameter, "")).toBe(false);
-      expect(isDefaultedParameterSpecialCase(parameter, "foo")).toBe(false);
-      expect(isDefaultedParameterSpecialCase(parameter, undefined)).toBe(false);
-    });
-  });
-
   describe("parameter collection-building utils", () => {
     // found in queryParams and not defaulted
     const parameter1 = {
@@ -503,10 +463,12 @@ describe("metabase/meta/Parameter", () => {
       valueNotFoundInParameters: "nonexistent parameter queryParam value",
     };
 
-    const parameterValues = getParameterValuesByIdFromQueryParams(
-      parameters,
-      queryParams,
-    );
+    // typically generated using getParameterValuesByIdFromQueryParams(parameters, queryParams)
+    const parameterValues = {
+      [parameter1.id]: "parameter1 parameterValue",
+      [parameter2.id]: "parameter2 parameterValue",
+      [parameter3.id]: "parameter3 default value",
+    };
 
     describe("getValuePopulatedParameters", () => {
       it("should return an array of parameter objects with the `value` property set if it exists in the given `parameterValues` id, value map", () => {
@@ -567,60 +529,49 @@ describe("metabase/meta/Parameter", () => {
           "parameter2 queryParam value",
         );
       });
-    });
 
-    describe("getParameterValuePairsFromQueryParams", () => {
-      it("should build a list of parameter and parameter value pairs", () => {
+      it("should return an empty string as the value for a defaulted parameter because we handle that special case elsewhere", () => {
         expect(
-          getParameterValuePairsFromQueryParams(parameters, queryParams),
-        ).toEqual([
-          [parameter1, "parameter1 queryParam value"],
-          [parameter2, "parameter2 queryParam value"],
-          [parameter3, "parameter3 default value"],
-        ]);
-      });
-
-      it("should handle undefined queryParams", () => {
-        expect(getParameterValuePairsFromQueryParams(parameters)).toEqual([
-          [parameter2, "parameter2 default value"],
-          [parameter3, "parameter3 default value"],
-        ]);
+          getParameterValueFromQueryParams(parameter2, {
+            [parameter2.slug]: "",
+          }),
+        ).toBe("");
       });
     });
 
     describe("getParameterValuesByIdFromQueryParams", () => {
-      it("should generate a map of parameter values found in the queryParams or with default values", () => {
-        expect(
-          getParameterValuesByIdFromQueryParams(parameters, queryParams),
-        ).toEqual({
-          [parameter1.id]: "parameter1 queryParam value",
-          [parameter2.id]: "parameter2 queryParam value",
-          [parameter3.id]: "parameter3 default value",
+      describe("`forcefullyUnsetDefaultedParametersWithEmptyStringValue` === false", () => {
+        it("should generate a map of parameter values found in the queryParams or with default values", () => {
+          expect(
+            getParameterValuesByIdFromQueryParams(parameters, queryParams),
+          ).toEqual({
+            [parameter1.id]: "parameter1 queryParam value",
+            [parameter2.id]: "parameter2 queryParam value",
+            [parameter3.id]: "parameter3 default value",
+          });
         });
-      });
 
-      it("should handle an undefined queryParams", () => {
-        expect(getParameterValuesByIdFromQueryParams(parameters)).toEqual({
-          [parameter2.id]: "parameter2 default value",
-          [parameter3.id]: "parameter3 default value",
+        it("should handle an undefined queryParams", () => {
+          expect(getParameterValuesByIdFromQueryParams(parameters)).toEqual({
+            [parameter2.id]: "parameter2 default value",
+            [parameter3.id]: "parameter3 default value",
+          });
         });
-      });
 
-      describe("without transform", () => {
         it("should treat special cased defaulted parameters + empty string value as NIL and use the defaulted value", () => {
           const queryParamsWithSpecialCase = {
             ...queryParams,
-            foo: "", // has no default
-            bar: "", // has a defautl
+            [parameter1.slug]: "", // this parameter has no default
+            [parameter2.slug]: "", // this parameter has a default
           };
 
           expect(
             getParameterValuesByIdFromQueryParams(
               parameters,
               queryParamsWithSpecialCase,
+              { forcefullyUnsetDefaultedParametersWithEmptyStringValue: false },
             ),
           ).toEqual({
-            [parameter1.id]: "",
             [parameter2.id]: "parameter2 default value",
             [parameter3.id]: "parameter3 default value",
           });
@@ -634,28 +585,27 @@ describe("metabase/meta/Parameter", () => {
             getParameterValuesByIdFromQueryParams(
               parameters,
               queryParamsWithSpecialCase,
-              treatEmptyStringLikeNilForDefaultedParameters,
+              { forcefullyUnsetDefaultedParametersWithEmptyStringValue: false },
             ),
           );
         });
       });
 
-      describe("with transform", () => {
-        it("should return a result that has been transformed by the given transform function", () => {
+      describe("`forcefullyUnsetDefaultedParametersWithEmptyStringValue` === true", () => {
+        it("should remove defaulted parameters set to '' from the output", () => {
           const queryParamsWithSpecialCase = {
             ...queryParams,
-            foo: "", // has no default
-            bar: "", // has a defautl
+            [parameter1.slug]: "", // this parameter has no default
+            [parameter2.slug]: "", // this parameter has a default
           };
 
           expect(
             getParameterValuesByIdFromQueryParams(
               parameters,
               queryParamsWithSpecialCase,
-              removeDefaultedParametersWithEmptyStringValue,
+              { forcefullyUnsetDefaultedParametersWithEmptyStringValue: true },
             ),
           ).toEqual({
-            [parameter1.id]: "",
             [parameter3.id]: "parameter3 default value",
           });
         });
@@ -663,43 +613,47 @@ describe("metabase/meta/Parameter", () => {
     });
 
     describe("getParameterValuesBySlug", () => {
-      it("should return a map of defined parameter values keyed by the parameter's slug", () => {
-        expect(getParameterValuesBySlug(parameters, parameterValues)).toEqual({
-          [parameter1.slug]: "parameter1 queryParam value",
-          [parameter2.slug]: "parameter2 queryParam value",
-          [parameter3.slug]: "parameter3 default value",
-        });
-      });
-
-      it("should prioritize values found on the parameter object over the parameterValues map", () => {
-        const valuePopulatedParameter1 = {
-          ...parameter1,
-          value: "parameter1 value prop",
-        };
-        const parameters = [valuePopulatedParameter1, parameter2];
-
-        expect(getParameterValuesBySlug(parameters, parameterValues)).toEqual({
-          [parameter1.slug]: "parameter1 value prop",
-          [parameter2.slug]: "parameter2 queryParam value",
-        });
-      });
-
-      it("should handle an undefined parameterValues map", () => {
-        expect(getParameterValuesBySlug(parameters, undefined)).toEqual({});
-        expect(
-          getParameterValuesBySlug([
+      describe("`preserveDefaultedParameters` === false", () => {
+        it("should return a map of defined parameter values keyed by the parameter's slug", () => {
+          expect(getParameterValuesBySlug(parameters, parameterValues)).toEqual(
             {
-              ...parameter1,
-              value: "parameter1 value prop",
+              [parameter1.slug]: "parameter1 parameterValue",
+              [parameter2.slug]: "parameter2 parameterValue",
+              [parameter3.slug]: "parameter3 default value",
             },
-          ]),
-        ).toEqual({
-          [parameter1.slug]: "parameter1 value prop",
+          );
         });
-      });
 
-      describe("without transform", () => {
-        it("should exclude any nil values in the map", () => {
+        it("should prioritize values found on the parameter object over the parameterValues map", () => {
+          const valuePopulatedParameter1 = {
+            ...parameter1,
+            value: "parameter1 value prop",
+          };
+          const parameters = [valuePopulatedParameter1, parameter2];
+
+          expect(getParameterValuesBySlug(parameters, parameterValues)).toEqual(
+            {
+              [parameter1.slug]: "parameter1 value prop", // was set on parameter object
+              [parameter2.slug]: "parameter2 parameterValue", // was NOT set on parameter object, found on parameterValues
+            },
+          );
+        });
+
+        it("should handle an undefined parameterValues map", () => {
+          expect(getParameterValuesBySlug(parameters, undefined)).toEqual({});
+          expect(
+            getParameterValuesBySlug([
+              {
+                ...parameter1,
+                value: "parameter1 value prop",
+              },
+            ]),
+          ).toEqual({
+            [parameter1.slug]: "parameter1 value prop",
+          });
+        });
+
+        it("should remove any properties with nil values from the map", () => {
           const defaultedParameter = {
             id: 999,
             slug: "abc",
@@ -720,18 +674,18 @@ describe("metabase/meta/Parameter", () => {
               defaultedParameterWithValue.value,
           });
 
-          expect(getParameterValuesBySlug(parameters, {})).toEqual(
+          expect(
             getParameterValuesBySlug(
               parameters,
-              parameterValues,
-              removeNilValuedPairs,
+              {},
+              { preserveDefaultedParameters: false },
             ),
-          );
+          ).toEqual(getParameterValuesBySlug(parameters, parameterValues));
         });
       });
 
-      describe("with transform", () => {
-        it("should return a result that has been transformed by the given transform function", () => {
+      describe("`preserveDefaultedParameters` === true", () => {
+        it("should keep defaulted parameters with nil values in the outputted map", () => {
           const defaultedParameter = {
             id: 999,
             slug: "abc",
@@ -748,11 +702,9 @@ describe("metabase/meta/Parameter", () => {
           const parameters = [defaultedParameter, defaultedParameterWithValue];
 
           expect(
-            getParameterValuesBySlug(
-              parameters,
-              parameterValues,
-              removeUndefaultedNilValuedPairs,
-            ),
+            getParameterValuesBySlug(parameters, parameterValues, {
+              preserveDefaultedParameters: true,
+            }),
           ).toEqual({
             [defaultedParameter.slug]: undefined,
             [defaultedParameterWithValue.slug]:

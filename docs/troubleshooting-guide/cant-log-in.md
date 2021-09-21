@@ -36,7 +36,12 @@ If you are an administrator and want to check SSO settings, go to **Admin Panel*
 
 ## If you are using Metabase Cloud, are you trying to use the correct password?
 
-**Root cause:** 
+**Root cause:** You are trying to log in to Metabase Cloud using the password you set for the Metabase store.
+
+**Steps to take:**
+
+1. Check which password you are using.
+2. If you cannot remember the Metababse Cloud admin password, please see the next entry.
 
 ## Do you need to reset the admin password?
 

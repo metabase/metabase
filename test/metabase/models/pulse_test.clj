@@ -2,18 +2,11 @@
   (:require [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.api.common :as api]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.dashboard-card :refer [DashboardCard]]
-            [metabase.models.database :refer [Database]]
+            [metabase.models :refer [Card Collection Dashboard DashboardCard Database Pulse PulseCard PulseChannel
+                                     PulseChannelRecipient Table User]]
             [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
-            [metabase.models.pulse :as pulse :refer [Pulse]]
-            [metabase.models.pulse-card :refer [PulseCard]]
-            [metabase.models.pulse-channel :refer [PulseChannel]]
-            [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
-            [metabase.models.table :refer [Table]]
+            [metabase.models.pulse :as pulse]
             [metabase.test :as mt]
             [metabase.test.mock.util :refer [pulse-channel-defaults]]
             [metabase.util :as u]
@@ -273,6 +266,84 @@
                     PulseCard [_ {:pulse_id (u/the-id pulse), :card_id (u/the-id card-2), :position 1}]]
       (is (= 1
              (count (:cards (pulse/retrieve-pulse (u/the-id pulse)))))))))
+
+(deftest archive-pulse-when-last-user-unsubscribes-test
+  (letfn [(do-with-objects [f]
+            (mt/with-temp* [User                  [{user-id :id}]
+                            Pulse                 [{pulse-id :id}]
+                            PulseChannel          [{pulse-channel-id :id} {:pulse_id pulse-id}]
+                            PulseChannelRecipient [_ {:pulse_channel_id pulse-channel-id, :user_id user-id}]]
+              (f {:user-id          user-id
+                  :pulse-id         pulse-id
+                  :pulse-channel-id pulse-channel-id
+                  :archived?        (fn []
+                                      (db/select-one-field :archived Pulse :id pulse-id))})))]
+    (testing "automatically archive a Pulse when the last user unsubscribes"
+      (testing "one subscriber"
+        (do-with-objects
+         (fn [{:keys [archived? user-id pulse-id]}]
+           (testing "make the User inactive"
+             (is (db/update! User user-id :is_active false)))
+           (testing "Pulse should be archived"
+             (is (archived?))))))
+      (testing "multiple subscribers"
+        (do-with-objects
+         (fn [{:keys [archived? user-id pulse-id pulse-channel-id]}]
+           ;; create a second user + subscription so we can verify that we don't archive the Pulse if a User unsubscribes
+           ;; but there is still another subscription.
+           (mt/with-temp* [User                  [{user-2-id :id}]
+                           PulseChannelRecipient [_ {:pulse_channel_id pulse-channel-id, :user_id user-2-id}]]
+             (is (not (archived?)))
+             (testing "User 1 becomes inactive: Pulse should not be archived yet (because User 2 is still a recipient)"
+               (is (db/update! User user-id :is_active false))
+               (is (not (archived?))))
+             (testing "User 2 becomes inactive: Pulse should now be archived because it has no more recipients"
+               (is (db/update! User user-2-id :is_active false))
+               (is (archived?))
+               (testing "PulseChannel & PulseChannelRecipient rows should have been archived as well."
+                 (is (not (db/exists? PulseChannel :id pulse-channel-id)))
+                 (is (not (db/exists? PulseChannelRecipient :pulse_channel_id pulse-channel-id))))))))))
+    (testing "Don't archive Pulse if it has still has recipients after deleting User subscription\n"
+      (testing "another User subscription exists on a DIFFERENT channel\n"
+        (do-with-objects
+         (fn [{:keys [archived? user-id pulse-id]}]
+           (mt/with-temp* [User                  [{user-2-id :id}]
+                           PulseChannel          [{channel-2-id :id} {:pulse_id pulse-id}]
+                           PulseChannelRecipient [_ {:pulse_channel_id channel-2-id, :user_id user-2-id}]]
+             (testing "make User 1 inactive"
+               (is (db/update! User user-id :is_active false)))
+             (testing "Pulse should not be archived"
+               (is (not (archived?))))))))
+      (testing "still sent to a Slack channel"
+        (do-with-objects
+         (fn [{:keys [archived? user-id pulse-id]}]
+           (mt/with-temp PulseChannel [_ {:channel_type "slack"
+                                          :details      {:channel "#general"}
+                                          :pulse_id     pulse-id}]
+             (testing "make the User inactive"
+               (is (db/update! User user-id :is_active false)))
+             (testing "Pulse should not be archived"
+               (is (not (archived?))))))))
+      (testing "still sent to email addresses\n"
+        (testing "emails on the same channel as deleted User\n"
+          (do-with-objects
+           (fn [{:keys [archived? user-id pulse-id pulse-channel-id]}]
+             (db/update! PulseChannel pulse-channel-id :details {:emails ["foo@bar.com"]})
+             (testing "make the User inactive"
+               (is (db/update! User user-id :is_active false)))
+             (testing "Pulse should not be archived"
+               (is (not (archived?)))))))
+        (testing "emails on a different channel\n"
+          (do-with-objects
+           (fn [{:keys [archived? user-id pulse-id]}]
+             (mt/with-temp PulseChannel [_ {:channel_type "email"
+                                            :details      {:emails ["foo@bar.com"]}
+                                            :pulse_id     pulse-id}]
+               (testing "make the User inactive"
+                 (is (db/update! User user-id :is_active false)))
+               (testing "Pulse should not be archived"
+                 (is (not (archived?))))))))))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   Pulse Collections Permissions Tests                                          |

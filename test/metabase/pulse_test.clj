@@ -143,7 +143,7 @@
 (defn- email-body? [{message-type :type, ^String content :content}]
   (and (= "text/html; charset=utf-8" message-type)
        (string? content)
-       (.startsWith content "<html>")))
+       (.startsWith content "<!doctype html>")))
 
 (defn- attachment? [{message-type :type, content-type :content-type, content :content}]
   (and (= :inline message-type)
@@ -761,9 +761,8 @@
                 (send-pulse-created-by-user! user-kw card)))]
       (is (= [[1 "2014-04-07T00:00:00Z" 5 12]]
              (send-pulse-created-by-user!* :crowberto)))
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"^You do not have permissions to view Card [\d,]+."
-           (mt/suppress-output
-             (send-pulse-created-by-user!* :rasta)))
-          "If the current user doesn't have permissions to execute the Card for a Pulse, an Exception should be thrown."))))
+      (testing "If the current user doesn't have permissions to execute the Card for a Pulse, an Exception should be thrown."
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"You do not have permissions to view Card [\d,]+."
+             (send-pulse-created-by-user!* :rasta)))))))

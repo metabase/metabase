@@ -618,39 +618,6 @@ export function getValuePopulatedParameters(parameters, parameterValues) {
     : parameters;
 }
 
-// on dashboards we treat a default parameter with a set value of "" (from a query parameter)
-// to mean that the parameter value is explicitly unset.
-// this is NOT the case elsewhere (native questions, pulses) because default values are
-// automatically used in the query when unset.
-export function isDefaultedParameterSpecialCase(parameter, value) {
-  return hasDefaultParameterValue(parameter) && value === "";
-}
-
-export function removeDefaultedParametersWithEmptyStringValue(pairs) {
-  return pairs.filter(
-    ([parameter, value]) => !isDefaultedParameterSpecialCase(parameter, value),
-  );
-}
-
-export function treatEmptyStringLikeNilForDefaultedParameters(pairs) {
-  return pairs.map(([parameter, value]) =>
-    isDefaultedParameterSpecialCase(parameter, value)
-      ? [parameter, parameter.default]
-      : [parameter, value],
-  );
-}
-
-export function removeNilValuedPairs(pairs) {
-  return pairs.filter(([, value]) => hasParameterValue(value));
-}
-
-export function removeUndefaultedNilValuedPairs(pairs) {
-  return pairs.filter(
-    ([parameter, value]) =>
-      hasDefaultParameterValue(parameter) || hasParameterValue(value),
-  );
-}
-
 export function hasDefaultParameterValue(parameter) {
   return parameter.default != null;
 }
@@ -667,28 +634,40 @@ export function getParameterValueFromQueryParams(parameter, queryParams) {
     : parameter.default;
 }
 
-export function getParameterValuePairsFromQueryParams(parameters, queryParams) {
-  return parameters
-    .map(parameter => [
+// on dashboards we treat a default parameter with a set value of "" (from a query parameter)
+// to mean that the parameter value is explicitly unset.
+// this is NOT the case elsewhere (native questions, pulses) because default values are
+// automatically used in the query when unset.
+function removeAllEmptyStringParameters(pairs) {
+  return pairs
+    .map(([parameter, value]) => [parameter, value === "" ? undefined : value])
+    .filter(([parameter, value]) => hasParameterValue(value));
+}
+
+function removeUndefaultedEmptyStringParameters(pairs) {
+  return pairs
+    .map(([parameter, value]) => [
       parameter,
-      getParameterValueFromQueryParams(parameter, queryParams),
+      value === "" ? parameter.default : value,
     ])
     .filter(([, value]) => hasParameterValue(value));
 }
 
+// when `forcefullyUnsetDefaultedParametersWithEmptyStringValue` is true, we treat defaulted parameters with an empty string value as explecitly unset.
+// This CAN'T be used with native questions because defaulted parameters are always applied on the BE when unset on the FE.
 export function getParameterValuesByIdFromQueryParams(
   parameters,
   queryParams,
-  transform,
+  { forcefullyUnsetDefaultedParametersWithEmptyStringValue } = {},
 ) {
-  const parameterValuePairs = getParameterValuePairsFromQueryParams(
-    parameters,
-    queryParams,
-  );
+  const parameterValuePairs = parameters.map(parameter => [
+    parameter,
+    getParameterValueFromQueryParams(parameter, queryParams),
+  ]);
 
-  const transformedPairs = _.isFunction(transform)
-    ? transform(parameterValuePairs)
-    : treatEmptyStringLikeNilForDefaultedParameters(parameterValuePairs);
+  const transformedPairs = forcefullyUnsetDefaultedParametersWithEmptyStringValue
+    ? removeAllEmptyStringParameters(parameterValuePairs)
+    : removeUndefaultedEmptyStringParameters(parameterValuePairs);
 
   const idValuePairs = transformedPairs.map(([parameter, value]) => [
     parameter.id,
@@ -698,10 +677,24 @@ export function getParameterValuesByIdFromQueryParams(
   return Object.fromEntries(idValuePairs);
 }
 
+function removeNilValuedPairs(pairs) {
+  return pairs.filter(([, value]) => hasParameterValue(value));
+}
+
+function removeUndefaultedNilValuedPairs(pairs) {
+  return pairs.filter(
+    ([parameter, value]) =>
+      hasDefaultParameterValue(parameter) || hasParameterValue(value),
+  );
+}
+
+// when `preserveDefaultedParameters` is true, we don't remove defaulted parameters with nil values
+// so that they can be set in the URL query without a value. Used alongside `getParameterValuesByIdFromQueryParams`
+// with `forcefullyUnsetDefaultedParametersWithEmptyStringValue` set to true.
 export function getParameterValuesBySlug(
   parameters,
   parameterValuesById,
-  transform,
+  { preserveDefaultedParameters } = {},
 ) {
   parameterValuesById = parameterValuesById || {};
   const parameterValuePairs = parameters.map(parameter => [
@@ -711,8 +704,8 @@ export function getParameterValuesBySlug(
       : parameterValuesById[parameter.id],
   ]);
 
-  const transformedPairs = _.isFunction(transform)
-    ? transform(parameterValuePairs)
+  const transformedPairs = preserveDefaultedParameters
+    ? removeUndefaultedNilValuedPairs(parameterValuePairs)
     : removeNilValuedPairs(parameterValuePairs);
 
   const slugValuePairs = transformedPairs.map(([parameter, value]) => [

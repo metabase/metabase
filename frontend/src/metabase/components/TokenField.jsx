@@ -33,6 +33,7 @@ export type LayoutRendererProps = {
   optionsList: ?React.Element,
   isFocused: boolean,
   isAllSelected: boolean,
+  isFiltered: boolean,
   onClose: () => void,
 };
 

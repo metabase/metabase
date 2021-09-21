@@ -1,3 +1,4 @@
+<!doctype html>
 <html>
   <head>
     {{!--- Empty head to make style element work in Yahoo mail on Android: https://www.caniemail.com/features/html-style/}}
@@ -85,14 +86,14 @@
                 </td>
               </tr>
               {{#dashboardDescription}}
-              <tr>
-                <td>&#8202;</td>
-                <td>
-                  <div class="description" style="color: {{colorTextDark}}; font-size: 14px">
-                    {{dashboardDescription}}
-                  </div>
-                </td>
-              </tr>
+                <tr>
+                  <td>&#8202;</td>
+                  <td>
+                    <div class="description" style="color: {{colorTextDark}}; font-size: 14px">
+                      {{dashboardDescription}}
+                    </div>
+                  </td>
+                </tr>
               {{/dashboardDescription}}
               <tr>
                 <td>&#8202;</td>
@@ -103,20 +104,20 @@
                 </td>
               </tr>
               {{#filters}}
-              <tr>
-                <td>&#8202;</td>
-                <td>
-                  {{{filters}}}
-                </td>
-              </tr>
+                <tr>
+                  <td>&#8202;</td>
+                  <td>
+                    {{{filters}}}
+                  </td>
+                </tr>
               {{/filters}}
             </table>
             <hr style="border-width: 0; background: #F0F0F0; height: 1px; margin-top: 20px; margin-bottom: 20px;">
             {{{pulse}}}
             {{#firstRunOnly?}}
-            <p style="color: {{colorTextMedium}}; font-size: 12px; font-weight: 400">
-            We’ll stop sending you alerts about this question now.
-            </p>
+              <p style="color: {{colorTextMedium}}; font-size: 12px; font-weight: 400">
+              We’ll stop sending you alerts about this question now.
+              </p>
             {{/firstRunOnly?}}
             <hr style="border-width: 0; background: #F0F0F0; height: 1px; margin-top: 20px; margin-bottom: 20px;">
             <div class="footer" style="font-size: 11px; width: max-content; margin: 0 auto">

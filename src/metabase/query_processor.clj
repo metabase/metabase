@@ -68,7 +68,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (u/ignore-exceptions
-  (classloader/require '[metabase-enterprise.audit.query-processor.middleware.handle-audit-queries :as ee.audit]
+  (classloader/require '[metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries :as ee.audit]
                        '[metabase-enterprise.sandbox.query-processor.middleware
                          [column-level-perms-check :as ee.sandbox.columns]
                          [row-level-restrictions :as ee.sandbox.rows]]))

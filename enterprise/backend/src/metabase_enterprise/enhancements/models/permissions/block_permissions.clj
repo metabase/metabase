@@ -1,7 +1,7 @@
 (ns metabase-enterprise.enhancements.models.permissions.block-permissions
   (:require [metabase.api.common :as api]
             [metabase.models.permissions :as perms]
-            [metabase.public-settings.metastore :as settings.metastore]
+            [metabase.public-settings.premium-features :as settings.premium-features]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util.i18n :refer [tru]]))
 
@@ -21,7 +21,7 @@
   exists."
   [{database-id :database, :as query}]
   (cond
-    (not (settings.metastore/enable-enhancements?))
+    (not (settings.premium-features/enable-enhancements?))
     ::enhancements-not-enabled
 
     (not (current-user-has-block-permissions-for-database? database-id))

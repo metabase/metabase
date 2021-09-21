@@ -41,31 +41,45 @@ driver:
       display-name: Kerberos principal
       placeholder: service/instance@REALM
       required: false
+      visible-if:
+        kerberos: true
     - name: kerberos-remote-service-name
       display-name: Kerberos coordinator service
       placeholder: presto
       required: false
+      visible-if:
+        kerberos: true
     - name: kerberos-use-canonical-hostname
       type: boolean
       display-name: Use canonical hostname
       default: false
       required: false
+      visible-if:
+        kerberos: true
     - name: kerberos-credential-cache-path
       display-name: Kerberos credential cache file
       placeholder: /tmp/kerberos-credential-cache
       required: false
+      visible-if:
+        kerberos: true
     - name: kerberos-keytab-path
       display-name: Kerberos keytab file
       placeholder: /path/to/kerberos.keytab
       required: false
+      visible-if:
+        kerberos: true
     - name: kerberos-config-path
       display-name: Kerberos configuration file
       placeholder: /etc/krb5.conf
       required: false
+      visible-if:
+        kerberos: true
     - name: kerberos-service-principal-pattern
       display-name: Presto coordinator Kerberos service principal pattern
       placeholder: ${SERVICE}@${HOST}. ${SERVICE}
       required: false
+      visible-if:
+        kerberos: true
     - name: additional-options
       display-name: Additional JDBC options
       placeholder: SSLKeyStorePath=/path/to/keystore.jks&SSLKeyStorePassword=whatever

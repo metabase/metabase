@@ -354,6 +354,7 @@ export default class Field extends Base {
    * @param {?Field} name_field
    * @param {Metadata} metadata
    */
+  /* istanbul ignore next */
   _constructor(
     id,
     name,
