@@ -12,7 +12,7 @@
 (defmethod audit.i/internal-query ::bad-card
   [_ card-id]
   {:metadata [[:card_name       {:display_name "Question",           :base_type :type/Text    :remapped_from :card_id}]
-              [:error_substr    {:display_name "Error",              :base_type :type/Text    :code          true}]
+              [:error_str       {:display_name "Error",              :base_type :type/Text    :code          true}]
               [:collection_id   {:display_name "Collection ID",      :base_type :type/Integer :remapped_to   :collection_name}]
               [:collection_name {:display_name "Collection",         :base_type :type/Text    :remapped_from :collection_id}]
               [:database_id     {:display_name "Database ID",        :base_type :type/Integer :remapped_to   :database_name}]
@@ -28,7 +28,7 @@
    :results (common/reducible-query
               (->
                 {:select    [[:card.name :card_name]
-                             [(hsql/call :concat (hsql/call :substring :qe.error 0 60) "...") :error_substr]
+                             [:qe.error :error_str]
                              :collection_id
                              [:coll.name :collection_name]
                              :card.database_id
