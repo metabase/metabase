@@ -3,11 +3,11 @@ import { t } from "ttag";
 import _ from "underscore";
 import { updateIn } from "icepick";
 import {
+  PLUGIN_ADMIN_SETTINGS_UPDATES,
   PLUGIN_ADMIN_USER_MENU_ITEMS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
 } from "metabase/plugins";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import UnsubscribeUserModal from "./containers/UnsubscribeUserModal";
 
