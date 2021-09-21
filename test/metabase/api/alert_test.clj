@@ -592,42 +592,6 @@
                  ((alert-client :rasta) :put 403 (alert-url alert)
                   (default-alert-req card pc)))))))))
 
-(deftest archive-test
-  (testing "An admin should be able to archive an alert"
-    (mt/with-temp* [Pulse                 [alert (basic-alert)]
-                    Card                  [card]
-                    PulseCard             [_     (pulse-card alert card)]
-                    PulseChannel          [pc    (pulse-channel alert)]
-                    PulseChannelRecipient [_     (recipient pc :rasta)]]
-        ((alert-client :crowberto) :put 200 (alert-url alert) {:archived true})
-        (is (db/select-one-field :archived Pulse :id (u/the-id alert)))))
-
-  (testing "An admin should be able to unarchive an alert"
-    (mt/with-temp* [Pulse                 [alert (assoc (basic-alert) :archived true)]
-                    Card                  [card]
-                    PulseCard             [_     (pulse-card alert card)]
-                    PulseChannel          [pc    (pulse-channel alert)]
-                    PulseChannelRecipient [_     (recipient pc :rasta)]]
-        ((alert-client :crowberto) :put 200 (alert-url alert) {:archived false})
-        (is (false? (db/select-one-field :archived Pulse :id (u/the-id alert))))))
-
-  (testing "A non-admin should not be able to archive an alert"
-    (mt/with-temp* [Pulse                 [alert (basic-alert)]
-                    Card                  [card]
-                    PulseCard             [_     (pulse-card alert card)]
-                    PulseChannel          [pc    (pulse-channel alert)]
-                    PulseChannelRecipient [_     (recipient pc :rasta)]]
-        (is (= "Non-admin users are not allowed to explicitly change the archive status for an alert"
-                ((alert-client :rasta) :put 400 (alert-url alert) {:archived true})))))
-
-  (testing "A non-admin should not be able to unarchive an alert"
-    (mt/with-temp* [Pulse                 [alert (assoc (basic-alert) :archived false)]
-                    Card                  [card]
-                    PulseCard             [_     (pulse-card alert card)]
-                    PulseChannel          [pc    (pulse-channel alert)]
-                    PulseChannelRecipient [_     (recipient pc :rasta)]]
-        (is (= "Non-admin users are not allowed to explicitly change the archive status for an alert"
-                ((alert-client :rasta) :put 400 (alert-url alert) {:archived false}))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            GET /alert/question/:id                                             |

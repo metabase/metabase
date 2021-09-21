@@ -169,8 +169,6 @@
     (when (not api/*is-superuser?*)
       (api/check (= (-> alert-before-update :creator :id) api/*current-user-id*)
                  [400 "Non-admin users are only allowed to update alerts that they created"])
-      (api/check (not (contains? alert-updates :archived))
-                 [400 "Non-admin users are not allowed to explicitly change the archive status for an alert"])
       (api/check (or (not (contains? alert-updates :channels))
                      (and (= 1 (count channels))
                           ;; Non-admin alerts can only include the creator as a recipient
