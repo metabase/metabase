@@ -12,7 +12,7 @@ import Question from "metabase-lib/lib/Question";
 import { getMetadata } from "metabase/selectors/metadata";
 import { usePagination } from "metabase/hooks/use-pagination";
 
-import { AuditMode } from "../lib/util";
+import { AuditMode } from "../lib/mode";
 import QuestionLoadAndDisplay from "./QuestionLoadAndDisplay";
 import "./AuditTableVisualization";
 
