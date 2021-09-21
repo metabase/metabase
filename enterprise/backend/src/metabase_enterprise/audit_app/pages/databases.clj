@@ -85,7 +85,7 @@
                [:sync_schedule {:display_name "Sync Schedule", :base_type :type/Text}]
                [:schemas       {:display_name "Schemas", :base_type :type/Integer}]
                [:tables        {:display_name "Tables", :base_type :type/Integer}]
-               [:cache_ttl     {:display_name "Cache TTL", :base_type :type/Integer}]]
+               [:cache_ttl     {:display_name "Cache Duration", :base_type :type/Integer}]]
     :results  (common/reducible-query
                (->
                 {:with      [[:counts {:select   [[:db_id :id]
