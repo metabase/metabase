@@ -9,6 +9,7 @@
             Paragraph Reference SoftLineBreak StrongEmphasis Text ThematicBreak]
            com.vladsch.flexmark.html.HtmlRenderer
            com.vladsch.flexmark.parser.Parser
+           com.vladsch.flexmark.util.data.MutableDataSet
            [com.vladsch.flexmark.util.ast Document Node]
            java.net.URI))
 
@@ -300,7 +301,10 @@
 
 (def ^:private renderer
   "An instance of a Flexmark HTML renderer"
-  (delay (.build (HtmlRenderer/builder))))
+  (let [options (.. (MutableDataSet.)
+                    (set (. HtmlRenderer ESCAPE_HTML) true)
+                    (toImmutable))]
+    (delay (.build (HtmlRenderer/builder options)))))
 
 (defmulti process-markdown
   "Converts a markdown string from a virtual card into a form that can be sent to a channel
