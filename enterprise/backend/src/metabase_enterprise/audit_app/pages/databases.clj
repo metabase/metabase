@@ -84,7 +84,8 @@
                [:added_on      {:display_name "Added On", :base_type :type/DateTime}]
                [:sync_schedule {:display_name "Sync Schedule", :base_type :type/Text}]
                [:schemas       {:display_name "Schemas", :base_type :type/Integer}]
-               [:tables        {:display_name "Tables", :base_type :type/Integer}]]
+               [:tables        {:display_name "Tables", :base_type :type/Integer}]
+               [:cache_ttl     {:display_name "Cache TTL", :base_type :type/Integer}]]
     :results  (common/reducible-query
                (->
                 {:with      [[:counts {:select   [[:db_id :id]
@@ -97,7 +98,8 @@
                              [:db.created_at :added_on]
                              [:db.metadata_sync_schedule :sync_schedule]
                              [:counts.schemas :schemas]
-                             [:counts.tables :tables]]
+                             [:counts.tables :tables]
+                             [:db.cache_ttl :cache_ttl]]
                  :from      [[:metabase_database :db]]
                  :left-join [:counts [:= :db.id :counts.id]]
                  :order-by  [[:%lower.db.name :asc]
