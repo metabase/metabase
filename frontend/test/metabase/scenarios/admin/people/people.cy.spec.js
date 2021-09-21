@@ -301,18 +301,17 @@ describeWithToken("scenarios > admin > people", () => {
     const { first_name, last_name } = admin;
     const fullName = `${first_name} ${last_name}`;
 
+    cy.visit("/account/notifications");
+    cy.findByText("Question");
+    cy.findByText("Dashboard");
+
     cy.visit("/admin/people");
     showUserOptions(fullName);
 
-    popover().within(() => {
-      cy.findByText("Unsubscribe from all subscriptions / alerts").click();
-    });
-
-    modal().within(() => {
-      cy.findByText(fullName, { exact: false });
-      cy.findByText("Confirm").click();
-      cy.findByText("Confirm").should("not.exist");
-    });
+    cy.findByText("Unsubscribe from all subscriptions / alerts").click();
+    cy.findByText(fullName, { exact: false });
+    cy.findByText("Confirm").click();
+    cy.findByText("Unsubscribe successful");
 
     cy.visit("/account/notifications");
     cy.findByLabelText("bell icon");
