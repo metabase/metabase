@@ -162,7 +162,7 @@ describe("scenarios > visualizations > waterfall", () => {
       .should("not.have.css", "opacity", "1");
   });
 
-  it.skip("should work for unaggregated data (metabase#15465)", () => {
+  it("should work for unaggregated data (metabase#15465)", () => {
     visitQuestionAdhoc({
       dataset_query: {
         type: "native",
