@@ -58,11 +58,13 @@
       (throw (ex-info (invalid-location-msg) {:status-code 400, :url url-string} e)))))
 
 (defn- valid-geojson-url?
+  [url]
+  (or (io/resource url)
+      (valid-url? url)))
+
+(defn- valid-geojson-urls?
   [geojson]
-  (every? (fn [[_ {:keys [url]}]]
-            (or
-             (io/resource url)
-             (valid-url? url)))
+  (every? (fn [[_ {:keys [url]}]] (valid-geojson-url? url))
           geojson))
 
 (defn- validate-geojson
@@ -72,7 +74,7 @@
     (s/validate CustomGeoJSON geojson)
     (catch Throwable e
       (throw (ex-info (tru "Invalid custom GeoJSON") {:status-code 400} e))))
-  (or (valid-geojson-url? geojson)
+  (or (valid-geojson-urls? geojson)
       (throw (ex-info (invalid-location-msg) {:status-code 400}))))
 
 (defsetting custom-geojson
@@ -107,9 +109,10 @@
   This behaves similarly to /api/geojson/:key but doesn't require the custom map to be saved to the DB first."
   [{{:keys [url]} :params} respond raise]
   {url su/NonBlankString}
+  (api/check-superuser)
   (let [decoded-url (rc/url-decode url)]
-    (or (io/resource decoded-url)
-        (valid-url? decoded-url))
+    (when-not (valid-geojson-url? decoded-url)
+      (raise (ex-info (invalid-location-msg) {:status-code 400})))
     (try
       (with-open [reader (io/reader (or (io/resource decoded-url)
                                         decoded-url))
