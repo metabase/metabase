@@ -5,6 +5,7 @@ import {
   SET_SIDEBAR,
   CLOSE_SIDEBAR,
   REMOVE_PARAMETER,
+  SET_DASHBOARD_ATTRIBUTES,
 } from "./actions";
 
 describe("dashboard reducers", () => {
@@ -133,6 +134,85 @@ describe("dashboard reducers", () => {
           },
         ),
       ).toEqual({ ...initState, parameterValues: { 456: "def" } });
+    });
+  });
+
+  describe("SET_DASHBOARD_ATTRIBUTES", () => {
+    const emptyDashboard = {
+      archived: false,
+      ordered_cards: [],
+      can_write: true,
+      enable_embedding: false,
+      show_in_getting_started: false,
+      name: 'Dashboard',
+      creator_id: 1,
+      updated_at: '2021-01-01T01:01:01.001',
+      id: 1,
+      'last-edit-info': {
+        id: 1,
+        email: 'testin@metabase.com',
+        first_name: 'Test',
+        last_name: 'Metabase',
+        timestamp: '2021-01-01T01:01:01.001'
+      },
+      parameters: [],
+      created_at: '2021-01-01T01:01:01.001',
+    };
+    
+    it("should set attribute and isDirty", () => {
+      expect(
+        reducer(
+          {
+            ...initState,
+            dashboards: { 1: emptyDashboard },
+          },
+          {
+            type: SET_DASHBOARD_ATTRIBUTES,
+            payload: {
+              id: 1,
+              attributes: { name: "New Name" },
+            },
+          },
+        ),
+      ).toEqual({
+        ...initState,
+        dashboards: {
+          1: {
+            ...emptyDashboard,
+            name: "New Name",
+            isDirty: true,
+          }
+        }
+      });
+    });
+
+    it("should set isDirty to false", () => {
+      expect(
+        reducer(
+          {
+            ...initState,
+            dashboards: { 1: emptyDashboard },
+          },
+          {
+            type: SET_DASHBOARD_ATTRIBUTES,
+            payload: {
+              id: 1,
+              attributes: { name: "New Name" },
+              isDirty: false,
+            },
+          },
+        ),
+      ).toEqual({
+        ...initState, 
+        dashboards:
+        { 
+          1: {
+            ...emptyDashboard,
+            name: "New Name",
+            isDirty: false,
+          }
+        }
+      });
     });
   });
 });
