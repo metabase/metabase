@@ -19,6 +19,7 @@ import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 
 import _ from "underscore";
+import { getMaxMetricsSupported } from "metabase/visualizations";
 
 // NOTE: currently we don't consider any date extracts to be histgrams
 const HISTOGRAM_DATE_EXTRACTS = new Set([
@@ -152,13 +153,18 @@ export const GRAPH_DATA_SETTINGS = {
       const options = data.cols
         .filter(vizSettings["graph._metric_filter"])
         .map(getOptionFromColumn);
+
+      const addedMetricsCount = vizSettings["graph.metrics"].length;
+      const supportedMetrics = getMaxMetricsSupported(card.display);
+
+      const canAddAnother =
+        addedMetricsCount < supportedMetrics &&
+        options.length > value.length &&
+        vizSettings["graph.dimensions"].length < 2;
+
       return {
         options,
-        addAnother:
-          options.length > value.length &&
-          vizSettings["graph.dimensions"].length < 2
-            ? t`Add another series...`
-            : null,
+        addAnother: canAddAnother ? t`Add another series...` : null,
         columns: data.cols,
         showColumnSetting: true,
       };

@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import LineAreaBarChart from "../components/LineAreaBarChart.jsx";
+import LineAreaBarChart from "../components/LineAreaBarChart";
 import { waterfallRenderer } from "../lib/LineAreaBarRenderer";
 import { assocIn } from "icepick";
 
@@ -16,6 +16,8 @@ export default class WaterfallChart extends LineAreaBarChart {
   static identifier = "waterfall";
   static iconName = "waterfall";
   static noun = t`waterfall chart`;
+
+  static maxMetricsSupported = 1;
 
   static settings = {
     ...GRAPH_AXIS_SETTINGS,

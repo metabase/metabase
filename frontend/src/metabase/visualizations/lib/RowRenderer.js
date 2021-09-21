@@ -27,10 +27,6 @@ export default function rowRenderer(
 ): DeregisterFunction {
   const { cols } = series[0].data;
 
-  if (series.length > 1) {
-    throw new Error("Row chart does not support multiple series");
-  }
-
   const chart = dc.rowChart(element);
 
   // disable clicks
