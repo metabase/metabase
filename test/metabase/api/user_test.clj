@@ -2,8 +2,7 @@
   "Tests for /api/user endpoints."
   (:require [clojure.test :refer :all]
             [metabase.http-client :as http]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard PermissionsGroup PermissionsGroupMembership
-                                     Pulse PulseCard PulseChannel PulseChannelRecipient User]]
+            [metabase.models :refer [Collection PermissionsGroup PermissionsGroupMembership User]]
             [metabase.models.collection :as collection]
             [metabase.models.permissions-group :as group]
             [metabase.models.user-test :as user-test]
@@ -865,68 +864,3 @@
     (testing "Check that non-superusers are denied access to resending invites"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :post 403 (format "user/%d/send_invite" (mt/user->id :crowberto))))))))
-
-(deftest delete-subscriptions-test
-  (testing "DELETE /api/user/:id/subscriptions"
-    (doseq [run-type [:admin :non-admin]]
-      (mt/with-temp* [User                  [{user-id :id}]
-                      Card                  [{card-id :id}]
-                      ;; Alert
-                      Pulse                 [{alert-id :id}         {:alert_condition  "rows"
-                                                                     :alert_first_only false
-                                                                     :name             nil}]
-                      PulseCard             [_                      {:pulse_id alert-id
-                                                                     :card_id  card-id}]
-                      PulseChannel          [{alert-chan-id :id}    {:pulse_id alert-id}]
-                      PulseChannelRecipient [_                      {:user_id          user-id
-                                                                     :pulse_channel_id alert-chan-id}]
-                      ;; DashboardSubscription
-                      Dashboard             [{dashboard-id :id}]
-                      DashboardCard         [{dashcard-id :id}      {:dashboard_id dashboard-id
-                                                                     :card_id      card-id}]
-                      Pulse                 [{dash-sub-id :id}      {:dashboard_id dashboard-id}]
-                      PulseCard             [_                      {:pulse_id          dash-sub-id
-                                                                     :card_id           card-id
-                                                                     :dashboard_card_id dashcard-id}]
-                      PulseChannel          [{dash-sub-chan-id :id} {:pulse_id dash-sub-id}]
-                      PulseChannelRecipient [_                      {:user_id          user-id
-                                                                     :pulse_channel_id dash-sub-chan-id}]]
-        (letfn [(describe-objects []
-                  {:num-subscriptions                (db/count PulseChannelRecipient :user_id user-id)
-                   :alert-archived?                  (db/select-one-field :archived Pulse :id alert-id)
-                   :dashboard-subscription-archived? (db/select-one-field :archived Pulse :id dash-sub-id)})
-                (api-delete-subscriptions! [request-user-name-or-id expected-status-code]
-                  (mt/user-http-request request-user-name-or-id
-                                        :delete expected-status-code
-                                        (format "user/%d/subscriptions" user-id)))]
-          (testing "Sanity check: User should have 2 subscriptions (1 Alert, 1 DashboardSubscription)"
-            (is (= {:num-subscriptions                2
-                    :alert-archived?                  false
-                    :dashboard-subscription-archived? false}
-                   (describe-objects))))
-          (case run-type
-            :non-admin
-            (testing "Non-admin"
-              (testing "should not be allowed to delete all subscriptions for another User"
-                (is (= "You don't have permissions to do that."
-                       (api-delete-subscriptions! :rasta 403)))
-                (is (= {:num-subscriptions                2
-                        :alert-archived?                  false
-                        :dashboard-subscription-archived? false}
-                       (describe-objects))))
-              (testing "should be allowed to delete all subscriptions for themselves."
-                (is (nil? (api-delete-subscriptions! user-id 204)))
-                (testing "\nAlert and DashboardSubscription should have gotten archived as well (since this was the last User)"
-                  (is (= {:num-subscriptions                0
-                          :alert-archived?                  true
-                          :dashboard-subscription-archived? true}
-                         (describe-objects))))))
-
-            :admin
-            (testing "Admin should be allowed to delete all subscriptions for another User"
-              (is (nil? (api-delete-subscriptions! :crowberto 204)))
-              (testing "\nAlert and DashboardSubscription should have gotten archived as well"
-                (is (= {:num-subscriptions                0
-                        :alert-archived?                  true
-                        :dashboard-subscription-archived? true}
-                       (describe-objects)))))))))))

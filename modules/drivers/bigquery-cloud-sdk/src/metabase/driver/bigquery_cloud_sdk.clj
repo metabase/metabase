@@ -17,8 +17,9 @@
             [schema.core :as s])
   (:import com.google.auth.oauth2.ServiceAccountCredentials
            [com.google.cloud.bigquery BigQuery BigQuery$DatasetOption BigQuery$JobOption BigQuery$TableListOption
-                                      BigQuery$TableOption BigQueryOptions DatasetId EmptyTableResult Field Field$Mode
-                                      FieldValue FieldValueList QueryJobConfiguration Schema Table TableId TableResult]
+                                      BigQuery$TableOption BigQueryException BigQueryOptions DatasetId EmptyTableResult
+                                      Field Field$Mode FieldValue FieldValueList QueryJobConfiguration Schema Table
+                                      TableId TableResult]
            java.io.ByteArrayInputStream
            java.util.Collections))
 
@@ -193,6 +194,11 @@
     (fn [~response-binding]
       ~@body)))
 
+(defn- throw-invalid-query [e sql parameters]
+  (throw (ex-info (tru "Error executing query")
+           {:type error-type/invalid-query, :sql sql, :parameters parameters}
+           e)))
+
 (defn- ^TableResult execute-bigquery
   [^BigQuery client ^String sql parameters]
   {:pre [client (not (str/blank? sql))]}
@@ -206,10 +212,14 @@
                            (bigquery.params/set-parameters! parameters)
                            (.setMaxResults *max-results-per-page*))]
       (.query client (.build request) (u/varargs BigQuery$JobOption)))
+    (catch BigQueryException e
+      (if (.isRetryable e)
+        (throw (ex-info (tru "BigQueryException executing query")
+                 {:retryable? (.isRetryable e), :sql sql, :parameters parameters}
+                 e))
+        (throw-invalid-query e sql parameters)))
     (catch Throwable e
-      (throw (ex-info (tru "Error executing query")
-               {:type error-type/invalid-query, :sql sql, :parameters parameters}
-               e)))))
+      (throw-invalid-query e sql parameters))))
 
 (defn- ^TableResult execute-bigquery-on-db
   [database sql parameters]
@@ -268,9 +278,10 @@
     (try
       (thunk)
       (catch Throwable e
-        (if-not (error-type/client-error? (:type (u/all-ex-data e)))
-          (thunk)
-          (throw e))))))
+        (let [ex-data (u/all-ex-data e)]
+          (if (or (:retryable? e) (not (error-type/client-error? (:type ex-data))))
+            (thunk)
+            (throw e)))))))
 
 (defn- effective-query-timezone-id [database]
   (if (get-in database [:details :use-jvm-timezone])
