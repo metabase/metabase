@@ -406,7 +406,6 @@ export const UserApi = {
   delete: DELETE("/api/user/:userId"),
   reactivate: PUT("/api/user/:userId/reactivate"),
   send_invite: POST("/api/user/:id/send_invite"),
-  unsubscribe: DELETE("/api/user/:id/subscriptions"),
 };
 
 export const UtilApi = {

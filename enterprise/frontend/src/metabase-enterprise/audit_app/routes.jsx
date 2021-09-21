@@ -6,6 +6,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import AuditApp from "./containers/AuditApp";
+import UnsubscribeUserModal from "./containers/UnsubscribeUserModal/UnsubscribeUserModal";
 
 import AuditOverview from "./pages/AuditOverview";
 
@@ -26,6 +27,7 @@ import AuditUsers from "./pages/AuditUsers";
 import AuditUserDetail from "./pages/AuditUserDetail";
 
 import AuditDownloads from "./pages/AuditDownloads";
+import { ModalRoute } from "metabase/hoc/ModalRoute";
 
 type Page = {
   tabs?: Tab[],
@@ -95,6 +97,10 @@ const getRoutes = (store: any) => (
     {getPageRoutes("members", AuditUsers)}
     {getPageRoutes("member/:userId", AuditUserDetail)}
   </Route>
+);
+
+export const getUserMenuRotes = () => (
+  <ModalRoute path="unsubscribe" modal={UnsubscribeUserModal} />
 );
 
 export default getRoutes;
