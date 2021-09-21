@@ -308,10 +308,15 @@ describeWithToken("scenarios > admin > people", () => {
     cy.visit("/admin/people");
     showUserOptions(fullName);
 
-    cy.findByText("Unsubscribe from all subscriptions / alerts").click();
-    cy.findByText(fullName, { exact: false });
-    cy.findByText("Confirm").click();
-    cy.findByText("Unsubscribe successful");
+    popover().within(() => {
+      cy.findByText("Unsubscribe from all subscriptions / alerts").click();
+    });
+
+    modal().within(() => {
+      cy.findByText(fullName, { exact: false });
+      cy.findByText("Confirm").click();
+      cy.findByText("Confirm").should("not.exist");
+    });
 
     cy.visit("/account/notifications");
     cy.findByLabelText("bell icon");
