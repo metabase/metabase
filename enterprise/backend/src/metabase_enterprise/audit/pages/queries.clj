@@ -53,14 +53,6 @@
                :order-by [[:avg_running_time :desc]]
                :limit    10})})
 
-(def latest-qe-subq
-  "QE subquery for only getting the latest QE. Needed to make the QE table blank out properly after running."
-  [:not [:exists {:select [1]
-                  :from [[:query_execution :qe1]]
-                  :where [:and
-                          [:= :card.id :qe1.card_id]
-                          [:> :qe1.started_at :qe.started_at]]}]])
-
 ;; List of all failing questions
 (defmethod audit.i/internal-query ::bad-table
   ([_]
@@ -98,9 +90,9 @@
                              [:db.name :database_name]
                              :card.table_id
                              [:t.name :table_name]
-                             [(hsql/call :max :qe.started_at) :last_run_at]
-                             [:%count.qe_nonuniq.id :total_runs]
-                             [:%distinct-count.dash_card.id :num_dashboards]
+                             [:qe.started_at :last_run_at]
+                             [:%count.qe.id :total_runs]
+                             [:%distinct-count.dash_card.dashboard_id :num_dashboards]
                              [:card.creator_id :user_id]
                              [(common/user-full-name :u) :user_name]
                              [(hsql/call :max :card.updated_at) :updated_at]]
@@ -110,16 +102,7 @@
                              [:metabase_table :t]               [:= :card.table_id :t.id]
                              [:core_user :u]                    [:= :card.creator_id :u.id]
                              [:report_dashboardcard :dash_card] [:= :card.id :dash_card.card_id]
-                             [:query_execution :qe]             [:and [:= :card.id :qe.card_id]
-                                                                 latest-qe-subq]
-                             [:query_execution :qe_nonuniq]     [:= :card.id :qe.card_id]]
-                 :group-by  [(common/user-full-name :u)
-                             :card.id
-                             :card.creator_id
-                             :coll.name
-                             :db.name
-                             :t.name
-                             :qe.error]
+                             [:query_execution :qe]             [:= :card.id :qe.card_id]]
                  :where     [:and
                              [:= :card.archived false]
                              [:<> :qe.error nil]]}
