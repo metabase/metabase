@@ -5,7 +5,10 @@ import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 
 export const ItemTitle = styled(Label)`
-  margin: 0;
+  flex: 1;
+  margin: 0 0.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 `;
 
@@ -29,9 +32,7 @@ const VERTICAL_PADDING_BY_SIZE = {
 };
 
 export const ItemRoot = styled.li`
-  display: grid;
-  grid-template-columns: min-content min-content 1fr;
-  gap: 0.5rem;
+  display: flex;
   align-items: center;
   cursor: pointer;
   padding: ${props => VERTICAL_PADDING_BY_SIZE[props.size]} 0.5rem;
