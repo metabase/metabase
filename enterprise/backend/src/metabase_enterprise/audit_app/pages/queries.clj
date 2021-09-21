@@ -97,7 +97,7 @@
                              [:%distinct-count.dash_card.dashboard_id :num_dashboards]
                              [:card.creator_id :user_id]
                              [(common/user-full-name :u) :user_name]
-                             [(hsql/call :max :card.updated_at) :updated_at]]
+                             [:card.updated_at :updated_at]]
                  :from      [[:report_card :card]]
                  :left-join [[:collection :coll]                [:= :card.collection_id :coll.id]
                              [:metabase_database :db]           [:= :card.database_id :db.id]
