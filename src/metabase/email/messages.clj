@@ -410,24 +410,35 @@
 (defn- render-filters
   [notification dashboard]
   (let [filters (filters/merge-filters notification dashboard)
-        cells   (mapcat
-                 (fn [filter] [[:td
-                                {:style (render.style/style {:color render.style/color-text-medium
-                                                             :min-width "100px"
-                                                             :padding "4px 4px 4px 0"
-                                                             :vertical-align "baseline"})}
-                                (:name filter)]
-                               [:td
-                                {:style (render.style/style {:color render.style/color-text-dark
-                                                             :min-width "100px"
-                                                             :padding "4px 16px 4px 8px"
-                                                             :vertical-align "baseline"})}
-                                (filters/value-string filter)]])
+        cells   (map
+                 (fn [filter]
+                   [:td {:class "filter-cell"
+                         :style (render.style/style {:width "50%"
+                                                     :padding "0px"})}
+                    [:table {:cellpadding "0"
+                             :cellspacing "0"}
+                     [:tr
+                      [:td
+                       {:style (render.style/style {:color render.style/color-text-medium
+                                                    :min-width "100px"
+                                                    :width "50%"
+                                                    :padding "4px 4px 4px 0"
+                                                    :vertical-align "baseline"})}
+                       (:name filter)]
+                      [:td
+                       {:style (render.style/style {:color render.style/color-text-dark
+                                                    :min-width "100px"
+                                                    :width "50%"
+                                                    :padding "4px 16px 4px 8px"
+                                                    :vertical-align "baseline"})}
+                       (filters/value-string filter)]]]])
                  filters)
-        rows    (partition 4 4 nil cells)]
+        rows    (partition 2 2 nil cells)]
     (html
      [:table {:style (render.style/style {:table-layout :fixed
                                           :border-collapse :collapse
+                                          :cellpadding "0"
+                                          :cellspacing "0"
                                           :width "100%"
                                           :font-size  "12px"
                                           :font-weight 700
