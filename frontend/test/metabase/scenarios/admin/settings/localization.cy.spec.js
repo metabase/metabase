@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
@@ -119,6 +119,36 @@ describe("scenarios > admin > localization", () => {
     cy.findByText(/First day of the week/i);
     cy.findByText(/Localization options/i);
     cy.contains(/Column title/i).should("not.exist");
+  });
+
+  it("should use currency settings for number columns with style set to currency (metabase#10787)", () => {
+    cy.visit("/admin/settings/localization");
+
+    cy.findByText("Unit of currency");
+    cy.findByText("US Dollar").click();
+    cy.findByText("Euro").click();
+    cy.findByText("Saved");
+
+    visitQuestionAdhoc({
+      display: "scalar",
+      dataset_query: {
+        type: "native",
+        native: {
+          query: "SELECT 10 as a",
+          "template-tags": {},
+        },
+        database: 1,
+      },
+      visualization_settings: {
+        column_settings: {
+          '["name","A"]': {
+            number_style: "currency",
+          },
+        },
+      },
+    });
+
+    cy.findByText("€10.00");
   });
 });
 
