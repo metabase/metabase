@@ -318,6 +318,8 @@ export const loadMetadataForQueries = queries => dispatch =>
           return (foreignTables
             ? Tables.actions.fetchMetadataAndForeignTables
             : Tables.actions.fetchMetadata)({ id });
+        } else if (type === "field") {
+          return Fields.actions.fetch({ id });
         } else {
           console.warn(`loadMetadataForQueries: type ${type} not implemented`);
         }
