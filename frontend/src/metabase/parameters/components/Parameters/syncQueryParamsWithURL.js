@@ -87,7 +87,9 @@ const treatValueForFieldValuesWidget = (value, parameter) => {
 // ["field", <integer-id>, <options>] or
 // ["field", <string-name>, <options>]
 const getFields = (parameter, metadata) => {
-  const fieldIds = parameter.field_ids || [];
+  const fieldIds =
+    parameter.field_ids || [parameter.field_id].filter(f => f != null);
+
   return fieldIds.map(
     id => metadata.field(id) || Dimension.parseMBQL(id, metadata).field(),
   );
