@@ -148,15 +148,10 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
 
   const hasAtLeastOneDimensionSelected = join.getDimensions().length > 0;
 
-  let lhsTable;
-  if (join.index() === 0) {
-    // first join's lhs is always the parent table
-    lhsTable = join.parentTable();
-  } else if (join.parentDimensions().length > 0) {
-    // subsequent can be one of the previously joined tables
-    // NOTE: `lhsDimension` would probably be a better name for `parentDimension`
-    lhsTable = join.parentDimensions()[0]?.field().table;
-  }
+  // first join's lhs is always the parent table
+  // subsequent should always be a string "Previous results" as per:
+  // https://github.com/metabase/metabase/pull/13895#issuecomment-735933018
+  const lhsTable = join.index() === 0 ? join.parentTable() : null;
 
   function onSourceTableSet(newJoin) {
     if (!newJoin.parentDimensions().length) {
