@@ -78,7 +78,7 @@ spec:
               configMapKeyRef:
                 name: {{ include "metabase.fullname" . }}-configs
                 key: MB_JETTY_PORT
-          {{- if and (ne .Values.config.database.type "h2") (.Values.secrets.database.host) (.Values.secrets.database.password) (.Values.secrets.database.username) (.Values.secrets.database.port) (.Values.secrets.database.dbName) }}
+          {{- if and (ne .Values.config.database.type "h2") (.Values.secrets.database.host) (or .Values.secrets.database.password .Values.secrets.existingSecret.existingSecretPasswordKey) (or .Values.secrets.database.username .Values.secrets.existingSecret.existingSecretUsernameKey) (.Values.secrets.database.port) (.Values.secrets.database.dbName) }}
           - name: MB_DB_TYPE
             valueFrom:
               configMapKeyRef:
@@ -89,16 +89,32 @@ spec:
               secretKeyRef:
                 name: {{ include "metabase.fullname" . }}-secrets
                 key: MB_DB_HOST
+          {{- if .Values.secrets.existingSecret.existingSecretPasswordKey }}
+          - name: MB_DB_PASS
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.secrets.existingSecret.existingSecretName }}-existingSecrets
+                key: {{ .Values.secrets.existingSecret.existingSecretPasswordKey }}
+          {{ else }}
           - name: MB_DB_PASS
             valueFrom:
               secretKeyRef:
                 name: {{ include "metabase.fullname" . }}-secrets
                 key: MB_DB_PASS
+          {{- end }}
+          {{- if .Values.secrets.existingSecret.existingSecretUsernameKey }}
+          - name: MB_DB_USER
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.secrets.existingSecret.existingSecretName }}-existingSecrets
+                key: {{ .Values.secrets.existingSecret.existingSecretUsernameKey }}
+          {{ else }}
           - name: MB_DB_USER
             valueFrom:
               secretKeyRef:
                 name: {{ include "metabase.fullname" . }}-secrets
                 key: MB_DB_USER
+          {{- end }}
           - name: MB_DB_DBNAME
             valueFrom:
               secretKeyRef:
@@ -110,12 +126,20 @@ spec:
                 name: {{ include "metabase.fullname" . }}-secrets
                 key: MB_DB_PORT
           {{- end }}
-          {{- if and (ne .Values.config.database.type "h2") (.Values.secrets.database.connString) }}
+          {{- if and (ne .Values.config.database.type "h2") (or .Values.secrets.database.connString .Values.secrets.existingSecret.existingSecretConnectionURIKey)}}
+          {{- if .Values.secrets.existingSecret.existingSecretConnectionURIKey }}
+          - name: MB_DB_CONNECTION_URI
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.secrets.existingSecret.existingSecretName }}-existingSecrets
+                key: {{ .Values.secrets.existingSecret.existingSecretConnectionURIKey }}
+          {{ else }}
           - name: MB_DB_CONNECTION_URI
             valueFrom:
               secretKeyRef:
                 name: {{ include "metabase.fullname" . }}-secrets
                 key: MB_DB_CONNECTION_URI
+          {{- end }}
           {{- end }}
           {{- if .Values.secrets.config.encryptionKey }}
           - name: MB_ENCRYPTION_SECRET_KEY
@@ -819,6 +843,11 @@ spec:
         - name: {{ include "metabase.fullname" . }}-secrets
           secret:
             secretName: {{ include "metabase.fullname" . }}-secrets
+        {{ if .Values.secrets.existingSecret.existingSecretName }}
+        - name: {{ .Values.secrets.existingSecret.existingSecretName }}-existingSecrets
+          secret:
+            secretName: {{ .Values.secrets.existingSecret.existingSecretName }}-existingSecrets
+        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

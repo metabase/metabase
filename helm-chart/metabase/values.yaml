@@ -166,6 +166,11 @@ config:
     versionInfoURL: ""
   
 secrets:
+  existingSecret:
+    existingSecretName:
+    existingSecretConnectionURIKey:
+    existingSecretUsernameKey:
+    existingSecretPasswordKey:
   database:
     username: ""
     password: ""
