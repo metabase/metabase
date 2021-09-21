@@ -144,21 +144,21 @@ describe("dashboard reducers", () => {
       can_write: true,
       enable_embedding: false,
       show_in_getting_started: false,
-      name: 'Dashboard',
+      name: "Dashboard",
       creator_id: 1,
-      updated_at: '2021-01-01T01:01:01.001',
+      updated_at: "2021-01-01T01:01:01.001",
       id: 1,
-      'last-edit-info': {
+      "last-edit-info": {
         id: 1,
-        email: 'testin@metabase.com',
-        first_name: 'Test',
-        last_name: 'Metabase',
-        timestamp: '2021-01-01T01:01:01.001'
+        email: "testin@metabase.com",
+        first_name: "Test",
+        last_name: "Metabase",
+        timestamp: "2021-01-01T01:01:01.001",
       },
       parameters: [],
-      created_at: '2021-01-01T01:01:01.001',
+      created_at: "2021-01-01T01:01:01.001",
     };
-    
+
     it("should set attribute and isDirty", () => {
       expect(
         reducer(
@@ -181,8 +181,8 @@ describe("dashboard reducers", () => {
             ...emptyDashboard,
             name: "New Name",
             isDirty: true,
-          }
-        }
+          },
+        },
       });
     });
 
@@ -203,15 +203,14 @@ describe("dashboard reducers", () => {
           },
         ),
       ).toEqual({
-        ...initState, 
-        dashboards:
-        { 
+        ...initState,
+        dashboards: {
           1: {
             ...emptyDashboard,
             name: "New Name",
             isDirty: false,
-          }
-        }
+          },
+        },
       });
     });
   });
