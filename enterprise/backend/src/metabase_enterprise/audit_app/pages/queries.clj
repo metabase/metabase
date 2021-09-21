@@ -53,14 +53,6 @@
                :order-by [[:avg_running_time :desc]]
                :limit    10})})
 
-(def latest-qe-subq
-  "QE subquery for only getting the latest QE. Needed to make the QE table blank out properly after running."
-  [:not [:exists {:select [1]
-                  :from [[:query_execution :qe1]]
-                  :where [:and
-                          [:= :card.id :qe1.card_id]
-                          [:> :qe1.started_at :qe.started_at]]}]])
-
 ;; List of all failing questions
 (defmethod audit.i/internal-query ::bad-table
   ([_]
@@ -89,7 +81,9 @@
               [:updated_at      {:display_name "Updated At",         :base_type :type/DateTime}]]
    :results (common/reducible-query
               (->
-                {:select    [[:card.id :card_id]
+                {:with      [cards/query-runs
+                             cards/dashboards]
+                 :select    [[:card.id :card_id]
                              [:card.name :card_name]
                              [(hsql/call :concat (hsql/call :substring :qe.error 0 60) "...") :error_substr]
                              :collection_id
@@ -98,27 +92,20 @@
                              [:db.name :database_name]
                              :card.table_id
                              [:t.name :table_name]
-                             [(hsql/call :max :qe.started_at) :last_run_at]
-                             [:%distinct-count.qe.id :total_runs]
-                             [:%distinct-count.dash_card.card_id :num_dashboards]
+                             [:query_runs.last :last_run_at]
+                             [:query_runs.count :total_runs]
+                             [:dash_card.count :num_dashboards]
                              [:card.creator_id :user_id]
                              [(common/user-full-name :u) :user_name]
-                             [(hsql/call :max :card.updated_at) :updated_at]]
+                             [:card.updated_at :updated_at]]
                  :from      [[:report_card :card]]
                  :left-join [[:collection :coll]                [:= :card.collection_id :coll.id]
                              [:metabase_database :db]           [:= :card.database_id :db.id]
                              [:metabase_table :t]               [:= :card.table_id :t.id]
                              [:core_user :u]                    [:= :card.creator_id :u.id]
-                             [:report_dashboardcard :dash_card] [:= :card.id :dash_card.card_id]
-                             [:query_execution :qe]             [:and [:= :card.id :qe.card_id]
-                                                                 latest-qe-subq]]
-                 :group-by  [(common/user-full-name :u)
-                             :card.id
-                             :card.creator_id
-                             :coll.name
-                             :db.name
-                             :t.name
-                             :qe.error]
+                             [:query_execution :qe]             [:= :card.id :qe.card_id]
+                             :query_runs                        [:= :card.id :query_runs.card_id]
+                             :dash_card                         [:= :card.id :dash_card.card_id]]
                  :where     [:and
                              [:= :card.archived false]
                              [:<> :qe.error nil]]}

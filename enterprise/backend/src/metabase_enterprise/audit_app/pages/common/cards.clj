@@ -25,6 +25,14 @@
                        :group-by [:card_id]}
                       (common/add-45-days-clause :started_at))])
 
+(def query-runs
+  "HoneySQL for a CTE to include the total number of queries for each Card forever."
+  [:query_runs {:select   [:card_id
+                           [:%count.* :count]
+                           [:%max.started_at :last]]
+                :from     [:query_execution]
+                :group-by [:card_id]}])
+
 (def query-runs-45
   "HoneySQL for a CTE to include the total number of queries for each Card for 45 days."
   [:query_runs (-> {:select   [:card_id
@@ -32,6 +40,12 @@
                     :from     [:query_execution]
                     :group-by [:card_id]}
                    (common/add-45-days-clause :started_at))])
+
+(def dashboards
+  "HoneySQL for a CTE to enumerate the dashboards for a Card."
+  [:dash_card {:select [:dashboard_id :card_id [:%count.* :count]]
+               :from [:report_dashboardcard]
+               :group-by [:card_id]}])
 
 (def views
   "HoneySQL for a CTE to include the total view count for each Card."
