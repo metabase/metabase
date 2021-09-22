@@ -1,7 +1,6 @@
 (ns metabase.pulse.render.common
   (:require [clojure.pprint :refer [cl-format]]
             [hiccup.util :as hutil]
-            [metabase.public-settings :as public-settings]
             [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.shared.util.currency :as currency]
             [metabase.util.ui-logic :as ui-logic]
