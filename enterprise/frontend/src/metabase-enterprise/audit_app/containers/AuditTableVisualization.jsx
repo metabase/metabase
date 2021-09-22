@@ -162,6 +162,9 @@ export default class AuditTableVisualization extends React.Component {
                 const clicked = { column, value, origin: { row, cols } };
                 const clickable = visualizationIsClickable(clicked);
                 const columnSettings = settings.column(column);
+                console.log(column);
+                console.log(settings);
+                console.log(columnSettings);
 
                 return (
                   <td

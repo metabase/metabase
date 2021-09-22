@@ -24,7 +24,7 @@
               [:last_run_at     {:display_name "Last run at",        :base_type :type/DateTime}]
               [:total_runs      {:display_name "Total runs",         :base_type :type/Integer}]
               ;; Denormalize by string_agg in order to avoid having to deal with complicated left join
-              [:dash_ids_str    {:display_name "Dashboards it's in", :base_type :type/Text}]
+              [:dash_ids_str    {:display_name "Dashboards it's in", :base_type :type/Text    :remapped_to   :dashboard_name}]
               [:user_id         {:display_name "Created By ID",      :base_type :type/Integer :remapped_to   :user_name}]
               [:user_name       {:display_name "Created By",         :base_type :type/Text    :remapped_from :user_id}]
               [:updated_at      {:display_name "Updated At",         :base_type :type/DateTime}]]

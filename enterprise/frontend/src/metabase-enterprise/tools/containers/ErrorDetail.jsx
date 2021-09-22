@@ -4,6 +4,8 @@ import PropTypes from "prop-types";
 import { getIn } from "icepick";
 import cx from "classnames";
 
+import Table from "metabase/visualizations/visualizations/Table";
+import { formatColumn, formatValue } from "metabase/lib/formatting";
 import { CardApi } from "metabase/services";
 import Button from "metabase/components/Button";
 import Question from "metabase-lib/lib/Question";
@@ -42,48 +44,23 @@ function ErrorDetailDisplay(props) {
     const nameToResCol = resCols.reduce(
       (obj, x, idx) => Object.assign(obj, {[x.name]: idx}),
       {});
+    console.log(resCols);
+    console.log(Table.settings);
 
-    return (<div>
-      <h2>{resRow[nameToResCol.card_name]}</h2>
-      <div className={cx({"text-code": true})}>
-      {resRow[nameToResCol.error_str]}
-      </div>
+    const ordinaryRows = ["last_run_at", "collection_name", "database_name",
+      "table_name", "total_runs", "user_name", "updated_at"].map((x) => (<tr key={x}>
+      <td>{formatColumn(resCols[nameToResCol[x]])}</td>
+      <td>{formatValue(resRow[nameToResCol[x]], {column: resCols[nameToResCol[x]]})}</td>
+      </tr>));
+    const dashIdRows = resRow[nameToResCol.dash_ids_str].split(",").map((x, idx) => (<tr key={x}>
+      <td>{idx === 0 && formatColumn(resCols[nameToResCol.dash_ids_str])}</td>
+      <td>{formatValue(x, {column: resCols[nameToResCol.dash_ids_str]})}</td>
+      </tr>));
 
-      <table><tbody>
-      <tr>
-      <td>{t`Last Run At`}</td>
-      <td>{resRow[nameToResCol.last_run_at]}</td>
-      </tr>
-      <tr>
-      <td>{t`Collection`}</td>
-      <td>{resRow[nameToResCol.collection_name]}</td>
-      </tr>
-      <tr>
-      <td>{t`Database`}</td>
-      <td>{resRow[nameToResCol.database_name]}</td>
-      </tr>
-      <tr>
-      <td>{t`Table`}</td>
-      <td>{resRow[nameToResCol.table_name]}</td>
-      </tr>
-      <tr>
-      <td>{t`Total Executions`}</td>
-      <td>{resRow[nameToResCol.total_runs]}</td>
-      </tr>
-      <tr>
-      <td>{t`Last Edited By`}</td>
-      <td>{resRow[nameToResCol.user_name]}</td>
-      </tr>
-      <tr>
-      <td>{t`Last Edited At`}</td>
-      <td>{resRow[nameToResCol.updated_at]}</td>
-      </tr>
-      <tr>
-      <td>{t`Dashboards it's in`}</td>
-      <td>{resRow[nameToResCol.dash_ids_str]}</td>
-      </tr>
-      </tbody></table>
-      </div>);
+    return [(<h2 key="card_name">{resRow[nameToResCol.card_name]}</h2>),
+    (<div key="error_str" className={cx({"text-code": true})}>{resRow[nameToResCol.error_str]}</div>),
+    ordinaryRows,
+    dashIdRows];
   } else {
     return null;
   }
