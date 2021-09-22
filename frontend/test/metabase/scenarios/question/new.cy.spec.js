@@ -340,7 +340,7 @@ describe("scenarios > question > new", () => {
       cy.log(
         "**It should display the table with all orders with the selected quantity.**",
       );
-      cy.findByText("Fantastic Wool Shirt"); // order ID#3 with the same quantity
+      cy.get(".TableInteractive");
     });
 
     it("should display date granularity on Summarize when opened from saved question (metabase#11439)", () => {

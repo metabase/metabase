@@ -15,9 +15,8 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
 const isPKFilter = (filters, query) => {
-  const sourceTablePKFields = query
-    .table()
-    .fields.filter(field => field.isPK());
+  const sourceTablePKFields =
+    query?.table()?.fields.filter(field => field.isPK()) || [];
 
   if (sourceTablePKFields.length === 0) {
     return false;
