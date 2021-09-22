@@ -565,11 +565,14 @@ function getCharts(
       .dimension(dimension)
       .group(group[0])
       .transitionDuration(0)
-      .useRightYAxis(yAxisSplit.length > 1 && yAxisSplit[1].includes(index))
-      .stackLayout(stack().offset(stackOffsetDiverging));
+      .useRightYAxis(yAxisSplit.length > 1 && yAxisSplit[1].includes(index));
 
     if (chartType === "scatter") {
       doScatterChartStuff(chart, datas, index, yAxisProps);
+    }
+
+    if (seriesChartType === "stacked") {
+      chart.stackLayout(stack().offset(stackOffsetDiverging));
     }
 
     if (chart.defined) {
