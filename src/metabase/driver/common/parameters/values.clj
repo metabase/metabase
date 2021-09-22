@@ -197,7 +197,7 @@
         (throw (missing-required-param-exception display-name)))))
 
 (s/defn ^:private param-value-for-tag [{tag-name :name, :as tag} :- TagParam, params :- (s/maybe [i/ParamValue])]
-  (or (:value (param-with-target params [:variable [:template-tag tag-name]]))
+  (or (:value (param-with-target (map defaulted-param params) [:variable [:template-tag tag-name]]))
       (default-value-for-tag tag)
       i/no-value))
 

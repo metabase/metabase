@@ -208,6 +208,9 @@ export default class TableSimple extends Component {
                       const clickedRowData = getTableClickedObjectRowData(
                         series,
                         rowIndex,
+                        columnIndex,
+                        isPivoted,
+                        data,
                       );
                       const column = cols[columnIndex];
                       const clicked = getTableCellClickedObject(

@@ -349,6 +349,11 @@
         (setting/set! setting-k value)
         (testing (colorize/blue (format "\nSetting %s = %s\n" (keyword setting-k) (pr-str value)))
           (thunk))
+        (catch Throwable e
+          (throw (ex-info (str "Error in with-temporary-setting-values: " (ex-message e))
+                          {:setting setting-k
+                           :value   value}
+                          e)))
         (finally
           (setting/set! setting-k original-db-or-cache-value))))))
 

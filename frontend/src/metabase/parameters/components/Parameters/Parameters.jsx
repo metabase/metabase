@@ -5,10 +5,7 @@ import querystring from "querystring";
 
 import ParametersList from "metabase/parameters/components/ParametersList";
 import { syncQueryParamsWithURL } from "./syncQueryParamsWithURL";
-import {
-  getParameterValuesBySlug,
-  removeUndefaultedNilValuedPairs,
-} from "metabase/meta/Parameter";
+import { getParameterValuesBySlug } from "metabase/meta/Parameter";
 import { getMetadata } from "metabase/selectors/metadata";
 
 @connect(state => ({ metadata: getMetadata(state) }))
@@ -27,7 +24,7 @@ export default class Parameters extends Component {
       const parameterValuesBySlug = getParameterValuesBySlug(
         parameters,
         parameterValues,
-        dashboard && removeUndefaultedNilValuedPairs,
+        dashboard && { preserveDefaultedParameters: true },
       );
 
       let search = querystring.stringify(parameterValuesBySlug);
