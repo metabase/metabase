@@ -302,7 +302,10 @@ export const getRawSeries = createSelector(
   ) => {
     let display = question && question.display();
     let settings = question && question.settings();
-    if (isObjectDetail) {
+
+    // It handles filtering by a manually set PK column that is not unique
+    const hasMultipleRows = results?.some(({ data }) => data?.rows.length > 1);
+    if (isObjectDetail && !hasMultipleRows) {
       display = "object";
     } else if (isShowingRawTable) {
       display = "table";

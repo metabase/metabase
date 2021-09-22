@@ -14,6 +14,20 @@ import type Question from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
+const isPKFilter = (filters, query) => {
+  const sourceTablePKFields = query
+    .table()
+    .fields.filter(field => field.isPK());
+
+  const hasEqualityFilterForEveryPK = sourceTablePKFields.every(pkField => {
+    const filter = filters.find(filter => filter.field()?.id === pkField.id);
+
+    return filter?.operatorName() === "=" && filter?.arguments().length === 1;
+  });
+
+  return hasEqualityFilterForEveryPK;
+};
+
 export function getMode(question: ?Question): ?QueryMode {
   if (!question) {
     return null;
@@ -31,23 +45,7 @@ export function getMode(question: ?Question): ?QueryMode {
     const filters = query.filters();
 
     if (aggregations.length === 0 && breakouts.length === 0) {
-      const isPKFilterWithOneID = filter => {
-        if (filter.isFieldFilter()) {
-          const field = filter.field();
-          if (
-            field &&
-            field.isPK() &&
-            field.table &&
-            field.table.id === query.sourceTableId() &&
-            filter.operatorName() === "=" &&
-            filter.arguments().length === 1
-          ) {
-            return true;
-          }
-        }
-        return false;
-      };
-      if (filters.some(isPKFilterWithOneID)) {
+      if (isPKFilter(filters, query)) {
         return ObjectMode;
       } else {
         return SegmentMode;
