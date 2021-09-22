@@ -1,5 +1,8 @@
 import d3 from "d3";
 
+// d3.layout.stack applies offsets only to the first value within a group
+// this wrapper does that to each value to stack positive and negative series separately
+
 export function stack() {
   const inner = d3.layout.stack();
 
@@ -105,6 +108,7 @@ export function stack() {
   return outer;
 }
 
+// series are stacked starting from zero
 export function stackOffsetZero(data) {
   const n = data.length;
   const m = data[0].length;
@@ -124,6 +128,7 @@ export function stackOffsetZero(data) {
   return y0;
 }
 
+// series are stacked with separate tracks for positive and negative values
 export function stackOffsetDiverging(data) {
   const n = data.length;
   const m = data[0].length;
