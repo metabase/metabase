@@ -15,7 +15,7 @@ import EmptyState from "metabase/components/EmptyState";
 import Icon from "metabase/components/Icon";
 import CheckBox from "metabase/components/CheckBox";
 import { RemoveRowButton } from "./AuditTableVisualization.styled";
-import { getRowValuesByColumns, getColumnName } from "../lib/util";
+import { getRowValuesByColumns, getColumnName } from "../lib/mode";
 
 import NoResults from "assets/img/no_results.svg";
 

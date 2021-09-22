@@ -26,7 +26,6 @@ import AuditUsers from "./pages/AuditUsers";
 import AuditUserDetail from "./pages/AuditUserDetail";
 import AuditDownloads from "./pages/AuditDownloads";
 import AuditSubscriptions from "./pages/AuditSubscriptions";
-import { ModalRoute } from "metabase/hoc/ModalRoute";
 
 type Page = {
   tabs?: Tab[],
