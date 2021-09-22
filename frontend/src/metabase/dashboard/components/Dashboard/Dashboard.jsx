@@ -54,7 +54,7 @@ export default class Dashboard extends Component {
     cancelFetchDashboardCardData: PropTypes.func.isRequired,
     intializeDashboard: PropTypes.func.isRequired,
     fetchDashboardCardData: PropTypes.func.isRequired,
-    initialize: PropTypes.func.isRequired,
+    reset: PropTypes.func.isRequired,
     onRefreshPeriodChange: PropTypes.func,
     saveDashboardAndCards: PropTypes.func.isRequired,
     setDashboardAttributes: PropTypes.func.isRequired,
@@ -129,13 +129,13 @@ export default class Dashboard extends Component {
       addCardOnLoad,
       addCardToDashboard,
       intializeDashboard,
-      initialize,
+      reset,
       loadDashboardParams,
       location,
       setErrorPage,
     } = this.props;
 
-    initialize();
+    reset();
 
     loadDashboardParams();
 

@@ -45,7 +45,7 @@ type Props = {
   parameters: Parameter[],
   parameterValues: { [key: string]: string },
 
-  initialize: () => void,
+  reset: () => void,
   isFullscreen: boolean,
   isNightMode: boolean,
   intializeDashboard: (
@@ -76,7 +76,7 @@ export default (ComposedComponent: React.Class) =>
 
       async load(props) {
         const {
-          initialize,
+          reset,
           intializeDashboard,
           fetchDashboardCardData,
           setErrorPage,
@@ -84,7 +84,7 @@ export default (ComposedComponent: React.Class) =>
           dashboardId,
         } = props;
 
-        initialize();
+        reset();
         try {
           await intializeDashboard(dashboardId, location && location.query);
           await fetchDashboardCardData({ reload: false, clear: true });

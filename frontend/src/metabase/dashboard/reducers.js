@@ -2,7 +2,7 @@ import { assoc, dissoc, assocIn, updateIn, chain, merge } from "icepick";
 import { handleActions, combineReducers } from "metabase/lib/redux";
 
 import {
-  INITIALIZE,
+  RESET,
   FETCH_DASHBOARD,
   SET_EDITING_DASHBOARD,
   SET_DASHBOARD_ATTRIBUTES,
@@ -37,7 +37,7 @@ import { isVirtualDashCard, syncParametersAndEmbeddingParams } from "./utils";
 
 const dashboardId = handleActions(
   {
-    [INITIALIZE]: { next: state => null },
+    [RESET]: { next: state => null },
     [FETCH_DASHBOARD]: {
       next: (state, { payload: { dashboardId } }) => dashboardId,
     },
@@ -47,7 +47,7 @@ const dashboardId = handleActions(
 
 const isEditing = handleActions(
   {
-    [INITIALIZE]: { next: state => null },
+    [RESET]: { next: state => null },
     [SET_EDITING_DASHBOARD]: {
       next: (state, { payload }) => (payload ? payload : null),
     },
@@ -198,7 +198,7 @@ const isAddParameterPopoverOpen = handleActions(
   {
     [SHOW_ADD_PARAMETER_POPOVER]: () => true,
     [HIDE_ADD_PARAMETER_POPOVER]: () => false,
-    [INITIALIZE]: () => false,
+    [RESET]: () => false,
   },
   false,
 );
@@ -206,7 +206,7 @@ const isAddParameterPopoverOpen = handleActions(
 const dashcardData = handleActions(
   {
     // clear existing dashboard data when loading a dashboard
-    [INITIALIZE]: { next: state => ({}) },
+    [RESET]: { next: state => ({}) },
     [FETCH_CARD_DATA]: {
       next: (state, { payload: { dashcard_id, card_id, result } }) =>
         assocIn(state, [dashcard_id, card_id], result),
@@ -240,7 +240,7 @@ const slowCards = handleActions(
 
 const parameterValues = handleActions(
   {
-    [INITIALIZE]: { next: () => ({}) }, // reset values
+    [RESET]: { next: () => ({}) }, // reset values
     [SET_PARAMETER_VALUE]: {
       next: (state, { payload: { id, value } }) => assoc(state, id, value),
     },
@@ -312,7 +312,7 @@ const sidebar = handleActions(
     [CLOSE_SIDEBAR]: {
       next: () => DEFAULT_SIDEBAR,
     },
-    [INITIALIZE]: {
+    [RESET]: {
       next: () => DEFAULT_SIDEBAR,
     },
     [SET_EDITING_DASHBOARD]: {

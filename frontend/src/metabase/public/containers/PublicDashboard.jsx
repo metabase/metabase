@@ -68,7 +68,7 @@ type Props = {
   parameters: Parameter[],
   parameterValues: { [key: string]: string },
 
-  initialize: () => void,
+  reset: () => void,
   isFullscreen: boolean,
   isNightMode: boolean,
   intializeDashboard: (
@@ -96,7 +96,7 @@ export default class PublicDashboard extends Component {
 
   async UNSAFE_componentWillMount() {
     const {
-      initialize,
+      reset,
       intializeDashboard,
       fetchDashboardCardData,
       setErrorPage,
@@ -110,7 +110,7 @@ export default class PublicDashboard extends Component {
       setEmbedDashboardEndpoints();
     }
 
-    initialize();
+    reset();
     try {
       await intializeDashboard(uuid || token, location.query);
       await fetchDashboardCardData({ reload: false, clear: true });
