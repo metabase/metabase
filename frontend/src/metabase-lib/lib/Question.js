@@ -1053,6 +1053,7 @@ export default class Question {
       description: this._card.description,
       dataset_query: query.datasetQuery(),
       display: this._card.display,
+      displayIsLocked: this._card.displayIsLocked,
       parameters: this._card.parameters,
       ...(_.isEmpty(this._parameterValues)
         ? undefined

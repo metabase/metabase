@@ -72,7 +72,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
         extraData.questions[targetId],
         question.metadata(),
         getQueryParams(parameterMapping, { data, extraData, clickBehavior }),
-      );
+      ).lockDisplay();
 
       if (targetQuestion.isStructured()) {
         targetQuestion = targetQuestion.setParameters(
