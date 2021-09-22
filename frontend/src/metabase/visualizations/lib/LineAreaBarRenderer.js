@@ -571,7 +571,7 @@ function getCharts(
       doScatterChartStuff(chart, datas, index, yAxisProps);
     }
 
-    if (seriesChartType === "stacked") {
+    if (chart.stackLayout) {
       chart.stackLayout(stack().offset(stackOffsetDiverging));
     }
 
