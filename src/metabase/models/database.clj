@@ -121,10 +121,10 @@
           :else ; no details populated; do nothing
           database)))
 
-;; TODO - this logic would make more sense in post-update if such a method existed
 (defn- pre-update
   [{new-metadata-schedule :metadata_sync_schedule, new-fieldvalues-schedule :cache_field_values_schedule, :as database}]
   (u/prog1 (handle-secrets-changes database)
+    ;; TODO - this logic would make more sense in post-update if such a method existed
     ;; if the sync operation schedules have changed, we need to reschedule this DB
     (when (or new-metadata-schedule new-fieldvalues-schedule)
       (let [{old-metadata-schedule    :metadata_sync_schedule
