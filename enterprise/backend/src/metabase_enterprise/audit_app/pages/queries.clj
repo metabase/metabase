@@ -82,10 +82,11 @@
    :results (common/reducible-query
               (->
                 {:with      [cards/query-runs
+                             cards/latest-qe
                              cards/dashboards]
                  :select    [[:card.id :card_id]
                              [:card.name :card_name]
-                             [(hsql/call :concat (hsql/call :substring :qe.error 0 60) "...") :error_substr]
+                             [(hsql/call :concat (hsql/call :substring :latest_qe.error 0 60) "...") :error_substr]
                              :collection_id
                              [:coll.name :collection_name]
                              :card.database_id
@@ -103,14 +104,20 @@
                              [:metabase_database :db]           [:= :card.database_id :db.id]
                              [:metabase_table :t]               [:= :card.table_id :t.id]
                              [:core_user :u]                    [:= :card.creator_id :u.id]
-                             [:query_execution :qe]             [:= :card.id :qe.card_id]
+                             :latest_qe                         [:= :card.id :latest_qe.card_id]
                              :query_runs                        [:= :card.id :query_runs.card_id]
                              :dash_card                         [:= :card.id :dash_card.card_id]]
-                 :group-by  [:qe.error]
+                 :group-by  [(common/user-full-name :u)
+                             :card.id
+                             :card.creator_id
+                             :coll.name
+                             :db.name
+                             :t.name
+                             :latest_qe.error]
                  :where     [:and
                              [:= :card.archived false]
-                             [:<> :qe.error nil]]}
-                (common/add-search-clause error-filter :qe.error)
+                             [:<> :latest_qe.error nil]]}
+                (common/add-search-clause error-filter :latest_qe.error)
                 (common/add-search-clause db-filter :db.name)
                 (common/add-search-clause collection-filter :coll.name)
                 (common/add-sort-clause
