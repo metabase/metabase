@@ -42,35 +42,61 @@ function ErrorDetailDisplay(props) {
   const resCols = getIn(result, ["data", "cols"]);
   if (resRow && resCols) {
     const nameToResCol = resCols.reduce(
-      (obj, x, idx) => Object.assign(obj, {[x.name]: idx}),
-      {});
+      (obj, x, idx) => Object.assign(obj, { [x.name]: idx }),
+      {},
+    );
     console.log(resCols);
     console.log(Table.settings);
 
-    const ordinaryRows = ["last_run_at", "collection_name", "database_name",
-      "table_name", "total_runs", "user_name", "updated_at"].map((x) => (<tr key={x}>
-      <td>{formatColumn(resCols[nameToResCol[x]])}</td>
-      <td>{formatValue(resRow[nameToResCol[x]], {column: resCols[nameToResCol[x]]})}</td>
-      </tr>));
-    const dashIdRows = resRow[nameToResCol.dash_ids_str].split(",").map((x, idx) => (<tr key={x}>
-      <td>{idx === 0 && formatColumn(resCols[nameToResCol.dash_ids_str])}</td>
-      <td>{formatValue(x, {column: resCols[nameToResCol.dash_ids_str]})}</td>
-      </tr>));
+    const ordinaryRows = [
+      "last_run_at",
+      "collection_name",
+      "database_name",
+      "table_name",
+      "total_runs",
+      "user_name",
+      "updated_at",
+    ].map(x => (
+      <tr key={x}>
+        <td>{formatColumn(resCols[nameToResCol[x]])}</td>
+        <td>
+          {formatValue(resRow[nameToResCol[x]], {
+            column: resCols[nameToResCol[x]],
+          })}
+        </td>
+      </tr>
+    ));
+    const dashIdRows = resRow[nameToResCol.dash_ids_str]
+      .split(",")
+      .map((x, idx) => (
+        <tr key={x}>
+          <td>
+            {idx === 0 && formatColumn(resCols[nameToResCol.dash_ids_str])}
+          </td>
+          <td>
+            {formatValue(x, { column: resCols[nameToResCol.dash_ids_str] })}
+          </td>
+        </tr>
+      ));
 
-    return [(<h2 key="card_name">{resRow[nameToResCol.card_name]}</h2>),
-    (<div key="error_str" className={cx({"text-code": true})}>{resRow[nameToResCol.error_str]}</div>),
-    ordinaryRows,
-    dashIdRows];
+    return [
+      <h2 key="card_name">{resRow[nameToResCol.card_name]}</h2>,
+      <div key="error_str" className={cx({ "text-code": true })}>
+        {resRow[nameToResCol.error_str]}
+      </div>,
+      ordinaryRows,
+      dashIdRows,
+    ];
   } else {
     return null;
   }
 }
 
-const errorRetry = async (cardId) => {
+const errorRetry = async cardId => {
   await CardApi.query({ cardId: cardId });
   // we're imagining that we successfully reran, in which case we want to go back to overall table
   window.location = "/admin/tools/errors/";
-}
+};
 
 export default function ErrorDetail(props) {
   const { params } = props;
@@ -89,12 +115,12 @@ export default function ErrorDetail(props) {
 
   return (
     <div>
-    <QuestionResultLoader question={question}>
-      {({ rawSeries, result }) => <ErrorDetailDisplay result={result} />}
-    </QuestionResultLoader>
-    <Button primary onClick={() => errorRetry(cardId)}>
-    {t`Rerun Question`}
-    </Button>
+      <QuestionResultLoader question={question}>
+        {({ rawSeries, result }) => <ErrorDetailDisplay result={result} />}
+      </QuestionResultLoader>
+      <Button primary onClick={() => errorRetry(cardId)}>
+        {t`Rerun Question`}
+      </Button>
     </div>
   );
 }
