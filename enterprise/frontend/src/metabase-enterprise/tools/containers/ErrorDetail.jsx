@@ -4,6 +4,8 @@ import PropTypes from "prop-types";
 import { getIn } from "icepick";
 import cx from "classnames";
 
+import { CardApi } from "metabase/services";
+import Button from "metabase/components/Button";
 import Question from "metabase-lib/lib/Question";
 import { QuestionResultLoader } from "metabase/containers/QuestionResultLoader";
 
@@ -87,8 +89,10 @@ function ErrorDetailDisplay(props) {
   }
 }
 
-function ErrorRetryButton(props) {
-  return null;
+const errorRetry = async (cardId) => {
+  await CardApi.query({ cardId: cardId });
+  // we're imagining that we successfully reran, in which case we want to go back to overall table
+  window.location = "/admin/tools/errors/";
 }
 
 export default function ErrorDetail(props) {
@@ -111,7 +115,9 @@ export default function ErrorDetail(props) {
     <QuestionResultLoader question={question}>
       {({ rawSeries, result }) => <ErrorDetailDisplay result={result} />}
     </QuestionResultLoader>
-    <ErrorRetryButton cardId={cardId} />
+    <Button primary onClick={() => errorRetry(cardId)}>
+    {t`Rerun Question`}
+    </Button>
     </div>
   );
 }
@@ -121,7 +127,4 @@ ErrorDetail.propTypes = {
 };
 ErrorDetailDisplay.propTypes = {
   result: PropTypes.object,
-};
-ErrorRetryButton.propTypes = {
-  cardId: PropTypes.integer,
 };
