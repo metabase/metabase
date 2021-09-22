@@ -759,6 +759,7 @@ export const ICON_MAPPING = {
   [NUMBER]: "int",
   [BOOLEAN]: "io",
   [FOREIGN_KEY]: "connections",
+  [PRIMARY_KEY]: "key",
 };
 
 export function getIconForField(field) {
