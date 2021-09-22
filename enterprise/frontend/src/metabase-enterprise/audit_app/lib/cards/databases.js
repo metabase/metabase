@@ -69,6 +69,7 @@ export const table = (searchString?: string) => ({
         { name: "schemas", enabled: true },
         { name: "tables", enabled: true },
         { name: "sync_schedule", enabled: true },
+        { name: "cache_ttl", enabled: true },
         { name: "added_on", enabled: true, date_format: "M/D/YYYY, h:mm A" },
       ],
     },

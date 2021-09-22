@@ -13,6 +13,7 @@
               [:saved_by_id               {:display_name "Saved by User ID",     :base_type :type/Text,    :remapped_to :saved_by}]
               [:saved_by                  {:display_name "Saved by",             :base_type :type/Text,    :remapped_from :saved_by_id}]
               [:saved_on                  {:display_name "Saved on",             :base_type :type/DateTime}]
+              [:cache_ttl                 {:display_name "Cache Duration",       :base_type :type/Integer}]
               [:last_edited_on            {:display_name "Last edited on",       :base_type :type/DateTime}]
               [:cards                     {:display_name "Cards",                :base_type :type/Integer}]
               [:public_link               {:display_name "Public Link",          :base_type :type/URL}]
@@ -44,6 +45,7 @@
                              [:u.id :saved_by_id]
                              [(common/user-full-name :u) :saved_by]
                              [:d.created_at :saved_on]
+                             [:d.cache_ttl :saved_on]
                              [:d.updated_at :last_edited_on]
                              [:cc.card_count :cards]
                              [(hsql/call :case
