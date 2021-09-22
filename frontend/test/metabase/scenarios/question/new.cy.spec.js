@@ -315,7 +315,7 @@ describe("scenarios > question > new", () => {
       cy.url().should("include", "question#");
     });
 
-    it.skip("should correctly choose between 'Object Detail' and 'Table (metabase#13717)", () => {
+    it("should correctly choose between 'Object Detail' and 'Table (metabase#13717)", () => {
       // set ID to `No semantic type`
       cy.request("PUT", `/api/field/${ORDERS.ID}`, {
         semantic_type: null,
