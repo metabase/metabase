@@ -8,7 +8,6 @@ MetabaseSettings.isEnterprise = () => true;
 
 // PLUGINS:
 
-import "./audit_app";
 import "./tools";
 import "./sandboxes";
 import "./auth";
@@ -22,3 +21,4 @@ import "./sharing";
 import "./moderation";
 import "./advanced_config";
 import "./advanced_permissions";
+import "./audit_app";
