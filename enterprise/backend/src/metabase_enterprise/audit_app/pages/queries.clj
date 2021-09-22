@@ -93,7 +93,7 @@
                              [:db.name :database_name]
                              :card.table_id
                              [:t.name :table_name]
-                             [:query_runs.last :last_run_at]
+                             [:latest_qe.started_at :last_run_at]
                              [:query_runs.count :total_runs]
                              [:dash_card.count :num_dashboards]
                              [:card.creator_id :user_id]
@@ -107,13 +107,6 @@
                              :latest_qe                         [:= :card.id :latest_qe.card_id]
                              :query_runs                        [:= :card.id :query_runs.card_id]
                              :dash_card                         [:= :card.id :dash_card.card_id]]
-                 :group-by  [(common/user-full-name :u)
-                             :card.id
-                             :card.creator_id
-                             :coll.name
-                             :db.name
-                             :t.name
-                             :latest_qe.error]
                  :where     [:and
                              [:= :card.archived false]
                              [:<> :latest_qe.error nil]]}
