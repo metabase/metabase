@@ -19,6 +19,10 @@ const isPKFilter = (filters, query) => {
     .table()
     .fields.filter(field => field.isPK());
 
+  if (sourceTablePKFields.length === 0) {
+    return false;
+  }
+
   const hasEqualityFilterForEveryPK = sourceTablePKFields.every(pkField => {
     const filter = filters.find(filter => filter.field()?.id === pkField.id);
 
