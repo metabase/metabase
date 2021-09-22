@@ -40,7 +40,7 @@
                              [:db.name :database_name]
                              :card.table_id
                              [:t.name :table_name]
-                             [:query_runs.last :last_run_at]
+                             [:latest_qe.started_at :last_run_at]
                              [:query_runs.count :total_runs]
                              [:dash_card.count :num_dashboards]
                              [:card.creator_id :user_id]
@@ -54,8 +54,7 @@
                              :latest_qe                         [:= :card.id :latest_qe.card_id]
                              :query_runs                        [:= :card.id :query_runs.card_id]
                              :dash_card                         [:= :card.id :dash_card.card_id]]
-                 :where     [:= :card.id card-id]}
-                ))})
+                 :where     [:= :card.id card-id] }))})
 
 ;; Details about a specific query (currently just average execution time).
 (s/defmethod audit.i/internal-query ::details
@@ -63,9 +62,9 @@
   {:metadata [[:query                  {:display_name "Query",                :base_type :type/Dictionary}]
               [:average_execution_time {:display_name "Avg. Exec. Time (ms)", :base_type :type/Number}]]
    :results  (common/reducible-query
-              {:select [:query
-                        :average_execution_time]
-               :from   [:query]
-               :where  [:= :query_hash (codec/base64-decode query-hash)]
-               :limit  1})
+               {:select [:query
+                         :average_execution_time]
+                :from   [:query]
+                :where  [:= :query_hash (codec/base64-decode query-hash)]
+                :limit  1})
    :xform (map #(update (vec %) 0 json/parse-string))})
