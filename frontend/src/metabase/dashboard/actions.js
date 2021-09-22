@@ -658,15 +658,17 @@ export const intializeDashboard = createThunkAction(
         );
 
         parameters.forEach(parameter => {
-          const fields = parameter.field_ids.map(
-            fieldId => metadata.fields[fieldId],
-          );
-          parameterValuesById[parameter.id] = [].concat(
-            parseParameterValueForFields(
-              parameterValuesById[parameter.id],
-              fields,
-            ),
-          );
+          if (parameter.id in parameterValuesById) {
+            const fields = parameter.field_ids.map(
+              fieldId => metadata.fields[fieldId],
+            );
+            parameterValuesById[parameter.id] = [].concat(
+              parseParameterValueForFields(
+                parameterValuesById[parameter.id],
+                fields,
+              ),
+            );
+          }
         });
 
         dispatch(setParameterValues({ parameterValues: parameterValuesById }));
