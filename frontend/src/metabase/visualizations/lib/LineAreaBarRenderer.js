@@ -67,7 +67,7 @@ import {
 
 import { lineAddons } from "./graph/addons";
 import { initBrush } from "./graph/brush";
-import { stack } from "./graph/stack";
+import { stack, stackOffsetDiverging } from "./graph/stack";
 
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 
@@ -566,7 +566,7 @@ function getCharts(
       .group(group[0])
       .transitionDuration(0)
       .useRightYAxis(yAxisSplit.length > 1 && yAxisSplit[1].includes(index))
-      .stackLayout(stack());
+      .stackLayout(stack().offset(stackOffsetDiverging));
 
     if (chartType === "scatter") {
       doScatterChartStuff(chart, datas, index, yAxisProps);
