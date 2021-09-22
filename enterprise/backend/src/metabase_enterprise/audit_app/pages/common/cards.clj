@@ -27,9 +27,12 @@
 
 (def latest-qe
   "HoneySQL for a CTE to get latest QueryExecution for a Card."
-  [:latest_qe {:select [:card_id :error [:%max.started_at :started_at]]
-        :from [:query_execution]
-        :group-by [:card_id :error]}])
+  [:latest_qe {:select [:query_execution.card_id :error :query_execution.started_at]
+               :from [:query_execution]
+               :join [[{:select [:card_id [:%max.started_at :started_at]]
+                       :from [:query_execution]
+                       :group-by [:card_id]} :inner_qe]
+                      [:= :query_execution.started_at :inner_qe.started_at]]}])
 
 (def query-runs
   "HoneySQL for a CTE to include the total number of queries for each Card forever."
