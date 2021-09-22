@@ -34,6 +34,7 @@
             [toucan.models :as t.models]
             [toucan.util.test :as tt])
   (:import java.net.ServerSocket
+           java.nio.charset.StandardCharsets
            java.util.concurrent.TimeoutException
            java.util.Locale
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
@@ -997,3 +998,18 @@
                  (macroexpand form))
       `(with-temp-file [])
       `(with-temp-file (+ 1 2)))))
+
+(defn secret-value-equals?
+  "Checks whether a secret's `value` matches an `expected` value. If `expected` is a string, then the value's bytes are
+  interpreted as a UTF-8 encoded string, then compared to `expected. Otherwise, the individual bytes of each are
+  compared."
+  {:added "0.42.0"}
+  [expected value]
+  (cond (string? expected)
+        (= expected (String. value (.name StandardCharsets/UTF_8)))
+
+        (bytes? expected)
+        (= (seq expected) (seq value))
+
+        :else
+        (throw (ex-info "expected parameter must be a string or bytes" {:expected expected :value value}))))
