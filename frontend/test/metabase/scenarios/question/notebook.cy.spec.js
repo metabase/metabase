@@ -175,7 +175,7 @@ describe("scenarios > question > notebook", () => {
 
     cy.contains("Showing 99 rows");
 
-    let req = interceptPromise("POST", "/api/dataset");
+    const req = interceptPromise("POST", "/api/dataset");
     cy.contains("ID is less than 100").click();
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
