@@ -27,7 +27,7 @@
 
 (def latest-qe
   "HoneySQL for a CTE to get latest QueryExecution for a Card."
-  [:latest_qe {:select [:id :card_id :error]
+  [:latest_qe {:select [:card_id :error]
         :from [:query_execution]
         :where [:in :started_at {:select [:%max.started_at] :from [:query_execution]}]
         :group-by [:card_id :error]}])
@@ -50,7 +50,7 @@
 
 (def dashboards
   "HoneySQL for a CTE to enumerate the dashboards for a Card."
-  [:dash_card {:select [:dashboard_id :card_id [:%count.* :count]]
+  [:dash_card {:select [:card_id [:%count.* :count]]
                :from [:report_dashboardcard]
                :group-by [:card_id]}])
 

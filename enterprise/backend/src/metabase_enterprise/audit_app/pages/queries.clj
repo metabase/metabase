@@ -83,7 +83,7 @@
               (->
                 {:with      [cards/query-runs
                              cards/latest-qe
-                             cards/dashboards]
+                             cards/dashboards-count]
                  :select    [[:card.id :card_id]
                              [:card.name :card_name]
                              [(hsql/call :concat (hsql/call :substring :latest_qe.error 0 60) "...") :error_substr]
