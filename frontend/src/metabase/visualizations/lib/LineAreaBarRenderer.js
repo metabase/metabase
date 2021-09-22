@@ -434,6 +434,11 @@ function applyChartLineBarSettings(
         forceCenterBar || settings["graph.x_axis.scale"] !== "ordinal",
       );
   }
+
+  // AREA/BAR:
+  if (chart.stackLayout) {
+    chart.stackLayout(stack().offset(stackOffsetDiverging));
+  }
 }
 
 // TODO - give this a good name when I figure out what it does
@@ -569,10 +574,6 @@ function getCharts(
 
     if (chartType === "scatter") {
       doScatterChartStuff(chart, datas, index, yAxisProps);
-    }
-
-    if (chart.stackLayout) {
-      chart.stackLayout(stack().offset(stackOffsetDiverging));
     }
 
     if (chart.defined) {
