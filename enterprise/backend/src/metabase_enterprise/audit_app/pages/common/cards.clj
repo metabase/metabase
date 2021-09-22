@@ -48,7 +48,7 @@
                     :group-by [:card_id]}
                    (common/add-45-days-clause :started_at))])
 
-(def dashboards
+(def dashboards-count
   "HoneySQL for a CTE to enumerate the dashboards for a Card."
   [:dash_card {:select [:card_id [:%count.* :count]]
                :from [:report_dashboardcard]
