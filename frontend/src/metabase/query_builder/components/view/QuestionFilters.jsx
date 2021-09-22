@@ -101,15 +101,23 @@ export function QuestionFilterWidget({
   );
 }
 
-QuestionFilters.shouldRender = ({ question, queryBuilderMode }) =>
+QuestionFilters.shouldRender = ({
+  question,
+  queryBuilderMode,
+  isObjectDetail,
+}) =>
   queryBuilderMode === "view" &&
   question.isStructured() &&
   question.query().isEditable() &&
   question.query().topLevelFilters().length > 0 &&
-  !question.isObjectDetail();
+  !isObjectDetail;
 
-QuestionFilterWidget.shouldRender = ({ question, queryBuilderMode }) =>
+QuestionFilterWidget.shouldRender = ({
+  question,
+  queryBuilderMode,
+  isObjectDetail,
+}) =>
   queryBuilderMode === "view" &&
   question.isStructured() &&
   question.query().isEditable() &&
-  !question.isObjectDetail();
+  !isObjectDetail;

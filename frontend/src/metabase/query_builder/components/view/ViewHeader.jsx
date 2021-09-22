@@ -44,6 +44,7 @@ const viewTitleHeaderPropTypes = {
   isShowingFilterSidebar: PropTypes.bool,
   isShowingSummarySidebar: PropTypes.bool,
   isShowingQuestionDetailsSidebar: PropTypes.bool,
+  isObjectDetail: PropTypes.bool,
 
   runQuestionQuery: PropTypes.func,
   cancelQuery: PropTypes.func,
@@ -121,6 +122,7 @@ export class ViewTitleHeader extends React.Component {
       onOpenQuestionDetails,
       onCloseQuestionDetails,
       onOpenQuestionHistory,
+      isObjectDetail,
     } = this.props;
     const { isFiltersExpanded } = this.state;
     const isShowingNotebook = queryBuilderMode === "notebook";
@@ -173,10 +175,11 @@ export class ViewTitleHeader extends React.Component {
                 collectionId={question.collectionId()}
               />
 
-              {QuestionDataSource.shouldRender({ question }) && (
+              {QuestionDataSource.shouldRender(this.props) && (
                 <QuestionDataSource
                   className="ml3 mb1"
                   question={question}
+                  isObjectDetail={isObjectDetail}
                   subHead
                 />
               )}
@@ -199,7 +202,10 @@ export class ViewTitleHeader extends React.Component {
                 {isNative ? (
                   t`New question`
                 ) : (
-                  <QuestionDescription question={question} />
+                  <QuestionDescription
+                    question={question}
+                    isObjectDetail={isObjectDetail}
+                  />
                 )}
               </ViewHeading>
               {showFiltersInHeading &&
@@ -225,6 +231,7 @@ export class ViewTitleHeader extends React.Component {
                 <QuestionDataSource
                   className="mb1"
                   question={question}
+                  isObjectDetail={isObjectDetail}
                   subHead
                   data-metabase-event={`Question Data Source Click`}
                 />
