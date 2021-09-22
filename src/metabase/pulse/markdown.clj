@@ -9,8 +9,8 @@
             Paragraph Reference SoftLineBreak StrongEmphasis Text ThematicBreak]
            com.vladsch.flexmark.html.HtmlRenderer
            com.vladsch.flexmark.parser.Parser
-           com.vladsch.flexmark.util.data.MutableDataSet
            [com.vladsch.flexmark.util.ast Document Node]
+           com.vladsch.flexmark.util.data.MutableDataSet
            java.net.URI))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
