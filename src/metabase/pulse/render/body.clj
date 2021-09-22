@@ -144,23 +144,18 @@
 (s/defn ^:private query-results->row-seq
   "Returns a seq of stringified formatted rows that can be rendered into HTML"
   [timezone-id :- (s/maybe s/Str) remapping-lookup cols rows viz-settings {:keys [bar-column min-value max-value]}]
-  (let [formatters (into []
-                         ;; todo remapped cols
-                         (map (fn [[col viz]]
-                                (get-format timezone-id col viz)))
-                         (for [{id :id col-name :name :as col} cols]
-                           [col
-                            (or (get-in viz-settings [::mb.viz/column-settings {::mb.viz/field-id id}])
-                                (get-in viz-settings [::mb.viz/column-settings {::mb.viz/column-name col-name}]))]))]
+  (let [formatters (into [] (map #(get-format timezone-id % viz-settings)) cols)]
     (for [row rows]
       {:bar-width (some-> (and bar-column (bar-column row))
                           (normalize-bar-value min-value max-value))
        :row (for [[maybe-remapped-col maybe-remapped-row-cell fmt-fn] (map vector cols row formatters)
                   :when (and (not (:remapped_from maybe-remapped-col))
                              (show-in-table? maybe-remapped-col))
-                  :let [row-cell (if (:remapped_to maybe-remapped-col)
-                                         (nth row (get remapping-lookup (:name maybe-remapped-col)))
-                                         maybe-remapped-row-cell)]]
+                  :let [[formatter row-cell] (if (:remapped_to maybe-remapped-col)
+                                               (let [remapped-index (get remapping-lookup (:name maybe-remapped-col))]
+                                                [(nth formatters remapped-index)
+                                                 (nth row remapped-index)])
+                                               [fmt-fn maybe-remapped-row-cell])]]
               (fmt-fn row-cell))})))
 
 (s/defn ^:private prep-for-html-rendering
@@ -397,10 +392,7 @@
 (s/defmethod render :scalar :- common/RenderedPulseCard
   [_ _ timezone-id _card {:keys [cols rows viz-settings] :as data}]
   (let [col             (first cols)
-        column-settings (::mb.viz/column-settings viz-settings)
-        viz             (or (get column-settings {::mb.viz/field-id (:id col)})
-                            (get column-settings {::mb.viz/column-name (:name col)}))
-        value           (format-cell timezone-id (ffirst rows) (first cols) viz)]
+        value           (format-cell timezone-id (ffirst rows) (first cols) viz-settings)]
     {:attachments
      nil
 
@@ -424,11 +416,8 @@
           {:keys [last-value previous-value unit last-change] :as _insight}
           (where (comp #{(:name metric-col)} :col) insights)]
       (if (and last-value previous-value unit last-change)
-        (let [column-settings (::mb.viz/column-settings viz-settings)
-              viz             (or (get column-settings {::mb.viz/field-id (:id metric-col)})
-                                  (get column-settings {::mb.viz/column-name (:name metric-col)}))
-              value           (format-cell timezone-id last-value metric-col viz)
-              previous        (format-cell timezone-id previous-value metric-col viz)
+        (let [value           (format-cell timezone-id last-value metric-col viz-settings)
+              previous        (format-cell timezone-id previous-value metric-col viz-settings)
               adj             (if (pos? last-change) (tru "Up") (tru "Down"))]
           {:attachments nil
            :content     [:div

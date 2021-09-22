@@ -6,11 +6,16 @@
             [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.test :as mt]))
 
-(defn- update-viz-settings [query]
-  (-> (mt/test-qp-middleware viz-settings/update-viz-settings query)
-      :metadata
-      :data
-      :viz-settings))
+(defn- update-viz-settings
+  ([query] (update-viz-settings query true))
+  ([query remove-global?]
+   (mt/with-everything-store
+     (cond-> (-> (mt/test-qp-middleware viz-settings/update-viz-settings query)
+                 :metadata
+                 :data
+                 :viz-settings)
+       remove-global?
+       (dissoc ::mb.viz/global-column-settings)))))
 
 (defn- field-id->db-column-ref
   [field-id]
@@ -115,3 +120,15 @@
     (let [query  (test-query [] nil test-native-query-viz-settings :native)
           result (update-viz-settings query)]
       (is (= test-native-query-viz-settings result)))))
+
+(deftest includes-global-settings
+  (testing "Viz settings include global viz settings"
+    (mt/with-temp* [Field [{field-id-1 :id}]
+                    Field [{field-id-2 :id}]]
+      (let [query    (test-query [field-id-1 field-id-2] nil nil)
+            result   (update-viz-settings query false)
+            expected (assoc (processed-viz-settings field-id-1 field-id-2)
+                            ::mb.viz/global-column-settings
+                            #:type{:Number {::mb.viz/number_separators ".,"}
+                                   :Currency {::mb.viz/currency "BIF"
+                                              ::mb.viz/currency_style "code"}})]))))

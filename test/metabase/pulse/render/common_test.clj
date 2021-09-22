@@ -5,7 +5,10 @@
             [metabase.shared.models.visualization-settings :as mb.viz]))
 
 (defn format [value viz]
-  (str ((common/number-formatter nil viz nil) value)))
+  (str ((common/number-formatter {:id 1}
+                                 {::mb.viz/column-settings
+                                  {{::mb.viz/field-id 1} viz}})
+        value)))
 
 (deftest number-formatting-test
   (let [value 12345.5432
@@ -50,13 +53,25 @@
                    ::mb.viz/number-separators ",."}))))
     (testing "Column Settings"
       (letfn [(fmt-with-type [type value]
-                (str ((common/number-formatter {:effective_type type} nil nil) value)))]
+                (let [fmt-fn (common/number-formatter {:id 1 :effective_type type}
+                                                      {::mb.viz/column-settings
+                                                       {{::mb.viz/column-id 1}
+                                                        {:effective_type type}}})]
+                  (str (fmt-fn value))))]
         (is (= "3" (fmt-with-type :type/Integer 3)))
         (is (= "3.00" (fmt-with-type :type/Decimal 3)))
         (is (= "3.10" (fmt-with-type :type/Decimal 3.1)))))
     (testing "Does not throw on nils"
-      (is (nil?
-           ((common/number-formatter {::mb.viz/number-style "percent"} nil nil) nil))))
+        (is (nil?
+             ((common/number-formatter {:id 1}
+                                       {::mb.viz/column-settings
+                                        {{::mb.viz/column-id 1}
+                                         {::mb.viz/number-style "percent"}}})
+              nil))))
     (testing "Does not throw on non-numeric types"
-      (is (= "bob"
-             ((common/number-formatter {::mb.viz/number-style "percent"} nil nil) "bob"))))))
+        (is (= "bob"
+               ((common/number-formatter {:id 1}
+                                       {::mb.viz/column-settings
+                                        {{::mb.viz/column-id 1}
+                                         {::mb.viz/number-style "percent"}}})
+                "bob"))))))
