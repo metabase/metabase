@@ -12,7 +12,7 @@ import type { LocationDescriptor } from "metabase-types/types";
 
 type Props = {
   dashboardId: string,
-  fetchDashboard: (dashboardId: string) => Promise<any>,
+  intializeDashboard: (dashboardId: string) => Promise<any>,
   fetchDashboardCardData: () => void,
 
   location: LocationDescriptor,
@@ -186,7 +186,7 @@ export default (ComposedComponent: React.Class) =>
         const { refreshPeriod } = this.state;
         if (refreshPeriod && this._refreshElapsed >= refreshPeriod) {
           this._refreshElapsed = 0;
-          await this.props.fetchDashboard(
+          await this.props.intializeDashboard(
             this.props.dashboardId,
             this.props.location.query,
             true,

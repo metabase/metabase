@@ -6,7 +6,7 @@ import { withRouter } from "react-router";
 import HistoryModal from "metabase/containers/HistoryModal";
 import * as Urls from "metabase/lib/urls";
 import {
-  fetchDashboard,
+  intializeDashboard,
   fetchDashboardCardData,
 } from "metabase/dashboard/actions";
 import Dashboards from "metabase/entities/dashboards";
@@ -18,13 +18,13 @@ import Dashboards from "metabase/entities/dashboards";
 })
 @connect(
   null,
-  { fetchDashboard, fetchDashboardCardData },
+  { intializeDashboard, fetchDashboardCardData },
 )
 export default class DashboardHistoryModal extends React.Component {
   render() {
     const {
       dashboard,
-      fetchDashboard,
+      intializeDashboard,
       fetchDashboardCardData,
       onClose,
       location,
@@ -36,7 +36,7 @@ export default class DashboardHistoryModal extends React.Component {
         canRevert={dashboard.can_write}
         onReverted={async () => {
           onClose();
-          await fetchDashboard(dashboard.id, location.query);
+          await intializeDashboard(dashboard.id, location.query);
           await fetchDashboardCardData({ reload: false, clear: true });
         }}
         onClose={onClose}

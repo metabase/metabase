@@ -71,7 +71,7 @@ type Props = {
   initialize: () => void,
   isFullscreen: boolean,
   isNightMode: boolean,
-  fetchDashboard: (
+  intializeDashboard: (
     dashId: string,
     query: { [key: string]: string },
   ) => Promise<void>,
@@ -97,7 +97,7 @@ export default class PublicDashboard extends Component {
   async UNSAFE_componentWillMount() {
     const {
       initialize,
-      fetchDashboard,
+      intializeDashboard,
       fetchDashboardCardData,
       setErrorPage,
       location,
@@ -112,7 +112,7 @@ export default class PublicDashboard extends Component {
 
     initialize();
     try {
-      await fetchDashboard(uuid || token, location.query);
+      await intializeDashboard(uuid || token, location.query);
       await fetchDashboardCardData({ reload: false, clear: true });
     } catch (error) {
       console.error(error);

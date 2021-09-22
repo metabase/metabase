@@ -123,7 +123,7 @@ export default class DashboardHeader extends Component {
   }
 
   onRevert() {
-    this.props.fetchDashboard(
+    this.props.intializeDashboard(
       this.props.dashboard.id,
       this.props.location.query,
       true,

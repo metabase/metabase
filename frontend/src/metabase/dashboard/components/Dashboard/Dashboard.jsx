@@ -52,7 +52,7 @@ export default class Dashboard extends Component {
     addParameter: PropTypes.func,
     archiveDashboard: PropTypes.func.isRequired,
     cancelFetchDashboardCardData: PropTypes.func.isRequired,
-    fetchDashboard: PropTypes.func.isRequired,
+    intializeDashboard: PropTypes.func.isRequired,
     fetchDashboardCardData: PropTypes.func.isRequired,
     initialize: PropTypes.func.isRequired,
     onRefreshPeriodChange: PropTypes.func,
@@ -128,7 +128,7 @@ export default class Dashboard extends Component {
     const {
       addCardOnLoad,
       addCardToDashboard,
-      fetchDashboard,
+      intializeDashboard,
       initialize,
       loadDashboardParams,
       location,
@@ -140,7 +140,7 @@ export default class Dashboard extends Component {
     loadDashboardParams();
 
     try {
-      await fetchDashboard(dashboardId, location.query);
+      await intializeDashboard(dashboardId, location.query);
       if (addCardOnLoad != null) {
         // if we destructure this.props.dashboard, for some reason
         // if will render dashboards as empty
