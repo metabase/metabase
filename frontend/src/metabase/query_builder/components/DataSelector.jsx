@@ -668,7 +668,7 @@ export class UnconnectedDataSelector extends Component {
     });
 
   renderActiveStep() {
-    const { combineDatabaseSchemaSteps, hasTableSearch } = this.props;
+    const { combineDatabaseSchemaSteps } = this.props;
     const props = {
       ...this.state,
 
@@ -681,7 +681,7 @@ export class UnconnectedDataSelector extends Component {
       isLoading: this.state.isLoading,
       hasNextStep: !!this.getNextStep(),
       onBack: this.getPreviousStep() ? this.previousStep : null,
-      hasFiltering: !hasTableSearch,
+      hasFiltering: true,
     };
 
     switch (this.state.activeStep) {
@@ -968,6 +968,7 @@ const TablePicker = ({
   onBack,
   isLoading,
   hasFiltering,
+  minTablesToShowSearch = 15,
 }) => {
   // In case DataSelector props get reseted
   if (!selectedDatabase) {
@@ -1021,7 +1022,7 @@ const TablePicker = ({
           sections={sections}
           maxHeight={Infinity}
           width={"100%"}
-          searchable={hasFiltering}
+          searchable={hasFiltering && tables.length >= minTablesToShowSearch}
           onChange={item => onChangeTable(item.table)}
           itemIsSelected={item =>
             item.table && selectedTable
