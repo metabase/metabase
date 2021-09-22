@@ -20,6 +20,7 @@ import { applyParameters, questionUrlWithParameters } from "metabase/meta/Card";
 import {
   getParameterValuesBySlug,
   getParameterValuesByIdFromQueryParams,
+  parseParameterValueForFields,
 } from "metabase/meta/Parameter";
 import * as Urls from "metabase/lib/urls";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
@@ -58,6 +59,7 @@ import {
   getDashboardBeforeEditing,
   getDashboardComplete,
   getParameterValues,
+  getParameters,
 } from "./selectors";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
@@ -632,12 +634,43 @@ export const markCardAsSlow = createAction(MARK_CARD_AS_SLOW, card => ({
   result: true,
 }));
 
+export const SET_PARAMETER_VALUES = "metabase/dashboard/SET_PARAMETER_VALUES";
+export const setParameterValues = createAction(SET_PARAMETER_VALUES);
+
 export const INITIALIZE_DASHBOARD = "metabase/dashboard/INITIALIZE_DASHBOARD";
 export const intializeDashboard = createThunkAction(
   INITIALIZE_DASHBOARD,
   (dashId, queryParams, preserveParameters) => {
     return async (dispatch, getState) => {
-      dispatch(fetchDashboard(dashId, queryParams, preserveParameters));
+      await dispatch(fetchDashboard(dashId, queryParams));
+
+      const dashboard = getDashboard(getState());
+      const parameters = getParameters(getState());
+      const metadata = getMetadata(getState());
+
+      if (!preserveParameters) {
+        const parameterValuesById = getParameterValuesByIdFromQueryParams(
+          dashboard.parameters,
+          queryParams,
+          {
+            forcefullyUnsetDefaultedParametersWithEmptyStringValue: true,
+          },
+        );
+
+        parameters.forEach(parameter => {
+          const fields = parameter.field_ids.map(
+            fieldId => metadata.fields[fieldId],
+          );
+          parameterValuesById[parameter.id] = [].concat(
+            parseParameterValueForFields(
+              parameterValuesById[parameter.id],
+              fields,
+            ),
+          );
+        });
+
+        dispatch(setParameterValues({ parameterValues: parameterValuesById }));
+      }
     };
   },
 );
@@ -645,7 +678,6 @@ export const intializeDashboard = createThunkAction(
 export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
   dashId,
   queryParams,
-  preserveParameters,
 ) {
   let result;
   return async function(dispatch, getState) {
@@ -715,16 +747,9 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
       dispatch(addFields(result.param_fields));
     }
 
-    const parameterValuesById = preserveParameters
-      ? getParameterValues(getState())
-      : getParameterValuesByIdFromQueryParams(result.parameters, queryParams, {
-          forcefullyUnsetDefaultedParametersWithEmptyStringValue: true,
-        });
-
     return {
       ...normalize(result, dashboard), // includes `result` and `entities`
       dashboardId: dashId,
-      parameterValues: parameterValuesById,
     };
   };
 });

@@ -30,6 +30,7 @@ import {
   HIDE_ADD_PARAMETER_POPOVER,
   SET_SIDEBAR,
   CLOSE_SIDEBAR,
+  SET_PARAMETER_VALUES,
 } from "./actions";
 
 import { isVirtualDashCard, syncParametersAndEmbeddingParams } from "./utils";
@@ -246,7 +247,7 @@ const parameterValues = handleActions(
     [REMOVE_PARAMETER]: {
       next: (state, { payload: { id } }) => dissoc(state, id),
     },
-    [FETCH_DASHBOARD]: {
+    [SET_PARAMETER_VALUES]: {
       next: (state, { payload: { parameterValues } }) => parameterValues,
     },
   },

@@ -1,5 +1,8 @@
 import Dimension from "metabase-lib/lib/Dimension";
-import { getParameterValuesByIdFromQueryParams } from "metabase/meta/Parameter";
+import {
+  getParameterValuesByIdFromQueryParams,
+  parseParameterValueForFields,
+} from "metabase/meta/Parameter";
 
 export const syncQueryParamsWithURL = props => {
   props.commitImmediately
@@ -61,7 +64,7 @@ const parseQueryParams = (queryParam, parameter, metadata) => {
   const value = getValue(queryParam, parameter);
   const fields = getFields(parameter, metadata);
 
-  return getValueFromFields(value, fields);
+  return parseParameterValueForFields(value, fields);
 };
 
 const getValue = (queryParam, parameter) => {
@@ -93,24 +96,4 @@ const getFields = (parameter, metadata) => {
   return fieldIds.map(
     id => metadata.field(id) || Dimension.parseMBQL(id, metadata).field(),
   );
-};
-
-export const getValueFromFields = (value, fields) => {
-  if (Array.isArray(value)) {
-    return value.map(v => getValueFromFields(v, fields));
-  }
-
-  // [].every is always true, so only check if there are some fields
-  if (fields.length > 0) {
-    // unix dates fields are numeric but query params shouldn't be parsed as numbers
-    if (fields.every(f => f.isNumeric() && !f.isDate())) {
-      return parseFloat(value);
-    }
-
-    if (fields.every(f => f.isBoolean())) {
-      return value === "true" ? true : value === "false" ? false : value;
-    }
-  }
-
-  return value;
 };

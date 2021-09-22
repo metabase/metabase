@@ -729,3 +729,26 @@ export function getVisibleParameters(parameters, hiddenParameterSlugs) {
 
   return parameters.filter(p => !hiddenParametersSlugSet.has(p.slug));
 }
+
+// value will be a string from an input or a URL queryParam.
+// depending on the fields the parameter is mapped to, we may need to convert
+// the string into a number or a boolean.
+export function parseParameterValueForFields(value, fields) {
+  if (Array.isArray(value)) {
+    return value.map(v => parseParameterValueForFields(v, fields));
+  }
+
+  // [].every is always true, so only check if there are some fields
+  if (fields.length > 0) {
+    // unix dates fields are numeric but query params shouldn't be parsed as numbers
+    if (fields.every(f => f.isNumeric() && !f.isDate())) {
+      return parseFloat(value);
+    }
+
+    if (fields.every(f => f.isBoolean())) {
+      return value === "true" ? true : value === "false" ? false : value;
+    }
+  }
+
+  return value;
+}
