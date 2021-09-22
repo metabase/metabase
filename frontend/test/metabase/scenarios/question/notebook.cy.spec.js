@@ -183,8 +183,7 @@ describe("scenarios > question > notebook", () => {
       .click()
       .clear()
       .type("ID < 2010");
-    cy.button("Done")
-      .click();
+    cy.button("Done").click();
     cy.contains("Showing 99 rows");
     req.resolve();
     cy.contains("Showing first 2000 rows");

@@ -53,12 +53,12 @@ export function runNativeQuery(xhrAlias = "dataset") {
  */
 export function interceptPromise(method, path) {
   let state = {};
-  const promise = new Promise((resolve) => {
+  const promise = new Promise(resolve => {
     state.resolve = resolve;
   });
   cy.intercept(method, path, req => {
     return promise.then(() => {
-      req.continue()
+      req.continue();
     });
   });
   return state;
