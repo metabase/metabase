@@ -1,5 +1,6 @@
 (ns metabase-enterprise.audit-app.pages.common.cards
-  (:require [metabase-enterprise.audit-app.pages.common :as common]
+  (:require [honeysql.core :as hsql]
+            [metabase-enterprise.audit-app.pages.common :as common]
             [metabase.util.honeysql-extensions :as hx]))
 
 (def avg-exec-time
@@ -52,6 +53,12 @@
 (def dashboards-count
   "HoneySQL for a CTE to enumerate the dashboards for a Card."
   [:dash_card {:select [:card_id [:%count.* :count]]
+               :from [:report_dashboardcard]
+               :group-by [:card_id]}])
+
+(def dashboards-ids
+  "HoneySQL for a CTE to enumerate the dashboards for a Card. We get the actual ID's"
+  [:dash_card {:select [:card_id [(hsql/call :string_agg (hx/cast "text" :dashboard_id) ",") :id_str]]
                :from [:report_dashboardcard]
                :group-by [:card_id]}])
 

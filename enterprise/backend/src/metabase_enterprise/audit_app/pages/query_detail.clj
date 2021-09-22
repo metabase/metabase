@@ -12,7 +12,8 @@
 
 (defmethod audit.i/internal-query ::bad-card
   [_ card-id]
-  {:metadata [[:card_name       {:display_name "Question",           :base_type :type/Text    :remapped_from :card_id}]
+  {:metadata [[:card_id         {:display_name "Question ID",        :base_type :type/Integer :remapped_from :card_name}]
+              [:card_name       {:display_name "Question",           :base_type :type/Text    :remapped_from :card_id}]
               [:error_str       {:display_name "Error",              :base_type :type/Text    :code          true}]
               [:collection_id   {:display_name "Collection ID",      :base_type :type/Integer :remapped_to   :collection_name}]
               [:collection_name {:display_name "Collection",         :base_type :type/Text    :remapped_from :collection_id}]
@@ -22,7 +23,8 @@
               [:table_name      {:display_name "Table",              :base_type :type/Text    :remapped_from :table_id}]
               [:last_run_at     {:display_name "Last run at",        :base_type :type/DateTime}]
               [:total_runs      {:display_name "Total runs",         :base_type :type/Integer}]
-              [:num_dashboards  {:display_name "Dashboards it's in", :base_type :type/Integer}]
+              ;; Denormalize by string_agg in order to avoid having to deal with complicated left join
+              [:dash_ids_str    {:display_name "Dashboards it's in", :base_type :type/Text}]
               [:user_id         {:display_name "Created By ID",      :base_type :type/Integer :remapped_to   :user_name}]
               [:user_name       {:display_name "Created By",         :base_type :type/Text    :remapped_from :user_id}]
               [:updated_at      {:display_name "Updated At",         :base_type :type/DateTime}]]
@@ -30,10 +32,10 @@
               (->
                 {:with      [cards/query-runs
                              cards/latest-qe
-                             cards/dashboards-count]
+                             cards/dashboards-ids]
                  :select    [[:card.id :card_id]
                              [:card.name :card_name]
-                             [(hsql/call :concat (hsql/call :substring :latest_qe.error 0 60) "...") :error_substr]
+                             [:latest_qe.error :error_str]
                              :collection_id
                              [:coll.name :collection_name]
                              :card.database_id
@@ -42,7 +44,7 @@
                              [:t.name :table_name]
                              [:latest_qe.started_at :last_run_at]
                              [:query_runs.count :total_runs]
-                             [:dash_card.count :num_dashboards]
+                             [:dash_card.id_str :dash_ids_str]
                              [:card.creator_id :user_id]
                              [(common/user-full-name :u) :user_name]
                              [:card.updated_at :updated_at]]

@@ -78,7 +78,7 @@ function ErrorDetailDisplay(props) {
       </tr>
       <tr>
       <td>{t`Dashboards it's in`}</td>
-      <td>{resRow[nameToResCol.num_dashboards]}</td>
+      <td>{resRow[nameToResCol.dash_ids_str]}</td>
       </tr>
       </tbody></table>
       </div>);
@@ -100,7 +100,7 @@ export default function ErrorDetail(props) {
     name: "Card Errors",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit.pages.query-detail/bad-card",
+      fn: "metabase-enterprise.audit-app.pages.query-detail/bad-card",
       args: [cardId],
     },
   };
