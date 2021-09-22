@@ -4,6 +4,7 @@
             [honeysql.core :as hsql]
             [metabase-enterprise.audit-app.interface :as audit.i]
             [metabase-enterprise.audit-app.pages.common :as common]
+            [metabase-enterprise.audit-app.pages.common.cards :as cards]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.schema :as su]
             [ring.util.codec :as codec]
@@ -27,30 +28,34 @@
               [:updated_at      {:display_name "Updated At",         :base_type :type/DateTime}]]
    :results (common/reducible-query
               (->
-                {:select    [[:card.name :card_name]
-                             [:qe.error :error_str]
+                {:with      [cards/query-runs
+                             cards/latest-qe
+                             cards/dashboards-count]
+                 :select    [[:card.id :card_id]
+                             [:card.name :card_name]
+                             [(hsql/call :concat (hsql/call :substring :latest_qe.error 0 60) "...") :error_substr]
                              :collection_id
                              [:coll.name :collection_name]
                              :card.database_id
                              [:db.name :database_name]
                              :card.table_id
                              [:t.name :table_name]
-                             [(hsql/call :max :qe.started_at) :last_run_at]
-                             [:%count.qe.id :total_runs]
-                             [:%distinct-count.dash_card.card_id :num_dashboards]
+                             [:query_runs.last :last_run_at]
+                             [:query_runs.count :total_runs]
+                             [:dash_card.count :num_dashboards]
                              [:card.creator_id :user_id]
                              [(common/user-full-name :u) :user_name]
-                             [(hsql/call :max :card.updated_at) :updated_at]]
+                             [:card.updated_at :updated_at]]
                  :from      [[:report_card :card]]
                  :left-join [[:collection :coll]                [:= :card.collection_id :coll.id]
                              [:metabase_database :db]           [:= :card.database_id :db.id]
                              [:metabase_table :t]               [:= :card.table_id :t.id]
                              [:core_user :u]                    [:= :card.creator_id :u.id]
-                             [:report_dashboardcard :dash_card] [:= :card.id :dash_card.card_id]
-                             [:query_execution :qe]             [:= :card.id :qe.card_id]]
-                 :where     [:and
-                             [:= :card.id card-id]
-                             [:<> :qe.error nil]]}))})
+                             :latest_qe                         [:= :card.id :latest_qe.card_id]
+                             :query_runs                        [:= :card.id :query_runs.card_id]
+                             :dash_card                         [:= :card.id :dash_card.card_id]]
+                 :where     [:= :card.id card-id]}
+                ))})
 
 ;; Details about a specific query (currently just average execution time).
 (s/defmethod audit.i/internal-query ::details
