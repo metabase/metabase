@@ -1,6 +1,6 @@
 import reducer from "./reducers";
 import {
-  INITIALIZE,
+  RESET,
   SET_EDITING_DASHBOARD,
   SET_SIDEBAR,
   CLOSE_SIDEBAR,
@@ -75,7 +75,7 @@ describe("dashboard reducers", () => {
     });
   });
 
-  describe("INITIALIZE", () => {
+  describe("RESET", () => {
     it("should return `sidebar` to initial state", () => {
       expect(
         reducer(
@@ -84,7 +84,7 @@ describe("dashboard reducers", () => {
             sidebar: { name: "foo", props: { abc: 123 } },
           },
           {
-            type: INITIALIZE,
+            type: RESET,
           },
         ),
       ).toEqual({ ...initState, isEditing: null });
