@@ -7,10 +7,12 @@ export function stack() {
   let x = inner.x();
   let y = inner.y();
   let out = inner.out();
-  let offset = stackOffset;
+  let offset = stackOffsetZero;
 
   function stack(data, index) {
-    if (!data.length) {
+    const n = data.length;
+
+    if (!n) {
       return data;
     }
 
@@ -35,8 +37,9 @@ export function stack() {
     const offsets = offset.call(stack, points, index);
 
     // And propagate it to other series.
-    for (let j = 0; j < series[0].length; ++j) {
-      for (let i = 0; i < data.length; ++i) {
+    const m = series[0].length;
+    for (let j = 0; j < m; j++) {
+      for (let i = 0; i < n; i++) {
         out.call(stack, series[i][j], offsets[i][j], points[i][j][1]);
       }
     }
@@ -71,16 +74,19 @@ export function stack() {
   return stack;
 }
 
-function stackOffset(data) {
+export function stackOffsetZero(data) {
   const n = data.length;
   const m = data[0].length;
   const y0 = [];
 
-  for (let j = 0; j < n; j++) {
-    y0[j] = [];
+  for (let i = 0; i < n; i++) {
+    y0[i] = [];
+  }
 
-    for (let i = 0; i < m; i++) {
-      y0[j][i] = 0;
+  for (let j = 0; j < m; j++) {
+    for (let i = 0, o = 0; i < n; i++) {
+      y0[i][j] = o;
+      o += data[i][j][1];
     }
   }
 
