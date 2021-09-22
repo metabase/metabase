@@ -1,12 +1,13 @@
 import d3 from "d3";
 
-export default function() {
-  let values = stackValues;
-  let order = stackOrder;
+export function stack() {
+  const inner = d3.layout.stack();
+  let values = inner.values();
+  let order = inner.order();
+  let x = inner.x();
+  let y = inner.y();
+  let out = inner.out();
   let offset = stackOffset;
-  let out = stackOut;
-  let x = stackX;
-  let y = stackY;
 
   function stack(data, index) {
     if (!data.length) {
@@ -66,27 +67,22 @@ export default function() {
   stack.out = function(z) {
     return arguments.length ? (out = z) : out;
   };
+
+  return stack;
 }
 
-function stackValues(data) {
-  return data;
-}
+function stackOffset(data) {
+  const n = data.length;
+  const m = data[0].length;
+  const y0 = [];
 
-function stackOrder(data) {
-  return d3.range(data.length);
-}
+  for (let j = 0; j < n; j++) {
+    y0[j] = [];
 
-function stackX(d) {
-  return d.x;
-}
+    for (let i = 0; i < m; i++) {
+      y0[j][i] = 0;
+    }
+  }
 
-function stackY(d) {
-  return d.y;
+  return y0;
 }
-
-function stackOut(d, y0, y) {
-  d.y0 = y0;
-  d.y = y;
-}
-
-function stackOffset(data) {}
