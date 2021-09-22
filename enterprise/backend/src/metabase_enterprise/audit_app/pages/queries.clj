@@ -107,13 +107,6 @@
                              :latest_qe                         [:= :card.id :latest_qe.card_id]
                              :query_runs                        [:= :card.id :query_runs.card_id]
                              :dash_card                         [:= :card.id :dash_card.card_id]]
-                 :group-by  [(common/user-full-name :u)
-                             :card.id
-                             :card.creator_id
-                             :coll.name
-                             :db.name
-                             :t.name
-                             :latest_qe.error]
                  :where     [:and
                              [:= :card.archived false]
                              [:<> :latest_qe.error nil]]}
