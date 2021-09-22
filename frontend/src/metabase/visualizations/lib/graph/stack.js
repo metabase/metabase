@@ -13,102 +13,102 @@ export function stack() {
   let out = inner.out();
   let offset = stackOffsetZero;
 
-  function outer(data, index) {
+  function stack(data, index) {
     const n = data.length;
 
     if (!n) {
       return data;
     }
 
-    // Convert series to canonical two-dimensional representation.
+    // convert series to canonical two-dimensional representation
     let series = data.map(function(d, i) {
-      return values.call(outer, d, i);
+      return values.call(stack, d, i);
     });
 
-    // Convert each series to canonical [[x,y]] representation.
+    // convert each series to canonical [[x,y]] representation
     let points = series.map(function(d) {
       return d.map(function(v, i) {
-        return [x.call(outer, v, i), y.call(outer, v, i)];
+        return [x.call(stack, v, i), y.call(stack, v, i)];
       });
     });
 
-    // Compute the order of series, and permute them.
-    const orders = order.call(outer, points, index);
+    // compute the order of series, and permute them
+    const orders = order.call(stack, points, index);
     series = d3.permute(series, orders);
     points = d3.permute(points, orders);
 
-    // Compute the baseline…
-    const offsets = offset.call(outer, points, index);
+    // compute the baseline
+    const offsets = offset.call(stack, points, index);
 
-    // And propagate it to other series.
+    // propagate it to other series
     const m = series[0].length;
     for (let j = 0; j < m; j++) {
       for (let i = 0; i < n; i++) {
-        out.call(outer, series[i][j], offsets[i][j], points[i][j][1]);
+        out.call(stack, series[i][j], offsets[i][j], points[i][j][1]);
       }
     }
 
     return data;
   }
 
-  outer.values = function(x) {
+  stack.values = function(x) {
     if (!arguments.length) {
       return values;
     }
 
     values = x;
-    return outer;
+    return stack;
   };
 
-  outer.order = function(x) {
+  stack.order = function(x) {
     if (!arguments.length) {
       return order;
     }
 
     order = x;
-    return outer;
+    return stack;
   };
 
-  outer.offset = function(x) {
+  stack.offset = function(x) {
     if (!arguments.length) {
       return offset;
     }
 
     offset = x;
-    return outer;
+    return stack;
   };
 
-  outer.x = function(z) {
+  stack.x = function(z) {
     if (!arguments.length) {
       return x;
     }
 
     x = z;
-    return outer;
+    return stack;
   };
 
-  outer.y = function(z) {
+  stack.y = function(z) {
     if (!arguments.length) {
       return y;
     }
 
     y = z;
-    return outer;
+    return stack;
   };
 
-  outer.out = function(z) {
+  stack.out = function(z) {
     if (!arguments.length) {
       return out;
     }
 
     out = z;
-    return outer;
+    return stack;
   };
 
-  return outer;
+  return stack;
 }
 
-// series are stacked starting from zero
+// series are stacked on top of each other, starting from zero
 export function stackOffsetZero(data) {
   const n = data.length;
   const m = data[0].length;
