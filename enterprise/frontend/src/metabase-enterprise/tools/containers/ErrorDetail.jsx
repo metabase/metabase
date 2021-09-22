@@ -62,6 +62,10 @@ function ErrorDetailDisplay(props) {
         <td>
           {formatValue(resRow[nameToResCol[x]], {
             column: resCols[nameToResCol[x]],
+            jsx: true,
+            rich: true,
+            type: "cell",
+            local: true,
           })}
         </td>
       </tr>
@@ -115,12 +119,12 @@ export default function ErrorDetail(props) {
 
   return (
     <div>
-      <QuestionResultLoader question={question}>
-        {({ rawSeries, result }) => <ErrorDetailDisplay result={result} />}
-      </QuestionResultLoader>
       <Button primary onClick={() => errorRetry(cardId)}>
         {t`Rerun Question`}
       </Button>
+      <QuestionResultLoader question={question}>
+        {({ rawSeries, result }) => <ErrorDetailDisplay result={result} />}
+      </QuestionResultLoader>
     </div>
   );
 }
