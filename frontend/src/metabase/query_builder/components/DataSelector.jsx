@@ -968,7 +968,7 @@ const TablePicker = ({
   onBack,
   isLoading,
   hasFiltering,
-  minTablesToShowSearch = 15,
+  minTablesToShowSearch = 10,
 }) => {
   // In case DataSelector props get reseted
   if (!selectedDatabase) {
