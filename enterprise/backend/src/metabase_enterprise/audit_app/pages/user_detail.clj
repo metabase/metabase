@@ -214,7 +214,7 @@
               [:table_id            {:display_name "Table ID",             :base_type :type/Integer, :remapped_to   :table_name}]
               [:table_name          {:display_name "Table",                :base_type :type/Text,    :remapped_from :table_id}]
               [:avg_running_time_ms {:display_name "Avg. exec. time (ms)", :base_type :type/Number}]
-              [:cache_ttl           {:display_name "Cache TTL",            :base_type :type/Number}]
+              [:cache_ttl           {:display_name "Cache Duration",       :base_type :type/Number}]
               [:public_link         {:display_name "Public Link",          :base_type :type/URL}]
               [:total_views         {:display_name "Total Views",          :base_type :type/Integer}]]
    :results  (common/reducible-query
