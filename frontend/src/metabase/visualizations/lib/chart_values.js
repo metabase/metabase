@@ -82,7 +82,7 @@ export function onRenderValueLabels(
     const display = displays[seriesIndex];
 
     // Sum duplicate x values in the same series.
-    // Positive and negative values are stacked separately.
+    // Positive and negative values are stacked separately, unless it is a waterfall chart
     data = _.chain(data)
       .groupBy(([x]) => xScale(x))
       .values()
@@ -95,7 +95,9 @@ export function onRenderValueLabels(
           .filter(([, y]) => y < 0)
           .reduce((sum, [, y]) => sum + y, 0);
 
-        if (yp !== yn) {
+        if (display === "waterfall") {
+          return [[x, yp + yn, 1]];
+        } else if (yp !== yn) {
           return [[x, yp, 2], [x, yn, 2]];
         } else {
           return [[x, yp, 1]];
