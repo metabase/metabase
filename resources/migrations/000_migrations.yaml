@@ -8535,8 +8535,8 @@ databaseChangeLog:
             columns:
               - column:
                   name: metadata
-                  type: varchar(254)
-                  remarks: "Metadata for view. Nillable."
+                  type: text
+                  remarks: "Serialized JSON corresponding to metadata for view."
                   constraints:
                     nullable: true
 

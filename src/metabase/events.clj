@@ -126,6 +126,7 @@
   (some-fn :actor_id :user_id :creator_id))
 
 (defn object->metadata
-  "Determine metadata, if there is any, for given `object`."
+  "Determine metadata, if there is any, for given `object`.
+  Expand the object when we need more metadata."
   [object]
-  (some-fn :metadata))
+  {:cache_ttl (:cache_ttl object)})
