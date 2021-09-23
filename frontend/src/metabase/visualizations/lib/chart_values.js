@@ -82,6 +82,7 @@ export function onRenderValueLabels(
     const display = displays[seriesIndex];
 
     // Sum duplicate x values in the same series.
+    // Positive and negative values are stacked separately.
     data = _.chain(data)
       .groupBy(([x]) => xScale(x))
       .values()
