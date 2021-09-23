@@ -368,6 +368,19 @@ function onRenderAddExtraClickHandlers(chart) {
   }
 }
 
+function onRenderSetZeroGridLineClassName(chart) {
+  const yAxis = chart.y();
+  const yZero = yAxis(0).toString();
+
+  chart
+    .select(".grid-line.horizontal")
+    .selectAll("line")
+    .filter(function() {
+      return d3.select(this).attr("y1") === yZero;
+    })
+    .attr("class", "zero-line");
+}
+
 // the various steps that get called
 function onRender(
   chart,
@@ -398,6 +411,7 @@ function onRender(
   onRenderSetClassName(chart, isStacked);
   onRenderRotateAxis(chart);
   onRenderAddExtraClickHandlers(chart);
+  onRenderSetZeroGridLineClassName(chart);
 }
 
 // +-------------------------------------------------------------------------------------------------------------------+

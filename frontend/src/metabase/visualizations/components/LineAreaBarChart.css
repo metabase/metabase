@@ -64,6 +64,13 @@
   display: inherit;
 }
 
+/* make grid lines for zero stand out */
+.LineAreaBarChart .dc-chart .grid-line.horizontal .zero-line {
+  stroke: var(--color-text-light);
+  opacity: 1;
+  stroke-dasharray: none;
+}
+
 /* gridline at 0 overlaps with X axis */
 .LineAreaBarChart .dc-chart .grid-line.horizontal line:first-child {
   display: none;
