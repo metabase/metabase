@@ -2,7 +2,7 @@ import { getIn } from "icepick";
 import _ from "underscore";
 
 import Question from "metabase-lib/lib/Question";
-import { setOrUnsetParameterValues } from "metabase/dashboard/actions";
+import { setParameterValues } from "metabase/dashboard/actions";
 import {
   getDataFromClicked,
   getTargetForQueryParams,
@@ -53,7 +53,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
       })
       .value();
 
-    behavior = { action: () => setOrUnsetParameterValues(valuesToSet) };
+    behavior = { action: () => setParameterValues(valuesToSet) };
   } else if (type === "link") {
     if (linkType === "url") {
       behavior = {

@@ -895,15 +895,12 @@ export const setParameterValue = createThunkAction(
   },
 );
 
-export const setOrUnsetParameterValues = parameterIdValuePairs => (
+export const setParameterValues = parameterIdValuePairs => (
   dispatch,
   getState,
 ) => {
-  const parameterValues = getParameterValues(getState());
   parameterIdValuePairs
-    .map(([id, value]) =>
-      setParameterValue(id, value === parameterValues[id] ? null : value),
-    )
+    .map(([id, value]) => setParameterValue(id, value))
     .forEach(dispatch);
 };
 
