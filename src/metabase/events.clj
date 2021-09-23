@@ -129,4 +129,5 @@
   "Determine metadata, if there is any, for given `object`.
   Expand the object when we need more metadata."
   [object]
-  {:cache_ttl (:cache_ttl object)})
+  {:cache_ttl (:cache_ttl object)
+   :manual_refresh (:manual_refresh object)})
