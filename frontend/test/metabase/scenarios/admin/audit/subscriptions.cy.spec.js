@@ -65,7 +65,7 @@ describeWithToken("audit > auditing > subscriptions", () => {
     cy.signInAsAdmin();
   });
 
-  describe.skip("subscriptions", () => {
+  describe("subscriptions", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
@@ -107,16 +107,16 @@ describeWithToken("audit > auditing > subscriptions", () => {
       });
     });
 
-    it("allows to delete subscriptions", testRemovingAuditItem);
+    it.skip("allows to delete subscriptions", testRemovingAuditItem);
 
-    it("allows to edit recipients", () => {
+    it.skip("allows to edit recipients", () => {
       testEditingRecipients({
         editModalHeader: "Subscription recipients",
       });
     });
   });
 
-  describe.skip("alerts", () => {
+  describe("alerts", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
@@ -156,9 +156,9 @@ describeWithToken("audit > auditing > subscriptions", () => {
       });
     });
 
-    it("allows to delete alerts", testRemovingAuditItem);
+    it.skip("allows to delete alerts", testRemovingAuditItem);
 
-    it("allows to edit recipients", () => {
+    it.skip("allows to edit recipients", () => {
       testEditingRecipients({
         editModalHeader: "Test Question alert recipients",
       });
