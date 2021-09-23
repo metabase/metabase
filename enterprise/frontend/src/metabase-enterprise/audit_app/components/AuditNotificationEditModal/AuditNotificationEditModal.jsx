@@ -48,26 +48,28 @@ const AuditNotificationEditModal = ({
 
   const handleClose = () => onClose(true);
 
+  const modalFooter = [
+    error ? <FormMessage key="message" formError={error} /> : null,
+    <Button key="delete" borderless onClick={handleDeleteClick}>
+      {getDeleteMessage(type)}
+    </Button>,
+    <Button key="cancel" onClick={handleClose}>
+      {t`Cancel`}
+    </Button>,
+    <Button
+      key="update"
+      primary
+      disabled={!hasRecipients}
+      onClick={handleUpdateClick}
+    >
+      {t`Update`}
+    </Button>,
+  ];
+
   return (
     <ModalContent
       title={getTitleMessage(item, type)}
-      footer={[
-        error ? <FormMessage key="message" formError={error} /> : null,
-        <Button key="delete" borderless onClick={handleDeleteClick}>
-          {getDeleteMessage(type)}
-        </Button>,
-        <Button key="cancel" onClick={handleClose}>
-          {t`Cancel`}
-        </Button>,
-        <Button
-          key="update"
-          primary
-          disabled={!hasRecipients}
-          onClick={handleUpdateClick}
-        >
-          {t`Update`}
-        </Button>,
-      ]}
+      footer={modalFooter}
       onClose={handleClose}
     >
       {channels.map((channel, index) => (

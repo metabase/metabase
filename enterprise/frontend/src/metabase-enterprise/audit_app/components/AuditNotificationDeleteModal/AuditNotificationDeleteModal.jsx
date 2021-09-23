@@ -34,28 +34,33 @@ const AuditNotificationDeleteModal = ({ item, type, onDelete, onClose }) => {
 
   const handleClose = () => onClose(true);
 
+  const modalFooter = [
+    error ? <FormMessage key="message" formError={error} /> : null,
+    <Button key="cancel" onClick={handleClose}>
+      {t`Cancel`}
+    </Button>,
+    <Button
+      key="submit"
+      warning
+      disabled={!checked}
+      onClick={handleDeleteClick}
+    >
+      {t`Delete`}
+    </Button>,
+  ];
+  const checkboxLabel = (
+    <CheckboxLabel>{getChannelMessage(item, type)}</CheckboxLabel>
+  );
+
   return (
     <ModalContent
       title={getTitleMessage(item, type)}
-      footer={[
-        error ? <FormMessage key="message" formError={error} /> : null,
-        <Button key="cancel" onClick={handleClose}>
-          {t`Cancel`}
-        </Button>,
-        <Button
-          key="submit"
-          warning
-          disabled={!checked}
-          onClick={handleDeleteClick}
-        >
-          {t`Delete`}
-        </Button>,
-      ]}
+      footer={modalFooter}
       onClose={handleClose}
     >
       <CheckBox
         checked={checked}
-        label={<CheckboxLabel>{getChannelMessage(item, type)}</CheckboxLabel>}
+        label={checkboxLabel}
         size={20}
         checkedColor="danger"
         uncheckedColor="danger"

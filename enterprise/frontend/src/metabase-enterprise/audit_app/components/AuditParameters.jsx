@@ -65,12 +65,11 @@ export default class AuditParameters extends React.Component {
               icon={icon}
             />
           ))}
-          {buttons &&
-            buttons.map(({ key, onClick, label }) => (
-              <Button primary key={key} onClick={onClick} className="ml2">
-                {label}
-              </Button>
-            ))}
+          {buttons?.map(({ key, onClick, label }) => (
+            <Button primary key={key} onClick={onClick} className="ml2">
+              {label}
+            </Button>
+          ))}
         </div>
         {children && children(committedValues)}
       </div>

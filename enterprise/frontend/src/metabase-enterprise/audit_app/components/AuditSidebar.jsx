@@ -55,9 +55,6 @@ const AuditSidebar = ({ className, style, children }: Props) => (
 
 const AuditAppSidebar = (props: Props) => (
   <AuditSidebar {...props}>
-    {/* <AuditSidebarSection>
-      <AuditSidebarItem title="Overview" path="/admin/audit/overview" />
-    </AuditSidebarSection> */}
     <AuditSidebarSection title={t`People`}>
       <AuditSidebarItem title={t`Team members`} path="/admin/audit/members" />
     </AuditSidebarSection>
