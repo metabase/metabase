@@ -29,6 +29,9 @@ describe("dashboard actions", () => {
             parameters: [{ id: 123 }, { id: 456 }],
           },
         },
+        parameterValues: {
+          123: "abc",
+        },
       },
     });
   });
@@ -122,35 +125,35 @@ describe("dashboard actions", () => {
 
   describe("setParameterValue", () => {
     it("should set the parameter with value", () => {
-      dispatch(setParameterValue(1, "v1"));
+      dispatch(setParameterValue(123, "abc"));
 
       expect(dispatch).toHaveBeenCalledWith({
         type: SET_PARAMETER_VALUE,
         payload: {
-          id: 1,
-          value: "v1",
+          id: 123,
+          value: "abc",
         },
       });
     });
   });
 
   describe("setParameterValues", () => {
-    it("should set multiple parameters with value", () => {
-      setParameterValues([[1, "v1"], [2, "v2"]])(dispatch, getState);
+    it("should set multiple parameters without unsetting existing ones", () => {
+      setParameterValues([[123, "abc"], [456, "def"]])(dispatch, getState);
 
       expect(dispatch).toHaveBeenCalledWith({
         type: SET_PARAMETER_VALUE,
         payload: {
-          id: 1,
-          value: "v1",
+          id: 123,
+          value: "abc",
         },
       });
 
       expect(dispatch).toHaveBeenCalledWith({
         type: SET_PARAMETER_VALUE,
         payload: {
-          id: 2,
-          value: "v2",
+          id: 456,
+          value: "def",
         },
       });
     });
