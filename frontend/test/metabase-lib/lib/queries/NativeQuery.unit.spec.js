@@ -311,4 +311,25 @@ describe("NativeQuery", () => {
       expect(dimensions.map(d => d.displayName())).toEqual(["Category"]);
     });
   });
+
+  describe("dependentMetadata", () => {
+    it("should return a list of dependent fieldIds needed by the query's template tags", () => {
+      const q = makeQuery()
+        .setQueryText("SELECT * FROM PRODUCTS WHERE {{category}}")
+        .setTemplateTag("category", {
+          name: "category",
+          type: "dimension",
+          dimension: ["field", PRODUCTS.CATEGORY.id, null],
+        })
+        .setTemplateTag("foo", { name: "foo", type: "dimension" })
+        .setTemplateTag("bar", { name: "bar", type: "test" });
+
+      expect(q.dependentMetadata()).toEqual([
+        {
+          type: "field",
+          id: PRODUCTS.CATEGORY.id,
+        },
+      ]);
+    });
+  });
 });
