@@ -87,18 +87,29 @@ export function onRenderValueLabels(
       .values()
       .map(data => {
         const [[x]] = data;
-        const y = data.reduce((sum, [, y]) => sum + y, 0);
-        return [x, y];
+        const yp = data
+          .filter(([, y]) => y >= 0)
+          .reduce((sum, [, y]) => sum + y, 0);
+        const yn = data
+          .filter(([, y]) => y < 0)
+          .reduce((sum, [, y]) => sum + y, 0);
+
+        if (yp !== yn) {
+          return [[x, yp, 2], [x, yn, 2]];
+        } else {
+          return [[x, yp, 1]];
+        }
       })
+      .flatten(1)
       .value();
 
     data = data
-      .map(([x, y], i) => {
+      .map(([x, y, step], i) => {
         const isLocalMin =
           // first point or prior is greater than y
-          (i === 0 || data[i - 1][1] > y) &&
+          (i < step || data[i - step][1] > y) &&
           // last point point or next is greater than y
-          (i === data.length - 1 || data[i + 1][1] > y);
+          (i >= data.length - step || data[i + step][1] > y);
         const showLabelBelow = isLocalMin && display === "line";
         const rotated = barCount > 1 && isBarLike(display) && barWidth < 40;
         const hidden =
