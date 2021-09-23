@@ -59,7 +59,7 @@ Metabase will log errors, both on the server and in the browser console, dependi
 - [Safari][safari]
 - [Edge][edge]
 
-## Metabase tutorials 
+## Metabase tutorials
 
 For tutorials that walk you through how to use Metabase features, check out [Learn Metabase][learn].
 
@@ -79,7 +79,7 @@ Metabase adds new features and squashes bugs with each release. [Upgrading to th
 [bugs]: ./bugs.html
 [cant-see-tables]: ./cant-see-tables.html
 [chrome]: https://developers.google.com/web/tools/chrome-devtools/open#console
-[cloud]: https://www.metabase.com/start/ 
+[cloud]: https://www.metabase.com/start/
 [datawarehouse]: ./datawarehouse.html
 [docker]: ./docker.html
 [edge]: https://docs.microsoft.com/en-us/microsoft-edge/devtools-guide-chromium
@@ -87,7 +87,7 @@ Metabase adds new features and squashes bugs with each release. [Upgrading to th
 [filters]: ./filters.html
 [firefox]: https://developer.mozilla.org/en-US/docs/Tools/Web_Console/Opening_the_Web_Console
 [forum]: https://discourse.metabase.com/
-[incorrect-times]: ./times-appear-incorrect.html
+[incorrect-times]: ./timezones.html
 [ldap]: ./ldap.html
 [learn]: https://www.metabase.com/learn
 [linked-filters]: ./linked-filters.html
