@@ -154,13 +154,15 @@ export const GRAPH_DATA_SETTINGS = {
         .filter(vizSettings["graph._metric_filter"])
         .map(getOptionFromColumn);
 
+      const hasBreakout = vizSettings["graph.dimensions"].length > 1;
       const addedMetricsCount = vizSettings["graph.metrics"].length;
-      const supportedMetrics = getMaxMetricsSupported(card.display);
+      const maxMetricsSupportedCount = getMaxMetricsSupported(card.display);
 
+      const hasMetricsToAdd = options.length > value.length;
       const canAddAnother =
-        addedMetricsCount < supportedMetrics &&
-        options.length > value.length &&
-        vizSettings["graph.dimensions"].length < 2;
+        addedMetricsCount < maxMetricsSupportedCount &&
+        hasMetricsToAdd &&
+        !hasBreakout;
 
       return {
         options,
