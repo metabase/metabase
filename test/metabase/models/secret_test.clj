@@ -7,25 +7,18 @@
 (defn- check-secret []
   (doseq [value ["fourtytwo" (byte-array (range 0 100))]]
     (let [name        "Test Secret"
-          kind        ::secret/password
-          val-equals? (fn [expected secret]
-                        (if-let [v (:value secret)]
-                          (cond (string? expected)
-                                (= expected (String. v))
-
-                                (bytes? expected)
-                                (= (seq expected) (seq v)))))]
+          kind        ::secret/password]
       (mt/with-temp Secret [{:keys [id] :as secret} {:name       name
                                                      :kind       kind
                                                      :value      value
                                                      :creator_id (mt/user->id :crowberto)}]
          (is (= name (:name secret)))
          (is (= kind (:kind secret)))
-         (is (val-equals? value secret))
+         (is (mt/secret-value-equals? value (:value secret)))
          (let [loaded (Secret id)]
            (is (= name (:name loaded)))
            (is (= kind (:kind loaded)))
-           (is (val-equals? value loaded)))))))
+           (is (mt/secret-value-equals? value (:value loaded))))))))
 
 (deftest secret-retrieval-test
   (testing "A secret value can be retrieved successfully"

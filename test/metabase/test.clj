@@ -195,7 +195,8 @@
   with-temp-file
   with-temp-scheduler
   with-temp-vals-in-db
-  with-temporary-setting-values]
+  with-temporary-setting-values
+  secret-value-equals?]
 
  [tu.async
   wait-for-close
