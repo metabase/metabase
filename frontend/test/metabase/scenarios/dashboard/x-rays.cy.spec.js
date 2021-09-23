@@ -140,7 +140,7 @@ describe("scenarios > x-rays", () => {
     cy.visit("/");
     cy.contains("A look at your Orders table").click();
 
-    // There are a lot of spinners in this dashboard. Give them some time to finish.
+    // There are a lot of spinners in this dashboard. Give them some time to disappear.
     cy.get(".LoadingSpinner", { timeout: 10000 }).should("not.exist");
 
     cy.button("Save this").click();
@@ -149,8 +149,6 @@ describe("scenarios > x-rays", () => {
     cy.findByText("See it").click();
 
     cy.url().should("contain", "a-look-at-your-orders-table");
-
-    // cy.reload();
 
     cy.get(".Card").contains("18,760");
     cy.findByText("How these transactions are distributed");
