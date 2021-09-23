@@ -59,7 +59,9 @@ function ErrorDetailDisplay(props) {
       "updated_at",
     ].map(x => (
       <tr key={x}>
-        <td align="right" className="m0 mt1 text-medium">{formatColumn(resCols[nameToResCol[x]])}</td>
+        <td align="right" className="m0 mt1 text-medium">
+          {formatColumn(resCols[nameToResCol[x]])}
+        </td>
         <td className="text-bold">
           {formatValue(resRow[nameToResCol[x]], {
             column: resCols[nameToResCol[x]],
@@ -85,19 +87,20 @@ function ErrorDetailDisplay(props) {
       ));
 
     return [
-      <h2 className="PageTitle p1" key="card_name">{resRow[nameToResCol.card_name]}</h2>,
+      <h2 className="PageTitle p1" key="card_name">
+        {resRow[nameToResCol.card_name]}
+      </h2>,
       <div key="error_str" className="p1 text-code">
         {resRow[nameToResCol.error_str]}
       </div>,
       <table key="table" className="ContentTable">
-      {[ordinaryRows, dashIdRows]}
-      </table>
+        {[ordinaryRows, dashIdRows]}
+      </table>,
     ];
   } else {
     return null;
   }
 }
-
 
 export default function ErrorDetail(props) {
   const { params } = props;
