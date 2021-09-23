@@ -107,9 +107,9 @@ describeWithToken("audit > auditing > subscriptions", () => {
       });
     });
 
-    it("allows to delete subscriptions", testRemovingAuditItem);
+    it.skip("allows to delete subscriptions", testRemovingAuditItem);
 
-    it("allows to edit recipients", () => {
+    it.skip("allows to edit recipients", () => {
       testEditingRecipients({
         editModalHeader: "Subscription recipients",
       });
@@ -156,9 +156,9 @@ describeWithToken("audit > auditing > subscriptions", () => {
       });
     });
 
-    it("allows to delete alerts", testRemovingAuditItem);
+    it.skip("allows to delete alerts", testRemovingAuditItem);
 
-    it("allows to edit recipients", () => {
+    it.skip("allows to edit recipients", () => {
       testEditingRecipients({
         editModalHeader: "Test Question alert recipients",
       });
