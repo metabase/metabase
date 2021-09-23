@@ -94,11 +94,10 @@ type Props = {
 export default class PublicDashboard extends Component {
   props: Props;
 
-  async UNSAFE_componentWillMount() {
+  async componentDidMount() {
     const {
       reset,
       intializeDashboard,
-      fetchDashboardCardData,
       setErrorPage,
       location,
       params: { uuid, token },
@@ -110,22 +109,29 @@ export default class PublicDashboard extends Component {
       setEmbedDashboardEndpoints();
     }
 
+    this.setState({ isLoading: true });
+
     reset();
     try {
       await intializeDashboard(uuid || token, location.query);
-      await fetchDashboardCardData({ reload: false, clear: true });
+      await this.props.fetchDashboardCardData({ reload: false, clear: true });
     } catch (error) {
       console.error(error);
       setErrorPage(error);
     }
+
+    this.setState({ isLoading: false });
   }
 
   componentWillUnmount() {
     this.props.cancelFetchDashboardCardData();
   }
 
-  UNSAFE_componentWillReceiveProps(nextProps: Props) {
-    if (!_.isEqual(this.props.parameterValues, nextProps.parameterValues)) {
+  componentDidUpdate(prevProps) {
+    if (
+      !this.state.isLoading &&
+      !_.isEqual(prevProps.parameterValues, this.props.parameterValues)
+    ) {
       this.props.fetchDashboardCardData({ reload: false, clear: true });
     }
   }

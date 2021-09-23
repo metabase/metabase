@@ -84,6 +84,8 @@ export default (ComposedComponent: React.Class) =>
           dashboardId,
         } = props;
 
+        this.setState({ isLoading: true });
+
         reset();
         try {
           await intializeDashboard(dashboardId, location && location.query);
@@ -92,9 +94,11 @@ export default (ComposedComponent: React.Class) =>
           console.error(error);
           setErrorPage(error);
         }
+
+        this.setState({ isLoading: false });
       }
 
-      UNSAFE_componentWillMount() {
+      componentDidMount() {
         this.load(this.props);
       }
 
@@ -102,11 +106,15 @@ export default (ComposedComponent: React.Class) =>
         this.props.cancelFetchDashboardCardData();
       }
 
-      UNSAFE_componentWillReceiveProps(nextProps: Props) {
-        if (nextProps.dashboardId !== this.props.dashboardId) {
-          this.load(nextProps);
+      componentDidUpdate(prevProps) {
+        if (this.state.isLoading) {
+          return;
+        }
+
+        if (prevProps.dashboardId !== this.props.dashboardId) {
+          this.load(this.props);
         } else if (
-          !_.isEqual(this.props.parameterValues, nextProps.parameterValues)
+          !_.isEqual(prevProps.parameterValues, this.props.parameterValues)
         ) {
           this.props.fetchDashboardCardData({ reload: false, clear: true });
         }

@@ -106,11 +106,15 @@ export default class Dashboard extends Component {
     });
   }
 
-  UNSAFE_componentWillReceiveProps(nextProps) {
-    if (this.props.dashboardId !== nextProps.dashboardId) {
-      this.loadDashboard(nextProps.dashboardId);
+  componentDidUpdate(prevProps) {
+    if (this.state.isLoading) {
+      return;
+    }
+
+    if (prevProps.dashboardId !== this.props.dashboardId) {
+      this.loadDashboard(this.props.dashboardId);
     } else if (
-      !_.isEqual(this.props.parameterValues, nextProps.parameterValues) ||
+      !_.isEqual(prevProps.parameterValues, this.props.parameterValues) ||
       !this.props.dashboard
     ) {
       this.props.fetchDashboardCardData({ reload: false, clear: true });
@@ -135,12 +139,15 @@ export default class Dashboard extends Component {
       setErrorPage,
     } = this.props;
 
-    reset();
+    this.setState({ isLoading: true });
 
+    reset();
     loadDashboardParams();
 
     try {
       await intializeDashboard(dashboardId, location.query);
+      await this.props.fetchDashboardCardData({ reload: false, clear: true });
+
       if (addCardOnLoad != null) {
         // if we destructure this.props.dashboard, for some reason
         // if will render dashboards as empty
@@ -155,6 +162,8 @@ export default class Dashboard extends Component {
         this.setState({ error });
       }
     }
+
+    this.setState({ isLoading: false });
   }
 
   setEditing = isEditing => {
