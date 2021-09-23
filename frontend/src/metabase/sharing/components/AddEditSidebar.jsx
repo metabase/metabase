@@ -55,13 +55,13 @@ export const AddEditSlackSidebar = connect(mapStateToProps)(
 
 function _AddEditEmailSidebar({
   pulse,
-  formInput,
   channel,
   channelSpec,
   users,
   parameters,
   defaultParametersById,
   dashboard,
+  isDisabled,
 
   // form callbacks
   handleSave,
@@ -79,7 +79,7 @@ function _AddEditEmailSidebar({
       onClose={handleSave}
       onCancel={onCancel}
       className="text-dark"
-      closeIsDisabled={!dashboardPulseIsValid(pulse, formInput.channels)}
+      closeIsDisabled={isDisabled}
     >
       <div className="pt4 px4 flex align-center">
         <Icon name="mail" className="mr1" size={21} />
@@ -186,13 +186,13 @@ function _AddEditEmailSidebar({
 
 _AddEditEmailSidebar.propTypes = {
   pulse: PropTypes.object.isRequired,
-  formInput: PropTypes.object.isRequired,
   channel: PropTypes.object.isRequired,
   channelSpec: PropTypes.object.isRequired,
   users: PropTypes.array,
   parameters: PropTypes.array.isRequired,
   defaultParametersById: PropTypes.object.isRequired,
   dashboard: PropTypes.object.isRequired,
+  isDisabled: PropTypes.bool,
   handleSave: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
   onChannelPropertyChange: PropTypes.func.isRequired,

@@ -20,6 +20,7 @@ import { connect } from "react-redux";
 import {
   cleanPulse,
   createChannel,
+  dashboardPulseIsValid,
   getPulseParameters,
 } from "metabase/lib/pulse";
 
@@ -200,6 +201,11 @@ class SharingSidebar extends React.Component {
 
   handleSave = async () => {
     const { pulse, dashboard, formInput } = this.props;
+    const { isSaving } = this.state;
+
+    if (isSaving) {
+      return;
+    }
 
     const cleanedPulse = cleanPulse(pulse, formInput.channels);
     cleanedPulse.name = dashboard.name;
@@ -225,11 +231,16 @@ class SharingSidebar extends React.Component {
       },
     );
 
-    await this.props.updateEditingPulse(cleanedPulse);
-
-    // The order below matters; it hides the "Done" button faster and prevents two pulses from being made if it's double-clicked
-    this.setState({ editingMode: "list-pulses", returnMode: [] });
-    await this.props.saveEditingPulse();
+    try {
+      this.setState({ isSaving: true });
+      await this.props.updateEditingPulse(cleanedPulse);
+      await this.props.saveEditingPulse();
+      this.setState({ editingMode: "list-pulses", returnMode: [] });
+    } catch (e) {
+      this.setState({ formError: e });
+    } finally {
+      this.setState({ isSaving: false });
+    }
   };
 
   createSubscription = () => {
@@ -316,11 +327,11 @@ class SharingSidebar extends React.Component {
 
       const [channel, index] = channelDetails[0];
       const channelSpec = formInput.channels.email;
+      const isValid = dashboardPulseIsValid(pulse, formInput.channels);
 
       return (
         <AddEditEmailSidebar
           pulse={pulse}
-          formInput={formInput}
           channel={channel}
           channelSpec={channelSpec}
           handleSave={this.handleSave}
@@ -340,6 +351,7 @@ class SharingSidebar extends React.Component {
           handleArchive={this.handleArchive}
           dashboard={dashboard}
           setPulseParameters={this.setPulseParameters}
+          isDisabled={!isValid}
         />
       );
     }
@@ -359,10 +371,11 @@ class SharingSidebar extends React.Component {
 
       const [channel, index] = channelDetails[0];
       const channelSpec = formInput.channels.slack;
+      const isValid = dashboardPulseIsValid(pulse, formInput.channels);
+
       return (
         <AddEditSlackSidebar
           pulse={pulse}
-          formInput={formInput}
           channel={channel}
           channelSpec={channelSpec}
           handleSave={this.handleSave}
@@ -380,6 +393,7 @@ class SharingSidebar extends React.Component {
           handleArchive={this.handleArchive}
           dashboard={dashboard}
           setPulseParameters={this.setPulseParameters}
+          isDisabled={!isValid}
         />
       );
     }
