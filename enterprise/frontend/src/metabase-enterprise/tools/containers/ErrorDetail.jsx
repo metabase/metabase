@@ -45,8 +45,6 @@ function ErrorDetailDisplay(props) {
       (obj, x, idx) => Object.assign(obj, { [x.name]: idx }),
       {},
     );
-    console.log(resCols);
-    console.log(Table.settings);
 
     const ordinaryRows = [
       "last_run_at",
