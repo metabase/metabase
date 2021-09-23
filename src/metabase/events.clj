@@ -124,3 +124,8 @@
 (def ^{:arglists '([object])} object->user-id
   "Determine the appropriate `user_id` (if possible) for a given `object`."
   (some-fn :actor_id :user_id :creator_id))
+
+(defn object->metadata
+  "Determine metadata, if there is any, for given `object`."
+  [object]
+  (some-fn :metadata))

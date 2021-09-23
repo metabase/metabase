@@ -21,12 +21,13 @@
 
 (defn- record-view!
   "Simple base function for recording a view of a given `model` and `model-id` by a certain `user`."
-  [model model-id user-id]
+  [model model-id user-id metadata]
   ;; TODO - we probably want a little code that prunes old entries so that this doesn't get too big
   (db/insert! ViewLog
     :user_id  user-id
     :model    model
-    :model_id model-id))
+    :model_id model-id
+    :metadata metadata))
 
 (defn handle-view-event!
   "Handle processing for a single event notification received on the view-log-channel"
@@ -37,7 +38,8 @@
       (record-view!
         (events/topic->model topic)
         (events/object->model-id topic object)
-        (events/object->user-id object)))
+        (events/object->user-id object)
+        (events/object->metadata object)))
     (catch Throwable e
       (log/warn (format "Failed to process activity event. %s" (:topic event)) e))))
 
