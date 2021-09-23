@@ -71,7 +71,7 @@ export default class SettingsSlackForm extends Component {
 
     switch (validationType) {
       case "email":
-        return !MetabaseUtils.validEmail(value)
+        return !MetabaseUtils.isEmail(value)
           ? validationMessage || t`That's not a valid email address`
           : null;
       case "integer":
