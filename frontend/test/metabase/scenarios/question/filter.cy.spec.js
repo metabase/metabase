@@ -799,7 +799,7 @@ describe("scenarios > question > filter", () => {
     cy.get("[contenteditable=true]")
       .type("0 < [ID]")
       .blur();
-    cy.findByText("Expecting boolean but found 0");
+    cy.findByText("Expecting field but found 0");
   });
 
   it.skip("should work on twice summarized questions (metabase#15620)", () => {
