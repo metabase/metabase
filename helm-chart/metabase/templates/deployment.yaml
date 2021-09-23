@@ -78,7 +78,7 @@ spec:
               configMapKeyRef:
                 name: {{ include "metabase.fullname" . }}-configs
                 key: MB_JETTY_PORT
-          {{- if and (ne .Values.config.database.type "h2") (.Values.secrets.database.host) (or .Values.secrets.database.password .Values.secrets.existingSecret.existingSecretPasswordKey) (or .Values.secrets.database.username .Values.secrets.existingSecret.existingSecretUsernameKey) (.Values.secrets.database.port) (.Values.secrets.database.dbName) }}
+          {{- if and (ne .Values.config.database.type "h2") (.Values.secrets.database.host) (or .Values.secrets.database.password .Values.secrets.existingSecret.passwordKey) (or .Values.secrets.database.username .Values.secrets.existingSecret.usernameKey) (.Values.secrets.database.port) (.Values.secrets.database.dbName) }}
           - name: MB_DB_TYPE
             valueFrom:
               configMapKeyRef:
@@ -89,12 +89,12 @@ spec:
               secretKeyRef:
                 name: {{ include "metabase.fullname" . }}-secrets
                 key: MB_DB_HOST
-          {{- if .Values.secrets.existingSecret.existingSecretPasswordKey }}
+          {{- if .Values.secrets.existingSecret.passwordKey }}
           - name: MB_DB_PASS
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.secrets.existingSecret.existingSecretName }}-existingSecrets
-                key: {{ .Values.secrets.existingSecret.existingSecretPasswordKey }}
+                name: {{ .Values.secrets.existingSecret.name }}
+                key: {{ .Values.secrets.existingSecret.passwordKey }}
           {{ else }}
           - name: MB_DB_PASS
             valueFrom:
@@ -102,12 +102,12 @@ spec:
                 name: {{ include "metabase.fullname" . }}-secrets
                 key: MB_DB_PASS
           {{- end }}
-          {{- if .Values.secrets.existingSecret.existingSecretUsernameKey }}
+          {{- if .Values.secrets.existingSecret.usernameKey }}
           - name: MB_DB_USER
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.secrets.existingSecret.existingSecretName }}-existingSecrets
-                key: {{ .Values.secrets.existingSecret.existingSecretUsernameKey }}
+                name: {{ .Values.secrets.existingSecret.name }}
+                key: {{ .Values.secrets.existingSecret.usernameKey }}
           {{ else }}
           - name: MB_DB_USER
             valueFrom:
@@ -126,13 +126,13 @@ spec:
                 name: {{ include "metabase.fullname" . }}-secrets
                 key: MB_DB_PORT
           {{- end }}
-          {{- if and (ne .Values.config.database.type "h2") (or .Values.secrets.database.connString .Values.secrets.existingSecret.existingSecretConnectionURIKey)}}
-          {{- if .Values.secrets.existingSecret.existingSecretConnectionURIKey }}
+          {{- if and (ne .Values.config.database.type "h2") (or .Values.secrets.database.connString .Values.secrets.existingSecret.vonnectionURIKey)}}
+          {{- if .Values.secrets.existingSecret.vonnectionURIKey }}
           - name: MB_DB_CONNECTION_URI
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.secrets.existingSecret.existingSecretName }}-existingSecrets
-                key: {{ .Values.secrets.existingSecret.existingSecretConnectionURIKey }}
+                name: {{ .Values.secrets.existingSecret.name }}
+                key: {{ .Values.secrets.existingSecret.connectionURIKey }}
           {{ else }}
           - name: MB_DB_CONNECTION_URI
             valueFrom:
@@ -843,10 +843,10 @@ spec:
         - name: {{ include "metabase.fullname" . }}-secrets
           secret:
             secretName: {{ include "metabase.fullname" . }}-secrets
-        {{ if .Values.secrets.existingSecret.existingSecretName }}
-        - name: {{ .Values.secrets.existingSecret.existingSecretName }}-existingSecrets
+        {{ if .Values.secrets.existingSecret.name }}
+        - name: {{ .Values.secrets.existingSecret.name }}
           secret:
-            secretName: {{ .Values.secrets.existingSecret.existingSecretName }}-existingSecrets
+            secretName: {{ .Values.secrets.existingSecret.name }}
         {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:

@@ -167,10 +167,10 @@ config:
   
 secrets:
   existingSecret:
-    existingSecretName:
-    existingSecretConnectionURIKey:
-    existingSecretUsernameKey:
-    existingSecretPasswordKey:
+    name:
+    connectionURIKey:
+    usernameKey:
+    passwordKey:
   database:
     username: ""
     password: ""
