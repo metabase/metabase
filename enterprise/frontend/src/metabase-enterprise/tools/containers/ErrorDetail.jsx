@@ -52,6 +52,7 @@ function ErrorDetailDisplay(props) {
       "last_run_at",
       "collection_name",
       "database_name",
+      "schema_name",
       "table_name",
       "total_runs",
       "user_name",
