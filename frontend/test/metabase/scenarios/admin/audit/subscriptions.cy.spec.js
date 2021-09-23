@@ -65,7 +65,7 @@ describeWithToken("audit > auditing > subscriptions", () => {
     cy.signInAsAdmin();
   });
 
-  describe("subscriptions", () => {
+  describe.skip("subscriptions", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
@@ -116,7 +116,7 @@ describeWithToken("audit > auditing > subscriptions", () => {
     });
   });
 
-  describe("alerts", () => {
+  describe.skip("alerts", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
