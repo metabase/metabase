@@ -662,11 +662,9 @@ export const intializeDashboard = createThunkAction(
             const fields = parameter.field_ids.map(
               fieldId => metadata.fields[fieldId],
             );
-            parameterValuesById[parameter.id] = [].concat(
-              parseParameterValueForFields(
-                parameterValuesById[parameter.id],
-                fields,
-              ),
+            parameterValuesById[parameter.id] = parseParameterValueForFields(
+              parameterValuesById[parameter.id],
+              fields,
             );
           }
         });
