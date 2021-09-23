@@ -71,15 +71,15 @@ function ErrorDetailDisplay(props) {
         </td>
       </tr>
     ));
-    const dashIdRows = resRow[nameToResCol.dash_ids_str]
-      .split(",")
+    const dashIdRows = resRow[nameToResCol.dash_name_str]
+      .split("|")
       .map((x, idx) => (
         <tr key={x}>
           <td>
-            {idx === 0 && formatColumn(resCols[nameToResCol.dash_ids_str])}
+            {idx === 0 && formatColumn(resCols[nameToResCol.dash_name_str])}
           </td>
           <td>
-            {formatValue(x, { column: resCols[nameToResCol.dash_ids_str] })}
+            {formatValue(x, { column: resCols[nameToResCol.dash_name_str] })}
           </td>
         </tr>
       ));
