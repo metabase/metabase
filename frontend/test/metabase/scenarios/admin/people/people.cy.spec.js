@@ -314,8 +314,8 @@ describeWithToken("scenarios > admin > people", () => {
 
     modal().within(() => {
       cy.findByText(fullName, { exact: false });
-      cy.findByText("Confirm").click();
-      cy.findByText("Confirm").should("not.exist");
+      cy.findByText("Unsubscribe").click();
+      cy.findByText("Unsubscribe").should("not.exist");
     });
 
     cy.visit("/account/notifications");
