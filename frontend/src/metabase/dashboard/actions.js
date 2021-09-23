@@ -888,11 +888,9 @@ export const setParameterIndex = createThunkAction(
   },
 );
 
-export const setParameterValue = createThunkAction(
+export const setParameterValue = createAction(
   SET_PARAMETER_VALUE,
-  (parameterId, value) => (dispatch, getState) => {
-    return { id: parameterId, value };
-  },
+  (parameterId, value) => ({ id: parameterId, value }),
 );
 
 export const setParameterValues = parameterIdValuePairs => (
@@ -901,7 +899,7 @@ export const setParameterValues = parameterIdValuePairs => (
 ) => {
   parameterIdValuePairs
     .map(([id, value]) => setParameterValue(id, value))
-    .forEach(dispatch);
+    .forEach(action => dispatch(action));
 };
 
 export const CREATE_PUBLIC_LINK = "metabase/dashboard/CREATE_PUBLIC_LINK";

@@ -9,6 +9,9 @@ import {
   openAddQuestionSidebar,
   removeParameter,
   SET_DASHBOARD_ATTRIBUTES,
+  setParameterValue,
+  SET_PARAMETER_VALUE,
+  setParameterValues,
 } from "./actions";
 import { SIDEBAR_NAME } from "./constants";
 
@@ -114,6 +117,42 @@ describe("dashboard actions", () => {
           name: SIDEBAR_NAME.addQuestion,
         }),
       );
+    });
+  });
+
+  describe("setParameterValue", () => {
+    it("should set the parameter with value", () => {
+      dispatch(setParameterValue(1, "v1"));
+
+      expect(dispatch).toHaveBeenCalledWith({
+        type: SET_PARAMETER_VALUE,
+        payload: {
+          id: 1,
+          value: "v1",
+        },
+      });
+    });
+  });
+
+  describe("setParameterValues", () => {
+    it("should set multiple parameters with value", () => {
+      setParameterValues([[1, "v1"], [2, "v2"]])(dispatch, getState);
+
+      expect(dispatch).toHaveBeenCalledWith({
+        type: SET_PARAMETER_VALUE,
+        payload: {
+          id: 1,
+          value: "v1",
+        },
+      });
+
+      expect(dispatch).toHaveBeenCalledWith({
+        type: SET_PARAMETER_VALUE,
+        payload: {
+          id: 2,
+          value: "v2",
+        },
+      });
     });
   });
 
