@@ -23,11 +23,11 @@ const ModalWithRoute = (ComposedModal, modalProps = {}) =>
       static displayName = `ModalWithRoute[${ComposedModal.displayName ||
         ComposedModal.name}]`;
 
-      onClose = state => {
+      onClose = () => {
         const { location, route } = this.props;
 
-        const pathname = getParentPath(route, location);
-        this.props.onChangeLocation({ pathname, state });
+        const parentPath = getParentPath(route, location);
+        this.props.onChangeLocation(parentPath);
       };
 
       render() {
