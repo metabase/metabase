@@ -13,15 +13,17 @@ const propTypes = {
 const HelpModal = ({ onClose }) => {
   const email = Settings.get("admin-email");
 
+  const handleClose = () => onClose(true);
+
   return (
     <ModalContent
       title={t`Not seeing something listed here?`}
       footer={
-        <Button key="close" onClick={onClose}>
+        <Button key="close" onClick={handleClose}>
           {t`Got it`}
         </Button>
       }
-      onClose={onClose}
+      onClose={handleClose}
     >
       <ModalMessage>
         {t`It’s possible you may also receive emails from Metabase if you’re a member of an email distribution list, like “team@mycompany.com” and that list is used as the recipient for an alert or dashboard subscription instead of your individual email.`}

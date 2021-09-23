@@ -1,11 +1,13 @@
 import React from "react";
 
 import { Route } from "metabase/hoc/Title";
+import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { IndexRoute, IndexRedirect } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
 import AuditApp from "./containers/AuditApp";
+import UnsubscribeUserModal from "./containers/UnsubscribeUserModal/UnsubscribeUserModal";
 
 import AuditOverview from "./pages/AuditOverview";
 
@@ -15,17 +17,15 @@ import AuditSchemas from "./pages/AuditSchemas";
 import AuditSchemaDetail from "./pages/AuditSchemaDetail";
 import AuditTables from "./pages/AuditTables";
 import AuditTableDetail from "./pages/AuditTableDetail";
-
 import AuditQuestions from "./pages/AuditQuestions";
 import AuditQuestionDetail from "./pages/AuditQuestionDetail";
 import AuditDashboards from "./pages/AuditDashboards";
 import AuditDashboardDetail from "./pages/AuditDashboardDetail";
 import AuditQueryDetail from "./pages/AuditQueryDetail";
-
 import AuditUsers from "./pages/AuditUsers";
 import AuditUserDetail from "./pages/AuditUserDetail";
-
 import AuditDownloads from "./pages/AuditDownloads";
+import AuditSubscriptions from "./pages/AuditSubscriptions";
 
 type Page = {
   tabs?: Tab[],
@@ -50,7 +50,16 @@ function getPageRoutes(path, page: Page) {
   if (page.tabs) {
     subRoutes.push(
       ...page.tabs.map(tab => (
-        <Route key={tab.path} path={tab.path} component={tab.component} />
+        <Route key={tab.path} path={tab.path} component={tab.component}>
+          {tab.modals &&
+            tab.modals.map(modal => (
+              <ModalRoute
+                key={modal.path}
+                path={modal.path}
+                modal={modal.modal}
+              />
+            ))}
+        </Route>
       )),
     );
   }
@@ -94,7 +103,12 @@ const getRoutes = (store: any) => (
     {getPageRoutes("downloads", AuditDownloads)}
     {getPageRoutes("members", AuditUsers)}
     {getPageRoutes("member/:userId", AuditUserDetail)}
+    {getPageRoutes("subscriptions", AuditSubscriptions)}
   </Route>
+);
+
+export const getUserMenuRotes = () => (
+  <ModalRoute path="unsubscribe" modal={UnsubscribeUserModal} />
 );
 
 export default getRoutes;

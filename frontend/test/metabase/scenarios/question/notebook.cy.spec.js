@@ -6,6 +6,7 @@ import {
   popover,
   modal,
   visitQuestionAdhoc,
+  interceptPromise,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
@@ -151,6 +152,41 @@ describe("scenarios > question > notebook", () => {
       .clear()
       .type("[Price] > 1 AND [Price] < 5{enter}");
     cy.contains(/^Price is less than 5/i);
+  });
+
+  it("should show the real number of rows instead of HARD_ROW_LIMIT when loading", () => {
+    // start a custom question with orders
+    cy.visit("/question/new");
+    cy.contains("Custom question").click();
+    cy.contains("Sample Dataset").click();
+    cy.contains("Orders").click();
+
+    // Add filter for ID < 100
+    cy.findByText("Add filters to narrow your answer").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("ID < 100", { delay: 50 });
+    cy.button("Done")
+      .should("not.be.disabled")
+      .click();
+    cy.contains("Visualize").click();
+
+    cy.contains("Showing 99 rows");
+
+    const req = interceptPromise("POST", "/api/dataset");
+    cy.contains("ID is less than 100").click();
+    cy.get(".Icon-chevronleft").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("ID < 2010");
+    cy.button("Done").click();
+    cy.contains("Showing 99 rows");
+    req.resolve();
+    cy.contains("Showing first 2000 rows");
   });
 
   describe("joins", () => {

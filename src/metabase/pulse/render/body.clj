@@ -62,11 +62,32 @@
 ;;; --------------------------------------------------- Formatting ---------------------------------------------------
 
 (s/defn ^:private format-cell
-  [timezone-id :- (s/maybe s/Str) value col]
+  [timezone-id :- (s/maybe s/Str) value col visualization-settings]
   (cond
-    (types/temporal-field? col)                             (datetime/format-temporal-str timezone-id value col)
-    (and (number? value) (not (types/temporal-field? col))) (common/format-number value)
-    :else                                                   (str value)))
+    (types/temporal-field? col)
+    (datetime/format-temporal-str timezone-id value col)
+
+    (number? value)
+    (common/format-number value col visualization-settings)
+
+    :else
+    (str value)))
+
+(s/defn ^:private get-format
+  [timezone-id :- (s/maybe s/Str) col visualization-settings]
+  (cond
+    ;; for numbers, return a format function that has already computed the differences.
+    ;; todo: do the same for temporal strings
+    (types/temporal-field? col)
+    #(datetime/format-temporal-str timezone-id % col)
+
+    ;; todo integer columns with a unit
+    (or (isa? (:effective_type col) :type/Number)
+        (isa? (:base_type col) :type/Number))
+    (common/number-formatter col visualization-settings)
+
+    :else
+    str))
 
 ;;; --------------------------------------------------- Rendering ----------------------------------------------------
 
@@ -122,31 +143,36 @@
 
 (s/defn ^:private query-results->row-seq
   "Returns a seq of stringified formatted rows that can be rendered into HTML"
-  [timezone-id :- (s/maybe s/Str) remapping-lookup cols rows {:keys [bar-column min-value max-value]}]
-  (for [row rows]
-    {:bar-width (some-> (and bar-column (bar-column row))
-                        (normalize-bar-value min-value max-value))
-     :row (for [[maybe-remapped-col maybe-remapped-row-cell] (map vector cols row)
-                :when (and (not (:remapped_from maybe-remapped-col))
-                           (show-in-table? maybe-remapped-col))
-                :let [[col row-cell] (if (:remapped_to maybe-remapped-col)
-                                       [(nth cols (get remapping-lookup (:name maybe-remapped-col)))
-                                        (nth row (get remapping-lookup (:name maybe-remapped-col)))]
-                                       [maybe-remapped-col maybe-remapped-row-cell])]]
-            (format-cell timezone-id row-cell col))}))
+  [timezone-id :- (s/maybe s/Str) remapping-lookup cols rows viz-settings {:keys [bar-column min-value max-value]}]
+  (let [formatters (into [] (map #(get-format timezone-id % viz-settings)) cols)]
+    (for [row rows]
+      {:bar-width (some-> (and bar-column (bar-column row))
+                          (normalize-bar-value min-value max-value))
+       :row (for [[maybe-remapped-col maybe-remapped-row-cell fmt-fn] (map vector cols row formatters)
+                  :when (and (not (:remapped_from maybe-remapped-col))
+                             (show-in-table? maybe-remapped-col))
+                  :let [[formatter row-cell] (if (:remapped_to maybe-remapped-col)
+                                               (let [remapped-index (get remapping-lookup (:name maybe-remapped-col))]
+                                                [(nth formatters remapped-index)
+                                                 (nth row remapped-index)])
+                                               [fmt-fn maybe-remapped-row-cell])]]
+              (fmt-fn row-cell))})))
 
 (s/defn ^:private prep-for-html-rendering
   "Convert the query results (`cols` and `rows`) into a formatted seq of rows (list of strings) that can be rendered as
   HTML"
   ([timezone-id :- (s/maybe s/Str) card data column-limit]
    (prep-for-html-rendering timezone-id card data column-limit {}))
-  ([timezone-id :- (s/maybe s/Str) card {:keys [cols rows]} column-limit
+  ([timezone-id :- (s/maybe s/Str) card {:keys [cols rows viz-settings]} column-limit
     {:keys [bar-column min-value max-value] :as data-attributes}]
    (let [remapping-lookup (create-remapping-lookup cols)
          limited-cols (take column-limit cols)]
      (cons
       (query-results->header-row remapping-lookup card limited-cols bar-column)
-      (query-results->row-seq timezone-id remapping-lookup limited-cols (take rows-limit rows) data-attributes)))))
+      (query-results->row-seq timezone-id remapping-lookup limited-cols
+                              (take rows-limit rows)
+                              viz-settings
+                              data-attributes)))))
 
 (defn- strong-limit-text [number]
   [:strong {:style (style/style {:color style/color-gray-3})} (h (common/format-number number))])
@@ -364,8 +390,9 @@
                 (percentages label)]]))]}))
 
 (s/defmethod render :scalar :- common/RenderedPulseCard
-  [_ _ timezone-id card {:keys [cols rows]}]
-  (let [value (format-cell timezone-id (ffirst rows) (first cols))]
+  [_ _ timezone-id _card {:keys [cols rows viz-settings] :as data}]
+  (let [col             (first cols)
+        value           (format-cell timezone-id (ffirst rows) (first cols) viz-settings)]
     {:attachments
      nil
 
@@ -375,7 +402,7 @@
      :render/text (str value)}))
 
 (s/defmethod render :smartscalar :- common/RenderedPulseCard
-  [_ _ timezone-id _card {:keys [cols rows insights]}]
+  [_ _ timezone-id _card {:keys [cols _rows insights viz-settings]}]
   (letfn [(col-of-type [t c] (or (isa? (:effective_type c) t)
                                  ;; computed and agg columns don't have an effective type
                                  (isa? (:base_type c) t)))
@@ -389,9 +416,9 @@
           {:keys [last-value previous-value unit last-change] :as _insight}
           (where (comp #{(:name metric-col)} :col) insights)]
       (if (and last-value previous-value unit last-change)
-        (let [value    (format-cell timezone-id last-value metric-col)
-              previous (format-cell timezone-id previous-value metric-col)
-              adj      (if (pos? last-change) (tru "Up") (tru "Down"))]
+        (let [value           (format-cell timezone-id last-value metric-col viz-settings)
+              previous        (format-cell timezone-id previous-value metric-col viz-settings)
+              adj             (if (pos? last-change) (tru "Up") (tru "Down"))]
           {:attachments nil
            :content     [:div
                          [:div {:style (style/style (style/scalar-style))}

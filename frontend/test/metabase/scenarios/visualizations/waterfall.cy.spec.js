@@ -135,7 +135,7 @@ describe("scenarios > visualizations > waterfall", () => {
     });
   });
 
-  it.skip("should not be enabled for multi-series questions (metabase#15152)", () => {
+  it("should show error for multi-series questions (metabase#15152)", () => {
     cy.server();
     cy.route("POST", "/api/dataset").as("dataset");
 
@@ -155,11 +155,15 @@ describe("scenarios > visualizations > waterfall", () => {
     });
 
     cy.wait("@dataset");
-    cy.findByText("Visualization").click();
 
-    cy.findByText("Waterfall")
-      .parent()
-      .should("not.have.css", "opacity", "1");
+    cy.findByText("Visualization").click();
+    cy.findByTestId("Waterfall-button").click();
+    cy.findByText("Waterfall chart does not support multiple series");
+
+    cy.findByTestId("remove-count").click();
+    cy.get(".CardVisualization svg"); // Chart renders after removing the second metric
+
+    cy.findByText("Add another series...").should("not.exist");
   });
 
   it("should work for unaggregated data (metabase#15465)", () => {

@@ -50,6 +50,7 @@ type Props = {
   style: { [key: string]: string | number },
   color: string,
 
+  idKey: string | number | (() => string),
   valueKey: string | number | (() => any),
   labelKey: string | number | (() => string),
 
@@ -61,7 +62,7 @@ type Props = {
   onFocus?: () => void,
   onBlur?: () => void,
 
-  updateOnInputChange: boolean,
+  updateOnInputChange?: boolean,
   updateOnInputBlur?: boolean,
   // if provided, parseFreeformValue parses the input string into a value,
   // or returns null to indicate an invalid value
@@ -150,6 +151,18 @@ export default class TokenField extends Component {
     this.setInputValue("", clearSearchValue);
   }
 
+  _id(value: Value) {
+    const { idKey } = this.props;
+
+    if (typeof idKey === "function") {
+      return idKey(value);
+    } else if (typeof idKey === "string") {
+      return value[idKey];
+    } else {
+      return value;
+    }
+  }
+
   _value(option: Option) {
     const { valueKey } = this.props;
     return typeof valueKey === "function" ? valueKey(option) : option[valueKey];
@@ -177,7 +190,9 @@ export default class TokenField extends Component {
   _updateFilteredValues = (props: Props) => {
     let { options = [], value, removeSelected, filterOption } = props;
     let { searchValue, selectedOptionValue } = this.state;
-    const selectedValues = new Set(value.map(v => JSON.stringify(v)));
+    const selectedValueIds = new Set(
+      value.map(v => JSON.stringify(this._id(v))),
+    );
 
     if (!filterOption) {
       filterOption = (option, searchValue) =>
@@ -186,8 +201,8 @@ export default class TokenField extends Component {
 
     let selectedCount = 0;
     const filteredOptions = options.filter(option => {
-      const isSelected = selectedValues.has(
-        JSON.stringify(this._value(option)),
+      const isSelected = selectedValueIds.has(
+        JSON.stringify(this._id(this._value(option))),
       );
       const isLastFreeform =
         this._isLastFreeformValue(this._value(option)) &&

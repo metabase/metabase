@@ -712,6 +712,11 @@ export default class Question {
     return Mode.forQuestion(this);
   }
 
+  /**
+   * Returns true if, based on filters and table columns, the expected result is a single row.
+   * However, it might not be true when a PK column is not unique, leading to multiple rows.
+   * Because of that, always check query results in addition to this property.
+   */
   isObjectDetail(): boolean {
     const mode = this.mode();
     return mode ? mode.name() === "object" : false;

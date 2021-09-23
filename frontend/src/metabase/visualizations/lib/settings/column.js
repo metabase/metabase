@@ -70,20 +70,17 @@ export function columnSettings({
 }
 
 import MetabaseSettings from "metabase/lib/settings";
-import { isa } from "metabase/lib/types";
 
 export function getGlobalSettingsForColumn(column: Column) {
-  const settings = {};
+  const columnSettings = {};
+  const customFormatting = MetabaseSettings.get("custom-formatting") || {};
 
-  const customFormatting = MetabaseSettings.get("custom-formatting");
   // NOTE: the order of these doesn't matter as long as there's no overlap between settings
-  for (const [type, globalSettings] of Object.entries(customFormatting || {})) {
-    if (isa(column.semantic_type || column.base_type, type)) {
-      Object.assign(settings, globalSettings);
-    }
+  for (const [, globalSettings] of Object.entries(customFormatting)) {
+    Object.assign(columnSettings, globalSettings);
   }
 
-  return settings;
+  return columnSettings;
 }
 
 function getLocalSettingsForColumn(column: Column): Settings {

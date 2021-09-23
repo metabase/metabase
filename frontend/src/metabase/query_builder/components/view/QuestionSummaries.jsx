@@ -63,7 +63,11 @@ export function QuestionSummarizeWidget({
   );
 }
 
-QuestionSummaries.shouldRender = ({ question, queryBuilderMode }) =>
+QuestionSummaries.shouldRender = ({
+  question,
+  queryBuilderMode,
+  isObjectDetail,
+}) =>
   queryBuilderMode === "view" &&
   question &&
   question.isStructured() &&
@@ -71,12 +75,16 @@ QuestionSummaries.shouldRender = ({ question, queryBuilderMode }) =>
     .query()
     .topLevelQuery()
     .hasAggregations() &&
-  !question.isObjectDetail();
+  !isObjectDetail;
 
-QuestionSummarizeWidget.shouldRender = ({ question, queryBuilderMode }) =>
+QuestionSummarizeWidget.shouldRender = ({
+  question,
+  queryBuilderMode,
+  isObjectDetail,
+}) =>
   queryBuilderMode === "view" &&
   question &&
   question.isStructured() &&
   question.query().isEditable() &&
   question.query().table() &&
-  !question.isObjectDetail();
+  !isObjectDetail;
