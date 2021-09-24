@@ -6,6 +6,9 @@
             [metabase.config :as config]
             [metabase.core.initialization-status :as init-status]
             [metabase.db :as mdb]
+            metabase.driver.h2
+            metabase.driver.mysql
+            metabase.driver.postgres
             [metabase.events :as events]
             [metabase.metabot :as metabot]
             [metabase.models.user :refer [User]]
@@ -18,9 +21,6 @@
             [metabase.task :as task]
             [metabase.troubleshooting :as troubleshooting]
             [metabase.util :as u]
-            metabase.driver.h2
-            metabase.driver.postgres
-            metabase.driver.mysql
             [metabase.util.i18n :refer [deferred-trs trs]]
             [toucan.db :as db]))
 
