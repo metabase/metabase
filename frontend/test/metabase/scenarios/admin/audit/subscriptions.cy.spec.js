@@ -67,9 +67,6 @@ describeWithToken("audit > auditing > subscriptions", () => {
 
   describe("subscriptions", () => {
     beforeEach(() => {
-      restore();
-      cy.signInAsAdmin();
-
       cy.getCurrentUser().then(({ body: { id: user_id } }) => {
         cy.createQuestionAndDashboard({
           questionDetails: getQuestionDetails(),
@@ -107,9 +104,9 @@ describeWithToken("audit > auditing > subscriptions", () => {
       });
     });
 
-    it.skip("allows to delete subscriptions", testRemovingAuditItem);
+    it("allows to delete subscriptions", testRemovingAuditItem);
 
-    it.skip("allows to edit recipients", () => {
+    it("allows to edit recipients", () => {
       testEditingRecipients({
         editModalHeader: "Subscription recipients",
       });
@@ -118,9 +115,6 @@ describeWithToken("audit > auditing > subscriptions", () => {
 
   describe("alerts", () => {
     beforeEach(() => {
-      restore();
-      cy.signInAsAdmin();
-
       cy.getCurrentUser().then(({ body: { id: user_id } }) => {
         cy.createQuestion(getQuestionDetails()).then(
           ({ body: { id: card_id } }) => {
@@ -156,9 +150,9 @@ describeWithToken("audit > auditing > subscriptions", () => {
       });
     });
 
-    it.skip("allows to delete alerts", testRemovingAuditItem);
+    it("allows to delete alerts", testRemovingAuditItem);
 
-    it.skip("allows to edit recipients", () => {
+    it("allows to edit recipients", () => {
       testEditingRecipients({
         editModalHeader: "Test Question alert recipients",
       });
