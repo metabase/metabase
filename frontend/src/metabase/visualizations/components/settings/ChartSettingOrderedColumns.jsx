@@ -3,13 +3,14 @@ import React, { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { SortableContainer, SortableElement } from "react-sortable-hoc";
-
+import {
+  SortableContainer,
+  SortableElement,
+} from "metabase/components/sortable";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { keyForColumn, findColumnForColumnSetting } from "metabase/lib/dataset";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 
-import { SortableColumnListContainer } from "./ChartSettingOrderedColumns.styled";
 import ColumnItem from "./ColumnItem";
 
 const SortableColumn = SortableElement(
@@ -26,7 +27,7 @@ const SortableColumn = SortableElement(
 const SortableColumnList = SortableContainer(
   ({ columnSettings, getColumnName, onEdit, onRemove }) => {
     return (
-      <SortableColumnListContainer>
+      <div>
         {columnSettings.map((columnSetting, index) => (
           <SortableColumn
             key={`item-${index}`}
@@ -37,7 +38,7 @@ const SortableColumnList = SortableContainer(
             onRemove={onRemove}
           />
         ))}
-      </SortableColumnListContainer>
+      </div>
     );
   },
 );
