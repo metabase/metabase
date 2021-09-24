@@ -213,7 +213,7 @@
   (every? is-card-empty? results))
 
 (defn- goal-met? [{:keys [alert_above_goal], :as pulse} [first-result]]
-  (let [goal-comparison      (if alert_above_goal <= >=)
+  (let [goal-comparison      (if alert_above_goal < >=)
         goal-val             (ui/find-goal-value first-result)
         comparison-col-rowfn (ui/make-goal-comparison-rowfn (:card first-result)
                                                             (get-in first-result [:result :data]))]
