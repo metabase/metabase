@@ -18,8 +18,16 @@
             [metabase.task :as task]
             [metabase.troubleshooting :as troubleshooting]
             [metabase.util :as u]
+            metabase.driver.h2
+            metabase.driver.postgres
+            metabase.driver.mysql
             [metabase.util.i18n :refer [deferred-trs trs]]
             [toucan.db :as db]))
+
+  ;; Load up the drivers shipped as part of the main codebase, so they will show up in the list of available DB types
+(comment metabase.driver.h2/keep-me
+         metabase.driver.mysql/keep-me
+         metabase.driver.postgres/keep-me)
 
 ;; don't i18n this, it's legalese
 (log/info
@@ -77,10 +85,6 @@
   ;; load any plugins as needed
   (plugins/load-plugins!)
   (init-status/set-progress! 0.3)
-
-  ;; Load up the drivers shipped as part of the main codebase, so they will show up in the list of available DB types
-  (classloader/require 'metabase.driver.h2 'metabase.driver.postgres 'metabase.driver.mysql)
-  (init-status/set-progress! 0.4)
 
   ;; startup database.  validates connection & runs any necessary migrations
   (log/info (trs "Setting up and migrating Metabase DB. Please sit tight, this may take a minute..."))
