@@ -378,7 +378,7 @@ function onRenderSetZeroGridLineClassName(chart) {
     .filter(function() {
       return d3.select(this).attr("y1") === yZero;
     })
-    .attr("class", "zero-line");
+    .attr("class", "zero");
 }
 
 // the various steps that get called

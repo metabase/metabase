@@ -65,7 +65,7 @@
 }
 
 /* restyle grid-line for 0 to look like X axis */
-.LineAreaBarChart .dc-chart .stacked .zero-line {
+.LineAreaBarChart .dc-chart .stacked line.zero {
   stroke: var(--color-text-light);
   opacity: 1;
   stroke-dasharray: none;
