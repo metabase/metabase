@@ -632,7 +632,7 @@
                              :parameters  parameters
                              :middleware  middleware))
         dashboard (db/select-one [Dashboard :cache_ttl] :id (:dashboard-id ids))
-        database  (db/select-one [Database :cache_ttl] :id (get-in card [:dataset_query :database]))
+        database  (db/select-one [Database :cache_ttl] :id (:database_id card))
         ttl       (ttl-hierarchy card dashboard database query)]
     (assoc query :cache-ttl ttl)))
 
@@ -653,7 +653,7 @@
                    (qp.streaming/streaming-response [context export-format (u/slugify (:card-name info))]
                      (binding [qp.perms/*card-id* card-id]
                        (qp-runner query info context)))))
-        card  (api/read-check (db/select-one [Card :id :name :dataset_query :cache_ttl :collection_id] :id card-id))
+        card  (api/read-check (db/select-one [Card :id :name :dataset_query :database_id :cache_ttl :collection_id] :id card-id))
         query (-> (assoc (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id}) :async? true)
                   (update :middleware (fn [middleware]
                                         (merge
