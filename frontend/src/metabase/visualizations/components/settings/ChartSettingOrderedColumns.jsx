@@ -125,7 +125,6 @@ export default class ChartSettingOrderedColumns extends Component {
             onRemove={this.handleDisable}
             onSortEnd={this.handleSortEnd}
             distance={5}
-            helperClass="z5"
           />
         ) : (
           <div className="my2 p2 flex layout-centered bg-grey-0 text-light text-bold rounded">

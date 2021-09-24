@@ -217,7 +217,6 @@ const RuleListing = ({ rules, cols, onEdit, onAdd, onRemove, onMove }) => (
           onRemove={onRemove}
           onSortEnd={({ oldIndex, newIndex }) => onMove(oldIndex, newIndex)}
           distance={10}
-          helperClass="z5"
         />
       </div>
     ) : null}
