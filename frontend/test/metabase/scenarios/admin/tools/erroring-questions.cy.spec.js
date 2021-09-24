@@ -24,5 +24,14 @@ describeWithToken("admin > tools > erroring questions ", () => {
         .should("have.attr", "href")
         .and("eq", TOOLS_ERRORS_URL);
     });
+
+    it.skip("should disable search input fields (metabase#18050)", () => {
+      cy.visit(TOOLS_ERRORS_URL);
+
+      // When the issue gets fixed, it's safe to merge these assertions with the main test above
+      cy.findByPlaceholderText("Error name").should("be.disabled");
+      cy.findByPlaceholderText("DB name").should("be.disabled");
+      cy.findByPlaceholderText("Collection name").should("be.disabled");
+    });
   });
 });
