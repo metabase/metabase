@@ -544,13 +544,38 @@ export default class Question {
 
   drillPK(field: Field, value: Value): ?Question {
     const query = this.query();
-    if (query instanceof StructuredQuery) {
-      return query
-        .reset()
-        .setTable(field.table)
-        .filter(["=", ["field", field.id, null], value])
-        .question();
+
+    if (!(query instanceof StructuredQuery)) {
+      return;
     }
+
+    const otherPKFilters = query
+      .filters()
+      ?.filter(filter => {
+        const filterField = filter?.field();
+        if (!filterField) {
+          return false;
+        }
+
+        const isNotSameField = filterField.id !== field.id;
+        const isPKEqualsFilter =
+          filterField.isPK() && filter.operatorName() === "=";
+        const isFromSameTable = filterField.table.id === field.table.id;
+
+        return isPKEqualsFilter && isNotSameField && isFromSameTable;
+      })
+      .map(filter => filter.raw());
+
+    const filtersToApply = [
+      ["=", ["field", field.id, null], value],
+      ...otherPKFilters,
+    ];
+
+    const resultedQuery = filtersToApply.reduce((query, filter) => {
+      return query.addFilter(filter);
+    }, query.reset().setTable(field.table));
+
+    return resultedQuery.question();
   }
 
   _syncStructuredQueryColumnsAndSettings(previousQuestion, previousQuery) {
