@@ -250,7 +250,7 @@ export function setParameterDefaultValue(
 
 export function hasMapping(parameter, dashboard) {
   return dashboard.ordered_cards.some(ordered_card => {
-    return ordered_card.parameter_mappings.some(parameter_mapping => {
+    return ordered_card?.parameter_mappings?.some(parameter_mapping => {
       return parameter_mapping.parameter_id === parameter.id;
     });
   });
