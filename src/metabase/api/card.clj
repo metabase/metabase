@@ -632,7 +632,7 @@
                              :parameters  parameters
                              :middleware  middleware))
         dashboard (db/select-one [Dashboard :cache_ttl] :id (:dashboard-id ids))
-        database  (db/select-one [Database :cache_ttl] :id (:database_id card))
+        database  (db/select-one [Database :cache_ttl] :id (get-in card [:dataset_query :database]))
         ttl       (ttl-hierarchy card dashboard database query)]
     (assoc query :cache-ttl ttl)))
 
