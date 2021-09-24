@@ -129,5 +129,5 @@
   "Determine metadata, if there is any, for given `object`.
   Expand the object when we need more metadata."
   [object]
-  {:cache_ttl (:cache_ttl object)
+  {:cached       (:cached object)
    :ignore_cache (:ignore_cache object)})

@@ -100,8 +100,8 @@
    :results (common/reducible-query
               {:select    [[:vl.timestamp :when]
                            :vl.user_id
-                           [(common/user-full-name :u) :who]]
-                           [:vl.metadata :what]
+                           [(common/user-full-name :u) :who]
+                           [:vl.metadata :what]]
                :from      [[:view_log :vl]]
                :join     [[:core_user :u] [:= :vl.user_id :u.id]]
                :where     [:and

@@ -664,11 +664,6 @@
                :card-id      card-id
                :card-name    (:name card)
                :dashboard-id dashboard-id}]
-    (events/publish-event! :card-query (assoc card
-                                              :actor_id api/*current-user-id*
-                                              ;; overwrite card ttl in event with ttl as actually used
-                                              :cache_ttl (:cache-ttl query)
-                                              :ignore_cache ignore_cache))
     (api/check-not-archived card)
     (run query info)))
 
