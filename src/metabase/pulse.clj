@@ -11,10 +11,8 @@
             [metabase.models.dashboard-card :refer [DashboardCard]]
             [metabase.models.database :refer [Database]]
             [metabase.models.pulse :as pulse :refer [Pulse]]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.pulse.filters :as filters]
-            [metabase.pulse.interface :as i]
             [metabase.pulse.markdown :as markdown]
+            [metabase.pulse.parameters :as params]
             [metabase.pulse.render :as render]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -27,15 +25,6 @@
             [schema.core :as s]
             [toucan.db :as db])
   (:import metabase.models.card.CardInstance))
-
-
-(def ^:private parameters-impl
-  (u/prog1 (or (u/ignore-exceptions
-                 (classloader/require 'metabase-enterprise.pulse)
-                 (some-> (resolve 'metabase-enterprise.pulse/ee-strategy-parameters-impl)
-                         var-get))
-               i/default-parameters-impl)))
-
 
 
 ;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
@@ -115,7 +104,7 @@
         ordered-dashcards (sort dashcard-comparator dashcards)]
     (for [dashcard ordered-dashcards]
       (if-let [card-id (:card_id dashcard)]
-        (execute-dashboard-subscription-card pulse-creator-id dashboard dashcard card-id (i/the-parameters parameters-impl pulse dashboard))
+        (execute-dashboard-subscription-card pulse-creator-id dashboard dashcard card-id (params/parameters pulse dashboard))
         ;; For virtual cards, return the viz settings map directly
         (-> dashcard :visualization_settings)))))
 
@@ -189,10 +178,10 @@
         creator-section {:type   "section"
                          :fields [{:type "mrkdwn"
                                    :text (str "Sent by " (-> pulse :creator :common_name))}]}
-        merged-filters  (filters/merge-filters pulse dashboard)
-        filter-fields   (for [filter merged-filters]
+        filters         (params/parameters pulse dashboard)
+        filter-fields   (for [filter filters]
                           {:type "mrkdwn"
-                           :text (str "*" (:name filter) "*\n" (filters/value-string filter))})
+                           :text (str "*" (:name filter) "*\n" (params/value-string filter))})
         filter-section  (when (seq filter-fields)
                           {:type   "section"
                            :fields filter-fields})]

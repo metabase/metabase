@@ -13,8 +13,8 @@
             [metabase.driver.util :as driver.u]
             [metabase.email :as email]
             [metabase.public-settings :as public-settings]
-            [metabase.pulse.filters :as filters]
             [metabase.pulse.markdown :as markdown]
+            [metabase.pulse.parameters :as params]
             [metabase.pulse.render :as render]
             [metabase.pulse.render.body :as render.body]
             [metabase.pulse.render.image-bundle :as image-bundle]
@@ -293,7 +293,7 @@
   (merge (common-context)
          {:emailType                 "pulse"
           :title                     (:name pulse)
-          :titleUrl                  (filters/dashboard-url pulse dashboard)
+          :titleUrl                  (params/dashboard-url pulse dashboard)
           :dashboardDescription      (:description dashboard)
           :creator                   (-> pulse :creator :common_name)
           :sectionStyle              (render.style/style (render.style/section-style))}
@@ -409,7 +409,7 @@
 
 (defn- render-filters
   [notification dashboard]
-  (let [filters (filters/merge-filters notification dashboard)
+  (let [filters (params/parameters notification dashboard)
         cells   (map
                  (fn [filter]
                    [:td {:class "filter-cell"
@@ -431,7 +431,7 @@
                                                     :width "50%"
                                                     :padding "4px 16px 4px 8px"
                                                     :vertical-align "baseline"})}
-                       (filters/value-string filter)]]]])
+                       (params/value-string filter)]]]])
                  filters)
         rows    (partition 2 2 nil cells)]
     (html
