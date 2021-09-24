@@ -83,11 +83,15 @@
         ;; in the future, when secret values can simply be changed by passing
         ;; in a new ID (as opposed to a new value), this behavior will change,
         ;; but for now, we should simply look for the value
+        path-kw   (sub-prop "-path")
         value-kw  (sub-prop "-value")
-        value     (value-kw details)
+        value     (if-let [v (value-kw details)]     ; the -value suffix was specified; use that
+                    v
+                    (if-let [path (path-kw details)] ; the -path suffix was specified; this is actually a :file-path
+                      path))
         kind      (:secret-kind conn-prop)
-        source-kw (sub-prop "-source")
-        source    (source-kw details)]
+        source    (when (path-kw details)
+                    :file-path)]                     ; set the :source due to the -path suffix (see above)
     (if (nil? value) ;; secret value for this conn prop was not changed
       details
       (let [{:keys [id creator_id created_at]} (secret/upsert-secret-value!
@@ -100,6 +104,7 @@
         (-> details
           (dissoc value-kw)
           (assoc id-kw id)
+          (assoc (sub-prop "-source") source)
           (assoc (sub-prop "-creator-id") creator_id)
           (assoc (sub-prop "-created-at") (t/format :iso-offset-date-time created_at)))))))
 
