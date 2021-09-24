@@ -250,8 +250,12 @@ export const getMode = createSelector(
 );
 
 export const getIsObjectDetail = createSelector(
-  [getMode],
-  mode => mode && mode.name() === "object",
+  [getMode, getQueryResults],
+  (mode, results) => {
+    // It handles filtering by a manually set PK column that is not unique
+    const hasMultipleRows = results?.some(({ data }) => data?.rows.length > 1);
+    return mode?.name() === "object" && !hasMultipleRows;
+  },
 );
 
 export const getIsDirty = createSelector(
@@ -302,6 +306,7 @@ export const getRawSeries = createSelector(
   ) => {
     let display = question && question.display();
     let settings = question && question.settings();
+
     if (isObjectDetail) {
       display = "object";
     } else if (isShowingRawTable) {

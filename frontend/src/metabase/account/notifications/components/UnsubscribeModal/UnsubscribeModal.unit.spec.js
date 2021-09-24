@@ -34,7 +34,6 @@ describe("UnsubscribeModal", () => {
   });
 
   it("should close if unsubscribed successfully", () => {
-    const user = getUser();
     const alert = getAlert();
     const onUnsubscribe = jest.fn();
     const onArchive = jest.fn();
@@ -55,7 +54,7 @@ describe("UnsubscribeModal", () => {
     screen.getByText("Unsubscribe").click();
 
     waitFor(() => {
-      expect(onUnsubscribe).toHaveBeenCalledWith(alert, user);
+      expect(onUnsubscribe).toHaveBeenCalledWith(alert);
       expect(onArchive).not.toHaveBeenCalled();
       expect(onClose).toHaveBeenCalled();
     });
@@ -84,7 +83,7 @@ describe("UnsubscribeModal", () => {
     screen.getByText("Unsubscribe").click();
 
     waitFor(() => {
-      expect(onUnsubscribe).toHaveBeenCalledWith(alert, user);
+      expect(onUnsubscribe).toHaveBeenCalledWith(alert);
       expect(onArchive).toHaveBeenCalledWith(alert, "alert", true);
       expect(onClose).not.toHaveBeenCalled();
     });

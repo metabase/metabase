@@ -139,7 +139,7 @@ describe("binning related reproductions", () => {
     cy.findByText("2018");
   });
 
-  it.skip("should not remove order-by (sort) when changing the breakout field on an SQL saved question (metabase#17975)", () => {
+  it("should not remove order-by (sort) when changing the breakout field on an SQL saved question (metabase#17975)", () => {
     cy.createNativeQuestion(
       {
         name: "17975",

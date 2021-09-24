@@ -390,6 +390,7 @@ const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) => (
       </Tooltip>
     }
     triggerClasses="text-dark-hover cursor-pointer flex align-center flex-no-shrink mr1 drag-disabled"
+    enableMouseEvents
   >
     <ChartSettingsWithState
       className="spread"
