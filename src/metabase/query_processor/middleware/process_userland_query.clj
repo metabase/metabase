@@ -54,11 +54,7 @@
 
 (defn- save-successful-query-execution! [cached? query-execution result-rows]
   (let [qe-map (assoc query-execution :cache_hit (boolean cached?) :result_rows result-rows)]
-    (save-query-execution! qe-map)
-    (events/publish-event! :card-query {:card_id      (:card_id qe-map)
-                                        :actor_id     (:executor_id qe-map)
-                                        :cached       (:cache_hit qe-map)
-                                        :ignore_cache (get-in qe-map [:json_query :middleware :ignore-cached-results?])})))
+    (save-query-execution! qe-map)))
 
 (defn- save-failed-query-execution! [query-execution message]
   (save-query-execution! (assoc query-execution :error (str message))))
@@ -87,7 +83,13 @@
        (rf))
 
       ([acc]
-       (save-successful-query-execution! (:cached acc) execution-info @row-count)
+       (do
+         (events/publish-event! :card-query {:card_id      (:card_id execution-info)
+                                             :actor_id     (:executor_id execution-info)
+                                             :cached       (:cached acc)
+                                             :ignore_cache (get-in execution-info [:json_query :middleware :ignore-cached-results?])})
+         (when-not (:cached acc)
+           (save-successful-query-execution! (:cached acc) execution-info @row-count)))
        (rf (if (map? acc)
              (success-response execution-info acc)
              acc)))
