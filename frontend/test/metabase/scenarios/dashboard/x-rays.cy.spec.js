@@ -136,7 +136,7 @@ describe("scenarios > x-rays", () => {
     });
   });
 
-  it.skip("should be able to save an x-ray as a dashboard and visit it immediately (metabase#18028)", () => {
+  it("should be able to save an x-ray as a dashboard and visit it immediately (metabase#18028)", () => {
     cy.visit("/");
     cy.contains("A look at your Orders table").click();
 
