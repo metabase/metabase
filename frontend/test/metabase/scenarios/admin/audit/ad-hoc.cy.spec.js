@@ -38,6 +38,7 @@ describeWithToken("audit > ad-hoc", () => {
 
       cy.get(".PageTitle").contains("Query");
       cy.findByText("Open in Metabase");
+      cy.get(".ace_content").contains("SELECT 123");
     });
   });
 });
