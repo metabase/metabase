@@ -9,21 +9,16 @@ const FormInputWidget = ({
   field,
   readOnly,
   autoFocus,
-}) => {
-  if (type === "file") {
-    console.log("🚀", { field });
-  }
-  return (
-    <input
-      className="Form-input full"
-      type={type}
-      placeholder={placeholder}
-      aria-labelledby={`${field.name}-label`}
-      readOnly={readOnly}
-      autoFocus={autoFocus}
-      {...formDomOnlyProps(field)}
-    />
-  );
-};
+}) => (
+  <input
+    className="Form-input full"
+    type={type}
+    placeholder={placeholder}
+    aria-labelledby={`${field.name}-label`}
+    readOnly={readOnly}
+    autoFocus={autoFocus}
+    {...formDomOnlyProps(field)}
+  />
+);
 
 export default FormInputWidget;

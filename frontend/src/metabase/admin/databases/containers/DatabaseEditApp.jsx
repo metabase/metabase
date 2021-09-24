@@ -209,46 +209,12 @@ export default class DatabaseEditApp extends Component {
                         <Flex>
                           <Box width={620}>
                             <Form>
-                              {formFields.map(formField => {
-                                // const InlinedSelectFormField = styled(
-                                //   FormField,
-                                // )`
-                                //   float: left;
-                                //   width: 30%;
-                                // `;
-
-                                // const InlinedInputFormField = styled(FormField)`
-                                //   float: right;
-                                //   margin-left: 0px;
-                                //   width: 66%;
-                                //   clear: none;
-                                // `;
-
-                                // let FormFieldComponent;
-                                // switch (formField.name) {
-                                //   case "details.ssl-keystore-file-options":
-                                //   case "details.ssl-truststore-file-options":
-                                //     FormFieldComponent = InlinedSelectFormField;
-                                //     break;
-
-                                //   case "details.ssl-keystore-file-blob":
-                                //   case "details.ssl-keystore-file-path":
-                                //   case "details.ssl-truststore-file-blob":
-                                //   case "details.ssl-truststore-file-path":
-                                //     FormFieldComponent = InlinedInputFormField;
-                                //     break;
-
-                                //   default:
-                                //     FormFieldComponent = FormField;
-                                // }
-
-                                return (
-                                  <FormField
-                                    key={formField.name}
-                                    name={formField.name}
-                                  />
-                                );
-                              })}
+                              {formFields.map(formField => (
+                                <FormField
+                                  key={formField.name}
+                                  name={formField.name}
+                                />
+                              ))}
                               <FormMessage />
                               <div className="Form-actions text-centered">
                                 <FormSubmit className="block mb2">
