@@ -130,4 +130,4 @@
   Expand the object when we need more metadata."
   [object]
   {:cache_ttl (:cache_ttl object)
-   :manual_refresh (:manual_refresh object)})
+   :ignore_cache (:ignore_cache object)})

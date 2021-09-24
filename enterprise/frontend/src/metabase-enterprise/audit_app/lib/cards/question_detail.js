@@ -74,6 +74,7 @@ export const auditLog = (questionId: number) => ({
       "table.columns": [
         { name: "user_id", enabled: true },
         { name: "when", enabled: true },
+        { name: "why", enabled: true },
       ],
     },
   },
