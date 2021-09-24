@@ -26,7 +26,7 @@ const UnsubscribeUserForm = ({ user, onUnsubscribe, onClose }) => {
 
   return (
     <ModalContent
-      title={t`Unsubscribe from all subscriptions / alerts`}
+      title={t`Unsubscribe ${user.common_name} from all subscriptions and alerts?`}
       footer={[
         error ? <FormMessage key="message" formError={error} /> : null,
         <Button key="cancel" onClick={onClose}>{t`Cancel`}</Button>,
@@ -34,15 +34,15 @@ const UnsubscribeUserForm = ({ user, onUnsubscribe, onClose }) => {
           key="submit"
           danger
           onClick={handleConfirmClick}
-        >{t`Confirm`}</Button>,
+        >{t`Unsubscribe`}</Button>,
       ]}
       onClose={onClose}
     >
       <ModalMessage>
-        {t`This will delete any dashboard subscriptions or alerts that ${user.common_name} has created and remove them as a recipient from other people’s subscriptions or alerts.`}
+        {t`This will delete any dashboard subscriptions or alerts ${user.common_name} has created, and remove them as a recipient from any other subscriptions or alerts.`}
       </ModalMessage>
       <ModalMessage>
-        {t`This does not effect email distribution lists that are managed outside of Metabase.`}
+        {t`This does not affect email distribution lists that are managed outside of Metabase.`}
       </ModalMessage>
     </ModalContent>
   );
