@@ -269,8 +269,7 @@
                   (thunk->boolean pulse-results)))))}}))
 
 (deftest dashboard-filter-test
-  (tests {:pulse     {:skip_if_empty false
-                      :parameters    (:parameters test-subscription)}
+  (tests {:pulse     {:skip_if_empty false}
           :dashboard test-dashboard}
     "Dashboard subscription that includes a dashboard filters"
     {:card (checkins-query-card {})
@@ -280,10 +279,10 @@
        (fn [_ _]
          (testing "Markdown cards are included in email subscriptions"
            (is (= (rasta-pulse-email {:body [{"Aviary KPIs" true
-                                              "<a class=\\\"title\\\" href=\\\"https://metabase.com/testmb/dashboard/\\d+\\?state=CA&amp;state=NY&amp;quarter_and_year=Q1-2021\\\"" true}
+                                              "<a class=\\\"title\\\" href=\\\"https://metabase.com/testmb/dashboard/\\d+\\?state=CA&amp;quarter_and_year=Q1-2021\\\"" true}
                                              png-attachment]})
                   (mt/summarize-multipart-email #"Aviary KPIs"
-                                                #"<a class=\"title\" href=\"https://metabase.com/testmb/dashboard/\d+\?state=CA&amp;state=NY&amp;quarter_and_year=Q1-2021\"")))))
+                                                #"<a class=\"title\" href=\"https://metabase.com/testmb/dashboard/\d+\?state=CA&amp;quarter_and_year=Q1-2021\"")))))
 
       :slack
       (fn [{:keys [card-id dashboard-id]} [pulse-results]]
@@ -293,7 +292,7 @@
                   :attachments
                   [{:blocks [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
                              {:type "section",
-                              :fields [{:type "mrkdwn", :text "*State*\nCA, NY"}
+                              :fields [{:type "mrkdwn", :text "*State*\nCA"}
                                        {:type "mrkdwn", :text "*Quarter and Year*\nQ1-2021"}]}
                              {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
                    {:title           card-name
