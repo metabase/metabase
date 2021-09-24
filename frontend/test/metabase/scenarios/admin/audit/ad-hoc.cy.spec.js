@@ -5,7 +5,7 @@ import {
 } from "__support__/e2e/cypress";
 
 describeWithToken("audit > ad-hoc", () => {
-  describe("native query with JOIN", () => {
+  describe("native query", () => {
     beforeEach(() => {
       restore();
 
