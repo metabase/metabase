@@ -139,36 +139,25 @@
                                          (fn [ri] (m/map-vals some? ri)))
                                  attachment-info))))
 
-(def test-subscription
-  "A test dashboard subscription with only the :parameters field included. Has one filter which
-  should override the default value of the filter set on the dashboard."
-  {:parameters
-   [{:name "State",
-     :slug "state",
-     :id "63e719d0",
-     :default ["CA"],
-     :type "string/=",
-     :value ["CA" "NY"]}]})
-
 (def test-dashboard
-  "A test dashboard with only the :parameters field included."
+  "A test dashboard with only the :parameters field included, for testing that dashboard filters
+  render correctly in Slack messages and emails"
   {:parameters
    [{:name "State",
      :slug "state",
      :id "63e719d0",
-     :default ["CA"],
+     :default ["CA", "NY"],
      :type "string/=",
      :sectionId "location"}
-    ;; Filter without default, should not be included in subscription
-    {:name "Product title contains",
-     :slug "product_title_contains",
-     :id "acd0dfab",
-     :type "string/contains",
-     :sectionId "string"}
-    ;; Filter with default, should be included in subscription
     {:name "Quarter and Year",
      :slug "quarter_and_year",
      :id "a6db3d8b",
      :default "Q1-2021"
      :type "date/quarter-year",
-     :sectionId "date"}]})
+     :sectionId "date"}
+    ;; Filter without default, should not be included in subscription
+    {:name "Product title contains",
+     :slug "product_title_contains",
+     :id "acd0dfab",
+     :type "string/contains",
+     :sectionId "string"}]})

@@ -28,13 +28,12 @@
     (str/join ", " values)))
 
 (defn dashboard-url
-  "Given a dashboard and subscription, returns a URL for the dashboard with filters included"
-  [subscription dashboard]
-  (let [base-url       (url/dashboard-url (:id dashboard))
-        parameters (parameters subscription dashboard)
-        url-params     (flatten
-                        (for [param parameters]
-                          (for [value (u/one-or-many (or (:value param) (:default param)))]
-                            (str (:slug param) "=" value))))]
+  "Given a dashboard's ID and parameters, returns a URL for the dashboard with filters included"
+  [dashboard-id parameters]
+  (let [base-url   (url/dashboard-url dashboard-id)
+        url-params (flatten
+                    (for [param parameters]
+                      (for [value (u/one-or-many (or (:value param) (:default param)))]
+                        (str (:slug param) "=" value))))]
     (str base-url (when (seq url-params)
                     (str "?" (str/join "&" url-params))))))

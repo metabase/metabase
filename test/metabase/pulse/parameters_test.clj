@@ -10,17 +10,15 @@
            (params/value-string (-> test-subscription :parameters first)))))
 
   (testing "If a filter has a single default value, it is returned unmodified"
-    (is (= "CA"
-           (params/value-string (-> test-dashboard :parameters first))))
     (is (= "Q1-2021"
-           (params/value-string (-> test-dashboard :parameters last))))))
+           (params/value-string (-> test-dashboard :parameters second))))))
 
 (deftest dashboard-url-test
   (mt/with-temporary-setting-values [site-url "https://metabase.com"]
     (testing "A valid dashboard URL can be generated with filters included"
-      (is (= "https://metabase.com/dashboard/null?state=CA&state=NY&quarter_and_year=Q1-2021"
-             (params/dashboard-url test-subscription test-dashboard))
+      (is (= "https://metabase.com/dashboard/1?state=CA&state=NY&quarter_and_year=Q1-2021"
+             (params/dashboard-url 1 (:parameters test-dashboard)))
 
         (testing "If no filters are set, the base dashboard url is returned"
           (is (= "https://metabase.com/dashboard/1"
-               (params/dashboard-url {} {:id 1}))))))))
+               (params/dashboard-url 1 {}))))))))

@@ -293,7 +293,7 @@
   (merge (common-context)
          {:emailType                 "pulse"
           :title                     (:name pulse)
-          :titleUrl                  (params/dashboard-url pulse dashboard)
+          :titleUrl                  (params/dashboard-url (:id dashboard) (params/parameters pulse dashboard))
           :dashboardDescription      (:description dashboard)
           :creator                   (-> pulse :creator :common_name)
           :sectionStyle              (render.style/style (render.style/section-style))}

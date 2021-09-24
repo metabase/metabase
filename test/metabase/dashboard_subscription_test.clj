@@ -279,10 +279,10 @@
        (fn [_ _]
          (testing "Markdown cards are included in email subscriptions"
            (is (= (rasta-pulse-email {:body [{"Aviary KPIs" true
-                                              "<a class=\\\"title\\\" href=\\\"https://metabase.com/testmb/dashboard/\\d+\\?state=CA&amp;quarter_and_year=Q1-2021\\\"" true}
+                                              "<a class=\\\"title\\\" href=\\\"https://metabase.com/testmb/dashboard/\\d+\\?state=CA&amp;state=NY&amp;quarter_and_year=Q1-2021\\\"" true}
                                              png-attachment]})
                   (mt/summarize-multipart-email #"Aviary KPIs"
-                                                #"<a class=\"title\" href=\"https://metabase.com/testmb/dashboard/\d+\?state=CA&amp;quarter_and_year=Q1-2021\"")))))
+                                                #"<a class=\"title\" href=\"https://metabase.com/testmb/dashboard/\d+\?state=CA&amp;state=NY&amp;quarter_and_year=Q1-2021\"")))))
 
       :slack
       (fn [{:keys [card-id dashboard-id]} [pulse-results]]
@@ -292,7 +292,7 @@
                   :attachments
                   [{:blocks [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
                              {:type "section",
-                              :fields [{:type "mrkdwn", :text "*State*\nCA"}
+                              :fields [{:type "mrkdwn", :text "*State*\nCA, NY"}
                                        {:type "mrkdwn", :text "*Quarter and Year*\nQ1-2021"}]}
                              {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
                    {:title           card-name
