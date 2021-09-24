@@ -1,4 +1,4 @@
-(ns metabase.pulse.rendelr
+(ns metabase.pulse.render
   (:require [clojure.tools.logging :as log]
             [hiccup.core :refer [h]]
             [metabase.pulse.render.body :as body]
