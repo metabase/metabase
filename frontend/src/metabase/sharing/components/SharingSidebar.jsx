@@ -143,7 +143,7 @@ class SharingSidebar extends React.Component {
     this.props.updateEditingPulse(pulse);
   };
 
-  addChannel = type => {
+  setPulseWithChannel = type => {
     const { dashboard, pulse, formInput } = this.props;
 
     const channelSpec = formInput.channels[type];
@@ -155,7 +155,7 @@ class SharingSidebar extends React.Component {
 
     const newPulse = {
       ...pulse,
-      channels: pulse.channels.concat(channel),
+      channels: [channel],
       cards: nonTextCardsFromDashboard(dashboard),
     };
     this.setPulse(newPulse);
@@ -403,7 +403,7 @@ class SharingSidebar extends React.Component {
                   returnMode: returnMode.concat([editingMode]),
                 };
               });
-              this.addChannel("email");
+              this.setPulseWithChannel("email");
             }
           }}
           onNewSlackPulse={() => {
@@ -414,7 +414,7 @@ class SharingSidebar extends React.Component {
                   returnMode: returnMode.concat([editingMode]),
                 };
               });
-              this.addChannel("slack");
+              this.setPulseWithChannel("slack");
             }
           }}
         />
