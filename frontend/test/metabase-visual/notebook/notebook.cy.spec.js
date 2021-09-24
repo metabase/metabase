@@ -52,6 +52,42 @@ describe("visual tests > notebook > major UI elements", () => {
       },
     );
   });
+
+  // This tests that the run buttons are the correct size on the Custom question page
+  it("Custom question run buttons render correctly", () => {
+    cy.visit("/question/new");
+    cy.findByText("Custom question").click();
+    cy.findByText("Sample Dataset").click();
+    cy.findByText("Orders").click();
+    // Waiting for notebook icon to load
+    cy.wait(1000);
+    cy.icon("notebook").click();
+    // Waiting for empty question to load
+    cy.wait(1000);
+    // Check that we're on the blank question page
+    cy.findByText("Here's where your results will appear");
+    cy.percySnapshot(
+      "visual tests > notebook > major UI elements Custom question run buttons render correctly",
+      {
+        minHeight: VIEWPORT_HEIGHT,
+      },
+    );
+  });
+
+  // This tests that the run buttons are the correct size on the Native query page
+  it("Native Query run button renders correctly", () => {
+    cy.visit("/question/new");
+    cy.findByText("Native query").click();
+
+    // Check that we're on the blank question page
+    cy.findByText("Here's where your results will appear");
+    cy.percySnapshot(
+      "visual tests > notebook > major UI elements Native Query run button renders correctly",
+      {
+        minHeight: VIEWPORT_HEIGHT,
+      },
+    );
+  });
 });
 
 function selectFromDropdown(itemName) {

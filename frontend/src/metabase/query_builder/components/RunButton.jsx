@@ -56,7 +56,7 @@ export default class RunButton extends Component {
         iconSize={16}
         className={cx(className, "RunButton", {
           "RunButton--hidden": hidden,
-          "RunButton--compact": !props.borderless && compact,
+          "RunButton--compact": circular && !props.borderless && compact,
           circular: circular,
         })}
         onClick={isRunning ? onCancel : onRun}
