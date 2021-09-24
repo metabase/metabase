@@ -33,5 +33,12 @@ describeWithToken("admin > tools > erroring questions ", () => {
       cy.findByPlaceholderText("DB name").should("be.disabled");
       cy.findByPlaceholderText("Collection name").should("be.disabled");
     });
+
+    it.skip('should disable "Rerun Selected" button (metabase#18048)', () => {
+      cy.visit(TOOLS_ERRORS_URL);
+
+      // When the issue gets fixed, it's safe to merge these assertions with the main test above
+      cy.button("Rerun Selected").should("be.disabled");
+    });
   });
 });
