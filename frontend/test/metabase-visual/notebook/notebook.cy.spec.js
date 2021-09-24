@@ -52,9 +52,20 @@ describe("visual tests > notebook > major UI elements", () => {
       },
     );
   });
+});
+
+describe("visual tests > notebook > Run buttons", () => {
+  const VIEWPORT_WIDTH = 1920;
+  const VIEWPORT_HEIGHT = 1500;
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    cy.viewport(VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
+  });
 
   // This tests that the run buttons are the correct size on the Custom question page
-  it("Custom question run buttons render correctly", () => {
+  it("in Custom Question render correctly", () => {
     cy.visit("/question/new");
     cy.findByText("Custom question").click();
     cy.findByText("Sample Dataset").click();
@@ -67,26 +78,26 @@ describe("visual tests > notebook > major UI elements", () => {
     // Check that we're on the blank question page
     cy.findByText("Here's where your results will appear");
     cy.percySnapshot(
-      "visual tests > notebook > major UI elements Custom question run buttons render correctly",
+      "visual tests > notebook > Run buttons in Custom Question render correctly",
       {
         minHeight: VIEWPORT_HEIGHT,
-        widths: [1920],
+        widths: [VIEWPORT_WIDTH],
       },
     );
   });
 
   // This tests that the run buttons are the correct size on the Native query page
-  it("Native Query run button renders correctly", () => {
+  it("in Native Query render correctly", () => {
     cy.visit("/question/new");
     cy.findByText("Native query").click();
 
     // Check that we're on the blank question page
     cy.findByText("Here's where your results will appear");
     cy.percySnapshot(
-      "visual tests > notebook > major UI elements Native Query run button renders correctly",
+      "visual tests > notebook > Run buttons in Native Query render correctly",
       {
         minHeight: VIEWPORT_HEIGHT,
-        widths: [1920],
+        widths: [VIEWPORT_WIDTH],
       },
     );
   });
