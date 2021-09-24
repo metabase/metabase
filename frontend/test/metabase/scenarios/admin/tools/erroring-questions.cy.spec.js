@@ -68,12 +68,10 @@ describeWithToken("admin > tools > erroring questions ", () => {
         loadMetadata: true,
       });
 
-      cy.visit("/admin/tools/errors");
+      cy.visit(TOOLS_ERRORS_URL);
     });
 
     it.skip('should disable "Rerun Selected" button (metabase#18048)', () => {
-      cy.visit(TOOLS_ERRORS_URL);
-
       // When the issue gets fixed, merge it with the main test below
       cy.button("Rerun Selected").should("be.disabled");
     });
@@ -81,13 +79,7 @@ describeWithToken("admin > tools > erroring questions ", () => {
     it("should render correctly", () => {
       cy.wait("@dataset");
 
-      cy.findByText(brokenQuestionDetails.name)
-        .closest("tr")
-        .within(() => {
-          cy.findByRole("checkbox")
-            .click()
-            .should("be.checked");
-        });
+      selectQuestion(brokenQuestionDetails.name);
 
       cy.button("Rerun Selected")
         .should("not.be.disabled")
@@ -108,5 +100,46 @@ describeWithToken("admin > tools > erroring questions ", () => {
 
       cy.findByText("No results");
     });
+
+    it("should remove fixed question on a rerun", () => {
+      fixQuestion(brokenQuestionDetails.name);
+
+      cy.visit(TOOLS_ERRORS_URL);
+
+      selectQuestion(brokenQuestionDetails.name);
+
+      cy.button("Rerun Selected")
+        .should("not.be.disabled")
+        .click();
+
+      cy.wait("@dataset");
+
+      cy.findByText("No results");
+    });
   });
 });
+
+function fixQuestion(name) {
+  cy.visit("/collection/root");
+  cy.findByText(name).click();
+  cy.findByText("Open Editor").click();
+
+  cy.icon("variable").click();
+  cy.findByPlaceholderText("Enter a default value...").type("Foo");
+
+  cy.findByText("Save").click();
+
+  cy.get(".Modal").within(() => {
+    cy.button("Save").click();
+  });
+}
+
+function selectQuestion(name) {
+  cy.findByText(name)
+    .closest("tr")
+    .within(() => {
+      cy.findByRole("checkbox")
+        .click()
+        .should("be.checked");
+    });
+}
