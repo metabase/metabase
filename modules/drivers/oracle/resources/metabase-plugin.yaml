@@ -37,7 +37,7 @@ driver:
       visible-if:
         ssl: true
 
-    - name: ssl-keystore-file-options
+    - name: ssl-keystore-options
       type: select
       options:
         - name: Local file path
@@ -49,19 +49,17 @@ driver:
         ssl-use-keystore: true
       default: local
 
-    - name: ssl-keystore-file-path
+    - name: ssl-keystore-path
       type: string
-      secret-kind: keystore
       required: false
       visible-if:
-        ssl-keystore-file-options: local
+        ssl-keystore-options: local
 
-    - name: ssl-keystore-file-blob
+    - name: ssl-keystore-value
       type: textFile
-      secret-kind: keystore
       required: false
       visible-if:
-        ssl-keystore-file-options: uploaded
+        ssl-keystore-options: uploaded
 
 
     - name: ssl-keystore-password
@@ -78,7 +76,7 @@ driver:
       visible-if:
         ssl: true
 
-    - name: ssl-truststore-file-options
+    - name: ssl-truststore-options
       type: select
       options:
         - name: Local file path
@@ -89,25 +87,22 @@ driver:
         ssl-use-truststore: true
       default: local
 
-    - name: ssl-truststore-file-path
+    - name: ssl-truststore-path
       type: string
-      secret-kind: truststore
       required: false
       placeholder: path/to/file.crt
       visible-if:
-        ssl-truststore-file-options: local
+        ssl-truststore-options: local
 
-    - name: ssl-truststore-file-blob
+    - name: ssl-truststore-value
       type: textFile
-      secret-kind: truststore
       required: false
       visible-if:
-        ssl-truststore-file-options: uploaded
+        ssl-truststore-options: uploaded
 
     - name: ssl-truststore-password
       display-name: Truststore password
       type: password
-      secret-kind: password
       required: false
       visible-if:
         ssl-use-truststore: true
