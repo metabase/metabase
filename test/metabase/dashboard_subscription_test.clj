@@ -1,6 +1,5 @@
 (ns metabase.dashboard-subscription-test
   (:require [clojure.test :refer :all]
-            [metabase.config :as config]
             [metabase.models :refer [Card Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient User]]
             [metabase.models.pulse :as models.pulse]
             [metabase.pulse :as pulse]
