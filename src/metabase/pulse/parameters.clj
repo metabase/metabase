@@ -14,9 +14,12 @@
                i/default-parameters-impl)))
 
 (defn parameters
-  "Returns the list of parameters applied to a dashboard subscription"
+  "Returns the list of parameters applied to a dashboard subscription, filtering out ones
+  without "
   [subscription dashboard]
-  (i/the-parameters parameters-impl subscription dashboard))
+  (filter
+   #(or (:value %) (:default %))
+   (i/the-parameters parameters-impl subscription dashboard)))
 
 (defn value-string
   "Returns the value of a dashboard filter as a comma-separated string"

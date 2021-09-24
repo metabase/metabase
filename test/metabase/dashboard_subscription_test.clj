@@ -276,11 +276,6 @@
     "Dashboard subscription that includes a dashboard filters"
     {:card (checkins-query-card {})
 
-     :fixture
-     (fn [_ thunk]
-       (with-redefs [config/ee-available? true]
-         (thunk)))
-
      :assert
      {:email
        (fn [_ _]
