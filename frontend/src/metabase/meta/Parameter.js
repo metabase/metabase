@@ -746,7 +746,7 @@ export function parseParameterValueForFields(value, fields) {
     }
 
     if (fields.every(f => f.isBoolean())) {
-      return value === "true" ? true : value === "false" ? false : value;
+      return value === "true" ? [true] : value === "false" ? [false] : value;
     }
   }
 
