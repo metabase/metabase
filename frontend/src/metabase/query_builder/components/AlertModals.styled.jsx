@@ -1,6 +1,6 @@
 import styled from "styled-components";
 import { space } from "metabase/styled-components/theme";
-import FormMessage from "metabase/components/form/FormMessage";
+import { color } from "metabase/lib/colors";
 
 export const AlertModalFooter = styled.div`
   display: flex;
@@ -9,7 +9,6 @@ export const AlertModalFooter = styled.div`
   margin-top: ${space(3)};
 `;
 
-export const AlertModalMessage = styled(FormMessage)`
-  margin-left: -${space(2)};
-  margin-right: -${space(2)};
+export const AlertModalError = styled.div`
+  color: ${color("error")};
 `;

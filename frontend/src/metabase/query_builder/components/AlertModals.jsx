@@ -15,7 +15,8 @@ import Icon from "metabase/components/Icon";
 import ChannelSetupModal from "metabase/components/ChannelSetupModal";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import PulseEditChannels from "metabase/pulse/components/PulseEditChannels";
-import { AlertModalFooter, AlertModalMessage } from "./AlertModals.styled";
+import { getErrorMessage } from "metabase/components/form/FormMessage";
+import { AlertModalFooter, AlertModalError } from "./AlertModals.styled";
 
 import User from "metabase/entities/users";
 
@@ -196,7 +197,9 @@ export class CreateAlertModalContent extends Component {
             onAlertChange={this.onAlertChange}
           />
           <AlertModalFooter>
-            <AlertModalMessage formError={formError} />
+            {formError && (
+              <AlertModalError>{getErrorMessage(formError)}</AlertModalError>
+            )}
             <Button onClick={onCancel} className="mr2">{t`Cancel`}</Button>
             <ButtonWithStatus
               titleForState={{ default: t`Done` }}
@@ -391,7 +394,9 @@ export class UpdateAlertModalContent extends Component {
           )}
 
           <AlertModalFooter>
-            <AlertModalMessage formError={formError} />
+            {formError && (
+              <AlertModalError>{getErrorMessage(formError)}</AlertModalError>
+            )}
             <Button onClick={onCancel} className="mr2">{t`Cancel`}</Button>
             <ButtonWithStatus
               titleForState={{ default: t`Save changes` }}
