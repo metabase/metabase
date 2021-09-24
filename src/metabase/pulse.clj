@@ -11,6 +11,7 @@
             [metabase.models.dashboard-card :refer [DashboardCard]]
             [metabase.models.database :refer [Database]]
             [metabase.models.pulse :as pulse :refer [Pulse]]
+            [metabase.public-settings :as public-settings]
             [metabase.pulse.markdown :as markdown]
             [metabase.pulse.parameters :as params]
             [metabase.pulse.render :as render]
@@ -167,7 +168,7 @@
     name
     (trs "Pulse: {0}" name)))
 
-(defn- slack-dashboard-info
+(defn- slack-dashboard-header
   "Returns a block element that includes a dashboard's name, creator, and filters, for inclusion in a
   Slack dashboard subscription"
   [pulse dashboard]
@@ -188,6 +189,16 @@
     (if filter-section
       {:blocks [header-section filter-section creator-section]}
       {:blocks [header-section creator-section]})))
+
+(defn- slack-dashboard-footer
+  "Returns a block element with the footer text and link which should be at the end of a Slack dashboard subscription."
+  [pulse dashboard]
+  {:blocks
+   [{:type "divider"}
+    {:type "context"
+     :elements [{:type "mrkdwn"
+                 :text (str "<" (params/dashboard-url (u/the-id dashboard) (params/parameters pulse dashboard)) "|"
+                            "*Sent from " (public-settings/site-name) "*>")}]}]})
 
 (def slack-width
   "Width of the rendered png of html to be sent to slack."
@@ -309,8 +320,10 @@
                                         pulse-id (pr-str pulse-name) (count results))))
   (let [dashboard (Dashboard :id dashboard-id)]
     {:channel-id  channel-id
-     :attachments (cons (slack-dashboard-info pulse dashboard)
-                        (create-slack-attachment-data results))}))
+     :attachments (remove nil?
+                          (flatten [(slack-dashboard-header pulse dashboard)
+                                    (create-slack-attachment-data results)
+                                    (when dashboard (slack-dashboard-footer pulse dashboard))]))}))
 
 (defmethod notification [:alert :email]
   [{:keys [id] :as pulse} results {:keys [recipients]}]

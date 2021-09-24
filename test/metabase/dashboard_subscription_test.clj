@@ -222,7 +222,13 @@
                       :title_link      (str "https://metabase.com/testmb/question/" card-id)
                       :attachment-name "image.png"
                       :channel-id      "FOO"
-                      :fallback        card-name}]}
+                      :fallback        card-name}
+                     {:blocks [{:type "divider"}
+                               {:type "context"
+                                :elements [{:type "mrkdwn"
+                                            :text (str "<https://metabase.com/testmb/dashboard/"
+                                                       dashboard-id
+                                                       "|*Sent from Metabase Test*>")}]}]}]}
                    (thunk->boolean pulse-results))))
           (testing "attached-results-text should be invoked exactly once"
             (is (= 1
@@ -265,7 +271,13 @@
                      :attachment-name "image.png"
                      :channel-id      "FOO"
                      :fallback        card-name}
-                    {:blocks [{:type "section" :text {:type "mrkdwn" :text "*header*"}}]}]}
+                    {:blocks [{:type "section" :text {:type "mrkdwn" :text "*header*"}}]}
+                    {:blocks [{:type "divider"}
+                              {:type "context"
+                               :elements [{:type "mrkdwn"
+                                           :text (str "<https://metabase.com/testmb/dashboard/"
+                                                      dashboard-id
+                                                      "|*Sent from Metabase Test*>")}]}]}]}
                   (thunk->boolean pulse-results)))))}}))
 
 (deftest dashboard-filter-test
@@ -300,7 +312,13 @@
                     :title_link      (str "https://metabase.com/testmb/question/" card-id)
                     :attachment-name "image.png"
                     :channel-id      "FOO"
-                    :fallback        card-name}]}
+                    :fallback        card-name}
+                   {:blocks [{:type "divider"}
+                             {:type "context"
+                              :elements [{:type "mrkdwn"
+                                          :text (str "<https://metabase.com/testmb/dashboard/"
+                                                     dashboard-id
+                                                     "?state=CA&state=NY&quarter_and_year=Q1-2021|*Sent from Metabase Test*>")}]}]}]}
                  (thunk->boolean pulse-results)))))}}))
 
 (deftest mrkdwn-length-limit-test
@@ -318,4 +336,4 @@
      {:slack
       (fn [{:keys [card-id]} [pulse-results]]
         (is (= {:blocks [{:type "section" :text {:type "mrkdwn" :text "abcdefghi…"}}]}
-               (-> (thunk->boolean pulse-results) :attachments last))))}}))
+               (nth (:attachments (thunk->boolean pulse-results)) 2))))}}))
