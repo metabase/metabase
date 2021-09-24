@@ -87,7 +87,7 @@
         value-kw  (sub-prop "-value")
         value     (if-let [v (value-kw details)]     ; the -value suffix was specified; use that
                     v
-                    (if-let [path (path-kw details)] ; the -path suffix was specified; this is actually a :file-path
+                    (when-let [path (path-kw details)] ; the -path suffix was specified; this is actually a :file-path
                       path))
         kind      (:secret-kind conn-prop)
         source    (when (path-kw details)
