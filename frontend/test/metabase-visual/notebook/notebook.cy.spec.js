@@ -54,6 +54,55 @@ describe("visual tests > notebook > major UI elements", () => {
   });
 });
 
+describe("visual tests > notebook > Run buttons", () => {
+  const VIEWPORT_WIDTH = 1920;
+  const VIEWPORT_HEIGHT = 1500;
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    cy.viewport(VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
+  });
+
+  // This tests that the run buttons are the correct size on the Custom question page
+  it("in Custom Question render correctly", () => {
+    cy.visit("/question/new");
+    cy.findByText("Custom question").click();
+    cy.findByText("Sample Dataset").click();
+    cy.findByText("Orders").click();
+    // Waiting for notebook icon to load
+    cy.wait(1000);
+    cy.icon("notebook").click();
+    // Waiting for empty question to load
+    cy.wait(1000);
+    // Check that we're on the blank question page
+    cy.findByText("Here's where your results will appear");
+    cy.percySnapshot(
+      "visual tests > notebook > Run buttons in Custom Question render correctly",
+      {
+        minHeight: VIEWPORT_HEIGHT,
+        widths: [VIEWPORT_WIDTH],
+      },
+    );
+  });
+
+  // This tests that the run buttons are the correct size on the Native query page
+  it("in Native Query render correctly", () => {
+    cy.visit("/question/new");
+    cy.findByText("Native query").click();
+
+    // Check that we're on the blank question page
+    cy.findByText("Here's where your results will appear");
+    cy.percySnapshot(
+      "visual tests > notebook > Run buttons in Native Query render correctly",
+      {
+        minHeight: VIEWPORT_HEIGHT,
+        widths: [VIEWPORT_WIDTH],
+      },
+    );
+  });
+});
+
 function selectFromDropdown(itemName) {
   return popover().findByText(itemName);
 }
