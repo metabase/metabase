@@ -21,7 +21,7 @@ describe("UnsubscribeUserForm", () => {
       />,
     );
 
-    screen.getByText("Confirm").click();
+    screen.getByText("Unsubscribe").click();
 
     waitFor(() => {
       expect(onUnsubscribe).toHaveBeenCalled();
@@ -43,7 +43,7 @@ describe("UnsubscribeUserForm", () => {
       />,
     );
 
-    screen.getByText("Confirm").click();
+    screen.getByText("Unsubscribe").click();
 
     waitFor(() => {
       expect(onUnsubscribe).toHaveBeenCalled();
