@@ -654,8 +654,7 @@
                      (binding [qp.perms/*card-id* card-id]
                        (qp-runner query info context)))))
         card  (api/read-check (db/select-one [Card :name :dataset_query :cache_ttl :collection_id] :id card-id))
-        query (-> (assoc (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
-                         :async? true)
+        query (-> (assoc (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id}) :async? true)
                   (update :middleware (fn [middleware]
                                         (merge
                                          {:js-int-to-string? true :ignore-cached-results? ignore_cache}
@@ -665,10 +664,10 @@
                :card-id      card-id
                :card-name    (:name card)
                :dashboard-id dashboard-id}]
-    ;;;; shove in ignore_cache into card and then emit an event here....
-    ;;;; shove in ignore_cache into card and then emit an event here....
-    ;;;; shove in ignore_cache into card and then emit an event here....
-    ;;;; shove in ignore_cache into card and then emit an event here....
+    (events/publish-event! :card-query (assoc card
+                                              :actor_id api/*current-user-id*
+                                              :cache_ttl (:cache-ttl query)
+                                              :ignore_cache ignore_cache))
     (api/check-not-archived card)
     (run query info)))
 
