@@ -4,7 +4,8 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import Button from "metabase/components/Button";
-import FormMessage from "metabase/components/form/FormMessage";
+import { getErrorMessage } from "metabase/components/form/FormMessage";
+import { SidebarError, SidebarFooter } from "./Sidebar.styled";
 
 const WIDTH = 384;
 
@@ -49,7 +50,11 @@ function Sidebar({ closeIsDisabled, formError, children, onClose, onCancel }) {
           )}
         </div>
       )}
-      {formError && <FormMessage formError={formError} />}
+      {formError && (
+        <SidebarFooter>
+          <SidebarError>{getErrorMessage(formError)}</SidebarError>
+        </SidebarFooter>
+      )}
     </aside>
   );
 }
