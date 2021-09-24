@@ -313,7 +313,7 @@ describeWithToken("scenarios > admin > people", () => {
     });
 
     modal().within(() => {
-      cy.findByText(fullName, { exact: false });
+      cy.findAllByText(fullName, { exact: false });
       cy.findByText("Unsubscribe").click();
       cy.findByText("Unsubscribe").should("not.exist");
     });
