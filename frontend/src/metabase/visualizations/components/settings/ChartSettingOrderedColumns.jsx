@@ -1,8 +1,7 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { t } from "ttag";
-
-import ColumnItem from "./ColumnItem";
+import _ from "underscore";
 
 import { SortableContainer, SortableElement } from "react-sortable-hoc";
 
@@ -10,7 +9,8 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { keyForColumn, findColumnForColumnSetting } from "metabase/lib/dataset";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 
-import _ from "underscore";
+import { SortableColumnListContainer } from "./ChartSettingOrderedColumns.styled";
+import ColumnItem from "./ColumnItem";
 
 const SortableColumn = SortableElement(
   ({ columnSetting, getColumnName, onEdit, onRemove }) => (
@@ -26,7 +26,7 @@ const SortableColumn = SortableElement(
 const SortableColumnList = SortableContainer(
   ({ columnSettings, getColumnName, onEdit, onRemove }) => {
     return (
-      <div>
+      <SortableColumnListContainer>
         {columnSettings.map((columnSetting, index) => (
           <SortableColumn
             key={`item-${index}`}
@@ -37,7 +37,7 @@ const SortableColumnList = SortableContainer(
             onRemove={onRemove}
           />
         ))}
-      </div>
+      </SortableColumnListContainer>
     );
   },
 );
