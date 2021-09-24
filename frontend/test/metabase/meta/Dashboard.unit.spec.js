@@ -210,6 +210,13 @@ describe("meta/Dashboard", () => {
       expect(hasMapping(parameter, dashboard)).toBe(false);
     });
 
+    it("should return false when missing parameter mappings", () => {
+      const dashboard = {
+        ordered_cards: [{ parameter_mappings: undefined }],
+      };
+      expect(hasMapping(parameter, dashboard)).toBe(false);
+    });
+
     it("should return false when there are no matching parameter mapping parameter_ids", () => {
       const dashboard = {
         ordered_cards: [
