@@ -1373,6 +1373,11 @@
                       Dashboard [dash {:cache_ttl 1338}]
                       Card [card {:database_id (u/the-id db)}]]
         (is (= 1338 (:cache-ttl (card-api/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))
+    (testing "multiple ttl, db wins"
+      (mt/with-temp* [Database [db {:cache_ttl 1337}]
+                      Dashboard [dash]
+                      Card [card {:database_id (u/the-id db)}]]
+        (is (= 1337 (:cache-ttl (card-api/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))
     (testing "no ttl, nil res"
       (mt/with-temp* [Database [db]
                       Dashboard [dash]
