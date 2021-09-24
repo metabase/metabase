@@ -120,6 +120,8 @@ class SharingSidebar extends React.Component {
     editingMode: "list-pulses",
     // use this to know where to go "back" to
     returnMode: [],
+    isSaving: false,
+    formError: null,
   };
 
   static propTypes = {
@@ -200,6 +202,11 @@ class SharingSidebar extends React.Component {
 
   handleSave = async () => {
     const { pulse, dashboard, formInput } = this.props;
+    const { isSaving } = this.state;
+
+    if (isSaving) {
+      return;
+    }
 
     const cleanedPulse = cleanPulse(pulse, formInput.channels);
     cleanedPulse.name = dashboard.name;
@@ -225,11 +232,16 @@ class SharingSidebar extends React.Component {
       },
     );
 
-    await this.props.updateEditingPulse(cleanedPulse);
-
-    // The order below matters; it hides the "Done" button faster and prevents two pulses from being made if it's double-clicked
-    this.setState({ editingMode: "list-pulses", returnMode: [] });
-    await this.props.saveEditingPulse();
+    try {
+      this.setState({ isSaving: true, formError: null });
+      await this.props.updateEditingPulse(cleanedPulse);
+      await this.props.saveEditingPulse();
+      this.setState({ editingMode: "list-pulses", returnMode: [] });
+    } catch (e) {
+      this.setState({ formError: e });
+    } finally {
+      this.setState({ isSaving: false });
+    }
   };
 
   createSubscription = () => {
@@ -275,7 +287,7 @@ class SharingSidebar extends React.Component {
   };
 
   render() {
-    const { editingMode } = this.state;
+    const { editingMode, formError } = this.state;
     const {
       pulse,
       pulses,
@@ -321,6 +333,7 @@ class SharingSidebar extends React.Component {
         <AddEditEmailSidebar
           pulse={pulse}
           formInput={formInput}
+          formError={formError}
           channel={channel}
           channelSpec={channelSpec}
           handleSave={this.handleSave}
@@ -363,6 +376,7 @@ class SharingSidebar extends React.Component {
         <AddEditSlackSidebar
           pulse={pulse}
           formInput={formInput}
+          formError={formError}
           channel={channel}
           channelSpec={channelSpec}
           handleSave={this.handleSave}
