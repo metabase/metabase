@@ -24,7 +24,7 @@ describeWithToken("audit > ad-hoc", () => {
       cy.signInAsAdmin();
     });
 
-    it.skip("should appear in audit log (metabase#16845 metabase-enterprise#486)", () => {
+    it("should appear in audit log (metabase#16845 metabase-enterprise#486)", () => {
       cy.visit("/admin/audit/members/log");
 
       cy.findByText("Native")
