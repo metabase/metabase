@@ -64,11 +64,17 @@
   display: inherit;
 }
 
-/* make grid lines for zero stand out */
-.LineAreaBarChart .dc-chart .grid-line.horizontal .zero-line {
+/* restyle grid-line for 0 to look like X axis */
+.LineAreaBarChart .dc-chart .stacked .zero-line {
   stroke: var(--color-text-light);
   opacity: 1;
   stroke-dasharray: none;
+}
+
+/* restyle X axis for stacked charts to look like a grid line */
+.LineAreaBarChart .dc-chart .stacked .domain {
+  stroke: color(var(--color-text-medium) alpha(-80%));
+  stroke-dasharray: 5, 5;
 }
 
 /* gridline at 0 overlaps with X axis */
