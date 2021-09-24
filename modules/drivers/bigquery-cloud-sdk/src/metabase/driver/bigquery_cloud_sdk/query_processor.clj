@@ -536,6 +536,10 @@
       ;; when compared to other strings that may have normalized to the same thing.
       (str (substring-first-n-characters replaced-str 119) \_ (short-string-hash s)))))
 
+(defmethod sql.qp/expression-name->alias :bigquery-cloud-sdk
+  [_ expression-name]
+  (->valid-field-identifier expression-name))
+
 (defmethod driver/format-custom-field-name :bigquery-cloud-sdk
   [_ custom-field-name]
   (->valid-field-identifier custom-field-name))
