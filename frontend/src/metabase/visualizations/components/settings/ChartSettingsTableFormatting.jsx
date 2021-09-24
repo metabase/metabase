@@ -14,8 +14,10 @@ import ColorRangePicker, {
   ColorRangePreview,
 } from "metabase/components/ColorRangePicker";
 import NumericInput from "metabase/components/NumericInput";
-
-import { SortableContainer, SortableElement } from "react-sortable-hoc";
+import {
+  SortableContainer,
+  SortableElement,
+} from "metabase/components/sortable";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { isNumeric, isString } from "metabase/lib/schema_metadata";
