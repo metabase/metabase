@@ -287,7 +287,7 @@ class SharingSidebar extends React.Component {
   };
 
   render() {
-    const { editingMode } = this.state;
+    const { editingMode, formError } = this.state;
     const {
       pulse,
       pulses,
@@ -333,6 +333,7 @@ class SharingSidebar extends React.Component {
         <AddEditEmailSidebar
           pulse={pulse}
           formInput={formInput}
+          formError={formError}
           channel={channel}
           channelSpec={channelSpec}
           handleSave={this.handleSave}
@@ -375,6 +376,7 @@ class SharingSidebar extends React.Component {
         <AddEditSlackSidebar
           pulse={pulse}
           formInput={formInput}
+          formError={formError}
           channel={channel}
           channelSpec={channelSpec}
           handleSave={this.handleSave}
