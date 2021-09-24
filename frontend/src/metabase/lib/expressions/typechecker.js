@@ -2,6 +2,7 @@ import { getIn } from "icepick";
 import { ngettext, msgid, t } from "ttag";
 import { ExpressionVisitor } from "./visitor";
 import { CLAUSE_TOKENS } from "./lexer";
+import { MBQL_CLAUSES, getMBQLName } from "./config";
 
 export function typeCheck(cst, rootType) {
   class TypeChecker extends ExpressionVisitor {
@@ -30,7 +31,7 @@ export function typeCheck(cst, rootType) {
       return result;
     }
     relationalExpression(ctx) {
-      this.typeStack.unshift("expression");
+      this.typeStack.unshift("number");
       const result = super.relationalExpression(ctx);
       this.typeStack.shift();
 
@@ -79,6 +80,17 @@ export function typeCheck(cst, rootType) {
         );
         this.errors.push({ message });
       } else {
+        // check for return value type
+        const type = this.typeStack[0];
+        if (type === "number" || type === "string") {
+          const op = getMBQLName(name);
+          const returnType = MBQL_CLAUSES[op].type;
+          if (returnType !== type) {
+            const message = t`Expecting ${type} but found function ${name} returning ${returnType}`;
+            this.errors.push({ message });
+          }
+        }
+        // check for argument type
         return args.map((arg, index) => {
           const argType = clause.args[index];
           const genericType =
@@ -119,9 +131,9 @@ export function typeCheck(cst, rootType) {
 
     stringLiteral(ctx) {
       const type = this.typeStack[0];
-      if (type === "boolean") {
+      if (type === "boolean" || type === "number") {
         const literal = getIn(ctx, ["StringLiteral", 0, "image"]);
-        const message = t`Expecting boolean but found ${literal}`;
+        const message = t`Expecting ${type} but found ${literal}`;
         this.errors.push({ message });
       }
     }
