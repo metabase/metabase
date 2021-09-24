@@ -70,6 +70,7 @@ describe("visual tests > notebook > major UI elements", () => {
       "visual tests > notebook > major UI elements Custom question run buttons render correctly",
       {
         minHeight: VIEWPORT_HEIGHT,
+        minWidth: VIEWPORT_WIDTH,
       },
     );
   });
@@ -85,6 +86,7 @@ describe("visual tests > notebook > major UI elements", () => {
       "visual tests > notebook > major UI elements Native Query run button renders correctly",
       {
         minHeight: VIEWPORT_HEIGHT,
+        minWidth: VIEWPORT_WIDTH,
       },
     );
   });
