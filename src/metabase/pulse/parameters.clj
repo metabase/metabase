@@ -1,8 +1,8 @@
 (ns metabase.pulse.parameters
   "Utilities for processing parameters for inclusion in dashboard subscriptions."
   (:require [clojure.string :as str]
-            [metabase.pulse.interface :as i]
             [metabase.plugins.classloader :as classloader]
+            [metabase.pulse.interface :as i]
             [metabase.util :as u]
             [metabase.util.urls :as url]))
 
