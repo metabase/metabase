@@ -66,6 +66,15 @@ extraArgs:
 extraEnv:
   # JAVA_OPTS: "-Dcom.sun.management.jmxremote.port=1099 -Dcom.sun.management.jmxremote.rmi.port=1099 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.local.only=false -Djava.rmi.server.hostname=metabase.local"
 
+extraVolumeMounts: []
+  # - name: metabase-plugins
+  #   mountPath: /app/plugins
+
+extraVolumes: []
+  # - name: metabase-plugins
+  #   persistentVolumeClaim:
+  #     claimName: pv-metabase-plugins
+
 config:
   debug:
     namespaceTrace: ""

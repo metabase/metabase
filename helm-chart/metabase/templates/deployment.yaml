@@ -59,6 +59,9 @@ spec:
           - name: {{ include "metabase.fullname" . }}-secrets
             mountPath: /etc/secret
             readOnly: true
+          {{- if .Values.extraVolumeMounts -}}
+          {{ toYaml .Values.extraVolumeMounts | nindent 10 }}
+          {{- end }}
           {{- if .Values.extraArgs }}
           args:
           {{- range $key, $value := .Values.extraArgs }}
@@ -847,6 +850,9 @@ spec:
         - name: {{ .Values.secrets.existingSecret.name }}
           secret:
             secretName: {{ .Values.secrets.existingSecret.name }}
+        {{- end }}
+        {{- if .Values.extraVolumes -}}
+        {{ toYaml .Values.extraVolumes | nindent 8 }}
         {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
