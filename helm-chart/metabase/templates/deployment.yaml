@@ -126,8 +126,8 @@ spec:
                 name: {{ include "metabase.fullname" . }}-secrets
                 key: MB_DB_PORT
           {{- end }}
-          {{- if and (ne .Values.config.database.type "h2") (or .Values.secrets.database.connString .Values.secrets.existingSecret.vonnectionURIKey)}}
-          {{- if .Values.secrets.existingSecret.vonnectionURIKey }}
+          {{- if and (ne .Values.config.database.type "h2") (or .Values.secrets.database.connString .Values.secrets.existingSecret.connectionURIKey)}}
+          {{- if .Values.secrets.existingSecret.connectionURIKey }}
           - name: MB_DB_CONNECTION_URI
             valueFrom:
               secretKeyRef:
