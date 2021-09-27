@@ -1,5 +1,6 @@
 (ns metabase-enterprise.audit-app.pages.queries
   (:require [honeysql.core :as hsql]
+            [metabase.db.connection :as mdb.connection]
             [metabase-enterprise.audit-app.interface :as audit.i]
             [metabase-enterprise.audit-app.pages.common :as common]
             [metabase-enterprise.audit-app.pages.common.cards :as cards]
@@ -87,7 +88,14 @@
                              cards/dashboards-count]
                  :select    [[:card.id :card_id]
                              [:card.name :card_name]
-                             [(hsql/call :concat (hsql/call :substring :latest_qe.error 0 60) "...") :error_substr]
+                             [(hsql/call :concat
+                                         (hsql/call
+                                           :substring
+                                           :latest_qe.error
+                                           (if (= (mdb.connection/db-type) :mysql) 1 0)
+                                           60)
+                                         "...")
+                              :error_substr]
                              :collection_id
                              [:coll.name :collection_name]
                              :card.database_id
