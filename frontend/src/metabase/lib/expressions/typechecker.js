@@ -3,6 +3,7 @@ import { ngettext, msgid, t } from "ttag";
 import { ExpressionVisitor } from "./visitor";
 import { CLAUSE_TOKENS } from "./lexer";
 import { MBQL_CLAUSES, getMBQLName } from "./config";
+import { OPERATOR } from "./tokenizer";
 
 export function typeCheck(cst, rootType) {
   class TypeChecker extends ExpressionVisitor {
@@ -31,7 +32,11 @@ export function typeCheck(cst, rootType) {
       return result;
     }
     relationalExpression(ctx) {
-      this.typeStack.unshift("number");
+      const ops = ctx.operators.map(op => op.image).join(" ");
+      const numericalComparison =
+        ops.includes(OPERATOR.LessThan) || ops.includes(OPERATOR.GreaterThan);
+
+      this.typeStack.unshift(numericalComparison ? "number" : "expression");
       const result = super.relationalExpression(ctx);
       this.typeStack.shift();
 

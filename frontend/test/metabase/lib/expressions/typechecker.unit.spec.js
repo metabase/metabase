@@ -177,6 +177,26 @@ describe("type-checker", () => {
       expect(() => validate("CONTAINS([Type],'P','Q','R')")).toThrow();
     });
 
+    it("should accept an equality comparison of strings", () => {
+      expect(() => validate("LOWER([State]) = 'ca'")).not.toThrow();
+    });
+
+    it("should accept a non-equality comparison of strings", () => {
+      expect(() => validate("Upper([State]) != 'ny'")).not.toThrow();
+    });
+
+    it("should accept an equality comparison of booleans", () => {
+      expect(() =>
+        validate("IsEmpty([Discount]) = IsEmpty([Total])"),
+      ).not.toThrow();
+    });
+
+    it("should accept a non-equality comparison of booleans", () => {
+      expect(() =>
+        validate("IsEmpty([Discount]) != IsEmpty([Total])"),
+      ).not.toThrow();
+    });
+
     it("should reject a comparison with a string", () => {
       expect(() => validate("'A' <= 99")).toThrow();
     });
