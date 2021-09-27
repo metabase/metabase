@@ -1,11 +1,11 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-const SettingHeader = ({ setting }) => (
+const SettingHeader = ({ id, setting }) => (
   <div>
-    <div className="text-medium text-bold text-uppercase">
+    <label className="text-medium text-bold text-uppercase" htmlFor={id}>
       {setting.display_name}
-    </div>
+    </label>
     <div className="text-medium text-measure my1">
       {setting.warningMessage && (
         <React.Fragment>
