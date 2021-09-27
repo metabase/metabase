@@ -522,9 +522,8 @@
      :creator  (-> alert :creator :common_name)}))
 
 (defn- alert-results-condition-text [goal-value]
-  {:meets (format "reached its goal of %s" goal-value)
-   :below (format "gone below its goal of %s" goal-value)
-   :rows  "results for you to see"})
+  {:meets (format "This question has reached its goal of %s" goal-value)
+   :below (format "This question has gone below its goal of %s" goal-value)})
 
 (defn render-alert-email
   "Take a pulse object and list of results, returns an array of attachment objects for an email"
