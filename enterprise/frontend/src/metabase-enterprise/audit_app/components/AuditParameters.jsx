@@ -53,7 +53,8 @@ export default class AuditParameters extends React.Component {
 
     // What's given as "enabled" is really the 0 rows returned,
     // so we have to check for 0 rows returned with null param search
-    const disabled = (!enabled) && inputValues && Object.keys(inputValues).length === 0;
+    const disabled =
+      !enabled && inputValues && Object.keys(inputValues).length === 0;
 
     return (
       <div>

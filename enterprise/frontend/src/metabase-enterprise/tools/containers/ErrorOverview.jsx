@@ -72,7 +72,9 @@ export default function ErrorOverview(props) {
           sorting={sorting}
           onSortingChange={handleSortingChange}
           onRowSelectClick={handleRowSelectClick}
-          onEmptyLoad={() => { setParamsEnabled(false) }}
+          onEmptyLoad={() => {
+            setParamsEnabled(false);
+          }}
           mode={ErrorMode}
           table={Queries.bad_table(
             errorFilter,

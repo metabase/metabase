@@ -36,12 +36,11 @@ export const ErrorMode = {
   drills: () => [ErrorDrill],
 };
 
-
 function idxToUrl(resRow, resCols, nameToResCol, colName) {
   const idVal = resRow[nameToResCol[colName]];
   const urlVal = colName && idVal ? columnNameToUrl[colName](idVal) : "";
-  const linkClass = (urlVal === "") ? "" : "text-brand";
-  return [urlVal, linkClass]
+  const linkClass = urlVal === "" ? "" : "text-brand";
+  return [urlVal, linkClass];
 }
 
 function ErrorDetailDisplay(props) {
@@ -62,7 +61,7 @@ function ErrorDetailDisplay(props) {
       "table_id",
       null,
       "user_id",
-      null
+      null,
     ];
 
     const ordinaryRows = [
@@ -75,7 +74,12 @@ function ErrorDetailDisplay(props) {
       "user_name",
       "updated_at",
     ].map((x, idx) => {
-      const [urlVal, linkClass] = idxToUrl(resRow, resCols, nameToResCol, linkColumns[idx]);
+      const [urlVal, linkClass] = idxToUrl(
+        resRow,
+        resCols,
+        nameToResCol,
+        linkColumns[idx],
+      );
       const formattedVal = formatValue(resRow[nameToResCol[x]], {
         column: resCols[nameToResCol[x]],
         jsx: true,
@@ -83,16 +87,20 @@ function ErrorDetailDisplay(props) {
         type: "cell",
         local: true,
       });
-      return (<tr key={x}>
-        <td align="right" className="m0 mt1 text-medium">
-          {formatColumn(resCols[nameToResCol[x]])}
-        </td>
-        <td>
-        {<Link to={urlVal} className={linkClass}>
-          {formattedVal}
-          </Link>}
-        </td>
-      </tr>)
+      return (
+        <tr key={x}>
+          <td align="right" className="m0 mt1 text-medium">
+            {formatColumn(resCols[nameToResCol[x]])}
+          </td>
+          <td>
+            {
+              <Link to={urlVal} className={linkClass}>
+                {formattedVal}
+              </Link>
+            }
+          </td>
+        </tr>
+      );
     });
 
     const dashIdRows = resRow[nameToResCol.dash_name_str]
@@ -108,21 +116,26 @@ function ErrorDetailDisplay(props) {
         </tr>
       ));
 
-    const [cardUrlVal, cardLinkClass] = idxToUrl(resRow, resCols, nameToResCol, "card_id");
+    const [cardUrlVal, cardLinkClass] = idxToUrl(
+      resRow,
+      resCols,
+      nameToResCol,
+      "card_id",
+    );
 
     return [
       <h2 className="PageTitle p1" key="card_name">
-      {<Link to={cardUrlVal} className={cardLinkClass}>
-          {resRow[nameToResCol.card_name]}
-          </Link>}
+        {
+          <Link to={cardUrlVal} className={cardLinkClass}>
+            {resRow[nameToResCol.card_name]}
+          </Link>
+        }
       </h2>,
       <div key="error_str" className="p1 text-code">
         {resRow[nameToResCol.error_str]}
       </div>,
       <table key="table" className="ContentTable">
-      <tbody>
-        {[ordinaryRows, dashIdRows]}
-      </tbody>
+        <tbody>{[ordinaryRows, dashIdRows]}</tbody>
       </table>,
     ];
   } else {
