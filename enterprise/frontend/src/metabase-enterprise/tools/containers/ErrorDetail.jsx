@@ -71,18 +71,21 @@ function ErrorDetailDisplay(props) {
     ].map((x, idx) => {
       const idVal = resRow[nameToResCol[linkColumns[idx]]];
       const urlVal = linkColumns[idx] && idVal ? columnNameToUrl[linkColumns[idx]](idVal) : "";
+      const formattedVal = formatValue(resRow[nameToResCol[x]], {
+        column: resCols[nameToResCol[x]],
+        jsx: true,
+        rich: true,
+        type: "cell",
+        local: true,
+      });
       return (<tr key={x}>
         <td align="right" className="m0 mt1 text-medium">
           {formatColumn(resCols[nameToResCol[x]])}
         </td>
-        <td className="text-bold">
-          {formatValue(resRow[nameToResCol[x]], {
-            column: resCols[nameToResCol[x]],
-            jsx: true,
-            rich: true,
-            type: "cell",
-            local: true,
-          })}
+        <td>
+        {<Link to={urlVal}>
+          {formattedVal}
+          </Link>}
         </td>
       </tr>)
     });
