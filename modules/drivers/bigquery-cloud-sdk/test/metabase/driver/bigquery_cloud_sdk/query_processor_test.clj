@@ -191,7 +191,7 @@
 ;; if I run a BigQuery query, does it get a remark added to it?
 (defn- query->native [query]
   (let [native-query (atom nil)]
-    (with-redefs [bigquery/process-native* (fn [_ _ sql _]
+    (with-redefs [bigquery/process-native* (fn [_ _ sql _ _]
                                              (reset! native-query sql)
                                              (throw (Exception. "Done.")))]
       (u/ignore-exceptions

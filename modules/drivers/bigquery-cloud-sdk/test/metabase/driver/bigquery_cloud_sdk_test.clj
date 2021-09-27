@@ -1,5 +1,7 @@
 (ns metabase.driver.bigquery-cloud-sdk-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.core.async :as a]
+            [clojure.test :refer :all]
+            [clojure.tools.logging :as log]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
             [metabase.driver.bigquery-cloud-sdk :as bigquery]
@@ -47,12 +49,8 @@
    (testing "with pagination"
      (let [pages-retrieved (atom 0)
            page-callback   (fn [] (swap! pages-retrieved inc))]
-       (with-bindings {#'bigquery/*max-results-per-page*  25
-                       #'bigquery/*page-callback*         page-callback
-                       ;; for this test, set timeout to 0 to prevent setting it
-                       ;; so that the "fast" query path can be used (so that the max-results-per-page actually takes
-                       ;; effect); see com.google.cloud.bigquery.QueryRequestInfo.isFastQuerySupported
-                       #'bigquery/*query-timeout-seconds* 0}
+       (with-bindings {#'bigquery/*page-size*             25
+                       #'bigquery/*page-callback*         page-callback}
          (let [actual (->> (metadata-queries/table-rows-sample (Table (mt/id :venues))
                              [(Field (mt/id :venues :id))
                               (Field (mt/id :venues :name))]
@@ -222,17 +220,13 @@
 (deftest return-errors-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "If a Query fails, we should return the error right away (#14918)"
-      (let [before-ms (System/currentTimeMillis)]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Error executing query"
-             (qp/process-query
-              {:database (mt/id)
-               :type     :native
-               :native   {:query "SELECT abc FROM 123;"}})))
-        (testing "Should return the error *before* the query timeout"
-          (let [duration-ms (- (System/currentTimeMillis) before-ms)]
-            (is (< duration-ms (u/seconds->ms @#'bigquery/*query-timeout-seconds*)))))))))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Error executing query"
+           (qp/process-query
+            {:database (mt/id)
+             :type     :native
+             :native   {:query "SELECT abc FROM 123;"}}))))))
 
 (deftest project-id-override-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -336,13 +330,43 @@
     (let [fake-execute-called (atom false)
           orig-fn             @#'bigquery/execute-bigquery]
       (testing "Retry functionality works as expected"
-        (with-redefs [bigquery/execute-bigquery (fn [^BigQuery client ^String sql parameters]
+        (with-redefs [bigquery/execute-bigquery (fn [^BigQuery client ^String sql parameters _ _]
                                                   (if-not @fake-execute-called
                                                     (do (reset! fake-execute-called true)
                                                         ;; simulate a transient error being thrown
                                                         (throw (ex-info "Transient error" {:retryable? true})))
-                                                    (orig-fn client sql parameters)))]
+                                                    (orig-fn client sql parameters nil nil)))]
           ;; run any other test that requires a successful query execution
           (table-rows-sample-test)
           ;; make sure that the fake exception was thrown, and thus the query execution was retried
           (is (true? @fake-execute-called)))))))
+
+(deftest query-cancel-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "BigQuery queries can be canceled successfully"
+      (mt/with-open-channels [canceled-chan (a/promise-chan)]
+        (binding [bigquery/*page-size*     1000  ; set a relatively small pageSize
+                  bigquery/*page-callback* (fn []
+                                             (log/debug "*page-callback* called, sending cancel message")
+                                             (a/>!! canceled-chan ::cancel))]
+          (mt/dataset sample-dataset
+            (let [rows      (mt/rows (mt/process-query (mt/query orders) {:canceled-chan canceled-chan}))
+                  row-count (count rows)]
+              (log/debugf "Loaded %d rows before BigQuery query was canceled" row-count)
+              (testing "Somewhere between 0 and the size of the orders table rows were loaded before cancellation"
+                (is (< 0 row-count 10000))))))))))
+
+(deftest global-max-rows-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "The limit middleware prevents us from fetching more pages than are necessary to fulfill query max-rows"
+      (mt/with-open-channels [canceled-chan (a/promise-chan)]
+        (let [page-size          100
+              max-rows           1000
+              num-page-callbacks (atom 0)]
+          (binding [bigquery/*page-size*     page-size
+                    bigquery/*page-callback* (fn []
+                                               (swap! num-page-callbacks inc))]
+            (mt/dataset sample-dataset
+              (let [rows (mt/rows (mt/process-query (mt/query orders {:query {:limit max-rows}})))]
+                (is (= max-rows (count rows)))
+                (is (= (/ max-rows page-size) @num-page-callbacks))))))))))
