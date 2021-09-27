@@ -316,7 +316,7 @@ describe("scenarios > question > custom columns", () => {
     });
   });
 
-  it.skip("should handle identical custom column and table column names (metabase#14255)", () => {
+  it("should handle identical custom column and table column names (metabase#14255)", () => {
     // Uppercase is important for this reproduction on H2
     const CC_NAME = "CATEGORY";
 
