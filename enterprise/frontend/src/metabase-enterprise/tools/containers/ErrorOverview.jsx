@@ -8,7 +8,7 @@ import { CardApi } from "metabase/services";
 import * as Queries from "../../audit_app/lib/cards/queries";
 import AuditTable from "../../audit_app/containers/AuditTable";
 import AuditParameters from "../../audit_app/components/AuditParameters";
-import { ErrorMode } from "./ErrorDetail";
+import { ErrorMode } from "../mode";
 
 const getSortOrder = isAscending => (isAscending ? "asc" : "desc");
 
