@@ -18,10 +18,10 @@ const QuestionDataSource = ({ question, subHead, noLink, ...props }) => {
   );
 };
 
-QuestionDataSource.shouldRender = ({ question }) =>
-  getDataSourceParts({ question }).length > 0;
+QuestionDataSource.shouldRender = ({ question, isObjectDetail }) =>
+  getDataSourceParts({ question, isObjectDetail }).length > 0;
 
-function getDataSourceParts({ question, noLink, subHead }) {
+function getDataSourceParts({ question, noLink, subHead, isObjectDetail }) {
   if (!question) {
     return [];
   }
@@ -50,8 +50,6 @@ function getDataSourceParts({ question, noLink, subHead }) {
       href: !noLink && database.id >= 0 && browseSchema(table),
     });
   }
-
-  const isObjectDetail = question.isObjectDetail();
 
   if (table) {
     let name = table.displayName();

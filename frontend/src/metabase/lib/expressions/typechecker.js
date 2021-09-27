@@ -33,6 +33,16 @@ export function typeCheck(cst, rootType) {
       this.typeStack.unshift("expression");
       const result = super.relationalExpression(ctx);
       this.typeStack.shift();
+
+      // backward-compatibility: literal on the left-hand side isn't allowed (MBQL limitation)
+      if (ctx.operands.length > 1) {
+        const lhs = ctx.operands[0];
+        if (lhs.name === "numberLiteral") {
+          const literal = getIn(lhs, ["children", "NumberLiteral", 0, "image"]);
+          const message = t`Expecting field but found ${literal}`;
+          this.errors.push({ message });
+        }
+      }
       return result;
     }
 

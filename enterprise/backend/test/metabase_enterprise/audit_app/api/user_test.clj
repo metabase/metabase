@@ -19,7 +19,7 @@
       (doseq [run-type [:admin :non-admin]]
         (mt/with-temp* [User                  [{user-id :id}]
                         Card                  [{card-id :id}]
-                        ;; Alert
+                        ;; Alert, created by a different User
                         Pulse                 [{alert-id :id}         {:alert_condition  "rows"
                                                                        :alert_first_only false
                                                                        :name             nil}]
@@ -28,16 +28,19 @@
                         PulseChannel          [{alert-chan-id :id}    {:pulse_id alert-id}]
                         PulseChannelRecipient [_                      {:user_id          user-id
                                                                        :pulse_channel_id alert-chan-id}]
-                        ;; DashboardSubscription
+                        ;; DashboardSubscription, created by this User; multiple recipients
                         Dashboard             [{dashboard-id :id}]
                         DashboardCard         [{dashcard-id :id}      {:dashboard_id dashboard-id
                                                                        :card_id      card-id}]
-                        Pulse                 [{dash-sub-id :id}      {:dashboard_id dashboard-id}]
+                        Pulse                 [{dash-sub-id :id}      {:dashboard_id dashboard-id
+                                                                       :creator_id   user-id}]
                         PulseCard             [_                      {:pulse_id          dash-sub-id
                                                                        :card_id           card-id
                                                                        :dashboard_card_id dashcard-id}]
                         PulseChannel          [{dash-sub-chan-id :id} {:pulse_id dash-sub-id}]
                         PulseChannelRecipient [_                      {:user_id          user-id
+                                                                       :pulse_channel_id dash-sub-chan-id}]
+                        PulseChannelRecipient [_                      {:user_id          (mt/user->id :rasta)
                                                                        :pulse_channel_id dash-sub-chan-id}]]
           (letfn [(describe-objects []
                     {:num-subscriptions                (db/count PulseChannelRecipient :user_id user-id)
@@ -64,7 +67,8 @@
                          (describe-objects))))
                 (testing "should be allowed to delete all subscriptions for themselves."
                   (is (nil? (api-delete-subscriptions! user-id 204)))
-                  (testing "\nAlert and DashboardSubscription should have gotten archived as well (since this was the last User)"
+                  (testing (str "\nAlert should get archived because this User was the last subscriber."
+                                "\nDashboardSubscription should get archived because this User created it.")
                     (is (= {:num-subscriptions                0
                             :alert-archived?                  true
                             :dashboard-subscription-archived? true}

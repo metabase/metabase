@@ -790,7 +790,7 @@ describe("scenarios > question > filter", () => {
     cy.button("Done").should("not.be.disabled");
   });
 
-  it.skip("custom expression filter should work with numeric value before an operator (metabase#15893)", () => {
+  it("custom expression filter should refuse to work with numeric value before an operator (metabase#15893)", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
     openOrdersTable({ mode: "notebook" });
@@ -799,11 +799,7 @@ describe("scenarios > question > filter", () => {
     cy.get("[contenteditable=true]")
       .type("0 < [ID]")
       .blur();
-    cy.button("Done").click();
-    cy.button("Visualize").click();
-    cy.wait("@dataset").then(xhr => {
-      expect(xhr.response.body.error).to.not.exist;
-    });
+    cy.findByText("Expecting field but found 0");
   });
 
   it.skip("should work on twice summarized questions (metabase#15620)", () => {

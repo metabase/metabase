@@ -54,12 +54,12 @@ const isEditing = handleActions(
   {},
 );
 
-function newDashboard(before, after) {
+function newDashboard(before, after, isDirty) {
   return {
     ...before,
     ...after,
     embedding_params: syncParametersAndEmbeddingParams(before, after),
-    isDirty: true,
+    isDirty: isDirty ?? true,
   };
 }
 
@@ -72,10 +72,10 @@ const dashboards = handleActions(
       }),
     },
     [SET_DASHBOARD_ATTRIBUTES]: {
-      next: (state, { payload: { id, attributes } }) => {
+      next: (state, { payload: { id, attributes, isDirty } }) => {
         return {
           ...state,
-          [id]: newDashboard(state[id], attributes),
+          [id]: newDashboard(state[id], attributes, isDirty),
         };
       },
     },

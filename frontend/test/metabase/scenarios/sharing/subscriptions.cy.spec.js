@@ -161,7 +161,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       cy.findByText(/^Emailed monthly on the first (?!null)/);
     });
 
-    it.skip("should work when using dashboard default filter value on native query with required parameter (metabase#15705)", () => {
+    it("should work when using dashboard default filter value on native query with required parameter (metabase#15705)", () => {
       // In order to reproduce this test, we need to use the old syntac for dashboard filters
       mockSessionProperty("field-filter-operators-enabled?", false);
 
@@ -191,7 +191,7 @@ describe("scenarios > dashboard > subscriptions", () => {
                   slug: "quantity",
                   id: "930e4001",
                   type: "category",
-                  default: "20",
+                  default: "3",
                 },
               ],
             });
@@ -233,6 +233,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         expect(body[0].html).not.to.include(
           "An error occurred while displaying this card.",
         );
+        expect(body[0].html).to.include("2,738");
       });
     });
 

@@ -45,7 +45,7 @@ class DashboardDetailsModal extends React.Component {
           const { id, ...attributes } = dashboard;
           // hack: dashboards are stored both in entities.dashboards and dashboard.dashboards
           // calling setDashboardAttributes sync this change made using the entity form into dashboard.dashboards
-          setDashboardAttributes({ id, attributes });
+          setDashboardAttributes({ id, attributes, isDirty: false });
           onChangeLocation(Urls.dashboard(dashboard));
         }}
         overwriteOnInitialValuesChange

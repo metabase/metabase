@@ -135,7 +135,9 @@
                :error-filter      "a"
                :db-filter         "PU"
                :sort-column       "card.id"
-               :sort-direction    "desc"))}))
+               :sort-direction    "desc"
+               :dashboard-name    "wow"
+               :card-name         "Credit Card"))}))
 
 (defn- do-tests-for-query-type
   "Run test(s) for the internal query named by `query-type`. Runs one test for each map returned

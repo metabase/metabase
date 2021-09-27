@@ -1,14 +1,20 @@
+import { push } from "react-router-redux";
 import _ from "underscore";
 
-import Question from "metabase-lib/lib/Question";
+export const getColumnName = column => column.remapped_to || column.name;
 
-import type {
-  ClickObject,
-  QueryMode,
-} from "metabase-types/types/Visualization";
+export const getRowValuesByColumns = (row, cols) =>
+  cols.reduce((acc, col, index) => {
+    const columnName = getColumnName(col);
+    return {
+      ...acc,
+      [columnName]: row[index],
+    };
+  }, {});
 
 const columnNameToUrl = {
   user_id: value => `/admin/audit/member/${value}`,
+  creator_id: value => `/admin/audit/member/${value}`,
   viewed_by_id: value => `/admin/audit/member/${value}`,
   saved_by_id: value => `/admin/audit/member/${value}`,
   dashboard_id: value => `/admin/audit/dashboard/${value}`,
@@ -20,19 +26,24 @@ const columnNameToUrl = {
   // NOTE: query_hash uses standard Base64 encoding which isn't URL safe so make sure to escape it
   query_hash: value =>
     `/admin/audit/query/${encodeURIComponent(String(value))}`,
+  recipients: (_, clicked) => {
+    const pulseIdIndex = clicked.origin.cols.findIndex(
+      col => getColumnName(col) === "pulse_id",
+    );
+    const pulseId = clicked.origin.row[pulseIdIndex];
+
+    return clicked.extraData.type === "subscription"
+      ? `/admin/audit/subscriptions/subscriptions/${pulseId}/edit`
+      : `/admin/audit/subscriptions/alerts/${pulseId}/edit`;
+  },
 };
 
-const AuditDrill = ({
-  question,
-  clicked,
-}: {
-  question: Question,
-  clicked?: ClickObject,
-}) => {
+const AuditDrill = ({ question, clicked }) => {
   if (!clicked) {
     return [];
   }
   const metricAndDimensions = [clicked].concat(clicked.dimensions || []);
+
   for (const { column, value } of metricAndDimensions) {
     if (column && columnNameToUrl[column.name] != null && value != null) {
       return [
@@ -40,8 +51,9 @@ const AuditDrill = ({
           name: "detail",
           title: `View this`,
           default: true,
-          url() {
-            return columnNameToUrl[column.name](value);
+          action() {
+            const url = columnNameToUrl[column.name](value, clicked);
+            return push(url);
           },
         },
       ];
@@ -72,7 +84,7 @@ const AuditDrill = ({
   return [];
 };
 
-export const AuditMode: QueryMode = {
+export const AuditMode = {
   name: "audit",
   drills: () => [AuditDrill],
 };

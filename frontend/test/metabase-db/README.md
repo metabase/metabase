@@ -27,7 +27,7 @@ QA_DB_ENABLED=true
 ```
 
 ```fish
-set -x QA_Db_ENABLED true
+set -x QA_DB_ENABLED true
 ```
 
 The list of all supported databases that we currently have Docker images for can be found at [Metabase QA repo](https://github.com/metabase/metabase-qa).

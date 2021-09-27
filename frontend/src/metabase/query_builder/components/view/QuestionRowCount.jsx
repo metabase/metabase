@@ -28,20 +28,30 @@ const QuestionRowCount = ({
   const cappedMessage = t`Showing first ${HARD_ROW_LIMIT} rows`;
 
   // Shown based on a query that has been altered
-  const limitMessage =
-    query instanceof StructuredQuery
-      ? query.limit() == null || query.limit() >= HARD_ROW_LIMIT
-        ? cappedMessage
-        : t`Show ${formatRowCount(query.limit())}`
-      : null;
+  let limitMessage = null;
+  if (query instanceof StructuredQuery) {
+    if (query.limit() == null || query.limit() >= HARD_ROW_LIMIT) {
+      if (typeof result.row_count === "number") {
+        // The query has been altered but we might still have the old result set,
+        // so show that instead of a generic HARD_ROW_LIMIT
+        limitMessage = t`Showing ${formatRowCount(result.row_count)}`;
+      } else {
+        limitMessage = cappedMessage;
+      }
+    } else {
+      limitMessage = t`Show ${formatRowCount(query.limit())}`;
+    }
+  }
 
   // Shown based on a query that has been run
-  const resultMessage =
-    result.data.rows_truncated != null
-      ? t`Showing first ${formatRowCount(result.row_count)}`
-      : result.row_count === HARD_ROW_LIMIT
-      ? cappedMessage
-      : t`Showing ${formatRowCount(result.row_count)}`;
+  let resultMessage;
+  if (result.data.rows_truncated != null) {
+    resultMessage = t`Showing first ${formatRowCount(result.row_count)}`;
+  } else if (result.row_count === HARD_ROW_LIMIT) {
+    resultMessage = cappedMessage;
+  } else {
+    resultMessage = t`Showing ${formatRowCount(result.row_count)}`;
+  }
 
   const message = isResultDirty ? limitMessage : resultMessage;
 
