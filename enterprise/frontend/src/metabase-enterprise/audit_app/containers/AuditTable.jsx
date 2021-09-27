@@ -27,10 +27,13 @@ AuditTable.propTypes = {
   metadata: PropTypes.object.isRequired,
   table: PropTypes.object.isRequired,
   pageSize: PropTypes.number.isRequired,
-  mode: PropTypes.array.isRequired,
   reload: PropTypes.bool,
   children: PropTypes.node,
   dispatch: PropTypes.func.isRequired,
+  mode: PropTypes.shape({
+    name: PropTypes.string.isRequired,
+    drills: PropTypes.func.isRequired,
+  })
 };
 
 function AuditTable({
