@@ -15,6 +15,7 @@
                                              :exclusions  [commons-codec/commons-codec
                                                            org.bouncycastle/bcpkix-jdk15on
                                                            org.bouncycastle/bcprov-jdk15on]}
+  camel-snake-kebab/camel-snake-kebab       {:mvn/version "0.4.2"}              ; for dash->underscore conversion, etc.
   buddy/buddy-sign                          {:mvn/version "3.4.1"}              ; JSON Web Tokens; High-Level message signing library
   cheshire/cheshire                         {:mvn/version "5.10.1"}             ; fast JSON encoding (used by Ring JSON middleware)
   clj-http/clj-http                         {:mvn/version "3.12.3"              ; HTTP client

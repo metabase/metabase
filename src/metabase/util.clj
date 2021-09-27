@@ -1,6 +1,7 @@
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
-  (:require [clojure.data :as data]
+  (:require [camel-snake-kebab.core :as csk]
+            [clojure.data :as data]
             [clojure.java.classpath :as classpath]
             [clojure.math.numeric-tower :as math]
             [clojure.pprint :refer [pprint]]
@@ -654,12 +655,12 @@
   (and (string? new-value)
        (re-matches #"[0-9a-f]{64}" new-value)))
 
-(defn snake-key
-  "Convert a keyword or string `k` from `lisp-case` to `snake-case`."
-  [k]
-  (if (keyword? k)
-    (keyword (snake-key (name k)))
-    (str/replace k #"-" "_")))
+#_(defn snake-key
+    "Convert a keyword or string `k` from `lisp-case` to `snake-case`."
+    [k]
+    (if (keyword? k)
+      (keyword (snake-key (name k)))
+      (str/replace k #"-" "_")))
 
 (defn recursive-map-keys
   "Recursively replace the keys in a map with the value of `(f key)`."
@@ -673,7 +674,7 @@
 (defn snake-keys
   "Convert the keys in a map from `lisp-case` to `snake-case`."
   [m]
-  (recursive-map-keys snake-key m))
+  (recursive-map-keys csk/->snake_case m))
 
 (def ^:private do-with-us-locale-lock (Object.))
 

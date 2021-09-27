@@ -1,5 +1,6 @@
 (ns metabase.test.data.bigquery
-  (:require [clojure.string :as str]
+  (:require [camel-snake-kebab.core :as csk]
+            [clojure.string :as str]
             [flatland.ordered.map :as ordered-map]
             [java-time :as t]
             [medley.core :as m]
@@ -10,11 +11,11 @@
             [metabase.test.data :as data]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.sql :as sql.tx]
-            [metabase.test.util :as tu]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.schema :as su]
             [schema.core :as s])
+
   (:import [com.google.api.services.bigquery.model Dataset DatasetReference QueryRequest QueryResponse Table
             TableDataInsertAllRequest TableDataInsertAllRequest$Rows TableDataInsertAllResponse TableFieldSchema
             TableReference TableSchema]))
@@ -80,7 +81,7 @@
 ;;; -------------------------------------------------- Loading Data --------------------------------------------------
 
 (defmethod tx/format-name :bigquery [_ table-or-field-name]
-  (tu/dash->underscore table-or-field-name))
+  (csk/->snake_case table-or-field-name))
 
 (defn- create-dataset! [^String dataset-id]
   {:pre [(seq dataset-id)]}
