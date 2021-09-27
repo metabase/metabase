@@ -66,6 +66,9 @@
 
 ;;; -------------------------------------------------- Loading Data --------------------------------------------------
 
+(defmethod tx/format-name :bigquery-cloud-sdk [_ table-or-field-name]
+  (u/snake-key table-or-field-name))
+
 (defn- create-dataset! [^String dataset-id]
   {:pre [(seq dataset-id)]}
   (.create (bigquery) (DatasetInfo/of (DatasetId/of (project-id) dataset-id)) (u/varargs BigQuery$DatasetOption))

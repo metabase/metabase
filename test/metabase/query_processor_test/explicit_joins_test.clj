@@ -81,7 +81,7 @@
                   ["Paul Pelican"   "SoMa Squadron"]
                   ["Peter Pelican"  "SoMa Squadron"]
                   ["Russell Crow"   "Mission Street Murder"]]
-            rows (if (tx/sorts-nil-first? driver/*driver*)
+            rows (if (tx/sorts-nil-first? driver/*driver* :type/Text)
                    (cons [nil "Fillmore Flock"] rows)
                    (conj rows [nil "Fillmore Flock"]))]
         (is (= rows
@@ -129,7 +129,7 @@
                   ["Paul Pelican"     "SoMa Squadron"]
                   ["Peter Pelican"    "SoMa Squadron"]
                   ["Russell Crow"     "Mission Street Murder"]]
-            rows (if (tx/sorts-nil-first? driver/*driver*)
+            rows (if (tx/sorts-nil-first? driver/*driver* :type/Text)
                    (cons [nil "Fillmore Flock"] rows)
                    (conj rows [nil "Fillmore Flock"]))]
         (is (= rows
