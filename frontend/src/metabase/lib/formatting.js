@@ -14,6 +14,7 @@ import ExternalLink from "metabase/components/ExternalLink";
 import {
   isCoordinate,
   isDate,
+  isDateWithoutTime,
   isEmail,
   isLatitude,
   isLongitude,
@@ -475,7 +476,11 @@ function formatDateTimeWithFormats(value, dateFormat, timeFormat, options) {
   if (dateFormat) {
     format.push(replaceDateFormatNames(dateFormat, options));
   }
-  if (timeFormat && options.time_enabled) {
+
+  const shouldIncludeTime =
+    timeFormat && options.time_enabled && !isDateWithoutTime(options.column);
+
+  if (shouldIncludeTime) {
     format.push(timeFormat);
   }
   return m.format(format.join(", "));
