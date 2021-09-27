@@ -20,11 +20,17 @@ Once you save your question, a down arrow will appear to the right of the questi
 
 ![Question detail sidebar](images/sharing-answers/question-details-sidebar.png)
 
-- **Edit details** (Pencil icon). Change the title of the question, and add some description for context. Adding a description will also make the question easier to find using the search bar.
+- **Edit details** (Pencil icon). Change the title of the question, and add some description for context. Adding a description will also make the question easier to find using the search bar. You can also select more options to [cache the results of the question](#caching-results).
 - **Add to dashbboard** (Dashboard icon with plus symbol). See [dashboards][dashboards].
 - **Move** (Document icon with right arrow). Relocate the question to a different [collection](#collections).
 - **Duplicate** (Square with little square). Create a copy of the question. Keep in mind that whenever you start editing a saved question, Metabase will create a copy of the question. You can either save your edits as a new question, or overwrite the original saved question.
 - **Archive** (Folder with down arrow). See [Archiving items](#archiving-items).
+
+### Caching results
+
+If your results don't change frequently, you may want to cache your results, that is: store your results in Metabase so that the next time you visit the question, Metabase can retrieve the stored results rather than query the database again. For example, if your data only updates once a day, there's no point in querying the database more than once a day, as they data won't have changed. Returning cached results can be significantly faster, as the database won't have to redo the work to answer your query.
+
+To cache results, click on the down arrow next to the question's title to open the __Question detail sidebar__, then click on the __Pencil icon__ to __Edit details__. In the Modal that pops up, in the bottom left, select __More options__. There you'll be able to tell Metabase how long it should cache the question's results. This caching will only apply to this specific question; admins can [configure database-wide caching settings][caching] in the __Admin panel__.
 
 ### Question moderation
 
@@ -59,5 +65,6 @@ You can set up questions to run periodically and notify you if the results are i
 Next, we'll learn about how to organize our questions in [collections][collections].
 
 [alerts]: 15-alerts.md
+[caching]: ../administration-guide/14-caching.md
 [collections]: collections.md
 [dashboards]: 07-dashboards.md
