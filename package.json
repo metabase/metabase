@@ -206,8 +206,8 @@
     "test-cypress": "yarn build && ./bin/build-for-test && yarn test-cypress-no-build",
     "test-cypress-open": "./bin/build-for-test && yarn test-cypress-no-build --open",
     "test-cypress-open-no-backend": "E2E_HOST='http://localhost:3000' yarn test-cypress-no-build --open",
-    "test-cypress-no-build": "yarn && babel-node ./frontend/test/__runner__/run_cypress_tests.js",
-    "test-visual": "yarn build && ./bin/build-for-test && yarn test-visual-no-build",
+    "test-cypress-no-build": "yarn && ELECTRON_EXTRA_LAUNCH_ARGS=\"--force-prefers-reduced-motion\" babel-node ./frontend/test/__runner__/run_cypress_tests.js",
+    "test-visual": "ELECTRON_EXTRA_LAUNCH_ARGS=\"--force-prefers-reduced-motion\" yarn build && ./bin/build-for-test && yarn test-visual-no-build",
     "test-visual-no-build": "percy exec -- yarn test-cypress-no-build --spec \"./frontend/test/metabase-visual/**/*.cy.spec.js\"",
     "test-visual-open": "percy exec -- yarn test-cypress-open --spec \"./frontend/test/metabase-visual/**/*.cy.spec.js\"",
     "prepare": "husky install"
