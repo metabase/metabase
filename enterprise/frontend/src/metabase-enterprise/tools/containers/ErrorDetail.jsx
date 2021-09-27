@@ -96,8 +96,8 @@ function ErrorDetailDisplay(props) {
     });
 
     const dashIdRows = resRow[nameToResCol.dash_name_str]
-      .split("|")
-      .map((x, idx) => (
+      ?.split("|")
+      ?.map((x, idx) => (
         <tr key={x}>
           <td align="right" className="m0 mt1 text-medium">
             {idx === 0 && formatColumn(resCols[nameToResCol.dash_name_str])}
