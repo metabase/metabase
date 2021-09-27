@@ -1,6 +1,5 @@
 (ns metabase.test.data.bigquery
-  (:require [camel-snake-kebab.core :as csk]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [flatland.ordered.map :as ordered-map]
             [java-time :as t]
             [medley.core :as m]
@@ -81,7 +80,7 @@
 ;;; -------------------------------------------------- Loading Data --------------------------------------------------
 
 (defmethod tx/format-name :bigquery [_ table-or-field-name]
-  (csk/->snake_case table-or-field-name))
+  (u/snake-key table-or-field-name))
 
 (defn- create-dataset! [^String dataset-id]
   {:pre [(seq dataset-id)]}

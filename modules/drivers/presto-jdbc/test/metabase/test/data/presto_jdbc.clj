@@ -1,7 +1,6 @@
 (ns metabase.test.data.presto-jdbc
   "Presto JDBC driver test extensions."
-  (:require [camel-snake-kebab.core :as csk]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [metabase.config :as config]
             [metabase.connection-pool :as connection-pool]
             [metabase.driver :as driver]
@@ -11,7 +10,8 @@
             [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
             [metabase.test.data.sql-jdbc.execute :as execute]
             [metabase.test.data.sql-jdbc.load-data :as load-data]
-            [metabase.test.data.sql.ddl :as ddl])
+            [metabase.test.data.sql.ddl :as ddl]
+            [metabase.util :as u])
   (:import [java.sql Connection DriverManager PreparedStatement]))
 
 (sql-jdbc.tx/add-test-extensions! :presto-jdbc)
@@ -51,7 +51,7 @@
    :kerberos-keytab-path               (tx/db-test-env-var :presto-jdbc :kerberos-keytab-path nil)
    :kerberos-config-path               (tx/db-test-env-var :presto-jdbc :kerberos-config-path nil)
    :kerberos-service-principal-pattern (tx/db-test-env-var :presto-jdbc :kerberos-service-principal-pattern nil)
-   :catalog                            (csk/->snake_case database-name)
+   :catalog                            (u/snake-key database-name)
    :schema                             (tx/db-test-env-var :presto-jdbc :schema nil)})
 
 (defmethod execute/execute-sql! :presto-jdbc
@@ -110,9 +110,9 @@
 
 (defmethod sql.tx/qualified-name-components :presto-jdbc
   ;; use the default schema from the in-memory connector
-  ([_ db-name]                       [(csk/->snake_case db-name) "default"])
-  ([_ db-name table-name]            [(csk/->snake_case db-name) "default" (csk/->snake_case table-name)])
-  ([_ db-name table-name field-name] [(csk/->snake_case db-name) "default" (csk/->snake_case table-name) field-name]))
+  ([_ db-name]                       [(u/snake-key db-name) "default"])
+  ([_ db-name table-name]            [(u/snake-key db-name) "default" (u/snake-key table-name)])
+  ([_ db-name table-name field-name] [(u/snake-key db-name) "default" (u/snake-key table-name) field-name]))
 
 (defmethod sql.tx/pk-sql-type :presto-jdbc
   [_]
@@ -125,7 +125,7 @@
     (str/replace sql #", PRIMARY KEY \([^)]+\)" "")))
 
 (defmethod tx/format-name :presto-jdbc [_ table-or-field-name]
-  (csk/->snake_case table-or-field-name))
+  (u/snake-key table-or-field-name))
 
 ;; Presto doesn't support FKs, at least not adding them via DDL
 (defmethod sql.tx/add-fk-sql :presto-jdbc
