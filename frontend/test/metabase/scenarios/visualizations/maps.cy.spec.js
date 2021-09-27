@@ -185,4 +185,39 @@ describe("scenarios > visualizations > maps", () => {
     cy.findByText("Longitude:");
     cy.findByText("1");
   });
+
+  it("should render grid map visualization for native questions (metabase#8362)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "native",
+        native: {
+          query: `
+              select 20 as "Latitude", -110 as "Longitude", 1 as "metric" union all
+              select 70 as "Latitude", -170 as "Longitude", 5 as "metric"
+            `,
+          "template-tags": {},
+        },
+        database: 1,
+      },
+      display: "map",
+      visualization_settings: {
+        "map.type": "grid",
+        "map.latitude_column": "Latitude",
+        "map.longitude_column": "Longitude",
+        "map.metric_column": "metric",
+      },
+    });
+
+    // Ensure chart is rendered
+    cy.get(".leaflet-interactive");
+
+    cy.findByText("Visualization").click();
+
+    // Ensure the Map visualization is sensible
+    cy.findByTestId("Map-button").should(
+      "have.attr",
+      "data-is-sensible",
+      "true",
+    );
+  });
 });

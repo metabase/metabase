@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 import Button from "metabase/components/Button";
 
 import _ from "underscore";
+import { AuditParametersInput } from "./AuditParameters.styled";
 
 const DEBOUNCE_PERIOD = 300;
 
@@ -34,14 +35,14 @@ export default class AuditParameters extends React.Component {
     };
   }
 
-  changeValue = (key: string, value: string) => {
+  changeValue = (key, value) => {
     this.setState({
       inputValues: { ...this.state.inputValues, [key]: value },
     });
     this.commitValueDebounced(key, value);
   };
 
-  commitValueDebounced = _.debounce((key: string, value: string) => {
+  commitValueDebounced = _.debounce((key, value) => {
     this.setState({
       committedValues: { ...this.state.committedValues, [key]: value },
     });
@@ -59,26 +60,24 @@ export default class AuditParameters extends React.Component {
     return (
       <div>
         <div className="pt4">
-          {parameters &&
-            parameters.map(({ key, placeholder }) => (
-              <input
-                className="input mr2"
-                key={key}
-                type="text"
-                value={inputValues[key] || ""}
-                placeholder={placeholder}
-                disabled={disabled}
-                onChange={e => {
-                  this.changeValue(key, e.target.value);
-                }}
-              />
-            ))}
-          {buttons &&
-            buttons.map(({ key, onClick, label }) => (
-              <Button primary key={key} onClick={onClick} disabled={disabled}>
-                {label}
-              </Button>
-            ))}
+          {parameters.map(({ key, placeholder, icon }) => (
+            <AuditParametersInput
+              key={key}
+              type="text"
+              value={inputValues[key] || ""}
+              placeholder={placeholder}
+              disabled={disabled}
+              onChange={value => {
+                this.changeValue(key, value);
+              }}
+              icon={icon}
+            />
+          ))}
+          {buttons?.map(({ key, onClick, label }) => (
+            <Button primary key={key} onClick={onClick} disabled={disabled} className="ml2">
+              {label}
+            </Button>
+          ))}
         </div>
         {children && children(committedValues)}
       </div>

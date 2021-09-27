@@ -1,14 +1,14 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import {
-  SortableContainer,
-  SortableElement,
-  SortableHandle,
-} from "react-sortable-hoc";
 import cx from "classnames";
 
 import StaticParameterWidget from "./ParameterWidget";
 import Icon from "metabase/components/Icon";
+import {
+  SortableContainer,
+  SortableElement,
+  SortableHandle,
+} from "metabase/components/sortable";
 import {
   getValuePopulatedParameters,
   getVisibleParameters,

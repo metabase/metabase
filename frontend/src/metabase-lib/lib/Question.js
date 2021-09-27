@@ -544,13 +544,38 @@ export default class Question {
 
   drillPK(field: Field, value: Value): ?Question {
     const query = this.query();
-    if (query instanceof StructuredQuery) {
-      return query
-        .reset()
-        .setTable(field.table)
-        .filter(["=", ["field", field.id, null], value])
-        .question();
+
+    if (!(query instanceof StructuredQuery)) {
+      return;
     }
+
+    const otherPKFilters = query
+      .filters()
+      ?.filter(filter => {
+        const filterField = filter?.field();
+        if (!filterField) {
+          return false;
+        }
+
+        const isNotSameField = filterField.id !== field.id;
+        const isPKEqualsFilter =
+          filterField.isPK() && filter.operatorName() === "=";
+        const isFromSameTable = filterField.table.id === field.table.id;
+
+        return isPKEqualsFilter && isNotSameField && isFromSameTable;
+      })
+      .map(filter => filter.raw());
+
+    const filtersToApply = [
+      ["=", ["field", field.id, null], value],
+      ...otherPKFilters,
+    ];
+
+    const resultedQuery = filtersToApply.reduce((query, filter) => {
+      return query.addFilter(filter);
+    }, query.reset().setTable(field.table));
+
+    return resultedQuery.question();
   }
 
   _syncStructuredQueryColumnsAndSettings(previousQuestion, previousQuery) {
@@ -712,6 +737,11 @@ export default class Question {
     return Mode.forQuestion(this);
   }
 
+  /**
+   * Returns true if, based on filters and table columns, the expected result is a single row.
+   * However, it might not be true when a PK column is not unique, leading to multiple rows.
+   * Because of that, always check query results in addition to this property.
+   */
   isObjectDetail(): boolean {
     const mode = this.mode();
     return mode ? mode.name() === "object" : false;

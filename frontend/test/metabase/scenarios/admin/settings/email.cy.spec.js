@@ -8,19 +8,19 @@ describe("scenarios > admin > settings > email settings", () => {
 
   it("should be able to save email settings (metabase#17615)", () => {
     cy.visit("/admin/settings/email");
-    cy.findByPlaceholderText("smtp.yourservice.com")
+    cy.findByLabelText("SMTP Host")
       .type("localhost")
       .blur();
-    cy.findByPlaceholderText("587")
+    cy.findByLabelText("SMTP Port")
       .type("25")
       .blur();
-    cy.findByPlaceholderText("youlooknicetoday")
+    cy.findByLabelText("SMTP Username")
       .type("admin")
       .blur();
-    cy.findByPlaceholderText("Shhh...")
+    cy.findByLabelText("SMTP Password")
       .type("admin")
       .blur();
-    cy.findByPlaceholderText("metabase@yourcompany.com")
+    cy.findByLabelText("From Address")
       .type("mailer@metabase.test")
       .blur();
     cy.findByText("Save changes").click();
@@ -72,12 +72,9 @@ describe("scenarios > admin > settings > email settings", () => {
   it("should be able to clear email settings", () => {
     cy.visit("/admin/settings/email");
     cy.findByText("Clear").click();
-    cy.findByPlaceholderText("smtp.yourservice.com").should("have.value", "");
-    cy.findByPlaceholderText("587").should("have.value", "");
-    cy.findByPlaceholderText("metabase@yourcompany.com").should(
-      "have.value",
-      "",
-    );
+    cy.findByLabelText("SMTP Host").should("have.value", "");
+    cy.findByLabelText("SMTP Port").should("have.value", "");
+    cy.findByLabelText("From Address").should("have.value", "");
   });
 
   it("should not offer to save email changes when there aren't any (metabase#14749)", () => {
@@ -96,19 +93,19 @@ describe("scenarios > admin > settings > email settings", () => {
     cy.visit("/admin/settings/email");
 
     // First we fill out wrong settings
-    cy.findByPlaceholderText("smtp.yourservice.com")
+    cy.findByLabelText("SMTP Host")
       .type("foo") // Invalid SMTP host
       .blur();
-    cy.findByPlaceholderText("587")
+    cy.findByLabelText("SMTP Port")
       .type("25")
       .blur();
-    cy.findByPlaceholderText("youlooknicetoday")
+    cy.findByLabelText("SMTP Username")
       .type("admin")
       .blur();
-    cy.findByPlaceholderText("Shhh...")
+    cy.findByLabelText("SMTP Password")
       .type("admin")
       .blur();
-    cy.findByPlaceholderText("metabase@yourcompany.com")
+    cy.findByLabelText("From Address")
       .type("mailer@metabase.test")
       .blur();
 

@@ -1,5 +1,8 @@
 import React from "react";
 import PropTypes from "prop-types";
+import { t } from "ttag";
+import _ from "underscore";
+import cx from "classnames";
 
 import { registerVisualization } from "metabase/visualizations/index";
 
@@ -11,21 +14,17 @@ import Table from "metabase/visualizations/visualizations/Table";
 import EmptyState from "metabase/components/EmptyState";
 import Icon from "metabase/components/Icon";
 import CheckBox from "metabase/components/CheckBox";
+import { RemoveRowButton } from "./AuditTableVisualization.styled";
+import { getRowValuesByColumns, getColumnName } from "../lib/mode";
 
 import NoResults from "assets/img/no_results.svg";
-
-import { t } from "ttag";
-
-import _ from "underscore";
-import cx from "classnames";
-
-const getColumnName = column => column.remapped_to || column.name;
 
 const propTypes = {
   series: PropTypes.array,
   visualizationIsClickable: PropTypes.func,
   onVisualizationClick: PropTypes.func,
   onSortingChange: PropTypes.func,
+  onRemoveRow: PropTypes.func,
   settings: PropTypes.object,
   isSortable: PropTypes.bool,
   sorting: PropTypes.shape({
@@ -77,6 +76,11 @@ export default class AuditTableVisualization extends React.Component {
     onRowSelectClick({ ...e, row: row, rowIndex: rowIndex });
   };
 
+  handleRemoveRowClick = (row, cols) => {
+    const rowData = getRowValuesByColumns(row, cols);
+    this.props.onRemoveRow(rowData);
+  };
+
   render() {
     const {
       series: [
@@ -93,8 +97,10 @@ export default class AuditTableVisualization extends React.Component {
       selectHeader,
       rowChecked,
       onEmptyLoad,
+      onRemoveRow,
     } = this.props;
 
+    const canRemoveRows = !!onRemoveRow;
     const columnIndexes = settings["table.columns"]
       .filter(({ enabled }) => enabled)
       .map(({ name }) => _.findIndex(cols, col => col.name === name));
@@ -190,6 +196,16 @@ export default class AuditTableVisualization extends React.Component {
                   </td>
                 );
               })}
+
+              {canRemoveRows && (
+                <td>
+                  <RemoveRowButton
+                    onClick={() => this.handleRemoveRowClick(row, cols)}
+                  >
+                    <Icon name="close" color="text-light" />
+                  </RemoveRowButton>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>

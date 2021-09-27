@@ -41,7 +41,8 @@ export function isSameField(fieldA, fieldB, exact = false) {
  */
 export function getFieldTargetId(field: FieldReference): ?FieldId {
   if (isLocalField(field)) {
-    return typeof field[1] === "number" ? field[1] : field;
+    const type = typeof field[1];
+    return type === "number" || type === "string" ? field[1] : field;
   }
   console.warn("Unknown field type:", field);
 }

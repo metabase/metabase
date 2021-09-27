@@ -1,6 +1,6 @@
-import { updateIn } from "icepick";
-import _ from "underscore";
 import { t } from "ttag";
+import _ from "underscore";
+import { updateIn } from "icepick";
 import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
