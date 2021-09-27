@@ -16,7 +16,7 @@ const CARD_ID_COL = 0;
 
 export default function ErrorOverview(props) {
   const [sorting, setSorting] = useState({
-    column: "card_name",
+    column: "last_run_at",
     isAscending: false,
   });
 
