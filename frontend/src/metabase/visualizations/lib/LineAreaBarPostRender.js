@@ -370,8 +370,11 @@ function onRenderAddExtraClickHandlers(chart) {
 
 function onRenderSetZeroGridLineClassName(chart) {
   const yAxis = chart.y();
-  const yZero = yAxis(0).toString();
+  if (!yAxis) {
+    return;
+  }
 
+  const yZero = yAxis(0).toString();
   chart
     .select(".grid-line.horizontal")
     .selectAll("line")
