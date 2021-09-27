@@ -73,6 +73,10 @@ function _init(reducers, getRoutes, callback) {
   const routes = getRoutes(store);
   const history = syncHistoryWithStore(browserHistory, store);
 
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    throw new Error("This will show if prefers-reduced-motion is set to true");
+  }
+
   let root;
   ReactDOM.render(
     <Provider store={store} ref={ref => (root = ref)}>
