@@ -17,7 +17,7 @@ docker cp metabase:/metabase.db/metabase.db.mv.db ./
 
 The above command would copy the database file to the directory you ran the command from. With your database file outside of the container, all you need to do is follow the "How to migrate" steps below.
 
-## How to migrate 
+## How to migrate
 
 Metabase provides a custom migration command for upgrading H2 application database files by copying their data to a new database. Here's what you'll do:
 
@@ -51,4 +51,4 @@ Metabase expects that you'll run the command against a brand-new (empty) databas
 
 ### Troubleshooting
 
-If you get an error, check out [this troubleshooting guide](../troubleshooting-guide/application-database.md).
+If you get an error, check out [this troubleshooting guide](../troubleshooting-guide/loading-from-h2.md).
