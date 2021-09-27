@@ -30,6 +30,7 @@ export function onRenderValueLabels(
   );
 
   let displays = seriesSettings.map(settings => settings.display);
+  const isStacked = chart.settings["stackable.stack_type"] === "stacked";
 
   if (
     showSeries.every(s => s === false) || // every series setting is off
@@ -38,7 +39,7 @@ export function onRenderValueLabels(
     return;
   }
 
-  if (chart.settings["stackable.stack_type"] === "stacked") {
+  if (isStacked) {
     // When stacked, flatten datas into one series. We'll sum values on the same x point later.
     datas = [datas.flat()];
 
@@ -95,7 +96,7 @@ export function onRenderValueLabels(
           .filter(([, y]) => y < 0)
           .reduce((sum, [, y]) => sum + y, 0);
 
-        if (display === "waterfall") {
+        if (!isStacked) {
           return [[x, yp + yn, 1]];
         } else if (yp !== yn) {
           return [[x, yp, 2], [x, yn, 2]];
