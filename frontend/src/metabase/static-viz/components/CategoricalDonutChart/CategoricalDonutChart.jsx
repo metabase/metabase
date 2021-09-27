@@ -1,7 +1,9 @@
-import React from "react";
+import React, { Fragment } from "react";
 import PropTypes from "prop-types";
 import { Group } from "@visx/group";
 import { Pie } from "@visx/shape";
+import { Text } from "@visx/text";
+import { formatNumber } from "metabase/static-viz/lib/numbers";
 
 const propTypes = {
   data: PropTypes.array,
@@ -9,6 +11,9 @@ const propTypes = {
   accessors: PropTypes.shape({
     dimension: PropTypes.func,
     metric: PropTypes.func,
+  }),
+  settings: PropTypes.shape({
+    metric: PropTypes.object,
   }),
 };
 
@@ -21,7 +26,7 @@ const layout = {
   padAngle: 0.02,
 };
 
-const CategoricalDonutChart = ({ data, colors, accessors }) => {
+const CategoricalDonutChart = ({ data, colors, accessors, settings }) => {
   const innerWidth = layout.width - layout.margin * 2;
   const innerHeight = layout.height - layout.margin * 2;
   const outerRadius = Math.min(innerWidth, innerHeight) / 2;
@@ -29,6 +34,7 @@ const CategoricalDonutChart = ({ data, colors, accessors }) => {
   const centerX = layout.margin + innerWidth / 2;
   const centerY = layout.margin + innerHeight / 2;
   const pieSortValues = (a, b) => b - a;
+  const totalValue = data.map(accessors.metric).reduce((a, b) => a + b, 0);
 
   return (
     <svg width={layout.width} height={layout.height}>
@@ -42,19 +48,24 @@ const CategoricalDonutChart = ({ data, colors, accessors }) => {
           cornerRadius={layout.cornerRadius}
           padAngle={layout.padAngle}
         >
-          {pie =>
-            pie.arcs.map((arc, index) => {
-              const path = pie.path(arc);
-              const dimension = arc.data[0];
-              const fill = colors[dimension];
+          {pie => (
+            <Fragment>
+              {pie.arcs.map((arc, index) => {
+                const path = pie.path(arc);
+                const dimension = arc.data[0];
+                const fill = colors[dimension];
 
-              return (
-                <g key={`arc-${index}`}>
-                  <path d={path} fill={fill} />
-                </g>
-              );
-            })
-          }
+                return (
+                  <g key={`arc-${index}`}>
+                    <path d={path} fill={fill} />
+                  </g>
+                );
+              })}
+              <Text textAnchor="middle" dominantBaseline="middle">
+                {formatNumber(totalValue, settings?.metric)}
+              </Text>
+            </Fragment>
+          )}
         </Pie>
       </Group>
     </svg>
