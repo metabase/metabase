@@ -71,6 +71,7 @@ function ErrorDetailDisplay(props) {
     ].map((x, idx) => {
       const idVal = resRow[nameToResCol[linkColumns[idx]]];
       const urlVal = linkColumns[idx] && idVal ? columnNameToUrl[linkColumns[idx]](idVal) : "";
+      const linkClass = (urlVal === "") ? "" : "text-brand";
       const formattedVal = formatValue(resRow[nameToResCol[x]], {
         column: resCols[nameToResCol[x]],
         jsx: true,
@@ -83,7 +84,7 @@ function ErrorDetailDisplay(props) {
           {formatColumn(resCols[nameToResCol[x]])}
         </td>
         <td>
-        {<Link to={urlVal}>
+        {<Link to={urlVal} className={linkClass}>
           {formattedVal}
           </Link>}
         </td>
