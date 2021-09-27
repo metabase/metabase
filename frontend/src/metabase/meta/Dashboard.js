@@ -1,3 +1,7 @@
+import _ from "underscore";
+import { setIn } from "icepick";
+import { t } from "ttag";
+
 import MetabaseSettings from "metabase/lib/settings";
 import Question from "metabase-lib/lib/Question";
 import { ExpressionDimension } from "metabase-lib/lib/Dimension";
@@ -17,10 +21,8 @@ import {
   getParameterOptions,
   PARAMETER_OPERATOR_TYPES,
   getOperatorDisplayName,
+  getParameterTargetFieldId,
 } from "metabase/meta/Parameter";
-
-import { t } from "ttag";
-import _ from "underscore";
 
 import { slugify } from "metabase/lib/formatting";
 
@@ -267,4 +269,123 @@ export function isDashboardParameterWithoutMapping(parameter, dashboard) {
   const parameterHasMapping = hasMapping(parameter, dashboard);
 
   return parameterExistsOnDashboard && !parameterHasMapping;
+}
+
+export function getMappingsByParameter(metadata, dashboard) {
+  if (!dashboard) {
+    return {};
+  }
+
+  let mappingsByParameter = {};
+  const mappings = [];
+  const countsByParameter = {};
+  for (const dashcard of dashboard.ordered_cards) {
+    const cards: Card[] = [dashcard.card].concat(dashcard.series);
+    for (const mapping of dashcard.parameter_mappings || []) {
+      const card = _.findWhere(cards, { id: mapping.card_id });
+      const fieldId =
+        card && getParameterTargetFieldId(mapping.target, card.dataset_query);
+      const field = metadata.field(fieldId);
+      const values = (field && field.fieldValues()) || [];
+      if (values.length) {
+        countsByParameter[mapping.parameter_id] =
+          countsByParameter[mapping.parameter_id] || {};
+      }
+      for (const value of values) {
+        countsByParameter[mapping.parameter_id][value] =
+          (countsByParameter[mapping.parameter_id][value] || 0) + 1;
+      }
+
+      const augmentedMapping = {
+        ...mapping,
+        parameter_id: mapping.parameter_id,
+        dashcard_id: dashcard.id,
+        card_id: mapping.card_id,
+        field_id: fieldId,
+        values,
+      };
+      mappingsByParameter = setIn(
+        mappingsByParameter,
+        [mapping.parameter_id, dashcard.id, mapping.card_id],
+        augmentedMapping,
+      );
+      mappings.push(augmentedMapping);
+    }
+  }
+  const mappingsWithValuesByParameter = {};
+  // update max values overlap for each mapping
+  for (const mapping of mappings) {
+    if (mapping.values && mapping.values.length > 0) {
+      const overlapMax = Math.max(
+        ...mapping.values.map(
+          value => countsByParameter[mapping.parameter_id][value],
+        ),
+      );
+      mappingsByParameter = setIn(
+        mappingsByParameter,
+        [
+          mapping.parameter_id,
+          mapping.dashcard_id,
+          mapping.card_id,
+          "overlapMax",
+        ],
+        overlapMax,
+      );
+      mappingsWithValuesByParameter[mapping.parameter_id] =
+        (mappingsWithValuesByParameter[mapping.parameter_id] || 0) + 1;
+    }
+  }
+  // update count of mappings with values
+  for (const mapping of mappings) {
+    mappingsByParameter = setIn(
+      mappingsByParameter,
+      [
+        mapping.parameter_id,
+        mapping.dashcard_id,
+        mapping.card_id,
+        "mappingsWithValues",
+      ],
+      mappingsWithValuesByParameter[mapping.parameter_id] || 0,
+    );
+  }
+
+  return mappingsByParameter;
+}
+
+export function getDashboardParametersWithFieldMetadata(
+  metadata,
+  dashboard,
+  mappingsByParameter,
+) {
+  console.log("getDashboardParametersWithFieldMetadata", dashboard);
+  return ((dashboard && dashboard.parameters) || []).map(parameter => {
+    const mappings = _.flatten(
+      _.map(mappingsByParameter[parameter.id] || {}, _.values),
+    );
+
+    // we change out widgets if a parameter is connected to non-field targets
+    const hasOnlyFieldTargets = mappings.every(x => x.field_id != null);
+
+    // get the unique list of field IDs these mappings reference
+    const fieldIds = _.chain(mappings)
+      .map(m => m.field_id)
+      .uniq()
+      .filter(fieldId => fieldId != null)
+      .value();
+    const fieldIdsWithFKResolved = _.chain(fieldIds)
+      .map(id => metadata.field(id))
+      .filter(f => f)
+      .map(f => (f.target || f).id)
+      .uniq()
+      .value();
+    return {
+      ...parameter,
+      field_ids: fieldIds,
+      // if there's a single uniqe field (accounting for FKs) then
+      // include it as the one true field_id
+      field_id:
+        fieldIdsWithFKResolved.length === 1 ? fieldIdsWithFKResolved[0] : null,
+      hasOnlyFieldTargets,
+    };
+  });
 }
