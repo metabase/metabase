@@ -23,6 +23,9 @@
       (log/trace (u/format-color 'yellow "\nPreprocessed:\n%s" (u/pprint-to-str query)))
       (log/trace (u/format-color 'green "Native form: \n%s" (u/pprint-to-str native-query)))
       (qp
+       ;; For queries already native, this is normally no-op except during `qp/query->native`
+       ;; where `:native` will be set to `nil` (result from `context/nativef`) to prevent
+       ;; execution in the next step.
        (assoc query :native native-query)
        (fn [metadata]
          (rff (assoc metadata :native_form native-query)))
