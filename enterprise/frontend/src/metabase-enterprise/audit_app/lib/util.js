@@ -7,7 +7,9 @@ import type {
   QueryMode,
 } from "metabase-types/types/Visualization";
 
-const columnNameToUrl = {
+export const columnNameToUrl = {
+  // No admin page for collections but still want to link to it
+  collection_id: value => `/collection/${value}`,
   user_id: value => `/admin/audit/member/${value}`,
   viewed_by_id: value => `/admin/audit/member/${value}`,
   saved_by_id: value => `/admin/audit/member/${value}`,

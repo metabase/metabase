@@ -8,8 +8,10 @@ import Table from "metabase/visualizations/visualizations/Table";
 import { formatColumn, formatValue } from "metabase/lib/formatting";
 import { CardApi } from "metabase/services";
 import Button from "metabase/components/Button";
+import Link from "metabase/components/Link";
 import Question from "metabase-lib/lib/Question";
 import { QuestionResultLoader } from "metabase/containers/QuestionResultLoader";
+import { columnNameToUrl } from "../../audit_app/lib/util";
 
 const CARD_ID_ROW_IDX = 0;
 const ErrorDrill = ({ clicked }) => {
@@ -46,6 +48,17 @@ function ErrorDetailDisplay(props) {
       {},
     );
 
+    const linkColumns = [
+      null,
+      "collection_id",
+      "database_id",
+      null,
+      "table_id",
+      null,
+      "user_id",
+      null
+    ];
+
     const ordinaryRows = [
       "last_run_at",
       "collection_name",
@@ -55,8 +68,10 @@ function ErrorDetailDisplay(props) {
       "total_runs",
       "user_name",
       "updated_at",
-    ].map(x => (
-      <tr key={x}>
+    ].map((x, idx) => {
+      const idVal = resRow[nameToResCol[linkColumns[idx]]];
+      const urlVal = linkColumns[idx] && idVal ? columnNameToUrl[linkColumns[idx]](idVal) : "";
+      return (<tr key={x}>
         <td align="right" className="m0 mt1 text-medium">
           {formatColumn(resCols[nameToResCol[x]])}
         </td>
@@ -69,8 +84,8 @@ function ErrorDetailDisplay(props) {
             local: true,
           })}
         </td>
-      </tr>
-    ));
+      </tr>)
+    });
     const dashIdRows = resRow[nameToResCol.dash_name_str]
       .split("|")
       .map((x, idx) => (
@@ -92,7 +107,9 @@ function ErrorDetailDisplay(props) {
         {resRow[nameToResCol.error_str]}
       </div>,
       <table key="table" className="ContentTable">
+      <tbody>
         {[ordinaryRows, dashIdRows]}
+      </tbody>
       </table>,
     ];
   } else {
