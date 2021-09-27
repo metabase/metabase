@@ -1,11 +1,9 @@
 (ns metabase-enterprise.audit-app.pages.query-detail
   "Queries to show details about a (presumably ad-hoc) query."
   (:require [cheshire.core :as json]
-            [honeysql.core :as hsql]
             [metabase-enterprise.audit-app.interface :as audit.i]
             [metabase-enterprise.audit-app.pages.common :as common]
             [metabase-enterprise.audit-app.pages.common.cards :as cards]
-            [metabase.util.honeysql-extensions :as hx]
             [metabase.util.schema :as su]
             [ring.util.codec :as codec]
             [schema.core :as s]))

@@ -1,6 +1,5 @@
 (ns metabase-enterprise.audit-app.pages.common.cards
-  (:require [honeysql.core :as hsql]
-            [metabase-enterprise.audit-app.pages.common :as common]
+  (:require [metabase-enterprise.audit-app.pages.common :as common]
             [metabase.db.connection :as mdb.connection]
             [metabase.util.honeysql-extensions :as hx]))
 

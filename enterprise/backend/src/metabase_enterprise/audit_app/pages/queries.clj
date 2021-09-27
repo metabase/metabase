@@ -1,9 +1,9 @@
 (ns metabase-enterprise.audit-app.pages.queries
   (:require [honeysql.core :as hsql]
-            [metabase.db.connection :as mdb.connection]
             [metabase-enterprise.audit-app.interface :as audit.i]
             [metabase-enterprise.audit-app.pages.common :as common]
             [metabase-enterprise.audit-app.pages.common.cards :as cards]
+            [metabase.db.connection :as mdb.connection]
             [metabase.util.honeysql-extensions :as hx]))
 
 ;; DEPRECATED Query that returns data for a two-series timeseries chart with number of queries ran and average query
