@@ -2,9 +2,7 @@ import React from "react";
 import { t } from "ttag";
 import PropTypes from "prop-types";
 import { getIn } from "icepick";
-import cx from "classnames";
 
-import Table from "metabase/visualizations/visualizations/Table";
 import { formatColumn, formatValue } from "metabase/lib/formatting";
 import { CardApi } from "metabase/services";
 import Button from "metabase/components/Button";
@@ -38,6 +36,14 @@ export const ErrorMode = {
   drills: () => [ErrorDrill],
 };
 
+
+function idxToUrl(resRow, resCols, nameToResCol, colName) {
+  const idVal = resRow[nameToResCol[colName]];
+  const urlVal = colName && idVal ? columnNameToUrl[colName](idVal) : "";
+  const linkClass = (urlVal === "") ? "" : "text-brand";
+  return [urlVal, linkClass]
+}
+
 function ErrorDetailDisplay(props) {
   const { result } = props;
   const resRow = getIn(result, ["data", "rows", 0]);
@@ -69,9 +75,7 @@ function ErrorDetailDisplay(props) {
       "user_name",
       "updated_at",
     ].map((x, idx) => {
-      const idVal = resRow[nameToResCol[linkColumns[idx]]];
-      const urlVal = linkColumns[idx] && idVal ? columnNameToUrl[linkColumns[idx]](idVal) : "";
-      const linkClass = (urlVal === "") ? "" : "text-brand";
+      const [urlVal, linkClass] = idxToUrl(resRow, resCols, nameToResCol, linkColumns[idx]);
       const formattedVal = formatValue(resRow[nameToResCol[x]], {
         column: resCols[nameToResCol[x]],
         jsx: true,
@@ -90,6 +94,7 @@ function ErrorDetailDisplay(props) {
         </td>
       </tr>)
     });
+
     const dashIdRows = resRow[nameToResCol.dash_name_str]
       .split("|")
       .map((x, idx) => (
@@ -103,9 +108,13 @@ function ErrorDetailDisplay(props) {
         </tr>
       ));
 
+    const [cardUrlVal, cardLinkClass] = idxToUrl(resRow, resCols, nameToResCol, "card_id");
+
     return [
       <h2 className="PageTitle p1" key="card_name">
-        {resRow[nameToResCol.card_name]}
+      {<Link to={cardUrlVal} className={cardLinkClass}>
+          {resRow[nameToResCol.card_name]}
+          </Link>}
       </h2>,
       <div key="error_str" className="p1 text-code">
         {resRow[nameToResCol.error_str]}
