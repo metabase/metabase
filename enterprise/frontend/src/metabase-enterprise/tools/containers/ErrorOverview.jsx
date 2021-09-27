@@ -15,7 +15,7 @@ const getSortOrder = isAscending => (isAscending ? "asc" : "desc");
 const CARD_ID_COL = 0;
 
 export default function ErrorOverview(props) {
-  const [paramsEnabled, setParamsEnabled] = useState(true);
+  const [isBlank, setIsBlank] = useState(false);
   const [sorting, setSorting] = useState({
     column: "last_run_at",
     isAscending: false,
@@ -59,7 +59,7 @@ export default function ErrorOverview(props) {
           onClick: handleReloadSelected,
         },
       ]}
-      enabled={paramsEnabled}
+      isBlank={isBlank}
     >
       {({ errorFilter, dbFilter, collectionFilter }) => (
         <AuditTable
@@ -73,7 +73,7 @@ export default function ErrorOverview(props) {
           onSortingChange={handleSortingChange}
           onRowSelectClick={handleRowSelectClick}
           onEmptyLoad={() => {
-            setParamsEnabled(false);
+            setIsBlank(true);
           }}
           mode={ErrorMode}
           table={Queries.bad_table(

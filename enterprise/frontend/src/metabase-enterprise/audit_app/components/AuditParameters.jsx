@@ -23,7 +23,7 @@ const propTypes = {
     }),
   ),
   children: PropTypes.func,
-  enabled: PropTypes.bool,
+  isBlank: PropTypes.bool,
 };
 
 export default class AuditParameters extends React.Component {
@@ -49,13 +49,11 @@ export default class AuditParameters extends React.Component {
   }, DEBOUNCE_PERIOD);
 
   render() {
-    const { parameters, children, buttons, enabled } = this.props;
+    const { parameters, children, buttons, isBlank } = this.props;
     const { inputValues, committedValues } = this.state;
 
-    // What's given as "enabled" is really the 0 rows returned,
-    // so we have to check for 0 rows returned with null param search
     const disabled =
-      !enabled && inputValues && Object.keys(inputValues).length === 0;
+      isBlank && inputValues && Object.keys(inputValues).length === 0;
 
     return (
       <div>
@@ -74,7 +72,13 @@ export default class AuditParameters extends React.Component {
             />
           ))}
           {buttons?.map(({ key, onClick, label }) => (
-            <Button primary key={key} onClick={onClick} disabled={disabled} className="ml2">
+            <Button
+              primary
+              key={key}
+              onClick={onClick}
+              disabled={disabled}
+              className="ml2"
+            >
               {label}
             </Button>
           ))}
