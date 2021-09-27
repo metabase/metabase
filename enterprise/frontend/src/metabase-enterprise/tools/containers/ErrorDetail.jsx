@@ -9,7 +9,7 @@ import Button from "metabase/components/Button";
 import Link from "metabase/components/Link";
 import Question from "metabase-lib/lib/Question";
 import { QuestionResultLoader } from "metabase/containers/QuestionResultLoader";
-import { columnNameToUrl } from "../../audit_app/lib/util";
+import { columnNameToUrl } from "../../audit_app/lib/mode";
 
 const CARD_ID_ROW_IDX = 0;
 const ErrorDrill = ({ clicked }) => {
