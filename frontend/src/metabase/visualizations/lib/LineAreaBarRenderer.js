@@ -442,7 +442,7 @@ function applyChartLineBarSettings(
   }
 
   // AREA/BAR:
-  if (chart.stackLayout) {
+  if (settings["stackable.stack_type"] === "stacked") {
     chart.stackLayout(stack().offset(stackOffsetDiverging));
   }
 }
