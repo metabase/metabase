@@ -12,7 +12,7 @@ Now, whenever you want to refer to your question again you can find it by search
 
 ## Downloading Your Results
 
-You can download or export the results of a question by clicking on the Download arrow in the lower right of the screen. Results can be downloaded into .csv, .xlsx, or .json files. The maximum download size is 1 million rows. The exports preserve the formatting you've defined in the question. Things like date and currency formats are kept throughout, as well as column ordering and visibility. You'll even get hyperlinks in XLSX. Files names for the exported question will include a slug of the question title.
+You can export the results of a question by clicking on the __Download arrow__ (a down arrow in a cloud) in the lower right of the screen. Results can be downloaded into .csv, .xlsx, or .json files. The maximum download size is 1 million rows. Exported .xlsx files preserve the formatting defined in the question: date and currency formats are kept throughout, as well as column ordering and visibility. Files names for the exported question will include a slug of the question title, so you can easily distinguish files when exporting multiple questions.
 
 ## Editing your question
 
