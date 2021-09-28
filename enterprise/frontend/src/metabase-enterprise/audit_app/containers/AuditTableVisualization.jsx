@@ -35,7 +35,7 @@ const propTypes = {
   selectHeader: PropTypes.string,
   rowChecked: PropTypes.object,
   onRowSelectClick: PropTypes.func,
-  onEmptyLoad: PropTypes.func,
+  onNonEmptyLoad: PropTypes.func,
 };
 
 export default class AuditTableVisualization extends React.Component {
@@ -96,7 +96,7 @@ export default class AuditTableVisualization extends React.Component {
       isSelectable,
       selectHeader,
       rowChecked,
-      onEmptyLoad,
+      onNonEmptyLoad,
       onRemoveRow,
     } = this.props;
 
@@ -106,7 +106,6 @@ export default class AuditTableVisualization extends React.Component {
       .map(({ name }) => _.findIndex(cols, col => col.name === name));
 
     if (rows.length === 0) {
-      onEmptyLoad();
       return (
         <EmptyState
           title={t`No results`}
@@ -114,6 +113,7 @@ export default class AuditTableVisualization extends React.Component {
         />
       );
     }
+    onNonEmptyLoad();
     return (
       <table className="ContentTable">
         <thead>

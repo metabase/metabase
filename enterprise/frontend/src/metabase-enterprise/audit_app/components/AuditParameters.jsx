@@ -23,7 +23,7 @@ const propTypes = {
     }),
   ),
   children: PropTypes.func,
-  isBlank: PropTypes.bool,
+  hasResults: PropTypes.bool,
 };
 
 export default class AuditParameters extends React.Component {
@@ -49,11 +49,11 @@ export default class AuditParameters extends React.Component {
   }, DEBOUNCE_PERIOD);
 
   render() {
-    const { parameters, children, buttons, isBlank } = this.props;
+    const { parameters, children, buttons, hasResults } = this.props;
     const { inputValues, committedValues } = this.state;
 
     const disabled =
-      isBlank && inputValues && Object.keys(inputValues).length === 0;
+      (hasResults === false) && inputValues && Object.values(inputValues).every((v) => v === '');
 
     return (
       <div>
