@@ -12,9 +12,7 @@ export const getRowValuesByColumns = (row, cols) =>
     };
   }, {});
 
-export const columnNameToUrl = {
-  // No admin page for collections but still want to link to it
-  collection_id: value => `/collection/${value}`,
+const columnNameToUrl = {
   user_id: value => `/admin/audit/member/${value}`,
   creator_id: value => `/admin/audit/member/${value}`,
   viewed_by_id: value => `/admin/audit/member/${value}`,

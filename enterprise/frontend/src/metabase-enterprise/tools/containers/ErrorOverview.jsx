@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 import { t } from "ttag";
 
 import _ from "underscore";
@@ -8,21 +8,15 @@ import { CardApi } from "metabase/services";
 import * as Queries from "../../audit_app/lib/cards/queries";
 import AuditTable from "../../audit_app/containers/AuditTable";
 import AuditParameters from "../../audit_app/components/AuditParameters";
-import { ErrorMode } from "../mode";
 
 const getSortOrder = isAscending => (isAscending ? "asc" : "desc");
 
 const CARD_ID_COL = 0;
 
 export default function ErrorOverview(props) {
-  const reloadRef = useRef(null);
-  // TODO: use isReloading to display a loading overlay
-  // eslint-disable-next-line no-unused-vars
-  const [isReloading, setIsReloading] = useState(false);
-  const [hasResults, setHasResults] = useState(false);
   const [sorting, setSorting] = useState({
-    column: "last_run_at",
-    isAscending: false,
+    column: "card_name",
+    isAscending: true,
   });
 
   const [rowChecked, setRowChecked] = useState({});
@@ -35,9 +29,7 @@ export default function ErrorOverview(props) {
     setRowChecked(newRowChecked);
     setRowToCardId(newRowToCardId);
   };
-
   const handleReloadSelected = async () => {
-    setIsReloading(true);
     const checkedCardIds = Object.values(
       _.pick(rowToCardId, (member, key) => rowChecked[key]),
     );
@@ -46,16 +38,10 @@ export default function ErrorOverview(props) {
         async member => await CardApi.query({ cardId: member }),
       ),
     );
-    reloadRef.current?.reload();
+    location.reload();
   };
 
   const handleSortingChange = sorting => setSorting(sorting);
-
-  const handleLoad = result => {
-    setHasResults(result[0].row_count !== 0);
-    setIsReloading(false);
-  };
-
   return (
     <AuditParameters
       parameters={[
@@ -70,12 +56,10 @@ export default function ErrorOverview(props) {
           onClick: handleReloadSelected,
         },
       ]}
-      hasResults={hasResults}
     >
       {({ errorFilter, dbFilter, collectionFilter }) => (
         <AuditTable
           {...props}
-          reloadRef={reloadRef}
           pageSize={50}
           isSortable
           isSelectable
@@ -84,8 +68,6 @@ export default function ErrorOverview(props) {
           sorting={sorting}
           onSortingChange={handleSortingChange}
           onRowSelectClick={handleRowSelectClick}
-          onLoad={handleLoad}
-          mode={ErrorMode}
           table={Queries.bad_table(
             errorFilter,
             dbFilter,

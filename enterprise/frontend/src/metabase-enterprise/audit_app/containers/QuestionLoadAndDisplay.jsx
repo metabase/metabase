@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useImperativeHandle } from "react";
+import React, { useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -9,7 +9,6 @@ const propTypes = {
   keepPreviousWhileLoading: PropTypes.bool,
   reload: PropTypes.bool,
   onLoad: PropTypes.func,
-  reloadRef: PropTypes.shape({ current: PropTypes.func }),
 };
 
 const QuestionLoadAndDisplay = ({
@@ -17,15 +16,12 @@ const QuestionLoadAndDisplay = ({
   keepPreviousWhileLoading,
   reload,
   onLoad,
-  reloadRef,
   ...props
 }) => {
-  const reloadFnRef = useRef();
-
-  useImperativeHandle(reloadRef, () => () => reloadFnRef.current?.());
+  const reloadRef = useRef();
 
   useEffect(() => {
-    reload && reloadFnRef.current();
+    reload && reloadRef.current();
   }, [reload]);
 
   return (
@@ -36,7 +32,7 @@ const QuestionLoadAndDisplay = ({
     >
       {({ loading, error, reload, ...resultProps }) => {
         const shouldShowLoader = loading && resultProps.results == null;
-        reloadFnRef.current = reload;
+        reloadRef.current = reload;
 
         return (
           <LoadingAndErrorWrapper
