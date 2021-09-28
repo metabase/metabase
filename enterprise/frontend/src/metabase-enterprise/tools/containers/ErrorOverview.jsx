@@ -17,6 +17,7 @@ const CARD_ID_COL = 0;
 export default function ErrorOverview(props) {
   const reloadRef = useRef(null);
   // TODO: use isReloading to display a loading overlay
+  // eslint-disable-next-line no-unused-vars
   const [isReloading, setIsReloading] = useState(false);
   const [hasResults, setHasResults] = useState(false);
   const [sorting, setSorting] = useState({
