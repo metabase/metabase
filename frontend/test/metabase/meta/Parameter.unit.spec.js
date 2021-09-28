@@ -719,6 +719,21 @@ describe("metabase/meta/Parameter", () => {
         ).toEqual("foo");
       });
 
+      it("should not normalize empty string parameter values", () => {
+        parameter1.type = "category";
+        parameter1.hasOnlyFieldTargets = true;
+
+        expect(
+          getParameterValueFromQueryParams(
+            parameter1,
+            {
+              [parameter1.slug]: "",
+            },
+            metadata,
+          ),
+        ).toBe("");
+      });
+
       it("should normalize non-date parameters mapped only to field targets", () => {
         parameter1.type = "category";
         parameter1.hasOnlyFieldTargets = true;

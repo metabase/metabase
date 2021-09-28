@@ -674,7 +674,7 @@ function normalizeParameterValueForWidget(value, parameter) {
     parameter.hasOnlyFieldTargets && !/^date\//.test(parameter.type);
 
   // If we'll use FieldValuesWidget, we should start with an array to match.
-  if (willUseFieldValuesWidget && !Array.isArray(value)) {
+  if (willUseFieldValuesWidget && !Array.isArray(value) && value !== "") {
     value = [value];
   }
 
