@@ -20,8 +20,8 @@
   (mt/with-temp* [User [user]
                   Card [card {:creator_id (:id user)}]]
 
-    (view-log/handle-view-event! {:topic    :card-read
-                                  :item     card})
+    (view-log/handle-view-event! {:topic :card-read
+                                  :item  card})
     (is (= {:user_id  (:id user)
             :model    "card"
             :model_id (:id card)}
