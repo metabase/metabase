@@ -1,34 +1,22 @@
-/* eslint-disable react/prop-types */
 import React from "react";
-// import cx from "classnames";
-// import { Motion, spring } from "react-motion";
+import PropTypes from "prop-types";
 
-import { ViewSideBarAside, ViewSidebarContent } from "./ViewSidebar.styled";
+import { ViewSidebarAside, ViewSidebarContent } from "./ViewSidebar.styled";
 
-// const SPRING_CONFIG = { stiffness: 200, damping: 26 };
-
-const ViewSideBar = ({ left, right, width = 355, isOpen, children }) => (
-  <ViewSideBarAside left={left} right={right} width={width} isOpen={isOpen}>
-    <ViewSidebarContent>{children}</ViewSidebarContent>
-  </ViewSideBarAside>
+const ViewSidebar = ({ left, right, width = 355, isOpen, children }) => (
+  // If we passed `width` as prop, it would end up in the final HTML elements.
+  // This would ruin the animation, so we pass it as `widthProp`.
+  <ViewSidebarAside left={left} right={right} widthProp={width} isOpen={isOpen}>
+    <ViewSidebarContent widthProp={width}>{children}</ViewSidebarContent>
+  </ViewSidebarAside>
 );
 
-export default ViewSideBar;
+ViewSidebar.propTypes = {
+  left: PropTypes.bool,
+  right: PropTypes.bool,
+  width: PropTypes.number,
+  isOpen: PropTypes.bool,
+  children: PropTypes.node,
+};
 
-// <Motion
-//   defaultStyle={{ opacity: 0, width: 0 }}
-//   style={
-//     isOpen
-//       ? { opacity: spring(1), width: spring(width, SPRING_CONFIG) }
-//       : { opacity: spring(0), width: spring(0, SPRING_CONFIG) }
-//   }
-// >
-// {motionStyle => (
-// <aside
-//   data-testid={right ? "sidebar-right" : "sidebar-left"}
-//   className={cx("scroll-y bg-white relative overflow-x-hidden", {
-//     "border-right": left,
-//     "border-left": right,
-//   })}
-//   style={motionStyle}
-// >
+export default ViewSidebar;

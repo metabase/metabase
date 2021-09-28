@@ -1,38 +1,49 @@
 import styled, { css } from "styled-components";
 
-export const ViewSideBarAside = styled.aside`
-  background: white;
-  height: 100%;
+export const ViewSidebarAside = styled.aside`
   overflow-x: hidden;
   overflow-y: auto;
-  position: absolute;
-  width: 355px;
+  opacity: 0;
+  position: relative;
+  transition: width .3s, opacity .3s;
+  width: 0;
+
+  @media (prefers-reduced-motion) {
+    transition: none;
+  }
+
 
   ${({ left }) =>
     left &&
     css`
+      border-right: 1px solid #f0f0f0;
       left: 0;
     `}
 
   ${({ right }) =>
     right &&
     css`
+      border-left: 1px solid #f0f0f0;
       right: 0;
     `}
 
-  ${({ width }) =>
+  ${({ isOpen, widthProp: width }) =>
+    isOpen &&
     width &&
     css`
+      opacity: 1;
       width: ${width}px;
     `}
-
 `;
 
 export const ViewSidebarContent = styled.div`
   position: absolute;
-  width: 355px;
-  left: 0;
-  right: 0;
-  top: 0;
-  bottom: 0;
+  height: 100%;
+  width: 100%;
+
+  ${({ widthProp: width }) =>
+    width &&
+    css`
+      width: ${width}px;
+    `}
 `;
