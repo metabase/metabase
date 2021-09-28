@@ -33,7 +33,7 @@ AuditTable.propTypes = {
   mode: PropTypes.shape({
     name: PropTypes.string.isRequired,
     drills: PropTypes.func.isRequired,
-  })
+  }),
 };
 
 function AuditTable({
