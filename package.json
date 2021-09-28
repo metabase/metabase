@@ -107,7 +107,7 @@
     "@babel/preset-react": "^7.14.5",
     "@cypress/skip-test": "^2.6.0",
     "@cypress/webpack-preprocessor": "^5.9.1",
-    "@percy/cli": "^1.0.0-beta.48",
+    "@percy/cli": "^1.0.0-beta.68",
     "@percy/cypress": "^3.0.0",
     "@testing-library/cypress": "^5.0.2",
     "@testing-library/dom": "^7.29.0",
