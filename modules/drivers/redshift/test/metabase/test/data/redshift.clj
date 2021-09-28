@@ -20,7 +20,9 @@
                                    :type/Integer    "INTEGER"
                                    ;; Use VARCHAR because TEXT in Redshift is VARCHAR(256)
                                    ;; https://docs.aws.amazon.com/redshift/latest/dg/r_Character_types.html#r_Character_types-varchar-or-character-varying
-                                   :type/Text       "VARCHAR(MAX)"}]
+                                   ;; But don't use VARCHAR(MAX) either because of performance impact
+                                   ;; https://docs.aws.amazon.com/redshift/latest/dg/c_best-practices-smallest-column-size.html
+                                   :type/Text       "VARCHAR(1024)"}]
   (defmethod sql.tx/field-base-type->sql-type [:redshift base-type] [_ _] database-type))
 
 ;; If someone tries to run Time column tests with Redshift give them a heads up that Redshift does not support it
