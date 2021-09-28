@@ -147,18 +147,6 @@ export default class PublicQuestion extends Component {
     );
   };
 
-  setMultipleParameterValues = parameterValues => {
-    this.setState(
-      {
-        parameterValues: {
-          ...this.state.parameterValues,
-          ...parameterValues,
-        },
-      },
-      this.run,
-    );
-  };
-
   run = async (): void => {
     const {
       setErrorPage,
@@ -226,7 +214,6 @@ export default class PublicQuestion extends Component {
         actionButtons={actionButtons}
         parameterValues={parameterValues}
         setParameterValue={this.setParameterValue}
-        setMultipleParameterValues={this.setMultipleParameterValues}
       >
         <LoadingAndErrorWrapper
           className="flex-full"
