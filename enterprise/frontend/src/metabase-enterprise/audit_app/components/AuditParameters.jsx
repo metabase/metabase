@@ -53,7 +53,9 @@ export default class AuditParameters extends React.Component {
     const { inputValues, committedValues } = this.state;
 
     const disabled =
-      (hasResults === false) && inputValues && Object.values(inputValues).every((v) => v === '');
+      hasResults === false &&
+      inputValues &&
+      Object.values(inputValues).every(v => v === "");
 
     return (
       <div>

@@ -50,10 +50,10 @@ function AuditTable({
   const [loadedCount, setLoadedCount] = useState(0);
   const { handleNextPage, handlePreviousPage, page } = usePagination();
 
-  const handleOnLoad = (results) => {
+  const handleOnLoad = results => {
     setLoadedCount(results[0].row_count);
     onLoad(results);
-  }
+  };
 
   const card = chain(table.card)
     .assoc("display", "audit-table")

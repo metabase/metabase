@@ -124,9 +124,8 @@ function ErrorDetailDisplay(props) {
 }
 
 function ErrorDetail(props) {
-  const { params, errorRetry} = props;
+  const { params, errorRetry } = props;
   const cardId = parseInt(params.cardId);
-
 
   // below card is not the card in question, but
   // the card we're creating to query for the error details
@@ -161,7 +160,7 @@ const mapDispatchToProps = {
     await CardApi.query({ cardId: cardId });
     // we're imagining that we successfully reran, in which case we want to go back to overall table
     return push("/admin/tools/errors/");
-  }
+  },
 };
 
 export default connect(
