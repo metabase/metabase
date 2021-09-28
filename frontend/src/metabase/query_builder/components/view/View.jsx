@@ -24,7 +24,7 @@ import QueryModals from "../QueryModals";
 import { ViewTitleHeader, ViewSubHeader } from "./ViewHeader";
 import NewQuestionHeader from "./NewQuestionHeader";
 import ViewFooter from "./ViewFooter";
-import ViewSidebar from "./ViewSidebar/ViewSidebar";
+import ViewSidebar from "./ViewSidebar";
 import QuestionDataSelector from "./QuestionDataSelector";
 
 import ChartSettingsSidebar from "./sidebars/ChartSettingsSidebar";
