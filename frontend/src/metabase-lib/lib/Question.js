@@ -824,16 +824,22 @@ export default class Question {
     originalQuestion,
     clean = true,
     query,
+    includeDisplayIsLocked,
   }: {
     originalQuestion?: Question,
     clean?: boolean,
     query?: { [string]: any },
+    includeDisplayIsLocked?: boolean,
   } = {}): string {
     if (
       !this.id() ||
       (originalQuestion && this.isDirtyComparedTo(originalQuestion))
     ) {
-      return Urls.question(null, this._serializeForUrl({ clean }), query);
+      return Urls.question(
+        null,
+        this._serializeForUrl({ clean, includeDisplayIsLocked }),
+        query,
+      );
     } else {
       return Urls.question(this.card(), "", query);
     }
@@ -1045,7 +1051,11 @@ export default class Question {
   }
 
   // Internal methods
-  _serializeForUrl({ includeOriginalCardId = true, clean = true } = {}) {
+  _serializeForUrl({
+    includeOriginalCardId = true,
+    clean = true,
+    includeDisplayIsLocked = false,
+  } = {}) {
     const query = clean ? this.query().clean() : this.query();
 
     const cardCopy = {
@@ -1060,6 +1070,11 @@ export default class Question {
       visualization_settings: this._card.visualization_settings,
       ...(includeOriginalCardId
         ? { original_card_id: this._card.original_card_id }
+        : {}),
+      ...(includeDisplayIsLocked
+        ? {
+            displayIsLocked: this._card.displayIsLocked,
+          }
         : {}),
     };
 
@@ -1081,11 +1096,13 @@ export default class Question {
   }
 
   getUrlWithParameters() {
-    const question = this.query().isEditable()
-      ? this.convertParametersToFilters()
-      : this.markDirty(); // forces use of serialized question url
+    const question = this.convertParametersToFilters().markDirty();
     const query = this.isNative() ? this._parameterValues : undefined;
-    return question.getUrl({ originalQuestion: this, query });
+    return question.getUrl({
+      originalQuestion: this,
+      query,
+      includeDisplayIsLocked: true,
+    });
   }
 
   getModerationReviews() {

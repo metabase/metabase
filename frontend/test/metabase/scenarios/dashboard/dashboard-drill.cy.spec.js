@@ -210,7 +210,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     cy.findByText("num: 111").click();
 
     // show filtered question
-    cy.findByText("Orders");
+    cy.findAllByText("Orders");
     cy.findByText("User ID is 111");
     cy.findByText("Category is Widget");
     cy.findByText("Showing 5 rows");
