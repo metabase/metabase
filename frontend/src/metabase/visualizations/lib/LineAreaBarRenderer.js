@@ -67,7 +67,6 @@ import {
 
 import { lineAddons } from "./graph/addons";
 import { initBrush } from "./graph/brush";
-import { stack, stackOffsetDiverging } from "./graph/stack";
 
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 
@@ -439,11 +438,6 @@ function applyChartLineBarSettings(
       .centerBar(
         forceCenterBar || settings["graph.x_axis.scale"] !== "ordinal",
       );
-  }
-
-  // AREA/BAR:
-  if (chart.stackLayout) {
-    chart.stackLayout(stack().offset(stackOffsetDiverging));
   }
 }
 
