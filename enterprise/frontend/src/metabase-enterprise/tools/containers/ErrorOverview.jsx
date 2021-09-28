@@ -46,7 +46,8 @@ export default function ErrorOverview(props) {
         async member => await CardApi.query({ cardId: member }),
       ),
     );
-    reloadRef.current?.reload();
+    setRowChecked({});
+    reloadRef.current().reload();
   };
 
   const handleSortingChange = sorting => setSorting(sorting);
