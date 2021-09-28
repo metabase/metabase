@@ -72,8 +72,8 @@ export default function ErrorOverview(props) {
           sorting={sorting}
           onSortingChange={handleSortingChange}
           onRowSelectClick={handleRowSelectClick}
-          onLoad={(numRows) => {
-            setHasResults(numRows !== 0);
+          onLoad={(res) => {
+            setHasResults(res[0].row_count !== 0);
           }}
           mode={ErrorMode}
           table={Queries.bad_table(
