@@ -56,3 +56,22 @@
         (re-pattern (format "Unable to create temp file in `%s`" (System/getProperty "java.io.tmpdir")))
         (with-create-temp-failure
           (#'messages/create-temp-file-or-throw "txt")))))
+
+(deftest alert-schedule-text-test
+  (testing "Alert schedules can be described as English strings, with the timezone included"
+    (tu/with-temporary-setting-values [report-timezone "America/Pacific"]
+      (is (= "Run hourly"
+             (@#'messages/alert-schedule-text {:schedule_type :hourly})))
+      (is (= "Run daily at 12 AM America/Pacific"
+             (@#'messages/alert-schedule-text {:schedule_type :daily
+                                               :schedule_hour 0})))
+      (is (= "Run daily at 5 AM America/Pacific"
+             (@#'messages/alert-schedule-text {:schedule_type :daily
+                                               :schedule_hour 5})))
+      (is (= "Run daily at 6 PM America/Pacific"
+             (@#'messages/alert-schedule-text {:schedule_type :daily
+                                               :schedule_hour 18})))
+      (is (= "Run weekly on Monday at 8 AM America/Pacific"
+             (@#'messages/alert-schedule-text {:schedule_type :weekly
+                                               :schedule_day  "mon"
+                                               :schedule_hour 8}))))))
