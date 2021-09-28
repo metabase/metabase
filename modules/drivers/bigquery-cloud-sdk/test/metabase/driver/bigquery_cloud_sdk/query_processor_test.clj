@@ -821,3 +821,18 @@
                  :source-query {:source-table (mt/id :checkins)
                                 :aggregation  [[:count]]
                                 :breakout     [!month.date]}})))))))
+
+(deftest custom-expression-args-quoted
+  (mt/test-driver :bigquery-cloud-sdk
+    (mt/dataset sample-dataset
+      (testing "Arguments to custom aggregation expression functions have backticks applied properly"
+        (is (= {:mbql?      true
+                :params     nil
+                :table-name "orders"
+                :query      (str "SELECT APPROX_QUANTILES(`v3_sample_dataset.orders`.`quantity`, 10)[OFFSET(5)] AS `CE`"
+                                 " FROM `v3_sample_dataset.orders` LIMIT 10")}
+              (qp/query->native (mt/mbql-query orders
+                                  {:aggregation [[:aggregation-options
+                                                  [:percentile $orders.quantity 0.5]
+                                                  {:name "CE", :display-name "CE"}]]
+                                   :limit       10}))))))))
