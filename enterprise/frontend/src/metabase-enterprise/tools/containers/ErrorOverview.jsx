@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { t } from "ttag";
 
 import _ from "underscore";
@@ -15,6 +15,9 @@ const getSortOrder = isAscending => (isAscending ? "asc" : "desc");
 const CARD_ID_COL = 0;
 
 export default function ErrorOverview(props) {
+  const reloadRef = useRef(null);
+  // TODO: use isReloading to display a loading overlay
+  const [isReloading, setIsReloading] = useState(false);
   const [hasResults, setHasResults] = useState(false);
   const [sorting, setSorting] = useState({
     column: "last_run_at",
@@ -33,6 +36,7 @@ export default function ErrorOverview(props) {
   };
 
   const handleReloadSelected = async () => {
+    setIsReloading(true);
     const checkedCardIds = Object.values(
       _.pick(rowToCardId, (member, key) => rowChecked[key]),
     );
@@ -41,10 +45,16 @@ export default function ErrorOverview(props) {
         async member => await CardApi.query({ cardId: member }),
       ),
     );
-    location.reload();
+    reloadRef.current?.reload();
   };
 
   const handleSortingChange = sorting => setSorting(sorting);
+
+  const handleLoad = result => {
+    setHasResults(result[0].row_count !== 0);
+    setIsReloading(false);
+  };
+
   return (
     <AuditParameters
       parameters={[
@@ -64,6 +74,7 @@ export default function ErrorOverview(props) {
       {({ errorFilter, dbFilter, collectionFilter }) => (
         <AuditTable
           {...props}
+          reloadRef={reloadRef}
           pageSize={50}
           isSortable
           isSelectable
@@ -72,9 +83,7 @@ export default function ErrorOverview(props) {
           sorting={sorting}
           onSortingChange={handleSortingChange}
           onRowSelectClick={handleRowSelectClick}
-          onLoad={res => {
-            setHasResults(res[0].row_count !== 0);
-          }}
+          onLoad={handleLoad}
           mode={ErrorMode}
           table={Queries.bad_table(
             errorFilter,
