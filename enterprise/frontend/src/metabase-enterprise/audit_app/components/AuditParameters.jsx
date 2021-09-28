@@ -23,7 +23,6 @@ const propTypes = {
     }),
   ),
   children: PropTypes.func,
-  hasResults: PropTypes.bool,
 };
 
 export default class AuditParameters extends React.Component {
@@ -49,14 +48,8 @@ export default class AuditParameters extends React.Component {
   }, DEBOUNCE_PERIOD);
 
   render() {
-    const { parameters, children, buttons, hasResults } = this.props;
+    const { parameters, children, buttons } = this.props;
     const { inputValues, committedValues } = this.state;
-
-    const disabled =
-      hasResults === false &&
-      inputValues &&
-      Object.values(inputValues).every(v => v === "");
-
     return (
       <div>
         <div className="pt4">
@@ -66,7 +59,6 @@ export default class AuditParameters extends React.Component {
               type="text"
               value={inputValues[key] || ""}
               placeholder={placeholder}
-              disabled={disabled}
               onChange={value => {
                 this.changeValue(key, value);
               }}
@@ -74,13 +66,7 @@ export default class AuditParameters extends React.Component {
             />
           ))}
           {buttons?.map(({ key, onClick, label }) => (
-            <Button
-              primary
-              key={key}
-              onClick={onClick}
-              disabled={disabled}
-              className="ml2"
-            >
+            <Button primary key={key} onClick={onClick} className="ml2">
               {label}
             </Button>
           ))}

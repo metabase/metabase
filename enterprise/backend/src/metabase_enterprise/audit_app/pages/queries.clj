@@ -3,7 +3,6 @@
             [metabase-enterprise.audit-app.interface :as audit.i]
             [metabase-enterprise.audit-app.pages.common :as common]
             [metabase-enterprise.audit-app.pages.common.cards :as cards]
-            [metabase.db.connection :as mdb.connection]
             [metabase.util.honeysql-extensions :as hx]))
 
 ;; DEPRECATED Query that returns data for a two-series timeseries chart with number of queries ran and average query
@@ -71,7 +70,6 @@
               [:collection_name {:display_name "Collection",         :base_type :type/Text    :remapped_from :collection_id}]
               [:database_id     {:display_name "Database ID",        :base_type :type/Integer :remapped_to   :database_name}]
               [:database_name   {:display_name "Database",           :base_type :type/Text    :remapped_from :database_id}]
-              [:schema_name     {:display_name "Schema",             :base_type :type/Text}]
               [:table_id        {:display_name "Table ID",           :base_type :type/Integer :remapped_to   :table_name}]
               [:table_name      {:display_name "Table",              :base_type :type/Text    :remapped_from :table_id}]
               [:last_run_at     {:display_name "Last run at",        :base_type :type/DateTime}]
@@ -88,19 +86,11 @@
                              cards/dashboards-count]
                  :select    [[:card.id :card_id]
                              [:card.name :card_name]
-                             [(hsql/call :concat
-                                         (hsql/call
-                                           :substring
-                                           :latest_qe.error
-                                           (if (= (mdb.connection/db-type) :mysql) 1 0)
-                                           60)
-                                         "...")
-                              :error_substr]
+                             [(hsql/call :concat (hsql/call :substring :latest_qe.error 0 60) "...") :error_substr]
                              :collection_id
                              [:coll.name :collection_name]
                              :card.database_id
                              [:db.name :database_name]
-                             [:t.schema :schema_name]
                              :card.table_id
                              [:t.name :table_name]
                              [:latest_qe.started_at :last_run_at]
