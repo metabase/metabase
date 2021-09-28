@@ -8,10 +8,6 @@ export const ViewSidebarAside = styled.aside`
   transition: width .3s, opacity .3s;
   width: 0;
 
-  @media (prefers-reduced-motion) {
-    transition: none;
-  }
-
   ${({ left }) =>
     left &&
     css`
