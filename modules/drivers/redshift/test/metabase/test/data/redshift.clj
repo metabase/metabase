@@ -4,6 +4,7 @@
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.sql :as sql.tx]
+            [metabase.test.data.sql-jdbc.load-data :as load-data]
             [metabase.test.data.sql.ddl :as ddl]
             [metabase.util :as u]))
 
@@ -68,6 +69,15 @@
 (defmethod sql.tx/drop-table-if-exists-sql :redshift
   [& args]
   (apply sql.tx/drop-table-if-exists-cascade-sql args))
+
+(defmethod load-data/load-data! :redshift
+  [driver {:keys [database-name], :as dbdef} {:keys [table-name], :as tabledef}]
+  (load-data/load-data-all-at-once! driver dbdef tabledef)
+  (let [table-identifier (sql.tx/qualify-and-quote :redshift database-name table-name)
+        spec             (sql-jdbc.conn/connection-details->spec :redshift @db-connection-details)]
+    ;; VACUUM and ANALYZE after insert to improve performance (according to doc)
+    (jdbc/execute! spec (str "VACUUM " table-identifier) {:transaction? false})
+    (jdbc/execute! spec (str "ANALYZE " table-identifier) {:transaction? false})))
 
 ;;; Create + destroy the schema used for this test session
 
