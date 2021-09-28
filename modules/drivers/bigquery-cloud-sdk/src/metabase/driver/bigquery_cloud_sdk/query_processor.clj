@@ -419,22 +419,23 @@
 (defn- approx-quantiles
   "HoneySQL form for the APPROX_QUANTILES invocation. The [OFFSET(...)] part after the function call is odd and
   needs special treatment."
-  [expr offset quantiles]
-  (reify
-    hformat/ToSql
-    (to-sql [_]
-      (format "APPROX_QUANTILES(%s, %s)[OFFSET(%s)]"
-        (hformat/to-sql (sql.qp/->honeysql :bigquery-cloud-sdk expr))
-        quantiles
-        offset))
-    PrettyPrintable
-    (pretty [_]
-      (format "APPROX_QUANTILES(%s, %s)[OFFSET(%s)]" (pr-str expr) (pr-str quantiles) (pr-str offset)))))
+  [driver expr offset quantiles]
+  (let [expr-hsql (sql.qp/->honeysql driver expr)]
+    (reify
+      hformat/ToSql
+      (to-sql [_]
+        (format "APPROX_QUANTILES(%s, %s)[OFFSET(%s)]"
+          (hformat/to-sql expr-hsql)
+          quantiles
+          offset))
+      PrettyPrintable
+      (pretty [_]
+        (format "APPROX_QUANTILES(%s, %s)[OFFSET(%s)]" (pr-str expr) (pr-str quantiles) (pr-str offset))))))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :percentile]
   [driver [_ arg p]]
   (let [[offset quantiles] (percentile->quantile p)]
-    (approx-quantiles arg offset quantiles)))
+    (approx-quantiles driver arg offset quantiles)))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :median]
   [driver [_ arg]]
