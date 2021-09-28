@@ -21,6 +21,10 @@ export const ViewSidebarAside = styled.aside`
           right: 0;
         `}
 
+  @media (prefers-reduced-motion) {
+    transition: none;
+  }
+
   ${({ isOpen, widthProp: width }) =>
     isOpen &&
     width &&
