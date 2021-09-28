@@ -549,6 +549,8 @@
                                                                         :alias        "P2"}]
                                                         :aggregation  [[:avg $reviews.rating]]
                                                         :breakout     [&P2.products.category]}}]
+                         :order-by     [[:asc &P1.products.category]
+                                        [:asc [:field %people.source {:join-alias "People"}]]]
                          :limit        2})]
             (is (= [["Doohickey" "Affiliate" 783 "Doohickey" 3]
                     ["Doohickey" "Facebook" 816 "Doohickey" 3]]
