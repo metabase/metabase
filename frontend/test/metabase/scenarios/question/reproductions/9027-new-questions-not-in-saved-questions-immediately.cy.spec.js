@@ -2,7 +2,7 @@ import { restore } from "__support__/e2e/cypress";
 
 const QUESTION_NAME = "Foo";
 
-describe.skip("issue 9027", () => {
+describe("issue 9027", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
