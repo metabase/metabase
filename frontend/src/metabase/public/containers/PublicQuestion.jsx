@@ -115,10 +115,11 @@ export default class PublicQuestion extends Component {
         this.props.addFields(card.param_fields);
       }
 
-      const parameters = getParametersFromCard(card);
+      const parameters = getValueAndFieldIdPopulatedParametersFromCard(card);
       const parameterValuesById = getParameterValuesByIdFromQueryParams(
         parameters,
         query,
+        this.props.metadata,
       );
 
       this.setState(
