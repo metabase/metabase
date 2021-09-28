@@ -1,5 +1,9 @@
 import React from "react";
+
+import { connect } from "react-redux";
 import { push } from "react-router-redux";
+import { getMetadata } from "metabase/selectors/metadata";
+
 import { t } from "ttag";
 import PropTypes from "prop-types";
 import { getIn } from "icepick";
@@ -119,15 +123,10 @@ function ErrorDetailDisplay(props) {
   }
 }
 
-export default function ErrorDetail(props) {
-  const { params } = props;
+function ErrorDetail(props) {
+  const { params, errorRetry} = props;
   const cardId = parseInt(params.cardId);
 
-  const errorRetry = async cardId => {
-    await CardApi.query({ cardId: cardId });
-    // we're imagining that we successfully reran, in which case we want to go back to overall table
-    console.log(push("/admin/tools/errors/"));
-  };
 
   // below card is not the card in question, but
   // the card we're creating to query for the error details
@@ -153,8 +152,26 @@ export default function ErrorDetail(props) {
   );
 }
 
+const mapStateToProps = (state, props) => ({
+  metadata: getMetadata(state),
+});
+
+const mapDispatchToProps = {
+  errorRetry: async cardId => {
+    await CardApi.query({ cardId: cardId });
+    // we're imagining that we successfully reran, in which case we want to go back to overall table
+    return push("/admin/tools/errors/");
+  }
+};
+
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(ErrorDetail);
+
 ErrorDetail.propTypes = {
   params: PropTypes.object,
+  errorRetry: PropTypes.func,
 };
 ErrorDetailDisplay.propTypes = {
   result: PropTypes.object,
