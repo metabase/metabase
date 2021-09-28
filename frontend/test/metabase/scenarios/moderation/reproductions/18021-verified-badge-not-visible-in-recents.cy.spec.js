@@ -1,7 +1,10 @@
 import { restore, describeWithToken } from "__support__/e2e/cypress";
 
-describeWithToken.skip("issue 18021", () => {
+describe.skip("issue 18021", () => {
   beforeEach(() => {
+    // Run the test only for EE version
+    cy.onlyOn(!!Cypress.env("HAS_ENTERPRISE_TOKEN"));
+
     restore();
     cy.signInAsAdmin();
 
