@@ -1051,8 +1051,7 @@
                                      :value  "Widget"}]})))))))
 
 (deftest nested-queries-with-expressions-and-joins-test
-  ;; sample-dataset doesn't work on Redshift yet -- see #14784
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :foreign-keys :nested-queries :left-join) :redshift)
+  (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries :left-join)
     (mt/dataset sample-dataset
       (testing "Do nested queries in combination with joins and expressions still work correctly? (#14969)"
         ;; not sure why Snowflake has slightly different results
@@ -1104,7 +1103,7 @@
                                     :fk-field-id  %product_id}]}))))))))
 
 (deftest multi-level-aggregations-with-post-aggregation-filtering-test
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :foreign-keys :nested-queries) :redshift) ; sample-dataset doesn't work on Redshift yet -- see #14784
+  (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
     (testing "Multi-level aggregations with filter is the last section (#14872)"
       (mt/dataset sample-dataset
         ;; not 100% sure why Snowflake has slightly different results
@@ -1133,7 +1132,7 @@
                     :filter       [:> *sum/Float 100]}))))))))
 
 (deftest date-range-test
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :foreign-keys :nested-queries) :redshift) ; sample-dataset doesn't work on Redshift yet -- see #14784
+  (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
     (testing "Date ranges should work the same in nested queries as is regular queries (#15352)"
       (mt/dataset sample-dataset
         (let [q1        (mt/mbql-query orders
@@ -1181,13 +1180,11 @@
 
 (deftest nested-query-with-expressions-test
   (testing "Nested queries with expressions should work in top-level native queries (#12236)"
-    (mt/test-drivers (disj (mt/normal-drivers-with-feature
-                            :nested-queries
-                            :basic-aggregations
-                            :expression-aggregations
-                            :foreign-keys)
-                           ;; sample-dataset doesn't work on Redshift yet -- see #14784
-                           :redshift)
+    (mt/test-drivers (mt/normal-drivers-with-feature
+                      :nested-queries
+                      :basic-aggregations
+                      :expression-aggregations
+                      :foreign-keys)
       (mt/dataset sample-dataset
         (mt/with-temp Card [card {:dataset_query (mt/mbql-query orders
                                                    {:filter      [:between $total 30 60]
