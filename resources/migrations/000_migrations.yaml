@@ -8525,6 +8525,21 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
+  - changeSet:
+      id: 316
+      author: howonlee
+      comment: Added 0.41.0 Fine grained caching controls, pt 3
+      changes:
+        - addColumn:
+            tableName: view_log
+            columns:
+              - column:
+                  name: metadata
+                  type: text
+                  remarks: "Serialized JSON corresponding to metadata for view."
+                  constraints:
+                    nullable: true
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

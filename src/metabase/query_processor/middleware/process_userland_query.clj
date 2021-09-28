@@ -1,9 +1,10 @@
 (ns metabase.query-processor.middleware.process-userland-query
   "Middleware related to doing extra steps for queries that are ran via API endpoints (i.e., most of them -- as opposed
   to queries ran internally e.g. as part of the sync process).
-  These include things like saving QueryExecutions, storing exceptions and formatting the results."
+  These include things like saving QueryExecutions and adding query ViewLogs, storing exceptions and formatting the results."
   (:require [clojure.tools.logging :as log]
             [java-time :as t]
+            [metabase.events :as events]
             [metabase.models.query :as query]
             [metabase.models.query-execution :as query-execution :refer [QueryExecution]]
             [metabase.query-processor.util :as qputil]
@@ -52,8 +53,8 @@
                                                                (log/error e (trs "Error saving query execution info"))))))))
 
 (defn- save-successful-query-execution! [cached? query-execution result-rows]
-  (save-query-execution!
-    (assoc query-execution :cache_hit (boolean cached?) :result_rows result-rows)))
+  (let [qe-map (assoc query-execution :cache_hit (boolean cached?) :result_rows result-rows)]
+    (save-query-execution! qe-map)))
 
 (defn- save-failed-query-execution! [query-execution message]
   (save-query-execution! (assoc query-execution :error (str message))))
@@ -82,8 +83,13 @@
        (rf))
 
       ([acc]
-       (when-not (:cached acc)
-         (save-successful-query-execution! (:cached acc) execution-info @row-count))
+       (do
+         (events/publish-event! :card-query {:card_id      (:card_id execution-info)
+                                             :actor_id     (:executor_id execution-info)
+                                             :cached       (:cached acc)
+                                             :ignore_cache (get-in execution-info [:json_query :middleware :ignore-cached-results?])})
+         (when-not (:cached acc)
+           (save-successful-query-execution! (:cached acc) execution-info @row-count)))
        (rf (if (map? acc)
              (success-response execution-info acc)
              acc)))

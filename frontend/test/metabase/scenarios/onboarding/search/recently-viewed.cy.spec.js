@@ -16,18 +16,21 @@ describe(`search > recently viewed`, () => {
     // "Orders in a dashboard" dashboard
     cy.visit("/dashboard/1");
 
+    // inside the "Orders in a dashboard" dashboard, the order is queried again,
+    // which elicits a ViewLog entry
+
     cy.visit("/");
 
     cy.findByPlaceholderText("Search…").click();
     cy.get(".LoadingSpinner").should("not.exist");
 
+    assertRecentlyViewedItem(0, "Orders", "Question", "/question/1-orders");
     assertRecentlyViewedItem(
-      0,
+      1,
       "Orders in a dashboard",
       "Dashboard",
       "/dashboard/1-orders-in-a-dashboard",
     );
-    assertRecentlyViewedItem(1, "Orders", "Question", "/question/1-orders");
     assertRecentlyViewedItem(2, "People", "Table", "/question#?db=1&table=3");
   });
 });

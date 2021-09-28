@@ -738,12 +738,19 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
     };
   }
   const formatted = formatValueRaw(value, options);
+  let maybeJson = {};
+  try {
+    maybeJson = JSON.parse(value);
+  } catch {
+    // do nothing
+  }
   if (options.markdown_template) {
     if (options.jsx) {
       // inject the formatted value as "value" and the unformatted value as "raw"
       const markdown = Mustache.render(options.markdown_template, {
         value: formatted,
         raw: value,
+        json: maybeJson,
       });
       return (
         <ReactMarkdown components={MARKDOWN_RENDERERS}>
