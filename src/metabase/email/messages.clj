@@ -513,24 +513,63 @@
             (when alert-condition-map
               {:alertCondition (get alert-condition-map (pulse->alert-condition-kwd alert))})))))
 
+(defn- schedule-hour-text
+  [{hour :schedule_hour}]
+  (str (if (= hour 0)
+         12 ;; 12 am
+         (mod hour 12))
+       " "
+       (if (< hour 12) "AM" "PM")))
+
+(defn- schedule-day-text
+  [{day :schedule_day}]
+  (get {"sun" "Sunday"
+        "mon" "Monday"
+        "tue" "Tuesday"
+        "wed" "Wednesday"
+        "thu" "Thursday"
+        "fri" "Friday"
+        "sat" "Saturday"}
+       day))
+
+(defn- alert-schedule-text
+  "Returns a string that describes the run schedule of an alert (i.e. how often results are checked),
+  for inclusion in the email template. Not translated, since emails in general are not currently translated."
+  [channel]
+  (case (:schedule_type channel)
+    :hourly
+    "Run hourly"
+
+    :daily
+    (format "Run daily at %s %s"
+            (schedule-hour-text channel)
+            (driver/report-timezone))
+
+    :weekly
+    (format "Run weekly on %s at %s %s"
+            (schedule-day-text channel)
+            (schedule-hour-text channel)
+            (driver/report-timezone))))
+
 (defn- alert-context
   "Context that is applicable only to the actual alert template (not alert management templates)"
-  [alert]
+  [alert channel]
   (let [{card-id :id, card-name :name} (first-card alert)]
     {:title    card-name
      :titleUrl (url/card-url card-id)
+     :alertSchedule (alert-schedule-text channel)
      :creator  (-> alert :creator :common_name)}))
 
 (defn- alert-results-condition-text [goal-value]
-  {:meets (format "This question has reached its goal of %s" goal-value)
-   :below (format "This question has gone below its goal of %s" goal-value)})
+  {:meets (format "This question has reached its goal of %s." goal-value)
+   :below (format "This question has gone below its goal of %s." goal-value)})
 
 (defn render-alert-email
   "Take a pulse object and list of results, returns an array of attachment objects for an email"
-  [timezone {:keys [alert_first_only] :as alert} results goal-value]
+  [timezone {:keys [alert_first_only] :as alert} channel results goal-value]
   (let [message-ctx  (merge
                       (common-alert-context alert (alert-results-condition-text goal-value))
-                      (alert-context alert))]
+                      (alert-context alert channel))]
     (render-message-body alert
                          :alert
                          (assoc message-ctx :firstRunOnly? alert_first_only)
