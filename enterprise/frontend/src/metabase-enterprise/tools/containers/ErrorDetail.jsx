@@ -1,4 +1,5 @@
 import React from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 import PropTypes from "prop-types";
 import { getIn } from "icepick";
@@ -125,7 +126,7 @@ export default function ErrorDetail(props) {
   const errorRetry = async cardId => {
     await CardApi.query({ cardId: cardId });
     // we're imagining that we successfully reran, in which case we want to go back to overall table
-    window.location = "/admin/tools/errors/";
+    console.log(push("/admin/tools/errors/"));
   };
 
   // below card is not the card in question, but

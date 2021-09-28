@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import { push } from "react-router-redux";
 
 const CARD_ID_ROW_IDX = 0;
 
@@ -14,8 +15,8 @@ const ErrorDrill = ({ clicked }) => {
       name: "detail",
       title: t`View this`,
       default: true,
-      url() {
-        return `/admin/tools/errors/${cardId}`;
+      action() {
+        return push(`/admin/tools/errors/${cardId}`);
       },
     },
   ];
