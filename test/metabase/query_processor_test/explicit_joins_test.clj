@@ -575,6 +575,6 @@
                                               [:field "count" {:base-type :type/BigInteger, :join-alias "Q2"}]
                                               [:field "count" {:base-type :type/BigInteger}]]}
                          :limit        2})]
-            (is (= [[4 41 0.46 41]]
+            (is (= [[4 89 0.46 89]]
                    (mt/formatted-rows [int int 2.0 int]
                      (qp/process-query query))))))))))
