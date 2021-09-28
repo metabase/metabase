@@ -6,7 +6,13 @@ import { ViewSidebarAside, ViewSidebarContent } from "./ViewSidebar.styled";
 const ViewSidebar = ({ left, right, width = 355, isOpen, children }) => (
   // If we passed `width` as prop, it would end up in the final HTML elements.
   // This would ruin the animation, so we pass it as `widthProp`.
-  <ViewSidebarAside left={left} right={right} widthProp={width} isOpen={isOpen}>
+  <ViewSidebarAside
+    data-testid={right ? "sidebar-right" : "sidebar-left"}
+    left={left}
+    right={right}
+    widthProp={width}
+    isOpen={isOpen}
+  >
     <ViewSidebarContent widthProp={width}>{children}</ViewSidebarContent>
   </ViewSidebarAside>
 );
