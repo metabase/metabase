@@ -24,7 +24,7 @@ import QueryModals from "../QueryModals";
 import { ViewTitleHeader, ViewSubHeader } from "./ViewHeader";
 import NewQuestionHeader from "./NewQuestionHeader";
 import ViewFooter from "./ViewFooter";
-import ViewSidebar from "./ViewSidebar/ViewSidebar";
+import ViewSidebar from "./ViewSidebar";
 import QuestionDataSelector from "./QuestionDataSelector";
 
 import ChartSettingsSidebar from "./sidebars/ChartSettingsSidebar";
@@ -257,7 +257,7 @@ export default class View extends React.Component {
               </Motion>
             )}
 
-            <ViewSidebar left isOpen={!!leftSideBar}>
+            <ViewSidebar side="left" isOpen={!!leftSideBar}>
               {leftSideBar}
             </ViewSidebar>
 
@@ -302,7 +302,7 @@ export default class View extends React.Component {
               <ViewFooter {...this.props} className="flex-no-shrink" />
             </div>
 
-            <ViewSidebar right isOpen={!!rightSideBar}>
+            <ViewSidebar side="right" isOpen={!!rightSideBar}>
               {rightSideBar}
             </ViewSidebar>
           </div>

@@ -7,22 +7,19 @@ export const ViewSidebarAside = styled.aside`
   overflow-y: auto;
   opacity: 0;
   position: relative;
-  transition: width .3s, opacity .3s;
+  transition: width 0.3s, opacity 0.3s;
   width: 0;
 
-  ${({ left }) =>
-    left &&
-    css`
-      border-right: 1px solid ${color("border")};
-      left: 0;
-    `}
-
-  ${({ right }) =>
-    right &&
-    css`
-      border-left: 1px solid ${color("border")};
-      right: 0;
-    `}
+  ${({ side }) =>
+    side === "left"
+      ? css`
+          border-right: 1px solid ${color("border")};
+          left: 0;
+        `
+      : css`
+          border-left: 1px solid ${color("border")};
+          right: 0;
+        `}
 
   ${({ isOpen, widthProp: width }) =>
     isOpen &&
