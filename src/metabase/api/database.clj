@@ -46,12 +46,14 @@
 
 ;;; ----------------------------------------------- GET /api/database ------------------------------------------------
 
-(defn- add-tables [dbs]
+(defn- add-tables [dbs include-hidden-tables?]
   (let [db-id->tables (group-by :db_id (filter mi/can-read? (db/select Table
                                                               :active          true
                                                               :db_id           [:in (map :id dbs)]
-                                                              :visibility_type nil
-                                                              {:order-by [[:%lower.schema :asc]
+                                                              {:where    (if include-hidden-tables?
+                                                                           true
+                                                                           [:= :visibility_type nil])
+                                                               :order-by [[:%lower.schema :asc]
                                                                           [:%lower.display_name :asc]]})))]
     (for [db dbs]
       (assoc db :tables (get db-id->tables (:id db) [])))))
@@ -179,11 +181,12 @@
 
 (defn- dbs-list [& {:keys [include-tables?
                            include-saved-questions-db?
-                           include-saved-questions-tables?]}]
+                           include-saved-questions-tables?
+                           include-hidden-tables?]}]
   (when-let [dbs (seq (filter mi/can-read? (db/select Database
                                                       {:order-by [:%lower.name :%lower.engine]})))]
     (cond-> (add-native-perms-info dbs)
-      include-tables?             add-tables
+      include-tables?             (add-tables include-hidden-tables?)
       include-saved-questions-db? (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?))))
 
 (def FetchAllIncludeValues
@@ -197,17 +200,25 @@
 
   * `include=tables` means we should hydrate the Tables belonging to each DB. Default: `false`.
 
-  * `saved` means we should include the saved questions virtual database. Default: `false`."
-  [include saved]
+  * `saved=true` means we should include the saved questions virtual database. Default: `false`.
+
+  * `include_hidden=true` means we should also return hidden Tables (only valid in combination with `include=tables`).
+    Does *not* include inactive Tables. Default: `false`."
+  [include saved include_hidden]
   {include        FetchAllIncludeValues
-   saved          (s/maybe su/BooleanString)}
+   saved          (s/maybe su/BooleanString)
+   include_hidden (s/maybe su/BooleanString)}
   (let [include-tables?                 (= include "tables")
         include-saved-questions-db?     (when (seq saved) (Boolean/parseBoolean saved))
         include-saved-questions-tables? (and include-tables?
                                              include-saved-questions-db?)
+        include-hidden-tables?          (and include-tables?
+                                             (when (seq include_hidden)
+                                               (Boolean/parseBoolean include_hidden)))
         db-list-res                     (or (dbs-list :include-tables?                  include-tables?
                                                       :include-saved-questions-db?      include-saved-questions-db?
-                                                      :include-saved-questions-tables?  include-saved-questions-tables?)
+                                                      :include-saved-questions-tables?  include-saved-questions-tables?
+                                                      :include-hidden-tables?           include-hidden-tables?)
                                             [])]
     {:data  db-list-res
      :total (count db-list-res)}))

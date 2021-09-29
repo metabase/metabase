@@ -522,6 +522,28 @@
             (check-tables-included response (virtual-table-for-card ok-card))
             (check-tables-not-included response (virtual-table-for-card bad-card))))))))
 
+(deftest databases-list-include-hidden-tables
+  (testing "GET /api/database?include=tables&include_hidden=true"
+    (mt/with-temp* [Database [{db-id :id}]
+                    Table    [_ {:db_id db-id, :visibility_type "hidden", :name "Hidden Table"}]
+                    Table    [_ {:db_id db-id, :name "Visible Table"}]]
+      (letfn [(tables [& additional-params]
+                (let [response (apply mt/user-http-request :crowberto :get 200
+                                      "database"
+                                      :include :tables
+                                      additional-params)]
+                  ;; return only the Database we created above.
+                  (some (fn [{a-db-id :id, :as database}]
+                          (when (= a-db-id db-id)
+                            (into #{} (map :name) (:tables database))))
+                        (:data response))))]
+        (testing "Hidden Tables should not be returned by default"
+          (is (= #{"Visible Table"}
+                 (tables))))
+        (testing "Hidden Tables should be returned if you pass `?include_hidden=true`"
+          (is (= #{"Hidden Table" "Visible Table"}
+                 (tables :include_hidden true))))))))
+
 (deftest db-metadata-saved-questions-db-test
   (testing "GET /api/database/:id/metadata works for the Saved Questions 'virtual' database"
     (mt/with-temp Card [card (assoc (card-with-native-query "Birthday Card")
