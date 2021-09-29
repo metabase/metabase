@@ -1,6 +1,7 @@
 (ns metabase.api.permissions
   "/api/permissions endpoints."
   (:require [clojure.spec.alpha :as spec]
+            [clojure.walk :as walk]
             [compojure.core :refer [DELETE GET POST PUT]]
             [honeysql.helpers :as hh]
             [metabase.api.common :as api]
@@ -9,6 +10,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group :refer [PermissionsGroup]]
             [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.server.middleware.offset-paging :as offset-paging]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
@@ -46,6 +48,16 @@
                            (spec/explain-str ::pg/data-permissions-graph body))
                       {:status-code 400
                        :error       (spec/explain-data ::pg/data-permissions-graph body)})))
+
+    (let [has-block-perms? (atom false)]
+      (walk/postwalk (fn [x]
+                       (if (and (map? x) (= (:schemas x) :block))
+                         (do (reset! has-block-perms? true)
+                             nil)
+                         x)) graph)
+      (when (and @has-block-perms? (not (premium-features/has-feature? :advanced-permissions)))
+        (throw (ex-info (tru "Can''t use block permissions without having the advanced-permissions premium feature")
+                        {:status-code 403}))))
     (perms/update-data-perms-graph! graph))
   (perms/data-perms-graph))
 
