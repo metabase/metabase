@@ -58,7 +58,7 @@ Users with curate permission for a collection can archive collections. Click the
 
 **Note:** the "Our analytics" collection and personal collections can't be archived.
 
-You can always _unarchive_ things by clicking on the More menu from a collection and selecting `View the archive`, then clicking the un-archive button next to an archived item. Questions within archived collections are not individually listed in the archive, so if you want to unarchive a specific question from an archived collection, you have to unarchive that whole collection.
+You can always _unarchive_ items. In the Collections list sidebar, at the bottom, click on __View archive__. Search for the item you'd like to unarchive (you'll either need to scroll down the page, or use the browser's find in page functionality, as archived items won't appear in Metabase's search results). Select the open box with an up arrow icon to "Unarchive this".
 
 ## Dashboard subscriptions
 

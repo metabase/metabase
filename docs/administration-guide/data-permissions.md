@@ -18,11 +18,8 @@ Members of the group can access data from all tables (within all namespaces/sche
 
 __Granular access__ allows administrators to explicitly set access to tables or schemas within a database. In practice, this means that:
 
+- Admins can set the groups access to individual tables to either __Unrestricted__, __No self-service__, or __Sandboxed__ access.
 - If a new table gets added to this database in the future, the group won't get access to that new table. An administrator would need to explicitly grant access to that table.
-- Saved questions based on tables the group doesn’t have access to won’t show up in the list of saved questions.
-- Dashboard cards based on those questions won’t appear.
-- The group won’t be able to ask new questions about those tables.
-- If every card on a dashboard is hidden for a group, then that dashboard won’t be shown to them in the dashboard list.
 
 ### No self-service access
 
@@ -30,7 +27,11 @@ Prevent users from creating new ad hoc queries or questions based on this data, 
 
 ### Block
 
-Ensure users can’t ever see the data from this database regardless of their permissions at the Collection level. Keep in mind that if a user belongs to another group that does have data access, that setting will take precedence, and the user's access will not be blocked.
+{% include plans-blockquote.html %}
+
+Ensure users can’t ever see the data from this database, regardless of their permissions at the Collection level.
+
+Keep in mind that if a user belongs to another group that does have data access, that setting will take precedence, and the user's access will not be blocked.
 
 Only available in certain Metabase plans.
 
@@ -57,7 +58,7 @@ Only available in paid plans, Sandboxed access to a table can restrict access to
 
 ## Permissions and dashboard subscriptions
 
-You don't explicitly set permissions on [dashboards subscriptions][dashboard-subscriptions], as the subscriptions are a feature of a dashboard. Which means that What you can do j   
+You don't explicitly set permissions on [dashboards subscriptions][dashboard-subscriptions], as the subscriptions are a feature of a dashboard. Which means that What you can do j
 
 If a person is in a group that has __Curate access__ to the collection containing the dashboard, they can view and edit all subscriptions for the dashboard, including subscriptions created by other people.
 If a user has read-only access to a dashboard (based on its collection permissions), they can view all subscriptions for that dashboard. They can also create subscriptions and edit ones that they’ve created, but they can’t edit ones that other users created. (That last point is enforced by the BE only, the FE still needs to be updated to show the subscriptions as read-only.)
