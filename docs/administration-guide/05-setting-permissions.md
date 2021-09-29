@@ -4,7 +4,7 @@ There are always going to be sensitive bits of information in your databases and
 
 ## How permissions work in Metabase
 
-Metabase uses a group-based approach to set permissions. At a high-level, you can set permissions on two things: data and collections. **Data permissions** are about defining what raw data groups are allowed to use when creating new questions (i.e., self-service analytics). &**Collection permissions** determine what existing dashboards and questions groups can see. On some plans, you can also sandbox data, which "filters" what data people can see when they view a particular questions, such as limiting the rows or columns they can see.
+Metabase uses a group-based approach to set permissions. At a high-level, you can set permissions on two things: data and collections. **Data permissions** are about defining what raw data groups are allowed to use when creating new questions (i.e., self-service analytics). **Collection permissions** determine what existing dashboards and questions groups can see. On some plans, you can also sandbox data, which "filters" what data people can see when they view a particular questions, such as limiting the rows or columns they can see.
 
 You can set permissions on:
 

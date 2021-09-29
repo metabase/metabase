@@ -16,7 +16,7 @@ Members of the group can access data from all tables (within all namespaces/sche
 
 ### Granular access
 
-__Granular access__ allows administrators to explicitly select tables or schemas within a database. In practice, this means that:
+__Granular access__ allows administrators to explicitly set access to tables or schemas within a database. In practice, this means that:
 
 - If a new table gets added to this database in the future, the group won't get access to that new table. An administrator would need to explicitly grant access to that table.
 - Saved questions based on tables the group doesn’t have access to won’t show up in the list of saved questions.
