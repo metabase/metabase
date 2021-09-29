@@ -688,17 +688,19 @@ function getFields(parameter, metadata) {
   const fieldIds =
     parameter.field_ids || [parameter.field_id].filter(f => f != null);
 
-  return fieldIds.map(id => {
-    const field = metadata.field(id);
-    if (field != null) {
-      return field;
-    }
+  return fieldIds
+    .map(id => {
+      const field = metadata.field(id);
+      if (field != null) {
+        return field;
+      }
 
-    const dimension = Dimension.parseMBQL(id, metadata);
-    if (dimension != null) {
-      return dimension.field();
-    }
-  });
+      const dimension = Dimension.parseMBQL(id, metadata);
+      if (dimension != null) {
+        return dimension.field();
+      }
+    })
+    .filter(field => field != null);
 }
 
 // on dashboards we treat a default parameter with a set value of "" (from a query parameter)
