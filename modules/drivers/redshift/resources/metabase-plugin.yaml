@@ -22,7 +22,7 @@ driver:
     - password
     - merge:
       - additional-options
-      - placeholder: 'ssl=false'
+      - placeholder: 'SocketTimeout=0'
   connection-properties-include-tunnel-config: true
 init:
   - step: load-namespace
