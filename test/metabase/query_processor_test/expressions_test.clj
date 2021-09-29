@@ -373,8 +373,7 @@
                                                [:field "min" {:base-type :type/Number}]]}})))))))
 
 (deftest expression-with-duplicate-column-name
-  ;; Redshift hangs on sample-dataset -- See #14784
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :expressions) :redshift)
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "Can we use expression with same column name as table (#14267)"
       (mt/dataset sample-dataset
         (is (= [["Doohickey2" 42]]
