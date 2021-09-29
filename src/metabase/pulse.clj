@@ -11,6 +11,7 @@
             [metabase.models.dashboard-card :refer [DashboardCard]]
             [metabase.models.database :refer [Database]]
             [metabase.models.pulse :as pulse :refer [Pulse]]
+            [metabase.models.pulse-channel :as pulse-channel]
             [metabase.plugins.classloader :as classloader]
             [metabase.pulse.interface :as i]
             [metabase.pulse.markdown :as markdown]
@@ -399,4 +400,7 @@
                   ;; to fetch the Pulse.
                   pulse/hydrate-notification
                   (merge (when channel-ids {:channel-ids channel-ids})))]
+    ;; validate all email domains in the pulse channels before sending, in case this is a "Send email now" kind of test
+    (doseq [channel (:channels pulse)]
+      (pulse-channel/validate-email-domains channel))
     (send-notifications! (pulse->notifications pulse))))

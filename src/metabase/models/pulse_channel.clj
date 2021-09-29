@@ -140,14 +140,17 @@
         (resolve 'metabase-enterprise.advanced-config.models.pulse-channel/validate-email-domains))
       (constantly nil)))
 
-(defn- validate-email-domains
+(defn validate-email-domains
   "For channels that are being sent to raw email addresses: check that the domains in the emails are allowed by
   the [[metabase-enterprise.advanced-config.models.pulse-channel/subscription-allowed-domains]] Setting, if set. This
   will no-op if `subscription-allowed-domains` is unset or if we do not have a premium token with the
   `:advanced-config` feature."
+  {:added "0.41.0"}
   [{{:keys [emails]} :details, :as pulse-channel}]
-  (u/prog1 pulse-channel
-    (validate-email-domains* emails)))
+  (let [recipient-emails (map :email (:recipients pulse-channel)) ; addresses can also appear under :recipients
+        all-emails       (concat emails recipient-emails)]
+    (u/prog1 pulse-channel
+      (validate-email-domains* all-emails))))
 
 (u/strict-extend (class PulseChannel)
   models/IModel
