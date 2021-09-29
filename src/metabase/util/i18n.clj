@@ -14,9 +14,9 @@
 (p/import-vars
  [impl
   available-locale?
+  fallback-locale
   locale
   normalized-locale-string
-  parent-locale
   translate])
 
 (def ^:dynamic *user-locale*

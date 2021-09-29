@@ -18,7 +18,11 @@
 
 (sql-jdbc.tx/add-test-extensions! :vertica)
 
-(defmethod tx/sorts-nil-first? :vertica [_] false)
+;; In ORDER BY clause, nulls come last for FLOAT, STRING, and BOOLEAN columns, and first otherwise
+;; https://www.vertica.com/docs/9.2.x/HTML/Content/Authoring/AnalyzingData/Optimizations/NULLPlacementByAnalyticFunctions.htm#2
+(defmethod tx/sorts-nil-first? :vertica [_ base-type]
+  (not (contains? #{:type/Text :type/Boolean :type/Float}
+                  base-type)))
 
 (doseq [[base-type sql-type] {:type/BigInteger     "BIGINT"
                               :type/Boolean        "BOOLEAN"

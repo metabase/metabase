@@ -382,7 +382,7 @@ describe("scenarios > admin > settings", () => {
     it("should present the form and display errors", () => {
       cy.visit("/admin/settings/slack");
       cy.contains("Answers sent right to your Slack");
-      cy.findByPlaceholderText("Enter the token you received from Slack")
+      cy.findByLabelText("Slack API Token")
         .type("not-a-real-token")
         .blur();
       cy.findByText("Save changes").click();

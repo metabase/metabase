@@ -30,6 +30,7 @@ export function onRenderValueLabels(
   );
 
   let displays = seriesSettings.map(settings => settings.display);
+  const isStacked = chart.settings["stackable.stack_type"] === "stacked";
 
   if (
     showSeries.every(s => s === false) || // every series setting is off
@@ -38,7 +39,7 @@ export function onRenderValueLabels(
     return;
   }
 
-  if (chart.settings["stackable.stack_type"] === "stacked") {
+  if (isStacked) {
     // When stacked, flatten datas into one series. We'll sum values on the same x point later.
     datas = [datas.flat()];
 
@@ -82,23 +83,37 @@ export function onRenderValueLabels(
     const display = displays[seriesIndex];
 
     // Sum duplicate x values in the same series.
+    // Positive and negative values are stacked separately, unless it is a waterfall chart
     data = _.chain(data)
       .groupBy(([x]) => xScale(x))
       .values()
       .map(data => {
         const [[x]] = data;
-        const y = data.reduce((sum, [, y]) => sum + y, 0);
-        return [x, y];
+        const yp = data
+          .filter(([, y]) => y >= 0)
+          .reduce((sum, [, y]) => sum + y, 0);
+        const yn = data
+          .filter(([, y]) => y < 0)
+          .reduce((sum, [, y]) => sum + y, 0);
+
+        if (!isStacked) {
+          return [[x, yp + yn, 1]];
+        } else if (yp !== yn) {
+          return [[x, yp, 2], [x, yn, 2]];
+        } else {
+          return [[x, yp, 1]];
+        }
       })
+      .flatten(1)
       .value();
 
     data = data
-      .map(([x, y], i) => {
+      .map(([x, y, step], i) => {
         const isLocalMin =
           // first point or prior is greater than y
-          (i === 0 || data[i - 1][1] > y) &&
+          (i < step || data[i - step][1] > y) &&
           // last point point or next is greater than y
-          (i === data.length - 1 || data[i + 1][1] > y);
+          (i >= data.length - step || data[i + step][1] > y);
         const showLabelBelow = isLocalMin && display === "line";
         const rotated = barCount > 1 && isBarLike(display) && barWidth < 40;
         const hidden =

@@ -544,13 +544,38 @@ export default class Question {
 
   drillPK(field: Field, value: Value): ?Question {
     const query = this.query();
-    if (query instanceof StructuredQuery) {
-      return query
-        .reset()
-        .setTable(field.table)
-        .filter(["=", ["field", field.id, null], value])
-        .question();
+
+    if (!(query instanceof StructuredQuery)) {
+      return;
     }
+
+    const otherPKFilters = query
+      .filters()
+      ?.filter(filter => {
+        const filterField = filter?.field();
+        if (!filterField) {
+          return false;
+        }
+
+        const isNotSameField = filterField.id !== field.id;
+        const isPKEqualsFilter =
+          filterField.isPK() && filter.operatorName() === "=";
+        const isFromSameTable = filterField.table.id === field.table.id;
+
+        return isPKEqualsFilter && isNotSameField && isFromSameTable;
+      })
+      .map(filter => filter.raw());
+
+    const filtersToApply = [
+      ["=", ["field", field.id, null], value],
+      ...otherPKFilters,
+    ];
+
+    const resultedQuery = filtersToApply.reduce((query, filter) => {
+      return query.addFilter(filter);
+    }, query.reset().setTable(field.table));
+
+    return resultedQuery.question();
   }
 
   _syncStructuredQueryColumnsAndSettings(previousQuestion, previousQuery) {
@@ -799,16 +824,22 @@ export default class Question {
     originalQuestion,
     clean = true,
     query,
+    includeDisplayIsLocked,
   }: {
     originalQuestion?: Question,
     clean?: boolean,
     query?: { [string]: any },
+    includeDisplayIsLocked?: boolean,
   } = {}): string {
     if (
       !this.id() ||
       (originalQuestion && this.isDirtyComparedTo(originalQuestion))
     ) {
-      return Urls.question(null, this._serializeForUrl({ clean }), query);
+      return Urls.question(
+        null,
+        this._serializeForUrl({ clean, includeDisplayIsLocked }),
+        query,
+      );
     } else {
       return Urls.question(this.card(), "", query);
     }
@@ -1020,7 +1051,11 @@ export default class Question {
   }
 
   // Internal methods
-  _serializeForUrl({ includeOriginalCardId = true, clean = true } = {}) {
+  _serializeForUrl({
+    includeOriginalCardId = true,
+    clean = true,
+    includeDisplayIsLocked = false,
+  } = {}) {
     const query = clean ? this.query().clean() : this.query();
 
     const cardCopy = {
@@ -1035,6 +1070,11 @@ export default class Question {
       visualization_settings: this._card.visualization_settings,
       ...(includeOriginalCardId
         ? { original_card_id: this._card.original_card_id }
+        : {}),
+      ...(includeDisplayIsLocked
+        ? {
+            displayIsLocked: this._card.displayIsLocked,
+          }
         : {}),
     };
 
@@ -1056,11 +1096,13 @@ export default class Question {
   }
 
   getUrlWithParameters() {
-    const question = this.query().isEditable()
-      ? this.convertParametersToFilters()
-      : this.markDirty(); // forces use of serialized question url
+    const question = this.convertParametersToFilters().markDirty();
     const query = this.isNative() ? this._parameterValues : undefined;
-    return question.getUrl({ originalQuestion: this, query });
+    return question.getUrl({
+      originalQuestion: this,
+      query,
+      includeDisplayIsLocked: true,
+    });
   }
 
   getModerationReviews() {

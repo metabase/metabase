@@ -844,7 +844,7 @@ describe("scenarios > question > filter", () => {
     cy.button("Add filter").isVisibleInPopover();
   });
 
-  it.skip("shoud retain all data series after saving a question where custom expression formula is the first metric (metabase#15882)", () => {
+  it("shoud retain all data series after saving a question where custom expression formula is the first metric (metabase#15882)", () => {
     visitQuestionAdhoc({
       dataset_query: {
         database: 1,
@@ -880,7 +880,7 @@ describe("scenarios > question > filter", () => {
     cy.get(".line").should("have.length", 3);
 
     function assertOnLegendLabels() {
-      cy.get(".Card-title")
+      cy.findAllByTestId("legend-item")
         .should("contain", "Discount %")
         .and("contain", "Count")
         .and("contain", "Average of Total");

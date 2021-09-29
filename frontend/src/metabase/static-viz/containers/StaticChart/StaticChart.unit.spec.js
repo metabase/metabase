@@ -39,7 +39,7 @@ describe("StaticChart", () => {
       <StaticChart
         type="categorical/donut"
         options={{
-          data: [["donut", 20], ["cronut", 31]],
+          data: [["donut", 2000], ["cronut", 3100]],
           colors: {
             donut: "#509EE3",
             cronut: "#DDECFA",
@@ -48,9 +48,19 @@ describe("StaticChart", () => {
             dimension: row => row[0],
             metric: row => row[1],
           },
+          settings: {
+            metric: {
+              number_style: "currency",
+              currency: "USD",
+              currency_style: "symbol",
+            },
+          },
         }}
       />,
     );
+
+    screen.getByText("$5,100.00");
+    screen.getAllByText("TOTAL");
   });
 
   it("should render timeseries/bar", () => {

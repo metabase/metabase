@@ -248,7 +248,6 @@
   "Impl macro for `defendpoint`; don't use this directly."
   [{:keys [method route fn-name docstr args arg->schema original-body body]}]
   {:pre [(or (string? route) (vector? route))]}
-  (require 'compojure.core)
   `(def ~(vary-meta fn-name
                     assoc
 

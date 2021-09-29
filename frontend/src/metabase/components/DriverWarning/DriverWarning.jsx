@@ -44,7 +44,7 @@ function getSupersedesWarningContent(
       </WarningParagraph>
 
       <WarningParagraph hasMargin>
-        {t`The old driver has been deprecated and will be removed in the next release. If you really
+        {t`The old driver has been deprecated and will be removed in a future release. If you really
       need to use it, you can `}
         &nbsp;
         <Link
@@ -60,7 +60,7 @@ function getSupersededByWarningContent(engine, onChangeEngine) {
   return (
     <div>
       <WarningParagraph>
-        {t`This driver has been deprecated and will be removed in the next release.`}
+        {t`This driver has been deprecated and will be removed in a future release.`}
       </WarningParagraph>
       <WarningParagraph hasMargin>
         {t`We recommend that you upgrade to the`}

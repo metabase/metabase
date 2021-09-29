@@ -30,9 +30,7 @@ Problems, their causes, how to detect them, and how to fix them.
 
 - [Metabase isn't sending email][not-sending-email].
 
-- [Using the default H2 application database][appdb].
-
-- [Loading an exported H2 application database][loadh2].
+- [Using or migrating from an H2 application database][appdb].
 
 - [The dates and times in my questions and charts are wrong][incorrect-times].
 
@@ -92,7 +90,6 @@ Metabase adds new features and squashes bugs with each release. [Upgrading to th
 [learn]: https://www.metabase.com/learn
 [linked-filters]: ./linked-filters.html
 [login]: ./cant-log-in.html
-[loadh2]: ./loading-from-h2.html
 [not-sending-email]: ./cant-send-email.html
 [proxies]: ./proxies.html
 [releases]: https://github.com/metabase/metabase/releases

@@ -914,12 +914,10 @@
 
 (deftest pivot-query-test
   (mt/test-drivers (disj
-                     (mt/normal-drivers-with-feature :foreign-keys :nested-queries :left-join)
-                     ;; sample-dataset doesn't work on Redshift yet -- see #14784
-                     :redshift
-                     ;; this test relies on a FK relation between $product_id->products.category, so skip for Presto
-                     ;; JDBC, because that driver doesn't support resolving FKs from the JDBC metadata
-                     :presto-jdbc)
+                    (mt/normal-drivers-with-feature :foreign-keys :nested-queries :left-join)
+                    ;; this test relies on a FK relation between $product_id->products.category, so skip for Presto
+                    ;; JDBC, because that driver doesn't support resolving FKs from the JDBC metadata
+                    :presto-jdbc)
     (testing "Pivot table queries should work with sandboxed users (#14969)"
       (mt/dataset sample-dataset
         (mt/with-gtaps {:gtaps      (mt/$ids
@@ -927,28 +925,20 @@
                                        :products {:remappings {:user_cat [:dimension $products.category]}}})
                         :attributes {:user_id 1, :user_cat "Widget"}}
           (perms/grant-permissions! &group (perms/table-query-path (Table (mt/id :people))))
-          ;; not sure why Snowflake has slightly different results
-          (is (= (if (= driver/*driver* :snowflake)
-                   [["Twitter" "Widget" 0 510.82]
-                    ["Twitter" nil      0 407.93]
-                    [nil       "Widget" 1 510.82]
-                    [nil       nil      1 407.93]
-                    ["Twitter" nil      2 918.75]
-                    [nil       nil      3 918.75]]
-                   (->> [["Twitter" nil      0 401.51]
-                         ["Twitter" "Widget" 0 498.59]
-                         [nil       nil      1 401.51]
-                         [nil       "Widget" 1 498.59]
-                         ["Twitter" nil      2 900.1]
-                         [nil       nil      3 900.1]]
-                        (sort-by (let [nil-first? (mt/sorts-nil-first? driver/*driver*)
-                                       sort-str   (fn [s]
-                                                    (cond
-                                                      (some? s)  s
-                                                      nil-first? "A"
-                                                      :else      "Z"))]
-                                   (fn [[x y group]]
-                                     [group (sort-str x) (sort-str y)])))))
+          (is (= (->> [["Twitter" nil      0 401.51]
+                       ["Twitter" "Widget" 0 498.59]
+                       [nil       nil      1 401.51]
+                       [nil       "Widget" 1 498.59]
+                       ["Twitter" nil      2 900.1]
+                       [nil       nil      3 900.1]]
+                      (sort-by (let [nil-first? (mt/sorts-nil-first? driver/*driver* :type/Text)
+                                     sort-str   (fn [s]
+                                                  (cond
+                                                    (some? s)  s
+                                                    nil-first? "A"
+                                                    :else      "Z"))]
+                                 (fn [[x y group]]
+                                   [group (sort-str x) (sort-str y)]))))
                  (mt/formatted-rows [str str int 2.0]
                    (qp.pivot/run-pivot-query
                     (mt/mbql-query orders

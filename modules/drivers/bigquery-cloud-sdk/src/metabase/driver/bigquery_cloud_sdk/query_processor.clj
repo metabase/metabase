@@ -23,6 +23,7 @@
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [tru]]
+            [pretty.core :refer [PrettyPrintable]]
             [schema.core :as s]
             [toucan.db :as db])
   (:import [com.google.cloud.bigquery Field$Mode FieldValue]
@@ -415,13 +416,26 @@
       [(Math/round x) (Math/round (Math/pow 10 power))]
       (recur (* 10 x) (inc power)))))
 
+(defn- approx-quantiles
+  "HoneySQL form for the APPROX_QUANTILES invocation. The [OFFSET(...)] part after the function call is odd and
+  needs special treatment."
+  [driver expr offset quantiles]
+  (let [expr-hsql (sql.qp/->honeysql driver expr)]
+    (reify
+      hformat/ToSql
+      (to-sql [_]
+        (format "APPROX_QUANTILES(%s, %s)[OFFSET(%s)]"
+          (hformat/to-sql expr-hsql)
+          quantiles
+          offset))
+      PrettyPrintable
+      (pretty [_]
+        (format "APPROX_QUANTILES(%s, %s)[OFFSET(%s)]" (pr-str expr) (pr-str quantiles) (pr-str offset))))))
+
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :percentile]
   [driver [_ arg p]]
   (let [[offset quantiles] (percentile->quantile p)]
-    (hsql/raw (format "APPROX_QUANTILES(%s, %s)[OFFSET(%s)]"
-                      (hformat/to-sql (sql.qp/->honeysql driver arg))
-                      quantiles
-                      offset))))
+    (approx-quantiles driver arg offset quantiles)))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :median]
   [driver [_ arg]]

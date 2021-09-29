@@ -93,7 +93,7 @@ describeWithToken("formatting > whitelabel", () => {
     beforeEach(() => {
       cy.log("Change company name");
       cy.visit("/admin/settings/whitelabel");
-      cy.findByPlaceholderText("Metabase")
+      cy.findByLabelText("Application Name")
         .clear()
         .type(COMPANY_NAME);
       // Helps scroll the page up in order to see "Saved" notification
@@ -203,7 +203,7 @@ describeWithToken("formatting > whitelabel", () => {
       cy.visit("/admin/settings/whitelabel");
 
       cy.log("Add favicon");
-      cy.findByPlaceholderText("/app/assets/img/favicon.ico").type(
+      cy.findByLabelText("Favicon").type(
         "https://cdn.ecosia.org/assets/images/ico/favicon.ico",
       );
       cy.get("ul")
