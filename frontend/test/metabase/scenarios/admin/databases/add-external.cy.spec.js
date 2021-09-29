@@ -1,15 +1,14 @@
 import { restore, modal, typeAndBlurUsingLabel } from "__support__/e2e/cypress";
 
-describe("postgres > admin > add", () => {
+describe("admin > database > add > postgres", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.server();
+
+    cy.intercept("POST", "/api/database").as("createDatabase");
   });
 
   it("should add a database and redirect to listing", () => {
-    cy.route("POST", "/api/database").as("createDatabase");
-
     cy.visit("/admin/databases/create");
     cy.contains("Database type")
       .closest(".Form-field")
