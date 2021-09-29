@@ -12,7 +12,10 @@
             [metabase.util.i18n :refer [deferred-tru trs tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [clj-time
+              [core :as t]
+              [format :as f]]))
 
 (def ^:private ValidToken
   "Schema for a valid metastore token. Must be 64 lower-case hex characters."
@@ -58,31 +61,15 @@
 (s/defn ^:private fetch-token-status* :- TokenStatus
   "Fetch info about the validity of `token` from the MetaStore."
   [token :- ValidToken]
-  ;; attempt to query the metastore API about the status of this token. If the request doesn't complete in a
-  ;; reasonable amount of time throw a timeout exception
-  (log/info (trs "Checking with the MetaStore to see whether {0} is valid..." token))
-  (deref
-   (future
-     (log/info (u/format-color 'green (trs "Using this URL to check token: {0}" (token-status-url token))))
-     (try (some-> (token-status-url token)
-                  (http/get {:query-params {:users (active-user-count)}})
-                  :body
-                  (json/parse-string keyword))
-          ;; if there was an error fetching the token, log it and return a generic message about the
-          ;; token being invalid. This message will get displayed in the Settings page in the admin panel so
-          ;; we do not want something complicated
-          (catch clojure.lang.ExceptionInfo e
-            (log/error e (trs "Error fetching token status:"))
-            (let [body (u/ignore-exceptions (some-> (ex-data e) :object :body (json/parse-string keyword)))]
-              (or
-               body
-               {:valid         false
-                :status        (tru "Unable to validate token")
-                :error-details (.getMessage e)})))))
-   fetch-token-status-timeout-ms
-   {:valid         false
-    :status        (tru "Unable to validate token")
-    :error-details (tru "Token validation timed out.")}))
+  (log/info (trs "Bypassing Metastore for offline build of token {0}" token))
+  ; Expires at midnight on the date provided, e.g. "2020-04-01T00:00:00Z"
+  (let [expiration-date (t/date-time 2022 1 29)
+        valid          (t/after? expiration-date (t/now))]
+    {:valid      valid
+     :status      (format "Token is %s." (if (t/after? expiration-date (t/now)) "valid" "expired"))
+     :features    ["audit-app","embedding","whitelabel","sso","sandboxes"]
+     :trial      false
+     :valid_thru  (f/unparse (f/formatters :date-time-no-ms) expiration-date)}))
 
 (def ^{:arglists '([token])} fetch-token-status
   "TTL-memoized version of `fetch-token-status*`. Caches API responses for 5 minutes. This is important to avoid making
