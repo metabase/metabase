@@ -11,9 +11,9 @@
             [metabase.models.dashboard-card :refer [DashboardCard]]
             [metabase.models.database :refer [Database]]
             [metabase.models.pulse :as pulse :refer [Pulse]]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.pulse.interface :as i]
+            [metabase.public-settings :as public-settings]
             [metabase.pulse.markdown :as markdown]
+            [metabase.pulse.parameters :as params]
             [metabase.pulse.render :as render]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -26,15 +26,6 @@
             [schema.core :as s]
             [toucan.db :as db])
   (:import metabase.models.card.CardInstance))
-
-
-(def ^:private parameters-impl
-  (u/prog1 (or (u/ignore-exceptions
-                 (classloader/require 'metabase-enterprise.pulse)
-                 (some-> (resolve 'metabase-enterprise.pulse/ee-strategy-parameters-impl)
-                         var-get))
-               i/default-parameters-impl)))
-
 
 
 ;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
@@ -114,7 +105,7 @@
         ordered-dashcards (sort dashcard-comparator dashcards)]
     (for [dashcard ordered-dashcards]
       (if-let [card-id (:card_id dashcard)]
-        (execute-dashboard-subscription-card pulse-creator-id dashboard dashcard card-id (i/the-parameters parameters-impl pulse dashboard))
+        (execute-dashboard-subscription-card pulse-creator-id dashboard dashcard card-id (params/parameters pulse dashboard))
         ;; For virtual cards, return the viz settings map directly
         (-> dashcard :visualization_settings)))))
 
@@ -170,6 +161,45 @@
                                      :text (truncate-mrkdwn mrkdwn)}}]})))))
          (remove nil?))))
 
+(defn- subject
+  [{:keys [name cards dashboard_id]}]
+  (if (or dashboard_id
+          (some :dashboard_id cards))
+    name
+    (trs "Pulse: {0}" name)))
+
+(defn- slack-dashboard-header
+  "Returns a block element that includes a dashboard's name, creator, and filters, for inclusion in a
+  Slack dashboard subscription"
+  [pulse dashboard]
+  (let [header-section  {:type "header"
+                         :text {:type "plain_text"
+                                :text (subject pulse)
+                                :emoji true}}
+        creator-section {:type   "section"
+                         :fields [{:type "mrkdwn"
+                                   :text (str "Sent by " (-> pulse :creator :common_name))}]}
+        filters         (params/parameters pulse dashboard)
+        filter-fields   (for [filter filters]
+                          {:type "mrkdwn"
+                           :text (str "*" (:name filter) "*\n" (params/value-string filter))})
+        filter-section  (when (seq filter-fields)
+                          {:type   "section"
+                           :fields filter-fields})]
+    (if filter-section
+      {:blocks [header-section filter-section creator-section]}
+      {:blocks [header-section creator-section]})))
+
+(defn- slack-dashboard-footer
+  "Returns a block element with the footer text and link which should be at the end of a Slack dashboard subscription."
+  [pulse dashboard]
+  {:blocks
+   [{:type "divider"}
+    {:type "context"
+     :elements [{:type "mrkdwn"
+                 :text (str "<" (params/dashboard-url (u/the-id dashboard) (params/parameters pulse dashboard)) "|"
+                            "*Sent from " (public-settings/site-name) "*>")}]}]})
+
 (def slack-width
   "Width of the rendered png of html to be sent to slack."
   1200)
@@ -190,7 +220,7 @@
                                    (-> (f attachment-data)
                                        (assoc :text (:render/text rendered-info)))
                                    (let [image-bytes (render/png-from-render-info rendered-info slack-width)
-                                         image-url (slack-attachment-uploader image-bytes attachment-name channel-id)]
+                                         image-url   (slack-attachment-uploader image-bytes attachment-name channel-id)]
                                      (-> (f attachment-data)
                                          (assoc :image_url image-url)))))))
              []
@@ -236,13 +266,6 @@
     :alert
     :pulse))
 
-(defn- subject
-  [{:keys [name cards dashboard_id]}]
-  (if (or dashboard_id
-          (some :dashboard_id cards))
-    name
-    (trs "Pulse: {0}" name)))
-
 (defmulti ^:private should-send-notification?
   "Returns true if given the pulse type and resultset a new notification (pulse or alert) should be sent"
   (fn [pulse _results] (alert-or-pulse pulse)))
@@ -273,11 +296,11 @@
   "Polymorphoic function for creating notifications. This logic is different for pulse type (i.e. alert vs. pulse) and
   channel_type (i.e. email vs. slack)"
   {:arglists '([alert-or-pulse results channel])}
-  (fn [pulse _ {:keys [channel_type] :as channel}]
+  (fn [pulse _ {:keys [channel_type]}]
     [(alert-or-pulse pulse) (keyword channel_type)]))
 
 (defmethod notification [:pulse :email]
-  [{pulse-id :id, pulse-name :name, dashboard-id :dashboard_id, :as pulse} results {:keys [recipients], :as channel}]
+  [{pulse-id :id, pulse-name :name, dashboard-id :dashboard_id, :as pulse} results {:keys [recipients]}]
   (log/debug (u/format-color 'cyan (trs "Sending Pulse ({0}: {1}) with {2} Cards via email"
                                         pulse-id (pr-str pulse-name) (count results))))
   (let [email-recipients (filterv u/email? (map :email recipients))
@@ -290,12 +313,17 @@
      :message      (messages/render-pulse-email timezone pulse dashboard results)}))
 
 (defmethod notification [:pulse :slack]
-  [{pulse-id :id, pulse-name :name, :as pulse} results {{channel-id :channel} :details :as channel}]
+  [{pulse-id :id, pulse-name :name, dashboard-id :dashboard_id, :as pulse}
+   results
+   {{channel-id :channel} :details}]
   (log/debug (u/format-color 'cyan (trs "Sending Pulse ({0}: {1}) with {2} Cards via Slack"
                                         pulse-id (pr-str pulse-name) (count results))))
-  {:channel-id  channel-id
-   :message     (subject pulse)
-   :attachments (create-slack-attachment-data results)})
+  (let [dashboard (Dashboard :id dashboard-id)]
+    {:channel-id  channel-id
+     :attachments (remove nil?
+                          (flatten [(slack-dashboard-header pulse dashboard)
+                                    (create-slack-attachment-data results)
+                                    (when dashboard (slack-dashboard-footer pulse dashboard))]))}))
 
 (defmethod notification [:alert :email]
   [{:keys [id] :as pulse} results {:keys [recipients]}]
@@ -316,8 +344,11 @@
   [pulse results {{channel-id :channel} :details}]
   (log/debug (u/format-color 'cyan (trs "Sending Alert ({0}: {1}) via Slack" (:id pulse) (:name pulse))))
   {:channel-id  channel-id
-   :message     (trs "Alert: {0}" (first-question-name pulse))
-   :attachments (create-slack-attachment-data results)})
+   :attachments (cons {:blocks [{:type "header"
+                                 :text {:type "plain_text"
+                                        :text (str "🔔 " (first-question-name pulse))
+                                        :emoji true}}]}
+                      (create-slack-attachment-data results))})
 
 (defmethod notification :default
   [_ _ {:keys [channel_type]}]

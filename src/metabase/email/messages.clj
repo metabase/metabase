@@ -14,6 +14,7 @@
             [metabase.email :as email]
             [metabase.public-settings :as public-settings]
             [metabase.pulse.markdown :as markdown]
+            [metabase.pulse.parameters :as params]
             [metabase.pulse.render :as render]
             [metabase.pulse.render.body :as render.body]
             [metabase.pulse.render.image-bundle :as image-bundle]
@@ -292,7 +293,7 @@
   (merge (common-context)
          {:emailType                 "pulse"
           :title                     (:name pulse)
-          :titleUrl                  (url/dashboard-url (:id dashboard))
+          :titleUrl                  (params/dashboard-url (:id dashboard) (params/parameters pulse dashboard))
           :dashboardDescription      (:description dashboard)
           :creator                   (-> pulse :creator :common_name)
           :sectionStyle              (render.style/style (render.style/section-style))}
@@ -406,15 +407,58 @@
     (render/render-pulse-section timezone result)
     {:content (markdown/process-markdown (:text result) :html)}))
 
-(defn- render-message-body [message-type message-context timezone dashboard results]
+(defn- render-filters
+  [notification dashboard]
+  (let [filters (params/parameters notification dashboard)
+        cells   (map
+                 (fn [filter]
+                   [:td {:class "filter-cell"
+                         :style (render.style/style {:width "50%"
+                                                     :padding "0px"})}
+                    [:table {:cellpadding "0"
+                             :cellspacing "0"}
+                     [:tr
+                      [:td
+                       {:style (render.style/style {:color render.style/color-text-medium
+                                                    :min-width "100px"
+                                                    :width "50%"
+                                                    :padding "4px 4px 4px 0"
+                                                    :vertical-align "baseline"})}
+                       (:name filter)]
+                      [:td
+                       {:style (render.style/style {:color render.style/color-text-dark
+                                                    :min-width "100px"
+                                                    :width "50%"
+                                                    :padding "4px 16px 4px 8px"
+                                                    :vertical-align "baseline"})}
+                       (params/value-string filter)]]]])
+                 filters)
+        rows    (partition 2 2 nil cells)]
+    (html
+     [:table {:style (render.style/style {:table-layout :fixed
+                                          :border-collapse :collapse
+                                          :cellpadding "0"
+                                          :cellspacing "0"
+                                          :width "100%"
+                                          :font-size  "12px"
+                                          :font-weight 700
+                                          :margin-top "8px"})}
+      (for [row rows]
+        [:tr {} row])])))
+
+(defn- render-message-body
+  [notification message-type message-context timezone dashboard results]
   (let [rendered-cards  (binding [render/*include-title* true]
                           (mapv #(render-result-card timezone %) results))
         icon-name       (case message-type
                           :alert :bell
                           :pulse :dashboard)
         icon-attachment (first (map make-message-attachment (icon-bundle icon-name)))
+        filters         (when dashboard
+                          (render-filters notification dashboard))
         message-body    (assoc message-context :pulse   (html (vec (cons :div (map :content rendered-cards))))
-                                               :iconCid (:content-id icon-attachment))
+                               :filters filters
+                               :iconCid (:content-id icon-attachment))
         attachments     (apply merge (map :attachments rendered-cards))]
     (vec (concat [{:type "text/html; charset=utf-8" :content (stencil/render-file "metabase/email/pulse" message-body)}]
                (map make-message-attachment attachments)
@@ -431,7 +475,8 @@
 (defn render-pulse-email
   "Take a pulse object and list of results, returns an array of attachment objects for an email"
   [timezone pulse dashboard results]
-  (render-message-body :pulse
+  (render-message-body pulse
+                       :pulse
                        (pulse-context pulse dashboard)
                        timezone
                        dashboard
@@ -487,7 +532,8 @@
   (let [message-ctx  (merge
                       (common-alert-context alert (alert-results-condition-text goal-value))
                       (alert-context alert))]
-    (render-message-body :alert
+    (render-message-body alert
+                         :alert
                          (assoc message-ctx :firstRunOnly? alert_first_only)
                          timezone
                          nil

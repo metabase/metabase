@@ -174,9 +174,10 @@
      :slack
      (fn [{:keys [card-id]} [pulse-results]]
        (is (= {:channel-id "#general"
-               :message    "Pulse: Pulse Name"
                :attachments
-               [{:title           card-name
+               [{:blocks [{:type "header", :text {:type "plain_text", :text "Pulse: Pulse Name", :emoji true}}
+                          {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
+                {:title           card-name
                  :rendered-info   {:attachments false
                                    :content     true}
                  :title_link      (str "https://metabase.com/testmb/question/" card-id)
@@ -214,9 +215,11 @@
         (testing "\"more results in attachment\" text should not be present for Slack Pulses"
           (testing "Pulse results"
             (is (= {:channel-id "#general"
-                    :message    "Pulse: Pulse Name"
                     :attachments
-                    [{:title           card-name
+                    [{:blocks
+                       [{:type "header", :text {:type "plain_text", :text "Pulse: Pulse Name", :emoji true}}
+                        {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
+                     {:title           card-name
                       :rendered-info   {:attachments false
                                         :content     true}
                       :title_link      (str "https://metabase.com/testmb/question/" card-id)
@@ -427,8 +430,8 @@
         :slack
         (fn [{:keys [card-id]} [result]]
           (is (= {:channel-id  "#general",
-                  :message     "Alert: Test card",
-                  :attachments [{:title                  card-name
+                  :attachments [{:blocks [{:type "header", :text {:type "plain_text", :text "🔔 Test card", :emoji true}}]}
+                                {:title                  card-name
                                  :rendered-info          {:attachments false
                                                           :content     true}
                                  :title_link             (str "https://metabase.com/testmb/question/" card-id)
@@ -436,7 +439,7 @@
                                  :channel-id             "FOO"
                                  :fallback               card-name}]}
                  (thunk->boolean result)))
-          (is (every? produces-bytes? (:attachments result))))}}
+          (is (every? produces-bytes? (rest (:attachments result)))))}}
 
       "with no data"
       {:card
@@ -639,9 +642,11 @@
       (slack-test-setup
        (let [[slack-data] (pulse/send-pulse! (models.pulse/retrieve-pulse pulse-id))]
          (is (= {:channel-id "#general",
-                 :message    "Pulse: Pulse Name",
                  :attachments
-                 [{:title                  card-name,
+                 [{:blocks
+                   [{:type "header", :text {:type "plain_text", :text "Pulse: Pulse Name", :emoji true}}
+                    {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
+                  {:title                  card-name,
                    :rendered-info          {:attachments false
                                             :content     true}
                    :title_link             (str "https://metabase.com/testmb/question/" card-id-1),
@@ -657,7 +662,7 @@
                    :fallback               "Test card 2"}]}
                 (thunk->boolean slack-data)))
          (testing "attachments"
-           (is (true? (every? produces-bytes? (:attachments slack-data))))))))))
+           (is (true? (every? produces-bytes? (rest (:attachments slack-data)))))))))))
 
 (deftest create-and-upload-slack-attachments!-test
   (let [slack-uploader (fn [storage]
@@ -714,8 +719,10 @@
                  slack-data (m/find-first #(contains? % :channel-id) pulse-data)
                  email-data (m/find-first #(contains? % :subject) pulse-data)]
              (is (= {:channel-id  "#general"
-                     :message     "Pulse: Pulse Name"
-                     :attachments [{:title           card-name
+                     :attachments [{:blocks
+                                    [{:type "header", :text {:type "plain_text", :text "Pulse: Pulse Name", :emoji true}}
+                                     {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
+                                   {:title           card-name
                                     :title_link      (str "https://metabase.com/testmb/question/" card-id)
                                     :rendered-info   {:attachments false
                                                       :content     true}
@@ -724,7 +731,7 @@
                                     :fallback        card-name}]}
                     (thunk->boolean slack-data)))
              (is (= [true]
-                    (map (comp some? :content :rendered-info) (:attachments slack-data))))
+                    (map (comp some? :content :rendered-info) (rest (:attachments slack-data)))))
              (is (= {:subject "Pulse: Pulse Name", :recipients ["rasta@metabase.com"], :message-type :attachments}
                     (select-keys email-data [:subject :recipients :message-type])))
              (is (= 3
