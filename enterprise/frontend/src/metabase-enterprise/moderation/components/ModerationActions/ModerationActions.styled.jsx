@@ -30,6 +30,8 @@ export const VerifyButton = styled(Button).attrs({
 })`
   border: none;
 
+  padding: 8px;
+
   &:hover {
     color: ${color(verifiedIconColor)};
   }
