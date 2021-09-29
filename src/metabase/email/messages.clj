@@ -30,7 +30,9 @@
             [stencil.core :as stencil]
             [stencil.loader :as stencil-loader]
             [toucan.db :as db])
-  (:import [java.io File IOException OutputStream]))
+  (:import [java.io File IOException OutputStream]
+           java.time.LocalTime
+           java.time.format.DateTimeFormatter))
 
 (defn- app-name-trs
   "Return the user configured application name, or Metabase translated
@@ -515,11 +517,8 @@
 
 (defn- schedule-hour-text
   [{hour :schedule_hour}]
-  (str (if (= hour 0)
-         12 ;; 12 am
-         (mod hour 12))
-       " "
-       (if (< hour 12) "AM" "PM")))
+  (.format (LocalTime/of hour 0)
+           (DateTimeFormatter/ofPattern "h a")))
 
 (defn- schedule-day-text
   [{day :schedule_day}]
