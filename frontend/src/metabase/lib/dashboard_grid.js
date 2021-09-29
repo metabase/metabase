@@ -1,12 +1,23 @@
-/* @flow */
-
-import type { DashCard } from "metabase/meta/types/Dashboard";
+import type { DashCard } from "metabase-types/types/Dashboard";
 
 export const GRID_WIDTH = 18;
 export const GRID_ASPECT_RATIO = 4 / 3;
-export const GRID_MARGIN = 6;
+
+const MOBILE_BREAKPOINT = 752;
+
+export const GRID_BREAKPOINTS = {
+  desktop: MOBILE_BREAKPOINT + 1,
+  mobile: MOBILE_BREAKPOINT,
+};
+
+export const GRID_COLUMNS = {
+  desktop: GRID_WIDTH,
+  mobile: 1,
+};
 
 export const DEFAULT_CARD_SIZE = { width: 4, height: 4 };
+
+export const MIN_ROW_HEIGHT = 54;
 
 type DashCardPosition = {
   col: number,
@@ -28,8 +39,8 @@ export function getPositionForNewDashCard(
   while (row < 1000) {
     while (col <= width - sizeX) {
       let good = true;
-      let position = { col, row, sizeX, sizeY };
-      for (let card of cards) {
+      const position = { col, row, sizeX, sizeY };
+      for (const card of cards) {
         if (intersects(card, position)) {
           good = false;
           break;

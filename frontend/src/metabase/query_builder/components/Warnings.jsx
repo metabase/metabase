@@ -1,7 +1,8 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
-import Tooltip from "metabase/components/Tooltip.jsx";
-import Icon from "metabase/components/Icon.jsx";
+import Tooltip from "metabase/components/Tooltip";
+import Icon from "metabase/components/Icon";
 
 const Warnings = ({ warnings, className, size = 16 }) => {
   if (!warnings || warnings.length === 0) {

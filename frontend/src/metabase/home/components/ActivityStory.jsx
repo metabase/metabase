@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 export default class ActivityStory extends Component {
   constructor(props, context) {
@@ -9,7 +9,7 @@ export default class ActivityStory extends Component {
 
     this.styles = {
       borderWidth: "2px",
-      borderColor: colors["border"],
+      borderColor: color("border"),
     };
   }
 
@@ -30,7 +30,7 @@ export default class ActivityStory extends Component {
         style={{
           borderWidth: "3px",
           marginLeft: "22px",
-          borderColor: colors["border"],
+          borderColor: color("border"),
         }}
       >
         <div className="flex full ml4 bordered rounded p2" style={this.styles}>
@@ -38,7 +38,7 @@ export default class ActivityStory extends Component {
             <Link
               to={story.bodyLink}
               data-metabase-event={"Activity Feed;Story Clicked;" + story.topic}
-              className="link"
+              className="link text-wrap"
             >
               {story.body}
             </Link>

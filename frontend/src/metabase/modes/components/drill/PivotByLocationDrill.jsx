@@ -1,12 +1,7 @@
-/* @flow */
+import { t } from "ttag";
 
-import PivotByLocationAction from "../actions/PivotByLocationAction";
+import { isAddress } from "metabase/lib/schema_metadata";
 
-import type {
-  ClickAction,
-  ClickActionProps,
-} from "metabase/meta/types/Visualization";
+import PivotByDrill from "./PivotByDrill";
 
-export default (props: ClickActionProps): ClickAction[] => {
-  return PivotByLocationAction(props);
-};
+export default PivotByDrill(t`Location`, "location", field => isAddress(field));

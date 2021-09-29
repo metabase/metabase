@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
 import "./LoadingSpinner.css";
@@ -11,7 +12,7 @@ export default class LoadingSpinner extends Component {
   };
 
   render() {
-    let { size, borderWidth, className, spinnerClassName } = this.props;
+    const { size, borderWidth, className, spinnerClassName } = this.props;
     return (
       <div className={className}>
         <div

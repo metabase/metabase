@@ -1,30 +1,25 @@
 (ns metabase.models.permissions-group-membership-test
-  (:require [expectations :refer [expect]]
-            [metabase.models
-             [permissions-group :as group]
-             [permissions-group-membership :as pgm :refer [PermissionsGroupMembership]]
-             [user :refer [User]]]
-            [metabase.test.data.users :as test-users]
+  (:require [clojure.test :refer :all]
+            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-group-membership :as pgm :refer [PermissionsGroupMembership]]
+            [metabase.models.user :refer [User]]
+            [metabase.test :as mt]
+            [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+            [toucan.db :as db]))
 
-;; when you create a PermissionsGroupMembership for a User in the admin group, it should set their `is_superuser` flag
-(expect
-  true
-  (do
-    ;; make sure the test users are Created, otherwise `with-temp` will fail when it tries to delete the temporary
-    ;; user, because deleting the last admin user is disallowed
-    (test-users/create-users-if-needed!)
-    (tt/with-temp User [user]
-      (db/insert! PermissionsGroupMembership {:user_id (u/get-id user), :group_id (u/get-id (group/admin))})
-      (db/select-one-field :is_superuser User :id (u/get-id user)))))
+(use-fixtures :once (fixtures/initialize :test-users))
 
-;; when you delete a PermissionsGroupMembership for a User in the admin group, it should set their `is_superuser` flag
-(expect
-  false
-  (do
-    (test-users/create-users-if-needed!)
-    (tt/with-temp User [user {:is_superuser true}]
-      (db/delete! PermissionsGroupMembership :user_id (u/get-id user), :group_id (u/get-id (group/admin)))
-      (db/select-one-field :is_superuser User :id (u/get-id user)))))
+(deftest set-is-superuser-test
+  (testing "when you create a PermissionsGroupMembership for a User in the admin group, it should set their `is_superuser` flag"
+    (mt/with-temp User [user]
+      (db/insert! PermissionsGroupMembership {:user_id (u/the-id user), :group_id (u/the-id (group/admin))})
+      (is (= true
+             (db/select-one-field :is_superuser User :id (u/the-id user)))))))
+
+(deftest remove-is-superuser-test
+  (testing "when you delete a PermissionsGroupMembership for a User in the admin group, it should set their `is_superuser` flag"
+    (mt/with-temp User [user {:is_superuser true}]
+      (db/delete! PermissionsGroupMembership :user_id (u/the-id user), :group_id (u/the-id (group/admin)))
+      (is (= false
+             (db/select-one-field :is_superuser User :id (u/the-id user)))))))

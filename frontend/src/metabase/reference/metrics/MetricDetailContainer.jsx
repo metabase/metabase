@@ -3,27 +3,22 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
-import MetricSidebar from "./MetricSidebar.jsx";
-import SidebarLayout from "metabase/components/SidebarLayout.jsx";
-import MetricDetail from "metabase/reference/metrics/MetricDetail.jsx";
+import MetabaseAnalytics from "metabase/lib/analytics";
+
+import MetricSidebar from "./MetricSidebar";
+import SidebarLayout from "metabase/components/SidebarLayout";
+import MetricDetail from "metabase/reference/metrics/MetricDetail";
 
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
 
-import {
-  getUser,
-  getMetric,
-  getMetricId,
-  getDatabaseId,
-  getIsEditing,
-} from "../selectors";
+import { getUser, getMetric, getMetricId, getDatabaseId } from "../selectors";
 
 const mapStateToProps = (state, props) => ({
   user: getUser(state, props),
   metric: getMetric(state, props),
   metricId: getMetricId(state, props),
   databaseId: getDatabaseId(state, props),
-  isEditing: getIsEditing(state, props),
 });
 
 const mapDispatchToProps = {
@@ -31,27 +26,50 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class MetricDetailContainer extends Component {
   static propTypes = {
+    router: PropTypes.shape({
+      replace: PropTypes.func.isRequired,
+    }).isRequired,
     params: PropTypes.object.isRequired,
     location: PropTypes.object.isRequired,
     user: PropTypes.object.isRequired,
     metric: PropTypes.object.isRequired,
     metricId: PropTypes.number.isRequired,
     databaseId: PropTypes.number.isRequired,
-    isEditing: PropTypes.bool,
   };
+
+  constructor(props) {
+    super(props);
+    this.startEditing = this.startEditing.bind(this);
+    this.endEditing = this.endEditing.bind(this);
+  }
 
   async fetchContainerData() {
     await actions.wrappedFetchMetricDetail(this.props, this.props.metricId);
   }
 
-  componentWillMount() {
+  startEditing() {
+    const { metric, router } = this.props;
+    router.replace(`/reference/metrics/${metric.id}/edit`);
+    MetabaseAnalytics.trackEvent("Data Reference", "Started Editing");
+  }
+
+  endEditing() {
+    const { metric, router } = this.props;
+    router.replace(`/reference/metrics/${metric.id}`);
+    // No need to track end of editing here, as it's done by actions.clearState below
+  }
+
+  UNSAFE_componentWillMount() {
     this.fetchContainerData();
   }
 
-  componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(newProps) {
     if (this.props.location.pathname === newProps.location.pathname) {
       return;
     }
@@ -60,7 +78,8 @@ export default class MetricDetailContainer extends Component {
   }
 
   render() {
-    const { isEditing, user, metric } = this.props;
+    const { location, user, metric } = this.props;
+    const isEditing = location.pathname.endsWith("/edit");
 
     return (
       <SidebarLayout
@@ -68,7 +87,12 @@ export default class MetricDetailContainer extends Component {
         style={isEditing ? { paddingTop: "43px" } : {}}
         sidebar={<MetricSidebar metric={metric} user={user} />}
       >
-        <MetricDetail {...this.props} />
+        <MetricDetail
+          {...this.props}
+          isEditing={isEditing}
+          startEditing={this.startEditing}
+          endEditing={this.endEditing}
+        />
       </SidebarLayout>
     );
   }

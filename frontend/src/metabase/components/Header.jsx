@@ -1,29 +1,53 @@
 import React, { Component } from "react";
-import ReactDOM from "react-dom";
+import PropTypes from "prop-types";
+import { Box, Flex } from "grid-styled";
+import { t } from "ttag";
 
-import CollectionBadge from "metabase/questions/components/CollectionBadge";
-import InputBlurChange from "metabase/components/InputBlurChange.jsx";
-import HeaderModal from "metabase/components/HeaderModal.jsx";
-import TitleAndDescription from "metabase/components/TitleAndDescription.jsx";
-import EditBar from "metabase/components/EditBar.jsx";
-import { t } from "c-3po";
 import { getScrollY } from "metabase/lib/dom";
 
-export default class Header extends Component {
-  static defaultProps = {
-    headerButtons: [],
-    editingTitle: "",
-    editingSubtitle: "",
-    editingButtons: [],
-    headerClassName: "py1 lg-py2 xl-py3 wrapper",
-  };
+import CollectionBadge from "metabase/questions/components/CollectionBadge";
+import EditBar from "metabase/components/EditBar";
+import EditWarning from "metabase/components/EditWarning";
+import HeaderModal from "metabase/components/HeaderModal";
+import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
+import TitleAndDescription from "metabase/components/TitleAndDescription";
 
+const propTypes = {
+  analyticsContext: PropTypes.string,
+  editingTitle: PropTypes.string,
+  editingSubtitle: PropTypes.string,
+  editingButtons: PropTypes.arrayOf(PropTypes.node),
+  editWarning: PropTypes.string,
+  headerButtons: PropTypes.arrayOf(PropTypes.node),
+  headerClassName: PropTypes.string,
+  headerModalMessage: PropTypes.string,
+  isEditing: PropTypes.bool,
+  isEditingInfo: PropTypes.bool,
+  item: PropTypes.object.isRequired,
+  objectType: PropTypes.string.isRequired,
+  hasBadge: PropTypes.bool,
+  children: PropTypes.node,
+  setItemAttributeFn: PropTypes.func,
+  onHeaderModalDone: PropTypes.func,
+  onHeaderModalCancel: PropTypes.func,
+};
+
+const defaultProps = {
+  headerButtons: [],
+  editingTitle: "",
+  editingSubtitle: "",
+  editingButtons: [],
+  headerClassName: "py1 lg-py2 xl-py3 wrapper",
+};
+
+class Header extends Component {
   constructor(props, context) {
     super(props, context);
 
     this.state = {
       headerHeight: 0,
     };
+    this.header = React.createRef();
   }
 
   componentDidMount() {
@@ -38,11 +62,11 @@ export default class Header extends Component {
   }
 
   updateHeaderHeight() {
-    if (!this.refs.header) {
+    if (!this.header.current) {
       return;
     }
 
-    const rect = ReactDOM.findDOMNode(this.refs.header).getBoundingClientRect();
+    const rect = this.header.current.getBoundingClientRect();
     const headerHeight = rect.top + getScrollY();
     if (this.state.headerHeight !== headerHeight) {
       this.setState({ headerHeight });
@@ -65,6 +89,12 @@ export default class Header extends Component {
     }
   }
 
+  renderEditWarning() {
+    if (this.props.editWarning) {
+      return <EditWarning title={this.props.editWarning} />;
+    }
+  }
+
   renderHeaderModal() {
     return (
       <HeaderModal
@@ -78,42 +108,24 @@ export default class Header extends Component {
   }
 
   render() {
-    const { item } = this.props;
+    const { item, hasBadge } = this.props;
+    const hasLastEditInfo = !!item["last-edit-info"];
+
     let titleAndDescription;
-    if (this.props.isEditingInfo) {
+    if (this.props.item && this.props.item.id != null) {
       titleAndDescription = (
-        <div className="Header-title flex flex-column flex-full bordered rounded my1">
-          <InputBlurChange
-            className="AdminInput text-bold border-bottom rounded-top h3"
-            type="text"
-            value={this.props.item.name || ""}
-            onChange={this.setItemAttribute.bind(this, "name")}
-          />
-          <InputBlurChange
-            className="AdminInput rounded-bottom h4"
-            type="text"
-            value={this.props.item.description || ""}
-            onChange={this.setItemAttribute.bind(this, "description")}
-            placeholder={t`No description yet`}
-          />
-        </div>
+        <TitleAndDescription
+          title={this.props.item.name}
+          description={this.props.item.description}
+        />
       );
     } else {
-      if (this.props.item && this.props.item.id != null) {
-        titleAndDescription = (
-          <TitleAndDescription
-            title={this.props.item.name}
-            description={this.props.item.description}
-          />
-        );
-      } else {
-        titleAndDescription = (
-          <TitleAndDescription
-            title={t`New ${this.props.objectType}`}
-            description={this.props.item.description}
-          />
-        );
-      }
+      titleAndDescription = (
+        <TitleAndDescription
+          title={t`New ${this.props.objectType}`}
+          description={this.props.item.description}
+        />
+      );
     }
 
     let attribution;
@@ -125,7 +137,7 @@ export default class Header extends Component {
       );
     }
 
-    let headerButtons = this.props.headerButtons.map(
+    const headerButtons = this.props.headerButtons.map(
       (section, sectionIndex) => {
         return (
           section &&
@@ -135,9 +147,7 @@ export default class Header extends Component {
               className="Header-buttonSection flex align-center"
             >
               {section.map((button, buttonIndex) => (
-                <span key={buttonIndex} className="Header-button">
-                  {button}
-                </span>
+                <span key={buttonIndex}>{button}</span>
               ))}
             </span>
           )
@@ -148,26 +158,36 @@ export default class Header extends Component {
     return (
       <div>
         {this.renderEditHeader()}
+        {this.renderEditWarning()}
         {this.renderHeaderModal()}
         <div
           className={
             "QueryBuilder-section flex align-center " +
             this.props.headerClassName
           }
-          ref="header"
+          ref={this.header}
         >
-          <div className="Entity py3">
+          <Box py={2}>
             <span className="inline-block mb1">{titleAndDescription}</span>
             {attribution}
-            {this.props.showBadge && (
-              <CollectionBadge
-                collectionId={item.collection_id}
-                analyticsContext={this.props.analyticsContext}
-              />
-            )}
-          </div>
+            <Flex direction="row" align="center">
+              {hasBadge && (
+                <CollectionBadge
+                  collectionId={item.collection_id}
+                  analyticsContext={this.props.analyticsContext}
+                />
+              )}
+              {hasBadge && hasLastEditInfo && (
+                <span className="mx1 text-light text-smaller">•</span>
+              )}
+              {hasLastEditInfo && <LastEditInfoLabel item={item} />}
+            </Flex>
+          </Box>
 
-          <div className="flex align-center flex-align-right">
+          <div
+            className="flex align-center flex-align-right"
+            style={{ color: "#4C5773" }}
+          >
             {headerButtons}
           </div>
         </div>
@@ -176,3 +196,8 @@ export default class Header extends Component {
     );
   }
 }
+
+Header.propTypes = propTypes;
+Header.defaultProps = defaultProps;
+
+export default Header;

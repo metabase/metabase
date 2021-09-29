@@ -1,10 +1,7 @@
-/* @flow */
-
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { titleize } from "inflection";
-
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
 
@@ -16,7 +13,7 @@ import {
   getUnsignedPreviewUrl,
   getSignedToken,
 } from "metabase/public/lib/embed";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 import {
   getSiteUrl,
@@ -28,7 +25,7 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
-import type { Parameter, ParameterId } from "metabase/meta/types/Parameter";
+import type { Parameter, ParameterId } from "metabase-types/types/Parameter";
 import type {
   EmbeddableResource,
   EmbeddingParams,
@@ -134,19 +131,30 @@ export default class EmbedModalContent extends Component {
     this.setState({ embeddingParams: resource.embedding_params || {} });
   };
 
-  getPreviewParams() {
+  getPreviewParameters(resourceParameters, embeddingParams) {
+    const lockedParameters = resourceParameters.filter(
+      parameter => embeddingParams[parameter.slug] === "locked",
+    );
+
+    return lockedParameters;
+  }
+
+  getPreviewParamsBySlug() {
     const { resourceParameters } = this.props;
     const { embeddingParams, parameterValues } = this.state;
-    const params = {};
-    for (const parameter of resourceParameters) {
-      if (embeddingParams[parameter.slug] === "locked") {
-        params[parameter.slug] =
-          parameter.id in parameterValues
-            ? parameterValues[parameter.id]
-            : null;
-      }
-    }
-    return params;
+
+    const lockedParameters = this.getPreviewParameters(
+      resourceParameters,
+      embeddingParams,
+    );
+
+    const parameterSlugValuePairs = lockedParameters.map(parameter => {
+      const value =
+        parameter.id in parameterValues ? parameterValues[parameter.id] : null;
+      return [parameter.slug, value];
+    });
+
+    return Object.fromEntries(parameterSlugValuePairs);
   }
 
   render() {
@@ -166,10 +174,10 @@ export default class EmbedModalContent extends Component {
       displayOptions,
     } = this.state;
 
-    const params = this.getPreviewParams();
-
-    const previewParameters = resourceParameters.filter(
-      p => embeddingParams[p.slug] === "locked",
+    const previewParametersBySlug = this.getPreviewParamsBySlug();
+    const previewParameters = this.getPreviewParameters(
+      resourceParameters,
+      embeddingParams,
     );
 
     return (
@@ -179,7 +187,7 @@ export default class EmbedModalContent extends Component {
           style={{
             boxShadow:
               embedType === "application"
-                ? `0px 8px 15px -9px ${colors["text-dark"]}`
+                ? `0px 8px 15px -9px ${color("text-dark")}`
                 : undefined,
           }}
         >
@@ -204,7 +212,6 @@ export default class EmbedModalContent extends Component {
             {/* Center only using margins because  */}
             <div className="ml-auto mr-auto" style={{ maxWidth: 1040 }}>
               <SharingPane
-                // $FlowFixMe: Flow doesn't understand these are provided by @connect?
                 {...this.props}
                 publicUrl={getUnsignedPreviewUrl(
                   siteUrl,
@@ -232,7 +239,7 @@ export default class EmbedModalContent extends Component {
               token={getSignedToken(
                 resourceType,
                 resource.id,
-                params,
+                previewParametersBySlug,
                 secretKey,
                 embeddingParams,
               )}
@@ -240,14 +247,14 @@ export default class EmbedModalContent extends Component {
                 siteUrl,
                 resourceType,
                 resource.id,
-                params,
+                previewParametersBySlug,
                 displayOptions,
                 secretKey,
                 embeddingParams,
               )}
               siteUrl={siteUrl}
               secretKey={secretKey}
-              params={params}
+              params={previewParametersBySlug}
               displayOptions={displayOptions}
               previewParameters={previewParameters}
               parameterValues={parameterValues}

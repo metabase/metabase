@@ -1,7 +1,8 @@
 import React from "react";
 import Button from "metabase/components/Button";
-import { t } from "c-3po";
+import { t } from "ttag";
 export const component = Button;
+export const category = "input";
 
 export const description = `
 Metabase's main button component.

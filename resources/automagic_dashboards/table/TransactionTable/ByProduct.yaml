@@ -7,9 +7,6 @@ metrics:
 dimensions:
 - ProductCategoryMedium:
     field_type: ProductTable.Category
-    max_cardinality: 10
-- ProductCategoryLarge:
-    field_type: ProductTable.Category
 - Rating: ProductTable.Score
 - Country: GenericTable.Country
 - State: GenericTable.State
@@ -47,19 +44,8 @@ cards:
     height: 8
 - OrdersByProductCategoryMedium:
     title: Sales per product [[ProductCategoryMedium]]
-    visualization: row
+    visualization: smart-row
     dimensions:
       - ProductCategoryMedium
     metrics: TotalOrders
-    order_by:
-     - TotalOrders: descending
-    height: 8
-- OrdersByProductCategoryLarge:
-    title: Sales per product [[ProductCategoryLarge]]
-    visualization: table
-    dimensions:
-      - ProductCategoryLarge
-    metrics: TotalOrders
-    order_by:
-     - TotalOrders: descending
     height: 8

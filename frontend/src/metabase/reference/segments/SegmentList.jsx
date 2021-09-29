@@ -2,18 +2,18 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { t } from "c-3po";
-import { isQueryable } from "metabase/lib/table";
+import { t } from "ttag";
+import MetabaseSettings from "metabase/lib/settings";
 
 import S from "metabase/components/List.css";
 
-import List from "metabase/components/List.jsx";
-import ListItem from "metabase/components/ListItem.jsx";
-import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState.jsx";
+import List from "metabase/components/List";
+import ListItem from "metabase/components/ListItem";
+import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-import ReferenceHeader from "../components/ReferenceHeader.jsx";
+import ReferenceHeader from "../components/ReferenceHeader";
 
 import { getSegments, getError, getLoading } from "../selectors";
 
@@ -25,8 +25,10 @@ const emptyStateData = {
   message: t`Segments will appear here once your admins have created some`,
   image: "app/assets/img/segments-list",
   adminAction: t`Learn how to create segments`,
-  adminLink:
-    "http://www.metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html",
+  adminLink: MetabaseSettings.docsUrl(
+    "administration-guide/07-segments-and-metrics",
+    "creating-a-segment",
+  ),
 };
 
 const mapStateToProps = (state, props) => ({
@@ -39,7 +41,10 @@ const mapDispatchToProps = {
   ...metadataActions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class SegmentList extends Component {
   static propTypes = {
     style: PropTypes.object.isRequired,
@@ -62,25 +67,23 @@ export default class SegmentList extends Component {
             Object.keys(entities).length > 0 ? (
               <div className="wrapper wrapper--trim">
                 <List>
-                  {Object.values(entities)
-                    .filter(isQueryable)
-                    .map(
-                      (entity, index) =>
-                        entity &&
-                        entity.id &&
-                        entity.name && (
-                          <li className="relative" key={entity.id}>
-                            <ListItem
-                              id={entity.id}
-                              index={index}
-                              name={entity.display_name || entity.name}
-                              description={entity.description}
-                              url={`/reference/segments/${entity.id}`}
-                              icon="segment"
-                            />
-                          </li>
-                        ),
-                    )}
+                  {Object.values(entities).map(
+                    (entity, index) =>
+                      entity &&
+                      entity.id &&
+                      entity.name && (
+                        <li className="relative" key={entity.id}>
+                          <ListItem
+                            id={entity.id}
+                            index={index}
+                            name={entity.display_name || entity.name}
+                            description={entity.description}
+                            url={`/reference/segments/${entity.id}`}
+                            icon="segment"
+                          />
+                        </li>
+                      ),
+                  )}
                 </List>
               </div>
             ) : (

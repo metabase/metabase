@@ -1,65 +1,37 @@
-import React, { Component } from "react";
-import PropTypes from "prop-types";
-import cx from "classnames";
+import styled from "styled-components";
+import { Flex } from "grid-styled";
+import { color, height, width } from "styled-system";
 
-export default class UserAvatar extends Component {
-  constructor(props, context) {
-    super(props, context);
-    this.styles = {
-      fontSize: "0.85rem",
-      borderWidth: "1px",
-      borderStyle: "solid",
-      borderRadius: "99px",
-      width: "2rem",
-      height: "2rem",
-      color: "white",
-    };
-  }
+import { color as brandColor } from "metabase/lib/colors";
 
-  static propTypes = {
-    background: PropTypes.string,
-    user: PropTypes.object.isRequired,
-    transparent: PropTypes.bool,
-  };
+const Avatar = styled(Flex)`
+  justify-content: center;
+  align-items: center;
+  border-radius: 999px;
+  font-weight: 900;
+  line-height: 1;
+  ${height};
+  ${width};
+  ${color};
+`;
 
-  static defaultProps = {
-    background: "bg-brand",
-  };
+Avatar.defaultProps = {
+  bg: brandColor("brand"),
+  color: "white",
+  height: ["3em"],
+  width: ["3em"],
+};
 
-  userInitials() {
-    const { first_name, last_name } = this.props.user;
-
-    function initial(name) {
-      return typeof name !== "undefined" && name.length
-        ? name.substring(0, 1).toUpperCase()
-        : "";
-    }
-
-    const initials = initial(first_name) + initial(last_name);
-
-    return initials.length ? initials : "?";
-  }
-
-  render() {
-    const { background } = this.props;
-    const classes = {
-      flex: true,
-      "align-center": true,
-      "justify-center": true,
-    };
-    classes[background] = true;
-
-    return (
-      <div
-        className={cx(classes)}
-        style={{
-          ...this.styles,
-          ...this.props.style,
-          ...(this.props.transparent ? { background: "transparent" } : {}),
-        }}
-      >
-        {this.userInitials()}
-      </div>
-    );
-  }
+function initial(name) {
+  return typeof name === "string" ? name.charAt(0).toUpperCase() : "";
 }
+
+function userInitials(user) {
+  return user ? initial(user.first_name) + initial(user.last_name) : null;
+}
+
+const UserAvatar = styled(Avatar).attrs({
+  children: ({ user }) => userInitials(user) || "?",
+})``;
+
+export default UserAvatar;

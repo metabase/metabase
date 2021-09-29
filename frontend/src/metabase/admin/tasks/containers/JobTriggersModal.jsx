@@ -1,10 +1,11 @@
+/* eslint-disable react/prop-types */
 import React from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { connect } from "react-redux";
 import { goBack } from "react-router-redux";
 import _ from "underscore";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
 
 import { fetchJobInfo } from "../jobInfo";
@@ -24,6 +25,7 @@ const renderTriggersTable = triggers => {
           <th>{t`End Time`}</th>
           <th>{t`Final Fire Time`}</th>
           <th>{t`May Fire Again?`}</th>
+          <th>{t`Misfire Instruction`}</th>
         </tr>
       </thead>
       <tbody>
@@ -40,6 +42,7 @@ const renderTriggersTable = triggers => {
               <td>{trigger["end-time"]}</td>
               <td>{trigger["final-fire-time"]}</td>
               <td>{trigger["may-fire-again?"] ? t`Yes` : t`No`}</td>
+              <td>{trigger["misfire-instruction"]}</td>
             </tr>
           ))}
       </tbody>
@@ -47,7 +50,10 @@ const renderTriggersTable = triggers => {
   );
 };
 
-@connect(null, { fetchJobInfo, goBack })
+@connect(
+  null,
+  { fetchJobInfo, goBack },
+)
 export default class JobTriggersModal extends React.Component {
   state = {
     triggers: null,
@@ -68,7 +74,10 @@ export default class JobTriggersModal extends React.Component {
   }
 
   render() {
-    const { params: { jobKey }, goBack } = this.props;
+    const {
+      params: { jobKey },
+      goBack,
+    } = this.props;
     const { triggers, error } = this.state;
 
     return (

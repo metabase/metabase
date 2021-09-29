@@ -1,13 +1,14 @@
 (ns metabase.models.task-history
-  (:require [metabase.models.interface :as i]
+  (:require [cheshire.generate :refer [add-encoder encode-map]]
+            [clojure.tools.logging :as log]
+            [java-time :as t]
+            [metabase.models.interface :as i]
             [metabase.util :as u]
-            [metabase.util
-             [date :as du]
-             [schema :as su]]
+            [metabase.util.i18n :refer [trs]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [models :as models]]))
+            [toucan.db :as db]
+            [toucan.models :as models]))
 
 (models/defmodel TaskHistory :task_history)
 
@@ -20,9 +21,9 @@
   ;; the date that task finished, it deletes everything after that. As we continue to add TaskHistory entries, this
   ;; ensures we'll have a good amount of history for debugging/troubleshooting, but not grow too large and fill the
   ;; disk.
-  (when-let  [clean-before-date (db/select-one-field :ended_at TaskHistory {:limit    1
-                                                                            :offset   num-rows-to-keep
-                                                                            :order-by [[:ended_at :desc]]})]
+  (when-let [clean-before-date (db/select-one-field :ended_at TaskHistory {:limit    1
+                                                                           :offset   num-rows-to-keep
+                                                                           :order-by [[:ended_at :desc]]})]
     (db/simple-delete! TaskHistory :ended_at [:<= clean-before-date])))
 
 (u/strict-extend (class TaskHistory)
@@ -36,7 +37,7 @@
 
 (s/defn all
   "Return all TaskHistory entries, applying `limit` and `offset` if not nil"
-  [limit :- (s/maybe su/IntGreaterThanZero)
+  [limit  :- (s/maybe su/IntGreaterThanZero)
    offset :- (s/maybe su/IntGreaterThanOrEqualToZero)]
   (db/select TaskHistory (merge {:order-by [[:ended_at :desc]]}
                                 (when limit
@@ -58,11 +59,14 @@
 (defn- save-task-history! [start-time-ms info]
   (let [end-time-ms (System/currentTimeMillis)
         duration-ms (- end-time-ms start-time-ms)]
-    (db/insert! TaskHistory
-      (assoc info
-        :started_at (du/->Timestamp start-time-ms)
-        :ended_at   (du/->Timestamp end-time-ms)
-        :duration   duration-ms))))
+    (try
+      (db/insert! TaskHistory
+        (assoc info
+          :started_at (t/instant start-time-ms)
+          :ended_at   (t/instant end-time-ms)
+          :duration   duration-ms))
+      (catch Throwable e
+        (log/warn e (trs "Error saving task history"))))))
 
 (s/defn do-with-task-history
   "Impl for `with-task-history` macro; see documentation below."
@@ -85,8 +89,16 @@
   "Execute `body`, recording a TaskHistory entry when the task completes; if it failed to complete, records an entry
   containing information about the Exception. `info` should contain at least a name for the task (conventionally
   lisp-cased) as `:task`; see the `TaskHistoryInfo` schema in this namespace for other optional keys.
+
     (with-task-history {:task \"send-pulses\"}
       ...)"
   {:style/indent 1}
   [info & body]
   `(do-with-task-history ~info (fn [] ~@body)))
+
+;; TaskHistory can contain an exception for logging purposes, so use the built-in
+;; serialization of a `Throwable->map` to make this something that can be JSON encoded.
+(add-encoder
+ Throwable
+ (fn [throwable json-generator]
+   (encode-map (Throwable->map throwable) json-generator)))

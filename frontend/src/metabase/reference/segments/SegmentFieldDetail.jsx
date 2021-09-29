@@ -3,25 +3,23 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { reduxForm } from "redux-form";
-import { t } from "c-3po";
+import { t } from "ttag";
 import S from "metabase/reference/Reference.css";
 
-import List from "metabase/components/List.jsx";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import List from "metabase/components/List";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-import EditHeader from "metabase/reference/components/EditHeader.jsx";
-import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader.jsx";
-import Detail from "metabase/reference/components/Detail.jsx";
-import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail.jsx";
-import UsefulQuestions from "metabase/reference/components/UsefulQuestions.jsx";
+import EditHeader from "metabase/reference/components/EditHeader";
+import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
+import Detail from "metabase/reference/components/Detail";
+import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail";
+import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 
 import { getQuestionUrl } from "../utils";
 
 import {
   getFieldBySegment,
   getTable,
-  getFields,
-  getGuide,
   getError,
   getLoading,
   getUser,
@@ -39,7 +37,7 @@ const interestingQuestions = (table, field) => {
       text: t`Number of ${table && table.display_name} grouped by ${
         field.display_name
       }`,
-      icon: { name: "number", scale: 1, viewBox: "8 8 16 16" },
+      icon: "number",
       link: getQuestionUrl({
         dbId: table && table.db_id,
         tableId: table.id,
@@ -61,24 +59,10 @@ const interestingQuestions = (table, field) => {
 
 const mapStateToProps = (state, props) => {
   const entity = getFieldBySegment(state, props) || {};
-  const guide = getGuide(state, props);
-  const fields = getFields(state, props);
-
-  const initialValues = {
-    important_fields:
-      (guide &&
-        guide.metric_important_fields &&
-        guide.metric_important_fields[entity.id] &&
-        guide.metric_important_fields[entity.id].map(
-          fieldId => fields[fieldId],
-        )) ||
-      [],
-  };
 
   return {
     entity,
     table: getTable(state, props),
-    guide,
     loading: getLoading(state, props),
     // naming this 'error' will conflict with redux form
     loadingError: getError(state, props),
@@ -86,7 +70,6 @@ const mapStateToProps = (state, props) => {
     foreignKeys: getForeignKeys(state, props),
     isEditing: getIsEditing(state, props),
     isFormulaExpanded: getIsFormulaExpanded(state, props),
-    initialValues,
   };
 };
 
@@ -99,7 +82,10 @@ const validate = (values, props) => {
   return {};
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @reduxForm({
   form: "details",
   fields: [
@@ -109,7 +95,7 @@ const validate = (values, props) => {
     "revision_message",
     "points_of_interest",
     "caveats",
-    "special_type",
+    "semantic_type",
     "fk_target_field_id",
   ],
   validate,
@@ -145,7 +131,7 @@ export default class SegmentFieldDetail extends Component {
         revision_message,
         points_of_interest,
         caveats,
-        special_type,
+        semantic_type,
         fk_target_field_id,
       },
       style,
@@ -199,78 +185,80 @@ export default class SegmentFieldDetail extends Component {
           error={loadingError}
         >
           {() => (
-            <div className="wrapper wrapper--trim">
-              <List>
-                <li className="relative">
-                  <Detail
-                    id="description"
-                    name={t`Description`}
-                    description={entity.description}
-                    placeholder={t`No description yet`}
-                    isEditing={isEditing}
-                    field={description}
-                  />
-                </li>
-                {!isEditing && (
+            <div className="wrapper">
+              <div className="pl3 py2 mb4 bg-white bordered">
+                <List>
                   <li className="relative">
                     <Detail
-                      id="name"
-                      name={t`Actual name in database`}
-                      description={entity.name}
-                      subtitleClass={S.tableActualName}
+                      id="description"
+                      name={t`Description`}
+                      description={entity.description}
+                      placeholder={t`No description yet`}
+                      isEditing={isEditing}
+                      field={description}
                     />
                   </li>
-                )}
-                <li className="relative">
-                  <Detail
-                    id="points_of_interest"
-                    name={t`Why this field is interesting`}
-                    description={entity.points_of_interest}
-                    placeholder={t`Nothing interesting yet`}
-                    isEditing={isEditing}
-                    field={points_of_interest}
-                  />
-                </li>
-                <li className="relative">
-                  <Detail
-                    id="caveats"
-                    name={t`Things to be aware of about this field`}
-                    description={entity.caveats}
-                    placeholder={t`Nothing to be aware of yet`}
-                    isEditing={isEditing}
-                    field={caveats}
-                  />
-                </li>
+                  {!isEditing && (
+                    <li className="relative">
+                      <Detail
+                        id="name"
+                        name={t`Actual name in database`}
+                        description={entity.name}
+                        subtitleClass={S.tableActualName}
+                      />
+                    </li>
+                  )}
+                  <li className="relative">
+                    <Detail
+                      id="points_of_interest"
+                      name={t`Why this field is interesting`}
+                      description={entity.points_of_interest}
+                      placeholder={t`Nothing interesting yet`}
+                      isEditing={isEditing}
+                      field={points_of_interest}
+                    />
+                  </li>
+                  <li className="relative">
+                    <Detail
+                      id="caveats"
+                      name={t`Things to be aware of about this field`}
+                      description={entity.caveats}
+                      placeholder={t`Nothing to be aware of yet`}
+                      isEditing={isEditing}
+                      field={caveats}
+                    />
+                  </li>
 
-                {!isEditing && (
+                  {!isEditing && (
+                    <li className="relative">
+                      <Detail
+                        id="base_type"
+                        name={t`Data type`}
+                        description={entity.base_type}
+                      />
+                    </li>
+                  )}
                   <li className="relative">
-                    <Detail
-                      id="base_type"
-                      name={t`Data type`}
-                      description={entity.base_type}
+                    <FieldTypeDetail
+                      field={entity}
+                      foreignKeys={foreignKeys}
+                      fieldTypeFormField={semantic_type}
+                      foreignKeyFormField={fk_target_field_id}
+                      isEditing={isEditing}
                     />
                   </li>
-                )}
-                <li className="relative">
-                  <FieldTypeDetail
-                    field={entity}
-                    foreignKeys={foreignKeys}
-                    fieldTypeFormField={special_type}
-                    foreignKeyFormField={fk_target_field_id}
-                    isEditing={isEditing}
-                  />
-                </li>
-                {!isEditing && (
-                  <li className="relative">
-                    <UsefulQuestions
-                      questions={interestingQuestions(
-                        this.props.table,
-                        this.props.entity,
-                      )}
-                    />
-                  </li>
-                )}
-              </List>
+                  {!isEditing && (
+                    <li className="relative">
+                      <UsefulQuestions
+                        questions={interestingQuestions(
+                          this.props.table,
+                          this.props.entity,
+                        )}
+                      />
+                    </li>
+                  )}
+                </List>
+              </div>
             </div>
           )}
         </LoadingAndErrorWrapper>

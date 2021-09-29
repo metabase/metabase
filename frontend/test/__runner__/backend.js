@@ -6,7 +6,7 @@ import { spawn } from "child_process";
 import fetch from "isomorphic-fetch";
 import { delay } from "../../src/metabase/lib/promise";
 
-export const DEFAULT_DB = __dirname + "/test_db_fixture.db";
+export const DEFAULT_DB_KEY = "/test_db_fixture.db";
 
 let testDbId = 0;
 const getDbFile = () =>
@@ -16,24 +16,23 @@ let port = 4000;
 const getPort = () => port++;
 
 export const BackendResource = createSharedResource("BackendResource", {
-  getKey({ dbKey = DEFAULT_DB }) {
+  getKey({ dbKey = DEFAULT_DB_KEY }) {
     return dbKey || {};
   },
-  create({ dbKey = DEFAULT_DB }) {
-    let dbFile = getDbFile();
-    if (!dbKey) {
-      dbKey = dbFile;
-    }
-    if (process.env["E2E_HOST"] && dbKey === DEFAULT_DB) {
+  create({ dbKey = DEFAULT_DB_KEY }) {
+    const dbFile = getDbFile();
+    const absoluteDbKey = dbKey ? __dirname + dbKey : dbFile;
+    const e2eHost = process.env["E2E_HOST"];
+    if (e2eHost) {
       return {
-        dbKey: dbKey,
-        host: process.env["E2E_HOST"],
+        dbKey: absoluteDbKey,
+        host: e2eHost,
         process: { kill: () => {} },
       };
     } else {
-      let port = getPort();
+      const port = getPort();
       return {
-        dbKey: dbKey,
+        dbKey: absoluteDbKey,
         dbFile: dbFile,
         host: `http://localhost:${port}`,
         port: port,
@@ -43,17 +42,18 @@ export const BackendResource = createSharedResource("BackendResource", {
   async start(server) {
     if (!server.process) {
       if (server.dbKey !== server.dbFile) {
-        await fs.copy(`${server.dbKey}.h2.db`, `${server.dbFile}.h2.db`);
+        await fs.copy(`${server.dbKey}.mv.db`, `${server.dbFile}.mv.db`);
       }
+
       server.process = spawn(
         "java",
         [
           "-XX:+IgnoreUnrecognizedVMOptions", // ignore options not recognized by this Java version (e.g. Java 8 should ignore Java 9 options)
           "-Dh2.bindAddress=localhost", // fix H2 randomly not working (?)
-          "-Xmx2g", // Hard limit of 2GB size for the heap since Circle is dumb and the JVM tends to go over the limit otherwise
-          "-Xverify:none", // Skip bytecode verification for the JAR so it launches faster
+          // "-Xmx2g", // Hard limit of 2GB size for the heap since Circle is dumb and the JVM tends to go over the limit
           "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
           "-Duser.timezone=US/Pacific",
+          `-Dlog4j.configurationFile=file:${__dirname}/log4j2.xml`,
           "-jar",
           "target/uberjar/metabase.jar",
         ],
@@ -61,13 +61,24 @@ export const BackendResource = createSharedResource("BackendResource", {
           env: {
             MB_DB_TYPE: "h2",
             MB_DB_FILE: server.dbFile,
+            MB_JETTY_HOST: "0.0.0.0",
             MB_JETTY_PORT: server.port,
+            MB_ENABLE_TEST_ENDPOINTS: "true",
+            MB_PREMIUM_EMBEDDING_TOKEN:
+              (process.env["MB_EDITION"] === "ee" &&
+                process.env["ENTERPRISE_TOKEN"]) ||
+              undefined,
+            MB_FIELD_FILTER_OPERATORS_ENABLED: "true",
           },
-          stdio: "inherit",
+          stdio:
+            process.env["DISABLE_LOGGING"] ||
+            process.env["DISABLE_LOGGING_BACKEND"]
+              ? "ignore"
+              : "inherit",
         },
       );
     }
-    if (!await isReady(server.host)) {
+    if (!(await isReady(server.host))) {
       process.stdout.write(
         "Waiting for backend (host=" +
           server.host +
@@ -75,7 +86,7 @@ export const BackendResource = createSharedResource("BackendResource", {
           server.dbKey +
           ")",
       );
-      while (!await isReady(server.host)) {
+      while (!(await isReady(server.host))) {
         if (!process.env["CI"]) {
           // disable for CI since it break's CircleCI's no_output_timeout
           process.stdout.write(".");
@@ -97,7 +108,7 @@ export const BackendResource = createSharedResource("BackendResource", {
     }
     try {
       if (server.dbFile) {
-        await fs.unlink(`${server.dbFile}.h2.db`);
+        await fs.unlink(`${server.dbFile}.mv.db`);
       }
     } catch (e) {}
   },
@@ -105,7 +116,7 @@ export const BackendResource = createSharedResource("BackendResource", {
 
 export async function isReady(host) {
   try {
-    let response = await fetch(`${host}/api/health`);
+    const response = await fetch(`${host}/api/health`);
     if (response.status === 200) {
       return true;
     }
@@ -123,14 +134,14 @@ function createSharedResource(
     stop = resource => {},
   },
 ) {
-  let entriesByKey = new Map();
-  let entriesByResource = new Map();
+  const entriesByKey = new Map();
+  const entriesByResource = new Map();
 
   function kill(entry) {
     if (entriesByKey.has(entry.key)) {
       entriesByKey.delete(entry.key);
       entriesByResource.delete(entry.resource);
-      let p = stop(entry.resource).then(null, err =>
+      const p = stop(entry.resource).then(null, err =>
         console.log("Error stopping resource", resourceName, entry.key, err),
       );
       return p;
@@ -139,7 +150,7 @@ function createSharedResource(
 
   return {
     get(options = defaultOptions) {
-      let key = getKey(options);
+      const key = getKey(options);
       let entry = entriesByKey.get(key);
       if (!entry) {
         entry = {
@@ -154,11 +165,11 @@ function createSharedResource(
       return entry.resource;
     },
     async start(resource) {
-      let entry = entriesByResource.get(resource);
+      const entry = entriesByResource.get(resource);
       return start(entry.resource);
     },
     async stop(resource) {
-      let entry = entriesByResource.get(resource);
+      const entry = entriesByResource.get(resource);
       if (entry && --entry.references <= 0) {
         await kill(entry);
       }

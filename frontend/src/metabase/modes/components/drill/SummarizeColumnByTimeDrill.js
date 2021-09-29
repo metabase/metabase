@@ -1,47 +1,43 @@
-/* @flow */
-
 import React from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import { getFieldRefFromColumn } from "metabase/modes/lib/actions";
+import { fieldRefForColumn } from "metabase/lib/dataset";
 import {
-  isDate,
-  getAggregator,
-  isCompatibleAggregatorForField,
+  getAggregationOperator,
+  isCompatibleAggregationOperatorForField,
 } from "metabase/lib/schema_metadata";
 import { capitalize } from "metabase/lib/formatting";
 
 import type {
   ClickAction,
   ClickActionProps,
-} from "metabase/meta/types/Visualization";
+} from "metabase-types/types/Visualization";
 
-export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
+export default ({
+  question,
+  clicked = {},
+}: ClickActionProps): ClickAction[] => {
+  const { column, value } = clicked;
   const query = question.query();
-  if (!(query instanceof StructuredQuery)) {
+  if (!column || value !== undefined || !(query instanceof StructuredQuery)) {
     return [];
   }
-
-  const dateField = query.table().fields.filter(isDate)[0];
-  if (
-    !dateField ||
-    !clicked ||
-    !clicked.column ||
-    clicked.value !== undefined
-  ) {
+  const dateDimension = query
+    .dimensionOptions(d => d.field().isDate())
+    .all()[0];
+  if (!dateDimension) {
     return [];
   }
-  const { column } = clicked;
-  const pivotFieldRef = isDate(column)
-    ? getFieldRefFromColumn(column)
-    : ["field-id", dateField.id];
-
   return ["sum"]
-    .map(getAggregator)
-    .filter(aggregator => isCompatibleAggregatorForField(aggregator, column))
+    .map(getAggregationOperator)
+    .filter(aggregator =>
+      isCompatibleAggregationOperatorForField(aggregator, column),
+    )
     .map(aggregator => ({
       name: "summarize-by-time",
-      section: "distribution",
+      buttonType: "horizontal",
+      section: "summarize",
+      icon: "line",
       title: (
         <span>
           {capitalize(aggregator.short)} {t`over time`}
@@ -49,11 +45,11 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
       ),
       question: () =>
         question
-          .summarize(
+          .aggregate(
             aggregator.requiresField
-              ? [aggregator.short, getFieldRefFromColumn(column)]
+              ? [aggregator.short, fieldRefForColumn(column)]
               : [aggregator.short],
           )
-          .pivot([["datetime-field", pivotFieldRef, "day"]]),
+          .pivot([dateDimension.defaultBreakout()]),
     }));
 };

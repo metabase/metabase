@@ -1,5 +1,3 @@
-// @flow
-
 import d3 from "d3";
 import Color from "color";
 import { Harmonizer } from "color-harmony";
@@ -15,7 +13,8 @@ export type ColorFamily = { [name: ColorName]: ColorString };
 /* eslint-disable no-color-literals */
 const colors = {
   brand: "#509EE3",
-  accent1: "#9CC177",
+  "brand-light": "#DDECFA",
+  accent1: "#88BF4D",
   accent2: "#A989C5",
   accent3: "#EF8C8C",
   accent4: "#F9D45C",
@@ -26,19 +25,21 @@ const colors = {
   white: "#FFFFFF",
   black: "#2E353B",
   success: "#84BB4C",
+  danger: "#ED6E6E",
   error: "#ED6E6E",
   warning: "#F9CF48",
-  "text-dark": "#2E353B",
-  "text-medium": "#74838F",
-  "text-light": "#C7CFD4",
+  "text-dark": "#4C5773",
+  "text-medium": "#949AAB",
+  "text-light": "#B8BBC3",
   "text-white": "#FFFFFF",
   "bg-black": "#2E353B",
   "bg-dark": "#93A1AB",
   "bg-medium": "#EDF2F5",
   "bg-light": "#F9FBFC",
   "bg-white": "#FFFFFF",
+  "bg-yellow": "#FFFCF2",
   shadow: "rgba(0,0,0,0.08)",
-  border: "#D7DBDE",
+  border: "#F0F0F0",
   /* Saturated colors for the SQL editor. Shouldn't be used elsewhere since they're not white-labelable. */
   "saturated-blue": "#2D86D4",
   "saturated-green": "#70A63A",
@@ -48,6 +49,15 @@ const colors = {
 };
 /* eslint-enable no-color-literals */
 export default colors;
+
+export const aliases = {
+  summarize: "accent1",
+  filter: "accent7",
+  database: "accent2",
+  dashboard: "brand",
+  pulse: "accent4",
+  nav: "brand",
+};
 
 export const harmony = [];
 
@@ -109,7 +119,7 @@ function syncDeprecatedColorFamilies() {
   normal.orange = colors["accent5"];
   normal.teal = colors["accent6"];
   normal.indigo = colors["accent7"];
-  normal.gray = colors["text-medium"];
+  normal.gray = colors["text-dark"];
   normal.grey1 = colors["text-light"];
   normal.grey2 = colors["text-medium"];
   normal.grey3 = colors["text-dark"];
@@ -117,7 +127,6 @@ function syncDeprecatedColorFamilies() {
 }
 
 export const getRandomColor = (family: ColorFamily): ColorString => {
-  // $FlowFixMe: Object.values doesn't preserve the type :-/
   const colors: ColorString[] = Object.values(family);
   return colors[Math.floor(Math.random() * colors.length)];
 };
@@ -157,26 +166,44 @@ export function roundColor(color: ColorString): ColorString {
   );
 }
 
-export const alpha = (color: ColorString, alpha: number): ColorString =>
-  Color(color)
-    .alpha(alpha)
+export function color(color: ColorString | ColorName): ColorString {
+  if (color in colors) {
+    return colors[color];
+  }
+  if (color in aliases) {
+    return colors[aliases[color]];
+  }
+  // TODO: validate this is a ColorString
+  return color;
+}
+export function alpha(c: ColorString | ColorName, a: number): ColorString {
+  return Color(color(c))
+    .alpha(a)
     .string();
-
-export const darken = (color: ColorString, factor: number): ColorString =>
-  Color(color)
-    .darken(factor)
+}
+export function darken(
+  c: ColorString | ColorName,
+  f: number = 0.25,
+): ColorString {
+  return Color(color(c))
+    .darken(f)
     .string();
-
-export const lighten = (color: ColorString, factor: number): ColorString =>
-  Color(color)
-    .lighten(factor)
+}
+export function lighten(
+  c: ColorString | ColorName,
+  f: number = 0.5,
+): ColorString {
+  return Color(color(c))
+    .lighten(f)
     .string();
+}
 
 const PREFERRED_COLORS = {
-  [colors["success"]]: [
+  success: [
     "success",
     "succeeded",
     "pass",
+    "passed",
     "valid",
     "complete",
     "completed",
@@ -184,7 +211,8 @@ const PREFERRED_COLORS = {
     "active",
     "profit",
   ],
-  [colors["error"]]: [
+  error: [
+    "error",
     "fail",
     "failed",
     "failure",
@@ -197,24 +225,26 @@ const PREFERRED_COLORS = {
     "deleted",
     "pending",
   ],
-  [colors["warning"]]: ["warn", "warning", "incomplete"],
-  [colors["brand"]]: ["count"],
-  [colors["accent1"]]: ["sum"],
-  [colors["accent2"]]: ["average"],
+  warning: ["warn", "warning", "incomplete", "unstable"],
+  brand: ["count"],
+  accent1: ["sum"],
+  accent2: ["average"],
 };
 
-const PREFERRED_COLORS_MAP = new Map();
-for (const [color, keys] of Object.entries(PREFERRED_COLORS)) {
-  // $FlowFixMe
-  for (const key of keys) {
-    PREFERRED_COLORS_MAP.set(key, color);
+const PREFERRED_COLORS_MAP = {};
+for (const color in PREFERRED_COLORS) {
+  if (Object.prototype.hasOwnProperty.call(PREFERRED_COLORS, color)) {
+    const keys = PREFERRED_COLORS[color];
+    for (let i = 0; i < keys.length; i++) {
+      PREFERRED_COLORS_MAP[keys[i]] = color;
+    }
   }
 }
 
 type Key = string;
 
 function getPreferredColor(key: Key) {
-  return PREFERRED_COLORS_MAP.get(key.toLowerCase());
+  return color(PREFERRED_COLORS_MAP[key.toLowerCase()]);
 }
 
 // returns a mapping of deterministically assigned colors to keys, optionally with a fixed value mapping

@@ -5,14 +5,13 @@
             [compojure.core :as compojure]
             [honeysql.types :as htypes]
             [medley.core :as m]
-            [metabase
-             [public-settings :as public-settings]
-             [util :as u]]
-            [metabase.api.common.internal :refer :all]
+            [metabase.api.common.internal :refer [add-route-param-regexes auto-parse route-dox route-fn-name
+                                                  validate-params wrap-response-if-needed]]
             [metabase.models.interface :as mi]
-            [metabase.util
-             [i18n :as ui18n :refer [trs tru]]
-             [schema :as su]]
+            [metabase.public-settings :as public-settings]
+            [metabase.util :as u]
+            [metabase.util.i18n :as ui18n :refer [deferred-tru tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -35,17 +34,27 @@
   false)
 
 (def ^:dynamic *current-user-permissions-set*
-  "Delay to the set of permissions granted to the current user."
+  "Delay to the set of permissions granted to the current user. See documentation in [[metabase.models.permissions]] for
+  more information about the Metabase permissions system."
   (atom #{}))
 
 
 ;;; ---------------------------------------- Precondition checking helper fns ----------------------------------------
 
+(defn- check-one [condition code message]
+  (when-not condition
+    (let [[message info] (if (and (map? message)
+                                  (not (ui18n/localized-string? message)))
+                           [(:message message) message]
+                           [message])]
+      (throw (ex-info (str message) (assoc info :status-code code)))))
+  condition)
+
 (defn check
   "Assertion mechanism for use inside API functions.
-  Checks that TEST is true, or throws an `ExceptionInfo` with STATUS-CODE and MESSAGE.
+  Checks that `test` is true, or throws an `ExceptionInfo` with `status-code` and `message`.
 
-  MESSAGE can be either a plain string error message, or a map including the key `:message` and any additional
+  `message` can be either a plain string error message, or a map including the key `:message` and any additional
   details, such as an `:error_code`.
 
   This exception is automatically caught in the body of `defendpoint` functions, and the appropriate HTTP response is
@@ -63,18 +72,15 @@
 
     (check test1 code1 message1
            test2 code2 message2)"
-  {:style/indent 1}
-  ([tst code-or-code-message-pair & rest-args]
-   (let [[[code message] rest-args] (if (vector? code-or-code-message-pair)
-                                      [code-or-code-message-pair rest-args]
-                                      [[code-or-code-message-pair (first rest-args)] (rest rest-args)])]
-     (when-not tst
-       (throw (if (and (map? message)
-                       (not (ui18n/localized-string? message)))
-                (ui18n/ex-info (:message message) (assoc message :status-code code))
-                (ui18n/ex-info message            {:status-code code}))))
-     (if (empty? rest-args) tst
-         (recur (first rest-args) (second rest-args) (drop 2 rest-args))))))
+  {:style/indent 1, :arglists '([condition [code message] & more] [condition code message & more])}
+  [condition & args]
+  (let [[code message & more] (if (sequential? (first args))
+                                (concat (first args) (rest args))
+                                args)]
+    (check-one condition code message)
+    (if (seq more)
+      (recur (first more) (rest more))
+      condition)))
 
 (defn check-exists?
   "Check that object with ID (or other key/values) exists in the DB, or throw a 404."
@@ -95,13 +101,13 @@
 (defn throw-invalid-param-exception
   "Throw an `ExceptionInfo` that contains information about an invalid API params in the expected format."
   [field-name message]
-  (throw (ui18n/ex-info (tru "Invalid field: {0}" field-name)
+  (throw (ex-info (tru "Invalid field: {0}" field-name)
            {:status-code 400
             :errors      {(keyword field-name) message}})))
 
 (defn checkp
   "Assertion mechanism for use inside API functions that validates individual input params.
-  Checks that TEST is true, or throws an `ExceptionInfo` with FIELD-NAME and MESSAGE.
+  Checks that `test` is true, or throws an `ExceptionInfo` with `field-name` and `message`.
 
   This exception is automatically caught in the body of `defendpoint` functions, and the appropriate HTTP response is
   generated.
@@ -114,40 +120,6 @@
    (when-not tst
      (throw-invalid-param-exception (str field-name) message))))
 
-(defn checkp-with
-  "Check (F VALUE), or throw an exception with STATUS-CODE (default is 400).
-   SYMB is passed in order to give the user a relevant error message about which parameter was bad.
-
-   Returns VALUE upon success.
-
-    (checkp-with (partial? contains? {:all :mine}) f :all)
-      -> :all
-    (checkp-with (partial? contains {:all :mine}) f :bad)
-      -> ExceptionInfo: Invalid value ':bad' for 'f': test failed: (partial? contains?) {:all :mine}
-
-   You may optionally pass a MESSAGE to append to the exception upon failure;
-   this will be used in place of the \"test failed: ...\" message.
-
-   MESSAGE may be either a string or a pair like `[status-code message]`."
-  ([f symb value]
-   (checkp-with f symb value (str "test failed: " f)))
-  ([f symb value message]
-   {:pre [(symbol? symb)]}
-   (checkp (f value) symb (tru "Invalid value ''{0}'' for ''{1}'': {2}" (str value) symb message))
-   value))
-
-(defn checkp-contains?
-  "Check that the VALUE of parameter SYMB is in VALID-VALUES, or throw a 400.
-   Returns VALUE upon success.
-
-    (checkp-contains? #{:fav :all :mine} 'f f)
-    -> (check (contains? #{:fav :all :mine} f)
-         [400 (str \"Invalid value '\" f \"' for 'f': must be one of: #{:fav :all :mine}\")])"
-  [valid-values-set symb value]
-  {:pre [(set? valid-values-set) (symbol? symb)]}
-  (checkp-with (partial contains? valid-values-set) symb value
-               (tru "must be one of: {0}" valid-values-set)))
-
 
 ;;; ---------------------------------------------- api-let, api->, etc. ----------------------------------------------
 
@@ -158,22 +130,19 @@
 ;;
 ;;     (let [binding x] ...) -> (api-let [500 \"Not OK!\"] [binding x] ...)
 
-(defmacro api-let
-  "If TEST is true, bind it to BINDING and evaluate BODY.
+(defmacro do-api-let
+  "If `test` is true, bind it to `binding` and evaluate `body`. Intended for internal use only by macros such as
+  `let-400` below.
 
     (api-let [404 \"Not found.\"] [user @*current-user*]
       (:id user))"
-  {:arglists '([[status-code message] [binding test] & body]), :style/indent 2}
-  [response-pair [binding test & more] & body]
-  (if (seq more)
-    `(api-let ~response-pair ~[binding test]
-       (api-let ~response-pair ~more
-         ~@body))
-    `(let [test# ~test] ; bind ~test so doesn't get evaluated more than once (e.g. in case it's an expensive funcall)
-       (check test# ~response-pair)
-       (let [~binding test#
-             ~@more]
-         ~@body))))
+  [response-pair bindings & body]
+  ;; so `response-pair` doesn't get evaluated more than once
+  (let [response-pair-symb (gensym "response-pair-")]
+    `(let [~response-pair-symb ~response-pair
+           ~@(vec (apply concat (for [[binding test] (partition-all 2 bindings)]
+                                  [binding `(check ~test ~response-pair-symb)])))]
+       ~@body)))
 
 
 ;;; ### GENERIC RESPONSE HELPERS
@@ -181,7 +150,7 @@
 
 ;; #### GENERIC 400 RESPONSE HELPERS
 (def ^:private generic-400
-  [400 (tru "Invalid Request.")])
+  [400 (deferred-tru "Invalid Request.")])
 
 (defn check-400
   "Throw a `400` if `arg` is `false` or `nil`, otherwise return as-is."
@@ -192,11 +161,11 @@
   "Bind a form as with `let`; throw a 400 if it is `nil` or `false`."
   {:style/indent 1}
   [& body]
-  `(api-let ~generic-400 ~@body))
+  `(do-api-let ~generic-400 ~@body))
 
 ;; #### GENERIC 404 RESPONSE HELPERS
 (def ^:private generic-404
-  [404 (tru "Not found.")])
+  [404 (deferred-tru "Not found.")])
 
 (defn check-404
   "Throw a `404` if `arg` is `false` or `nil`, otherwise return as-is."
@@ -206,8 +175,8 @@
 (defmacro let-404
   "Bind a form as with `let`; throw a 404 if it is `nil` or `false`."
   {:style/indent 1}
-  [& body]
-  `(api-let ~generic-404 ~@body))
+  [bindings & body]
+  `(do-api-let ~generic-404 ~bindings ~@body))
 
 ;; #### GENERIC 403 RESPONSE HELPERS
 ;; If you can't be bothered to write a custom error message
@@ -218,21 +187,25 @@
   "Throw a `403` (no permissions) if `arg` is `false` or `nil`, otherwise return as-is."
   [arg]
   (check arg (generic-403)))
+
 (defmacro let-403
   "Bind a form as with `let`; throw a 403 if it is `nil` or `false`."
   {:style/indent 1}
-  [& body]
-  `(api-let (generic-403) ~@body))
+  [bindings & body]
+  `(do-api-let (generic-403) ~bindings ~@body))
 
 (defn throw-403
   "Throw a generic 403 (no permissions) error response."
-  []
-  (throw (ui18n/ex-info (tru "You don''t have permissions to do that.") {:status-code 403})))
+  ([]
+   (throw-403 nil))
+
+  ([e]
+   (throw (ex-info (tru "You don''t have permissions to do that.") {:status-code 403} e))))
 
 ;; #### GENERIC 500 RESPONSE HELPERS
 ;; For when you don't feel like writing something useful
 (def ^:private generic-500
-  [500 (tru "Internal server error.")])
+  [500 (deferred-tru "Internal server error.")])
 
 (defn check-500
   "Throw a `500` if `arg` is `false` or `nil`, otherwise return as-is."
@@ -242,15 +215,47 @@
 (defmacro let-500
   "Bind a form as with `let`; throw a 500 if it is `nil` or `false`."
   {:style/indent 1}
-  [& body]
-  `(api-let   ~generic-500 ~@body))
+  [bindings & body]
+  `(do-api-let ~generic-500 ~bindings ~@body))
 
-(def ^:const generic-204-no-content
+(def generic-204-no-content
   "A 'No Content' response for `DELETE` endpoints to return."
   {:status 204, :body nil})
 
 
 ;;; --------------------------------------- DEFENDPOINT AND RELATED FUNCTIONS ----------------------------------------
+
+(defn- parse-defendpoint-args [[method route & more]]
+  (let [fn-name                (route-fn-name method route)
+        route                  (add-route-param-regexes route)
+        [docstr [args & more]] (u/optional string? more)
+        [arg->schema body]     (u/optional (every-pred map? #(every? symbol? (keys %))) more)]
+    (when-not docstr
+      ;; Don't i18n this, it's dev-facing only
+      (log/warn (u/format-color 'red "Warning: endpoint %s/%s does not have a docstring. Go add one."
+                  (ns-name *ns*) fn-name)))
+    {:method      method
+     :route       route
+     :fn-name     fn-name
+     ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
+     ;; their API error messages
+     :docstr      (route-dox method route docstr args (m/map-vals eval arg->schema) body)
+     :args        args
+     :arg->schema arg->schema
+     :body        body}))
+
+(defmacro defendpoint*
+  "Impl macro for `defendpoint`; don't use this directly."
+  [{:keys [method route fn-name docstr args arg->schema original-body body]}]
+  {:pre [(or (string? route) (vector? route))]}
+  (require 'compojure.core)
+  `(def ~(vary-meta fn-name
+                    assoc
+
+                    :doc          docstr
+                    :is-endpoint? true)
+     (~(symbol "compojure.core" (name method)) ~route ~args
+      ~@body)))
 
 ;; TODO - several of the things `defendpoint` does could and should just be done by custom Ring middleware instead
 ;; e.g. `auto-parse`
@@ -260,55 +265,36 @@
 
    -  calls `auto-parse` to automatically parse certain args. e.g. `id` is converted from `String` to `Integer` via
       `Integer/parseInt`
-   -  converts ROUTE from a simple form like `\"/:id\"` to a typed one like `[\"/:id\" :id #\"[0-9]+\"]`
+
+   -  converts `route` from a simple form like `\"/:id\"` to a typed one like `[\"/:id\" :id #\"[0-9]+\"]`
+
    -  sequentially applies specified annotation functions on args to validate them.
-   -  executes BODY inside a `try-catch` block that handles exceptions; if exception is an instance of `ExceptionInfo`
-      and includes a `:status-code`, that code will be returned
-   -  automatically calls `wrap-response-if-needed` on the result of BODY
-   -  tags function's metadata in a way that subsequent calls to `define-routes` (see below)
-      will automatically include the function in the generated `defroutes` form.
+
+   -  automatically calls `wrap-response-if-needed` on the result of `body`
+
+   -  tags function's metadata in a way that subsequent calls to `define-routes` (see below) will automatically include
+      the function in the generated `defroutes` form.
+
    -  Generates a super-sophisticated Markdown-formatted docstring"
   {:arglists '([method route docstr? args schemas-map? & body])}
-  [method route & more]
-  {:pre [(or (string? route)
-             (vector? route))]}
-  (let [fn-name                (route-fn-name method route)
-        route                  (typify-route route)
-        [docstr [args & more]] (u/optional string? more)
-        [arg->schema body]     (u/optional (every-pred map? #(every? symbol? (keys %))) more)
-        validate-param-calls   (validate-params arg->schema)]
-    (when-not docstr
-      (log/warn (trs "Warning: endpoint {0}/{1} does not have a docstring." (ns-name *ns*) fn-name)))
-    `(def ~(vary-meta fn-name assoc
-                      ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
-                      ;; their API error messages
-                      :doc (route-dox method route docstr args (m/map-vals eval arg->schema) body)
-                      :is-endpoint? true)
-       (~method ~route ~args
-        (auto-parse ~args
-          ~@validate-param-calls
-          (wrap-response-if-needed (do ~@body)))))))
+  [& defendpoint-args]
+  (let [{:keys [args body arg->schema], :as defendpoint-args} (parse-defendpoint-args defendpoint-args)]
+    `(defendpoint* ~(assoc defendpoint-args
+                           :body `((auto-parse ~args
+                                     ~@(validate-params arg->schema)
+                                     (wrap-response-if-needed
+                                      (do ~@body))))))))
 
 (defmacro defendpoint-async
   "Like `defendpoint`, but generates an endpoint that accepts the usual `[request respond raise]` params."
   {:arglists '([method route docstr? args schemas-map? & body])}
-  [method route & more]
-  (let [fn-name                (route-fn-name method route)
-        route                  (typify-route route)
-        [docstr [args & more]] (u/optional string? more)
-        [arg->schema body]     (u/optional (every-pred map? #(every? symbol? (keys %))) more)
-        validate-param-calls   (validate-params arg->schema)]
-    (when-not docstr
-      (log/warn (trs "Warning: endpoint {0}/{1} does not have a docstring." (ns-name *ns*) fn-name)))
-    `(def ~(vary-meta fn-name assoc
-                      ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
-                      ;; their API error messages
-                      :doc (route-dox method route docstr args (m/map-vals eval arg->schema) body)
-                      :is-endpoint? true)
-       (~method ~route []
-        (fn ~args
-          ~@validate-param-calls
-          ~@body)))))
+  [& defendpoint-args]
+  (let [{:keys [args body arg->schema], :as defendpoint-args} (parse-defendpoint-args defendpoint-args)]
+    `(defendpoint* ~(assoc defendpoint-args
+                           :args []
+                           :body `((fn ~args
+                                     ~@(validate-params arg->schema)
+                                     ~@body))))))
 
 (defn- namespace->api-route-fns
   "Return a sequence of all API endpoint functions defined by `defendpoint` in a namespace."
@@ -347,24 +333,35 @@
 
      (api/+check-superuser routes)"
   [handler]
-  (fn [request]
-    (check-superuser)
-    (handler request)))
+  (fn
+    ([request]
+     (check-superuser)
+     (handler request))
+    ([request respond raise]
+     (if-let [e (try
+                  (check-superuser)
+                  nil
+                  (catch Throwable e
+                    e))]
+       (raise e)
+       (handler request respond raise)))))
 
 
 ;;; ---------------------------------------- PERMISSIONS CHECKING HELPER FNS -----------------------------------------
 
 (defn read-check
-  "Check whether we can read an existing OBJ, or ENTITY with ID.
-   If the object doesn't exist, throw a 404; if we don't have proper permissions, throw a 403.
-   This will fetch the object if it was not already fetched, and returns OBJ if the check is successful."
+  "Check whether we can read an existing `obj`, or `entity` with `id`. If the object doesn't exist, throw a 404; if we
+  don't have proper permissions, throw a 403. This will fetch the object if it was not already fetched, and returns
+  `obj` if the check is successful."
   {:style/indent 2}
   ([obj]
    (check-404 obj)
    (check-403 (mi/can-read? obj))
    obj)
+
   ([entity id]
    (read-check (entity id)))
+
   ([entity id & other-conditions]
    (read-check (apply db/select-one entity :id id other-conditions))))
 
@@ -387,10 +384,20 @@
 
   This function was added *years* after `read-check` and `write-check`, and at the time of this writing most models do
   not implement this method. Most `POST` API endpoints instead have the `can-create?` logic for a given model
-  hardcoded into this -- this should be considered an antipattern and be refactored out going forward."
+  hardcoded into them -- this should be considered an antipattern and be refactored out going forward."
   {:added "0.32.0", :style/indent 2}
   [entity m]
   (check-403 (mi/can-create? entity m)))
+
+(defn update-check
+  "NEW! Check whether the current user has permissions to UPDATE an object by applying a map of `changes`.
+
+  This function was added *years* after `read-check` and `write-check`, and at the time of this writing most models do
+  not implement this method. Most `PUT` API endpoints instead have the `can-update?` logic for a given model hardcoded
+  into them -- this should be considered an antipattern and be refactored out going forward."
+  {:added "0.36.0", :style/indent 2}
+  [instance changes]
+  (check-403 (mi/can-update? instance changes)))
 
 ;;; ------------------------------------------------ OTHER HELPER FNS ------------------------------------------------
 
@@ -398,7 +405,7 @@
   "Check that the `public-sharing-enabled` Setting is `true`, or throw a `400`."
   []
   (check (public-settings/enable-public-sharing)
-         [400 (tru "Public sharing is not enabled.")]))
+    [400 (tru "Public sharing is not enabled.")]))
 
 (defn check-embedding-enabled
   "Is embedding of Cards or Objects (secured access via `/api/embed` endpoints with a signed JWT enabled?"
@@ -407,12 +414,19 @@
     [400 (tru "Embedding is not enabled.")]))
 
 (defn check-not-archived
-  "Check that the OBJECT exists and is not `:archived`, or throw a `404`. Returns OBJECT as-is if check passes."
+  "Check that the `object` exists and is not `:archived`, or throw a `404`. Returns `object` as-is if check passes."
   [object]
   (u/prog1 object
     (check-404 object)
     (check (not (:archived object))
       [404 {:message (tru "The object has been archived."), :error_code "archived"}])))
+
+(defn check-valid-page-params
+  "Check on paginated stuff that, if the limit exists, the offset exists, and vice versa."
+  [limit offset]
+  (do
+    (check (not (and limit (not offset))) [400 (tru "When including a limit, an offset must also be included.")])
+    (check (not (and offset (not limit))) [400 (tru "When including an offset, a limit must also be included.")])))
 
 (s/defn column-will-change? :- s/Bool
   "Helper for PATCH-style operations to see if a column is set to change when `object-updates` (i.e., the input to the

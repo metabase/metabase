@@ -2,8 +2,8 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
-import { t } from "c-3po";
-import ModalContent from "metabase/components/ModalContent.jsx";
+import { t } from "ttag";
+import ModalContent from "metabase/components/ModalContent";
 import ChannelSetupMessage from "metabase/components/ChannelSetupMessage";
 
 export default class ChannelSetupModal extends Component {

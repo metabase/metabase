@@ -1,28 +1,25 @@
 (ns metabase.driver.sparksql
-  (:require [clojure
-             [set :as set]
-             [string :as s]]
-            [clojure.java.jdbc :as jdbc]
-            [honeysql
-             [core :as hsql]
-             [helpers :as h]]
-            [metabase
-             [config :as config]
-             [driver :as driver]]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.set :as set]
+            [clojure.string :as str]
+            [honeysql.core :as hsql]
+            [honeysql.helpers :as h]
+            [medley.core :as m]
+            [metabase.driver :as driver]
             [metabase.driver.hive-like :as hive-like]
-            [metabase.driver.sql-jdbc
-             [common :as sql-jdbc.common]
-             [connection :as sql-jdbc.conn]
-             [execute :as sql-jdbc.execute]
-             [sync :as sql-jdbc.sync]]
+            [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
-            [metabase.query-processor
-             [store :as qp.store]
-             [util :as qputil]]
-            [metabase.util.honeysql-extensions :as hx]))
+            [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.util :as qputil]
+            [metabase.util.honeysql-extensions :as hx])
+  (:import [java.sql Connection ResultSet]))
 
 (driver/register! :sparksql, :parent :hive-like)
 
@@ -32,14 +29,11 @@
   "Default alias for all source tables. (Not for source queries; those still use the default SQL QP alias of `source`.)"
   "t1")
 
+;; use `source-table-alias` for the source Table, e.g. `t1.field` instead of the normal `schema.table.field`
 (defmethod sql.qp/->honeysql [:sparksql (class Field)]
   [driver field]
-  (let [table            (qp.store/table (:table_id field))
-        table-name       (if (:alias? table)
-                           (:name table)
-                           source-table-alias)
-        field-identifier (keyword (hx/qualify-and-escape-dots table-name (:name field)))]
-    (sql.qp/cast-unix-timestamp-field-if-needed driver field field-identifier)))
+  (binding [sql.qp/*table-alias* (or sql.qp/*table-alias* source-table-alias)]
+    ((get-method sql.qp/->honeysql [:hive-like (class Field)]) driver field)))
 
 (defmethod sql.qp/apply-top-level-clause [:sparksql :page] [_ _ honeysql-form {{:keys [items page]} :page}]
   (let [offset (* (dec page) items)]
@@ -57,9 +51,10 @@
             (h/limit items))))))
 
 (defmethod sql.qp/apply-top-level-clause [:sparksql :source-table]
-  [_ _ honeysql-form {source-table-id :source-table}]
+  [driver _ honeysql-form {source-table-id :source-table}]
   (let [{table-name :name, schema :schema} (qp.store/table source-table-id)]
-    (h/from honeysql-form [(hx/qualify-and-escape-dots schema table-name) source-table-alias])))
+    (h/from honeysql-form [(sql.qp/->honeysql driver (hx/identifier :table schema table-name))
+                           (sql.qp/->honeysql driver (hx/identifier :table-alias source-table-alias))])))
 
 
 ;;; ------------------------------------------- Other Driver Method Impls --------------------------------------------
@@ -69,12 +64,14 @@
   [{:keys [host port db jdbc-flags]
     :or   {host "localhost", port 10000, db "", jdbc-flags ""}
     :as   opts}]
-  (merge {:classname   "metabase.driver.FixedHiveDriver"
-          :subprotocol "hive2"
-          :subname     (str "//" host ":" port "/" db jdbc-flags)}
-         (dissoc opts :host :port :jdbc-flags)))
+  (merge
+   {:classname   "metabase.driver.FixedHiveDriver"
+    :subprotocol "hive2"
+    :subname     (str "//" host ":" port "/" db jdbc-flags)}
+   (dissoc opts :host :port :jdbc-flags)))
 
-(defmethod sql-jdbc.conn/connection-details->spec :sparksql [_ details]
+(defmethod sql-jdbc.conn/connection-details->spec :sparksql
+  [_ details]
   (-> details
       (update :port (fn [port]
                       (if (string? port)
@@ -86,57 +83,102 @@
 
 (defn- dash-to-underscore [s]
   (when s
-    (s/replace s #"-" "_")))
+    (str/replace s #"-" "_")))
 
 ;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
-(defmethod driver/describe-database :sparksql [_ {:keys [details] :as database}]
-  {:tables (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec database))]
-             (set (for [result (jdbc/query {:connection conn}
-                                           ["show tables"])]
-                    {:name   (:tablename result)
-                     :schema (when (> (count (:database result)) 0)
-                               (:database result))})))})
+(defmethod driver/describe-database :sparksql
+  [_ {:keys [details] :as database}]
+  {:tables
+   (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec database))]
+     (set
+      (for [{:keys [database tablename tab_name]} (jdbc/query {:connection conn} ["show tables"])]
+        {:name   (or tablename tab_name) ; column name differs depending on server (SparkSQL, hive, Impala)
+         :schema (when (seq database)
+                   database)})))})
+
+;; Hive describe table result has commented rows to distinguish partitions
+(defn- valid-describe-table-row? [{:keys [col_name data_type]}]
+  (every? (every-pred (complement str/blank?)
+                      (complement #(str/starts-with? % "#")))
+          [col_name data_type]))
 
 ;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
-(defmethod driver/describe-table :sparksql [_ {:keys [details] :as database} table]
-  (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec database))]
-    {:name   (:name table)
-     :schema (:schema table)
-     :fields (set (for [result (jdbc/query {:connection conn}
-                                           [(if (:schema table)
-                                              (format "describe `%s`.`%s`"
-                                                      (dash-to-underscore (:schema table))
-                                                      (dash-to-underscore (:name table)))
-                                              (str "describe " (dash-to-underscore (:name table))))])]
-                    {:name          (:col_name result)
-                     :database-type (:data_type result)
-                     :base-type     (sql-jdbc.sync/database-type->base-type :hive-like (keyword (:data_type result)))}))}))
+(defmethod driver/describe-table :sparksql
+  [driver {:keys [details] :as database} {table-name :name, schema :schema, :as table}]
+  {:name   table-name
+   :schema schema
+   :fields
+   (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec database))]
+     (let [results (jdbc/query {:connection conn} [(format
+                                                    "describe %s"
+                                                    (sql.u/quote-name driver :table
+                                                      (dash-to-underscore schema)
+                                                      (dash-to-underscore table-name)))])]
+       (set
+        (for [[idx {col-name :col_name, data-type :data_type, :as result}] (m/indexed results)
+              :when (valid-describe-table-row? result)]
+          {:name              col-name
+           :database-type     data-type
+           :base-type         (sql-jdbc.sync/database-type->base-type :hive-like (keyword data-type))
+           :database-position idx}))))})
 
-;; we need this because transactions are not supported in Hive 1.2.1
 ;; bound variables are not supported in Spark SQL (maybe not Hive either, haven't checked)
-(defmethod driver/execute-query :sparksql
-  [driver {:keys [database settings], query :native, :as outer-query}]
-  (let [query (-> (assoc query
-                    :remark (qputil/query->remark outer-query)
-                    :query  (if (seq (:params query))
-                              (unprepare/unprepare driver (cons (:query query) (:params query)))
-                              (:query query))
-                    :max-rows (mbql.u/query->max-rows-limit outer-query))
-                  (dissoc :params))]
-    (sql-jdbc.execute/do-with-try-catch
-      (fn []
-        (let [db-connection (sql-jdbc.conn/db->pooled-connection-spec database)]
-          (hive-like/run-query-without-timezone driver settings db-connection query))))))
+(defmethod driver/execute-reducible-query :sparksql
+  [driver {:keys [database settings], {sql :query, :keys [params], :as inner-query} :native, :as outer-query} context respond]
+  (let [inner-query (-> (assoc inner-query
+                               :remark (qputil/query->remark :sparksql outer-query)
+                               :query  (if (seq params)
+                                         (binding [hive-like/*param-splice-style* :paranoid]
+                                           (unprepare/unprepare driver (cons sql params)))
+                                         sql)
+                               :max-rows (mbql.u/query->max-rows-limit outer-query))
+                        (dissoc :params))
+        query       (assoc outer-query :native inner-query)]
+    ((get-method driver/execute-reducible-query :sql-jdbc) driver query context respond)))
 
-(defmethod driver/supports? [:sparksql :basic-aggregations]              [_ _] true)
-(defmethod driver/supports? [:sparksql :binning]                         [_ _] true)
-(defmethod driver/supports? [:sparksql :expression-aggregations]         [_ _] true)
-(defmethod driver/supports? [:sparksql :expressions]                     [_ _] true)
-(defmethod driver/supports? [:sparksql :native-parameters]               [_ _] true)
-(defmethod driver/supports? [:sparksql :nested-queries]                  [_ _] true)
-(defmethod driver/supports? [:sparksql :standard-deviation-aggregations] [_ _] true)
+;; 1.  SparkSQL doesn't support `.supportsTransactionIsolationLevel`
+;; 2.  SparkSQL doesn't support session timezones (at least our driver doesn't support it)
+;; 3.  SparkSQL doesn't support making connections read-only
+;; 4.  SparkSQL doesn't support setting the default result set holdability
+(defmethod sql-jdbc.execute/connection-with-timezone :sparksql
+  [driver database ^String timezone-id]
+  (let [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))]
+    (try
+      (.setTransactionIsolation conn Connection/TRANSACTION_READ_UNCOMMITTED)
+      conn
+      (catch Throwable e
+        (.close conn)
+        (throw e)))))
 
-;; during unit tests don't treat Spark SQL as having FK support
-(defmethod driver/supports? [:sparksql :foreign-keys] [_ _] (not config/is-test?))
+;; 1.  SparkSQL doesn't support setting holdability type to `CLOSE_CURSORS_AT_COMMIT`
+(defmethod sql-jdbc.execute/prepared-statement :sparksql
+  [driver ^Connection conn ^String sql params]
+  (let [stmt (.prepareStatement conn sql
+                                ResultSet/TYPE_FORWARD_ONLY
+                                ResultSet/CONCUR_READ_ONLY)]
+    (try
+      (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
+      (sql-jdbc.execute/set-parameters! driver stmt params)
+      stmt
+      (catch Throwable e
+        (.close stmt)
+        (throw e)))))
+
+;; the current HiveConnection doesn't support .createStatement
+(defmethod sql-jdbc.execute/statement-supported? :sparksql [_] false)
+
+(doseq [feature [:basic-aggregations
+                 :binning
+                 :expression-aggregations
+                 :expressions
+                 :native-parameters
+                 :nested-queries
+                 :standard-deviation-aggregations]]
+  (defmethod driver/supports? [:sparksql feature] [_ _] true))
+
+;; only define an implementation for `:foreign-keys` if none exists already. In test extensions we define an alternate
+;; implementation, and we don't want to stomp over that if it was loaded already
+(when-not (get (methods driver/supports?) [:sparksql :foreign-keys])
+  (defmethod driver/supports? [:sparksql :foreign-keys] [_ _] true))
 
 (defmethod sql.qp/quote-style :sparksql [_] :mysql)

@@ -1,29 +1,34 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import GridLayout from "./grid/GridLayout.jsx";
-import DashCard from "./DashCard.jsx";
+import ExplicitSize from "metabase/components/ExplicitSize";
 
-import Modal from "metabase/components/Modal.jsx";
-import ExplicitSize from "metabase/components/ExplicitSize.jsx";
-import RemoveFromDashboardModal from "./RemoveFromDashboardModal.jsx";
-import AddSeriesModal from "./AddSeriesModal.jsx";
+import Modal from "metabase/components/Modal";
+
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 
 import { getVisualizationRaw } from "metabase/visualizations";
 import MetabaseAnalytics from "metabase/lib/analytics";
+import { color } from "metabase/lib/colors";
 
 import {
   GRID_WIDTH,
   GRID_ASPECT_RATIO,
-  GRID_MARGIN,
+  GRID_BREAKPOINTS,
+  GRID_COLUMNS,
   DEFAULT_CARD_SIZE,
+  MIN_ROW_HEIGHT,
 } from "metabase/lib/dashboard_grid";
 
 import _ from "underscore";
 import cx from "classnames";
 
-const MOBILE_ASPECT_RATIO = 3 / 2;
-const MOBILE_TEXT_CARD_ROW_HEIGHT = 40;
+import GridLayout from "./grid/GridLayout";
+import { generateMobileLayout } from "./grid/utils";
+import AddSeriesModal from "./AddSeriesModal";
+import RemoveFromDashboardModal from "./RemoveFromDashboardModal";
+import DashCard from "./DashCard";
 
 @ExplicitSize()
 export default class DashboardGrid extends Component {
@@ -31,24 +36,23 @@ export default class DashboardGrid extends Component {
     super(props, context);
 
     this.state = {
-      layout: this.getLayout(props),
+      layouts: this.getLayouts(props),
       dashcards: this.getSortedDashcards(props),
       removeModalDashCard: null,
       addSeriesModalDashCard: null,
       isDragging: false,
     };
-
-    _.bindAll(this, "onDashCardMouseDown");
   }
 
   static propTypes = {
-    isEditing: PropTypes.bool.isRequired,
+    isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object])
+      .isRequired,
     isEditingParameter: PropTypes.bool.isRequired,
     dashboard: PropTypes.object.isRequired,
     parameterValues: PropTypes.object.isRequired,
-    cards: PropTypes.array,
 
     setDashCardAttributes: PropTypes.func.isRequired,
+    setMultipleDashCardAttributes: PropTypes.func.isRequired,
     removeCardFromDashboard: PropTypes.func.isRequired,
     markNewCardSeen: PropTypes.func.isRequired,
     fetchCardData: PropTypes.func.isRequired,
@@ -65,34 +69,52 @@ export default class DashboardGrid extends Component {
     isEditingParameter: false,
   };
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     this.setState({
       dashcards: this.getSortedDashcards(nextProps),
-      layout: this.getLayout(nextProps),
+      layouts: this.getLayouts(nextProps),
     });
   }
 
-  onLayoutChange(layout) {
-    let changes = layout.filter(
-      newLayout =>
-        !_.isEqual(newLayout, this.getLayoutForDashCard(newLayout.dashcard)),
-    );
-    for (let change of changes) {
-      this.props.setDashCardAttributes({
-        id: change.dashcard.id,
-        attributes: {
-          col: change.x,
-          row: change.y,
-          sizeX: change.w,
-          sizeY: change.h,
-        },
-      });
+  onLayoutChange = ({ layout, breakpoint }) => {
+    // We allow moving and resizing cards only on the desktop
+    // Ensures onLayoutChange triggered by window resize,
+    // won't break the main layout
+    if (breakpoint !== "desktop") {
+      return;
     }
 
-    if (changes && changes.length > 0) {
+    const { dashboard, setMultipleDashCardAttributes } = this.props;
+    const changes = [];
+
+    layout.forEach(layoutItem => {
+      const dashboardCard = dashboard.ordered_cards.find(
+        card => String(card.id) === layoutItem.i,
+      );
+
+      const changed = !_.isEqual(
+        layoutItem,
+        this.getLayoutForDashCard(dashboardCard),
+      );
+
+      if (changed) {
+        changes.push({
+          id: dashboardCard.id,
+          attributes: {
+            col: layoutItem.x,
+            row: layoutItem.y,
+            sizeX: layoutItem.w,
+            sizeY: layoutItem.h,
+          },
+        });
+      }
+    });
+
+    if (changes.length > 0) {
+      setMultipleDashCardAttributes(changes);
       MetabaseAnalytics.trackEvent("Dashboard", "Layout Changed");
     }
-  }
+  };
 
   getSortedDashcards(props) {
     return (
@@ -116,9 +138,9 @@ export default class DashboardGrid extends Component {
   }
 
   getLayoutForDashCard(dashcard) {
-    let { CardVisualization } = getVisualizationRaw([{ card: dashcard.card }]);
-    let initialSize = DEFAULT_CARD_SIZE;
-    let minSize = CardVisualization.minSize || DEFAULT_CARD_SIZE;
+    const { visualization } = getVisualizationRaw([{ card: dashcard.card }]);
+    const initialSize = DEFAULT_CARD_SIZE;
+    const minSize = visualization.minSize || DEFAULT_CARD_SIZE;
     return {
       i: String(dashcard.id),
       x: dashcard.col || 0,
@@ -126,17 +148,42 @@ export default class DashboardGrid extends Component {
       w: dashcard.sizeX || initialSize.width,
       h: dashcard.sizeY || initialSize.height,
       dashcard: dashcard,
-      minSize: minSize,
+      minW: minSize.width,
+      minH: minSize.height,
     };
   }
 
-  getLayout(props) {
-    return props.dashboard.ordered_cards.map(this.getLayoutForDashCard);
+  getLayouts({ dashboard }) {
+    const desktop = dashboard.ordered_cards.map(this.getLayoutForDashCard);
+    const mobile = generateMobileLayout({
+      desktopLayout: desktop,
+      // We want to keep the heights for all visualizations equal not to break the visual rhythm
+      // Exceptions are text cards (can take too much vertical space)
+      // and scalar value cards (basically a number and some text on a big card)
+      heightByDisplayType: {
+        text: 2,
+        scalar: 4,
+      },
+      defaultCardHeight: 6,
+    });
+    return { desktop, mobile };
+  }
+
+  getRowHeight() {
+    const { width } = this.props;
+
+    const hasScroll = window.innerWidth > document.documentElement.offsetWidth;
+    const aspectHeight = width / GRID_WIDTH / GRID_ASPECT_RATIO;
+    const actualHeight = Math.max(aspectHeight, MIN_ROW_HEIGHT);
+
+    // prevent infinite re-rendering when the scroll bar appears/disappears
+    // https://github.com/metabase/metabase/issues/17229
+    return hasScroll ? Math.ceil(actualHeight) : Math.floor(actualHeight);
   }
 
   renderRemoveModal() {
     // can't use PopoverWithTrigger due to strange interaction with ReactGridLayout
-    let isOpen = this.state.removeModalDashCard != null;
+    const isOpen = this.state.removeModalDashCard != null;
     return (
       <Modal isOpen={isOpen}>
         {isOpen && (
@@ -153,17 +200,15 @@ export default class DashboardGrid extends Component {
 
   renderAddSeriesModal() {
     // can't use PopoverWithTrigger due to strange interaction with ReactGridLayout
-    let isOpen = this.state.addSeriesModalDashCard != null;
+    const isOpen = this.state.addSeriesModalDashCard != null;
     return (
       <Modal className="Modal AddSeriesModal" isOpen={isOpen}>
         {isOpen && (
           <AddSeriesModal
             dashcard={this.state.addSeriesModalDashCard}
             dashboard={this.props.dashboard}
-            cards={this.props.cards}
             dashcardData={this.props.dashcardData}
             databases={this.props.databases}
-            fetchCards={this.props.fetchCards}
             fetchCardData={this.props.fetchCardData}
             fetchDatabaseMetadata={this.props.fetchDatabaseMetadata}
             removeCardFromDashboard={this.props.removeCardFromDashboard}
@@ -176,21 +221,15 @@ export default class DashboardGrid extends Component {
   }
 
   // we need to track whether or not we're dragging so we can disable pointer events on action buttons :-/
-  onDrag() {
+  onDrag = () => {
     if (!this.state.isDragging) {
       this.setState({ isDragging: true });
     }
-  }
-  onDragStop() {
-    this.setState({ isDragging: false });
-  }
+  };
 
-  // we use onMouseDownCapture to prevent dragging due to react-grid-layout bug referenced below
-  onDashCardMouseDown(e) {
-    if (!this.props.isEditing) {
-      e.stopPropagation();
-    }
-  }
+  onDragStop = () => {
+    this.setState({ isDragging: false });
+  };
 
   onDashCardRemove(dc) {
     this.setState({ removeModalDashCard: dc });
@@ -200,14 +239,41 @@ export default class DashboardGrid extends Component {
     this.setState({ addSeriesModalDashCard: dc });
   }
 
-  renderDashCard(dc, isMobile) {
+  getDashboardCardIcon = dashCard => {
+    const { isRegularCollection } = PLUGIN_COLLECTIONS;
+    const { dashboard } = this.props;
+    const isRegularQuestion = isRegularCollection({
+      authority_level: dashCard.collection_authority_level,
+    });
+    const isRegularDashboard = isRegularCollection({
+      authority_level: dashboard.collection_authority_level,
+    });
+    if (isRegularDashboard && !isRegularQuestion) {
+      const authorityLevel = dashCard.collection_authority_level;
+      const opts = PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[authorityLevel];
+      const iconSize = 14;
+      return {
+        name: opts.icon,
+        color: color(opts.color),
+        tooltip: opts.tooltips?.belonging,
+        size: iconSize,
+
+        // Workaround: headerIcon on cards in a first column have incorrect offset out of the box
+        targetOffsetX: dashCard.col === 0 ? iconSize : 0,
+      };
+    }
+  };
+
+  renderDashCard(dc, { isMobile, gridItemWidth }) {
     return (
       <DashCard
         dashcard={dc}
+        headerIcon={this.getDashboardCardIcon(dc)}
         dashcardData={this.props.dashcardData}
         parameterValues={this.props.parameterValues}
         slowCards={this.props.slowCards}
         fetchCardData={this.props.fetchCardData}
+        gridItemWidth={gridItemWidth}
         markNewCardSeen={this.props.markNewCardSeen}
         isEditing={this.props.isEditing}
         isEditingParameter={this.props.isEditingParameter}
@@ -223,81 +289,64 @@ export default class DashboardGrid extends Component {
           this,
           dc.id,
         )}
+        mode={this.props.mode}
         navigateToNewCardFromDashboard={
           this.props.navigateToNewCardFromDashboard
         }
+        onChangeLocation={this.props.onChangeLocation}
         metadata={this.props.metadata}
         dashboard={this.props.dashboard}
+        showClickBehaviorSidebar={this.props.showClickBehaviorSidebar}
+        clickBehaviorSidebarDashcard={this.props.clickBehaviorSidebarDashcard}
       />
     );
   }
 
-  renderMobile() {
-    const { isEditing, isEditingParameter, width } = this.props;
-    const { dashcards } = this.state;
+  get isEditingLayout() {
+    const {
+      isEditing,
+      isEditingParameter,
+      clickBehaviorSidebarDashcard,
+    } = this.props;
     return (
-      <div
-        className={cx("DashboardGrid", {
-          "Dash--editing": isEditing,
-          "Dash--editingParameter": isEditingParameter,
-          "Dash--dragging": this.state.isDragging,
-        })}
-        style={{ margin: 0 }}
-      >
-        {dashcards &&
-          dashcards.map(dc => (
-            <div
-              key={dc.id}
-              className="DashCard"
-              style={{
-                width: width,
-                marginTop: 10,
-                marginBottom: 10,
-                height:
-                  // "text" cards should get a height based on their dc sizeY
-                  dc.card.display === "text"
-                    ? MOBILE_TEXT_CARD_ROW_HEIGHT * dc.sizeY
-                    : width / MOBILE_ASPECT_RATIO,
-              }}
-            >
-              {this.renderDashCard(dc, true)}
-            </div>
-          ))}
-      </div>
+      isEditing && !isEditingParameter && clickBehaviorSidebarDashcard == null
     );
   }
 
+  renderGridItem = ({ item: dc, breakpoint, gridItemWidth }) => (
+    <div key={String(dc.id)} className="DashCard">
+      {this.renderDashCard(dc, {
+        isMobile: breakpoint === "mobile",
+        gridItemWidth,
+      })}
+    </div>
+  );
+
   renderGrid() {
-    const { dashboard, isEditing, isEditingParameter, width } = this.props;
-    const rowHeight = Math.floor(width / GRID_WIDTH / GRID_ASPECT_RATIO);
+    const { dashboard, width } = this.props;
+    const { layouts } = this.state;
+    const rowHeight = this.getRowHeight();
     return (
       <GridLayout
         className={cx("DashboardGrid", {
-          "Dash--editing": isEditing,
-          "Dash--editingParameter": isEditingParameter,
+          "Dash--editing": this.isEditingLayout,
           "Dash--dragging": this.state.isDragging,
         })}
-        layout={this.state.layout}
-        cols={GRID_WIDTH}
-        margin={GRID_MARGIN}
+        layouts={layouts}
+        breakpoints={GRID_BREAKPOINTS}
+        cols={GRID_COLUMNS}
+        width={width}
+        margin={{ desktop: [6, 6], mobile: [6, 10] }}
+        containerPadding={[0, 0]}
         rowHeight={rowHeight}
-        onLayoutChange={(...args) => this.onLayoutChange(...args)}
-        onDrag={(...args) => this.onDrag(...args)}
-        onDragStop={(...args) => this.onDragStop(...args)}
-        isEditing={isEditing}
-      >
-        {dashboard &&
-          dashboard.ordered_cards.map(dc => (
-            <div
-              key={dc.id}
-              className="DashCard"
-              onMouseDownCapture={this.onDashCardMouseDown}
-              onTouchStartCapture={this.onDashCardMouseDown}
-            >
-              {this.renderDashCard(dc, false)}
-            </div>
-          ))}
-      </GridLayout>
+        onLayoutChange={this.onLayoutChange}
+        onDrag={this.onDrag}
+        onDragStop={this.onDragStop}
+        isEditing={this.isEditingLayout}
+        compactType="vertical"
+        items={dashboard.ordered_cards}
+        itemRenderer={this.renderGridItem}
+      />
     );
   }
 
@@ -305,13 +354,7 @@ export default class DashboardGrid extends Component {
     const { width } = this.props;
     return (
       <div className="flex layout-centered">
-        {width === 0 ? (
-          <div />
-        ) : width <= 752 ? (
-          this.renderMobile()
-        ) : (
-          this.renderGrid()
-        )}
+        {width > 0 ? this.renderGrid() : <div />}
         {this.renderRemoveModal()}
         {this.renderAddSeriesModal()}
       </div>

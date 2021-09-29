@@ -2,13 +2,11 @@
   "Logic related to handling Slack events, running commands for events that are messages to the MetaBot, and posting the
   response on Slack."
   (:require [cheshire.core :as json]
-            [clojure
-             [edn :as edn]
-             [string :as str]]
+            [clojure.edn :as edn]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase.metabot
-             [command :as metabot.cmd]
-             [slack :as metabot.slack]]
+            [metabase.metabot.command :as metabot.cmd]
+            [metabase.metabot.slack :as metabot.slack]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]))
 
@@ -38,7 +36,7 @@
   (when (seq text)
     (second (re-matches #"^mea?ta?boa?t\s*(.*)$" text)))) ; handle typos like metaboat or meatbot
 
-(defn- respond-to-message! [message response]
+(defn- respond-to-message! [response]
   (when response
     (let [response (if (coll? response) (str "```\n" (u/pprint-to-str response) "```")
                        (str response))]
@@ -46,7 +44,7 @@
         (metabot.slack/post-chat-message! response)))))
 
 (defn- handle-slack-message [message]
-  (respond-to-message! message (eval-command-str (message->command-str message))))
+  (respond-to-message! (eval-command-str (message->command-str message))))
 
 (defn- human-message?
   "Was this Slack WebSocket event one about a *human* sending a message?"

@@ -1,158 +1,174 @@
 (ns metabase.api.automagic-dashboards-test
-  (:require [expectations :refer :all]
+  (:require [clojure.test :refer :all]
             [metabase.automagic-dashboards.core :as magic]
-            [metabase.models
-             [card :refer [Card]]
-             [collection :refer [Collection]]
-             [metric :refer [Metric]]
-             [permissions :as perms]
-             [permissions-group :as perms-group]
-             [segment :refer [Segment]]]
-            [metabase.test
-             [automagic-dashboards :refer :all]
-             [data :as data]
-             [util :as tu]]
-            [metabase.test.data.users :as test-users]
+            [metabase.models :refer [Card Collection Metric Segment]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as perms-group]
+            [metabase.query-processor :as qp]
+            [metabase.test :as mt]
+            [metabase.test.automagic-dashboards :refer :all]
+            [metabase.test.domain-entities :as de.test]
+            [metabase.test.fixtures :as fixtures]
+            [metabase.test.transforms :as transforms.test]
+            [metabase.transforms.core :as transforms]
+            [metabase.transforms.materialize :as transforms.materialize]
+            [metabase.transforms.specs :as transforms.specs]
             [toucan.util.test :as tt]))
 
+(use-fixtures :once (fixtures/initialize :db :web-server :test-users :test-users-personal-collections))
+
 (defn- api-call
-  ([template args] (api-call template args (constantly true)))
+  ([template args]
+   (api-call template args (constantly true)))
+
   ([template args revoke-fn]
-   (with-rasta
+   (api-call template args revoke-fn some?))
+
+  ([template args revoke-fn validation-fn]
+   (mt/with-test-user :rasta
      (with-dashboard-cleanup
-       (let [api-endpoint (apply format (str "automagic-dashboards/" template) args)]
-         (and (some? ((test-users/user->client :rasta) :get 200 api-endpoint))
-              (try
-                (do
-                  (perms/revoke-permissions! (perms-group/all-users) (data/id))
-                  (revoke-fn)
-                  (= ((test-users/user->client :rasta) :get 403 api-endpoint)
-                     "You don't have permissions to do that."))
-                (finally
-                  (perms/grant-permissions! (perms-group/all-users) (perms/object-path (data/id)))))))))))
+       (let [api-endpoint (apply format (str "automagic-dashboards/" template) args)
+             result       (validation-fn (mt/user-http-request :rasta :get 200 api-endpoint))]
+         (when (and result
+                    (try
+                      (testing "Endpoint should return 403 if user does not have permissions"
+                        (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
+                        (revoke-fn)
+                        (let [result (mt/user-http-request :rasta :get 403 api-endpoint)]
+                          (is (= "You don't have permissions to do that."
+                                 result))))
+                      (finally
+                        (perms/grant-permissions! (perms-group/all-users) (perms/data-perms-path (mt/id))))))
+           result))))))
 
 
 ;;; ------------------- X-ray  -------------------
 
-(expect (api-call "table/%s" [(data/id :venues)]))
-(expect (api-call "table/%s/rule/example/indepth" [(data/id :venues)]))
+(deftest table-xray-test
+  (testing "GET /api/automagic-dashboards/table/:id"
+    (is (some? (api-call "table/%s" [(mt/id :venues)]))))
+
+  (testing "GET /api/automagic-dashboards/table/:id/rule/example/indepth"
+    (is (some? (api-call "table/%s/rule/example/indepth" [(mt/id :venues)])))))
+
+(deftest metric-xray-test
+  (testing "GET /api/automagic-dashboards/metric/:id"
+    (tt/with-temp Metric [{metric-id :id} {:table_id   (mt/id :venues)
+                                           :definition {:query {:aggregation ["count"]}}}]
+      (is (some? (api-call "metric/%s" [metric-id]))))))
+
+(deftest segment-xray-test
+  (tt/with-temp Segment [{segment-id :id} {:table_id   (mt/id :venues)
+                                           :definition {:filter [:> [:field-id (mt/id :venues :price)] 10]}}]
+    (testing "GET /api/automagic-dashboards/segment/:id"
+      (is (some? (api-call "segment/%s" [segment-id]))))
+
+    (testing "GET /api/automagic-dashboards/segment/:id/rule/example/indepth"
+      (is (some? (api-call "segment/%s/rule/example/indepth" [segment-id]))))))
 
 
-(expect
-   (tt/with-temp* [Metric [{metric-id :id} {:table_id (data/id :venues)
-                                            :definition {:query {:aggregation ["count"]}}}]]
-     (api-call "metric/%s" [metric-id])))
-
-
-(expect
-  (tt/with-temp* [Segment [{segment-id :id} {:table_id (data/id :venues)
-                                             :definition {:filter [:> [:field-id (data/id :venues :price)] 10]}}]]
-    (api-call "segment/%s" [segment-id])))
-
-(expect
-  (tt/with-temp* [Segment [{segment-id :id} {:table_id (data/id :venues)
-                                             :definition {:filter [:> [:field-id (data/id :venues :price)] 10]}}]]
-    (api-call "segment/%s/rule/example/indepth" [segment-id])))
-
-
-(expect (api-call "field/%s" [(data/id :venues :price)]))
+(deftest field-xray-test
+  (testing "GET /api/automagic-dashboards/field/:id"
+    (is (some? (api-call "field/%s" [(mt/id :venues :price)])))))
 
 (defn- revoke-collection-permissions!
   [collection-id]
   (perms/revoke-collection-permissions! (perms-group/all-users) collection-id))
 
-(expect
-  (tu/with-non-admin-groups-no-root-collection-perms
-    (tt/with-temp* [Collection [{collection-id :id}]
-                    Card [{card-id :id} {:table_id      (data/id :venues)
-                                         :collection_id collection-id
-                                         :dataset_query {:query    {:filter       [:> [:field-id (data/id :venues :price)] 10]
-                                                                    :source-table (data/id :venues)}
-                                                         :type     :query
-                                                         :database (data/id)}}]]
-      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-      (api-call "question/%s" [card-id] #(revoke-collection-permissions! collection-id)))))
+(deftest card-xray-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (let [cell-query (#'magic/encode-base64-json [:> [:field-id (mt/id :venues :price)] 5])]
+      (doseq [test-fn
+              [(fn [collection-id card-id]
+                 (testing "GET /api/automagic-dashboards/question/:id"
+                   (is (some? (api-call "question/%s" [card-id] #(revoke-collection-permissions! collection-id))))))
 
-(expect
-  (tu/with-non-admin-groups-no-root-collection-perms
-    (tt/with-temp* [Collection [{collection-id :id}]
-                    Card [{card-id :id} {:table_id      (data/id :venues)
-                                         :collection_id collection-id
-                                         :dataset_query {:query    {:filter       [:> [:field-id (data/id :venues :price)] 10]
-                                                                    :source-table (data/id :venues)}
-                                                         :type     :query
-                                                         :database (data/id)}}]]
-      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-      (api-call "question/%s/cell/%s" [card-id (->> [:> [:field-id (data/id :venues :price)] 5]
-                                                    (#'magic/encode-base64-json))]
-                #(revoke-collection-permissions! collection-id)))))
+               (fn [collection-id card-id]
+                 (testing "GET /api/automagic-dashboards/question/:id/cell/:cell-query"
+                   (is (some? (api-call "question/%s/cell/%s"
+                                        [card-id cell-query]
+                                        #(revoke-collection-permissions! collection-id))))))
 
-(expect
-  (tu/with-non-admin-groups-no-root-collection-perms
-    (tt/with-temp* [Collection [{collection-id :id}]
-                    Card [{card-id :id} {:table_id      (data/id :venues)
-                                         :collection_id collection-id
-                                         :dataset_query {:query    {:filter       [:> [:field-id (data/id :venues :price)] 10]
-                                                                    :source-table (data/id :venues)}
-                                                         :type     :query
-                                                         :database (data/id)}}]]
-      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-      (api-call "question/%s/cell/%s/rule/example/indepth"
-                [card-id (->> [:> [:field-id (data/id :venues :price)] 5]
-                              (#'magic/encode-base64-json))]
-                #(revoke-collection-permissions! collection-id)))))
+               (fn [collection-id card-id]
+                 (testing "GET /api/automagic-dashboards/question/:id/cell/:cell-query/rule/example/indepth"
+                   (is (some? (api-call "question/%s/cell/%s/rule/example/indepth"
+                                        [card-id cell-query]
+                                        #(revoke-collection-permissions! collection-id))))))]]
+        (tt/with-temp* [Collection [{collection-id :id}]
+                        Card       [{card-id :id} {:table_id      (mt/id :venues)
+                                                   :collection_id collection-id
+                                                   :dataset_query (mt/mbql-query venues
+                                                                    {:filter [:> $price 10]})}]]
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
+          (test-fn collection-id card-id))))))
 
+(deftest adhoc-query-xray-test
+  (let [query (#'magic/encode-base64-json
+               (mt/mbql-query venues
+                 {:filter [:> $price 10]}))
+        cell-query (#'magic/encode-base64-json
+                    [:> [:field-id (mt/id :venues :price)] 5])]
+    (testing "GET /api/automagic-dashboards/adhoc/:query"
+      (is (some? (api-call "adhoc/%s" [query]))))
 
-(expect (api-call "adhoc/%s" [(->> {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
-                                            :source-table (data/id :venues)}
-                                    :type :query
-                                    :database (data/id)}
-                                   (#'magic/encode-base64-json))]))
+    (testing "GET /api/automagic-dashboards/adhoc/:query/cell/:cell-query"
+      (is (some? (api-call "adhoc/%s/cell/%s" [query cell-query]))))
 
-(expect (api-call "adhoc/%s/cell/%s"
-                  [(->> {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
-                                 :source-table (data/id :venues)}
-                         :type :query
-                         :database (data/id)}
-                        (#'magic/encode-base64-json))
-                   (->> [:> [:field-id (data/id :venues :price)] 5]
-                        (#'magic/encode-base64-json))]))
-
-(expect (api-call "adhoc/%s/cell/%s/rule/example/indepth"
-                  [(->> {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
-                                 :source-table (data/id :venues)}
-                         :type :query
-                         :database (data/id)}
-                        (#'magic/encode-base64-json))
-                   (->> [:> [:field-id (data/id :venues :price)] 5]
-                        (#'magic/encode-base64-json))]))
+    (testing "GET /api/automagic-dashboards/adhoc/:query/cell/:cell-query/rule/example/indepth"
+      (is (some? (api-call "adhoc/%s/cell/%s/rule/example/indepth" [query cell-query]))))))
 
 
 ;;; ------------------- Comparisons -------------------
 
 (def ^:private segment
   (delay
-   {:table_id   (data/id :venues)
-    :definition {:filter [:> [:field-id (data/id :venues :price)] 10]}}))
+   {:table_id   (mt/id :venues)
+    :definition {:filter [:> [:field-id (mt/id :venues :price)] 10]}}))
 
-(expect
-  (tt/with-temp* [Segment [{segment-id :id} @segment]]
-    (api-call "table/%s/compare/segment/%s"
-              [(data/id :venues) segment-id])))
+(deftest comparisons-test
+  (tt/with-temp Segment [{segment-id :id} @segment]
+    (testing "GET /api/automagic-dashboards/table/:id/compare/segment/:segment-id"
+      (is (some?
+           (api-call "table/%s/compare/segment/%s"
+                     [(mt/id :venues) segment-id]))))
 
-(expect
-  (tt/with-temp* [Segment [{segment-id :id} @segment]]
-    (api-call "table/%s/rule/example/indepth/compare/segment/%s"
-              [(data/id :venues) segment-id])))
+    (testing "GET /api/automagic-dashboards/table/:id/rule/example/indepth/compare/segment/:segment-id"
+      (is (some?
+           (api-call "table/%s/rule/example/indepth/compare/segment/%s"
+                     [(mt/id :venues) segment-id]))))
 
-(expect
-  (tt/with-temp* [Segment [{segment-id :id} @segment]]
-    (api-call "adhoc/%s/cell/%s/compare/segment/%s"
-              [(->> {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
-                             :source-table (data/id :venues)}
-                     :type :query
-                     :database (data/id)}
-                    (#'magic/encode-base64-json))
-               (->> [:= [:field-id (data/id :venues :price)] 15]
-                    (#'magic/encode-base64-json))
-               segment-id])))
+    (testing "GET /api/automagic-dashboards/adhoc/:id/cell/:cell-query/compare/segment/:segment-id"
+      (is (some?
+           (api-call "adhoc/%s/cell/%s/compare/segment/%s"
+                     [(->> (mt/mbql-query venues
+                             {:filter [:> $price 10]})
+                           (#'magic/encode-base64-json))
+                      (->> [:= [:field-id (mt/id :venues :price)] 15]
+                           (#'magic/encode-base64-json))
+                      segment-id]))))))
+
+
+;;; ------------------- Transforms -------------------
+
+(deftest transforms-test
+  (testing "GET /api/automagic-dashboards/transform/:id"
+    (mt/with-test-user :rasta
+      (transforms.test/with-test-transform-specs
+        (de.test/with-test-domain-entity-specs
+          (mt/with-model-cleanup [Card Collection]
+            (transforms/apply-transform! (mt/id) "PUBLIC" (first @transforms.specs/transform-specs))
+            (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 1.5 4 3 2 1]
+                    [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 2.0 11 2 1 1]
+                    [3 "The Apple Pan" 11 34.0406 -118.428 2 2.0 11 2 1 1]]
+                   (api-call "transform/%s" ["Test transform"]
+                             #(revoke-collection-permissions!
+                               (transforms.materialize/get-collection "Test transform"))
+                             (fn [dashboard]
+                               (->> dashboard
+                                    :ordered_cards
+                                    (sort-by (juxt :row :col))
+                                    last
+                                    :card
+                                    :dataset_query
+                                    qp/process-query
+                                    mt/rows)))))))))))

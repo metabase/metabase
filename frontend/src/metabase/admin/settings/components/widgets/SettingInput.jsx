@@ -1,6 +1,7 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
-import InputBlurChange from "metabase/components/InputBlurChange.jsx";
+import InputBlurChange from "metabase/components/InputBlurChange";
 import cx from "classnames";
 
 const SettingInput = ({
@@ -10,14 +11,16 @@ const SettingInput = ({
   autoFocus,
   errorMessage,
   fireOnChange,
+  id,
   type = "text",
 }) => (
   <InputBlurChange
-    className={cx(" AdminInput bordered rounded h3", {
+    className={cx("Form-input", {
       SettingsInput: type !== "password",
       SettingsPassword: type === "password",
       "border-error bg-error-input": errorMessage,
     })}
+    id={id}
     type={type}
     value={setting.value || ""}
     placeholder={setting.placeholder}

@@ -1,29 +1,26 @@
-FROM openjdk:8-jre-alpine
+FROM adoptopenjdk/openjdk11:alpine-jre
 
-ENV FC_LANG en-US
-ENV LC_CTYPE en_US.UTF-8
+ENV FC_LANG en-US LC_CTYPE en_US.UTF-8
 
 # dependencies
-RUN apk add --update bash ttf-dejavu fontconfig
+RUN apk upgrade & apk add --update-cache --no-cache bash ttf-dejavu fontconfig curl java-cacerts && \
+    mkdir -p /app/certs && \
+    curl https://s3.amazonaws.com/rds-downloads/rds-combined-ca-bundle.pem -o /app/certs/rds-combined-ca-bundle.pem  && \
+    /opt/java/openjdk/bin/keytool -noprompt -import -trustcacerts -alias aws-rds -file /app/certs/rds-combined-ca-bundle.pem -keystore /etc/ssl/certs/java/cacerts -keypass changeit -storepass changeit && \
+    curl https://cacerts.digicert.com/DigiCertGlobalRootG2.crt.pem -o /app/certs/DigiCertGlobalRootG2.crt.pem  && \
+    /opt/java/openjdk/bin/keytool -noprompt -import -trustcacerts -alias azure-cert -file /app/certs/DigiCertGlobalRootG2.crt.pem -keystore /etc/ssl/certs/java/cacerts -keypass changeit -storepass changeit && \
+    mkdir -p /plugins && chmod a+rwx /plugins
 
-# fix broken cacerts
-RUN apk add --update java-cacerts && \
-    rm -f /usr/lib/jvm/default-jvm/jre/lib/security/cacerts && \
-    ln -s /etc/ssl/certs/java/cacerts /usr/lib/jvm/default-jvm/jre/lib/security/cacerts && \
-    rm -rf /tmp/* /var/cache/apk/*
-
-# add Metabase jar
-COPY ./metabase.jar /app/
-
-# add our run script to the image
-COPY ./run_metabase.sh /app/
-
-# create the plugins directory, with writable permissions
-RUN mkdir -p /plugins
-RUN chmod a+rwx /plugins
+# add Metabase jar & add our run script to the image
+COPY ./metabase.jar ./run_metabase.sh /app/
 
 # expose our default runtime port
 EXPOSE 3000
+
+# if you have an H2 database that you want to initialize the new Metabase
+# instance with, mount it in the container as a volume that will match the
+# pattern /app/initial*.db:
+# $ docker run ... -v $PWD/metabase.db.mv.db:/app/initial.db.mv.db ...
 
 # run it
 ENTRYPOINT ["/app/run_metabase.sh"]

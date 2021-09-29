@@ -1,11 +1,13 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
-import ModalContent from "metabase/components/ModalContent.jsx";
-import CheckBox from "metabase/components/CheckBox.jsx";
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
+
+import ModalContent from "metabase/components/ModalContent";
+import CheckBox from "metabase/components/CheckBox";
+
+import { CheckboxLabel } from "./DeleteModalWithConfirm.styled";
 
 export default class DeleteModalWithConfirm extends Component {
   constructor(props, context) {
@@ -34,33 +36,31 @@ export default class DeleteModalWithConfirm extends Component {
   render() {
     const { title, objectType, confirmItems, buttonText } = this.props;
     const { checked } = this.state;
-    let confirmed = confirmItems.reduce(
+    const confirmed = confirmItems.reduce(
       (acc, item, index) => acc && checked[index],
       true,
     );
     return (
       <ModalContent title={title} onClose={this.props.onClose}>
-        <div className="px4">
+        <div>
           <ul>
             {confirmItems.map((item, index) => (
               <li
                 key={index}
                 className="pb2 mb2 border-row-divider flex align-center"
               >
-                <span className="text-error">
-                  <CheckBox
-                    checkColor="currentColor"
-                    borderColor={checked[index] ? "currentColor" : undefined}
-                    size={20}
-                    checked={checked[index]}
-                    onChange={e =>
-                      this.setState({
-                        checked: { ...checked, [index]: e.target.checked },
-                      })
-                    }
-                  />
-                </span>
-                <span className="ml2 h4">{item}</span>
+                <CheckBox
+                  label={<CheckboxLabel>{item}</CheckboxLabel>}
+                  size={20}
+                  checkedColor="danger"
+                  uncheckedColor="danger"
+                  checked={checked[index]}
+                  onChange={e =>
+                    this.setState({
+                      checked: { ...checked, [index]: e.target.checked },
+                    })
+                  }
+                />
               </li>
             ))}
           </ul>

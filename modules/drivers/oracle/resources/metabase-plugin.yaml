@@ -26,6 +26,7 @@ driver:
       placeholder: Optional TNS alias
     - user
     - password
+    - ssl
   connection-properties-include-tunnel-config: true
 init:
   - step: load-namespace

@@ -1,27 +1,40 @@
-/* eslint "react/prop-types": "warn" */
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import { Box, Flex } from "grid-styled";
 import PropTypes from "prop-types";
-import { t, jt, ngettext, msgid } from "c-3po";
+import { t, jt, ngettext, msgid } from "ttag";
 
-import PulseEditName from "./PulseEditName.jsx";
+import PulseEditName from "./PulseEditName";
 import PulseEditCollection from "./PulseEditCollection";
-import PulseEditCards from "./PulseEditCards.jsx";
-import PulseEditChannels from "./PulseEditChannels.jsx";
-import PulseEditSkip from "./PulseEditSkip.jsx";
-import WhatsAPulse from "./WhatsAPulse.jsx";
+import PulseEditCards from "./PulseEditCards";
+import PulseEditChannels from "./PulseEditChannels";
+import PulseEditSkip from "./PulseEditSkip";
+import WhatsAPulse from "./WhatsAPulse";
 
-import ActionButton from "metabase/components/ActionButton.jsx";
+import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/components/Button";
+import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
+import Icon from "metabase/components/Icon";
 import MetabaseAnalytics from "metabase/lib/analytics";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
-import ModalContent from "metabase/components/ModalContent.jsx";
-import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm.jsx";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import ModalContent from "metabase/components/ModalContent";
+import Subhead from "metabase/components/type/Subhead";
+import Text from "metabase/components/type/Text";
 
+import { color } from "metabase/lib/colors";
+import MetabaseSettings from "metabase/lib/settings";
 import { pulseIsValid, cleanPulse, emailIsEnabled } from "metabase/lib/pulse";
 import * as Urls from "metabase/lib/urls";
 
+import Collections from "metabase/entities/collections";
+
 import cx from "classnames";
 
+@Collections.load({
+  id: (state, { pulse, initialCollectionId }) =>
+    pulse.collection_id || initialCollectionId,
+  loadingAndErrorWrapper: false,
+})
 export default class PulseEdit extends Component {
   static propTypes = {
     pulse: PropTypes.object.isRequired,
@@ -35,6 +48,12 @@ export default class PulseEdit extends Component {
     goBack: PropTypes.func,
     initialCollectionId: PropTypes.number,
   };
+
+  constructor(props) {
+    super(props);
+
+    this.pulseInfo = React.createRef();
+  }
 
   componentDidMount() {
     this.props.setEditingPulse(
@@ -50,7 +69,7 @@ export default class PulseEdit extends Component {
   }
 
   handleSave = async () => {
-    let pulse = cleanPulse(this.props.pulse, this.props.formInput.channels);
+    const pulse = cleanPulse(this.props.pulse, this.props.formInput.channels);
     await this.props.updateEditingPulse(pulse);
     await this.props.saveEditingPulse();
 
@@ -60,7 +79,10 @@ export default class PulseEdit extends Component {
       this.props.pulse.cards.length,
     );
 
-    this.props.onChangeLocation(Urls.collection(pulse.collection_id));
+    const collection = this.props.collection
+      ? this.props.collection
+      : { id: pulse.collection_id };
+    this.props.onChangeLocation(Urls.collection(collection));
   };
 
   handleArchive = async () => {
@@ -68,9 +90,7 @@ export default class PulseEdit extends Component {
 
     MetabaseAnalytics.trackEvent("PulseArchive", "Complete");
 
-    this.props.onChangeLocation(
-      Urls.collection(this.props.pulse.collection_id),
-    );
+    this.props.onChangeLocation(Urls.collection(this.props.collection));
   };
 
   handleUnarchive = async () => {
@@ -85,35 +105,37 @@ export default class PulseEdit extends Component {
   };
 
   getConfirmItems() {
-    return this.props.pulse.channels.map(
-      (c, index) =>
-        c.channel_type === "email" ? (
-          <span key={index}>
-            {jt`This pulse will no longer be emailed to ${(
-              <strong>
-                {(n => ngettext(msgid`${n} address`, `${n} addresses`, n))(
-                  c.recipients.length,
-                )}
-              </strong>
-            )} ${<strong>{c.schedule_type}</strong>}`}.
-          </span>
-        ) : c.channel_type === "slack" ? (
-          <span key={index}>
-            {jt`Slack channel ${(
-              <strong>{c.details && c.details.channel}</strong>
-            )} will no longer get this pulse ${(
-              <strong>{c.schedule_type}</strong>
-            )}`}.
-          </span>
-        ) : (
-          <span key={index}>
-            {jt`Channel ${(
-              <strong>{c.channel_type}</strong>
-            )} will no longer receive this pulse ${(
-              <strong>{c.schedule_type}</strong>
-            )}`}.
-          </span>
-        ),
+    return this.props.pulse.channels.map((c, index) =>
+      c.channel_type === "email" ? (
+        <span key={index}>
+          {jt`This pulse will no longer be emailed to ${(
+            <strong>
+              {(n => ngettext(msgid`${n} address`, `${n} addresses`, n))(
+                c.recipients.length,
+              )}
+            </strong>
+          )} ${<strong>{c.schedule_type}</strong>}`}
+          .
+        </span>
+      ) : c.channel_type === "slack" ? (
+        <span key={index}>
+          {jt`Slack channel ${(
+            <strong>{c.details && c.details.channel}</strong>
+          )} will no longer get this pulse ${(
+            <strong>{c.schedule_type}</strong>
+          )}`}
+          .
+        </span>
+      ) : (
+        <span key={index}>
+          {jt`Channel ${(
+            <strong>{c.channel_type}</strong>
+          )} will no longer receive this pulse ${(
+            <strong>{c.schedule_type}</strong>
+          )}`}
+          .
+        </span>
+      ),
     );
   }
 
@@ -121,23 +143,29 @@ export default class PulseEdit extends Component {
     const { pulse, formInput } = this.props;
     const isValid = pulseIsValid(pulse, formInput.channels);
     const attachmentsEnabled = emailIsEnabled(pulse);
+    const link = (
+      <a
+        className="link"
+        href={MetabaseSettings.docsUrl("users-guide/dashboard-subscriptions")}
+      >{t`dashboard subscriptions`}</a>
+    );
     return (
       <div className="PulseEdit">
         <div className="PulseEdit-header flex align-center border-bottom py3">
           <h1>{pulse && pulse.id != null ? t`Edit pulse` : t`New pulse`}</h1>
           <ModalWithTrigger
-            ref="pulseInfo"
+            ref={this.pulseInfo}
             className="Modal WhatsAPulseModal"
             triggerElement={t`What's a Pulse?`}
             triggerClasses="text-brand text-bold flex-align-right"
           >
-            <ModalContent onClose={() => this.refs.pulseInfo.close()}>
+            <ModalContent onClose={() => this.pulseInfo.current.close()}>
               <div className="mx4 mb4">
                 <WhatsAPulse
                   button={
                     <button
                       className="Button Button--primary"
-                      onClick={() => this.refs.pulseInfo.close()}
+                      onClick={() => this.pulseInfo.current.close()}
                     >{t`Got it`}</button>
                   }
                 />
@@ -146,6 +174,21 @@ export default class PulseEdit extends Component {
           </ModalWithTrigger>
         </div>
         <div className="PulseEdit-content pt2 pb4">
+          <Flex
+            bg={color("bg-medium")}
+            p={2}
+            my={3}
+            align="top"
+            style={{ borderRadius: 8 }}
+            className="hover-parent hover--visibility"
+          >
+            <Icon name="warning" color={color("warning")} size={24} mr={1} />
+            <Box ml={1}>
+              <Subhead>{t`Pulses are being phased out`}</Subhead>
+              <Text>{jt`You can now set up ${link} instead. We'll remove Pulses in a future release, and help you migrate any that you still have.`}</Text>
+            </Box>
+          </Flex>
+
           <PulseEditName {...this.props} setPulse={this.setPulse} />
           <PulseEditCollection {...this.props} setPulse={this.setPulse} />
           <PulseEditCards
@@ -188,24 +231,23 @@ export default class PulseEdit extends Component {
           <Button onClick={() => this.props.goBack()} ml={2}>
             {t`Cancel`}
           </Button>
-          {pulse.id != null &&
-            !pulse.archived && (
-              <ModalWithTrigger
-                triggerClasses="Button Button--danger flex-align-right flex-no-shrink"
-                triggerElement={t`Archive`}
-              >
-                {({ onClose }) => (
-                  <DeleteModalWithConfirm
-                    objectType="pulse"
-                    title={t`Archive` + ' "' + pulse.name + '"?'}
-                    buttonText={t`Archive`}
-                    confirmItems={this.getConfirmItems()}
-                    onClose={onClose}
-                    onDelete={this.handleArchive}
-                  />
-                )}
-              </ModalWithTrigger>
-            )}
+          {pulse.id != null && !pulse.archived && (
+            <ModalWithTrigger
+              triggerClasses="Button Button--danger flex-align-right flex-no-shrink"
+              triggerElement={t`Archive`}
+            >
+              {({ onClose }) => (
+                <DeleteModalWithConfirm
+                  objectType="pulse"
+                  title={t`Archive` + ' "' + pulse.name + '"?'}
+                  buttonText={t`Archive`}
+                  confirmItems={this.getConfirmItems()}
+                  onClose={onClose}
+                  onDelete={this.handleArchive}
+                />
+              )}
+            </ModalWithTrigger>
+          )}
         </div>
       </div>
     );

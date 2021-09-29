@@ -6,15 +6,13 @@
    2.  Sync fields (`metabase.sync.sync-metadata.fields`)
    3.  Sync FKs    (`metabase.sync.sync-metadata.fks`)
    4.  Sync Metabase Metadata table (`metabase.sync.sync-metadata.metabase-metadata`)"
-  (:require [metabase.sync
-             [interface :as i]
-             [util :as sync-util]]
-            [metabase.sync.sync-metadata
-             [fields :as sync-fields]
-             [fks :as sync-fks]
-             [metabase-metadata :as metabase-metadata]
-             [sync-timezone :as sync-tz]
-             [tables :as sync-tables]]
+  (:require [metabase.sync.interface :as i]
+            [metabase.sync.sync-metadata.fields :as sync-fields]
+            [metabase.sync.sync-metadata.fks :as sync-fks]
+            [metabase.sync.sync-metadata.metabase-metadata :as metabase-metadata]
+            [metabase.sync.sync-metadata.sync-timezone :as sync-tz]
+            [metabase.sync.sync-metadata.tables :as sync-tables]
+            [metabase.sync.util :as sync-util]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s]))
 
@@ -36,7 +34,7 @@
 (def ^:private sync-steps
   [(sync-util/create-sync-step "sync-timezone" sync-tz/sync-timezone! sync-timezone-summary)
    ;; Make sure the relevant table models are up-to-date
-   (sync-util/create-sync-step "sync-tables" sync-tables/sync-tables! sync-tables-summary)
+   (sync-util/create-sync-step "sync-tables" sync-tables/sync-tables-and-database! sync-tables-summary)
    ;; Now for each table, sync the fields
    (sync-util/create-sync-step "sync-fields" sync-fields/sync-fields! sync-fields-summary)
    ;; Now for each table, sync the FKS. This has to be done after syncing all the fields to make sure target fields exist
@@ -45,13 +43,13 @@
    (sync-util/create-sync-step "sync-metabase-metadata" metabase-metadata/sync-metabase-metadata!)])
 
 (s/defn sync-db-metadata!
-  "Sync the metadata for a Metabase DATABASE. This makes sure child Table & Field objects are synchronized."
+  "Sync the metadata for a Metabase `database`. This makes sure child Table & Field objects are synchronized."
   [database :- i/DatabaseInstance]
   (sync-util/sync-operation :sync-metadata database (format "Sync metadata for %s" (sync-util/name-for-logging database))
     (sync-util/run-sync-operation "sync" database sync-steps)))
 
 (s/defn sync-table-metadata!
-  "Sync the metadata for an individual TABLE -- make sure Fields and FKs are up-to-date."
+  "Sync the metadata for an individual `table` -- make sure Fields and FKs are up-to-date."
   [table :- i/TableInstance]
   (sync-fields/sync-fields-for-table! table)
   (sync-fks/sync-fks-for-table! table))

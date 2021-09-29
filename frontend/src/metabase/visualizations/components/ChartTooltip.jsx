@@ -1,7 +1,8 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import TooltipPopover from "metabase/components/TooltipPopover.jsx";
+import TooltipPopover from "metabase/components/TooltipPopover";
 
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import { formatValue } from "metabase/lib/formatting";
@@ -19,7 +20,10 @@ export default class ChartTooltip extends Component {
     }
     if (Array.isArray(hovered.data)) {
       // Array of key, value, col: { data: [{ key, value, col }], element, event }
-      return hovered.data;
+      return hovered.data.map(d => ({
+        ...d,
+        key: d.key || (d.col && getFriendlyName(d.col)),
+      }));
     } else if (hovered.value !== undefined || hovered.dimensions) {
       // ClickObject: { value, column, dimensions: [{ value, column }], element, event }
       const dimensions = [];
@@ -30,7 +34,7 @@ export default class ChartTooltip extends Component {
         dimensions.push({ value: hovered.value, column: hovered.column });
       }
       return dimensions.map(({ value, column }) => ({
-        key: getFriendlyName(column),
+        key: column && getFriendlyName(column),
         value: value,
         col: column,
       }));
@@ -43,7 +47,7 @@ export default class ChartTooltip extends Component {
     const rows = this._getRows();
     const hasEventOrElement =
       hovered &&
-      ((hovered.element && document.contains(hovered.element)) ||
+      ((hovered.element && document.body.contains(hovered.element)) ||
         hovered.event);
     const isOpen = rows.length > 0 && !!hasEventOrElement;
     return (
@@ -52,6 +56,8 @@ export default class ChartTooltip extends Component {
         targetEvent={hovered && hovered.event}
         verticalAttachments={["bottom", "top"]}
         isOpen={isOpen}
+        // Make sure that for chart tooltips we don't constrain the width so longer strings don't get cut off
+        constrainedWidth={false}
       >
         <table className="py1 px2">
           <tbody>
@@ -77,13 +83,18 @@ const TooltipRow = ({ name, value, column, settings }) => (
     <td className="text-bold text-left">
       {React.isValidElement(value)
         ? value
-        : formatValue(value, {
-            ...(settings && settings.column && column
-              ? settings.column(column)
-              : { column }),
-            type: "tooltip",
-            majorWidth: 0,
-          })}
+        : formatValueForTooltip({ value, column, settings })}
     </td>
   </tr>
 );
+
+// only exported for testing, so leaving this here rather than a formatting file
+export function formatValueForTooltip({ value, column, settings }) {
+  return formatValue(value, {
+    ...(settings && settings.column && column
+      ? settings.column(column)
+      : { column }),
+    type: "tooltip",
+    majorWidth: 0,
+  });
+}

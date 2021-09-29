@@ -1,13 +1,11 @@
-/* @flow */
-
+import { t } from "ttag";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Dimension from "metabase-lib/lib/Dimension";
 
-import { t } from "c-3po";
 import type {
   ClickAction,
   ClickActionProps,
-} from "metabase/meta/types/Visualization";
+} from "metabase-types/types/Visualization";
 
 export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
   const query = question.query();
@@ -39,7 +37,9 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     actions.push({
       name: "sort-ascending",
       section: "sort",
-      title: t`Ascending`,
+      buttonType: "sort",
+      icon: "arrow_up",
+      tooltip: t`Sort ascending`,
       question: () => query.replaceSort(["asc", fieldRef]).question(),
     });
   }
@@ -47,7 +47,9 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     actions.push({
       name: "sort-descending",
       section: "sort",
-      title: t`Descending`,
+      buttonType: "sort",
+      icon: "arrow_down",
+      tooltip: t`Sort descending`,
       question: () => query.replaceSort(["desc", fieldRef]).question(),
     });
   }

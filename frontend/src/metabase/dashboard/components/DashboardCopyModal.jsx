@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { withRouter } from "react-router";
 import { connect } from "react-redux";
@@ -7,14 +8,20 @@ import { replace } from "react-router-redux";
 import * as Urls from "metabase/lib/urls";
 
 import Dashboards from "metabase/entities/dashboards";
+import Collections from "metabase/entities/collections";
 
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 
 import { getDashboardComplete } from "../selectors";
 
 const mapStateToProps = (state, props) => {
+  const dashboard = getDashboardComplete(state, props);
   return {
-    dashboard: getDashboardComplete(state, props),
+    dashboard,
+    initialCollectionId: Collections.selectors.getInitialCollectionId(state, {
+      ...props,
+      collectionId: dashboard && dashboard.collection_id,
+    }),
   };
 };
 
@@ -24,7 +31,10 @@ const mapDispatchToProps = {
 };
 
 @withRouter
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 class DashboardCopyModal extends React.Component {
   render() {
     const {
@@ -32,20 +42,24 @@ class DashboardCopyModal extends React.Component {
       onReplaceLocation,
       copyDashboard,
       dashboard,
+      initialCollectionId,
+      params,
       ...props
     } = this.props;
+    const initialDashboardId = Urls.extractEntityId(params.slug);
     return (
       <EntityCopyModal
         entityType="dashboards"
-        entityObject={dashboard}
-        copy={async values => {
-          return await copyDashboard(
-            { id: this.props.params.dashboardId },
-            dissoc(values, "id"),
-          );
+        entityObject={{
+          ...dashboard,
+          collection_id: initialCollectionId,
         }}
+        overwriteOnInitialValuesChange
+        copy={object =>
+          copyDashboard({ id: initialDashboardId }, dissoc(object, "id"))
+        }
         onClose={onClose}
-        onSaved={dashboard => onReplaceLocation(Urls.dashboard(dashboard.id))}
+        onSaved={dashboard => onReplaceLocation(Urls.dashboard(dashboard))}
         {...props}
       />
     );

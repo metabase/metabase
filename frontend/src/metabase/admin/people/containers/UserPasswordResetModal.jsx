@@ -1,7 +1,8 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { connect } from "react-redux";
 import { goBack } from "react-router-redux";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { Flex } from "grid-styled";
 
 import User from "metabase/entities/users";

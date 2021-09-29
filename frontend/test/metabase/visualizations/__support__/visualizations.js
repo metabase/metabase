@@ -1,7 +1,7 @@
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import lineAreaBarRenderer from "metabase/visualizations/lib/LineAreaBarRenderer";
 
-import { formatValue } from "metabase/lib/formatting";
+import { formatValueForTooltip } from "metabase/visualizations/components/ChartTooltip";
 
 export function makeCard(card) {
   return {
@@ -26,12 +26,14 @@ export const Column = (col = {}) => ({
   display_name: col.display_name || col.name || "column_display_name",
 });
 
+export const BooleanColumn = (col = {}) =>
+  Column({ base_type: "type/Boolean", semantic_type: null, ...col });
 export const DateTimeColumn = (col = {}) =>
-  Column({ base_type: "type/DateTime", special_type: null, ...col });
+  Column({ base_type: "type/DateTime", semantic_type: null, ...col });
 export const NumberColumn = (col = {}) =>
-  Column({ base_type: "type/Integer", special_type: "type/Number", ...col });
+  Column({ base_type: "type/Integer", semantic_type: "type/Number", ...col });
 export const StringColumn = (col = {}) =>
-  Column({ base_type: "type/Text", special_type: null, ...col });
+  Column({ base_type: "type/Text", semantic_type: null, ...col });
 
 export const Card = (name, ...overrides) =>
   deepExtend(
@@ -143,7 +145,7 @@ export const MultiseriesLineCard = (name, ...overrides) =>
 function deepExtend(target, ...sources) {
   for (const source of sources) {
     for (const prop in source) {
-      if (source.hasOwnProperty(prop)) {
+      if (Object.prototype.hasOwnProperty.call(source, prop)) {
         if (
           target[prop] &&
           typeof target[prop] === "object" &&
@@ -161,7 +163,7 @@ function deepExtend(target, ...sources) {
 }
 
 export function dispatchUIEvent(element, eventName) {
-  let e = document.createEvent("UIEvents");
+  const e = document.createEvent("UIEvents");
   e.initUIEvent(eventName, true, true, window, 1);
   element.dispatchEvent(e);
 }
@@ -183,7 +185,7 @@ export function renderLineAreaBar(...args) {
 }
 
 // mirrors logic in ChartTooltip
-export function getFormattedTooltips(hover) {
+export function getFormattedTooltips(hover, settings) {
   let data;
   if (hover.data) {
     data = hover.data;
@@ -198,5 +200,19 @@ export function getFormattedTooltips(hover) {
       data.push({ value: hover.value, col: hover.column });
     }
   }
-  return data.map(d => formatValue(d.value, { column: d.col }));
+  return data.map(({ value, col: column }) =>
+    formatValueForTooltip({ value, column, settings }),
+  );
+}
+
+export function createFixture() {
+  document.body.insertAdjacentHTML(
+    "afterbegin",
+    '<div id="fixture" style="height: 800px; width: 1200px;">',
+  );
+  return document.getElementById("fixture");
+}
+
+export function cleanupFixture(element) {
+  element.parentNode.removeChild(element);
 }

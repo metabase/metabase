@@ -2,16 +2,17 @@
   composes: flex align-center bg-white text-bold cursor-pointer from "style";
   font-size: 16px;
   border: 2px solid var(--color-brand);
-  border-radius: 4px;
+  border-radius: var(--default-border-radius);
   min-height: 30px;
   min-width: 100px;
   padding: 0.25em 0.5em 0.25em 0.5em;
-  color: var(--color-text-dark);
+  color: var(--color-text-medium);
 }
 
 :local(.mapped) {
-  border-color: var(--color-accent1);
-  color: var(--color-accent1);
+  border-color: var(--color-brand);
+  background-color: var(--color-brand);
+  color: var(--color-white);
 }
 
 :local(.warn) {

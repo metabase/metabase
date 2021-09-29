@@ -1,0 +1,115 @@
+# Triggers Percy job on push to master and release branches to create baseline screenshots
+name: Percy
+
+on:
+  push:
+    branches:
+      - master
+      - "release-**"
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      - "**unit.spec.js"
+      - "frontend/test/**"
+      - "!frontend/test/metabase-visual/**"
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 60
+    strategy:
+      matrix:
+        edition: [oss]
+    env:
+      MB_EDITION: ${{ matrix.edition }}
+      INTERACTIVE: false
+    steps:
+      - uses: actions/checkout@v2
+      - name: Prepare Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14.x
+      - name: Prepare JDK 8
+        uses: actions/setup-java@v1
+        with:
+          java-version: 8
+      - name: Install Clojure CLI
+        run: |
+          curl -O https://download.clojure.org/install/linux-install-1.10.3.933.sh &&
+          sudo bash ./linux-install-1.10.3.933.sh
+      - name: Check versions
+        run: |
+          echo "Node.js `node --version`"
+          echo "yarn `yarn --version`"
+          java -version
+
+      - name: Get yarn cache
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache/yarn
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+      - name: Get M2 cache
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/deps.edn') }}
+
+      - run: yarn install --frozen-lockfile --prefer-offline
+      - run: ./bin/build
+
+      - name: Mark with the commit hash
+        run: git rev-parse --short HEAD > COMMIT-ID
+      - name: Calculate SHA256 checksum
+        run: sha256sum ./target/uberjar/metabase.jar > SHA256.sum
+      - name: Upload JARs as artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: metabase-${{ matrix.edition }}-uberjar
+          path: |
+            ./target/uberjar/metabase.jar
+            ./COMMIT-ID
+            ./SHA256.sum
+
+  percy:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 30
+    needs: build
+    steps:
+      - uses: actions/checkout@v2
+      - name: Prepare Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14.x
+      - name: Prepare JDK 8
+        uses: actions/setup-java@v1
+        with:
+          java-version: 8
+      - name: Install Clojure CLI
+        run: |
+          curl -O https://download.clojure.org/install/linux-install-1.10.3.933.sh &&
+          sudo bash ./linux-install-1.10.3.933.sh
+      - name: Check versions
+        run: |
+          echo "Node.js `node --version`"
+          echo "yarn `yarn --version`"
+          java -version
+      - name: Get yarn cache
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache/yarn
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+      - run: yarn install --frozen-lockfile --prefer-offline
+
+      - uses: actions/download-artifact@v2
+        name: Retrieve uberjar artifact
+        with:
+          name: metabase-oss-uberjar
+      - name: Get the version info
+        run: |
+          jar xf target/uberjar/metabase.jar version.properties
+          mv version.properties resources/
+
+      - name: Percy Test
+        run: yarn run test-visual-no-build
+        env:
+          PERCY_TOKEN: ${{ secrets.PERCY_TOKEN }}

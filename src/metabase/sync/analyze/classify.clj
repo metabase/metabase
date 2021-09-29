@@ -3,32 +3,29 @@
   type. Each 'classifier' takes the information available to it and decides whether or not to run. We currently have
   the following classifiers:
 
-  1.  `name`: Looks at the name of a Field and infers a special type if possible
+  1.  `name`: Looks at the name of a Field and infers a semantic type if possible
   2.  `no-preview-display`: Looks at average length of text Field recorded in fingerprint and decides whether or not we
       should hide this Field
   3.  `category`: Looks at the number of distinct values of Field and determines whether it can be a Category
-  4.  `text-fingerprint`: Looks at percentages recorded in a text Fields' TextFingerprint and infers a special type if
+  4.  `text-fingerprint`: Looks at percentages recorded in a text Fields' TextFingerprint and infers a semantic type if
       possible
 
   All classifier functions take two arguments, a `FieldInstance` and a possibly `nil` `Fingerprint`, and should return
-  the Field with any appropriate changes (such as a new special type). If no changes are appropriate, a classifier may
+  the Field with any appropriate changes (such as a new semantic type). If no changes are appropriate, a classifier may
   return nil. Error handling is handled by `run-classifiers` below, so individual classiers do not need to handle
   errors themselves.
 
   In the future, we plan to add more classifiers, including ML ones that run offline."
   (:require [clojure.data :as data]
             [clojure.tools.logging :as log]
-            [metabase.models
-             [field :refer [Field]]
-             [table :refer [Table]]]
-            [metabase.sync
-             [interface :as i]
-             [util :as sync-util]]
-            [metabase.sync.analyze.classifiers
-             [category :as category]
-             [name :as name]
-             [no-preview-display :as no-preview-display]
-             [text-fingerprint :as text-fingerprint]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.table :refer [Table]]
+            [metabase.sync.analyze.classifiers.category :as category]
+            [metabase.sync.analyze.classifiers.name :as name]
+            [metabase.sync.analyze.classifiers.no-preview-display :as no-preview-display]
+            [metabase.sync.analyze.classifiers.text-fingerprint :as text-fingerprint]
+            [metabase.sync.interface :as i]
+            [metabase.sync.util :as sync-util]
             [metabase.util :as u]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -39,7 +36,7 @@
 
 (def ^:private values-that-can-be-set
   "Columns of Field that classifiers are allowed to set."
-  #{:special_type :preview_display :has_field_values :entity_type})
+  #{:semantic_type :preview_display :has_field_values :entity_type})
 
 (def ^:private FieldOrTableInstance (s/either i/FieldInstance i/TableInstance))
 
@@ -61,38 +58,42 @@
       (db/update! (if (instance? (type Field) original-model)
                     Field
                     Table)
-          (u/get-id original-model)
+          (u/the-id original-model)
         values-to-set)
       true)))
 
 (def ^:private classifiers
   "Various classifier functions available. These should all take two args, a `FieldInstance` and a possibly `nil`
   `Fingerprint`, and return `FieldInstance` with any inferred property changes, or `nil` if none could be inferred.
-  Order is important!"
-  [name/infer-and-assoc-special-type
+  Order is important!
+
+  A classifier may see the original field (before any classifiers were run) in the metadata of the field at
+  `:sync.classify/original`."
+  [name/infer-and-assoc-semantic-type
    category/infer-is-category-or-list
    no-preview-display/infer-no-preview-display
-   text-fingerprint/infer-special-type])
+   text-fingerprint/infer-semantic-type])
 
 (s/defn run-classifiers :- i/FieldInstance
-  "Run all the available `classifiers` against FIELD and FINGERPRINT, and return the resulting FIELD with changes
-  decided upon by the classifiers."
+  "Run all the available `classifiers` against `field` and `fingerprint`, and return the resulting `field` with
+  changes decided upon by the classifiers. The original field can be accessed in the metadata at
+  `:sync.classify/original`."
   [field :- i/FieldInstance, fingerprint :- (s/maybe i/Fingerprint)]
-  (loop [field field, [classifier & more] classifiers]
-    (if-not classifier
-      field
-      (recur (or (sync-util/with-error-handling (format "Error running classifier on %s"
-                                                        (sync-util/name-for-logging field))
-                   (classifier field fingerprint))
-                 field)
-             more))))
+  (reduce (fn [field classifier]
+            (or (sync-util/with-error-handling (format "Error running classifier on %s"
+                                                       (sync-util/name-for-logging field))
+                  (classifier field fingerprint))
+                field))
+          (vary-meta field assoc :sync.classify/original field)
+          classifiers))
 
 
 (s/defn ^:private classify!
-  "Run various classifiers on FIELD and its FINGERPRINT, and save any detected changes."
+  "Run various classifiers on `field` and its `fingerprint`, and save any detected changes."
   ([field :- i/FieldInstance]
    (classify! field (or (:fingerprint field)
-                        (db/select-one-field :fingerprint Field :id (u/get-id field)))))
+                        (db/select-one-field :fingerprint Field :id (u/the-id field)))))
+
   ([field :- i/FieldInstance, fingerprint :- (s/maybe i/Fingerprint)]
    (sync-util/with-error-handling (format "Error classifying %s" (sync-util/name-for-logging field))
      (let [updated-field (run-classifiers field fingerprint)]
@@ -105,32 +106,34 @@
 ;;; +------------------------------------------------------------------------------------------------------------------+
 
 (s/defn ^:private fields-to-classify :- (s/maybe [i/FieldInstance])
-  "Return a sequences of Fields belonging to TABLE for which we should attempt to determine special type. This should
-  include Fields that have the latest fingerprint, but have not yet *completed* analysis."
+  "Return a sequences of Fields belonging to `table` for which we should attempt to determine semantic type. This
+  should include Fields that have the latest fingerprint, but have not yet *completed* analysis."
   [table :- i/TableInstance]
   (seq (db/select Field
-         :table_id            (u/get-id table)
+         :table_id            (u/the-id table)
          :fingerprint_version i/latest-fingerprint-version
          :last_analyzed       nil)))
 
 (s/defn classify-fields!
   "Run various classifiers on the appropriate FIELDS in a TABLE that have not been previously analyzed. These do things
-  like inferring (and setting) the special types and preview display status for Fields belonging to TABLE."
+  like inferring (and setting) the semantic types and preview display status for Fields belonging to TABLE."
   [table :- i/TableInstance]
   (when-let [fields (fields-to-classify table)]
     {:fields-classified (count fields)
-     :fields-failed     (sync-util/sum-numbers (fn [field]
-                                                 (let [result (classify! field)]
-                                                   (if (instance? Exception result)
-                                                     1
-                                                     0)))
-                                               fields)}))
+     :fields-failed     (->> fields
+                             (map classify!)
+                             (filter (partial instance? Exception))
+                             count)}))
 
 (s/defn ^:always-validate classify-table!
-  "Run various classifiers on the TABLE. These do things like inferring (and
-   setting) entitiy type of TABLE."
+  "Run various classifiers on the `table`. These do things like inferring (and setting) entitiy type of `table`."
   [table :- i/TableInstance]
-  (save-model-updates! table (name/infer-entity-type table)))
+  (let [updated-table (sync-util/with-error-handling (format "Error running classifier on %s"
+                                                             (sync-util/name-for-logging table))
+                        (name/infer-entity-type table))]
+    (if (instance? Exception updated-table)
+      table
+      (save-model-updates! table updated-table))))
 
 (s/defn classify-tables-for-db!
   "Classify all tables found in a given database"

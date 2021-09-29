@@ -1,6 +1,7 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import { Box, Flex } from "grid-styled";
 
@@ -8,7 +9,7 @@ import ArchivedItem from "../../components/ArchivedItem";
 import Button from "metabase/components/Button";
 import BulkActionBar from "metabase/components/BulkActionBar";
 import Card from "metabase/components/Card";
-import PageHeading from "metabase/components/PageHeading";
+import PageHeading from "metabase/components/type/PageHeading";
 import StackedCheckBox from "metabase/components/StackedCheckBox";
 import VirtualizedList from "metabase/components/VirtualizedList";
 
@@ -29,7 +30,10 @@ const ROW_HEIGHT = 68;
   wrapped: true,
 })
 @listSelect({ keyForItem: item => `${item.model}:${item.id}` })
-@connect(mapStateToProps, null)
+@connect(
+  mapStateToProps,
+  null,
+)
 export default class ArchiveApp extends Component {
   render() {
     const {
@@ -46,7 +50,7 @@ export default class ArchiveApp extends Component {
         <Box mt={2} py={2}>
           <PageHeading>{t`Archive`}</PageHeading>
         </Box>
-        <Box w={2 / 3}>
+        <Box width={2 / 3} pb={4}>
           <Card
             style={{
               height: list.length > 0 ? ROW_HEIGHT * list.length : "auto",
@@ -60,7 +64,7 @@ export default class ArchiveApp extends Component {
                   <ArchivedItem
                     type={item.type}
                     name={item.getName()}
-                    icon={item.getIcon()}
+                    icon={item.getIcon().name}
                     color={item.getColor()}
                     isAdmin={isAdmin}
                     onUnarchive={

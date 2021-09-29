@@ -1,15 +1,15 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
-import DetailPane from "./DetailPane.jsx";
-import QueryButton from "metabase/components/QueryButton.jsx";
-import UseForButton from "./UseForButton.jsx";
+import { t } from "ttag";
+import DetailPane from "./DetailPane";
+import QueryButton from "metabase/components/QueryButton";
+import UseForButton from "./UseForButton";
 
 import { fetchTableMetadata, fetchFieldValues } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { createCard } from "metabase/lib/card";
-import Query, { createQuery } from "metabase/lib/query";
+import * as Q_DEPRECATED from "metabase/lib/query";
 import { isDimension, isSummable } from "metabase/lib/schema_metadata";
 import inflection from "inflection";
 
@@ -26,7 +26,10 @@ const mapDispatchToProps = {
 const mapStateToProps = (state, props) => ({
   metadata: getMetadata(state, props),
 });
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class FieldPane extends Component {
   constructor(props, context) {
     super(props, context);
@@ -46,7 +49,7 @@ export default class FieldPane extends Component {
     updateQuestion: PropTypes.func.isRequired,
   };
 
-  async componentWillMount() {
+  async UNSAFE_componentWillMount() {
     const { field, fetchTableMetadata, fetchFieldValues } = this.props;
     await fetchTableMetadata(field.table_id);
     if (field.has_field_values === "list") {
@@ -58,25 +61,25 @@ export default class FieldPane extends Component {
   // filterBy() {
   //     var datasetQuery = this.setDatabaseAndTable();
   //     // Add an aggregation so both aggregation and filter popovers aren't visible
-  //     if (!Query.hasValidAggregation(datasetQuery.query)) {
-  //         Query.clearAggregations(datasetQuery.query);
+  //     if (!Q_DEPRECATED.hasValidAggregation(datasetQuery.query)) {
+  //         Q_DEPRECATED.clearAggregations(datasetQuery.query);
   //     }
-  //     Query.addFilter(datasetQuery.query, [null, this.props.field.id, null]);
+  //     Q_DEPRECATED.addFilter(datasetQuery.query, [null, this.props.field.id, null]);
   //     this.props.setDatasetQuery(datasetQuery);
   // }
 
   groupBy = () => {
-    let { question, metadata, field } = this.props;
+    const { question, metadata, field } = this.props;
     let query = question.query();
 
     if (query instanceof StructuredQuery) {
       // Add an aggregation so both aggregation and filter popovers aren't visible
-      if (!Query.hasValidAggregation(query.datasetQuery().query)) {
+      if (!Q_DEPRECATED.hasValidAggregation(query.datasetQuery().query)) {
         query = query.clearAggregations();
       }
 
-      const defaultBreakout = metadata.fields[field.id].getDefaultBreakout();
-      query = query.addBreakout(defaultBreakout);
+      const defaultBreakout = metadata.field(field.id).getDefaultBreakout();
+      query = query.breakout(defaultBreakout);
 
       this.props.updateQuestion(query.question());
       this.props.runQuestionQuery();
@@ -86,24 +89,24 @@ export default class FieldPane extends Component {
   newCard = () => {
     const { metadata, field } = this.props;
     const tableId = field.table_id;
-    const dbId = metadata.tables[tableId].database.id;
+    const dbId = metadata.table(tableId).database.id;
 
-    let card = createCard();
-    card.dataset_query = createQuery("query", dbId, tableId);
+    const card = createCard();
+    card.dataset_query = Q_DEPRECATED.createQuery("query", dbId, tableId);
     return card;
   };
 
   setQuerySum = () => {
-    let card = this.newCard();
+    const card = this.newCard();
     card.dataset_query.query.aggregation = ["sum", this.props.field.id];
     this.props.setCardAndRun(card);
   };
 
   setQueryDistinct = () => {
     const { metadata, field } = this.props;
-    const defaultBreakout = metadata.fields[field.id].getDefaultBreakout();
+    const defaultBreakout = metadata.field(field.id).getDefaultBreakout();
 
-    let card = this.newCard();
+    const card = this.newCard();
     card.dataset_query.query.aggregation = ["rows"];
     card.dataset_query.query.breakout = [defaultBreakout];
     this.props.setCardAndRun(card);
@@ -111,9 +114,9 @@ export default class FieldPane extends Component {
 
   setQueryCountGroupedBy = chartType => {
     const { metadata, field } = this.props;
-    const defaultBreakout = metadata.fields[field.id].getDefaultBreakout();
+    const defaultBreakout = metadata.field(field.id).getDefaultBreakout();
 
-    let card = this.newCard();
+    const card = this.newCard();
     card.dataset_query.query.aggregation = ["count"];
     card.dataset_query.query.breakout = [defaultBreakout];
     card.display = chartType;
@@ -127,7 +130,7 @@ export default class FieldPane extends Component {
   };
 
   render() {
-    let { field, question } = this.props;
+    const { field, question } = this.props;
 
     const query = question.query();
 
@@ -136,11 +139,11 @@ export default class FieldPane extends Component {
       query.metadata().fields[field.id] &&
       query.metadata().fields[field.id].values;
 
-    let fieldName = field.name;
-    let tableName = query.table() ? query.table().name : "";
+    const fieldName = field.name;
+    const tableName = query.table() ? query.table().name : "";
 
-    let useForCurrentQuestion = [],
-      usefulQuestions = [];
+    const useForCurrentQuestion = [];
+    const usefulQuestions = [];
 
     // determine if the selected field is a valid dimension on this table
     let validBreakout = false;
@@ -184,7 +187,7 @@ export default class FieldPane extends Component {
         onClick={this.setQueryDistinct}
       />,
     );
-    let queryCountGroupedByText = t`Number of ${inflection.pluralize(
+    const queryCountGroupedByText = t`Number of ${inflection.pluralize(
       tableName,
     )} grouped by ${fieldName}`;
     if (validBreakout) {

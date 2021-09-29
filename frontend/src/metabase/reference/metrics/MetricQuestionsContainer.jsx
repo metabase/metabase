@@ -3,9 +3,9 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
-import MetricSidebar from "./MetricSidebar.jsx";
-import SidebarLayout from "metabase/components/SidebarLayout.jsx";
-import MetricQuestions from "metabase/reference/metrics/MetricQuestions.jsx";
+import MetricSidebar from "./MetricSidebar";
+import SidebarLayout from "metabase/components/SidebarLayout";
+import MetricQuestions from "metabase/reference/metrics/MetricQuestions";
 
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
@@ -34,7 +34,10 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class MetricQuestionsContainer extends Component {
   static propTypes = {
     params: PropTypes.object.isRequired,
@@ -50,11 +53,11 @@ export default class MetricQuestionsContainer extends Component {
     await actions.wrappedFetchMetricQuestions(this.props, this.props.metricId);
   }
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this.fetchContainerData();
   }
 
-  componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(newProps) {
     if (this.props.location.pathname === newProps.location.pathname) {
       return;
     }

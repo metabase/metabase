@@ -1,65 +1,78 @@
 (ns metabase.async.util
+  "Utility functions for core.async-based async logic."
   (:require [clojure.core.async :as a]
             [clojure.tools.logging :as log]
-            [metabase.util.i18n :refer [trs]]
             [schema.core :as s])
-  (:import clojure.core.async.impl.channels.ManyToManyChannel))
+  (:import clojure.core.async.impl.buffers.PromiseBuffer
+           clojure.core.async.impl.channels.ManyToManyChannel
+           java.util.concurrent.ThreadPoolExecutor))
 
-(s/defn single-value-pipe :- ManyToManyChannel
-  "Pipe that will forward a single message from `in-chan` to `out-chan`, closing both afterward. If `out-chan` is closed
-  before `in-chan` produces a value, closes `in-chan`; this can be used to automatically cancel QP requests and the
-  like.
+;; TODO - most of this stuff can be removed now that we have the new-new reducible/async QP implementation of early
+;; 2020. No longer needed
 
-  Returns a channel that will send a single message when such early-closing cancelation occurs. You can listen for
-  this message to implement special cancelation behavior, such as canceling async jobs. This channel automatically
-  closes when either `in-chan` or `out-chan` closes."
-  [in-chan :- ManyToManyChannel, out-chan :- ManyToManyChannel]
-  (let [canceled-chan (a/chan 1)]
-    ;; fire off a block that will wait for either in-chan to produce a result or out-chan to be closed
+(defn promise-chan?
+  "Is core.async `chan` a `promise-chan`?"
+  [chan]
+  (and (instance? ManyToManyChannel chan)
+       (instance? PromiseBuffer (.buf ^ManyToManyChannel chan))))
+
+(def PromiseChan
+  "Schema for a core.async promise channel."
+  (s/constrained ManyToManyChannel promise-chan? "promise chan"))
+
+(s/defn promise-pipe
+  "Like `core.async/pipe` but for promise channels, and closes `in-chan` if `out-chan` is closed before receiving a
+  result. Closes both channels when `in-chan` closes or receives a result."
+  [in-chan :- PromiseChan, out-chan :- PromiseChan]
+  (a/go
+    (let [[val port] (a/alts! [in-chan out-chan] :priority true)]
+      ;; forward any result of `in-chan` to `out-chan`.
+      (when (and (= port in-chan)
+                 (some? val))
+        (a/>! out-chan val))
+      ;; Close both channels once either gets a result or is closed.
+      (a/close! in-chan)
+      (a/close! out-chan)))
+  nil)
+
+(defn cancelable-thread-call
+  "Exactly like `a/thread-call`, with two differences:
+
+    1) the result channel is a promise channel instead of a regular channel
+    2) Closing the result channel early will cancel the async thread call."
+  [f]
+  ;; create two channels:
+  ;; * `done-chan` will always get closed immediately after `(f)` is finished
+  ;; * `result-chan` will get the result of `(f)`, *after* `done-chan` is closed
+  (let [done-chan   (a/promise-chan)
+        result-chan (a/promise-chan)
+        binds       (clojure.lang.Var/getThreadBindingFrame)
+        f*          (fn []
+                      (clojure.lang.Var/resetThreadBindingFrame binds)
+                      (let [result (try
+                                     (f)
+                                     (catch Throwable e
+                                       (log/trace e "cancelable-thread-call: caught exception in f")
+                                       e))]
+                        (a/close! done-chan)
+                        (when (some? result)
+                          (a/>!! result-chan result)))
+                      (a/close! result-chan))
+        futur       (.submit ^ThreadPoolExecutor @#'a/thread-macro-executor ^Runnable f*)]
+    ;; if `result-chan` gets a result/closed *before* `done-chan`, it means it was closed by the caller, so we should
+    ;; cancel the thread running `f*`
     (a/go
-      (try
-        (let [[result first-finished-chan] (a/alts! [in-chan out-chan])]
-          (if (and (= first-finished-chan in-chan)
-                   (some? result))
-            ;; If `in-chan` (e.g. fn call result) finishes first and receives a result, forward result to `out-chan`
-            (a/>! out-chan result)
-            ;; Otherwise one of the two channels was closed (e.g. query cancelation) before `in-chan` returned a
-            ;; result (e.g. QP result), pass a message to `canceled-chan`; `finally` block will close all three channels
-            (a/>! canceled-chan ::canceled)))
-        ;; Either way, close whichever of the channels is still open just to be safe
-        (finally
-          (a/close! out-chan)
-          (a/close! in-chan)
-          (a/close! canceled-chan))))
-    ;; return the canceled chan in case someone wants to listen to it
-    canceled-chan))
+      (let [[_ port] (a/alts! [done-chan result-chan] :priority true)]
+        (when (= port result-chan)
+          (log/trace "cancelable-thread-call: result channel closed before f finished; canceling thread")
+          (future-cancel futur))))
+    result-chan))
 
-(defn do-on-separate-thread
-  "Run `(apply f args)` on a separate thread, returns a channel to fetch the results. Closing this channel early will
-  cancel the future running the function, if possible."
-  [f & args]
-  (let [in-chan       (a/chan 1)
-        out-chan      (a/chan 1)
-        canceled-chan (single-value-pipe in-chan out-chan)
-        ;; Run `f` on a separarate thread because it's a potentially long-running QP query and we don't want to tie
-        ;; up precious core.async threads
-        futur
-        (future
-          (if-not (= ::open (first (a/alts!! [out-chan] :default ::open)))
-            (log/debug (trs "Output channel closed, will skip running {0}." f))
-            (do
-              (log/debug (trs "Running {0} on separate thread..." f))
-              (try
-                (let [result (apply f args)]
-                  (a/put! in-chan result))
-                ;; if we catch an Exception (shouldn't happen in a QP query, but just in case), send it to `chan`. It's ok,
-                ;; our IMPL of Ring `StreamableResponseBody` will do the right thing with it.
-                (catch Throwable e
-                  (log/error e (trs "Caught error running {0}" f))
-                  (a/put! in-chan e))))))]
-    (a/go
-      (when-let [canceled (a/<! canceled-chan)]
-        (log/debug (trs "Request canceled, canceling future"))
-        (future-cancel futur)))
+(defmacro cancelable-thread
+  "Exactly like `a/thread`, with two differences:
 
-    out-chan))
+    1) the result channel is a promise channel instead of a regular channel
+    2) Closing the result channel early will cancel the async thread call."
+  {:style/indent 0}
+  [& body]
+  `(cancelable-thread-call (fn [] ~@body)))

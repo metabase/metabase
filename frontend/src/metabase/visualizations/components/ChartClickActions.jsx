@@ -1,12 +1,14 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import cx from "classnames";
+import { t } from "ttag";
 
+import { Link } from "react-router";
 import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
-import { Link } from "react-router";
+import Tooltip from "metabase/components/Tooltip";
+
+import "./ChartClickActions.css";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
@@ -15,16 +17,20 @@ import { performAction } from "metabase/visualizations/lib/action";
 import type {
   ClickObject,
   ClickAction,
-} from "metabase/meta/types/Visualization";
+} from "metabase-types/types/Visualization";
 
+import cx from "classnames";
 import _ from "underscore";
 
+// These icons used to be displayed for each row section of actions.
+// We're now just using them as a way to select different sections of actions to style them uniquely.
+// They're not all used, but I've kept them here in case we need these hooks in the future.
 const SECTIONS = {
-  zoom: {
-    icon: "zoom-in",
-  },
   records: {
     icon: "table2",
+  },
+  zoom: {
+    icon: "zoom_in",
   },
   details: {
     icon: "document",
@@ -32,8 +38,22 @@ const SECTIONS = {
   sort: {
     icon: "sort",
   },
+  formatting: {
+    icon: "gear",
+  },
   breakout: {
     icon: "breakout",
+  },
+  standalone_filter: {
+    icon: "filter",
+  },
+  filter: {
+    icon: "funnel_outline",
+  },
+  // There is no such icon as "summarize." This is used to ID and select the actions that we,
+  // want to make larger, like Distribution, Sum over Time, etc.
+  summarize: {
+    icon: "summarize",
   },
   sum: {
     icon: "sum",
@@ -41,25 +61,15 @@ const SECTIONS = {
   averages: {
     icon: "curve",
   },
-  filter: {
-    icon: "funneloutline",
-  },
   dashboard: {
     icon: "dashboard",
-  },
-  distribution: {
-    icon: "bar",
   },
   auto: {
     icon: "bolt",
   },
-  Formatting: {
-    icon: "pencil",
-  },
 };
 // give them indexes so we can sort the sections by the above ordering (JS objects are ordered)
 Object.values(SECTIONS).map((section, index) => {
-  // $FlowFixMe
   section.index = index;
 });
 
@@ -92,15 +102,8 @@ export default class ChartClickActions extends Component {
   };
 
   handleClickAction = (action: ClickAction) => {
-    // $FlowFixMe: dispatch provided by @connect
     const { dispatch, onChangeCardAndRun } = this.props;
-    if (action.action) {
-      const reduxAction = action.action();
-      if (reduxAction) {
-        dispatch(reduxAction);
-      }
-      this.props.onClose();
-    } else if (action.popover) {
+    if (action.popover) {
       MetabaseAnalytics.trackEvent(
         "Actions",
         "Open Click Action Popover",
@@ -132,7 +135,7 @@ export default class ChartClickActions extends Component {
       return null;
     }
 
-    let { popoverAction } = this.state;
+    const { popoverAction } = this.state;
     let popover;
     if (popoverAction && popoverAction.popover) {
       const PopoverContent = popoverAction.popover;
@@ -160,8 +163,28 @@ export default class ChartClickActions extends Component {
       );
     }
 
-    const sections = _.chain(clickActions)
-      .groupBy("section")
+    const groupedClickActions = _.groupBy(clickActions, "section");
+    if (groupedClickActions["sum"] && groupedClickActions["sum"].length === 1) {
+      // if there's only one "sum" click action, merge it into "summarize" and change its button type and icon
+      groupedClickActions["summarize"].push({
+        ...groupedClickActions["sum"][0],
+        buttonType: "horizontal",
+        icon: "number",
+      });
+      delete groupedClickActions["sum"];
+    }
+    if (
+      clicked.column &&
+      clicked.column.source === "native" &&
+      groupedClickActions["sort"]
+    ) {
+      // restyle the Formatting action for SQL columns
+      groupedClickActions["sort"][0] = {
+        ...groupedClickActions["sort"][0],
+        buttonType: "horizontal",
+      };
+    }
+    const sections = _.chain(groupedClickActions)
       .pairs()
       .sortBy(([key]) => (SECTIONS[key] ? SECTIONS[key].index : 99))
       .value();
@@ -182,25 +205,60 @@ export default class ChartClickActions extends Component {
         {popover ? (
           popover
         ) : (
-          <div className="text-bold text-medium">
+          <div className="text-bold px2 pt2 pb1">
             {sections.map(([key, actions]) => (
               <div
                 key={key}
-                className="border-row-divider p2 flex align-center text-default-hover"
+                className={cx(
+                  "pb1",
+                  { pb2: SECTIONS[key].icon === "bolt" },
+                  {
+                    ml1:
+                      SECTIONS[key].icon === "bolt" ||
+                      SECTIONS[key].icon === "sum" ||
+                      SECTIONS[key].icon === "breakout",
+                  },
+                )}
               >
-                <Icon
-                  name={(SECTIONS[key] && SECTIONS[key].icon) || "unknown"}
-                  className="mr3"
-                  size={16}
-                />
-                {actions.map((action, index) => (
-                  <ChartClickAction
-                    index={index}
-                    action={action}
-                    isLastItem={index === actions.length - 1}
-                    handleClickAction={this.handleClickAction}
-                  />
-                ))}
+                {SECTIONS[key].icon === "sum" && (
+                  <p className="mt0 text-medium text-small">{t`Summarize`}</p>
+                )}
+                {SECTIONS[key].icon === "breakout" && (
+                  <p className="my1 text-medium text-small">{t`Break out by a…`}</p>
+                )}
+                {SECTIONS[key].icon === "bolt" && (
+                  <p className="mt2 text-medium text-small">
+                    {t`Automatic explorations`}
+                  </p>
+                )}
+                {SECTIONS[key].icon === "funnel_outline" && (
+                  <p className="mt0 text-dark text-small">
+                    {t`Filter by this value`}
+                  </p>
+                )}
+
+                <div
+                  className={cx(
+                    "flex",
+                    {
+                      "justify-end": SECTIONS[key].icon === "gear",
+                    },
+                    {
+                      "align-center justify-center":
+                        SECTIONS[key].icon === "gear",
+                    },
+                    { "flex-column my1": SECTIONS[key].icon === "summarize" },
+                  )}
+                >
+                  {actions.map((action, index) => (
+                    <ChartClickAction
+                      key={index}
+                      action={action}
+                      isLastItem={index === actions.length - 1}
+                      handleClickAction={this.handleClickAction}
+                    />
+                  ))}
+                </div>
               </div>
             ))}
           </div>
@@ -219,14 +277,25 @@ export const ChartClickAction = ({
   isLastItem: any,
   handleClickAction: any,
 }) => {
-  const className = cx(
-    "text-brand-hover cursor-pointer no-decoration",
-    isLastItem ? "pr2" : "pr3",
-  );
+  // This is where all the different action button styles get applied.
+  // Some of them have bespoke classes defined in ChartClickActions.css,
+  // like for cases when we needed to really dial in the spacing.
+  const className = cx("cursor-pointer no-decoration", {
+    "text-center sort token-blue mr1 bg-brand-hover":
+      action.buttonType === "sort",
+    "formatting-button flex-align-right text-brand-hover text-light":
+      action.buttonType === "formatting",
+    "horizontal-button p1 flex flex-auto align-center bg-brand-hover text-dark text-white-hover":
+      action.buttonType === "horizontal",
+    "text-small token token-blue text-white-hover bg-brand-hover mr1":
+      action.buttonType === "token",
+    "token token-filter text-small text-white-hover mr1":
+      action.buttonType === "token-filter",
+  });
   // NOTE: Tom Robinson 4/16/2018: disabling <Link> for `question` click actions
   // for now since on dashboards currently they need to go through
   // navigateToNewCardFromDashboard to merge in parameters.,
-  // Also need to sort out proper logic in QueryBuilder's componentWillReceiveProps
+  // Also need to sort out proper logic in QueryBuilder's UNSAFE_componentWillReceiveProps
   // if (action.question) {
   //   return (
   //     <Link to={action.question().getUrl()} className={className}>
@@ -236,24 +305,61 @@ export const ChartClickAction = ({
   // } else
   if (action.url) {
     return (
-      <Link
-        to={action.url()}
-        className={className}
-        onClick={() =>
-          MetabaseAnalytics.trackEvent(
-            "Actions",
-            "Executed Click Action",
-            getGALabelForAction(action),
-          )
-        }
-      >
-        {action.title}
-      </Link>
+      <div>
+        <Link
+          to={action.url()}
+          className={className}
+          onClick={() =>
+            MetabaseAnalytics.trackEvent(
+              "Actions",
+              "Executed Click Action",
+              getGALabelForAction(action),
+            )
+          }
+        >
+          {action.title}
+        </Link>
+      </div>
+    );
+  } else if (
+    action.buttonType === "sort" ||
+    action.buttonType === "formatting"
+  ) {
+    return (
+      <Tooltip tooltip={action.tooltip}>
+        <div
+          className={cx(className, "flex flex-row align-center")}
+          onClick={() => handleClickAction(action)}
+        >
+          {action.icon && (
+            <Icon
+              className={cx("flex mr1", {
+                "text-brand text-white-hover":
+                  action.buttonType !== "formatting",
+              })}
+              size={action.buttonType === "formatting" ? 16 : 12}
+              name={action.icon}
+            />
+          )}
+        </div>
+      </Tooltip>
     );
   } else {
     return (
-      <div className={className} onClick={() => handleClickAction(action)}>
-        {action.title}
+      <div
+        className={cx(className, {
+          mb1: action.buttonType === "horizontal" && !isLastItem,
+        })}
+        onClick={() => handleClickAction(action)}
+      >
+        {action.icon && (
+          <Icon
+            className="flex mr1 text-brand text-white-hover"
+            size={action.buttonType === "horizontal" ? 14 : 12}
+            name={action.icon}
+          />
+        )}
+        {action.title && action.title}
       </div>
     );
   }

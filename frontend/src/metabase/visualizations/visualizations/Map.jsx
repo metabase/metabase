@@ -1,17 +1,18 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 import ChoroplethMap, {
   getColorplethColorScale,
-} from "../components/ChoroplethMap.jsx";
-import PinMap from "../components/PinMap.jsx";
+} from "../components/ChoroplethMap";
+import PinMap from "../components/PinMap";
+import LeafletGridHeatMap from "../components/LeafletGridHeatMap";
 
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import {
   isNumeric,
   isLatitude,
   isLongitude,
+  isMetric,
   hasLatitudeAndLongitudeColumns,
   isState,
   isCountry,
@@ -44,8 +45,87 @@ export default class Map extends Component {
   static minSize = { width: 4, height: 4 };
 
   static isSensible({ cols, rows }) {
-    return true;
+    return (
+      PinMap.isSensible({ cols, rows }) ||
+      ChoroplethMap.isSensible({ cols, rows }) ||
+      LeafletGridHeatMap.isSensible({ cols, rows })
+    );
   }
+
+  static placeholderSeries = [
+    {
+      card: { display: "map" },
+      data: {
+        rows: [
+          ["AK", 68],
+          ["AL", 56],
+          ["AR", 49],
+          ["AZ", 20],
+          ["CA", 90],
+          ["CO", 81],
+          ["CT", 7],
+          ["DE", 4],
+          ["FL", 39],
+          ["GA", 78],
+          ["IA", 104],
+          ["ID", 30],
+          ["IL", 68],
+          ["IN", 61],
+          ["KS", 53],
+          ["KY", 50],
+          ["LA", 41],
+          ["MA", 15],
+          ["MD", 10],
+          ["ME", 19],
+          ["MI", 71],
+          ["MN", 96],
+          ["MO", 81],
+          ["MS", 54],
+          ["MT", 108],
+          ["NC", 74],
+          ["ND", 73],
+          ["NE", 76],
+          ["NH", 7],
+          ["NJ", 10],
+          ["NM", 22],
+          ["NV", 7],
+          ["NY", 74],
+          ["OH", 65],
+          ["OK", 37],
+          ["OR", 40],
+          ["PA", 57],
+          ["RI", 1],
+          ["SC", 43],
+          ["SD", 62],
+          ["TN", 47],
+          ["TX", 194],
+          ["UT", 13],
+          ["VA", 49],
+          ["VT", 10],
+          ["WA", 41],
+          ["WI", 87],
+          ["WV", 21],
+          ["WY", 37],
+        ],
+        cols: [
+          {
+            semantic_type: "type/State",
+            name: "STATE",
+            source: "breakout",
+            display_name: "State",
+            base_type: "type/Text",
+          },
+          {
+            base_type: "type/Integer",
+            semantic_type: "type/Number",
+            name: "count",
+            display_name: "count",
+            source: "aggregation",
+          },
+        ],
+      },
+    },
+  ];
 
   static settings = {
     ...columnSettings({ hidden: true }),
@@ -61,7 +141,7 @@ export default class Map extends Component {
           { name: "Grid map", value: "grid" },
         ],
       },
-      getDefault: ([{ card, data: { cols } }], settings) => {
+      getDefault: ([{ card, data }], settings) => {
         switch (card.display) {
           case "state":
           case "country":
@@ -69,11 +149,11 @@ export default class Map extends Component {
           case "pin_map":
             return "pin";
           default:
-            if (hasLatitudeAndLongitudeColumns(cols)) {
-              const latitudeColumn = _.findWhere(cols, {
+            if (hasLatitudeAndLongitudeColumns(data.cols)) {
+              const latitudeColumn = _.findWhere(data.cols, {
                 name: settings["map.latitude_column"],
               });
-              const longitudeColumn = _.findWhere(cols, {
+              const longitudeColumn = _.findWhere(data.cols, {
                 name: settings["map.longitude_column"],
               });
               if (
@@ -113,33 +193,34 @@ export default class Map extends Component {
           { name: "Grid", value: "grid" },
         ],
       },
-      getDefault: (series, vizSettings) =>
+      getDefault: ([{ data }], vizSettings) =>
         vizSettings["map.type"] === "heat"
           ? "heat"
           : vizSettings["map.type"] === "grid"
-            ? "grid"
-            : series[0].data.rows.length >= 1000 ? "tiles" : "markers",
+          ? "grid"
+          : data.rows.length >= 1000
+          ? "tiles"
+          : "markers",
       getHidden: (series, vizSettings) =>
         !PIN_MAP_TYPES.has(vizSettings["map.type"]),
     },
     ...fieldSetting("map.latitude_column", {
       title: t`Latitude field`,
       fieldFilter: isNumeric,
-      getDefault: ([{ data: { cols } }]) =>
-        (_.find(cols, isLatitude) || {}).name,
+      getDefault: ([{ data }]) => (_.find(data.cols, isLatitude) || {}).name,
       getHidden: (series, vizSettings) =>
         !PIN_MAP_TYPES.has(vizSettings["map.type"]),
     }),
     ...fieldSetting("map.longitude_column", {
       title: t`Longitude field`,
       fieldFilter: isNumeric,
-      getDefault: ([{ data: { cols } }]) =>
-        (_.find(cols, isLongitude) || {}).name,
+      getDefault: ([{ data }]) => (_.find(data.cols, isLongitude) || {}).name,
       getHidden: (series, vizSettings) =>
         !PIN_MAP_TYPES.has(vizSettings["map.type"]),
     }),
-    ...metricSetting("map.metric_column", {
+    ...fieldSetting("map.metric_column", {
       title: t`Metric field`,
+      fieldFilter: isMetric,
       getHidden: (series, vizSettings) =>
         !PIN_MAP_TYPES.has(vizSettings["map.type"]) ||
         (vizSettings["map.pin_type"] !== "heat" &&
@@ -148,19 +229,20 @@ export default class Map extends Component {
     "map.region": {
       title: t`Region map`,
       widget: "select",
-      getDefault: ([{ card, data: { cols } }]) => {
-        if (card.display === "state" || _.any(cols, isState)) {
+      getDefault: ([{ card, data }]) => {
+        if (card.display === "state" || _.any(data.cols, isState)) {
           return "us_states";
-        } else if (card.display === "country" || _.any(cols, isCountry)) {
+        } else if (card.display === "country" || _.any(data.cols, isCountry)) {
           return "world_countries";
         }
         return null;
       },
       getProps: () => ({
-        options: Object.entries(MetabaseSettings.get("custom_geojson", {})).map(
-          // $FlowFixMe:
-          ([key, value]) => ({ name: value.name, value: key }),
-        ),
+        options: _.chain(MetabaseSettings.get("custom-geojson", {}))
+          .pairs()
+          .map(([key, value]) => ({ name: value.name || "", value: key }))
+          .sortBy(x => x.name.toLowerCase())
+          .value(),
       }),
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
     },
@@ -214,7 +296,7 @@ export default class Map extends Component {
     },
   };
 
-  static checkRenderable([{ data: { cols, rows } }], settings) {
+  static checkRenderable([{ data }], settings) {
     if (PIN_MAP_TYPES.has(settings["map.type"])) {
       if (
         !settings["map.longitude_column"] ||
@@ -241,10 +323,10 @@ export default class Map extends Component {
   }
 
   shouldComponentUpdate(nextProps: any, nextState: any) {
-    let sameSize =
+    const sameSize =
       this.props.width === nextProps.width &&
       this.props.height === nextProps.height;
-    let sameSeries = isSameSeries(this.props.series, nextProps.series);
+    const sameSeries = isSameSeries(this.props.series, nextProps.series);
     return !(sameSize && sameSeries);
   }
 

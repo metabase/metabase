@@ -1,204 +1,349 @@
 (ns metabase.test.data.bigquery
-  (:require [clj-time
-             [coerce :as tcoerce]
-             [format :as tformat]]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
+            [flatland.ordered.map :as ordered-map]
+            [java-time :as t]
             [medley.core :as m]
-            [metabase.driver
-             [bigquery :as bigquery]
-             [google :as google]]
-            [metabase.test.data
-             [datasets :as datasets]
-             [interface :as tx]
-             [sql :as sql.tx]]
+            [metabase.config :as config]
+            [metabase.driver :as driver]
+            [metabase.driver.bigquery :as bigquery]
+            [metabase.driver.google :as google]
+            [metabase.test.data :as data]
+            [metabase.test.data.interface :as tx]
+            [metabase.test.data.sql :as sql.tx]
             [metabase.util :as u]
-            [metabase.util
-             [date :as du]
-             [schema :as su]]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.schema :as su]
             [schema.core :as s])
-  (:import com.google.api.client.util.DateTime
-           com.google.api.services.bigquery.Bigquery
-           [com.google.api.services.bigquery.model Dataset DatasetReference QueryRequest Table TableDataInsertAllRequest
-            TableDataInsertAllRequest$Rows TableFieldSchema TableReference TableRow TableSchema]
-           java.sql.Time))
+
+  (:import [com.google.api.services.bigquery.model Dataset DatasetReference QueryRequest QueryResponse Table
+            TableDataInsertAllRequest TableDataInsertAllRequest$Rows TableDataInsertAllResponse TableFieldSchema
+            TableReference TableSchema]))
 
 (sql.tx/add-test-extensions! :bigquery)
 
+;; Don't enable foreign keys when testing because BigQuery *doesn't* have a notion of foreign keys. Joins are still
+;; allowed, which puts us in a weird position, however; people can manually specifiy "foreign key" relationships in
+;; admin and everything should work correctly. Since we can't infer any "FK" relationships during sync our normal FK
+;; tests are not appropriate for BigQuery, so they're disabled for the time being.
+;;
+;; TODO - either write BigQuery-speciifc tests for FK functionality or add additional code to manually set up these FK
+;; relationships for FK tables
+(defmethod driver/supports? [:bigquery :foreign-keys] [_ _] (not config/is-test?))
+
+
 ;;; ----------------------------------------------- Connection Details -----------------------------------------------
 
-(def ^:private ^String normalize-name (comp (u/rpartial str/replace #"-" "_") name))
+;; keep track of databases we have already created
+(def ^:private existing-datasets
+  (atom #{}))
 
-(def ^:private ^:const details
-  (datasets/when-testing-driver :bigquery
-    (reduce (fn [acc env-var]
-              (assoc acc env-var (tx/db-test-env-var-or-throw :bigquery env-var)))
-            {}
-            [:project-id :client-id :client-secret :access-token :refresh-token])))
+(def ^:private current-dataset-version-prefix "v3_")
 
-(def ^:private ^:const ^String project-id (:project-id details))
+(defn- prefix-legacydriver-if-new
+  "Adds a legacydriver_ prefix to the db-name, if the `existing-dataset` atom does not contain it. This is to ensure
+  that transient datasets created and destroyed by these tests do not interfere with parallel test runs for the new
+  BigQuery driver (which are also creating and destroying datasets that would have the same name, if not for this
+  change). If the `db-name` is already an existing one, however, the assumption is it's not transient (i.e. not being
+  created and destroyed at test time), and hence, it can keep its name without modification."
+  [db-name]
+  (if (contains? @existing-datasets db-name)
+    db-name
+    (str/replace-first db-name current-dataset-version-prefix (str current-dataset-version-prefix "legacydriver_"))))
 
-(def ^:private ^Bigquery bigquery
-  (datasets/when-testing-driver :bigquery
-    (#'bigquery/database->client {:details details})))
+(defn- normalize-name ^String [db-or-table-or-field identifier]
+  (let [s (str/replace (name identifier) "-" "_")]
+    (case db-or-table-or-field
+      :db             (prefix-legacydriver-if-new (str current-dataset-version-prefix s))
+      (:table :field) s)))
+
+(def ^:private details
+  (delay
+    (reduce
+     (fn [acc env-var]
+       (assoc acc env-var (tx/db-test-env-var :bigquery env-var)))
+     {}
+     [:project-id :client-id :client-secret :access-token :refresh-token :service-account-json])))
+
+(defn project-id
+  "BigQuery project ID that we're using for tests, from the env var `MB_BIGQUERY_TEST_PROJECT_ID`."
+  ^String []
+  (:project-id @details))
+
+(def ^:private ^{:arglists '(^com.google.api.services.bigquery.Bigquery [])} bigquery
+  "Get an instance of a `Bigquery` client."
+  (partial deref (delay (#'bigquery/database->client {:details @details}))))
 
 (defmethod tx/dbdef->connection-details :bigquery [_ _ {:keys [database-name]}]
-  (assoc details :dataset-id (normalize-name database-name)))
+  (assoc @details :dataset-id (normalize-name :db database-name) :include-user-id-and-hash true))
 
 
 ;;; -------------------------------------------------- Loading Data --------------------------------------------------
 
+(defmethod tx/format-name :bigquery [_ table-or-field-name]
+  (u/snake-key table-or-field-name))
+
 (defn- create-dataset! [^String dataset-id]
   {:pre [(seq dataset-id)]}
-  (google/execute (.insert (.datasets bigquery) project-id (doto (Dataset.)
-                                                             (.setLocation "US")
-                                                             (.setDatasetReference (doto (DatasetReference.)
-                                                                                     (.setDatasetId dataset-id))))))
-  (println (u/format-color 'blue "Created BigQuery dataset '%s'." dataset-id)))
+  (google/execute
+   (.insert
+    (.datasets (bigquery))
+    (project-id)
+    (doto (Dataset.)
+      (.setLocation "US")
+      (.setDatasetReference (doto (DatasetReference.)
+                              (.setDatasetId dataset-id))))))
+  (println (u/format-color 'blue "Created BigQuery dataset `%s.%s`." (project-id) dataset-id)))
 
 (defn- destroy-dataset! [^String dataset-id]
   {:pre [(seq dataset-id)]}
-  (google/execute-no-auto-retry (doto (.delete (.datasets bigquery) project-id dataset-id)
+  (google/execute-no-auto-retry (doto (.delete (.datasets (bigquery)) (project-id) dataset-id)
                                   (.setDeleteContents true)))
-  (println (u/format-color 'red "Deleted BigQuery dataset '%s'." dataset-id)))
+  (println (u/format-color 'red "Deleted BigQuery dataset `%s.%s`." (project-id) dataset-id)))
 
-(def ^:private ^:const valid-field-types
-  #{:BOOLEAN :FLOAT :INTEGER :RECORD :STRING :TIMESTAMP :TIME})
+(defn execute!
+  "Execute arbitrary (presumably DDL) SQL statements against the test project. Waits for statement to complete, throwing
+  an Exception if it fails."
+  ^QueryResponse [format-string & args]
+  (driver/with-driver :bigquery
+    (let [sql (apply format format-string args)]
+      (printf "[BigQuery] %s\n" sql)
+      (flush)
+      (bigquery/with-finished-response [response (#'bigquery/execute-bigquery (data/db) sql nil)]
+        response))))
+
+(def ^:private valid-field-types
+  #{:BOOLEAN :DATE :DATETIME :FLOAT :INTEGER :NUMERIC :RECORD :STRING :TIME :TIMESTAMP})
+
+;; Fields must contain only letters, numbers, and underscores, start with a letter or underscore, and be at most 128
+;; characters long.
+(def ^:private ValidFieldName #"^[A-Za-z_]\w{0,127}$")
+
+(s/defn ^:private delete-table!
+  [dataset-id :- su/NonBlankString, table-id :- su/NonBlankString]
+  (google/execute-no-auto-retry
+   (.delete
+    (.tables (bigquery))
+    (project-id)
+    dataset-id
+    table-id))
+  (println (u/format-color 'red "Deleted table `%s.%s.%s`" (project-id) dataset-id table-id)))
 
 (s/defn ^:private create-table!
   [dataset-id       :- su/NonBlankString
-   table-id         :- su/NonBlankString,
-   field-name->type :- {su/KeywordOrString (apply s/enum valid-field-types)}]
-  (google/execute
-   (.insert (.tables bigquery)
-            project-id
-            dataset-id
-            (doto (Table.)
-              (.setTableReference (doto (TableReference.)
-                                    (.setProjectId project-id)
-                                    (.setDatasetId dataset-id)
-                                    (.setTableId table-id)))
-              (.setSchema (doto (TableSchema.)
-                            (.setFields (for [[field-name field-type] field-name->type]
-                                          (doto (TableFieldSchema.)
-                                            (.setMode "REQUIRED")
-                                            (.setName (name field-name))
-                                            (.setType (name field-type))))))))))
-  (println (u/format-color 'blue "Created BigQuery table '%s.%s'." dataset-id table-id)))
+   table-id         :- su/NonBlankString
+   field-name->type :- {ValidFieldName (apply s/enum valid-field-types)}]
+  (u/ignore-exceptions
+   (delete-table! dataset-id table-id))
+  (let [table (doto (Table.)
+                (.setTableReference (doto (TableReference.)
+                                      (.setProjectId (project-id))
+                                      (.setDatasetId dataset-id)
+                                      (.setTableId table-id)))
+                (.setSchema (doto (TableSchema.)
+                              (.setFields (for [[field-name field-type] field-name->type]
+                                            (doto (TableFieldSchema.)
+                                              (.setName (name field-name))
+                                              (.setType (name field-type))))))))]
+    (println "Creating Table =>\n" (u/pprint-to-str 'blue table))
+    (google/execute-no-auto-retry
+     (.insert
+      (.tables (bigquery))
+      (project-id)
+      dataset-id
+      table)))
+  ;; now verify that the Table was created
+  (.tables (bigquery))
+  (println (u/format-color 'blue "Created BigQuery table `%s.%s.%s`." (project-id) dataset-id table-id)))
 
 (defn- table-row-count ^Integer [^String dataset-id, ^String table-id]
-  (ffirst (:rows (#'bigquery/post-process-native
-                  (google/execute
-                   (.query (.jobs bigquery) project-id
-                           (doto (QueryRequest.)
-                             (.setQuery (format "SELECT COUNT(*) FROM [%s.%s]" dataset-id table-id)))))))))
+  (let [sql                           (format "SELECT count(*) FROM `%s.%s.%s`" (project-id) dataset-id table-id)
+        respond                       (fn [_ rows]
+                                        (ffirst rows))
+        client                        (bigquery)
+        ^QueryResponse query-response (google/execute
+                                       (.query (.jobs client) (project-id)
+                                               (doto (QueryRequest.)
+                                                 (.setUseQueryCache false)
+                                                 (.setUseLegacySql false)
+                                                 (.setQuery sql))))
+        job-ref                       (.getJobReference query-response)
+        job-id                        (.getJobId job-ref)
+        proj-id                       (.getProjectId job-ref)
+        location                      (.getLocation job-ref)
+        response                      (#'bigquery/get-query-results client proj-id job-id location nil)]
+    (#'bigquery/post-process-native @details respond response)))
 
-;; This is a dirty HACK
-(defn- ^DateTime timestamp-honeysql-form->GoogleDateTime
-  "Convert the HoneySQL form we normally use to wrap a `Timestamp` to a Google `DateTime`."
-  [{[{s :literal}] :args}]
-  {:pre [(string? s) (seq s)]}
-  (DateTime. (du/->Timestamp (str/replace s #"'" ""))))
+(defprotocol ^:private Insertable
+  (^:private ->insertable [this]
+   "Convert a value to an appropriate Google type when inserting a new row."))
 
+(extend-protocol Insertable
+  nil
+  (->insertable [_] nil)
 
-(defn- insert-data! [^String dataset-id, ^String table-id, row-maps]
+  Object
+  (->insertable [this] this)
+
+  clojure.lang.Keyword
+  (->insertable [k]
+    (u/qualified-name k))
+
+  java.time.temporal.Temporal
+  (->insertable [t] (u.date/format-sql t))
+
+  ;; normalize to UTC. BigQuery normalizes it anyway and tends to complain when inserting values that have an offset
+  java.time.OffsetDateTime
+  (->insertable [t]
+    (->insertable (t/local-date-time (t/with-offset-same-instant t (t/zone-offset 0)))))
+
+  ;; for whatever reason the `date time zone-id` syntax that works in SQL doesn't work when loading data
+  java.time.ZonedDateTime
+  (->insertable [t]
+    (->insertable (t/offset-date-time t)))
+
+  ;; normalize to UTC, since BigQuery doesn't support TIME WITH TIME ZONE
+  java.time.OffsetTime
+  (->insertable [t]
+    (u.date/format-sql (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))))
+
+  ;; Convert the HoneySQL `timestamp(...)` form we sometimes use to wrap a `Timestamp` to a plain literal string
+  honeysql.types.SqlCall
+  (->insertable [{[{s :literal}] :args, fn-name :name}]
+    (assert (= (name fn-name) "timestamp"))
+    (->insertable (u.date/parse (str/replace s #"'" "")))))
+
+(defn- ->json [row-map]
+  (into {} (for [[k v] row-map]
+             [(name k) (->insertable v)])))
+
+(defn- row->request-row ^TableDataInsertAllRequest$Rows [row-map]
+  (doto (TableDataInsertAllRequest$Rows.)
+    (.setJson (->json row-map))
+    (.setInsertId (str (get row-map :id)))))
+
+(defn- rows->request ^TableDataInsertAllRequest [row-maps]
+  (doto (TableDataInsertAllRequest.)
+    (.setRows (into (list) (map row->request-row row-maps)))
+    (.setIgnoreUnknownValues false)
+    (.setSkipInvalidRows false)))
+
+(def ^:private max-rows-per-request
+  "Max number of rows BigQuery lets us insert at once."
+  10000)
+
+(defn- insert-data! [^String dataset-id ^String table-id row-maps]
   {:pre [(seq dataset-id) (seq table-id) (sequential? row-maps) (seq row-maps) (every? map? row-maps)]}
-  (google/execute (.insertAll (.tabledata bigquery) project-id dataset-id table-id
-                              (doto (TableDataInsertAllRequest.)
-                                (.setRows (for [row-map row-maps]
-                                            (let [data (TableRow.)]
-                                              (doseq [[k v] row-map
-                                                      :let [v (cond
-                                                                (instance? honeysql.types.SqlCall v)
-                                                                (timestamp-honeysql-form->GoogleDateTime v)
-                                                                :else v)]]
-                                                (.set data (name k) v))
-                                              (doto (TableDataInsertAllRequest$Rows.)
-                                                (.setJson data))))))))
-  ;; Wait up to 30 seconds for all the rows to be loaded and become available by BigQuery
-  (let [expected-row-count (count row-maps)]
-    (loop [seconds-to-wait-for-load 30]
+  (doseq [chunk (partition-all max-rows-per-request row-maps)
+          :let  [_        (println (format "Inserting %d rows like\n%s" (count chunk) (u/pprint-to-str (first chunk))))
+                 rows     (rows->request chunk)
+                 request  (.insertAll
+                           (.tabledata (bigquery))
+                           (project-id) dataset-id table-id
+                           rows)
+                 response ^TableDataInsertAllResponse (google/execute-no-auto-retry request)]]
+    (println (u/format-color 'blue "Sent request to insert %d rows into `%s.%s.%s`"
+               (count (.getRows rows))
+               (project-id) dataset-id table-id))
+    (when (seq (.getInsertErrors response))
+      (println "Error inserting rows:" (u/pprint-to-str (seq (.getInsertErrors response))))
+      (throw (ex-info "Error inserting rows"
+                      {:errors                       (seq (.getInsertErrors response))
+                       :metabase.util/no-auto-retry? true
+                       :rows                         row-maps
+                       :data                         (.getRows rows)}))))
+  ;; Wait up to 120 seconds for all the rows to be loaded and become available by BigQuery
+  (let [max-wait-seconds   120
+        expected-row-count (count row-maps)]
+    (println (format "Waiting for %d rows to be loaded..." expected-row-count))
+    (loop [seconds-to-wait-for-load max-wait-seconds]
       (let [actual-row-count (table-row-count dataset-id table-id)]
         (cond
           (= expected-row-count actual-row-count)
-          :ok
+          (do
+            (println (format "Loaded %d rows in %d seconds." expected-row-count (- max-wait-seconds seconds-to-wait-for-load)))
+            :ok)
 
           (> seconds-to-wait-for-load 0)
           (do (Thread/sleep 1000)
+              (print ".")
+              (flush)
               (recur (dec seconds-to-wait-for-load)))
 
           :else
-          (throw (Exception. (format "Failed to load table data for %s.%s: expected %d rows, loaded %d"
-                                     dataset-id table-id expected-row-count actual-row-count))))))))
+          (let [error-message (format "Failed to load table data for `%s.%s.%s`: expected %d rows, loaded %d"
+                                      (project-id) dataset-id table-id expected-row-count actual-row-count)]
+            (println (u/format-color 'red error-message))
+            (throw (ex-info error-message {:metabase.util/no-auto-retry? true}))))))))
 
-
-(def ^:private ^:const base-type->bigquery-type
-  {:type/BigInteger     :INTEGER
-   :type/Boolean        :BOOLEAN
-   :type/Date           :TIMESTAMP
-   :type/DateTime       :TIMESTAMP
-   :type/DateTimeWithTZ :TIMESTAMP
-   :type/Decimal        :NUMERIC
-   :type/Dictionary     :RECORD
-   :type/Float          :FLOAT
-   :type/Integer        :INTEGER
-   :type/Text           :STRING
-   :type/Time           :TIME})
+(defn- base-type->bigquery-type [base-type]
+  (let [types {:type/BigInteger     :INTEGER
+               :type/Boolean        :BOOLEAN
+               :type/Date           :DATE
+               :type/DateTime       :DATETIME
+               :type/DateTimeWithTZ :TIMESTAMP
+               :type/Decimal        :NUMERIC
+               :type/Dictionary     :RECORD
+               :type/Float          :FLOAT
+               :type/Integer        :INTEGER
+               :type/Text           :STRING
+               :type/Time           :TIME}]
+    (or (get types base-type)
+        (some base-type->bigquery-type (parents base-type)))))
 
 (defn- fielddefs->field-name->base-type
   "Convert `field-definitions` to a format appropriate for passing to `create-table!`."
   [field-definitions]
   (into
-   {"id" :INTEGER}
-   (for [{:keys [field-name base-type]} field-definitions]
-     {field-name (or (base-type->bigquery-type base-type)
-                     (println (u/format-color 'red "Don't know what BigQuery type to use for base type: %s" base-type))
-                     (throw (Exception. (format "Don't know what BigQuery type to use for base type: %s" base-type))))})))
-
-(defn- time->string
-  "Coerces `t` to a Joda DateTime object and returns it's String representation."
-  [t]
-  (->> t
-       tcoerce/to-date-time
-       (tformat/unparse #'bigquery/bigquery-time-format)))
+   (ordered-map/ordered-map)
+   (cons
+    ["id" :INTEGER]
+    (for [{:keys [field-name base-type]} field-definitions]
+      [(normalize-name :field field-name)
+       (or (base-type->bigquery-type base-type)
+           (let [message (format "Don't know what BigQuery type to use for base type: %s" base-type)]
+             (println (u/format-color 'red message))
+             (throw (ex-info message {:metabase.util/no-auto-retry? true}))))]))))
 
 (defn- tabledef->prepared-rows
   "Convert `table-definition` to a format approprate for passing to `insert-data!`."
   [{:keys [field-definitions rows]}]
   {:pre [(every? map? field-definitions) (sequential? rows) (seq rows)]}
-  (let [field-names (map :field-name field-definitions)]
+  (let [field-names (->> field-definitions
+                         (map :field-name)
+                         (map (partial normalize-name :field)))]
     (for [[i row] (m/indexed rows)]
-      (assoc (zipmap field-names (for [v row]
-                                   (u/prog1 (cond
-
-                                              (instance? Time v)
-                                              (time->string v)
-
-                                              (instance? java.util.Date v)
-                                              ;; convert to Google version of DateTime, otherwise it doesn't work (!)
-                                              (DateTime. ^java.util.Date v)
-
-                                              :else v)
-                                            (assert (not (nil? <>)))))) ; make sure v is non-nil
+      (assoc (zipmap field-names row)
              :id (inc i)))))
 
 (defn- load-tabledef! [dataset-name {:keys [table-name field-definitions], :as tabledef}]
-  (let [table-name (normalize-name table-name)]
+  (let [table-name (normalize-name :table table-name)]
     (create-table! dataset-name table-name (fielddefs->field-name->base-type field-definitions))
-    (insert-data!  dataset-name table-name (tabledef->prepared-rows tabledef))))
-
+    ;; retry the `insert-data!` step up to 5 times because it seens to fail silently a lot. Since each row is given a
+    ;; unique key it shouldn't result in duplicates.
+    (loop [num-retries 5]
+      (let [^Throwable e (try
+                           (insert-data! dataset-name table-name (tabledef->prepared-rows tabledef))
+                           nil
+                           (catch Throwable e
+                             e))]
+        (when e
+          (if (pos? num-retries)
+            (recur (dec num-retries))
+            (throw e)))))))
 
 (defn- existing-dataset-names
   "Fetch a list of *all* dataset names that currently exist in the BQ test project."
   []
-  (for [dataset (get (google/execute (doto (.list (.datasets bigquery) project-id)
+  (for [dataset (get (google/execute (doto (.list (.datasets (bigquery)) (project-id))
                                        ;; Long/MAX_VALUE barfs but it has to be a Long
                                        (.setMaxResults (long Integer/MAX_VALUE))))
-                     "datasets")]
-    (get-in dataset ["datasetReference" "datasetId"])))
-
-;; keep track of databases we haven't created yet
-(def ^:private existing-datasets
-  (atom #{}))
+                     "datasets")
+        :let    [dataset-name (get-in dataset ["datasetReference" "datasetId"])]
+        ;; don't consider that checkins_interval_ datasets created in
+        ;; `metabase.query-processor-test.date-bucketing-test` to be already created, since those test things relative
+        ;; to the current moment in time and thus need to be recreated before running the tests.
+        :when   (not (str/includes? dataset-name "checkins_interval_"))]
+    dataset-name))
 
 (defmethod tx/create-db! :bigquery [_ {:keys [database-name table-definitions]} & _]
   {:pre [(seq database-name) (sequential? table-definitions)]}
@@ -207,36 +352,52 @@
     (reset! existing-datasets (set (existing-dataset-names)))
     (println "These BigQuery datasets have already been loaded:\n" (u/pprint-to-str (sort @existing-datasets))))
   ;; now check and see if we need to create the requested one
-  (let [database-name (normalize-name database-name)]
+  (let [database-name (normalize-name :db database-name)]
     (when-not (contains? @existing-datasets database-name)
-      (try
-        (u/auto-retry 10
+      (u/ignore-exceptions
+        (destroy-dataset! database-name))
+      (u/auto-retry 2
+        (try
+          (println (format "Creating dataset %s..." (pr-str database-name)))
           ;; if the dataset failed to load successfully last time around, destroy whatever was loaded so we start
           ;; again from a blank slate
           (u/ignore-exceptions
             (destroy-dataset! database-name))
           (create-dataset! database-name)
-          ;; do this in parallel because otherwise it can literally take an hour to load something like
-          ;; fifty_one_different_tables
-          (u/pdoseq [tabledef table-definitions]
+          ;; now create tables and load data.
+          (doseq [tabledef table-definitions]
             (load-tabledef! database-name tabledef))
           (swap! existing-datasets conj database-name)
-          (println (u/format-color 'green "[OK]")))
-        ;; if creating the dataset ultimately fails to complete, then delete it so it will hopefully work next time
-        ;; around
-        (catch Throwable e
-          (u/ignore-exceptions
-            (println (u/format-color 'red "Failed to load BigQuery dataset '%s'." database-name))
-            (destroy-dataset! database-name))
-          (throw e))))))
+          (println (u/format-color 'green "Successfully created %s." (pr-str database-name)))
+          (catch Throwable e
+            (println (u/format-color 'red  "Failed to load BigQuery dataset %s." (pr-str database-name)))
+            (println (u/pprint-to-str 'red (Throwable->map e)))
+            ;; if creating the dataset ultimately fails to complete, then delete it so it will hopefully
+            ;; work next time around
+            (u/ignore-exceptions
+              (destroy-dataset! database-name))
+            (throw e)))))))
+
+(defmethod tx/destroy-db! :bigquery
+  [_ {:keys [database-name]}]
+  (u/ignore-exceptions
+    (destroy-dataset! database-name))
+  (when (seq @existing-datasets)
+    (swap! existing-datasets disj database-name)))
 
 (defmethod tx/aggregate-column-info :bigquery
   ([driver aggregation-type]
-   ((get-method tx/aggregate-column-info :sql-jdbc/test-extensions) driver aggregation-type))
+   (merge
+    ((get-method tx/aggregate-column-info :sql-jdbc/test-extensions) driver aggregation-type)
+    (when (#{:count :cum-count} aggregation-type)
+      {:base_type :type/Integer})))
+
   ([driver aggregation-type field]
    (merge
     ((get-method tx/aggregate-column-info :sql-jdbc/test-extensions) driver aggregation-type field)
     ;; BigQuery averages, standard deviations come back as Floats. This might apply to some other ag types as well;
     ;; add them as we come across them.
     (when (#{:avg :stddev} aggregation-type)
-      {:base_type :type/Float}))))
+      {:base_type :type/Float})
+    (when (#{:count :cum-count} aggregation-type)
+      {:base_type :type/Integer}))))

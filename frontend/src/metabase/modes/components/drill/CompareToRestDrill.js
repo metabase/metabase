@@ -1,12 +1,11 @@
-/* @flow */
-
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import { t } from "c-3po";
+import { t } from "ttag";
 import type {
   ClickAction,
   ClickActionProps,
-} from "metabase/meta/types/Visualization";
+} from "metabase-types/types/Visualization";
 
+import { isExpressionField } from "metabase/lib/query/field_ref";
 import MetabaseSettings from "metabase/lib/settings";
 
 export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
@@ -17,12 +16,20 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
 
   // questions with a breakout
   const dimensions = (clicked && clicked.dimensions) || [];
-  if (
+
+  // ExpressionDimensions don't work right now (see metabase#16680)
+  const includesExpressionDimensions = dimensions.some(dimension => {
+    return isExpressionField(dimension.column.field_ref);
+  });
+
+  const isUnsupportedDrill =
     !clicked ||
     dimensions.length === 0 ||
     // xrays must be enabled for this to work
-    !MetabaseSettings.get("enable_xrays")
-  ) {
+    !MetabaseSettings.get("enable-xrays") ||
+    includesExpressionDimensions;
+
+  if (isUnsupportedDrill) {
     return [];
   }
 
@@ -31,6 +38,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
       name: "compare-dashboard",
       section: "auto",
       icon: "bolt",
+      buttonType: "token",
       title: t`Compare to the rest`,
       url: () => {
         const filters = query

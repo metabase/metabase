@@ -1,28 +1,34 @@
-/* @flow weak */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { Link } from "react-router";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import cx from "classnames";
 import MetabaseSettings from "metabase/lib/settings";
 
-import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
-import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 import FormMessage from "metabase/components/form/FormMessage";
 
-import CreatedDatabaseModal from "../components/CreatedDatabaseModal.jsx";
-import DeleteDatabaseModal from "../components/DeleteDatabaseModal.jsx";
+import CreatedDatabaseModal from "../components/CreatedDatabaseModal";
+import DeleteDatabaseModal from "../components/DeleteDatabaseModal";
 
 import Database from "metabase/entities/databases";
 
-import { getDeletes, getDeletionError } from "../selectors";
+import {
+  getDeletes,
+  getDeletionError,
+  getIsAddingSampleDataset,
+  getAddSampleDatasetError,
+} from "../selectors";
 import { deleteDatabase, addSampleDataset } from "../database";
 
 const mapStateToProps = (state, props) => ({
   hasSampleDataset: Database.selectors.getHasSampleDataset(state),
+  isAddingSampleDataset: getIsAddingSampleDataset(state),
+  addSampleDatasetError: getAddSampleDatasetError(state),
 
   created: props.location.query.created,
   engines: MetabaseSettings.get("engines"),
@@ -39,8 +45,20 @@ const mapDispatchToProps = {
 };
 
 @Database.loadList()
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class DatabaseList extends Component {
+  constructor(props) {
+    super(props);
+
+    this.createdDatabaseModal = React.createRef();
+    props.databases.map(database => {
+      this["deleteDatabaseModal_" + database.id] = React.createRef();
+    });
+  }
+
   static propTypes = {
     databases: PropTypes.array,
     hasSampleDataset: PropTypes.bool,
@@ -49,20 +67,24 @@ export default class DatabaseList extends Component {
     deletionError: PropTypes.object,
   };
 
-  componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(newProps) {
     if (!this.props.created && newProps.created) {
-      this.refs.createdDatabaseModal.open();
+      this.createdDatabaseModal.current.open();
     }
   }
 
   render() {
-    let {
+    const {
       databases,
       hasSampleDataset,
+      isAddingSampleDataset,
+      addSampleDatasetError,
       created,
       engines,
       deletionError,
     } = this.props;
+
+    const error = deletionError || addSampleDatasetError;
 
     return (
       <div className="wrapper">
@@ -73,9 +95,9 @@ export default class DatabaseList extends Component {
           >{t`Add database`}</Link>
           <h2 className="PageTitle">{t`Databases`}</h2>
         </section>
-        {deletionError && (
+        {error && (
           <section>
-            <FormMessage formError={deletionError} />
+            <FormMessage formError={error} />
           </section>
         )}
         <section>
@@ -116,16 +138,16 @@ export default class DatabaseList extends Component {
                         ) : (
                           <td className="Table-actions">
                             <ModalWithTrigger
-                              ref={"deleteDatabaseModal_" + database.id}
+                              ref={this["deleteDatabaseModal_" + database.id]}
                               triggerClasses="Button Button--danger"
                               triggerElement={t`Delete`}
                             >
                               <DeleteDatabaseModal
                                 database={database}
                                 onClose={() =>
-                                  this.refs[
+                                  this[
                                     "deleteDatabaseModal_" + database.id
-                                  ].close()
+                                  ].current.close()
                                 }
                                 onDelete={() =>
                                   this.props.deleteDatabase(database.id)
@@ -155,19 +177,30 @@ export default class DatabaseList extends Component {
                   "border-top": databases && databases.length > 0,
                 })}
               >
-                <a
-                  className="text-light text-brand-hover no-decoration"
-                  onClick={() => this.props.addSampleDataset()}
-                >{t`Bring the sample dataset back`}</a>
+                {isAddingSampleDataset ? (
+                  <span className="text-light no-decoration">
+                    {t`Restoring the sample dataset...`}
+                  </span>
+                ) : (
+                  <a
+                    className="text-light text-brand-hover no-decoration"
+                    onClick={() => this.props.addSampleDataset()}
+                  >
+                    {t`Bring the sample dataset back`}
+                  </a>
+                )}
               </span>
             </div>
           ) : null}
         </section>
-        <ModalWithTrigger ref="createdDatabaseModal" isInitiallyOpen={created}>
+        <ModalWithTrigger
+          ref={this.createdDatabaseModal}
+          isInitiallyOpen={created}
+        >
           <CreatedDatabaseModal
             databaseId={parseInt(created)}
-            onDone={() => this.refs.createdDatabaseModal.toggle()}
-            onClose={() => this.refs.createdDatabaseModal.toggle()}
+            onDone={() => this.createdDatabaseModal.current.toggle()}
+            onClose={() => this.createdDatabaseModal.current.toggle()}
           />
         </ModalWithTrigger>
       </div>

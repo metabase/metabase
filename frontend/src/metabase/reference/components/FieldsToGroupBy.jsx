@@ -1,5 +1,4 @@
 import React, { Component } from "react";
-import cx from "classnames";
 import { connect } from "react-redux";
 
 import S from "./UsefulQuestions.css";
@@ -8,7 +7,7 @@ import L from "metabase/components/List.css";
 
 import { getQuestionUrl } from "../utils";
 
-import FieldToGroupBy from "metabase/reference/components/FieldToGroupBy.jsx";
+import FieldToGroupBy from "metabase/reference/components/FieldToGroupBy";
 
 import { fetchTableMetadata } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -22,7 +21,10 @@ const mapStateToProps = (state, props) => ({
   metadata: getMetadata(state, props),
 });
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class FieldsToGroupBy extends Component {
   props: {
     fields: Object,
@@ -44,7 +46,7 @@ export default class FieldsToGroupBy extends Component {
     } = this.props;
 
     return (
-      <div className={cx(D.detail)}>
+      <div>
         <div className={D.detailBody}>
           <div className={D.detailTitle}>
             <span className={D.detailName}>{title}</span>
@@ -54,7 +56,7 @@ export default class FieldsToGroupBy extends Component {
               Object.values(fields).map((field, index, fields) => (
                 <FieldToGroupBy
                   key={field.id}
-                  className={cx("border-bottom", "pt1", "pb1")}
+                  className="px1 mb1 rounded bg-light-hover"
                   iconClass={L.icon}
                   field={field}
                   metric={metric}
@@ -72,9 +74,7 @@ export default class FieldsToGroupBy extends Component {
                   secondaryOnClick={event => {
                     event.stopPropagation();
                     onChangeLocation(
-                      `/reference/databases/${databaseId}/tables/${
-                        field.table_id
-                      }/fields/${field.id}`,
+                      `/reference/databases/${databaseId}/tables/${field.table_id}/fields/${field.id}`,
                     );
                   }}
                 />

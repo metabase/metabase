@@ -31,10 +31,6 @@ dimensions:
 - GenericCategoryMedium:
     field_type: GenericTable.Category
     score: 75
-    max_cardinality: 10
-- GenericCategoryLarge:
-    field_type: GenericTable.Category
-    score: 70
 - State:
     field_type: State
 - Country: Country
@@ -142,12 +138,10 @@ cards:
       title: "Per [[GenericCategoryMedium]]"
       dimensions: GenericCategoryMedium
       metrics: Count
-      visualization: row
-      score: 80
+      visualization: smart-row
+      score: 70
       height: 8
       group: General
-      order_by:
-        - Count: descending
   - CountBySource:
       title: "Per [[Source]]"
       dimensions: Source
@@ -155,16 +149,6 @@ cards:
       visualization: row
       score: 80
       height: 8
-      group: General
-      order_by:
-        - Count: descending
-  - CountByCategoryLarge:
-      title: "Per [[GenericCategoryLarge]]"
-      dimensions: GenericCategoryLarge
-      metrics: Count
-      visualization: table
-      height: 8
-      score: 70
       group: General
       order_by:
         - Count: descending

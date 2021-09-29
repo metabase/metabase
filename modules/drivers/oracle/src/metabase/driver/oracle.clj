@@ -1,27 +1,33 @@
 (ns metabase.driver.oracle
-  (:require [clojure
-             [set :as set]
-             [string :as str]]
-            [clojure.java.jdbc :as jdbc]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
-            [metabase
-             [config :as config]
-             [driver :as driver]]
+            [honeysql.format :as hformat]
+            [java-time :as t]
+            [metabase.config :as config]
+            [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
-            [metabase.driver.sql-jdbc
-             [connection :as sql-jdbc.conn]
-             [execute :as sql-jdbc.execute]
-             [sync :as sql-jdbc.sync]]
+            [metabase.driver.sql :as sql]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
+            [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.util
-             [date :as du]
-             [honeysql-extensions :as hx]
-             [ssh :as ssh]])
-  (:import [java.sql ResultSet Types]
-           java.util.Date))
+            [metabase.util :as u]
+            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.i18n :refer [trs]]
+            [metabase.util.ssh :as ssh])
+  (:import com.mchange.v2.c3p0.C3P0ProxyConnection
+           [java.sql Connection ResultSet Types]
+           [java.time Instant OffsetDateTime ZonedDateTime]
+           metabase.util.honeysql_extensions.Identifier
+           [oracle.jdbc OracleConnection OracleTypes]
+           oracle.sql.TIMESTAMPTZ))
 
-(driver/register! :oracle, :parent :sql-jdbc)
+(driver/register! :oracle, :parent #{:sql-jdbc ::sql.qp.empty-string-is-null/empty-string-is-null})
 
 (def ^:private database-type->base-type
   (sql-jdbc.sync/pattern-based-database-type->base-type
@@ -56,33 +62,59 @@
     [#"URI"         :type/Text]
     [#"XML"         :type/*]]))
 
-(defmethod sql-jdbc.sync/database-type->base-type :oracle [_ column-type]
+(defmethod sql-jdbc.sync/database-type->base-type :oracle
+  [_ column-type]
   (database-type->base-type column-type))
 
-(defmethod sql-jdbc.conn/connection-details->spec :oracle [_ {:keys [host port sid service-name]
-                                                              :or   {host "localhost", port 1521}
-                                                              :as   details}]
-  (assert (or sid service-name))
-  (merge
-   {:classname   "oracle.jdbc.OracleDriver"
-    :subprotocol "oracle:thin"
-    :subname     (str "@" host
-                      ":" port
-                      (when sid
-                        (str ":" sid))
-                      (when service-name
-                        (str "/" service-name)))
-    ;; By default the Oracle JDBC driver isn't compliant with JDBC standards -- instead of returning types like
-    ;; java.sql.Timestamp it returns wacky types like oracle.sql.TIMESTAMPT. By setting this property the JDBC driver
-    ;; will return the appropriate types. See this page for more details:
-    ;; http://docs.oracle.com/database/121/JJDBC/datacc.htm#sthref437
-    :oracle.jdbc.J2EE13Compliant true}
-   (dissoc details :host :port :sid :service-name)))
+(defn- non-ssl-spec [spec host port sid service-name]
+  (assoc spec :subname (str "@" host
+                            ":" port
+                            (when sid
+                              (str ":" sid))
+                            (when service-name
+                              (str "/" service-name)))))
 
-(defmethod driver/can-connect? :oracle [driver details]
-  (let [connection (sql-jdbc.conn/connection-details->spec driver (ssh/include-ssh-tunnel details))]
+(defn- ssl-spec [spec host port sid service-name]
+  (assoc spec :subname
+              (format "@(DESCRIPTION=(ADDRESS=(PROTOCOL=tcps)(HOST=%s)(PORT=%d))(CONNECT_DATA=%s%s))"
+                      host
+                      port
+                      (if sid (str "(SID=" sid ")") "")
+                      (if service-name (str "(SERVICE_NAME=" service-name ")") ""))))
+
+(def ^:private ^:const prog-name-property
+  "The connection property used by the Oracle JDBC Thin Driver to control the program name."
+  "v$session.program")
+
+(defmethod sql-jdbc.conn/connection-details->spec :oracle
+  [_ {:keys [host port sid service-name]
+      :or   {host "localhost", port 1521}
+      :as   details}]
+  (assert (or sid service-name))
+  (let [spec      {:classname "oracle.jdbc.OracleDriver", :subprotocol "oracle:thin"}
+        finish-fn (if (:ssl details) ssl-spec non-ssl-spec)
+        ;; the v$session.program value has a max length of 48 (see T4Connection), so we have to make it more terse than
+        ;; the usual config/mb-version-and-process-identifier string and ensure we truncate to a length of 48
+        prog-nm   (as-> (format "MB %s %s" (config/mb-version-info :tag) config/local-process-uuid) s
+                    (subs s 0 (min 48 (count s))))]
+    (-> (merge spec details)
+        (dissoc :host :port :sid :service-name :ssl)
+        (assoc prog-name-property prog-nm)
+        (finish-fn host port sid service-name))))
+
+(defmethod driver/can-connect? :oracle
+  [driver details]
+  (let [connection (sql-jdbc.conn/connection-details->spec driver (ssh/include-ssh-tunnel! details))]
     (= 1M (first (vals (first (jdbc/query connection ["SELECT 1 FROM dual"])))))))
 
+(defmethod driver/db-start-of-week :oracle
+  [_]
+  :sunday)
+
+;; Oracle mod is a function like mod(x, y) rather than an operator like x mod y
+(defmethod hformat/fn-handler (u/qualified-name ::mod)
+  [_ x y]
+  (format "mod(%s, %s)" (hformat/to-sql x) (hformat/to-sql y)))
 
 (defn- trunc
   "Truncate a date. See also this [table of format
@@ -92,7 +124,6 @@
   [format-template v]
   (hsql/call :trunc v (hx/literal format-template)))
 
-(defmethod sql.qp/date [:oracle :default]        [_ _ v] (some-> v hx/->date))
 (defmethod sql.qp/date [:oracle :minute]         [_ _ v] (trunc :mi v))
 ;; you can only extract minute + hour from TIMESTAMPs, even though DATEs still have them (WTF), so cast first
 (defmethod sql.qp/date [:oracle :minute-of-hour] [_ _ v] (hsql/call :extract :minute (hx/->timestamp v)))
@@ -101,105 +132,120 @@
 (defmethod sql.qp/date [:oracle :day]            [_ _ v] (trunc :dd v))
 (defmethod sql.qp/date [:oracle :day-of-month]   [_ _ v] (hsql/call :extract :day v))
 ;; [SIC] The format template for truncating to start of week is 'day' in Oracle #WTF
-;; iw = same day of the week as first day of the ISO year
-;; iy = ISO year
-(defmethod sql.qp/date [:oracle :week]           [_ _ v] (trunc :day v))
 (defmethod sql.qp/date [:oracle :month]          [_ _ v] (trunc :month v))
 (defmethod sql.qp/date [:oracle :month-of-year]  [_ _ v] (hsql/call :extract :month v))
 (defmethod sql.qp/date [:oracle :quarter]        [_ _ v] (trunc :q v))
-(defmethod sql.qp/date [:oracle :year]           [_ _ v] (hsql/call :extract :year v))
+(defmethod sql.qp/date [:oracle :year]           [_ _ v] (trunc :year v))
 
-(defmethod sql.qp/date [:oracle :day-of-year] [driver _ v]
+(defmethod sql.qp/date [:oracle :week]
+  [driver _ v]
+  (sql.qp/adjust-start-of-week driver (partial trunc :day) v))
+
+(defmethod sql.qp/date [:oracle :day-of-year]
+  [driver _ v]
   (hx/inc (hx/- (sql.qp/date driver :day v) (trunc :year v))))
 
-(defmethod sql.qp/date [:oracle :week-of-year] [_ _ v]
-  (hx/inc (hx// (hx/- (trunc :iw v)
-                      (trunc :iy v))
-                7)))
-
-(defmethod sql.qp/date [:oracle :quarter-of-year] [driver _ v]
+(defmethod sql.qp/date [:oracle :quarter-of-year]
+  [driver _ v]
   (hx// (hx/+ (sql.qp/date driver :month-of-year (sql.qp/date driver :quarter v))
               2)
         3))
 
 ;; subtract number of days between today and first day of week, then add one since first day of week = 1
-(defmethod sql.qp/date [:oracle :day-of-week] [driver _ v]
-  (hx/inc (hx/- (sql.qp/date driver :day v)
-                (sql.qp/date driver :week v))))
+(defmethod sql.qp/date [:oracle :day-of-week]
+  [driver _ v]
+  (sql.qp/adjust-day-of-week
+   driver
+   (hx/->integer (hsql/call :to_char v (hx/literal :d)))
+   (driver.common/start-of-week-offset driver)
+   (partial hsql/call (u/qualified-name ::mod))))
 
+(def ^:private now (hsql/raw "SYSDATE"))
 
-(def ^:private now             (hsql/raw "SYSDATE"))
-(def ^:private date-1970-01-01 (hsql/call :to_timestamp (hx/literal :1970-01-01) (hx/literal :YYYY-MM-DD)))
-
-(defmethod sql.qp/current-datetime-fn :oracle [_] now)
+(defmethod sql.qp/current-datetime-honeysql-form :oracle [_] now)
 
 (defn- num-to-ds-interval [unit v] (hsql/call :numtodsinterval v (hx/literal unit)))
 (defn- num-to-ym-interval [unit v] (hsql/call :numtoyminterval v (hx/literal unit)))
 
-;; e.g. (SYSDATE + NUMTODSINTERVAL(?, 'second'))
-(defmethod driver/date-interval :oracle [_ unit amount]
-  (hx/+ now (case unit
-              :second  (num-to-ds-interval :second amount)
-              :minute  (num-to-ds-interval :minute amount)
-              :hour    (num-to-ds-interval :hour   amount)
-              :day     (num-to-ds-interval :day    amount)
-              :week    (num-to-ds-interval :day    (hx/* amount (hsql/raw 7)))
-              :month   (num-to-ym-interval :month  amount)
-              :quarter (num-to-ym-interval :month  (hx/* amount (hsql/raw 3)))
-              :year    (num-to-ym-interval :year   amount))))
+(def ^:private legacy-max-identifier-length
+  "Maximal identifier length for Oracle < 12.2"
+  30)
 
-
-(defmethod sql.qp/unix-timestamp->timestamp [:oracle :seconds] [_ _ field-or-value]
-  (hx/+ date-1970-01-01 (num-to-ds-interval :second field-or-value)))
-
-(defmethod sql.qp/unix-timestamp->timestamp [:oracle :milliseconds] [driver _ field-or-value]
-  (sql.qp/unix-timestamp->timestamp driver :seconds (hx// field-or-value (hsql/raw 1000))))
-
-
-(defn- increment-identifier-suffix
-  "Add an appropriate suffix to a keyword IDENTIFIER to make it distinct from previous usages of the same identifier,
-  e.g.
-
-     (increment-identifier-suffix :my_col)   ; -> :my_col_2
-     (increment-identifier-suffix :my_col_2) ; -> :my_col_3"
+(defn- truncate-identifier
   [identifier]
-  (keyword
-   (let [identifier (name identifier)]
-     (if-let [[_ existing-suffix] (re-find #"^.*_(\d+$)" identifier)]
-       ;; if identifier already has an alias like col_2 then increment it to col_3
-       (let [new-suffix (str (inc (Integer/parseInt existing-suffix)))]
-         (clojure.string/replace identifier (re-pattern (str existing-suffix \$)) new-suffix))
-       ;; otherwise just stick a _2 on the end so it's col_2
-       (str identifier "_2")))))
+  (->> identifier
+       hash
+       str
+       (map (fn [digit]
+              (-> digit
+                  int
+                  (+ 65)
+                  char)))
+       (apply str "identifier_")))
 
-(defn- alias-everything
-  "Make sure all the columns in SELECT-CLAUSE are alias forms, e.g. `[:table.col :col]` instead of `:table.col`.
-  (This faciliates our deduplication logic.)"
-  [select-clause]
-  (for [col select-clause]
-    (if (sequential? col)
-      ;; if something's already an alias form like [:table.col :col] it's g2g
-      col
-      ;; otherwise if it's something like :table.col replace with [:table.col :col]
-      [col (keyword (last (clojure.string/split (name col) #"\.")))])))
+(defmethod sql.qp/->honeysql [:oracle Identifier]
+  [_ identifier]
+  (let [field-identifier (last (:components identifier))]
+    (if (> (count field-identifier) legacy-max-identifier-length)
+      (update identifier :components (fn [components]
+                                       (concat (butlast components)
+                                               [(truncate-identifier field-identifier)])))
+      identifier)))
 
-(defn- deduplicate-identifiers
-  "Make sure every column in SELECT-CLAUSE has a unique alias. This is done because Oracle can't figure out how to use a
-  query that produces duplicate columns in a subselect."
-  [select-clause]
-  (if (= select-clause [:*])
-    ;; if we're doing `SELECT *` there's no way we can deduplicate anything so we're SOL, return as-is
-    select-clause
-    ;; otherwise we can actually deduplicate things
-    (loop [already-seen #{}, acc [], [[col alias] & more] (alias-everything select-clause)]
-      (cond
-        ;; if not more cols are left to deduplicate, we're done
-        (not col)                      acc
-        ;; otherwise if we've already used this alias, replace it with one like `identifier_2` and try agan
-        (contains? already-seen alias) (recur already-seen acc (cons [col (increment-identifier-suffix alias)]
-                                                                     more))
-        ;; otherwise if we haven't seen it record it as seen and move on to the next column
-        :else                          (recur (conj already-seen alias) (conj acc [col alias]) more)))))
+(defmethod sql.qp/->honeysql [:oracle :substring]
+  [driver [_ arg start length]]
+  (if length
+    (hsql/call :substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (sql.qp/->honeysql driver length))
+    (hsql/call :substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start))))
+
+(defmethod sql.qp/->honeysql [:oracle :concat]
+  [driver [_ & args]]
+  (->> args
+       (map (partial sql.qp/->honeysql driver))
+       (reduce (partial hsql/call :concat))))
+
+(defmethod sql.qp/->honeysql [:oracle :regex-match-first]
+  [driver [_ arg pattern]]
+  (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
+
+(defmethod sql.qp/add-interval-honeysql-form :oracle
+  [_ hsql-form amount unit]
+  (hx/+
+   (hx/->timestamp hsql-form)
+   (case unit
+     :second  (num-to-ds-interval :second amount)
+     :minute  (num-to-ds-interval :minute amount)
+     :hour    (num-to-ds-interval :hour   amount)
+     :day     (num-to-ds-interval :day    amount)
+     :week    (num-to-ds-interval :day    (hx/* amount (hsql/raw 7)))
+     :month   (num-to-ym-interval :month  amount)
+     :quarter (num-to-ym-interval :month  (hx/* amount (hsql/raw 3)))
+     :year    (num-to-ym-interval :year   amount))))
+
+(defmethod sql.qp/unix-timestamp->honeysql [:oracle :seconds]
+  [_ _ field-or-value]
+  (hx/+ (hsql/raw "timestamp '1970-01-01 00:00:00 UTC'")
+        (num-to-ds-interval :second field-or-value)))
+
+(defmethod sql.qp/cast-temporal-string [:oracle :Coercion/ISO8601->DateTime]
+  [_driver _coercion-strategy expr]
+  (hsql/call :to_timestamp expr "YYYY-MM-DD HH:mi:SS"))
+
+(defmethod sql.qp/cast-temporal-string [:oracle :Coercion/ISO8601->Date]
+  [_driver _coercion-strategy expr]
+  (hsql/call :to_date expr "YYYY-MM-DD"))
+
+(defmethod sql.qp/cast-temporal-string [:oracle :Coercion/YYYYMMDDHHMMSSString->Temporal]
+  [_driver _coercion-strategy expr]
+  (hsql/call :to_timestamp expr "YYYYMMDDHH24miSS"))
+
+(defmethod sql.qp/unix-timestamp->honeysql [:oracle :milliseconds]
+  [driver _ field-or-value]
+  (sql.qp/unix-timestamp->honeysql driver :seconds (hx// field-or-value (hsql/raw 1000))))
+
+(defmethod sql.qp/unix-timestamp->honeysql [:oracle :microseconds]
+  [driver _ field-or-value]
+  (sql.qp/unix-timestamp->honeysql driver :seconds (hx// field-or-value (hsql/raw 1000000))))
 
 ;; Oracle doesn't support `LIMIT n` syntax. Instead we have to use `WHERE ROWNUM <= n` (`NEXT n ROWS ONLY` isn't
 ;; supported on Oracle versions older than 12). This has to wrap the actual query, e.g.
@@ -229,19 +275,20 @@
 ;; )
 ;; WHERE __rownum__ >= 100;
 ;;
-;; See issue #3568 and the Oracle documentation for more details:
+;; See metabase#3568 and the Oracle documentation for more details:
 ;; http://docs.oracle.com/cd/B19306_01/server.102/b14200/pseudocolumns009.htm
-(defmethod sql.qp/apply-top-level-clause [:oracle :limit] [_ _ honeysql-query {value :limit}]
-  {:pre [(integer? value)]}
+(defmethod sql.qp/apply-top-level-clause [:oracle :limit]
+  [_ _ honeysql-query {value :limit}]
   {:select [:*]
    ;; if `honeysql-query` doesn't have a `SELECT` clause yet (which might be the case when using a source query) fall
    ;; back to including a `SELECT *` just to make sure a valid query is produced
    :from   [(-> (merge {:select [:*]}
                        honeysql-query)
-                (update :select deduplicate-identifiers))]
+                (update :select sql.u/select-clause-deduplicate-aliases))]
    :where  [:<= (hsql/raw "rownum") value]})
 
-(defmethod sql.qp/apply-top-level-clause [:oracle :page] [driver _ honeysql-query {{:keys [items page]} :page}]
+(defmethod sql.qp/apply-top-level-clause [:oracle :page]
+  [driver _ honeysql-query {{:keys [items page]} :page}]
   (let [offset (* (dec page) items)]
     (if (zero? offset)
       ;; if there's no offset we can use use the single-nesting implementation for `apply-limit`
@@ -261,75 +308,155 @@
   [_ bool]
   (if bool 1 0))
 
-(defn- remove-rownum-column
-  "Remove the `:__rownum__` column from results, if present."
-  [{:keys [columns rows], :as results}]
-  (if-not (contains? (set columns) "__rownum__")
-    results
-    ;; if we added __rownum__ it will always be the last column and value so we can just remove that
-    {:columns (butlast columns)
-     :rows    (for [row rows]
-                (butlast row))}))
-
-(defmethod driver/humanize-connection-error-message :oracle [_ message]
+(defmethod driver/humanize-connection-error-message :oracle
+  [_ message]
   ;; if the connection error message is caused by the assertion above checking whether sid or service-name is set,
   ;; return a slightly nicer looking version. Otherwise just return message as-is
   (if (str/includes? message "(or sid service-name)")
     "You must specify the SID and/or the Service Name."
     message))
 
-(defmethod driver/execute-query :oracle [driver query]
-  (remove-rownum-column ((get-method driver/execute-query :sql-jdbc) driver query)))
+(defn- remove-rownum-column
+  "Remove the `:__rownum__` column from results, if present."
+  [respond {:keys [cols], :as metadata} rows]
+  (if-not (contains? (set (map :name cols)) "__rownum__")
+    (respond metadata rows)
+    ;; if we added __rownum__ it will always be the last column and value so we can just remove that
+    (respond (update metadata :cols butlast)
+             (eduction
+              (fn [rf]
+                (fn
+                  ([]        (rf))
+                  ([acc]     (rf acc))
+                  ([acc row] (rf acc (butlast row)))))
+              rows))))
 
-(defmethod driver.common/current-db-time-date-formatters :oracle [_]
+(defmethod driver/execute-reducible-query :oracle
+  [driver query context respond]
+  ((get-method driver/execute-reducible-query :sql-jdbc) driver query context (partial remove-rownum-column respond)))
+
+(defmethod driver.common/current-db-time-date-formatters :oracle
+  [_]
   (driver.common/create-db-time-formatters "yyyy-MM-dd HH:mm:ss.SSS zzz"))
 
-(defmethod driver.common/current-db-time-native-query :oracle [_]
+(defmethod driver.common/current-db-time-native-query :oracle
+  [_]
   "select to_char(current_timestamp, 'YYYY-MM-DD HH24:MI:SS.FF3 TZD') FROM DUAL")
 
 (defmethod driver/current-db-time :oracle [& args]
   (apply driver.common/current-db-time args))
 
-(defmethod sql-jdbc.sync/excluded-schemas :oracle [_]
-  (set/union
-   #{"ANONYMOUS"
-     ;; TODO - are there othere APEX tables we want to skip? Maybe we should make this a pattern instead? (#"^APEX_")
-     "APEX_040200"
-     "APPQOSSYS"
-     "AUDSYS"
-     "CTXSYS"
-     "DBSNMP"
-     "DIP"
-     "GSMADMIN_INTERNAL"
-     "GSMCATUSER"
-     "GSMUSER"
-     "LBACSYS"
-     "MDSYS"
-     "OLAPSYS"
-     "ORDDATA"
-     "ORDSYS"
-     "OUTLN"
-     "RDSADMIN"
-     "SYS"
-     "SYSBACKUP"
-     "SYSDG"
-     "SYSKM"
-     "SYSTEM"
-     "WMSYS"
-     "XDB"
-     "XS$NULL"}
-   (when config/is-test?
-     ;; DIRTY HACK (!) This is similar hack we do for Redshift, see the explanation there we just want to ignore all
-     ;; the test "session schemas" that don't match the current test
-     (require 'metabase.test.data.oracle)
-     ((resolve 'metabase.test.data.oracle/non-session-schemas)))))
+;; don't redef if already definied -- test extensions override this impl
+(when-not (get (methods sql-jdbc.sync/excluded-schemas) :oracle)
+  (defmethod sql-jdbc.sync/excluded-schemas :oracle
+    [_]
+    #{"ANONYMOUS"
+      ;; TODO - are there othere APEX tables we want to skip? Maybe we should make this a pattern instead? (#"^APEX_")
+      "APEX_040200"
+      "APPQOSSYS"
+      "AUDSYS"
+      "CTXSYS"
+      "DBSNMP"
+      "DIP"
+      "GSMADMIN_INTERNAL"
+      "GSMCATUSER"
+      "GSMUSER"
+      "LBACSYS"
+      "MDSYS"
+      "OLAPSYS"
+      "ORDDATA"
+      "ORDSYS"
+      "OUTLN"
+      "RDSADMIN"
+      "SYS"
+      "SYSBACKUP"
+      "SYSDG"
+      "SYSKM"
+      "SYSTEM"
+      "WMSYS"
+      "XDB"
+      "XS$NULL"}))
 
-(defmethod sql-jdbc.execute/set-timezone-sql :oracle [_]
+(defmethod driver/escape-entity-name-for-metadata :oracle
+  [_ entity-name]
+  (str/replace entity-name "/" "//"))
+
+(defmethod sql-jdbc.execute/set-timezone-sql :oracle
+  [_]
   "ALTER session SET time_zone = %s")
 
-;; instead of returning a CLOB object, return the String. (#9026)
-(defmethod sql-jdbc.execute/read-column [:oracle Types/CLOB] [_ _, ^ResultSet resultset, _, ^Integer i]
-  (.getString resultset i))
+;; Oracle doesn't support `CLOSE_CURSORS_AT_COMMIT`. Otherwise this method is basically the same as the default impl
+(defmethod sql-jdbc.execute/prepared-statement :oracle
+  [driver ^Connection conn ^String sql params]
+  (let [stmt (.prepareStatement conn sql
+                                ResultSet/TYPE_FORWARD_ONLY
+                                ResultSet/CONCUR_READ_ONLY)]
+    (try
+      (try
+        (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
+        (catch Throwable e
+          (log/debug e (trs "Error setting result set fetch direction to FETCH_FORWARD"))))
+      (sql-jdbc.execute/set-parameters! driver stmt params)
+      stmt
+      (catch Throwable e
+        (.close stmt)
+        (throw e)))))
 
-(defmethod unprepare/unprepare-value [:oracle Date] [_ value]
-  (format "timestamp '%s'" (du/format-date "yyyy-MM-dd hh:mm:ss.SSS ZZ" value)))
+;; similar rationale to prepared-statement above
+(defmethod sql-jdbc.execute/statement :oracle
+   [_ ^Connection conn]
+   (let [stmt (.createStatement conn
+                                ResultSet/TYPE_FORWARD_ONLY
+                                ResultSet/CONCUR_READ_ONLY)]
+        (try
+          (try
+            (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
+            (catch Throwable e
+              (log/debug e (trs "Error setting result set fetch direction to FETCH_FORWARD"))))
+          stmt
+          (catch Throwable e
+            (.close stmt)
+            (throw e)))))
+
+;; instead of returning a CLOB object, return the String. (#9026)
+(defmethod sql-jdbc.execute/read-column-thunk [:oracle Types/CLOB]
+  [_ ^ResultSet rs _ ^Integer i]
+  (fn []
+    (.getString rs i)))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:oracle OracleTypes/TIMESTAMPTZ]
+  [driver ^ResultSet rs _ ^Integer i]
+  ;; Oracle `TIMESTAMPTZ` types can have either a zone offset *or* a zone ID; you could fetch either `OffsetDateTime`
+  ;; or `ZonedDateTime` using `.getObject`, but fetching the wrong type will result in an Exception, meaning we have
+  ;; try both and wrap the first in a try-catch. As far as I know there's now way to tell whether the value has a zone
+  ;; offset or ID without first fetching a `TIMESTAMPTZ` object. So to avoid the try-catch we can fetch the
+  ;; `TIMESTAMPTZ` and use `.offsetDateTimeValue` instead.
+  (fn []
+    (when-let [^TIMESTAMPTZ t (.getObject rs i TIMESTAMPTZ)]
+      (let [^C3P0ProxyConnection proxy-conn (.. rs getStatement getConnection)
+            conn                            (.unwrap proxy-conn OracleConnection)]
+        ;; TIMEZONE FIXME - we need to warn if the Oracle JDBC driver is `ojdbc7.jar`, which probably won't have this
+        ;; method
+        ;;
+        ;; I think we can call `(oracle.jdbc.OracleDriver/getJDBCVersion)` and check whether it returns 4.2+
+        (.offsetDateTimeValue t conn)))))
+
+(defmethod unprepare/unprepare-value [:oracle OffsetDateTime]
+  [_ t]
+  (let [s (-> (t/format "yyyy-MM-dd HH:mm:ss.SSS ZZZZZ" t)
+              ;; Oracle doesn't like `Z` to mean UTC
+              (str/replace #"Z$" "UTC"))]
+    (format "timestamp '%s'" s)))
+
+(defmethod unprepare/unprepare-value [:oracle ZonedDateTime]
+  [_ t]
+  (format "timestamp '%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSS VV" t)))
+
+(defmethod unprepare/unprepare-value [:oracle Instant]
+  [driver t]
+  (unprepare/unprepare-value driver (t/zoned-date-time t (t/zone-id "UTC"))))
+
+;; Oracle doesn't really support boolean types so use bits instead (See #11592, similar issue for SQL Server)
+(defmethod sql/->prepared-substitution [:oracle Boolean]
+  [driver bool]
+  (sql/->prepared-substitution driver (if bool 1 0)))

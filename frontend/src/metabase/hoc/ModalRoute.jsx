@@ -1,22 +1,33 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { Route } from "react-router";
 import { push } from "react-router-redux";
 import { connect } from "react-redux";
 import Modal from "metabase/components/Modal";
 
+export const getParentPath = (route, location) => {
+  const fullPathSegments = location.pathname.split("/");
+  const routeSegments = route.path.split("/");
+
+  fullPathSegments.splice(-routeSegments.length);
+
+  return fullPathSegments.join("/");
+};
+
 const ModalWithRoute = (ComposedModal, modalProps = {}) =>
-  connect(null, { onChangeLocation: push })(
+  connect(
+    null,
+    { onChangeLocation: push },
+  )(
     class extends Component {
       static displayName = `ModalWithRoute[${ComposedModal.displayName ||
         ComposedModal.name}]`;
 
       onClose = () => {
-        const { location: { pathname } } = this.props;
-        const urlWithoutLastSegment = pathname.substring(
-          0,
-          pathname.lastIndexOf("/"),
-        );
-        this.props.onChangeLocation(urlWithoutLastSegment);
+        const { location, route } = this.props;
+
+        const parentPath = getParentPath(route, location);
+        this.props.onChangeLocation(parentPath);
       };
 
       render() {

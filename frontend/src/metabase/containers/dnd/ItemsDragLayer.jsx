@@ -1,11 +1,13 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { DragLayer } from "react-dnd";
 import _ from "underscore";
 
 import BodyComponent from "metabase/components/BodyComponent";
-import { NormalItem } from "metabase/components/CollectionLanding";
+import BaseItemsTable from "metabase/collections/components/BaseItemsTable";
 
-// NOTE: our verison of react-hot-loader doesn't play nice with react-dnd's DragLayer, so we exclude files named `*DragLayer.jsx` in webpack.config.js
+// NOTE: our version of react-hot-loader doesn't play nice with react-dnd's DragLayer,
+// so we exclude files named `*DragLayer.jsx` in webpack.config.js
 
 @DragLayer((monitor, props) => ({
   item: monitor.getItem(),
@@ -17,11 +19,17 @@ import { NormalItem } from "metabase/components/CollectionLanding";
 @BodyComponent
 export default class ItemsDragLayer extends React.Component {
   render() {
-    const { isDragging, currentOffset, selected, item } = this.props;
+    const {
+      isDragging,
+      currentOffset,
+      selectedItems,
+      pinnedItems,
+      item,
+    } = this.props;
     if (!isDragging || !currentOffset) {
       return null;
     }
-    const items = selected.length > 0 ? selected : [item.item];
+    const items = selectedItems.length > 0 ? selectedItems : [item.item];
     const x = currentOffset.x + window.scrollX;
     const y = currentOffset.y + window.scrollY;
     return (
@@ -34,7 +42,11 @@ export default class ItemsDragLayer extends React.Component {
           pointerEvents: "none",
         }}
       >
-        <DraggedItems items={items} draggedItem={item.item} />
+        <DraggedItems
+          items={items}
+          draggedItem={item.item}
+          pinnedItems={pinnedItems}
+        />
       </div>
     );
   }
@@ -45,9 +57,30 @@ class DraggedItems extends React.Component {
     // necessary for decent drag performance
     return (
       nextProps.items.length !== this.props.items.length ||
+      nextProps.pinnedItems.length !== this.props.pinnedItems ||
       nextProps.draggedItem !== this.props.draggedItem
     );
   }
+
+  checkIsPinned = item => {
+    const { pinnedItems } = this.props;
+    const index = pinnedItems.findIndex(
+      i => i.model === item.model && i.id === item.id,
+    );
+    return index >= 0;
+  };
+
+  renderItem = ({ item, ...itemProps }) => (
+    <BaseItemsTable.Item
+      key={`${item.model}-${item.id}`}
+      {...itemProps}
+      item={item}
+      isPinned={this.checkIsPinned(item)}
+      draggable={false}
+      hasBottomBorder={false}
+    />
+  );
+
   render() {
     const { items, draggedItem } = this.props;
     const index = _.findIndex(items, draggedItem);
@@ -58,7 +91,12 @@ class DraggedItems extends React.Component {
           transform: index > 0 ? `translate(0px, ${-index * 72}px)` : null,
         }}
       >
-        {items.map(item => <NormalItem item={item} />)}
+        <BaseItemsTable
+          items={items}
+          renderItem={this.renderItem}
+          headless
+          style={{ width: 960 }}
+        />
       </div>
     );
   }

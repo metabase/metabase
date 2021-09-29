@@ -3,7 +3,7 @@
 // HACK: Needed because of conflicts caused by circular dependencies
 import "metabase/visualizations/components/Visualization";
 
-import LineAreaBarChart from "metabase/visualizations/components/LineAreaBarChart";
+import LineAreaBarChart from "metabase/visualizations/components/LineAreaBarChart.jsx";
 
 const millisecondCard = {
   card: {
@@ -13,20 +13,21 @@ const millisecondCard = {
     result_metadata: [
       {
         base_type: "type/BigInteger",
+        coercion_strategy: "Coercion/UNIXMilliSeconds->DateTime",
+        effective_type: "type/DateTime",
         display_name: "Timestamp",
         name: "timestamp",
-        special_type: "type/UNIXTimestampMilliseconds",
         unit: "week",
       },
       {
         base_type: "type/Integer",
         display_name: "count",
         name: "count",
-        special_type: "type/Number",
+        semantic_type: "type/Number",
       },
     ],
     creator: {
-      email: "atte@metabase.com",
+      email: "atte@metabase.test",
       first_name: "Atte",
       last_login: "2017-07-21T17:51:23.181Z",
       is_qbnewb: false,
@@ -53,7 +54,7 @@ const millisecondCard = {
       query: {
         "source-table": 1784,
         aggregation: [["count"]],
-        breakout: [["datetime-field", ["field-id", 8159], "week"]],
+        breakout: [["field", 8159, { "temporal-unit": "week" }]],
       },
     },
     id: 83,
@@ -84,7 +85,6 @@ const millisecondCard = {
         description: null,
         table_id: 1784,
         schema_name: "schema_126",
-        special_type: "type/UNIXTimestampMilliseconds",
         unit: "week",
         name: "timestamp",
         source: "breakout",
@@ -96,11 +96,13 @@ const millisecondCard = {
         target: null,
         display_name: "Timestamp",
         base_type: "type/BigInteger",
+        coercion_strategy: "Coercion/UNIXSeconds->DateTime",
+        effective_type: "type/DateTime",
       },
       {
         description: null,
         table_id: null,
-        special_type: "type/Number",
+        semantic_type: "type/Number",
         name: "count",
         source: "aggregation",
         remapped_from: null,
@@ -116,16 +118,17 @@ const millisecondCard = {
       columns: [
         {
           base_type: "type/BigInteger",
+          coercion_strategy: "Coercion/UNIXSeconds->DateTime",
+          effective_type: "type/DateTime",
           display_name: "Timestamp",
           name: "timestamp",
-          special_type: "type/UNIXTimestampMilliseconds",
           unit: "week",
         },
         {
           base_type: "type/Integer",
           display_name: "count",
           name: "count",
-          special_type: "type/Number",
+          semantic_type: "type/Number",
         },
       ],
     },
@@ -140,6 +143,7 @@ const dateTimeCard = {
     result_metadata: [
       {
         base_type: "type/DateTime",
+        effective_type: "type/DateTime",
         display_name: "Created At",
         name: "CREATED_AT",
         description: "The date and time an order was submitted.",
@@ -149,11 +153,11 @@ const dateTimeCard = {
         base_type: "type/Float",
         display_name: "sum",
         name: "sum",
-        special_type: "type/Number",
+        semantic_type: "type/Number",
       },
     ],
     creator: {
-      email: "atte@metabase.com",
+      email: "atte@metabase.test",
       first_name: "Atte",
       last_login: "2017-07-21T17:51:23.181Z",
       is_qbnewb: false,
@@ -179,8 +183,8 @@ const dateTimeCard = {
       type: "query",
       query: {
         "source-table": 1,
-        aggregation: [["sum", ["field-id", 4]]],
-        breakout: [["datetime-field", ["field-id", 1], "month"]],
+        aggregation: [["sum", ["field", 4, null]]],
+        breakout: [["field", 1, { "temporal-unit": "month" }]],
       },
     },
     id: 25,
@@ -260,7 +264,7 @@ const dateTimeCard = {
         description: "The date and time an order was submitted.",
         table_id: 1,
         schema_name: "PUBLIC",
-        special_type: null,
+        semantic_type: null,
         unit: "month",
         name: "CREATED_AT",
         source: "breakout",
@@ -276,7 +280,7 @@ const dateTimeCard = {
       {
         description: null,
         table_id: null,
-        special_type: "type/Number",
+        semantic_type: "type/Number",
         name: "sum",
         source: "aggregation",
         remapped_from: null,
@@ -301,7 +305,7 @@ const dateTimeCard = {
           base_type: "type/Float",
           display_name: "sum",
           name: "sum",
-          special_type: "type/Number",
+          semantic_type: "type/Number",
         },
       ],
     },
@@ -320,17 +324,17 @@ const numberCard = {
         display_name: "Ratings",
         name: "RATING",
         description: "The rating (on a scale of 1-5) the user left.",
-        special_type: "type/Number",
+        semantic_type: "type/Number",
       },
       {
         base_type: "type/Integer",
         display_name: "count",
         name: "count",
-        special_type: "type/Number",
+        semantic_type: "type/Number",
       },
     ],
     creator: {
-      email: "atte@metabase.com",
+      email: "atte@metabase.test",
       first_name: "Atte",
       last_login: "2017-07-21T17:51:23.181Z",
       is_qbnewb: false,
@@ -356,7 +360,7 @@ const numberCard = {
       query: {
         "source-table": 4,
         aggregation: [["count"]],
-        breakout: [["field-id", 33]],
+        breakout: [["field", 33, null]],
       },
     },
     id: 86,
@@ -387,7 +391,7 @@ const numberCard = {
         description: "The rating (on a scale of 1-5) the user left.",
         table_id: 4,
         schema_name: "PUBLIC",
-        special_type: "type/Number",
+        semantic_type: "type/Number",
         name: "RATING",
         source: "breakout",
         remapped_from: null,
@@ -402,7 +406,7 @@ const numberCard = {
       {
         description: null,
         table_id: null,
-        special_type: "type/Number",
+        semantic_type: "type/Number",
         name: "count",
         source: "aggregation",
         remapped_from: null,
@@ -421,18 +425,26 @@ const numberCard = {
           display_name: "Ratings",
           name: "RATING",
           description: "The rating (on a scale of 1-5) the user left.",
-          special_type: "type/Number",
+          semantic_type: "type/Number",
         },
         {
           base_type: "type/Integer",
           display_name: "count",
           name: "count",
-          special_type: "type/Number",
+          semantic_type: "type/Number",
         },
       ],
     },
   },
 };
+
+// jsdom doesn't support layout methods like getBBox, so we need to mock it.
+window.SVGElement.prototype.getBBox = () => ({
+  x: 0,
+  y: 0,
+  width: 1000,
+  height: 1000,
+});
 
 describe("LineAreaBarChart", () => {
   it("should let you combine series with datetimes only", () => {

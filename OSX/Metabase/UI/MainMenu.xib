@@ -1,9 +1,10 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="9532" systemVersion="14F27" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES">
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="15702" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES">
     <dependencies>
         <deployment identifier="macosx"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="9532"/>
-        <plugIn identifier="com.apple.WebKitIBPlugin" version="9532"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="15702"/>
+        <plugIn identifier="com.apple.WebKitIBPlugin" version="15702"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <objects>
         <customObject id="-2" userLabel="File's Owner" customClass="NSApplication">
@@ -24,9 +25,10 @@
             <connections>
                 <outlet property="backButtonCell" destination="lEo-fP-VyB" id="Liq-b8-nP9"/>
                 <outlet property="forwardButtonCell" destination="uF3-qn-F0a" id="eR7-ml-w4X"/>
+                <outlet property="leftTitleBarView" destination="V9v-oH-CLo" id="TdT-j4-Ooc"/>
                 <outlet property="linkButtonCell" destination="D9P-hg-lf8" id="G2L-cA-69g"/>
                 <outlet property="refreshButtonCell" destination="SSf-hM-lhY" id="xJE-83-OZr"/>
-                <outlet property="titleBarView" destination="Pem-Bq-pDs" id="nGc-wz-YES"/>
+                <outlet property="rightTitleBarView" destination="Iss-xM-4Ib" id="US0-BJ-PTe"/>
                 <outlet property="view" destination="EiT-Mj-1SZ" id="hOv-v9-VQo"/>
                 <outlet property="webView" destination="mhE-X5-FF6" id="MTz-Fg-4Di"/>
             </connections>
@@ -172,8 +174,9 @@
                     </menu>
                 </menuItem>
             </items>
+            <point key="canvasLocation" x="140" y="154"/>
         </menu>
-        <window allowsToolTipsWhenApplicationIsInactive="NO" releasedWhenClosed="NO" animationBehavior="default" id="QvC-M9-y7g" customClass="INAppStoreWindow">
+        <window title="Metabase" allowsToolTipsWhenApplicationIsInactive="NO" releasedWhenClosed="NO" animationBehavior="default" id="QvC-M9-y7g">
             <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES"/>
             <rect key="contentRect" x="335" y="390" width="1000" height="700"/>
             <rect key="screenRect" x="0.0" y="0.0" width="1440" height="2537"/>
@@ -203,75 +206,69 @@
             <userDefinedRuntimeAttributes>
                 <userDefinedRuntimeAttribute type="boolean" keyPath="showsTitle" value="NO"/>
             </userDefinedRuntimeAttributes>
+            <point key="canvasLocation" x="-203" y="602"/>
         </window>
-        <customView id="Pem-Bq-pDs" userLabel="titleBarView">
-            <rect key="frame" x="0.0" y="0.0" width="651" height="32"/>
+        <customView id="V9v-oH-CLo">
+            <rect key="frame" x="0.0" y="0.0" width="72" height="32"/>
             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
             <subviews>
-                <customView translatesAutoresizingMaskIntoConstraints="NO" id="V9v-oH-CLo">
-                    <rect key="frame" x="64" y="0.0" width="523" height="32"/>
-                    <subviews>
-                        <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="BVV-jo-b9C">
-                            <rect key="frame" x="229" y="8" width="65" height="17"/>
-                            <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" enabled="NO" sendsActionOnEndEditing="YES" title="Metabase" id="Vvp-PZ-SY5">
-                                <font key="font" metaFont="system"/>
-                                <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
-                                <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
-                            </textFieldCell>
-                        </textField>
-                        <button translatesAutoresizingMaskIntoConstraints="NO" id="dZP-Ul-oSB">
-                            <rect key="frame" x="0.0" y="0.0" width="24" height="32"/>
-                            <constraints>
-                                <constraint firstAttribute="width" constant="24" id="6zn-IR-p7a"/>
-                            </constraints>
-                            <buttonCell key="cell" type="bevel" bezelStyle="rounded" image="back_icon" imagePosition="only" alignment="center" imageScaling="proportionallyDown" inset="2" id="lEo-fP-VyB">
-                                <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
-                                <font key="font" metaFont="system" size="23"/>
-                            </buttonCell>
-                            <connections>
-                                <action selector="back:" target="8au-ff-PAw" id="MfY-gk-scw"/>
-                            </connections>
-                        </button>
-                        <button translatesAutoresizingMaskIntoConstraints="NO" id="5Bt-VB-Dba">
-                            <rect key="frame" x="24" y="0.0" width="24" height="32"/>
-                            <constraints>
-                                <constraint firstAttribute="width" constant="24" id="cZI-NR-ghh"/>
-                            </constraints>
-                            <buttonCell key="cell" type="bevel" bezelStyle="rounded" image="forward_icon" imagePosition="only" alignment="center" imageScaling="proportionallyDown" inset="2" id="uF3-qn-F0a">
-                                <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
-                                <font key="font" metaFont="system" size="23"/>
-                            </buttonCell>
-                            <connections>
-                                <action selector="forward:" target="8au-ff-PAw" id="Hwj-Yo-Qtt"/>
-                            </connections>
-                        </button>
-                        <button translatesAutoresizingMaskIntoConstraints="NO" id="HAI-2S-GZQ">
-                            <rect key="frame" x="48" y="0.0" width="24" height="32"/>
-                            <constraints>
-                                <constraint firstAttribute="width" constant="24" id="Bk3-9A-EeN"/>
-                            </constraints>
-                            <buttonCell key="cell" type="bevel" bezelStyle="rounded" image="refresh_icon" imagePosition="overlaps" alignment="center" imageScaling="proportionallyDown" inset="2" id="SSf-hM-lhY">
-                                <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
-                                <font key="font" metaFont="system" size="23"/>
-                            </buttonCell>
-                            <connections>
-                                <action selector="reload:" target="8au-ff-PAw" id="y95-m6-iZ1"/>
-                            </connections>
-                        </button>
-                    </subviews>
+                <button translatesAutoresizingMaskIntoConstraints="NO" id="dZP-Ul-oSB">
+                    <rect key="frame" x="0.0" y="9" width="24" height="15"/>
                     <constraints>
-                        <constraint firstAttribute="centerY" secondItem="5Bt-VB-Dba" secondAttribute="centerY" id="2iz-ND-ODT"/>
-                        <constraint firstAttribute="centerY" secondItem="HAI-2S-GZQ" secondAttribute="centerY" id="Efu-ly-nfn"/>
-                        <constraint firstAttribute="centerY" secondItem="dZP-Ul-oSB" secondAttribute="centerY" id="FYl-6N-5zd"/>
-                        <constraint firstAttribute="centerX" secondItem="BVV-jo-b9C" secondAttribute="centerX" id="LIX-0H-Hcn"/>
-                        <constraint firstAttribute="centerY" secondItem="BVV-jo-b9C" secondAttribute="centerY" id="NaO-8y-1rD"/>
-                        <constraint firstItem="dZP-Ul-oSB" firstAttribute="leading" secondItem="V9v-oH-CLo" secondAttribute="leading" id="P36-OS-GAI"/>
-                        <constraint firstItem="HAI-2S-GZQ" firstAttribute="leading" secondItem="5Bt-VB-Dba" secondAttribute="trailing" id="cAU-bJ-DfV"/>
-                        <constraint firstItem="5Bt-VB-Dba" firstAttribute="leading" secondItem="dZP-Ul-oSB" secondAttribute="trailing" id="pHA-7b-NC5"/>
+                        <constraint firstAttribute="width" constant="24" id="6zn-IR-p7a"/>
                     </constraints>
-                </customView>
+                    <buttonCell key="cell" type="bevel" bezelStyle="rounded" image="back_icon" imagePosition="only" alignment="center" imageScaling="proportionallyDown" inset="2" id="lEo-fP-VyB">
+                        <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                        <font key="font" metaFont="system" size="23"/>
+                    </buttonCell>
+                    <connections>
+                        <action selector="back:" target="8au-ff-PAw" id="MfY-gk-scw"/>
+                    </connections>
+                </button>
+                <button translatesAutoresizingMaskIntoConstraints="NO" id="5Bt-VB-Dba">
+                    <rect key="frame" x="24" y="9" width="24" height="15"/>
+                    <constraints>
+                        <constraint firstAttribute="width" constant="24" id="cZI-NR-ghh"/>
+                    </constraints>
+                    <buttonCell key="cell" type="bevel" bezelStyle="rounded" image="forward_icon" imagePosition="only" alignment="center" imageScaling="proportionallyDown" inset="2" id="uF3-qn-F0a">
+                        <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                        <font key="font" metaFont="system" size="23"/>
+                    </buttonCell>
+                    <connections>
+                        <action selector="forward:" target="8au-ff-PAw" id="Hwj-Yo-Qtt"/>
+                    </connections>
+                </button>
+                <button translatesAutoresizingMaskIntoConstraints="NO" id="HAI-2S-GZQ">
+                    <rect key="frame" x="48" y="9" width="24" height="15"/>
+                    <constraints>
+                        <constraint firstAttribute="width" constant="24" id="Bk3-9A-EeN"/>
+                    </constraints>
+                    <buttonCell key="cell" type="bevel" bezelStyle="rounded" image="refresh_icon" imagePosition="overlaps" alignment="center" imageScaling="proportionallyDown" inset="2" id="SSf-hM-lhY">
+                        <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                        <font key="font" metaFont="system" size="23"/>
+                    </buttonCell>
+                    <connections>
+                        <action selector="reload:" target="8au-ff-PAw" id="y95-m6-iZ1"/>
+                    </connections>
+                </button>
+            </subviews>
+            <constraints>
+                <constraint firstAttribute="centerY" secondItem="5Bt-VB-Dba" secondAttribute="centerY" id="2iz-ND-ODT"/>
+                <constraint firstAttribute="centerY" secondItem="HAI-2S-GZQ" secondAttribute="centerY" id="Efu-ly-nfn"/>
+                <constraint firstAttribute="centerY" secondItem="dZP-Ul-oSB" secondAttribute="centerY" id="FYl-6N-5zd"/>
+                <constraint firstItem="dZP-Ul-oSB" firstAttribute="leading" secondItem="V9v-oH-CLo" secondAttribute="leading" id="P36-OS-GAI"/>
+                <constraint firstItem="HAI-2S-GZQ" firstAttribute="leading" secondItem="5Bt-VB-Dba" secondAttribute="trailing" id="cAU-bJ-DfV"/>
+                <constraint firstItem="5Bt-VB-Dba" firstAttribute="leading" secondItem="dZP-Ul-oSB" secondAttribute="trailing" id="pHA-7b-NC5"/>
+                <constraint firstAttribute="trailing" secondItem="HAI-2S-GZQ" secondAttribute="trailing" id="soW-Yt-FUQ"/>
+            </constraints>
+            <point key="canvasLocation" x="-426" y="1199"/>
+        </customView>
+        <customView id="Iss-xM-4Ib">
+            <rect key="frame" x="0.0" y="0.0" width="24" height="32"/>
+            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+            <subviews>
                 <button translatesAutoresizingMaskIntoConstraints="NO" id="XfF-w9-qlO">
-                    <rect key="frame" x="627" y="0.0" width="24" height="32"/>
+                    <rect key="frame" x="0.0" y="9" width="24" height="15"/>
                     <constraints>
                         <constraint firstAttribute="width" constant="24" id="O1n-dk-WFr"/>
                     </constraints>
@@ -285,14 +282,11 @@
                 </button>
             </subviews>
             <constraints>
-                <constraint firstAttribute="trailing" secondItem="XfF-w9-qlO" secondAttribute="trailing" id="ScP-H6-pcc"/>
-                <constraint firstAttribute="bottom" secondItem="V9v-oH-CLo" secondAttribute="bottom" id="TY7-Sy-rWe"/>
-                <constraint firstItem="V9v-oH-CLo" firstAttribute="top" secondItem="Pem-Bq-pDs" secondAttribute="top" id="YVh-iR-cBq"/>
-                <constraint firstItem="V9v-oH-CLo" firstAttribute="leading" secondItem="Pem-Bq-pDs" secondAttribute="leading" constant="64" id="cEB-9C-Fnb"/>
-                <constraint firstAttribute="trailing" secondItem="V9v-oH-CLo" secondAttribute="trailing" constant="64" id="pcy-tI-xwH"/>
-                <constraint firstItem="XfF-w9-qlO" firstAttribute="top" secondItem="Pem-Bq-pDs" secondAttribute="top" id="rTc-5I-7Vt"/>
-                <constraint firstAttribute="bottom" secondItem="XfF-w9-qlO" secondAttribute="bottom" id="zqj-GW-B55"/>
+                <constraint firstItem="XfF-w9-qlO" firstAttribute="leading" secondItem="Iss-xM-4Ib" secondAttribute="leading" id="0V6-XG-Ewc"/>
+                <constraint firstAttribute="trailing" secondItem="XfF-w9-qlO" secondAttribute="trailing" id="jGa-xG-jnk"/>
+                <constraint firstItem="XfF-w9-qlO" firstAttribute="centerY" secondItem="Iss-xM-4Ib" secondAttribute="centerY" id="sOf-6o-oSa"/>
             </constraints>
+            <point key="canvasLocation" x="-190" y="1087"/>
         </customView>
     </objects>
     <resources>

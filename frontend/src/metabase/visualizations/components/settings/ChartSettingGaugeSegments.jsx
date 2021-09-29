@@ -1,9 +1,10 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 import _ from "underscore";
 
-import colors, { normal } from "metabase/lib/colors";
+import { color, normal } from "metabase/lib/colors";
 
 import ColorPicker from "metabase/components/ColorPicker";
 import Button from "metabase/components/Button";
@@ -28,61 +29,63 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
           </tr>
         </thead>
         <tbody>
-          {segments.map((segment, index) => [
-            <tr>
-              <td>
-                <ColorPicker
-                  value={segment.color}
-                  onChange={color => onChangeProperty(index, "color", color)}
-                  triggerSize={28}
-                  padding={2}
-                  colors={getColorPalette()}
-                />
-              </td>
-              <td>
-                <NumericInput
-                  type="number"
-                  className="input full"
-                  value={segment.min}
-                  onChange={value => onChangeProperty(index, "min", value)}
-                  placeholder={t`Min`}
-                />
-              </td>
-              <td>
-                <NumericInput
-                  type="number"
-                  className="input full"
-                  value={segment.max}
-                  onChange={value => onChangeProperty(index, "max", value)}
-                  placeholder={t`Max`}
-                />
-              </td>
-              <td>
-                {segments.length > 1 && (
-                  <Icon
-                    name="close"
-                    className="cursor-pointer text-grey-2 text-grey-4-hover ml2"
-                    onClick={() =>
-                      onChange(segments.filter((v, i) => i !== index))
-                    }
+          {segments.map((segment, index) => (
+            <React.Fragment key={segment.index}>
+              <tr>
+                <td>
+                  <ColorPicker
+                    value={segment.color}
+                    onChange={color => onChangeProperty(index, "color", color)}
+                    triggerSize={28}
+                    padding={2}
+                    colors={getColorPalette()}
                   />
-                )}
-              </td>
-            </tr>,
-            <tr>
-              <td colSpan={3} className="pb2">
-                <input
-                  type="text"
-                  className="input full"
-                  value={segment.label}
-                  onChange={e =>
-                    onChangeProperty(index, "label", e.target.value)
-                  }
-                  placeholder={t`Label for this range (optional)`}
-                />
-              </td>
-            </tr>,
-          ])}
+                </td>
+                <td>
+                  <NumericInput
+                    type="number"
+                    className="input full"
+                    value={segment.min}
+                    onChange={value => onChangeProperty(index, "min", value)}
+                    placeholder={t`Min`}
+                  />
+                </td>
+                <td>
+                  <NumericInput
+                    type="number"
+                    className="input full"
+                    value={segment.max}
+                    onChange={value => onChangeProperty(index, "max", value)}
+                    placeholder={t`Max`}
+                  />
+                </td>
+                <td>
+                  {segments.length > 1 && (
+                    <Icon
+                      name="close"
+                      className="cursor-pointer text-grey-2 text-grey-4-hover ml2"
+                      onClick={() =>
+                        onChange(segments.filter((v, i) => i !== index))
+                      }
+                    />
+                  )}
+                </td>
+              </tr>
+              <tr>
+                <td colSpan={3} className="pb2">
+                  <input
+                    type="text"
+                    className="input full"
+                    value={segment.label}
+                    onChange={e =>
+                      onChangeProperty(index, "label", e.target.value)
+                    }
+                    placeholder={t`Label for this range (optional)`}
+                  />
+                </td>
+              </tr>
+            </React.Fragment>
+          ))}
         </tbody>
       </table>
       <Button
@@ -98,11 +101,11 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
 
 function getColorPalette() {
   return [
-    colors["error"],
-    colors["warning"],
-    colors["success"],
+    color("error"),
+    color("warning"),
+    color("success"),
     ...Object.values(normal).slice(0, 9),
-    colors["bg-medium"],
+    color("bg-medium"),
   ];
 }
 
@@ -114,7 +117,7 @@ function newSegment(segments) {
     : -1;
   const nextColor =
     lastColorIndex >= 0
-      ? palette[lastColorIndex + 1 % palette.length]
+      ? palette[lastColorIndex + (1 % palette.length)]
       : palette[0];
 
   return {

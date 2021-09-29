@@ -1,8 +1,6 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React from "react";
 
-import FieldName from "./FieldName.jsx";
 import Value from "metabase/components/Value";
 
 import Dimension from "metabase-lib/lib/Dimension";
@@ -11,20 +9,21 @@ import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
 import { hasFilterOptions } from "metabase/lib/query/filter";
 import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
 
-import { t, ngettext, msgid } from "c-3po";
+import { t, ngettext, msgid } from "ttag";
 
-import type { Filter as FilterT } from "metabase/meta/types/Query";
-import type { Value as ValueType } from "metabase/meta/types/Dataset";
+import type { Filter as FilterObject } from "metabase-types/types/Query";
+import type { Value as ValueType } from "metabase-types/types/Dataset";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
+import FilterWrapper from "metabase-lib/lib/queries/structured/Filter";
 
 export type FilterRenderer = ({
-  field?: ?React$Element<any>,
+  field?: React.Element,
   operator: ?string,
-  values: (React$Element<any> | string)[],
-}) => React$Element<any>;
+  values: (React.Element | string)[],
+}) => React.Element;
 
 type Props = {
-  filter: FilterT,
+  filter: FilterObject | FilterWrapper,
   metadata: Metadata,
   maxDisplayValues?: number,
   children?: FilterRenderer,
@@ -43,12 +42,14 @@ const DEFAULT_FILTER_RENDERER: FilterRenderer = ({
   }
   return (
     <span>
-      {items.filter(f => f).map((item, index, array) => (
-        <span>
-          {item}
-          {index < array.length - 1 ? " " : null}
-        </span>
-      ))}
+      {items
+        .filter(f => f)
+        .map((item, index, array) => (
+          <span key={index}>
+            {item}
+            {index < array.length - 1 ? " " : null}
+          </span>
+        ))}
     </span>
   );
 };
@@ -59,9 +60,8 @@ export const OperatorFilter = ({
   maxDisplayValues,
   children = DEFAULT_FILTER_RENDERER,
 }: Props) => {
-  let [op, field] = filter;
-  // $FlowFixMe
-  let values: ValueType[] = hasFilterOptions(filter)
+  const [op, field] = filter;
+  const values: ValueType[] = hasFilterOptions(filter)
     ? filter.slice(2, -1)
     : filter.slice(2);
 
@@ -70,10 +70,9 @@ export const OperatorFilter = ({
     return null;
   }
 
-  const operator = dimension.operator(op);
+  const operator = dimension.filterOperator(op);
 
   let formattedValues;
-  // $FlowFixMe: not understanding maxDisplayValues is provided by defaultProps
   if (operator && operator.multi && values.length > maxDisplayValues) {
     const n = values.length;
     formattedValues = [ngettext(msgid`${n} selection`, `${n} selections`, n)];
@@ -97,7 +96,7 @@ export const OperatorFilter = ({
       ));
   }
   return children({
-    field: <FieldName field={field} tableMetadata={dimension.field().table} />,
+    field: dimension.displayName(),
     operator: operator && operator.moreVerboseName,
     values: formattedValues,
   });

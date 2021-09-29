@@ -1,8 +1,6 @@
-/* @flow */
-
 import React from "react";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import EmptyState from "metabase/components/EmptyState";
 
@@ -13,6 +11,7 @@ import {
 } from "metabase/visualizations/lib/settings";
 
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
+import NoResults from "assets/img/no_results.svg";
 
 type SettingId = string;
 type Settings = { [id: SettingId]: any };
@@ -21,20 +20,18 @@ type Props = {
   value: Settings,
   onChange: (settings: Settings) => void,
   column: any,
-  whitelist?: Set<SettingId>,
-  blacklist?: Set<SettingId>,
+  allowlist?: Set<SettingId>,
+  denylist?: Set<SettingId>,
   inheritedSettings?: Settings,
-  noReset?: boolean,
 };
 
 const ColumnSettings = ({
   value,
   onChange,
   column,
-  whitelist,
-  blacklist,
+  allowlist,
+  denylist,
   inheritedSettings = {},
-  noReset = false,
 }: Props) => {
   const storedSettings = value || {};
 
@@ -46,7 +43,6 @@ const ColumnSettings = ({
     column = { ...column, unit: "default" };
   }
 
-  // $FlowFixMe
   const settingsDefs = getSettingDefintionsForColumn(series, column);
 
   const computedSettings = getComputedSettings(
@@ -67,8 +63,8 @@ const ColumnSettings = ({
     { series },
   ).filter(
     widget =>
-      (!whitelist || whitelist.has(widget.id)) &&
-      (!blacklist || !blacklist.has(widget.id)),
+      (!allowlist || allowlist.has(widget.id)) &&
+      (!denylist || !denylist.has(widget.id)),
   );
 
   return (
@@ -82,13 +78,12 @@ const ColumnSettings = ({
             hidden={false}
             unset={storedSettings[widget.id] === undefined}
             noPadding
-            noReset={noReset || widget.noReset}
           />
         ))
       ) : (
         <EmptyState
           message={t`No formatting settings`}
-          illustrationElement={<img src="../app/assets/img/no_results.svg" />}
+          illustrationElement={<img src={NoResults} />}
         />
       )}
     </div>

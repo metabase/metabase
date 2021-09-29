@@ -1,13 +1,16 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import styles from "./RefreshWidget.css";
 
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
-import Tooltip from "metabase/components/Tooltip.jsx";
-import Icon from "metabase/components/Icon.jsx";
-import ClockIcon from "metabase/components/icons/ClockIcon.jsx";
-import CountdownIcon from "metabase/components/icons/CountdownIcon.jsx";
-import { t } from "c-3po";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import Tooltip from "metabase/components/Tooltip";
+import Icon from "metabase/components/Icon";
+import ClockIcon from "metabase/components/icons/ClockIcon";
+import CountdownIcon from "metabase/components/icons/CountdownIcon";
+import { t } from "ttag";
 import cx from "classnames";
+
+import { DashboardHeaderButton } from "./DashboardHeader.styled";
 
 const OPTIONS = [
   { name: t`Off`, period: null },
@@ -20,16 +23,43 @@ const OPTIONS = [
 ];
 
 export default class RefreshWidget extends Component {
+  constructor(props) {
+    super(props);
+
+    this.popover = React.createRef();
+  }
+  state = { elapsed: null };
+
+  UNSAFE_componentWillMount() {
+    const { setRefreshElapsedHook } = this.props;
+    if (setRefreshElapsedHook) {
+      setRefreshElapsedHook(elapsed => this.setState({ elapsed }));
+    }
+  }
+
+  componentDidUpdate(prevProps) {
+    const { setRefreshElapsedHook } = this.props;
+    if (
+      setRefreshElapsedHook &&
+      prevProps.setRefreshElapsedHook !== setRefreshElapsedHook
+    ) {
+      setRefreshElapsedHook(elapsed => this.setState({ elapsed }));
+    }
+  }
+
   render() {
-    const { period, elapsed, onChangePeriod, className } = this.props;
+    const { period, onChangePeriod, className } = this.props;
+    const { elapsed } = this.state;
     const remaining = period - elapsed;
     return (
       <PopoverWithTrigger
-        ref="popover"
+        ref={this.popover}
         triggerElement={
           elapsed == null ? (
             <Tooltip tooltip={t`Auto-refresh`}>
-              <ClockIcon width={18} height={18} className={className} />
+              <DashboardHeaderButton>
+                <ClockIcon width={18} height={18} className={className} />
+              </DashboardHeaderButton>
             </Tooltip>
           ) : (
             <Tooltip
@@ -42,12 +72,14 @@ export default class RefreshWidget extends Component {
                 Math.round(remaining % 60)
               }
             >
-              <CountdownIcon
-                width={18}
-                height={18}
-                className="text-green"
-                percent={Math.min(0.95, (period - elapsed) / period)}
-              />
+              <DashboardHeaderButton>
+                <CountdownIcon
+                  width={18}
+                  height={18}
+                  className="text-green"
+                  percent={Math.min(0.95, (period - elapsed) / period)}
+                />
+              </DashboardHeaderButton>
             </Tooltip>
           )
         }
@@ -63,7 +95,7 @@ export default class RefreshWidget extends Component {
                 period={option.period}
                 selected={option.period === period}
                 onClick={() => {
-                  this.refs.popover.close();
+                  this.popover.current.close();
                   onChangePeriod(option.period);
                 }}
               />

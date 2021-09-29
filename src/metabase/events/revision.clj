@@ -2,12 +2,11 @@
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
             [metabase.events :as events]
-            (metabase.models [card :refer [Card]]
-                             [dashboard :refer [Dashboard]]
-                             [metric :refer [Metric]]
-                             [revision :refer [push-revision!]]
-                             [segment :refer [Segment]])))
-
+            [metabase.models.card :refer [Card]]
+            [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.models.metric :refer [Metric]]
+            [metabase.models.revision :refer [push-revision!]]
+            [metabase.models.segment :refer [Segment]]))
 
 (def ^:const revisions-topics
   "The `Set` of event topics which are subscribed to for use in revision tracking."
@@ -25,8 +24,8 @@
     :segment-update
     :segment-delete})
 
-(def ^:private revisions-channel
-  "Channel for receiving event notifications we want to subscribe to for revision events."
+(defonce ^:private ^{:doc "Channel for receiving event notifications we want to subscribe to for revision events."}
+  revisions-channel
   (async/chan))
 
 
@@ -76,8 +75,6 @@
 
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
-
-(defn events-init
-  "Automatically called during startup; start event listener for revision events."
-  []
+(defmethod events/init! ::Revisions
+  [_]
   (events/start-event-listener! revisions-topics revisions-channel process-revision-event!))

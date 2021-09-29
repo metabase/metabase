@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 import { Route } from "react-router";
 
@@ -18,7 +16,7 @@ type Props = {
 export default class QuestionApp extends React.Component {
   props: Props;
 
-  static routes: ?[React$Element<Route>];
+  static routes: ?[React.Element];
 
   render() {
     const { location, params } = this.props;
@@ -31,21 +29,25 @@ export default class QuestionApp extends React.Component {
       );
     }
     return (
-      <QuestionAndResultLoader
-        questionHash={location.hash}
-        questionId={params.questionId ? parseInt(params.questionId) : null}
-      >
-        {({ rawSeries }) =>
-          rawSeries && (
-            <Visualization className="flex-full" rawSeries={rawSeries} />
-          )
-        }
-      </QuestionAndResultLoader>
+      <div style={{ height: 500 }}>
+        <QuestionAndResultLoader
+          questionHash={location.hash}
+          questionId={params.questionId ? parseInt(params.questionId) : null}
+        >
+          {({ rawSeries }) =>
+            rawSeries && (
+              <Visualization className="flex-full" rawSeries={rawSeries} />
+            )
+          }
+        </QuestionAndResultLoader>
+      </div>
     );
   }
 }
 
-QuestionApp.routes = [
-  <Route path="question" component={QuestionApp} />,
-  <Route path="question/:questionId" component={QuestionApp} />,
-];
+QuestionApp.routes = (
+  <React.Fragment>
+    <Route path="question" component={QuestionApp} />
+    <Route path="question/:questionId" component={QuestionApp} />
+  </React.Fragment>
+);

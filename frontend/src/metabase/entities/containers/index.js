@@ -1,17 +1,14 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import EntityListLoader, { entityListLoader } from "./EntityListLoader";
 import EntityObjectLoader, { entityObjectLoader } from "./EntityObjectLoader";
 import EntityName from "./EntityName";
 import EntityForm from "./EntityForm";
-
-import inflection from "inflection";
+import EntityLink from "./EntityLink";
 
 export function addEntityContainers(entity) {
-  // NOTE: need to use inflection directly here due to circular dependency
-  const ObjectName = inflection.capitalize(
-    entity.nameOne || inflection.singularize(entity.name),
-  );
+  const ObjectName = entity.nameOne;
 
   // Entity.load higher-order component
   entity.load = ({ id, ...props } = {}) =>
@@ -38,6 +35,12 @@ export function addEntityContainers(entity) {
     <EntityName entityType={entity.name} entityId={id} {...props} />
   );
   entity.Name.displayName = `${ObjectName}.Name`;
+
+  // Entity.Link component
+  entity.Link = ({ id, ...props }) => (
+    <EntityLink entityType={entity.name} entityId={id} {...props} />
+  );
+  entity.Link.displayName = `${ObjectName}.Link`;
 
   // Entity.Form component
   entity.Form = ({ object, ...props }) => (

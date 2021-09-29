@@ -1,12 +1,7 @@
-/* @flow */
+import { t } from "ttag";
 
-import PivotByTimeAction from "../actions/PivotByTimeAction";
+import { isDate } from "metabase/lib/schema_metadata";
 
-import type {
-  ClickAction,
-  ClickActionProps,
-} from "metabase/meta/types/Visualization";
+import PivotByDrill from "./PivotByDrill";
 
-export default (props: ClickActionProps): ClickAction[] => {
-  return PivotByTimeAction(props);
-};
+export default PivotByDrill(t`Time`, "clock", field => isDate(field));

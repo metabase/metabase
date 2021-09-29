@@ -4,9 +4,7 @@ import PropTypes from "prop-types";
 import { Link } from "react-router";
 import S from "./Sidebar.css";
 
-import LabelIcon from "./LabelIcon.jsx";
-
-import pure from "recompose/pure";
+import LabelIcon from "./LabelIcon";
 
 const SidebarItem = ({ name, sidebar, icon, href }) => (
   <li>
@@ -24,4 +22,4 @@ SidebarItem.propTypes = {
   href: PropTypes.string.isRequired,
 };
 
-export default pure(SidebarItem);
+export default React.memo(SidebarItem);

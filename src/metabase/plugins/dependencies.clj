@@ -1,5 +1,7 @@
 (ns metabase.plugins.dependencies
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
+            [environ.core :as env]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]))
@@ -7,11 +9,11 @@
 (def ^:private plugins-with-unsatisfied-deps
   (atom #{}))
 
-
-(defn- dependency-type [{classname :class, plugin :plugin}]
+(defn- dependency-type [{classname :class, plugin :plugin, env-var :env-var}]
   (cond
     classname :class
     plugin    :plugin
+    env-var   :env-var
     :else     :unknown))
 
 (defmulti ^:private dependency-satisfied?
@@ -59,6 +61,16 @@
   [initialized-plugin-names {{plugin-name :name} :info, :as info} {dep-plugin-name :plugin}]
   (log-once plugin-name (trs "Plugin ''{0}'' depends on plugin ''{1}''" plugin-name dep-plugin-name))
   ((set initialized-plugin-names) dep-plugin-name))
+
+(defmethod dependency-satisfied? :env-var
+  [_ {{plugin-name :name} :info, :as info} {env-var-name :env-var}]
+  (if (str/blank? (env/env (keyword env-var-name)))
+    (do
+      (log-once plugin-name (trs "Plugin ''{0}'' depends on environment variable ''{1}'' being set to something"
+                                 plugin-name
+                                 env-var-name))
+      false)
+    true))
 
 (defn- all-dependencies-satisfied?*
   [initialized-plugin-names {:keys [dependencies], {plugin-name :name} :info, :as info}]

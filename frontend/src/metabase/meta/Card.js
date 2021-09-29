@@ -1,36 +1,33 @@
-/* @flow */
-
 import {
   getTemplateTagParameters,
   getParameterTargetFieldId,
   parameterToMBQLFilter,
+  normalizeParameterValue,
+  getValuePopulatedParameters,
 } from "metabase/meta/Parameter";
 
 import * as Query from "metabase/lib/query/query";
-import Q from "metabase/lib/query"; // legacy
+import * as Q_DEPRECATED from "metabase/lib/query"; // legacy
 import Utils from "metabase/lib/utils";
 import * as Urls from "metabase/lib/urls";
 
 import _ from "underscore";
 import { assoc, updateIn } from "icepick";
 
-import type {
-  StructuredQuery,
-  NativeQuery,
-  TemplateTag,
-} from "metabase/meta/types/Query";
+import type { StructuredQuery, TemplateTag } from "metabase-types/types/Query";
 import type {
   Card,
   DatasetQuery,
   StructuredDatasetQuery,
   NativeDatasetQuery,
-} from "metabase/meta/types/Card";
+} from "metabase-types/types/Card";
 import type {
   Parameter,
   ParameterMapping,
   ParameterValues,
-} from "metabase/meta/types/Parameter";
-import type { Metadata, TableMetadata } from "metabase/meta/types/Metadata";
+} from "metabase-types/types/Parameter";
+import type Metadata from "metabase-lib/lib/metadata/Metadata";
+import type Table from "metabase-lib/lib/metadata/Table";
 
 declare class Object {
   static values<T>(object: { [key: string]: T }): Array<T>;
@@ -67,24 +64,6 @@ export function isNative(card: Card): boolean {
   return card.dataset_query.type === "native";
 }
 
-export function canRun(card: Card): boolean {
-  if (card.dataset_query.type === "query") {
-    const query = getQuery(card);
-    return (
-      query != null &&
-      query["source-table"] != undefined &&
-      Query.hasValidAggregation(query)
-    );
-  } else if (card.dataset_query.type === "native") {
-    const native: NativeQuery = card.dataset_query.native;
-    return (
-      native && card.dataset_query.database != undefined && native.query !== ""
-    );
-  } else {
-    return false;
-  }
-}
-
 export function cardVisualizationIsEquivalent(
   cardA: Card,
   cardB: Card,
@@ -104,10 +83,16 @@ export function cardQueryIsEquivalent(cardA: Card, cardB: Card): boolean {
   );
 }
 
-export function cardIsEquivalent(cardA: Card, cardB: Card): boolean {
+export function cardIsEquivalent(
+  cardA: Card,
+  cardB: Card,
+  { checkParameters = false }: { checkParameters: boolean } = {},
+): boolean {
   return (
     cardQueryIsEquivalent(cardA, cardB) &&
-    cardVisualizationIsEquivalent(cardA, cardB)
+    cardVisualizationIsEquivalent(cardA, cardB) &&
+    (!checkParameters ||
+      _.isEqual(cardA.parameters || [], cardB.parameters || []))
   );
 }
 
@@ -119,44 +104,48 @@ export function getQuery(card: Card): ?StructuredQuery {
   }
 }
 
-export function getTableMetadata(
-  card: Card,
-  metadata: Metadata,
-): ?TableMetadata {
+export function getTableMetadata(card: Card, metadata: Metadata): ?Table {
   const query = getQuery(card);
   if (query && query["source-table"] != null) {
-    return metadata.tables[query["source-table"]] || null;
+    return metadata.table(query["source-table"]) || null;
   }
   return null;
 }
 
-export function getTemplateTags(card: ?Card): Array<TemplateTag> {
-  return card &&
+export function getTemplateTagsForParameters(card: ?Card): Array<TemplateTag> {
+  const templateTags =
+    card &&
     card.dataset_query &&
     card.dataset_query.type === "native" &&
     card.dataset_query.native["template-tags"]
-    ? Object.values(card.dataset_query.native["template-tags"])
-    : [];
+      ? Object.values(card.dataset_query.native["template-tags"])
+      : [];
+  return templateTags.filter(
+    // this should only return template tags that define a parameter of the card
+    tag => tag.type !== "card" && tag.type !== "snippet",
+  );
 }
 
-export function getParameters(card: ?Card): Parameter[] {
+export function getParametersFromCard(card: ?Card): Parameter[] {
   if (card && card.parameters) {
     return card.parameters;
   }
 
-  const tags: TemplateTag[] = getTemplateTags(card);
+  const tags: TemplateTag[] = getTemplateTagsForParameters(card);
   return getTemplateTagParameters(tags);
 }
 
-export function getParametersWithExtras(
+export function getValueAndFieldIdPopulatedParametersFromCard(
   card: Card,
   parameterValues?: ParameterValues,
 ): Parameter[] {
-  return getParameters(card).map(parameter => {
-    // if we have a parameter value for this parameter, set "value"
-    if (parameterValues && parameter.id in parameterValues) {
-      parameter = assoc(parameter, "value", parameterValues[parameter.id]);
-    }
+  const parameters = getParametersFromCard(card);
+  const valuePopulatedParameters = getValuePopulatedParameters(
+    parameters,
+    parameterValues,
+  );
+
+  return valuePopulatedParameters.map(parameter => {
     // if we have a field id for this parameter, set "field_id"
     const fieldId = getParameterTargetFieldId(
       parameter.target,
@@ -165,6 +154,7 @@ export function getParametersWithExtras(
     if (fieldId != null) {
       parameter = assoc(parameter, "field_id", fieldId);
     }
+    parameter = assoc(parameter, "hasOnlyFieldTargets", fieldId != null);
     return parameter;
   });
 }
@@ -180,11 +170,11 @@ export function applyParameters(
   const datasetQuery = Utils.copy(card.dataset_query);
   // clean the query
   if (datasetQuery.type === "query") {
-    datasetQuery.query = Q.cleanQuery(datasetQuery.query);
+    datasetQuery.query = Q_DEPRECATED.cleanQuery(datasetQuery.query);
   }
   datasetQuery.parameters = [];
   for (const parameter of parameters || []) {
-    let value = parameterValues[parameter.id];
+    const value = parameterValues[parameter.id];
     if (value == null) {
       continue;
     }
@@ -204,19 +194,21 @@ export function applyParameters(
             parameter_id: parameter.id,
           },
     );
+
+    const type = parameter.type;
     if (mapping) {
       // mapped target, e.x. on a dashboard
       datasetQuery.parameters.push({
-        type: parameter.type,
+        type,
+        value: normalizeParameterValue(type, value),
         target: mapping.target,
-        value: value,
       });
     } else if (parameter.target) {
       // inline target, e.x. on a card
       datasetQuery.parameters.push({
-        type: parameter.type,
+        type,
+        value: normalizeParameterValue(type, value),
         target: parameter.target,
-        value: value,
       });
     }
   }
@@ -238,12 +230,12 @@ export function questionUrlWithParameters(
   cardIsDirty: boolean = true,
 ): DatasetQuery {
   if (!card.dataset_query) {
-    return Urls.question(card.id);
+    return Urls.question(card);
   }
 
   card = Utils.copy(card);
 
-  const cardParameters = getParameters(card);
+  const cardParameters = getParametersFromCard(card);
   const datasetQuery = applyParameters(
     card,
     parameters,
@@ -258,7 +250,7 @@ export function questionUrlWithParameters(
     datasetQuery.parameters &&
     datasetQuery.parameters.length === 0
   ) {
-    return Urls.question(card.id);
+    return Urls.question(card);
   }
 
   const query = {};

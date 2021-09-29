@@ -1,7 +1,10 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import Select, { Option } from "metabase/components/Select";
 import { formatBucketing } from "metabase/lib/query_time";
+
+import type { RelativeDatetimeUnit } from "metabase-types/types/Query";
 
 type DateUnitSelectorProps = {
   value: RelativeDatetimeUnit,
@@ -14,6 +17,7 @@ type DateUnitSelectorProps = {
 };
 
 const DateUnitSelector = ({
+  className,
   open,
   value,
   onChange,
@@ -23,6 +27,7 @@ const DateUnitSelector = ({
   periods,
 }: DateUnitSelectorProps) => (
   <Select
+    className={className}
     value={value}
     onChange={e => onChange(e.target.value)}
     width={150}

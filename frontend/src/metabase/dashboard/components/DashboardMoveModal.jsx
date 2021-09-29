@@ -1,42 +1,46 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { withRouter } from "react-router";
 import { connect } from "react-redux";
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
 
 import { Flex } from "grid-styled";
 import Icon from "metabase/components/Icon";
-import Link from "metabase/components/Link";
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 
+import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
-import { normal } from "metabase/lib/colors";
 
 import Dashboards from "metabase/entities/dashboards";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
+import Collection, { ROOT_COLLECTION } from "metabase/entities/collections";
 
 const mapDispatchToProps = {
   setDashboardCollection: Dashboards.actions.setCollection,
 };
 
 @withRouter
-@connect(null, mapDispatchToProps)
+@connect(
+  null,
+  mapDispatchToProps,
+)
 class DashboardMoveModal extends React.Component {
   render() {
-    const { onClose, setDashboardCollection } = this.props;
+    const { params, onClose, setDashboardCollection } = this.props;
+    const dashboardId = Urls.extractEntityId(params.slug);
     return (
       <CollectionMoveModal
         title={t`Move dashboard to...`}
         onClose={onClose}
-        onMove={async collection => {
-          await setDashboardCollection(
-            { id: this.props.params.dashboardId },
-            collection,
-            {
-              notify: {
-                message: <DashbordMoveToast collection={collection} />,
-              },
+        onMove={async destination => {
+          await setDashboardCollection({ id: dashboardId }, destination, {
+            notify: {
+              message: (
+                <DashboardMoveToast
+                  collectionId={destination.id || ROOT_COLLECTION.id}
+                />
+              ),
             },
-          );
+          });
           onClose();
         }}
       />
@@ -46,17 +50,11 @@ class DashboardMoveModal extends React.Component {
 
 export default DashboardMoveModal;
 
-const DashbordMoveToast = ({ collection }) => (
+const DashboardMoveToast = ({ collectionId }) => (
   <Flex align="center">
     <Icon name="all" mr={1} color="white" />
     {jt`Dashboard moved to ${(
-      <Link
-        ml={1}
-        color={normal.blue}
-        to={Urls.collection(collection && collection.id)}
-      >
-        {collection ? collection.name : ROOT_COLLECTION.name}
-      </Link>
+      <Collection.Link id={collectionId} ml={1} color={color("brand")} />
     )}`}
   </Flex>
 );

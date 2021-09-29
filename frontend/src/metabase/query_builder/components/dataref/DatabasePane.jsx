@@ -1,36 +1,40 @@
 /* eslint "react/prop-types": "warn" */
 import React from "react";
 import PropTypes from "prop-types";
-import { isQueryable } from "metabase/lib/table";
-import Icon from "metabase/components/Icon.jsx";
+import DatabaseSchemasPane from "./DatabaseSchemasPane";
+import DatabaseTablesPane from "./DatabaseTablesPane";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
+import Databases from "metabase/entities/databases";
 
-const DatabasePane = ({ database, show, ...props }) => (
-  <div>
-    <div className="ml1 my2 flex align-center justify-between border-bottom pb1">
-      <div className="flex align-center">
-        <Icon name="database" className="text-medium pr1" size={14} />
-        <h3>{database.name}</h3>
-      </div>
-      <div className="flex align-center">
-        <Icon name="table2" className="text-light pr1" size={12} />
-        <span className="text-medium">{database.tables.length}</span>
-      </div>
-    </div>
+@Databases.load({
+  id: (state, { database }) => database && database.id,
+  wrapped: true,
+})
+class DatabasePane extends React.Component {
+  componentDidMount() {
+    const { database } = this.props;
+    if (database.schemas.length === 0) {
+      database.fetchSchemas();
+    }
+  }
 
-    <ul>
-      {database.tables.filter(isQueryable).map((table, index) => (
-        <li key={table.id}>
-          <a
-            className="flex-full flex p1 text-bold text-brand no-decoration bg-medium-hover"
-            onClick={() => show("table", table)}
-          >
-            {table.name}
-          </a>
-        </li>
-      ))}
-    </ul>
-  </div>
-);
+  componentDidUpdate(prevProps) {
+    const { database } = this.props;
+    if (database.id !== prevProps.database.id) {
+      database.fetchSchemas();
+    }
+  }
+
+  render() {
+    const { schemas } = this.props.database;
+    if (schemas.length === 0) {
+      return <LoadingSpinner />;
+    }
+    const Component =
+      schemas.length > 1 ? DatabaseSchemasPane : DatabaseTablesPane;
+    return <Component {...this.props} />;
+  }
+}
 
 DatabasePane.propTypes = {
   show: PropTypes.func.isRequired,

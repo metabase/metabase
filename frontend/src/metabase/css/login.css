@@ -1,122 +1,3 @@
-/* ensure our form doesn't get too wide */
-.Login-wrapper {
-  max-width: 1240px;
-  margin: 0 auto;
-}
-
-/* the login content should always sit on top of the illustration */
-.Login-content {
-  position: relative;
-}
-
-.Login-header {
-  color: var(--color-text-dark);
-}
-
-.brand-scene {
-  overflow: hidden;
-  height: 180px;
-}
-
-.brand-boat-container {
-  position: absolute;
-  bottom: 0;
-  z-index: 6;
-  -webkit-animation: boat_trip 200s linear infinite;
-  margin-bottom: 0.5em;
-}
-
-.brand-boat {
-  transform-origin: 50% bottom;
-  animation: boat_rock 2s ease-in-out infinite;
-  animation-direction: alternate;
-}
-
-@keyframes boat_trip {
-  0% {
-    margin-left: -2%;
-  }
-  10% {
-    margin-left: 5%;
-    transform: translate3d(0, 0, 2%);
-  }
-  100% {
-    margin-left: 120%;
-  }
-}
-
-@keyframes boat_lost {
-  0% {
-    margin-left: 40%;
-    transform: rotateY(0deg);
-  }
-  45% {
-    margin-left: 60%;
-    transform: rotateY(0deg);
-  }
-  50% {
-    margin-left: 60%;
-    transform: rotateY(180deg);
-  }
-  95% {
-    margin-left: 40%;
-    transform: rotateY(180deg);
-  }
-  100% {
-    margin-left: 40%;
-    transform: rotateY(0deg);
-  }
-}
-
-@keyframes boat_rock {
-  from {
-    transform: rotate(-10deg);
-  }
-  to {
-    transform: rotate(10deg);
-  }
-}
-
-.brand-illustration {
-  height: 180px;
-  position: absolute;
-  bottom: 15px;
-  z-index: 5;
-  margin: 0 auto;
-  display: flex;
-}
-
-.brand-bridge {
-  margin-left: -140px;
-}
-
-.brand-mountain-1 {
-  position: relative;
-  z-index: 50;
-}
-
-.NotFoundScene .brand-bridge,
-.NotFoundScene .brand-mountain-1,
-.NotFoundScene .brand-mountain-1,
-.NotFoundScene .brand-illustration {
-  display: none;
-}
-
-.NotFoundScene .brand-boat-container {
-  animation: boat_lost 30s linear infinite;
-}
-
-/* flip the second mountain around */
-.brand-mountain-2 {
-  -moz-transform: scaleX(-1);
-  -webkit-transform: scaleX(-1);
-  -o-transform: scaleX(-1);
-  transform: scaleX(-1);
-  -ms-filter: fliph; /*IE*/
-  filter: fliph; /*IE*/
-  margin-left: -170px;
-}
-
 .SuccessGroup {
   display: flex;
   flex-direction: column;
@@ -140,8 +21,33 @@
   text-align: center;
 }
 
-.ForgotForm,
-.SuccessGroup {
+#BridgeImg {
   position: relative;
-  z-index: 10;
+  left: -1240px;
+  bottom: -3px;
+}
+
+@media screen and (min-width: 800px) {
+  #BridgeImg {
+    left: -1040px;
+  }
+}
+
+@media screen and (min-width: 1200px) {
+  #BridgeImg {
+    left: -840px;
+  }
+}
+
+@media screen and (min-width: 1600px) {
+  #BridgeImg {
+    left: -640px;
+  }
+}
+
+@media screen and (min-width: 1920px) {
+  #BridgeImg {
+    width: 100%; /* ensure the image always stretches the full width */
+    left: 0px;
+  }
 }

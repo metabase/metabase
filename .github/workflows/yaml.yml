@@ -1,0 +1,30 @@
+name: YAML
+
+on:
+  pull_request:
+  push:
+    branches:
+      - '**'
+    paths:
+    - '**.yml'
+    - '**.yaml'
+    - 'package.json'
+
+jobs:
+
+  yaml-linter:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 5
+    steps:
+    - uses: actions/checkout@v2
+    - name: Prepare Node.js
+      uses: actions/setup-node@v1
+      with:
+        node-version: 14.x
+    - name: Get yarn cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.cache/yarn
+        key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+    - run: yarn install --frozen-lockfile --prefer-offline
+    - run: yarn run lint-yaml

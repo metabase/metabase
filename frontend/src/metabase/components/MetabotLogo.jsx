@@ -1,5 +1,7 @@
 import React from "react";
 
-const MetabotLogo = () => <img src="app/assets/img/metabot.svg" />;
+const MetabotLogo = () => (
+  <img className="brand-hue" src="app/assets/img/metabot.svg" />
+);
 
 export default MetabotLogo;

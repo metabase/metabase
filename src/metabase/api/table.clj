@@ -3,85 +3,124 @@
   (:require [clojure.tools.logging :as log]
             [compojure.core :refer [GET POST PUT]]
             [medley.core :as m]
-            [metabase
-             [driver :as driver]
-             [related :as related]
-             [sync :as sync]
-             [util :as u]]
             [metabase.api.common :as api]
+            [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models
-             [card :refer [Card]]
-             [database :as database]
-             [field :refer [Field]]
-             [field-values :as fv :refer [FieldValues]]
-             [interface :as mi]
-             [table :as table :refer [Table]]]
+            [metabase.events :as events]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.field-values :as fv :refer [FieldValues]]
+            [metabase.models.interface :as mi]
+            [metabase.models.table :as table :refer [Table]]
+            [metabase.related :as related]
+            [metabase.sync :as sync]
+            [metabase.sync.concurrent :as sync.concurrent]
             [metabase.sync.field-values :as sync-field-values]
-            [metabase.util
-             [i18n :refer [trs tru]]
-             [schema :as su]]
+            [metabase.types :as types]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [deferred-tru trs tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]]))
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]))
 
 (def ^:private TableVisibilityType
   "Schema for a valid table visibility type."
   (apply s/enum (map name table/visibility-types)))
 
+(def ^:private FieldOrder
+  "Schema for a valid table field ordering."
+  (apply s/enum (map name table/field-orderings)))
+
 (api/defendpoint GET "/"
   "Get all `Tables`."
   []
-  (for [table (-> (db/select Table, :active true, {:order-by [[:name :asc]]})
-                  (hydrate :db))
-        :when (mi/can-read? table)]
-    ;; if for some reason a Table doesn't have rows set then set it to 0 so UI doesn't barf.
-    ;; TODO - should that be part of `post-select` instead?
-    (update table :rows (fn [n]
-                          (or n 0)))))
+  (as-> (db/select Table, :active true, {:order-by [[:name :asc]]}) tables
+    (hydrate tables :db)
+    (filterv mi/can-read? tables)))
 
 (api/defendpoint GET "/:id"
   "Get `Table` with ID."
   [id]
-  (-> (api/read-check Table id)
-      (hydrate :db :pk_field)))
+  (u/prog1 (-> (api/read-check Table id)
+               (hydrate :db :pk_field))
+           (events/publish-event! :table-read (assoc <> :actor_id api/*current-user-id*))))
 
+(defn- update-table!*
+  "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`
+  if field positions have changed."
+  [{:keys [id] :as existing-table} {:keys [visibility_type] :as body}]
+  (api/check-500
+   (db/update! Table id
+               (assoc (u/select-keys-when body
+                        :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
+                        :present [:description :caveats :points_of_interest])
+                      :visibility_type visibility_type)))
+  (let [updated-table        (Table id)
+        changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
+    (if changed-field-order?
+      (do
+        (table/update-field-positions! updated-table)
+        (hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values]))
+      updated-table)))
+
+(defn- sync-unhidden-tables
+  "Function to call on newly unhidden tables. Starts a thread to sync all tables."
+  [newly-unhidden]
+  (when (seq newly-unhidden)
+    (sync.concurrent/submit-task
+     (fn []
+       (let [database (table/database (first newly-unhidden))]
+         (if (driver.u/can-connect-with-details? (:engine database) (:details database))
+           (doseq [table newly-unhidden]
+             (log/info (u/format-color 'green (trs "Table ''{0}'' is now visible. Resyncing." (:name table))))
+             (sync/sync-table! table))
+           (log/warn (u/format-color 'red (trs "Cannot connect to database ''{0}'' in order to sync unhidden tables"
+                                               (:name database))))))))))
+
+(defn- update-tables!
+  [ids {:keys [visibility_type] :as body}]
+  (let [existing-tables (db/select Table :id [:in ids])]
+    (api/check-404 (= (count existing-tables) (count ids)))
+    (run! api/write-check existing-tables)
+    (let [updated-tables (db/transaction (mapv #(update-table!* % body) existing-tables))
+          newly-unhidden (when (nil? visibility_type)
+                           (into [] (filter (comp some? :visibility_type)) existing-tables))]
+      (sync-unhidden-tables newly-unhidden)
+      updated-tables)))
 
 (api/defendpoint PUT "/:id"
   "Update `Table` with ID."
   [id :as {{:keys [display_name entity_type visibility_type description caveats points_of_interest
-                   show_in_getting_started], :as body} :body}]
+                   show_in_getting_started field_order], :as body} :body}]
   {display_name            (s/maybe su/NonBlankString)
    entity_type             (s/maybe su/EntityTypeKeywordOrString)
    visibility_type         (s/maybe TableVisibilityType)
    description             (s/maybe su/NonBlankString)
    caveats                 (s/maybe su/NonBlankString)
    points_of_interest      (s/maybe su/NonBlankString)
-   show_in_getting_started (s/maybe s/Bool)}
-  (api/write-check Table id)
-  (let [original-visibility-type (db/select-one-field :visibility_type Table :id id)]
-    ;; always update visibility type; update display_name, show_in_getting_started, entity_type if non-nil; update
-    ;; description and related fields if passed in
-    (api/check-500
-     (db/update! Table id
-       (assoc (u/select-keys-when body
-                :non-nil [:display_name :show_in_getting_started :entity_type]
-                :present [:description :caveats :points_of_interest])
-         :visibility_type visibility_type)))
-    (let [updated-table   (Table id)
-          now-visible?    (nil? (:visibility_type updated-table)) ; only Tables with `nil` visibility type are visible
-          was-visible?    (nil? original-visibility-type)
-          became-visible? (and now-visible? (not was-visible?))]
-      (when became-visible?
-        (log/info (u/format-color 'green (trs "Table ''{0}'' is now visible. Resyncing." (:name updated-table))))
-        (sync/sync-table! updated-table))
-      updated-table)))
+   show_in_getting_started (s/maybe s/Bool)
+   field_order             (s/maybe FieldOrder)}
+  (first (update-tables! [id] body)))
 
-(def ^:private auto-bin-str (tru "Auto bin"))
-(def ^:private dont-bin-str (tru "Don''t bin"))
-(def ^:private day-str (tru "Day"))
+(api/defendpoint PUT "/"
+  "Update all `Table` in `ids`."
+  [:as {{:keys [ids display_name entity_type visibility_type description caveats points_of_interest
+                show_in_getting_started], :as body} :body}]
+  {ids                     (su/non-empty [su/IntGreaterThanZero])
+   display_name            (s/maybe su/NonBlankString)
+   entity_type             (s/maybe su/EntityTypeKeywordOrString)
+   visibility_type         (s/maybe TableVisibilityType)
+   description             (s/maybe su/NonBlankString)
+   caveats                 (s/maybe su/NonBlankString)
+   points_of_interest      (s/maybe su/NonBlankString)
+   show_in_getting_started (s/maybe s/Bool)}
+  (update-tables! ids body))
+
+
+(def ^:private auto-bin-str (deferred-tru "Auto bin"))
+(def ^:private dont-bin-str (deferred-tru "Don''t bin"))
+(def ^:private day-str (deferred-tru "Day"))
 
 (def ^:private dimension-options
   (let [default-entry [auto-bin-str ["default"]]]
@@ -89,53 +128,56 @@
             (concat
              (map (fn [[name param]]
                     {:name name
-                     :mbql ["datetime-field" nil param]
+                     :mbql [:field nil {:temporal-unit param}]
                      :type "type/DateTime"})
                   ;; note the order of these options corresponds to the order they will be shown to the user in the UI
-                  [[(tru "Minute") "minute"]
-                   [(tru "Hour") "hour"]
+                  [[(deferred-tru "Minute") "minute"]
+                   [(deferred-tru "Hour") "hour"]
                    [day-str "day"]
-                   [(tru "Week") "week"]
-                   [(tru "Month") "month"]
-                   [(tru "Quarter") "quarter"]
-                   [(tru "Year") "year"]
-                   [(tru "Minute of Hour") "minute-of-hour"]
-                   [(tru "Hour of Day") "hour-of-day"]
-                   [(tru "Day of Week") "day-of-week"]
-                   [(tru "Day of Month") "day-of-month"]
-                   [(tru "Day of Year") "day-of-year"]
-                   [(tru "Week of Year") "week-of-year"]
-                   [(tru "Month of Year") "month-of-year"]
-                   [(tru "Quarter of Year") "quarter-of-year"]])
+                   [(deferred-tru "Week") "week"]
+                   [(deferred-tru "Month") "month"]
+                   [(deferred-tru "Quarter") "quarter"]
+                   [(deferred-tru "Year") "year"]
+                   [(deferred-tru "Minute of Hour") "minute-of-hour"]
+                   [(deferred-tru "Hour of Day") "hour-of-day"]
+                   [(deferred-tru "Day of Week") "day-of-week"]
+                   [(deferred-tru "Day of Month") "day-of-month"]
+                   [(deferred-tru "Day of Year") "day-of-year"]
+                   [(deferred-tru "Week of Year") "week-of-year"]
+                   [(deferred-tru "Month of Year") "month-of-year"]
+                   [(deferred-tru "Quarter of Year") "quarter-of-year"]])
              (conj
-              (mapv (fn [[name params]]
+              (mapv (fn [[name [strategy param]]]
                       {:name name
-                       :mbql (apply vector "binning-strategy" nil params)
+                       :mbql [:field nil {:binning (merge {:strategy strategy}
+                                                          (when param
+                                                            {strategy param}))}]
                        :type "type/Number"})
                     [default-entry
-                     [(tru "10 bins") ["num-bins" 10]]
-                     [(tru "50 bins") ["num-bins" 50]]
-                     [(tru "100 bins") ["num-bins" 100]]])
+                     [(deferred-tru "10 bins") ["num-bins" 10]]
+                     [(deferred-tru "50 bins") ["num-bins" 50]]
+                     [(deferred-tru "100 bins") ["num-bins" 100]]])
               {:name dont-bin-str
                :mbql nil
                :type "type/Number"})
              (conj
-              (mapv (fn [[name params]]
+              (mapv (fn [[name [strategy param]]]
                       {:name name
-                       :mbql (apply vector "binning-strategy" nil params)
+                       :mbql [:field nil {:binning (merge {:strategy strategy}
+                                                          (when param
+                                                            {strategy param}))}]
                        :type "type/Coordinate"})
                     [default-entry
-                     [(tru "Bin every 0.1 degrees") ["bin-width" 0.1]]
-                     [(tru "Bin every 1 degree") ["bin-width" 1.0]]
-                     [(tru "Bin every 10 degrees") ["bin-width" 10.0]]
-                     [(tru "Bin every 20 degrees") ["bin-width" 20.0]]])
+                     [(deferred-tru "Bin every 0.1 degrees") ["bin-width" 0.1]]
+                     [(deferred-tru "Bin every 1 degree") ["bin-width" 1.0]]
+                     [(deferred-tru "Bin every 10 degrees") ["bin-width" 10.0]]
+                     [(deferred-tru "Bin every 20 degrees") ["bin-width" 20.0]]])
               {:name dont-bin-str
                :mbql nil
                :type "type/Coordinate"})))))
 
 (def ^:private dimension-options-for-response
-  (m/map-kv (fn [k v]
-              [(str k) v]) dimension-options))
+  (m/map-keys str dimension-options))
 
 (defn- create-dim-index-seq [dim-type]
   (->> dimension-options
@@ -173,32 +215,31 @@
 (defn- supports-date-binning?
   "Time fields don't support binning, returns true if it's a DateTime field and not a time field"
   [{:keys [base_type], :as field}]
-  (and (mbql.u/datetime-field? field)
+  (and (types/temporal-field? field)
        (not (isa? base_type :type/Time))))
 
-(defn- assoc-field-dimension-options [driver {:keys [base_type special_type fingerprint] :as field}]
+(defn- assoc-field-dimension-options [driver {:keys [base_type semantic_type fingerprint] :as field}]
   (let [{min_value :min, max_value :max} (get-in fingerprint [:type :type/Number])
         [default-option all-options] (cond
-
                                        (supports-date-binning? field)
                                        [date-default-index datetime-dimension-indexes]
 
                                        (and min_value max_value
-                                            (isa? special_type :type/Coordinate)
+                                            (isa? semantic_type :type/Coordinate)
                                             (supports-numeric-binning? driver))
                                        [coordinate-default-index coordinate-dimension-indexes]
 
                                        (and min_value max_value
                                             (isa? base_type :type/Number)
-                                            (or (nil? special_type) (isa? special_type :type/Number))
+                                            (not (isa? semantic_type :Relation/*))
                                             (supports-numeric-binning? driver))
                                        [numeric-default-index numeric-dimension-indexes]
 
                                        :else
                                        [nil []])]
     (assoc field
-      :default_dimension_option default-option
-      :dimension_options all-options)))
+           :default_dimension_option default-option
+           :dimension_options        all-options)))
 
 (defn- assoc-dimension-options [resp driver]
   (-> resp
@@ -215,31 +256,36 @@
                 field)))))
 
 (defn fetch-query-metadata
-  "Returns the query metadata used to power the query builder for the given table `table-or-table-id`"
-  [table include_sensitive_fields]
+  "Returns the query metadata used to power the Query Builder for the given `table`. `include-sensitive-fields?` and
+  `include-hidden-fields?` can be either booleans or boolean strings."
+  [table include-sensitive-fields? include-hidden-fields?]
   (api/read-check table)
-  (let [driver (driver.u/database->driver (:db_id table))]
+  (let [driver                    (driver.u/database->driver (:db_id table))
+        include-sensitive-fields? (cond-> include-sensitive-fields? (string? include-sensitive-fields?) Boolean/parseBoolean)
+        include-hidden-fields?    (cond-> include-hidden-fields? (string? include-hidden-fields?) Boolean/parseBoolean)]
     (-> table
         (hydrate :db [:fields [:target :has_field_values] :dimensions :has_field_values] :segments :metrics)
         (m/dissoc-in [:db :details])
         (assoc-dimension-options driver)
         format-fields-for-response
-        (update :fields (if (Boolean/parseBoolean include_sensitive_fields)
-                          ;; If someone passes include_sensitive_fields return hydrated :fields as-is
-                          identity
-                          ;; Otherwise filter out all :sensitive fields
-                          (partial filter (fn [{:keys [visibility_type]}]
-                                            (not= (keyword visibility_type) :sensitive))))))))
+        (update :fields (partial filter (fn [{visibility-type :visibility_type}]
+                                          (case (keyword visibility-type)
+                                            :hidden    include-hidden-fields?
+                                            :sensitive include-sensitive-fields?
+                                            true)))))))
 
 (api/defendpoint GET "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.
    Returns DB, fields, field FKs, and field values.
 
-  By passing `include_sensitive_fields=true`, information *about* sensitive `Fields` will be returned; in no case will
-  any of its corresponding values be returned. (This option is provided for use in the Admin Edit Metadata page)."
-  [id include_sensitive_fields]
-  {include_sensitive_fields (s/maybe su/BooleanString)}
-  (fetch-query-metadata (Table id) include_sensitive_fields))
+  Passing `include_hidden_fields=true` will include any hidden `Fields` in the response. Defaults to `false`
+  Passing `include_sensitive_fields=true` will include any sensitive `Fields` in the response. Defaults to `false`.
+
+  These options are provided for use in the Admin Edit Metadata page."
+  [id include_sensitive_fields include_hidden_fields]
+  {include_sensitive_fields (s/maybe su/BooleanString)
+   include_hidden_fields (s/maybe su/BooleanString)}
+  (fetch-query-metadata (Table id) include_sensitive_fields include_hidden_fields))
 
 (defn- card-result-metadata->virtual-fields
   "Return a sequence of 'virtual' fields metadata for the 'virtual' table for a Card in the Saved Questions 'virtual'
@@ -250,50 +296,69 @@
       (-> col
           (update :base_type keyword)
           (assoc
-              :table_id     (str "card__" card-id)
-              :id           [:field-literal (:name col) (or (:base_type col) :type/*)]
-              ;; Assoc special_type at least temprorarily. We need the correct special type in place to make decisions
-              ;; about what kind of dimension options should be added. PK/FK values will be removed after we've added
-              ;; the dimension options
-              :special_type (keyword (:special_type col)))
+           :table_id     (str "card__" card-id)
+           :id           (or (:id col)
+                             ;; TODO -- what????
+                             [:field (:name col) {:base-type (or (:base_type col) :type/*)}])
+           ;; Assoc semantic_type at least temprorarily. We need the correct semantic type in place to make decisions
+           ;; about what kind of dimension options should be added. PK/FK values will be removed after we've added
+           ;; the dimension options
+           :semantic_type (keyword (:semantic_type col)))
           add-field-dimension-options))))
 
+(defn root-collection-schema-name
+  "Schema name to use for the saved questions virtual database for Cards that are in the root collection (i.e., not in
+  any collection)."
+  []
+  (tru "Everything else"))
+
 (defn card->virtual-table
-  "Return metadata for a 'virtual' table for a CARD in the Saved Questions 'virtual' database. Optionally include
-   'virtual' fields as well."
+  "Return metadata for a 'virtual' table for a `card` in the Saved Questions 'virtual' database. Optionally include
+  'virtual' fields as well."
   [{:keys [database_id] :as card} & {:keys [include-fields?]}]
   ;; if collection isn't already hydrated then do so
   (let [card (hydrate card :collection)]
-    (cond-> {:id           (str "card__" (u/get-id card))
-             :db_id        database/virtual-id
-             :display_name (:name card)
-             :schema       (get-in card [:collection :name] "Everything else")
-             :description  (:description card)}
-      include-fields? (assoc :fields (card-result-metadata->virtual-fields (u/get-id card)
+    (cond-> {:id               (str "card__" (u/the-id card))
+             :db_id            (:database_id card)
+             :display_name     (:name card)
+             :schema           (get-in card [:collection :name] (root-collection-schema-name))
+             :moderated_status (:moderated_status card)
+             :description      (:description card)}
+      include-fields? (assoc :fields (card-result-metadata->virtual-fields (u/the-id card)
                                                                            database_id
                                                                            (:result_metadata card))))))
 
-(defn- remove-nested-pk-fk-special-types
-  "This method clears the special_type attribute for PK/FK fields of nested queries. Those fields having a special
+(defn- remove-nested-pk-fk-semantic-types
+  "This method clears the semantic_type attribute for PK/FK fields of nested queries. Those fields having a semantic
   type confuses the frontend and it can really used in the same way"
   [{:keys [fields] :as metadata-response}]
-  (assoc metadata-response :fields (for [{:keys [special_type] :as field} fields]
-                                     (if (or (isa? special_type :type/PK)
-                                             (isa? special_type :type/FK))
-                                       (assoc field :special_type nil)
+  (assoc metadata-response :fields (for [{:keys [semantic_type] :as field} fields]
+                                     (if (or (isa? semantic_type :type/PK)
+                                             (isa? semantic_type :type/FK))
+                                       (assoc field :semantic_type nil)
                                        field))))
 
 (api/defendpoint GET "/card__:id/query_metadata"
   "Return metadata for the 'virtual' table for a Card."
   [id]
-  (let [{:keys [database_id] :as card } (db/select-one [Card :id :dataset_query :result_metadata :name :description
-                                                        :collection_id :database_id]
-                                          :id id)]
-    (-> card
+  (let [{:keys [database_id] :as card} (db/select-one [Card :id :dataset_query :result_metadata :name :description
+                                                       :collection_id :database_id]
+                                                      :id id)
+        moderated-status              (->> (db/query {:select   [:status]
+                                                      :from     [:moderation_review]
+                                                      :where    [:and
+                                                                 [:= :moderated_item_type "card"]
+                                                                 [:= :moderated_item_id id]
+                                                                 [:= :most_recent true]]
+                                                      :order-by [[:id :desc]]
+                                                      :limit    1}
+                                                     :id id)
+                                           first :status)]
+    (-> (assoc card :moderated_status moderated-status)
         api/read-check
         (card->virtual-table :include-fields? true)
         (assoc-dimension-options (driver.u/database->driver database_id))
-        remove-nested-pk-fk-special-types)))
+        remove-nested-pk-fk-semantic-types)))
 
 (api/defendpoint GET "/card__:id/fks"
   "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint
@@ -322,8 +387,9 @@
   [id]
   (api/check-superuser)
   ;; async so as not to block the UI
-  (future
-    (sync-field-values/update-field-values-for-table! (api/check-404 (Table id))))
+  (sync.concurrent/submit-task
+    (fn []
+      (sync-field-values/update-field-values-for-table! (api/check-404 (Table id)))))
   {:status :success})
 
 (api/defendpoint POST "/:id/discard_values"
@@ -340,5 +406,12 @@
   "Return related entities."
   [id]
   (-> id Table api/read-check related/related))
+
+(api/defendpoint PUT "/:id/fields/order"
+  "Reorder fields"
+  [id :as {field_order :body}]
+  {field_order [su/IntGreaterThanZero]}
+  (api/check-superuser)
+  (-> id Table api/check-404 (table/custom-order-fields! field_order)))
 
 (api/define-routes)

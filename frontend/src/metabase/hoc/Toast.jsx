@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { connect } from "react-redux";
 
@@ -8,7 +9,10 @@ const mapDispatchToProps = {
 };
 
 const withToaster = ComposedComponent => {
-  @connect(null, mapDispatchToProps)
+  @connect(
+    null,
+    mapDispatchToProps,
+  )
   class ToastedComponent extends React.Component {
     _triggerToast = (message, options = {}) => {
       const { addUndo } = this.props;

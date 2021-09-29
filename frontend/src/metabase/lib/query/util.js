@@ -1,5 +1,3 @@
-/* @flow */
-
 import _ from "underscore";
 
 // determines whether 2 field IDs are equal. This is needed rather than
@@ -24,8 +22,8 @@ export const fieldIdsEq = (a: any, b: any): boolean => {
     Array.isArray(b) &&
     a.length === 3 &&
     b.length === 3 &&
-    a[0] === "field-literal" &&
-    b[0] === "field-literal"
+    a[0] === "field" &&
+    b[0] === "field"
   ) {
     return a[1] === b[1];
   }

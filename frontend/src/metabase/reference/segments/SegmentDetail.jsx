@@ -3,15 +3,17 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { reduxForm } from "redux-form";
-import { t } from "c-3po";
-import List from "metabase/components/List.jsx";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import { t } from "ttag";
+import S from "../components/Detail.css";
+import List from "metabase/components/List";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-import EditHeader from "metabase/reference/components/EditHeader.jsx";
-import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader.jsx";
-import Detail from "metabase/reference/components/Detail.jsx";
-import UsefulQuestions from "metabase/reference/components/UsefulQuestions.jsx";
-import Formula from "metabase/reference/components/Formula.jsx";
+import EditHeader from "metabase/reference/components/EditHeader";
+import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
+import Detail from "metabase/reference/components/Detail";
+import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
+import Formula from "metabase/reference/components/Formula";
+import Link from "metabase/components/Link";
 
 import { getQuestionUrl } from "../utils";
 
@@ -19,7 +21,6 @@ import {
   getSegment,
   getTable,
   getFields,
-  getGuide,
   getError,
   getLoading,
   getUser,
@@ -34,7 +35,7 @@ const interestingQuestions = (table, segment) => {
   return [
     {
       text: t`Number of ${segment.name}`,
-      icon: { name: "number", scale: 1, viewBox: "8 8 16 16" },
+      icon: "number",
       link: getQuestionUrl({
         dbId: table && table.db_id,
         tableId: table.id,
@@ -56,32 +57,18 @@ const interestingQuestions = (table, segment) => {
 
 const mapStateToProps = (state, props) => {
   const entity = getSegment(state, props) || {};
-  const guide = getGuide(state, props);
   const fields = getFields(state, props);
-
-  const initialValues = {
-    important_fields:
-      (guide &&
-        guide.metric_important_fields &&
-        guide.metric_important_fields[entity.id] &&
-        guide.metric_important_fields[entity.id].map(
-          fieldId => fields[fieldId],
-        )) ||
-      [],
-  };
 
   return {
     entity,
     table: getTable(state, props),
     metadataFields: fields,
-    guide,
     loading: getLoading(state, props),
     // naming this 'error' will conflict with redux form
     loadingError: getError(state, props),
     user: getUser(state, props),
     isEditing: getIsEditing(state, props),
     isFormulaExpanded: getIsFormulaExpanded(state, props),
-    initialValues,
   };
 };
 
@@ -95,7 +82,10 @@ const validate = (values, props) =>
     ? { revision_message: t`Please enter a revision message` }
     : {};
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @reduxForm({
   form: "details",
   fields: [
@@ -199,41 +189,74 @@ export default class SegmentDetail extends Component {
           error={loadingError}
         >
           {() => (
-            <div className="wrapper wrapper--trim">
-              <List>
-                <li className="relative">
-                  <Detail
-                    id="description"
-                    name={t`Description`}
-                    description={entity.description}
-                    placeholder={t`No description yet`}
-                    isEditing={isEditing}
-                    field={description}
-                  />
-                </li>
-                <li className="relative">
-                  <Detail
-                    id="points_of_interest"
-                    name={t`Why this Segment is interesting`}
-                    description={entity.points_of_interest}
-                    placeholder={t`Nothing interesting yet`}
-                    isEditing={isEditing}
-                    field={points_of_interest}
-                  />
-                </li>
-                <li className="relative">
-                  <Detail
-                    id="caveats"
-                    name={t`Things to be aware of about this Segment`}
-                    description={entity.caveats}
-                    placeholder={t`Nothing to be aware of yet`}
-                    isEditing={isEditing}
-                    field={caveats}
-                  />
-                </li>
-                {table &&
-                  !isEditing && (
+            <div className="wrapper">
+              <div className="pl4 pr3 pt4 mb4 mb1 bg-white rounded bordered">
+                <List>
+                  <li>
+                    <div className={S.detail}>
+                      <div className={S.detailBody}>
+                        <div>
+                          <div className={S.detailTitle}>
+                            {t`Table this is based on`}
+                          </div>
+                          {table && (
+                            <div>
+                              <Link
+                                className="text-brand text-bold text-paragraph"
+                                to={`/reference/databases/${table.db_id}/tables/${table.id}`}
+                              >
+                                <span className="pt1">
+                                  {table.display_name}
+                                </span>
+                              </Link>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </li>
+                  <li className="relative">
+                    <Detail
+                      id="description"
+                      name={t`Description`}
+                      description={entity.description}
+                      placeholder={t`No description yet`}
+                      isEditing={isEditing}
+                      field={description}
+                    />
+                  </li>
+                  <li className="relative">
+                    <Detail
+                      id="points_of_interest"
+                      name={t`Why this Segment is interesting`}
+                      description={entity.points_of_interest}
+                      placeholder={t`Nothing interesting yet`}
+                      isEditing={isEditing}
+                      field={points_of_interest}
+                    />
+                  </li>
+                  <li className="relative">
+                    <Detail
+                      id="caveats"
+                      name={t`Things to be aware of about this Segment`}
+                      description={entity.caveats}
+                      placeholder={t`Nothing to be aware of yet`}
+                      isEditing={isEditing}
+                      field={caveats}
+                    />
+                  </li>
+                  {!isEditing && (
                     <li className="relative">
+                      <UsefulQuestions
+                        questions={interestingQuestions(
+                          this.props.table,
+                          this.props.entity,
+                        )}
+                      />
+                    </li>
+                  )}
+                  {table && !isEditing && (
+                    <li className="relative mb4">
                       <Formula
                         type="segment"
                         entity={entity}
@@ -244,17 +267,8 @@ export default class SegmentDetail extends Component {
                       />
                     </li>
                   )}
-                {!isEditing && (
-                  <li className="relative">
-                    <UsefulQuestions
-                      questions={interestingQuestions(
-                        this.props.table,
-                        this.props.entity,
-                      )}
-                    />
-                  </li>
-                )}
-              </List>
+                </List>
+              </div>
             </div>
           )}
         </LoadingAndErrorWrapper>

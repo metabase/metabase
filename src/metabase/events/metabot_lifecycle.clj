@@ -1,16 +1,16 @@
 (ns metabase.events.metabot-lifecycle
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
-            [metabase
-             [events :as events]
-             [metabot :as metabot]]))
+            [metabase.events :as events]
+            [metabase.metabot :as metabot]))
 
 (def ^:const ^:private metabot-lifecycle-topics
   "The `Set` of event topics which are subscribed to for use in metabot lifecycle."
   #{:settings-update})
 
-(def ^:private metabot-lifecycle-channel
-  "Channel for receiving event notifications we want to subscribe to for metabot lifecycle events."
+(defonce ^:private ^{:doc "Channel for receiving event notifications we want to subscribe to for MetaBot lifecycle
+  events."}
+  metabot-lifecycle-channel
   (async/chan))
 
 
@@ -37,8 +37,6 @@
 
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
-
-(defn events-init
-  "Automatically called during startup; start event listener for metabot lifecycle events."
-  []
+(defmethod events/init! ::MetaBotLifecycle
+  [_]
   (events/start-event-listener! metabot-lifecycle-topics metabot-lifecycle-channel process-metabot-lifecycle-event))

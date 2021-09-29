@@ -3,40 +3,23 @@
   (:require [clj-http.client :as client]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [java-time :as t]
             [medley.core :as m]
-            [metabase
-             [config :as config]
-             [driver :as driver]
-             [email :as email]
-             [public-settings :as public-settings]
-             [util :as u]]
-            [metabase.api.session :as session-api]
+            [metabase.config :as config]
+            [metabase.driver :as driver]
+            [metabase.email :as email]
+            [metabase.integrations.google :as google]
             [metabase.integrations.slack :as slack]
-            [metabase.models
-             [card :refer [Card]]
-             [collection :refer [Collection]]
-             [dashboard :refer [Dashboard]]
-             [dashboard-card :refer [DashboardCard]]
-             [database :refer [Database]]
-             [field :refer [Field]]
-             [humanization :as humanization]
-             [metric :refer [Metric]]
-             [permissions-group :refer [PermissionsGroup]]
-             [pulse :refer [Pulse]]
-             [pulse-card :refer [PulseCard]]
-             [pulse-channel :refer [PulseChannel]]
-             [query-cache :refer [QueryCache]]
-             [query-execution :refer [QueryExecution]]
-             [segment :refer [Segment]]
-             [table :refer [Table]]
-             [user :refer [User]]]
-            [toucan.db :as db])
-  (:import java.util.Date))
+            [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field Metric PermissionsGroup Pulse PulseCard PulseChannel QueryCache QueryExecution Segment Table User]]
+            [metabase.models.humanization :as humanization]
+            [metabase.public-settings :as public-settings]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [trs]]
+            [toucan.db :as db]))
 
 (defn- merge-count-maps
-  "Merge sequence of maps MS by summing counts inside them.
-   Non-integer values are allowed; truthy values are considered to add a count of `1`, while non-truthy
-   values do not affect the result count."
+  "Merge sequence of maps `ms` by summing counts inside them. Non-integer values are allowed; truthy values are
+  considered to add a count of `1`, while non-truthy values do not affect the result count."
   [ms]
   (reduce (partial merge-with +)
           (for [m ms]
@@ -46,17 +29,7 @@
                            :else       0)
                         m))))
 
-(def ^:private ^:const ^String metabase-usage-url "https://xuq0fbkk0j.execute-api.us-east-1.amazonaws.com/prod")
-
-
-#_(defn- bin-micro-number
-  "Return really small bin number. Assumes positive inputs."
-  [x]
-  (case x
-    0 "0"
-    1 "1"
-    2 "2"
-    "3+"))
+(def ^:private ^String metabase-usage-url "https://xuq0fbkk0j.execute-api.us-east-1.amazonaws.com/prod")
 
 (defn- bin-small-number
   "Return small bin number. Assumes positive inputs."
@@ -114,10 +87,6 @@
   ([binning-fn many-maps k]
    (histogram binning-fn (vals (value-frequencies many-maps k)))))
 
-#_(def ^:private micro-histogram
-  "Return a histogram for micro numbers."
-  (partial histogram bin-micro-number))
-
 (def ^:private medium-histogram
   "Return a histogram for medium numbers."
   (partial histogram bin-medium-number))
@@ -127,7 +96,7 @@
   []
   (:min (db/select-one [User [:%min.date_joined :min]])))
 
-(defn- environment-type
+(defn environment-type
   "Figure out what we're running under"
   []
   (cond
@@ -145,10 +114,11 @@
    :check_for_updates    (public-settings/check-for-updates)
    :site_name            (not= (public-settings/site-name) "Metabase")
    :report_timezone      (driver/report-timezone)
+   ; We deprecated advanced humanization but have this here anyways
    :friendly_names       (= (humanization/humanization-strategy) "advanced")
    :email_configured     (email/email-configured?)
    :slack_configured     (slack/slack-configured?)
-   :sso_configured       (boolean (session-api/google-auth-client-id))
+   :sso_configured       (boolean (google/google-auth-client-id))
    :instance_started     (instance-start-date)
    :has_sample_data      (db/exists? Database, :is_sample true)})
 
@@ -358,7 +328,7 @@
        (update-in [:num_by_latency (bin-large-number (/ (:running_time execution) 1000))] u/safe-inc))))
 
 (defn- summarize-executions-per-user
-  "Convert a map of USER-ID->NUM-EXECUTIONS to the histogram output format we expect."
+  "Convert a map of `user-id->num-executions` to the histogram output format we expect."
   [user-id->num-executions]
   (frequencies (map bin-large-number (vals user-id->num-executions))))
 
@@ -405,31 +375,32 @@
   "generate a map of the usage stats for this instance"
   []
   (merge (instance-settings)
-         {:uuid (public-settings/site-uuid) :timestamp (Date.)}
-         {:stats {:cache      (cache-metrics)
-                  :collection (collection-metrics)
-                  :dashboard  (dashboard-metrics)
-                  :database   (database-metrics)
-                  :execution  (execution-metrics)
-                  :field      (field-metrics)
-                  :group      (group-metrics)
-                  :metric     (metric-metrics)
-                  :pulse      (pulse-metrics)
-                  :alert      (alert-metrics)
-                  :question   (question-metrics)
-                  :segment    (segment-metrics)
-                  :system     (system-metrics)
-                  :table      (table-metrics)
-                  :user       (user-metrics)}}))
+         {:uuid      (public-settings/site-uuid)
+          :timestamp (t/offset-date-time)
+          :stats     {:cache      (cache-metrics)
+                      :collection (collection-metrics)
+                      :dashboard  (dashboard-metrics)
+                      :database   (database-metrics)
+                      :execution  (execution-metrics)
+                      :field      (field-metrics)
+                      :group      (group-metrics)
+                      :metric     (metric-metrics)
+                      :pulse      (pulse-metrics)
+                      :alert      (alert-metrics)
+                      :question   (question-metrics)
+                      :segment    (segment-metrics)
+                      :system     (system-metrics)
+                      :table      (table-metrics)
+                      :user       (user-metrics)}}))
 
 
 (defn- send-stats!
   "send stats to Metabase tracking server"
   [stats]
-   (try
-      (client/post metabase-usage-url {:form-params stats, :content-type :json, :throw-entire-message? true})
-      (catch Throwable e
-       (log/error "Sending usage stats FAILED:" (.getMessage e)))))
+  (try
+     (client/post metabase-usage-url {:form-params stats, :content-type :json, :throw-entire-message? true})
+     (catch Throwable e
+       (log/error e (trs "Sending usage stats FAILED")))))
 
 
 (defn phone-home-stats!

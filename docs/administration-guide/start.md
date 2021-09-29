@@ -7,8 +7,12 @@ Are you in charge of managing Metabase for your organization? Then you're in the
 * [Enabling features that send email (SMTP)](02-setting-up-email.md)
 * [Setting up Slack integration](09-setting-up-slack.md)
 * [Configuring settings](08-configuration-settings.md)
-* [Setting formatting defaults for dates and numbers](19-formatting-settings.md)
+* [Setting formatting defaults](19-formatting-settings.md)
+* [Changing localization settings](localization.md)
 * [Caching query results](14-caching.md)
+* [Customizing your map settings](20-custom-maps.md)
+* [SSH tunneling in Metabase](ssh-tunnel-for-database-connections.md)
+* [Securing database connections using an SSL certificate](secure-database-connections-with-ssl-certificates.md)
 
 **Curating your data:**
 * [Editing your database metadata](03-metadata-editing.md)
@@ -26,6 +30,6 @@ Are you in charge of managing Metabase for your organization? Then you're in the
 * [Sharing dashboards and questions with public links](12-public-links.md)
 * [Embedding Metabase in other Applications](13-embedding.md)
 
-First things first, you'll need to install Metabase. If you haven’t done that yet, our [Installation Guide](../operations-guide/start.html#installing-and-running-metabase) will help you through the process.
+First things first, you'll need to install Metabase. If you haven’t done that yet, our [Installation Guide](../operations-guide/installing-metabase.md) will help you through the process.
 
 Already done with that? Then let’s start by going over how to [connect Metabase to your database](01-managing-databases.md).

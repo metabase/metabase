@@ -1,36 +1,43 @@
 (ns metabase.automagic-dashboards.rules-test
-  (:require [expectations :refer :all]
-            [metabase.automagic-dashboards.rules :as rules :refer :all]))
+  (:require [clojure.test :refer :all]
+            [metabase.automagic-dashboards.rules :as rules]))
 
-(expect nil   (#'rules/ensure-seq nil))
-(expect [nil] (#'rules/ensure-seq [nil]))
-(expect [42]  (#'rules/ensure-seq 42))
-(expect [42]  (#'rules/ensure-seq [42]))
+(deftest ga-dimension?-test
+  (are [x expected] (= expected
+                       (rules/ga-dimension? x))
+    "ga:foo" true
+    "foo"    false))
 
-(expect true  (ga-dimension? "ga:foo"))
-(expect false (ga-dimension? "foo"))
+(deftest ->type-test
+  (are [x expected] (= expected
+                       (#'rules/->type x))
+    :foo     :foo
+    "ga:foo" "ga:foo"
+    "Foo"    :type/Foo))
 
-(expect :foo      (#'rules/->type :foo))
-(expect "ga:foo"  (#'rules/->type "ga:foo"))
-(expect :type/Foo (#'rules/->type "Foo"))
+(deftest get-rules-test
+  (testing "This also tests that all the rules are valid (else there would be nils returned)"
+    (doseq [s ["table"
+               "metrics"
+               "fields"]]
+      (testing s
+        (is (every? some? (rules/get-rules [s]))))))
 
-;; This also tests that all the rules are valid (else there would be nils returned)
-(expect (every? some? (get-rules ["table"])))
-(expect (every? some? (get-rules ["metrics"])))
-(expect (every? some? (get-rules ["fields"])))
+  (is (some? (rules/get-rules ["table" "GenericTable" "ByCountry"]))))
 
-(expect (some? (get-rules ["table" "GenericTable" "ByCountry"])))
+(deftest dimension-form?-test
+  (are [x expected] (is (= expected
+                           (rules/dimension-form? x)))
+    [:dimension "Foo"]  true
+    ["dimension" "Foo"] true
+    ["DIMENSION" "Foo"] true
+    42                  false
+    [:baz :bar]         false))
 
-(expect true  (dimension-form? [:dimension "Foo"]))
-(expect true  (dimension-form? ["dimension" "Foo"]))
-(expect true  (dimension-form? ["DIMENSION" "Foo"]))
-(expect false (dimension-form? 42))
-(expect false (dimension-form? [:baz :bar]))
-
-(expect
-  ["Foo" "Baz" "Bar"]
-  (#'rules/collect-dimensions
-   [{:metrics [{"Foo" {:metric [:sum [:dimension "Foo"]]}}
-               {"Foo" {:metric [:avg [:dimension "Foo"]]}}
-               {"Baz" {:metric [:sum ["dimension" "Baz"]]}}]}
-    [:dimension "Bar"]]))
+(deftest collect-dimensions-test
+  (is (= ["Foo" "Baz" "Bar"]
+         (#'rules/collect-dimensions
+          [{:metrics [{"Foo" {:metric [:sum [:dimension "Foo"]]}}
+                      {"Foo" {:metric [:avg [:dimension "Foo"]]}}
+                      {"Baz" {:metric [:sum ["dimension" "Baz"]]}}]}
+           [:dimension "Bar"]]))))

@@ -3,7 +3,9 @@ import inflection from "inflection";
 
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { parseTimestamp } from "metabase/lib/time";
-import { t, ngettext, msgid } from "c-3po";
+import { t, ngettext, msgid } from "ttag";
+
+import { FieldDimension } from "metabase-lib/lib/Dimension";
 
 export const DATETIME_UNITS = [
   // "default",
@@ -32,12 +34,12 @@ export function computeFilterTimeRange(filter) {
     expandedFilter = filter;
   }
 
-  let [operator, field, ...values] = expandedFilter;
-  let bucketing = parseFieldBucketing(field, "day");
+  const [operator, field, ...values] = expandedFilter;
+  const bucketing = parseFieldBucketing(field, "day");
 
   let start, end;
   if (operator === "=" && values[0]) {
-    let point = absolute(values[0]);
+    const point = absolute(values[0]);
     start = point.clone().startOf(bucketing);
     end = point.clone().endOf(bucketing);
   } else if (operator === ">" && values[0]) {
@@ -69,7 +71,10 @@ export function expandTimeIntervalFilter(filter) {
     n = 1;
   }
 
-  field = ["datetime-field", field, "as", unit];
+  const dimension = FieldDimension.parseMBQLOrWarn(field);
+  if (dimension) {
+    field = dimension.withTemporalUnit(unit).mbql();
+  }
 
   if (n < -1) {
     return [
@@ -93,11 +98,11 @@ export function expandTimeIntervalFilter(filter) {
 }
 
 export function generateTimeFilterValuesDescriptions(filter) {
-  let [operator, field, ...values] = filter;
-  let bucketing = parseFieldBucketing(field);
+  const [operator, field, ...values] = filter;
+  const bucketing = parseFieldBucketing(field);
 
   if (operator === "time-interval") {
-    let [n, unit] = values;
+    const [n, unit] = values;
     return generateTimeIntervalDescription(n, unit);
   } else {
     return values.map(value => generateTimeValueDescription(value, bucketing));
@@ -182,6 +187,9 @@ export function generateTimeValueDescription(value, bucketing) {
 }
 
 export function formatBucketing(bucketing = "", n = 1) {
+  if (!bucketing) {
+    return "";
+  }
   switch (bucketing) {
     case "default":
       return ngettext(msgid`Default period`, `Default periods`, n);
@@ -216,7 +224,7 @@ export function formatBucketing(bucketing = "", n = 1) {
     case "quarter-of-year":
       return ngettext(msgid`Quarter of year`, `Quarters of year`, n);
   }
-  let words = bucketing.split("-");
+  const words = bucketing.split("-");
   words[0] = inflection.capitalize(words[0]);
   return words.join(" ");
 }
@@ -231,59 +239,37 @@ export function absolute(date) {
   }
 }
 
+/**
+ * Return the temporal bucketing unit for a `:field` MBQL clause
+ */
 export function parseFieldBucketing(field, defaultUnit = null) {
-  if (Array.isArray(field)) {
-    if (field[0] === "datetime-field") {
-      if (field.length === 4) {
-        // Deprecated legacy format [datetime-field field "as" unit], see DatetimeFieldDimension for more info
-        return field[3];
-      } else {
-        // Current format [datetime-field field unit]
-        return field[2];
-      }
-    }
-    if (field[0] === "fk->" || field[0] === "field-id") {
-      return defaultUnit;
-    }
-    if (field[0] === "field-literal") {
-      return defaultUnit;
-    } else {
-      console.warn("Unknown field format", field);
-    }
+  const dimension = FieldDimension.parseMBQLOrWarn(field);
+  if (dimension) {
+    return dimension.temporalUnit() || defaultUnit;
   }
   return defaultUnit;
 }
 
-// returns field with "datetime-field" removed
+// returns field with temporal bucketing removed
 export function parseFieldTarget(field) {
-  if (field[0] === "datetime-field") {
-    return field[1];
-  } else {
-    return field;
+  const dimension = FieldDimension.parseMBQLOrWarn(field);
+  if (dimension) {
+    return dimension.withoutTemporalBucketing();
   }
+  return field;
 }
 
+/**
+ * Get the raw integer ID from a `field` clause, otherwise return the clause as-is. (TODO: Why would we want to
+ * return the clause as-is?)
+ */
 export function parseFieldTargetId(field) {
-  if (Number.isInteger(field)) {
-    return field;
-  }
-
-  if (Array.isArray(field)) {
-    if (field[0] === "field-id") {
-      return field[1];
-    }
-    if (field[0] === "fk->") {
-      return field[1];
-    }
-    if (field[0] === "datetime-field") {
-      return parseFieldTargetId(field[1]);
-    }
-    if (field[0] === "field-literal") {
-      return field;
+  const dimension = FieldDimension.parseMBQLOrWarn(field);
+  if (dimension) {
+    if (dimension.isIntegerFieldId()) {
+      return dimension.fieldIdOrName();
     }
   }
-
-  console.warn("Unknown field format", field);
   return field;
 }
 

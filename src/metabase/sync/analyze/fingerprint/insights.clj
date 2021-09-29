@@ -1,14 +1,17 @@
 (ns metabase.sync.analyze.fingerprint.insights
   "Deeper statistical analysis of results."
-  (:require [clj-time
-              [coerce :as t.coerce]
-              [core :as t]]
-            [kixi.stats
-             [core :as stats]
-             [math :as math]]
+  (:require [java-time :as t]
+            [kixi.stats.core :as stats]
+            [kixi.stats.math :as math]
+            [medley.core :as m]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models.field :as field]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
-            [redux.core :as redux]))
+            [metabase.sync.util :as sync-util]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.i18n :refer [trs]]
+            [redux.core :as redux])
+  (:import [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
 
 (defn- last-n
   [n]
@@ -30,7 +33,7 @@
       (cond
         (every? neg? [x1 x2])     (change (- x1) (- x2))
         (and (neg? x1) (pos? x2)) (- (change x1 x2))
-        (neg? x1)                 (- (change x2 x1))
+        (neg? x1)                 (- (change x2 (- x1)))
         :else                     (/ (- x2 x1) x1)))))
 
 (defn reservoir-sample
@@ -38,15 +41,15 @@
    https://en.wikipedia.org/wiki/Reservoir_sampling"
   [n]
   (fn
-    ([] [(transient []) 0])
+    ([] [[] 0])
     ([[reservoir c] x]
      (let [c   (inc c)
            idx (rand-int c)]
        (cond
-         (<= c n)  [(conj! reservoir x) c]
-         (< idx n) [(assoc! reservoir idx x) c]
+         (<= c n)  [(conj reservoir x) c]
+         (< idx n) [(assoc reservoir idx x) c]
          :else     [reservoir c])))
-    ([[reservoir _]] (persistent! reservoir))))
+    ([[reservoir _]] reservoir)))
 
 (defn mae
   "Given two functions: (fŷ input) and (fy input), returning the predicted and actual values of y
@@ -100,19 +103,16 @@
    sampling, and use it to calculate RMSE."
   [fx fy]
   (redux/post-complete
-   (redux/fuse
-    {:fits (->> (for [{:keys [x-link-fn y-link-fn formula model]} trendline-function-families]
-                  (redux/post-complete
-                   (stats/simple-linear-regression (comp (stats/somef x-link-fn) fx)
-                                                   (comp (stats/somef y-link-fn) fy))
-                   (fn [[offset slope]]
-                     (when-not (or (nil? offset)
-                                   (nil? slope)
-                                   (Double/isNaN offset)
-                                   (Double/isNaN slope))
-                       {:model   (model offset slope)
-                        :formula (formula offset slope)}))))
-                (apply redux/juxt))
+   (f/robust-fuse
+    {:fits           (->> (for [{:keys [x-link-fn y-link-fn formula model]} trendline-function-families]
+                            (redux/post-complete
+                             (stats/simple-linear-regression (comp (stats/somef x-link-fn) fx)
+                                                             (comp (stats/somef y-link-fn) fy))
+                             (fn [[offset slope]]
+                               (when (every? f/real-number? [offset slope])
+                                 {:model   (model offset slope)
+                                  :formula (formula offset slope)}))))
+                          (apply redux/juxt))
      :validation-set ((keep (fn [row]
                               (let [x (fx row)
                                     y (fy row)]
@@ -122,10 +122,12 @@
    (fn [{:keys [validation-set fits]}]
      (some->> fits
               (remove nil?)
+              (map #(assoc % :mae (transduce identity
+                                             (mae (comp (:model %) first) second)
+                                             validation-set)))
+              (filter (comp f/real-number? :mae))
               not-empty
-              (apply min-key #(transduce identity
-                                         (mae (comp (:model %) first) second)
-                                         validation-set))
+              (apply min-key :mae)
               :formula))))
 
 (defn- timeseries?
@@ -154,68 +156,69 @@
    :quarter (* 30.4 3)
    :year    365.1})
 
-(defn- infer-unit
-  [from to]
-  (when (and from to)
-    (some (fn [[unit duration]]
-            (when (about= (- to from) duration)
-              unit))
-          unit->duration)))
-
 (defn- valid-period?
   [from to unit]
   (when (and from to unit)
-    (about= (- to from) (unit->duration unit))))
+    ;; Make sure we work for both ascending and descending time series
+    (let [[from to] (sort [from to])]
+      (about= (- to from) (unit->duration unit)))))
+
+(defn- infer-unit
+  [from to]
+  (m/find-first (partial valid-period? from to) (keys unit->duration)))
+
+(defn- ->millis-from-epoch [t]
+  (when t
+    (condp instance? t
+      Instant        (t/to-millis-from-epoch t)
+      OffsetDateTime (t/to-millis-from-epoch t)
+      ZonedDateTime  (t/to-millis-from-epoch t)
+      LocalDate      (->millis-from-epoch (t/offset-date-time t (t/local-time 0) (t/zone-offset 0)))
+      LocalDateTime  (->millis-from-epoch (t/offset-date-time t (t/zone-offset 0)))
+      LocalTime      (->millis-from-epoch (t/offset-date-time (t/local-date "1970-01-01") t (t/zone-offset 0)))
+      OffsetTime     (->millis-from-epoch (t/offset-date-time (t/local-date "1970-01-01") t (t/zone-offset t))))))
 
 (defn- timeseries-insight
   [{:keys [numbers datetimes]}]
   (let [datetime   (first datetimes)
         x-position (:position datetime)
-        xfn        (if (or (-> datetime :base_type (isa? :type/DateTime))
-                           (field/unix-timestamp? datetime))
-                     #(some-> %
-                              (nth x-position)
-                              ;; at this point in the pipeline, dates are still stings
-                              f/->date
-                              (.getTime)
-                              ms->day)
-                     ;; unit=year workaround. While the field is in this case marked as :type/Text,
-                     ;; at this stage in the pipeline the value is still an int, so we can use it
-                     ;; directly.
-                     #(some-> % (nth x-position) t/date-time t.coerce/to-long ms->day))]
-    (apply redux/juxt
-           (for [number-col numbers]
-             (redux/post-complete
-              (let [y-position (:position number-col)
-                    yfn        #(nth % y-position)]
-                (redux/juxt ((map yfn) (last-n 2))
-                            ((map xfn) (last-n 2))
-                            (stats/simple-linear-regression xfn yfn)
-                            (best-fit xfn yfn)))
-              (fn [[[y-previous y-current] [x-previous x-current] [offset slope] best-fit]]
-                (let [unit         (if (contains? #{:default nil} (:unit datetime))
-                                     (infer-unit x-previous x-current)
-                                     (:unit datetime))
-                      show-change? (valid-period? x-previous x-current unit)]
-                  {:last-value     y-current
-                   :previous-value (when show-change?
-                                     y-previous)
-                   :last-change    (when show-change?
-                                     (change y-current y-previous))
-                   :slope          slope
-                   :offset         offset
-                   :best-fit       best-fit
-                   :col            (:name number-col)})))))))
-
-(defn- datetime-truncated-to-year?
-  "This is hackish as hell, but we change datetimes with year granularity to strings upstream and
-   this is the only way to recover the information they were once datetimes."
-  [{:keys [base_type unit fingerprint] :as field}]
-  (and (= base_type :type/Text)
-       (contains? field :unit)
-       (nil? unit)
-       (or (nil? (:type fingerprint))
-           (-> fingerprint :type :type/DateTime))))
+        xfn        #(some-> %
+                            (nth x-position)
+                            ;; at this point in the pipeline, dates are still stings
+                            f/->temporal
+                            ->millis-from-epoch
+                            ms->day)]
+    (f/with-error-handling
+      (apply redux/juxt
+             (for [number-col numbers]
+               (redux/post-complete
+                (let [y-position (:position number-col)
+                      yfn        #(nth % y-position)]
+                  ((filter (comp f/real-number? yfn))
+                   (redux/juxt ((map yfn) (last-n 2))
+                               ((map xfn) (last-n 2))
+                               (stats/simple-linear-regression xfn yfn)
+                               (best-fit xfn yfn))))
+                (fn [[[y-previous y-current] [x-previous x-current] [offset slope] best-fit]]
+                  (let [unit         (let [unit (some-> datetime :unit mbql.u/normalize-token)]
+                                       (if (or (nil? unit)
+                                               (= unit :default))
+                                         (infer-unit x-previous x-current)
+                                         unit))
+                        show-change? (valid-period? x-previous x-current unit)]
+                    (f/robust-map
+                     :last-value     y-current
+                     :previous-value (when show-change?
+                                       y-previous)
+                     :last-change    (when show-change?
+                                       (change y-current y-previous))
+                     :slope          slope
+                     :offset         offset
+                     :best-fit       best-fit
+                     :col            (:name number-col)
+                     :unit           unit))))))
+      (trs "Error generating timeseries insight keyed by: {0}"
+           (sync-util/name-for-logging (field/map->FieldInstance datetime))))))
 
 (defn insights
   "Based on the shape of returned data construct a transducer to statistically analyize data."
@@ -223,14 +226,17 @@
   (let [cols-by-type (->> cols
                           (map-indexed (fn [idx col]
                                          (assoc col :position idx)))
-                          (group-by (fn [{:keys [base_type unit] :as field}]
+                          (group-by (fn [{base-type      :base_type
+                                          effective-type :effective_type
+                                          semantic-type  :semantic_type
+                                          unit           :unit}]
                                       (cond
-                                        (datetime-truncated-to-year? field)          :datetimes
-                                        (metabase.util.date/date-extract-units unit) :numbers
-                                        (field/unix-timestamp? field)                :datetimes
-                                        (isa? base_type :type/Number)                :numbers
-                                        (isa? base_type :type/DateTime)              :datetimes
-                                        :else                                        :others))))]
+                                        (isa? semantic-type :Relation/*)                    :others
+                                        (= unit :year)                                      :datetimes
+                                        (u.date/extract-units unit)                         :numbers
+                                        (isa? (or effective-type base-type) :type/Temporal) :datetimes
+                                        (isa? base-type :type/Number)                       :numbers
+                                        :else                                               :others))))]
     (cond
       (timeseries? cols-by-type) (timeseries-insight cols-by-type)
       :else                      (f/constant-fingerprinter nil))))

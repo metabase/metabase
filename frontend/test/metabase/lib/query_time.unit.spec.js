@@ -12,48 +12,40 @@ describe("query_time", () => {
   describe("parseFieldBucketing()", () => {
     it("supports the standard DatetimeField format", () => {
       expect(
-        parseFieldBucketing(["datetime-field", ["field-id", 3], "week"]),
+        parseFieldBucketing(["field", 3, { "temporal-unit": "week" }]),
       ).toBe("week");
       expect(
-        parseFieldBucketing(["datetime-field", ["field-id", 3], "day"]),
+        parseFieldBucketing(["field", 3, { "temporal-unit": "day" }]),
       ).toBe("day");
-    });
-
-    it("supports the legacy DatetimeField format", () => {
-      expect(
-        parseFieldBucketing(["datetime-field", ["field-id", 3], "as", "week"]),
-      ).toBe("week");
-      expect(
-        parseFieldBucketing(["datetime-field", ["field-id", 3], "day"]),
-      ).toBe("day");
-    });
-    it("returns the default unit for FK reference", () => {
-      pending();
-    });
-    it("returns the default unit for local field reference", () => {
-      pending();
-    });
-    it("returns the default unit for other field types", () => {
-      pending();
     });
   });
 
   describe("expandTimeIntervalFilter", () => {
     it('translate ["current" "month"] correctly', () => {
       expect(
-        expandTimeIntervalFilter(["time-interval", 100, "current", "month"]),
+        expandTimeIntervalFilter([
+          "time-interval",
+          ["field", 100, null],
+          "current",
+          "month",
+        ]),
       ).toEqual([
         "=",
-        ["datetime-field", 100, "as", "month"],
+        ["field", 100, { "temporal-unit": "month" }],
         ["relative-datetime", "current"],
       ]);
     });
     it('translate [-30, "day"] correctly', () => {
       expect(
-        expandTimeIntervalFilter(["time-interval", 100, -30, "day"]),
+        expandTimeIntervalFilter([
+          "time-interval",
+          ["field", 100, null],
+          -30,
+          "day",
+        ]),
       ).toEqual([
         "between",
-        ["datetime-field", 100, "as", "day"],
+        ["field", 100, { "temporal-unit": "day" }],
         ["relative-datetime", -31, "day"],
         ["relative-datetime", -1, "day"],
       ]);
@@ -169,7 +161,7 @@ describe("query_time", () => {
   describe("computeFilterTimeRange", () => {
     describe("absolute dates", () => {
       it('should handle "="', () => {
-        let [start, end] = computeFilterTimeRange(["=", 1, "2009-08-07"]);
+        const [start, end] = computeFilterTimeRange(["=", 1, "2009-08-07"]);
         expect(start.format("YYYY-MM-DD HH:mm:ss")).toEqual(
           "2009-08-07 00:00:00",
         );
@@ -178,21 +170,21 @@ describe("query_time", () => {
         );
       });
       it('should handle "<"', () => {
-        let [start, end] = computeFilterTimeRange(["<", 1, "2009-08-07"]);
+        const [start, end] = computeFilterTimeRange(["<", 1, "2009-08-07"]);
         expect(start.year()).toBeLessThan(-10000);
         expect(end.format("YYYY-MM-DD HH:mm:ss")).toEqual(
           "2009-08-07 00:00:00",
         );
       });
       it('should handle ">"', () => {
-        let [start, end] = computeFilterTimeRange([">", 1, "2009-08-07"]);
+        const [start, end] = computeFilterTimeRange([">", 1, "2009-08-07"]);
         expect(start.format("YYYY-MM-DD HH:mm:ss")).toEqual(
           "2009-08-07 23:59:59",
         );
         expect(end.year()).toBeGreaterThan(10000);
       });
       it('should handle "between"', () => {
-        let [start, end] = computeFilterTimeRange([
+        const [start, end] = computeFilterTimeRange([
           "between",
           1,
           "2009-08-07",
@@ -209,7 +201,7 @@ describe("query_time", () => {
 
     describe("relative dates", () => {
       it('should handle "="', () => {
-        let [start, end] = computeFilterTimeRange([
+        const [start, end] = computeFilterTimeRange([
           "=",
           1,
           ["relative-datetime", "current"],
@@ -222,7 +214,7 @@ describe("query_time", () => {
         );
       });
       it('should handle "<"', () => {
-        let [start, end] = computeFilterTimeRange([
+        const [start, end] = computeFilterTimeRange([
           "<",
           1,
           ["relative-datetime", "current"],
@@ -233,7 +225,7 @@ describe("query_time", () => {
         );
       });
       it('should handle ">"', () => {
-        let [start, end] = computeFilterTimeRange([
+        const [start, end] = computeFilterTimeRange([
           ">",
           1,
           ["relative-datetime", "current"],
@@ -244,7 +236,7 @@ describe("query_time", () => {
         expect(end.year()).toBeGreaterThan(10000);
       });
       it('should handle "between"', () => {
-        let [start, end] = computeFilterTimeRange([
+        const [start, end] = computeFilterTimeRange([
           "between",
           1,
           ["relative-datetime", -1, "day"],
@@ -265,7 +257,7 @@ describe("query_time", () => {
 
     describe("time-interval", () => {
       it('should handle "Past x days"', () => {
-        let [start, end] = computeFilterTimeRange([
+        const [start, end] = computeFilterTimeRange([
           "time-interval",
           1,
           -7,
@@ -283,7 +275,7 @@ describe("query_time", () => {
         );
       });
       // it ('should handle "last week"', () => {
-      //     let [start, end] = computeFilterTimeRange(["time-interval", 1, "last", "week"]);
+      //     let [start, end] = computeFilterTimeRange(["time-interval", ["field", 1, null], "last", "week"]);
       //     expect(start.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment().subtract(1, "week").startOf("week").format("YYYY-MM-DD 00:00:00"));
       //     expect(end.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment().subtract(1, "week").endOf("week")..format("YYYY-MM-DD 23:59:59"));
       // });

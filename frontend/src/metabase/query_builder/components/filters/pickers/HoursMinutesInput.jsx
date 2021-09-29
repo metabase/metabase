@@ -1,7 +1,9 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
-import NumericInput from "metabase/components/NumericInput.jsx";
+import NumericInput from "metabase/components/NumericInput";
 import Icon from "metabase/components/Icon";
+import { isLocale24Hour } from "metabase/lib/i18n";
 
 import cx from "classnames";
 import moment from "moment";
@@ -12,7 +14,7 @@ const HoursMinutesInput = ({
   onChangeHours,
   onChangeMinutes,
   onClear,
-  is24HourMode = false,
+  is24HourMode = isLocale24Hour(),
 }) => (
   <div className="flex align-center">
     <NumericInput
@@ -23,7 +25,9 @@ const HoursMinutesInput = ({
       value={
         is24HourMode
           ? String(hours)
-          : hours % 12 === 0 ? "12" : String(hours % 12)
+          : hours % 12 === 0
+          ? "12"
+          : String(hours % 12)
       }
       onChange={
         is24HourMode

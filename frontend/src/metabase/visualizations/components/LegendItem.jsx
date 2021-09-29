@@ -1,14 +1,18 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import PropTypes from "prop-types";
 
-import Icon from "metabase/components/Icon.jsx";
-import Tooltip from "metabase/components/Tooltip.jsx";
-import Ellipsified from "metabase/components/Ellipsified.jsx";
+import Icon, { iconPropTypes } from "metabase/components/Icon";
+import Tooltip from "metabase/components/Tooltip";
+import Ellipsified from "metabase/components/Ellipsified";
 
 import cx from "classnames";
 
-// Don't use a <a> tag if there's no href
-const LegendLink = props =>
-  props.href ? <a {...props} /> : <span {...props} />;
+import { IconContainer } from "./LegendItem.styled";
+
+const propTypes = {
+  icon: PropTypes.shape(iconPropTypes),
+};
 
 export default class LegendItem extends Component {
   constructor(props, context) {
@@ -16,7 +20,6 @@ export default class LegendItem extends Component {
     this.state = {};
   }
 
-  static propTypes = {};
   static defaultProps = {
     showDot: true,
     showTitle: true,
@@ -29,6 +32,7 @@ export default class LegendItem extends Component {
     const {
       title,
       color,
+      icon,
       showDot,
       showTitle,
       isMuted,
@@ -41,8 +45,9 @@ export default class LegendItem extends Component {
       onClick,
       infoClassName,
     } = this.props;
+
     return (
-      <LegendLink
+      <span
         className={cx(
           className,
           "LegendItem",
@@ -58,6 +63,11 @@ export default class LegendItem extends Component {
         onMouseLeave={onMouseLeave}
         onClick={onClick}
       >
+        {icon && (
+          <IconContainer>
+            <Icon {...icon} />
+          </IconContainer>
+        )}
         {showDot && (
           <Tooltip tooltip={title} isEnabled={showTooltip && showDotTooltip}>
             <div
@@ -73,12 +83,10 @@ export default class LegendItem extends Component {
           </Tooltip>
         )}
         {showTitle && (
-          <div className="flex align-center">
-            <span className="mr1">
-              <Ellipsified showTooltip={showTooltip}>{title}</Ellipsified>
-            </span>
+          <div className="flex align-center overflow-hidden">
+            <Ellipsified showTooltip={showTooltip}>{title}</Ellipsified>
             {description && (
-              <div className="hover-child">
+              <div className="hover-child ml1 flex align-center text-medium">
                 <Tooltip tooltip={description} maxWidth={"22em"}>
                   <Icon className={infoClassName} name="info" />
                 </Tooltip>
@@ -86,7 +94,9 @@ export default class LegendItem extends Component {
             )}
           </div>
         )}
-      </LegendLink>
+      </span>
     );
   }
 }
+
+LegendItem.propTypes = propTypes;

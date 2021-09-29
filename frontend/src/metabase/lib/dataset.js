@@ -1,5 +1,3 @@
-/* @flow */
-
 import _ from "underscore";
 
 import type {
@@ -7,9 +5,15 @@ import type {
   Column,
   ColumnName,
   DatasetData,
-} from "metabase/meta/types/Dataset";
-import type { Card } from "metabase/meta/types/Card";
-import type { Field as FieldReference } from "metabase/meta/types/Query";
+} from "metabase-types/types/Dataset";
+import type { Field as FieldReference } from "metabase-types/types/Query";
+
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import Dimension, {
+  AggregationDimension,
+  FieldDimension,
+} from "metabase-lib/lib/Dimension";
+import type Question from "metabase-lib/lib/Question";
 
 type ColumnSetting = {
   name: ColumnName,
@@ -17,9 +21,8 @@ type ColumnSetting = {
   enabled: boolean,
 };
 
-// Many aggregations result in [[null]] if there are no rows to aggregate after filters
 export const datasetContainsNoResults = (data: DatasetData): boolean =>
-  data.rows.length === 0 || _.isEqual(data.rows, [[null]]);
+  data.rows == null || data.rows.length === 0;
 
 /**
  * @returns min and max for a value in a column
@@ -28,56 +31,68 @@ export const rangeForValue = (
   value: Value,
   column: ?Column,
 ): ?[number, number] => {
-  if (
-    typeof value === "number" &&
-    column &&
-    column.binning_info &&
-    column.binning_info.bin_width
-  ) {
+  if (typeof value === "number" && column?.binning_info?.bin_width) {
     return [value, value + column.binning_info.bin_width];
   }
 };
 
 /**
  * Returns a MBQL field reference (FieldReference) for a given result dataset column
+ *
  * @param  {Column} column Dataset result column
- * @param  {?Column[]} columns Full array of columns, unfortunately needed to determine the aggregation index
  * @return {?FieldReference} MBQL field reference
  */
-export function fieldRefForColumn(
-  column: Column,
-  columns?: Column[],
-): ?FieldReference {
-  if (column.id != null) {
-    if (Array.isArray(column.id)) {
-      // $FlowFixMe: sometimes col.id is a field reference (e.x. nested queries), if so just return it
-      return column.id;
-    } else if (column.fk_field_id != null) {
-      return ["fk->", column.fk_field_id, column.id];
-    } else {
-      return ["field-id", column.id];
-    }
-  } else if (column.expression_name != null) {
-    return ["expression", column.expression_name];
-  } else if (column.source === "aggregation" && columns) {
-    // HACK: find the aggregation index, preferably this would be included on the column
-    const aggIndex = columns
-      .filter(c => c.source === "aggregation")
-      .indexOf(column);
-    if (aggIndex >= 0) {
-      return ["aggregation", aggIndex];
-    }
-  }
-  return null;
+export function fieldRefForColumn(column: Column): ?FieldReference {
+  // NOTE: matching existing behavior of returning the unwrapped base dimension until we understand the implications of changing this
+  return (
+    column.field_ref &&
+    Dimension.parseMBQL(column.field_ref)
+      .baseDimension()
+      .mbql()
+  );
+}
+
+export function fieldRefWithOption(
+  fieldRef: any,
+  key: string,
+  value: any,
+): FieldReference {
+  const dimension = FieldDimension.parseMBQLOrWarn(fieldRef);
+  return dimension && dimension.withOption(key, value).mbql();
 }
 
 export const keyForColumn = (column: Column): string => {
-  const ref = fieldRefForColumn(column);
-  return JSON.stringify(ref ? ["ref", ref] : ["name", column.name]);
+  let fieldRef = column.field_ref;
+  if (!fieldRef) {
+    console.error("column is missing field_ref", column);
+    fieldRef = new FieldDimension(column.name).mbql();
+  }
+
+  let dimension = Dimension.parseMBQL(fieldRef);
+  if (!dimension) {
+    console.warn("Unknown field_ref", fieldRef);
+    return JSON.stringify(fieldRef);
+  }
+
+  dimension = dimension.baseDimension();
+
+  // match bug where field w/ join alias returned field w/o join alias instead
+  if (dimension instanceof FieldDimension) {
+    dimension = dimension.withoutOptions("join-alias");
+  }
+
+  // match legacy behavior which didn't have "field-literal" or "aggregation" field refs
+  const isLegacyRef =
+    (dimension instanceof FieldDimension && dimension.isStringFieldName()) ||
+    dimension instanceof AggregationDimension;
+
+  return JSON.stringify(
+    isLegacyRef ? ["name", column.name] : ["ref", dimension.mbql()],
+  );
 };
 
 /**
- * Finds the column object from the dataset results for the given `table.columns` column setting
+ * finds the column object from the dataset results for the given `table.columns` column setting
  * @param  {Column[]} columns             Dataset results columns
  * @param  {ColumnSetting} columnSetting  A "column setting" from the `table.columns` settings
  * @return {?Column}                      A result column
@@ -94,15 +109,21 @@ export function findColumnForColumnSetting(
   }
 }
 
+export function normalizeFieldRef(fieldRef: ?FieldReference): ?FieldReference {
+  const dimension = Dimension.parseMBQL(fieldRef);
+  return dimension && dimension.mbql();
+}
+
 export function findColumnIndexForColumnSetting(
   columns: Column[],
   columnSetting: ColumnSetting,
 ): number {
-  const { fieldRef } = columnSetting;
+  // NOTE: need to normalize field refs because they may be old style [fk->, 1, 2]
+  const fieldRef = normalizeFieldRef(columnSetting.fieldRef);
   // first try to find by fieldRef
   if (fieldRef != null) {
     const index = _.findIndex(columns, col =>
-      _.isEqual(fieldRef, fieldRefForColumn(col)),
+      _.isEqual(fieldRef, normalizeFieldRef(fieldRefForColumn(col))),
     );
     if (index >= 0) {
       return index;
@@ -112,42 +133,77 @@ export function findColumnIndexForColumnSetting(
   return _.findIndex(columns, col => col.name === columnSetting.name);
 }
 
-/**
- * Synchronizes the "table.columns" visualization setting to the structured
- * query's `fields`
- * @param  {[type]} card Card to synchronize `fields`. Mutates value
- * @param  {[type]} cols Columns in last run results
- */
-export function syncQueryFields(card: Card, cols: Column[]): void {
-  if (
-    card.dataset_query.type === "query" &&
-    card.visualization_settings["table.columns"]
-  ) {
-    const visibleColumns = card.visualization_settings["table.columns"]
-      .filter(columnSetting => columnSetting.enabled)
-      .map(columnSetting => findColumnForColumnSetting(cols, columnSetting));
-    const fields = visibleColumns
-      .map(column => column && fieldRefForColumn(column))
-      .filter(field => field);
-    if (!_.isEqual(card.dataset_query.query.fields, fields)) {
-      console.log("fields actual", card.dataset_query.query.fields);
-      console.log("fields expected", fields);
-      card.dataset_query.query.fields = fields;
-    }
+export function findColumnSettingIndexForColumn(columnSettings, column) {
+  const fieldRef = normalizeFieldRef(fieldRefForColumn(column));
+  if (fieldRef == null) {
+    return columnSettings.findIndex(
+      columnSetting => columnSetting.name === column.name,
+    );
   }
+  const index = columnSettings.findIndex(columnSetting =>
+    _.isEqual(fieldRef, normalizeFieldRef(columnSetting.fieldRef)),
+  );
+  return index;
 }
 
-export function getExistingFields(
-  card: Card,
-  cols: Column[],
-): FieldReference[] {
-  const query = card.dataset_query.query;
-  if (query.fields && query.fields > 0) {
-    return query.fields;
-  } else if (!query.aggregation && !query.breakout) {
-    // $FlowFixMe:
-    return cols.map(col => fieldRefForColumn(col)).filter(id => id != null);
-  } else {
-    return [];
+export function syncTableColumnsToQuery(question: Question): Question {
+  let query = question.query();
+  const columnSettings = question.settings()["table.columns"];
+  if (columnSettings && query instanceof StructuredQuery) {
+    // clear `fields` first
+    query = query.clearFields();
+
+    // do this before clearing join columns since the default is "none" thus joined columns will be removed
+    const columnDimensions = query.columnDimensions();
+    const columnNames = query.columnNames();
+
+    // clear join's `fields`
+    for (let i = query.joins().length - 1; i >= 0; i--) {
+      const join = query.joins()[i];
+      query = join.clearFields().parent();
+    }
+
+    for (const columnSetting of columnSettings) {
+      if (columnSetting.enabled) {
+        let fieldRef;
+        if (columnSetting.fieldRef) {
+          fieldRef = columnSetting.fieldRef;
+        } else if (columnSetting.name) {
+          const index = _.findIndex(columnNames, n => n === columnSetting.name);
+          if (index >= 0) {
+            fieldRef = columnDimensions[index].mbql();
+          }
+        }
+        if (fieldRef) {
+          const dimension = query.parseFieldReference(fieldRef);
+          // NOTE: this logic should probably be in StructuredQuery
+          if (dimension instanceof FieldDimension && dimension.joinAlias()) {
+            const join = dimension.join();
+            if (join) {
+              query = join.addField(dimension.mbql()).parent();
+            } else {
+              console.warn("missing join?", query, dimension);
+            }
+          } else {
+            query = query.addField(dimension.mbql());
+          }
+        } else {
+          console.warn("Unknown column", columnSetting);
+        }
+      }
+    }
+    // if removing `fields` wouldn't change the resulting columns, just remove it
+    const newColumnDimensions = query.columnDimensions();
+    if (
+      columnDimensions.length === newColumnDimensions.length &&
+      _.all(columnDimensions, (d, i) =>
+        d.isSameBaseDimension(newColumnDimensions[i]),
+      )
+    ) {
+      return query.clearFields().question();
+    } else {
+      return query.question();
+    }
   }
+  return question;
 }

@@ -2,17 +2,16 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { t } from "c-3po";
-import { isQueryable } from "metabase/lib/table";
+import { t } from "ttag";
 
 import S from "metabase/components/List.css";
 
-import List from "metabase/components/List.jsx";
-import ListItem from "metabase/components/ListItem.jsx";
+import List from "metabase/components/List";
+import ListItem from "metabase/components/ListItem";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-import ReferenceHeader from "../components/ReferenceHeader.jsx";
+import ReferenceHeader from "../components/ReferenceHeader";
 
 import { getDatabases, getError, getLoading } from "../selectors";
 
@@ -29,7 +28,10 @@ const mapDispatchToProps = {
   ...metadataActions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class DatabaseList extends Component {
   static propTypes = {
     style: PropTypes.object.isRequired,
@@ -43,34 +45,32 @@ export default class DatabaseList extends Component {
 
     return (
       <div style={style} className="full">
-        <ReferenceHeader name={t`Databases and tables`} />
+        <ReferenceHeader name={t`Our data`} />
         <LoadingAndErrorWrapper
           loading={!loadingError && loading}
           error={loadingError}
         >
           {() =>
             Object.keys(entities).length > 0 ? (
-              <div className="wrapper wrapper--trim">
+              <div className="wrapper">
                 <List>
-                  {Object.values(entities)
-                    .filter(isQueryable)
-                    .map(
-                      (entity, index) =>
-                        entity &&
-                        entity.id &&
-                        entity.name && (
-                          <li className="relative" key={entity.id}>
-                            <ListItem
-                              id={entity.id}
-                              index={index}
-                              name={entity.display_name || entity.name}
-                              description={entity.description}
-                              url={`/reference/databases/${entity.id}`}
-                              icon="database"
-                            />
-                          </li>
-                        ),
-                    )}
+                  {Object.values(entities).map(
+                    (entity, index) =>
+                      entity &&
+                      entity.id &&
+                      entity.name && (
+                        <li className="relative" key={entity.id}>
+                          <ListItem
+                            id={entity.id}
+                            index={index}
+                            name={entity.display_name || entity.name}
+                            description={entity.description}
+                            url={`/reference/databases/${entity.id}`}
+                            icon="database"
+                          />
+                        </li>
+                      ),
+                  )}
                 </List>
               </div>
             ) : (

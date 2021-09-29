@@ -1,5 +1,4 @@
-/* @flow weak */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
 import { connect } from "react-redux";
@@ -34,16 +33,20 @@ export default (
   // NOTE: ideally we would remove the current state from the history so the forward
   // button wouldn't be enabled, maybe using `replace`
 ) =>
-  connect(mapStateToProps, mapDispatchToProps)(
+  connect(
+    mapStateToProps,
+    mapDispatchToProps,
+  )(
     class extends Component {
-      static displayName = "Routeless[" +
+      static displayName =
+        "Routeless[" +
         (ComposedComponent.displayName || ComposedComponent.name) +
         "]";
 
       _state: any;
       _timeout: any;
 
-      componentWillMount() {
+      UNSAFE_componentWillMount() {
         const push = this.props._routeless_push;
         const location = this.props._routeless_location;
         const { pathname, query, search, hash, state } = location;
@@ -51,7 +54,7 @@ export default (
         push({ pathname, query, search, hash, state: this._state });
       }
 
-      componentWillReceiveProps(nextProps) {
+      UNSAFE_componentWillReceiveProps(nextProps) {
         const location = this.props._routeless_location;
         const nextLocation = nextProps._routeless_location;
         if (

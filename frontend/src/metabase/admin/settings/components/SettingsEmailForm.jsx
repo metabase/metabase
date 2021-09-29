@@ -1,12 +1,22 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { connect } from "react-redux";
+import { t } from "ttag";
+import { Flex } from "grid-styled";
 
 import Button from "metabase/components/Button";
+import MarginHostingCTA from "metabase/admin/settings/components/widgets/MarginHostingCTA";
 
 import SettingsBatchForm from "./SettingsBatchForm";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
+import MetabaseSettings from "metabase/lib/settings";
+
+import {
+  sendTestEmail,
+  updateEmailSettings,
+  clearEmailSettings,
+} from "../settings";
 
 const SEND_TEST_BUTTON_STATES = {
   default: t`Send test email`,
@@ -14,7 +24,11 @@ const SEND_TEST_BUTTON_STATES = {
   success: t`Sent!`,
 };
 
-export default class SettingsLdapForm extends Component {
+@connect(
+  null,
+  { sendTestEmail, updateEmailSettings, clearEmailSettings },
+)
+export default class SettingsEmailForm extends Component {
   state = {
     sendingEmail: "default",
   };
@@ -56,34 +70,40 @@ export default class SettingsLdapForm extends Component {
 
   render() {
     const { sendingEmail } = this.state;
+
     return (
-      <SettingsBatchForm
-        ref={form => (this._form = form)}
-        {...this.props}
-        updateSettings={this.props.updateEmailSettings}
-        disable={sendingEmail !== "default"}
-        renderExtraButtons={({ disabled, valid, dirty, submitting }) => {
-          return [
-            valid && !dirty && submitting === "default" ? (
+      <Flex justifyContent="space-between">
+        <SettingsBatchForm
+          ref={form => (this._form = form && form.getWrappedInstance())}
+          {...this.props}
+          updateSettings={this.props.updateEmailSettings}
+          disable={sendingEmail !== "default"}
+          renderExtraButtons={({ disabled, valid, pristine, submitting }) => (
+            <React.Fragment>
+              {valid && pristine && submitting === "default" ? (
+                <Button
+                  mr={1}
+                  success={sendingEmail === "success"}
+                  disabled={disabled}
+                  onClick={this.sendTestEmail}
+                >
+                  {SEND_TEST_BUTTON_STATES[sendingEmail]}
+                </Button>
+              ) : null}
               <Button
                 mr={1}
-                success={sendingEmail === "success"}
                 disabled={disabled}
-                onClick={this.sendTestEmail}
+                onClick={() => this.clearEmailSettings()}
               >
-                {SEND_TEST_BUTTON_STATES[sendingEmail]}
+                {t`Clear`}
               </Button>
-            ) : null,
-            <Button
-              mr={1}
-              disabled={disabled}
-              onClick={() => this.clearEmailSettings()}
-            >
-              {t`Clear`}
-            </Button>,
-          ];
-        }}
-      />
+            </React.Fragment>
+          )}
+        />
+        {!MetabaseSettings.isHosted() && !MetabaseSettings.isEnterprise() && (
+          <MarginHostingCTA tagline={t`Have your email configured for you.`} />
+        )}
+      </Flex>
     );
   }
 }

@@ -1,5 +1,6 @@
+/* eslint-disable react/prop-types */
 import React from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { connect } from "react-redux";
 import { goBack } from "react-router-redux";
 
@@ -11,7 +12,10 @@ import ModalContent from "metabase/components/ModalContent";
 @Task.load({
   id: (state, props) => props.params.taskId,
 })
-@connect(null, { goBack })
+@connect(
+  null,
+  { goBack },
+)
 class TaskModal extends React.Component {
   render() {
     const { object } = this.props;

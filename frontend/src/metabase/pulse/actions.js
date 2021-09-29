@@ -13,11 +13,13 @@ export const SET_EDITING_PULSE = "SET_EDITING_PULSE";
 export const UPDATE_EDITING_PULSE = "UPDATE_EDITING_PULSE";
 export const SAVE_PULSE = "SAVE_PULSE";
 export const SAVE_EDITING_PULSE = "SAVE_EDITING_PULSE";
-export const DELETE_PULSE = "DELETE_PULSE";
 export const TEST_PULSE = "TEST_PULSE";
 
 export const FETCH_PULSE_FORM_INPUT = "FETCH_PULSE_FORM_INPUT";
 export const FETCH_PULSE_CARD_PREVIEW = "FETCH_PULSE_CARD_PREVIEW";
+
+export const FETCH_PULSE_LIST_BY_DASHBOARD_ID =
+  "FETCH_PULSE_LIST_BY_DASHBOARD_ID";
 
 export const setEditingPulse = createThunkAction(SET_EDITING_PULSE, function(
   id,
@@ -45,6 +47,7 @@ export const setEditingPulse = createThunkAction(SET_EDITING_PULSE, function(
         channels: defaultChannelSpec ? [createChannel(defaultChannelSpec)] : [],
         skip_if_empty: false,
         collection_id: initialCollectionId,
+        parameters: [],
       };
     }
   };
@@ -56,7 +59,7 @@ export const saveEditingPulse = createThunkAction(
   SAVE_EDITING_PULSE,
   function() {
     return async function(dispatch, getState) {
-      let editingPulse = getEditingPulse(getState());
+      const editingPulse = getEditingPulse(getState());
       if (editingPulse.id != null) {
         return Pulses.HACK_getObjectFromAction(
           await dispatch(Pulses.actions.update(editingPulse)),
@@ -90,6 +93,15 @@ export const fetchPulseCardPreview = createThunkAction(
   function(id) {
     return async function(dispatch, getState) {
       return await PulseApi.preview_card({ id: id });
+    };
+  },
+);
+
+export const fetchPulsesByDashboardId = createThunkAction(
+  FETCH_PULSE_LIST_BY_DASHBOARD_ID,
+  function(dashboard_id) {
+    return async function(dispatch, getState) {
+      return await PulseApi.list({ dashboard_id: dashboard_id });
     };
   },
 );

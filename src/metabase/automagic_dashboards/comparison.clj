@@ -1,17 +1,14 @@
 (ns metabase.automagic-dashboards.comparison
   (:require [medley.core :as m]
-            [metabase
-             [related :as related]
-             [util :as u]]
             [metabase.api.common :as api]
-            [metabase.automagic-dashboards
-             [core :refer [->field ->related-entity ->root automagic-analysis capitalize-first cell-title
-                           encode-base64-json metric-name source-name]]
-             [filters :as filters]
-             [populate :as populate]]
+            [metabase.automagic-dashboards.core :refer [->field ->related-entity ->root automagic-analysis capitalize-first cell-title encode-base64-json metric-name source-name]]
+            [metabase.automagic-dashboards.filters :as filters]
+            [metabase.automagic-dashboards.populate :as populate]
             [metabase.mbql.normalize :as normalize]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor.util :as qp.util]
+            [metabase.related :as related]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]))
 
 (def ^:private ^{:arglists '([root])} comparison-name
@@ -194,22 +191,22 @@
                        (for [segment (->> left :entity related/related :segments (map ->root))
                              :when (not= segment right)]
                          {:url         (str (:url left) "/compare/segment/"
-                                            (-> segment :entity u/get-id))
+                                            (-> segment :entity u/the-id))
                           :title       (tru "Compare with {0}" (:comparison-name segment))
                           :description ""})
                        (when (and ((some-fn :query-filter :cell-query) left)
                                   (not= (:source left) (:entity right)))
                          [{:url         (if (->> left :source (instance? (type Table)))
                                           (str (:url left) "/compare/table/"
-                                               (-> left :source u/get-id))
+                                               (-> left :source u/the-id))
                                           (str (:url left) "/compare/adhoc/"
                                                (encode-base64-json
                                                 {:database (:database left)
                                                  :type     :query
                                                  :query    {:source-table (->> left
                                                                                :source
-                                                                               u/get-id
-                                                                               (str "card__" ))}})))
+                                                                               u/the-id
+                                                                               (str "card__"))}})))
                            :title       (tru "Compare with entire dataset")
                            :description ""}])))
       (as-> related
@@ -253,7 +250,7 @@
                                 (map #(automagic-analysis % {:source       (:source left)
                                                              :rules-prefix ["comparison"]})))]
     (assert (or (= (:source left) (:source right))
-                (= (-> left :source :table_id) (-> right :source u/get-id))))
+                (= (-> left :source :table_id) (-> right :source u/the-id))))
     (->> (concat segment-dashboards [dashboard])
          (reduce #(populate/merge-dashboards %1 %2 {:skip-titles? true}))
          dashboard->cards

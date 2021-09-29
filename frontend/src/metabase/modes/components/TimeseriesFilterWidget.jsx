@@ -1,7 +1,5 @@
-/* @flow weak */
-
 import React, { Component } from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 import DatePicker from "metabase/query_builder/components/filters/pickers/DatePicker";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import SelectButton from "metabase/components/SelectButton";
@@ -9,12 +7,10 @@ import Button from "metabase/components/Button";
 
 import * as Query from "metabase/lib/query/query";
 import * as Filter from "metabase/lib/query/filter";
-import * as Field from "metabase/lib/query/field";
 import * as Card from "metabase/meta/Card";
 
 import {
   parseFieldTarget,
-  parseFieldTargetId,
   generateTimeFilterValuesDescriptions,
 } from "metabase/lib/query_time";
 
@@ -24,14 +20,12 @@ import _ from "underscore";
 import type {
   Card as CardObject,
   StructuredDatasetQuery,
-} from "metabase/meta/types/Card";
-import type { TableMetadata } from "metabase/meta/types/Metadata";
-import type { FieldFilter } from "metabase/meta/types/Query";
+} from "metabase-types/types/Card";
+import type { FieldFilter } from "metabase-types/types/Query";
 
 type Props = {
   className?: string,
   card: CardObject,
-  tableMetadata: TableMetadata,
   setDatasetQuery: (
     datasetQuery: StructuredDatasetQuery,
     options: { run: boolean },
@@ -47,7 +41,6 @@ type State = {
 export default class TimeseriesFilterWidget extends Component {
   props: Props;
   state: State = {
-    // $FlowFixMe
     filter: null,
     filterIndex: -1,
     currentFilter: null,
@@ -55,40 +48,38 @@ export default class TimeseriesFilterWidget extends Component {
 
   _popover: ?any;
 
-  componentWillMount() {
-    this.componentWillReceiveProps(this.props);
+  UNSAFE_componentWillMount() {
+    this.UNSAFE_componentWillReceiveProps(this.props);
   }
 
-  componentWillReceiveProps(nextProps: Props) {
+  UNSAFE_componentWillReceiveProps(nextProps: Props) {
     const query = Card.getQuery(nextProps.card);
     if (query) {
       const breakouts = Query.getBreakouts(query);
       const filters = Query.getFilters(query);
 
-      const timeFieldId = parseFieldTargetId(breakouts[0]);
       const timeField = parseFieldTarget(breakouts[0]);
 
       const filterIndex = _.findIndex(
         filters,
         filter =>
           Filter.isFieldFilter(filter) &&
-          Field.getFieldTargetId(filter[1]) === timeFieldId,
+          _.isEqual(filter[1], timeField.mbql()),
       );
 
       let filter, currentFilter;
       if (filterIndex >= 0) {
         filter = currentFilter = filters[filterIndex];
       } else {
-        filter = ["time-interval", timeField, -30, "day"];
+        filter = ["time-interval", timeField.mbql(), -30, "day"];
       }
 
-      // $FlowFixMe
       this.setState({ filter, filterIndex, currentFilter });
     }
   }
 
   render() {
-    const { className, card, tableMetadata, setDatasetQuery } = this.props;
+    const { className, card, setDatasetQuery } = this.props;
     const { filter, filterIndex, currentFilter } = this.state;
     let currentDescription;
 
@@ -121,11 +112,11 @@ export default class TimeseriesFilterWidget extends Component {
         autoWidth={true}
       >
         <DatePicker
+          className="m2"
           filter={this.state.filter}
           onFilterChange={newFilter => {
             this.setState({ filter: newFilter });
           }}
-          tableMetadata={tableMetadata}
           includeAllTime
         />
         <div className="p1">

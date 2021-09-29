@@ -1,10 +1,13 @@
+/* eslint-disable react/prop-types */
 import React from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import DatePicker, { getDateTimeFieldTarget } from "./DatePicker";
 import HoursMinutesInput from "./HoursMinutesInput";
 
 import { parseTime } from "metabase/lib/time";
+
+import type { Operator } from "./DatePicker";
 
 const TimeInput = ({ value, onChange }) => {
   const time = parseTime(value);
@@ -53,7 +56,6 @@ const MultiTimePicker = ({ filter, onFilterChange }) => (
 );
 
 const sortTimes = (a, b) => {
-  console.log(parseTime(a).isAfter(parseTime(b)));
   return parseTime(a).isAfter(parseTime(b)) ? [b, a] : [a, b];
 };
 

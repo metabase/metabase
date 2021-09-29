@@ -1,12 +1,16 @@
 (ns metabase.db.metadata-queries
-  "Predefined MBQL queries for getting metadata about an external database."
+  "Predefined MBQL queries for getting metadata about an external database.
+
+  TODO -- these have nothing to do with the application database. This namespace should be renamed something like
+  `metabase.driver.util.metadata-queries`."
   (:require [clojure.tools.logging :as log]
-            [metabase
-             [query-processor :as qp]
-             [util :as u]]
-            [metabase.models.table :refer [Table]]
+            [metabase.driver :as driver]
+            [metabase.driver.util :as driver.u]
+            [metabase.models.table :as table :refer [Table]]
+            [metabase.query-processor :as qp]
             [metabase.query-processor.interface :as qpi]
             [metabase.sync.interface :as si]
+            [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -15,9 +19,9 @@
   {:pre [(integer? db-id)]}
   (-> (binding [qpi/*disable-qp-logging* true]
         (qp/process-query
-          {:type     :query
-           :database db-id
-           :query    mbql-query}))
+         {:type     :query
+          :database db-id
+          :query    mbql-query}))
       :data
       :rows))
 
@@ -29,11 +33,11 @@
             (assoc mbql-query :source-table table-id)))
 
 (defn table-row-count
-  "Fetch the row count of TABLE via the query processor."
+  "Fetch the row count of `table` via the query processor."
   [table]
   {:pre  [(map? table)]
    :post [(integer? %)]}
-  (let [results (qp-query (:db_id table) {:source-table (u/get-id table)
+  (let [results (qp-query (:db_id table) {:source-table (u/the-id table)
                                           :aggregation  [[:count]]})]
     (try (-> results first first long)
          (catch Throwable e
@@ -62,51 +66,79 @@
   (int 5000))
 
 (s/defn field-distinct-values
-  "Return the distinct values of FIELD.
+  "Return the distinct values of `field`.
    This is used to create a `FieldValues` object for `:type/Category` Fields."
   ([field]
    (field-distinct-values field absolute-max-distinct-values-limit))
+
   ([field, max-results :- su/IntGreaterThanZero]
-   (mapv first (field-query field {:breakout [[:field-id (u/get-id field)]]
+   (mapv first (field-query field {:breakout [[:field (u/the-id field) nil]]
                                    :limit    max-results}))))
 
 (defn field-distinct-count
-  "Return the distinct count of FIELD."
+  "Return the distinct count of `field`."
   [field & [limit]]
-  (-> (field-query field {:aggregation [[:distinct [:field-id (u/get-id field)]]]
+  (-> (field-query field {:aggregation [[:distinct [:field (u/the-id field) nil]]]
                           :limit       limit})
       first first int))
 
 (defn field-count
-  "Return the count of FIELD."
+  "Return the count of `field`."
   [field]
-  (-> (field-query field {:aggregation [[:count [:field-id (u/get-id field)]]]})
+  (-> (field-query field {:aggregation [[:count [:field (u/the-id field) nil]]]})
       first first int))
-
-(defn db-id
-  "Return the database ID of a given entity."
-  [x]
-  (or (:db_id x)
-      (:database_id x)
-      (db/select-one-field :db_id 'Table :id (:table_id x))))
-
 
 (def max-sample-rows
   "The maximum number of values we should return when using `table-rows-sample`. This many is probably fine for
-  inferring special types and what-not; we don't want to scan millions of values at any rate."
+  inferring semantic types and what-not; we don't want to scan millions of values at any rate."
   10000)
 
-(s/defn table-rows-sample :- (s/maybe si/TableSample)
-  "Run a basic MBQL query to fetch a sample of rows belonging to a Table."
+(def TableRowsSampleOptions
+  "Schema for `table-rows-sample` options"
+  (s/maybe {(s/optional-key :truncation-size) s/Int
+            (s/optional-key :rff)             s/Any}))
+
+(defn- text-field?
+  "Identify text fields which can accept our substring optimization.
+
+  JSON and XML fields are now marked as `:type/Structured` but in the past were marked as `:type/Text` so its not
+  enough to just check the base type."
+  [{:keys [base_type semantic_type]}]
+  (and (= base_type :type/Text)
+       (not (isa? semantic_type :type/Structured))))
+
+(defn- table-rows-sample-query
+  "Returns the mbql query to query a table for sample rows"
+  [table fields {:keys [truncation-size] :as _opts}]
+  (let [driver             (-> table table/database driver.u/database->driver)
+        text-fields        (filter text-field? fields)
+        field->expressions (when (and truncation-size (driver/supports? driver :expressions))
+                             (into {} (for [field text-fields]
+                                        [field [(str (gensym "substring"))
+                                                [:substring [:field (u/the-id field) nil] 1 truncation-size]]])))]
+    {:database   (:db_id table)
+     :type       :query
+     :query      {:source-table (u/the-id table)
+                  :expressions  (into {} (vals field->expressions))
+                  :fields       (vec (for [field fields]
+                                       (if-let [[expression-name _] (get field->expressions field)]
+                                         [:expression expression-name]
+                                         [:field (u/the-id field) nil])))
+                  :limit        max-sample-rows}
+     :middleware {:format-rows?           false
+                  :skip-results-metadata? true}}))
+
+(s/defn table-rows-sample
+  "Run a basic MBQL query to fetch a sample of rows of FIELDS belonging to a TABLE.
+
+  Options: a map of
+  `:truncation-size`: [optional] size to truncate text fields if the driver supports expressions.
+  `:rff`: [optional] a reducing function function (a function that given initial results metadata returns a reducing
+  function) to reduce over the result set in the the query-processor rather than realizing the whole collection"
   {:style/indent 1}
-  [table :- si/TableInstance, fields :- [si/FieldInstance]]
-  (let [results ((resolve 'metabase.query-processor/process-query)
-                 {:database   (:db_id table)
-                  :type       :query
-                  :query      {:source-table (u/get-id table)
-                               :fields       (vec (for [field fields]
-                                                    [:field-id (u/get-id field)]))
-                               :limit        max-sample-rows}
-                  :middleware {:format-rows?           false
-                               :skip-results-metadata? true}})]
-    (get-in results [:data :rows])))
+  ([table :- si/TableInstance, fields :- [si/FieldInstance], rff]
+   (table-rows-sample table fields rff nil))
+  ([table :- si/TableInstance, fields :- [si/FieldInstance], rff, opts :- TableRowsSampleOptions]
+   (let [query   (table-rows-sample-query table fields opts)
+         qp      (resolve 'metabase.query-processor/process-query)]
+     (qp query {:rff rff}))))

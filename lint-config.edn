@@ -1,0 +1,19 @@
+;; Run clj-kondo with something like
+;;
+;;    clj-kondo --parallel --lint src/ shared/src enterprise/backend/src --config lint-config.edn
+;;
+;; To find the warnings that are actually causing the linter to fail:
+;;
+;;    clj-kondo ... | grep warning
+;;
+;; `:warn`    => Print a warning but don't fail
+;; `:warning` => Print a warning and DO fail
+^:replace
+{:linters {:missing-else-branch          {:level :warning}
+           :misplaced-docstring          {:level :warning}
+           :missing-body-in-when         {:level :warning}
+           :missing-docstring            {:level :warning}
+           :refer-all                    {:level   :warning
+                                          :exclude [clojure.test]}
+           :unsorted-required-namespaces {:level :warning}
+           :use                          {:level :warning}}}

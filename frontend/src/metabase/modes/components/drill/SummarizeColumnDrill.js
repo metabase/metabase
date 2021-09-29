@@ -1,65 +1,70 @@
-/* @flow */
-
-import { getFieldRefFromColumn } from "metabase/modes/lib/actions";
+import { fieldRefForColumn } from "metabase/lib/dataset";
 import {
-  getAggregator,
-  isCompatibleAggregatorForField,
+  getAggregationOperator,
+  isCompatibleAggregationOperatorForField,
 } from "metabase/lib/schema_metadata";
-import { t } from "c-3po";
+import { t } from "ttag";
 import type {
   ClickAction,
   ClickActionProps,
-} from "metabase/meta/types/Visualization";
+} from "metabase-types/types/Visualization";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 const AGGREGATIONS = {
   sum: {
     section: "sum",
+    buttonType: "token",
     title: t`Sum`,
   },
   avg: {
     section: "sum",
+    buttonType: "token",
     title: t`Avg`,
-  },
-  min: {
-    section: "sum",
-    title: t`Min`,
-  },
-  max: {
-    section: "sum",
-    title: t`Max`,
   },
   distinct: {
     section: "sum",
+    buttonType: "token",
     title: t`Distincts`,
   },
 };
 
-export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
-  if (
-    !clicked ||
-    !clicked.column ||
-    clicked.value !== undefined ||
-    clicked.column.source !== "fields"
-  ) {
+export default ({
+  question,
+  clicked = {},
+}: ClickActionProps): ClickAction[] => {
+  const { column, value } = clicked;
+  if (!column || column.source !== "fields" || value !== undefined) {
     // TODO Atte Keinänen 7/21/17: Does it slow down the drill-through option calculations remarkably
     // that I removed the `isSummable` condition from here and use `isCompatibleAggregator` method below instead?
     return [];
   }
-  const { column } = clicked;
+
+  const query = question.query();
+  if (!(query instanceof StructuredQuery)) {
+    return [];
+  }
 
   return Object.entries(AGGREGATIONS)
     .map(([aggregationShort, action]) => [
-      getAggregator(aggregationShort),
-      // $FlowFixMe
+      getAggregationOperator(aggregationShort),
       action,
     ])
     .filter(([aggregator]) =>
-      isCompatibleAggregatorForField(aggregator, column),
+      isCompatibleAggregationOperatorForField(aggregator, column),
     )
     .map(([aggregator, action]: [any, { section: string, title: string }]) => ({
       name: action.title.toLowerCase(),
       ...action,
       question: () =>
-        question.summarize([aggregator.short, getFieldRefFromColumn(column)]),
+        query
+          .aggregate([aggregator.short, fieldRefForColumn(column)])
+          .question()
+          .setDefaultDisplay(),
+      action: () => dispatch => {
+        // HACK: drill through closes sidebars, so open sidebar asynchronously
+        setTimeout(() => {
+          dispatch({ type: "metabase/qb/EDIT_SUMMARY" });
+        });
+      },
     }));
 };

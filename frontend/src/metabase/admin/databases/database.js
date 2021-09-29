@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import { createAction } from "redux-actions";
 import {
   handleActions,
@@ -7,12 +5,14 @@ import {
   createThunkAction,
 } from "metabase/lib/redux";
 import { push } from "react-router-redux";
-import { t } from "c-3po";
+import { t } from "ttag";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
 import { MetabaseApi } from "metabase/services";
 import Databases from "metabase/entities/databases";
+
+import { editParamsForUserControlledScheduling } from "./editParamsForUserControlledScheduling";
 
 // Default schedules for db sync and deep analysis
 export const DEFAULT_SCHEDULES = {
@@ -39,6 +39,10 @@ export const FETCH_DATABASES = "metabase/admin/databases/FETCH_DATABASES";
 export const INITIALIZE_DATABASE =
   "metabase/admin/databases/INITIALIZE_DATABASE";
 export const ADD_SAMPLE_DATASET = "metabase/admin/databases/ADD_SAMPLE_DATASET";
+export const ADD_SAMPLE_DATASET_FAILED =
+  "metabase/admin/databases/ADD_SAMPLE_DATASET_FAILED";
+export const ADDING_SAMPLE_DATASET =
+  "metabase/admin/databases/ADDING_SAMPLE_DATASET";
 export const DELETE_DATABASE = "metabase/admin/databases/DELETE_DATABASE";
 export const SYNC_DATABASE_SCHEMA =
   "metabase/admin/databases/SYNC_DATABASE_SCHEMA";
@@ -66,10 +70,12 @@ export const DELETE_DATABASE_STARTED =
   "metabase/admin/databases/DELETE_DATABASE_STARTED";
 export const DELETE_DATABASE_FAILED =
   "metabase/admin/databases/DELETE_DATABASE_FAILED";
-export const CLEAR_FORM_STATE = "metabase/admin/databases/CLEAR_FORM_STATE";
 export const MIGRATE_TO_NEW_SCHEDULING_SETTINGS =
   "metabase/admin/databases/MIGRATE_TO_NEW_SCHEDULING_SETTINGS";
-
+export const INITIALIZE_DATABASE_ERROR =
+  "metabase/admin/databases/INITIALIZE_DATABASE_ERROR";
+export const CLEAR_INITIALIZE_DATABASE_ERROR =
+  "metabase/admin/databases/CLEAR_INITIALIZE_DATABASE_ERROR";
 // NOTE: some but not all of these actions have been migrated to use metabase/entities/databases
 
 export const reset = createAction(RESET);
@@ -81,7 +87,7 @@ export const selectEngine = createAction(SELECT_ENGINE);
 // Migration is run as a separate action because that makes it easy to track in tests
 const migrateDatabaseToNewSchedulingSettings = database => {
   return async function(dispatch, getState) {
-    if (database.details["let-user-control-scheduling"] == undefined) {
+    if (database.details["let-user-control-scheduling"] == null) {
       dispatch.action(MIGRATE_TO_NEW_SCHEDULING_SETTINGS, {
         ...database,
         details: {
@@ -102,6 +108,8 @@ const migrateDatabaseToNewSchedulingSettings = database => {
 // initializeDatabase
 export const initializeDatabase = function(databaseId) {
   return async function(dispatch, getState) {
+    dispatch.action(CLEAR_INITIALIZE_DATABASE_ERROR);
+
     if (databaseId) {
       try {
         const action = await dispatch(
@@ -111,19 +119,17 @@ export const initializeDatabase = function(databaseId) {
         dispatch.action(INITIALIZE_DATABASE, database);
 
         // If the new scheduling toggle isn't set, run the migration
-        if (database.details["let-user-control-scheduling"] == undefined) {
+        if (database.details["let-user-control-scheduling"] == null) {
           dispatch(migrateDatabaseToNewSchedulingSettings(database));
         }
       } catch (error) {
-        if (error.status == 404) {
-          //$location.path('/admin/databases/');
-        } else {
-          console.error("error fetching database", databaseId, error);
-        }
+        console.error("error fetching database", databaseId, error);
+        dispatch.action(INITIALIZE_DATABASE_ERROR, error);
       }
     } else {
       const newDatabase = {
         name: "",
+        auto_run_queries: true,
         engine: Object.keys(MetabaseSettings.get("engines"))[0],
         details: {},
         created: false,
@@ -133,17 +139,23 @@ export const initializeDatabase = function(databaseId) {
   };
 };
 
-// addSampleDataset
 export const addSampleDataset = createThunkAction(
   ADD_SAMPLE_DATASET,
   function() {
     return async function(dispatch, getState) {
       try {
-        let sampleDataset = await MetabaseApi.db_add_sample_dataset();
+        dispatch.action(ADDING_SAMPLE_DATASET);
+        const sampleDataset = await MetabaseApi.db_add_sample_dataset();
+        await dispatch(
+          Databases.actions.fetchList(undefined, {
+            reload: true,
+          }),
+        );
         MetabaseAnalytics.trackEvent("Databases", "Add Sample Data");
         return sampleDataset;
       } catch (error) {
         console.error("error adding sample dataset", error);
+        dispatch.action(ADD_SAMPLE_DATASET_FAILED, { error });
         return error;
       }
     };
@@ -155,39 +167,35 @@ export const proceedWithDbCreation = function(database) {
     if (database.details["let-user-control-scheduling"]) {
       try {
         dispatch.action(VALIDATE_DATABASE_STARTED);
+
         const { valid } = await MetabaseApi.db_validate({ details: database });
 
         if (valid) {
           dispatch.action(SET_DATABASE_CREATION_STEP, {
-            // NOTE Atte Keinänen: DatabaseSchedulingForm needs `editingDatabase` with `schedules` so I decided that
-            // it makes sense to set the value of editingDatabase as part of SET_DATABASE_CREATION_STEP
-            database: {
-              ...database,
-              is_full_sync: true,
-              schedules: DEFAULT_SCHEDULES,
-            },
+            database,
             step: DB_EDIT_FORM_SCHEDULING_TAB,
           });
         } else {
-          dispatch.action(VALIDATE_DATABASE_FAILED, {
-            error: {
-              data: {
-                message: t`Couldn't connect to the database. Please check the connection details.`,
-              },
+          throw {
+            data: {
+              message: t`Couldn't connect to the database. Please check the connection details.`,
             },
-          });
+          };
         }
       } catch (error) {
         dispatch.action(VALIDATE_DATABASE_FAILED, { error });
+        throw error;
       }
     } else {
       // Skip the scheduling step if user doesn't need precise control over sync and scan
-      dispatch(createDatabase(database));
+      await dispatch(createDatabase(database));
     }
   };
 };
 
 export const createDatabase = function(database) {
+  editParamsForUserControlledScheduling(database);
+
   return async function(dispatch, getState) {
     try {
       dispatch.action(CREATE_DATABASE_STARTED, {});
@@ -204,7 +212,7 @@ export const createDatabase = function(database) {
         "Create Failed",
         database.engine,
       );
-      dispatch.action(CREATE_DATABASE_FAILED, { error });
+      throw error;
     }
   };
 };
@@ -218,7 +226,6 @@ export const updateDatabase = function(database) {
       MetabaseAnalytics.trackEvent("Databases", "Update", database.engine);
 
       dispatch.action(UPDATE_DATABASE, { database: savedDatabase });
-      setTimeout(() => dispatch.action(CLEAR_FORM_STATE), 3000);
     } catch (error) {
       MetabaseAnalytics.trackEvent(
         "Databases",
@@ -226,34 +233,20 @@ export const updateDatabase = function(database) {
         database.engine,
       );
       dispatch.action(UPDATE_DATABASE_FAILED, { error });
+      throw error;
     }
   };
 };
 
 // NOTE Atte Keinänen 7/26/17: Original monolithic saveDatabase was broken out to smaller actions
 // but `saveDatabase` action creator is still left here for keeping the interface for React components unchanged
-export const saveDatabase = function(database, details) {
-  // If we don't let user control the scheduling settings, let's override them with Metabase defaults
-  // TODO Atte Keinänen 8/15/17: Implement engine-specific scheduling defaults
-  const letUserControlScheduling = details["let-user-control-scheduling"];
-  const overridesIfNoUserControl = letUserControlScheduling
-    ? {}
-    : {
-        is_full_sync: true,
-        schedules: DEFAULT_SCHEDULES,
-      };
-
+export const saveDatabase = function(database) {
   return async function(dispatch, getState) {
-    const databaseWithDetails = {
-      ...database,
-      details,
-      ...overridesIfNoUserControl,
-    };
-    const isUnsavedDatabase = !databaseWithDetails.id;
+    const isUnsavedDatabase = !database.id;
     if (isUnsavedDatabase) {
-      dispatch(createDatabase(databaseWithDetails));
+      await dispatch(createDatabase(database));
     } else {
-      dispatch(updateDatabase(databaseWithDetails));
+      await dispatch(updateDatabase(database));
     }
   };
 };
@@ -283,7 +276,7 @@ export const syncDatabaseSchema = createThunkAction(
   function(databaseId) {
     return async function(dispatch, getState) {
       try {
-        let call = await MetabaseApi.db_sync_schema({ dbId: databaseId });
+        const call = await MetabaseApi.db_sync_schema({ dbId: databaseId });
         MetabaseAnalytics.trackEvent("Databases", "Manual Sync");
         return call;
       } catch (error) {
@@ -299,7 +292,7 @@ export const rescanDatabaseFields = createThunkAction(
   function(databaseId) {
     return async function(dispatch, getState) {
       try {
-        let call = await MetabaseApi.db_rescan_values({ dbId: databaseId });
+        const call = await MetabaseApi.db_rescan_values({ dbId: databaseId });
         MetabaseAnalytics.trackEvent("Databases", "Manual Sync");
         return call;
       } catch (error) {
@@ -315,7 +308,7 @@ export const discardSavedFieldValues = createThunkAction(
   function(databaseId) {
     return async function(dispatch, getState) {
       try {
-        let call = await MetabaseApi.db_discard_values({ dbId: databaseId });
+        const call = await MetabaseApi.db_discard_values({ dbId: databaseId });
         MetabaseAnalytics.trackEvent("Databases", "Manual Sync");
         return call;
       } catch (error) {
@@ -337,6 +330,14 @@ const editingDatabase = handleActions(
     [SELECT_ENGINE]: (state, { payload }) => ({ ...state, engine: payload }),
     [SET_DATABASE_CREATION_STEP]: (state, { payload: { database } }) =>
       database,
+  },
+  null,
+);
+
+const initializeError = handleActions(
+  {
+    [INITIALIZE_DATABASE_ERROR]: (state, { payload }) => payload,
+    [CLEAR_INITIALIZE_DATABASE_ERROR]: () => null,
   },
   null,
 );
@@ -368,42 +369,20 @@ const databaseCreationStep = handleActions(
   DB_EDIT_FORM_CONNECTION_TAB,
 );
 
-const DEFAULT_FORM_STATE = {
-  formSuccess: null,
-  formError: null,
-  isSubmitting: false,
-};
-
-const formState = handleActions(
+const sampleDataset = handleActions(
   {
-    [RESET]: { next: () => DEFAULT_FORM_STATE },
-    [CREATE_DATABASE_STARTED]: () => ({ isSubmitting: true }),
-    // not necessarily needed as the page is immediately redirected after db creation
-    [CREATE_DATABASE]: () => ({
-      formSuccess: { data: { message: t`Successfully created!` } },
-    }),
-    [VALIDATE_DATABASE_FAILED]: (state, { payload: { error } }) => ({
-      formError: error,
-    }),
-    [CREATE_DATABASE_FAILED]: (state, { payload: { error } }) => ({
-      formError: error,
-    }),
-    [UPDATE_DATABASE_STARTED]: () => ({ isSubmitting: true }),
-    [UPDATE_DATABASE]: () => ({
-      formSuccess: { data: { message: t`Successfully saved!` } },
-    }),
-    [UPDATE_DATABASE_FAILED]: (state, { payload: { error } }) => ({
-      formError: error,
-    }),
-    [CLEAR_FORM_STATE]: () => DEFAULT_FORM_STATE,
+    [ADDING_SAMPLE_DATASET]: () => ({ loading: true }),
+    [ADD_SAMPLE_DATASET]: state => ({ ...state, loading: false }),
+    [ADD_SAMPLE_DATASET_FAILED]: (state, { payload: { error } }) => ({ error }),
   },
-  DEFAULT_FORM_STATE,
+  { error: undefined, loading: false },
 );
 
 export default combineReducers({
   editingDatabase,
+  initializeError,
   deletionError,
   databaseCreationStep,
-  formState,
   deletes,
+  sampleDataset,
 });

@@ -1,35 +1,44 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import ReactDOM from "react-dom";
 
 import styles from "./Table.css";
 
-import ExplicitSize from "metabase/components/ExplicitSize.jsx";
-import Ellipsified from "metabase/components/Ellipsified.jsx";
-import Icon from "metabase/components/Icon.jsx";
+import ExplicitSize from "metabase/components/ExplicitSize";
+import Ellipsified from "metabase/components/Ellipsified";
+import Icon from "metabase/components/Icon";
 import MiniBar from "./MiniBar";
+
+import ExternalLink from "metabase/components/ExternalLink";
 
 import { formatValue } from "metabase/lib/formatting";
 import {
   getTableCellClickedObject,
+  getTableClickedObjectRowData,
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
+import { HARD_ROW_LIMIT } from "metabase/lib/query";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
+import { getIn } from "icepick";
 
 import { isID, isFK } from "metabase/lib/schema_metadata";
 
-import type { VisualizationProps } from "metabase/meta/types/Visualization";
+import type {
+  ClickObject,
+  VisualizationProps,
+} from "metabase-types/types/Visualization";
 
 type Props = VisualizationProps & {
   height: number,
   className?: string,
   isPivoted: boolean,
+  getColumnTitle: number => string,
+  getExtraDataForClick?: Function,
+  limit?: number,
 };
 
 type State = {
@@ -53,6 +62,10 @@ export default class TableSimple extends Component {
       sortColumn: null,
       sortDescending: false,
     };
+
+    this.headerRef = React.createRef();
+    this.footerRef = React.createRef();
+    this.firstRowRef = React.createRef();
   }
 
   static propTypes = {
@@ -72,16 +85,13 @@ export default class TableSimple extends Component {
   }
 
   componentDidUpdate() {
-    let headerHeight = ReactDOM.findDOMNode(
-      this.refs.header,
-    ).getBoundingClientRect().height;
-    let footerHeight = this.refs.footer
-      ? ReactDOM.findDOMNode(this.refs.footer).getBoundingClientRect().height
+    const headerHeight = this.headerRef.current.getBoundingClientRect().height;
+    const footerHeight = this.footerRef.current
+      ? this.footerRef.current.getBoundingClientRect().height
       : 0;
-    let rowHeight =
-      ReactDOM.findDOMNode(this.refs.firstRow).getBoundingClientRect().height +
-      1;
-    let pageSize = Math.max(
+    const rowHeight =
+      this.firstRowRef.current.getBoundingClientRect().height + 1;
+    const pageSize = Math.max(
       1,
       Math.floor((this.props.height - headerHeight - footerHeight) / rowHeight),
     );
@@ -90,29 +100,54 @@ export default class TableSimple extends Component {
     }
   }
 
+  visualizationIsClickable(clicked: ?ClickObject) {
+    const { onVisualizationClick, visualizationIsClickable } = this.props;
+    return (
+      onVisualizationClick &&
+      visualizationIsClickable &&
+      visualizationIsClickable(clicked)
+    );
+  }
+
   render() {
     const {
       data,
       onVisualizationClick,
-      visualizationIsClickable,
       isPivoted,
       settings,
       getColumnTitle,
+      card,
+      series,
     } = this.props;
     const { rows, cols } = data;
+    const limit = getIn(card, ["dataset_query", "query", "limit"]) || undefined;
     const getCellBackgroundColor = settings["table._cell_background_getter"];
 
     const { page, pageSize, sortColumn, sortDescending } = this.state;
 
-    let start = pageSize * page;
-    let end = Math.min(rows.length - 1, pageSize * (page + 1) - 1);
+    const start = pageSize * page;
+    const end = Math.min(rows.length - 1, pageSize * (page + 1) - 1);
 
     let rowIndexes = _.range(0, rows.length);
     if (sortColumn != null) {
-      rowIndexes = _.sortBy(rowIndexes, rowIndex => rows[rowIndex][sortColumn]);
+      rowIndexes = _.sortBy(rowIndexes, rowIndex => {
+        let value = rows[rowIndex][sortColumn];
+        // for strings we should be case insensitive
+        if (typeof value === "string") {
+          value = value.toLowerCase();
+        }
+        return value;
+      });
       if (sortDescending) {
         rowIndexes.reverse();
       }
+    }
+
+    let paginateMessage;
+    if (limit === undefined && rows.length >= HARD_ROW_LIMIT) {
+      paginateMessage = t`Rows ${start + 1}-${end + 1} of first ${rows.length}`;
+    } else {
+      paginateMessage = t`Rows ${start + 1}-${end + 1} of ${rows.length}`;
     }
 
     return (
@@ -130,7 +165,7 @@ export default class TableSimple extends Component {
                 "fullscreen-night-text",
               )}
             >
-              <thead ref="header">
+              <thead ref={this.headerRef}>
                 <tr>
                   {cols.map((col, colIndex) => (
                     <th
@@ -164,19 +199,57 @@ export default class TableSimple extends Component {
               </thead>
               <tbody>
                 {rowIndexes.slice(start, end + 1).map((rowIndex, index) => (
-                  <tr key={rowIndex} ref={index === 0 ? "firstRow" : null}>
+                  <tr
+                    key={rowIndex}
+                    ref={index === 0 ? this.firstRowRef : null}
+                    data-testid="table-row"
+                  >
                     {rows[rowIndex].map((value, columnIndex) => {
-                      const column = cols[columnIndex];
-                      const clicked = getTableCellClickedObject(
-                        data,
+                      const clickedRowData = getTableClickedObjectRowData(
+                        series,
                         rowIndex,
                         columnIndex,
                         isPivoted,
+                        data,
                       );
-                      const isClickable =
-                        onVisualizationClick &&
-                        visualizationIsClickable(clicked);
+                      const column = cols[columnIndex];
+                      const clicked = getTableCellClickedObject(
+                        data,
+                        settings,
+                        rowIndex,
+                        columnIndex,
+                        isPivoted,
+                        clickedRowData,
+                      );
                       const columnSettings = settings.column(column);
+
+                      const extraData = this.props.getExtraDataForClick
+                        ? this.props.getExtraDataForClick(clicked)
+                        : {};
+
+                      const cellData =
+                        value == null ? (
+                          "-"
+                        ) : columnSettings["show_mini_bar"] ? (
+                          <MiniBar
+                            value={value}
+                            options={columnSettings}
+                            extent={getColumnExtent(cols, rows, columnIndex)}
+                          />
+                        ) : (
+                          formatValue(value, {
+                            ...columnSettings,
+                            clicked: { ...clicked, extraData },
+                            type: "cell",
+                            jsx: true,
+                            rich: true,
+                          })
+                        );
+
+                      const isLink = cellData && cellData.type === ExternalLink;
+                      const isClickable =
+                        !isLink && this.visualizationIsClickable(clicked);
+
                       return (
                         <td
                           key={columnIndex}
@@ -194,8 +267,8 @@ export default class TableSimple extends Component {
                             "px1 border-bottom text-dark fullscreen-normal-text fullscreen-night-text text-bold",
                             {
                               "text-right": isColumnRightAligned(column),
-                              "Table-ID": isID(column),
-                              "Table-FK": isFK(column),
+                              "Table-ID": value != null && isID(column),
+                              "Table-FK": value != null && isFK(column),
                               link: isClickable && isID(column),
                             },
                           )}
@@ -210,31 +283,13 @@ export default class TableSimple extends Component {
                                     onVisualizationClick({
                                       ...clicked,
                                       element: e.currentTarget,
+                                      extraData,
                                     });
                                   }
                                 : undefined
                             }
                           >
-                            {value == null ? (
-                              "-"
-                            ) : columnSettings["show_mini_bar"] ? (
-                              <MiniBar
-                                value={value}
-                                options={columnSettings}
-                                extent={getColumnExtent(
-                                  cols,
-                                  rows,
-                                  columnIndex,
-                                )}
-                              />
-                            ) : (
-                              formatValue(value, {
-                                ...columnSettings,
-                                type: "cell",
-                                jsx: true,
-                                rich: true,
-                              })
-                            )}
+                            {cellData}
                           </span>
                         </td>
                       );
@@ -247,19 +302,17 @@ export default class TableSimple extends Component {
         </div>
         {pageSize < rows.length ? (
           <div
-            ref="footer"
+            ref={this.footerRef}
             className="p1 flex flex-no-shrink flex-align-right fullscreen-normal-text fullscreen-night-text"
           >
-            <span className="text-bold">{t`Rows ${start + 1}-${end + 1} of ${
-              rows.length
-            }`}</span>
+            <span className="text-bold">{paginateMessage}</span>
             <span
               className={cx("text-brand-hover px1 cursor-pointer", {
                 disabled: start === 0,
               })}
               onClick={() => this.setState({ page: page - 1 })}
             >
-              <Icon name="left" size={10} />
+              <Icon name="triangle_left" size={10} />
             </span>
             <span
               className={cx("text-brand-hover pr1 cursor-pointer", {
@@ -267,7 +320,7 @@ export default class TableSimple extends Component {
               })}
               onClick={() => this.setState({ page: page + 1 })}
             >
-              <Icon name="right" size={10} />
+              <Icon name="triangle_right" size={10} />
             </span>
           </div>
         ) : null}

@@ -42,10 +42,7 @@ dimensions:
     max_cardinality: 5
 - SourceMedium:
     field_type: GenericTable.Source
-    max_cardinality: 10
     score: 90
-- SourceLarge:
-    field_type: GenericTable.Source
 - Cohort:
     field_type: UserTable.JoinTimestamp
     score: 100
@@ -64,22 +61,14 @@ dimensions:
     max_cardinality: 10
 - ProductMedium:
     field_type: ProductTable.Title
-    max_cardinality: 10
-- ProductLarge:
-    field_type: Product
-    score: 90
-- ProductLarge:
+- ProductMedium:
     field_type: ProductTable.Name
-- ProductLarge:
+- ProductMedium:
     field_type: ProductTable.Title
 - ProductCategoryMedium:
     field_type: ProductTable.Category
     named: category
-    max_cardinality: 10
     score: 90
-- ProductCategoryLarge:
-    field_type: ProductTable.Category
-    named: category
 - Long: GenericTable.Longitude
 - Lat: GenericTable.Latitude
 filters:
@@ -162,45 +151,19 @@ cards:
       group: General
   - OrdersByProduct:
       title: Sales per product
-      visualization: row
+      visualization: smart-row
       dimensions:
         - ProductMedium
       metrics: TotalOrders
-      order_by:
-        - TotalOrders: descending
-      score: 90
-      height: 8
-      group: General
-  - OrdersByProduct:
-      title: Sales per product
-      visualization: table
-      dimensions:
-        - ProductLarge
-      metrics: TotalOrders
-      order_by:
-        - TotalOrders: descending
       score: 90
       height: 8
       group: General
   - OrdersByProductCategory:
       title: Sales for each product category
-      visualization: row
+      visualization: smart-row
       dimensions:
         - ProductCategoryMedium
       metrics: TotalOrders
-      order_by:
-        - TotalOrders: descending
-      score: 90
-      height: 8
-      group: General
-  - OrdersByProductCategory:
-      title: Sales for each product category
-      visualization: table
-      dimensions:
-        - ProductCategoryLarge
-      metrics: TotalOrders
-      order_by:
-        - TotalOrders: descending
       score: 90
       height: 8
       group: General
@@ -219,22 +182,11 @@ cards:
       group: General
   - OrdersBySource:
       title: Sales per source
-      visualization: row
+      visualization: smart-row
       dimensions: SourceMedium
       metrics: TotalOrders
-      order_by:
-        - TotalOrders: descending
       score: 90
       height: 8
-      group: General
-  - OrdersBySource:
-      title: Sales per source
-      visualization: table
-      dimensions: SourceLarge
-      metrics: TotalOrders
-      order_by:
-        - TotalOrders: descending
-      score: 90
       group: General
 # Geographical
   - CountByCountry:

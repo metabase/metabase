@@ -1,6 +1,7 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { Link, IndexLink } from "react-router";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 export function LeftNavPaneItem({ name, path, index = false }) {
   return (

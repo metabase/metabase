@@ -1,58 +1,73 @@
-;; -*- comment-column: 35; -*-
 (ns metabase.core
   (:gen-class)
-  (:require [clojure.tools.logging :as log]
-            [metabase
-             [config :as config]
-             [db :as mdb]
-             [events :as events]
-             [handler :as handler]
-             [metabot :as metabot]
-             [plugins :as plugins]
-             [sample-data :as sample-data]
-             [server :as server]
-             [setup :as setup]
-             [task :as task]
-             [util :as u]]
+  (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
+            [clojure.tools.trace :as trace]
+            [metabase.config :as config]
             [metabase.core.initialization-status :as init-status]
-            [metabase.driver.util :as driver.u]
-            [metabase.models
-             [setting :as setting]
-             [user :refer [User]]]
-            [metabase.util.i18n :refer [set-locale trs]]
+            [metabase.db :as mdb]
+            [metabase.events :as events]
+            [metabase.metabot :as metabot]
+            [metabase.models.user :refer [User]]
+            [metabase.plugins :as plugins]
+            [metabase.plugins.classloader :as classloader]
+            [metabase.sample-data :as sample-data]
+            [metabase.server :as server]
+            [metabase.server.handler :as handler]
+            [metabase.setup :as setup]
+            [metabase.task :as task]
+            [metabase.troubleshooting :as troubleshooting]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [deferred-trs trs]]
             [toucan.db :as db]))
+
+;; don't i18n this, it's legalese
+(log/info
+ (format "\nMetabase %s" config/mb-version-string)
+
+ (format "\n\nCopyright © %d Metabase, Inc." (.getYear (java.time.LocalDate/now)))
+
+ (str "\n\n"
+      (if config/ee-available?
+        (str (deferred-trs "Metabase Enterprise Edition extensions are PRESENT.")
+             "\n\n"
+             (deferred-trs "Usage of Metabase Enterprise Edition features are subject to the Metabase Commercial License.")
+             (deferred-trs "See {0} for details." "https://www.metabase.com/license/commercial/"))
+        (deferred-trs "Metabase Enterprise Edition extensions are NOT PRESENT."))))
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
 (defn- -init-create-setup-token
   "Create and set a new setup token and log it."
   []
-  (let [setup-token (setup/create-token!)                    ; we need this here to create the initial token
-        hostname    (or (config/config-str :mb-jetty-host) "localhost")
-        port        (config/config-int :mb-jetty-port)
-        setup-url   (str "http://"
-                         (or hostname "localhost")
-                         (when-not (= 80 port) (str ":" port))
-                         "/setup/")]
+  (setup/create-token!)                 ; we need this here to create the initial token
+  (let [hostname  (or (config/config-str :mb-jetty-host) "localhost")
+        port      (config/config-int :mb-jetty-port)
+        setup-url (str "http://"
+                       (or hostname "localhost")
+                       (when-not (= 80 port) (str ":" port))
+                       "/setup/")]
     (log/info (u/format-color 'green
-                  (str (trs "Please use the following URL to setup your Metabase installation:")
-                       "\n\n"
-                       setup-url
-                       "\n\n")))))
+                              (str (deferred-trs "Please use the following URL to setup your Metabase installation:")
+                                   "\n\n"
+                                   setup-url
+                                   "\n\n")))))
 
 (defn- destroy!
   "General application shutdown function which should be called once at application shuddown."
   []
   (log/info (trs "Metabase Shutting Down ..."))
+  ;; TODO - it would really be much nicer if we implemented a basic notification system so these things could listen
+  ;; to a Shutdown hook of some sort instead of having here
   (task/stop-scheduler!)
+  (server/stop-web-server!)
   (log/info (trs "Metabase Shutdown COMPLETE")))
-
 
 (defn init!
   "General application initialization function which should be run once at application startup."
   []
   (log/info (trs "Starting Metabase version {0} ..." config/mb-version-string))
-  (log/info (trs "System timezone is ''{0}'' ..." (System/getProperty "user.timezone")))
+  (log/info (trs "System info:\n {0}" (u/pprint-to-str (troubleshooting/system-info))))
   (init-status/set-progress! 0.1)
 
   ;; First of all, lets register a shutdown hook that will tidy things up for us on app exit
@@ -63,13 +78,13 @@
   (plugins/load-plugins!)
   (init-status/set-progress! 0.3)
 
-  ;; Load up all of our Database drivers, which are used for app db work
-  (driver.u/find-and-load-all-drivers!)
+  ;; Load up the drivers shipped as part of the main codebase, so they will show up in the list of available DB types
+  (classloader/require 'metabase.driver.h2 'metabase.driver.postgres 'metabase.driver.mysql)
   (init-status/set-progress! 0.4)
 
   ;; startup database.  validates connection & runs any necessary migrations
   (log/info (trs "Setting up and migrating Metabase DB. Please sit tight, this may take a minute..."))
-  (mdb/setup-db! :auto-migrate (config/config-bool :mb-db-automigrate))
+  (mdb/setup-db!)
   (init-status/set-progress! 0.5)
 
   ;; run a very quick check to see if we are doing a first time installation
@@ -102,8 +117,6 @@
     ;; start the metabot thread
     (metabot/start-metabot!))
 
-  (set-locale (setting/get :site-locale))
-
   (init-status/set-complete!)
   (log/info (trs "Metabase Initialization COMPLETE")))
 
@@ -124,15 +137,28 @@
       (System/exit 1))))
 
 (defn- run-cmd [cmd args]
-  (require 'metabase.cmd)
+  (classloader/require 'metabase.cmd)
   ((resolve 'metabase.cmd/run-cmd) cmd args))
 
+;;; -------------------------------------------------- Tracing -------------------------------------------------------
+
+(defn- maybe-enable-tracing
+  []
+  (log/warn (trs "WARNING: You have enabled namespace tracing, which could log sensitive information like db passwords."))
+  (let [mb-trace-str (config/config-str :mb-ns-trace)]
+    (when (not-empty mb-trace-str)
+      (doseq [namespace (map symbol (str/split mb-trace-str #",\s*"))]
+        (try (require namespace)
+             (catch Throwable _
+               (throw (ex-info "A namespace you specified with MB_NS_TRACE could not be required" {:namespace namespace}))))
+        (trace/trace-ns namespace)))))
 
 ;;; ------------------------------------------------ App Entry Point -------------------------------------------------
 
 (defn -main
   "Launch Metabase in standalone mode."
   [& [cmd & args]]
+  (maybe-enable-tracing)
   (if cmd
-    (run-cmd cmd args) ; run a command like `java -jar metabase.jar migrate release-locks` or `lein run migrate release-locks`
+    (run-cmd cmd args) ; run a command like `java -jar metabase.jar migrate release-locks` or `clojure -M:run migrate release-locks`
     (start-normally))) ; with no command line args just start Metabase normally

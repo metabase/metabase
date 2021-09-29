@@ -1,10 +1,8 @@
-/* @flow */
-
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
-import CheckBox from "metabase/components/CheckBox.jsx";
-import ListSearchField from "metabase/components/ListSearchField.jsx";
+import { t } from "ttag";
+import CheckBox from "metabase/components/CheckBox";
+import ListSearchField from "metabase/components/ListSearchField";
 
 import { capitalize } from "metabase/lib/formatting";
 import { createMultiwordSearchRegex } from "metabase/lib/string";
@@ -81,7 +79,10 @@ export default class SelectPicker extends Component {
   nameForOption(option: SelectOption) {
     if (option.name === "") {
       return t`Empty`;
-    } else if (typeof option.name === "string") {
+    } else if (
+      option.name instanceof String ||
+      typeof option.name === "string"
+    ) {
       return option.name;
     } else {
       return capitalize(String(option.name));
@@ -89,12 +90,12 @@ export default class SelectPicker extends Component {
   }
 
   render() {
-    let { values, options, placeholder, multi } = this.props;
+    const { values, options, placeholder, multi } = this.props;
 
-    let checked = new Set(values);
+    const checked = new Set(values);
 
     let validOptions = [];
-    let regex = this.state.searchRegex;
+    const regex = this.state.searchRegex;
 
     if (regex) {
       for (const option of options) {
@@ -111,15 +112,16 @@ export default class SelectPicker extends Component {
         {validOptions.length <= 10 && !regex ? null : (
           <div className="px1 pt1">
             <ListSearchField
+              hasClearButton
               onChange={this.updateSearchText}
-              searchText={this.state.searchText}
+              value={this.state.searchText}
               placeholder={t`Find a value`}
               autoFocus={true}
             />
           </div>
         )}
         <div
-          className="px1 pt1"
+          className="px1 pt1 PopoverBody--marginBottom"
           style={{ maxHeight: "400px", overflowY: "scroll" }}
         >
           {placeholder ? <h5>{placeholder}</h5> : null}
@@ -135,7 +137,7 @@ export default class SelectPicker extends Component {
                   >
                     <CheckBox
                       checked={checked.has(option.key)}
-                      color="purple"
+                      checkedColor="accent2"
                     />
                     <h4 className="ml1">{this.nameForOption(option)}</h4>
                   </label>
@@ -144,8 +146,12 @@ export default class SelectPicker extends Component {
             </ul>
           ) : (
             <div className="flex flex-wrap py1">
-              {validOptions.map((option, index) => (
-                <div className="half" style={{ padding: "0.15em" }}>
+              {validOptions.map(option => (
+                <div
+                  key={option.key}
+                  className="half"
+                  style={{ padding: "0.15em" }}
+                >
                   <button
                     style={{ height: "95px" }}
                     className={cx(

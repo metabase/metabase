@@ -1,13 +1,34 @@
 (ns metabase.models.field-test
   "Tests for specific behavior related to the Field model."
-  (:require [expectations :refer :all]
-            [metabase.sync.analyze.classifiers.name :as name]))
+  (:require [clojure.test :refer :all]
+            [metabase.models.field :refer [Field]]
+            [metabase.test :as mt]
+            [metabase.util :as u]
+            [toucan.db :as db]))
 
-
-;;; infer-field-special-type
-(expect :type/PK       (#'name/special-type-for-name-and-base-type "id"      :type/Integer))
-;; other pattern matches based on type/regex (remember, base_type matters in matching!)
-(expect :type/Score    (#'name/special-type-for-name-and-base-type "rating"  :type/Integer))
-(expect nil            (#'name/special-type-for-name-and-base-type "rating"  :type/Boolean))
-(expect :type/Country  (#'name/special-type-for-name-and-base-type "country" :type/Text))
-(expect nil            (#'name/special-type-for-name-and-base-type "country" :type/Integer))
+(deftest unknown-types-test
+  (doseq [{:keys [column unknown-type fallback-type]} [{:column        :base_type
+                                                        :unknown-type  :type/Amazing
+                                                        :fallback-type :type/*}
+                                                       {:column        :effective_type
+                                                        :unknown-type  :type/Amazing
+                                                        :fallback-type :type/*}
+                                                       {:column        :semantic_type
+                                                        :unknown-type  :type/Amazing
+                                                        :fallback-type nil}
+                                                       {:column        :coercion_strategy
+                                                        :unknown-type  :Coercion/Amazing
+                                                        :fallback-type nil}]]
+    (testing (format "Field with unknown %s in DB should fall back to %s" column fallback-type)
+      (mt/with-temp Field [field]
+        (db/execute! {:update Field
+                      :set    {column (u/qualified-name unknown-type)}
+                      :where  [:= :id (u/the-id field)]})
+        (is (= fallback-type
+               (db/select-one-field column Field :id (u/the-id field))))))
+    (testing (format "Should throw an Exception if you attempt to save a Field with an invalid %s" column)
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           (re-pattern (format "Invalid Field %s %s" column unknown-type))
+           (mt/with-temp Field [field {column unknown-type}]
+             field))))))

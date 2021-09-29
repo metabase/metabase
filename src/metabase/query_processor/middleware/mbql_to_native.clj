@@ -2,36 +2,31 @@
   "Middleware responsible for converting MBQL queries to native queries (by calling the driver's QP methods)
    so the query can then be executed."
   (:require [clojure.tools.logging :as log]
-            [metabase
-             [driver :as driver]
-             [util :as u]]
-            [metabase.query-processor.interface :as i]
-            [metabase.util.i18n :refer [tru]]))
+            [metabase.driver :as driver]
+            [metabase.query-processor.context :as context]
+            [metabase.util :as u]))
 
 (defn- query->native-form
-  "Return a `:native` query form for QUERY, converting it from MBQL if needed."
+  "Return a `:native` query form for `query`, converting it from MBQL if needed."
   [{query-type :type, :as query}]
-  (u/prog1 (if-not (= :query query-type)
-             (:native query)
-             (try (driver/mbql->native (:driver query) query)
-                  (catch Throwable e
-                    (log/error (tru "Error transforming MBQL query to native:") "\n" (u/pprint-to-str query))
-                    (throw e))))
-    (when-not i/*disable-qp-logging*
-      (log/debug (u/format-color 'green "NATIVE FORM: %s\n%s\n" (u/emoji "😳") (u/pprint-to-str <>))))))
+  (if-not (= :query query-type)
+    (:native query)
+    (driver/mbql->native driver/*driver* query)))
 
 (defn mbql->native
   "Middleware that handles conversion of MBQL queries to native (by calling driver QP methods) so the queries
    can be executed. For queries that are already native, this function is effectively a no-op."
   [qp]
-  (fn [{query-type :type, {:keys [disable-mbql->native?]} :middleware, :as query}]
-    ;; disabling mbql->native is only used by the `qp/query->preprocessed` function so we can get the fully
-    ;; pre-processed query *before* we convert it to native, which might fail for one reason or another
-    (if disable-mbql->native?
-      (qp query)
-      (let [native-form  (query->native-form query)
-            native-query (if-not (= query-type :query)
-                           query
-                           (assoc query :native native-form))
-            results      (qp native-query)]
-        (assoc results :native_form native-form)))))
+  (fn [query rff context]
+    (let [query        (context/preprocessedf query context)
+          native-query (context/nativef (query->native-form query) context)]
+      (log/trace (u/format-color 'yellow "\nPreprocessed:\n%s" (u/pprint-to-str query)))
+      (log/trace (u/format-color 'green "Native form: \n%s" (u/pprint-to-str native-query)))
+      (qp
+       ;; For queries already native, this is normally no-op except during `qp/query->native`
+       ;; where `:native` will be set to `nil` (result from `context/nativef`) to prevent
+       ;; execution in the next step.
+       (assoc query :native native-query)
+       (fn [metadata]
+         (rff (assoc metadata :native_form native-query)))
+       context))))

@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import _ from "underscore";
 import { setIn } from "icepick";
 
@@ -10,15 +8,16 @@ import { getMetadata } from "metabase/selectors/metadata";
 import * as Dashboard from "metabase/meta/Dashboard";
 
 import { getParameterTargetFieldId } from "metabase/meta/Parameter";
+import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
-import type { CardId, Card } from "metabase/meta/types/Card";
-import type { DashCardId } from "metabase/meta/types/Dashboard";
+import type { CardId, Card } from "metabase-types/types/Card";
+import type { DashCardId } from "metabase-types/types/Dashboard";
 import type {
   ParameterId,
   Parameter,
   ParameterMapping,
   ParameterMappingUIOption,
-} from "metabase/meta/types/Parameter";
+} from "metabase-types/types/Parameter";
 
 export type AugmentedParameterMapping = ParameterMapping & {
   dashcard_id: DashCardId,
@@ -36,15 +35,34 @@ export type MappingsByParameter = {
 };
 
 export const getDashboardId = state => state.dashboard.dashboardId;
-export const getIsEditing = state => state.dashboard.isEditing;
-export const getCards = state => state.dashboard.cards;
+export const getIsEditing = state => !!state.dashboard.isEditing;
+export const getDashboardBeforeEditing = state => state.dashboard.isEditing;
+export const getClickBehaviorSidebarDashcard = state => {
+  const { sidebar, dashcards } = state.dashboard;
+  return sidebar.name === SIDEBAR_NAME.clickBehavior
+    ? dashcards[sidebar.props.dashcardId]
+    : null;
+};
 export const getDashboards = state => state.dashboard.dashboards;
 export const getDashcards = state => state.dashboard.dashcards;
 export const getCardData = state => state.dashboard.dashcardData;
 export const getSlowCards = state => state.dashboard.slowCards;
-export const getCardIdList = state => state.dashboard.cardList;
-export const getRevisions = state => state.dashboard.revisions;
 export const getParameterValues = state => state.dashboard.parameterValues;
+export const getLoadingStartTime = state =>
+  state.dashboard.loadingDashCards.startTime;
+export const getIsAddParameterPopoverOpen = state =>
+  state.dashboard.isAddParameterPopoverOpen;
+
+export const getSidebar = state => state.dashboard.sidebar;
+export const getIsSharing = createSelector(
+  [getSidebar],
+  sidebar => sidebar.name === SIDEBAR_NAME.sharing,
+);
+
+export const getShowAddQuestionSidebar = createSelector(
+  [getSidebar],
+  sidebar => sidebar.name === SIDEBAR_NAME.addQuestion,
+);
 
 export const getDashboard = createSelector(
   [getDashboardId, getDashboards],
@@ -79,13 +97,19 @@ export const getIsDirty = createSelector(
     ),
 );
 
-export const getCardList = createSelector(
-  [getCardIdList, getCards],
-  (cardIdList, cards) => cardIdList && cardIdList.map(id => cards[id]),
+export const getEditingParameterId = createSelector(
+  [getSidebar],
+  sidebar => {
+    return sidebar.name === SIDEBAR_NAME.editParameter
+      ? sidebar.props?.parameterId
+      : null;
+  },
 );
 
-export const getEditingParameterId = state =>
-  state.dashboard.editingParameterId;
+export const getIsEditingParameter = createSelector(
+  [getEditingParameterId],
+  parameterId => parameterId != null,
+);
 
 export const getEditingParameter = createSelector(
   [getDashboard, getEditingParameterId],
@@ -95,15 +119,15 @@ export const getEditingParameter = createSelector(
       : null,
 );
 
-export const getIsEditingParameter = state =>
-  state.dashboard.editingParameterId != null;
-
 const getCard = (state, props) => props.card;
 const getDashCard = (state, props) => props.dashcard;
 
 export const getParameterTarget = createSelector(
   [getEditingParameter, getCard, getDashCard],
   (parameter, card, dashcard) => {
+    if (parameter == null) {
+      return null;
+    }
     const mapping = _.findWhere(dashcard.parameter_mappings, {
       card_id: card.id,
       parameter_id: parameter.id,
@@ -120,15 +144,16 @@ export const getMappingsByParameter = createSelector(
     }
 
     let mappingsByParameter: MappingsByParameter = {};
-    let mappings: Array<AugmentedParameterMapping> = [];
-    let countsByParameter = {};
+    const mappings: AugmentedParameterMapping[] = [];
+    const countsByParameter = {};
     for (const dashcard of dashboard.ordered_cards) {
-      const cards: Array<Card> = [dashcard.card].concat(dashcard.series);
-      for (let mapping: ParameterMapping of dashcard.parameter_mappings || []) {
+      const cards: Card[] = [dashcard.card].concat(dashcard.series);
+      for (const mapping: ParameterMapping of dashcard.parameter_mappings ||
+        []) {
         const card = _.findWhere(cards, { id: mapping.card_id });
         const fieldId =
           card && getParameterTargetFieldId(mapping.target, card.dataset_query);
-        const field = metadata.fields[fieldId];
+        const field = metadata.field(fieldId);
         const values = (field && field.fieldValues()) || [];
         if (values.length) {
           countsByParameter[mapping.parameter_id] =
@@ -139,7 +164,7 @@ export const getMappingsByParameter = createSelector(
             (countsByParameter[mapping.parameter_id][value] || 0) + 1;
         }
 
-        let augmentedMapping: AugmentedParameterMapping = {
+        const augmentedMapping: AugmentedParameterMapping = {
           ...mapping,
           parameter_id: mapping.parameter_id,
           dashcard_id: dashcard.id,
@@ -155,11 +180,11 @@ export const getMappingsByParameter = createSelector(
         mappings.push(augmentedMapping);
       }
     }
-    let mappingsWithValuesByParameter = {};
+    const mappingsWithValuesByParameter = {};
     // update max values overlap for each mapping
-    for (let mapping of mappings) {
+    for (const mapping of mappings) {
       if (mapping.values && mapping.values.length > 0) {
-        let overlapMax = Math.max(
+        const overlapMax = Math.max(
           ...mapping.values.map(
             value => countsByParameter[mapping.parameter_id][value],
           ),
@@ -179,7 +204,7 @@ export const getMappingsByParameter = createSelector(
       }
     }
     // update count of mappings with values
-    for (let mapping of mappings) {
+    for (const mapping of mappings) {
       mappingsByParameter = setIn(
         mappingsByParameter,
         [
@@ -201,16 +226,21 @@ export const getParameters = createSelector(
   [getMetadata, getDashboard, getMappingsByParameter],
   (metadata, dashboard, mappingsByParameter) =>
     ((dashboard && dashboard.parameters) || []).map(parameter => {
+      const mappings = _.flatten(
+        _.map(mappingsByParameter[parameter.id] || {}, _.values),
+      );
+
+      // we change out widgets if a parameter is connected to non-field targets
+      const hasOnlyFieldTargets = mappings.every(x => x.field_id != null);
+
       // get the unique list of field IDs these mappings reference
-      const fieldIds = _.chain(mappingsByParameter[parameter.id])
-        .map(_.values)
-        .flatten()
+      const fieldIds = _.chain(mappings)
         .map(m => m.field_id)
         .uniq()
         .filter(fieldId => fieldId != null)
         .value();
       const fieldIdsWithFKResolved = _.chain(fieldIds)
-        .map(id => metadata.fields[id])
+        .map(id => metadata.field(id))
         .filter(f => f)
         .map(f => (f.target || f).id)
         .uniq()
@@ -224,6 +254,7 @@ export const getParameters = createSelector(
           fieldIdsWithFKResolved.length === 1
             ? fieldIdsWithFKResolved[0]
             : null,
+        hasOnlyFieldTargets,
       };
     }),
 );
@@ -241,3 +272,15 @@ export const makeGetParameterMappingOptions = () => {
   );
   return getParameterMappingOptions;
 };
+
+export const getDefaultParametersById = createSelector(
+  [getDashboard],
+  dashboard =>
+    ((dashboard && dashboard.parameters) || []).reduce((map, parameter) => {
+      if (parameter.default) {
+        map[parameter.id] = parameter.default;
+      }
+
+      return map;
+    }, {}),
+);

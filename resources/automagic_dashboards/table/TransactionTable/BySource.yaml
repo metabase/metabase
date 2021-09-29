@@ -101,64 +101,52 @@ cards:
 - OrderBySource:
     group: Financial
     title: Total orders per source
-    visualization: row
+    visualization: smart-row
     dimensions: SourceLarge
     metrics: TotalOrders
-    order_by:
-      - TotalOrders: descending
     score: 80
     height: 8
 - IncomeBySource:
     group: Financial
     title: Total income per source
-    visualization: row
+    visualization: smart-row
     dimensions: SourceMedium
     metrics: TotalIncome
-    order_by:
-      - TotalIncome: descending
     score: 80
     height: 8
 - AvgQuantityBySource:
     group: Financial
     title: Average quantity per source
-    visualization: row
+    visualization: smart-row
     dimensions: SourceMedium
     metrics: AvgQuantity
-    order_by:
-      - AvgQuantity: descending
     score: 80
     height: 8
 - AvgIncomeBySource:
    group: Financial
    title: Average income per source
-   visualization: row
+   visualization: smart-row
    dimensions: SourceMedium
    metrics: AvgIncome
-   order_by:
-     - AvgIncome: descending
    score: 80
    height: 8
 - UsersBySource:
     group: UserAcquisition
-    visualization: row
+    visualization: smart-row
     title: Number of users per source
     dimensions: SourceMedium
     metrics: TotalUsers
-    order_by:
-      - TotalUsers: descending
     score: 90
     height: 8
 - NewUsersBySource:
     group: UserAcquisition
-    visualization: row
+    visualization: smart-row
     title: New users per source in the last 30 days
     dimensions: SourceMedium
     metrics: TotalUsers
     filters: NewUsers
     score: 90
     height: 8
-    order_by:
-      - TotalUsers: descending
 - IncomeBySource:
     group: Financial
     title: Total income per source

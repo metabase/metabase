@@ -1,19 +1,48 @@
 (ns metabase.driver.sql-jdbc.common
-  (:require [clojure.string :as str]
-            [metabase.util.honeysql-extensions :as hx]))
+  (:require [clojure.string :as str]))
 
-(defn escape-field-name
-  "Escape dots in a field name so HoneySQL doesn't get confused and separate them. Returns a keyword."
-  ^clojure.lang.Keyword [k]
-  (keyword (hx/escape-dots (name k))))
+(def ^:private valid-separator-styles #{:url :comma :semicolon})
+
+(defn conn-str-with-additional-opts
+  "Adds `additional-opts` (a string) to the given `connection-string` based on the given `separator-style`. See
+  documentation for `handle-additional-options` for further details."
+  {:added "0.41.0", :arglists '([connection-string separator-style additional-opts])}
+  [connection-string separator-style additional-opts]
+  {:pre [(string? connection-string)
+         (or (nil? additional-opts) (string? additional-opts))
+         (contains? valid-separator-styles separator-style)]}
+  (str connection-string (when-not (str/blank? additional-opts)
+                           (str (case separator-style
+                                  :comma     ","
+                                  :semicolon ";"
+                                  :url       (if (str/includes? connection-string "?")
+                                               "&"
+                                               "?"))
+                                additional-opts))))
+
+(defn additional-opts->string
+  "Turns a map of `additional-opts` into a single string, based on the `separator-style`."
+  {:added "0.41.0"}
+  [separator-style additional-opts]
+  {:pre [(or (nil? additional-opts) (map? additional-opts)) (contains? valid-separator-styles separator-style)]}
+  (when (some? additional-opts)
+    (reduce-kv (fn [m k v]
+                 (str m
+                      (when (seq m)
+                        (case separator-style :comma "," :semicolon ";" :url "&"))
+                      (if (keyword? k)
+                        (name k)
+                        (str k))
+                      "="
+                      v)) "" additional-opts)))
 
 (defn handle-additional-options
   "If DETAILS contains an `:addtional-options` key, append those options to the connection string in CONNECTION-SPEC.
    (Some drivers like MySQL provide this details field to allow special behavior where needed).
 
    Optionally specify SEPERATOR-STYLE, which defaults to `:url` (e.g. `?a=1&b=2`). You may instead set it to
-   `:semicolon`, which will separate different options with semicolons instead (e.g. `;a=1;b=2`). (While most drivers
-   require the former style, some require the latter.)"
+   `:semicolon` or `:comma`, which will separate different options with semicolons or commas instead (e.g. `;a=1;b=2`). (While most drivers
+   require the former style, some require semicolon or even comma.)"
   {:arglists '([connection-spec] [connection-spec details & {:keys [seperator-style]}])}
   ;; single arity provided for cases when `connection-spec` is built by applying simple transformations to `details`
   ([connection-spec]
@@ -22,10 +51,4 @@
   ([{connection-string :subname, :as connection-spec} {additional-options :additional-options, :as details} & {:keys [seperator-style]
                                                                                                                :or   {seperator-style :url}}]
    (-> (dissoc connection-spec :additional-options)
-       (assoc :subname (str connection-string (when (seq additional-options)
-                                                (str (case seperator-style
-                                                       :semicolon ";"
-                                                       :url       (if (str/includes? connection-string "?")
-                                                                    "&"
-                                                                    "?"))
-                                                     additional-options)))))))
+       (assoc :subname (conn-str-with-additional-opts connection-string seperator-style additional-options)))))

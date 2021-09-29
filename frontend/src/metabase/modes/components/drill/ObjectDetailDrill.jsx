@@ -1,11 +1,9 @@
-/* @flow */
-
 import { isFK, isPK } from "metabase/lib/schema_metadata";
-import { t } from "c-3po";
+import { t } from "ttag";
 import type {
   ClickAction,
   ClickActionProps,
-} from "metabase/meta/types/Visualization";
+} from "metabase-types/types/Visualization";
 
 export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
   if (
@@ -17,8 +15,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     return [];
   }
 
-  // $FlowFixMe
-  let field = question.metadata().fields[clicked.column.id];
+  let field = question.metadata().field(clicked.column.id);
   if (!field) {
     return [];
   }
@@ -36,8 +33,11 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
       name: "object-detail",
       section: "details",
       title: t`View details`,
+      buttonType: "horizontal",
+      icon: "document",
       default: true,
-      question: () => question.drillPK(field, clicked && clicked.value),
+      question: () =>
+        field ? question.drillPK(field, clicked && clicked.value) : question,
     },
   ];
 };

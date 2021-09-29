@@ -1,61 +1,139 @@
-/* @flow weak */
-
 // NOTE: this needs to be imported first due to some cyclical dependency nonsense
-import Q_DEPRECATED from "metabase/lib/query";
-
 import Question from "../Question";
 
 import Base from "./Base";
-import Database from "./Database";
-import Field from "./Field";
 
-import type { SchemaName } from "metabase/meta/types/Table";
-import type { FieldMetadata } from "metabase/meta/types/Metadata";
-import type { ConcreteField, DatetimeUnit } from "metabase/meta/types/Query";
+import { singularize } from "metabase/lib/formatting";
+import { getAggregationOperatorsWithFields } from "metabase/lib/schema_metadata";
+import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
 
-import Dimension from "../Dimension";
-
-import _ from "underscore";
+/**
+ * @typedef { import("./metadata").SchemaName } SchemaName
+ * @typedef { import("./metadata").EntityType } EntityType
+ * @typedef { import("./metadata").StructuredQuery } StructuredQuery
+ */
 
 /** This is the primary way people interact with tables */
 export default class Table extends Base {
-  displayName: string;
-  description: string;
+  hasSchema() {
+    return (this.schema_name && this.db && this.db.schemas.length > 1) || false;
+  }
 
-  schema: ?SchemaName;
-  db: Database;
-
-  fields: FieldMetadata[];
-
-  // $FlowFixMe Could be replaced with hydrated database property in selectors/metadata.js (instead / in addition to `table.db`)
+  // Could be replaced with hydrated database property in selectors/metadata.js (instead / in addition to `table.db`)
   get database() {
     return this.db;
   }
 
-  newQuestion(): Question {
-    // $FlowFixMe
-    return new Question();
+  newQuestion() {
+    return this.question()
+      .setDefaultQuery()
+      .setDefaultDisplay();
   }
 
-  dimensions(): Dimension[] {
+  question() {
+    return Question.create({
+      databaseId: this.db && this.db.id,
+      tableId: this.id,
+      metadata: this.metadata,
+    });
+  }
+
+  isSavedQuestion() {
+    return this.savedQuestionId() !== null;
+  }
+
+  savedQuestionId() {
+    const match = String(this.id).match(/card__(\d+)/);
+    return match ? parseInt(match[1]) : null;
+  }
+
+  /**
+   * @returns {StructuredQuery}
+   */
+  query(query = {}) {
+    return this.question()
+      .query()
+      .updateQuery(q => ({ ...q, ...query }));
+  }
+
+  dimensions() {
     return this.fields.map(field => field.dimension());
   }
 
-  dateFields(): Field[] {
+  displayName({ includeSchema } = {}) {
+    return (
+      (includeSchema && this.schema ? this.schema.displayName() + "." : "") +
+      this.display_name
+    );
+  }
+
+  /**
+   * The singular form of the object type this table represents
+   * Currently we try to guess this by singularizing `display_name`, but ideally it would be configurable in metadata
+   * See also `field.targetObjectName()`
+   */
+  objectName() {
+    return singularize(this.displayName());
+  }
+
+  dateFields() {
     return this.fields.filter(field => field.isDate());
   }
 
-  aggregations() {
-    return this.aggregation_options || [];
+  // AGGREGATIONS
+
+  @memoize
+  aggregationOperators() {
+    return getAggregationOperatorsWithFields(this);
   }
 
-  aggregation(agg) {
-    return _.findWhere(this.aggregations(), { short: agg });
+  @memoize
+  aggregationOperatorsLookup() {
+    return createLookupByProperty(this.aggregationOperators(), "short");
   }
 
-  fieldTarget(
-    fieldRef: ConcreteField,
-  ): { field: Field, table: Table, unit?: DatetimeUnit, path: Field[] } {
-    return Q_DEPRECATED.getFieldTarget(fieldRef, this);
+  aggregationOperator(short) {
+    return this.aggregation_operators_lookup[short];
+  }
+
+  // @deprecated: use aggregationOperators
+  get aggregation_operators() {
+    return this.aggregationOperators();
+  }
+
+  // @deprecated: use aggregationOperatorsLookup
+  get aggregation_operators_lookup() {
+    return this.aggregationOperatorsLookup();
+  }
+
+  // FIELDS
+
+  @memoize
+  fieldsLookup() {
+    return createLookupByProperty(this.fields, "id");
+  }
+
+  // @deprecated: use fieldsLookup
+  get fields_lookup() {
+    return this.fieldsLookup();
+  }
+
+  /**
+   * @private
+   * @param {string} description
+   * @param {Database} db
+   * @param {Schema?} schema
+   * @param {SchemaName} [schema_name]
+   * @param {Field[]} fields
+   * @param {EntityType} entity_type
+   */
+  /* istanbul ignore next */
+  _constructor(description, db, schema, schema_name, fields, entity_type) {
+    this.description = description;
+    this.db = db;
+    this.schema = schema;
+    this.schema_name = schema_name;
+    this.fields = fields;
+    this.entity_type = entity_type;
   }
 }

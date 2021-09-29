@@ -1,17 +1,23 @@
 import React, { Component } from "react";
+import { connect } from "react-redux";
 import PropTypes from "prop-types";
+
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseUtils from "metabase/lib/utils";
-import SettingsSetting from "./SettingsSetting.jsx";
+import SettingsSetting from "./SettingsSetting";
+import { updateSlackSettings } from "../settings";
 
 import Button from "metabase/components/Button";
-import Icon from "metabase/components/Icon.jsx";
-
-import RetinaImage from "react-retina-image";
+import Icon from "metabase/components/Icon";
+import ExternalLink from "metabase/components/ExternalLink";
 
 import _ from "underscore";
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
 
+@connect(
+  null,
+  { updateSettings: updateSlackSettings },
+)
 export default class SettingsSlackForm extends Component {
   constructor(props, context) {
     super(props, context);
@@ -27,12 +33,12 @@ export default class SettingsSlackForm extends Component {
   static propTypes = {
     elements: PropTypes.array,
     formErrors: PropTypes.object,
-    updateSlackSettings: PropTypes.func.isRequired,
+    updateSettings: PropTypes.func.isRequired,
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     // this gives us an opportunity to load up our formData with any existing values for elements
-    let formData = {};
+    const formData = {};
     this.props.elements.forEach(function(element) {
       formData[element.key] =
         element.value == null ? element.defaultValue : element.value;
@@ -65,7 +71,7 @@ export default class SettingsSlackForm extends Component {
 
     switch (validationType) {
       case "email":
-        return !MetabaseUtils.validEmail(value)
+        return !MetabaseUtils.isEmail(value)
           ? validationMessage || t`That's not a valid email address`
           : null;
       case "integer":
@@ -76,11 +82,11 @@ export default class SettingsSlackForm extends Component {
   }
 
   validateForm() {
-    let { elements } = this.props;
-    let { formData } = this.state;
+    const { elements } = this.props;
+    const { formData } = this.state;
 
-    let valid = true,
-      validationErrors = {};
+    let valid = true;
+    const validationErrors = {};
 
     elements.forEach(function(element) {
       // test for required elements
@@ -125,7 +131,7 @@ export default class SettingsSlackForm extends Component {
 
   handleFormErrors(error) {
     // parse and format
-    let formErrors = {};
+    const formErrors = {};
     if (error.data && error.data.message) {
       formErrors.message = error.data.message;
     } else {
@@ -147,10 +153,10 @@ export default class SettingsSlackForm extends Component {
       submitting: "working",
     });
 
-    let { formData, valid } = this.state;
+    const { formData, valid } = this.state;
 
     if (valid) {
-      this.props.updateSlackSettings(formData).then(
+      this.props.updateSettings(formData).then(
         () => {
           this.setState({
             submitting: "success",
@@ -174,8 +180,8 @@ export default class SettingsSlackForm extends Component {
   }
 
   render() {
-    let { elements } = this.props;
-    let {
+    const { elements } = this.props;
+    const {
       formData,
       formErrors,
       submitting,
@@ -183,13 +189,13 @@ export default class SettingsSlackForm extends Component {
       validationErrors,
     } = this.state;
 
-    let settings = elements.map((element, index) => {
+    const settings = elements.map((element, index) => {
       // merge together data from a couple places to provide a complete view of the Element state
-      let errorMessage =
+      const errorMessage =
         formErrors && formErrors.elements
           ? formErrors.elements[element.key]
           : validationErrors[element.key];
-      let value =
+      const value =
         formData[element.key] == null
           ? element.defaultValue
           : formData[element.key];
@@ -217,32 +223,35 @@ export default class SettingsSlackForm extends Component {
       }
     });
 
-    let saveSettingsButtonStates = {
+    const saveSettingsButtonStates = {
       default: t`Save changes`,
       working: t`Saving...`,
       success: t`Changes saved!`,
     };
 
-    let disabled = !valid || submitting !== "default",
-      saveButtonText = saveSettingsButtonStates[submitting];
+    const disabled = !valid || submitting !== "default";
+    const saveButtonText = saveSettingsButtonStates[submitting];
 
     return (
       <form noValidate>
         <div className="px2" style={{ maxWidth: "585px" }}>
           <h1>
-            Metabase
-            <RetinaImage
+            {t`Metabase`}
+            <img
+              width="79px"
               className="mx1"
               src="app/assets/img/slack_emoji.png"
-              width={79}
-              forceOriginalDimensions={false /* broken in React v0.13 */}
+              srcSet="
+                app/assets/img/slack_emoji.png    1x,
+                app/assets/img/slack_emoji@2x.png 2x
+              "
             />
             Slack
           </h1>
           <h3 className="text-light">{t`Answers sent right to your Slack #channels`}</h3>
 
           <div className="pt3">
-            <a
+            <ExternalLink
               href="https://my.slack.com/services/new/bot"
               target="_blank"
               className="Button Button--primary"
@@ -255,11 +264,11 @@ export default class SettingsSlackForm extends Component {
                 name="external"
                 size={18}
               />
-            </a>
+            </ExternalLink>
           </div>
           <div className="py2">
             {jt`Once you're there, give it a name and click ${(
-              <strong>"Add bot integration"</strong>
+              <strong>&quot;{t`Add bot integration`}&quot;</strong>
             )}. Then copy and paste the Bot API Token into the field below. Once you are done, create a "metabase_files" channel in Slack. Metabase needs this to upload graphs.`}
           </div>
         </div>

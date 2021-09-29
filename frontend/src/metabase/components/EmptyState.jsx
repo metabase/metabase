@@ -1,25 +1,27 @@
-/* @flow */
+/* eslint-disable react/prop-types */
 import React from "react";
 import { Box, Flex } from "grid-styled";
 
 import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
-import Text from "metabase/components/Text";
+import Text from "metabase/components/type/Text";
 
 type EmptyStateProps = {
-  message: React$Element<any>,
+  message?: React.Element,
   title?: string,
   action?: string,
   link?: string,
-  illustrationElement: React$Element<any>,
+  illustrationElement: React.Element,
   onActionClick?: () => void,
 };
 
 // Don't break existing empty states
 // TODO - remove these and update empty states with proper usage of illustrationElement
 const LegacyIcon = props =>
-  props.icon ? <Icon name={props.icon} size={40} /> : null;
+  props.icon ? (
+    <Icon name={props.icon} className="text-light" size={40} />
+  ) : null;
 const LegacyImage = props =>
   props.image ? (
     <img
@@ -48,7 +50,7 @@ const EmptyState = ({
         <LegacyIcon {...rest} />
         <LegacyImage {...rest} />
       </Box>
-      {title && <h2>{title}</h2>}
+      {title && <h2 className="text-medium">{title}</h2>}
       {message && <Text color="medium">{message}</Text>}
     </Flex>
     {/* TODO - we should make this children or some other more flexible way to
@@ -56,18 +58,16 @@ const EmptyState = ({
       */}
     <Flex mt={2}>
       <Flex align="center" ml="auto" mr="auto">
-        {action &&
-          link && (
-            <Link to={link} target={link.startsWith("http") ? "_blank" : ""}>
-              <Button primary>{action}</Button>
-            </Link>
-          )}
-        {action &&
-          onActionClick && (
-            <Button onClick={onActionClick} primary>
-              {action}
-            </Button>
-          )}
+        {action && link && (
+          <Link to={link} target={link.startsWith("http") ? "_blank" : ""}>
+            <Button primary>{action}</Button>
+          </Link>
+        )}
+        {action && onActionClick && (
+          <Button onClick={onActionClick} primary>
+            {action}
+          </Button>
+        )}
       </Flex>
     </Flex>
   </Box>

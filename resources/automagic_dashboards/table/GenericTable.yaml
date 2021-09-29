@@ -5,8 +5,7 @@ metrics:
   - Count: ["count"]
   - CountDistinctFKs: [distinct, [dimension, FK]]
   - Sum: [sum, [dimension, GenericNumber]]
-  - Avg:
-      metric: [avg, [dimension, GenericNumber]]
+  - Avg: [avg, [dimension, GenericNumber]]
 dimensions:
   - Country:
       field_type: GenericTable.Country
@@ -24,9 +23,6 @@ dimensions:
       field_type: GenericTable.Category
       score: 75
       max_cardinality: 10
-  - GenericCategoryLarge:
-      field_type: GenericTable.Category
-      score: 70
   - Singleton:
       field_type: GenericTable.Category
       max_cardinality: 1
@@ -143,22 +139,10 @@ cards:
       title: "[[this.short-name]] per [[GenericCategoryMedium]]"
       dimensions: GenericCategoryMedium
       metrics: Count
-      visualization: row
+      visualization: smart-row
       score: 80
       height: 8
       group: General
-      order_by:
-        - Count: descending
-  - CountByCategoryLarge:
-      title: "[[this.short-name]] per [[GenericCategoryLarge]]"
-      dimensions: GenericCategoryLarge
-      metrics: Count
-      visualization: table
-      height: 8
-      score: 70
-      group: General
-      order_by:
-        - Count: descending
 # Geographical
   - CountByCountry:
       title: "[[this.short-name]] per country"

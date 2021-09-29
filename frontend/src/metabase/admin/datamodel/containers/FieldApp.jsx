@@ -1,17 +1,16 @@
-/* @flow */
-
 /**
  * Settings editor for a single database field. Lets you change field type, visibility and display values / remappings.
  *
  * TODO Atte Keinänen 7/6/17: This uses the standard metadata API; we should migrate also other parts of admin section
  */
-
+/* eslint-disable react/prop-types */
 import React from "react";
 import { Link } from "react-router";
 import { connect } from "react-redux";
 
 import _ from "underscore";
-import { t } from "c-3po";
+import { t } from "ttag";
+import { humanizeCoercionStrategy } from "./humanizeCoercionStrategy";
 
 // COMPONENTS
 
@@ -22,17 +21,17 @@ import SaveStatus from "metabase/components/SaveStatus";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-import AdminLayout from "metabase/components/AdminLayout.jsx";
-import {
-  LeftNavPane,
-  LeftNavPaneItem,
-} from "metabase/components/LeftNavPane.jsx";
+import AdminLayout from "metabase/components/AdminLayout";
+import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
 import Section, { SectionHeader } from "../components/Section";
 import SelectSeparator from "../components/SelectSeparator";
 
+import { is_coerceable, coercions_for_type } from "cljs/metabase.types";
+import { isFK } from "metabase/lib/types";
+
 import {
   FieldVisibilityPicker,
-  SpecialTypeAndTargetPicker,
+  SemanticTypeAndTargetPicker,
 } from "../components/database/ColumnItem";
 import FieldRemapping from "../components/FieldRemapping";
 import UpdateCachedFieldValues from "../components/UpdateCachedFieldValues";
@@ -40,71 +39,73 @@ import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
 
 // SELECTORS
 import { getMetadata } from "metabase/selectors/metadata";
-import { getDatabaseIdfields } from "metabase/admin/datamodel/selectors";
 
 // ACTIONS
-import * as metadataActions from "metabase/redux/metadata";
-import * as datamodelActions from "../datamodel";
 import { rescanFieldValues, discardFieldValues } from "../field";
 
 // LIB
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import { has_field_values_options } from "metabase/lib/core";
-import colors from "metabase/lib/colors";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import { isCurrency } from "metabase/lib/schema_metadata";
 
-import type { ColumnSettings as ColumnSettingsType } from "metabase/meta/types/Dataset";
-import type { DatabaseId } from "metabase/meta/types/Database";
-import type { TableId } from "metabase/meta/types/Table";
-import type { FieldId } from "metabase/meta/types/Field";
+import type { ColumnSettings as ColumnSettingsType } from "metabase-types/types/Dataset";
+import type { DatabaseId } from "metabase-types/types/Database";
+import type { TableId } from "metabase-types/types/Table";
+import type { FieldId } from "metabase-types/types/Field";
+import Databases from "metabase/entities/databases";
+import Tables from "metabase/entities/tables";
+import Fields from "metabase/entities/fields";
 
 const mapStateToProps = (state, props) => {
+  const databaseId = parseInt(props.params.databaseId);
+  const fieldId = parseInt(props.params.fieldId);
   return {
-    databaseId: parseInt(props.params.databaseId),
+    databaseId,
+    fieldId,
+    field: Fields.selectors.getObjectUnfiltered(state, { entityId: fieldId }),
     tableId: parseInt(props.params.tableId),
-    fieldId: parseInt(props.params.fieldId),
     metadata: getMetadata(state),
-    idfields: getDatabaseIdfields(state),
+    idfields: Databases.selectors.getIdfields(state, { databaseId }),
   };
 };
 
 const mapDispatchToProps = {
-  fetchDatabaseMetadata: metadataActions.fetchDatabaseMetadata,
-  fetchTableMetadata: metadataActions.fetchTableMetadata,
-  fetchFieldValues: metadataActions.fetchFieldValues,
-  updateField: metadataActions.updateField,
-  updateFieldValues: metadataActions.updateFieldValues,
-  updateFieldDimension: metadataActions.updateFieldDimension,
-  deleteFieldDimension: metadataActions.deleteFieldDimension,
-  fetchDatabaseIdfields: datamodelActions.fetchDatabaseIdfields,
+  fetchDatabaseMetadata: Databases.actions.fetchDatabaseMetadata,
+  fetchTableMetadata: Tables.actions.fetchMetadataAndForeignTables,
+  fetchFieldValues: Fields.actions.fetchFieldValues,
+  updateField: Fields.actions.update,
+  updateFieldValues: Fields.actions.updateFieldValues,
+  updateFieldDimension: Fields.actions.updateFieldDimension,
+  deleteFieldDimension: Fields.actions.deleteFieldDimension,
   rescanFieldValues,
   discardFieldValues,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class FieldApp extends React.Component {
   state = {
     tab: "general",
   };
 
-  saveStatus: null;
-
   props: {
     databaseId: DatabaseId,
     tableId: TableId,
     fieldId: FieldId,
+    field: Object,
     metadata: Metadata,
     idfields: Object[],
 
-    fetchDatabaseMetadata: number => Promise<void>,
-    fetchTableMetadata: number => Promise<void>,
-    fetchFieldValues: number => Promise<void>,
+    fetchDatabaseMetadata: Object => Promise<void>,
+    fetchTableMetadata: Object => Promise<void>,
+    fetchFieldValues: Object => Promise<void>,
     updateField: any => Promise<void>,
     updateFieldValues: any => Promise<void>,
-    updateFieldDimension: (FieldId, any) => Promise<void>,
-    deleteFieldDimension: FieldId => Promise<void>,
-    fetchDatabaseIdfields: DatabaseId => Promise<void>,
+    updateFieldDimension: (Object, any) => Promise<void>,
+    deleteFieldDimension: Object => Promise<void>,
 
     rescanFieldValues: FieldId => Promise<void>,
     discardFieldValues: FieldId => Promise<void>,
@@ -113,55 +114,56 @@ export default class FieldApp extends React.Component {
     params: any,
   };
 
-  // $FlowFixMe
-  async componentWillMount() {
+  constructor(props) {
+    super(props);
+    this.saveStatusRef = React.createRef();
+  }
+
+  async UNSAFE_componentWillMount() {
     const {
       databaseId,
       tableId,
       fieldId,
       fetchDatabaseMetadata,
       fetchTableMetadata,
-      fetchDatabaseIdfields,
       fetchFieldValues,
     } = this.props;
 
-    // A complete database metadata is needed in case that foreign key is changed
-    // and then we need to show FK remapping options for a new table
-    await fetchDatabaseMetadata(databaseId);
+    await Promise.all([
+      // A complete database metadata is needed in case that foreign key is
+      // changed and then we need to show FK remapping options for a new table
+      fetchDatabaseMetadata(
+        { id: databaseId },
+        { params: { include_hidden: true } },
+      ),
 
-    // Only fetchTableMetadata hydrates `dimension` in the field object
-    // Force reload to ensure that we are not showing stale information
-    await fetchTableMetadata(tableId, true);
+      // Only fetchTableMetadata hydrates `dimension` in the field object
+      // Force reload to ensure that we are not showing stale information
+      fetchTableMetadata(
+        { id: tableId },
+        { reload: true, params: { include_sensitive_fields: true } },
+      ),
 
-    // load field values if has_field_values === "list"
-    const field = this.props.metadata.field(fieldId);
-    if (field && field.has_field_values === "list") {
-      await fetchFieldValues(fieldId);
-    }
-
-    // TODO Atte Keinänen 7/10/17: Migrate this to redux/metadata
-    await fetchDatabaseIdfields(databaseId);
+      // always load field values even though it's only needed if
+      // has_field_values === "list"
+      fetchFieldValues({ id: fieldId }),
+    ]);
   }
 
-  linkWithSaveStatus = (saveMethod: Function) => {
-    const self = this;
-    return async (...args: any[]) => {
-      self.saveStatus && self.saveStatus.setSaving();
-      await saveMethod(...args);
-      self.saveStatus && self.saveStatus.setSaved();
-    };
+  linkWithSaveStatus = (saveMethod: Function) => async (...args: any[]) => {
+    this.saveStatusRef.current && this.saveStatusRef.current.setSaving();
+    await saveMethod(...args);
+    this.saveStatusRef.current && this.saveStatusRef.current.setSaved();
   };
 
-  onUpdateField = this.linkWithSaveStatus(this.props.updateField);
   onUpdateFieldProperties = this.linkWithSaveStatus(async fieldProps => {
-    const { metadata, fieldId } = this.props;
-    const field = metadata.fields[fieldId];
+    const { field } = this.props;
 
     if (field) {
       // `table` and `target` propertes is part of the fully connected metadata graph; drop it because it
       // makes conversion to JSON impossible due to cyclical data structure
       await this.props.updateField({
-        ...field.getPlainObject(),
+        ...field,
         ...fieldProps,
       });
     } else {
@@ -178,7 +180,6 @@ export default class FieldApp extends React.Component {
     this.props.deleteFieldDimension,
   );
 
-  // $FlowFixMe
   onUpdateFieldSettings = (settings: ColumnSettingsType): void => {
     return this.onUpdateFieldProperties({ settings });
   };
@@ -186,7 +187,7 @@ export default class FieldApp extends React.Component {
   render() {
     const {
       metadata,
-      fieldId,
+      field,
       databaseId,
       tableId,
       idfields,
@@ -197,9 +198,8 @@ export default class FieldApp extends React.Component {
       params: { section },
     } = this.props;
 
-    const db = metadata.databases[databaseId];
-    const field = metadata.fields[fieldId];
-    const table = metadata.tables[tableId];
+    const db = metadata.database(databaseId);
+    const table = metadata.table(tableId);
 
     const isLoading = !field || !table || !idfields;
 
@@ -209,9 +209,9 @@ export default class FieldApp extends React.Component {
           <AdminLayout
             sidebar={
               <div>
-                <Header>
+                <div className="flex align-center mb2">
                   <BackButton databaseId={databaseId} tableId={tableId} />
-                </Header>
+                </div>
                 <LeftNavPane>
                   <LeftNavPaneItem
                     name={t`General`}
@@ -227,8 +227,8 @@ export default class FieldApp extends React.Component {
             }
           >
             <div className="wrapper">
-              <Header>
-                <div className="mb4 py1 ml-auto mr-auto">
+              {db && table && (
+                <div className="mb4 pt2 ml-auto mr-auto">
                   <Breadcrumbs
                     crumbs={[
                       [db.name, `/admin/datamodel/database/${db.id}`],
@@ -240,10 +240,10 @@ export default class FieldApp extends React.Component {
                     ]}
                   />
                 </div>
-                <div className="absolute top right mt4 mr4">
-                  <SaveStatus ref={ref => (this.saveStatus = ref)} />
-                </div>
-              </Header>
+              )}
+              <div className="absolute top right mt4 mr4">
+                <SaveStatus ref={this.saveStatusRef} />
+              </div>
 
               {section == null || section === "general" ? (
                 <FieldGeneralPane
@@ -251,7 +251,6 @@ export default class FieldApp extends React.Component {
                   idfields={idfields}
                   table={table}
                   metadata={metadata}
-                  onUpdateField={this.onUpdateField}
                   onUpdateFieldValues={this.onUpdateFieldValues}
                   onUpdateFieldProperties={this.onUpdateFieldProperties}
                   onUpdateFieldDimension={this.onUpdateFieldDimension}
@@ -274,16 +273,11 @@ export default class FieldApp extends React.Component {
   }
 }
 
-const Header = ({ children, height = 50 }) => (
-  <div style={{ height }}>{children}</div>
-);
-
 const FieldGeneralPane = ({
   field,
   idfields,
   table,
   metadata,
-  onUpdateField,
   onUpdateFieldValues,
   onUpdateFieldProperties,
   onUpdateFieldDimension,
@@ -308,34 +302,63 @@ const FieldGeneralPane = ({
       />
       <div style={{ maxWidth: 400 }}>
         <FieldVisibilityPicker
-          field={field.getPlainObject()}
-          updateField={onUpdateField}
+          field={field}
+          updateField={onUpdateFieldProperties}
         />
       </div>
     </Section>
 
     <Section>
       <SectionHeader title={t`Field Type`} />
-      <SpecialTypeAndTargetPicker
-        field={field.getPlainObject()}
-        updateField={onUpdateField}
+      <SemanticTypeAndTargetPicker
+        className="flex align-center"
+        field={field}
+        updateField={onUpdateFieldProperties}
         idfields={idfields}
         selectSeparator={<SelectSeparator />}
       />
     </Section>
 
+    {!isFK(field.semantic_type) && is_coerceable(field.base_type) && (
+      <Section>
+        <SectionHeader title={t`Cast to a specific data type`} />
+        <Select
+          className="inline-block"
+          placeholder={t`Select a conversion`}
+          searchProp="name"
+          value={field.coercion_strategy}
+          onChange={({ target: { value } }) =>
+            onUpdateFieldProperties({
+              coercion_strategy: value,
+            })
+          }
+          options={[
+            ...coercions_for_type(field.base_type).map(c => ({
+              id: c,
+              name: c,
+            })),
+            {
+              id: null,
+              name: t`Don't cast`,
+            },
+          ]}
+          optionValueFn={field => field.id}
+          optionNameFn={field => humanizeCoercionStrategy(field.name)}
+          optionIconFn={field => null}
+        />
+      </Section>
+    )}
     <Section>
       <SectionHeader
         title={t`Filtering on this field`}
         description={t`When this field is used in a filter, what should people use to enter the value they want to filter on?`}
       />
       <Select
-        value={_.findWhere(has_field_values_options, {
-          value: field.has_field_values,
-        })}
-        onChange={option =>
+        className="inline-block"
+        value={field.has_field_values}
+        onChange={({ target: { value } }) =>
           onUpdateFieldProperties({
-            has_field_values: option.value,
+            has_field_values: value,
           })
         }
         options={has_field_values_options}
@@ -378,7 +401,7 @@ const FieldSettingsPane = ({ field, onUpdateFieldSettings }) => (
       value={(field && field.settings) || {}}
       onChange={onUpdateFieldSettings}
       column={field}
-      blacklist={
+      denylist={
         new Set(
           ["column_title"].concat(isCurrency(field) ? ["number_style"] : []),
         )
@@ -399,10 +422,9 @@ export const BackButton = ({
 }) => (
   <Link
     to={`/admin/datamodel/database/${databaseId}/table/${tableId}`}
-    className="circle text-white p2 flex align-center justify-center inline"
-    style={{ backgroundColor: colors["bg-dark"] }}
+    className="circle text-white p2 flex align-center justify-center bg-dark bg-brand-hover"
   >
-    <Icon name="backArrow" />
+    <Icon name="arrow_left" />
   </Link>
 );
 
@@ -421,11 +443,14 @@ export class FieldHeader extends React.Component {
     // Update the dimension name if it exists
     // TODO: Have a separate input field for the dimension name?
     if (!_.isEmpty(field.dimensions)) {
-      await updateFieldDimension(field.id, {
-        type: field.dimensions.type,
-        human_readable_field_id: field.dimensions.human_readable_field_id,
-        name,
-      });
+      await updateFieldDimension(
+        { id: field.id },
+        {
+          type: field.dimensions.type,
+          human_readable_field_id: field.dimensions.human_readable_field_id,
+          name,
+        },
+      );
     }
 
     // todo: how to treat empty / too long strings? see how this is done in Column
@@ -441,12 +466,14 @@ export class FieldHeader extends React.Component {
     return (
       <div>
         <InputBlurChange
+          name="display_name"
           className="h2 AdminInput bordered rounded border-dark block mb1"
           value={this.props.field.display_name}
           onChange={this.onNameChange}
           placeholder={this.props.field.name}
         />
         <InputBlurChange
+          name="description"
           className="text AdminInput bordered input text-measure block full"
           value={this.props.field.description}
           onChange={this.onDescriptionChange}

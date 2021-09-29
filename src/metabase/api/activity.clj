@@ -2,22 +2,21 @@
   (:require [clojure.set :as set]
             [compojure.core :refer [GET]]
             [metabase.api.common :refer [*current-user-id* defendpoint define-routes]]
-            [metabase.models
-             [activity :refer [Activity]]
-             [card :refer [Card]]
-             [dashboard :refer [Dashboard]]
-             [interface :as mi]
-             [view-log :refer [ViewLog]]]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]]))
+            [metabase.models.activity :refer [Activity]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.models.interface :as mi]
+            [metabase.models.table :refer [Table]]
+            [metabase.models.view-log :refer [ViewLog]]
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]))
 
 (defn- dashcard-activity? [activity]
   (#{:dashboard-add-cards :dashboard-remove-cards}
    (:topic activity)))
 
 (defn- activities->referenced-objects
-  "Get a map of model name to a set of referenced IDs in these ACTIVITIES.
+  "Get a map of model name to a set of referenced IDs in these `activities`.
 
      (activities->referenced-objects <some-activities>) -> {\"dashboard\" #{41 42 43}, \"card\" #{100 101}, ...}"
   [activities]
@@ -48,7 +47,7 @@
                       nil)}))) ; don't care about other models
 
 (defn- add-model-exists-info
-  "Add `:model_exists` keys to ACTIVITIES, and `:exists` keys to nested dashcards where appropriate."
+  "Add `:model_exists` keys to `activities`, and `:exists` keys to nested dashcards where appropriate."
   [activities]
   (let [existing-objects (-> activities activities->referenced-objects referenced-objects->existing-objects)]
     (for [{:keys [model model_id], :as activity} activities]
@@ -64,15 +63,16 @@
   "Get recent activity."
   []
   (filter mi/can-read? (-> (db/select Activity, {:order-by [[:timestamp :desc]], :limit 40})
-                               (hydrate :user :table :database)
-                               add-model-exists-info)))
+                           (hydrate :user :table :database)
+                           add-model-exists-info)))
 
 (defn- view-log-entry->matching-object [{:keys [model model_id]}]
-  (when (contains? #{"card" "dashboard"} model)
+  (when (contains? #{"card" "dashboard" "table"} model)
     (db/select-one
         (case model
           "card"      [Card      :id :name :collection_id :description :display :dataset_query]
-          "dashboard" [Dashboard :id :name :collection_id :description])
+          "dashboard" [Dashboard :id :name :collection_id :description]
+          "table"     [Table     :id :name :db_id :display_name])
         :id model_id)))
 
 (defendpoint GET "/recent_views"
@@ -85,7 +85,7 @@
                    :user_id *current-user-id*
                    {:group-by [:user_id :model :model_id]
                     :order-by [[:max_ts :desc]]
-                    :limit    10})
+                    :limit    5})
         :let     [model-object (view-log-entry->matching-object view-log)]
         :when    (and model-object
                       (mi/can-read? model-object))]

@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
@@ -6,37 +7,36 @@ import styles from "./Toggle.css";
 import cx from "classnames";
 
 export default class Toggle extends Component {
-  constructor(props, context) {
-    super(props, context);
-    this.onClick = this.onClick.bind(this);
-  }
-
   static propTypes = {
     value: PropTypes.bool.isRequired,
     onChange: PropTypes.func,
     small: PropTypes.bool,
   };
 
-  onClick() {
+  handleClick = () => {
     if (this.props.onChange) {
       this.props.onChange(!this.props.value);
     }
-  }
+  };
 
   render() {
+    const { value, small, className, color, onChange, ...props } = this.props;
     return (
       <a
+        {...props}
+        role="checkbox"
+        aria-checked={value}
         className={cx(
           styles.toggle,
           "no-decoration",
           {
-            [styles.selected]: this.props.value,
-            [styles.small]: this.props.small,
+            [styles.selected]: value,
+            [styles.small]: small,
           },
-          this.props.className,
+          className,
         )}
-        style={{ color: this.props.color || null }}
-        onClick={this.props.onChange ? this.onClick : null}
+        style={{ color: color || null }}
+        onClick={onChange ? this.handleClick : null}
       />
     );
   }

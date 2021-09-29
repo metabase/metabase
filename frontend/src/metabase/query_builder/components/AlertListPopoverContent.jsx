@@ -1,6 +1,7 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
 
@@ -23,7 +24,7 @@ import {
   state => ({ questionAlerts: getQuestionAlerts(state), user: getUser(state) }),
   null,
 )
-export class AlertListPopoverContent extends Component {
+export default class AlertListPopoverContent extends Component {
   props: {
     questionAlerts: any[],
     setMenuFreeze: boolean => void,
@@ -78,6 +79,7 @@ export class AlertListPopoverContent extends Component {
         <ul>
           {Object.values(sortedQuestionAlerts).map(alert => (
             <AlertListItem
+              key={alert.id}
               alert={alert}
               setMenuFreeze={setMenuFreeze}
               closeMenu={closeMenu}
@@ -114,10 +116,13 @@ export class AlertListPopoverContent extends Component {
   }
 }
 
-@connect(state => ({ user: getUser(state) }), {
-  unsubscribeFromAlert,
-  deleteAlert,
-})
+@connect(
+  state => ({ user: getUser(state) }),
+  {
+    unsubscribeFromAlert,
+    deleteAlert,
+  },
+)
 export class AlertListItem extends Component {
   props: {
     alert: any,
@@ -196,15 +201,15 @@ export class AlertListItem extends Component {
               {(isAdmin || isCurrentUser) && (
                 <a className="link" onClick={this.onEdit}>{jt`Edit`}</a>
               )}
-              {!isAdmin &&
-                !unsubscribingProgress && (
-                  <a
-                    className="link ml2"
-                    onClick={this.onUnsubscribe}
-                  >{jt`Unsubscribe`}</a>
-                )}
-              {!isAdmin &&
-                unsubscribingProgress && <span> {unsubscribingProgress}</span>}
+              {!isAdmin && !unsubscribingProgress && (
+                <a
+                  className="link ml2"
+                  onClick={this.onUnsubscribe}
+                >{jt`Unsubscribe`}</a>
+              )}
+              {!isAdmin && unsubscribingProgress && (
+                <span> {unsubscribingProgress}</span>
+              )}
             </div>
           </div>
 
@@ -219,22 +224,20 @@ export class AlertListItem extends Component {
                 verbose={!isAdmin}
               />
             </li>
-            {isAdmin &&
-              emailEnabled && (
-                <li className="ml3 flex align-center">
-                  <Icon name="mail" className="mr1" />
-                  {emailChannel.recipients.length}
-                </li>
-              )}
-            {isAdmin &&
-              slackEnabled && (
-                <li className="ml3 flex align-center">
-                  <Icon name="slack" size={16} className="mr1" />
-                  {(slackChannel.details &&
-                    slackChannel.details.channel.replace("#", "")) ||
-                    t`No channel`}
-                </li>
-              )}
+            {isAdmin && emailEnabled && (
+              <li className="ml3 flex align-center">
+                <Icon name="mail" className="mr1" />
+                {emailChannel.recipients.length}
+              </li>
+            )}
+            {isAdmin && slackEnabled && (
+              <li className="ml3 flex align-center">
+                <Icon name="slack" size={16} className="mr1" />
+                {(slackChannel.details &&
+                  slackChannel.details.channel.replace("#", "")) ||
+                  t`No channel`}
+              </li>
+            )}
           </ul>
         </div>
 
@@ -283,7 +286,6 @@ export class AlertScheduleText extends Component {
 
       return `${verbose ? "daily at " : "Daily, "} ${hour} ${amPm}`;
     } else if (scheduleType === "weekly") {
-      console.log(schedule);
       const hourOfDay = schedule.schedule_hour;
       const day = _.find(
         DAY_OF_WEEK_OPTIONS,

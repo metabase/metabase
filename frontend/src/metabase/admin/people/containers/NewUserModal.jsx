@@ -1,7 +1,8 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { connect } from "react-redux";
 import { goBack, push } from "react-router-redux";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
 
@@ -16,7 +17,10 @@ const NewUserModal = ({ onClose, onSaved, ...props }) => (
   />
 );
 
-export default connect(null, {
-  onClose: goBack,
-  onSaved: user => push(Urls.newUserSuccess(user.id)),
-})(NewUserModal);
+export default connect(
+  null,
+  {
+    onClose: goBack,
+    onSaved: user => push(Urls.newUserSuccess(user.id)),
+  },
+)(NewUserModal);

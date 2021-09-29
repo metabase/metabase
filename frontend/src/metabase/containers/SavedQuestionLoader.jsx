@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 import { connect } from "react-redux";
 
@@ -12,7 +10,7 @@ import Question from "metabase-lib/lib/Question";
 
 // type annotations
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
-import type { Card } from "metabase/meta/types/Card";
+import type { Card } from "metabase-types/types/Card";
 
 type ChildProps = {
   loading: boolean,
@@ -22,7 +20,7 @@ type ChildProps = {
 
 type Props = {
   questionId: ?number,
-  children?: (props: ChildProps) => React$Element<any>,
+  children?: (props: ChildProps) => React.Element,
   // provided by redux
   loadMetadataForCard: (card: Card) => Promise<void>,
   metadata: Metadata,
@@ -77,12 +75,12 @@ export class SavedQuestionLoader extends React.Component {
     error: null,
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     // load the specified question when the component mounts
     this._loadQuestion(this.props.questionId);
   }
 
-  componentWillReceiveProps(nextProps: Props) {
+  UNSAFE_componentWillReceiveProps(nextProps: Props) {
     // if the questionId changes (this will most likely be the result of a
     // url change) then we need to load this new question
     if (nextProps.questionId !== this.props.questionId) {
@@ -93,7 +91,7 @@ export class SavedQuestionLoader extends React.Component {
     // update the question with that metadata
     if (nextProps.metadata !== this.props.metadata && this.state.card) {
       this.setState({
-        question: new Question(nextProps.metadata, this.state.card),
+        question: new Question(this.state.card, nextProps.metadata),
       });
     }
   }
@@ -132,7 +130,7 @@ export class SavedQuestionLoader extends React.Component {
       // so we can use metabase-lib methods to retrieve information and modify
       // the question
       //
-      const question = new Question(this.props.metadata, card);
+      const question = new Question(card, this.props.metadata);
 
       // finally, set state to store the Question object so it can be passed
       // to the component using the loader, keep a reference to the card
@@ -162,6 +160,7 @@ const mapDispatchToProps = {
   loadMetadataForCard,
 };
 
-export default connect(mapStateToProps, mapDispatchToProps)(
-  SavedQuestionLoader,
-);
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(SavedQuestionLoader);

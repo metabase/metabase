@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 
 import ChartSettingsWidget from "../ChartSettingsWidget";
@@ -19,7 +17,7 @@ import type {
   SettingsWidgetsForObjectGetter,
   NestedObjectKeyGetter,
 } from "metabase/visualizations/lib/settings/nested";
-import type { Series } from "metabase/meta/types/Visualization";
+import type { Series } from "metabase-types/types/Visualization";
 
 export type NestedSettingComponentProps = {
   objects: NestedObject[],
@@ -31,9 +29,7 @@ export type NestedSettingComponentProps = {
   settings: Settings,
   allComputedSettings: Settings,
 };
-type NestedSettingComponent = Class<
-  React$Component<NestedSettingComponentProps, *, *>,
->;
+type NestedSettingComponent = React.ComponentClass;
 
 type SettingsByObjectKey = { [key: NestedObjectKey]: Settings };
 
@@ -68,28 +64,24 @@ const chartSettingNestedSettings = ({
 
     constructor(props: Props) {
       super(props);
-      this.state = {
-        editingObjectKey:
-          props.initialKey ||
-          (props.objects.length === 1 ? getObjectKey(props.objects[0]) : null),
-      };
+      this.state = {};
     }
 
-    componentWillReceiveProps(nextProps: Props) {
-      // reset editingObjectKey if there's only one object
-      if (
-        nextProps.objects.length === 1 &&
-        this.state.editingObjectKey !== getObjectKey(nextProps.objects[0])
-      ) {
-        this.setState({
-          editingObjectKey: getObjectKey(nextProps.objects[0]),
-        });
-      }
-    }
+    getEditingObjectKey = () => {
+      return (
+        this.state.objectKeyOverride ||
+        this.props.initialKey ||
+        (this.props.objects.length === 1
+          ? getObjectKey(this.props.objects[0])
+          : null)
+      );
+    };
 
     handleChangeEditingObject = (editingObject: ?NestedObject) => {
+      // objectKeyOverride allows child components to set the editing object key to a different value than is derived
+      // from the props. For example, this is used by the "More options" button in ChartNestedSettingSeries.
       this.setState({
-        editingObjectKey: editingObject ? getObjectKey(editingObject) : null,
+        objectKeyOverride: editingObject ? getObjectKey(editingObject) : null,
       });
       // special prop to notify ChartSettings it should unswap replaced widget
       if (!editingObject && this.props.onEndShowWidget) {
@@ -98,7 +90,7 @@ const chartSettingNestedSettings = ({
     };
 
     handleChangeSettingsForEditingObject = (newSettings: Settings) => {
-      const { editingObjectKey } = this.state;
+      const editingObjectKey = this.getEditingObjectKey();
       if (editingObjectKey) {
         this.handleChangeSettingsForObjectKey(editingObjectKey, newSettings);
       }
@@ -109,7 +101,7 @@ const chartSettingNestedSettings = ({
       newSettings: Settings,
     ) => {
       const objectKey = getObjectKey(object);
-      if (objectKey) {
+      if (objectKey != null) {
         this.handleChangeSettingsForObjectKey(objectKey, newSettings);
       }
     };
@@ -130,8 +122,7 @@ const chartSettingNestedSettings = ({
 
     render() {
       const { series, objects, extra } = this.props;
-      const { editingObjectKey } = this.state;
-
+      const editingObjectKey = this.getEditingObjectKey();
       if (editingObjectKey) {
         const editingObject = _.find(
           objects,

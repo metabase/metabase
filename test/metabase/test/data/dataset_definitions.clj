@@ -1,122 +1,212 @@
 (ns metabase.test.data.dataset-definitions
-  "Definitions of various datasets for use in tests with `with-temp-db`."
-  (:require [metabase.test.data.interface :as di])
+  "Definitions of various datasets for use in tests with `data/dataset` and the like."
+  (:require [java-time :as t]
+            [medley.core :as m]
+            [metabase.test.data.interface :as tx]
+            [metabase.util.date-2 :as u.date])
   (:import java.sql.Time
-           [java.util Calendar TimeZone]))
+           [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
 
-;; ## Datasets
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                Various Datasets                                                |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; The O.G. "Test Database" dataset
-(di/def-database-definition-edn test-data)
-
-;; Times when the Toucan cried
-(di/def-database-definition-edn sad-toucan-incidents)
-
-;; Places, times, and circumstances where Tupac was sighted. Sighting timestamps are UNIX Timestamps in seconds
-(di/def-database-definition-edn tupac-sightings)
-
-;; Dataset with nested columns, for testing a MongoDB-style database
-(di/def-database-definition-edn geographical-tips)
-
-;; A very tiny dataset with a list of places and a booleans
-(di/def-database-definition-edn places-cam-likes)
-
-;; A small dataset with users and a set of messages between them. Each message has *2* foreign keys to user --
-;; sender and receiver -- allowing us to test situations where multiple joins for a *single* table should occur.
-(di/def-database-definition-edn avian-singles)
-
-;; A small dataset that includes an integer column with some NULL and ZERO values, meant for testing things like
-;; expressions to make sure they behave correctly
+;; You can get the values inside these dataset definitions like this:
 ;;
-;; As an added "bonus" this dataset has a table with a name in a slash in it, so the driver will need to support that
-;; correctly in order for this to work!
-(di/def-database-definition-edn daily-bird-counts)
+;;    (tx/get-dataset-definition test-data)
 
-;; A small dataset that includes TIMESTAMP dates. People who stopped by the Metabase office and the time they did so.
-(di/def-database-definition-edn office-checkins)
+(tx/defdataset-edn test-data
+  "The default \"Test Data\" dataset. Used in ~95% of tests. See `test-data.edn` for a overview of the tables and
+  fields in this dataset.")
 
-(defn- calendar-with-fields ^Calendar [date & fields]
-  (let [cal-from-date  (doto (Calendar/getInstance (TimeZone/getTimeZone "UTC"))
-                         (.setTime date))
-        blank-calendar (doto (.clone cal-from-date)
-                         .clear)]
-    (doseq [field fields]
-      (.set blank-calendar field (.get cal-from-date field)))
-    blank-calendar))
+(tx/defdataset-edn sad-toucan-incidents
+  "Times when the Toucan cried. Timestamps are UNIX timestamps in milliseconds.")
+
+(tx/defdataset-edn tupac-sightings
+  "Places, times, and circumstances where Tupac was sighted. Sighting timestamps are UNIX Timestamps in seconds.")
+
+(tx/defdataset-edn geographical-tips
+  "Dataset with nested columns, for testing a MongoDB-style database")
+
+(tx/defdataset-edn places-cam-likes
+  "A very tiny dataset with a list of places and a booleans")
+
+(tx/defdataset-edn avian-singles
+  "A small dataset with users and a set of messages between them. Each message has *2* foreign keys to user -- sender
+  and receiver -- allowing us to test situations where multiple joins for a *single* table should occur.")
+
+(tx/defdataset-edn daily-bird-counts
+  "A small dataset that includes an integer column with some NULL and ZERO values, meant for testing things like
+  expressions to make sure they behave correctly.
+
+  As an added bonus this dataset has a table with a name in a slash in it, so the driver will need to support that
+  correctly in order for this to work!")
+
+(tx/defdataset-edn office-checkins
+  "A small dataset that includes TIMESTAMP dates. People who stopped by the Metabase office and the time they did so.")
+
+(tx/defdataset-edn bird-flocks
+  "A small dataset with birds and the flocks they belong to (a many-to-one relationship). Some birds belong to no
+  flocks, and one flock has no birds, so this is useful for testing behavior of various types of joins. (`flock_id` is
+  not explicitly marked as a foreign key, because the test dataset syntax does not yet have a way to support nullable
+  foreign keys.)")
+
+(tx/defdataset-edn airports
+  "Major international airports from around the world. Location information is broken out into a series of tables:
+
+    Continent > Country > Region (e.g. State) > Municipality (e.g. City) > Airport
+
+  This makes this dataset ideal for testing things where we must join multiple levels of tables.
+
+  There are some `nil` `:name` strings in the `region` and `municipality` tables. `airport` has a row with an airport
+  whose `:code` is an empty string.")
+
+(tx/defdataset-edn sample-dataset
+  "The sample dataset that ships with Metabase, but converted to an EDN dataset definition so it can be used in tests.
+  This dataset is pretty large (over 20k rows) so it can take a long time to load -- keep that in mind. There is one
+  difference from the H2 version that ships with Metabase -- this version uses `:type/DateTimeWithTZ` `updated_at`
+  columns (i.e., `TIMESTAMP WITH TIME ZONE`) instead of `:type/DateType`, to make it easier to use this test data
+  across multiple databases.")
 
 (defn- date-only
-  "This function emulates a date only field as it would come from the JDBC driver. The hour/minute/second/millisecond
-  fields should be 0s"
-  [date]
-  (.getTime (calendar-with-fields date Calendar/DAY_OF_MONTH Calendar/MONTH Calendar/YEAR)))
+  "Convert date or datetime temporal value to `t` to an appropriate date type, discarding time information."
+  [t]
+  (when t
+    (condp instance? t
+      LocalDate      t
+      LocalDateTime  (t/local-date t)
+      LocalTime      (throw (Exception. "Cannot convert a time to a date"))
+      OffsetTime     (throw (Exception. "Cannot convert a time to a date"))
+      ;; since there is no `OffsetDate` class use `OffsetDateTime`, but truncated to day
+      OffsetDateTime (u.date/truncate :day)
+      ZonedDateTime  (u.date/truncate :day))))
 
 (defn- time-only
-  "This function will return a java.sql.Time object. To create a Time object similar to what JDBC would return, the time
-  needs to be relative to epoch. As an example a time of 4:30 would be a Time instance, but it's a subclass of Date,
-  so it looks like 1970-01-01T04:30:00.000"
-  [date]
-  (Time. (.getTimeInMillis (calendar-with-fields date Calendar/HOUR_OF_DAY Calendar/MINUTE Calendar/SECOND))))
+  "Convert time or datetime temporal value to `t` to an appropriate time type, discarding date information."
+  [t]
+  (when t
+    (condp instance? t
+      LocalDate      (throw (Exception. "Cannot convert a date to a time"))
+      LocalDateTime  (t/local-time t)
+      LocalTime      t
+      OffsetTime     t
+      OffsetDateTime (t/offset-time t)
+      ZonedDateTime  (t/offset-time t))))
 
-(di/def-database-definition test-data-with-time
-  (di/update-table-def "users"
-                       (fn [table-def]
-                         [(first table-def)
-                          {:field-name "last_login_date", :base-type :type/Date}
-                          {:field-name "last_login_time", :base-type :type/Time}
-                          (peek table-def)])
-                       (fn [rows]
-                         (mapv (fn [[username last-login password-text]]
-                                 [username (date-only last-login) (time-only last-login) password-text])
-                               rows))
-                       (for [[table-name :as orig-def] (di/slurp-edn-table-def "test-data")
-                             :when (= table-name "users")]
-                         orig-def)))
+(defonce ^{:doc "The main `test-data` dataset, but only the `users` table, and with `last_login_date` and
+  `last_login_time` instead of `last_login`."}
+  test-data-with-time
+  (tx/transformed-dataset-definition "test-data-with-time" test-data
+    (tx/transform-dataset-only-tables "users")
+    (tx/transform-dataset-update-table "users"
+      :table
+      (fn [tabledef]
+        (update
+         tabledef
+         :field-definitions
+         (fn [[name-field-def _ password-field-def]]
+           [name-field-def
+            (tx/map->FieldDefinition {:field-name "last_login_date", :base-type :type/Date})
+            (tx/map->FieldDefinition {:field-name "last_login_time", :base-type :type/Time})
+            password-field-def])))
+      :rows
+      (fn [rows]
+        (for [[username last-login password-text] rows]
+          [username (date-only last-login) (time-only last-login) password-text])))))
 
-(di/def-database-definition test-data-with-null-date-checkins
-  (di/update-table-def "checkins"
-                       #(vec (concat % [{:field-name "null_only_date" :base-type :type/Date}]))
-                       (fn [rows]
-                         (mapv #(conj % nil) rows))
-                       (di/slurp-edn-table-def "test-data")))
+(defonce ^{:doc "The main `test-data` dataset, with an additional (all-null) `null_only_date` Field."}
+  test-data-with-null-date-checkins
+  (tx/transformed-dataset-definition "test-data-with-null-date-checkins" test-data
+    (tx/transform-dataset-update-table "checkins"
+      :table
+      (fn [tabledef]
+        (update
+         tabledef
+         :field-definitions
+         (fn [[date-field-def user-id-field-def venue-id-field-def]]
+           [date-field-def
+            (tx/map->FieldDefinition {:field-name "null_only_date", :base-type :type/Date})
+            user-id-field-def
+            venue-id-field-def])))
+      :rows
+      (fn [rows]
+        (for [[date user-id venue-id] rows]
+          [date nil user-id venue-id])))))
 
-(di/def-database-definition test-data-with-timezones
-  (di/update-table-def "users"
-                       (fn [table-def]
-                         [(first table-def)
-                          {:field-name "last_login", :base-type :type/DateTimeWithTZ}
-                          (peek table-def)])
-                       identity
-                       (di/slurp-edn-table-def "test-data")))
+(defonce ^{:doc "The main `test-data` dataset, but `last_login` has a base type of `:type/DateTimeWithTZ`."}
+  test-data-with-timezones
+  (tx/transformed-dataset-definition "test-data-with-timezones" test-data
+    (tx/transform-dataset-update-table "users"
+      :table
+      (fn [tabledef]
+        (update
+         tabledef
+         :field-definitions
+         (fn [[name-field-def _ password-field-def]]
+           [name-field-def
+            (tx/map->FieldDefinition {:field-name "last_login", :base-type :type/DateTimeWithTZ})
+            password-field-def]))))))
 
-(def test-data-map
-  "Converts data from `test-data` to a map of maps like the following:
+(defonce ^{:doc "The usual `test-data` dataset, but only the `users` table; adds a `created_by` column to the users
+  table that is self referencing."}
+  test-data-self-referencing-user
+  (tx/transformed-dataset-definition "test-data-self-referencing-user" test-data
+    (tx/transform-dataset-only-tables "users")
+    (tx/transform-dataset-update-table "users"
+      :table
+      (fn [tabledef]
+        (update tabledef :field-definitions concat [(tx/map->FieldDefinition
+                                                     {:field-name "created_by", :base-type :type/Integer, :fk :users})]))
+      ;; created_by = user.id - 1, except for User 1, who was created by himself (?)
+      :rows
+      (fn [rows]
+        (for [[idx [username last-login password-text]] (m/indexed rows)]
+          [username last-login password-text (if (zero? idx)
+                                               1
+                                               idx)])))))
 
-   {<table-name> [{<field-name> <field value> ...}]."
-  (reduce (fn [acc {:keys [table-name field-definitions rows]}]
-            (let [field-names (mapv :field-name field-definitions)]
-              (assoc acc table-name
-                     (for [row rows]
-                       (zipmap field-names row)))))
-          {} (:table-definitions test-data)))
+(tx/defdataset attempted-murders
+  "A dataset for testing temporal values with and without timezones. Records of number of crow counts spoted and the
+  date/time when they spotting occured in several different column types.
 
-(defn field-values
-  "Returns the field values for the given `TABLE` and `COLUMN` found
-  in the data-map `M`."
-  [m table column]
-  (mapv #(get % column) (get m table)))
-
-;; Takes the `test-data` dataset and adds a `created_by` column to the users table that is self referencing
-(di/def-database-definition test-data-self-referencing-user
-  (di/update-table-def "users"
-                       (fn [table-def]
-                         (conj table-def {:field-name "created_by", :base-type :type/Integer, :fk :users}))
-                       (fn [rows]
-                         (mapv (fn [[username last-login password-text] idx]
-                                 [username last-login password-text (if (= 1 idx)
-                                                                      idx
-                                                                      (dec idx))])
-                               rows
-                               (iterate inc 1)))
-                       (for [[table-name :as orig-def] (di/slurp-edn-table-def "test-data")
-                             :when (= table-name "users")]
-                         orig-def)))
+  No Database we support supports all of these different types, so the expectation is that we'll use the closest
+  equivalent for each column."
+  [["attempts"
+    [{:field-name "date",           :base-type :type/Date}
+     {:field-name "datetime",       :base-type :type/DateTime}
+     {:field-name "datetime_ltz",   :base-type :type/DateTimeWithLocalTZ}
+     {:field-name "datetime_tz",    :base-type :type/DateTimeWithZoneOffset}
+     {:field-name "datetime_tz_id", :base-type :type/DateTimeWithZoneID}
+     {:field-name "time",           :base-type :type/Time}
+     {:field-name "time_ltz",       :base-type :type/TimeWithLocalTZ}
+     {:field-name "time_tz",        :base-type :type/TimeWithZoneOffset}
+     {:field-name "num_crows",      :base-type :type/Integer}]
+    (for [[cnt t] [[6 #t "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]"]
+                   [8 #t "2019-11-02T00:14:14.246-07:00[America/Los_Angeles]"]
+                   [6 #t "2019-11-03T23:35:17.906-08:00[America/Los_Angeles]"]
+                   [7 #t "2019-11-04T01:04:09.593-08:00[America/Los_Angeles]"]
+                   [8 #t "2019-11-05T14:23:46.411-08:00[America/Los_Angeles]"]
+                   [4 #t "2019-11-06T18:51:16.270-08:00[America/Los_Angeles]"]
+                   [6 #t "2019-11-07T02:45:34.443-08:00[America/Los_Angeles]"]
+                   [4 #t "2019-11-08T19:51:39.753-08:00[America/Los_Angeles]"]
+                   [3 #t "2019-11-09T09:59:10.483-08:00[America/Los_Angeles]"]
+                   [1 #t "2019-11-10T08:41:35.860-08:00[America/Los_Angeles]"]
+                   [5 #t "2019-11-11T08:09:08.892-08:00[America/Los_Angeles]"]
+                   [3 #t "2019-11-12T07:36:16.088-08:00[America/Los_Angeles]"]
+                   [2 #t "2019-11-13T04:28:40.489-08:00[America/Los_Angeles]"]
+                   [9 #t "2019-11-14T09:52:17.242-08:00[America/Los_Angeles]"]
+                   [7 #t "2019-11-15T16:07:25.292-08:00[America/Los_Angeles]"]
+                   [7 #t "2019-11-16T13:32:16.936-08:00[America/Los_Angeles]"]
+                   [1 #t "2019-11-17T14:11:38.076-08:00[America/Los_Angeles]"]
+                   [3 #t "2019-11-18T20:47:27.902-08:00[America/Los_Angeles]"]
+                   [5 #t "2019-11-19T00:35:23.146-08:00[America/Los_Angeles]"]
+                   [1 #t "2019-11-20T20:09:55.752-08:00[America/Los_Angeles]"]]]
+      [(t/local-date t)                 ; date
+       (t/local-date-time t)            ; datetime
+       (t/offset-date-time t)           ; datetime-ltz
+       (t/offset-date-time t)           ; datetime-tz
+       t                                ; datetime-tz-id
+       (t/local-time t)                 ; time
+       (t/offset-time t)                ; time-ltz
+       (t/offset-time t)                ; time-tz
+       cnt])]])                              ; num-crows

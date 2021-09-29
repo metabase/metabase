@@ -1,11 +1,12 @@
-/* @flow weak */
-
-import Database from "../metadata/Database";
-
-import type { DatasetQuery } from "metabase/meta/types/Card";
+import type { DatasetQuery } from "metabase-types/types/Card";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
 import type Question from "metabase-lib/lib/Question";
+import type Dimension from "metabase-lib/lib/Dimension";
+import type Variable from "metabase-lib/lib/Variable";
+
 import { memoize } from "metabase-lib/lib/utils";
+
+import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 
 type QueryUpdateFn = (datasetQuery: DatasetQuery) => void;
 
@@ -34,18 +35,12 @@ export default class Query {
    */
   @memoize
   question(): Question {
-    const isDirectChildOfQuestion =
-      typeof this._originalQuestion.query() === typeof this;
-
-    if (isDirectChildOfQuestion) {
-      return this._originalQuestion.setQuery(this);
-    } else {
-      throw new Error(
-        "Can't derive a question from a query that is a child of other query",
-      );
-    }
+    return this._originalQuestion.setQuery(this);
   }
 
+  /**
+   * Returns a "clean" version of this query with invalid parts removed
+   */
   clean(): Query {
     return this;
   }
@@ -91,10 +86,38 @@ export default class Query {
   }
 
   /**
-   * Databases this query could use
+   * Returns true if the database metadata (or lack thererof indicates the user can modify and run this query
    */
-  databases(): Database[] {
-    return this._metadata.databasesList();
+  readOnly(): boolean {
+    return true;
+  }
+
+  /**
+   * Dimensions exposed by this query
+   * NOTE: Ideally we'd also have `dimensions()` that returns a flat list, but currently StructuredQuery has it's own `dimensions()` for another purpose.
+   */
+  dimensionOptions(
+    filter: (dimension: Dimension) => boolean,
+  ): DimensionOptions {
+    return new DimensionOptions();
+  }
+
+  /**
+   * Variables exposed by this query
+   */
+  variables(filter: (variable: Variable) => boolean): Variable[] {
+    return [];
+  }
+
+  /**
+   * Metadata this query needs to display correctly
+   */
+  dependentMetadata() {
+    return [];
+  }
+
+  setDefaultQuery(): Query {
+    return this;
   }
 
   /**

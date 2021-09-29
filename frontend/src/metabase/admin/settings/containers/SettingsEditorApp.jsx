@@ -1,21 +1,17 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import { connect } from "react-redux";
+import { t } from "ttag";
+
 import title from "metabase/hoc/Title";
 import MetabaseAnalytics from "metabase/lib/analytics";
-import { slugify } from "metabase/lib/formatting";
-import { t } from "c-3po";
-import AdminLayout from "metabase/components/AdminLayout.jsx";
+import MetabaseSettings from "metabase/lib/settings";
+import AdminLayout from "metabase/components/AdminLayout";
+import { NotFound } from "metabase/containers/ErrorPages";
 
-import SettingsSetting from "../components/SettingsSetting.jsx";
-import SettingsEmailForm from "../components/SettingsEmailForm.jsx";
-import SettingsSlackForm from "../components/SettingsSlackForm.jsx";
-import SettingsLdapForm from "../components/SettingsLdapForm.jsx";
-import SettingsSetupList from "../components/SettingsSetupList.jsx";
-import SettingsUpdatesForm from "../components/SettingsUpdatesForm.jsx";
-import SettingsSingleSignOnForm from "../components/SettingsSingleSignOnForm.jsx";
-import SettingsAuthenticationOptions from "../components/SettingsAuthenticationOptions.jsx";
+import SettingsSetting from "../components/SettingsSetting";
 
 import { prepareAnalyticsValue } from "metabase/admin/settings/utils";
 
@@ -27,9 +23,10 @@ import {
   getSettingValues,
   getSections,
   getActiveSection,
+  getActiveSectionName,
   getNewVersionAvailable,
 } from "../selectors";
-import * as settingsActions from "../settings";
+import { initializeSettings, updateSetting, reloadSettings } from "../settings";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -37,38 +34,45 @@ const mapStateToProps = (state, props) => {
     settingValues: getSettingValues(state, props),
     sections: getSections(state, props),
     activeSection: getActiveSection(state, props),
+    activeSectionName: getActiveSectionName(state, props),
     newVersionAvailable: getNewVersionAvailable(state, props),
   };
 };
 
 const mapDispatchToProps = {
-  ...settingsActions,
+  initializeSettings,
+  updateSetting,
+  reloadSettings,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @title(({ activeSection }) => activeSection && activeSection.name)
 export default class SettingsEditorApp extends Component {
   layout = null; // the reference to AdminLayout
 
   static propTypes = {
-    sections: PropTypes.array.isRequired,
+    sections: PropTypes.object.isRequired,
     activeSection: PropTypes.object,
+    activeSectionName: PropTypes.string,
     updateSetting: PropTypes.func.isRequired,
-    updateEmailSettings: PropTypes.func.isRequired,
-    updateSlackSettings: PropTypes.func.isRequired,
-    updateLdapSettings: PropTypes.func.isRequired,
-    sendTestEmail: PropTypes.func.isRequired,
-    clearEmailSettings: PropTypes.func.isRequired,
   };
 
-  componentWillMount() {
+  constructor(props) {
+    super(props);
+    this.saveStatusRef = React.createRef();
+  }
+
+  UNSAFE_componentWillMount() {
     this.props.initializeSettings();
   }
 
   updateSetting = async (setting, newValue) => {
     const { settingValues, updateSetting } = this.props;
 
-    this.layout.setSaving();
+    this.saveStatusRef.current.setSaving();
 
     const oldValue = setting.value;
 
@@ -86,7 +90,7 @@ export default class SettingsEditorApp extends Component {
         );
       }
 
-      this.layout.setSaved();
+      this.saveStatusRef.current.setSaved();
 
       const value = prepareAnalyticsValue(setting);
 
@@ -98,9 +102,9 @@ export default class SettingsEditorApp extends Component {
         typeof value === "number" && value,
       );
     } catch (error) {
-      let message =
+      const message =
         error && (error.message || (error.data && error.data.message));
-      this.layout.setSaveError(message);
+      this.saveStatusRef.current.setSaveError(message);
       MetabaseAnalytics.trackEvent(
         "General Settings",
         setting.display_name,
@@ -113,6 +117,7 @@ export default class SettingsEditorApp extends Component {
     const { settings, updateSetting } = this.props;
     const setting = _.findWhere(settings, { key });
     if (!setting) {
+      console.error(`Attempted to change unknown setting ${key}`);
       throw new Error(t`Unknown setting ${key}`);
     }
     return updateSetting({ ...setting, value });
@@ -122,75 +127,23 @@ export default class SettingsEditorApp extends Component {
     const { activeSection, settingValues } = this.props;
 
     if (!activeSection) {
-      return null;
+      return <NotFound />;
     }
 
-    if (activeSection.slug === "email") {
+    if (activeSection.component) {
       return (
-        <SettingsEmailForm
-          ref="emailForm"
+        <activeSection.component
           elements={activeSection.settings}
-          updateEmailSettings={this.props.updateEmailSettings}
-          sendTestEmail={this.props.sendTestEmail}
-          clearEmailSettings={this.props.clearEmailSettings}
-        />
-      );
-    } else if (activeSection.slug === "setup") {
-      return <SettingsSetupList ref="settingsForm" />;
-    } else if (activeSection.slug === "slack") {
-      return (
-        <SettingsSlackForm
-          ref="slackForm"
-          elements={activeSection.settings}
-          updateSlackSettings={this.props.updateSlackSettings}
-        />
-      );
-    } else if (activeSection.slug === "updates") {
-      return (
-        <SettingsUpdatesForm
-          settings={this.props.settings}
-          elements={activeSection.settings}
+          settingValues={settingValues}
           updateSetting={this.updateSetting}
         />
       );
-    } else if (activeSection.slug === "authentication") {
-      // HACK - the presence of this param is a way for us to tell if
-      // a user is looking at a sub section of the autentication section
-      // since allowing for multi page settings more broadly would require
-      // a fairly significant refactor of how settings does its routing logic
-      if (this.props.params.authType) {
-        if (this.props.params.authType === "ldap") {
-          return (
-            <SettingsLdapForm
-              elements={
-                _.findWhere(this.props.sections, { slug: "ldap" }).settings
-              }
-              updateLdapSettings={this.props.updateLdapSettings}
-              settingValues={settingValues}
-            />
-          );
-        } else if (this.props.params.authType === "google") {
-          return (
-            <SettingsSingleSignOnForm
-              elements={
-                _.findWhere(this.props.sections, {
-                  slug: slugify("Single Sign-On"),
-                }).settings
-              }
-              updateSetting={this.updateSetting}
-            />
-          );
-        }
-      } else {
-        return <SettingsAuthenticationOptions />;
-      }
     } else {
       return (
         <ul>
           {activeSection.settings
-            .filter(
-              setting =>
-                setting.getHidden ? !setting.getHidden(settingValues) : true,
+            .filter(setting =>
+              setting.getHidden ? !setting.getHidden(settingValues) : true,
             )
             .map((setting, index) => (
               <SettingsSetting
@@ -209,48 +162,55 @@ export default class SettingsEditorApp extends Component {
   }
 
   renderSettingsSections() {
-    const { sections, activeSection, newVersionAvailable } = this.props;
+    const { sections, activeSectionName, newVersionAvailable } = this.props;
 
-    const renderedSections = _.map(sections, (section, idx) => {
-      // HACK - This is used to hide specific items in the sidebar and is currently
-      // only used as a way to fake the multi page auth settings pages without
-      // requiring a larger refactor.
-      if (section.sidebar === false) {
-        return false;
-      }
-      const classes = cx(
-        "AdminList-item",
-        "flex",
-        "align-center",
-        "justify-between",
-        "no-decoration",
-        {
-          selected: activeSection && section.slug === activeSection.slug, // this.state.currentSection === idx
-        },
-      );
+    const renderedSections = Object.entries(sections).map(
+      ([slug, section], idx) => {
+        // HACK - This is used to hide specific items in the sidebar and is currently
+        // only used as a way to fake the multi page auth settings pages without
+        // requiring a larger refactor.
+        if (section.sidebar === false) {
+          return false;
+        }
 
-      // if this is the Updates section && there is a new version then lets add a little indicator
-      let newVersionIndicator;
-      if (section.slug === "updates" && newVersionAvailable) {
-        newVersionIndicator = (
+        // The nested authentication routes should be matched just on the prefix:
+        // e.g. "authentication/google" => "authentication"
+        const [sectionNamePrefix] = activeSectionName.split("/");
+
+        const classes = cx(
+          "AdminList-item",
+          "flex",
+          "align-center",
+          "justify-between",
+          "no-decoration",
+          { selected: slug === sectionNamePrefix },
+        );
+
+        // if this is the Updates section && there is a new version then lets add a little indicator
+        const shouldDisplayNewVersionIndicator =
+          slug === "updates" &&
+          newVersionAvailable &&
+          !MetabaseSettings.isHosted();
+
+        const newVersionIndicator = shouldDisplayNewVersionIndicator ? (
           <span
             style={{ padding: "4px 8px 4px 8px" }}
             className="bg-brand rounded text-white text-bold h6"
           >
             1
           </span>
-        );
-      }
+        ) : null;
 
-      return (
-        <li key={section.slug}>
-          <Link to={"/admin/settings/" + section.slug} className={classes}>
-            <span>{section.name}</span>
-            {newVersionIndicator}
-          </Link>
-        </li>
-      );
-    });
+        return (
+          <li key={slug}>
+            <Link to={"/admin/settings/" + slug} className={classes}>
+              <span>{section.name}</span>
+              {newVersionIndicator}
+            </Link>
+          </li>
+        );
+      },
+    );
 
     return (
       <div className="MetadataEditor-table-list AdminList flex-no-shrink">
@@ -262,7 +222,7 @@ export default class SettingsEditorApp extends Component {
   render() {
     return (
       <AdminLayout
-        ref={layout => (this.layout = layout)}
+        saveStatusRef={this.saveStatusRef}
         title={t`Settings`}
         sidebar={this.renderSettingsSections()}
       >

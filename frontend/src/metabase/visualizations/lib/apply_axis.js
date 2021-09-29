@@ -3,16 +3,20 @@
 import _ from "underscore";
 import d3 from "d3";
 import dc from "dc";
-import moment from "moment";
+import moment from "moment-timezone";
+
+import { t } from "ttag";
 
 import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { formatValue } from "metabase/lib/formatting";
-import { parseTimestamp } from "metabase/lib/time";
 
 import { computeTimeseriesTicksInterval } from "./timeseries";
-import { isMultipleOf, getModuloScaleFactor } from "./numeric";
+import timeseriesScale from "./timeseriesScale";
+import { isMultipleOf } from "./numeric";
 import { getFriendlyName } from "./utils";
 import { isHistogram } from "./renderer_utils";
+
+import type { SingleSeries } from "metabase-types/types/Visualization";
 
 // label offset (doesn't increase padding)
 const X_LABEL_PADDING = 10;
@@ -49,7 +53,7 @@ function averageStringLengthOfValues(values) {
   values = values.slice(0, MAX_VALUES_TO_MEASURE);
 
   let totalLength = 0;
-  for (let value of values) {
+  for (const value of values) {
     totalLength += String(value).length;
   }
 
@@ -87,7 +91,6 @@ export function applyChartTimeseriesXAxis(
   { xValues, xDomain, xInterval },
 ) {
   // find the first nonempty single series
-  // $FlowFixMe
   const firstSeries: SingleSeries = _.find(
     series,
     s => !datasetContainsNoResults(s.data),
@@ -96,11 +99,8 @@ export function applyChartTimeseriesXAxis(
   // setup an x-axis where the dimension is a timeseries
   let dimensionColumn = firstSeries.data.cols[0];
 
-  // get the data's timezone offset from the first row
-  let dataOffset = parseTimestamp(firstSeries.data.rows[0][0]).utcOffset() / 60;
-
   // compute the data interval
-  let dataInterval = xInterval;
+  const dataInterval = xInterval;
   let tickInterval = dataInterval;
 
   if (chart.settings["graph.x_axis.labels_enabled"]) {
@@ -118,61 +118,72 @@ export function applyChartTimeseriesXAxis(
     if (dimensionColumn.unit == null) {
       dimensionColumn = { ...dimensionColumn, unit: dataInterval.interval };
     }
+    const waterfallTotalX =
+      firstSeries.card.display === "waterfall" &&
+      chart.settings["waterfall.show_total"]
+        ? xValues[xValues.length - 1]
+        : null;
+
+    // extract xInterval timezone for updating tickInterval
+    const { timezone } = tickInterval;
 
     // special handling for weeks
     // TODO: are there any other cases where we should do this?
+    let tickFormatUnit = dimensionColumn.unit;
+    const tickFormat = timestamp => {
+      const { column, ...columnSettings } = chart.settings.column(
+        dimensionColumn,
+      );
+      return waterfallTotalX && waterfallTotalX.isSame(timestamp)
+        ? t`Total`
+        : formatValue(timestamp, {
+            ...columnSettings,
+            column: { ...column, unit: tickFormatUnit },
+            type: "axis",
+            compact: chart.settings["graph.x_axis.axis_enabled"] === "compact",
+          });
+    };
     if (dataInterval.interval === "week") {
       // if tick interval is compressed then show months instead of weeks because they're nicer formatted
       const newTickInterval = computeTimeseriesTicksInterval(
         xDomain,
         tickInterval,
         chart.width(),
+        tickFormat,
       );
       if (
         newTickInterval.interval !== tickInterval.interval ||
         newTickInterval.count !== tickInterval.count
       ) {
-        (dimensionColumn = { ...dimensionColumn, unit: "month" }),
-          (tickInterval = { interval: "month", count: 1 });
+        tickFormatUnit = "month";
+        tickInterval = { interval: "month", count: 1, timezone };
       }
+      const domainStart = xDomain[0];
+      const startOfWeek = domainStart.clone().startOf("week");
+      const shiftDays = domainStart.diff(startOfWeek, "days");
+      tickInterval = { ...tickInterval, shiftDays };
     }
 
-    chart.xAxis().tickFormat(timestamp => {
-      // timestamp is a plain Date object which discards the timezone,
-      // so add it back in so it's formatted correctly
-      const timestampFixed = moment(timestamp)
-        .utcOffset(dataOffset)
-        .format();
-      return formatValue(timestampFixed, {
-        ...chart.settings.column(dimensionColumn),
-        type: "axis",
-        compact: chart.settings["graph.x_axis.axis_enabled"] === "compact",
-      });
-    });
+    chart.xAxis().tickFormat(tickFormat);
 
     // Compute a sane interval to display based on the data granularity, domain, and chart width
-    tickInterval = computeTimeseriesTicksInterval(
-      xDomain,
-      tickInterval,
-      chart.width(),
-    );
-    chart.xAxis().ticks(tickInterval.rangeFn, tickInterval.count);
-  } else {
-    chart.xAxis().ticks(0);
+    tickInterval = {
+      ...tickInterval,
+      ...computeTimeseriesTicksInterval(
+        xDomain,
+        tickInterval,
+        chart.width(),
+        tickFormat,
+      ),
+      timezone,
+    };
   }
 
   // pad the domain slightly to prevent clipping
-  xDomain[0] = moment(xDomain[0]).subtract(
-    dataInterval.count * 0.75,
-    dataInterval.interval,
-  );
-  xDomain[1] = moment(xDomain[1]).add(
-    dataInterval.count * 0.75,
-    dataInterval.interval,
-  );
+  xDomain = stretchTimeseriesDomain(xDomain, dataInterval);
 
   // set the x scale
-  chart.x(d3.time.scale.utc().domain(xDomain)); //.nice(d3.time[dataInterval.interval]));
+  chart.x(timeseriesScale(tickInterval).domain(xDomain));
 
   // set the x units (used to compute bar size)
   chart.xUnits((start, stop) =>
@@ -182,18 +193,46 @@ export function applyChartTimeseriesXAxis(
   );
 }
 
+export function stretchTimeseriesDomain([start, end], { count, interval }) {
+  // Non-timeseries axes are stretched by 0.75 x-intervals in both directions.
+  // That's a bit trickier to do with dates because moment doesn't support
+  // adding or subtracting partial months, weeks, or days. To work around this,
+  // we do approximate math with smaller units. We're unable to add 0.75 months,
+  // so instead we add 0.75 * 30 days. I'm unclear why, but moment *is* able to add partial years and quarters.
+  if (interval === "month") {
+    interval = "day";
+    count *= 30;
+  } else if (interval === "week") {
+    interval = "day";
+    count *= 7;
+  } else if (interval === "day") {
+    interval = "hour";
+    count *= 24;
+  }
+
+  return [
+    moment(start).subtract(count * 0.75, interval),
+    moment(end).add(count * 0.75, interval),
+  ];
+}
+
 export function applyChartQuantitativeXAxis(
   chart,
   series,
   { xValues, xDomain, xInterval },
 ) {
   // find the first nonempty single series
-  // $FlowFixMe
   const firstSeries: SingleSeries = _.find(
     series,
     s => !datasetContainsNoResults(s.data),
   );
   const dimensionColumn = firstSeries.data.cols[0];
+
+  const waterfallTotalX =
+    firstSeries.card.display === "waterfall" &&
+    chart.settings["waterfall.show_total"]
+      ? xValues[xValues.length - 1]
+      : null;
 
   if (chart.settings["graph.x_axis.labels_enabled"]) {
     chart.xAxisLabel(
@@ -208,14 +247,12 @@ export function applyChartQuantitativeXAxis(
     );
     adjustXAxisTicksIfNeeded(chart.xAxis(), chart.width(), xValues);
 
-    // if xInterval is less than 1 we need to scale the values before doing
-    // modulo comparison. isMultipleOf will compute it for us but we can do it
-    // once here as an optimization
-    const modulorScale = getModuloScaleFactor(xInterval);
-
     chart.xAxis().tickFormat(d => {
+      if (waterfallTotalX && waterfallTotalX === d) {
+        return t`Total`;
+      }
       // don't show ticks that aren't multiples of xInterval
-      if (isMultipleOf(d, xInterval, modulorScale)) {
+      if (isMultipleOf(d, xInterval)) {
         return formatValue(d, {
           ...chart.settings.column(dimensionColumn),
           type: "axis",
@@ -257,13 +294,18 @@ export function applyChartOrdinalXAxis(
   { xValues, isHistogramBar },
 ) {
   // find the first nonempty single series
-  // $FlowFixMe
   const firstSeries: SingleSeries = _.find(
     series,
     s => !datasetContainsNoResults(s.data),
   );
 
   const dimensionColumn = firstSeries.data.cols[0];
+
+  const waterfallTotalX =
+    firstSeries.card.display === "waterfall" &&
+    chart.settings["waterfall.show_total"]
+      ? xValues[xValues.length - 1]
+      : null;
 
   if (chart.settings["graph.x_axis.labels_enabled"]) {
     chart.xAxisLabel(
@@ -279,14 +321,18 @@ export function applyChartOrdinalXAxis(
     chart.xAxis().ticks(xValues.length);
     adjustXAxisTicksIfNeeded(chart.xAxis(), chart.width(), xValues);
 
-    chart.xAxis().tickFormat(d =>
-      formatValue(d, {
+    chart.xAxis().tickFormat(d => {
+      if (waterfallTotalX && waterfallTotalX === d) {
+        return t`Total`;
+      }
+
+      return formatValue(d, {
         ...chart.settings.column(dimensionColumn),
         type: "axis",
         compact: chart.settings["graph.x_axis.labels_enabled"] === "compact",
         noRange: isHistogramBar,
-      }),
-    );
+      });
+    });
   } else {
     chart.xAxis().ticks(0);
     chart.xAxis().tickFormat("");
@@ -298,6 +344,17 @@ export function applyChartOrdinalXAxis(
   }
 
   chart.x(d3.scale.ordinal().domain(xValues)).xUnits(dc.units.ordinal);
+}
+
+// Sometimes tick marks are placed *just* off from zero.
+// We still want to format these as "0" rather than "0.0000000000000018".
+// But! We need to allow for real non-zero ticks at very small values,
+// so we scale a tolerance to the extent of the yAxis.
+// The tolerance is arbitrarily set to one millionth of the yExtent.
+const TOLERANCE_TO_Y_EXTENT = 1e6;
+export function maybeRoundValueToZero(value, [yMin, yMax]) {
+  const tolerance = Math.abs(yMax - yMin) / TOLERANCE_TO_Y_EXTENT;
+  return Math.abs(value) < tolerance ? 0 : value;
 }
 
 export function applyChartYAxis(chart, series, yExtent, axisName) {
@@ -334,19 +391,7 @@ export function applyChartYAxis(chart, series, yExtent, axisName) {
   }
 
   if (axis.setting("axis_enabled")) {
-    // special case for normalized stacked charts
-    // for normalized stacked charts the y-axis is a percentage number. In Javascript, 0.07 * 100.0 = 7.000000000000001 (try it) so we
-    // round that number to get something nice like "7". Then we append "%" to get a nice tick like "7%"
-    if (chart.settings["stackable.stack_type"] === "normalized") {
-      axis.axis().tickFormat(value => Math.round(value * 100) + "%");
-    } else {
-      let metricColumn = series[0].data.cols[1];
-      axis
-        .axis()
-        .tickFormat(value =>
-          formatValue(value, chart.settings.column(metricColumn)),
-        );
-    }
+    axis.axis().tickFormat(getYValueFormatter(chart, series, yExtent));
     chart.renderHorizontalGridLines(true);
     adjustYAxisTicksIfNeeded(axis.axis(), chart.height());
   } else {
@@ -363,33 +408,90 @@ export function applyChartYAxis(chart, series, yExtent, axisName) {
     scale = d3.scale.linear();
   }
 
+  // This makes non-zero bar values take up at least one pixel.
+  // Ideally, we would just pass a custom interpolate factory to `interpolate`.
+  // However, dc.js passes its own after we give it the scael, so instead we
+  // overwrite the scale's interpolate method. That let's us use theirs but
+  // special case values withing one pixel of the edge.
+  if (series.every(s => s.card.display === "bar")) {
+    const _interpolate = scale.interpolate.bind(scale);
+    scale.interpolate = customInterpolatorFactory =>
+      _interpolate((a, b) => {
+        // dc.js uses a rounding interpolator. We want to use the factory they
+        // pass in, but we also need to create d3's default interpolator. We use
+        // that to see when a value is between 0 and 1. If we just looked at the
+        // rounded value, 0.49 would round to 0 and we wouldn't bump it up to 1.
+        const custom = customInterpolatorFactory(a, b);
+        const unrounded = d3.interpolate(a, b);
+        return t => {
+          const value = unrounded(t);
+          const onePixelUp = custom(0) - 1;
+          // y goes from top to bottom, so "onePixelUp" is actually the largest value
+          if (onePixelUp < value && value < unrounded(0)) {
+            return onePixelUp;
+          }
+          return custom(t);
+        };
+      });
+  }
+
+  scale.clamp(true);
+
   if (axis.setting("auto_range")) {
     // elasticY not compatible with log scale
     if (axis.setting("scale") !== "log") {
       // TODO: right axis?
       chart.elasticY(true);
     } else {
-      if (
-        !(
-          (yExtent[0] < 0 && yExtent[1] < 0) ||
-          (yExtent[0] > 0 && yExtent[1] > 0)
-        )
-      ) {
+      const [min, max] = yExtent;
+      if (!((min < 0 && max < 0) || (min > 0 && max > 0))) {
         throw "Y-axis must not cross 0 when using log scale.";
       }
-      scale.domain(yExtent);
+
+      // With chart.elasticY, the y axis adjusts to show the beginning of the
+      // bars. If there are any bar series, we try to do the same with the log
+      // scale. We start at ±1 because things get wacky in (0, ±1].
+      const noBarSeries = series.every(s => s.card.display !== "bar");
+      if (noBarSeries) {
+        scale.domain([min, max]);
+      } else if (min < 0) {
+        scale.domain([min, -1]);
+      } else {
+        scale.domain([1, max]);
+      }
     }
     axis.scale(scale);
   } else {
+    // We union data's yExtent with the range specified in the chart settings
+    // This avoids rendering issues with bars and lines overflowing the c
+    const [min, max] = d3.extent([
+      axis.setting("min"),
+      axis.setting("max"),
+      ...yExtent,
+    ]);
     if (
       axis.setting("scale") === "log" &&
-      !(
-        (axis.setting("min") < 0 && axis.setting("max") < 0) ||
-        (axis.setting("min") > 0 && axis.setting("max") > 0)
-      )
+      !((min < 0 && max < 0) || (min > 0 && max > 0))
     ) {
       throw "Y-axis must not cross 0 when using log scale.";
     }
-    axis.scale(scale.domain([axis.setting("min"), axis.setting("max")]));
+    axis.scale(scale.domain([min, max]));
   }
+}
+
+export function getYValueFormatter(chart, series, yExtent) {
+  // special case for normalized stacked charts
+  // for normalized stacked charts the y-axis is a percentage number. In Javascript, 0.07 * 100.0 = 7.000000000000001 (try it) so we
+  // round that number to get something nice like "7". Then we append "%" to get a nice tick like "7%"
+  if (chart.settings["stackable.stack_type"] === "normalized") {
+    return value => Math.round(value * 100) + "%";
+  }
+
+  return (value, options, seriesIndex = 0) => {
+    const metricColumn = series[seriesIndex].data.cols[1];
+    const columnSettings = chart.settings.column(metricColumn);
+    const columnExtent = options.extent ?? yExtent;
+    const roundedValue = maybeRoundValueToZero(value, columnExtent);
+    return formatValue(roundedValue, { ...columnSettings, ...options });
+  };
 }

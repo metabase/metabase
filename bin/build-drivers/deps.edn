@@ -1,0 +1,29 @@
+{:paths ["src"]
+
+ :deps
+ {common/common                   {:local/root "../common"}
+  com.github.seancorfield/depstar {:mvn/version "2.1.278"}
+  cheshire/cheshire               {:mvn/version "5.8.1"}
+  commons-codec/commons-codec     {:mvn/version "1.14"}
+  hiccup/hiccup                   {:mvn/version "1.0.5"}
+  io.forward/yaml                 {:mvn/version "1.0.9"} ; Don't upgrade yet, new version doesn't support Java 8 (see https://github.com/owainlewis/yaml/issues/37)
+  io.github.clojure/tools.build   {:git/tag "v0.1.6", :git/sha "5636e61"}
+  org.clojure/tools.deps.alpha    {:mvn/version "0.12.985"}
+  org.flatland/ordered            {:mvn/version "1.5.9"} ; used by io.forward/yaml -- need the newer version
+  stencil/stencil                 {:mvn/version "0.5.0"}
+  ;; local source
+  metabase/metabase-core          {:local/root "../.."}
+  metabase/driver-modules         {:local/root "../../modules/drivers"}}
+
+ :jvm-opts
+ ["-XX:-OmitStackTraceInFastThrow"]
+
+ :aliases
+ {:dev
+  {:extra-paths ["test"]}
+
+  :test
+  {:extra-paths ["test"]
+   :extra-deps  {com.cognitect/test-runner {:git/url "https://github.com/cognitect-labs/test-runner.git"
+                                            :sha     "209b64504cb3bd3b99ecfec7937b358a879f55c1"}}
+   :main-opts   ["-m" "cognitect.test-runner"]}}}

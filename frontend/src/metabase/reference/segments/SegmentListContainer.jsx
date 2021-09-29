@@ -3,9 +3,9 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
-import BaseSidebar from "metabase/reference/guide/BaseSidebar.jsx";
-import SidebarLayout from "metabase/components/SidebarLayout.jsx";
-import SegmentList from "metabase/reference/segments/SegmentList.jsx";
+import BaseSidebar from "metabase/reference/guide/BaseSidebar";
+import SidebarLayout from "metabase/components/SidebarLayout";
+import SegmentList from "metabase/reference/segments/SegmentList";
 
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
@@ -22,7 +22,10 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class SegmentListContainer extends Component {
   static propTypes = {
     params: PropTypes.object.isRequired,
@@ -35,11 +38,11 @@ export default class SegmentListContainer extends Component {
     await actions.wrappedFetchSegments(this.props);
   }
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this.fetchContainerData();
   }
 
-  componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(newProps) {
     if (this.props.location.pathname === newProps.location.pathname) {
       return;
     }

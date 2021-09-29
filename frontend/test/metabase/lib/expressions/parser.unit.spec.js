@@ -1,227 +1,159 @@
-import { compile, suggest, parse } from "metabase/lib/expressions/parser";
-import _ from "underscore";
-import { TYPE } from "metabase/lib/types";
+import { parse } from "metabase/lib/expressions/parser";
 
-const mockMetadata = {
-  tableMetadata: {
-    fields: [
-      { id: 1, display_name: "A", base_type: TYPE.Float },
-      { id: 2, display_name: "B", base_type: TYPE.Float },
-      { id: 3, display_name: "C", base_type: TYPE.Float },
-      { id: 10, display_name: "Toucan Sam", base_type: TYPE.Float },
-      { id: 11, display_name: "count", base_type: TYPE.Float },
-    ],
-    metrics: [{ id: 1, name: "foo bar" }],
-    aggregation_options: [
-      { short: "count", fields: [] },
-      { short: "sum", fields: [[]] },
-    ],
-  },
-};
+describe("metabase/lib/expressions/parser", () => {
+  function parseSource(source, startRule) {
+    let result = null;
+    try {
+      result = parse({ source, tokenVector: null, startRule });
+      if (result.typeErrors.length > 0) {
+        throw new Error(result.typeErrors);
+      }
+    } catch (e) {
+      let err = e;
+      if (err.length && err.length > 0) {
+        err = err[0];
+        if (typeof err.message === "string") {
+          err = err.message;
+        }
+      }
+      throw err;
+    }
+    return result.cst;
+  }
 
-const expressionOpts = { ...mockMetadata, startRule: "expression" };
-const aggregationOpts = { ...mockMetadata, startRule: "aggregation" };
+  function parseExpression(expr) {
+    return parseSource(expr, "expression");
+  }
 
-describe("lib/expressions/parser", () => {
-  describe("compile()", () => {
-    it("should return empty array for null or empty string", () => {
-      expect(compile()).toEqual([]);
-      expect(compile(null)).toEqual([]);
-      expect(compile("")).toEqual([]);
+  function parseAggregation(aggregation) {
+    return parseSource(aggregation, "aggregation");
+  }
+
+  function parseFilter(filter) {
+    return parseSource(filter, "boolean");
+  }
+
+  describe("(in expression mode)", () => {
+    it("should accept a number", () => {
+      expect(() => parseExpression("42")).not.toThrow();
+    });
+    it("should accept a single-quoted string", () => {
+      expect(() => parseExpression("'Answer'")).not.toThrow();
+    });
+    it("should accept a double-quoted string", () => {
+      expect(() => parseExpression('"Answer"')).not.toThrow();
+    });
+    it("should accept a group expression (in parentheses)", () => {
+      expect(() => parseExpression("(42)")).not.toThrow();
+    });
+    it("should accept the function lower", () => {
+      expect(() => parseExpression("Lower([Title])")).not.toThrow();
+    });
+    it("should accept the function upper", () => {
+      expect(() => parseExpression("Upper([Title])")).not.toThrow();
     });
 
-    it("can parse simple expressions", () => {
-      expect(compile("A", expressionOpts)).toEqual(["field-id", 1]);
-      expect(compile("1", expressionOpts)).toEqual(1);
-      expect(compile("1.1", expressionOpts)).toEqual(1.1);
+    it("should accept the function CASE", () => {
+      expect(() => parseExpression("Case([Z]>7, 'X', 'Y')")).not.toThrow();
+    });
+    it("should accept the function CASE with multiple cases", () => {
+      expect(() => parseExpression("Case([X]>5,5,[X]>3,3,0)")).not.toThrow();
     });
 
-    it("can parse single operator math", () => {
-      expect(compile("A-B", expressionOpts)).toEqual([
-        "-",
-        ["field-id", 1],
-        ["field-id", 2],
-      ]);
-      expect(compile("A - B", expressionOpts)).toEqual([
-        "-",
-        ["field-id", 1],
-        ["field-id", 2],
-      ]);
-      expect(compile("1 - B", expressionOpts)).toEqual([
-        "-",
-        1,
-        ["field-id", 2],
-      ]);
-      expect(compile("1 - 2", expressionOpts)).toEqual(["-", 1, 2]);
+    it("should reject an unclosed single-quoted string", () => {
+      expect(() => parseExpression('"Answer')).toThrow();
     });
-
-    it("can handle operator precedence", () => {
-      expect(compile("1 + 2 * 3", expressionOpts)).toEqual([
-        "+",
-        1,
-        ["*", 2, 3],
-      ]);
-      expect(compile("1 * 2 + 3", expressionOpts)).toEqual([
-        "+",
-        ["*", 1, 2],
-        3,
-      ]);
+    it("should reject an unclosed double-quoted string", () => {
+      expect(() => parseExpression('"Answer')).toThrow();
     });
-
-    it("can collapse consecutive identical operators", () => {
-      expect(compile("1 + 2 + 3 * 4 * 5", expressionOpts)).toEqual([
-        "+",
-        1,
-        2,
-        ["*", 3, 4, 5],
-      ]);
+    it("should reject a mismatched quoted string", () => {
+      expect(() => parseExpression("\"Answer'")).toThrow();
     });
-
-    it("can handle negative number literals", () => {
-      expect(compile("1 + -1", expressionOpts)).toEqual(["+", 1, -1]);
+    it("should handle a conditional with ISEMPTY", () => {
+      expect(() =>
+        parseExpression("case(isempty([Discount]),[P])"),
+      ).not.toThrow();
     });
-
-    // quoted field name w/ a space in it
-    it("can parse a field with quotes and spaces", () => {
-      expect(compile('"Toucan Sam" + B', expressionOpts)).toEqual([
-        "+",
-        ["field-id", 10],
-        ["field-id", 2],
-      ]);
+    it("should reject CASE with only one argument", () => {
+      expect(() => parseExpression("case([Deal])")).toThrow();
     });
-
-    // parentheses / nested parens
-    it("can parse expressions with parentheses", () => {
-      expect(compile("(1 + 2) * 3", expressionOpts)).toEqual([
-        "*",
-        ["+", 1, 2],
-        3,
-      ]);
-      expect(compile("1 * (2 + 3)", expressionOpts)).toEqual([
-        "*",
-        1,
-        ["+", 2, 3],
-      ]);
-      expect(compile('"Toucan Sam" + (A * (B / C))', expressionOpts)).toEqual([
-        "+",
-        ["field-id", 10],
-        ["*", ["field-id", 1], ["/", ["field-id", 2], ["field-id", 3]]],
-      ]);
-    });
-
-    it("can parse aggregation with no arguments", () => {
-      expect(compile("Count", aggregationOpts)).toEqual(["count"]);
-      expect(compile("Count()", aggregationOpts)).toEqual(["count"]);
-    });
-
-    it("can parse aggregation with argument", () => {
-      expect(compile("Sum(A)", aggregationOpts)).toEqual([
-        "sum",
-        ["field-id", 1],
-      ]);
-    });
-
-    it("can handle negative number literals in aggregations", () => {
-      expect(compile("-1 * Count", aggregationOpts)).toEqual([
-        "*",
-        -1,
-        ["count"],
-      ]);
-    });
-
-    it("can parse complex aggregation", () => {
-      expect(compile("1 - Sum(A * 2) / Count", aggregationOpts)).toEqual([
-        "-",
-        1,
-        ["/", ["sum", ["*", ["field-id", 1], 2]], ["count"]],
-      ]);
-    });
-
-    it("should throw exception on invalid input", () => {
-      expect(() => compile("1 + ", expressionOpts)).toThrow();
-    });
-
-    it("should treat aggregations as case-insensitive", () => {
-      expect(compile("count", aggregationOpts)).toEqual(["count"]);
-      expect(compile("cOuNt", aggregationOpts)).toEqual(["count"]);
-      expect(compile("average(A)", aggregationOpts)).toEqual([
-        "avg",
-        ["field-id", 1],
-      ]);
-    });
-
-    // fks
-    // multiple tables with the same field name resolution
-  });
-
-  describe("suggest()", () => {
-    it("should suggest aggregations and metrics after an operator", () => {
-      expect(cleanSuggestions(suggest("1 + ", aggregationOpts))).toEqual([
-        { type: "aggregations", text: "Count " },
-        { type: "aggregations", text: "Sum(" },
-        // NOTE: metrics support currently disabled
-        // { type: 'metrics',     text: '"foo bar"' },
-        { type: "other", text: " (" },
-      ]);
-    });
-    it("should suggest fields after an operator", () => {
-      expect(cleanSuggestions(suggest("1 + ", expressionOpts))).toEqual([
-        // quoted because has a space
-        { type: "fields", text: '"Toucan Sam" ' },
-        // quoted because conflicts with aggregation
-        { type: "fields", text: '"count" ' },
-        { type: "fields", text: "A " },
-        { type: "fields", text: "B " },
-        { type: "fields", text: "C " },
-        { type: "other", text: " (" },
-      ]);
-    });
-    it("should suggest partial matches in aggregation", () => {
-      expect(cleanSuggestions(suggest("1 + C", aggregationOpts))).toEqual([
-        { type: "aggregations", text: "Count " },
-      ]);
-    });
-    it("should suggest partial matches in expression", () => {
-      expect(cleanSuggestions(suggest("1 + C", expressionOpts))).toEqual([
-        { type: "fields", text: '"count" ' },
-        { type: "fields", text: "C " },
-      ]);
-    });
-    it("should suggest partial matches after an aggregation", () => {
-      expect(cleanSuggestions(suggest("average(c", expressionOpts))).toEqual([
-        { type: "fields", text: '"count" ' },
-        { type: "fields", text: "C " },
-      ]);
+    it("should accept CASE with two arguments", () => {
+      expect(() => parseExpression("case([Deal],x)")).not.toThrow();
     });
   });
 
-  describe("compile() in syntax mode", () => {
-    it("should parse source without whitespace into a recoverable syntax tree", () => {
-      const source = '1-Sum(A*2+"Toucan Sam")/Count()';
-      const tree = parse(source, aggregationOpts);
-      expect(serialize(tree)).toEqual(source);
+  describe("(in aggregation mode)", () => {
+    it("should accept an aggregration with COUNT", () => {
+      expect(() => parseAggregation("Count()")).not.toThrow();
     });
-    xit("should parse source with whitespace into a recoverable syntax tree", () => {
-      // FIXME: not preserving whitespace
-      const source = '1 - Sum(A * 2 + "Toucan Sam") / Count';
-      const tree = parse(source, aggregationOpts);
-      expect(serialize(tree)).toEqual(source);
+    it("should accept an aggregration with SUM", () => {
+      expect(() => parseAggregation("Sum([Price])")).not.toThrow();
+    });
+    it("should accept an aggregration with DISTINCT", () => {
+      expect(() => parseAggregation("Distinct([Supplier])")).not.toThrow();
+    });
+    it("should accept an aggregration with STANDARDDEVIATION", () => {
+      expect(() => parseAggregation("StandardDeviation([Debt])")).not.toThrow();
+    });
+    it("should accept an aggregration with AVERAGE", () => {
+      expect(() => parseAggregation("Average([Height])")).not.toThrow();
+    });
+    it("should accept an aggregration with MAX", () => {
+      expect(() => parseAggregation("Max([Discount])")).not.toThrow();
+    });
+    it("should accept an aggregration with MIN", () => {
+      expect(() => parseAggregation("Min([Rating])")).not.toThrow();
+    });
+    it("should accept an aggregration with MEDIAN", () => {
+      expect(() => parseAggregation("Median([Total])")).not.toThrow();
+    });
+    it("should accept an aggregration with VAR", () => {
+      expect(() => parseAggregation("Variance([Tax])")).not.toThrow();
+    });
+
+    it("should accept a conditional aggregration with COUNTIF", () => {
+      expect(() => parseAggregation("CountIf([Discount] > 0)")).not.toThrow();
+    });
+
+    it("should accept a conditional aggregration with COUNTIF containing an expression", () => {
+      expect(() => parseAggregation("CountIf(([A]+[B]) > 1)")).not.toThrow();
+      expect(() =>
+        parseAggregation("CountIf( 1.2 * [Price] > 37)"),
+      ).not.toThrow();
+    });
+  });
+
+  describe("(in filter mode)", () => {
+    it("should accept a simple comparison", () => {
+      expect(() => parseFilter("[Total] > 12")).not.toThrow();
+    });
+    it("should accept a logical NOT", () => {
+      expect(() => parseFilter("NOT [Debt] > 5")).not.toThrow();
+    });
+    it("should accept a segment", () => {
+      expect(() => parseFilter("[SpecialDeal]")).not.toThrow();
+    });
+    it("should accept a logical NOT on segment", () => {
+      expect(() => parseFilter("NOT [Clearance]")).not.toThrow();
+    });
+    it("should accept multiple logical NOTs on segment", () => {
+      expect(() => parseFilter("NOT NOT [Clearance]")).not.toThrow();
+    });
+    it("should accept a relational between a segment and a dimension", () => {
+      expect(() => parseFilter("([Shipping] < 2) AND [Sale]")).not.toThrow();
+    });
+    it("should accept parenthesized logical operations", () => {
+      expect(() => parseFilter("([Deal] AND [HighRating])")).not.toThrow();
+      expect(() => parseFilter("([Price] < 100 OR [Refurb])")).not.toThrow();
+    });
+    it("should accept a function", () => {
+      expect(() => parseFilter("between([Subtotal], 1, 2)")).not.toThrow();
+    });
+    it("should reject CASE with only one argument", () => {
+      expect(() => parseFilter("case([Deal])")).toThrow();
+    });
+    it("should reject a number on the left-hand side", () => {
+      expect(() => parseFilter("10 < [DiscountPercent]")).toThrow();
     });
   });
 });
-
-function serialize(tree) {
-  if (tree.type === "token") {
-    return tree.text;
-  } else {
-    return tree.children.map(serialize).join("");
-  }
-}
-
-function cleanSuggestions(suggestions) {
-  return _.chain(suggestions)
-    .map(s => _.pick(s, "type", "text"))
-    .sortBy("text")
-    .sortBy("type")
-    .value();
-}

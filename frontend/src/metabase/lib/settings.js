@@ -1,134 +1,301 @@
 import _ from "underscore";
-import inflection from "inflection";
-import { t } from "c-3po";
+import { t, ngettext, msgid } from "ttag";
+import { parseTimestamp } from "metabase/lib/time";
 import MetabaseUtils from "metabase/lib/utils";
+import moment from "moment";
 
-const mb_settings = _.clone(window.MetabaseBootstrap);
+// TODO: dump this from backend settings definitions
+export type SettingName =
+  | "admin-email"
+  | "anon-tracking-enabled"
+  | "available-locales"
+  | "available-timezones"
+  | "custom-formatting"
+  | "custom-geojson"
+  | "email-configured?"
+  | "enable-embedding"
+  | "enable-enhancements?"
+  | "enable-public-sharing"
+  | "enable-xrays"
+  | "engines"
+  | "ga-code"
+  | "google-auth-client-id"
+  | "has-sample-dataset?"
+  | "hide-embed-branding?"
+  | "ldap-configured?"
+  | "map-tile-server-url"
+  | "password-complexity"
+  | "search-typeahead-enabled"
+  | "setup-token"
+  | "site-url"
+  | "types"
+  | "version"
+  | "version-info"
+  | "version-info-last-checked";
 
-const settingListeners = {};
+type SettingsMap = { [key: SettingName]: any };
 
 // provides access to Metabase application settings
-const MetabaseSettings = {
-  get: function(propName, defaultValue = null) {
-    return mb_settings[propName] !== undefined
-      ? mb_settings[propName]
-      : defaultValue;
-  },
+class Settings {
+  _settings: SettingsMap;
+  _listeners: { [key: SettingName]: Function[] };
 
-  set: function(key, value) {
-    if (mb_settings[key] !== value) {
-      mb_settings[key] = value;
-      if (settingListeners[key]) {
-        for (const listener of settingListeners[key]) {
+  constructor(settings: SettingsMap) {
+    this._settings = settings;
+    this._listeners = {};
+  }
+
+  get(key: SettingName, defaultValue: any = null) {
+    return this._settings[key] !== undefined
+      ? this._settings[key]
+      : defaultValue;
+  }
+
+  set(key: SettingName, value: any) {
+    if (this._settings[key] !== value) {
+      this._settings[key] = value;
+      if (this._listeners[key]) {
+        for (const listener of this._listeners[key]) {
           setTimeout(() => listener(value));
         }
       }
     }
-  },
+  }
 
-  setAll: function(settings) {
-    for (const key in settings) {
-      MetabaseSettings.set(key, settings[key]);
+  setAll(settings: SettingsMap) {
+    for (const [key, value] of Object.entries(settings)) {
+      this.set(key, value);
     }
-  },
+  }
+
+  on(key, callback) {
+    this._listeners[key] = this._listeners[key] || [];
+    this._listeners[key].push(callback);
+  }
 
   // these are all special accessors which provide a lookup of a property plus some additional help
-  adminEmail: function() {
-    return mb_settings.admin_email;
-  },
+  adminEmail() {
+    return this.get("admin-email");
+  }
 
-  isEmailConfigured: function() {
-    return mb_settings.email_configured;
-  },
+  enhancementsEnabled() {
+    return this.get("enable-enhancements?");
+  }
 
-  isTrackingEnabled: function() {
-    return mb_settings.anon_tracking_enabled || false;
-  },
+  isEmailConfigured() {
+    return this.get("email-configured?");
+  }
 
-  hasSetupToken: function() {
-    return (
-      mb_settings.setup_token !== undefined && mb_settings.setup_token !== null
-    );
-  },
+  // Right now, all Metabase Cloud hosted instances run on *.metabaseapp.com
+  // We plan on changing this to look at an envvar in the future instead.
+  isHosted() {
+    // matches <custom>.metabaseapp.com and <custom>.metabaseapp.com/
+    return /.+\.metabaseapp.com\/?$/i.test(this.get("site-url"));
+  }
 
-  ssoEnabled: function() {
-    return mb_settings.google_auth_client_id != null;
-  },
+  googleAuthEnabled() {
+    return this.get("google-auth-client-id") != null;
+  }
 
-  ldapEnabled: function() {
-    return mb_settings.ldap_configured;
-  },
+  hasSetupToken() {
+    return this.get("setup-token") != null;
+  }
 
-  hideEmbedBranding: () => mb_settings.hide_embed_branding,
+  hideEmbedBranding() {
+    return this.get("hide-embed-branding?");
+  }
 
-  metastoreUrl: () => mb_settings.metastore_url,
+  ldapEnabled() {
+    return this.get("ldap-configured?");
+  }
 
-  newVersionAvailable: function(settings) {
-    let versionInfo = _.findWhere(settings, { key: "version-info" }),
-      currentVersion = MetabaseSettings.get("version").tag;
+  searchTypeaheadEnabled() {
+    return this.get("search-typeahead-enabled");
+  }
 
-    if (versionInfo) {
-      versionInfo = versionInfo.value;
+  ssoEnabled() {
+    return this.get("google-auth-client-id") != null;
+  }
+
+  trackingEnabled() {
+    return this.get("anon-tracking-enabled") || false;
+  }
+
+  formattingOptions() {
+    const opts = this.get("custom-formatting");
+    return opts && opts["type/Temporal"] ? opts["type/Temporal"] : {};
+  }
+
+  versionInfoLastChecked() {
+    const ts = this.get("version-info-last-checked");
+    if (ts) {
+      // app DB stores this timestamp in UTC, so convert it to the local zone to render
+      return moment
+        .utc(parseTimestamp(ts))
+        .local()
+        .format("MMMM Do YYYY, h:mm:ss a");
+    } else {
+      return t`never`;
     }
+  }
 
-    return (
-      versionInfo &&
-      MetabaseUtils.compareVersions(
-        currentVersion,
-        versionInfo.latest.version,
-      ) < 0
+  docsUrl(page = "", anchor = "") {
+    let { tag } = this.get("version", {});
+    if (/^v1\.\d+\.\d+$/.test(tag)) {
+      // if it's a normal EE version, link to the corresponding CE docs
+      tag = tag.replace("v1", "v0");
+    } else if (!tag || /v1/.test(tag) || /SNAPSHOT$/.test(tag)) {
+      // if there's no tag or it's an EE version that might not have a matching CE version, or it's a local build, link to latest
+      tag = "latest";
+    }
+    if (page) {
+      page = `${page}.html`;
+    }
+    if (anchor) {
+      anchor = `#${anchor}`;
+    }
+    return `https://www.metabase.com/docs/${tag}/${page}${anchor}`;
+  }
+
+  storeUrl(path = "") {
+    return `https://store.metabase.com/${path}`;
+  }
+
+  newVersionAvailable() {
+    const result = MetabaseUtils.compareVersions(
+      this.currentVersion(),
+      this.latestVersion(),
     );
-  },
+    return result != null && result < 0;
+  }
+
+  versionIsLatest() {
+    const result = MetabaseUtils.compareVersions(
+      this.currentVersion(),
+      this.latestVersion(),
+    );
+    return result != null && result >= 0;
+  }
+
+  /*
+    We expect the versionInfo to take on the JSON structure detailed below.
+    The 'older' section should contain only the last 5 previous versions, we don't need to go on forever.
+    The highlights for a version should just be text and should be limited to 5 items tops.
+
+    type VersionInfo = {
+      latest: Version,
+      older: Version[]
+    };
+    type Version = {
+      version: string, // e.x. "v0.17.1"
+      released: ISO8601Time,
+      patch: bool,
+      highlights: string[]
+    };
+  */
+  versionInfo() {
+    return this.get("version-info", {});
+  }
+
+  currentVersion() {
+    return this.get("version", {}).tag;
+  }
+
+  latestVersion() {
+    const { latest } = this.versionInfo();
+    return latest && latest.version;
+  }
+
+  isEnterprise() {
+    return false;
+  }
+
+  isPaidPlan() {
+    return this.isHosted() || this.isEnterprise();
+  }
 
   // returns a map that looks like {total: 6, digit: 1}
-  passwordComplexityRequirements: () => mb_settings.password_complexity,
+  passwordComplexityRequirements() {
+    return this.get("password-complexity", {});
+  }
 
-  // returns a description of password complexity requirements rather than the actual map of requirements
-  passwordComplexityDescription: function(capitalize) {
-    const complexity = this.get("password_complexity");
+  /**
+   * Returns a description of password complexity requirements.
+   * Optionally takes a password and returns a description only including the requirements not met.
+   */
+  passwordComplexityDescription(password = "") {
+    const requirements = this.passwordComplexityRequirements();
 
-    const clauseDescription = function(clause) {
-      switch (clause) {
-        case "lower":
-          return t`lower case letter`;
-        case "upper":
-          return t`upper case letter`;
-        case "digit":
-          return t`number`;
-        case "special":
-          return t`special character`;
+    const descriptions = {};
+    for (const [name, clause] of Object.entries(PASSWORD_COMPLEXITY_CLAUSES)) {
+      if (!clause.test(requirements, password)) {
+        descriptions[name] = clause.description(requirements);
       }
-    };
-
-    let description =
-        capitalize === false
-          ? t`must be` + " " + complexity.total + " " + t`characters long`
-          : t`Must be` + " " + complexity.total + " " + t`characters long`,
-      clauses = [];
-
-    ["lower", "upper", "digit", "special"].forEach(function(clause) {
-      if (clause in complexity) {
-        let desc =
-          complexity[clause] > 1
-            ? inflection.pluralize(clauseDescription(clause))
-            : clauseDescription(clause);
-        clauses.push(
-          MetabaseUtils.numberToWord(complexity[clause]) + " " + desc,
-        );
-      }
-    });
-
-    if (clauses.length > 0) {
-      return description + " " + t`and include` + " " + clauses.join(", ");
-    } else {
-      return description;
     }
-  },
 
-  on: function(setting, callback) {
-    settingListeners[setting] = settingListeners[setting] || [];
-    settingListeners[setting].push(callback);
+    const { total, ...rest } = descriptions;
+    const includes = Object.values(rest).join(", ");
+    if (total && includes) {
+      return t`must be ${total} and include ${includes}.`;
+    } else if (total) {
+      return t`must be ${total}.`;
+    } else if (includes) {
+      return t`must include ${includes}.`;
+    } else {
+      return null;
+    }
+  }
+}
+
+const n2w = n => MetabaseUtils.numberToWord(n);
+
+const PASSWORD_COMPLEXITY_CLAUSES = {
+  total: {
+    test: ({ total = 0 }, password = "") => password.length >= total,
+    description: ({ total = 0 }) =>
+      ngettext(
+        msgid`at least ${n2w(total)} character long`,
+        `at least ${n2w(total)} characters long`,
+        total,
+      ),
+  },
+  lower: {
+    test: makeRegexTest("lower", /[a-z]/g),
+    description: ({ lower = 0 }) =>
+      ngettext(
+        msgid`${n2w(lower)} lower case letter`,
+        `${n2w(lower)} lower case letters`,
+        lower,
+      ),
+  },
+  upper: {
+    test: makeRegexTest("upper", /[A-Z]/g),
+    description: ({ upper = 0 }) =>
+      ngettext(
+        msgid`${n2w(upper)} upper case letter`,
+        `${n2w(upper)} upper case letters`,
+        upper,
+      ),
+  },
+  digit: {
+    test: makeRegexTest("digit", /[0-9]/g),
+    description: ({ digit = 0 }) =>
+      ngettext(msgid`${n2w(digit)} number`, `${n2w(digit)} numbers`, digit),
+  },
+  special: {
+    test: makeRegexTest("special", /[^a-zA-Z0-9]/g),
+    description: ({ special = 0 }) =>
+      ngettext(
+        msgid`${n2w(special)} special character`,
+        `${n2w(special)} special characters`,
+        special,
+      ),
   },
 };
 
-export default MetabaseSettings;
+function makeRegexTest(property, regex) {
+  return (requirements, password = "") =>
+    (password.match(regex) || []).length >= (requirements[property] || 0);
+}
+
+export default new Settings(_.clone(window.MetabaseBootstrap));

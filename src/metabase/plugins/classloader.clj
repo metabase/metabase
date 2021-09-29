@@ -11,31 +11,39 @@
   https://www.javaworld.com/article/2077344/core-java/find-a-way-out-of-the-classloader-maze.html.
 
   <3 Cam"
-  (:require [clojure.tools.logging :as log]
-            [dynapath.util :as dynapath]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]])
+  (:refer-clojure :exclude [require])
+  (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
+            [dynapath.util :as dynapath])
   (:import [clojure.lang DynamicClassLoader RT]
            java.net.URL))
 
-(def ^:private shared-context-classloader
-  "The context classloader we'll use for *all threads*, once we figure out what that is. Guaranteed to be an instance of
-  `DynamicClassLoader`."
-  (promise))
-
-;; If the Clojure runtime base loader is already an instance of DynamicClassLoader (e.g. it is something like
-;; `clojure.lang.Compiler/LOADER` we can go ahead and use that in the future. This is usually the case when doing
-;; REPL-based development or running via `lein`; when running from the UberJAR `clojure.lang.Compiler/LOADER` is not
-;; set and thus this will return the current thread's context classloader, which is usually just the System classloader.
-;;
-;; The base loader is what Clojure ultimately uses to loading namespaces with `require` so adding URLs to it is they
-;; way to go, if we can
-(when-not *compile-files*
-  (u/prog1 (RT/baseLoader)
-    (when (instance? DynamicClassLoader <>)
-      (log/debug (trs "Using Clojure base loader as shared context classloader: {0}" <>))
-      (deliver shared-context-classloader <>))))
-
+(defonce ^:private ^{:doc "The context classloader we'll use for *all threads*, once we figure out what that is.
+  Guaranteed to be an instance of `DynamicClassLoader`."} shared-context-classloader
+  (delay
+   ;; If the Clojure runtime base loader is already an instance of DynamicClassLoader (e.g. it is something like
+   ;; `clojure.lang.Compiler/LOADER` we can go ahead and use that in the future. This is usually the case when doing
+   ;; REPL-based development or running via the Clojure CLI; when running from the UberJAR
+   ;; `clojure.lang.Compiler/LOADER` is not set and thus this will return the current thread's context classloader,
+   ;; which is usually just the System classloader.
+   ;;
+   ;; The base loader is what Clojure ultimately uses to loading namespaces with `require` so adding URLs to it is
+   ;; they way to go, if we can)
+   (or
+    (when-let [base-loader (RT/baseLoader)]
+      (when (instance? DynamicClassLoader base-loader)
+        (log/tracef "Using Clojure base loader as shared context classloader: %s" base-loader)
+        base-loader))
+    ;; Otherwise if we need to create our own go ahead and do it
+    ;;
+    ;; Make a new classloader using the current thread's context classloader as it's parent. In cases where we hit
+    ;; this condition (i.e., when running from the uberjar), the current thread's context classloader should be the
+    ;; system classloader. Since it will be the same for other threads too it doesn't matter if we ignore *their*
+    ;; context classloaders by giving them this one. No other places in the codebase should be modifying classloaders
+    ;; anyway.
+    (let [new-classloader (DynamicClassLoader. (.getContextClassLoader (Thread/currentThread)))]
+      (log/tracef "Using NEWLY CREATED classloader as shared context classloader: %s" new-classloader)
+      new-classloader))))
 
 (defn- has-classloader-as-ancestor?
   "True if `classloader` and `ancestor` are the same object, or if `classloader` has `ancestor` as an ancestor in its
@@ -46,14 +54,15 @@
     true
 
     classloader
-    (recur (.getParent classloader) ancestor)))
+    (recur (.getParent classloader) ancestor)
+
+    :else
+    false))
 
 (defn- has-shared-context-classloader-as-ancestor?
   "True if the `shared-context-classloader` has been set and it is an ancestor of `classloader`."
   [^ClassLoader classloader]
-  (when (realized? shared-context-classloader)
-    (has-classloader-as-ancestor? classloader @shared-context-classloader)))
-
+  (has-classloader-as-ancestor? classloader @shared-context-classloader))
 
 (defn ^ClassLoader the-classloader
   "Fetch the context classloader for the current thread; ensure it has a our shared context classloader as an ancestor
@@ -63,36 +72,16 @@
   before calling `require`, to ensure the context classloader for the current thread is one that has access to the JARs
   we've added to the classpath."
   []
-  (let [current-thread-context-classloader (.getContextClassLoader (Thread/currentThread))]
-    (cond
-      ;; if the context classloader already has the classloader we'll add URLs to as an ancestor return it as-is
-      (has-shared-context-classloader-as-ancestor? current-thread-context-classloader)
-      current-thread-context-classloader
-
-      ;; Otherwise we'll have to create our own new context classloader. We'll use the same one for all the threads
-      ;; that need it. Check and see if we've already made one; if so, we can return that as-is
-      (realized? shared-context-classloader)
-      (u/prog1 @shared-context-classloader
-        (log/debug (trs "Setting current thread context classloader to shared classloader {0}..." <>))
-        (.setContextClassLoader (Thread/currentThread) <>))
-
-      ;; Otherwise if we need to create our own and it HAS NOT been done yet go ahead and do it
-      :else
-      (do
-        ;; Make a new classloader using the current thread's context classloader as it's parent. In cases where we hit
-        ;; this condition (i.e., when running from the uberjar), the current thread's context classloader should be
-        ;; the system classloader. Since it will be the same for other threads too it doesn't matter if we ignore
-        ;; *their* context classloaders by giving them this one. No other places in the codebase should be modifying
-        ;; classloaders anyway.
-        (deliver shared-context-classloader (DynamicClassLoader. current-thread-context-classloader))
-        ;; it's important that we deref the promise again here instead of using the one we just created because it is
-        ;; possible thru a race condition that somebody else delivered the promise before we did; in that case,
-        ;; Clojure ignores subsequent calls to `deliver`. Dereffing the promise guarantees that we'll get the actual
-        ;; value of it rather than one that ends up getting discarded
-        (log/debug (trs "Setting current thread context classloader to NEWLY CREATED classloader {0}..."
-                        @shared-context-classloader))
-        (.setContextClassLoader (Thread/currentThread) @shared-context-classloader)))))
-
+  (or
+   ;; if the context classloader already has the classloader we'll add URLs to as an ancestor return it as-is
+   (let [current-thread-context-classloader (.getContextClassLoader (Thread/currentThread))]
+     (when (has-shared-context-classloader-as-ancestor? current-thread-context-classloader)
+       current-thread-context-classloader))
+   ;; otherwise set the current thread's context classloader to the shared context classloader
+   (let [shared-classloader @shared-context-classloader]
+     (log/tracef "Setting current thread context classloader to shared classloader %s..." shared-classloader)
+     (.setContextClassLoader (Thread/currentThread) shared-classloader)
+     shared-classloader)))
 
 (defn- classloader-hierarchy
   "Return a sequence of classloaders representing the hierarchy for `classloader` by iterating over calls to
@@ -115,9 +104,36 @@
   ultimately have access to that URL."
   (^DynamicClassLoader []
    (the-top-level-classloader (the-classloader)))
+
   (^DynamicClassLoader [^DynamicClassLoader classloader]
    (some #(when (instance? DynamicClassLoader %) %)
-         (classloader-hierarchy (.getContextClassLoader (Thread/currentThread))))))
+         (classloader-hierarchy classloader))))
+
+(defn require
+  "Just like vanilla `require`, but ensures we're using our shared classloader to do it. Always use this over vanilla
+  `require` -- otherwise namespaces might get loaded by the wrong ClassLoader, resulting in weird, hard-to-debug
+  errors.
+
+  Added benefit -- this is also thread-safe, unlike vanilla require."
+  [& args]
+  ;; during compilation, don't load any namespaces. This is going to totally screw up our compilation because
+  ;; namespaces can end up being compiled twice
+  (when-not *compile-files*
+    ;; done for side-effects to ensure context classloader is the right one
+    (the-classloader)
+    ;; as elsewhere make sure Clojure is using our context classloader (which should normally be true anyway) because
+    ;; that's the one that will have access to the JARs we've added to the classpath at runtime
+    (try
+      (binding [*use-context-classloader* true]
+        ;; serialize requires
+        (locking clojure.lang.RT/REQUIRE_LOCK
+          (apply clojure.core/require args)))
+      (catch Throwable e
+        (throw (ex-info (.getMessage e)
+                        {:classloader      (the-classloader)
+                         :classpath-urls   (map str (dynapath/all-classpath-urls (the-classloader)))
+                         :system-classpath (sort (str/split (System/getProperty "java.class.path") #"[:;]"))}
+                        e))))))
 
 (defonce ^:private already-added (atom #{}))
 
@@ -129,4 +145,5 @@
     ;; `add-classpath-url` will return non-truthy if it couldn't add the URL, e.g. because the classloader wasn't one
     ;; that allowed it
     (assert (dynapath/add-classpath-url (the-top-level-classloader) url))
-    (log/info (u/format-color 'blue (trs "Added URL {0} to classpath" url)))))
+    ;; don't i18n this or we will have circular refs
+    (log/infof "Added URL %s to classpath" url)))

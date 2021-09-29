@@ -1,5 +1,5 @@
 :local(.fieldToGroupByText) {
   composes: flex-full from "style";
-  font-size: 16px;
+  font-size: 14px;
   color: var(--color-text-medium);
 }

@@ -1,16 +1,16 @@
 import React from "react";
-import LegendVertical from "metabase/visualizations/components/LegendVertical.jsx";
-import { mount } from "enzyme";
+import LegendVertical from "metabase/visualizations/components/LegendVertical";
+import { render, screen } from "@testing-library/react";
 
 describe("LegendVertical", () => {
   it("should render string titles correctly", () => {
-    let legend = mount(<LegendVertical titles={["Hello"]} colors={["red"]} />);
-    expect(legend.text()).toEqual("Hello");
+    render(<LegendVertical titles={["Hello"]} colors={["red"]} />);
+    screen.getByText("Hello");
   });
+
   it("should render array titles correctly", () => {
-    let legend = mount(
-      <LegendVertical titles={[["Hello", "world"]]} colors={["red"]} />,
-    );
-    expect(legend.text()).toEqual("Helloworld");
+    render(<LegendVertical titles={[["Hello", "world"]]} colors={["red"]} />);
+    screen.getByText("Hello");
+    screen.getByText("world");
   });
 });

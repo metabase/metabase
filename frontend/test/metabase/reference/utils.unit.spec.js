@@ -11,11 +11,11 @@ describe("Reference utils.js", () => {
           1: {
             id: 1,
             display_name: "foo",
-            schema: "PUBLIC",
+            schema_name: "PUBLIC",
             fields: [
               {
                 id: 1,
-                special_type: TYPE.PK,
+                semantic_type: TYPE.PK,
                 display_name: "bar",
                 description: "foobar",
               },
@@ -24,11 +24,11 @@ describe("Reference utils.js", () => {
           2: {
             id: 2,
             display_name: "bar",
-            schema: "public",
+            schema_name: "public",
             fields: [
               {
                 id: 2,
-                special_type: TYPE.PK,
+                semantic_type: TYPE.PK,
                 display_name: "foo",
                 description: "barfoo",
               },
@@ -37,7 +37,7 @@ describe("Reference utils.js", () => {
           3: {
             id: 3,
             display_name: "boo",
-            schema: "TEST",
+            schema_name: "TEST",
             fields: [
               {
                 id: 3,
@@ -61,15 +61,15 @@ describe("Reference utils.js", () => {
   describe("tablesToSchemaSeparatedTables()", () => {
     it("should add schema separator to appropriate locations", () => {
       const tables = {
-        1: { id: 1, name: "table1", schema: "foo" },
-        2: { id: 2, name: "table2", schema: "bar" },
-        3: { id: 3, name: "table3", schema: "boo" },
-        4: { id: 4, name: "table4", schema: "bar" },
-        5: { id: 5, name: "table5", schema: "foo" },
-        6: { id: 6, name: "table6", schema: "bar" },
+        1: { id: 1, name: "table1", schema_name: "foo" },
+        2: { id: 2, name: "table2", schema_name: "bar" },
+        3: { id: 3, name: "table3", schema_name: "boo" },
+        4: { id: 4, name: "table4", schema_name: "bar" },
+        5: { id: 5, name: "table5", schema_name: "foo" },
+        6: { id: 6, name: "table6", schema_name: "bar" },
       };
 
-      const createSchemaSeparator = table => table.schema;
+      const createSchemaSeparator = table => table.schema_name;
       const createListItem = table => table;
 
       const schemaSeparatedTables = separateTablesBySchema(
@@ -79,12 +79,12 @@ describe("Reference utils.js", () => {
       );
 
       expect(schemaSeparatedTables).toEqual([
-        ["bar", { id: 2, name: "table2", schema: "bar" }],
-        { id: 4, name: "table4", schema: "bar" },
-        { id: 6, name: "table6", schema: "bar" },
-        ["boo", { id: 3, name: "table3", schema: "boo" }],
-        ["foo", { id: 1, name: "table1", schema: "foo" }],
-        { id: 5, name: "table5", schema: "foo" },
+        ["bar", { id: 2, name: "table2", schema_name: "bar" }],
+        { id: 4, name: "table4", schema_name: "bar" },
+        { id: 6, name: "table6", schema_name: "bar" },
+        ["boo", { id: 3, name: "table3", schema_name: "boo" }],
+        ["foo", { id: 1, name: "table1", schema_name: "foo" }],
+        { id: 5, name: "table5", schema_name: "foo" },
       ]);
     });
   });
@@ -110,13 +110,13 @@ describe("Reference utils.js", () => {
           },
         },
       };
-      if (aggregation != undefined) {
+      if (aggregation != null) {
         card.dataset_query.query.aggregation = aggregation;
       }
-      if (breakout != undefined) {
+      if (breakout != null) {
         card.dataset_query.query.breakout = breakout;
       }
-      if (filter != undefined) {
+      if (filter != null) {
         card.dataset_query.query.filter = filter;
       }
       return card;
@@ -147,7 +147,7 @@ describe("Reference utils.js", () => {
         getNewQuestion({
           database: 3,
           table: 4,
-          aggregation: ["count"],
+          aggregation: [["count"]],
         }),
       );
     });
@@ -163,7 +163,7 @@ describe("Reference utils.js", () => {
         getNewQuestion({
           database: 3,
           table: 4,
-          breakout: [5],
+          breakout: [["field", 5, null]],
         }),
       );
     });
@@ -182,8 +182,8 @@ describe("Reference utils.js", () => {
           database: 3,
           table: 4,
           display: "bar",
-          breakout: [5],
-          aggregation: ["count"],
+          breakout: [["field", 5, null]],
+          aggregation: [["count"]],
         }),
       );
     });
@@ -202,8 +202,8 @@ describe("Reference utils.js", () => {
           database: 3,
           table: 4,
           display: "pie",
-          breakout: [5],
-          aggregation: ["count"],
+          breakout: [["field", 5, null]],
+          aggregation: [["count"]],
         }),
       );
     });
@@ -217,7 +217,7 @@ describe("Reference utils.js", () => {
 
       expect(question).toEqual(
         getNewQuestion({
-          aggregation: ["metric", 3],
+          aggregation: [["metric", 3]],
         }),
       );
     });
@@ -232,8 +232,8 @@ describe("Reference utils.js", () => {
 
       expect(question).toEqual(
         getNewQuestion({
-          aggregation: ["metric", 3],
-          breakout: [4],
+          aggregation: [["metric", 3]],
+          breakout: [["field", 4, null]],
         }),
       );
     });
@@ -249,7 +249,7 @@ describe("Reference utils.js", () => {
         getNewQuestion({
           database: 2,
           table: 3,
-          filter: ["and", ["segment", 4]],
+          filter: ["segment", 4],
         }),
       );
     });
@@ -266,8 +266,8 @@ describe("Reference utils.js", () => {
         getNewQuestion({
           database: 2,
           table: 3,
-          aggregation: ["count"],
-          filter: ["and", ["segment", 4]],
+          aggregation: [["count"]],
+          filter: ["segment", 4],
         }),
       );
     });

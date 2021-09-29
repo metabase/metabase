@@ -1,15 +1,13 @@
-/* @flow */
-
 import React from "react";
 import _ from "underscore";
 
 import { MetabaseApi, AutoApi } from "metabase/services";
 
-import type { DatabaseCandidates } from "metabase/meta/types/Auto";
+import type { DatabaseCandidates } from "metabase-types/types/Auto";
 
 type Props = {
   databaseId: number,
-  children: (props: RenderProps) => ?React$Element<any>,
+  children: (props: RenderProps) => ?React.Element,
 };
 
 type RenderProps = {
@@ -42,8 +40,7 @@ class CandidateListLoader extends React.Component {
   _sampleTimeout: ?number;
   _pollTimer: ?number;
 
-  // $FlowFixMe: doesn't expect componentWillMount to return Promise<void>
-  async componentWillMount() {
+  async UNSAFE_componentWillMount() {
     // If we get passed in a database id, just use that.
     // Don't fall back to the sample dataset
     if (this.props.databaseId) {

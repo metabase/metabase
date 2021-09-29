@@ -1,9 +1,7 @@
-/* @flow */
-
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
-import TextPicker from "./TextPicker.jsx";
+import { t } from "ttag";
+import TextPicker from "./TextPicker";
 
 type Props = {
   values: Array<number | null>,
@@ -52,7 +50,7 @@ export default class NumberPicker extends Component {
   }
 
   onValuesChange(stringValues: string[]) {
-    let values = stringValues.map(v => parseFloat(v));
+    const values = stringValues.map(v => parseFloat(v));
     this.props.onValuesChange(values.map(v => (isNaN(v) ? null : v)));
     this.setState({
       stringValues: stringValues,
@@ -61,7 +59,6 @@ export default class NumberPicker extends Component {
   }
 
   render() {
-    // $FlowFixMe
     const values: Array<string | null> = this.state.stringValues.slice(
       0,
       this.props.values.length,

@@ -1,0 +1,4 @@
+{:keep-require-at-start?        true
+ :show-docs-arity-on-same-line? true
+ :project-specs                 [{:project-path "deps.edn"
+                                  :classpath-cmd ["clojure" "-A:dev:ee:ee-dev:drivers:drivers-dev" "-Spath"]}]}

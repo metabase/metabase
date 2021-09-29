@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 import { Link } from "react-router";
 
@@ -9,12 +7,12 @@ import Select, { Option } from "metabase/components/Select";
 import { Grid, GridItem } from "metabase/components/Grid";
 import Card from "metabase/components/Card";
 import { Flex } from "grid-styled";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 import _ from "underscore";
 
-import type { DatabaseCandidates, Candidate } from "metabase/meta/types/Auto";
+import type { DatabaseCandidates, Candidate } from "metabase-types/types/Auto";
 
 const DEFAULT_TITLE = t`Hi, Metabot here.`;
 const DEFAULT_DESCRIPTION = "";
@@ -50,7 +48,7 @@ export class ExplorePane extends React.Component {
   };
 
   render() {
-    let {
+    const {
       candidates,
       title,
       description,
@@ -62,7 +60,7 @@ export class ExplorePane extends React.Component {
 
     let schemaNames;
     let tables;
-    let hasMore = false;
+    const hasMore = false;
     if (candidates && candidates.length > 0) {
       schemaNames = candidates.map(schema => schema.schema);
       if (schemaName == null) {
@@ -89,27 +87,26 @@ export class ExplorePane extends React.Component {
             <span>{description}</span>
           </div>
         )}
-        {schemaNames &&
-          schemaNames.length > 1 && (
-            <div className="flex align-center ml-auto">
-              <div className="mr1">{t`Based on the schema`}</div>
-              <Select
-                value={schemaName}
-                onChange={e =>
-                  this.setState({
-                    schemaName: e.target.value,
-                    visibleItems: DEFAULT_VISIBLE_ITEMS,
-                  })
-                }
-              >
-                {schemaNames.map(schemaName => (
-                  <Option key={schemaName} value={schemaName}>
-                    {schemaName}
-                  </Option>
-                ))}
-              </Select>
-            </div>
-          )}
+        {schemaNames && schemaNames.length > 1 && (
+          <div className="flex align-center ml-auto">
+            <div className="mr1">{t`Based on the schema`}</div>
+            <Select
+              value={schemaName}
+              onChange={e =>
+                this.setState({
+                  schemaName: e.target.value,
+                  visibleItems: DEFAULT_VISIBLE_ITEMS,
+                })
+              }
+            >
+              {schemaNames.map(schemaName => (
+                <Option key={schemaName} value={schemaName}>
+                  {schemaName}
+                </Option>
+              ))}
+            </Select>
+          </div>
+        )}
         {tables && (
           <ExploreList
             candidates={tables}
@@ -142,7 +139,7 @@ export const ExploreList = ({
   <Grid>
     {candidates &&
       candidates.map((option, index) => (
-        <GridItem w={gridColumns} key={index}>
+        <GridItem width={gridColumns} key={index}>
           {asCards ? (
             <Card hoverable p={2}>
               <ExploreOption option={option} />
@@ -163,15 +160,19 @@ export const ExploreOption = ({ option }: { option: Candidate }) => (
     <Flex
       align="center"
       justify="center"
-      bg={colors["accent4"]}
-      w="42px"
-      style={{ borderRadius: 6, height: 42 }}
+      style={{
+        backgroundColor: color("accent4"),
+        borderRadius: 6,
+        width: 42,
+        height: 42,
+      }}
       mr={1}
     >
       <Icon name="bolt" size={20} className="flex-no-shrink text-white" />
     </Flex>
     <div>
-      {t`A look at your`} <span className="text-bold">{option.title}</span>
+      {t`A look at your`}{" "}
+      <span className="text-bold text-wrap">{option.title}</span>
     </div>
   </Link>
 );

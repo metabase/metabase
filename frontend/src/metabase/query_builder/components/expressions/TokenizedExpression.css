@@ -1,49 +1,45 @@
-.Expression-node {
-  /* this is required to get top/bottom padding to work, but breaks some keyboard shortcuts */
-  /*display: inline-block;*/
-  border-radius: 3px;
-  font-size: 14px;
+/* DIMENSION */
+.Expression-dimension > .Expression-identifier {
+  color: var(--color-brand);
 }
 
-.Expression-open-quote,
-.Expression-close-quote {
-  opacity: 0.5;
+/* METRIC */
+.Expression-metric > .Expression-identifier {
+  color: var(--color-accent1);
 }
 
-.Expression-aggregation {
-  padding: 3px 3px;
-}
-.Expression-aggregation-name {
-  padding: 0 2px;
+/* SEGMENT */
+.Expression-segment > .Expression-identifier {
+  color: var(--color-accent2);
 }
 
-.Expression-metric,
-.Expression-field {
-  margin: 1px 1px;
-  padding: 1px 3px;
+/* UNKNOWN IDENTIFIER */
+.Expression-unknown > .Expression-identifier {
+  color: var(--color-text-medium);
 }
 
-.Expression-aggregation,
-.Expression-metric {
-  border: 1px solid var(--color-accent1);
-  background-color: var(--color-bg-white);
+/* STRING LITERAL */
+.Expression-string-literal {
+  color: var(--color-accent5);
 }
 
-.Expression-field {
-  border: 1px solid var(--color-brand);
-  background-color: var(--color-bg-medium);
+/* AGGREGATION */
+.Expression-aggregation > .Expression-function-name,
+.Expression-aggregation > .Expression-group > .Expression-open-paren,
+.Expression-aggregation > .Expression-group > .Expression-close-paren {
+  color: var(--color-accent1);
 }
 
-.Expression-selected.Expression-aggregation,
-.Expression-selected.Expression-metric,
-.Expression-selected .Expression-aggregation,
-.Expression-selected .Expression-metric {
+/* BOOLEAN (FILTER) FUNCTION */
+.Expression-boolean > .Expression-function-name,
+.Expression-boolean > .Expression-group > .Expression-open-paren,
+.Expression-boolean > .Expression-group > .Expression-close-paren {
+  color: var(--color-accent2);
+}
+
+/* SELECTED (currently unused) */
+
+.Expression-selected > .Expression-identifier {
   color: white;
-  background-color: var(--color-accent1);
-}
-
-.Expression-selected.Expression-field,
-.Expression-selected .Expression-field {
-  color: white;
-  background-color: var(--color-brand);
+  background-color: currentColor;
 }

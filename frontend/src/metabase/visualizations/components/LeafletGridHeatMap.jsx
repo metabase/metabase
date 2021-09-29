@@ -1,12 +1,34 @@
-import LeafletMap from "./LeafletMap.jsx";
+import LeafletMap from "./LeafletMap";
 import L from "leaflet";
-import { t } from "c-3po";
+import { t } from "ttag";
 import d3 from "d3";
 
+import { color } from "metabase/lib/colors";
 import { rangeForValue } from "metabase/lib/dataset";
-import colors from "metabase/lib/colors";
+import { isNumeric, isMetric } from "metabase/lib/schema_metadata";
+import { computeNumericDataInverval } from "../lib/numeric";
+
+const isValidCoordinatesColumn = column =>
+  column.binning_info || (column.source === "native" && isNumeric(column));
+
+const computeValueRange = (value, values) => [
+  value,
+  value + computeNumericDataInverval(values),
+];
+
+const getValueRange = (value, column, values) => {
+  const binningBasedResult = rangeForValue(value, column);
+  return binningBasedResult || computeValueRange(value, values);
+};
 
 export default class LeafletGridHeatMap extends LeafletMap {
+  static isSensible({ cols }) {
+    return (
+      cols.filter(isValidCoordinatesColumn).length >= 2 &&
+      cols.filter(isMetric).length > 0
+    );
+  }
+
   componentDidMount() {
     super.componentDidMount();
 
@@ -22,19 +44,30 @@ export default class LeafletGridHeatMap extends LeafletMap {
       const { points, min, max } = this.props;
 
       const { latitudeColumn, longitudeColumn } = this._getLatLonColumns();
-      if (!latitudeColumn.binning_info || !longitudeColumn.binning_info) {
+      if (
+        !isValidCoordinatesColumn(latitudeColumn) ||
+        !isValidCoordinatesColumn(longitudeColumn)
+      ) {
         throw new Error(t`Grid map requires binned longitude/latitude.`);
       }
 
-      const color = d3.scale
+      const { latitudeIndex, longitudeIndex } = this._getLatLonIndexes();
+
+      const colorScale = d3.scale
         .linear()
         .domain([min, max])
         .interpolate(d3.interpolateHcl)
-        .range([d3.rgb(colors["success"]), d3.rgb(colors["error"])]);
+        .range([d3.rgb(color("success")), d3.rgb(color("error"))]);
 
-      let gridSquares = gridLayer.getLayers();
-      let totalSquares = Math.max(points.length, gridSquares.length);
+      const gridSquares = gridLayer.getLayers();
+      const totalSquares = Math.max(points.length, gridSquares.length);
+
+      const latitudeValues = points.map(row => row[latitudeIndex]);
+      const longitureValues = points.map(row => row[longitudeIndex]);
+
       for (let i = 0; i < totalSquares; i++) {
+        const [latitude, longiture, metric] = points[i];
+
         if (i >= points.length) {
           gridLayer.removeLayer(gridSquares[i]);
         }
@@ -45,9 +78,19 @@ export default class LeafletGridHeatMap extends LeafletMap {
         }
 
         if (i < points.length) {
-          gridSquares[i].setStyle({ color: color(points[i][2]) });
-          const [latMin, latMax] = rangeForValue(points[i][0], latitudeColumn);
-          const [lonMin, lonMax] = rangeForValue(points[i][1], longitudeColumn);
+          gridSquares[i].setStyle({ color: colorScale(metric) });
+
+          const [latMin, latMax] = getValueRange(
+            latitude,
+            latitudeColumn,
+            latitudeValues,
+          );
+
+          const [lonMin, lonMax] = getValueRange(
+            longiture,
+            longitudeColumn,
+            longitureValues,
+          );
           gridSquares[i].setBounds([[latMin, lonMin], [latMax, lonMax]]);
         }
       }
@@ -73,7 +116,15 @@ export default class LeafletGridHeatMap extends LeafletMap {
   };
 
   _clickForPoint(index, e) {
-    const { points } = this.props;
+    const {
+      points,
+      settings,
+      series: [
+        {
+          data: { rows, cols },
+        },
+      ],
+    } = this.props;
     const point = points[index];
     const metricColumn = this._getMetricColumn();
     const { latitudeColumn, longitudeColumn } = this._getLatLonColumns();
@@ -91,6 +142,8 @@ export default class LeafletGridHeatMap extends LeafletMap {
         },
       ],
       event: e.originalEvent,
+      origin: { row: rows[index], cols },
+      settings,
     };
   }
 

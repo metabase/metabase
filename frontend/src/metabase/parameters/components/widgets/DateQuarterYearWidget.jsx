@@ -1,11 +1,12 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
-import YearPicker from "./YearPicker.jsx";
+import YearPicker from "./YearPicker";
 
 import moment from "moment";
 import _ from "underscore";
 import cx from "classnames";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 // translator: this is a "moment" format string (https://momentjs.com/docs/#/displaying/format/) It should include "Q" for the quarter number, and raw text can be escaped by brackets. For eample "[Quarter] Q" will be rendered as "Quarter 1" etc
 const QUARTER_FORMAT_STRING = t`[Q]Q`;
@@ -14,7 +15,7 @@ export default class DateQuarterYearWidget extends Component {
   constructor(props, context) {
     super(props, context);
 
-    let initial = moment(this.props.value, "[Q]Q-YYYY");
+    const initial = moment(this.props.value, "[Q]Q-YYYY");
     if (initial.isValid()) {
       this.state = {
         quarter: initial.quarter(),
@@ -39,7 +40,7 @@ export default class DateQuarterYearWidget extends Component {
   componentWillUnmount() {
     const { quarter, year } = this.state;
     if (quarter != null && year != null) {
-      let value = moment()
+      const value = moment()
         .year(year)
         .quarter(quarter)
         .format("[Q]Q-YYYY");
@@ -66,6 +67,7 @@ export default class DateQuarterYearWidget extends Component {
         >
           {_.range(1, 5).map(q => (
             <Quarter
+              key={q}
               quarter={q}
               selected={q === quarter}
               onClick={() => this.setState({ quarter: q }, onClose)}

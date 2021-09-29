@@ -1,24 +1,22 @@
 (ns metabase.api.segment
   "/api/segment endpoints."
-  (:require [clojure.data :as data]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
-            [metabase
-             [events :as events]
-             [related :as related]
-             [util :as u]]
             [metabase.api.common :as api]
-            [metabase.models
-             [interface :as mi]
-             [revision :as revision]
-             [segment :as segment :refer [Segment]]]
-            [metabase.util
-             [i18n :refer [trs]]
-             [schema :as su]]
+            [metabase.api.query-description :as qd]
+            [metabase.events :as events]
+            [metabase.mbql.normalize :as normalize]
+            [metabase.models.interface :as mi]
+            [metabase.models.revision :as revision]
+            [metabase.models.segment :as segment :refer [Segment]]
+            [metabase.models.table :as table :refer [Table]]
+            [metabase.related :as related]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [trs]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]]))
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]))
 
 (api/defendpoint POST "/"
   "Create a new `Segment`."
@@ -43,30 +41,43 @@
   (-> (api/read-check (Segment id))
       (hydrate :creator)))
 
+(defn- add-query-descriptions
+  [segments] {:pre [(coll? segments)]}
+  (when (some? segments)
+    (for [segment segments]
+      (let [table (Table (:table_id segment))]
+        (assoc segment
+               :query_description
+               (qd/generate-query-description table (:definition segment)))))))
+
 (api/defendpoint GET "/:id"
   "Fetch `Segment` with ID."
   [id]
-  (hydrated-segment id))
+  (first (add-query-descriptions [(hydrated-segment id)])))
 
 (api/defendpoint GET "/"
   "Fetch *all* `Segments`."
   []
   (as-> (db/select Segment, :archived false, {:order-by [[:%lower.name :asc]]}) segments
     (filter mi/can-read? segments)
-    (hydrate segments :creator)))
-
+    (hydrate segments :creator)
+    (add-query-descriptions segments)))
 
 (defn- write-check-and-update-segment!
   "Check whether current user has write permissions, then update Segment with values in `body`. Publishes appropriate
   event and returns updated/hydrated Segment."
   [id {:keys [revision_message archived], :as body}]
-  (let [existing  (api/write-check Segment id)
-        [changes] (data/diff
-                   (u/select-keys-when body
+  (let [existing   (api/write-check Segment id)
+        clean-body (u/select-keys-when body
                      :present #{:description :caveats :points_of_interest}
                      :non-nil #{:archived :definition :name :show_in_getting_started})
-                   existing)
-        archive?  (:archived changes)]
+        new-def    (->> clean-body :definition (normalize/normalize-fragment []))
+        new-body   (merge
+                     (dissoc clean-body :revision_message)
+                     (when new-def {:definition new-def}))
+        changes    (when-not (= new-body existing)
+                     new-body)
+        archive?   (:archived changes)]
     (when changes
       (db/update! Segment id changes))
     (u/prog1 (hydrated-segment id)

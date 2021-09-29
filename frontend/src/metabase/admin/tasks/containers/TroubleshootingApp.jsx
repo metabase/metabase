@@ -1,14 +1,11 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 
-import {
-  LeftNavPane,
-  LeftNavPaneItem,
-} from "metabase/components/LeftNavPane.jsx";
+import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
 
-import AdminLayout from "metabase/components/AdminLayout.jsx";
+import AdminLayout from "metabase/components/AdminLayout";
 
 export default class TroubleshootingApp extends Component {
   static propTypes = {
@@ -21,6 +18,10 @@ export default class TroubleshootingApp extends Component {
       <AdminLayout
         sidebar={
           <LeftNavPane>
+            <LeftNavPaneItem
+              name={t`Help`}
+              path="/admin/troubleshooting/help"
+            />
             <LeftNavPaneItem
               name={t`Tasks`}
               path="/admin/troubleshooting/tasks"

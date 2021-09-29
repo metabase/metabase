@@ -1,5 +1,3 @@
-/* @flow */
-
 // Reducers shared between "main" and "public" apps
 
 import auth from "metabase/auth/auth";

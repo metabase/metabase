@@ -1,22 +1,48 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
-import MainPane from "./MainPane.jsx";
-import DatabasePane from "./DatabasePane.jsx";
-import TablePane from "./TablePane.jsx";
-import FieldPane from "./FieldPane.jsx";
-import SegmentPane from "./SegmentPane.jsx";
-import MetricPane from "./MetricPane.jsx";
-import Icon from "metabase/components/Icon.jsx";
+import { t } from "ttag";
 
-import _ from "underscore";
+import MainPane from "./MainPane";
+import DatabasePane from "./DatabasePane";
+import SchemaPane from "./SchemaPane";
+import TablePane from "./TablePane";
+import FieldPane from "./FieldPane";
+import SegmentPane from "./SegmentPane";
+import MetricPane from "./MetricPane";
+
+import SidebarContent from "metabase/query_builder/components/SidebarContent";
+
+const PANES = {
+  database: DatabasePane, // displays either schemas or tables in a database
+  schema: SchemaPane, // displays tables in a schema
+  table: TablePane, // displays fields in a table
+  field: FieldPane,
+  segment: SegmentPane,
+  metric: MetricPane,
+};
 
 export default class DataReference extends Component {
   constructor(props, context) {
     super(props, context);
 
-    const { query } = props;
+    this.state = {
+      stack: this.initialStack(),
+      tables: {},
+      fields: {},
+    };
+  }
+
+  componentDidUpdate(prevProps) {
+    const { id: dbId } = this.props.query.database() || {};
+    const { id: prevDbId } = prevProps.query.database() || {};
+    if (dbId !== prevDbId) {
+      this.setState({ stack: this.initialStack() });
+    }
+  }
+
+  initialStack() {
+    const { query } = this.props;
 
     const stack = [];
     const database = query && query.database();
@@ -28,13 +54,7 @@ export default class DataReference extends Component {
       stack.push({ type: "table", item: table });
     }
 
-    this.state = {
-      stack: stack,
-      tables: {},
-      fields: {},
-    };
-
-    _.bindAll(this, "back", "close", "show");
+    return stack;
   }
 
   static propTypes = {
@@ -42,86 +62,52 @@ export default class DataReference extends Component {
     onClose: PropTypes.func.isRequired,
     runQuestionQuery: PropTypes.func.isRequired,
     setDatasetQuery: PropTypes.func.isRequired,
-    setDatabaseFn: PropTypes.func.isRequired,
-    setSourceTableFn: PropTypes.func.isRequired,
-    setDisplayFn: PropTypes.func.isRequired,
   };
 
-  close() {
+  close = () => {
     this.props.onClose();
-  }
+  };
 
-  back() {
+  back = () => {
     this.setState({
       stack: this.state.stack.slice(0, -1),
     });
-  }
+  };
 
-  show(type, item) {
+  show = (type, item) => {
     this.setState({
       stack: this.state.stack.concat({ type, item }),
     });
-  }
+  };
 
   render() {
-    let content;
-    if (this.state.stack.length === 0) {
+    const { stack } = this.state;
+
+    let title = null;
+    let content = null;
+    if (stack.length === 0) {
+      title = t`Data Reference`;
       content = <MainPane {...this.props} show={this.show} />;
     } else {
-      let page = this.state.stack[this.state.stack.length - 1];
-      if (page.type === "database") {
-        content = (
-          <DatabasePane {...this.props} show={this.show} database={page.item} />
-        );
-      } else if (page.type === "table") {
-        content = (
-          <TablePane {...this.props} show={this.show} table={page.item} />
-        );
-      } else if (page.type === "field") {
-        content = (
-          <FieldPane {...this.props} show={this.show} field={page.item} />
-        );
-      } else if (page.type === "segment") {
-        content = (
-          <SegmentPane {...this.props} show={this.show} segment={page.item} />
-        );
-      } else if (page.type === "metric") {
-        content = (
-          <MetricPane {...this.props} show={this.show} metric={page.item} />
-        );
-      }
-    }
-
-    let backButton;
-    if (this.state.stack.length > 0) {
-      backButton = (
-        <a className="flex align-center mb2 no-decoration" onClick={this.back}>
-          <Icon name="chevronleft" className="text-light pr1" />
-          <h5
-            className="text-medium text-brand-hover text-uppercase "
-            style={{ fontWeight: 900 }}
-          >{t`Back`}</h5>
-        </a>
+      const page = stack[stack.length - 1];
+      const Pane = PANES[page.type];
+      content = Pane && (
+        <Pane
+          {...this.props}
+          {...{ [page.type]: page.item }}
+          show={this.show}
+        />
       );
     }
 
-    let closeButton = (
-      <a
-        className="flex-align-right text-medium text-brand-hover no-decoration"
-        onClick={this.close}
-      >
-        <Icon name="close" size={18} />
-      </a>
-    );
-
     return (
-      <div className="DataReference-container p3 full-height scroll-y">
-        <div className="DataReference-header flex mb1">
-          {backButton}
-          {closeButton}
-        </div>
-        <div className="DataReference-content">{content}</div>
-      </div>
+      <SidebarContent
+        title={title}
+        onBack={stack.length > 0 ? this.back : null}
+        onClose={this.close}
+      >
+        <div className="px4">{content}</div>
+      </SidebarContent>
     );
   }
 }

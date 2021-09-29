@@ -5,6 +5,7 @@
             [metabase.config :as config]
             [metabase.integrations.slack :as slack]
             [metabase.models.setting :as setting]
+            [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
@@ -17,9 +18,9 @@
   (if-not slack-token
     (setting/set-many! {:slack-token nil, :metabot-enabled false})
     (try
-      ;; just check that channels.list doesn't throw an exception (a.k.a. that the token works)
       (when-not config/is-test?
-        (slack/GET :channels.list, :exclude_archived 1, :token slack-token))
+        (when-not (slack/valid-token? slack-token)
+          (throw (ex-info (tru "Invalid Slack token.") {:status-code 400}))))
       (setting/set-many! slack-settings)
       {:ok true}
       (catch clojure.lang.ExceptionInfo info

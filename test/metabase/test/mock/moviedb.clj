@@ -69,9 +69,7 @@
                :base-type :type/Text}}}})
 
 
-(driver/register! ::moviedb)
-
-(defmethod driver/available? ::moviedb [_] false)
+(driver/register! ::moviedb, :abstract? true)
 
 (defmethod driver/describe-database ::moviedb [_ {:keys [exclude-tables]}]
   (let [tables (for [table (vals moviedb-tables)
@@ -81,7 +79,9 @@
 
 (defmethod driver/describe-table ::moviedb [_ _ table]
   (-> (get moviedb-tables (:name table))
-      (dissoc :fks)))
+      (dissoc :fks)
+      (update :fields (partial map-indexed (fn [idx field]
+                                             (assoc field :database-position idx))))))
 
 (defmethod driver/describe-table-fks ::moviedb [_ _ table]
   (-> (get moviedb-tables (:name table))

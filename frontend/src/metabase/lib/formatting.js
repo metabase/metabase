@@ -1,51 +1,63 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import d3 from "d3";
 import inflection from "inflection";
-import moment from "moment";
+import moment from "moment-timezone";
 import Humanize from "humanize-plus";
 import React from "react";
-import { ngettext, msgid } from "c-3po";
+import { msgid, ngettext } from "ttag";
 
 import Mustache from "mustache";
 import ReactMarkdown from "react-markdown";
 
-import ExternalLink from "metabase/components/ExternalLink.jsx";
+import ExternalLink from "metabase/components/ExternalLink";
 
 import {
-  isDate,
-  isNumber,
   isCoordinate,
+  isDate,
+  isDateWithoutTime,
+  isEmail,
   isLatitude,
   isLongitude,
+  isNumber,
+  isTime,
+  isURL,
 } from "metabase/lib/schema_metadata";
-import { isa, TYPE } from "metabase/lib/types";
-import { parseTimestamp, parseTime } from "metabase/lib/time";
+import { parseTime, parseTimestamp } from "metabase/lib/time";
 import { rangeForValue } from "metabase/lib/dataset";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import { decimalCount } from "metabase/visualizations/lib/numeric";
 
 import {
-  DEFAULT_DATE_STYLE,
-  getDateFormatFromStyle,
-  DEFAULT_TIME_STYLE,
-  getTimeFormatFromStyle,
-  hasHour,
-} from "metabase/lib/formatting/date";
-
-import type Field from "metabase-lib/lib/metadata/Field";
-import type { Column, Value } from "metabase/meta/types/Dataset";
-import type { DatetimeUnit } from "metabase/meta/types/Query";
-import type { Moment } from "metabase/meta/types";
+  clickBehaviorIsValid,
+  getDataFromClicked,
+} from "metabase/lib/click-behavior";
 
 import type {
   DateStyle,
-  TimeStyle,
   TimeEnabled,
+  TimeStyle,
 } from "metabase/lib/formatting/date";
+import {
+  DEFAULT_DATE_STYLE,
+  DEFAULT_TIME_STYLE,
+  getDateFormatFromStyle,
+  getTimeFormatFromStyle,
+  hasHour,
+} from "metabase/lib/formatting/date";
+import {
+  renderLinkTextForClick,
+  renderLinkURLForClick,
+} from "metabase/lib/formatting/link";
+import { NULL_DISPLAY_VALUE, NULL_NUMERIC_VALUE } from "metabase/lib/constants";
+
+import type Field from "metabase-lib/lib/metadata/Field";
+import type { Column, Value } from "metabase-types/types/Dataset";
+import type { DatetimeUnit } from "metabase-types/types/Query";
+import type { Moment } from "metabase-types/types";
+import type { ClickObject } from "metabase-types/types/Visualization";
 
 // a one or two character string specifying the decimal and grouping separator characters
-export type NumberSeparators = ".," | ", " | ",." | ".";
+export type NumberSeparators = ".," | ", " | ",." | "." | ".’";
 
 // single character string specifying date separators
 export type DateSeparator = "/" | "-" | ".";
@@ -56,6 +68,7 @@ export type FormattingOptions = {
   majorWidth?: number,
   type?: "axis" | "cell" | "tooltip",
   jsx?: boolean,
+  remap?: boolean,
   // render links for type/URLs, type/Email, etc
   rich?: boolean,
   compact?: boolean,
@@ -67,6 +80,7 @@ export type FormattingOptions = {
   prefix?: string,
   suffix?: string,
   scale?: number,
+  negativeInParentheses?: boolean,
   // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/toLocaleString
   scale?: number,
   number_separators?: NumberSeparators,
@@ -75,8 +89,10 @@ export type FormattingOptions = {
   // decimals sets both minimumFractionDigits and maximumFractionDigits
   decimals?: number,
   // STRING
-  view_as?: "link" | "email_link" | "image",
+  view_as?: null | "link" | "email_link" | "image" | "auto",
   link_text?: string,
+  link_template?: string,
+  clicked?: ClickObject,
   // DATE/TIME
   // date/timeout style string that is used to derive a date_format or time_format for different units, see metabase/lib/formatting/date
   date_style?: DateStyle,
@@ -86,9 +102,15 @@ export type FormattingOptions = {
   time_style?: TimeStyle,
   time_enabled?: TimeEnabled,
   time_format?: string,
+  // display in local timezone or parsed timezone
+  local?: boolean,
+  // markdown template
+  markdown_template?: string,
 };
 
-type FormattedString = string | React$Element<any>;
+type FormattedString = string | React.Element;
+
+export const FK_SYMBOL = "→";
 
 const DEFAULT_NUMBER_OPTIONS: FormattingOptions = {
   compact: false,
@@ -107,7 +129,7 @@ function getDefaultNumberOptions(options) {
   return defaults;
 }
 
-const PRECISION_NUMBER_FORMATTER = d3.format(".2r");
+const PRECISION_NUMBER_FORMATTER = d3.format(".2f");
 const FIXED_NUMBER_FORMATTER = d3.format(",.f");
 const DECIMAL_DEGREES_FORMATTER = d3.format(".08f");
 const DECIMAL_DEGREES_FORMATTER_COMPACT = d3.format(".02f");
@@ -133,7 +155,6 @@ export function numberFormatterForOptions(options: FormattingOptions) {
   options = { ...getDefaultNumberOptions(options), ...options };
   // always use "en" locale so we have known number separators we can replace depending on number_separators option
   // TODO: if we do that how can we get localized currency names?
-  // $FlowFixMe: doesn't know about Intl.NumberFormat
   return new Intl.NumberFormat("en", {
     style: options.number_style,
     currency: options.currency,
@@ -155,8 +176,16 @@ export function formatNumber(number: number, options: FormattingOptions = {}) {
     number = options.scale * number;
   }
 
+  if (number < 0 && options.negativeInParentheses) {
+    return (
+      "(" +
+      formatNumber(-number, { ...options, negativeInParentheses: false }) +
+      ")"
+    );
+  }
+
   if (options.compact) {
-    return formatNumberCompact(number);
+    return formatNumberCompact(number, options);
   } else if (options.number_style === "scientific") {
     return formatNumberScientific(number, options);
   } else {
@@ -248,14 +277,54 @@ function formatNumberScientific(
   }
 }
 
-function formatNumberCompact(value: number) {
+const DISPLAY_COMPACT_DECIMALS_CUTOFF = 1000;
+export const COMPACT_CURRENCY_OPTIONS = {
+  // Currencies vary in how many decimals they display, so this is probably
+  // wrong in some cases. Intl.NumberFormat has some of that data built-in, but
+  // I couldn't figure out how to use it here.
+  digits: 2,
+  currency_style: "symbol",
+};
+
+function formatNumberCompact(value: number, options: FormattingOptions) {
+  if (options.number_style === "percent") {
+    return formatNumberCompactWithoutOptions(value * 100) + "%";
+  }
+  if (options.number_style === "currency") {
+    try {
+      const nf = numberFormatterForOptions({
+        ...options,
+        ...COMPACT_CURRENCY_OPTIONS,
+      });
+
+      if (Math.abs(value) < DISPLAY_COMPACT_DECIMALS_CUTOFF) {
+        return nf.format(value);
+      }
+      const { value: currency } = nf
+        .formatToParts(value)
+        .find(p => p.type === "currency");
+      return currency + formatNumberCompactWithoutOptions(value);
+    } catch (e) {
+      // Intl.NumberFormat failed, so we fall back to a non-currency number
+      return formatNumberCompactWithoutOptions(value);
+    }
+  }
+  if (options.number_style === "scientific") {
+    return formatNumberScientific(value, {
+      ...options,
+      // unsetting maximumFractionDigits prevents truncation of small numbers
+      maximumFractionDigits: undefined,
+      minimumFractionDigits: 1,
+    });
+  }
+  return formatNumberCompactWithoutOptions(value);
+}
+
+function formatNumberCompactWithoutOptions(value: number) {
   if (value === 0) {
     // 0 => 0
     return "0";
-  } else if (value >= -0.01 && value <= 0.01) {
-    // 0.01 => ~0
-    return "~ 0";
-  } else if (value > -1 && value < 1) {
+  } else if (Math.abs(value) < DISPLAY_COMPACT_DECIMALS_CUTOFF) {
     // 0.1 => 0.1
     return PRECISION_NUMBER_FORMATTER(value).replace(/\.?0+$/, "");
   } else {
@@ -285,8 +354,8 @@ export function formatCoordinate(
   const formattedValue = binWidth
     ? BINNING_DEGREES_FORMATTER(value, binWidth)
     : options.compact
-      ? DECIMAL_DEGREES_FORMATTER_COMPACT(value)
-      : DECIMAL_DEGREES_FORMATTER(value);
+    ? DECIMAL_DEGREES_FORMATTER_COMPACT(value)
+    : DECIMAL_DEGREES_FORMATTER(value);
   return formattedValue + "°" + direction;
 }
 
@@ -337,7 +406,7 @@ export function formatDateTimeRangeWithUnit(
   unit: DatetimeUnit,
   options: FormattingOptions = {},
 ) {
-  let m = parseTimestamp(value, unit);
+  const m = parseTimestamp(value, unit, options.local);
   if (!m.isValid()) {
     return String(value);
   }
@@ -347,8 +416,13 @@ export function formatDateTimeRangeWithUnit(
     options.type === "tooltip" ? "MMMM" : getMonthFormat(options);
   const condensed = options.compact || options.type === "tooltip";
 
+  // The client's unit boundaries might not line up with the data returned from the server.
+  // We shift the range so that the start lines up with the value.
   const start = m.clone().startOf(unit);
   const end = m.clone().endOf(unit);
+  const shift = m.diff(start, "days");
+  [start, end].forEach(d => d.add(shift, "days"));
+
   if (start.isValid() && end.isValid()) {
     if (!condensed || start.year() !== end.year()) {
       // January 1, 2018 - January 2, 2019
@@ -373,13 +447,12 @@ export function formatDateTimeRangeWithUnit(
       );
     }
   } else {
+    // TODO: when is this used?
     return formatWeek(m, options);
   }
 }
 
 function formatWeek(m: Moment, options: FormattingOptions = {}) {
-  // force 'en' locale for now since our weeks currently always start on Sundays
-  m = m.locale("en");
   return formatMajorMinor(m.format("wo"), m.format("gggg"), options);
 }
 
@@ -390,7 +463,11 @@ function replaceDateFormatNames(format, options) {
 }
 
 function formatDateTimeWithFormats(value, dateFormat, timeFormat, options) {
-  let m = parseTimestamp(value, options.column && options.column.unit);
+  const m = parseTimestamp(
+    value,
+    options.column && options.column.unit,
+    options.local,
+  );
   if (!m.isValid()) {
     return String(value);
   }
@@ -399,7 +476,11 @@ function formatDateTimeWithFormats(value, dateFormat, timeFormat, options) {
   if (dateFormat) {
     format.push(replaceDateFormatNames(dateFormat, options));
   }
-  if (timeFormat && options.time_enabled) {
+
+  const shouldIncludeTime =
+    timeFormat && options.time_enabled && !isDateWithoutTime(options.column);
+
+  if (shouldIncludeTime) {
     format.push(timeFormat);
   }
   return m.format(format.join(", "));
@@ -414,7 +495,7 @@ export function formatDateTimeWithUnit(
   unit: DatetimeUnit,
   options: FormattingOptions = {},
 ) {
-  let m = parseTimestamp(value, unit);
+  const m = parseTimestamp(value, unit, options.local);
   if (!m.isValid()) {
     return String(value);
   }
@@ -442,7 +523,6 @@ export function formatDateTimeWithUnit(
 
   if (!dateFormat) {
     dateFormat = getDateFormatFromStyle(
-      // $FlowFixMe: date_style default set above
       options["date_style"],
       unit,
       options["date_separator"],
@@ -451,18 +531,17 @@ export function formatDateTimeWithUnit(
 
   if (!timeFormat) {
     timeFormat = getTimeFormatFromStyle(
-      // $FlowFixMe: time_style default set above
       options.time_style,
       unit,
       options.time_enabled,
     );
   }
 
-  return formatDateTimeWithFormats(value, dateFormat, timeFormat, options);
+  return formatDateTimeWithFormats(m, dateFormat, timeFormat, options);
 }
 
 export function formatTime(value: Value) {
-  let m = parseTime(value);
+  const m = parseTime(value);
   if (!m.isValid()) {
     return String(value);
   } else {
@@ -470,49 +549,144 @@ export function formatTime(value: Value) {
   }
 }
 
+export function formatTimeWithUnit(
+  value: Value,
+  unit: DatetimeUnit,
+  options: FormattingOptions = {},
+) {
+  const m = parseTimestamp(value, unit, options.local);
+  if (!m.isValid()) {
+    return String(value);
+  }
+
+  const timeStyle = options.time_style
+    ? options.time_style
+    : DEFAULT_TIME_STYLE;
+
+  const timeEnabled = options.time_enabled
+    ? options.time_enabled
+    : hasHour(unit)
+    ? "minutes"
+    : null;
+
+  const timeFormat = options.time_format
+    ? options.time_format
+    : getTimeFormatFromStyle(timeStyle, unit, timeEnabled);
+
+  return m.format(timeFormat);
+}
+
 // https://github.com/angular/angular.js/blob/v1.6.3/src/ng/directive/input.js#L27
-const EMAIL_WHITELIST_REGEX = /^(?=.{1,254}$)(?=.{1,64}@)[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+(\.[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+)*@[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$/;
+const EMAIL_ALLOW_LIST_REGEX = /^(?=.{1,254}$)(?=.{1,64}@)[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+(\.[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+)*@[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$/;
 
 export function formatEmail(
   value: Value,
-  { jsx, rich, view_as = "auto", link_text }: FormattingOptions = {},
+  { jsx, rich, view_as = "auto", link_text, clicked }: FormattingOptions = {},
 ) {
   const email = String(value);
+  const label =
+    clicked && link_text
+      ? renderLinkTextForClick(link_text, getDataFromClicked(clicked))
+      : null;
+
   if (
     jsx &&
     rich &&
     (view_as === "email_link" || view_as === "auto") &&
-    EMAIL_WHITELIST_REGEX.test(email)
+    EMAIL_ALLOW_LIST_REGEX.test(email)
   ) {
     return (
-      <ExternalLink href={"mailto:" + email}>{link_text || email}</ExternalLink>
+      <ExternalLink href={"mailto:" + email}>{label || email}</ExternalLink>
     );
   } else {
     return email;
   }
 }
 
-// based on https://github.com/angular/angular.js/blob/v1.6.3/src/ng/directive/input.js#L25
-const URL_WHITELIST_REGEX = /^(https?|mailto):\/*(?:[^:@]+(?::[^@]+)?@)?(?:[^\s:/?#]+|\[[a-f\d:]+])(?::\d+)?(?:\/[^?#]*)?(?:\?[^#]*)?(?:#.*)?$/i;
+function getUrlProtocol(url) {
+  try {
+    const { protocol } = new URL(url);
+    return protocol;
+  } catch (e) {
+    return undefined;
+  }
+}
 
-export function formatUrl(
-  value: Value,
-  { jsx, rich, view_as = "auto", link_text }: FormattingOptions = {},
-) {
-  const url = String(value);
-  if (
-    jsx &&
-    rich &&
-    (view_as === "link" || view_as === "auto") &&
-    URL_WHITELIST_REGEX.test(url)
-  ) {
+function isSafeProtocol(protocol) {
+  return (
+    protocol !== "javascript:" && protocol !== "data:" && protocol !== "file:"
+  );
+}
+
+function isDefaultLinkProtocol(protocol) {
+  return (
+    protocol === "http:" || protocol === "https:" || protocol === "mailto:"
+  );
+}
+
+function getLinkUrl(value, { view_as, link_url, clicked, column }) {
+  const isExplicitLink = view_as === "link";
+  const hasCustomizedUrl = link_url && clicked;
+
+  if (isExplicitLink && hasCustomizedUrl) {
+    return renderLinkURLForClick(link_url, getDataFromClicked(clicked));
+  }
+
+  const protocol = getUrlProtocol(value);
+  const isValueSafeLink = protocol && isSafeProtocol(protocol);
+
+  if (!isValueSafeLink) {
+    return null;
+  }
+
+  if (isExplicitLink) {
+    return value;
+  }
+
+  const isDefaultProtocol = protocol && isDefaultLinkProtocol(protocol);
+  const isMaybeLink = view_as === "auto";
+
+  if (isMaybeLink && isDefaultProtocol) {
+    return value;
+  }
+
+  if (view_as === undefined && (isURL(column) || isDefaultProtocol)) {
+    return value;
+  }
+
+  return null;
+}
+
+function getLinkText(value, options) {
+  const { view_as, link_text, clicked } = options;
+
+  const isExplicitLink = view_as === "link";
+  const hasCustomizedText = link_text && clicked;
+
+  if (isExplicitLink && hasCustomizedText) {
+    return renderLinkTextForClick(link_text, getDataFromClicked(clicked));
+  }
+
+  return (
+    getRemappedValue(value, options) ||
+    formatValue(value, { ...options, view_as: null })
+  );
+}
+
+export function formatUrl(value, options = {}) {
+  const { jsx, rich } = options;
+
+  const url = getLinkUrl(value, options);
+
+  if (jsx && rich && url) {
+    const text = getLinkText(value, options);
     return (
       <ExternalLink className="link link--wrappable" href={url}>
-        {link_text || url}
+        {text}
       </ExternalLink>
     );
   } else {
-    return url;
+    return value;
   }
 }
 
@@ -521,42 +695,68 @@ export function formatImage(
   { jsx, rich, view_as = "auto", link_text }: FormattingOptions = {},
 ) {
   const url = String(value);
-  if (jsx && rich && view_as === "image" && URL_WHITELIST_REGEX.test(url)) {
+  const protocol = getUrlProtocol(url);
+  const acceptedProtocol = protocol === "http:" || protocol === "https:";
+  if (jsx && rich && view_as === "image" && acceptedProtocol) {
     return <img src={url} style={{ height: 30 }} />;
   } else {
     return url;
   }
 }
 
-// fallback for formatting a string without a column special_type
+// fallback for formatting a string without a column semantic_type
 function formatStringFallback(value: Value, options: FormattingOptions = {}) {
-  value = formatUrl(value, options);
-  if (typeof value === "string") {
-    value = formatEmail(value, options);
-  }
-  if (typeof value === "string") {
-    value = formatImage(value, options);
+  if (options.view_as !== null) {
+    value = formatUrl(value, options);
+    if (typeof value === "string") {
+      value = formatEmail(value, options);
+    }
+    if (typeof value === "string") {
+      value = formatImage(value, options);
+    }
   }
   return value;
 }
 
 const MARKDOWN_RENDERERS = {
   // eslint-disable-next-line react/display-name
-  link: ({ href, children }) => (
+  a: ({ href, children }) => (
     <ExternalLink href={href}>{children}</ExternalLink>
   ),
 };
 
 export function formatValue(value: Value, options: FormattingOptions = {}) {
+  // avoid rendering <ExternalLink> if we have click_behavior set
+  if (
+    options.click_behavior &&
+    clickBehaviorIsValid(options.click_behavior) &&
+    options.view_as !== "image" // images don't conflict with click behavior
+  ) {
+    options = {
+      ...options,
+      view_as: null, // turns off any link rendering
+    };
+  }
   const formatted = formatValueRaw(value, options);
+  let maybeJson = {};
+  try {
+    maybeJson = JSON.parse(value);
+  } catch {
+    // do nothing
+  }
   if (options.markdown_template) {
     if (options.jsx) {
       // inject the formatted value as "value" and the unformatted value as "raw"
       const markdown = Mustache.render(options.markdown_template, {
         value: formatted,
         raw: value,
+        json: maybeJson,
       });
-      return <ReactMarkdown source={markdown} renderers={MARKDOWN_RENDERERS} />;
+      return (
+        <ReactMarkdown components={MARKDOWN_RENDERERS}>
+          {markdown}
+        </ReactMarkdown>
+      );
     } else {
       // FIXME: render and get the innerText?
       console.warn(
@@ -575,7 +775,6 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
         </span>
       );
     } else {
-      // $FlowFixMe: doesn't understand formatted is a string
       return `${options.prefix || ""}${formatted}${options.suffix || ""}`;
     }
   } else {
@@ -583,19 +782,12 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
   }
 }
 
-export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
-  let column = options.column;
-
-  options = {
-    jsx: false,
-    remap: true,
-    ...options,
-  };
-
-  if (options.remap && column) {
-    // $FlowFixMe: column could be Field or Column
+export function getRemappedValue(
+  value: Value,
+  { remap, column }: FormattingOptions = {},
+): ?string {
+  if (remap && column) {
     if (column.hasRemappedValue && column.hasRemappedValue(value)) {
-      // $FlowFixMe: column could be Field or Column
       return column.remappedValue(value);
     }
     // or it may be a raw column object with a "remapping" object
@@ -604,14 +796,55 @@ export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
     }
     // TODO: get rid of one of these two code paths?
   }
+}
 
-  if (value == undefined) {
+export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
+  options = {
+    jsx: false,
+    remap: true,
+    ...options,
+  };
+
+  const { column } = options;
+
+  const remapped = getRemappedValue(value, options);
+  if (remapped !== undefined && options.view_as !== "link") {
+    return remapped;
+  }
+
+  if (value === NULL_NUMERIC_VALUE) {
+    return NULL_DISPLAY_VALUE;
+  } else if (value == null) {
     return null;
-  } else if (column && isa(column.special_type, TYPE.URL)) {
+  } else if (
+    options.view_as !== "image" &&
+    options.click_behavior &&
+    clickBehaviorIsValid(options.click_behavior) &&
+    options.jsx
+  ) {
+    // Style this like a link if we're in a jsx context.
+    // It's not actually a link since we handle the click differently for dashboard and question targets.
+    return (
+      <div className="link link--wrappable">
+        {formatValueRaw(value, { ...options, jsx: false })}
+      </div>
+    );
+  } else if (
+    options.click_behavior &&
+    options.click_behavior.linkTextTemplate
+  ) {
+    return renderLinkTextForClick(
+      options.click_behavior.linkTextTemplate,
+      getDataFromClicked(options.clicked),
+    );
+  } else if (
+    (isURL(column) && options.view_as !== null) ||
+    options.view_as === "link"
+  ) {
     return formatUrl(value, options);
-  } else if (column && isa(column.special_type, TYPE.Email)) {
+  } else if (isEmail(column)) {
     return formatEmail(value, options);
-  } else if (column && isa(column.base_type, TYPE.Time)) {
+  } else if (isTime(column)) {
     return formatTime(value);
   } else if (column && column.unit != null) {
     return formatDateTimeWithUnit(value, column.unit, options);
@@ -623,16 +856,20 @@ export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
   ) {
     return formatDateTime(value, options);
   } else if (typeof value === "string") {
-    return formatStringFallback(value, options);
+    if (column && column.semantic_type != null) {
+      return value;
+    } else {
+      return formatStringFallback(value, options);
+    }
   } else if (typeof value === "number" && isCoordinate(column)) {
-    const range = rangeForValue(value, options.column);
+    const range = rangeForValue(value, column);
     if (range && !options.noRange) {
       return formatRange(range, formatCoordinate, options);
     } else {
       return formatCoordinate(value, options);
     }
   } else if (typeof value === "number" && isNumber(column)) {
-    const range = rangeForValue(value, options.column);
+    const range = rangeForValue(value, column);
     if (range && !options.noRange) {
       return formatRange(range, formatNumber, options);
     } else {
@@ -650,7 +887,7 @@ export function formatColumn(column: Column): string {
   if (!column) {
     return "";
   } else if (column.remapped_to_column != null) {
-    // $FlowFixMe: remapped_to_column is a special field added by Visualization.jsx
+    // remapped_to_column is a special field added by Visualization.jsx
     return formatColumn(column.remapped_to_column);
   } else {
     let columnTitle = getFriendlyName(column);
@@ -671,44 +908,54 @@ export function formatField(field: Field): string {
   }
 }
 
-// $FlowFixMe
 export function singularize(...args) {
   return inflection.singularize(...args);
 }
 
-// $FlowFixMe
 export function pluralize(...args) {
   return inflection.pluralize(...args);
 }
 
-// $FlowFixMe
 export function capitalize(...args) {
   return inflection.capitalize(...args);
 }
 
-// $FlowFixMe
 export function inflect(...args) {
   return inflection.inflect(...args);
 }
 
-// $FlowFixMe
 export function titleize(...args) {
   return inflection.titleize(...args);
 }
 
-// $FlowFixMe
 export function humanize(...args) {
   return inflection.humanize(...args);
 }
 
+export function conjunct(list: string[], conjunction: string) {
+  return (
+    list.slice(0, -1).join(`, `) +
+    (list.length > 2 ? `,` : ``) +
+    (list.length > 1 ? ` ${conjunction} ` : ``) +
+    (list[list.length - 1] || ``)
+  );
+}
+
 export function duration(milliseconds: number) {
-  if (milliseconds < 60000) {
-    let seconds = Math.round(milliseconds / 1000);
-    return ngettext(msgid`${seconds} second`, `${seconds} seconds`, seconds);
-  } else {
-    let minutes = Math.round(milliseconds / 1000 / 60);
+  const SECOND = 1000;
+  const MINUTE = 60 * SECOND;
+  const HOUR = 60 * MINUTE;
+
+  if (milliseconds >= HOUR) {
+    const hours = Math.round(milliseconds / HOUR);
+    return ngettext(msgid`${hours} hour`, `${hours} hours`, hours);
+  }
+  if (milliseconds >= MINUTE) {
+    const minutes = Math.round(milliseconds / MINUTE);
     return ngettext(msgid`${minutes} minute`, `${minutes} minutes`, minutes);
   }
+  const seconds = Math.round(milliseconds / SECOND);
+  return ngettext(msgid`${seconds} second`, `${seconds} seconds`, seconds);
 }
 
 // Removes trailing "id" from field names
@@ -717,7 +964,7 @@ export function stripId(name: string) {
 }
 
 export function slugify(name: string) {
-  return name && name.toLowerCase().replace(/[^a-z\u0400-\u04ff0-9_]/g, "_");
+  return name && encodeURIComponent(name.toLowerCase().replace(/\s/g, "_"));
 }
 
 export function assignUserColors(
@@ -732,13 +979,13 @@ export function assignUserColors(
     "bg-medium",
   ],
 ) {
-  let assignments = {};
+  const assignments = {};
 
   const currentUserColor = colorClasses[0];
   const otherUserColors = colorClasses.slice(1);
   let otherUserColorIndex = 0;
 
-  for (let userId of userIds) {
+  for (const userId of userIds) {
     if (!(userId in assignments)) {
       if (userId === currentUserId) {
         assignments[userId] = currentUserColor;

@@ -1,6 +1,4 @@
-/* @flow */
-
-import type { OrderBy, OrderByClause } from "metabase/meta/types/Query";
+import type { OrderBy, OrderByClause } from "metabase-types/types/Query";
 
 import { add, update, remove, clear } from "./util";
 

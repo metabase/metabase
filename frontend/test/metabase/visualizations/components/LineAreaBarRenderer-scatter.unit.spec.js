@@ -1,10 +1,12 @@
-import "__support__/mocks"; // included explicitly whereas with e2e tests it comes with __support__/e2e_tests
+import "__support__/mocks"; // included explicitly whereas with e2e tests it comes with __support__/e2e
 
 import {
   NumberColumn,
   dispatchUIEvent,
   renderLineAreaBar,
   getFormattedTooltips,
+  createFixture,
+  cleanupFixture,
 } from "../__support__/visualizations";
 
 const DEFAULT_SETTINGS = {
@@ -17,6 +19,14 @@ const DEFAULT_SETTINGS = {
   column: () => ({}),
 };
 
+// jsdom doesn't support layout methods like getBBox, so we need to mock it.
+window.SVGElement.prototype.getBBox = () => ({
+  x: 0,
+  y: 0,
+  width: 1000,
+  height: 1000,
+});
+
 describe("LineAreaBarRenderer-scatter", () => {
   let element;
   const qsa = selector => [
@@ -24,15 +34,11 @@ describe("LineAreaBarRenderer-scatter", () => {
   ];
 
   beforeEach(function() {
-    document.body.insertAdjacentHTML(
-      "afterbegin",
-      '<div id="fixture" style="height: 800px; width: 1200px;">',
-    );
-    element = document.getElementById("fixture");
+    element = createFixture();
   });
 
   afterEach(function() {
-    document.body.removeChild(document.getElementById("fixture"));
+    cleanupFixture(element);
   });
 
   it("should render a scatter chart with 2 dimensions", () => {

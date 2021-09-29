@@ -2,17 +2,13 @@ import React from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import cx from "classnames";
-import pure from "recompose/pure";
 
 import S from "./ReferenceHeader.css";
 import L from "metabase/components/List.css";
-import E from "metabase/reference/components/EditButton.css";
 
-import IconBorder from "metabase/components/IconBorder.jsx";
-import Icon from "metabase/components/Icon.jsx";
-import Ellipsified from "metabase/components/Ellipsified.jsx";
-import { t } from "c-3po";
-import colors from "metabase/lib/colors";
+import Icon from "metabase/components/Icon";
+import Ellipsified from "metabase/components/Ellipsified";
+import { t } from "ttag";
 
 const ReferenceHeader = ({
   name,
@@ -21,23 +17,13 @@ const ReferenceHeader = ({
   headerBody,
   headerLink,
 }) => (
-  <div className="wrapper wrapper--trim">
+  <div className="wrapper">
     <div className={cx("relative", L.header)}>
-      <div className={L.leftIcons}>
-        {headerIcon && (
-          <IconBorder
-            borderWidth="0"
-            style={{ backgroundColor: colors["bg-medium"] }}
-          >
-            <Icon
-              className="text-brand"
-              name={headerIcon}
-              width={24}
-              height={24}
-            />
-          </IconBorder>
-        )}
-      </div>
+      {headerIcon && (
+        <div className="flex align-center mr2">
+          <Icon className="text-light" name={headerIcon} size={21} />
+        </div>
+      )}
       <div className={S.headerBody}>
         <Ellipsified
           key="1"
@@ -51,12 +37,7 @@ const ReferenceHeader = ({
           <div key="2" className={cx("flex-full", S.headerButton)}>
             <Link
               to={headerLink}
-              className={cx(
-                "Button",
-                "Button--borderless",
-                "ml3",
-                E.editButton,
-              )}
+              className={cx("Button", "Button--borderless", "ml3")}
               data-metabase-event={`Data Reference;Entity -> QB click;${type}`}
             >
               <div className="flex align-center relative">
@@ -79,4 +60,4 @@ ReferenceHeader.propTypes = {
   headerLink: PropTypes.string,
 };
 
-export default pure(ReferenceHeader);
+export default React.memo(ReferenceHeader);

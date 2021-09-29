@@ -16,6 +16,7 @@ indent_style = tab
 
 [*.clj]
 indent_size = 2
+max_line_length = 120
 
 [*.css]
 indent_size = 2
@@ -23,8 +24,14 @@ indent_size = 2
 [*.html]
 indent_size = 2
 
+[*.mustache]
+indent_size = 2
+
 [*.js]
 indent_size = 2
 
 [*.jsx]
+indent_size = 2
+
+[*.json]
 indent_size = 2

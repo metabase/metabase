@@ -2,7 +2,10 @@
 
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
+import { getIn } from "icepick";
+import cx from "classnames";
+
 import MetabaseSettings from "metabase/lib/settings";
 import ErrorMessage from "metabase/components/ErrorMessage";
 import ErrorDetails from "metabase/components/ErrorDetails";
@@ -20,6 +23,52 @@ const EmailAdmin = () => {
   );
 };
 
+export function adjustPositions(error, origSql) {
+  /* Positions in error messages are borked coming in for Postgres errors.
+   * Previously, you would see "blahblahblah bombed out, Position: 119" in a 10-character invalid query.
+   * This is because MB shoves in 'remarks' into the original query and we get the exception from the query with remarks.
+   * This function adjusts the value of the positions in the exception message to account for this.
+   * This is done in mildly scary kludge here in frontend after everything,
+   * because the alternative of doing it in backend
+   * is an absolutely terrifying kludge involving messing with exceptions.
+   */
+  let adjustmentLength = 0;
+
+  // redshift remarks use c-style multiline comments...
+  const multiLineBeginPos = origSql.search("/\\*");
+  const multiLineEndPos = origSql.search("\\*/");
+  // if multiLineBeginPos is 0 then we know it's a redshift remark
+  if (multiLineBeginPos === 0 && multiLineEndPos !== -1) {
+    adjustmentLength += multiLineEndPos + 2; // 2 for */ in itself
+  }
+
+  const chompedSql = origSql.substr(adjustmentLength);
+  // there also seem to be cases where remarks don't get in...
+  const commentPos = chompedSql.search("--");
+  const newLinePos = chompedSql.search("\n");
+  // 5 is a heuristic: this indicates that this is almost certainly an initial remark comment
+  if (commentPos !== -1 && commentPos < 5) {
+    // There will be a \n after the redshift comment,
+    // which is why there needs to be a 2 added
+    adjustmentLength += newLinePos + 2;
+  }
+
+  return error.replace(/Position: (\d+)/, function(_, p1) {
+    return "Position: " + (parseInt(p1) - adjustmentLength);
+  });
+}
+
+export function stripRemarks(error) {
+  /* SQL snippets in error messages are borked coming in for errors in many DBs.
+   * You're expecting something with just your sql in the message,
+   * but the whole error contains these remarks that MB added in. Confusing!
+   */
+  return error.replace(
+    /-- Metabase:: userID: \d+ queryType: native queryHash: \w+\n/,
+    "",
+  );
+}
+
 class VisualizationError extends Component {
   constructor(props) {
     super(props);
@@ -28,13 +77,16 @@ class VisualizationError extends Component {
     };
   }
   static propTypes = {
+    via: PropTypes.object.isRequired,
     card: PropTypes.object.isRequired,
     duration: PropTypes.number.isRequired,
     error: PropTypes.object.isRequired,
+    className: PropTypes.string,
   };
 
   render() {
-    const { card, duration, error } = this.props;
+    const { via, card, duration, error, className } = this.props;
+    console.log("error", error);
 
     if (error && typeof error.status === "number") {
       // Assume if the request took more than 15 seconds it was due to a timeout
@@ -42,6 +94,7 @@ class VisualizationError extends Component {
       if (duration > 15 * 1000) {
         return (
           <ErrorMessage
+            className={className}
             type="timeout"
             title={t`Your question took too long`}
             message={t`We didn't get an answer back from your database in time, so we had to stop. You can try again in a minute, or if the problem persists, you can email an admin to let them know.`}
@@ -51,6 +104,7 @@ class VisualizationError extends Component {
       } else {
         return (
           <ErrorMessage
+            className={className}
             type="serverError"
             title={t`We're experiencing server issues`}
             message={t`Try refreshing the page after waiting a minute or two. If the problem persists we'd recommend you contact an admin.`}
@@ -58,14 +112,34 @@ class VisualizationError extends Component {
           />
         );
       }
+    } else if (error instanceof Error) {
+      return (
+        <div className={cx(className, "QueryError2 flex justify-center")}>
+          <div className="QueryError-image QueryError-image--queryError mr4" />
+          <div className="QueryError2-details">
+            <h1 className="text-bold">{t`There was a problem with this visualization`}</h1>
+            <ErrorDetails className="pt2" details={error} />
+          </div>
+        </div>
+      );
     } else if (
       card &&
       card.dataset_query &&
       card.dataset_query.type === "native"
     ) {
       // always show errors for native queries
+      let processedError = error;
+      const origSql = getIn(via, [(via || "").length - 1, "ex-data", "sql"]);
+      if (typeof error === "string" && typeof origSql === "string") {
+        processedError = adjustPositions(error, origSql);
+      }
+      if (typeof error === "string") {
+        processedError = stripRemarks(processedError);
+      }
       return (
-        <div className="QueryError flex full align-center text-error">
+        <div
+          className={cx(className, "QueryError flex align-center text-error")}
+        >
           <div className="QueryError-iconWrapper">
             <svg
               className="QueryError-icon"
@@ -77,12 +151,12 @@ class VisualizationError extends Component {
               <path d="M4 8 L8 4 L16 12 L24 4 L28 8 L20 16 L28 24 L24 28 L16 20 L8 28 L4 24 L12 16 z " />
             </svg>
           </div>
-          <span className="QueryError-message">{error}</span>
+          <span className="QueryError-message">{processedError}</span>
         </div>
       );
     } else {
       return (
-        <div className="QueryError2 flex full justify-center">
+        <div className={cx(className, "QueryError2 flex justify-center")}>
           <div className="QueryError-image QueryError-image--queryError mr4" />
           <div className="QueryError2-details">
             <h1 className="text-bold">{t`There was a problem with your question`}</h1>

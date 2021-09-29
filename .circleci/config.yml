@@ -1,463 +1,772 @@
-defaults: &defaults
-  working_directory: /home/circleci/metabase/metabase/
-  docker:
-    - image: circleci/clojure:lein-2.8.1-node-browsers
-
-restore-be-deps-cache: &restore-be-deps-cache
-  keys:
-    - be-deps-{{ checksum "project.clj" }}
-    - be-deps-
-
-restore-fe-deps-cache: &restore-fe-deps-cache
-  keys:
-    - fe-deps-{{ checksum "yarn.lock" }}
-    - fe-deps-
-
 version: 2.1
+
+########################################################################################################################
+#                                                      EXECUTORS                                                       #
+########################################################################################################################
+
+executors:
+  # CircleCI base Node + Headless browsers + Clojure CLI - big one
+  # Maildev runs by default with all Cypress tests
+  clojure-and-node-and-browsers:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: maildev/maildev
+
+  java-8:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: metabase/ci:circleci-java-8-clj-1.10.3.929-07-27-2021-node-browsers
+
+  # Java 11 tests also test Metabase with the at-rest encryption enabled. See
+  # https://metabase.com/docs/latest/operations-guide/encrypting-database-details-at-rest.html for an explanation of
+  # what this means.
+  java-11:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+        environment:
+          MB_ENCRYPTION_SECRET_KEY: Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=
+
+  java-16:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: metabase/ci:circleci-java-16-clj-1.10.3.929-07-27-2021-node-browsers
+
+  postgres-9-6:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+        environment:
+          MB_DB_TYPE: postgres
+          MB_DB_PORT: 5432
+          MB_DB_HOST: localhost
+          MB_DB_DBNAME: circle_test
+          MB_DB_USER: circle_test
+          MB_POSTGRESQL_TEST_USER: circle_test
+      - image: circleci/postgres:9.6-alpine
+        environment:
+          POSTGRES_USER: circle_test
+          POSTGRES_DB: circle_test
+
+  postgres-latest:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+        environment:
+          MB_DB_TYPE: postgres
+          MB_DB_PORT: 5432
+          MB_DB_HOST: localhost
+          MB_DB_DBNAME: metabase_test
+          MB_DB_USER: metabase_test
+          MB_POSTGRESQL_TEST_USER: metabase_test
+      - image: circleci/postgres:latest
+        environment:
+          POSTGRES_USER: metabase_test
+          POSTGRES_DB: metabase_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+
+  mysql-5-7:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+        environment:
+          MB_DB_TYPE: mysql
+          MB_DB_HOST: localhost
+          MB_DB_PORT: 3306
+          MB_DB_DBNAME: circle_test
+          MB_DB_USER: root
+          MB_MYSQL_TEST_USER: root
+      - image: circleci/mysql:5.7.23
+
+  mysql-latest:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+        environment:
+          MB_DB_TYPE: mysql
+          MB_DB_HOST: localhost
+          MB_DB_PORT: 3306
+          MB_DB_DBNAME: circle_test
+          MB_DB_USER: root
+          MB_MYSQL_TEST_USER: root
+      - image: circleci/mysql:latest
+
+  mariadb-10-2:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+        environment:
+          MB_DB_TYPE: mysql
+          MB_DB_HOST: localhost
+          MB_DB_PORT: 3306
+          MB_DB_DBNAME: circle_test
+          MB_DB_USER: root
+          MB_MYSQL_TEST_USER: root
+      - image: circleci/mariadb:10.2.23
+
+  mariadb-latest:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+        environment:
+          MB_DB_TYPE: mysql
+          MB_DB_HOST: localhost
+          MB_DB_PORT: 3306
+          MB_DB_DBNAME: circle_test
+          MB_DB_USER: root
+          MB_MYSQL_TEST_USER: root
+      - image: circleci/mariadb:latest
+        environment:
+          # MYSQL_DATABASE: metabase_test
+          # MYSQL_USER: root
+          # MYSQL_ALLOW_EMPTY_PASSWORD: yes
+
+  mongo-4-0:
+     working_directory: /home/circleci/metabase/metabase/
+     docker:
+       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+       - image: circleci/mongo:4.0
+
+  mongo-latest:
+     working_directory: /home/circleci/metabase/metabase/
+     docker:
+       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+       - image: circleci/mongo:latest
+
+  presto-186:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/presto-mb-ci:0.186
+        environment:
+          JAVA_TOOL_OPTIONS: "-Xmx2g"
+    # Run instance with 8GB or RAM instead of the default 4GB for medium instances. The Presto Docker image runs
+    # OOM sometimes with the default medium size.
+    resource_class: large
+
+  presto-jdbc-env:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/presto-mb-ci:latest # version 0.254
+        environment:
+          JAVA_TOOL_OPTIONS: "-Xmx2g"
+          MB_PRESTO_JDBC_TEST_CATALOG: test_data
+          MB_PRESTO_JDBC_TEST_HOST: localhost
+          MB_PRESTO_JDBC_TEST_PORT: 8443
+          MB_PRESTO_JDBC_TEST_SSL: true
+          MB_PRESTO_JDBC_TEST_USER: metabase
+          MB_PRESTO_JDBC_TEST_PASSWORD: metabase
+          MB_ENABLE_PRESTO_JDBC_DRIVER: true
+          MB_PRESTO_JDBC_TEST_ADDITIONAL_OPTIONS: >
+            SSLTrustStorePath=/tmp/cacerts-with-presto-ssl.jks&SSLTrustStorePassword=changeit
+    # (see above)
+    resource_class: large
+
+  sparksql:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/spark:2.1.1
+
+  vertica:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: sumitchawla/vertica
+
+  sqlserver:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+        environment:
+          MB_SQLSERVER_TEST_HOST: localhost
+          MB_SQLSERVER_TEST_PASSWORD: 'P@ssw0rd'
+          MB_SQLSERVER_TEST_USER: SA
+      - image: mcr.microsoft.com/mssql/server:2017-latest
+        environment:
+          ACCEPT_EULA: Y
+          SA_PASSWORD: 'P@ssw0rd'
+          MSSQL_MEMORY_LIMIT_MB: 1024
+
+  druid:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/druid:0.20.2
+        environment:
+          CLUSTER_SIZE: nano-quickstart
+    # Run Docker images with 8GB or RAM instead of the default 4GB for medium instances. The Druid Docker image runs
+    # OOM all the time with the default medium size.
+    resource_class: large
+
+  fe-mongo-4:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/qa-databases:mongo-sample-4.0
+
+  fe-postgres-12:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/qa-databases:postgres-sample-12
+
+  fe-mysql-8:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/qa-databases:mysql-sample-8
+
+
+########################################################################################################################
+#                                             MAP FRAGMENTS AND CACHE KEYS                                             #
+########################################################################################################################
+
+# `default_parameters` isn't a key that CircleCI uses, but this form lets us reuse parameter definitions
+default_parameters: &Params
+  edition:
+    type: enum
+    enum: ["oss", "ee"]
+    default: "oss"
+
+# .BACKEND-CHECKSUMS, .FRONTEND-CHECKSUMS, and .MODULE-CHECKSUMS are created during the checkout step; see that step
+# for exact details as to what they contain.
+#
+# To support cache busting, we create a file named .CACHE-PREFIX in the checkout step and use its checksum as the
+# prefix for every cache key. If the commit message DOES NOT include [ci nocache], we create an empty file; the
+# checksum will always be the same for this file. If the commit message DOES include [ci nocache], we'll write the
+# unique ID of the current pipeline to .CACHE-PREFIX which will effectively bust our caches whenever it's used.
+
+### Deps Keys ###
+
+# Why don't we use fallback keys for backend/frontend deps? We used to, but it allowed the cache to grow
+# uncontrollably since old deps would continue to accumulate. Restoring big caches is really slow in Circle. It's
+# actually faster to recreate the deps cache from scratch whenever we need to which keeps the size down.
+cache-key-backend-deps: &CacheKeyBackendDeps
+  # TODO -- this should actually include the Java source files and the Spark SQL AOT source files as well since we now
+  # compile those as part of this step. FIXME
+  key: v5-{{ checksum ".CACHE-PREFIX" }}-be-deps-{{ checksum "deps.edn" }}-{{ checksum ".SCRIPTS-DEPS-CHECKSUMS" }}
+
+cache-key-frontend-deps: &CacheKeyFrontendDeps
+  key: v5-{{ checksum ".CACHE-PREFIX" }}-fe-deps-{{ checksum "yarn.lock" }}
+
+# Key used for implementation of run-on-change -- this is the cache key that contains the .SUCCESS dummy file
+# By default the key ALWAYS includes the name of the test job itself ($CIRCLE_STAGE) so you don't need to add that yourself.
+cache-key-run-on-change: &CacheKeyRunOnChange
+  key: v5-{{ checksum ".CACHE-PREFIX" }}-run-on-change-{{ .Environment.CIRCLE_STAGE }}-<< parameters.checksum >>
+
+# Key for the local maven installation of metabase-core (used by build-uberjar-drivers)
+cache-key-metabase-core: &CacheKeyMetabaseCore
+  key: v5-{{ checksum ".CACHE-PREFIX" }}-metabase-core-{{ checksum ".BACKEND-CHECKSUMS" }}
+
+# Key for the drivers built by build-uberjar-drivers
+cache-key-drivers: &CacheKeyDrivers
+  key: v5-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}-<< parameters.edition >>
+
+# This is also used by the uberjar-build-drivers step; this is a unique situation because the build-drivers script has
+# logic to determine whether to rebuild drivers or not that is quite a bit more sophisticated that the run-on-change
+# stuff in this file. e.g. if I only change the bigquery driver, the script is smart enough to not rebuild the
+# redshift driver.
+cache-keys-drivers-with-fallback-keys: &CacheKeyDrivers_WithFallbackKeys
+  keys:
+    - v5-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
+    - v5-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-{{ checksum ".MODULES-CHECKSUMS" }}
+    - v5-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-
+
+# Key for frontend client built by uberjar-build-frontend step
+cache-key-frontend: &CacheKeyFrontend
+  key: v5-{{ checksum ".CACHE-PREFIX" }}-frontend-<< parameters.edition >>-{{ checksum ".FRONTEND-CHECKSUMS" }}
+
+# Key for uberjar built by build-uberjar
+cache-key-uberjar: &CacheKeyUberjar
+  key: v5-{{ checksum ".CACHE-PREFIX" }}-uberjar-<< parameters.edition >>-{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}
+
+
+########################################################################################################################
+#                                                       COMMANDS                                                       #
+########################################################################################################################
+
+commands:
+  attach-workspace:
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+
+  # For the restore-deps-cache commands below, only restore the cache if there's an exact match. This means whatever
+  # is in the cache will be exactly what's used and the cache won't keep growing uncontrollably going forward.
+
+  restore-be-deps-cache:
+    steps:
+      - restore_cache:
+          name: Restore cached backend dependencies
+          <<: *CacheKeyBackendDeps
+
+  restore-fe-deps-cache:
+    steps:
+      - restore_cache:
+          name: Restore cached frontend dependencies
+          <<: *CacheKeyFrontendDeps
+
+  # run-on-change lets you only run steps if changes have happened to relevant files since the last time it was run
+  # successfully. Uses a cache key to record successful runs -- cache key should be unique for job and relevant source
+  # files -- use a checksum! It works like this:
+  #
+  # 1. Calculate a cache key using a checksum of relevant files for the step in question, e.g. a backend linter step
+  #    might use a checksum of all .clj files.
+  #
+  # 2. When the step completes successfully, create a dummy file .SUCCESS and cache it with that cache key.
+  #
+  # 3. On subsequent runs:
+  #
+  #    a. Attempt to restore the cache using an exact match for this cache key
+  #
+  #    b. If we have a cache entry for that key, .SUCCESS will get restored
+  #
+  #    c. If this command has the skip-job-if-commit-message-includes-ci-quick option enabled, and commit message includes
+  #       [ci quick], create a dummy file .SUCCESS if not already present. Ignored for master/release branches.
+  #
+  #    d. If commit message includes [ci noskip], delete .SUCCESS so the job will be forced to run.
+  #
+  #    e. If .SUCCESS is present, we can skip the rest of the job, including potentially slow steps like restoring
+  #       dependency caches or the like. This logs a link to the last successful (not skipped) run of the job
+  #
+  #       Important! If this step is skipped because no changes have happened, the entire JOB will halt with a success
+  #       status -- no steps that happen AFTER run-on-change will be ran. Keep this in mind!
+  #
+  #   f. If .SUCCESS is not present, proceed as normal, and create and cache .SUCCESS if the job succeeds
+  run-on-change:
+    parameters:
+      checksum:
+        type: string
+        default: ""
+      steps:
+        type: steps
+      # Whether to skip the rest of the job if commit message includes [ci quick]
+      skip-job-if-commit-message-includes-ci-quick:
+        type: boolean
+        default: false
+    steps:
+      - restore_cache:
+          name: Restore dummy file .SUCCESS if it exists for cache key << parameters.checksum >>
+          <<: *CacheKeyRunOnChange
+      - when:
+          condition: << parameters.skip-job-if-commit-message-includes-ci-quick >>
+          steps:
+            - run:
+                name: "Skip tests (create dummy file .SUCCESS) if commit message contains [ci quick] and branch isn't a master/release branch"
+                command: |
+                  if [[ "$CIRCLE_BRANCH" =~ ^master|release-.+$ ]]; then
+                      echo "branch '$CIRCLE_BRANCH' is a master or release branch: ignoring [ci quick]"
+                  elif [[ `cat .COMMIT` == *"[ci quick]"* ]]; then
+                      echo 'Commit message includes [ci quick]. Creating dummy file .SUCCESS'
+                      touch .SUCCESS
+                  else
+                      echo 'Commit message does not include [ci quick]'
+                  fi
+      - run:
+          name: "Force test run (delete dummy file .SUCCESS) if commit message includes [ci noskip]"
+          command: |
+            if [[ `cat .COMMIT` == *"[ci noskip]"* ]]; then
+                echo 'Commit message includes [ci noskip] -- forcing test run (delete .SUCCESS)'
+                rm -f .SUCCESS
+            else
+                echo 'Commit message does not include [ci noskip]'
+            fi
+      - run:
+          name: Skip rest of job if .SUCCESS exists
+          command: |
+            if [ -f .SUCCESS ]; then
+                echo '.SUCCESS is present: skipping rest of job.'
+                echo "Link to last successful run (if available): $(cat .SUCCESS)"
+                circleci-agent step halt
+            fi
+      - steps: << parameters.steps >>
+      - run:
+          name: Create dummy file .SUCCESS
+          command: |
+            echo "$CIRCLE_BUILD_URL" > .SUCCESS
+      - save_cache:
+          name: Persist dummy file .SUCCESS to cache with key << parameters.checksum >>
+          <<: *CacheKeyRunOnChange
+          paths:
+            - /home/circleci/metabase/metabase/.SUCCESS
+      - run:
+          name: Delete dummy file .SUCCESS so subsequent steps don't see it
+          command: rm /home/circleci/metabase/metabase/.SUCCESS
+
+  # Creates a file that contains checksums for all the files found using the find command with supplied arguments.
+  # You can use a checksum of the checksum file for cache keys including run-on-change cache keys.
+  create-checksum-file:
+    parameters:
+      filename:
+        type: string
+      find-args:
+        type: string
+    steps:
+      - run:
+          name: Create << parameters.filename >> checksum file
+          command: |
+            for file in `find << parameters.find-args >> | sort`; do
+                echo `md5sum "$file"` >> "<< parameters.filename >>"
+            done
+            if [ ! -f "<< parameters.filename >>" ]; then
+                echo 'Error: no matching files. Did you remember to attach the workspace?'
+                exit 1
+            fi
+            echo "Created checksums for $(cat << parameters.filename >> | wc -l) files"
+
+  run-clojure-command:
+    parameters:
+      before-steps:
+        type: steps
+        default: []
+      clojure-args:
+        type: string
+      after-steps:
+        type: steps
+        default: []
+      <<: *Params
+    steps:
+      - restore-be-deps-cache
+      - steps: << parameters.before-steps >>
+      - run:
+          name: clojure << parameters.clojure-args >>:<< parameters.edition >>:<< parameters.edition >>-dev
+          command: |
+            clojure << parameters.clojure-args >>:<< parameters.edition >>:<< parameters.edition >>-dev
+          no_output_timeout: 15m
+      - steps: << parameters.after-steps >>
+      - store_test_results:
+          path: /home/circleci/metabase/metabase/target/junit
+
+  run-yarn-command:
+    parameters:
+      command-name:
+        type: string
+      command:
+        type: string
+      before-steps:
+        type: steps
+        default: []
+      after-steps:
+        type: steps
+        default: []
+      skip-when-no-change:
+        type: boolean
+        default: false
+    steps:
+      - attach-workspace
+      - when:
+          condition: << parameters.skip-when-no-change >>
+          steps:
+            - run-on-change:
+                checksum: '{{ checksum ".FRONTEND-CHECKSUMS" }}'
+                steps:
+                  - restore-fe-deps-cache
+                  - steps: << parameters.before-steps >>
+                  - run:
+                      name: << parameters.command-name >>
+                      command: yarn << parameters.command >>
+                      no_output_timeout: 15m
+                  - steps: << parameters.after-steps >>
+      - unless:
+          condition: << parameters.skip-when-no-change >>
+          steps:
+            - restore-fe-deps-cache
+            - steps: << parameters.before-steps >>
+            - run:
+                name: << parameters.command-name >>
+                command: yarn << parameters.command >>
+                no_output_timeout: 15m
+            - steps: << parameters.after-steps >>
+
+  wait-for-port:
+    parameters:
+      port:
+        type: integer
+    steps:
+      - run:
+          name: Wait for port << parameters.port >> to be ready
+          command: |
+            while ! nc -z localhost << parameters.port >>; do sleep 0.1; done
+          no_output_timeout: 15m
+
+  fetch-jdbc-driver:
+    parameters:
+      source:
+        type: string
+      dest:
+        type: string
+    steps:
+      - run:
+          name: Make plugins dir
+          command: mkdir /home/circleci/metabase/metabase/plugins
+      - run:
+          name: Download JDBC driver JAR << parameters.dest >>
+          command: |
+            wget --output-document=plugins/<< parameters.dest >> ${<< parameters.source >>}
+          no_output_timeout: 15m
+
+  run-command:
+    parameters:
+      command:
+        type: string
+    steps:
+      - run:
+          name: Run command
+          command: << parameters.command >>
+
 jobs:
 
 ########################################################################################################################
-#                                                       CHECKOUT                                                       #
+#                                                    CHECKOUT ETC.                                                     #
 ########################################################################################################################
 
   checkout:
-    <<: *defaults
+    executor: clojure-and-node-and-browsers
     steps:
-      - restore_cache:
-          keys:
-            - source-{{ .Branch }}-{{ .Revision }}
-            - source-{{ .Branch }}
-            - source-
       - checkout
-      - save_cache:
-          key: source-{{ .Branch }}-{{ .Revision }}
-          paths:
-            - .git
-      # The basic idea here is to generate a file with checksums for all the backend source files, and save it as
-      # `./backend-checksums.txt`. Then we'll use the checksum of that files for uberjar caching; thus we can reuse
-      # the same uberjar for integration tests across any build where the backend files are the same
+      # .BACKEND-CHECKSUMS is every Clojure source file as well as dependency files like deps.edn and plugin manifests
+      - create-checksum-file:
+          filename: .BACKEND-CHECKSUMS
+          find-args: ". -type f -name '*.clj' -or -name '*.cljc' -or -name '*.java' -or -name '*.edn' -or -name '*.yaml' -or -name sample-dataset.db.mv.db"
+      # .SCRIPTS-DEPS-CHECKSUMS is all the deps.edn files inside ./bin
+      - create-checksum-file:
+          filename: .SCRIPTS-DEPS-CHECKSUMS
+          find-args: "bin -type f -name 'deps.edn'"
+      # .FRONTEND-CHECKSUMS is every JavaScript source file as well as dependency files like yarn.lock (sans all frontend test files)
+      - create-checksum-file:
+          filename: .FRONTEND-CHECKSUMS
+          find-args: ". -type f '(' -name '*.js' -or -name '*.jsx' -or -name '*.cljc' -or -name '*.cljs' -or -name '*.json' -or -name yarn.lock -or -name sample-dataset.db.mv.db ')' ! -path '*/frontend/test/*'"
+      # .E2E-TESTS-CHECKSUMS is every `*.cy.spes.js` file as well as e2e support JavaScript files
+      - create-checksum-file:
+          filename: .E2E-TESTS-CHECKSUMS
+          find-args: "./frontend/test/ -name '*.cy.*' -or -type f -path '*/__support__/e2e/*'"
+      # .MODULES-CHECKSUMS is every Clojure source file in the modules/ directory as well as plugin manifests
+      - create-checksum-file:
+          filename: .MODULES-CHECKSUMS
+          find-args: "./modules -type f -name '*.clj' -or -name metabase-plugin.yaml"
       - run:
-          name: Generate checksums of all backend source files to use as Uberjar cache key
-          command: >
-            for file in `find ./src -type f -name '*.clj' | sort`;
-              do echo `md5sum $file` >> backend-checksums.txt;
-            done;
-            echo `md5sum $project.clj` >> backend-checksums.txt
+          name: Save last git commit message to .COMMIT
+          command: git log -1 > .COMMIT
+      - run:
+          name: Remove .git directory (not needed for tests)
+          command: rm -rf /home/circleci/metabase/metabase/.git
+      - run:
+          name: Remove ./OSX directory (not needed for tests)
+          command: rm -rf /home/circleci/metabase/metabase/OSX
+      # .CACHE-PREFIX is described above in the Cache Keys section of this file
+      - run:
+          name: 'Create cache key prefix .CACHE-PREFIX to bust caches if commit message includes [ci nocache]'
+          command: |
+            if [[ `cat .COMMIT` == *"[ci nocache]"* ]]; then
+                echo 'Commit message includes [ci nocache]; using cache-busting prefix'
+                echo '<< pipeline.id >>' > .CACHE-PREFIX
+            else
+               echo '' > .CACHE-PREFIX
+            fi
+      - run-yarn-command:
+          command-name: Create static visualization js bundle
+          command: build-static-viz
       - persist_to_workspace:
           root: /home/circleci/
           paths:
             - metabase/metabase
+
+  check-migrations:
+    executor:
+      clojure-and-node-and-browsers
+    steps:
+      - attach-workspace
+      - create-checksum-file:
+          filename: .MIGRATIONS-CHECKSUM
+          find-args: resources/migrations -type f -name '*.yaml'
+      - create-checksum-file:
+          filename: .MIGRATIONS-LINTER-CHECKSUMS
+          find-args: bin/lint-migrations-file -type f -name '*.clj' -or -name 'deps.edn'
+      - run-on-change:
+          checksum: '{{ checksum ".MIGRATIONS-CHECKSUM" }}-{{ checksum ".MIGRATIONS-LINTER-CHECKSUMS" }}'
+          steps:
+            - run:
+                name: Verify Liquibase Migrations
+                command: ./bin/lint-migrations-file.sh
+                no_output_timeout: 15m
+
 
 ########################################################################################################################
 #                                                       BACKEND                                                        #
 ########################################################################################################################
 
   be-deps:
-    <<: *defaults
+    executor: clojure-and-node-and-browsers
+    parameters:
+      <<: *Params
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run: lein with-profile +include-all-drivers deps
-      - save_cache:
-          key: be-deps-{{ checksum "project.clj" }}
-          paths:
-            - /home/circleci/.m2
+      - attach-workspace
+      # This step is pretty slow, even with the cache, so only run it if deps.edn has changed
+      - run-on-change:
+          checksum: 'v5-{{ checksum "deps.edn" }}-{{ checksum ".SCRIPTS-DEPS-CHECKSUMS" }}'
+          steps:
+            - restore-be-deps-cache
+            - run:
+                name: Compile Java source file(s)
+                command: clojure -X:deps prep
+            - run:
+                name: Compile driver AOT namespaces
+                command: cd modules/drivers && clojure -X:deps prep
+            - run:
+                name: Fetch dependencies
+                command: clojure -P -X:dev:ci:ee:ee-dev:drivers:drivers-dev
+            - run:
+                name: Fetch dependencies (./bin/build/build-mb)
+                command: cd /home/circleci/metabase/metabase/bin/build-mb && clojure -P -M:test
+            # Not sure why this is needed since you would think build-mb would fetch this stuff as well. It doesn't
+            # seem to fetch everything tho. :shrug:
+            - run:
+                name: Fetch dependencies (./bin/build/build-drivers)
+                command: cd /home/circleci/metabase/metabase/bin/build-drivers && clojure -P -M:test
+            - save_cache:
+                name: Cache backend dependencies
+                <<: *CacheKeyBackendDeps
+                paths:
+                  - /home/circleci/.m2
+                  - /home/circleci/.gitlibs
+                  - /home/circleci/metabase/metabase/java/target/classes
+                  - /home/circleci/metabase/metabase/modules/drivers/sparksql/target/classes
 
-  be-tests:
-    <<: *defaults
+  clojure:
+    parameters:
+      e:
+        type: executor
+        default: clojure-and-node-and-browsers
+      before-steps:
+        type: steps
+        default: []
+      clojure-args:
+        type: string
+      after-steps:
+        type: steps
+        default: []
+      skip-when-no-change:
+        type: boolean
+        default: false
+      <<: *Params
+    executor: << parameters.e >>
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Run backend unit tests with Java 8
-          command: lein with-profile +ci test
-          no_output_timeout: 5m
-
-  be-tests-java-11:
-    <<: *defaults
-    docker:
-      - image: circleci/clojure:openjdk-11-lein-2.8.1
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Run backend unit tests with Java 11
-          command: lein with-profile +ci test
-          no_output_timeout: 5m
-
-  be-linter-eastwood:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Run Eastwood linter
-          command: lein with-profile +ci eastwood
-          no_output_timeout: 5m
-
-  be-linter-docstring-checker:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Run dockstring-checker
-          command: lein with-profile +ci docstring-checker
-          no_output_timeout: 5m
-
-  be-linter-namespace-decls:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Run namespace decl checker
-          command: lein with-profile +ci check-namespace-decls
-          no_output_timeout: 5m
-
-  be-linter-bikeshed:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Run Bikeshed linter
-          command: lein with-profile +ci bikeshed
-          no_output_timeout: 5m
+      - attach-workspace
+      - when:
+          condition: << parameters.skip-when-no-change >>
+          steps:
+            - run-on-change:
+                checksum: '{{ checksum ".BACKEND-CHECKSUMS" }}'
+                steps:
+                  - run-clojure-command:
+                      before-steps: << parameters.before-steps >>
+                      clojure-args: << parameters.clojure-args >>
+                      after-steps: << parameters.after-steps >>
+                      edition: << parameters.edition >>
+      - unless:
+          condition: << parameters.skip-when-no-change >>
+          steps:
+            - run-clojure-command:
+                before-steps: << parameters.before-steps >>
+                clojure-args: << parameters.clojure-args >>
+                after-steps: << parameters.after-steps >>
+                edition: << parameters.edition >>
 
   be-linter-reflection-warnings:
-    <<: *defaults
+    executor: clojure-and-node-and-browsers
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Run reflection warnings checker
-          command: ./bin/reflection-linter
-          no_output_timeout: 5m
+      - attach-workspace
+      - run-on-change:
+          checksum: '{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum "bin/reflection-linter" }}'
+          steps:
+            - restore-be-deps-cache
+            - run:
+                name: Run reflection warnings checker
+                command: ./bin/reflection-linter
+                no_output_timeout: 15m
 
-  be-tests-mysql:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: circleci/clojure:lein-2.8.1-node-browsers
-      - image: circleci/mysql:5.7.23
+  test-driver:
+    parameters:
+      e:
+        type: executor
+        default: clojure-and-node-and-browsers
+      driver:
+        type: string
+      timeout:
+        type: string
+        default: 15m
+      before-steps:
+        type: steps
+        default: []
+      after-steps:
+        type: steps
+        default: []
+      description:
+        type: string
+        default: ""
+      extra-env:
+        type: string
+        default: ""
+    executor: << parameters.e >>
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Run backend unit tests (MySQL)
-          environment:
-            DRIVERS: h2,mysql
-            MB_ENCRYPTION_SECRET_KEY: Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=
-            MB_DB_TYPE: mysql
-            MB_DB_HOST: localhost
-            MB_DB_PORT: 3306
-            MB_DB_DBNAME: circle_test
-            MB_DB_USER: root
-            MB_MYSQL_TEST_USER: root
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh mysql ||
-            lein with-profile +ci test
-          no_output_timeout: 5m
+      - attach-workspace
+      - run-on-change:
+          checksum: '{{ checksum ".BACKEND-CHECKSUMS" }}'
+          skip-job-if-commit-message-includes-ci-quick: true
+          steps:
+            - restore-be-deps-cache
+            - steps: << parameters.before-steps >>
+            - run:
+                name: Test << parameters.driver >> driver << parameters.description >>
+                environment:
+                  DRIVERS: << parameters.driver >>
+                command: << parameters.extra-env >> clojure -X:dev:ci:ee:ee-dev:drivers:drivers-dev:test
+                no_output_timeout: << parameters.timeout >>
+            - store_test_results:
+                path: /home/circleci/metabase/metabase/target/junit
+            - steps: << parameters.after-steps >>
 
-  be-tests-postgres:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: circleci/clojure:lein-2.8.1-node-browsers
-      - image: circleci/postgres:9.6-alpine
-        environment:
-          POSTGRES_USER: circle_test
-          POSTGRES_DB: circle_test
+  test-build-scripts:
+    executor: clojure-and-node-and-browsers
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Run backend unit tests (Postgres)
-          environment:
-            DRIVERS: h2,postgres
-            MB_DB_TYPE: postgres
-            MB_DB_PORT: 5432
-            MB_DB_HOST: localhost
-            MB_DB_DBNAME: circle_test
-            MB_DB_USER: circle_test
-            MB_POSTGRESQL_TEST_USER: circle_test
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh postgres ||
-            lein with-profile +ci test
-          no_output_timeout: 5m
-
-  be-tests-sparksql:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: circleci/clojure:lein-2.8.1-node-browsers
-      - image: metabase/spark:2.1.1
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Wait for SparkSQL to be ready
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sparksql ||
-            while ! nc -z localhost 10000; do sleep 0.1; done
-          no_output_timeout: 5m
-      - run:
-          name: Run backend unit tests (SparkSQL)
-          environment:
-            DRIVERS: h2,sparksql
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sparksql ||
-            lein with-profile +ci test
-          no_output_timeout: 5m
-
-  be-tests-mongo:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: circleci/clojure:lein-2.8.1-node-browsers
-      - image: circleci/mongo:3.4
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Run backend unit tests (MongoDB 3.4)
-          environment:
-            DRIVERS: h2,mongo
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh mongo ||
-            lein with-profile +ci test
-          no_output_timeout: 5m
-
-  be-tests-vertica:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: circleci/clojure:lein-2.8.1-node-browsers
-      - image: sumitchawla/vertica
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Make plugins dir
-          command: mkdir /home/circleci/metabase/metabase/plugins
-      - run:
-          name: Download Vertica JAR
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh vertica ||
-            wget --output-document=plugins/vertica-jdbc-7.1.2-0.jar $VERTICA_JDBC_JAR
-          no_output_timeout: 5m
-      - run:
-          name: Run backend unit tests (Vertica)
-          environment:
-            DRIVERS: h2,vertica
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh vertica ||
-            lein with-profile +ci test
-          no_output_timeout: 5m
-
-  be-tests-snowflake:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: circleci/clojure:lein-2.8.1-node-browsers
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Run backend unit tests (Snowflake)
-          environment:
-            DRIVERS: h2,snowflake
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh snowflake ||
-            lein with-profile +ci test
-          no_output_timeout: 10m
-
-  yaml-linter:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - run:
-          name: Install yamllint
-          command: npm install yaml-lint
-          no_output_timeout: 2m
-      - run:
-          name: Lint YAML files
-          command: ./node_modules/.bin/yamllint `find resources -name '*.yaml'`
-          no_output_timeout: 2m
-
-  be-tests-sqlserver:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Run backend unit tests (SQL Server)
-          environment:
-            DRIVERS: h2,sqlserver
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sqlserver ||
-            lein with-profile +ci test
-          no_output_timeout: 5m
-
-  be-tests-bigquery:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Run backend unit tests (BigQuery)
-          environment:
-            DRIVERS: h2,bigquery
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh bigquery ||
-            lein with-profile +ci test
-          no_output_timeout: 5m
-
-  be-tests-googleanalytics:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Run backend unit tests (Google Analytics)
-          environment:
-            DRIVERS: h2,googleanalytics
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh googleanalytics ||
-            lein with-profile +ci test
-          no_output_timeout: 5m
-
-  be-tests-sqlite:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Run backend unit tests (SQLite)
-          environment:
-            DRIVERS: h2,sqlite
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sqlite ||
-            lein with-profile +ci test
-
-  be-tests-druid:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Run backend unit tests (Druid)
-          environment:
-            DRIVERS: h2,druid
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh druid ||
-            lein with-profile +ci test
-          no_output_timeout: 5m
-
-  be-tests-redshift:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Run backend unit tests (Redshift)
-          environment:
-            DRIVERS: h2,redshift
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh redshift ||
-            lein with-profile +ci test
-          no_output_timeout: 10m
-
-
-  be-tests-presto:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: circleci/clojure:lein-2.8.1-node-browsers
-      - image: metabase/presto-mb-ci
-        environment:
-          JAVA_TOOL_OPTIONS: "-Xmx2g"
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Wait for Presto to be ready
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh presto ||
-            while ! nc -z localhost 8080; do sleep 0.1; done
-          no_output_timeout: 5m
-      - run:
-          name: Run backend unit tests (Presto)
-          environment:
-            DRIVERS: h2,presto
-            MB_PRESTO_TEST_HOST: localhost
-            MB_PRESTO_TEST_PORT: 8080
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh presto ||
-            lein with-profile +ci test
-          no_output_timeout: 5m
-
-
-  be-tests-oracle:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Make plugins dir
-          command: mkdir /home/circleci/metabase/metabase/plugins
-      - run:
-          name: Download Oracle JAR
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh oracle ||
-            wget --output-document=/home/circleci/metabase/metabase/plugins/ojdbc7.jar $ORACLE_JDBC_JAR
-      - run:
-          name: Run backend unit tests (Oracle)
-          environment:
-            DRIVERS: h2,oracle
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh oracle ||
-            lein with-profile +ci test
-          no_output_timeout: 5m
+      - attach-workspace
+      - run-on-change:
+          checksum: '{{ checksum ".BACKEND-CHECKSUMS" }}'
+          steps:
+            - restore-be-deps-cache
+            - run:
+                name: Run metabuild-common build script tests
+                command: |
+                  cd /home/circleci/metabase/metabase/bin/common && clojure -M:test
+                no_output_timeout: 15m
+            - run:
+                name: Run build-drivers build script tests
+                command: |
+                  cd /home/circleci/metabase/metabase/bin/build-drivers && clojure -M:test
+                no_output_timeout: 15m
+            - run:
+                name: Run i18n script tests
+                command: |
+                  cd /home/circleci/metabase/metabase/bin/i18n && clojure -M:test
+                no_output_timeout: 15m
+            - run:
+                name: Run build-mb build script tests
+                command: |
+                  cd /home/circleci/metabase/metabase/bin/build-mb && clojure -M:test
+                no_output_timeout: 15m
+            - run:
+                name: Run release script tests
+                command: |
+                  cd /home/circleci/metabase/metabase/bin/release && clojure -M:test
+                no_output_timeout: 15m
+            - run:
+                name: Run Liquibase migrations linter tests
+                command: |
+                  cd /home/circleci/metabase/metabase/bin/lint-migrations-file && clojure -M:test
+                no_output_timeout: 15m
 
 
 ########################################################################################################################
@@ -465,294 +774,557 @@ jobs:
 ########################################################################################################################
 
   fe-deps:
-    <<: *defaults
+    executor: clojure-and-node-and-browsers
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-fe-deps-cache
-      - run:
-          name: Run yarn if yarn.lock checksum has changed
-          command: >
-            if [ ! -f yarn.lock.checksum ] || [ "$(md5sum yarn.lock)" != "$(cat yarn.lock.checksum)" ];
-              then SAUCE_CONNECT_DOWNLOAD_ON_INSTALL=true yarn;
-            fi
-          no_output_timeout: 5m
-      - run:
-          name: Save yarn checksum
-          command: md5sum yarn.lock > yarn.lock.checksum
-      - save_cache:
-          key: fe-deps-{{ checksum "yarn.lock" }}
-          paths:
-            - /home/circleci/.yarn
-            - /home/circleci/.yarn-cache
-            - /home/circleci/metabase/metabase/node_modules
-            - /home/circleci/yarn.lock.checksum
+      - attach-workspace
+      # This step is *really* slow, so we can skip it if yarn.lock hasn't changed since last time we ran it
+      - run-on-change:
+          checksum: '{{ checksum "yarn.lock" }}'
+          steps:
+            - restore-fe-deps-cache
+            - run:
+                name: Run yarn to install deps
+                command: rm -rf node_modules/ && yarn --frozen-lockfile;
+                no_output_timeout: 15m
+            - save_cache:
+                name: Cache frontend dependencies
+                <<: *CacheKeyFrontendDeps
+                paths:
+                  - /home/circleci/.yarn
+                  - /home/circleci/.yarn-cache
+                  - /home/circleci/metabase/metabase/node_modules
+                  - /home/circleci/.cache/Cypress
 
-  fe-linter-eslint:
-    <<: *defaults
+  shared-tests-cljs:
+    executor: clojure-and-node-and-browsers
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-fe-deps-cache
-      - run:
-          name: Run ESLint linter
-          command: yarn lint-eslint
-          no_output_timeout: 5m
+      - run-yarn-command:
+          command-name: Run Cljs tests for shared/ code
+          command: run test-cljs
+          skip-when-no-change: true
 
-  fe-linter-prettier:
-    <<: *defaults
+  # Unlike the other build-uberjar steps, this step should be run once overall and the results can be shared between
+  # OSS and EE uberjars.
+  build-uberjar-drivers:
+    executor: clojure-and-node-and-browsers
+    parameters:
+      <<: *Params
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-fe-deps-cache
-      - run:
-          name: Run Prettier formatting linter
-          command: yarn lint-prettier
-          no_output_timeout: 5m
+      - attach-workspace
+      - run-on-change:
+          # .MODULES-CHECKSUMS is a subset of .BACKEND-CHECKSUMS.
+          #
+          # We have both versions so we can try to load cached drivers that match MODULES-CHECKSUMS but not
+          # BACKEND-CHECKSUMS as a whole.
+          #
+          # The build-drivers script is smart enough to only rebuild drivers if needed -- there's a chance we won't
+          # need to rebuild them.
+          checksum: '{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}'
+          steps:
+            - restore-be-deps-cache            #
+            - restore_cache:
+                <<: *CacheKeyMetabaseCore
+            - restore_cache:
+                name: Restore cached drivers uberjars from previous runs
+                <<: *CacheKeyDrivers_WithFallbackKeys
+            - run:
+                name: Build << parameters.edition >> drivers if needed
+                command: ./bin/build-drivers.sh << parameters.edition >>
+                no_output_timeout: 15m
+            - save_cache:
+                name: Cache local Maven installation of metabase-core
+                <<: *CacheKeyMetabaseCore
+                paths:
+                  - /home/circleci/.m2/repository/metabase-core
+            - save_cache:
+                name: Cache the built drivers
+                <<: *CacheKeyDrivers
+                paths:
+                  - /home/circleci/metabase/metabase/resources/modules
 
-  fe-linter-flow:
-    <<: *defaults
+  # Build the frontend client. parameters.edition determines whether we build the OSS or EE version.
+  build-uberjar-frontend:
+    parameters:
+      <<: *Params
+    executor: clojure-and-node-and-browsers
+    resource_class: large
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-fe-deps-cache
-      - run:
-          name: Run Flow type checker
-          command: yarn flow
-          no_output_timeout: 5m
+      - attach-workspace
+      - run-on-change:
+          checksum: '{{ checksum ".FRONTEND-CHECKSUMS" }}'
+          steps:
+            - restore-fe-deps-cache
+            - restore-be-deps-cache
+            - run:
+                name: Build frontend
+                environment:
+                  MB_EDITION: << parameters.edition >>
+                command: ./bin/build version frontend
+                no_output_timeout: 15m
+            - save_cache:
+                name: Cache the built frontend
+                <<: *CacheKeyFrontend
+                paths:
+                  - /home/circleci/metabase/metabase/resources/frontend_client
 
-  fe-tests-karma:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-fe-deps-cache
-      - run:
-          name: Run frontend tests (karma)
-          command: yarn run test-karma
-          no_output_timeout: 5m
-
-  fe-tests-unit:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-fe-deps-cache
-      - run:
-          name: Run frontend unit tests
-          command: yarn run test-unit
-          no_output_timeout: 5m
-
-  fe-tests-integration:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-fe-deps-cache
-      - run:
-          name: Run frontend integration tests
-          command: yarn run test-integration
-          no_output_timeout: 5m
-
+  # Build the uberjar. parmeters.edition determines whether we build the OSS or EE version.
   build-uberjar:
-    <<: *defaults
+    parameters:
+      <<: *Params
+    executor: clojure-and-node-and-browsers
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - restore_cache:
-          keys:
-            - uberjar-{{ checksum "./backend-checksums.txt" }}
-      - run:
-          name: Build uberjar if needed
-          command: >
-            if [ ! -f './target/uberjar/metabase.jar' ];
-              then ./bin/build version uberjar;
-            fi
-          no_output_timeout: 5m
-      - save_cache:
-          key: uberjar-{{ checksum "./backend-checksums.txt" }}
-          paths:
-            - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
+      - attach-workspace
+      - run-on-change:
+          checksum: '{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}'
+          steps:
+            - restore_cache:
+                name: Restore cached uberjar from previous runs
+                <<: *CacheKeyUberjar
+            - run:
+                name: Skip rest of job if uberjar already exists
+                command: |
+                   if [ -f './target/uberjar/metabase.jar' ]; then
+                       circleci-agent step halt
+                   fi
+            - restore-be-deps-cache
+            - restore_cache:
+                name: Restore cached drivers built by previous step
+                <<: *CacheKeyDrivers
+            - restore_cache:
+                name: Restore cached FE built by previous step
+                <<: *CacheKeyFrontend
+            - run:
+                name: Build uberjar
+                environment:
+                  # INTERACTIVE=false will tell the clojure build scripts not to do interactive retries etc.
+                  INTERACTIVE: "false"
+                  MB_EDITION: << parameters.edition >>
+                command: ./bin/build version uberjar
+                no_output_timeout: 15m
+            - store_artifacts:
+                path: /home/circleci/metabase/metabase/target/uberjar/metabase.jar
+            - store_artifacts:
+                path: /home/circleci/metabase/metabase/resources/version.properties
+            - save_cache:
+                name: Cache the built uberjar & version.properties
+                <<: *CacheKeyUberjar
+                paths:
+                  - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
+                  - /home/circleci/metabase/metabase/resources/version.properties
 
-  fe-tests-e2e:
-    <<: *defaults
+  fe-tests-cypress:
+    parameters:
+      e:
+        type: executor
+        default: clojure-and-node-and-browsers
+      cypress-group:
+        type: string
+      source-folder:
+        type: string
+        default: ""
+      folder:
+        type: string
+        default: ""
+      test-files:
+        type: string
+        default: ""
+      qa-db:
+        type: boolean
+        default: false
+      before-steps:
+        type: steps
+        default: []
+      <<: *Params
+    executor: << parameters.e >>
+    environment:
+      MB_EDITION: << parameters.edition >>
+      CYPRESS_GROUP:  << parameters.cypress-group >>
+      QA_DB_ENABLED: << parameters.qa-db >>
+      DISPLAY: ""
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-fe-deps-cache
-      - restore_cache:
-          keys:
-            - uberjar-{{ checksum "./backend-checksums.txt" }}
-      - run:
-          name: Generate version file
-          command: ./bin/build version
-      - run:
-          name: Run frontend e2e tests
-          command: yarn run test-e2e-no-build
-          no_output_timeout: 5m
-
-
-########################################################################################################################
-#                                                   DEPLOYMENT, ETC.                                                   #
-########################################################################################################################
-
-  deploy-master:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - run: ./bin/deploy-webhook $DEPLOY_WEBHOOK
+      - attach-workspace
+      - run-on-change:
+          checksum: '{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}-{{ checksum ".E2E-TESTS-CHECKSUMS" }}'
+          steps:
+            - run-yarn-command:
+                command-name: Run Cypress tests
+                before-steps:
+                  - restore_cache:
+                      name: Restore cached uberjar built in previous step
+                      <<: *CacheKeyUberjar
+                  - steps: << parameters.before-steps >>
+                # Make both `test-files` and `source-folder` parameters optional. Translates to: if `parameter` => run associated flag (`--spec` and `--folder`, respectively)
+                command: |
+                  run test-cypress-no-build <<# parameters.test-files >> --spec << parameters.test-files >> <</ parameters.test-files >> <<# parameters.source-folder >> --folder << parameters.source-folder >> <</ parameters.source-folder >>
+                after-steps:
+                  - store_artifacts:
+                      path: /home/circleci/metabase/metabase/cypress
+                  - store_test_results:
+                      path: cypress/results
 
 
 ########################################################################################################################
 #                                                      WORKFLOWS                                                       #
 ########################################################################################################################
 
+# `default_matrix` isn't a key that CircleCI uses, but this form lets us reuse the matrix: block
+default_matrix: &Matrix
+  matrix:
+    parameters:
+      edition: ["ee", "oss"]
+
 workflows:
   version: 2
   build:
     jobs:
       - checkout
+
+      - check-migrations:
+          requires:
+            - checkout
+
       - be-deps:
           requires:
             - checkout
-      - be-tests:
+
+      - clojure:
+          name: be-tests-<< matrix.edition >>
           requires:
             - be-deps
-      - be-tests-java-11:
+          e: java-8
+          clojure-args: -X:dev:ci:test
+          skip-when-no-change: true
+          <<: *Matrix
+
+      - clojure:
+          name: be-tests-java-11-<< matrix.edition >>
           requires:
             - be-deps
-      - be-linter-eastwood:
+          e: java-11
+          clojure-args: -X:dev:ci:test
+          skip-when-no-change: true
+          <<: *Matrix
+
+      - clojure:
+          name: be-tests-java-16-<< matrix.edition >>
           requires:
             - be-deps
-      - be-linter-docstring-checker:
+          e: java-16
+          clojure-args: -X:dev:ci:test
+          skip-when-no-change: true
+          <<: *Matrix
+
+      - clojure:
+          name: be-linter-cloverage
           requires:
             - be-deps
-      - be-linter-namespace-decls:
+          # TODO FIXME
+          clojure-args: -X:dev:ee:ee-dev:test:cloverage
+          after-steps:
+            - run:
+                name: Upload code coverage to codecov.io
+                command: bash <(curl -s https://codecov.io/bash) -F back-end
+
+          skip-when-no-change: true
+
+      - test-driver:
+          name: be-tests-bigquery-ee
+          requires:
+            - be-tests-ee
+          driver: bigquery
+
+      - test-driver:
+          name: be-tests-bigquery-cloud-sdk-ee
+          requires:
+            - be-tests-ee
+          driver: bigquery-cloud-sdk
+
+      - test-driver:
+          name: be-tests-druid-ee
+          requires:
+            - be-tests-ee
+          e: druid
+          driver: druid
+
+      - test-driver:
+          name: be-tests-googleanalytics-ee
+          requires:
+            - be-tests-ee
+          driver: googleanalytics
+
+      - test-driver:
+          name: be-tests-mongo-ee
+          description: "(Mongo 4.0)"
+          requires:
+            - be-tests-ee
+          e: mongo-4-0
+          driver: mongo
+
+      - test-driver:
+          name: be-tests-mongo-latest-ee
+          description: "(Mongo latest)"
+          requires:
+            - be-tests-ee
+          e: mongo-latest
+          driver: mongo
+
+      - test-driver:
+          name: be-tests-mysql-ee
+          description: "(MySQL 5.7)"
+          requires:
+            - be-tests-ee
+          e:
+            name: mysql-5-7
+          driver: mysql
+
+      - test-driver:
+          name: be-tests-mysql-latest-ee
+          description: "(MySQL latest)"
+          requires:
+            - be-tests-ee
+          e:
+            name: mysql-latest
+          driver: mysql
+          # set up env vars for something named "MYSQL_SSL" to run MySQL SSL tests verifying connectivity with PEM cert
+          # they are deliberately given a different name to prevent them from affecting the regular test run against
+          # the configured MySQL instance, but there is one particular test (mysql-connect-with-ssl-and-pem-cert-test)
+          # that overrides the MB_MYSQL_TEST_* values with them
+          # the MYSQL_RDS_SSL_INSTANCE vars are secret and/or changeable, so they are defined in the CircleCI settings
+          extra-env: >-
+            MB_MYSQL_SSL_TEST_HOST=$MYSQL_RDS_SSL_INSTANCE_HOST
+            MB_MYSQL_SSL_TEST_SSL=true
+            MB_MYSQL_SSL_TEST_ADDITIONAL_OPTIONS='verifyServerCertificate=true'
+            MB_MYSQL_SSL_TEST_SSL_CERT="$(cat /home/circleci/metabase/metabase/resources/certificates/rds-combined-ca-bundle.pem)"
+            MB_MYSQL_SSL_TEST_USER=metabase
+            MB_MYSQL_SSL_TEST_PASSWORD=$MYSQL_RDS_SSL_INSTANCE_PASSWORD
+
+      - test-driver:
+          name: be-tests-mariadb-ee
+          description: "(MariaDB 10.2)"
+          requires:
+            - be-tests-ee
+          e:
+            name: mariadb-10-2
+          driver: mysql
+
+      - test-driver:
+          name: be-tests-mariadb-latest-ee
+          description: "(MariaDB latest)"
+          requires:
+            - be-tests-ee
+          e:
+            name: mariadb-latest
+          driver: mysql
+
+      - test-driver:
+          name: be-tests-oracle-ee
+          requires:
+            - be-tests-ee
+          before-steps:
+            - fetch-jdbc-driver:
+                source: ORACLE_JDBC_JAR
+                dest: ojdbc8.jar
+          driver: oracle
+          extra-env: >-
+            MB_ORACLE_SSL_TEST_SSL=true
+            MB_ORACLE_SSL_TEST_PORT=2484
+            JVM_OPTS="-Djavax.net.ssl.trustStore=/home/circleci/metabase/metabase/resources/certificates/cacerts_with_RDS_root_ca.jks
+                      -Djavax.net.ssl.trustStoreType=JKS
+                      -Djavax.net.ssl.trustStorePassword=metabase $JAVA_OPTS"
+
+      - test-driver:
+          name: be-tests-postgres-ee
+          description: "(9.6)"
+          requires:
+            - be-tests-ee
+          e: postgres-9-6
+          driver: postgres
+
+      - test-driver:
+          name: be-tests-postgres-latest-ee
+          description: "(Latest)"
+          requires:
+            - be-tests-ee
+          e: postgres-latest
+          driver: postgres
+
+      - test-driver:
+          name: be-tests-presto-ee
+          requires:
+            - be-tests-ee
+          e: presto-186
+          before-steps:
+            - wait-for-port:
+                port: 8080
+          driver: presto
+
+      - test-driver:
+          name: be-tests-presto-jdbc-ee
+          requires:
+            - be-tests-ee
+          e: presto-jdbc-env # specific env for running Presto JDBC tests (newer Presto version, SSL, etc.)
+          before-steps:
+            - wait-for-port:
+                port: 8443
+            - run:
+                name: Create temp cacerts file based on bundled JDK one
+                command: cp $JAVA_HOME/lib/security/cacerts /tmp/cacerts-with-presto-ssl.jks
+            - run:
+                name: Capture Presto server self signed CA
+                command: |
+                  while [[ ! -s /tmp/presto-ssl-ca.pem ]];
+                    do echo "Waiting to capture SSL CA" \
+                      && openssl s_client -connect localhost:8443 2>/dev/null </dev/null | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > /tmp/presto-ssl-ca.pem \
+                      && sleep 1; done
+            - run:
+                name: Convert Presto CA from PEM to DER
+                command: openssl x509 -outform der -in /tmp/presto-ssl-ca.pem -out /tmp/presto-ssl-ca.der
+            - run:
+                name: Import Presto CA into temp cacerts file
+                command: |
+                  sudo keytool -noprompt -import -alias presto -keystore /tmp/cacerts-with-presto-ssl.jks \
+                   -storepass changeit -file /tmp/presto-ssl-ca.der -trustcacerts
+          after-steps:
+            - run:
+                name: Capture max memory usage
+                command: cat /sys/fs/cgroup/memory/memory.max_usage_in_bytes
+                when: always
+          driver: presto-jdbc
+
+      - test-driver:
+          name: be-tests-redshift-ee
+          requires:
+            - be-tests-ee
+          driver: redshift
+          timeout: 15m
+
+      - test-driver:
+          name: be-tests-snowflake-ee
+          requires:
+            - be-tests-ee
+          driver: snowflake
+          timeout: 115m
+
+      - test-driver:
+          name: be-tests-sparksql-ee
+          requires:
+            - be-tests-ee
+          e: sparksql
+          before-steps:
+            - wait-for-port:
+                port: 10000
+          driver: sparksql
+
+      - test-driver:
+          name: be-tests-sqlite-ee
+          requires:
+            - be-tests-ee
+          driver: sqlite
+
+      - test-driver:
+          name: be-tests-sqlserver-ee
+          requires:
+            - be-tests-ee
+          e: sqlserver
+          driver: sqlserver
+
+      - test-driver:
+          name: be-tests-vertica-ee
+          requires:
+            - be-tests-ee
+          e: vertica
+          before-steps:
+            - fetch-jdbc-driver:
+                source: VERTICA_JDBC_JAR
+                dest: vertica-jdbc-7.1.2-0.jar
+          driver: vertica
+
+      - test-build-scripts:
           requires:
             - be-deps
-      - be-linter-bikeshed:
+
+      - build-uberjar-drivers:
+          name: build-uberjar-drivers-<< matrix.edition >>
           requires:
             - be-deps
-      - be-linter-reflection-warnings:
+          <<: *Matrix
+
+      - build-uberjar-frontend:
+          name: build-uberjar-frontend-<< matrix.edition >>
           requires:
-            - be-deps
-      - be-tests-mysql:
+            - fe-deps
+          <<: *Matrix
+
+      - build-uberjar:
+          name: build-uberjar-<< matrix.edition >>
           requires:
-            - be-tests
-      - be-tests-postgres:
-          requires:
-            - be-tests
-      - be-tests-sparksql:
-          requires:
-            - be-tests
-      - be-tests-mongo:
-          requires:
-            - be-tests
-      - be-tests-sqlserver:
-          requires:
-            - be-tests
-      - be-tests-bigquery:
-          requires:
-            - be-tests
-      - be-tests-googleanalytics:
-          requires:
-            - be-tests
-      - be-tests-sqlite:
-          requires:
-            - be-tests
-      - be-tests-presto:
-          requires:
-            - be-tests
-      - be-tests-oracle:
-          requires:
-            - be-tests
-      - be-tests-druid:
-          requires:
-            - be-tests
-      - be-tests-redshift:
-          requires:
-            - be-tests
-      - be-tests-vertica:
-          requires:
-            - be-tests
-      - be-tests-snowflake:
-          requires:
-            - be-tests
-      - yaml-linter:
-          requires:
-            - checkout
+            - build-uberjar-drivers-<< matrix.edition >>
+            - build-uberjar-frontend-<< matrix.edition >>
+          <<: *Matrix
+
       - fe-deps:
           requires:
             - checkout
-      - fe-linter-eslint:
+      - shared-tests-cljs:
           requires:
             - fe-deps
-      - fe-linter-prettier:
-          requires:
-            - fe-deps
-      - fe-linter-flow:
-          requires:
-            - fe-deps
-      - fe-tests-karma:
-          requires:
-            - fe-deps
-      - fe-tests-unit:
-          requires:
-            - fe-deps
-      - fe-tests-integration:
-          requires:
-            - fe-deps
-      - build-uberjar:
-          requires:
-            - be-deps
-      - fe-tests-e2e:
-          requires:
-            - build-uberjar
-            - fe-deps
-      - deploy-master:
-          requires:
-            - be-linter-eastwood
-            - be-linter-docstring-checker
-            - be-linter-namespace-decls
-            - be-linter-bikeshed
-            - be-linter-reflection-warnings
 
-            - be-tests
-            - be-tests-mysql
-            - be-tests-postgres
-            - be-tests-sparksql
-            - be-tests-mongo
-            - be-tests-sqlserver
-            - be-tests-bigquery
-            - be-tests-googleanalytics
-            - be-tests-sqlite
-            - be-tests-presto
-            - be-tests-oracle
-            - be-tests-druid
-            - be-tests-redshift
-            - be-tests-vertica
-            - be-tests-snowflake
+      - fe-tests-cypress:
+          matrix:
+            parameters:
+              edition: ["ee", "oss"]
+              folder: ["admin", "binning", "collections", "dashboard", "dashboard-filters", "dashboard-filters-sql", "moderation", "native", "native-filters", "onboarding", "permissions", "question", "sharing", "smoketest", "visualizations"]
+          name: e2e-tests-<< matrix.folder >>-<< matrix.edition >>
+          requires:
+            - build-uberjar-<< matrix.edition >>
+          cypress-group: "<< matrix.folder >>-<< matrix.edition >>"
+          source-folder: << matrix.folder >>
 
-            - yaml-linter
+      - fe-tests-cypress:
+          matrix:
+            parameters:
+              edition: ["ee", "oss"]
+          name: percy-visual-tests-<< matrix.edition >>
+          requires:
+            - build-uberjar-<< matrix.edition >>
+          cypress-group: "percy-visual-<< matrix.edition >>"
+          test-files: "./frontend/test/metabase-visual/**/*.cy.spec.js"
 
-            - fe-linter-eslint
-            - fe-linter-prettier
-            - fe-linter-flow
-            - fe-tests-karma
-            - fe-tests-unit
-            - fe-tests-integration
-            - fe-tests-e2e
-          filters:
-            branches:
-              only: master
+      - fe-tests-cypress:
+          name: e2e-tests-mongo-4-<< matrix.edition >>
+          requires:
+            - build-uberjar-<< matrix.edition >>
+          e: fe-mongo-4
+          cypress-group: "mongo"
+          source-folder: mongo
+          qa-db: true
+          before-steps:
+            - wait-for-port:
+                port: 27017
+          <<: *Matrix
+
+      - fe-tests-cypress:
+          name: e2e-tests-postgres-12-<< matrix.edition >>
+          requires:
+            - build-uberjar-<< matrix.edition >>
+          e: fe-postgres-12
+          cypress-group: "postgres"
+          source-folder: postgres
+          qa-db: true
+          before-steps:
+            - wait-for-port:
+                port: 5432
+          <<: *Matrix
+
+      - fe-tests-cypress:
+          name: e2e-tests-mysql-8-<< matrix.edition >>
+          requires:
+            - build-uberjar-<< matrix.edition >>
+          e: fe-mysql-8
+          cypress-group: "mysql"
+          source-folder: mysql
+          qa-db: true
+          before-steps:
+            - wait-for-port:
+                port: 3306
+          <<: *Matrix

@@ -1,5 +1,6 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Humanize from "humanize-plus";
 
 export default class ExpandableString extends Component {
@@ -14,13 +15,14 @@ export default class ExpandableString extends Component {
 
   static defaultProps = {
     length: 140,
-    expanded: false,
   };
 
-  componentWillReceiveProps(newProps) {
-    this.setState({
-      expanded: newProps.expanded,
-    });
+  UNSAFE_componentWillReceiveProps(newProps) {
+    if (newProps.expanded !== undefined) {
+      this.setState({
+        expanded: newProps.expanded,
+      });
+    }
   }
 
   toggleExpansion() {
@@ -34,7 +36,7 @@ export default class ExpandableString extends Component {
       return false;
     }
 
-    let truncated = Humanize.truncate(this.props.str || "", 140);
+    const truncated = Humanize.truncate(this.props.str || "", 140);
 
     if (this.state.expanded) {
       return (

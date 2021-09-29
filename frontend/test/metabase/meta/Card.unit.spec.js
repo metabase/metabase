@@ -1,16 +1,24 @@
 import * as Card from "metabase/meta/Card";
 
 import { assocIn, dissoc } from "icepick";
+import { getMetadata } from "metabase/selectors/metadata";
 
 describe("metabase/meta/Card", () => {
   describe("questionUrlWithParameters", () => {
-    const metadata = {
-      fields: {
-        2: {
-          base_type: "type/Integer",
+    const metadata = getMetadata({
+      entities: {
+        databases: {},
+        schemas: {},
+        tables: {},
+        fields: {
+          2: {
+            base_type: "type/Integer",
+          },
         },
+        metrics: {},
+        segments: {},
       },
-    };
+    });
 
     const parameters = [
       {
@@ -20,8 +28,8 @@ describe("metabase/meta/Card", () => {
       },
       {
         id: 2,
-        slug: "param_number",
-        type: "category",
+        slug: "param_operator",
+        type: "category/starts-with",
       },
       {
         id: 3,
@@ -32,6 +40,11 @@ describe("metabase/meta/Card", () => {
         id: 4,
         slug: "param_fk",
         type: "date/month",
+      },
+      {
+        id: 5,
+        slug: "param_number",
+        type: "number/=",
       },
     ];
 
@@ -91,22 +104,27 @@ describe("metabase/meta/Card", () => {
         {
           card_id: 1,
           parameter_id: 1,
-          target: ["dimension", ["field-id", 1]],
+          target: ["dimension", ["field", 1, null]],
         },
         {
           card_id: 1,
           parameter_id: 2,
-          target: ["dimension", ["field-id", 2]],
+          target: ["dimension", ["field", 2, null]],
         },
         {
           card_id: 1,
           parameter_id: 3,
-          target: ["dimension", ["field-id", 3]],
+          target: ["dimension", ["field", 3, null]],
         },
         {
           card_id: 1,
           parameter_id: 4,
-          target: ["dimension", ["fk->", 4, 5]],
+          target: ["dimension", ["field", 5, { "source-field": 4 }]],
+        },
+        {
+          card_id: 1,
+          parameter_id: 5,
+          target: ["dimension", ["field", 2, null]],
         },
       ];
       it("should return question URL with no parameters", () => {
@@ -131,7 +149,7 @@ describe("metabase/meta/Card", () => {
           card: assocIn(
             dissoc(card, "id"),
             ["dataset_query", "query", "filter"],
-            ["and", ["=", ["field-id", 1], "bar"]],
+            ["and", ["=", ["field", 1, null], "bar"]],
           ),
         });
       });
@@ -155,16 +173,17 @@ describe("metabase/meta/Card", () => {
           card: assocIn(
             cardWithOnlyOriginalCardId,
             ["dataset_query", "query", "filter"],
-            ["and", ["=", ["field-id", 1], "bar"]],
+            ["and", ["=", ["field", 1, null], "bar"]],
           ),
         });
       });
+
       it("should return question URL with number MBQL filter added", () => {
         const url = Card.questionUrlWithParameters(
           card,
           metadata,
           parameters,
-          { "2": "123" },
+          { "5": 123 },
           parameterMappings,
         );
         expect(parseUrl(url)).toEqual({
@@ -173,10 +192,11 @@ describe("metabase/meta/Card", () => {
           card: assocIn(
             dissoc(card, "id"),
             ["dataset_query", "query", "filter"],
-            ["and", ["=", ["field-id", 2], 123]],
+            ["and", ["=", ["field", 2, null], 123]],
           ),
         });
       });
+
       it("should return question URL with date MBQL filter added", () => {
         const url = Card.questionUrlWithParameters(
           card,
@@ -194,7 +214,7 @@ describe("metabase/meta/Card", () => {
             ["dataset_query", "query", "filter"],
             [
               "and",
-              ["=", ["datetime-field", ["field-id", 3], "month"], "2017-05-01"],
+              ["=", ["field", 3, { "temporal-unit": "month" }], "2017-05-01"],
             ],
           ),
         });
@@ -215,7 +235,11 @@ describe("metabase/meta/Card", () => {
             ["dataset_query", "query", "filter"],
             [
               "and",
-              ["=", ["datetime-field", ["fk->", 4, 5], "month"], "2017-05-01"],
+              [
+                "=",
+                ["field", 5, { "source-field": 4, "temporal-unit": "month" }],
+                "2017-05-01",
+              ],
             ],
           ),
         });

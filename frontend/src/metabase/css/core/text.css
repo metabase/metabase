@@ -108,16 +108,22 @@
   text-transform: capitalize;
 }
 
-/* text weight */
-.text-light {
-  font-weight: 300;
+.text-transform-none {
+  text-transform: none;
 }
+
+/* text weight */
+/* NOTE: .text-light removed since it conflicted with text-light in colors.css */
 .text-normal {
   font-weight: 400;
 }
 .text-bold,
 :local(.text-bold) {
   font-weight: 700;
+}
+
+.text-heavy {
+  font-weight: 900;
 }
 
 /* text style */
@@ -145,6 +151,11 @@
   line-height: 1.5em;
 }
 
+.text-unspaced,
+:local(.text-unspaced) {
+  line-height: normal;
+}
+
 .text-small {
   font-size: 0.875em;
 }
@@ -169,6 +180,12 @@
   text-overflow: ellipsis;
 }
 
+.text-wrap {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  word-wrap: anywhere;
+}
+
 .text-nowrap {
   white-space: nowrap;
 }
@@ -179,6 +196,12 @@
   background-color: var(--color-bg-medium);
   border-radius: 2px;
   padding: 0.2em 0.4em;
+  line-height: 1.4em;
+  white-space: pre-wrap;
+}
+.text-code-plain {
+  font-family: monospace;
+  color: var(--color-text-dark);
   line-height: 1.4em;
   white-space: pre-wrap;
 }

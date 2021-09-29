@@ -3,12 +3,23 @@
 import crossfilter from "crossfilter";
 import d3 from "d3";
 import dc from "dc";
+import { t } from "ttag";
 
 import { formatValue } from "metabase/lib/formatting";
 
-import { initChart, forceSortedGroup, makeIndexMap } from "./renderer_utils";
+import {
+  initChart,
+  forceSortedGroup,
+  makeIndexMap,
+  formatNull,
+} from "./renderer_utils";
 import { getFriendlyName } from "./utils";
 import { checkXAxisLabelOverlap } from "./LineAreaBarPostRender";
+
+const ROW_GAP = 5;
+const ROW_MAX_HEIGHT = 30;
+
+type DeregisterFunction = () => void;
 
 export default function rowRenderer(
   element,
@@ -16,25 +27,25 @@ export default function rowRenderer(
 ): DeregisterFunction {
   const { cols } = series[0].data;
 
-  if (series.length > 1) {
-    throw new Error("Row chart does not support multiple series");
-  }
-
   const chart = dc.rowChart(element);
 
   // disable clicks
   chart.onClick = () => {};
 
-  const formatDimension = row =>
-    formatValue(row[0], { column: cols[0], type: "axis" });
-
   // dc.js doesn't give us a way to format the row labels from unformatted data, so we have to
   // do it here then construct a mapping to get the original dimension for tooltipsd/clicks
-  const rows = series[0].data.rows.map(row => [formatDimension(row), row[1]]);
+  const rowsWithFormattedNull = series[0].data.rows.map(([first, ...rest]) => [
+    formatNull(first),
+    ...rest,
+  ]);
+  const rows = rowsWithFormattedNull.map(([a, b]) => [
+    formatValue(a, { column: cols[0], type: "axis" }),
+    b,
+  ]);
   const formattedDimensionMap = new Map(
     rows.map(([formattedDimension], index) => [
       formattedDimension,
-      series[0].data.rows[index][0],
+      rowsWithFormattedNull[index][0],
     ]),
   );
 
@@ -49,6 +60,18 @@ export default function rowRenderer(
   initChart(chart, element);
 
   chart.on("renderlet.tooltips", chart => {
+    const getData = d => [
+      {
+        key: getFriendlyName(cols[0]),
+        value: formattedDimensionMap.get(d.key),
+        col: cols[0],
+      },
+      {
+        key: getFriendlyName(cols[1]),
+        value: d.value,
+        col: cols[1],
+      },
+    ];
     if (onHoverChange) {
       chart
         .selectAll(".row rect")
@@ -58,14 +81,7 @@ export default function rowRenderer(
               // for single series bar charts, fade the series and highlght the hovered element with CSS
               index: -1,
               event: d3.event,
-              data: [
-                {
-                  key: getFriendlyName(cols[0]),
-                  value: formattedDimensionMap.get(d.key),
-                  col: cols[0],
-                },
-                { key: getFriendlyName(cols[1]), value: d.value, col: cols[1] },
-              ],
+              data: getData(d),
             });
         })
         .on("mouseleave", () => {
@@ -84,7 +100,9 @@ export default function rowRenderer(
               column: cols[0],
             },
           ],
+          data: getData(d),
           element: this,
+          settings,
         });
       });
     }
@@ -96,10 +114,17 @@ export default function rowRenderer(
     .elasticX(true)
     .dimension(dimension)
     .group(group)
-    .ordering(d => d.index);
+    .ordering(d => d.index)
+    .othersLabel(t`Others`);
 
-  let labelPadHorizontal = 5;
-  let labelPadVertical = 1;
+  chart.xAxis().tickFormat(value => {
+    return formatValue(value, {
+      ...settings.column(cols[1]),
+      type: "axis",
+    });
+  });
+
+  const labelPadHorizontal = 5;
   let labelsOutside = false;
 
   chart.on("renderlet.bar-labels", chart => {
@@ -123,6 +148,8 @@ export default function rowRenderer(
     });
   }
 
+  chart.gap(ROW_GAP);
+
   // inital render
   chart.render();
 
@@ -136,27 +163,25 @@ export default function rowRenderer(
     chart.margins().bottom += axisLabelHeight;
   }
 
-  // cap number of rows to fit
-  let rects = chart.selectAll(".row rect")[0];
-  let containerHeight =
-    rects[rects.length - 1].getBoundingClientRect().bottom -
-    rects[0].getBoundingClientRect().top;
-  let maxTextHeight = Math.max(
-    ...chart
-      .selectAll("g.row text")[0]
-      .map(e => e.getBoundingClientRect().height),
-  );
-  let rowHeight = maxTextHeight + chart.gap() + labelPadVertical * 2;
-  let cap = Math.max(1, Math.floor(containerHeight / rowHeight));
+  const { top, bottom } = chart.margins();
+  const boundsHeight = chart.height() - top - bottom;
+  const rowHeight = (boundsHeight - chart.gap()) / group.size();
+  const barHeight = rowHeight - chart.gap();
+  const cap = Math.max(1, Math.floor(boundsHeight / ROW_MAX_HEIGHT));
   chart.cap(cap);
+
+  if (barHeight > ROW_MAX_HEIGHT) {
+    const reasonableMaxGap = boundsHeight / 3;
+    chart.gap(Math.min(barHeight / 2, reasonableMaxGap));
+  }
 
   chart.render();
 
   // check if labels overflow after rendering correct number of rows
   let maxTextWidth = 0;
   for (const elem of chart.selectAll("g.row")[0]) {
-    let rect = elem.querySelector("rect").getBoundingClientRect();
-    let text = elem.querySelector("text").getBoundingClientRect();
+    const rect = elem.querySelector("rect").getBoundingClientRect();
+    const text = elem.querySelector("text").getBoundingClientRect();
     maxTextWidth = Math.max(maxTextWidth, text.width);
     if (rect.width < text.width + labelPadHorizontal * 2) {
       labelsOutside = true;
@@ -170,8 +195,14 @@ export default function rowRenderer(
 
   // hide overlapping x-axis labels
   if (checkXAxisLabelOverlap(chart, ".axis text")) {
-    chart.selectAll(".axis").remove();
+    chart
+      .selectAll(".tick text")[0]
+      .slice(1, -1)
+      .forEach(e => e.remove());
   }
+
+  // add a class our CSS can target
+  chart.svg().classed("rowChart", true);
 
   return () => {
     dc.chartRegistry.deregister(chart);

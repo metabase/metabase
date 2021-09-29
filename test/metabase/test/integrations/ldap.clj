@@ -1,41 +1,53 @@
 (ns metabase.test.integrations.ldap
   (:require [clojure.java.io :as io]
-            [expectations :refer [expect]]
-            [metabase.test.util :as tu])
-  (:import (com.unboundid.ldap.listener InMemoryDirectoryServer InMemoryDirectoryServerConfig InMemoryListenerConfig)
+            [metabase.test.util :as tu]
+            [metabase.util :as u])
+  (:import [com.unboundid.ldap.listener InMemoryDirectoryServer InMemoryDirectoryServerConfig InMemoryListenerConfig]
            com.unboundid.ldap.sdk.schema.Schema
-           com.unboundid.ldif.LDIFReader))
+           com.unboundid.ldif.LDIFReader
+           [java.io File FileNotFoundException]))
 
-
-(def ^:dynamic *ldap-server*
+(def ^:dynamic ^InMemoryDirectoryServer *ldap-server*
   "An in-memory LDAP testing server."
   nil)
 
-(defn- get-server-config []
-  (doto (InMemoryDirectoryServerConfig. (into-array String ["dc=metabase,dc=com"]))
-          (.addAdditionalBindCredentials "cn=Directory Manager" "password")
-          (.setSchema (Schema/getDefaultStandardSchema))
-          (.setListenerConfigs (into-array InMemoryListenerConfig [(InMemoryListenerConfig/createLDAPConfig "LDAP" 0)]))))
+(defn- get-server-config
+  ^InMemoryDirectoryServerConfig [schema]
+  (doto (InMemoryDirectoryServerConfig. (u/varargs String ["dc=metabase,dc=com"]))
+    (.addAdditionalBindCredentials "cn=Directory Manager" "password")
+    (.setSchema schema)
+    (.setListenerConfigs (u/varargs InMemoryListenerConfig [(InMemoryListenerConfig/createLDAPConfig "LDAP" 0)]))))
 
-(defn- start-ldap-server! []
-  (with-open [ldif (LDIFReader. (io/file (io/resource "ldap.ldif")))]
-    (doto (InMemoryDirectoryServer. (get-server-config))
-            (.importFromLDIF true ldif)
-            (.startListening))))
+(defn- start-ldap-server!
+  ^InMemoryDirectoryServer [{:keys [ldif-resource schema]}]
+  (let [^File file (or (io/file (str "test_resources/" ldif-resource))
+                       (throw
+                        (FileNotFoundException. (str ldif-resource " does not exist!"))))]
+    (with-open [ldif (LDIFReader. file)]
+      (doto (InMemoryDirectoryServer. (get-server-config schema))
+        (.importFromLDIF true ldif)
+        (.startListening)))))
 
 (defn get-ldap-port
   "Get the port for the bound in-memory LDAP testing server."
   []
   (.getListenPort *ldap-server*))
 
+(defn get-default-schema
+  "Get the default schema for the directory server."
+  []
+  (Schema/mergeSchemas
+   (u/varargs Schema [(Schema/getDefaultStandardSchema)
+                      (Schema/getSchema (u/varargs File [(io/file "test_resources/posixGroup.schema.ldif")]))])))
+
 (defn do-with-ldap-server
   "Bind `*ldap-server*` and the relevant settings to an in-memory LDAP testing server and executes `f`."
-  [f]
-  (binding [*ldap-server* (start-ldap-server!)]
+  [f options]
+  (binding [*ldap-server* (start-ldap-server! options)]
     (try
       (tu/with-temporary-setting-values [ldap-enabled    true
                                          ldap-host       "localhost"
-                                         ldap-port       (str (get-ldap-port))
+                                         ldap-port       (get-ldap-port)
                                          ldap-bind-dn    "cn=Directory Manager"
                                          ldap-password   "password"
                                          ldap-user-base  "dc=metabase,dc=com"
@@ -45,11 +57,16 @@
       (finally (.shutDown *ldap-server* true)))))
 
 (defmacro with-ldap-server
-  "Bind `*ldap-server*` and the relevant settings to an in-memory LDAP testing server and executes BODY."
+  "Bind `*ldap-server*` and the relevant settings to an in-memory LDAP testing server and executes `body`."
   [& body]
-  `(do-with-ldap-server (fn [] ~@body)))
+  `(do-with-ldap-server (fn [] ~@body)
+                        {:ldif-resource "ldap.ldif"
+                         :schema        (get-default-schema)}))
 
-(defmacro expect-with-ldap-server
-  "Generate a unit test that runs ACTUAL with a bound `*ldap-server*` and relevant settings."
-  [expected actual]
-  `(expect ~expected (with-ldap-server ~actual)))
+(defmacro with-active-directory-ldap-server
+  "Bind `*ldap-server*` and the relevant settings to an in-memory LDAP testing server and executes `body`.
+  This version of the macro uses options that simulate an Active Directory server with memberOf attributes."
+  [& body]
+  `(do-with-ldap-server (fn [] ~@body)
+                        {:ldif-resource "active_directory.ldif"
+                         :schema        nil}))

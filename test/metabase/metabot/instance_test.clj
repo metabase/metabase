@@ -1,37 +1,34 @@
 (ns metabase.metabot.instance-test
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
             [metabase.metabot.instance :as metabot.instance]
-            [metabase.util.date :as du]))
+            [metabase.util.date-2 :as u.date]))
 
-;; test that if we're not the MetaBot based on Settings, our function to check is working correctly
-(expect
-  false
-  (do
+(deftest am-i-the-metabot-test?
+  (testing "test that if we're not the MetaBot based on Settings, our function to check is working correctly"
     (#'metabot.instance/metabot-instance-uuid nil)
     (#'metabot.instance/metabot-instance-last-checkin nil)
-    (#'metabot.instance/am-i-the-metabot?)))
+    (is (= false
+           (#'metabot.instance/am-i-the-metabot?)))))
 
-;; test that if nobody is currently the MetaBot, we will become the MetaBot
-(expect
-  (do
+(deftest become-test-metabot-test
+  (testing "test that if nobody is currently the MetaBot, we will become the MetaBot"
     (#'metabot.instance/metabot-instance-uuid nil)
     (#'metabot.instance/metabot-instance-last-checkin nil)
     (#'metabot.instance/check-and-update-instance-status!)
-    (#'metabot.instance/am-i-the-metabot?)))
+    (is (#'metabot.instance/am-i-the-metabot?))))
 
-;; test that if nobody has checked in as MetaBot for a while, we will become the MetaBot
-(expect
-  (do
+(deftest become-the-metabot-if-no-checkins-test
+  (testing "test that if nobody has checked in as MetaBot for a while, we will become the MetaBot"
     (#'metabot.instance/metabot-instance-uuid (str (java.util.UUID/randomUUID)))
-    (#'metabot.instance/metabot-instance-last-checkin (du/relative-date :minute -10 (#'metabot.instance/current-timestamp-from-db)))
+    (#'metabot.instance/metabot-instance-last-checkin
+     (u.date/add (#'metabot.instance/current-timestamp-from-db) :minute -10))
     (#'metabot.instance/check-and-update-instance-status!)
-    (#'metabot.instance/am-i-the-metabot?)))
+    (is (#'metabot.instance/am-i-the-metabot?))))
 
-;; check that if another instance has checked in recently, we will *not* become the MetaBot
-(expect
-  false
-  (do
+(deftest another-instance-test
+  (testing "check that if another instance has checked in recently, we will *not* become the MetaBot"
     (#'metabot.instance/metabot-instance-uuid (str (java.util.UUID/randomUUID)))
     (#'metabot.instance/metabot-instance-last-checkin (#'metabot.instance/current-timestamp-from-db))
     (#'metabot.instance/check-and-update-instance-status!)
-    (#'metabot.instance/am-i-the-metabot?)))
+    (is (= false
+           (#'metabot.instance/am-i-the-metabot?)))))

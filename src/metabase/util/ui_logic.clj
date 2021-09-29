@@ -8,16 +8,15 @@
   (not= :aggregation (:source col)))
 
 (defn- summable-column?
-  "A summable column is any numeric column that isn't a special type like an FK or PK. It also excludes unix
-  timestamps that are numbers, but with a special type of DateTime"
-  [{:keys [base_type special_type]}]
-  (and (or (isa? base_type :type/Number)
-           (isa? special_type :type/Number))
-       (not (isa? special_type :type/Special))
-       (not (isa? special_type :type/DateTime))))
+  "A summable column is any numeric column that isn't a relation type like an FK or PK. It also excludes unix
+  timestamps that are numbers, but with an effective type of `Temporal`."
+  [{base-type :base_type, effective-type :effective_type, semantic-type :semantic_type}]
+  (and (isa? base-type :type/Number)
+       (not (isa? effective-type :type/Temporal))
+       (not (isa? semantic-type :Relation/*))))
 
 (defn- metric-column?
-  "A metric column is any non-breakout column that is summable (numeric that isn't a special type like an FK/PK/Unix
+  "A metric column is any non-breakout column that is summable (numeric that isn't a semantic type like an FK/PK/Unix
   timestamp)"
   [col]
   (and (not= :breakout (:source col))
@@ -60,9 +59,9 @@
 
 (defn- column-name->index
   "The results seq is seq of vectors, this function returns the index in that vector of the given `COLUMN-NAME`"
-  [^String column-name {:keys [cols] :as result}]
+  [column-name {:keys [cols] :as result}]
   (first (remove nil? (map-indexed (fn [idx column]
-                                     (when (.equalsIgnoreCase column-name (:name column))
+                                     (when (.equalsIgnoreCase (name column-name) (name (:name column)))
                                        idx))
                                    cols))))
 

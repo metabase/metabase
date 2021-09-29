@@ -27,7 +27,7 @@ export default class InputBlurChange extends Component {
     type: "text",
   };
 
-  componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(newProps) {
     this.setState({ value: newProps.value });
   }
 
@@ -48,7 +48,7 @@ export default class InputBlurChange extends Component {
   }
 
   render() {
-    let props = _.omit(
+    const props = _.omit(
       this.props,
       "onBlurChange",
       "value",

@@ -1,24 +1,38 @@
 (ns metabase.driver-test
-  (:require [expectations :refer :all]
-            [metabase.driver :as driver]))
+  (:require [clojure.test :refer :all]
+            [metabase.driver :as driver]
+            [metabase.driver.impl :as impl]
+            [metabase.plugins.classloader :as classloader]))
 
-(driver/register! ::test-driver)
-
-(defmethod driver/available? ::test-driver [_] false)
+(driver/register! ::test-driver, :abstract? true)
 
 (defmethod driver/supports? [::test-driver :foreign-keys] [_ _] true)
+(defmethod driver/database-supports? [::test-driver :foreign-keys] [_ _ db] (= db "dummy"))
 
-;; driver-supports?
 
-(expect true  (driver/supports? ::test-driver :foreign-keys))
-(expect false (driver/supports? ::test-driver :expressions))
+(deftest driver-supports?-test
+  (is (driver/supports? ::test-driver :foreign-keys))
+  (is (not (driver/supports? ::test-driver :expressions)))
+  (is (thrown-with-msg? java.lang.Exception #"Invalid driver feature: .*"
+               (driver/supports? ::test-driver :some-made-up-thing))))
 
-;; expected namespace for a non-namespaced driver should be `metabase.driver.<driver>`
-(expect
-  'metabase.driver.sql-jdbc
-  (#'driver/driver->expected-namespace :sql-jdbc))
+(deftest database-supports?-test
+  (is (driver/database-supports? ::test-driver :foreign-keys "dummy"))
+  (is (not (driver/database-supports? ::test-driver :foreign-keys "not-dummy")))
+  (is (not (driver/database-supports? ::test-driver :expressions "dummy")))
+  (is (thrown-with-msg? java.lang.Exception #"Invalid driver feature: .*"
+               (driver/database-supports? ::test-driver :some-made-up-thing "dummy"))))
 
-;; for a namespaced driver it should be the namespace of the keyword
-(expect
-  'metabase.driver-test
-  (#'driver/driver->expected-namespace ::toucans))
+(deftest the-driver-test
+  (testing (str "calling `the-driver` should set the context classloader, important because driver plugin code exists "
+                "there but not elsewhere")
+    (.setContextClassLoader (Thread/currentThread) (ClassLoader/getSystemClassLoader))
+    (driver/the-driver :h2)
+    (is (= @@#'classloader/shared-context-classloader
+           (.getContextClassLoader (Thread/currentThread))))))
+
+(deftest available?-test
+  (with-redefs [impl/concrete? (constantly true)]
+    (is (driver/available? ::test-driver))
+    (is (driver/available? "metabase.driver-test/test-driver")
+        "`driver/available?` should work for if `driver` is a string -- see #10135")))

@@ -1,5 +1,3 @@
-/* @flow weak */
-
 export default class Action {
   perform() {}
 }

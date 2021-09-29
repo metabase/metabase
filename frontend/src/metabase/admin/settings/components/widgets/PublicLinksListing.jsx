@@ -1,5 +1,3 @@
-/* @flow */
-
 import React, { Component } from "react";
 
 import Icon from "metabase/components/Icon";
@@ -7,7 +5,7 @@ import Link from "metabase/components/Link";
 import ExternalLink from "metabase/components/ExternalLink";
 import Confirm from "metabase/components/Confirm";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { CardApi, DashboardApi } from "metabase/services";
 import * as Urls from "metabase/lib/urls";
 
@@ -45,7 +43,7 @@ export default class PublicLinksListing extends Component {
     };
   }
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this.load();
   }
 
@@ -96,11 +94,12 @@ export default class PublicLinksListing extends Component {
             <tbody>
               {list &&
                 list.map(link => (
-                  <tr>
+                  <tr key={link.id}>
                     <td>
                       <Link
                         to={getUrl(link)}
                         onClick={() => this.trackEvent("Entity Link Clicked")}
+                        className="text-wrap"
                       >
                         {link.name}
                       </Link>
@@ -110,6 +109,7 @@ export default class PublicLinksListing extends Component {
                         <ExternalLink
                           href={getPublicUrl(link)}
                           onClick={() => this.trackEvent("Public Link Clicked")}
+                          className="link text-wrap"
                         >
                           {getPublicUrl(link)}
                         </ExternalLink>
@@ -147,7 +147,7 @@ export const PublicLinksDashboardListing = () => (
     load={DashboardApi.listPublic}
     revoke={DashboardApi.deletePublicLink}
     type={t`Public Dashboard Listing`}
-    getUrl={({ id }) => Urls.dashboard(id)}
+    getUrl={dashboard => Urls.dashboard(dashboard)}
     getPublicUrl={({ public_uuid }) => Urls.publicDashboard(public_uuid)}
     noLinksMessage={t`No dashboards have been publicly shared yet.`}
   />
@@ -158,7 +158,7 @@ export const PublicLinksQuestionListing = () => (
     load={CardApi.listPublic}
     revoke={CardApi.deletePublicLink}
     type={t`Public Card Listing`}
-    getUrl={({ id }) => Urls.question(id)}
+    getUrl={question => Urls.question(question)}
     getPublicUrl={({ public_uuid }) => Urls.publicQuestion(public_uuid)}
     noLinksMessage={t`No questions have been publicly shared yet.`}
   />
@@ -168,7 +168,7 @@ export const EmbeddedDashboardListing = () => (
   <div className="bordered rounded full" style={{ maxWidth: 820 }}>
     <PublicLinksListing
       load={DashboardApi.listEmbeddable}
-      getUrl={({ id }) => Urls.dashboard(id)}
+      getUrl={dashboard => Urls.dashboard(dashboard)}
       type={t`Embedded Dashboard Listing`}
       noLinksMessage={t`No dashboards have been embedded yet.`}
     />
@@ -179,7 +179,7 @@ export const EmbeddedQuestionListing = () => (
   <div className="bordered rounded full" style={{ maxWidth: 820 }}>
     <PublicLinksListing
       load={CardApi.listEmbeddable}
-      getUrl={({ id }) => Urls.question(id)}
+      getUrl={question => Urls.question(question)}
       type={t`Embedded Card Listing`}
       noLinksMessage={t`No questions have been embedded yet.`}
     />

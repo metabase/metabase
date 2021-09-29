@@ -6,47 +6,33 @@ import {
 
 import { push } from "react-router-redux";
 
-import MetabaseUtils from "metabase/lib/utils";
 import MetabaseAnalytics from "metabase/lib/analytics";
-import MetabaseSettings from "metabase/lib/settings";
-import { t } from "c-3po";
 import { clearGoogleAuthCredentials } from "metabase/lib/auth";
 
-import { refreshCurrentUser } from "metabase/redux/user";
+import { refreshSiteSettings } from "metabase/redux/settings";
 
 import { SessionApi } from "metabase/services";
 
 // login
 export const LOGIN = "metabase/auth/LOGIN";
-export const login = createThunkAction(LOGIN, function(
-  credentials,
-  redirectUrl,
-) {
-  return async function(dispatch, getState) {
-    if (
-      !MetabaseSettings.ldapEnabled() &&
-      !MetabaseUtils.validEmail(credentials.username)
-    ) {
-      return {
-        data: {
-          errors: { email: t`Please enter a valid formatted email address.` },
-        },
-      };
-    }
+export const login = createThunkAction(
+  LOGIN,
+  (credentials, redirectUrl) => async (dispatch, getState) => {
+    // NOTE: this request will return a Set-Cookie header for the session
+    await SessionApi.create(credentials);
 
-    try {
-      // NOTE: this request will return a Set-Cookie header for the session
-      await SessionApi.create(credentials);
+    MetabaseAnalytics.trackEvent("Auth", "Login");
 
-      MetabaseAnalytics.trackEvent("Auth", "Login");
-      // TODO: redirect after login (carry user to intended destination)
-      await dispatch(refreshCurrentUser());
-      dispatch(push(redirectUrl || "/"));
-    } catch (error) {
-      return error;
-    }
-  };
-});
+    // unable to use a top-level `import` here because of a circular dependency
+    const { refreshCurrentUser } = require("metabase/redux/user");
+
+    await Promise.all([
+      dispatch(refreshCurrentUser()),
+      dispatch(refreshSiteSettings()),
+    ]);
+    dispatch(push(redirectUrl || "/"));
+  },
+);
 
 // login Google
 export const LOGIN_GOOGLE = "metabase/auth/LOGIN_GOOGLE";
@@ -63,17 +49,17 @@ export const loginGoogle = createThunkAction(LOGIN_GOOGLE, function(
 
       MetabaseAnalytics.trackEvent("Auth", "Google Auth Login");
 
-      // TODO: redirect after login (carry user to intended destination)
-      await dispatch(refreshCurrentUser());
+      // unable to use a top-level `import` here because of a circular dependency
+      const { refreshCurrentUser } = require("metabase/redux/user");
+
+      await Promise.all([
+        dispatch(refreshCurrentUser()),
+        dispatch(refreshSiteSettings()),
+      ]);
       dispatch(push(redirectUrl || "/"));
     } catch (error) {
-      clearGoogleAuthCredentials();
-      // If we see a 428 ("Precondition Required") that means we need to show the "No Metabase account exists for this Google Account" page
-      if (error.status === 428) {
-        dispatch(push("/auth/google_no_mb_account"));
-      } else {
-        return error;
-      }
+      await clearGoogleAuthCredentials();
+      return error;
     }
   };
 });
@@ -81,12 +67,12 @@ export const loginGoogle = createThunkAction(LOGIN_GOOGLE, function(
 // logout
 export const LOGOUT = "metabase/auth/LOGOUT";
 export const logout = createThunkAction(LOGOUT, function() {
-  return function(dispatch, getState) {
+  return async function(dispatch, getState) {
     // actively delete the session and remove the cookie
-    SessionApi.delete();
+    await SessionApi.delete();
 
     // clear Google auth credentials if any are present
-    clearGoogleAuthCredentials();
+    await clearGoogleAuthCredentials();
 
     MetabaseAnalytics.trackEvent("Auth", "Logout");
 
@@ -97,47 +83,10 @@ export const logout = createThunkAction(LOGOUT, function() {
   };
 });
 
-// passwordReset
-export const PASSWORD_RESET = "metabase/auth/PASSWORD_RESET";
-export const passwordReset = createThunkAction(PASSWORD_RESET, function(
-  token,
-  credentials,
-) {
-  return async function(dispatch, getState) {
-    if (credentials.password !== credentials.password2) {
-      return {
-        success: false,
-        error: { data: { errors: { password2: t`Passwords do not match` } } },
-      };
-    }
-
-    try {
-      // NOTE: this request will return a Set-Cookie header for the session
-      await SessionApi.reset_password({
-        token: token,
-        password: credentials.password,
-      });
-
-      MetabaseAnalytics.trackEvent("Auth", "Password Reset");
-
-      return {
-        success: true,
-        error: null,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error,
-      };
-    }
-  };
-});
-
 // reducers
 
 const loginError = handleActions(
   {
-    [LOGIN]: { next: (state, { payload }) => (payload ? payload : null) },
     [LOGIN_GOOGLE]: {
       next: (state, { payload }) => (payload ? payload : null),
     },
@@ -145,22 +94,6 @@ const loginError = handleActions(
   null,
 );
 
-const resetSuccess = handleActions(
-  {
-    [PASSWORD_RESET]: { next: (state, { payload }) => payload.success },
-  },
-  false,
-);
-
-const resetError = handleActions(
-  {
-    [PASSWORD_RESET]: { next: (state, { payload }) => payload.error },
-  },
-  null,
-);
-
 export default combineReducers({
   loginError,
-  resetError,
-  resetSuccess,
 });

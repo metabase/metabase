@@ -1,10 +1,15 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { Link } from "react-router";
-import Icon from "metabase/components/Icon.jsx";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import { Flex } from "grid-styled";
 import { SetupApi } from "metabase/services";
-import { t } from "c-3po";
-import colors from "metabase/lib/colors";
+import { t } from "ttag";
+import { color } from "metabase/lib/colors";
+import MetabaseSettings from "metabase/lib/settings";
+
+import Icon from "metabase/components/Icon";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import MarginHostingCTA from "metabase/admin/settings/components/widgets/MarginHostingCTA";
 
 const TaskList = ({ tasks }) => (
   <ol>
@@ -41,14 +46,14 @@ const CompletionBadge = ({ completed }) => (
     style={{
       borderWidth: 1,
       borderStyle: "solid",
-      borderColor: completed ? colors["success"] : colors["text-light"],
-      backgroundColor: completed ? colors["success"] : colors["text-white"],
+      borderColor: completed ? color("success") : color("text-light"),
+      backgroundColor: completed ? color("success") : color("text-white"),
       width: 32,
       height: 32,
       borderRadius: 99,
     }}
   >
-    {completed && <Icon name="check" color={colors["text-white"]} />}
+    {completed && <Icon name="check" color={color("text-white")} />}
   </div>
 );
 
@@ -77,7 +82,7 @@ export default class SettingsSetupList extends Component {
     };
   }
 
-  async componentWillMount() {
+  async UNSAFE_componentWillMount() {
     try {
       const tasks = await SetupApi.admin_checklist();
       this.setState({ tasks: tasks });
@@ -101,28 +106,34 @@ export default class SettingsSetupList extends Component {
     }
 
     return (
-      <div className="px2">
-        <h2>{t`Getting set up`}</h2>
-        <p className="mt1">{t`A few things you can do to get the most out of Metabase.`}</p>
-        <LoadingAndErrorWrapper
-          loading={!this.state.tasks}
-          error={this.state.error}
-        >
-          {() => (
-            <div style={{ maxWidth: 468 }}>
-              {nextTask && (
-                <TaskSection
-                  name={t`Recommended next step`}
-                  tasks={[nextTask]}
-                />
-              )}
-              {tasks.map((section, index) => (
-                <TaskSection {...section} key={index} />
-              ))}
-            </div>
-          )}
-        </LoadingAndErrorWrapper>
-      </div>
+      <Flex justifyContent="space-between">
+        <div className="px2">
+          <h2>{t`Getting set up`}</h2>
+          <p className="mt1">{t`A few things you can do to get the most out of Metabase.`}</p>
+          <LoadingAndErrorWrapper
+            loading={!this.state.tasks}
+            error={this.state.error}
+          >
+            {() => (
+              <div style={{ maxWidth: 468 }}>
+                {nextTask && (
+                  <TaskSection
+                    name={t`Recommended next step`}
+                    tasks={[nextTask]}
+                  />
+                )}
+                {tasks.map((section, index) => (
+                  <TaskSection {...section} key={index} />
+                ))}
+              </div>
+            )}
+          </LoadingAndErrorWrapper>
+        </div>
+
+        {!MetabaseSettings.isHosted() && !MetabaseSettings.isEnterprise() && (
+          <MarginHostingCTA tagline={t`Have your server maintained for you.`} />
+        )}
+      </Flex>
     );
   }
 }

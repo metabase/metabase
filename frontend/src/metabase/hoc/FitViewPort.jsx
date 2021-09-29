@@ -60,4 +60,12 @@ function fitViewport(ComposedComponent) {
   };
 }
 
+export function isFitViewportMode() {
+  const root = document.getElementById("root");
+  if (root && root.firstChild) {
+    return root.firstChild.classList.contains("spread");
+  }
+  return false;
+}
+
 export default fitViewport;

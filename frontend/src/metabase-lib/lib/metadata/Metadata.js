@@ -1,66 +1,126 @@
-/* @flow weak */
+import _ from "underscore";
 
 import Base from "./Base";
 
-import Database from "./Database";
-import Table from "./Table";
-import Field from "./Field";
-import Segment from "./Segment";
-import Metric from "./Metric";
+import Question from "../Question";
 
-import type { DatabaseId } from "metabase/meta/types/Database";
-import type { TableId } from "metabase/meta/types/Table";
-import type { FieldId } from "metabase/meta/types/Field";
-import type { MetricId } from "metabase/meta/types/Metric";
-import type { SegmentId } from "metabase/meta/types/Segment";
+/**
+ * @typedef { import("./metadata").DatabaseId } DatabaseId
+ * @typedef { import("./metadata").SchemaId } SchemaId
+ * @typedef { import("./metadata").TableId } TableId
+ * @typedef { import("./metadata").FieldId } FieldId
+ * @typedef { import("./metadata").MetricId } MetricId
+ * @typedef { import("./metadata").SegmentId } SegmentId
+ */
 
 /**
  * Wrapper class for the entire metadata store
  */
 export default class Metadata extends Base {
-  databases: { [id: DatabaseId]: Database };
-  tables: { [id: TableId]: Table };
-  fields: { [id: FieldId]: Field };
-  metrics: { [id: MetricId]: Metric };
-  segments: { [id: SegmentId]: Segment };
-
-  databasesList(): Database[] {
-    // $FlowFixMe
-    return (Object.values(this.databases): Database[]);
+  /**
+   * @deprecated this won't be sorted or filtered in a meaningful way
+   * @returns {Database[]}
+   */
+  databasesList({ savedQuestions = true } = {}) {
+    return _.chain(this.databases)
+      .values()
+      .filter(db => savedQuestions || !db.is_saved_questions)
+      .sortBy(db => db.name)
+      .value();
   }
 
-  tablesList(): Database[] {
-    // $FlowFixMe
-    return (Object.values(this.tables): Database[]);
+  /**
+   * @deprecated this won't be sorted or filtered in a meaningful way
+   * @returns {Table[]}
+   */
+  tablesList() {
+    return Object.values(this.tables);
   }
 
-  metricsList(): Metric[] {
-    // $FlowFixMe
-    return (Object.values(this.metrics): Metric[]);
+  /**
+   * @deprecated this won't be sorted or filtered in a meaningful way
+   * @returns {Metric[]}
+   */
+  metricsList() {
+    return Object.values(this.metrics);
   }
 
-  segmentsList(): Metric[] {
-    // $FlowFixMe
-    return (Object.values(this.segments): Segment[]);
+  /**
+   * @deprecated this won't be sorted or filtered in a meaningful way
+   * @returns {Segment[]}
+   */
+  segmentsList() {
+    return Object.values(this.segments);
   }
 
-  segment(segmentId): ?Segment {
+  /**
+   * @param {SegmentId} segmentId
+   * @returns {?Segment}
+   */
+
+  segment(segmentId) {
     return (segmentId != null && this.segments[segmentId]) || null;
   }
 
-  metric(metricId): ?Metric {
+  /**
+   * @param {MetricId} metricId
+   * @returns {?Metric}
+   */
+  metric(metricId) {
     return (metricId != null && this.metrics[metricId]) || null;
   }
 
-  database(databaseId): ?Database {
+  /**
+   * @param {DatabaseId} databaseId
+   * @returns {?Database}
+   */
+  database(databaseId) {
     return (databaseId != null && this.databases[databaseId]) || null;
   }
 
-  table(tableId): ?Table {
+  /**
+   * @param {SchemaId} schemaId
+   * @returns {Schema}
+   */
+  schema(schemaId) {
+    return (schemaId != null && this.schemas[schemaId]) || null;
+  }
+
+  /**
+   *
+   * @param {TableId} tableId
+   * @returns {?Table}
+   */
+  table(tableId) {
     return (tableId != null && this.tables[tableId]) || null;
   }
 
-  field(fieldId): ?Field {
+  /**
+   * @param {FieldId} fieldId
+   * @returns {?Field}
+   */
+  field(fieldId) {
     return (fieldId != null && this.fields[fieldId]) || null;
+  }
+
+  question(card) {
+    return new Question(card, this);
+  }
+
+  /**
+   * @private
+   * @param {Object.<number, Database>} databases
+   * @param {Object.<number, Table>} tables
+   * @param {Object.<number, Field>} fields
+   * @param {Object.<number, Metric>} metrics
+   * @param {Object.<number, Segment>} segments
+   */
+  /* istanbul ignore next */
+  _constructor(databases, tables, fields, metrics, segments) {
+    this.databases = databases;
+    this.tables = tables;
+    this.fields = fields;
+    this.metrics = metrics;
+    this.segments = segments;
   }
 }

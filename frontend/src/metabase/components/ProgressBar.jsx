@@ -1,8 +1,7 @@
-/* @flow */
 import React, { Component } from "react";
 import styled from "styled-components";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 type Props = {
   percentage: number,
@@ -15,7 +14,7 @@ const ProgressWrapper = styled.div`
   position: relative;
   border: 1px solid ${props => props.color};
   height: 10px;
-  borderradius: 99px;
+  border-radius: 99px;
 `;
 
 const Progress = styled.div`
@@ -27,7 +26,7 @@ const Progress = styled.div`
       left: 0;
       border-radius: inherit;
       border-top-left-radius: 0;
-      borderBottomLeftRadius: 0;
+      border-bottom-left-radius: 0;
       width: ${props => props.width}%;
       ":before": {
         display: ${props => (props.animated ? "block" : "none")};
@@ -36,18 +35,19 @@ const Progress = styled.div`
         left: 0;
         width: ${props => props.width / 4}%;
         height: 100%;
-        background-color: ${colors["bg-black"]};
+        background-color: ${color("bg-black")};
         animation: ${props =>
           props.animated ? "progress-bar 1.5s linear infinite" : "none"};
       },
 `;
 
+// @Question - why is this separate from our progress Viz type?
 export default class ProgressBar extends Component {
   props: Props;
 
   static defaultProps = {
     animated: false,
-    color: colors["brand"],
+    color: color("brand"),
     height: 10,
   };
 
@@ -58,7 +58,7 @@ export default class ProgressBar extends Component {
 
     return (
       <ProgressWrapper color={color}>
-        <Progress width={width} animated={animated} />
+        <Progress width={width} animated={animated} color={color} />
       </ProgressWrapper>
     );
   }

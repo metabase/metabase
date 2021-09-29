@@ -1,9 +1,5 @@
 import React from "react";
-import { mount } from "enzyme";
-
-// Needed due to wrong dependency resolution order
-// eslint-disable-next-line no-unused-vars
-import "metabase/visualizations/components/Visualization";
+import { render, screen } from "@testing-library/react";
 
 import { ObjectDetail } from "metabase/visualizations/visualizations/ObjectDetail";
 import { TYPE } from "metabase/lib/types";
@@ -16,7 +12,7 @@ const objectDetailCard = {
     cols: [
       {
         display_name: "Details",
-        special_type: TYPE.SerializedJSON,
+        semantic_type: TYPE.SerializedJSON,
       },
     ],
     columns: ["details"],
@@ -24,18 +20,49 @@ const objectDetailCard = {
   },
 };
 
+const invalidObjectDetailCard = {
+  card: {
+    display: "object",
+  },
+  data: {
+    cols: [
+      {
+        display_name: "Details",
+        semantic_type: TYPE.SerializedJSON,
+      },
+    ],
+    columns: ["details"],
+    rows: [["i am not json"]],
+  },
+};
+
 describe("ObjectDetail", () => {
   describe("json field rendering", () => {
-    it("should properly display JSON special type data as JSON", () => {
-      const detail = mount(
+    it("should properly display JSON semantic type data as JSON", () => {
+      render(
         <ObjectDetail
           data={objectDetailCard.data}
           series={objectDetailCard}
           loadObjectDetailFKReferences={() => ({})}
+          settings={{ column: () => ({}) }}
         />,
       );
 
-      expect(detail.find(".ObjectJSON").length).toEqual(1);
+      screen.getByText(/"hey"/i);
+      screen.getByText(/"yo"/i);
+    });
+
+    it("should not crash rendering invalid JSON", () => {
+      render(
+        <ObjectDetail
+          data={invalidObjectDetailCard.data}
+          series={invalidObjectDetailCard}
+          loadObjectDetailFKReferences={() => ({})}
+          settings={{ column: () => ({}) }}
+        />,
+      );
+
+      screen.getByText(/i am not json/i);
     });
   });
 });

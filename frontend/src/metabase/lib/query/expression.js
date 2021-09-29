@@ -4,7 +4,7 @@ import type {
   ExpressionName,
   ExpressionClause,
   Expression,
-} from "metabase/meta/types/Query";
+} from "metabase-types/types/Query";
 
 export function getExpressions(
   expressions: ?ExpressionClause = {},

@@ -1,23 +1,25 @@
-/* @flow */
-
 import { assocIn } from "icepick";
 
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 import {
   canonicalCollectionId,
   getCollectionType,
+  normalizedCollection,
 } from "metabase/entities/collections";
 
 import { POST, DELETE } from "metabase/lib/api";
+
+import forms from "./questions/forms";
 
 const FAVORITE_ACTION = `metabase/entities/questions/FAVORITE`;
 const UNFAVORITE_ACTION = `metabase/entities/questions/UNFAVORITE`;
 
 const Questions = createEntity({
   name: "questions",
+  nameOne: "question",
   path: "/api/card",
 
   api: {
@@ -63,11 +65,15 @@ const Questions = createEntity({
 
   objectSelectors: {
     getName: question => question && question.name,
-    getUrl: question => question && Urls.question(question.id),
-    getColor: () => colors["text-medium"],
-    getIcon: question =>
-      (require("metabase/visualizations").default.get(question.display) || {})
-        .iconName || "beaker",
+    getUrl: question => question && Urls.question(question),
+    getColor: () => color("text-medium"),
+    getCollection: question =>
+      question && normalizedCollection(question.collection),
+    getIcon: question => ({
+      name:
+        (require("metabase/visualizations").default.get(question.display) || {})
+          .iconName || "beaker",
+    }),
   },
 
   reducer: (state = {}, { type, payload, error }) => {
@@ -79,21 +85,10 @@ const Questions = createEntity({
     return state;
   },
 
-  form: {
-    fields: [
-      { name: "name" },
-      { name: "description", type: "text" },
-      {
-        name: "collection_id",
-        title: "Collection",
-        type: "collection",
-      },
-    ],
-  },
-
   // NOTE: keep in sync with src/metabase/api/card.clj
   writableProperties: [
     "name",
+    "cache_ttl",
     "dataset_query",
     "display",
     "description",
@@ -107,10 +102,12 @@ const Questions = createEntity({
     "metadata_checksum",
   ],
 
-  getAnalyticsMetadata(action, object, getState) {
+  getAnalyticsMetadata([object], { action }, getState) {
     const type = object && getCollectionType(object.collection_id, getState());
     return type && `collection=${type}`;
   },
+
+  forms,
 });
 
 export default Questions;

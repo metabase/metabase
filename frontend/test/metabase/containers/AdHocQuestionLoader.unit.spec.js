@@ -1,5 +1,5 @@
 import React from "react";
-import { shallow, mount } from "enzyme";
+import { render } from "@testing-library/react";
 
 import Question from "metabase-lib/lib/Question";
 import { delay } from "metabase/lib/promise";
@@ -22,21 +22,21 @@ describe("AdHocQuestionLoader", () => {
   });
 
   it("should load a question given a questionHash", async () => {
-    const q = new Question.create({ databaseId: 1, tableId: 2 });
+    const q = Question.create({ databaseId: 1, tableId: 2 });
     const questionHash = q.getUrl().match(/(#.*)/)[1];
 
-    const wrapper = mount(
+    render(
       <AdHocQuestionLoader
         questionHash={questionHash}
         loadMetadataForCard={loadMetadataSpy}
-        children={mockChild}
-      />,
+      >
+        {mockChild}
+      </AdHocQuestionLoader>,
     );
     expect(mockChild.mock.calls[0][0].loading).toEqual(true);
     expect(mockChild.mock.calls[0][0].error).toEqual(null);
 
     // stuff happens asynchronously
-    wrapper.update();
     await delay(0);
 
     expect(loadMetadataSpy.mock.calls[0][0]).toEqual(q.card());
@@ -54,19 +54,27 @@ describe("AdHocQuestionLoader", () => {
     const originalQuestionHash = "#abc123";
     const newQuestionHash = "#def456";
 
-    const wrapper = shallow(
+    const { rerender } = render(
       <AdHocQuestionLoader
         questionHash={originalQuestionHash}
         loadMetadataForCard={loadMetadataSpy}
-        children={mockChild}
-      />,
+      >
+        {mockChild}
+      </AdHocQuestionLoader>,
     );
 
     expect(loadQuestionSpy).toHaveBeenCalledWith(originalQuestionHash);
 
     // update the question hash, a new location.hash in the url would most
     // likely do this
-    wrapper.setProps({ questionHash: newQuestionHash });
+    rerender(
+      <AdHocQuestionLoader
+        questionHash={newQuestionHash}
+        loadMetadataForCard={loadMetadataSpy}
+      >
+        {mockChild}
+      </AdHocQuestionLoader>,
+    );
 
     // question loading should begin with the new ID
     expect(loadQuestionSpy).toHaveBeenCalledWith(newQuestionHash);

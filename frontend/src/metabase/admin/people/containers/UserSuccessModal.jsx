@@ -1,6 +1,7 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { Box } from "grid-styled";
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
 
 import { connect } from "react-redux";
 import { push } from "react-router-redux";

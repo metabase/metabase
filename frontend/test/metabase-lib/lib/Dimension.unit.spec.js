@@ -1,456 +1,680 @@
-import ReactTestUtils from "react-dom/test-utils";
-
-import Dimension from "metabase-lib/lib/Dimension";
+import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
+import Field from "metabase-lib/lib/metadata/Field";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import {
   metadata,
-  ORDERS_PRODUCT_FK_FIELD_ID,
-  PRODUCT_CATEGORY_FIELD_ID,
-  PRODUCT_CREATED_AT_FIELD_ID,
-  PRODUCT_TILE_FIELD_ID,
-  ORDERS_CREATED_DATE_FIELD_ID,
-  ORDERS_TOTAL_FIELD_ID,
+  ORDERS,
+  PRODUCTS,
+  SAMPLE_DATASET,
 } from "__support__/sample_dataset_fixture";
 
 describe("Dimension", () => {
-  describe("parseMBQL", () => {
-    it("should parse (deprecated) bare field ID", () => {
-      const dimension = Dimension.parseMBQL(
-        ORDERS_PRODUCT_FK_FIELD_ID,
-        metadata,
-      );
-      expect(dimension.mbql()).toEqual([
-        "field-id",
-        ORDERS_PRODUCT_FK_FIELD_ID,
-      ]);
-      expect(dimension.render()).toEqual(["Product"]);
-    });
-    it("should parse field-id", () => {
-      const dimension = Dimension.parseMBQL(
-        ["field-id", ORDERS_PRODUCT_FK_FIELD_ID],
-        metadata,
-      );
-      expect(dimension.mbql()).toEqual([
-        "field-id",
-        ORDERS_PRODUCT_FK_FIELD_ID,
-      ]);
-      expect(dimension.render()).toEqual(["Product"]);
-    });
-    it("should parse fk-> with bare field IDs", () => {
-      const dimension = Dimension.parseMBQL(
-        ["fk->", ORDERS_PRODUCT_FK_FIELD_ID, PRODUCT_CATEGORY_FIELD_ID],
-        metadata,
-      );
-      expect(dimension.mbql()).toEqual([
-        "fk->",
-        ["field-id", ORDERS_PRODUCT_FK_FIELD_ID],
-        ["field-id", PRODUCT_CATEGORY_FIELD_ID],
-      ]);
-    });
-    it("should parse fk-> with field-id", () => {
-      const dimension = Dimension.parseMBQL(
-        [
-          "fk->",
-          ["field-id", ORDERS_PRODUCT_FK_FIELD_ID],
-          ["field-id", PRODUCT_CATEGORY_FIELD_ID],
-        ],
-        metadata,
-      );
-      expect(dimension.mbql()).toEqual([
-        "fk->",
-        ["field-id", ORDERS_PRODUCT_FK_FIELD_ID],
-        ["field-id", PRODUCT_CATEGORY_FIELD_ID],
-      ]);
-      const rendered = dimension.render();
-      expect(ReactTestUtils.isElement(rendered[1])).toBe(true); // Icon
-      rendered[1] = null;
-      expect(rendered).toEqual(["Product", null, "Category"]);
-    });
+  describe("STATIC METHODS", () => {
+    describe("parseMBQL(mbql metadata)", () => {
+      describe("field with ID", () => {
+        const mbql = ["field", ORDERS.PRODUCT_ID.id, null];
+        const dimension = Dimension.parseMBQL(mbql, metadata);
+        it("should parse correctly", () => {
+          expect(dimension).toBeInstanceOf(FieldDimension);
+          expect(dimension.isIntegerFieldId()).toEqual(true);
+          expect(dimension.isStringFieldName()).toEqual(false);
+          expect(dimension.fieldIdOrName()).toEqual(ORDERS.PRODUCT_ID.id);
+          expect(dimension.mbql()).toEqual(mbql);
+        });
 
-    it("should parse datetime-field", () => {
-      const dimension = Dimension.parseMBQL(
-        ["datetime-field", ["field-id", PRODUCT_CREATED_AT_FIELD_ID], "hour"],
-        metadata,
-      );
-      expect(dimension.mbql()).toEqual([
-        "datetime-field",
-        ["field-id", PRODUCT_CREATED_AT_FIELD_ID],
-        "hour",
-      ]);
-      expect(dimension.render()).toEqual(["Created At", ": ", "Hour"]);
-    });
-
-    it("should parse datetime-field with fk->", () => {
-      const dimension = Dimension.parseMBQL(
-        [
-          "datetime-field",
-          ["fk->", ORDERS_PRODUCT_FK_FIELD_ID, PRODUCT_CREATED_AT_FIELD_ID],
-          "hour",
-        ],
-        metadata,
-      );
-      expect(dimension.mbql()).toEqual([
-        "datetime-field",
-        [
-          "fk->",
-          ["field-id", ORDERS_PRODUCT_FK_FIELD_ID],
-          ["field-id", PRODUCT_CREATED_AT_FIELD_ID],
-        ],
-
-        "hour",
-      ]);
-      const rendered = dimension.render();
-      expect(ReactTestUtils.isElement(rendered[1])).toBe(true); // Icon
-      rendered[1] = null;
-      expect(rendered).toEqual(["Product", null, "Created At", ": ", "Hour"]);
-    });
-
-    describe("STATIC METHODS", () => {
-      describe("parseMBQL(mbql metadata)", () => {
-        it("parses and format MBQL correctly", () => {
-          expect(Dimension.parseMBQL(1, metadata).mbql()).toEqual([
-            "field-id",
-            1,
-          ]);
-          expect(Dimension.parseMBQL(["field-id", 1], metadata).mbql()).toEqual(
-            ["field-id", 1],
+        it("should normalize options", () => {
+          expect(Dimension.parseMBQL(["field", 1, null])._options).toEqual(
+            null,
           );
-          expect(Dimension.parseMBQL(["fk->", 1, 2], metadata).mbql()).toEqual([
-            "fk->",
-            ["field-id", 1],
-            ["field-id", 2],
-          ]);
+          expect(Dimension.parseMBQL(["field", 1, {}])._options).toEqual(null);
           expect(
-            Dimension.parseMBQL(
-              ["datetime-field", 1, "month"],
-              metadata,
-            ).mbql(),
-          ).toEqual(["datetime-field", ["field-id", 1], "month"]);
+            Dimension.parseMBQL(["field", 1, { "source-field": null }])
+              ._options,
+          ).toEqual(null);
+
           expect(
-            Dimension.parseMBQL(
-              ["datetime-field", ["field-id", 1], "month"],
-              metadata,
-            ).mbql(),
-          ).toEqual(["datetime-field", ["field-id", 1], "month"]);
-          expect(
-            Dimension.parseMBQL(
-              [
-                "datetime-field",
-                ["fk->", ["field-id", 1], ["field-id", 2]],
-                "month",
-              ],
-              metadata,
-            ).mbql(),
-          ).toEqual([
-            "datetime-field",
-            ["fk->", ["field-id", 1], ["field-id", 2]],
-            "month",
-          ]);
+            Dimension.parseMBQL([
+              "field",
+              1,
+              { "source-field": null, "join-alias": "wow" },
+            ])._options,
+          ).toEqual({ "join-alias": "wow" });
+        });
+
+        it("should render correctly", () => {
+          expect(dimension.render()).toEqual("Product ID");
         });
       });
 
-      describe("isEqual(other)", () => {
-        it("returns true for equivalent field-ids", () => {
-          const d1 = Dimension.parseMBQL(1, metadata);
-          const d2 = Dimension.parseMBQL(["field-id", 1], metadata);
-          expect(d1.isEqual(d2)).toEqual(true);
-          expect(d1.isEqual(["field-id", 1])).toEqual(true);
-          expect(d1.isEqual(1)).toEqual(true);
+      describe("field with FK source-field", () => {
+        const mbql = [
+          "field",
+          PRODUCTS.CATEGORY.id,
+          { "source-field": ORDERS.PRODUCT_ID.id },
+        ];
+        const dimension = Dimension.parseMBQL(mbql, metadata);
+
+        it("should parse correctly", () => {
+          expect(dimension).toBeInstanceOf(FieldDimension);
+          expect(dimension.mbql()).toEqual(mbql);
+          expect(dimension.render()).toEqual("Product → Category");
         });
-        it("returns false for different type clauses", () => {
-          const d1 = Dimension.parseMBQL(["fk->", 1, 2], metadata);
-          const d2 = Dimension.parseMBQL(["field-id", 1], metadata);
-          expect(d1.isEqual(d2)).toEqual(false);
+      });
+
+      describe("field with temporal bucketing", () => {
+        const mbql = [
+          "field",
+          PRODUCTS.CREATED_AT.id,
+          { "temporal-unit": "hour" },
+        ];
+        const dimension = Dimension.parseMBQL(mbql, metadata);
+
+        it("should parse correctly", () => {
+          expect(dimension).toBeInstanceOf(FieldDimension);
+          expect(dimension.mbql()).toEqual(mbql);
         });
-        it("returns false for same type clauses with different arguments", () => {
-          const d1 = Dimension.parseMBQL(["fk->", 1, 2], metadata);
-          const d2 = Dimension.parseMBQL(["fk->", 1, 3], metadata);
-          expect(d1.isEqual(d2)).toEqual(false);
+
+        it("should render correctly", () => {
+          expect(dimension.render()).toEqual("Created At: Hour");
         });
+      });
+
+      describe("field with both temporal bucketing and FK source-field", () => {
+        const mbql = [
+          "field",
+          PRODUCTS.CREATED_AT.id,
+          { "temporal-unit": "hour", "source-field": ORDERS.PRODUCT_ID.id },
+        ];
+        const dimension = Dimension.parseMBQL(mbql, metadata);
+
+        it("should parse correctly", () => {
+          expect(dimension).toBeInstanceOf(FieldDimension);
+          expect(dimension.mbql()).toEqual(mbql);
+          expect(dimension.getOption("source-field")).toEqual(
+            ORDERS.PRODUCT_ID.id,
+          );
+        });
+
+        it("should render correctly", () => {
+          expect(dimension.render()).toEqual("Product → Created At: Hour");
+        });
+      });
+    });
+
+    describe("isEqual(other)", () => {
+      it("returns true for equivalent field clauses", () => {
+        const d1 = Dimension.parseMBQL(["field", 1, null], metadata);
+        const d2 = Dimension.parseMBQL(["field", 1, {}], metadata);
+        expect(d1.isEqual(d2)).toEqual(true);
+        expect(d1.isEqual(["field", 1, null])).toEqual(true);
+        expect(d1.isEqual(["field", 1, {}])).toEqual(true);
+      });
+      it("returns false for different type clauses", () => {
+        const d1 = Dimension.parseMBQL(
+          ["field", 2, { "source-field": 1 }],
+          metadata,
+        );
+        const d2 = Dimension.parseMBQL(["field", 1, null], metadata);
+        expect(d1.isEqual(d2)).toEqual(false);
+      });
+      it("returns false for field clauses with different arguments", () => {
+        const d1 = Dimension.parseMBQL(
+          ["field", 2, { "source-field": 1 }],
+          metadata,
+        );
+        const d2 = Dimension.parseMBQL(
+          ["field", 3, { "source-field": 1 }],
+          metadata,
+        );
+        expect(d1.isEqual(d2)).toEqual(false);
+
+        const d3 = Dimension.parseMBQL(
+          ["field", 2, { "source-field": 2 }],
+          metadata,
+        );
+        expect(d1.isEqual(d3)).toEqual(false);
+      });
+    });
+  });
+
+  describe("INSTANCE METHODS", () => {
+    describe("foriegn", () => {
+      it("should return a FieldDimension", () => {
+        const dimension = ORDERS.PRODUCT_ID.dimension().foreign(
+          PRODUCTS.CATEGORY.dimension(),
+        );
+        expect(dimension).toBeInstanceOf(FieldDimension);
+        expect(dimension.mbql()).toEqual([
+          "field",
+          PRODUCTS.CATEGORY.id,
+          { "source-field": ORDERS.PRODUCT_ID.id },
+        ]);
+      });
+    });
+  });
+
+  describe("Field with integer ID", () => {
+    const dimension = Dimension.parseMBQL(
+      ["field", ORDERS.TOTAL.id, null],
+      metadata,
+    );
+    const categoryDimension = Dimension.parseMBQL(
+      ["field", PRODUCTS.CATEGORY.id, null],
+      metadata,
+    );
+
+    describe("STATIC METHODS", () => {
+      describe("normalizeOptions()", () => {
+        it("should remove empty options map", () => {
+          expect(FieldDimension.normalizeOptions(null)).toEqual(null);
+          expect(FieldDimension.normalizeOptions({})).toEqual(null);
+        });
+        it("should remove null/undefined keys", () => {
+          expect(
+            FieldDimension.normalizeOptions({
+              x: false,
+              y: null,
+              z: undefined,
+            }),
+          ).toEqual({ x: false });
+        });
+        it("should recursively normalize maps options", () => {
+          expect(
+            FieldDimension.normalizeOptions({ binning: { x: null } }),
+          ).toBe(null);
+        });
+        // TODO -- it should also remove empty arrays, but we currently don't have any situations where there might be
+        // one.
       });
     });
 
     describe("INSTANCE METHODS", () => {
-      describe("dimensions()", () => {
-        it("returns `dimension_options` of the underlying field if available", () => {
-          pending();
-        });
-        it("returns sub-dimensions for matching dimension if no `dimension_options`", () => {
-          // just a single scenario should be sufficient here as we will test
-          // `static dimensions()` individually for each dimension
-          pending();
-        });
-      });
-
-      describe("isSameBaseDimension(other)", () => {
-        it("returns true if the base dimensions are same", () => {
-          pending();
-        });
-        it("returns false if the base dimensions don't match", () => {
-          pending();
-        });
-      });
-    });
-
-    describe("FieldIDDimension", () => {
-      let dimension = null;
-      let categoryDimension = null;
-      beforeAll(() => {
-        dimension = Dimension.parseMBQL(
-          ["field-id", ORDERS_TOTAL_FIELD_ID],
-          metadata,
-        );
-        categoryDimension = Dimension.parseMBQL(
-          ["field-id", PRODUCT_CATEGORY_FIELD_ID],
-          metadata,
+      describe("mbql()", () => {
+        it(
+          'returns a "field" clause',
+          () => {
+            expect(dimension.mbql()).toEqual(["field", ORDERS.TOTAL.id, null]);
+          },
+          null,
         );
       });
-
-      describe("INSTANCE METHODS", () => {
-        describe("mbql()", () => {
-          it('returns a "field-id" clause', () => {
-            expect(dimension.mbql()).toEqual([
-              "field-id",
-              ORDERS_TOTAL_FIELD_ID,
-            ]);
-          });
+      describe("displayName()", () => {
+        it("returns the field name", () => {
+          expect(dimension.displayName()).toEqual("Total");
         });
-        describe("displayName()", () => {
-          it("returns the field name", () => {
-            expect(dimension.displayName()).toEqual("Total");
-          });
+      });
+      describe("subDisplayName()", () => {
+        it("returns 'Default' for numeric fields", () => {
+          expect(dimension.subDisplayName()).toEqual("Default");
         });
-        describe("subDisplayName()", () => {
-          it("returns 'Default' for numeric fields", () => {
-            expect(dimension.subDisplayName()).toEqual("Default");
-          });
-          it("returns 'Default' for non-numeric fields", () => {
-            expect(
-              Dimension.parseMBQL(
-                ["field-id", PRODUCT_CATEGORY_FIELD_ID],
-                metadata,
-              ).subDisplayName(),
-            ).toEqual("Default");
-          });
+        it("returns 'Default' for non-numeric fields", () => {
+          expect(
+            Dimension.parseMBQL(
+              ["field", PRODUCTS.CATEGORY.id, null],
+              metadata,
+            ).subDisplayName(),
+          ).toEqual("Default");
         });
-        describe("subTriggerDisplayName()", () => {
-          it("returns 'Unbinned' if the dimension is a binnable number", () => {
-            expect(dimension.subTriggerDisplayName()).toBe("Unbinned");
-          });
-          it("does not have a value if the dimension is a category", () => {
-            expect(categoryDimension.subTriggerDisplayName()).toBeFalsy();
-          });
+      });
+      describe("subTriggerDisplayName()", () => {
+        it("returns 'Unbinned' if the dimension is a binnable number", () => {
+          expect(dimension.subTriggerDisplayName()).toBe("Unbinned");
+        });
+        it("does not have a value if the dimension is a category", () => {
+          expect(categoryDimension.subTriggerDisplayName()).toBeFalsy();
+        });
+      });
+      describe("column()", () => {
+        expect(dimension.column()).toEqual({
+          id: 6,
+          name: "TOTAL",
+          display_name: "Total",
+          base_type: "type/Float",
+          semantic_type: "type/Currency",
+          field_ref: ["field", ORDERS.TOTAL.id, null],
+        });
+      });
+      describe("field()", () => {
+        it("should return correct Field for underlying Field", () => {
+          expect(dimension.field().id).toEqual(ORDERS.TOTAL.id);
+          expect(dimension.field().metadata).toEqual(metadata);
+          expect(dimension.field().displayName()).toEqual("Total");
         });
       });
     });
+  });
 
-    describe("FKDimension", () => {
-      let dimension = null;
-      beforeAll(() => {
-        dimension = Dimension.parseMBQL(
-          ["fk->", ORDERS_PRODUCT_FK_FIELD_ID, PRODUCT_TILE_FIELD_ID],
-          metadata,
+  // TODO -- there are some tests against fields that can be binned above -- we should merge them in with these ones
+  describe("Numeric Field that can be binned", () => {
+    const mbql = ["field", ORDERS.TOTAL.id, { "base-type": "type/Float" }];
+    const dimension = Dimension.parseMBQL(mbql, metadata);
+
+    describe("INSTANCE METHODS", () => {
+      describe("isBinnable()", () => {
+        it("should return truthy", () => {
+          expect(dimension.isBinnable()).toBeTruthy();
+        });
+      });
+
+      describe("defaultDimension()", () => {
+        it("should return a dimension with binning options", () => {
+          const defaultDimension = dimension.defaultDimension();
+          expect(defaultDimension).toBeInstanceOf(FieldDimension);
+          expect(defaultDimension.mbql()).toEqual([
+            "field",
+            ORDERS.TOTAL.id,
+            {
+              "base-type": "type/Float",
+              binning: {
+                strategy: "default",
+              },
+            },
+          ]);
+        });
+      });
+
+      describe("dimensions()[1]", () => {
+        it("should be a binned dimension", () => {
+          expect(dimension.dimensions()[1].mbql()).toEqual([
+            "field",
+            ORDERS.TOTAL.id,
+            {
+              "base-type": "type/Float",
+              binning: { strategy: "num-bins", "num-bins": 10 },
+            },
+          ]);
+        });
+      });
+    });
+  });
+
+  describe("Field with FK source Field", () => {
+    const dimension = Dimension.parseMBQL(
+      ["field", PRODUCTS.TITLE.id, { "source-field": ORDERS.PRODUCT_ID.id }],
+      metadata,
+    );
+
+    describe("INSTANCE METHODS", () => {
+      describe("mbql()", () => {
+        it("returns a fk clause", () => {
+          expect(dimension.mbql()).toEqual([
+            "field",
+            PRODUCTS.TITLE.id,
+            { "source-field": ORDERS.PRODUCT_ID.id },
+          ]);
+        });
+      });
+      describe("displayName()", () => {
+        it("returns the field name", () => {
+          expect(dimension.displayName()).toEqual("Title");
+        });
+      });
+      describe("subDisplayName()", () => {
+        it("returns the field name", () => {
+          expect(dimension.subDisplayName()).toEqual("Title");
+        });
+      });
+      describe("subTriggerDisplayName()", () => {
+        it("does not have a value", () => {
+          expect(dimension.subTriggerDisplayName()).toBeFalsy();
+        });
+      });
+      describe("column()", () => {
+        expect(dimension.column()).toEqual({
+          id: PRODUCTS.TITLE.id,
+          name: "TITLE",
+          display_name: "Title",
+          base_type: "type/Text",
+          semantic_type: "type/Category",
+          fk_field_id: ORDERS.PRODUCT_ID.id,
+          field_ref: [
+            "field",
+            PRODUCTS.TITLE.id,
+            { "source-field": ORDERS.PRODUCT_ID.id },
+          ],
+        });
+      });
+      describe("fk()", () => {
+        const fk = dimension.fk();
+        expect(fk).toBeInstanceOf(FieldDimension);
+        expect(fk.mbql()).toEqual(["field", ORDERS.PRODUCT_ID.id, null]);
+        expect(fk.render()).toEqual("Product ID");
+        expect(fk._metadata).toEqual(metadata);
+      });
+    });
+  });
+
+  describe("Field with temporal bucketing", () => {
+    const dimension = Dimension.parseMBQL(
+      ["field", ORDERS.CREATED_AT.id, { "temporal-unit": "month" }],
+      metadata,
+    );
+
+    describe("INSTANCE METHODS", () => {
+      describe("mbql()", () => {
+        it("returns a field clause with temporal unit", () => {
+          expect(dimension.mbql()).toEqual([
+            "field",
+            ORDERS.CREATED_AT.id,
+            { "temporal-unit": "month" },
+          ]);
+        });
+      });
+      describe("displayName()", () => {
+        it("returns the field name", () => {
+          expect(dimension.displayName()).toEqual("Created At");
+        });
+      });
+      describe("subDisplayName()", () => {
+        it("returns 'Month'", () => {
+          expect(dimension.subDisplayName()).toEqual("Month");
+        });
+      });
+      describe("subTriggerDisplayName()", () => {
+        it("returns 'by month'", () => {
+          expect(dimension.subTriggerDisplayName()).toEqual("by month");
+        });
+      });
+
+      describe("column()", () => {
+        expect(dimension.column()).toEqual({
+          id: ORDERS.CREATED_AT.id,
+          name: "CREATED_AT",
+          display_name: "Created At",
+          base_type: "type/DateTime",
+          semantic_type: null,
+          field_ref: [
+            "field",
+            ORDERS.CREATED_AT.id,
+            { "temporal-unit": "month" },
+          ],
+          unit: "month",
+        });
+      });
+
+      describe("temporalUnit()", () => {
+        expect(dimension.getOption("temporal-unit")).toEqual("month");
+        expect(dimension.temporalUnit()).toEqual("month");
+      });
+
+      describe("withoutTemporalBucketing()", () => {
+        const noBucketing = dimension.withoutTemporalBucketing();
+        expect(noBucketing.getOption("temporal-unit")).toBeFalsy();
+        expect(noBucketing.temporalUnit()).toBeFalsy();
+        expect(noBucketing.mbql()).toEqual([
+          "field",
+          ORDERS.CREATED_AT.id,
+          null,
+        ]);
+      });
+
+      // TODO -- withTemporalUnit()
+    });
+  });
+
+  describe("field with both temporal bucketing and FK source-field", () => {
+    const mbql = [
+      "field",
+      PRODUCTS.CREATED_AT.id,
+      { "temporal-unit": "hour", "source-field": ORDERS.PRODUCT_ID.id },
+    ];
+    const dimension = Dimension.parseMBQL(mbql, metadata);
+
+    describe("INSTANCE METHODS", () => {
+      describe(".field()", () => {
+        expect(dimension.field()).toBeInstanceOf(Field);
+        expect(dimension.field().id).toEqual(PRODUCTS.CREATED_AT.id);
+        expect(dimension.field().metadata).toEqual(metadata);
+        expect(dimension.field().displayName()).toEqual("Created At");
+      });
+    });
+
+    describe("temporal methods", () => {
+      it("should return temporal unit correctly", () => {
+        expect(dimension.temporalUnit()).toEqual("hour");
+      });
+
+      it("should remove temporal unit without removing FK source field", () => {
+        const noBucketing = dimension.withoutTemporalBucketing();
+        expect(noBucketing.temporalUnit()).toBeFalsy();
+        expect(noBucketing.getOption("source-field")).toEqual(
+          ORDERS.PRODUCT_ID.id,
         );
-      });
-
-      describe("STATIC METHODS", () => {
-        describe("dimensions(parentDimension)", () => {
-          it("should return array of FK dimensions for foreign key field dimension", () => {
-            pending();
-            // Something like this:
-            // fieldsInProductsTable = metadata.tables[1].fields.length;
-            // expect(FKDimension.dimensions(fkFieldIdDimension).length).toEqual(fieldsInProductsTable);
-          });
-          it("should return empty array for non-FK field dimension", () => {
-            pending();
-          });
-        });
-      });
-
-      describe("INSTANCE METHODS", () => {
-        describe("mbql()", () => {
-          it('returns a "fk->" clause', () => {
-            expect(dimension.mbql()).toEqual([
-              "fk->",
-              ["field-id", ORDERS_PRODUCT_FK_FIELD_ID],
-              ["field-id", PRODUCT_TILE_FIELD_ID],
-            ]);
-          });
-        });
-        describe("displayName()", () => {
-          it("returns the field name", () => {
-            expect(dimension.displayName()).toEqual("Title");
-          });
-        });
-        describe("subDisplayName()", () => {
-          it("returns the field name", () => {
-            expect(dimension.subDisplayName()).toEqual("Title");
-          });
-        });
-        describe("subTriggerDisplayName()", () => {
-          it("does not have a value", () => {
-            expect(dimension.subTriggerDisplayName()).toBeFalsy();
-          });
-        });
+        expect(noBucketing.mbql()).toEqual([
+          "field",
+          PRODUCTS.CREATED_AT.id,
+          { "source-field": ORDERS.PRODUCT_ID.id },
+        ]);
       });
     });
 
-    describe("DatetimeFieldDimension", () => {
-      let dimension = null;
-      beforeAll(() => {
-        dimension = Dimension.parseMBQL(
-          ["datetime-field", ORDERS_CREATED_DATE_FIELD_ID, "month"],
-          metadata,
-        );
+    describe("FK field", () => {
+      const fk = dimension.fk();
+      it("should return FK field Dimension when you call fk() method", () => {
+        expect(fk).toBeInstanceOf(FieldDimension);
+        expect(fk._metadata).toEqual(metadata);
+      });
+      it("should return underlying Field", () => {
+        expect(fk.field()).toBeInstanceOf(Field);
+        expect(fk.field().id).toEqual(ORDERS.PRODUCT_ID.id);
+        expect(fk.field().displayName()).toEqual("Product ID");
+      });
+      it("should render correctly", () => {
+        expect(fk.mbql()).toEqual(["field", ORDERS.PRODUCT_ID.id, null]);
+        expect(fk.render()).toEqual("Product ID");
+      });
+    });
+  });
+
+  describe("field with binning strategy", () => {
+    const dimension = Dimension.parseMBQL(
+      [
+        "field",
+        ORDERS.TOTAL.id,
+        { binning: { strategy: "num-bins", "num-bins": 10 } },
+      ],
+      metadata,
+    );
+
+    describe("INSTANCE METHODS", () => {
+      describe("mbql()", () => {
+        it("returns a field clause with binning strategy", () => {
+          expect(dimension.mbql()).toEqual([
+            "field",
+            ORDERS.TOTAL.id,
+            { binning: { strategy: "num-bins", "num-bins": 10 } },
+          ]);
+        });
+      });
+      describe("displayName()", () => {
+        it("returns the field name", () => {
+          expect(dimension.displayName()).toEqual("Total");
+        });
+      });
+      describe("subDisplayName()", () => {
+        it("returns '10 bins'", () => {
+          expect(dimension.subDisplayName()).toEqual("10 bins");
+        });
       });
 
-      describe("STATIC METHODS", () => {
-        describe("dimensions(parentDimension)", () => {
-          it("should return an array with dimensions for each datetime unit", () => {
-            pending();
-            // Something like this:
-            // fieldsInProductsTable = metadata.tables[1].fields.length;
-            // expect(FKDimension.dimensions(fkFieldIdDimension).length).toEqual(fieldsInProductsTable);
-          });
-          it("should return empty array for non-date field dimension", () => {
-            pending();
-          });
-        });
-        describe("defaultDimension(parentDimension)", () => {
-          it("should return dimension with 'day' datetime unit", () => {
-            pending();
-          });
-          it("should return null for non-date field dimension", () => {
-            pending();
-          });
+      describe("subTriggerDisplayName()", () => {
+        it("returns '10 bins'", () => {
+          expect(dimension.subTriggerDisplayName()).toEqual("10 bins");
         });
       });
 
-      describe("INSTANCE METHODS", () => {
-        describe("mbql()", () => {
-          it('returns a "datetime-field" clause', () => {
-            expect(dimension.mbql()).toEqual([
-              "datetime-field",
-              ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
-              "month",
-            ]);
-          });
-        });
-        describe("displayName()", () => {
-          it("returns the field name", () => {
-            expect(dimension.displayName()).toEqual("Created At");
-          });
-        });
-        describe("subDisplayName()", () => {
-          it("returns 'Month'", () => {
-            expect(dimension.subDisplayName()).toEqual("Month");
-          });
-        });
-        describe("subTriggerDisplayName()", () => {
-          it("returns 'by month'", () => {
-            expect(dimension.subTriggerDisplayName()).toEqual("by month");
-          });
+      describe("column()", () => {
+        expect(dimension.column()).toEqual({
+          id: ORDERS.TOTAL.id,
+          name: "TOTAL",
+          display_name: "Total",
+          base_type: "type/Float",
+          semantic_type: "type/Currency",
+          field_ref: [
+            "field",
+            ORDERS.TOTAL.id,
+            { binning: { strategy: "num-bins", "num-bins": 10 } },
+          ],
         });
       });
     });
+  });
 
-    describe("BinningStrategyDimension", () => {
-      let dimension = null;
-      beforeAll(() => {
-        dimension = Dimension.parseMBQL(
-          ["field-id", ORDERS_TOTAL_FIELD_ID],
-          metadata,
-        ).dimensions()[1];
-      });
+  describe("ExpressionDimension", () => {
+    const dimension = Dimension.parseMBQL(
+      ["expression", "Hello World"],
+      metadata,
+    );
 
-      describe("STATIC METHODS", () => {
-        describe("dimensions(parentDimension)", () => {
-          it("should return an array of dimensions based on default binning", () => {
-            pending();
-          });
-          it("should return empty array for non-number field dimension", () => {
-            pending();
-          });
+    describe("INSTANCE METHODS", () => {
+      describe("mbql()", () => {
+        it('returns an "expression" clause', () => {
+          expect(dimension.mbql()).toEqual(["expression", "Hello World"]);
         });
       });
+      describe("displayName()", () => {
+        it("returns the expression name", () => {
+          expect(dimension.displayName()).toEqual("Hello World");
+        });
+      });
 
-      describe("INSTANCE METHODS", () => {
-        describe("mbql()", () => {
-          it('returns a "binning-strategy" clause', () => {
-            expect(dimension.mbql()).toEqual([
-              "binning-strategy",
-              ["field-id", ORDERS_TOTAL_FIELD_ID],
-              "num-bins",
-              10,
-            ]);
-          });
-        });
-        describe("displayName()", () => {
-          it("returns the field name", () => {
-            expect(dimension.displayName()).toEqual("Total");
-          });
-        });
-        describe("subDisplayName()", () => {
-          it("returns '10 bins'", () => {
-            expect(dimension.subDisplayName()).toEqual("10 bins");
-          });
-        });
-
-        describe("subTriggerDisplayName()", () => {
-          it("returns '10 bins'", () => {
-            expect(dimension.subTriggerDisplayName()).toEqual("10 bins");
-          });
+      describe("column()", () => {
+        expect(dimension.column()).toEqual({
+          id: ["expression", "Hello World"],
+          name: "Hello World",
+          display_name: "Hello World",
+          base_type: "type/Text",
+          semantic_type: null,
+          field_ref: ["expression", "Hello World"],
         });
       });
     });
+  });
 
-    describe("ExpressionDimension", () => {
-      let dimension = null;
-      beforeAll(() => {
-        dimension = Dimension.parseMBQL(
-          ["expression", "Hello World"],
-          metadata,
-        );
-      });
+  describe("Field with join-alias", () => {
+    const dimension = Dimension.parseMBQL(
+      ["field", ORDERS.TOTAL.id, { "join-alias": "join1" }],
+      metadata,
+    );
 
-      describe("STATIC METHODS", () => {
-        describe("dimensions(parentDimension)", () => {
-          it("should return array of FK dimensions for foreign key field dimension", () => {
-            pending();
-            // Something like this:
-            // fieldsInProductsTable = metadata.tables[1].fields.length;
-            // expect(FKDimension.dimensions(fkFieldIdDimension).length).toEqual(fieldsInProductsTable);
-          });
-          it("should return empty array for non-FK field dimension", () => {
-            pending();
-          });
+    describe("INSTANCE METHODS", () => {
+      describe("mbql()", () => {
+        it('returns a joined "field" clause', () => {
+          expect(dimension.mbql()).toEqual([
+            "field",
+            ORDERS.TOTAL.id,
+            { "join-alias": "join1" },
+          ]);
         });
       });
-
-      describe("INSTANCE METHODS", () => {
-        describe("mbql()", () => {
-          it('returns an "expression" clause', () => {
-            expect(dimension.mbql()).toEqual(["expression", "Hello World"]);
-          });
+      describe("displayName()", () => {
+        it("returns the field name", () => {
+          expect(dimension.displayName()).toEqual("Total");
         });
-        describe("displayName()", () => {
-          it("returns the expression name", () => {
-            expect(dimension.displayName()).toEqual("Hello World");
-          });
+      });
+      describe("subDisplayName()", () => {
+        it("returns 'Default' for numeric fields", () => {
+          expect(dimension.subDisplayName()).toEqual("Default");
+        });
+      });
+      describe("subTriggerDisplayName()", () => {
+        it("returns 'Unbinned' if the dimension is a binnable number", () => {
+          expect(dimension.subTriggerDisplayName()).toBe("Unbinned");
+        });
+      });
+      describe("column()", () => {
+        expect(dimension.column()).toEqual({
+          id: ORDERS.TOTAL.id,
+          name: "TOTAL",
+          display_name: "Total",
+          base_type: "type/Float",
+          semantic_type: "type/Currency",
+          field_ref: ["field", ORDERS.TOTAL.id, { "join-alias": "join1" }],
+        });
+      });
+      describe("isEqual", () => {
+        it("should return true for another Dimension with the same underlying MBQL", () => {
+          const anotherDimension = Dimension.parseMBQL([
+            "field",
+            ORDERS.TOTAL.id,
+            { "join-alias": "join1" },
+          ]);
+          expect(dimension.isEqual(anotherDimension)).toBe(true);
+        });
+      });
+      describe("isSameBaseDimension", () => {
+        it("should return true for another Dimension with the same underlying MBQL", () => {
+          const anotherDimension = Dimension.parseMBQL([
+            "field",
+            ORDERS.TOTAL.id,
+            { "join-alias": "join1" },
+          ]);
+          expect(dimension.isSameBaseDimension(anotherDimension)).toBe(true);
         });
       });
     });
+  });
 
-    describe("AggregationDimension", () => {
-      let dimension = null;
-      beforeAll(() => {
-        dimension = Dimension.parseMBQL(["aggregation", 1], metadata);
+  describe("AggregationDimension", () => {
+    const dimension = Dimension.parseMBQL(["aggregation", 1], metadata);
+
+    describe("INSTANCE METHODS", () => {
+      describe("mbql()", () => {
+        it('returns an "aggregation" clause', () => {
+          expect(dimension.mbql()).toEqual(["aggregation", 1]);
+        });
       });
 
-      describe("INSTANCE METHODS", () => {
-        describe("mbql()", () => {
-          it('returns an "aggregation" clause', () => {
-            expect(dimension.mbql()).toEqual(["aggregation", 1]);
-          });
+      function aggregation(agg) {
+        const query = new StructuredQuery(ORDERS.question(), {
+          type: "query",
+          database: SAMPLE_DATASET.id,
+          query: {
+            "source-table": ORDERS.id,
+            aggregation: [agg],
+          },
+        });
+        return Dimension.parseMBQL(["aggregation", 0], metadata, query);
+      }
+
+      describe("column()", () => {
+        function sumOf(column) {
+          return aggregation(["sum", ["field", column.id, null]]);
+        }
+
+        it("should clear unaggregated semantic types", () => {
+          const { semantic_type } = sumOf(ORDERS.PRODUCT_ID).column();
+
+          expect(semantic_type).toBe(undefined);
+        });
+
+        it("should retain aggregated semantic types", () => {
+          const { semantic_type } = sumOf(ORDERS.TOTAL).column();
+
+          expect(semantic_type).toBe("type/Currency");
+        });
+      });
+
+      describe("field()", () => {
+        it("should return a float field for sum of order total", () => {
+          const { base_type } = aggregation([
+            "sum",
+            ["field", ORDERS.TOTAL.id, null],
+          ]).field();
+          expect(base_type).toBe("type/Float");
+        });
+
+        it("should return an int field for count distinct of product category", () => {
+          const { base_type } = aggregation([
+            "distinct",
+            ["field", PRODUCTS.CATEGORY.id, null],
+          ]).field();
+          expect(base_type).toBe("type/Integer");
+        });
+
+        it("should return an int field for count", () => {
+          const { base_type } = aggregation(["count"]).field();
+          expect(base_type).toBe("type/Integer");
         });
       });
     });

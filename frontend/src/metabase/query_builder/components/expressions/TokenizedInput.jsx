@@ -1,7 +1,9 @@
-import React, { Component } from "react";
+import React, { Component, forwardRef } from "react";
 import ReactDOM from "react-dom";
+import ReactDOMServer from "react-dom/server";
+import PropTypes from "prop-types";
 
-import TokenizedExpression from "./TokenizedExpression.jsx";
+import TokenizedExpression from "./TokenizedExpression";
 
 import {
   getCaretPosition,
@@ -9,12 +11,7 @@ import {
   getSelectionPosition,
 } from "metabase/lib/dom";
 
-const KEYCODE_BACKSPACE = 8;
-const KEYCODE_LEFT = 37;
-const KEYCODE_RIGHT = 39;
-const KEYCODE_FORWARD_DELETE = 46;
-
-export default class TokenizedInput extends Component {
+class TokenizedInput extends Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -24,10 +21,11 @@ export default class TokenizedInput extends Component {
 
   static defaultProps = {
     style: {},
+    tokenizedEditing: false,
   };
 
   _getValue() {
-    if (this.props.value != undefined) {
+    if (this.props.value != null) {
       return this.props.value;
     } else {
       return this.state.value;
@@ -67,16 +65,19 @@ export default class TokenizedInput extends Component {
   onInput = e => {
     this._setValue(e.target.textContent);
   };
-  onKeyDown = e => {
+
+  onKeyDownNormal = e => {
+    this.props.onKeyDown(e);
+  };
+  onKeyDownTokenized = e => {
     // isTyping signals whether the user is typing characters (keyCode >= 65) vs. deleting / navigating with arrows / clicking to select
     const isTyping = this._isTyping;
     // also keep isTyping same when deleting
-    this._isTyping =
-      e.keyCode >= 65 || (e.keyCode === KEYCODE_BACKSPACE && isTyping);
+    this._isTyping = e.keyCode >= 65 || (e.key === "Backspace" && isTyping);
 
     const input = ReactDOM.findDOMNode(this);
 
-    let [start, end] = getSelectionPosition(input);
+    const [start, end] = getSelectionPosition(input);
     if (start !== end) {
       return;
     }
@@ -96,8 +97,7 @@ export default class TokenizedInput extends Component {
         if (
           !isSelected &&
           !isTyping &&
-          ((atEnd && e.keyCode === KEYCODE_BACKSPACE) ||
-            (atStart && e.keyCode === KEYCODE_FORWARD_DELETE))
+          ((atEnd && e.key === "Backspace") || (atStart && e.key === "Delete"))
         ) {
           // not selected, not "typging", and hit backspace, so mark as "selected"
           element.classList.add("Expression-selected");
@@ -106,8 +106,7 @@ export default class TokenizedInput extends Component {
           return;
         } else if (
           isSelected &&
-          ((atEnd && e.keyCode === KEYCODE_BACKSPACE) ||
-            (atStart && e.keyCode === KEYCODE_FORWARD_DELETE))
+          ((atEnd && e.key === "Backspace") || (atStart && e.key === "Delete"))
         ) {
           // selected and hit backspace, so delete it
           element.parentNode.removeChild(element);
@@ -117,8 +116,8 @@ export default class TokenizedInput extends Component {
           return;
         } else if (
           isSelected &&
-          ((atEnd && e.keyCode === KEYCODE_LEFT) ||
-            (atStart && e.keyCode === KEYCODE_RIGHT))
+          ((atEnd && e.key === "ArrowLeft") ||
+            (atStart && e.key === "ArrowRight"))
         ) {
           // selected and hit left arrow, so enter "typing" mode and unselect it
           element.classList.remove("Expression-selected");
@@ -140,16 +139,12 @@ export default class TokenizedInput extends Component {
     const inputNode = ReactDOM.findDOMNode(this);
     const restore = saveSelection(inputNode);
 
-    ReactDOM.unmountComponentAtNode(inputNode);
-    while (inputNode.firstChild) {
-      inputNode.removeChild(inputNode.firstChild);
-    }
-    ReactDOM.render(
+    inputNode.innerHTML = ReactDOMServer.renderToStaticMarkup(
       <TokenizedExpression
         source={this._getValue()}
-        parserInfo={this.props.parserInfo}
+        syntaxTree={this.props.syntaxTree}
+        parserOptions={this.props.parserOptions}
       />,
-      inputNode,
     );
 
     if (document.activeElement === inputNode) {
@@ -158,13 +153,19 @@ export default class TokenizedInput extends Component {
   }
 
   render() {
-    const { className, onFocus, onBlur, style } = this.props;
+    const { className, onFocus, onBlur, style, forwardedRef } = this.props;
     return (
       <div
+        ref={forwardedRef}
         className={className}
-        style={{ whiteSpace: "pre-wrap", ...style }}
+        style={{ ...style }}
         contentEditable
-        onKeyDown={this.onKeyDown}
+        spellCheck={false}
+        onKeyDown={
+          this.props.tokenizedEditing
+            ? this.onKeyDownTokenized
+            : this.onKeyDownNormal
+        }
         onInput={this.onInput}
         onFocus={onFocus}
         onBlur={onBlur}
@@ -173,3 +174,25 @@ export default class TokenizedInput extends Component {
     );
   }
 }
+
+export default forwardRef(function TokenizedInputWithForwardedRef(props, ref) {
+  return <TokenizedInput forwardedRef={ref} {...props} />;
+});
+
+TokenizedInput.propTypes = {
+  className: PropTypes.string,
+  forwardedRef: PropTypes.oneOfType([
+    PropTypes.func,
+    PropTypes.shape({ current: PropTypes.any }),
+  ]),
+  onBlur: PropTypes.func,
+  onChange: PropTypes.func,
+  onClick: PropTypes.func,
+  onFocus: PropTypes.func,
+  onKeyDown: PropTypes.func,
+  parserOptions: PropTypes.object,
+  style: PropTypes.object,
+  syntaxTree: PropTypes.object,
+  tokenizedEditing: PropTypes.bool,
+  value: PropTypes.string,
+};

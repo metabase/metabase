@@ -2,18 +2,15 @@
   "A Segment is a saved MBQL 'macro', expanding to a `:filter` subclause. It is passed in as a `:filter` subclause but is
   replaced by the `expand-macros` middleware with the appropriate clauses."
   (:require [medley.core :as m]
-            [metabase.models
-             [interface :as i]
-             [revision :as revision]]
+            [metabase.models.interface :as i]
+            [metabase.models.revision :as revision]
             [metabase.util :as u]
-            [metabase.util
-             [i18n :refer [tru]]
-             [schema :as su]]
+            [metabase.util.i18n :refer [tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]
-             [models :as models]]))
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]
+            [toucan.models :as models]))
 
 (models/defmodel Segment :segment)
 
@@ -22,18 +19,18 @@
     ;; throw an Exception if someone tries to update creator_id
     (when (contains? updates :creator_id)
       (when (not= creator_id (db/select-one-field :creator_id Segment :id id))
-        (throw (UnsupportedOperationException. (str (tru "You cannot update the creator_id of a Segment."))))))))
+        (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Segment.")))))))
 
 (defn- perms-objects-set [segment read-or-write]
   (let [table (or (:table segment)
-                  (db/select-one ['Table :db_id :schema :id] :id (u/get-id (:table_id segment))))]
+                  (db/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id segment))))]
     (i/perms-objects-set table read-or-write)))
 
 (u/strict-extend (class Segment)
   models/IModel
   (merge
    models/IModelDefaults
-   {:types          (constantly {:definition :metric-segment-definition, :description :clob})
+   {:types          (constantly {:definition :metric-segment-definition})
     :properties     (constantly {:timestamped? true})
     :hydration-keys (constantly [:segment])
     :pre-update     pre-update})

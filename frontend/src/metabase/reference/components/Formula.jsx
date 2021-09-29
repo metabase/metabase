@@ -1,28 +1,24 @@
 import React, { Component } from "react";
 import cx from "classnames";
 import { connect } from "react-redux";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { CSSTransitionGroup } from "react-transition-group";
 
 import S from "./Formula.css";
 
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 
-import QueryDefinition from "metabase/query_builder/components/dataref/QueryDefinition.jsx";
+import QueryDefinition from "metabase/query_builder/components/QueryDefinition";
 import { fetchTableMetadata } from "metabase/redux/metadata";
-import { getMetadata } from "metabase/selectors/metadata";
-
-import type Metadata from "metabase-lib/lib/metadata/Metadata";
 
 const mapDispatchToProps = {
   fetchTableMetadata,
 };
 
-const mapStateToProps = (state, props) => ({
-  metadata: getMetadata(state, props),
-});
-
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  null,
+  mapDispatchToProps,
+)
 export default class Formula extends Component {
   props: {
     type: string,
@@ -30,7 +26,6 @@ export default class Formula extends Component {
     isExpanded: boolean,
     expandFormula: any,
     collapseFormula: any,
-    metadata: Metadata,
   };
 
   render() {
@@ -40,7 +35,6 @@ export default class Formula extends Component {
       isExpanded,
       expandFormula,
       collapseFormula,
-      metadata,
     } = this.props;
 
     return (
@@ -62,7 +56,6 @@ export default class Formula extends Component {
               <QueryDefinition
                 className={S.formulaDefinitionInner}
                 object={entity}
-                tableMetadata={metadata.tables[entity.table_id]}
               />
             </div>
           )}

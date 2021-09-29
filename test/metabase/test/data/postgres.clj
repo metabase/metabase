@@ -1,32 +1,46 @@
 (ns metabase.test.data.postgres
   "Postgres driver test extensions."
-  (:require [metabase.test.data
-             [interface :as tx]
-             [sql :as sql.tx]
-             [sql-jdbc :as sql-jdbc.tx]]
+  (:require [metabase.test.data.interface :as tx]
+            [metabase.test.data.sql :as sql.tx]
+            [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
             [metabase.test.data.sql-jdbc.load-data :as load-data]
             [metabase.test.data.sql.ddl :as ddl]))
 
 (sql-jdbc.tx/add-test-extensions! :postgres)
 
-(defmethod tx/has-questionable-timezone-support? :postgres [_] true)
+(defmethod tx/has-questionable-timezone-support? :postgres [_] true) ; TODO - What?
+
+(defmethod tx/sorts-nil-first? :postgres [_ _] false)
 
 (defmethod sql.tx/pk-sql-type :postgres [_] "SERIAL")
 
-(defmethod sql.tx/field-base-type->sql-type [:postgres :type/BigInteger]     [_ _] "BIGINT")
-(defmethod sql.tx/field-base-type->sql-type [:postgres :type/Boolean]        [_ _] "BOOL")
-(defmethod sql.tx/field-base-type->sql-type [:postgres :type/Date]           [_ _] "DATE")
-(defmethod sql.tx/field-base-type->sql-type [:postgres :type/DateTime]       [_ _] "TIMESTAMP")
-(defmethod sql.tx/field-base-type->sql-type [:postgres :type/DateTimeWithTZ] [_ _] "TIMESTAMP WITH TIME ZONE")
-(defmethod sql.tx/field-base-type->sql-type [:postgres :type/Decimal]        [_ _] "DECIMAL")
-(defmethod sql.tx/field-base-type->sql-type [:postgres :type/Float]          [_ _] "FLOAT")
-(defmethod sql.tx/field-base-type->sql-type [:postgres :type/Integer]        [_ _] "INTEGER")
-(defmethod sql.tx/field-base-type->sql-type [:postgres :type/IPAddress]      [_ _] "INET")
-(defmethod sql.tx/field-base-type->sql-type [:postgres :type/Text]           [_ _] "TEXT")
-(defmethod sql.tx/field-base-type->sql-type [:postgres :type/Time]           [_ _] "TIME")
-(defmethod sql.tx/field-base-type->sql-type [:postgres :type/UUID]           [_ _] "UUID")
+(defmethod tx/aggregate-column-info :postgres
+  ([driver ag-type]
+   ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type))
 
-(defmethod tx/dbdef->connection-details :postgres [_ context {:keys [database-name]}]
+  ([driver ag-type field]
+   (merge
+    ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type field)
+    (when (= ag-type :sum)
+      {:base_type :type/BigInteger}))))
+
+(doseq [[base-type db-type] {:type/BigInteger     "BIGINT"
+                             :type/Boolean        "BOOL"
+                             :type/Date           "DATE"
+                             :type/DateTime       "TIMESTAMP"
+                             :type/DateTimeWithTZ "TIMESTAMP WITH TIME ZONE"
+                             :type/Decimal        "DECIMAL"
+                             :type/Float          "FLOAT"
+                             :type/Integer        "INTEGER"
+                             :type/IPAddress      "INET"
+                             :type/Text           "TEXT"
+                             :type/Time           "TIME"
+                             :type/TimeWithTZ     "TIME WITH TIME ZONE"
+                             :type/UUID           "UUID"}]
+  (defmethod sql.tx/field-base-type->sql-type [:postgres base-type] [_ _] db-type))
+
+(defmethod tx/dbdef->connection-details :postgres
+  [_ context {:keys [database-name]}]
   (merge
    {:host     (tx/db-test-env-var-or-throw :postgresql :host "localhost")
     :port     (tx/db-test-env-var-or-throw :postgresql :port 5432)
@@ -49,8 +63,13 @@
                "END $$;\n")
           (name database-name)))
 
-(defmethod ddl/drop-db-ddl-statements :postgres [driver {:keys [database-name], :as dbdef} & options]
-  ;; add an additonal statement to the front to kill open connections to the DB before dropping
+(defmethod ddl/drop-db-ddl-statements :postgres
+  [driver {:keys [database-name], :as dbdef} & options]
+  (when-not (string? database-name)
+    (throw (ex-info (format "Expected String database name; got ^%s %s"
+                            (some-> database-name class .getCanonicalName) (pr-str database-name))
+                    {:driver driver, :dbdef dbdef})))
+  ;; add an additional statement to the front to kill open connections to the DB before dropping
   (cons
    (kill-connections-to-db-sql database-name)
    (apply (get-method ddl/drop-db-ddl-statements :sql-jdbc/test-extensions) :postgres dbdef options)))

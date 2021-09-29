@@ -1,97 +1,147 @@
-import React, { Component } from "react";
+import React, { useMemo } from "react";
 import PropTypes from "prop-types";
-
-import colors from "metabase/lib/colors";
-
-import cx from "classnames";
 import _ from "underscore";
 
-export default class Radio extends Component {
-  static propTypes = {
-    value: PropTypes.any,
-    options: PropTypes.array.isRequired,
-    onChange: PropTypes.func,
-    optionNameFn: PropTypes.func,
-    optionValueFn: PropTypes.func,
-    optionKeyFn: PropTypes.func,
-    vertical: PropTypes.bool,
-    underlined: PropTypes.bool,
-    showButtons: PropTypes.bool,
-    py: PropTypes.number,
-  };
+import Icon from "metabase/components/Icon";
+import {
+  RadioInput,
+  RadioButton,
+  BubbleList,
+  BubbleItem,
+  NormalList,
+  NormalItem,
+  UnderlinedList,
+  UnderlinedItem,
+} from "./Radio.styled";
 
-  static defaultProps = {
-    optionNameFn: option => option.name,
-    optionValueFn: option => option.value,
-    optionKeyFn: option => option.value,
-    vertical: false,
-    underlined: false,
-  };
+const optionShape = PropTypes.shape({
+  name: PropTypes.oneOfType([
+    PropTypes.string,
+    PropTypes.element,
+    PropTypes.node,
+  ]).isRequired,
+  value: PropTypes.any.isRequired,
+  icon: PropTypes.string,
+});
 
-  constructor(props, context) {
-    super(props, context);
-    this._id = _.uniqueId("radio-");
-  }
+const propTypes = {
+  name: PropTypes.string,
+  value: PropTypes.any,
+  options: PropTypes.oneOfType([
+    PropTypes.arrayOf(PropTypes.string),
+    PropTypes.arrayOf(optionShape),
+  ]).isRequired,
+  onChange: PropTypes.func,
+  onOptionClick: PropTypes.func,
+  optionNameFn: PropTypes.func,
+  optionValueFn: PropTypes.func,
+  optionKeyFn: PropTypes.func,
+  showButtons: PropTypes.bool,
+  xspace: PropTypes.number,
+  yspace: PropTypes.number,
+  py: PropTypes.number,
 
-  render() {
-    const {
-      value,
-      options,
-      onChange,
-      optionNameFn,
-      optionValueFn,
-      optionKeyFn,
-      vertical,
-      underlined,
-      className,
-      py,
-    } = this.props;
-    // show buttons for vertical only by default
-    const showButtons =
-      this.props.showButtons != undefined ? this.props.showButtons : vertical;
-    return (
-      <ul
-        className={cx(className, "flex", {
-          "flex-column": vertical,
-          "text-bold h3": !showButtons,
-        })}
-      >
-        {options.map(option => {
-          const selected = value === optionValueFn(option);
+  // Modes
+  variant: PropTypes.oneOf(["bubble", "normal", "underlined"]),
+  vertical: PropTypes.bool,
+  colorScheme: PropTypes.oneOf(["admin", "default"]),
+};
 
-          return (
-            <li
-              key={optionKeyFn(option)}
-              className={cx(
-                "flex align-center cursor-pointer mr3",
-                { "text-brand-hover": !showButtons },
-                py != undefined ? `py${py}` : underlined ? "py2" : "pt1",
-              )}
-              style={{
-                borderBottom: underlined ? `3px solid transparent` : undefined,
-                borderColor:
-                  selected && underlined ? colors["brand"] : "transparent",
-              }}
-              onClick={e => onChange(optionValueFn(option))}
-            >
-              <input
-                className="Form-radio"
-                type="radio"
-                name={this._id}
-                value={optionValueFn(option)}
-                checked={selected}
-                id={this._id + "-" + optionKeyFn(option)}
-              />
-              {showButtons && (
-                <label htmlFor={this._id + "-" + optionKeyFn(option)} />
-              )}
-              <span className={cx({ "text-brand": selected })}>
-                {optionNameFn(option)}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
+const defaultNameGetter = option => option.name;
+const defaultValueGetter = option => option.value;
+
+const VARIANTS = {
+  normal: [NormalList, NormalItem],
+  bubble: [BubbleList, BubbleItem],
+  underlined: [UnderlinedList, UnderlinedItem],
+};
+
+function Radio({
+  name: nameFromProps,
+  value: currentValue,
+  options,
+
+  // onChange won't fire when you click an already checked item
+  // onOptionClick will fire in any case
+  // onOptionClick can be used for e.g. tab navigation like on the admin Permissions page)
+  onOptionClick,
+  onChange,
+
+  optionNameFn = defaultNameGetter,
+  optionValueFn = defaultValueGetter,
+  optionKeyFn = defaultValueGetter,
+  variant = "normal",
+  vertical = false,
+  xspace,
+  yspace,
+  py,
+  showButtons = vertical && variant !== "bubble",
+  colorScheme = "default",
+  ...props
+}) {
+  const id = useMemo(() => _.uniqueId("radio-"), []);
+  const name = nameFromProps || id;
+
+  const [List, Item] = VARIANTS[variant] || VARIANTS.normal;
+
+  if (variant === "underlined" && currentValue === undefined) {
+    console.warn(
+      "Radio can't underline selected option when no value is given.",
     );
   }
+
+  return (
+    <List {...props} vertical={vertical} showButtons={showButtons}>
+      {options.map((option, index) => {
+        const value = optionValueFn(option);
+        const selected = currentValue === value;
+        const last = index === options.length - 1;
+        const key = optionKeyFn(option);
+        const id = `${name}-${key}`;
+        const labelId = `${id}-label`;
+        return (
+          <li key={key}>
+            <Item
+              id={labelId}
+              htmlFor={id}
+              colorScheme={colorScheme}
+              selected={selected}
+              last={last}
+              vertical={vertical}
+              showButtons={showButtons}
+              py={py}
+              xspace={xspace}
+              yspace={yspace}
+              onClick={() => {
+                if (typeof onOptionClick === "function") {
+                  onOptionClick(value);
+                }
+              }}
+            >
+              {option.icon && <Icon name={option.icon} mr={1} />}
+              <RadioInput
+                id={id}
+                name={name}
+                value={value}
+                checked={selected}
+                onChange={() => {
+                  if (typeof onChange === "function") {
+                    onChange(value);
+                  }
+                }}
+                // Workaround for https://github.com/testing-library/dom-testing-library/issues/877
+                aria-labelledby={labelId}
+              />
+              {showButtons && <RadioButton checked={selected} />}
+              <span data-testid={`${id}-name`}>{optionNameFn(option)}</span>
+            </Item>
+          </li>
+        );
+      })}
+    </List>
+  );
 }
+
+Radio.propTypes = propTypes;
+
+export default Radio;

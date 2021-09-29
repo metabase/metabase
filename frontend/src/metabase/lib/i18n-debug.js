@@ -1,5 +1,7 @@
 import React from "react";
 
+import { HAS_LOCAL_STORAGE } from "metabase/lib/dom";
+
 // If enabled this monkeypatches `t` and `jt` to return blacked out
 // strings/elements to assist in finding untranslated strings.
 //
@@ -35,7 +37,7 @@ const obfuscateString = (original, string) => {
 };
 
 export function enableTranslatedStringReplacement() {
-  const c3po = require("c-3po");
+  const c3po = require("ttag");
   const _t = c3po.t;
   const _jt = c3po.jt;
   const _ngettext = c3po.ngettext;
@@ -52,6 +54,6 @@ export function enableTranslatedStringReplacement() {
   };
 }
 
-if (window.localStorage && window.localStorage["metabase-i18n-debug"]) {
+if (HAS_LOCAL_STORAGE && window.localStorage["metabase-i18n-debug"]) {
   enableTranslatedStringReplacement();
 }

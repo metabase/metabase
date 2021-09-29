@@ -1,14 +1,23 @@
 (ns metabase.config
-  (:require [clojure.java
-             [io :as io]
-             [shell :as shell]]
-            [clojure.string :as s]
-            [environ.core :as environ])
-  (:import clojure.lang.Keyword))
+  (:require [clojure.java.io :as io]
+            [clojure.string :as str]
+            [clojure.tools.logging :as log]
+            [environ.core :as environ]
+            [metabase.plugins.classloader :as classloader])
+  (:import clojure.lang.Keyword
+           java.util.UUID))
+
+;; this existed long before 0.39.0, but that's when it was made public
+(def ^{:doc "Indicates whether Enterprise Edition extensions are available" :added "0.39.0"} ee-available?
+  (try
+    (classloader/require 'metabase-enterprise.core)
+    true
+    (catch Throwable _
+      false)))
 
 (def ^Boolean is-windows?
   "Are we running on a Windows machine?"
-  (s/includes? (s/lower-case (System/getProperty "os.name")) "win"))
+  (str/includes? (str/lower-case (System/getProperty "os.name")) "win"))
 
 (def ^:private app-defaults
   "Global application defaults"
@@ -24,11 +33,19 @@
    ;; other application settings
    :mb-password-complexity "normal"
    :mb-version-info-url    "http://static.metabase.com/version-info.json"
+   :mb-version-info-ee-url "http://static.metabase.com/version-info-ee.json"
+   :mb-ns-trace            ""                                             ; comma-separated namespaces to trace
    :max-session-age        "20160"                                        ; session length in minutes (14 days)
    :mb-colorize-logs       (str (not is-windows?))                        ; since PowerShell and cmd.exe don't support ANSI color escape codes or emoji,
    :mb-emoji-in-logs       (str (not is-windows?))                        ; disable them by default when running on Windows. Otherwise they're enabled
    :mb-qp-cache-backend    "db"})
 
+;; separate map for EE stuff so merge conflicts aren't annoying.
+(def ^:private ee-app-defaults
+  {:embed-max-session-age      "1440"   ; how long a FULL APP EMBED session is valid for. One day, by default
+   :mb-session-cookie-samesite "lax"})
+
+(alter-var-root #'app-defaults merge ee-app-defaults)
 
 (defn config-str
   "Retrieve value for a single configuration key.  Accepts either a keyword or a string.
@@ -39,35 +56,26 @@
    2.  jvm options (ex: -Dmb.db.type -> :mb-db-type)
    3.  hard coded `app-defaults`"
   [k]
-  (let [k (keyword k)]
-    (or (k environ/env) (k app-defaults))))
+  (let [k       (keyword k)
+        env-val (k environ/env)]
+    (or (when-not (str/blank? env-val) env-val)
+        (k app-defaults))))
 
 
 ;; These are convenience functions for accessing config values that ensures a specific return type
-;; TODO - These names are bad. They should be something like  `int`, `boolean`, and `keyword`, respectively.
-;; See https://github.com/metabase/metabase/wiki/Metabase-Clojure-Style-Guide#dont-repeat-namespace-alias-in-function-names for discussion
+;;
+;; TODO - These names are bad. They should be something like `int`, `boolean`, and `keyword`, respectively. See
+;; https://github.com/metabase/metabase/wiki/Metabase-Clojure-Style-Guide#dont-repeat-namespace-alias-in-function-names
+;; for discussion
 (defn ^Integer config-int  "Fetch a configuration key and parse it as an integer." [k] (some-> k config-str Integer/parseInt))
 (defn ^Boolean config-bool "Fetch a configuration key and parse it as a boolean."  [k] (some-> k config-str Boolean/parseBoolean))
 (defn ^Keyword config-kw   "Fetch a configuration key and parse it as a keyword."  [k] (some-> k config-str keyword))
 
-(def ^Boolean is-dev?  "Are we running in `dev` mode (i.e. in a REPL or via `lein ring server`)?" (= :dev  (config-kw :mb-run-mode)))
-(def ^Boolean is-prod? "Are we running in `prod` mode (i.e. from a JAR)?"                         (= :prod (config-kw :mb-run-mode)))
-(def ^Boolean is-test? "Are we running in `test` mode (i.e. via `lein test`)?"                    (= :test (config-kw :mb-run-mode)))
-
+(def ^Boolean is-dev?  "Are we running in `dev` mode (i.e. in a REPL or via `clojure -M:run`)?" (= :dev  (config-kw :mb-run-mode)))
+(def ^Boolean is-prod? "Are we running in `prod` mode (i.e. from a JAR)?"                       (= :prod (config-kw :mb-run-mode)))
+(def ^Boolean is-test? "Are we running in `test` mode (i.e. via `clojure -X:test`)?"            (= :test (config-kw :mb-run-mode)))
 
 ;;; Version stuff
-;; Metabase version is of the format `GIT-TAG (GIT-SHORT-HASH GIT-BRANCH)`
-
-(defn- version-info-from-shell-script []
-  (try
-    (let [[tag hash branch date] (-> (shell/sh "./bin/version") :out s/trim (s/split #" "))]
-      {:tag    (or tag "?")
-       :hash   (or hash "?")
-       :branch (or branch "?")
-       :date   (or date "?")})
-    ;; if ./bin/version fails (e.g., if we are developing on Windows) just return something so the whole thing doesn't barf
-    (catch Throwable _
-      {:tag "?", :hash "?", :branch "?", :date "?"})))
 
 (defn- version-info-from-properties-file []
   (when-let [props-file (io/resource "version.properties")]
@@ -77,14 +85,13 @@
         (into {} (for [[k v] props]
                    [(keyword k) v]))))))
 
+;; TODO - Can we make this `^:const`, so we don't have to read the file at launch when running from the uberjar?
 (def mb-version-info
-  "Information about the current version of Metabase.
-   This comes from `resources/version.properties` for prod builds and is fetched from `git` via the `./bin/version` script for dev.
+  "Information about the current version of Metabase. Comes from `version.properties` which is generated by the build
+  script.
 
      mb-version-info -> {:tag: \"v0.11.1\", :hash: \"afdf863\", :branch: \"about_metabase\", :date: \"2015-10-05\"}"
-  (or (if is-prod?
-        (version-info-from-properties-file)
-        (version-info-from-shell-script))
+  (or (version-info-from-properties-file)
       ;; if version info is not defined for whatever reason
       {}))
 
@@ -100,13 +107,39 @@
    Looks something like `Metabase v0.25.0.RC1`."
   (str "Metabase " (mb-version-info :tag)))
 
+(defonce ^{:doc "This UUID is randomly-generated upon launch and used to identify this specific Metabase instance during
+                this specifc run. Restarting the server will change this UUID, and each server in a horizontal cluster
+                will have its own ID, making this different from the `site-uuid` Setting."}
+  local-process-uuid
+  (str (UUID/randomUUID)))
 
-;; This only affects dev:
+(defonce
+  ^{:doc "A string that contains identifying information about the Metabase version and the local process."}
+  mb-version-and-process-identifier
+  (format "%s [%s]" mb-app-id-string local-process-uuid))
+
+(defn- mb-session-cookie-samesite*
+  []
+  (let [same-site (str/lower-case (config-str :mb-session-cookie-samesite))]
+    (when-not (#{"none", "lax", "strict"} same-site)
+      (throw (ex-info "Invalid value for MB_COOKIE_SAMESITE" {:mb-session-cookie-samesite same-site})))
+    (keyword same-site)))
+
+(def ^Keyword mb-session-cookie-samesite
+  "Value for session cookie's `SameSite` directive. Must be one of \"none\", \"lax\", or \"strict\" (case insensitive)."
+  (mb-session-cookie-samesite*))
+
+;; In 0.41.0 we switched from Leiningen to deps.edn. This warning here to keep people from being bitten in the ass by
+;; the little gotcha described below.
 ;;
-;; If for some wacky reason the test namespaces are getting loaded (e.g. when running via
-;; `lein ring` or `lein ring sever`, DO NOT RUN THE EXPECTATIONS TESTS AT SHUTDOWN! THIS WILL NUKE YOUR APPLICATION DB
-(try
-  (require 'expectations)
-  ((resolve 'expectations/disable-run-on-shutdown))
-  ;; This will fail if the test dependencies aren't present (e.g. in a JAR situation) which is totally fine
-  (catch Throwable _))
+;; TODO -- after we've shipped 0.43.0, remove this warning. At that point, the last three shipped major releases will
+;; all be deps.edn based.
+(when (and (not is-prod?)
+           (.exists (io/file ".lein-env")))
+  ;; don't need to i18n since this is a dev-only warning.
+  (log/warn
+   (str "Found .lein-env in the project root directory.\n"
+        "This file was previously created automatically by the Leiningen lein-env plugin.\n"
+        "Environ will use values from it in preference to env var or Java system properties you've specified.\n"
+        "You should delete it; it will be recreated as needed when switching to a branch still using Leiningen.\n"
+        "See https://github.com/metabase/metabase/wiki/Migrating-from-Leiningen-to-tools.deps#custom-env-var-values for more details.")))

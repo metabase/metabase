@@ -2,20 +2,18 @@
   "Settings cache. Cache is a 1:1 mapping of what's in the DB. Cached lookup time is ~60µs, compared to ~1800µs for DB
   lookup."
   (:require [clojure.core :as core]
-            [clojure.core.memoize :as memoize]
             [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
-            [metabase
-             [db :as mdb]
-             [util :as u]]
-            [metabase.util
-             [honeysql-extensions :as hx]
-             [i18n :as ui18n :refer [trs]]]
-            [toucan.db :as db]))
+            [metabase.db.connection :as mdb.connection]
+            [metabase.util :as u]
+            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.i18n :as ui18n :refer [trs]]
+            [toucan.db :as db])
+  (:import java.util.concurrent.locks.ReentrantLock))
 
-(def ^:private cache*
-  "Settings cache. Map of Setting key (string) -> Setting value (string)."
+(defonce ^:private ^{:doc "Settings cache. Map of Setting key (string) -> Setting value (string)."}
+  cache*
   (atom nil))
 
 (defn cache
@@ -57,7 +55,7 @@
   []
   (log/debug (trs "Updating value of settings-last-updated in DB..."))
   ;; for MySQL, cast(current_timestamp AS char); for H2 & Postgres, cast(current_timestamp AS text)
-  (let [current-timestamp-as-string-honeysql (hx/cast (if (= (mdb/db-type) :mysql) :char :text)
+  (let [current-timestamp-as-string-honeysql (hx/cast (if (= (mdb.connection/db-type) :mysql) :char :text)
                                                       (hsql/raw "current_timestamp"))]
     ;; attempt to UPDATE the existing row. If no row exists, `update-where!` will return false...
     (or (db/update-where! 'Setting {:key settings-last-updated-key} :value current-timestamp-as-string-honeysql)
@@ -86,33 +84,44 @@
       to invalidate our cache.)"
   []
   (log/debug (trs "Checking whether settings cache is out of date (requires DB call)..."))
-  (boolean
-   (or
-    ;; is the cache empty?
-    (not @cache*)
-    ;; if not, get the cached value of `settings-last-updated`, and if it exists...
-    (when-let [last-known-update (core/get @cache* settings-last-updated-key)]
-      ;; compare it to the value in the DB. This is done be seeing whether a row exists
-      ;; WHERE value > <local-value>
-      (u/prog1 (db/select-one 'Setting
-                 {:where [:and
-                          [:= :key settings-last-updated-key]
-                          [:> :value last-known-update]]})
-        (when <>
-          (log/info (u/format-color 'red
-                        (str (trs "Settings have been changed on another instance, and will be reloaded here."))))))))))
+  (let [current-cache (cache)]
+    (boolean
+      (or
+        ;; is the cache empty?
+        (not current-cache)
+        ;; if not, get the cached value of `settings-last-updated`, and if it exists...
+        (when-let [last-known-update (core/get current-cache settings-last-updated-key)]
+          ;; compare it to the value in the DB. This is done be seeing whether a row exists
+          ;; WHERE value > <local-value>
+          (u/prog1 (db/select-one-field :value 'Setting
+                     {:where [:and
+                              [:= :key settings-last-updated-key]
+                              [:> :value last-known-update]]})
+            (log/trace "last known Settings update: " (pr-str last-known-update))
+            (log/trace "actual last Settings update:" (pr-str <>))
+            (when <>
+              (log/info (u/format-color 'red
+                            (trs "Settings have been changed on another instance, and will be reloaded here."))))))))))
 
-(def ^:private cache-update-check-interval-ms
+(def ^:private ^:const cache-update-check-interval-ms
   "How often we should check whether the Settings cache is out of date (which requires a DB call)?"
-  ;; once a minute
-  (* 60 1000))
+  (u/minutes->ms 1))
 
-(def ^:private ^{:arglists '([])} should-restore-cache?
-  "TTL-memoized version of `cache-out-of-date?`. Call this function to see whether we need to repopulate the cache with
-  values from the DB."
-  (memoize/ttl cache-out-of-date? :ttl/threshold cache-update-check-interval-ms))
+(defonce ^:private last-update-check (atom 0))
 
-(def ^:private restore-cache-if-needed-lock (Object.))
+(defn- time-for-another-update-check?
+  "Has it has been more than a minute since the last time we checked for updates?"
+  []
+  (> (- (System/currentTimeMillis) @last-update-check)
+     cache-update-check-interval-ms))
+
+(defn restore-cache!
+  "Populate cache with the latest hotness from the db"
+  []
+  (log/debug (trs "Refreshing Settings cache..."))
+  (reset! cache* (db/select-field->field :key :value 'Setting)))
+
+(defonce ^:private ^ReentrantLock restore-cache-lock (ReentrantLock.))
 
 (defn restore-cache-if-needed!
   "Check whether we need to repopulate the cache with fresh values from the DB (because the cache is either empty or
@@ -127,17 +136,17 @@
   ;; This is not desirable, since either situation would result in duplicate work. Better to just add a quick lock
   ;; here so only one of them does it, since at any rate waiting for the other thread to finish the task in progress is
   ;; certainly quicker than starting the task ourselves from scratch
-  (locking restore-cache-if-needed-lock
-    (when (should-restore-cache?)
-      (log/debug (trs "Refreshing Settings cache..."))
-      (reset! cache* (db/select-field->field :key :value 'Setting))
-      ;; Now the cache is up-to-date. That is all good, but if we call `should-restore-cache?` again in a second it
-      ;; will still return `true`, because its result is memoized, and we would be on the hook to (again) update the
-      ;; cache. So go ahead and clear the memozied results for `should-restore-cache?`. The next time around when
-      ;; someone calls this it will cache the latest value (which should be `false`)
-      ;;
-      ;; NOTE: I tried using `memo-swap!` instead to set the cached response to `false` here, avoiding the extra DB
-      ;; call the next fn call would make, but it didn't seem to work correctly (I think it was still discarding the
-      ;; new value because of the TTL). So we will just stick with `memo-clear!` for now. (One extra DB call whenever
-      ;; the cache gets invalidated shouldn't be a huge deal)
-      (memoize/memo-clear! should-restore-cache?))))
+  (when (time-for-another-update-check?)
+    ;; if the lock is not already held by any thread, including this one...
+    (when-not (.isLocked restore-cache-lock)
+      ;; attempt to acquire the lock. Returns immediately if lock is is already held.
+      (when (.tryLock restore-cache-lock)
+        (try
+          ;; don't try to restore the cache before the application DB is ready, it's not going to work...
+          (when-let [db-is-set-up? (resolve 'metabase.db/db-is-set-up?)]
+            (when (db-is-set-up?)
+              (reset! last-update-check (System/currentTimeMillis))
+              (when (cache-out-of-date?)
+                (restore-cache!))))
+          (finally
+            (.unlock restore-cache-lock)))))))

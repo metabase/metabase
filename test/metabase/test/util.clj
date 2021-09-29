@@ -1,140 +1,81 @@
 (ns metabase.test.util
   "Helper functions and macros for writing unit tests."
   (:require [cheshire.core :as json]
-            [clj-time.core :as time]
-            [clojure
-             [string :as str]
-             [walk :as walk]]
-            [clojure.tools.logging :as log]
+            [clojure.java.io :as io]
+            [clojure.set :as set]
+            [clojure.string :as str]
+            [clojure.test :refer :all]
+            [clojure.walk :as walk]
             [clojurewerkz.quartzite.scheduler :as qs]
-            [expectations :as expectations :refer [expect]]
-            [metabase
-             [driver :as driver]
-             [task :as task]
-             [util :as u]]
-            [metabase.models
-             [card :refer [Card]]
-             [collection :as collection :refer [Collection]]
-             [dashboard :refer [Dashboard]]
-             [dashboard-card-series :refer [DashboardCardSeries]]
-             [database :refer [Database]]
-             [dimension :refer [Dimension]]
-             [field :refer [Field]]
-             [metric :refer [Metric]]
-             [permissions :as perms :refer [Permissions]]
-             [permissions-group :as group :refer [PermissionsGroup]]
-             [pulse :refer [Pulse]]
-             [pulse-card :refer [PulseCard]]
-             [pulse-channel :refer [PulseChannel]]
-             [revision :refer [Revision]]
-             [segment :refer [Segment]]
-             [setting :as setting]
-             [table :refer [Table]]
-             [task-history :refer [TaskHistory]]
-             [user :refer [User]]]
+            [colorize.core :as colorize]
+            [environ.core :as env]
+            [java-time :as t]
+            [metabase.driver :as driver]
+            [metabase.models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field FieldValues
+                                     LoginHistory Metric NativeQuerySnippet Permissions PermissionsGroup Pulse PulseCard
+                                     PulseChannel Revision Segment Table TaskHistory User]]
+            [metabase.models.collection :as collection]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as group]
+            [metabase.models.setting :as setting]
+            [metabase.models.setting.cache :as setting.cache]
+            [metabase.plugins.classloader :as classloader]
+            [metabase.task :as task]
+            [metabase.test-runner.effects :as effects]
+            [metabase.test-runner.parallel :as test-runner.parallel]
             [metabase.test.data :as data]
-            [metabase.test.data.dataset-definitions :as defs]
-            [metabase.util.date :as du]
-            [schema.core :as s]
+            [metabase.test.fixtures :as fixtures]
+            [metabase.test.initialize :as initialize]
+            [metabase.test.util.log :as tu.log]
+            [metabase.util :as u]
+            [metabase.util.files :as u.files]
+            [potemkin :as p]
             [toucan.db :as db]
-            [toucan.util.test :as test])
-  (:import org.apache.log4j.Logger
+            [toucan.models :as t.models]
+            [toucan.util.test :as tt])
+  (:import java.net.ServerSocket
+           java.util.concurrent.TimeoutException
+           java.util.Locale
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
-;; record type for testing that results match a Schema
-(defrecord SchemaExpectation [schema]
-  expectations/CustomPred
-  (expect-fn [_ actual]
-    (nil? (s/check schema actual)))
-  (expected-message [_ _ _ _]
-    (str "Result did not match schema:\n"
-         (u/pprint-to-str (s/explain schema))))
-  (actual-message [_ actual _ _]
-    (str "Was:\n"
-         (u/pprint-to-str actual)))
-  (message [_ actual _ _]
-    (u/pprint-to-str (s/check schema actual))))
+(comment tu.log/keep-me
+         effects/keep-me)
 
-(defmacro expect-schema
-  "Like `expect`, but checks that results match a schema."
-  {:style/indent 0}
-  [expected actual]
-  `(expect
-     (SchemaExpectation. ~expected)
-     ~actual))
+(use-fixtures :once (fixtures/initialize :db))
 
+;; these are imported because these functions originally lived in this namespace, and some tests might still be
+;; referencing them from here. We can remove the imports once everyone is using `metabase.test` instead of using this
+;; namespace directly.
+(p/import-vars
+ [tu.log
+  with-log-level
+  with-log-messages
+  with-log-messages-for-level])
 
-;;; ---------------------------------------------------- match-$ -----------------------------------------------------
-
-(defn- $->prop
-  "If FORM is a symbol starting with a `$`, convert it to the form `(form-keyword SOURCE-OBJ)`.
-
-    ($->prop my-obj 'fish)  -> 'fish
-    ($->prop my-obj '$fish) -> '(:fish my-obj)"
-  [source-obj form]
-  (or (when (and (symbol? form)
-                 (= (first (name form)) \$)
-                 (not= form '$))
-        (if (= form '$$)
-          source-obj
-          `(~(keyword (apply str (rest (name form)))) ~source-obj)))
-      form))
-
-(defmacro ^:deprecated match-$
-  "Walk over map DEST-OBJECT and replace values of the form `$`, `$key`, or `$$` as follows:
-
-    {k $}     -> {k (k SOURCE-OBJECT)}
-    {k $symb} -> {k (:symb SOURCE-OBJECT)}
-    $$        -> {k SOURCE-OBJECT}
-
-  ex.
-
-    (match-$ m {:a $, :b 3, :c $b}) -> {:a (:a m), b 3, :c (:b m)}"
-  ;; DEPRECATED - This is an old pattern for writing tests and is probably best avoided going forward.
-  ;; Tests that use this macro end up being huge, often with giant maps with many values that are `$`.
-  ;; It's better just to write a helper function that only keeps values relevant to the tests you're writing
-  ;; and use that to pare down the results (e.g. only keeping a handful of keys relevant to the test).
-  ;; Alternatively, you can also consider converting fields that naturally change to boolean values indiciating their
-  ;; presence see the `boolean-ids-and-timestamps` function below
-  {:style/indent 1}
-  [source-obj dest-object]
-  {:pre [(map? dest-object)]}
-  (let [source##    (gensym)
-        dest-object (into {} (for [[k v] dest-object]
-                               {k (condp = v
-                                    '$ `(~k ~source##)
-                                    '$$ source##
-                                    v)}))]
-    `(let [~source## ~source-obj]
-       ~(walk/prewalk (partial $->prop source##)
-                      dest-object))))
-
-
-;;; random-name
-(def ^:private ^{:arglists '([])} random-uppercase-letter
-  (partial rand-nth (mapv char (range (int \A) (inc (int \Z))))))
+(defn- random-uppercase-letter []
+  (char (+ (int \A) (rand-int 26))))
 
 (defn random-name
   "Generate a random string of 20 uppercase letters."
   []
-  (apply str (repeatedly 20 random-uppercase-letter)))
+  (str/join (repeatedly 20 random-uppercase-letter)))
 
 (defn random-email
   "Generate a random email address."
   []
-  (str (random-name) "@metabase.com"))
+  (str (u/lower-case-en (random-name)) "@metabase.com"))
 
 (defn boolean-ids-and-timestamps
-  "Useful for unit test comparisons. Converts map keys found in `DATA`
-  satisfying `PRED` with booleans when not nil"
+  "Useful for unit test comparisons. Converts map keys found in `data` satisfying `pred` with booleans when not nil."
   ([data]
    (boolean-ids-and-timestamps
     (every-pred (some-fn keyword? string?)
                 (some-fn #{:id :created_at :updated_at :last_analyzed :created-at :updated-at :field-value-id :field-id
-                           :fields_hash :date_joined :date-joined :last_login :dimension-id :human-readable-field-id}
+                           :date_joined :date-joined :last_login :dimension-id :human-readable-field-id :timestamp}
                          #(str/ends-with? % "_id")
                          #(str/ends-with? % "_at")))
     data))
+
   ([pred data]
    (walk/prewalk (fn [maybe-map]
                    (if (map? maybe-map)
@@ -148,130 +89,156 @@
 
 
 (defn- user-id [username]
-  (require 'metabase.test.data.users)
+  (classloader/require 'metabase.test.data.users)
   ((resolve 'metabase.test.data.users/user->id) username))
 
 (defn- rasta-id [] (user-id :rasta))
 
-(u/strict-extend (class Card)
-  test/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:creator_id             (rasta-id)
-                                :dataset_query          {}
-                                :display                :table
-                                :name                   (random-name)
-                                :visualization_settings {}})})
+(def ^:private with-temp-defaults-fns
+  {Card
+   (fn [_] {:creator_id             (rasta-id)
+            :dataset_query          {}
+            :display                :table
+            :name                   (random-name)
+            :visualization_settings {}})
 
-(u/strict-extend (class Collection)
-  test/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:name  (random-name)
-                                :color "#ABCDEF"})})
+   Collection
+   (fn [_] {:name  (random-name)
+            :color "#ABCDEF"})
 
-(u/strict-extend (class Dashboard)
-  test/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:creator_id   (rasta-id)
-                                :name         (random-name)})})
+   Dashboard
+   (fn [_] {:creator_id   (rasta-id)
+            :name         (random-name)})
 
-(u/strict-extend (class DashboardCardSeries)
-  test/WithTempDefaults
-  {:with-temp-defaults (constantly {:position 0})})
+   DashboardCardSeries
+   (constantly {:position 0})
 
-(u/strict-extend (class Database)
-  test/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:details   {}
-                                :engine    :h2
-                                :is_sample false
-                                :name      (random-name)})})
+   Database
+   (fn [_] {:details   {}
+            :engine    :h2
+            :is_sample false
+            :name      (random-name)})
 
-(u/strict-extend (class Dimension)
-  test/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:name (random-name)
-                                :type "internal"})})
+   Dimension
+   (fn [_] {:name (random-name)
+            :type "internal"})
 
-(u/strict-extend (class Field)
-  test/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:database_type "VARCHAR"
-                                :base_type     :type/Text
-                                :name          (random-name)
-                                :position      1
-                                :table_id      (data/id :checkins)})})
+   Field
+   (fn [_] {:database_type "VARCHAR"
+            :base_type     :type/Text
+            :name          (random-name)
+            :position      1
+            :table_id      (data/id :checkins)})
 
-(u/strict-extend (class Metric)
-  test/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:creator_id  (rasta-id)
-                                :definition  {}
-                                :description "Lookin' for a blueberry"
-                                :name        "Toucans in the rainforest"
-                                :table_id    (data/id :checkins)})})
+   LoginHistory
+   (fn [_] {:device_id          "129d39d1-6758-4d2c-a751-35b860007002"
+            :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML like Gecko) Chrome/89.0.4389.86 Safari/537.36"
+            :ip_address         "0:0:0:0:0:0:0:1"})
 
-(u/strict-extend (class PermissionsGroup)
-  test/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:name (random-name)})})
+   Metric
+   (fn [_] {:creator_id  (rasta-id)
+            :definition  {}
+            :description "Lookin' for a blueberry"
+            :name        "Toucans in the rainforest"
+            :table_id    (data/id :checkins)})
 
-(u/strict-extend (class Pulse)
-  test/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:creator_id (rasta-id)
-                                :name       (random-name)})})
+   NativeQuerySnippet
+   (fn [_] {:creator_id (user-id :crowberto)
+            :name       (random-name)
+            :content    "1 = 1"})
 
-(u/strict-extend (class PulseCard)
-  test/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:position    0
-                                :include_csv false
-                                :include_xls false})})
+   PermissionsGroup
+   (fn [_] {:name (random-name)})
 
-(u/strict-extend (class PulseChannel)
-  test/WithTempDefaults
-  {:with-temp-defaults (constantly {:channel_type  :email
-                                    :details       {}
-                                    :schedule_type :daily
-                                    :schedule_hour 15})})
+   Pulse
+   (fn [_] {:creator_id (rasta-id)
+            :name       (random-name)})
 
-(u/strict-extend (class Revision)
-  test/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:user_id      (rasta-id)
-                                :is_creation  false
-                                :is_reversion false})})
+   PulseCard
+   (fn [_] {:position    0
+            :include_csv false
+            :include_xls false})
 
-(u/strict-extend (class Segment)
-  test/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:creator_id (rasta-id)
-                                :definition  {}
-                                :description "Lookin' for a blueberry"
-                                :name        "Toucans in the rainforest"
-                                :table_id    (data/id :checkins)})})
+   PulseChannel
+   (constantly {:channel_type  :email
+                :details       {}
+                :schedule_type :daily
+                :schedule_hour 15})
 
-;; TODO - `with-temp` doesn't return `Sessions`, probably because their ID is a string?
+   Revision
+   (fn [_] {:user_id      (rasta-id)
+            :is_creation  false
+            :is_reversion false})
 
-(u/strict-extend (class Table)
-  test/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:db_id  (data/id)
-                                :active true
-                                :name   (random-name)})})
+   Segment
+   (fn [_] {:creator_id (rasta-id)
+            :definition  {}
+            :description "Lookin' for a blueberry"
+            :name        "Toucans in the rainforest"
+            :table_id    (data/id :checkins)})
 
-(u/strict-extend (class TaskHistory)
-  test/WithTempDefaults
-  {:with-temp-defaults (fn [_]
-                         (let [started (time/now)
-                               ended   (time/plus started (time/millis 10))]
-                           {:db_id      (data/id)
-                            :task       (random-name)
-                            :started_at (du/->Timestamp started)
-                            :ended_at   (du/->Timestamp ended)
-                            :duration   (du/calculate-duration started ended)}))})
+   ;; TODO - `with-temp` doesn't return `Sessions`, probably because their ID is a string?
 
-(u/strict-extend (class User)
-  test/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:first_name (random-name)
-                                :last_name  (random-name)
-                                :email      (random-email)
-                                :password   (random-name)})})
+   Table
+   (fn [_] {:db_id  (data/id)
+            :active true
+            :name   (random-name)})
+
+   TaskHistory
+   (fn [_]
+     (let [started (t/zoned-date-time)
+           ended   (t/plus started (t/millis 10))]
+       {:db_id      (data/id)
+        :task       (random-name)
+        :started_at started
+        :ended_at   ended
+        :duration   (.toMillis (t/duration started ended))}))
+
+   User
+   (fn [_] {:first_name (random-name)
+            :last_name  (random-name)
+            :email      (random-email)
+            :password   (random-name)})})
+
+(defn- set-with-temp-defaults! []
+  (doseq [[model defaults-fn] with-temp-defaults-fns]
+    ;; make sure we have the latest version of the class in case it was redefined since we imported it
+    (extend (Class/forName (.getCanonicalName (class model)))
+      tt/WithTempDefaults
+      {:with-temp-defaults defaults-fn})))
+
+(set-with-temp-defaults!)
+
+;; if any of the models get redefined, reload the `with-temp-defaults` so they apply to the new version of the model
+(doseq [model-var [#'Card
+                   #'Collection
+                   #'Dashboard
+                   #'DashboardCardSeries
+                   #'Database
+                   #'Dimension
+                   #'Field
+                   #'Metric
+                   #'NativeQuerySnippet
+                   #'Permissions
+                   #'PermissionsGroup
+                   #'Pulse
+                   #'PulseCard
+                   #'PulseChannel
+                   #'Revision
+                   #'Segment
+                   #'Table
+                   #'TaskHistory
+                   #'User]]
+  (remove-watch model-var ::reload)
+  (add-watch
+   model-var
+   ::reload
+   (fn [_ reference _ _]
+     (println (format "%s changed, reloading with-temp-defaults" model-var))
+     (set-with-temp-defaults!))))
 
 
 ;;; ------------------------------------------------- Other Util Fns -------------------------------------------------
-
-(defn- namespace-or-symbol? [x]
-  (or (symbol? x)
-      (instance? clojure.lang.Namespace x)))
-
 
 (defn obj->json->obj
   "Convert an object to JSON and back again. This can be done to ensure something will match its serialized +
@@ -283,65 +250,172 @@
   [obj]
   (json/parse-string (json/generate-string obj) keyword))
 
+(defn- ->lisp-case-keyword [s]
+  (-> (name s)
+      (str/replace #"_" "-")
+      str/lower-case
+      keyword))
 
-(defn mappify
-  "Walk COLL and convert all record types to plain Clojure maps.
-  Useful because expectations will consider an instance of a record type to be different from a plain Clojure map,
-  even if all keys & values are the same."
-  [coll]
-  {:style/indent 0}
-  (walk/postwalk (fn [x]
-                   (if (map? x)
-                     (into {} x)
-                     x))
-                 coll))
+(defn do-with-temp-env-var-value
+  "Impl for `with-temp-env-var-value` macro."
+  [env-var-keyword value thunk]
+  (test-runner.parallel/assert-test-is-not-parallel "with-temp-env-var-value")
+  (let [value (str value)]
+    (testing (colorize/blue (format "\nEnv var %s = %s\n" env-var-keyword (pr-str value)))
+      (try
+        ;; temporarily override the underlying environment variable value
+        (with-redefs [env/env (assoc env/env env-var-keyword value)]
+          ;; flush the Setting cache so it picks up the env var value for the Setting (if applicable)
+          (setting.cache/restore-cache!)
+          (thunk))
+        (finally
+          ;; flush the cache again so the original value of any env var Settings get restored
+          (setting.cache/restore-cache!))))))
 
+(defmacro with-temp-env-var-value
+  "Temporarily override the value of one or more environment variables and execute `body`. Resets the Setting cache so
+  any env var Settings will see the updated value, and resets the cache again at the conclusion of `body` so the
+  original values are restored.
+
+    (with-temp-env-var-value [mb-send-email-on-first-login-from-new-device \"FALSE\"]
+      ...)"
+  [[env-var value & more :as bindings] & body]
+  {:pre [(vector? bindings) (even? (count bindings))]}
+  `(do-with-temp-env-var-value
+    ~(->lisp-case-keyword env-var)
+    ~value
+    (fn [] ~@(if (seq more)
+               [`(with-temp-env-var-value ~(vec more) ~@body)]
+               body))))
+
+(setting/defsetting with-temp-env-var-value-test-setting
+  "Setting for the `with-temp-env-var-value-test` test."
+  :visibility :internal
+  :setter     :none
+  :default    "abc")
+
+(deftest with-temp-env-var-value-test
+  (is (= "abc"
+         (with-temp-env-var-value-test-setting)))
+  (with-temp-env-var-value [mb-with-temp-env-var-value-test-setting "def"]
+    (testing "env var value"
+      (is (= "def"
+             (env/env :mb-with-temp-env-var-value-test-setting))))
+    (testing "Setting value"
+      (is (= "def"
+             (with-temp-env-var-value-test-setting)))))
+  (testing "original value should be restored"
+    (testing "env var value"
+      (is (= nil
+             (env/env :mb-with-temp-env-var-value-test-setting))))
+    (testing "Setting value"
+      (is (= "abc"
+             (with-temp-env-var-value-test-setting)))))
+
+  (testing "override multiple env vars"
+    (with-temp-env-var-value [some-fake-env-var 123, "ANOTHER_FAKE_ENV_VAR" "def"]
+      (testing "Should convert values to strings"
+        (is (= "123"
+               (:some-fake-env-var env/env))))
+      (testing "should handle CAPITALS/SNAKE_CASE"
+        (is (= "def"
+               (:another-fake-env-var env/env))))))
+
+  (testing "validation"
+    (are [form] (thrown?
+                 clojure.lang.Compiler$CompilerException
+                 (macroexpand form))
+      (list `with-temp-env-var-value '[a])
+      (list `with-temp-env-var-value '[a b c]))))
 
 (defn do-with-temporary-setting-value
-  "Temporarily set the value of the `Setting` named by keyword SETTING-K to VALUE and execute F, then re-establish the
-  original value. This works much the same way as `binding`.
+  "Temporarily set the value of the Setting named by keyword `setting-k` to `value` and execute `f`, then re-establish
+  the original value. This works much the same way as `binding`.
 
-   Prefer the macro `with-temporary-setting-values` over using this function directly."
+  If an env var value is set for the setting, this acts as a wrapper around `do-with-temp-env-var-value`.
+
+  Prefer the macro `with-temporary-setting-values` over using this function directly."
   {:style/indent 2}
-  [setting-k value f]
-  (let [original-value (setting/get setting-k)]
-    (try
-      (setting/set! setting-k value)
-      (f)
-      (finally
-        (setting/set! setting-k original-value)))))
+  [setting-k value thunk]
+  (test-runner.parallel/assert-test-is-not-parallel "with-temporary-setting-values")
+  ;; plugins have to be initialized because changing `report-timezone` will call driver methods
+  (initialize/initialize-if-needed! :db :plugins)
+  (let [setting                    (#'setting/resolve-setting setting-k)
+        env-var-value              (#'setting/env-var-value setting)
+        original-db-or-cache-value (#'setting/db-or-cache-value setting)]
+    (if env-var-value
+      (do-with-temp-env-var-value setting env-var-value thunk)
+      (try
+        (setting/set! setting-k value)
+        (testing (colorize/blue (format "\nSetting %s = %s\n" (keyword setting-k) (pr-str value)))
+          (thunk))
+        (catch Throwable e
+          (throw (ex-info (str "Error in with-temporary-setting-values: " (ex-message e))
+                          {:setting setting-k
+                           :value   value}
+                          e)))
+        (finally
+          (setting/set! setting-k original-db-or-cache-value))))))
 
 (defmacro with-temporary-setting-values
   "Temporarily bind the values of one or more `Settings`, execute body, and re-establish the original values. This
   works much the same way as `binding`.
 
      (with-temporary-setting-values [google-auth-auto-create-accounts-domain \"metabase.com\"]
-       (google-auth-auto-create-accounts-domain)) -> \"metabase.com\""
-  [[setting-k value & more] & body]
-  (let [body `(do-with-temporary-setting-value ~(keyword setting-k) ~value (fn [] ~@body))]
-    (if (seq more)
-      `(with-temporary-setting-values ~more ~body)
-      body)))
+       (google-auth-auto-create-accounts-domain)) -> \"metabase.com\"
+
+  If an env var value is set for the setting, this will change the env var rather than the setting stored in the DB.
+  To temporarily override the value of *read-only* env vars, use `with-temp-env-var-value`."
+  [[setting-k value & more :as bindings] & body]
+  (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
+  (if (empty? bindings)
+    `(do ~@body)
+    `(do-with-temporary-setting-value ~(keyword setting-k) ~value
+       (fn []
+         (with-temporary-setting-values ~more
+           ~@body)))))
+
+(defn do-with-discarded-setting-changes [settings thunk]
+  (initialize/initialize-if-needed! :db :plugins)
+  ((reduce
+    (fn [thunk setting-k]
+      (fn []
+        (do-with-temporary-setting-value setting-k (setting/get setting-k) thunk)))
+    thunk
+    settings)))
+
+(defmacro discard-setting-changes
+  "Execute `body` in a try-finally block, restoring any changes to listed `settings` to their original values at its
+  conclusion.
+
+    (discard-setting-changes [site-name]
+      ...)"
+  {:style/indent 1}
+  [settings & body]
+  `(do-with-discarded-setting-changes ~(mapv keyword settings) (fn [] ~@body)))
 
 
 (defn do-with-temp-vals-in-db
   "Implementation function for `with-temp-vals-in-db` macro. Prefer that to using this directly."
   [model object-or-id column->temp-value f]
+  (test-runner.parallel/assert-test-is-not-parallel "with-temp-vals-in-db")
   ;; use low-level `query` and `execute` functions here, because Toucan `select` and `update` functions tend to do
   ;; things like add columns like `common_name` that don't actually exist, causing subsequent update to fail
   (let [model                    (db/resolve-model model)
         [original-column->value] (db/query {:select (keys column->temp-value)
                                             :from   [model]
-                                            :where  [:= :id (u/get-id object-or-id)]})]
+                                            :where  [:= :id (u/the-id object-or-id)]})]
+    (assert original-column->value
+            (format "%s %d not found." (name model) (u/the-id object-or-id)))
     (try
-      (db/update! model (u/get-id object-or-id)
+      (db/update! model (u/the-id object-or-id)
         column->temp-value)
       (f)
       (finally
         (db/execute!
          {:update model
           :set    original-column->value
-          :where  [:= :id (u/get-id object-or-id)]})))))
+          :where  [:= :id (u/the-id object-or-id)]})))))
 
 (defmacro with-temp-vals-in-db
   "Temporary set values for an `object-or-id` in the application database, execute `body`, and then restore the
@@ -349,78 +423,18 @@
   in the DB for 'permanent' rows (rows that live for the life of the test suite, rather than just a single test). For
   example, Database/Table/Field rows related to the test DBs can be temporarily tweaked in this way.
 
-      ;; temporarily make Field 100 a FK to Field 200 and call (do-something)
-      (with-temp-vals-in-db Field 100 {:fk_target_field_id 200, :special_type \"type/FK\"}
-        (do-something))"
+    ;; temporarily make Field 100 a FK to Field 200 and call (do-something)
+    (with-temp-vals-in-db Field 100 {:fk_target_field_id 200, :semantic_type \"type/FK\"}
+      (do-something))"
   {:style/indent 3}
   [model object-or-id column->temp-value & body]
   `(do-with-temp-vals-in-db ~model ~object-or-id ~column->temp-value (fn [] ~@body)))
-
 
 (defn is-uuid-string?
   "Is string S a valid UUID string?"
   ^Boolean [^String s]
   (boolean (when (string? s)
              (re-matches #"^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$" s))))
-
-(defn do-with-log-messages [f]
-  (let [messages (atom [])]
-    (with-redefs [log/log* (fn [_ & message]
-                             (swap! messages conj (vec message)))]
-      (f))
-    @messages))
-
-(defmacro with-log-messages
-  "Execute BODY, and return a vector of all messages logged using the `log/` family of functions. Messages are of the
-  format `[:level throwable message]`, and are returned in chronological order from oldest to newest.
-
-     (with-log-messages (log/warn \"WOW\")) ; -> [[:warn nil \"WOW\"]]"
-  {:style/indent 0}
-  [& body]
-  `(do-with-log-messages (fn [] ~@body)))
-
-(def level-kwd->level
-  "Conversion from a keyword log level to the Log4J constance mapped to that log level.
-   Not intended for use outside of the `with-mb-log-messages-at-level` macro."
-  {:error org.apache.log4j.Level/ERROR
-   :warn  org.apache.log4j.Level/WARN
-   :info  org.apache.log4j.Level/INFO
-   :debug org.apache.log4j.Level/DEBUG
-   :trace org.apache.log4j.Level/TRACE})
-
-(defn ^Logger metabase-logger
-  "Gets the root logger for all metabase namespaces. Not intended for use outside of the
-  `with-mb-log-messages-at-level` macro."
-  []
-  (Logger/getLogger "metabase"))
-
-(defmacro with-mb-log-messages-at-level
-  "Executes `body` with the metabase logging level set to `level-kwd`. This is needed when the logging level is set at
-  a higher threshold than the log messages you're wanting to example. As an example if the metabase logging level is
-  set to `ERROR` in the log4j.properties file and you are looking for a `WARN` message, it won't show up in the
-  `with-log-messages` call as there's a guard around the log invocation, if it's not enabled (it is set to `ERROR`)
-  the log function will never be invoked. This macro will temporarily set the logging level to `level-kwd`, then
-  invoke `with-log-messages`, then set the level back to what it was before the invocation. This allows testing log
-  messages even if the threshold is higher than the message you are looking for."
-  [level-kwd & body]
-  `(let  [orig-log-level# (.getLevel (metabase-logger))]
-     (try
-       (.setLevel (metabase-logger) (get level-kwd->level ~level-kwd))
-       (with-log-messages ~@body)
-       (finally
-         (.setLevel (metabase-logger) orig-log-level#)))))
-
-(defn vectorize-byte-arrays
-  "Walk form X and convert any byte arrays in the results to standard Clojure vectors. This is useful when writing
-  tests that return byte arrays (such as things that work with query hashes),since identical arrays are not considered
-  equal."
-  {:style/indent 0}
-  [x]
-  (walk/postwalk (fn [form]
-                   (if (instance? (Class/forName "[B") form)
-                     (vec form)
-                     form))
-                 x))
 
 (defn- update-in-if-present
   "If the path `KS` is found in `M`, call update-in with the original
@@ -430,7 +444,7 @@
     m
     (apply update-in m ks f args)))
 
-(defn- round-fingerprint-fields [fprint-type-map decimal-places fields]
+(defn- ^:deprecated round-fingerprint-fields [fprint-type-map decimal-places fields]
   (reduce (fn [fprint field]
             (update-in-if-present fprint [field] (fn [num]
                                                    (if (integer? num)
@@ -438,16 +452,26 @@
                                                      (u/round-to-decimals decimal-places num)))))
           fprint-type-map fields))
 
-(defn round-fingerprint
-  "Rounds the numerical fields of a fingerprint to 2 decimal places"
+(defn ^:deprecated round-fingerprint
+  "Rounds the numerical fields of a fingerprint to 2 decimal places
+
+  DEPRECATED -- this should no longer be needed; use `metabase.query-processor-test/col` to get the actual real-life
+  fingerprint of the column instead."
   [field]
   (-> field
       (update-in-if-present [:fingerprint :type :type/Number] round-fingerprint-fields 2 [:min :max :avg :sd])
-      ;; quartal estimation is order dependent and the ordering is not stable across different DB engines, hence more aggressive trimming
+      ;; quartal estimation is order dependent and the ordering is not stable across different DB engines, hence more
+      ;; aggressive trimming
       (update-in-if-present [:fingerprint :type :type/Number] round-fingerprint-fields 0 [:q1 :q3])
-      (update-in-if-present [:fingerprint :type :type/Text] round-fingerprint-fields 2 [:percent-json :percent-url :percent-email :average-length])))
+      (update-in-if-present [:fingerprint :type :type/Text]
+                            round-fingerprint-fields 2
+                            [:percent-json :percent-url :percent-email :average-length])))
 
-(defn round-fingerprint-cols
+(defn ^:deprecated round-fingerprint-cols
+  "Round fingerprints to a few digits, so it can be included directly in 'expected' parts of tests.
+
+  DEPRECATED -- this should no longer be needed; use `qp.tt/col` to get the actual real-life fingerprint of the
+  column instead."
   ([query-results]
    (if (map? query-results)
      (let [maybe-data-cols (if (contains? query-results :data)
@@ -455,6 +479,7 @@
                              [:cols])]
        (round-fingerprint-cols maybe-data-cols query-results))
      (map round-fingerprint query-results)))
+
   ([k query-results]
    (update-in query-results k #(map round-fingerprint %))))
 
@@ -470,7 +495,7 @@
 (defn round-all-decimals
   "Uses `walk/postwalk` to crawl `data`, looking for any double values, will round any it finds"
   [decimal-place data]
-  (postwalk-pred double?
+  (postwalk-pred (some-fn double? decimal?)
                  #(u/round-to-decimals decimal-place %)
                  data))
 
@@ -482,26 +507,31 @@
 ;; Various functions for letting us check that things get scheduled properly. Use these to put a temporary scheduler
 ;; in place and then check the tasks that get scheduled
 
-(defn do-with-scheduler [scheduler f]
-  (with-redefs [metabase.task/scheduler (constantly scheduler)]
-    (f)))
+(defn do-with-scheduler [scheduler thunk]
+  (binding [task/*quartz-scheduler* scheduler]
+    (thunk)))
 
 (defmacro with-scheduler
-  "Temporarily bind the Metabase Quartzite scheduler to SCHEULDER and run BODY."
+  "Temporarily bind the Metabase Quartzite scheduler to `scheulder` and run `body`."
   {:style/indent 1}
   [scheduler & body]
   `(do-with-scheduler ~scheduler (fn [] ~@body)))
 
 (defn do-with-temp-scheduler [f]
-  (let [temp-scheduler (qs/start (qs/initialize))]
-    (with-scheduler temp-scheduler
-      (try
-        (f)
-        (finally
-          (qs/shutdown temp-scheduler))))))
+  (classloader/the-classloader)
+  (initialize/initialize-if-needed! :db)
+  (let [temp-scheduler        (qs/start (qs/initialize))
+        is-default-scheduler? (identical? temp-scheduler (#'metabase.task/scheduler))]
+    (if is-default-scheduler?
+      (f)
+      (with-scheduler temp-scheduler
+        (try
+          (f)
+          (finally
+            (qs/shutdown temp-scheduler)))))))
 
 (defmacro with-temp-scheduler
-  "Execute BODY with a temporary scheduler in place.
+  "Execute `body` with a temporary scheduler in place.
 
     (with-temp-scheduler
       (do-something-to-schedule-tasks)
@@ -533,8 +563,9 @@
                                   {:cron-schedule (.getCronExpression ^CronTrigger trigger)
                                    :data          (into {} (.getJobDataMap trigger))}))))}))))))
 
-(defn db-timezone-id
-  "Return the timezone id from the test database. Must be called with `*driver*` bound,such as via `driver/with-driver`"
+(defn ^:deprecated db-timezone-id
+  "Return the timezone id from the test database. Must be called with `*driver*` bound,such as via `driver/with-driver`.
+  DEPRECATED — just call `metabase.driver/db-default-timezone` instead directly."
   []
   (assert driver/*driver*)
   (let [db (data/db)]
@@ -544,107 +575,195 @@
     ;; determine the database's timezone.
     (driver/notify-database-updated driver/*driver* db)
     (data/dataset test-data
-      (-> (driver/current-db-time driver/*driver* db)
-          .getChronology
-          .getZone
-          .getID))))
+      (or
+       (driver/db-default-timezone driver/*driver* db)
+       (-> (driver/current-db-time driver/*driver* db)
+           .getChronology
+           .getZone
+           .getID)))))
 
-(defmulti ^:private do-model-cleanup! class)
+(defmulti with-model-cleanup-additional-conditions
+  "Additional conditions that should be used to restrict which instances automatically get deleted by
+  `with-model-cleanup`. Conditions should be a HoneySQL `:where` clause."
+  {:arglists '([model])}
+  type)
 
-(defmethod do-model-cleanup! :default
-  [model]
-  (db/delete! model))
-
-(defmethod do-model-cleanup! (class Collection)
+(defmethod with-model-cleanup-additional-conditions :default
   [_]
-  ;; don't delete Personal Collections <3
-  (db/delete! Collection :personal_owner_id nil))
+  nil)
 
-(defn do-with-model-cleanup [model-seq f]
-  (try
-    (f)
-    (finally
-      (doseq [model model-seq]
-        (do-model-cleanup! (db/resolve-model model))))))
+(defmethod with-model-cleanup-additional-conditions (type Collection)
+  [_]
+  ;; NEVER delete personal collections for the test users.
+  [:or
+   [:= :personal_owner_id nil]
+   [:not-in :personal_owner_id (set (map (requiring-resolve 'metabase.test.data.users/user->id)
+                                         @(requiring-resolve 'metabase.test.data.users/usernames)))]])
+
+(defn do-with-model-cleanup [models f]
+  {:pre [(sequential? models) (every? t.models/model? models)]}
+  (test-runner.parallel/assert-test-is-not-parallel "with-model-cleanup")
+  (initialize/initialize-if-needed! :db)
+  (let [model->old-max-id (into {} (for [model models]
+                                     [model (:max-id (db/select-one [model [:%max.id :max-id]]))]))]
+    (try
+      (testing (str "\n" (pr-str (cons 'with-model-cleanup (map name models))) "\n")
+        (f))
+      (finally
+        (doseq [model models
+                ;; might not have an old max ID if this is the first time the macro is used in this test run.
+                :let  [old-max-id            (or (get model->old-max-id model)
+                                                 0)
+                       max-id-condition      [:> :id old-max-id]
+                       additional-conditions (with-model-cleanup-additional-conditions model)]]
+          (db/execute!
+           {:delete-from model
+            :where       (if (seq additional-conditions)
+                           [:and max-id-condition additional-conditions]
+                           max-id-condition)}))))))
 
 (defmacro with-model-cleanup
-  "This will delete all rows found for each model in `model-seq`. By default, this calls `delete!`, so if the model has
-  defined any `pre-delete` behavior, that will be preserved. Alternatively, you can define a custom implementation by
-  using the `do-model-cleanup!` multimethod above."
-  [model-seq & body]
-  `(do-with-model-cleanup ~model-seq (fn [] ~@body)))
+  "Execute `body`, then delete any *new* rows created for each model in `models`. Calls `delete!`, so if the model has
+  defined any `pre-delete` behavior, that will be preserved.
 
+  It's preferable to use `with-temp` instead, but you can use this macro if `with-temp` wouldn't work in your
+  situation (e.g. when creating objects via the API).
+
+    (with-model-cleanup [Card]
+      (create-card-via-api!)
+      (is (= ...)))"
+  [models & body]
+  `(do-with-model-cleanup ~models (fn [] ~@body)))
+
+(deftest with-model-cleanup-test
+  (testing "Make sure the with-model-cleanup macro actually works as expected"
+    (tt/with-temp Card [other-card]
+      (let [card-count-before (db/count Card)
+            card-name         (random-name)]
+        (with-model-cleanup [Card]
+          (db/insert! Card (-> other-card (dissoc :id) (assoc :name card-name)))
+          (testing "Card count should have increased by one"
+            (is (= (inc card-count-before)
+                   (db/count Card))))
+          (testing "Card should exist"
+            (is (db/exists? Card :name card-name))))
+        (testing "Card should be deleted at end of with-model-cleanup form"
+          (is (= card-count-before
+                 (db/count Card)))
+          (is (not (db/exists? Card :name card-name)))
+          (testing "Shouldn't delete other Cards"
+            (is (pos? (db/count Card)))))))))
+
+
+;; TODO - not 100% sure I understand
 (defn call-with-paused-query
   "This is a function to make testing query cancellation eaiser as it can be complex handling the multiple threads
   needed to orchestrate a query cancellation.
 
   This function takes `f` which is a function of 4 arguments:
-     - query-thunk - no-arg function that will invoke a query
-     - query promise - promise used to validate the query function was called
-     - cancel promise - promise used to validate a cancellation function was called
-     - pause query promise - promise used to hang the query function, allowing cancellation
+     - query-thunk         - No-arg function that will invoke a query.
+     - query promise       - Promise used to validate the query function was called.  Deliver something to this once the
+                             query has started running
+     - cancel promise      - Promise used to validate a cancellation function was called. Deliver something to this once
+                             the query was successfully canceled.
+     - pause query promise - Promise used to hang the query function, allowing cancellation. Wait for this to be
+                             delivered to hang the query.
 
-  This function returns a vector of booleans indicating the various statuses of the promises, useful for comparison
-  in an `expect`"
+  `f` should return a future that can be canceled."
   [f]
-  (data/with-db (data/get-or-create-database! defs/test-data)
-    (let [called-cancel?             (promise)
-          called-query?              (promise)
-          pause-query                (promise)
-          before-query-called-cancel (realized? called-cancel?)
-          before-query-called-query  (realized? called-query?)
-          query-thunk                (fn [] (data/run-mbql-query checkins
-                                              {:aggregation [[:count]]}))
-          ;; When the query is ran via the datasets endpoint, it will run in a future. That future can be cancelled,
-          ;; which should cause an interrupt
-          query-future               (f query-thunk called-query? called-cancel? pause-query)]
-
-      ;; Make sure that we start out with our promises not having a value
-      [before-query-called-cancel
-       before-query-called-query
-       ;; The cancelled-query? and called-cancel? timeouts are very high and are really just intended to
-       ;; prevent the test from hanging indefinitely. It shouldn't be hit unless something is really wrong
-       (deref called-query? 120000 ::query-never-called)
-       ;; At this point in time, the query is blocked, waiting for `pause-query` do be delivered
-       (realized? called-cancel?)
-       (do
-         ;; If we cancel the future, it should throw an InterruptedException, which should call the cancel
-         ;; method on the prepared statement
-         (future-cancel query-future)
-         (deref called-cancel? 120000 ::cancel-never-called))
-       (do
-         ;; This releases the fake query function so it finishes
-         (deliver pause-query true)
-         true)])))
+  (let [called-cancel? (promise)
+        called-query?  (promise)
+        pause-query    (promise)
+        query-thunk    (fn []
+                         (data/run-mbql-query checkins
+                           {:aggregation [[:count]]}))
+        ;; When the query is ran via the datasets endpoint, it will run in a future. That future can be canceled,
+        ;; which should cause an interrupt
+        query-future   (f query-thunk called-query? called-cancel? pause-query)]
+    ;; The cancelled-query? and called-cancel? timeouts are very high and are really just intended to
+    ;; prevent the test from hanging indefinitely. It shouldn't be hit unless something is really wrong
+    (when (= ::query-never-called (deref called-query? 10000 ::query-never-called))
+      (throw (TimeoutException. "query should have been called by now.")))
+    ;; At this point in time, the query is blocked, waiting for `pause-query` do be delivered. Cancel still should
+    ;; not have been called yet.
+    (assert (not (realized? called-cancel?)) "cancel still should not have been called yet.")
+    ;; If we cancel the future, it should throw an InterruptedException, which should call the cancel
+    ;; method on the prepared statement
+    (future-cancel query-future)
+    (when (= ::cancel-never-called (deref called-cancel? 10000 ::cancel-never-called))
+      (throw (TimeoutException. "cancel should have been called by now.")))
+    ;; This releases the fake query function so it finishes
+    (deliver pause-query true)
+    ::success))
 
 (defmacro throw-if-called
   "Redefines `fn-var` with a function that throws an exception if it's called"
   {:style/indent 1}
-  [fn-var & body]
-  `(with-redefs [~fn-var (fn [& args#]
-                           (throw (RuntimeException. "Should not be called!")))]
+  [fn-symb & body]
+  {:pre [(symbol? fn-symb)]}
+  `(with-redefs [~fn-symb (fn [& ~'_]
+                            (throw (RuntimeException. ~(format "%s should not be called!" fn-symb))))]
      ~@body))
 
+(defn do-with-discarded-collections-perms-changes [collection-or-id f]
+  (initialize/initialize-if-needed! :db)
+  (let [read-path                   (perms/collection-read-path collection-or-id)
+        readwrite-path              (perms/collection-readwrite-path collection-or-id)
+        groups-with-read-perms      (db/select-field :group_id Permissions :object read-path)
+        groups-with-readwrite-perms (db/select-field :group_id Permissions :object readwrite-path)]
+    (test-runner.parallel/assert-test-is-not-parallel "with-discarded-collections-perms-changes")
+    (try
+      (f)
+      (finally
+        (db/delete! Permissions :object [:in #{read-path readwrite-path}])
+        (doseq [group-id groups-with-read-perms]
+          (perms/grant-collection-read-permissions! group-id collection-or-id))
+        (doseq [group-id groups-with-readwrite-perms]
+          (perms/grant-collection-readwrite-permissions! group-id collection-or-id))))))
 
-(defn do-with-non-admin-groups-no-root-collection-perms [f]
+(defmacro with-discarded-collections-perms-changes
+  "Execute `body`; then, in a `finally` block, restore permissions to `collection-or-id` to what they were originally."
+  [collection-or-id & body]
+  `(do-with-discarded-collections-perms-changes ~collection-or-id (fn [] ~@body)))
+
+(defn do-with-non-admin-groups-no-collection-perms [collection f]
+  (test-runner.parallel/assert-test-is-not-parallel "with-non-admin-groups-no-collection-perms")
   (try
-    (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/get-id (group/admin))])]
-      (perms/revoke-collection-permissions! group-id collection/root-collection))
-    (f)
+    (do-with-discarded-collections-perms-changes
+     collection
+     (fn []
+       (db/delete! Permissions
+         :object [:in #{(perms/collection-read-path collection) (perms/collection-readwrite-path collection)}]
+         :group_id [:not= (u/the-id (group/admin))])
+       (f)))
+    ;; if this is the default namespace Root Collection, then double-check to make sure all non-admin groups get
+    ;; perms for it at the end. This is here mostly for legacy reasons; we can remove this but it will require
+    ;; rewriting a few tests.
     (finally
-      (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/get-id (group/admin))])]
-        (when-not (db/exists? Permissions
-                    :group_id group-id
-                    :object   (perms/collection-readwrite-path collection/root-collection))
-          (perms/grant-collection-readwrite-permissions! group-id collection/root-collection))))))
+      (when (and (:metabase.models.collection.root/is-root? collection)
+                 (not (:namespace collection)))
+        (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/the-id (group/admin))])]
+          (when-not (db/exists? Permissions :group_id group-id, :object "/collection/root/")
+            (perms/grant-collection-readwrite-permissions! group-id collection/root-collection)))))))
 
 (defmacro with-non-admin-groups-no-root-collection-perms
   "Temporarily remove Root Collection perms for all Groups besides the Admin group (which cannot have them removed). By
   default, all Groups have full readwrite perms for the Root Collection; use this macro to test situations where an
-  admin has removed them."
-  [& body]
-  `(do-with-non-admin-groups-no-root-collection-perms (fn [] ~@body)))
+  admin has removed them.
 
+  Only affects the Root Collection for the default namespace. Use
+  `with-non-admin-groups-no-root-collection-for-namespace-perms` to do the same thing for the Root Collection of other
+  namespaces."
+  [& body]
+  `(do-with-non-admin-groups-no-collection-perms collection/root-collection (fn [] ~@body)))
+
+(defmacro with-non-admin-groups-no-root-collection-for-namespace-perms
+  "Like `with-non-admin-groups-no-root-collection-perms`, but for the Root Collection of a non-default namespace."
+  [collection-namespace & body]
+  `(do-with-non-admin-groups-no-collection-perms
+    (assoc collection/root-collection
+           :namespace (name ~collection-namespace))
+    (fn [] ~@body)))
 
 (defn doall-recursive
   "Like `doall`, but recursively calls doall on map values and nested sequences, giving you a fully non-lazy object.
@@ -671,3 +790,215 @@
        {:ex-class (class e#)
         :msg      (.getMessage e#)
         :data     (ex-data e#)})))
+
+(defn call-with-locale
+  "Sets the default locale temporarily to `locale-tag`, then invokes `f` and reverts the locale change"
+  [locale-tag f]
+  (test-runner.parallel/assert-test-is-not-parallel "with-locale")
+  (let [current-locale (Locale/getDefault)]
+    (try
+      (Locale/setDefault (Locale/forLanguageTag locale-tag))
+      (f)
+      (finally
+        (Locale/setDefault current-locale)))))
+
+(defmacro with-locale
+  "Allows a test to override the locale temporarily"
+  [locale-tag & body]
+  `(call-with-locale ~locale-tag (fn [] ~@body)))
+
+(defn do-with-column-remappings [orig->remapped thunk]
+  (transduce
+   identity
+   (fn
+     ([] thunk)
+     ([thunk] (thunk))
+     ([thunk [original-column-id remap]]
+      (let [original       (db/select-one Field :id (u/the-id original-column-id))
+            describe-field (fn [{table-id :table_id, field-name :name}]
+                             (format "%s.%s" (db/select-one-field :name Table :id table-id) field-name))]
+        (if (integer? remap)
+          ;; remap is integer => fk remap
+          (let [remapped (db/select-one Field :id (u/the-id remap))]
+            (fn []
+              (tt/with-temp Dimension [_ {:field_id                (:id original)
+                                          :name                    (:display_name original)
+                                          :type                    :external
+                                          :human_readable_field_id (:id remapped)}]
+                (testing (format "With FK remapping %s -> %s" (describe-field original) (describe-field remapped))
+                  (thunk)))))
+          ;; remap is sequential or map => HRV remap
+          (let [values-map (if (sequential? remap)
+                             (zipmap (range 1 (inc (count remap)))
+                                     remap)
+                             remap)]
+            (fn []
+              (tt/with-temp* [Dimension   [_ {:field_id (:id original)
+                                              :name     (:display_name original)
+                                              :type     :internal}]
+                              FieldValues [_ {:field_id              (:id original)
+                                              :values                (keys values-map)
+                                              :human_readable_values (vals values-map)}]]
+                (testing (format "With human readable values remapping %s -> %s"
+                                 (describe-field original) (pr-str values-map))
+                  (thunk)))))))))
+   orig->remapped))
+
+(defn- col-remappings-arg [x]
+  (cond
+    (and (symbol? x)
+         (not (str/starts-with? x "%")))
+    `(data/$ids ~(symbol (str \% x)))
+
+    (and (seqable? x)
+         (= (first x) 'values-of))
+    (let [[_ table+field] x
+          [table field]   (str/split (str table+field) #"\.")]
+      `(into {} (get-in (data/run-mbql-query ~(symbol table)
+                          {:fields [~'$id ~(symbol (str \$ field))]})
+                        [:data :rows])))
+
+    :else
+    x))
+
+(defmacro with-column-remappings
+  "Execute `body` with column remappings in place. Can create either FK \"external\" or human-readable-values
+  \"internal\" remappings:
+
+    ;; FK 'external' remapping -- pass a column to remap to (either as a symbol, or an integer ID):
+    (with-column-remappings [reviews.product_id products.title]
+      ...)
+
+    ;; human-readable-values 'internal' remappings: pass a vector or map of values. Vector just sets the first `n`
+    ;; values starting with 1 (for common cases where the column is an FK ID column)
+    (with-column-remappings [venues.category_id [\"My Cat 1\" \"My Cat 2\"]]
+      ...)
+
+    ;; equivalent to:
+    (with-column-remappings [venues.category_id {1 \"My Cat 1\", 2 \"My Cat 2\"}]
+      ...)
+
+  You can also do a human-readable-values 'internal' remapping using the values from another Field by using the
+  special `values-of` form:
+
+    (with-column-remappings [venues.category_id (values-of categories.name)]
+      ...)"
+  {:arglists '([[original-col source-col & more-remappings] & body])}
+  [cols & body]
+  `(do-with-column-remappings
+    ~(into {} (comp (map col-remappings-arg)
+                    (partition-all 2))
+           cols)
+    (fn []
+      ~@body)))
+
+(defn find-free-port
+  "Finds and returns an available port number on the current host. Does so by briefly creating a ServerSocket, which
+  is closed when returning."
+  []
+  (with-open [socket (ServerSocket. 0)]
+    (.getLocalPort socket)))
+
+(defn do-with-env-keys-renamed-by
+  "Evaluates the thunk with the current core.environ/env being redefined, its keys having been renamed by the given
+  rename-fn. Prefer to use the with-env-keys-renamed-by macro version instead."
+  [rename-fn thunk]
+  (let [orig-e     env/env
+        renames-fn (fn [m k _]
+                     (let [k-str (name k)
+                           new-k (rename-fn k-str)]
+                       (if (not= k-str new-k)
+                         (assoc m k (keyword new-k))
+                         m)))
+        renames    (reduce-kv renames-fn {} orig-e)
+        new-e      (set/rename-keys orig-e renames)]
+    (testing (colorize/blue (format "\nRenaming env vars by map: %s\n" (u/pprint-to-str renames)))
+      (with-redefs [env/env new-e]
+        (thunk)))))
+
+(defmacro with-env-keys-renamed-by
+  "Evaluates body with the current core.environ/env being redefined, its keys having been renamed by the given
+  rename-fn."
+  {:arglists '([rename-fn & body])}
+  [rename-fn & body]
+  `(do-with-env-keys-renamed-by ~rename-fn (fn [] ~@body)))
+
+(defn do-with-temp-file
+  "Impl for `with-temp-file` macro."
+  [filename f]
+  {:pre [(or (string? filename) (nil? filename))]}
+  (let [filename (if (string? filename)
+                   filename
+                   (random-name))
+        filename (str (u.files/get-path (System/getProperty "java.io.tmpdir") filename))]
+    ;; delete file if it already exists
+    (io/delete-file (io/file filename) :silently)
+    (try
+      (f filename)
+      (finally
+        (io/delete-file (io/file filename) :silently)))))
+
+(defmacro with-temp-file
+  "Execute `body` with newly created temporary file(s) in the system temporary directory. You may optionally specify the
+  `filename` (without directory components) to be created in the temp directory; if `filename` is nil, a random
+  filename will be used. The file will be deleted if it already exists, but will not be touched; use `spit` to load
+  something in to it.
+
+    ;; create a random temp filename. File is deleted if it already exists.
+    (with-temp-file [filename]
+      ...)
+
+    ;; get a temp filename ending in `parrot-list.txt`
+    (with-temp-file [filename \"parrot-list.txt\"]
+      ...)"
+  [[filename-binding filename-or-nil & more :as bindings] & body]
+  {:pre [(vector? bindings) (>= (count bindings) 1)]}
+  `(do-with-temp-file
+    ~filename-or-nil
+    (fn [~(vary-meta filename-binding assoc :tag `String)]
+      ~@(if (seq more)
+          [`(with-temp-file ~(vec more) ~@body)]
+          body))))
+
+(deftest with-temp-file-test
+  (testing "random filename"
+    (let [temp-filename (atom nil)]
+      (with-temp-file [filename]
+        (is (string? filename))
+        (is (not (.exists (io/file filename))))
+        (spit filename "wow")
+        (reset! temp-filename filename))
+      (testing "File should be deleted at end of macro form"
+        (is (not (.exists (io/file @temp-filename)))))))
+
+  (testing "explicit filename"
+    (with-temp-file [filename "parrot-list.txt"]
+      (is (string? filename))
+      (is (not (.exists (io/file filename))))
+      (is (str/ends-with? filename "parrot-list.txt"))
+      (spit filename "wow")
+      (testing "should delete existing file"
+        (with-temp-file [filename "parrot-list.txt"]
+          (is (not (.exists (io/file filename))))))))
+
+  (testing "multiple bindings"
+    (with-temp-file [filename nil, filename-2 "parrot-list.txt"]
+      (is (string? filename))
+      (is (string? filename-2))
+      (is (not (.exists (io/file filename))))
+      (is (not (.exists (io/file filename-2))))
+      (is (not (str/ends-with? filename "parrot-list.txt")))
+      (is (str/ends-with? filename-2 "parrot-list.txt"))))
+
+  (testing "should delete existing file"
+    (with-temp-file [filename "parrot-list.txt"]
+      (spit filename "wow")
+      (with-temp-file [filename "parrot-list.txt"]
+        (is (not (.exists (io/file filename)))))))
+
+  (testing "validation"
+    (are [form] (thrown?
+                 clojure.lang.Compiler$CompilerException
+                 (macroexpand form))
+      `(with-temp-file [])
+      `(with-temp-file (+ 1 2)))))

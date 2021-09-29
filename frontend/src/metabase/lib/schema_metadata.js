@@ -1,5 +1,5 @@
 import _ from "underscore";
-import { t } from "c-3po";
+import { t } from "ttag";
 import {
   isa,
   isFK as isTypeFK,
@@ -12,10 +12,11 @@ export const NUMBER = "NUMBER";
 export const STRING = "STRING";
 export const STRING_LIKE = "STRING_LIKE";
 export const BOOLEAN = "BOOLEAN";
-export const DATE_TIME = "DATE_TIME";
+export const TEMPORAL = "TEMPORAL";
 export const LOCATION = "LOCATION";
 export const COORDINATE = "COORDINATE";
 export const FOREIGN_KEY = "FOREIGN_KEY";
+export const PRIMARY_KEY = "PRIMARY_KEY";
 
 // other types used for various purporses
 export const ENTITY = "ENTITY";
@@ -28,48 +29,57 @@ export const UNKNOWN = "UNKNOWN";
 // define various type hierarchies
 // NOTE: be sure not to create cycles using the "other" types
 const TYPES = {
-  [DATE_TIME]: {
-    base: [TYPE.DateTime],
-    special: [TYPE.DateTime],
+  [TEMPORAL]: {
+    base: [TYPE.Temporal],
+    effective: [TYPE.Temporal],
+    semantic: [TYPE.Temporal],
   },
   [NUMBER]: {
     base: [TYPE.Number],
-    special: [TYPE.Number],
+    effective: [TYPE.Number],
+    semantic: [TYPE.Number],
   },
   [STRING]: {
     base: [TYPE.Text],
-    special: [TYPE.Text],
+    effective: [TYPE.Text],
+    semantic: [TYPE.Text],
   },
   [STRING_LIKE]: {
     base: [TYPE.TextLike],
+    effective: [TYPE.TextLike],
   },
   [BOOLEAN]: {
     base: [TYPE.Boolean],
+    effective: [TYPE.Boolean],
   },
   [COORDINATE]: {
-    special: [TYPE.Coordinate],
+    semantic: [TYPE.Coordinate],
   },
   [LOCATION]: {
-    special: [TYPE.Address],
+    semantic: [TYPE.Address],
   },
   [ENTITY]: {
-    special: [TYPE.FK, TYPE.PK, TYPE.Name],
+    semantic: [TYPE.FK, TYPE.PK, TYPE.Name],
   },
   [FOREIGN_KEY]: {
-    special: [TYPE.FK],
+    semantic: [TYPE.FK],
+  },
+  [PRIMARY_KEY]: {
+    semantic: [TYPE.PK],
   },
   [SUMMABLE]: {
     include: [NUMBER],
-    exclude: [ENTITY, LOCATION, DATE_TIME],
+    exclude: [ENTITY, LOCATION, TEMPORAL],
   },
   [CATEGORY]: {
     base: [TYPE.Boolean],
-    special: [TYPE.Category],
+    effective: [TYPE.Boolean],
+    semantic: [TYPE.Category],
     include: [LOCATION],
   },
   // NOTE: this is defunct right now.  see definition of isDimension below.
   [DIMENSION]: {
-    include: [DATE_TIME, CATEGORY, ENTITY],
+    include: [TEMPORAL, CATEGORY, ENTITY],
   },
 };
 
@@ -80,7 +90,10 @@ export function isFieldType(type, field) {
 
   const typeDefinition = TYPES[type];
   // check to see if it belongs to any of the field types:
-  for (const prop of ["base", "special"]) {
+  const props = field.effective_type
+    ? ["effective", "semantic"]
+    : ["base", "semantic"];
+  for (const prop of props) {
     const allowedTypes = typeDefinition[prop];
     if (!allowedTypes) {
       continue;
@@ -113,10 +126,11 @@ export function isFieldType(type, field) {
 export function getFieldType(field) {
   // try more specific types first, then more generic types
   for (const type of [
-    DATE_TIME,
+    TEMPORAL,
     LOCATION,
     COORDINATE,
     FOREIGN_KEY,
+    PRIMARY_KEY,
     NUMBER,
     STRING,
     STRING_LIKE,
@@ -128,7 +142,7 @@ export function getFieldType(field) {
   }
 }
 
-export const isDate = isFieldType.bind(null, DATE_TIME);
+export const isDate = isFieldType.bind(null, TEMPORAL);
 export const isNumeric = isFieldType.bind(null, NUMBER);
 export const isBoolean = isFieldType.bind(null, BOOLEAN);
 export const isString = isFieldType.bind(null, STRING);
@@ -136,53 +150,90 @@ export const isSummable = isFieldType.bind(null, SUMMABLE);
 export const isCategory = isFieldType.bind(null, CATEGORY);
 export const isLocation = isFieldType.bind(null, LOCATION);
 
-export const isDimension = col => col && col.source !== "aggregation";
+export const isDimension = col =>
+  col && col.source !== "aggregation" && !isDescription(col);
 export const isMetric = col =>
   col && col.source !== "breakout" && isSummable(col);
 
-export const isFK = field => field && isTypeFK(field.special_type);
-export const isPK = field => field && isTypePK(field.special_type);
+export const isFK = field => field && isTypeFK(field.semantic_type);
+export const isPK = field => field && isTypePK(field.semantic_type);
 export const isEntityName = field =>
-  isa(field && field.special_type, TYPE.Name);
+  field && isa(field.semantic_type, TYPE.Name);
 
 export const isAny = col => true;
 
-export const isNumericBaseType = field =>
-  isa(field && field.base_type, TYPE.Number);
+export const isNumericBaseType = field => {
+  if (!field) {
+    return false;
+  }
+  if (field.effective_type) {
+    return isa(field.effective_type, TYPE.Number);
+  } else {
+    return isa(field.base_type, TYPE.Number);
+  }
+};
+
+export const isDateWithoutTime = field => {
+  if (!field) {
+    return false;
+  }
+  if (field.effective_type) {
+    return isa(field.effective_type, TYPE.Date);
+  } else {
+    return isa(field.base_type, TYPE.Date);
+  }
+};
 
 // ZipCode, ID, etc derive from Number but should not be formatted as numbers
 export const isNumber = field =>
   field &&
   isNumericBaseType(field) &&
-  (field.special_type == null || isa(field.special_type, TYPE.Number));
+  (field.semantic_type == null || isa(field.semantic_type, TYPE.Number));
 
-export const isTime = field => isa(field && field.base_type, TYPE.Time);
+export const isBinnedNumber = field => isNumber(field) && !!field.binning_info;
+
+export const isTime = field => {
+  if (!field) {
+    return false;
+  }
+  if (field.effective_type) {
+    return isa(field.effective_type, TYPE.Time);
+  } else {
+    return isa(field.base_type, TYPE.Time);
+  }
+};
 
 export const isAddress = field =>
-  isa(field && field.special_type, TYPE.Address);
-export const isState = field => isa(field && field.special_type, TYPE.State);
+  field && isa(field.semantic_type, TYPE.Address);
+export const isCity = field => field && isa(field.semantic_type, TYPE.City);
+export const isState = field => field && isa(field.semantic_type, TYPE.State);
+export const isZipCode = field =>
+  field && isa(field.semantic_type, TYPE.ZipCode);
 export const isCountry = field =>
-  isa(field && field.special_type, TYPE.Country);
+  field && isa(field.semantic_type, TYPE.Country);
 export const isCoordinate = field =>
-  isa(field && field.special_type, TYPE.Coordinate);
+  field && isa(field.semantic_type, TYPE.Coordinate);
 export const isLatitude = field =>
-  isa(field && field.special_type, TYPE.Latitude);
+  field && isa(field.semantic_type, TYPE.Latitude);
 export const isLongitude = field =>
-  isa(field && field.special_type, TYPE.Longitude);
+  field && isa(field.semantic_type, TYPE.Longitude);
 
 export const isCurrency = field =>
-  isa(field && field.special_type, TYPE.Currency);
+  field && isa(field.semantic_type, TYPE.Currency);
+
+export const isDescription = field =>
+  field && isa(field.semantic_type, TYPE.Description);
 
 export const isID = field => isFK(field) || isPK(field);
 
-export const isURL = field => isa(field && field.special_type, TYPE.URL);
-export const isEmail = field => isa(field && field.special_type, TYPE.Email);
+export const isURL = field => field && isa(field.semantic_type, TYPE.URL);
+export const isEmail = field => field && isa(field.semantic_type, TYPE.Email);
 export const isAvatarURL = field =>
-  isa(field && field.special_type, TYPE.AvatarURL);
+  field && isa(field.semantic_type, TYPE.AvatarURL);
 export const isImageURL = field =>
-  isa(field && field.special_type, TYPE.ImageURL);
+  field && isa(field.semantic_type, TYPE.ImageURL);
 
-// operator argument constructors:
+// filter operator argument constructors:
 
 function freeformArgument(field, table) {
   return {
@@ -242,7 +293,7 @@ function equivalentArgument(field, table) {
 
 function longitudeFieldSelectArgument(field, table) {
   const values = table.fields
-    .filter(field => isa(field.special_type, TYPE.Longitude))
+    .filter(field => isa(field.semantic_type, TYPE.Longitude))
     .map(field => ({
       key: field.id,
       name: field.display_name,
@@ -266,7 +317,8 @@ const CASE_SENSITIVE_OPTION = {
   },
 };
 
-const OPERATORS = {
+// each of these has an implicit field argument, followed by 0 or more additional arguments
+const FIELD_FILTER_OPERATORS = {
   "=": {
     validArgumentsFilters: [equivalentArgument],
     multi: true,
@@ -274,6 +326,12 @@ const OPERATORS = {
   "!=": {
     validArgumentsFilters: [equivalentArgument],
     multi: true,
+  },
+  "is-empty": {
+    validArgumentsFilters: [],
+  },
+  "not-empty": {
+    validArgumentsFilters: [],
   },
   "is-null": {
     validArgumentsFilters: [],
@@ -310,10 +368,10 @@ const OPERATORS = {
     ],
     formatOptions: [
       { hide: true },
-      { column: { special_type: TYPE.Latitude }, compact: true },
-      { column: { special_type: TYPE.Longitude }, compact: true },
-      { column: { special_type: TYPE.Latitude }, compact: true },
-      { column: { special_type: TYPE.Longitude }, compact: true },
+      { column: { semantic_type: TYPE.Latitude }, compact: true },
+      { column: { semantic_type: TYPE.Longitude }, compact: true },
+      { column: { semantic_type: TYPE.Latitude }, compact: true },
+      { column: { semantic_type: TYPE.Longitude }, compact: true },
     ],
   },
   between: {
@@ -341,15 +399,27 @@ const OPERATORS = {
   },
 };
 
-const DEFAULT_OPERATORS = [
+const DEFAULT_FILTER_OPERATORS = [
   { name: "=", verboseName: t`Is` },
   { name: "!=", verboseName: t`Is not` },
   { name: "is-null", verboseName: t`Is empty` },
   { name: "not-null", verboseName: t`Not empty` },
 ];
 
+const KEY_FILTER_OPERATORS = [
+  { name: "=", verboseName: t`Is` },
+  { name: "!=", verboseName: t`Is not` },
+  { name: ">", verboseName: t`Greater than` },
+  { name: "<", verboseName: t`Less than` },
+  { name: "between", verboseName: t`Between` },
+  { name: ">=", verboseName: t`Greater than or equal to` },
+  { name: "<=", verboseName: t`Less than or equal to` },
+  { name: "is-null", verboseName: t`Is empty` },
+  { name: "not-null", verboseName: t`Not empty` },
+];
+
 // ordered list of operators and metadata per type
-const OPERATORS_BY_TYPE_ORDERED = {
+const FILTER_OPERATORS_BY_TYPE_ORDERED = {
   [NUMBER]: [
     { name: "=", verboseName: t`Equal to` },
     { name: "!=", verboseName: t`Not equal to` },
@@ -366,18 +436,22 @@ const OPERATORS_BY_TYPE_ORDERED = {
     { name: "!=", verboseName: t`Is not` },
     { name: "contains", verboseName: t`Contains` },
     { name: "does-not-contain", verboseName: t`Does not contain` },
-    { name: "is-null", verboseName: t`Is empty` },
-    { name: "not-null", verboseName: t`Not empty` },
+    { name: "is-null", verboseName: t`Is null` },
+    { name: "not-null", verboseName: t`Not null` },
+    { name: "is-empty", verboseName: t`Is empty` },
+    { name: "not-empty", verboseName: t`Not empty` },
     { name: "starts-with", verboseName: t`Starts with` },
     { name: "ends-with", verboseName: t`Ends with` },
   ],
   [STRING_LIKE]: [
     { name: "=", verboseName: t`Is` },
     { name: "!=", verboseName: t`Is not` },
-    { name: "is-null", verboseName: t`Is empty` },
-    { name: "not-null", verboseName: t`Not empty` },
+    { name: "is-null", verboseName: t`Is null` },
+    { name: "not-null", verboseName: t`Not null` },
+    { name: "is-empty", verboseName: t`Is empty` },
+    { name: "not-empty", verboseName: t`Not empty` },
   ],
-  [DATE_TIME]: [
+  [TEMPORAL]: [
     { name: "=", verboseName: t`Is` },
     { name: "<", verboseName: t`Before` },
     { name: ">", verboseName: t`After` },
@@ -390,19 +464,29 @@ const OPERATORS_BY_TYPE_ORDERED = {
     { name: "!=", verboseName: t`Is not` },
     { name: "is-null", verboseName: t`Is empty` },
     { name: "not-null", verboseName: t`Not empty` },
+    { name: "contains", verboseName: t`Contains` },
+    { name: "does-not-contain", verboseName: t`Does not contain` },
+    { name: "starts-with", verboseName: t`Starts with` },
+    { name: "ends-with", verboseName: t`Ends with` },
   ],
   [COORDINATE]: [
     { name: "=", verboseName: t`Is` },
     { name: "!=", verboseName: t`Is not` },
     { name: "inside", verboseName: t`Inside` },
+    { name: ">", verboseName: t`Greater than` },
+    { name: "<", verboseName: t`Less than` },
+    { name: "between", verboseName: t`Between` },
+    { name: ">=", verboseName: t`Greater than or equal to` },
+    { name: "<=", verboseName: t`Less than or equal to` },
   ],
   [BOOLEAN]: [
     { name: "=", verboseName: t`Is`, multi: false },
     { name: "is-null", verboseName: t`Is empty` },
     { name: "not-null", verboseName: t`Not empty` },
   ],
-  [FOREIGN_KEY]: DEFAULT_OPERATORS,
-  [UNKNOWN]: DEFAULT_OPERATORS,
+  [FOREIGN_KEY]: KEY_FILTER_OPERATORS,
+  [PRIMARY_KEY]: KEY_FILTER_OPERATORS,
+  [UNKNOWN]: DEFAULT_FILTER_OPERATORS,
 };
 
 const MORE_VERBOSE_NAMES = {
@@ -411,26 +495,78 @@ const MORE_VERBOSE_NAMES = {
   before: "is before",
   after: "is after",
   "not empty": "is not empty",
+  "not null": "is not null",
   "less than": "is less than",
   "greater than": "is greater than",
   "less than or equal to": "is less than or equal to",
   "greater than or equal to": "is greater than or equal to",
 };
 
-export function getOperators(field, table) {
-  const type = getFieldType(field) || UNKNOWN;
-  return OPERATORS_BY_TYPE_ORDERED[type].map(operatorForType => {
-    const operator = OPERATORS[operatorForType.name];
-    const verboseNameLower = operatorForType.verboseName.toLowerCase();
-    return {
-      ...operator,
-      ...operatorForType,
-      moreVerboseName: MORE_VERBOSE_NAMES[verboseNameLower] || verboseNameLower,
-      fields: operator.validArgumentsFilters.map(validArgumentsFilter =>
-        validArgumentsFilter(field, table),
-      ),
-    };
-  });
+export function doesOperatorExist(operatorName) {
+  return !!FIELD_FILTER_OPERATORS[operatorName];
+}
+
+export function getOperatorByTypeAndName(type, name) {
+  const typedNamedOperator = _.findWhere(
+    FILTER_OPERATORS_BY_TYPE_ORDERED[type],
+    {
+      name,
+    },
+  );
+  const namedOperator = FIELD_FILTER_OPERATORS[name];
+
+  return (
+    typedNamedOperator && {
+      ...typedNamedOperator,
+      ...namedOperator,
+      numFields: namedOperator.validArgumentsFilters.length,
+    }
+  );
+}
+
+export function getFilterOperators(field, table, selected) {
+  const fieldType = getFieldType(field) || UNKNOWN;
+  let type = fieldType;
+  if (type === PRIMARY_KEY || type === FOREIGN_KEY) {
+    if (isFieldType(STRING, field)) {
+      type = STRING;
+    } else if (isFieldType(STRING_LIKE, field)) {
+      type = STRING_LIKE;
+    }
+  }
+
+  return FILTER_OPERATORS_BY_TYPE_ORDERED[type]
+    .map(operatorForType => {
+      const operator = FIELD_FILTER_OPERATORS[operatorForType.name];
+      const verboseNameLower = operatorForType.verboseName.toLowerCase();
+      return {
+        ...operator,
+        ...operatorForType,
+        moreVerboseName:
+          MORE_VERBOSE_NAMES[verboseNameLower] || verboseNameLower,
+        fields: operator.validArgumentsFilters.map(validArgumentsFilter =>
+          validArgumentsFilter(field, table),
+        ),
+      };
+    })
+    .filter(operator => {
+      if (selected === undefined) {
+        return true;
+      }
+      if (type === "STRING" || type === "STRING_LIKE") {
+        // Text fields should only have is-null / not-null if it was already selected
+        if (selected === "is-null") {
+          return operator["name"] !== "not-null";
+        } else if (selected === "not-null") {
+          return operator["name"] !== "is-null";
+        } else {
+          return (
+            operator["name"] !== "not-null" && operator["name"] !== "is-null"
+          );
+        }
+      }
+      return true;
+    });
 }
 
 // Breakouts and Aggregation options
@@ -442,86 +578,92 @@ function summableFields(fields) {
   return _.filter(fields, isSummable);
 }
 
-function dimensionFields(fields) {
-  return _.filter(fields, isDimension);
-}
-
-let Aggregators = [
+const AGGREGATION_OPERATORS = [
   {
-    name: t`Raw data`,
+    // DEPRECATED: "rows" is equivalent to no aggregations
     short: "rows",
+    name: t`Raw data`,
     description: t`Just a table with the rows in the answer, no additional operations.`,
     validFieldsFilters: [],
     requiresField: false,
     requiredDriverFeature: "basic-aggregations",
   },
   {
-    name: t`Count of rows`,
     short: "count",
+    name: t`Count of rows`,
+    columnName: t`Count`,
     description: t`Total number of rows in the answer.`,
     validFieldsFilters: [],
     requiresField: false,
     requiredDriverFeature: "basic-aggregations",
   },
   {
-    name: t`Sum of ...`,
     short: "sum",
+    name: t`Sum of ...`,
+    columnName: t`Sum`,
     description: t`Sum of all the values of a column.`,
     validFieldsFilters: [summableFields],
     requiresField: true,
     requiredDriverFeature: "basic-aggregations",
   },
   {
-    name: t`Average of ...`,
     short: "avg",
+    name: t`Average of ...`,
+    columnName: t`Average`,
     description: t`Average of all the values of a column`,
     validFieldsFilters: [summableFields],
     requiresField: true,
     requiredDriverFeature: "basic-aggregations",
   },
   {
-    name: t`Number of distinct values of ...`,
     short: "distinct",
+    name: t`Number of distinct values of ...`,
+    columnName: t`Distinct values`,
     description: t`Number of unique values of a column among all the rows in the answer.`,
     validFieldsFilters: [allFields],
     requiresField: true,
     requiredDriverFeature: "basic-aggregations",
   },
   {
-    name: t`Cumulative sum of ...`,
     short: "cum-sum",
+    name: t`Cumulative sum of ...`,
+    columnName: t`Cumulative sum`, // NOTE: actually "Sum" as of 2019-10-01
     description: t`Additive sum of all the values of a column.\ne.x. total revenue over time.`,
     validFieldsFilters: [summableFields],
     requiresField: true,
     requiredDriverFeature: "basic-aggregations",
   },
   {
-    name: t`Cumulative count of rows`,
     short: "cum-count",
+    name: t`Cumulative count of rows`,
+    columnName: t`Cumulative count`, // NOTE: actually "Count" as of 2019-10-01
     description: t`Additive count of the number of rows.\ne.x. total number of sales over time.`,
     validFieldsFilters: [],
     requiresField: false,
     requiredDriverFeature: "basic-aggregations",
   },
   {
-    name: t`Standard deviation of ...`,
     short: "stddev",
+    name: t`Standard deviation of ...`,
+    columnName: t`Standard deviation`, // NOTE: actually "SD" as of 2019-10-01
     description: t`Number which expresses how much the values of a column vary among all rows in the answer.`,
     validFieldsFilters: [summableFields],
     requiresField: true,
     requiredDriverFeature: "standard-deviation-aggregations",
   },
   {
-    name: t`Minimum of ...`,
     short: "min",
+    name: t`Minimum of ...`,
+    columnName: t`Min`,
     description: t`Minimum value of a column`,
     validFieldsFilters: [summableFields],
     requiresField: true,
     requiredDriverFeature: "basic-aggregations",
   },
   {
-    name: t`Maximum of ...`,
     short: "max",
+    name: t`Maximum of ...`,
+    columnName: t`Max`,
     description: t`Maximum value of a column`,
     validFieldsFilters: [summableFields],
     requiresField: true,
@@ -529,81 +671,70 @@ let Aggregators = [
   },
 ];
 
-let BreakoutAggregator = {
-  name: t`Break out by dimension`,
-  short: "breakout",
-  validFieldsFilters: [dimensionFields],
-};
-
-function populateFields(aggregator, fields) {
+function populateFields(aggregationOperator, fields) {
   return {
-    name: aggregator.name,
-    short: aggregator.short,
-    description: aggregator.description || "",
-    advanced: aggregator.advanced || false,
-    fields: _.map(aggregator.validFieldsFilters, function(validFieldsFilterFn) {
-      return validFieldsFilterFn(fields);
-    }),
-    validFieldsFilters: aggregator.validFieldsFilters,
-    requiresField: aggregator.requiresField,
-    requiredDriverFeature: aggregator.requiredDriverFeature,
+    ...aggregationOperator,
+    fields: aggregationOperator.validFieldsFilters.map(validFieldsFilters =>
+      validFieldsFilters(fields),
+    ),
   };
 }
 
 // TODO: unit test
-export function getAggregators(table) {
-  const supportedAggregations = Aggregators.filter(function(agg) {
-    return !(
-      agg.requiredDriverFeature &&
-      table.db &&
-      !_.contains(table.db.features, agg.requiredDriverFeature)
-    );
-  });
-  return _.map(supportedAggregations, function(aggregator) {
-    return populateFields(aggregator, table.fields);
-  });
+export function getAggregationOperators(table) {
+  return AGGREGATION_OPERATORS.filter(
+    aggregationOperator =>
+      !(
+        aggregationOperator.requiredDriverFeature &&
+        table.db &&
+        !_.contains(
+          table.db.features,
+          aggregationOperator.requiredDriverFeature,
+        )
+      ),
+  ).map(aggregationOperator =>
+    populateFields(aggregationOperator, table.fields),
+  );
 }
 
-export function getAggregatorsWithFields(table) {
-  return getAggregators(table).filter(
+export function getAggregationOperatorsWithFields(table) {
+  return getAggregationOperators(table).filter(
     aggregation =>
       !aggregation.requiresField ||
-      aggregation.fields.reduce((ok, fields) => ok && fields.length > 0, true),
+      aggregation.fields.every(fields => fields.length > 0),
   );
 }
 
 // TODO: unit test
-export function getAggregator(short) {
-  return _.findWhere(Aggregators, { short: short });
+export function getAggregationOperator(short) {
+  return _.findWhere(AGGREGATION_OPERATORS, { short: short });
 }
 
-export const isCompatibleAggregatorForField = (aggregator, field) =>
-  aggregator.validFieldsFilters.every(filter => filter([field]).length === 1);
-
-export function getBreakouts(fields) {
-  let result = populateFields(BreakoutAggregator, fields);
-  result.fields = result.fields[0];
-  result.validFieldsFilter = result.validFieldsFilters[0];
-  return result;
+export function isCompatibleAggregationOperatorForField(
+  aggregationOperator,
+  field,
+) {
+  return aggregationOperator.validFieldsFilters.every(
+    filter => filter([field]).length === 1,
+  );
 }
 
 export function addValidOperatorsToFields(table) {
-  for (let field of table.fields) {
-    field.operators = getOperators(field, table);
+  for (const field of table.fields) {
+    field.filter_operators = getFilterOperators(field, table);
   }
-  table.aggregation_options = getAggregatorsWithFields(table);
-  table.breakout_options = getBreakouts(table.fields);
+  table.aggregation_operators = getAggregationOperatorsWithFields(table);
   return table;
 }
 
-export function hasLatitudeAndLongitudeColumns(columnDefs) {
+export function hasLatitudeAndLongitudeColumns(cols) {
   let hasLatitude = false;
   let hasLongitude = false;
-  for (const col of columnDefs) {
-    if (isa(col.special_type, TYPE.Latitude)) {
+  for (const col of cols) {
+    if (isLatitude(col)) {
       hasLatitude = true;
     }
-    if (isa(col.special_type, TYPE.Longitude)) {
+    if (isLongitude(col)) {
       hasLongitude = true;
     }
   }
@@ -631,7 +762,7 @@ export function foreignKeyCountsByOriginTable(fks) {
 }
 
 export const ICON_MAPPING = {
-  [DATE_TIME]: "calendar",
+  [TEMPORAL]: "calendar",
   [LOCATION]: "location",
   [COORDINATE]: "location",
   [STRING]: "string",
@@ -639,38 +770,27 @@ export const ICON_MAPPING = {
   [NUMBER]: "int",
   [BOOLEAN]: "io",
   [FOREIGN_KEY]: "connections",
+  [PRIMARY_KEY]: "label",
 };
 
 export function getIconForField(field) {
   return ICON_MAPPING[getFieldType(field)] || "unknown";
 }
 
-export function computeMetadataStrength(table) {
-  let total = 0;
-  let completed = 0;
-  function score(value) {
-    total++;
-    if (value) {
-      completed++;
-    }
-  }
-
-  score(table.description);
-  if (table.fields) {
-    table.fields.forEach(function(field) {
-      score(field.description);
-      score(field.special_type);
-      if (isFK(field)) {
-        score(field.target);
-      }
-    });
-  }
-
-  return completed / total;
+export function getFilterArgumentFormatOptions(filterOperator, index) {
+  return (
+    (filterOperator &&
+      filterOperator.formatOptions &&
+      filterOperator.formatOptions[index]) ||
+    {}
+  );
 }
 
-export function getFilterArgumentFormatOptions(operator, index) {
-  return (
-    (operator && operator.formatOptions && operator.formatOptions[index]) || {}
-  );
+export function isEqualsOperator(operator) {
+  return !!operator && operator.name === "=";
+}
+
+export function isFuzzyOperator(operator) {
+  const { name } = operator || {};
+  return !["=", "!="].includes(name);
 }

@@ -1,6 +1,4 @@
-/* @flow */
-
-import { t } from "c-3po";
+import { t } from "ttag";
 import _ from "underscore";
 import { getIn } from "icepick";
 
@@ -9,7 +7,7 @@ import { nestedSettings } from "./nested";
 import { getColorsForValues } from "metabase/lib/colors";
 
 import type { SettingDef } from "../settings";
-import type { SingleSeries } from "metabase/meta/types/Visualization";
+import type { SingleSeries } from "metabase-types/types/Visualization";
 
 export function keyForSingleSeries(single: SingleSeries): string {
   // _seriesKey is sometimes set by transformSeries
@@ -65,12 +63,12 @@ export function seriesSetting({
     },
     "line.interpolate": {
       title: t`Line style`,
-      widget: "buttonGroup",
+      widget: "segmentedControl",
       props: {
         options: [
-          { icon: "straight", name: t`Line`, value: "linear" },
-          { icon: "curved", name: t`Curve`, value: "cardinal" },
-          { icon: "stepped", name: t`Step`, value: "step-after" },
+          { icon: "straight", value: "linear" },
+          { icon: "curved", value: "cardinal" },
+          { icon: "stepped", value: "step-after" },
         ],
       },
       getHidden: (single, settings) =>
@@ -82,7 +80,7 @@ export function seriesSetting({
     },
     "line.marker_enabled": {
       title: t`Show dots on lines`,
-      widget: "buttonGroup",
+      widget: "segmentedControl",
       props: {
         options: [
           { name: t`Auto`, value: null },
@@ -118,7 +116,7 @@ export function seriesSetting({
     },
     axis: {
       title: t`Which axis?`,
-      widget: "buttonGroup",
+      widget: "segmentedControl",
       default: null,
       props: {
         options: [
@@ -127,7 +125,17 @@ export function seriesSetting({
           { name: t`Right`, value: "right" },
         ],
       },
-      getHidden: (single, settings, { series }) => series.length < 2,
+    },
+    show_series_values: {
+      title: t`Show values for this series`,
+      widget: "toggle",
+      getHidden: (single, seriesSettings, { settings, series }) =>
+        series.length <= 1 || // no need to show series-level control if there's only one series
+        !Object.prototype.hasOwnProperty.call(settings, "graph.show_values") || // don't show it unless this chart has a global setting
+        settings["stackable.stack_type"], // hide series controls if the chart is stacked
+      getDefault: (single, seriesSettings, { settings }) =>
+        settings["graph.show_values"],
+      readDependencies: ["graph.show_values", "stackable.stack_type"],
     },
   };
 
@@ -138,6 +146,8 @@ export function seriesSetting({
   return {
     ...nestedSettings(settingId, {
       objectName: "series",
+      getHidden: ([{ card }], settings, extraProps) =>
+        card.display === "waterfall",
       getObjects: (series, settings) => series,
       getObjectKey: keyForSingleSeries,
       getSettingDefintionsForObject: getSettingDefintionsForSingleSeries,

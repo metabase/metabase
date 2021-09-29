@@ -1,17 +1,47 @@
-/* @flow */
-
 import { createEntity, undo } from "metabase/lib/entities";
-import colors from "metabase/lib/colors";
+
+import { color } from "metabase/lib/colors";
+import * as Urls from "metabase/lib/urls";
+
 import { CollectionSchema } from "metabase/schema";
 import { createSelector } from "reselect";
 
-import {
-  getUser,
-  getUserDefaultCollectionId,
-  getUserPersonalCollectionId,
-} from "metabase/selectors/user";
+import { GET } from "metabase/lib/api";
 
-import { t } from "c-3po";
+import { getUser, getUserPersonalCollectionId } from "metabase/selectors/user";
+import { isPersonalCollection } from "metabase/collections/utils";
+
+import { t } from "ttag";
+
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { getFormSelector } from "./collections/forms";
+
+const listCollectionsTree = GET("/api/collection/tree");
+const listCollections = GET("/api/collection");
+
+export const ROOT_COLLECTION = {
+  id: "root",
+  name: t`Our analytics`,
+  location: "",
+  path: [],
+};
+
+export const PERSONAL_COLLECTION = {
+  id: undefined, // to be filled in by getExpandedCollectionsById
+  name: t`My personal collection`,
+  location: "/",
+  path: [ROOT_COLLECTION.id],
+  can_write: true,
+};
+
+// fake collection for admins that contains all other user's collections
+export const PERSONAL_COLLECTIONS = {
+  id: "personal", // placeholder id
+  name: t`All personal collections`,
+  location: "/",
+  path: [ROOT_COLLECTION.id],
+  can_write: false,
+};
 
 const Collections = createEntity({
   name: "collections",
@@ -20,6 +50,16 @@ const Collections = createEntity({
 
   displayNameOne: t`collection`,
   displayNameMany: t`collections`,
+
+  api: {
+    list: async (params, ...args) =>
+      /* Parts of the UI, like ItemPicker don't yet know about the /tree endpoint and break if it's used,
+      so choose which endpoint to use based on the presence of a "tree" param
+      */
+      params && params.tree
+        ? listCollectionsTree(params, ...args)
+        : listCollections(params, ...args),
+  },
 
   objectActions: {
     setArchived: ({ id }, archived, opts) =>
@@ -37,15 +77,27 @@ const Collections = createEntity({
       ),
 
     // NOTE: DELETE not currently implemented
-    // $FlowFixMe: no official way to disable builtin actions yet
     delete: null,
   },
 
+  objectSelectors: {
+    getName: collection => collection && collection.name,
+    getUrl: collection => Urls.collection(collection),
+    getIcon: (collection, opts) => {
+      const wrappedCollection = collection.collection;
+      return getCollectionIcon(wrappedCollection || collection, opts);
+    },
+  },
+
   selectors: {
+    getForm: getFormSelector,
     getExpandedCollectionsById: createSelector(
       [
         state => state.entities.collections,
-        state => state.entities.collections_list[null] || [],
+        state => {
+          const { list } = state.entities.collections_list[null] || {};
+          return list || [];
+        },
         getUser,
       ],
       (collections, collectionsIds, user) =>
@@ -56,75 +108,55 @@ const Collections = createEntity({
     ),
     getInitialCollectionId: createSelector(
       [
+        state => state.entities.collections,
+
         // these are listed in order of priority
-        (state, { collectionId }) => collectionId,
-        (state, { params }) => (params ? params.collectionId : undefined),
-        (state, { location }) =>
-          location && location.query ? location.query.collectionId : undefined,
-        getUserDefaultCollectionId,
+        byCollectionIdProp,
+        byCollectionIdNavParam,
+        byCollectionUrlId,
+        byCollectionQueryParameter,
+
+        // defaults
+        () => ROOT_COLLECTION.id,
+        getUserPersonalCollectionId,
       ],
-      (...collectionIds) => {
+      (collections, ...collectionIds) => {
         for (const collectionId of collectionIds) {
-          if (collectionId !== undefined) {
+          const collection = collections[collectionId];
+          if (collection && collection.can_write) {
             return canonicalCollectionId(collectionId);
           }
         }
-        return null;
+        return canonicalCollectionId(ROOT_COLLECTION.id);
       },
     ),
   },
 
-  objectSelectors: {
-    getName: collection => collection && collection.name,
-    getUrl: collection =>
-      collection &&
-      (collection.id === "root" ? `/` : `/collection/${collection.id}`),
-    getIcon: collection => "all",
-  },
-
-  form: {
-    fields: (
-      values = {
-        color: colors.brand,
-      },
-    ) => [
-      {
-        name: "name",
-        title: t`Name`,
-        placeholder: "My new fantastic collection",
-        validate: name =>
-          (!name && t`Name is required`) ||
-          (name.length > 100 && t`Name must be 100 characters or less`),
-      },
-      {
-        name: "description",
-        title: t`Description`,
-        type: "text",
-        placeholder: "It's optional but oh, so helpful",
-        normalize: description => description || null, // expected to be nil or non-empty string
-      },
-      {
-        name: "color",
-        title: t`Color`,
-        type: "hidden",
-        initial: () => colors.brand,
-        validate: color => !color && t`Color is required`,
-      },
-      {
-        name: "parent_id",
-        title: t`Collection it's saved in`,
-        type: "collection",
-      },
-    ],
-  },
-
-  getAnalyticsMetadata(action, object, getState) {
+  getAnalyticsMetadata([object], { action }, getState) {
     const type = object && getCollectionType(object.parent_id, getState());
     return type && `collection=${type}`;
   },
 });
 
 export default Collections;
+
+export function getCollectionIcon(collection, { tooltip = "default" } = {}) {
+  if (collection.id === PERSONAL_COLLECTIONS.id) {
+    return { name: "group" };
+  }
+  if (isPersonalCollection(collection)) {
+    return { name: "person" };
+  }
+  const authorityLevel =
+    PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[collection.authority_level];
+  return authorityLevel
+    ? {
+        name: authorityLevel.icon,
+        color: color(authorityLevel.color),
+        tooltip: authorityLevel.tooltips?.[tooltip],
+      }
+    : { name: "folder" };
+}
 
 // API requires items in "root" collection be persisted with a "null" collection ID
 // Also ensure it's parsed as a number
@@ -135,37 +167,21 @@ export const canonicalCollectionId = (
     ? null
     : parseInt(collectionId, 10);
 
+export function normalizedCollection(collection) {
+  if (canonicalCollectionId(collection.id) === null) {
+    return ROOT_COLLECTION;
+  }
+  return collection;
+}
+
 export const getCollectionType = (collectionId: string, state: {}) =>
   collectionId === null || collectionId === "root"
     ? "root"
     : collectionId === getUserPersonalCollectionId(state)
-      ? "personal"
-      : collectionId !== undefined ? "other" : null;
-
-export const ROOT_COLLECTION = {
-  id: "root",
-  name: t`Our analytics`,
-  location: "",
-  path: [],
-};
-
-// the user's personal collection
-export const PERSONAL_COLLECTION = {
-  id: undefined, // to be filled in by getExpandedCollectionsById
-  name: t`My personal collection`,
-  location: "/",
-  path: ["root"],
-  can_write: true,
-};
-
-// fake collection for admins that contains all other user's collections
-export const PERSONAL_COLLECTIONS = {
-  id: "personal", // placeholder id
-  name: t`All personal collections`,
-  location: "/",
-  path: ["root"],
-  can_write: false,
-};
+    ? "personal"
+    : collectionId !== undefined
+    ? "other"
+    : null;
 
 type UserId = number;
 
@@ -192,7 +208,7 @@ type ExpandedCollection = {
 // given list of collections with { id, name, location } returns a map of ids to
 // expanded collection objects like { id, name, location, path, children }
 // including a root collection
-function getExpandedCollectionsById(
+export function getExpandedCollectionsById(
   collections: Collection[],
   userPersonalCollectionId: ?CollectionId,
 ): { [key: PseudoCollectionId]: ExpandedCollection } {
@@ -204,8 +220,8 @@ function getExpandedCollectionsById(
         c.id === "root"
           ? []
           : c.location != null
-            ? ["root", ...c.location.split("/").filter(l => l)]
-            : null,
+          ? ["root", ...c.location.split("/").filter(l => l)]
+          : null,
       parent: null,
       children: [],
       is_personal: c.personal_owner_id != null,
@@ -222,11 +238,12 @@ function getExpandedCollectionsById(
 
   // "My personal collection"
   if (userPersonalCollectionId != null) {
+    const personalCollection = collectionsById[userPersonalCollectionId];
     collectionsById[ROOT_COLLECTION.id].children.push({
       ...PERSONAL_COLLECTION,
       id: userPersonalCollectionId,
       parent: collectionsById[ROOT_COLLECTION.id],
-      children: [],
+      children: personalCollection?.children || [],
       is_personal: true,
     });
   }
@@ -258,7 +275,6 @@ function getExpandedCollectionsById(
         parentId = ROOT_COLLECTION.id;
       }
 
-      // $FlowFixMe
       const parent = parentId == null ? null : collectionsById[parentId];
       c.parent = parent;
       // need to ensure the parent collection exists, it may have been filtered
@@ -279,4 +295,55 @@ function getExpandedCollectionsById(
   }
 
   return collectionsById;
+}
+
+// Initial collection ID selector helpers
+
+/**
+ * @param {ReduxState} state
+ * @param {{collectionId?: number}} props
+ * @returns {number | undefined}
+ */
+function byCollectionIdProp(state, { collectionId }) {
+  return collectionId;
+}
+
+/**
+ * @param {ReduxState} state
+ * @param {params?: {collectionId?: number}} props
+ * @returns {number | undefined}
+ */
+function byCollectionIdNavParam(state, { params }) {
+  return params && params.collectionId;
+}
+
+/**
+ * Extracts ID from collection URL slugs
+ *
+ * Example: /collection/14-marketing —> 14
+ *
+ * @param {ReduxState} state
+ * @param {params?: {slug?: string}, location?: {pathname?: string}} props
+ * @returns {number | undefined}
+ */
+function byCollectionUrlId(state, { params, location }) {
+  const isCollectionPath =
+    params &&
+    params.slug &&
+    location &&
+    Urls.isCollectionPath(location.pathname);
+  return isCollectionPath && Urls.extractCollectionId(params.slug);
+}
+
+/**
+ * Extracts collection ID from query params
+ *
+ * Example: /some-route?collectionId=14 —> 14
+ *
+ * @param {ReduxState} state
+ * @param {location?: {query?: {collectionId?: number}}} props
+ * @returns {number | undefined}
+ */
+function byCollectionQueryParameter(state, { location }) {
+  return location && location.query && location.query.collectionId;
 }

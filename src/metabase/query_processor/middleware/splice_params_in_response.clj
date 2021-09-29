@@ -1,20 +1,14 @@
 (ns metabase.query-processor.middleware.splice-params-in-response
   (:require [metabase.driver :as driver]))
 
-(defn- splice-params-in-response* [{:keys [status], {{:keys [params]} :native_form} :data, :as results}]
+(defn- splice-params-in-metadata [{{:keys [params]} :native_form, :as metadata}]
   ;; no need to i18n this since this message is something only developers who break the QP by changing middleware
   ;; order will see
   (assert driver/*driver*
     "Middleware order error: splice-params-in-response must run *after* driver is resolved.")
-  (cond
-    (not= status :completed)
-    results
-
-    (empty? params)
-    results
-
-    :else
-    (update-in results [:data :native_form] (partial driver/splice-parameters-into-native-query driver/*driver*))))
+  (if (empty? params)
+    metadata
+    (update metadata :native_form (partial driver/splice-parameters-into-native-query driver/*driver*))))
 
 (defn splice-params-in-response
   "Middleware that manipulates query response. Splice prepared statement (or equivalent) parameters directly into the
@@ -32,10 +26,10 @@
 
   This feature is ultimately powered by the `metabase.driver/splice-parameters-into-native-query` method. For native
   queries without `:params` (which will be all of them for drivers that don't support the equivalent of prepared
-  statement parameters, like Druid), this middleware does nothing.
-
-  !!! IMPORTANT NOTE !!!
-
-  This middleware "
+  statement parameters, like Druid), this middleware does nothing."
   [qp]
-  (comp splice-params-in-response* qp))
+  (fn [query rff context]
+    (qp query
+        (fn [metadata]
+          (rff (splice-params-in-metadata metadata)))
+        context)))

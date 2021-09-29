@@ -2,21 +2,21 @@
 
 import React from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 
-import CheckBox from "metabase/components/CheckBox.jsx";
+import CheckBox from "metabase/components/CheckBox";
 import Icon from "metabase/components/Icon";
 import IconWrapper from "metabase/components/IconWrapper";
 import Swapper from "metabase/components/Swapper";
 import Tooltip from "metabase/components/Tooltip";
 
-import colors from "metabase/lib/colors";
+import { color as c } from "metabase/lib/colors";
 
 const ArchivedItem = ({
   name,
   type,
   icon,
-  color = colors["text-light"],
+  color = c("text-light"),
   isAdmin = false,
   onUnarchive,
   onDelete,
@@ -36,29 +36,28 @@ const ArchivedItem = ({
       />
     </IconWrapper>
     {name}
-    {isAdmin &&
-      (onUnarchive || onDelete) && (
-        <span className="ml-auto mr2">
-          {onUnarchive && (
-            <Tooltip tooltip={t`Unarchive this ${type}`}>
-              <Icon
-                onClick={onUnarchive}
-                className="cursor-pointer text-brand-hover hover-child ml4"
-                name="unarchive"
-              />
-            </Tooltip>
-          )}
-          {onDelete && (
-            <Tooltip tooltip={t`Delete this ${type}`}>
-              <Icon
-                onClick={onDelete}
-                className="cursor-pointer text-brand-hover hover-child ml4"
-                name="trash"
-              />
-            </Tooltip>
-          )}
-        </span>
-      )}
+    {isAdmin && (onUnarchive || onDelete) && (
+      <span className="ml-auto mr2">
+        {onUnarchive && (
+          <Tooltip tooltip={t`Unarchive this ${type}`}>
+            <Icon
+              onClick={onUnarchive}
+              className="cursor-pointer text-brand-hover hover-child ml4"
+              name="unarchive"
+            />
+          </Tooltip>
+        )}
+        {onDelete && (
+          <Tooltip tooltip={t`Delete this ${type}`}>
+            <Icon
+              onClick={onDelete}
+              className="cursor-pointer text-brand-hover hover-child ml4"
+              name="trash"
+            />
+          </Tooltip>
+        )}
+      </span>
+    )}
   </div>
 );
 

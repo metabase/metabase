@@ -1,0 +1,21 @@
+{
+  "charset": "utf-8",
+  "headers": {
+    "mime-version": "1.0",
+    "content-type": "text/plain; charset=UTF-8",
+    "content-transfer-encoding": "8bit",
+    "x-generator": "POEditor.com",
+    "project-id-version": "Metabase",
+    "language": "es",
+    "plural-forms": "nplurals=2; plural=(n != 1);"
+  },
+  "translations": {
+    "": {
+      "Your database has been added!": {
+        "msgstr": [
+          "¡Tu base de datos ha sido añadida!"
+        ]
+      }
+    }
+  }
+}

@@ -1,32 +1,60 @@
 import _ from "underscore";
 import { createSelector } from "reselect";
 import MetabaseSettings from "metabase/lib/settings";
-import { t } from "c-3po";
-import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget.jsx";
+import { t } from "ttag";
+import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
+import SiteUrlWidget from "./components/widgets/SiteUrlWidget";
+import HttpsOnlyWidget from "./components/widgets/HttpsOnlyWidget";
 import {
   PublicLinksDashboardListing,
   PublicLinksQuestionListing,
   EmbeddedQuestionListing,
   EmbeddedDashboardListing,
-} from "./components/widgets/PublicLinksListing.jsx";
-import SecretKeyWidget from "./components/widgets/SecretKeyWidget.jsx";
+} from "./components/widgets/PublicLinksListing";
+import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
 import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
 import EmbeddingLevel from "./components/widgets/EmbeddingLevel";
-import LdapGroupMappingsWidget from "./components/widgets/LdapGroupMappingsWidget";
 import FormattingWidget from "./components/widgets/FormattingWidget";
+import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
+import SettingsEmailForm from "./components/SettingsEmailForm";
+import SettingsSetupList from "./components/SettingsSetupList";
+import SettingsSlackForm from "./components/SettingsSlackForm";
 
 import { UtilApi } from "metabase/services";
+import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
 
-/* Note - do not translate slugs */
-const SECTIONS = [
-  {
+// This allows plugins to update the settings sections
+function updateSectionsWithPlugins(sections) {
+  if (PLUGIN_ADMIN_SETTINGS_UPDATES.length > 0) {
+    const reduced = PLUGIN_ADMIN_SETTINGS_UPDATES.reduce(
+      (sections, update) => update(sections),
+      sections,
+    );
+
+    // the update functions may change the key ordering inadvertently
+    // see: https://github.com/aearly/icepick/issues/48
+    // therefore, re-sort the reduced object according to the original key order
+    const sortByOrder = (
+      [, { order: order1 = Number.MAX_VALUE }],
+      [, { order: order2 = Number.MAX_VALUE }],
+    ) => order1 - order2;
+
+    return Object.fromEntries(Object.entries(reduced).sort(sortByOrder));
+  } else {
+    return sections;
+  }
+}
+
+const SECTIONS = updateSectionsWithPlugins({
+  setup: {
     name: t`Setup`,
-    slug: "setup",
+    order: 1,
     settings: [],
+    component: SettingsSetupList,
   },
-  {
+  general: {
     name: t`General`,
-    slug: "general",
+    order: 2,
     settings: [
       {
         key: "site-name",
@@ -37,34 +65,22 @@ const SECTIONS = [
         key: "site-url",
         display_name: t`Site URL`,
         type: "string",
+        widget: SiteUrlWidget,
+        warningMessage: t`Only change this if you know what you're doing!`,
+      },
+      {
+        key: "redirect-all-requests-to-https",
+        display_name: t`Redirect to HTTPS`,
+        type: "boolean",
+        getHidden: ({ "site-url": url }) => !/^https:\/\//.test(url),
+        widget: HttpsOnlyWidget,
       },
       {
         key: "admin-email",
         display_name: t`Email Address for Help Requests`,
         type: "string",
       },
-      {
-        key: "report-timezone",
-        display_name: t`Report Timezone`,
-        type: "select",
-        options: [
-          { name: t`Database Default`, value: "" },
-          ...MetabaseSettings.get("timezones"),
-        ],
-        placeholder: t`Select a timezone`,
-        note: t`Not all databases support timezones, in which case this setting won't take effect.`,
-        allowValueCollection: true,
-      },
-      {
-        key: "site-locale",
-        display_name: t`Language`,
-        type: "select",
-        options: (MetabaseSettings.get("available_locales") || []).map(
-          ([value, name]) => ({ name, value }),
-        ),
-        placeholder: t`Select a language`,
-        getHidden: () => MetabaseSettings.get("available_locales").length < 2,
-      },
+
       {
         key: "anon-tracking-enabled",
         display_name: t`Anonymous Tracking`,
@@ -75,16 +91,13 @@ const SECTIONS = [
         display_name: t`Friendly Table and Field Names`,
         type: "select",
         options: [
-          { value: "advanced", name: t`Enabled` },
           {
             value: "simple",
-            name: t`Only replace underscores and dashes with spaces`,
+            name: t`Replace underscores and dashes with spaces`,
           },
           { value: "none", name: t`Disabled` },
         ],
-        // this needs to be here because 'advanced' is the default value, so if you select 'advanced' the
-        // widget will always show the placeholder instead of the 'name' defined above :(
-        placeholder: t`Enabled`,
+        defaultValue: "simple",
       },
       {
         key: "enable-nested-queries",
@@ -98,9 +111,10 @@ const SECTIONS = [
       },
     ],
   },
-  {
+  updates: {
     name: t`Updates`,
-    slug: "updates",
+    order: 3,
+    component: SettingsUpdatesForm,
     settings: [
       {
         key: "check-for-updates",
@@ -109,9 +123,10 @@ const SECTIONS = [
       },
     ],
   },
-  {
+  email: {
     name: t`Email`,
-    slug: "email",
+    order: 4,
+    component: SettingsEmailForm,
     settings: [
       {
         key: "email-smtp-host",
@@ -148,7 +163,7 @@ const SECTIONS = [
         key: "email-smtp-password",
         display_name: t`SMTP Password`,
         description: null,
-        placeholder: "Shh...",
+        placeholder: "Shhh...",
         type: "password",
       },
       {
@@ -161,9 +176,10 @@ const SECTIONS = [
       },
     ],
   },
-  {
+  slack: {
     name: "Slack",
-    slug: "slack",
+    order: 5,
+    component: SettingsSlackForm,
     settings: [
       {
         key: "slack-token",
@@ -185,120 +201,14 @@ const SECTIONS = [
       },
     ],
   },
-  {
-    name: t`Single Sign-On`,
-    slug: "single_sign_on",
-    sidebar: false,
-    settings: [
-      {
-        key: "google-auth-client-id",
-      },
-      {
-        key: "google-auth-auto-create-accounts-domain",
-      },
-    ],
-  },
-  {
+  authentication: {
     name: t`Authentication`,
-    slug: "authentication",
-    settings: [],
+    order: 6,
+    settings: [], // added by plugins
   },
-  {
-    name: t`LDAP`,
-    slug: "ldap",
-    sidebar: false,
-    settings: [
-      {
-        key: "ldap-enabled",
-        display_name: t`LDAP Authentication`,
-        description: null,
-        type: "boolean",
-      },
-      {
-        key: "ldap-host",
-        display_name: t`LDAP Host`,
-        placeholder: "ldap.yourdomain.org",
-        type: "string",
-        required: true,
-        autoFocus: true,
-      },
-      {
-        key: "ldap-port",
-        display_name: t`LDAP Port`,
-        placeholder: "389",
-        type: "string",
-        validations: [["integer", t`That's not a valid port number`]],
-      },
-      {
-        key: "ldap-security",
-        display_name: t`LDAP Security`,
-        description: null,
-        type: "radio",
-        options: { none: "None", ssl: "SSL", starttls: "StartTLS" },
-        defaultValue: "none",
-      },
-      {
-        key: "ldap-bind-dn",
-        display_name: t`Username or DN`,
-        type: "string",
-      },
-      {
-        key: "ldap-password",
-        display_name: t`Password`,
-        type: "password",
-      },
-      {
-        key: "ldap-user-base",
-        display_name: t`User search base`,
-        type: "string",
-        required: true,
-      },
-      {
-        key: "ldap-user-filter",
-        display_name: t`User filter`,
-        type: "string",
-        validations: [
-          value =>
-            (value.match(/\(/g) || []).length !==
-            (value.match(/\)/g) || []).length
-              ? t`Check your parentheses`
-              : null,
-        ],
-      },
-      {
-        key: "ldap-attribute-email",
-        display_name: t`Email attribute`,
-        type: "string",
-      },
-      {
-        key: "ldap-attribute-firstname",
-        display_name: t`First name attribute`,
-        type: "string",
-      },
-      {
-        key: "ldap-attribute-lastname",
-        display_name: t`Last name attribute`,
-        type: "string",
-      },
-      {
-        key: "ldap-group-sync",
-        display_name: t`Synchronize group memberships`,
-        description: null,
-        widget: LdapGroupMappingsWidget,
-      },
-      {
-        key: "ldap-group-base",
-        display_name: t`Group search base`,
-        type: "string",
-      },
-      {
-        key: "ldap-group-mappings",
-      },
-    ],
-  },
-  {
+  maps: {
     name: t`Maps`,
-    slug: "maps",
+    order: 7,
     settings: [
       {
         key: "map-tile-server-url",
@@ -315,21 +225,64 @@ const SECTIONS = [
       },
     ],
   },
-  {
-    name: t`Formatting`,
-    slug: "formatting",
+  localization: {
+    name: t`Localization`,
+    order: 8,
     settings: [
       {
-        display_name: t`Formatting Options`,
+        display_name: t`Instance language`,
+        key: "site-locale",
+        type: "select",
+        options: _.sortBy(
+          MetabaseSettings.get("available-locales") || [],
+          ([code, name]) => name,
+        ).map(([code, name]) => ({ name, value: code })),
+        defaultValue: "en",
+        onChanged: (oldLocale, newLocale) => {
+          if (oldLocale !== newLocale) {
+            window.location.reload();
+          }
+        },
+      },
+      {
+        key: "report-timezone",
+        display_name: t`Report Timezone`,
+        type: "select",
+        options: [
+          { name: t`Database Default`, value: "" },
+          ...MetabaseSettings.get("available-timezones"),
+        ],
+        note: t`Not all databases support timezones, in which case this setting won't take effect.`,
+        allowValueCollection: true,
+        searchProp: "name",
+        defaultValue: "",
+      },
+      {
+        key: "start-of-week",
+        display_name: t`First day of the week`,
+        type: "select",
+        options: [
+          { value: "sunday", name: t`Sunday` },
+          { value: "monday", name: t`Monday` },
+          { value: "tuesday", name: t`Tuesday` },
+          { value: "wednesday", name: t`Wednesday` },
+          { value: "thursday", name: t`Thursday` },
+          { value: "friday", name: t`Friday` },
+          { value: "saturday", name: t`Saturday` },
+        ],
+        defaultValue: "sunday",
+      },
+      {
+        display_name: t`Localization options`,
         description: "",
         key: "custom-formatting",
         widget: FormattingWidget,
       },
     ],
   },
-  {
+  public_sharing: {
     name: t`Public Sharing`,
-    slug: "public_sharing",
+    order: 9,
     settings: [
       {
         key: "enable-public-sharing",
@@ -350,9 +303,9 @@ const SECTIONS = [
       },
     ],
   },
-  {
+  embedding_in_other_applications: {
     name: t`Embedding in other Applications`,
-    slug: "embedding_in_other_applications",
+    order: 10,
     settings: [
       {
         key: "enable-embedding",
@@ -371,7 +324,7 @@ const SECTIONS = [
             newValue &&
             !settingsValues["embedding-secret-key"]
           ) {
-            let result = await UtilApi.random_token();
+            const result = await UtilApi.random_token();
             await onChangeSetting("embedding-secret-key", result.token);
           }
         },
@@ -406,9 +359,9 @@ const SECTIONS = [
       },
     ],
   },
-  {
+  caching: {
     name: t`Caching`,
-    slug: "caching",
+    order: 11,
     settings: [
       {
         key: "enable-query-caching",
@@ -438,79 +391,74 @@ const SECTIONS = [
       },
     ],
   },
-  /*
-    {
-        name: "Premium Embedding",
-        settings: [
-            {
-                key: "premium-embedding-token",
-                display_name: "Premium Embedding Token",
-                widget: PremiumEmbeddingWidget
-            }
-        ]
-    }
-    */
-];
+});
 
 export const getSettings = createSelector(
-  state => state.settings.settings,
+  state => state.admin.settings.settings,
   state => state.admin.settings.warnings,
   (settings, warnings) =>
-    settings.map(
-      setting =>
-        warnings[setting.key]
-          ? { ...setting, warning: warnings[setting.key] }
-          : setting,
+    settings.map(setting =>
+      warnings[setting.key]
+        ? { ...setting, warning: warnings[setting.key] }
+        : setting,
     ),
 );
 
-export const getSettingValues = createSelector(getSettings, settings => {
-  const settingValues = {};
-  for (const setting of settings) {
-    settingValues[setting.key] = setting.value;
-  }
-  return settingValues;
-});
+export const getSettingValues = createSelector(
+  getSettings,
+  settings => {
+    const settingValues = {};
+    for (const setting of settings) {
+      settingValues[setting.key] = setting.value;
+    }
+    return settingValues;
+  },
+);
 
-export const getNewVersionAvailable = createSelector(getSettings, settings => {
-  return MetabaseSettings.newVersionAvailable(settings);
-});
+export const getNewVersionAvailable = createSelector(
+  getSettings,
+  settings => {
+    return MetabaseSettings.newVersionAvailable(settings);
+  },
+);
 
-export const getSections = createSelector(getSettings, settings => {
-  if (!settings || _.isEmpty(settings)) {
-    return [];
-  }
+export const getSections = createSelector(
+  getSettings,
+  settings => {
+    if (!settings || _.isEmpty(settings)) {
+      return {};
+    }
 
-  let settingsByKey = _.groupBy(settings, "key");
-  return SECTIONS.map(function(section) {
-    let sectionSettings = section.settings.map(function(setting) {
-      const apiSetting =
-        settingsByKey[setting.key] && settingsByKey[setting.key][0];
-      if (apiSetting) {
-        return {
-          placeholder: apiSetting.default,
-          ...apiSetting,
-          ...setting,
-        };
-      } else {
-        return setting;
-      }
-    });
-    return {
-      ...section,
-      settings: sectionSettings,
-    };
-  });
-});
+    const settingsByKey = _.groupBy(settings, "key");
+    const sectionsWithAPISettings = {};
+    for (const [slug, section] of Object.entries(SECTIONS)) {
+      const settings = section.settings.map(function(setting) {
+        const apiSetting =
+          settingsByKey[setting.key] && settingsByKey[setting.key][0];
+        if (apiSetting) {
+          return {
+            placeholder: apiSetting.default,
+            ...apiSetting,
+            ...setting,
+          };
+        } else {
+          return setting;
+        }
+      });
+      sectionsWithAPISettings[slug] = { ...section, settings };
+    }
+    return sectionsWithAPISettings;
+  },
+);
 
-export const getActiveSectionName = (state, props) => props.params.section;
+export const getActiveSectionName = (state, props) => props.params.splat;
 
 export const getActiveSection = createSelector(
   getActiveSectionName,
   getSections,
   (section = "setup", sections) => {
     if (sections) {
-      return _.findWhere(sections, { slug: section });
+      return sections[section];
     } else {
       return null;
     }

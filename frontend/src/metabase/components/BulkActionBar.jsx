@@ -1,9 +1,11 @@
+/* eslint-disable react/prop-types */
 import React from "react";
+import styled from "styled-components";
 import { Box } from "grid-styled";
 import Card from "metabase/components/Card";
 import { Motion, spring } from "react-motion";
 
-const FixedBottomBar = Box.extend`
+const FixedBottomBar = styled(Box)`
   position: fixed;
   bottom: 0;
   left: 0;
@@ -28,6 +30,7 @@ const BulkActionBar = ({ children, showing }) => (
           opacity,
           transform: `translateY(${translateY}px)`,
         }}
+        data-testid="bulk-action-bar"
       >
         <Card>{children}</Card>
       </FixedBottomBar>
