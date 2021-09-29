@@ -422,7 +422,7 @@
        {:email
         (fn [_ _]
           (is (= (rasta-alert-email
-                  "Metabase alert: Test card has results"
+                  "Alert: Test card has results"
                   [(assoc test-card-result "More results have been included" false)
                    png-attachment png-attachment])
                  (mt/summarize-multipart-email test-card-regex #"More results have been included"))))
@@ -458,7 +458,7 @@
        :assert
        {:email
         (fn [_ _]
-          (is (= (rasta-alert-email "Metabase alert: Test card has results"
+          (is (= (rasta-alert-email "Alert: Test card has results"
                                     [(merge test-card-result
                                             {"More results have been included" true
                                              "ID</th>"                         true})
@@ -475,7 +475,7 @@
        :assert
        {:email
         (fn [_ _]
-          (is (= (rasta-alert-email "Metabase alert: Test card has results"
+          (is (= (rasta-alert-email "Alert: Test card has results"
                                     [test-card-result png-attachment png-attachment csv-attachment xls-attachment])
                  (mt/summarize-multipart-email test-card-regex))))}})))
 
@@ -488,7 +488,7 @@
      :assert
      {:email
       (fn [{:keys [pulse-id]} _]
-        (is (= (rasta-alert-email "Metabase alert: Test card has results"
+        (is (= (rasta-alert-email "Alert: Test card has results"
                                   [;(assoc test-card-result "stop sending you alerts" true)
                                    test-card-result
                                    png-attachment
@@ -527,7 +527,7 @@
        :assert
        {:email
         (fn [_ _]
-          (is (= (rasta-alert-email "Metabase alert: Test card has reached its goal"
+          (is (= (rasta-alert-email "Alert: Test card has reached its goal"
                                     [test-card-result png-attachment png-attachment])
                  (mt/summarize-multipart-email test-card-regex))))}}
 
@@ -553,7 +553,7 @@
        :assert
        {:email
         (fn [_ _]
-          (is (= (rasta-alert-email "Metabase alert: Test card has reached its goal"
+          (is (= (rasta-alert-email "Alert: Test card has reached its goal"
                                     [test-card-result png-attachment])
                  (mt/summarize-multipart-email test-card-regex))))}})))
 
@@ -572,7 +572,7 @@
        :assert
        {:email
         (fn [_ _]
-          (is (= (rasta-alert-email "Metabase alert: Test card has gone below its goal"
+          (is (= (rasta-alert-email "Alert: Test card has gone below its goal"
                                     [test-card-result png-attachment png-attachment])
                  (mt/summarize-multipart-email test-card-regex))))}}
 
@@ -596,7 +596,7 @@
        :assert
        {:email
         (fn [_ _]
-          (is (= (rasta-alert-email "Metabase alert: Test card has gone below its goal"
+          (is (= (rasta-alert-email "Alert: Test card has gone below its goal"
                                     [test-card-result png-attachment])
                  (mt/summarize-multipart-email test-card-regex))))}})))
 
@@ -618,7 +618,7 @@
                                                                    :alert_above_goal true}}]
         (email-test-setup
          (pulse/send-pulse! (models.pulse/retrieve-notification pulse-id))
-         (is (= (rasta-alert-email "Metabase alert: Test card has reached its goal"
+         (is (= (rasta-alert-email "Alert: Test card has reached its goal"
                                    [test-card-result png-attachment png-attachment])
                 (mt/summarize-multipart-email test-card-regex))))))))
 
