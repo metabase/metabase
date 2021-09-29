@@ -72,8 +72,8 @@ function assertOnDatabaseMetadata(engine) {
 }
 
 function recursiveCheck(id, i = 0) {
-  // Let's not wait more than 1s for the sync to finish
-  if (i === 10) {
+  // Let's not wait more than 2s for the sync to finish
+  if (i === 20) {
     throw new Error();
   }
 
