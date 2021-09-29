@@ -14,7 +14,7 @@
 
 (sql-jdbc.tx/add-test-extensions! :snowflake)
 
-(defmethod tx/sorts-nil-first? :snowflake [_] false)
+(defmethod tx/sorts-nil-first? :snowflake [_ _] false)
 
 (doseq [[base-type sql-type] {:type/BigInteger     "BIGINT"
                               :type/Boolean        "BOOLEAN"

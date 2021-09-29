@@ -1,12 +1,11 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import { SettingDescription, SettingTitle } from "./SettingHeader.styled";
 
-const SettingHeader = ({ setting }) => (
+const SettingHeader = ({ id, setting }) => (
   <div>
-    <div className="text-medium text-bold text-uppercase">
-      {setting.display_name}
-    </div>
-    <div className="text-medium text-measure my1">
+    <SettingTitle htmlFor={id}>{setting.display_name}</SettingTitle>
+    <SettingDescription>
       {setting.warningMessage && (
         <React.Fragment>
           <strong>{setting.warningMessage}</strong>{" "}
@@ -14,8 +13,7 @@ const SettingHeader = ({ setting }) => (
       )}
       {setting.description}
       {setting.note && <div>{setting.note}</div>}
-    </div>
+    </SettingDescription>
   </div>
 );
-
 export default SettingHeader;

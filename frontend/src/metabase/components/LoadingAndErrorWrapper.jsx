@@ -69,17 +69,14 @@ export default class LoadingAndErrorWrapper extends Component {
     }
   };
 
-  getChildren() {
-    function resolveChild(child) {
-      if (Array.isArray(child)) {
-        return child.map(resolveChild);
-      } else if (typeof child === "function") {
-        return child();
-      } else {
-        return child;
-      }
+  getChildren(child = this.props.children) {
+    if (Array.isArray(child)) {
+      return child.map(this.getChildren);
+    } else if (typeof child === "function") {
+      return child();
+    } else {
+      return child;
     }
-    return resolveChild(this.props.children);
   }
 
   cycleLoadingMessage = () => {

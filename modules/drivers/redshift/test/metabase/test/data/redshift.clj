@@ -4,6 +4,7 @@
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.sql :as sql.tx]
+            [metabase.test.data.sql-jdbc.load-data :as load-data]
             [metabase.test.data.sql.ddl :as ddl]
             [metabase.util :as u]))
 
@@ -18,7 +19,11 @@
                                    :type/Decimal    "DECIMAL"
                                    :type/Float      "FLOAT8"
                                    :type/Integer    "INTEGER"
-                                   :type/Text       "TEXT"}]
+                                   ;; Use VARCHAR because TEXT in Redshift is VARCHAR(256)
+                                   ;; https://docs.aws.amazon.com/redshift/latest/dg/r_Character_types.html#r_Character_types-varchar-or-character-varying
+                                   ;; But don't use VARCHAR(MAX) either because of performance impact
+                                   ;; https://docs.aws.amazon.com/redshift/latest/dg/c_best-practices-smallest-column-size.html
+                                   :type/Text       "VARCHAR(1024)"}]
   (defmethod sql.tx/field-base-type->sql-type [:redshift base-type] [_ _] database-type))
 
 ;; If someone tries to run Time column tests with Redshift give them a heads up that Redshift does not support it
@@ -64,6 +69,15 @@
 (defmethod sql.tx/drop-table-if-exists-sql :redshift
   [& args]
   (apply sql.tx/drop-table-if-exists-cascade-sql args))
+
+(defmethod load-data/load-data! :redshift
+  [driver {:keys [database-name], :as dbdef} {:keys [table-name], :as tabledef}]
+  (load-data/load-data-all-at-once! driver dbdef tabledef)
+  (let [table-identifier (sql.tx/qualify-and-quote :redshift database-name table-name)
+        spec             (sql-jdbc.conn/connection-details->spec :redshift @db-connection-details)]
+    ;; VACUUM and ANALYZE after insert to improve performance (according to doc)
+    (jdbc/execute! spec (str "VACUUM " table-identifier) {:transaction? false})
+    (jdbc/execute! spec (str "ANALYZE " table-identifier) {:transaction? false})))
 
 ;;; Create + destroy the schema used for this test session
 

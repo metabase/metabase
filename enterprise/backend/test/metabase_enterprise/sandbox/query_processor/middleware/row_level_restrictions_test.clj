@@ -915,8 +915,6 @@
 (deftest pivot-query-test
   (mt/test-drivers (disj
                      (mt/normal-drivers-with-feature :foreign-keys :nested-queries :left-join)
-                     ;; sample-dataset doesn't work on Redshift yet -- see #14784
-                     :redshift
                      ;; this test relies on a FK relation between $product_id->products.category, so skip for Presto
                      ;; JDBC, because that driver doesn't support resolving FKs from the JDBC metadata
                      :presto-jdbc)
@@ -941,7 +939,7 @@
                          [nil       "Widget" 1 498.59]
                          ["Twitter" nil      2 900.1]
                          [nil       nil      3 900.1]]
-                        (sort-by (let [nil-first? (mt/sorts-nil-first? driver/*driver*)
+                        (sort-by (let [nil-first? (mt/sorts-nil-first? driver/*driver* :type/Text)
                                        sort-str   (fn [s]
                                                     (cond
                                                       (some? s)  s

@@ -14,6 +14,7 @@ import ExternalLink from "metabase/components/ExternalLink";
 import {
   isCoordinate,
   isDate,
+  isDateWithoutTime,
   isEmail,
   isLatitude,
   isLongitude,
@@ -475,7 +476,11 @@ function formatDateTimeWithFormats(value, dateFormat, timeFormat, options) {
   if (dateFormat) {
     format.push(replaceDateFormatNames(dateFormat, options));
   }
-  if (timeFormat && options.time_enabled) {
+
+  const shouldIncludeTime =
+    timeFormat && options.time_enabled && !isDateWithoutTime(options.column);
+
+  if (shouldIncludeTime) {
     format.push(timeFormat);
   }
   return m.format(format.join(", "));
@@ -733,12 +738,19 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
     };
   }
   const formatted = formatValueRaw(value, options);
+  let maybeJson = {};
+  try {
+    maybeJson = JSON.parse(value);
+  } catch {
+    // do nothing
+  }
   if (options.markdown_template) {
     if (options.jsx) {
       // inject the formatted value as "value" and the unformatted value as "raw"
       const markdown = Mustache.render(options.markdown_template, {
         value: formatted,
         raw: value,
+        json: maybeJson,
       });
       return (
         <ReactMarkdown components={MARKDOWN_RENDERERS}>

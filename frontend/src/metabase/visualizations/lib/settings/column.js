@@ -11,6 +11,7 @@ import {
   isNumber,
   isCoordinate,
   isCurrency,
+  isDateWithoutTime,
 } from "metabase/lib/schema_metadata";
 
 // HACK: cyclical dependency causing errors in unit tests
@@ -252,7 +253,8 @@ export const DATE_COLUMN_SETTINGS = {
       }
       return { options };
     },
-    getHidden: ({ unit }: Column, settings: ColumnSettings) => !hasHour(unit),
+    getHidden: (column: Column, settings: ColumnSettings) =>
+      !hasHour(column.unit) || isDateWithoutTime(column),
     getDefault: ({ unit }: Column) => (hasHour(unit) ? "minutes" : null),
   },
   time_style: {
@@ -269,7 +271,7 @@ export const DATE_COLUMN_SETTINGS = {
       ],
     }),
     getHidden: (column: Column, settings: ColumnSettings) =>
-      !settings["time_enabled"],
+      !settings["time_enabled"] || isDateWithoutTime(column),
     readDependencies: ["time_enabled"],
   },
 };
