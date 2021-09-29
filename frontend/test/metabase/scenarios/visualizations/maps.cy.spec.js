@@ -83,8 +83,8 @@ describe("scenarios > visualizations > maps", () => {
     cy.get("@vizButton").find(".Icon-pinmap");
     cy.get("@vizButton").click();
     cy.findByText("Choose a visualization");
-    // Sidebar should really have a distinct class name
-    cy.get(".scroll-y .scroll-y").as("vizSidebar");
+
+    cy.findByTestId("sidebar-left").as("vizSidebar");
 
     cy.get("@vizSidebar").within(() => {
       // There should be a unique class for "selected" viz type
