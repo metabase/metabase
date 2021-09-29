@@ -60,7 +60,7 @@ export default function ErrorOverview(props) {
   return (
     <AuditParameters
       parameters={[
-        { key: "errorFilter", placeholder: t`Error name` },
+        { key: "errorFilter", placeholder: t`Error contents` },
         { key: "dbFilter", placeholder: t`DB name` },
         { key: "collectionFilter", placeholder: t`Collection name` },
       ]}
