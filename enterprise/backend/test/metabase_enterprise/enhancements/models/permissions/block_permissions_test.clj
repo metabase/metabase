@@ -88,7 +88,9 @@
 (deftest update-graph-test
   (testing "Should be able to set block permissions with"
     (doseq [[description grant!] {"the graph update function"
-                                  grant-block-perms!
+                                  (fn [group-id]
+                                    (premium-features-test/with-premium-features #{:advanced-permissions}
+                                      (grant-block-perms! group-id)))
 
                                   "the perms graph API endpoint"
                                   api-grant-block-perms!}]
@@ -113,7 +115,7 @@
 
 (deftest update-graph-delete-sandboxes-test
   (testing "When setting `:block` permissions any GTAP rows for that Group/Database should get deleted."
-    (premium-features-test/with-premium-features #{:sandboxes}
+    (premium-features-test/with-premium-features #{:sandboxes :advanced-permissions}
       (mt/with-model-cleanup [Permissions]
         (mt/with-temp* [PermissionsGroup       [{group-id :id}]
                         GroupTableAccessPolicy [_ {:table_id (mt/id :venues)
