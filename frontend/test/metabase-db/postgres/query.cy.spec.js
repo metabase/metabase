@@ -1,6 +1,5 @@
 import {
   restore,
-  addPostgresDatabase,
   withDatabase,
   visitQuestionAdhoc,
 } from "__support__/e2e/cypress";
@@ -10,9 +9,8 @@ const PG_DB_ID = 2;
 
 describe("postgres > user > query", () => {
   beforeEach(() => {
-    restore();
+    restore("postgres-12");
     cy.signInAsAdmin();
-    addPostgresDatabase(PG_DB_NAME);
   });
 
   it("should show row details when clicked on its entity key (metabase#13263)", () => {

@@ -1,21 +1,19 @@
 import {
   restore,
-  addPostgresDatabase,
   withDatabase,
   describeWithToken,
 } from "__support__/e2e/cypress";
 import { USER_GROUPS } from "__support__/e2e/cypress_data";
 
-const PG_DB_NAME = "QA Postgres12";
 const PG_DB_ID = 2;
 
 const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 
 describeWithToken("postgres > user > query", () => {
   beforeEach(() => {
-    restore();
+    restore("postgres-12");
     cy.signInAsAdmin();
-    addPostgresDatabase(PG_DB_NAME);
+
     // Update basic permissions (the same starting "state" as we have for the "Sample Dataset")
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {

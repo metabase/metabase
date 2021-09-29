@@ -1,4 +1,4 @@
-import { restore, addPostgresDatabase, modal } from "__support__/e2e/cypress";
+import { restore, modal } from "__support__/e2e/cypress";
 
 const PG_DB_NAME = "QA Postgres12";
 
@@ -7,9 +7,8 @@ const PG_DB_NAME = "QA Postgres12";
 // IMPORTANT: when #14957 gets fixed, unskip both describe block and the test itself!
 describe.skip("postgres > question > native", () => {
   beforeEach(() => {
-    restore();
+    restore("postgres-12");
     cy.signInAsAdmin();
-    addPostgresDatabase(PG_DB_NAME);
   });
 
   it.skip("should save a question before query has been executed (metabase#14957)", () => {
