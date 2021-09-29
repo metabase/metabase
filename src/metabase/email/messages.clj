@@ -31,8 +31,8 @@
             [stencil.loader :as stencil-loader]
             [toucan.db :as db])
   (:import [java.io File IOException OutputStream]
-           java.time.LocalTime
-           java.time.format.DateTimeFormatter))
+           java.time.format.DateTimeFormatter
+           java.time.LocalTime))
 
 (defn- app-name-trs
   "Return the user configured application name, or Metabase translated
