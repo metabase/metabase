@@ -554,10 +554,10 @@
   "Context that is applicable only to the actual alert template (not alert management templates)"
   [alert channel]
   (let [{card-id :id, card-name :name} (first-card alert)]
-    {:title    card-name
-     :titleUrl (url/card-url card-id)
+    {:title         card-name
+     :titleUrl      (url/card-url card-id)
      :alertSchedule (alert-schedule-text channel)
-     :creator  (-> alert :creator :common_name)}))
+     :creator       (-> alert :creator :common_name)}))
 
 (defn- alert-results-condition-text [goal-value]
   {:meets (format "This question has reached its goal of %s." goal-value)
