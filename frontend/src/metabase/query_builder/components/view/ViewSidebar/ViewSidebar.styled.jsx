@@ -1,5 +1,7 @@
 import styled, { css } from "styled-components";
 
+import { color } from "metabase/lib/colors";
+
 export const ViewSidebarAside = styled.aside`
   overflow-x: hidden;
   overflow-y: auto;
@@ -11,14 +13,14 @@ export const ViewSidebarAside = styled.aside`
   ${({ left }) =>
     left &&
     css`
-      border-right: 1px solid #f0f0f0;
+      border-right: 1px solid ${color("border")};
       left: 0;
     `}
 
   ${({ right }) =>
     right &&
     css`
-      border-left: 1px solid #f0f0f0;
+      border-left: 1px solid ${color("border")};
       right: 0;
     `}
 
