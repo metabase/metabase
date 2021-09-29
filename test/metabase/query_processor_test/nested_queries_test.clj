@@ -1023,13 +1023,9 @@
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :foreign-keys :nested-queries :left-join) :redshift)
     (mt/dataset sample-dataset
       (testing "Do nested queries in combination with joins and expressions still work correctly? (#14969)"
-        ;; not sure why Snowflake has slightly different results
-        (is (= (if (= driver/*driver* :snowflake)
-                 [["Twitter" "Widget" 0 510.82]
-                  ["Twitter" nil 0 407.93]]
-                 (cond-> [["Twitter" "Widget" 0 498.59]
-                          ["Twitter" nil      0 401.51]]
-                   (mt/sorts-nil-first? driver/*driver*) reverse))
+        (is (= (cond-> [["Twitter" "Widget" 0 498.59]
+                        ["Twitter" nil      0 401.51]]
+                 (mt/sorts-nil-first? driver/*driver*) reverse)
                (mt/formatted-rows [str str int 2.0]
                  (mt/run-mbql-query orders
                    {:source-query {:source-table $$orders
@@ -1075,18 +1071,11 @@
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :foreign-keys :nested-queries) :redshift) ; sample-dataset doesn't work on Redshift yet -- see #14784
     (testing "Multi-level aggregations with filter is the last section (#14872)"
       (mt/dataset sample-dataset
-        ;; not 100% sure why Snowflake has slightly different results
-        (is (= (if (= driver/*driver* :snowflake)
-                 [["Awesome Bronze Plate" 115.22]
-                  ["Mediocre Rubber Shoes" 101.06]
-                  ["Mediocre Wooden Bench" 117.04]
-                  ["Sleek Steel Table" 134.94]
-                  ["Small Marble Hat" 102.77]]
-                 [["Awesome Bronze Plate" 115.23]
-                  ["Mediocre Rubber Shoes" 101.04]
-                  ["Mediocre Wooden Bench" 117.03]
-                  ["Sleek Steel Table" 134.91]
-                  ["Small Marble Hat" 102.8]])
+        (is (= [["Awesome Bronze Plate" 115.23]
+                ["Mediocre Rubber Shoes" 101.04]
+                ["Mediocre Wooden Bench" 117.03]
+                ["Sleek Steel Table" 134.91]
+                ["Small Marble Hat" 102.8]]
                (mt/formatted-rows [str 2.0]
                  (mt/run-mbql-query orders
                    {:source-query {:source-query {:source-table $$orders
