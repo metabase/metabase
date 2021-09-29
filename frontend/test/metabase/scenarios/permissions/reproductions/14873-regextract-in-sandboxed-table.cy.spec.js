@@ -24,15 +24,14 @@ describeWithToken("postgres > user > query", () => {
         [PG_DB_ID]: { schemas: "none", native: "none" },
       },
     });
+
+    cy.intercept("POST", "/api/dataset/pivot").as("pivotDataset");
   });
 
   it("should handle the use of `regexextract` in a sandboxed table (metabase#14873)", () => {
     const CC_NAME = "Firstname";
     // We need ultra-wide screen to avoid scrolling (custom column is rendered at the last position)
     cy.viewport(2200, 1200);
-
-    cy.server();
-    cy.route("POST", "/api/dataset/pivot").as("pivotDataset");
 
     withDatabase(PG_DB_ID, ({ PEOPLE, PEOPLE_ID }) => {
       // Question with a custom column created with `regextract`
@@ -50,8 +49,7 @@ describeWithToken("postgres > user > query", () => {
         },
         database: PG_DB_ID,
       }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.server();
-        cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
+        cy.intercept("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
 
         cy.sandboxTable({
           table_id: PEOPLE_ID,
@@ -62,6 +60,7 @@ describeWithToken("postgres > user > query", () => {
 
         cy.signOut();
         cy.signInAsSandboxedUser();
+
         cy.visit(`/question/${QUESTION_ID}`);
 
         cy.wait("@cardQuery").then(xhr => {
