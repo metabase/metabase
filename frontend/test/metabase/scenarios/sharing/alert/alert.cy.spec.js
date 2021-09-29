@@ -218,8 +218,8 @@ describeWithToken("scenarios > alert (EE)", () => {
   });
 
   it("should validate for approved email domains", () => {
-    const email = "example@example.com";
-    const domain = "metabase.com";
+    const email = "mailer@metabase.test";
+    const domain = "metabase.example";
 
     setupDummySMTP();
     setAllowedEmailDomains(domain);
@@ -237,7 +237,7 @@ describeWithToken("scenarios > alert (EE)", () => {
     cy.findByText("Done").click();
 
     cy.findByText(
-      'You cannot create new subscriptions for the domain "example.com". Allowed domains are: metabase.com',
+      'You cannot create new subscriptions for the domain "metabase.test". Allowed domains are: metabase.example',
     );
   });
 });
