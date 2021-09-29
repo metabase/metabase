@@ -326,19 +326,19 @@
                                     (when dashboard (slack-dashboard-footer pulse dashboard))]))}))
 
 (defmethod notification [:alert :email]
-  [{:keys [id] :as pulse} results {:keys [recipients]}]
+  [{:keys [id] :as pulse} results channel]
   (log/debug (trs "Sending Alert ({0}: {1}) via email" id name))
   (let [condition-kwd    (messages/pulse->alert-condition-kwd pulse)
-        email-subject    (trs "Metabase alert: {0} has {1}"
+        email-subject    (trs "Alert: {0} has {1}"
                               (first-question-name pulse)
                               (alert-condition-type->description condition-kwd))
-        email-recipients (filterv u/email? (map :email recipients))
+        email-recipients (filterv u/email? (map :email (:recipients channel)))
         first-result     (first results)
         timezone         (-> first-result :card defaulted-timezone)]
     {:subject      email-subject
      :recipients   email-recipients
      :message-type :attachments
-     :message      (messages/render-alert-email timezone pulse results (ui/find-goal-value first-result))}))
+     :message      (messages/render-alert-email timezone pulse channel results (ui/find-goal-value first-result))}))
 
 (defmethod notification [:alert :slack]
   [pulse results {{channel-id :channel} :details}]

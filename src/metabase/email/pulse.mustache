@@ -102,6 +102,16 @@
                   </td>
                 </tr>
               {{/dashboardDescription}}
+              {{#alertSchedule}}
+                <tr>
+                  <td>&#8202;</td>
+                  <td>
+                    <div style="color: {{colorTextDark}}; font-size: 14px">
+                      {{alertSchedule}}
+                    </div>
+                  </td>
+                </tr>
+              {{/alertSchedule}}
               <tr>
                 <td>&#8202;</td>
                 <td>
@@ -121,6 +131,11 @@
             </table>
             <hr style="border-width: 0; background: #F0F0F0; height: 1px; margin-top: 20px; margin-bottom: 20px;">
             {{{pulse}}}
+            {{#alertCondition}}
+              <p style="color: {{colorTextMedium}}; font-size: 12px; font-weight: 400">
+              {{alertCondition}}
+              </p>
+            {{/alertCondition}}
             {{#firstRunOnly?}}
               <p style="color: {{colorTextMedium}}; font-size: 12px; font-weight: 400">
               We’ll stop sending you alerts about this question now.
