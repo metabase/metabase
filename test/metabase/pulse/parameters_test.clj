@@ -17,8 +17,12 @@
   (mt/with-temporary-setting-values [site-url "https://metabase.com"]
     (testing "A valid dashboard URL can be generated with filters included"
       (is (= "https://metabase.com/dashboard/1?state=CA&state=NY&quarter_and_year=Q1-2021"
-             (params/dashboard-url 1 (:parameters test-dashboard)))
+             (params/dashboard-url 1 (:parameters test-dashboard)))))
 
-        (testing "If no filters are set, the base dashboard url is returned"
-          (is (= "https://metabase.com/dashboard/1"
-               (params/dashboard-url 1 {}))))))))
+    (testing "If no filters are set, the base dashboard url is returned"
+      (is (= "https://metabase.com/dashboard/1"
+             (params/dashboard-url 1 {}))))
+
+    (testing "Filters slugs and values are encoded properly for the URL"
+      (is (= "https://metabase.com/dashboard/1?%26=contains%3F"
+             (params/dashboard-url 1 [{:value "contains?", :slug "&"}]))))))

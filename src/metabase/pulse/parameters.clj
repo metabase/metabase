@@ -4,7 +4,8 @@
             [metabase.plugins.classloader :as classloader]
             [metabase.pulse.interface :as i]
             [metabase.util :as u]
-            [metabase.util.urls :as url]))
+            [metabase.util.urls :as url]
+            [ring.util.codec :as codec]))
 
 (def ^:private parameters-impl
   (u/prog1 (or (u/ignore-exceptions
@@ -15,7 +16,7 @@
 
 (defn parameters
   "Returns the list of parameters applied to a dashboard subscription, filtering out ones
-  without "
+  without a value"
   [subscription dashboard]
   (filter
    #(or (:value %) (:default %))
@@ -34,6 +35,8 @@
         url-params (flatten
                     (for [param parameters]
                       (for [value (u/one-or-many (or (:value param) (:default param)))]
-                        (str (:slug param) "=" value))))]
+                        (str (codec/url-encode (:slug param))
+                             "="
+                             (codec/url-encode value)))))]
     (str base-url (when (seq url-params)
                     (str "?" (str/join "&" url-params))))))
