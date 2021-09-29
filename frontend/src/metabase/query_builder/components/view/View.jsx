@@ -41,6 +41,8 @@ import { Motion, spring } from "react-motion";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
+import { NotebookContainer } from "./View.styled";
+
 const DEFAULT_POPOVER_STATE = {
   aggregationIndex: null,
   aggregationPopoverTarget: null,
@@ -232,41 +234,9 @@ export default class View extends React.Component {
 
           <div className="flex flex-full relative">
             {query instanceof StructuredQuery && (
-              <Motion
-                defaultStyle={
-                  isNewQuestion
-                    ? { opacity: 1, translateY: 0 }
-                    : { opacity: 0, translateY: MOTION_Y }
-                }
-                style={
-                  queryBuilderMode === "notebook"
-                    ? {
-                        opacity: spring(1, springOpts),
-                        translateY: spring(0, springOpts),
-                      }
-                    : {
-                        opacity: spring(0, springOpts),
-                        translateY: spring(MOTION_Y, springOpts),
-                      }
-                }
-              >
-                {({ opacity, translateY }) => {
-                  const snapY = translateY < MOTION_Y / 2 ? MOTION_Y : 0;
-                  const shiftY = preferReducedMotion ? snapY : translateY;
-                  return opacity > 0 ? (
-                    // note the `bg-white class here is necessary to obscure the other layer
-                    <div
-                      className="spread bg-white scroll-y z2 border-top border-bottom"
-                      style={{
-                        // opacity: opacity,
-                        transform: `translateY(${shiftY}%)`,
-                      }}
-                    >
-                      <Notebook {...this.props} />
-                    </div>
-                  ) : null;
-                }}
-              </Motion>
+              <NotebookContainer isOpen={queryBuilderMode === "notebook"}>
+                <Notebook {...this.props} />
+              </NotebookContainer>
             )}
 
             <ViewSidebar side="left" isOpen={!!leftSideBar}>
