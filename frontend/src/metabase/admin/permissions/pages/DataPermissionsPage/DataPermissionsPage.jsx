@@ -71,7 +71,9 @@ function DataPermissionsPage({
 DataPermissionsPage.propTypes = propTypes;
 
 export default _.compose(
-  Databases.loadList({ entityQuery: { include: "tables" } }),
+  Databases.loadList({
+    entityQuery: { include: "tables", include_hidden: "true" },
+  }),
   Groups.loadList(),
   connect(
     mapStateToProps,
