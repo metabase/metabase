@@ -6,7 +6,6 @@
             [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.api.table :as table-api]
-            [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
             [metabase.events :as events]
@@ -198,34 +197,14 @@
 
   * `include=tables` means we should hydrate the Tables belonging to each DB. Default: `false`.
 
-  * `saved` means we should include the saved questions virtual database. Default: `false`.
-
-  * `include_tables` is a legacy alias for `include=tables`, but should be considered deprecated as of 0.35.0, and will
-    be removed in a future release.
-
-  * `include_cards` here means we should also include virtual Table entries for saved Questions, e.g. so we can easily
-    use them as source Tables in queries. This is a deprecated alias for `saved=true` + `include=tables` (for the saved
-    questions virtual DB). Prefer using `include` and `saved` instead. "
-  [include_tables include_cards include saved]
-  {include_tables (s/maybe su/BooleanString)
-   include_cards  (s/maybe su/BooleanString)
-   include        FetchAllIncludeValues
+  * `saved` means we should include the saved questions virtual database. Default: `false`."
+  [include saved]
+  {include        FetchAllIncludeValues
    saved          (s/maybe su/BooleanString)}
-  (when (and config/is-dev?
-             (or include_tables include_cards))
-    ;; don't need to i18n since this is dev-facing only
-    (log/warn "GET /api/database?include_tables and ?include_cards are deprecated."
-              "Prefer using ?include=tables and ?saved=true instead."))
-  (let [include-tables?                 (cond
-                                          (seq include)        (= include "tables")
-                                          (seq include_tables) (Boolean/parseBoolean include_tables))
-        include-saved-questions-db?     (cond
-                                          (seq saved)         (Boolean/parseBoolean saved)
-                                          (seq include_cards) (Boolean/parseBoolean include_cards))
-        include-saved-questions-tables? (when include-saved-questions-db?
-                                          (if (seq include_cards)
-                                            true
-                                            include-tables?))
+  (let [include-tables?                 (= include "tables")
+        include-saved-questions-db?     (when (seq saved) (Boolean/parseBoolean saved))
+        include-saved-questions-tables? (and include-tables?
+                                             include-saved-questions-db?)
         db-list-res                     (or (dbs-list :include-tables?                  include-tables?
                                                       :include-saved-questions-db?      include-saved-questions-db?
                                                       :include-saved-questions-tables?  include-saved-questions-tables?)
