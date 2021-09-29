@@ -28,6 +28,10 @@ export const ViewSidebarAside = styled.aside`
       opacity: 1;
       width: ${width}px;
     `}
+
+  @media (prefers-reduced-motion) {
+    transition: none;
+  }
 `;
 
 export const ViewSidebarContent = styled.div`
