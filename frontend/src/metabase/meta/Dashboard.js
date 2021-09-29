@@ -357,7 +357,6 @@ export function getDashboardParametersWithFieldMetadata(
   dashboard,
   mappingsByParameter,
 ) {
-  console.log("getDashboardParametersWithFieldMetadata", dashboard);
   return ((dashboard && dashboard.parameters) || []).map(parameter => {
     const mappings = _.flatten(
       _.map(mappingsByParameter[parameter.id] || {}, _.values),

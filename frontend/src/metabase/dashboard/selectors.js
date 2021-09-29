@@ -7,6 +7,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import {
   getParameterMappingOptions as _getParameterMappingOptions,
   getMappingsByParameter as _getMappingsByParameter,
+  getDashboardParametersWithFieldMetadata,
 } from "metabase/meta/Dashboard";
 
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
@@ -145,39 +146,7 @@ export const getMappingsByParameter = createSelector(
 /** Returns the dashboard's parameters objects, with field_id added, if appropriate */
 export const getParameters = createSelector(
   [getMetadata, getDashboard, getMappingsByParameter],
-  (metadata, dashboard, mappingsByParameter) =>
-    ((dashboard && dashboard.parameters) || []).map(parameter => {
-      const mappings = _.flatten(
-        _.map(mappingsByParameter[parameter.id] || {}, _.values),
-      );
-
-      // we change out widgets if a parameter is connected to non-field targets
-      const hasOnlyFieldTargets = mappings.every(x => x.field_id != null);
-
-      // get the unique list of field IDs these mappings reference
-      const fieldIds = _.chain(mappings)
-        .map(m => m.field_id)
-        .uniq()
-        .filter(fieldId => fieldId != null)
-        .value();
-      const fieldIdsWithFKResolved = _.chain(fieldIds)
-        .map(id => metadata.field(id))
-        .filter(f => f)
-        .map(f => (f.target || f).id)
-        .uniq()
-        .value();
-      return {
-        ...parameter,
-        field_ids: fieldIds,
-        // if there's a single uniqe field (accounting for FKs) then
-        // include it as the one true field_id
-        field_id:
-          fieldIdsWithFKResolved.length === 1
-            ? fieldIdsWithFKResolved[0]
-            : null,
-        hasOnlyFieldTargets,
-      };
-    }),
+  getDashboardParametersWithFieldMetadata,
 );
 
 export const makeGetParameterMappingOptions = () => {
