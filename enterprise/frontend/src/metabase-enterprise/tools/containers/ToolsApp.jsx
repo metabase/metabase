@@ -14,16 +14,7 @@ export default class ToolsApp extends Component {
   render() {
     const { children } = this.props;
     return (
-      <AdminLayout
-        sidebar={
-          <LeftNavPane>
-            <LeftNavPaneItem
-              name={t`Erroring Questions`}
-              path="/admin/tools/errors"
-            />
-          </LeftNavPane>
-        }
-      >
+      <AdminLayout>
         {children}
       </AdminLayout>
     );
