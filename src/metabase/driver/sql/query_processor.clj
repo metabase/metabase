@@ -181,18 +181,29 @@
   [_ field]
   (apply hsql/qualify (field/qualified-name-components field)))
 
-(defmulti ^String field->alias
-  "Return the string alias that should be used to for `field`, an instance of the Field model, i.e. in an `AS` clause.
-  The default implementation calls `:name`, which returns the *unqualified* name of the Field.
+(defmulti ^String escape-alias
+  "Return the String that should be emitted in the query for the given `alias-name`, which will follow the `AS` clause.
+  This is to allow for escaping names that particular databases may not allow as aliases for custom expressions
+  or fields (even when quoted).
 
-  Return `nil` to prevent `field` from being aliased."
-  {:arglists '([driver field])}
+  Defaults to identity (i.e. returns `alias-name` unchanged)."
+  {:added "0.41.0" :arglists '([driver alias-name])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod field->alias :sql
-  [_ field]
-  (:name field))
+(defmethod escape-alias :sql
+  [_ alias-name]
+  alias-name)
+
+(defn- ^String field->alias
+  "Return the string alias that should be used to for `field`, an instance of the Field model, i.e. in an `AS` clause.
+  The default implementation calls `escape-alias` with the `:name` value, which returns the *unqualified* name of the
+  Field.
+
+  Return `nil` to prevent `field` from being aliased."
+  [driver field]
+  (when-let [field-name (:name field)]
+    (escape-alias driver field-name)))
 
 (defmulti quote-style
   "Return the quoting style that should be used by [HoneySQL](https://github.com/jkk/honeysql) when building a SQL
@@ -273,18 +284,6 @@
 (defmethod ->honeysql [:sql Object] [_ this] this)
 
 (defmethod ->honeysql [:sql :value] [driver [_ value]] (->honeysql driver value))
-
-(defmulti ^String expression-name->alias
-  "Return the String alias that should be used for `expression-name`, to follow the `AS` clause. This is to allow for
-  translating names that particular databases may not allow as identifiers for custom expressions (even when quoted).
-  Defaults to identity (i.e. returns `expression-name` unchanged)."
-  {:added "0.41.0" :arglists '([driver expression-name])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod expression-name->alias :sql
-  [_ expression-name]
-  expression-name)
 
 (defmethod ->honeysql [:sql :expression]
   [driver [_ expression-name]]
@@ -643,7 +642,7 @@
 
   ([driver field-clause unique-name-fn]
    (when-let [alias (or (mbql.u/match-one field-clause
-                          [:expression expression-name]          (expression-name->alias driver expression-name)
+                          [:expression expression-name]          (escape-alias driver expression-name)
                           [:field (field-name :guard string?) _] field-name)
                         (unambiguous-field-alias driver field-clause))]
      (->honeysql driver (hx/identifier :field-alias (unique-name-fn alias))))))
@@ -1071,7 +1070,7 @@
                                          distinct)))]
     (-> (mbql.u/replace query
           [:expression expression-name]
-          [:field (expression-name->alias driver expression-name) {:base-type (:base_type (annotate/infer-expression-type &match))}]
+          [:field (escape-alias driver expression-name) {:base-type (:base_type (annotate/infer-expression-type &match))}]
           ;; the outer select should not cast as the cast happens in the inner select
           [:field (field-id :guard int?) field-info]
           [:field field-id (assoc field-info ::outer-select true)])
