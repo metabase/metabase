@@ -40,7 +40,7 @@ describe("visual tests > visualizations > bar", () => {
       native: {
         query: Array(50)
           .fill("SELECT A, B, C FROM EXAMPLE")
-          .join("UNION ALL"),
+          .join(" UNION ALL\n"),
       },
       database: 1,
     };
