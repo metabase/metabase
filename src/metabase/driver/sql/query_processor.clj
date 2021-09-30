@@ -195,7 +195,7 @@
   [_ alias-name]
   alias-name)
 
-(defmulti ^:deprecated ^String field->alias
+(defmulti ^String field->alias
   "Return the string alias that should be used to for `field`, an instance of the Field model, i.e. in an `AS` clause.
   The default implementation calls `escape-alias` on the field `:name`, which returns the *unqualified* name of the
   Field.
@@ -204,7 +204,7 @@
 
   DEPRECATED as of x.41.  This multimethod will be removed in a future release.  Instead, drivers will simply
   override the `escape-alias` multimethod if they want to influence the alias to be used for a given field name."
-  {:arglists '([driver field])}
+  {:arglists '([driver field]), :deprecated "0.41.0"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
