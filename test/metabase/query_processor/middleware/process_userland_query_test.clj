@@ -6,7 +6,6 @@
             [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
             [metabase.query-processor.util :as qputil]
-            [metabase.models.card :refer [Card]]
             [metabase.test :as mt]))
 
 (defn- do-with-query-execution [query run]
