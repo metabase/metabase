@@ -230,7 +230,7 @@ export default class View extends React.Component {
           <div className="flex flex-full relative">
             {query instanceof StructuredQuery && (
               <NotebookContainer isOpen={isNotebookContainerOpen}>
-                {isNotebookContainerOpen && <Notebook {...this.props} />}
+                <Notebook {...this.props} />
               </NotebookContainer>
             )}
 
