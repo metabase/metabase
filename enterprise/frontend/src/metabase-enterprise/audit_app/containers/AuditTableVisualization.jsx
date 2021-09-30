@@ -162,7 +162,7 @@ export default class AuditTableVisualization extends React.Component {
               {isSelectable && (
                 <td>
                   <CheckBox
-                    checked={rowChecked[rowIndex]}
+                    checked={rowChecked[rowIndex] || false}
                     onChange={e =>
                       this.handleRowSelectClick(
                         { ...e, originRow: rowIndex },
