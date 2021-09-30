@@ -377,9 +377,10 @@ export function getDashboardParametersWithFieldMetadata(
     // we change out widgets if a parameter is connected to non-field targets
     const hasOnlyFieldTargets = mappings.every(x => x.field_id != null);
 
-    const fields = mappings
-      .map(mapping => mapping.field)
-      .filter(field => field != null);
+    const fields = _.uniq(
+      mappings.map(mapping => mapping.field).filter(field => field != null),
+      field => field.id,
+    );
 
     // get the unique list of field IDs these mappings reference
     const fieldIds = _.chain(mappings)
