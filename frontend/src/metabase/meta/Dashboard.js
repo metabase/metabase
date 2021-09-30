@@ -4,6 +4,8 @@ import { t } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
 import Question from "metabase-lib/lib/Question";
+import Field from "metabase-lib/lib/metadata/Field";
+
 import { ExpressionDimension } from "metabase-lib/lib/Dimension";
 
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
@@ -285,7 +287,16 @@ export function getMappingsByParameter(metadata, dashboard) {
       const card = _.findWhere(cards, { id: mapping.card_id });
       const fieldId =
         card && getParameterTargetFieldId(mapping.target, card.dataset_query);
-      const field = metadata.field(fieldId);
+      let field = metadata.field(fieldId);
+
+      if (!field) {
+        const rawField = _.findWhere(dashcard.card.result_metadata, {
+          name: fieldId,
+        });
+
+        field = rawField && new Field(rawField, metadata);
+      }
+
       const values = (field && field.fieldValues()) || [];
       if (values.length) {
         countsByParameter[mapping.parameter_id] =
@@ -302,6 +313,7 @@ export function getMappingsByParameter(metadata, dashboard) {
         dashcard_id: dashcard.id,
         card_id: mapping.card_id,
         field_id: fieldId,
+        field,
         values,
       };
       mappingsByParameter = setIn(
@@ -365,6 +377,10 @@ export function getDashboardParametersWithFieldMetadata(
     // we change out widgets if a parameter is connected to non-field targets
     const hasOnlyFieldTargets = mappings.every(x => x.field_id != null);
 
+    const fields = mappings
+      .map(mapping => mapping.field)
+      .filter(field => field != null);
+
     // get the unique list of field IDs these mappings reference
     const fieldIds = _.chain(mappings)
       .map(m => m.field_id)
@@ -377,6 +393,7 @@ export function getDashboardParametersWithFieldMetadata(
       .map(f => (f.target || f).id)
       .uniq()
       .value();
+
     return {
       ...parameter,
       field_ids: fieldIds,
@@ -384,6 +401,7 @@ export function getDashboardParametersWithFieldMetadata(
       // include it as the one true field_id
       field_id:
         fieldIdsWithFKResolved.length === 1 ? fieldIdsWithFKResolved[0] : null,
+      fields,
       hasOnlyFieldTargets,
     };
   });

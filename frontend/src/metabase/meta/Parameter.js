@@ -685,6 +685,10 @@ function normalizeParameterValueForWidget(value, parameter) {
 // ["field", <integer-id>, <options>] or
 // ["field", <string-name>, <options>]
 function getFields(parameter, metadata) {
+  if (parameter.fields) {
+    return parameter.fields;
+  }
+
   const fieldIds =
     parameter.field_ids || [parameter.field_id].filter(f => f != null);
 

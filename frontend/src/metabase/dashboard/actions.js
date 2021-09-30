@@ -709,6 +709,7 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
 
     const metadata = getMetadata(getState());
     const mappingsByParameter = getMappingsByParameter(metadata, result);
+
     const parameters = getDashboardParametersWithFieldMetadata(
       metadata,
       result,
