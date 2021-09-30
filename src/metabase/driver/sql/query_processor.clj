@@ -195,15 +195,22 @@
   [_ alias-name]
   alias-name)
 
-(defn- ^String field->alias
+(defmulti ^:deprecated ^String field->alias
   "Return the string alias that should be used to for `field`, an instance of the Field model, i.e. in an `AS` clause.
-  The default implementation calls `escape-alias` with the `:name` value, which returns the *unqualified* name of the
+  The default implementation calls `escape-alias` on the field `:name`, which returns the *unqualified* name of the
   Field.
 
-  Return `nil` to prevent `field` from being aliased."
+  Return `nil` to prevent `field` from being aliased.
+
+  DEPRECATED as of x.41.  This multimethod will be removed in a future release.  Instead, drivers will simply
+  override the `escape-alias` multimethod if they want to influence the alias to be used for a given field name."
+  {:arglists '([driver field])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod field->alias :sql
   [driver field]
-  (when-let [field-name (:name field)]
-    (escape-alias driver field-name)))
+  (escape-alias driver (:name field)))
 
 (defmulti quote-style
   "Return the quoting style that should be used by [HoneySQL](https://github.com/jkk/honeysql) when building a SQL
