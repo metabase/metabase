@@ -37,5 +37,10 @@ export const ViewSidebarAside = styled.aside`
 export const ViewSidebarContent = styled.div`
   position: absolute;
   height: 100%;
-  width: 100%;
+
+  ${({ widthProp: width }) =>
+    width &&
+    css`
+      width: ${width}px;
+    `}
 `;
