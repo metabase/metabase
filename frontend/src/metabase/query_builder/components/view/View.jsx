@@ -197,13 +197,8 @@ export default class View extends React.Component {
 
     const isSidebarOpen = leftSideBar || rightSideBar;
 
-    const MOTION_Y = -100;
-
-    const preferReducedMotion = isReducedMotionPreferred();
-
-    const springOpts = preferReducedMotion
-      ? { stiffness: 500 }
-      : { stiffness: 170 };
+    const isNotebookContainerOpen =
+      isNewQuestion || queryBuilderMode === "notebook";
 
     return (
       <div className={fitClassNames}>
@@ -234,8 +229,8 @@ export default class View extends React.Component {
 
           <div className="flex flex-full relative">
             {query instanceof StructuredQuery && (
-              <NotebookContainer isOpen={queryBuilderMode === "notebook"}>
-                <Notebook {...this.props} />
+              <NotebookContainer isOpen={isNotebookContainerOpen}>
+                {isNotebookContainerOpen && <Notebook {...this.props} />}
               </NotebookContainer>
             )}
 

@@ -13,6 +13,7 @@ export const NotebookContainer = styled.div`
   right: 0;
   top: 0;
   transform: translateY(-100%);
+  visibility: hidden;
   z-index: 2;
 
   ${({ isOpen }) =>
@@ -20,5 +21,6 @@ export const NotebookContainer = styled.div`
     css`
       opacity: 1;
       transform: translateY(0);
+      visibility: visible;
     `}
 `;
