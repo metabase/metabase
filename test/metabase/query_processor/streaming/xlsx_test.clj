@@ -187,6 +187,7 @@
 
       (testing "time-style"
         (is (= "mmmm d, yyyy, hh:mm"      (format-string {::mb.viz/time-style "HH:mm"})))
+        (is (= "mmmm d, yyyy, hh:mm"      (format-string {::mb.viz/time-style "k:mm"})))
         (is (= "mmmm d, yyyy, h:mm am/pm" (format-string {::mb.viz/time-style "h:mm A"})))
         (is (= "mmmm d, yyyy, h am/pm"    (format-string {::mb.viz/time-style "h A"}))))
 
