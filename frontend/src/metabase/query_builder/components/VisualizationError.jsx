@@ -11,7 +11,6 @@ import ErrorMessage from "metabase/components/ErrorMessage";
 import ErrorDetails from "metabase/components/ErrorDetails";
 import {
   QueryError,
-  QueryErrorContent,
   QueryErrorIcon,
   QueryErrorMessage,
 } from "./VisualizationError.styled";
