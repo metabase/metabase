@@ -47,7 +47,7 @@ function saveQuestion(name) {
 }
 
 function archiveQuestion(questionName) {
-  cy.findByTestId("metabase-logo").click();
+  cy.findByTestId("main-logo").click();
   cy.findByText("Browse all items").click();
   openEllipsisMenuFor(questionName);
   popover()
@@ -56,7 +56,7 @@ function archiveQuestion(questionName) {
 }
 
 function unarchiveQuestion(questionName) {
-  cy.findByTestId("metabase-logo").click();
+  cy.findByTestId("main-logo").click();
   cy.findByText("Browse all items").click();
   // Button is covered with an undo toast
   cy.findByText("View archive").click({ force: true });
