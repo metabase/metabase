@@ -76,8 +76,8 @@
   [icon-name]
   (let [color     (render.style/primary-color)
         png-bytes (js-svg/icon icon-name color)]
-     (-> (image-bundle/make-image-bundle :attachment png-bytes)
-         (image-bundle/image-bundle->attachment))))
+    (-> (image-bundle/make-image-bundle :attachment png-bytes)
+        (image-bundle/image-bundle->attachment))))
 
 (defn- button-style [color]
   (str "display: inline-block; "
@@ -126,25 +126,26 @@
 
 ;;; ### Public Interface
 
+
 (defn send-new-user-email!
   "Send an email to `invitied` letting them know `invitor` has invited them to join Metabase."
   [invited invitor join-url]
   (let [company      (or (public-settings/site-name) "Unknown")
         message-body (stencil/render-file "metabase/email/new_user_invite"
-                       (merge (common-context)
-                              {:emailType    "new_user_invite"
-                               :invitedName  (:first_name invited)
-                               :invitorName  (:first_name invitor)
-                               :invitorEmail (:email invitor)
-                               :company      company
-                               :joinUrl      join-url
-                               :today        (t/format "MMM'&nbsp;'dd,'&nbsp;'yyyy" (t/zoned-date-time))
-                               :logoHeader   true}))]
+                                          (merge (common-context)
+                                                 {:emailType    "new_user_invite"
+                                                  :invitedName  (:first_name invited)
+                                                  :invitorName  (:first_name invitor)
+                                                  :invitorEmail (:email invitor)
+                                                  :company      company
+                                                  :joinUrl      join-url
+                                                  :today        (t/format "MMM'&nbsp;'dd,'&nbsp;'yyyy" (t/zoned-date-time))
+                                                  :logoHeader   true}))]
     (email/send-message!
-      :subject      (str (trs "You''re invited to join {0}''s {1}" company (app-name-trs)))
-      :recipients   [(:email invited)]
-      :message-type :html
-      :message      message-body)))
+     :subject      (str (trs "You''re invited to join {0}''s {1}" company (app-name-trs)))
+     :recipients   [(:email invited)]
+     :message-type :html
+     :message      message-body)))
 
 (defn- all-admin-recipients
   "Return a sequence of email addresses for all Admin users.
@@ -162,20 +163,20 @@
   {:pre [(map? new-user)]}
   (let [recipients (all-admin-recipients)]
     (email/send-message!
-      :subject      (str (if google-auth?
-                           (trs "{0} created a {1} account" (:common_name new-user) (app-name-trs))
-                           (trs "{0} accepted their {1} invite" (:common_name new-user) (app-name-trs))))
-      :recipients   recipients
-      :message-type :html
-      :message      (stencil/render-file "metabase/email/user_joined_notification"
-                      (merge (common-context)
-                             {:logoHeader        true
-                              :joinedUserName    (:first_name new-user)
-                              :joinedViaSSO      google-auth?
-                              :joinedUserEmail   (:email new-user)
-                              :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13". TODO - is this what we want?
-                              :adminEmail        (first recipients)
-                              :joinedUserEditUrl (str (public-settings/site-url) "/admin/people")})))))
+     :subject      (str (if google-auth?
+                          (trs "{0} created a {1} account" (:common_name new-user) (app-name-trs))
+                          (trs "{0} accepted their {1} invite" (:common_name new-user) (app-name-trs))))
+     :recipients   recipients
+     :message-type :html
+     :message      (stencil/render-file "metabase/email/user_joined_notification"
+                                        (merge (common-context)
+                                               {:logoHeader        true
+                                                :joinedUserName    (:first_name new-user)
+                                                :joinedViaSSO      google-auth?
+                                                :joinedUserEmail   (:email new-user)
+                                                :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13". TODO - is this what we want?
+                                                :adminEmail        (first recipients)
+                                                :joinedUserEditUrl (str (public-settings/site-url) "/admin/people")})))))
 
 (defn send-password-reset-email!
   "Format and send an email informing the user how to reset their password."
@@ -196,10 +197,10 @@
                               :adminEmail       (public-settings/admin-email)
                               :adminEmailSet    (boolean (public-settings/admin-email))}))]
     (email/send-message!
-      :subject      (trs "[{0}] Password Reset Request" (app-name-trs))
-      :recipients   [email]
-      :message-type :html
-      :message      message-body)))
+     :subject      (trs "[{0}] Password Reset Request" (app-name-trs))
+     :recipients   [email]
+     :message-type :html
+     :message      message-body)))
 
 (defn send-login-from-new-device-email!
   "Format and send an email informing the user that this is the first time we've seen a login from this device. Expects
@@ -214,12 +215,12 @@
                              :location   (:location login-history)
                              :timestamp  timestamp})
         message-body (stencil/render-file "metabase/email/login_from_new_device"
-                       context)]
+                                          context)]
     (email/send-message!
-      :subject      (trs "We''ve Noticed a New {0} Login, {1}" (app-name-trs) (:first-name user-info))
-      :recipients   [(:email user-info)]
-      :message-type :html
-      :message      message-body)))
+     :subject      (trs "We''ve Noticed a New {0} Login, {1}" (app-name-trs) (:first-name user-info))
+     :recipients   [(:email user-info)]
+     :message-type :html
+     :message      message-body)))
 
 ;; TODO - I didn't write these function and I don't know what it's for / what it's supposed to be doing. If this is
 ;; determined add appropriate documentation
@@ -255,10 +256,10 @@
         message-body (stencil/render-file "metabase/email/notification"
                                           (merge (common-context) context))]
     (email/send-message!
-      :subject      (trs "[{0}] Notification" (app-name-trs))
-      :recipients   [email]
-      :message-type :html
-      :message      message-body)))
+     :subject      (trs "[{0}] Notification" (app-name-trs))
+     :recipients   [email]
+     :message-type :html
+     :message      message-body)))
 
 (defn send-follow-up-email!
   "Format and send an email to the system admin following up on the installation."
@@ -274,10 +275,10 @@
         message-body (stencil/render-file "metabase/email/follow_up_email"
                                           (merge (common-context) context))]
     (email/send-message!
-      :subject      subject
-      :recipients   [email]
-      :message-type :html
-      :message      message-body)))
+     :subject      subject
+     :recipients   [email]
+     :message-type :html
+     :message      message-body)))
 
 (defn- make-message-attachment [[content-id url]]
   {:type         :inline
@@ -416,9 +417,12 @@
                  (fn [filter]
                    [:td {:class "filter-cell"
                          :style (render.style/style {:width "50%"
-                                                     :padding "0px"})}
+                                                     :padding "0px"
+                                                     :vertical-align "baseline"})}
                     [:table {:cellpadding "0"
-                             :cellspacing "0"}
+                             :cellspacing "0"
+                             :width "100%"
+                             :height "100%"}
                      [:tr
                       [:td
                        {:style (render.style/style {:color render.style/color-text-medium
@@ -463,16 +467,16 @@
                                :iconCid (:content-id icon-attachment))
         attachments     (apply merge (map :attachments rendered-cards))]
     (vec (concat [{:type "text/html; charset=utf-8" :content (stencil/render-file "metabase/email/pulse" message-body)}]
-               (map make-message-attachment attachments)
-               [icon-attachment]
-               (result-attachments results)))))
+                 (map make-message-attachment attachments)
+                 [icon-attachment]
+                 (result-attachments results)))))
 
 (defn- assoc-attachment-booleans [pulse results]
   (for [{{result-card-id :id} :card :as result} results
         :let [pulse-card (m/find-first #(= (:id %) result-card-id) (:cards pulse))]]
-      (if result-card-id
-        (update result :card merge (select-keys pulse-card [:include_csv :include_xls]))
-        result)))
+    (if result-card-id
+      (update result :card merge (select-keys pulse-card [:include_csv :include_xls]))
+      result)))
 
 (defn render-pulse-email
   "Take a pulse object and list of results, returns an array of attachment objects for an email"
@@ -587,10 +591,10 @@
   (future
     (try
       (email/send-message-or-throw!
-        {:recipients   [(:email user)]
-         :message-type :html
-         :subject      subject
-         :message      (stencil/render-file template-path template-context)})
+       {:recipients   [(:email user)]
+        :message-type :html
+        :subject      subject
+        :message      (stencil/render-file template-path template-context)})
       (catch Exception e
         (log/errorf e "Failed to send message to '%s' with subject '%s'" (:email user) subject)))))
 
