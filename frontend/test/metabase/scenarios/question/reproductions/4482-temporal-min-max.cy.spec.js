@@ -2,6 +2,8 @@ import { restore } from "__support__/e2e/cypress";
 
 describe("issue 4482", () => {
   beforeEach(() => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
     restore();
     cy.signInAsAdmin();
   });
@@ -20,6 +22,8 @@ describe("issue 4482", () => {
     cy.contains("Created At").click();
 
     cy.button("Visualize").click();
+    cy.wait("@dataset");
+    cy.findByText("April 1, 2016, 12:00 AM");
   });
 
   it("should be possible to summarize max of a temporal column (metabase#6239)", () => {
@@ -36,6 +40,8 @@ describe("issue 4482", () => {
     cy.contains("Created At").click();
 
     cy.button("Visualize").click();
+    cy.wait("@dataset");
+    cy.findByText("April 1, 2019, 12:00 AM");
   });
 
   it("should be not possible to average a temporal column (metabase#6239)", () => {
