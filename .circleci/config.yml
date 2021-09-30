@@ -1291,15 +1291,6 @@ workflows:
           <<: *Matrix
 
       - fe-tests-cypress:
-          name: e2e-tests-postgres-12-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "postgres"
-          source-folder: postgres
-          qa-db: true
-          <<: *Matrix
-
-      - fe-tests-cypress:
           name: e2e-tests-mysql-8-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
