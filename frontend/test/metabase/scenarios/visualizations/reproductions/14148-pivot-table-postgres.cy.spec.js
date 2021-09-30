@@ -11,7 +11,7 @@ describe("issue 14148", () => {
     restore("postgres-12");
     cy.signInAsAdmin();
 
-    cy.intecept("POST", "/api/dataset/pivot").as("pivotDataset");
+    cy.intercept("POST", "/api/dataset/pivot").as("pivotDataset");
   });
 
   it("postgres should display pivot tables (metabase#14148)", () => {
