@@ -21,7 +21,7 @@ export const PRIMARY_KEY = "PRIMARY_KEY";
 // other types used for various purporses
 export const ENTITY = "ENTITY";
 export const SUMMABLE = "SUMMABLE";
-export const LIMIT = "LIMIT";
+export const SCOPE = "SCOPE";
 export const CATEGORY = "CATEGORY";
 export const DIMENSION = "DIMENSION";
 
@@ -72,7 +72,7 @@ const TYPES = {
     include: [NUMBER],
     exclude: [ENTITY, LOCATION, TEMPORAL],
   },
-  [LIMIT]: {
+  [SCOPE]: {
     include: [NUMBER, TEMPORAL],
     exclude: [ENTITY, LOCATION],
   },
@@ -152,7 +152,7 @@ export const isNumeric = isFieldType.bind(null, NUMBER);
 export const isBoolean = isFieldType.bind(null, BOOLEAN);
 export const isString = isFieldType.bind(null, STRING);
 export const isSummable = isFieldType.bind(null, SUMMABLE);
-export const isLimit = isFieldType.bind(null, LIMIT);
+export const isScope = isFieldType.bind(null, SCOPE);
 export const isCategory = isFieldType.bind(null, CATEGORY);
 export const isLocation = isFieldType.bind(null, LOCATION);
 
@@ -584,8 +584,8 @@ function summableFields(fields) {
   return _.filter(fields, isSummable);
 }
 
-function limitFields(fields) {
-  return _.filter(fields, isLimit);
+function scopeFields(fields) {
+  return _.filter(fields, isScope);
 }
 
 const AGGREGATION_OPERATORS = [
@@ -666,7 +666,7 @@ const AGGREGATION_OPERATORS = [
     name: t`Minimum of ...`,
     columnName: t`Min`,
     description: t`Minimum value of a column`,
-    validFieldsFilters: [limitFields],
+    validFieldsFilters: [scopeFields],
     requiresField: true,
     requiredDriverFeature: "basic-aggregations",
   },
@@ -675,7 +675,7 @@ const AGGREGATION_OPERATORS = [
     name: t`Maximum of ...`,
     columnName: t`Max`,
     description: t`Maximum value of a column`,
-    validFieldsFilters: [limitFields],
+    validFieldsFilters: [scopeFields],
     requiresField: true,
     requiredDriverFeature: "basic-aggregations",
   },

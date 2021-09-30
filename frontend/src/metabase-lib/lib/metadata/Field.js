@@ -16,7 +16,7 @@ import {
   isBoolean,
   isString,
   isSummable,
-  isLimit,
+  isScope,
   isCategory,
   isAddress,
   isCity,
@@ -121,8 +121,8 @@ export default class Field extends Base {
   isSummable() {
     return isSummable(this);
   }
-  isLimit() {
-    return isLimit(this);
+  isScope() {
+    return isScope(this);
   }
   isCategory() {
     return isCategory(this);
