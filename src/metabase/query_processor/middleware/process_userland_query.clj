@@ -85,7 +85,7 @@
       ([acc]
        (do
          ;; We don't actually have a guarantee that it's from a card just because it's userland
-         (if (integer? (:card_id execution-info))
+         (when (integer? (:card_id execution-info))
            (events/publish-event! :card-query {:card_id      (:card_id execution-info)
                                                :actor_id     (:executor_id execution-info)
                                                :cached       (:cached acc)
