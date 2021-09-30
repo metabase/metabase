@@ -105,7 +105,7 @@
                              [:t.name :table_name]
                              [:latest_qe.started_at :last_run_at]
                              [:query_runs.count :total_runs]
-                             [:dash_card.count :num_dashboards]
+                             [(hsql/call :coalesce :dash_card.count 0) :num_dashboards]
                              [:card.creator_id :user_id]
                              [(common/user-full-name :u) :user_name]
                              [:card.updated_at :updated_at]]
