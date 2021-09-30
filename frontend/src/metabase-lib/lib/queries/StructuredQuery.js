@@ -3,6 +3,7 @@
  */
 
 import * as Q from "metabase/lib/query/query";
+import { getUniqueExpressionName } from "metabase/lib/query/expression";
 import {
   format as formatExpression,
   DISPLAY_QUOTES,
@@ -999,11 +1000,12 @@ export default class StructuredQuery extends AtomicQuery {
   }
 
   addExpression(name, expression) {
-    let query = this._updateQuery(Q.addExpression, arguments);
+    const uniqueName = getUniqueExpressionName(this.expressions(), name);
+    let query = this._updateQuery(Q.addExpression, [uniqueName, expression]);
     // extra logic for adding expressions in fields clause
     // TODO: push into query/expression?
     if (query.hasFields() && query.isRaw()) {
-      query = query.addField(["expression", name]);
+      query = query.addField(["expression", uniqueName]);
     }
     return query;
   }

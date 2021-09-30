@@ -69,6 +69,61 @@ describe("StructuredQuery", () => {
         double_total: TEST_EXPRESSION,
       });
     });
+
+    it("should append indexes to duplicate names", () => {
+      let query = getQuery({
+        expressions: { double_total: TEST_EXPRESSION },
+      });
+
+      query = query
+        .addExpression("double_total", TEST_EXPRESSION)
+        .addExpression("double_total", TEST_EXPRESSION);
+
+      expect(query.expressions()).toEqual({
+        double_total: TEST_EXPRESSION,
+        "double_total (1)": TEST_EXPRESSION,
+        "double_total (2)": TEST_EXPRESSION,
+      });
+    });
+
+    it("should detect duplicate names in case-sensitive way", () => {
+      let query = getQuery({
+        expressions: { double_total: TEST_EXPRESSION },
+      });
+
+      query = query.addExpression("DOUBLE_TOTAL", TEST_EXPRESSION);
+
+      expect(query.expressions()).toEqual({
+        double_total: TEST_EXPRESSION,
+        DOUBLE_TOTAL: TEST_EXPRESSION,
+      });
+    });
+
+    it("should not append indexes when expression names are similar", () => {
+      let query = getQuery({
+        expressions: { double_total: TEST_EXPRESSION },
+      });
+
+      query = query
+        .addExpression("double_total", TEST_EXPRESSION)
+        .addExpression("double", TEST_EXPRESSION)
+        .addExpression("total", TEST_EXPRESSION)
+        .addExpression("double_total", TEST_EXPRESSION)
+        .addExpression("foo_double_total", TEST_EXPRESSION)
+        .addExpression("double_total_bar", TEST_EXPRESSION)
+        .addExpression("double_total", TEST_EXPRESSION);
+
+      expect(query.expressions()).toEqual({
+        double_total: TEST_EXPRESSION,
+        "double_total (1)": TEST_EXPRESSION,
+        "double_total (2)": TEST_EXPRESSION,
+        "double_total (3)": TEST_EXPRESSION,
+        double: TEST_EXPRESSION,
+        total: TEST_EXPRESSION,
+        foo_double_total: TEST_EXPRESSION,
+        double_total_bar: TEST_EXPRESSION,
+      });
+    });
   });
 
   describe("updateExpression", () => {

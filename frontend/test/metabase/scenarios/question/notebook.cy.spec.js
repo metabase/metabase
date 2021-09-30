@@ -133,6 +133,55 @@ describe("scenarios > question > notebook", () => {
     });
   });
 
+  it("should append indexes to duplicate custom expression names", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    openProductsTable({ mode: "notebook" });
+
+    cy.findByText("Custom column").click();
+    popover()
+      .findByText("Category")
+      .click();
+    cy.findByPlaceholderText("Something nice and descriptive")
+      .click()
+      .type("EXPR");
+    cy.button("Done").click();
+
+    cy.findByTestId("step-expression-0-0").within(() => {
+      cy.icon("add").click();
+    });
+    popover()
+      .findByText("Category")
+      .click();
+    cy.findByPlaceholderText("Something nice and descriptive")
+      .click()
+      .type("EXPR");
+    cy.button("Done").click();
+
+    cy.findByTestId("step-expression-0-0").within(() => {
+      cy.icon("add").click();
+    });
+    popover()
+      .findByText("Category")
+      .click();
+    cy.findByPlaceholderText("Something nice and descriptive")
+      .click()
+      .type("EXPR");
+    cy.button("Done").click();
+
+    cy.findByTestId("step-expression-0-0").within(() => {
+      cy.findByText("EXPR");
+      cy.findByText("EXPR (1)");
+      cy.findByText("EXPR (2)");
+    });
+
+    cy.button("Visualize").click();
+    cy.wait("@dataset");
+
+    cy.findByText("EXPR");
+    cy.findByText("EXPR (1)");
+    cy.findByText("EXPR (2)");
+  });
+
   it("should process the updated expression when pressing Enter", () => {
     openProductsTable({ mode: "notebook" });
     cy.findByText("Filter").click();
