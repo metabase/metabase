@@ -4,8 +4,7 @@ import { t } from "ttag";
 
 import { isItemVerified } from "metabase-enterprise/moderation/service";
 
-import { Container, Label, VerifyButton } from "./ModerationActions.styled";
-import Tooltip from "metabase/components/Tooltip";
+import { Container, VerifyButton } from "./ModerationActions.styled";
 
 export default ModerationActions;
 
