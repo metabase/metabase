@@ -10,7 +10,7 @@
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.interface :as mi]
             [metabase.models.pulse :as pulse :refer [Pulse]]
-            [metabase.models.pulse-channel :refer [channel-types PulseChannel]]
+            [metabase.models.pulse-channel :as pulse-channel :refer [channel-types PulseChannel]]
             [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
             [metabase.plugins.classloader :as classloader]
             [metabase.pulse :as p]
@@ -205,6 +205,10 @@
    collection_position (s/maybe su/IntGreaterThanZero)
    dashboard_id        (s/maybe su/IntGreaterThanZero)}
   (check-card-read-permissions cards)
+  ;; make sure any email addresses that are specified are allowed before sending the test Pulse.
+  (doseq [{{:keys [emails]} :details, :as channel} channels]
+    (when (seq emails)
+      (pulse-channel/validate-email-domains channel)))
   (p/send-pulse! (assoc body :creator_id api/*current-user-id*))
   {:ok true})
 
