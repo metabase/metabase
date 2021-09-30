@@ -32,8 +32,8 @@ const propTypes = {
     isAscending: PropTypes.bool.isRequired,
   }),
   isSelectable: PropTypes.bool,
-  selectHeader: PropTypes.string,
   rowChecked: PropTypes.object,
+  onAllSelectClick: PropTypes.func,
   onRowSelectClick: PropTypes.func,
 };
 
@@ -69,6 +69,12 @@ export default class AuditTableVisualization extends React.Component {
     });
   };
 
+  handleAllSelectClick = (e, rows) => {
+    const { onAllSelectClick } = this.props;
+    this.setState({ rerender: {} });
+    onAllSelectClick({ ...e, rows});
+  };
+
   handleRowSelectClick = (e, row, rowIndex) => {
     const { onRowSelectClick } = this.props;
     this.setState({ rerender: {} });
@@ -93,7 +99,6 @@ export default class AuditTableVisualization extends React.Component {
       settings,
       isSortable,
       isSelectable,
-      selectHeader,
       rowChecked,
       onRemoveRow,
     } = this.props;
@@ -115,7 +120,14 @@ export default class AuditTableVisualization extends React.Component {
       <table className="ContentTable">
         <thead>
           <tr>
-            {isSelectable && <th>{selectHeader}</th>}
+            {isSelectable && <th>
+                  <CheckBox
+                    checked={Object.values(rowChecked).some((elem) => elem)}
+                    onChange={e =>
+                      this.handleAllSelectClick(e, rows)
+                    }
+                  />
+              </th>}
             {columnIndexes.map(colIndex => {
               const column = cols[colIndex];
               const isSortedByColumn =

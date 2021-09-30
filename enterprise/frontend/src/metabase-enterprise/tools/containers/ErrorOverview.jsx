@@ -27,6 +27,24 @@ export default function ErrorOverview(props) {
 
   const [rowChecked, setRowChecked] = useState({});
   const [rowToCardId, setRowToCardId] = useState({});
+
+  const handleAllSelectClick = e => {
+    const newRowChecked = rowChecked;
+    const newRowToCardId = rowToCardId;
+    const noRowChecked = Object.values(rowChecked).every((v) => !v);
+    for (const rowIndex of Array(e.rows.length).keys()) {
+      if (noRowChecked) {
+        newRowChecked[rowIndex] = true;
+        newRowToCardId[rowIndex] = e.rows[rowIndex][CARD_ID_COL]
+      } else {
+        newRowChecked[rowIndex] = false;
+        newRowToCardId[rowIndex] = null;
+      }
+    }
+    setRowChecked(newRowChecked);
+    setRowToCardId(newRowToCardId);
+  }
+
   const handleRowSelectClick = e => {
     const newRowChecked = rowChecked;
     const newRowToCardId = rowToCardId;
@@ -80,10 +98,10 @@ export default function ErrorOverview(props) {
           pageSize={50}
           isSortable
           isSelectable
-          selectHeader={t`Rerun?`}
           rowChecked={rowChecked}
           sorting={sorting}
           onSortingChange={handleSortingChange}
+          onAllSelectClick={handleAllSelectClick}
           onRowSelectClick={handleRowSelectClick}
           onLoad={handleLoad}
           mode={ErrorMode}
