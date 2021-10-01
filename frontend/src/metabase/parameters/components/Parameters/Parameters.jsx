@@ -4,18 +4,11 @@ import { connect } from "react-redux";
 import querystring from "querystring";
 
 import ParametersList from "metabase/parameters/components/ParametersList";
-import { syncQueryParamsWithURL } from "./syncQueryParamsWithURL";
 import { getParameterValuesBySlug } from "metabase/meta/Parameter";
 import { getMetadata } from "metabase/selectors/metadata";
 
 @connect(state => ({ metadata: getMetadata(state) }))
 export default class Parameters extends Component {
-  constructor(props) {
-    super(props);
-
-    syncQueryParamsWithURL(props);
-  }
-
   componentDidUpdate() {
     const { parameters, parameterValues, dashboard } = this.props;
 
