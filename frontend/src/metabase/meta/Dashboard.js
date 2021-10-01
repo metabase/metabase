@@ -297,7 +297,7 @@ export function getMappingsByParameter(metadata, dashboard) {
         field = rawField && new Field(rawField, metadata);
       }
 
-      const values = (field && field.fieldValues()) || [];
+      const values = field?.fieldValues() || [];
       if (values.length) {
         countsByParameter[mapping.parameter_id] =
           countsByParameter[mapping.parameter_id] || {};
@@ -388,6 +388,7 @@ export function getDashboardParametersWithFieldMetadata(
       .uniq()
       .filter(fieldId => fieldId != null)
       .value();
+
     const fieldIdsWithFKResolved = _.chain(fieldIds)
       .map(id => metadata.field(id))
       .filter(f => f)
