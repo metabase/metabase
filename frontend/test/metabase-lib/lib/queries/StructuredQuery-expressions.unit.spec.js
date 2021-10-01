@@ -140,6 +140,24 @@ describe("StructuredQuery", () => {
         double_total: TEST_EXPRESSION_2,
       });
     });
+
+    it("should update expression names correctly", () => {
+      let query = getQuery({
+        expressions: {
+          double_total: TEST_EXPRESSION,
+        },
+      });
+
+      query = query.updateExpression(
+        "Double Total",
+        TEST_EXPRESSION,
+        "double_total",
+      );
+
+      expect(query.expressions()).toEqual({
+        "Double Total": TEST_EXPRESSION,
+      });
+    });
   });
 
   describe("removeExpression", () => {
