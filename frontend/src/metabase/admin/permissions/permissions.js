@@ -10,6 +10,7 @@ import {
 } from "metabase/lib/redux";
 import { CollectionsApi, PermissionsApi } from "metabase/services";
 import Group from "metabase/entities/groups";
+import Tables from "metabase/entities/tables";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import {
   inferAndUpdateEntityPermissions,
@@ -18,8 +19,9 @@ import {
   updateSchemasPermission,
   updateTablesPermission,
 } from "metabase/lib/permissions";
-import { getMetadata } from "metabase/selectors/metadata";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
+import { isDatabaseEntityId } from "./utils/data-entity-id";
+import { getMetadataWithHiddenTables } from "./selectors/data-permissions";
 
 const INITIALIZE_DATA_PERMISSIONS =
   "metabase/admin/permissions/INITIALIZE_DATA_PERMISSIONS";
@@ -88,7 +90,16 @@ export const updateDataPermission = createThunkAction(
   UPDATE_DATA_PERMISSION,
   ({ groupId, permission, value, entityId, view }) => {
     return (dispatch, getState) => {
-      const metadata = getMetadata(getState());
+      if (isDatabaseEntityId(entityId)) {
+        dispatch(
+          Tables.actions.fetchList({
+            dbId: entityId.databaseId,
+            include_hidden: true,
+          }),
+        );
+      }
+
+      const metadata = getMetadataWithHiddenTables(getState(), null);
       if (permission.postActions) {
         const action = permission.postActions?.[value]?.(
           entityId,
