@@ -2,16 +2,17 @@ import { restore, popover } from "__support__/e2e/cypress";
 
 const MYSQL_DB_NAME = "QA MySQL8";
 
-describe.skip("15342", () => {
+describe.skip("issue 15342", () => {
   beforeEach(() => {
+    cy.intercept("POST", "/api/dataset").as("query");
+
     restore("mysql-8");
     cy.signInAsAdmin();
+
     cy.viewport(4000, 1200); // huge width required so three joined tables can fit
   });
 
-  it("should correctly order joins for MySQL queries", () => {
-    cy.intercept("POST", "/api/dataset").as("query");
-
+  it("should correctly order joins for MySQL queries (metabase#15342)", () => {
     cy.visit("/question/new");
     cy.findByText("Custom question").click();
     cy.findByText(MYSQL_DB_NAME).click();
@@ -33,6 +34,7 @@ describe.skip("15342", () => {
 
     cy.button("Visualize").click();
     cy.wait("@query");
+
     cy.get(".Visualization").within(() => {
       cy.findByText("Email"); // from People table
       cy.findByText("Orders → ID"); // joined Orders table columns
