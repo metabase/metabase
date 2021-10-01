@@ -8,23 +8,6 @@ describe("mysql > user > query", () => {
     cy.signInAsAdmin();
   });
 
-  beforeEach(() => {
-    cy.signInAsNormalUser();
-  });
-
-  it("can query a MySQL database as a user", () => {
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
-
-    cy.visit("/question/new");
-    cy.findByText("Simple question").click();
-    cy.findByText(MYSQL_DB_NAME).click();
-    cy.findByText("Orders").click();
-
-    cy.wait("@dataset");
-    cy.contains("37.65");
-  });
-
   it("can write a native MySQL query with a field filter", () => {
     cy.visit("/question/new");
     cy.contains("Native query").click();
