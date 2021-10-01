@@ -76,5 +76,13 @@ export function getUniqueExpressionName(expressions, originalName) {
   const duplicateNames = expressionNames.filter(
     name => name === originalName || handledDuplicateNamePattern.test(name),
   );
-  return `${originalName} (${duplicateNames.length})`;
+  return getUniqueName(duplicateNames, originalName, duplicateNames.length);
+}
+
+function getUniqueName(expressionNames, originalName, index) {
+  const nameWithIndexAppended = `${originalName} (${index})`;
+  const isUnique = !expressionNames.includes(nameWithIndexAppended);
+  return isUnique
+    ? nameWithIndexAppended
+    : getUniqueName(expressionNames, originalName, index + 1);
 }

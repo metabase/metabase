@@ -86,6 +86,24 @@ describe("StructuredQuery", () => {
       });
     });
 
+    it("should handle gaps in names with indexes appended", () => {
+      let query = getQuery({
+        expressions: { double_total: TEST_EXPRESSION },
+      });
+
+      query = query
+        .addExpression("double_total", TEST_EXPRESSION)
+        .addExpression("double_total", TEST_EXPRESSION_2)
+        .removeExpression("double_total (1)", TEST_EXPRESSION)
+        .addExpression("double_total", TEST_EXPRESSION);
+
+      expect(query.expressions()).toEqual({
+        double_total: TEST_EXPRESSION,
+        "double_total (2)": TEST_EXPRESSION_2,
+        "double_total (3)": TEST_EXPRESSION,
+      });
+    });
+
     it("should detect duplicate names in case-sensitive way", () => {
       let query = getQuery({
         expressions: { double_total: TEST_EXPRESSION },
