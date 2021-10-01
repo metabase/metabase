@@ -189,13 +189,13 @@ export default class AuditTableVisualization extends React.Component {
                     key={colIndex}
                     className={cx({
                       "text-brand cursor-pointer": clickable,
-                      "text-code": column["code"],
                       "text-right": isColumnRightAligned(column),
                     })}
                     onClick={
                       clickable ? () => onVisualizationClick(clicked) : null
                     }
                   >
+                  <div className={cx({"text-code": column["code"]})}>
                     {formatValue(value, {
                       ...columnSettings,
                       type: "cell",
@@ -205,6 +205,7 @@ export default class AuditTableVisualization extends React.Component {
                       // always show timestamps in local time for the audit app
                       local: true,
                     })}
+                  </div>
                   </td>
                 );
               })}
