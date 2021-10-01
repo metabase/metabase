@@ -1,13 +1,12 @@
-import { restore, popover, addMySQLDatabase } from "__support__/e2e/cypress";
+import { restore, popover } from "__support__/e2e/cypress";
 
 const MYSQL_DB_NAME = "QA MySQL8";
 
 describe.skip("15342", () => {
   beforeEach(() => {
-    restore();
+    restore("mysql-8");
     cy.signInAsAdmin();
     cy.viewport(4000, 1200); // huge width required so three joined tables can fit
-    addMySQLDatabase(MYSQL_DB_NAME);
   });
 
   it("should correctly order joins for MySQL queries", () => {
