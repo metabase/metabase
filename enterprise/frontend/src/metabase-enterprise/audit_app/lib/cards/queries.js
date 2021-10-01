@@ -78,7 +78,7 @@ export const bad_table = (
         { name: "error_substr", enabled: true },
         { name: "collection_id", enabled: true },
         { name: "database_id", enabled: true },
-        { name: "schema_id", enabled: true },
+        { name: "schema", enabled: true },
         { name: "table_id", enabled: true },
         { name: "last_run_at", enabled: true },
         { name: "total_runs", enabled: true },

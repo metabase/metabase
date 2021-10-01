@@ -1,7 +1,7 @@
 (ns metabase-enterprise.sso.integrations.jwt
   "Implementation of the JWT backend for sso"
   (:require [buddy.sign.jwt :as jwt]
-            [metabase-enterprise.sso.api.sso :as sso]
+            [metabase-enterprise.sso.api.interface :as sso.i]
             [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
             [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
             [metabase.api.common :as api]
@@ -90,7 +90,7 @@
   (api/check (sso-settings/jwt-configured?)
     [400 (tru "JWT SSO has not been enabled and/or configured")]))
 
-(defmethod sso/sso-get :jwt
+(defmethod sso.i/sso-get :jwt
   [{{:keys [jwt redirect]} :params, :as request}]
   (check-jwt-enabled)
   (if jwt
@@ -99,6 +99,6 @@
                         (when redirect
                           (str "?return_to=" redirect))))))
 
-(defmethod sso/sso-post :jwt
+(defmethod sso.i/sso-post :jwt
   [req]
   (throw (ex-info "POST not valid for JWT SSO requests" {:status-code 400})))
