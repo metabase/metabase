@@ -58,14 +58,13 @@ driver:
     - name: ssl-keystore-value
       type: textFile
       required: false
+      treat-before-posting: base64
       visible-if:
         ssl-keystore-options: uploaded
-
 
     - name: ssl-keystore-password
       display-name: Keystore password
       type: password
-      secret-kind: password
       required: false
       visible-if:
         ssl-use-keystore: true
@@ -97,6 +96,7 @@ driver:
     - name: ssl-truststore-value
       type: textFile
       required: false
+      treat-before-posting: base64
       visible-if:
         ssl-truststore-options: uploaded
 
