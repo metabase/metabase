@@ -18,7 +18,7 @@ export const permissionEditorPropTypes = {
 export const PermissionsEditor = ({ isLoading, error, ...contentProps }) => {
   return (
     <PermissionsEditorRoot>
-      <LoadingAndErrorWrapper loading={isLoading} error={error}>
+      <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
         <PermissionsEditorContent {...contentProps} />
       </LoadingAndErrorWrapper>
     </PermissionsEditorRoot>

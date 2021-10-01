@@ -17,7 +17,7 @@ export const permissionSidebarPropTypes = {
 export const PermissionsSidebar = ({ isLoading, error, ...contentProps }) => {
   return (
     <SidebarRoot>
-      <LoadingAndErrorWrapper loading={isLoading} error={error}>
+      <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
         <PermissionsSidebarContent {...contentProps} />
       </LoadingAndErrorWrapper>
     </SidebarRoot>
