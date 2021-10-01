@@ -15,7 +15,6 @@ import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 
 import { searchItems } from "./utils";
 import {
-  SidebarRoot,
   SidebarHeader,
   SidebarContent,
   EntityGroupsDivider,
@@ -72,7 +71,7 @@ export const PermissionsSidebarContent = memo(
     }, [entityGroups, debouncedFilter]);
 
     return (
-      <SidebarRoot>
+      <>
         <SidebarHeader>
           {onBack ? (
             <BackButton onClick={onBack}>
@@ -139,7 +138,7 @@ export const PermissionsSidebarContent = memo(
               );
             })}
         </SidebarContent>
-      </SidebarRoot>
+      </>
     );
   },
 );

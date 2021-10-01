@@ -12,7 +12,6 @@ import EmptyState from "metabase/components/EmptyState";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 
-import { PermissionsEditorRoot } from "./PermissionsEditor.styled";
 import { PermissionsEditorBreadcrumbs } from "./PermissionsEditorBreadcrumbs";
 
 export const permissionEditorPropTypes = {
