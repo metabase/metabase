@@ -7,15 +7,14 @@ import {
 
 describe("qa databases snapshots", () => {
   beforeEach(() => {
-    restore("default");
-    cy.signInAsAdmin();
+    restoreAndAuthenticate();
   });
 
   it("creates snapshots for supported qa databases", () => {
     addPostgresDatabase();
     snapshot("postgres-12");
 
-    restore("default");
+    restoreAndAuthenticate();
 
     addMongoDatabase();
     snapshot("mongo-4");
@@ -23,3 +22,8 @@ describe("qa databases snapshots", () => {
     restore("blank");
   });
 });
+
+function restoreAndAuthenticate() {
+  restore("default");
+  cy.signInAsAdmin();
+}
