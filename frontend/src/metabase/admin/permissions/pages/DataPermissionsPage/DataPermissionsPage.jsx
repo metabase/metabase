@@ -3,9 +3,9 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 import { connect } from "react-redux";
 
-import Databases from "metabase/entities/databases";
-import Groups from "metabase/entities/groups";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
+import Tables from "metabase/entities/tables";
+import Groups from "metabase/entities/groups";
 
 import { getIsDirty, getDiff } from "../../selectors/data-permissions";
 import {
@@ -19,6 +19,11 @@ const mapDispatchToProps = {
   loadPermissions: loadDataPermissions,
   savePermissions: saveDataPermissions,
   initialize: initializeDataPermissions,
+  fetchTables: dbId =>
+    Tables.actions.fetchList({
+      dbId,
+      include_hidden: true,
+    }),
 };
 
 const mapStateToProps = (state, props) => ({
@@ -34,6 +39,10 @@ const propTypes = {
   loadPermissions: PropTypes.func.isRequired,
   initialize: PropTypes.func.isRequired,
   route: PropTypes.object,
+  params: PropTypes.shape({
+    databaseId: PropTypes.string,
+  }),
+  fetchTables: PropTypes.func,
 };
 
 function DataPermissionsPage({
@@ -43,11 +52,20 @@ function DataPermissionsPage({
   savePermissions,
   loadPermissions,
   route,
+  params,
   initialize,
+  fetchTables,
 }) {
   useEffect(() => {
     initialize();
   }, [initialize]);
+
+  useEffect(() => {
+    if (params.databaseId == null) {
+      return;
+    }
+    fetchTables(params.databaseId);
+  }, [params.databaseId, fetchTables]);
 
   return (
     <PermissionsPageLayout
@@ -71,7 +89,6 @@ function DataPermissionsPage({
 DataPermissionsPage.propTypes = propTypes;
 
 export default _.compose(
-  Databases.loadList({ entityQuery: { include: "tables" } }),
   Groups.loadList(),
   connect(
     mapStateToProps,
