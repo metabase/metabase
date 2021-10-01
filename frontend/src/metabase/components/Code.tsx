@@ -2,7 +2,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 
-const Code = ({ children, block }) => {
+const Code: React.FC<PropTypes.InferProps<typeof propTypes>> = ({ children, block }) => {
   if (block) {
     return <div className="text-code">{children}</div>;
   } else if (typeof children === "string" && children.split(/\n/g).length > 1) {
@@ -23,9 +23,11 @@ const Code = ({ children, block }) => {
   }
 };
 
-Code.propTypes = {
+const propTypes = {
   children: PropTypes.any.isRequired,
   block: PropTypes.bool,
 };
+
+Code.propTypes = propTypes;
 
 export default Code;

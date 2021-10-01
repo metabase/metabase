@@ -5,7 +5,7 @@
     "@babel/plugin-proposal-export-default-from",
     ["@babel/plugin-proposal-decorators", { "legacy": true }]
   ],
-  "presets": ["@babel/preset-env", "@babel/preset-react"],
+  "presets": ["@babel/preset-env", "@babel/preset-typescript", "@babel/preset-react"],
   "env": {
     "development": {
       "presets": []

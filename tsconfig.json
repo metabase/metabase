@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "module": "esnext",
+    "target": "es5",
+
+    "allowJs": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "moduleResolution": "node",
+    "noEmit": true,
+    "noFallthroughCasesInSwitch": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "paths": {
+      "metabase/*": ["./frontend/src/metabase/*"]
+    },
+    "typeRoots": ["./node_modules/@types"]
+  },
+  "include": [
+      "frontend/src/**/*.ts",
+      "frontend/src/**/*.jsx",
+      "frontend/src/**/*.tsx",
+  ],
+  "exclude": [
+      "node_modules",
+  ]
+}
