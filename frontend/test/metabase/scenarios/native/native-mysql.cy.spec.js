@@ -60,9 +60,7 @@ describe("scenatios > question > native > mysql", () => {
         .click();
     });
 
-    cy.wait("@createQuestion").then(({ status }) => {
-      expect(status).to.equal(202);
-    });
+    cy.wait("@createQuestion");
 
     cy.findByText("Not now").click();
 
