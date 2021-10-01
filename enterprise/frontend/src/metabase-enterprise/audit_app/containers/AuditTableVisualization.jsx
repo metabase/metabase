@@ -72,7 +72,7 @@ export default class AuditTableVisualization extends React.Component {
   handleAllSelectClick = (e, rows) => {
     const { onAllSelectClick } = this.props;
     this.setState({ rerender: {} });
-    onAllSelectClick({ ...e, rows});
+    onAllSelectClick({ ...e, rows });
   };
 
   handleRowSelectClick = (e, row, rowIndex) => {
@@ -120,14 +120,14 @@ export default class AuditTableVisualization extends React.Component {
       <table className="ContentTable">
         <thead>
           <tr>
-            {isSelectable && <th>
-                  <CheckBox
-                    checked={Object.values(rowChecked).some((elem) => elem)}
-                    onChange={e =>
-                      this.handleAllSelectClick(e, rows)
-                    }
-                  />
-              </th>}
+            {isSelectable && (
+              <th>
+                <CheckBox
+                  checked={Object.values(rowChecked).some(elem => elem)}
+                  onChange={e => this.handleAllSelectClick(e, rows)}
+                />
+              </th>
+            )}
             {columnIndexes.map(colIndex => {
               const column = cols[colIndex];
               const isSortedByColumn =
@@ -195,17 +195,17 @@ export default class AuditTableVisualization extends React.Component {
                       clickable ? () => onVisualizationClick(clicked) : null
                     }
                   >
-                  <div className={cx({"text-code": column["code"]})}>
-                    {formatValue(value, {
-                      ...columnSettings,
-                      type: "cell",
-                      jsx: true,
-                      rich: true,
-                      clicked: clicked,
-                      // always show timestamps in local time for the audit app
-                      local: true,
-                    })}
-                  </div>
+                    <div className={cx({ "text-code background-light": column["code"] })}>
+                      {formatValue(value, {
+                        ...columnSettings,
+                        type: "cell",
+                        jsx: true,
+                        rich: true,
+                        clicked: clicked,
+                        // always show timestamps in local time for the audit app
+                        local: true,
+                      })}
+                    </div>
                   </td>
                 );
               })}

@@ -31,11 +31,11 @@ export default function ErrorOverview(props) {
   const handleAllSelectClick = e => {
     const newRowChecked = rowChecked;
     const newRowToCardId = rowToCardId;
-    const noRowChecked = Object.values(rowChecked).every((v) => !v);
+    const noRowChecked = Object.values(rowChecked).every(v => !v);
     for (const rowIndex of Array(e.rows.length).keys()) {
       if (noRowChecked) {
         newRowChecked[rowIndex] = true;
-        newRowToCardId[rowIndex] = e.rows[rowIndex][CARD_ID_COL]
+        newRowToCardId[rowIndex] = e.rows[rowIndex][CARD_ID_COL];
       } else {
         newRowChecked[rowIndex] = false;
         newRowToCardId[rowIndex] = null;
@@ -43,7 +43,7 @@ export default function ErrorOverview(props) {
     }
     setRowChecked(newRowChecked);
     setRowToCardId(newRowToCardId);
-  }
+  };
 
   const handleRowSelectClick = e => {
     const newRowChecked = rowChecked;

@@ -10,10 +10,6 @@ export default class ToolsApp extends Component {
 
   render() {
     const { children } = this.props;
-    return (
-      <AdminLayout>
-        {children}
-      </AdminLayout>
-    );
+    return <AdminLayout>{children}</AdminLayout>;
   }
 }
