@@ -1,4 +1,4 @@
-import { restore, addMongoDatabase, modal } from "__support__/e2e/cypress";
+import { restore, modal } from "__support__/e2e/cypress";
 
 const MONGO_DB_NAME = "QA Mongo4";
 
@@ -7,9 +7,8 @@ const MONGO_DB_NAME = "QA Mongo4";
 // IMPORTANT: when #15946 gets fixed, unskip both describe block and the test itself!
 describe.skip("mongodb > native query", () => {
   before(() => {
-    restore();
+    restore("mongo-4");
     cy.signInAsAdmin();
-    addMongoDatabase(MONGO_DB_NAME);
   });
 
   it.skip("converting a question to the native query should pre-select a table (metabase#15946)", () => {

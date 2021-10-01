@@ -4,9 +4,8 @@ const MONGO_DB_NAME = "QA Mongo4";
 
 describe("mongodb > user > query", () => {
   before(() => {
-    restore();
+    restore("mongo-4");
     cy.signInAsAdmin();
-    addMongoDatabase(MONGO_DB_NAME);
   });
 
   context("as an admin", () => {

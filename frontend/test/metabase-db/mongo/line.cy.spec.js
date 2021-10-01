@@ -1,4 +1,4 @@
-import { restore, addMongoDatabase, popover } from "__support__/e2e/cypress";
+import { restore, popover } from "__support__/e2e/cypress";
 
 const MONGO_DB_NAME = "QA Mongo4";
 
@@ -7,9 +7,8 @@ const MONGO_DB_NAME = "QA Mongo4";
 // IMPORTANT: when #16170 gets fixed, unskip both describe block and the test itself!
 describe.skip("mongodb > visualization > line chart", () => {
   before(() => {
-    restore();
+    restore("mongo-4");
     cy.signInAsAdmin();
-    addMongoDatabase(MONGO_DB_NAME);
   });
 
   it.skip("should correctly replace only the missing values with zero (metabase#16170)", () => {
