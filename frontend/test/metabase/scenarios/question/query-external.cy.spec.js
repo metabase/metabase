@@ -9,7 +9,7 @@ const supportedDatabases = [
   {
     database: "MySQL",
     snapshotName: "mysql-8",
-    dbNAme: "QA MySQL8",
+    dbName: "QA MySQL8",
   },
 ];
 
