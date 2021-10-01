@@ -33,6 +33,7 @@ const propTypes = {
   }),
   isSelectable: PropTypes.bool,
   rowChecked: PropTypes.object,
+  rowFilter: PropTypes.object,
   onAllSelectClick: PropTypes.func,
   onRowSelectClick: PropTypes.func,
 };
@@ -100,6 +101,7 @@ export default class AuditTableVisualization extends React.Component {
       isSortable,
       isSelectable,
       rowChecked,
+      rowFilter,
       onRemoveRow,
     } = this.props;
 
@@ -158,7 +160,7 @@ export default class AuditTableVisualization extends React.Component {
         </thead>
         <tbody>
           {rows.map((row, rowIndex) => (
-            <tr key={rowIndex}>
+            !rowFilter[rowIndex] && <tr key={rowIndex}>
               {isSelectable && (
                 <td>
                   <CheckBox

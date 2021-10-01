@@ -45,7 +45,7 @@ describeWithToken("admin > tools > erroring questions ", () => {
         .and("eq", TOOLS_ERRORS_URL);
     });
 
-    it.skip("should disable search input fields (metabase#18050)", () => {
+    it("should disable search input fields (metabase#18050)", () => {
       cy.visit(TOOLS_ERRORS_URL);
 
       // When the issue gets fixed, it's safe to merge these assertions with the main test above
@@ -54,7 +54,7 @@ describeWithToken("admin > tools > erroring questions ", () => {
       cy.findByPlaceholderText("Collection name").should("be.disabled");
     });
 
-    it.skip('should disable "Rerun Selected" button (metabase#18048)', () => {
+    it('should disable "Rerun Selected" button (metabase#18048)', () => {
       cy.visit(TOOLS_ERRORS_URL);
 
       // When the issue gets fixed, it's safe to merge these assertions with the main test above
@@ -71,7 +71,7 @@ describeWithToken("admin > tools > erroring questions ", () => {
       cy.visit(TOOLS_ERRORS_URL);
     });
 
-    it.skip('should disable "Rerun Selected" button (metabase#18048)', () => {
+    it('should disable "Rerun Selected" button (metabase#18048)', () => {
       // When the issue gets fixed, merge it with the main test below
       cy.button("Rerun Selected").should("be.disabled");
     });
