@@ -128,12 +128,16 @@ describe("StructuredQuery", () => {
 
   describe("updateExpression", () => {
     it("should update expressions correctly", () => {
-      let query = getQuery();
+      let query = getQuery({
+        expressions: {
+          double_total: TEST_EXPRESSION,
+        },
+      });
 
-      query = query.addExpression("double_total", TEST_EXPRESSION);
+      query = query.updateExpression("double_total", TEST_EXPRESSION_2);
 
       expect(query.expressions()).toEqual({
-        double_total: TEST_EXPRESSION,
+        double_total: TEST_EXPRESSION_2,
       });
     });
   });
