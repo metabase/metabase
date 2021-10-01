@@ -34,9 +34,6 @@ describe("snapshots", () => {
 
       snapshot("default");
 
-      addPostgresDatabase();
-      snapshot("postgres-12");
-
       restore("blank");
     });
   });
