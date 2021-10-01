@@ -1281,12 +1281,3 @@ workflows:
             - build-uberjar-<< matrix.edition >>
           cypress-group: "percy-visual-<< matrix.edition >>"
           test-files: "./frontend/test/metabase-visual/**/*.cy.spec.js"
-
-      - fe-tests-cypress:
-          name: e2e-tests-mysql-8-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "mysql"
-          source-folder: mysql
-          qa-db: true
-          <<: *Matrix
