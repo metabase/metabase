@@ -380,6 +380,9 @@ export const queryStartTime = handleActions(
 
 export const parameterValues = handleActions(
   {
+    [INITIALIZE_QB]: {
+      next: (state, { payload: { parameterValues } }) => parameterValues,
+    },
     [SET_PARAMETER_VALUE]: {
       next: (state, { payload: { id, value } }) =>
         value == null ? dissoc(state, id) : assoc(state, id, value),
