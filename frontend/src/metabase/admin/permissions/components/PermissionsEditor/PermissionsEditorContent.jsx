@@ -56,7 +56,7 @@ export function PermissionsEditorContent({
   }, [entities, debouncedFilter]);
 
   return (
-    <PermissionsEditorRoot>
+    <>
       <Box px="3rem">
         <Subhead>
           {title}{" "}
@@ -97,7 +97,7 @@ export function PermissionsEditorContent({
           </Box>
         }
       />
-    </PermissionsEditorRoot>
+    </>
   );
 }
 
