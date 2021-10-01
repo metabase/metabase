@@ -1,6 +1,6 @@
 import { restore, modal, typeAndBlurUsingLabel } from "__support__/e2e/cypress";
 
-describe("admin > database > add > postgres", () => {
+describe("admin > database > add > external databases", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -8,7 +8,7 @@ describe("admin > database > add > postgres", () => {
     cy.intercept("POST", "/api/database").as("createDatabase");
   });
 
-  it("should add a database and redirect to listing", () => {
+  it("should add Postgres database and redirect to listing", () => {
     cy.visit("/admin/databases/create");
     cy.contains("Database type")
       .closest(".Form-field")
@@ -23,6 +23,36 @@ describe("admin > database > add > postgres", () => {
     typeAndBlurUsingLabel("Database name", "sample");
     typeAndBlurUsingLabel("Username", "metabase");
     typeAndBlurUsingLabel("Password", "metasample123");
+
+    cy.findByText("Save")
+      .should("not.be.disabled")
+      .click();
+
+    cy.wait("@createDatabase");
+
+    cy.url().should("match", /\/admin\/databases\?created=\d+$/);
+    cy.findByText("Your database has been added!");
+    modal()
+      .contains("I'm good thanks")
+      .click();
+  });
+
+  it("should add Mongo database and redirect to listing", () => {
+    cy.visit("/admin/databases/create");
+    cy.contains("Database type")
+      .closest(".Form-field")
+      .find("a")
+      .click();
+    cy.contains("MongoDB").click({ force: true });
+    cy.contains("Additional Mongo connection");
+
+    typeAndBlurUsingLabel("Name", "QA Mongo4");
+    typeAndBlurUsingLabel("Host", "localhost");
+    typeAndBlurUsingLabel("Port", "27017");
+    typeAndBlurUsingLabel("Database name", "sample");
+    typeAndBlurUsingLabel("Username", "metabase");
+    typeAndBlurUsingLabel("Password", "metasample123");
+    typeAndBlurUsingLabel("Authentication Database", "admin");
 
     cy.findByText("Save")
       .should("not.be.disabled")
