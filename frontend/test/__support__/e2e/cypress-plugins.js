@@ -67,7 +67,7 @@ module.exports = (on, config) => {
    ********************************************************************/
 
   if (!isQaDatabase) {
-    config.ignoreTestFiles = ["**/metabase-db/**", "qa-db.cy.snap.js"];
+    config.ignoreTestFiles = "qa-db.cy.snap.js";
   }
 
   config.env.HAS_ENTERPRISE_TOKEN = hasEnterpriseToken;
