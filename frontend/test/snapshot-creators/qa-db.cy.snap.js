@@ -3,6 +3,7 @@ import {
   snapshot,
   addPostgresDatabase,
   addMongoDatabase,
+  addMySQLDatabase,
 } from "__support__/e2e/cypress";
 
 describe("qa databases snapshots", () => {
@@ -18,6 +19,11 @@ describe("qa databases snapshots", () => {
 
     addMongoDatabase();
     snapshot("mongo-4");
+
+    restoreAndAuthenticate();
+
+    addMySQLDatabase();
+    snapshot("mysql-8");
 
     restore("blank");
   });
