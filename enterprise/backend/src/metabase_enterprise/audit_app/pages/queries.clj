@@ -97,7 +97,7 @@
                                          "...")
                               :error_substr]
                              :collection_id
-                             [:coll.name :collection_name]
+                             [(hsql/call :coalesce :coll.name "Our Analytics") :collection_name]
                              :card.database_id
                              [:db.name :database_name]
                              [:t.schema :schema_name]
