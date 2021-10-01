@@ -1,10 +1,5 @@
 import _ from "underscore";
-import {
-  snapshot,
-  restore,
-  withSampleDataset,
-  addPostgresDatabase,
-} from "__support__/e2e/cypress";
+import { snapshot, restore, withSampleDataset } from "__support__/e2e/cypress";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
 
 const {
@@ -33,9 +28,6 @@ describe("snapshots", () => {
       });
 
       snapshot("default");
-
-      addPostgresDatabase();
-      snapshot("postgres-12");
 
       restore("blank");
     });
