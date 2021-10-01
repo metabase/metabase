@@ -12,7 +12,7 @@ const args = arg(
 const folder = args["--folder"];
 const isFolder = !!folder;
 
-const supportedDatabases = ["mongo", "mysql"];
+const supportedDatabases = "mysql";
 const isQaDatabase = supportedDatabases.includes(folder);
 
 const isOpenMode = args["--open"];
