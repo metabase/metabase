@@ -1263,6 +1263,7 @@ workflows:
             - build-uberjar-<< matrix.edition >>
           cypress-group: "<< matrix.folder >>-<< matrix.edition >>"
           source-folder: << matrix.folder >>
+          qa-db: true
           before-steps:
             - wait-for-port:
                 port: 3306
