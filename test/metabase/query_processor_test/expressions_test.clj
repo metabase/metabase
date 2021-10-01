@@ -99,8 +99,7 @@
                                         oneplusone   [:+ 1 1]}
                           :fields      [$price [:expression oneplusone]]
                           :order-by    [[:asc $id]]
-                          :limit       3})
-          ]
+                          :limit       3})]
       (testing "If an explicit `:fields` clause is present, expressions *not* in that clause should not come back"
         (is (= [[3 2] [2 2] [2 2]]
                (mt/formatted-rows [int int]
@@ -421,3 +420,13 @@
           (is (= [["Red Medicine" "Red" "RedMedicine"]
                   ["Rush Street" "Rush" "RushStreet"]]
                  (mt/formatted-rows [str str str] results))))))))
+
+(deftest expression-name-weird-characters-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+    (testing "An expression whose name contains weird characters works properly"
+      (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 -3]]
+             (mt/formatted-rows [int str int 4.0 4.0 int int]
+               (mt/run-mbql-query venues
+                 {:expressions {(keyword "Refund Amount (?)") [:* $price -1]}
+                  :limit       1
+                  :order-by    [[:asc $id]]})))))))

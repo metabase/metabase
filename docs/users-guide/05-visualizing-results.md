@@ -31,7 +31,7 @@ Once a question returns results, you can save the question, download the results
 
 ## Visualization types and options
 
-Each visualization type has its own advanced options. Click the **Settings** button next to the Visualization button to see your options. The options panel also automatically opens up whenever you pick a new visualization type. 
+Each visualization type has its own advanced options. Click the **Settings** button next to the Visualization button to see your options. The options panel also automatically opens up whenever you pick a new visualization type.
 
 Not sure which visualization type to use? Check out [Which chart should you use?](https://www.metabase.com/learn/basics/visualizing-data/guide.html).
 
@@ -148,7 +148,7 @@ This auto-pivoting is distinct from the pivot table visualization, which we cove
 
 ### Pivot table
 
-Pivot tables allow you swap rows and columns, group data, and include subtotals in your table. You can group one or more metrics by one or more dimensions. 
+Pivot tables allow you swap rows and columns, group data, and include subtotals in your table. You can group one or more metrics by one or more dimensions.
 
 Pivot tables are not currently available for the following databases in Metabase:
 
@@ -163,7 +163,7 @@ In the settings for the Pivot Table visualization, you can assign fields to one 
 
 - Fields to use for the table **rows**
 - Fields to use for the table **columns**
-- Fields to use for the table **values** 
+- Fields to use for the table **values**
 
 Let's say we ask the following question in the notebook editor:
 
@@ -175,7 +175,7 @@ From the `Orders` table, we've summarized by the count of orders and the average
 
 We've assigned the fields `User → State` and `Created At` to table rows, and assigned the `Product -> Category` field to generate our columns: Doohickey, Gadget, and so on. We can drag and drop dimensions between the row and column buckets, and add aggregations to the table values bucket. For example, if we assign a field to the columns bucket, Metabase will pivot that field and render each unique value of that field as a column heading.
 
-You can put multiple fields in the "rows" and "columns" buckets, but note that the order of the fields changes how Metabase displays the table: each additional field will nest within the previous field. 
+You can put multiple fields in the "rows" and "columns" buckets, but note that the order of the fields changes how Metabase displays the table: each additional field will nest within the previous field.
 
 Where it makes sense, Metabase will automatically include subtotals for grouped rows. For example, as in the image above, because we've grouped our rows first by `State`, then by `Created At`, Metabase will list each year for each `State`, and aggregate the metric(s) for that subgroup. For orders placed in Wisconsin, Metabase would sum the count of orders for each category, and find the average annual order total in each product category in Wisconsin.
 
@@ -327,6 +327,6 @@ Learn more about [visualizing data with maps](https://www.metabase.com/learn/bas
 
 ---
 
-## Next: Sharing and organizing questions
+## Next: saving and editing your questions
 
-Now let's learn about [sharing and organizing your saved questions](06-sharing-answers.md).
+Now let's learn about [saving and editing your questions](06-sharing-answers.md).

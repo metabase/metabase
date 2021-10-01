@@ -5,6 +5,7 @@ import { IndexRedirect } from "react-router";
 import { t } from "ttag";
 import ToolsApp from "./containers/ToolsApp";
 import ErrorOverview from "./containers/ErrorOverview";
+import ErrorDetail from "./containers/ErrorDetail";
 
 const getRoutes = (store: any) => (
   <Route path="tools" title={t`Tools`} component={ToolsApp}>
@@ -14,6 +15,7 @@ const getRoutes = (store: any) => (
       title={t`Erroring Questions`}
       component={ErrorOverview}
     />
+    <Route path="errors/:cardId" component={ErrorDetail} />
   </Route>
 );
 

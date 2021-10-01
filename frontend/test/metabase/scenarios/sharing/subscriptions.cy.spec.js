@@ -237,7 +237,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       });
     });
 
-    it.skip("should include text cards (metabase#15744)", () => {
+    it("should include text cards (metabase#15744)", () => {
       const TEXT_CARD = "FooBar";
 
       cy.visit("/dashboard/1");
