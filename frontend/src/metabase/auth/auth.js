@@ -12,7 +12,6 @@ import { clearGoogleAuthCredentials, deleteSession } from "metabase/lib/auth";
 import { refreshSiteSettings } from "metabase/redux/settings";
 
 import { SessionApi } from "metabase/services";
-import { UPDATE_PASSWORD } from "metabase/account/password/actions";
 
 // login
 export const LOGIN = "metabase/auth/LOGIN";
