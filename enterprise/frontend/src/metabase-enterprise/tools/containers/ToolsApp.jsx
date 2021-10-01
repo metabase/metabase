@@ -10,6 +10,11 @@ export default class ToolsApp extends Component {
 
   render() {
     const { children } = this.props;
-    return <AdminLayout><h2>Questions that errored when last run</h2>{children}</AdminLayout>;
+    return (
+      <AdminLayout>
+        <h2>Questions that errored when last run</h2>
+        {children}
+      </AdminLayout>
+    );
   }
 }

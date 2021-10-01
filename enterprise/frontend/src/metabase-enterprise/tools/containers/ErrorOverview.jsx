@@ -60,10 +60,8 @@ export default function ErrorOverview(props) {
     const checkedCardIds = Object.values(
       _.pick(rowToCardId, (member, key) => rowChecked[key]),
     );
-    checkedCardIds.map(
-      async member => await CardApi.query({ cardId: member }),
-    ),
-    setRowFilter(rowChecked);
+    checkedCardIds.map(async member => await CardApi.query({ cardId: member })),
+      setRowFilter(rowChecked);
     setRowChecked({});
   };
 
