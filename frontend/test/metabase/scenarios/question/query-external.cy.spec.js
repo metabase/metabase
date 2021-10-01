@@ -2,28 +2,25 @@ import { restore } from "__support__/e2e/cypress";
 
 const supportedDatabases = [
   {
-    Mongo: {
-      snapshotName: "mongo-4",
-      dbName: "QA Mongo4",
-    },
+    database: "Mongo",
+    snapshotName: "mongo-4",
+    dbName: "QA Mongo4",
   },
   {
-    MySQl: {
-      snapshotName: "mysql-8",
-      dbNAme: "QA MySQL8",
-    },
+    database: "MySQL",
+    snapshotName: "mysql-8",
+    dbNAme: "QA MySQL8",
   },
 ];
 
-supportedDatabases.forEach(db => {
-  const { snapshotName, dbName } = db;
+supportedDatabases.forEach(({ database, snapshotName, dbName }) => {
   describe("scenarios > question > query > external", () => {
-    before(() => {
+    beforeEach(() => {
       restore(snapshotName);
       cy.signInAsAdmin();
     });
 
-    it(`can query ${db} database`, () => {
+    it(`can query ${database} database`, () => {
       cy.visit("/question/new");
       cy.findByText("Simple question").click();
       cy.findByText(dbName).click();

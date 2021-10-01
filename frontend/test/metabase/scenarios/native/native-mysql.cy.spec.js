@@ -3,7 +3,7 @@ import { restore, modal } from "__support__/e2e/cypress";
 const MYSQL_DB_NAME = "QA MySQL8";
 
 describe("scenatios > question > native > mysql", () => {
-  before(() => {
+  beforeEach(() => {
     cy.intercept("POST", "/api/card").as("createQuestion");
 
     restore("mysql-8");
