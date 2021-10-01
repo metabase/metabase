@@ -1,8 +1,5 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "ttag";
-
-import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
 
 import AdminLayout from "metabase/components/AdminLayout";
 

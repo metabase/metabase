@@ -112,6 +112,7 @@ export default function ErrorOverview(props) {
             sorting.column,
             getSortOrder(sorting.isAscending),
           )}
+          className={"bounded-overflow-x-scroll"}
         />
       )}
     </AuditParameters>
