@@ -36,9 +36,7 @@ describe("scenatios > question > native > mongo", () => {
         .click();
     });
 
-    cy.wait("@createQuestion").then(({ status }) => {
-      expect(status).to.equal(202);
-    });
+    cy.wait("@createQuestion");
 
     cy.findByText("Not now").click();
 

@@ -38,8 +38,6 @@ describe("admin > database > add > external databases", () => {
   });
 
   it("should add Mongo database and redirect to listing", () => {
-    cy.route("POST", "/api/database").as("createDatabase");
-
     cy.visit("/admin/databases/create");
     cy.contains("Database type")
       .closest(".Form-field")
