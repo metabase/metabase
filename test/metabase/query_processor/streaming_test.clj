@@ -293,6 +293,18 @@
             [{::mb.viz/table-column-field-ref ["field" "Col2" nil], ::mb.viz/table-column-enabled true}
              {::mb.viz/table-column-field-ref ["field" "Col1" nil], ::mb.viz/table-column-enabled true}]))))
 
+  (testing "correlation of aggregation fields by field_ref"
+    (is (= [0 1]
+           (@#'qp.streaming/export-column-order
+            [{:id 0, :field_ref [:aggregation 0]}, {:id 1, :field_ref [:aggregation 1]}]
+            [{::mb.viz/table-column-field-ref ["aggregation" 0], ::mb.viz/table-column-enabled true}
+             {::mb.viz/table-column-field-ref ["aggregation" 1], ::mb.viz/table-column-enabled true}])))
+    (is (= [1 0]
+           (@#'qp.streaming/export-column-order
+            [{:id 0, :field_ref [:aggregation 0]}, {:id 1, :field_ref [:aggregation 1]}]
+            [{::mb.viz/table-column-field-ref ["aggregation" 1], ::mb.viz/table-column-enabled true}
+             {::mb.viz/table-column-field-ref ["aggregation" 0], ::mb.viz/table-column-enabled true}]))))
+
   (testing "disabled columns are excluded from ordering"
     (is (= [0]
            (@#'qp.streaming/export-column-order
