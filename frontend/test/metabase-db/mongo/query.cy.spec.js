@@ -51,28 +51,6 @@ describe("mongodb > user > query", () => {
 
       cy.url().should("match", /\/question\/\d+-[a-z0-9-]*$/);
     });
-
-    it.skip("should correctly apply distinct count on multiple columns (metabase#13097)", () => {
-      askMongoQuestion({ table_name: "People", mode: "notebook" });
-      cy.findByText("Pick the metric you want to see").click();
-      cy.findByText("Number of distinct values of ...").click();
-      cy.findByText("City").click();
-      cy.get("[class*=NotebookCell]").within(() => {
-        cy.icon("add").click();
-      });
-      cy.findByText("Number of distinct values of ...").click();
-      cy.findByText("State").click();
-
-      cy.server();
-      cy.route("POST", "/api/dataset").as("dataset");
-
-      cy.button("Visualize").click();
-      cy.wait("@dataset");
-
-      cy.log("Reported failing on stats ~v0.36.3");
-      cy.findAllByText("1,966").should("have.length", 1); // City
-      cy.findByText("49"); // State
-    });
   });
 });
 
