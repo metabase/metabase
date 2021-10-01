@@ -25,7 +25,7 @@ You will also need to have all QA DB Docker images running. For the convenience,
 
 ```shell
 #Mongo 4
-docker run --rm -p 27017:27017 --name meta-mongo-sample metabase/qa-databases:mongo-sample-4.0
+docker run --rm -p 27017:27017 --name meta-mongo4-sample metabase/qa-databases:mongo-sample-4.0
 
 #PostgreSQL 12
 docker run --rm -p 5432:5432 --name meta-postgres12-sample metabase/qa-databases:postgres-sample-12
