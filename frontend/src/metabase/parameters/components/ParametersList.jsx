@@ -37,14 +37,7 @@ type Props = {
   vertical?: boolean,
   commitImmediately?: boolean,
 
-  setParameterName?: (parameterId: ParameterId, name: string) => void,
-  setParameterValue?: (parameterId: ParameterId, value: string) => void,
-  setParameterDefaultValue?: (
-    parameterId: ParameterId,
-    defaultValue: string,
-  ) => void,
   setParameterIndex?: (parameterId: ParameterId, index: number) => void,
-  removeParameter?: (parameterId: ParameterId) => void,
   setEditingParameter?: (parameterId: ParameterId) => void,
 };
 
@@ -84,9 +77,7 @@ function ParametersList({
   vertical,
   commitImmediately,
 
-  setParameterName,
   setParameterValue,
-  setParameterDefaultValue,
   setParameterIndex,
   removeParameter,
   setEditingParameter,
@@ -154,22 +145,9 @@ function ParametersList({
           editingParameter={editingParameter}
           setEditingParameter={setEditingParameter}
           index={index}
-          setName={
-            setParameterName &&
-            (name => setParameterName(valuePopulatedParameter.id, name))
-          }
           setValue={
             setParameterValue &&
             (value => setParameterValue(valuePopulatedParameter.id, value))
-          }
-          setDefaultValue={
-            setParameterDefaultValue &&
-            (value =>
-              setParameterDefaultValue(valuePopulatedParameter.id, value))
-          }
-          remove={
-            removeParameter &&
-            (() => removeParameter(valuePopulatedParameter.id))
           }
           commitImmediately={commitImmediately}
           dragHandle={

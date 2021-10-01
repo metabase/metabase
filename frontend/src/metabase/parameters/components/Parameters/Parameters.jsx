@@ -57,11 +57,8 @@ export default class Parameters extends Component {
       vertical,
       commitImmediately,
 
-      setParameterName,
       setParameterValue,
-      setParameterDefaultValue,
       setParameterIndex,
-      removeParameter,
       setEditingParameter,
     } = this.props;
 
@@ -79,11 +76,8 @@ export default class Parameters extends Component {
         isQB={isQB}
         vertical={vertical}
         commitImmediately={commitImmediately}
-        setParameterName={setParameterName}
         setParameterValue={setParameterValue}
-        setParameterDefaultValue={setParameterDefaultValue}
         setParameterIndex={setParameterIndex}
-        removeParameter={removeParameter}
         setEditingParameter={setEditingParameter}
       />
     );

@@ -13,11 +13,8 @@ const propTypes = {
   location: PropTypes.object,
   parameterValues: PropTypes.object,
   parameters: PropTypes.array,
-  removeParameter: PropTypes.func,
   setEditingParameter: PropTypes.func,
-  setParameterDefaultValue: PropTypes.func,
   setParameterIndex: PropTypes.func,
-  setParameterName: PropTypes.func,
   setParameterValue: PropTypes.func,
   shouldRenderAsNightMode: PropTypes.bool.isRequired,
 };
@@ -31,11 +28,8 @@ const ParametersWidget = ({
   location,
   parameterValues,
   parameters,
-  removeParameter,
   setEditingParameter,
-  setParameterDefaultValue,
   setParameterIndex,
-  setParameterName,
   setParameterValue,
   shouldRenderAsNightMode,
 }) => {
@@ -51,10 +45,7 @@ const ParametersWidget = ({
       query={location.query}
       editingParameter={editingParameter}
       setEditingParameter={setEditingParameter}
-      setParameterName={setParameterName}
       setParameterIndex={setParameterIndex}
-      setParameterDefaultValue={setParameterDefaultValue}
-      removeParameter={removeParameter}
       setParameterValue={setParameterValue}
     />
   ) : null;
