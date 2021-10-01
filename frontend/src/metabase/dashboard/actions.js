@@ -15,6 +15,8 @@ import {
   createParameter,
   setParameterName as setParamName,
   setParameterDefaultValue as setParamDefaultValue,
+  getMappingsByParameter,
+  getDashboardParametersWithFieldMetadata,
 } from "metabase/meta/Dashboard";
 import { applyParameters, questionUrlWithParameters } from "metabase/meta/Card";
 import {
@@ -705,11 +707,25 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
       dispatch(addFields(result.param_fields));
     }
 
+    const metadata = getMetadata(getState());
+    const mappingsByParameter = getMappingsByParameter(metadata, result);
+
+    const parameters = getDashboardParametersWithFieldMetadata(
+      metadata,
+      result,
+      mappingsByParameter,
+    );
+
     const parameterValuesById = preserveParameters
       ? getParameterValues(getState())
-      : getParameterValuesByIdFromQueryParams(result.parameters, queryParams, {
-          forcefullyUnsetDefaultedParametersWithEmptyStringValue: true,
-        });
+      : getParameterValuesByIdFromQueryParams(
+          parameters,
+          queryParams,
+          metadata,
+          {
+            forcefullyUnsetDefaultedParametersWithEmptyStringValue: true,
+          },
+        );
 
     return {
       ...normalize(result, dashboard), // includes `result` and `entities`
