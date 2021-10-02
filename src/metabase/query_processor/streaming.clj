@@ -47,8 +47,9 @@
                                ;; If table-columns is not provided (e.g. for saved cards), we can construct a fake one
                                ;; that retains the original column ordering in `cols`
                                (for [col cols]
-                                 (let [id-or-name (or (:id col) (:name col))]
-                                   {::mb.viz/table-column-field-ref ["field" id-or-name nil]
+                                 (let [id-or-name (or (:id col) (:name col))
+                                       field-ref  (:field_ref col)]
+                                   {::mb.viz/table-column-field-ref (or field-ref [:field id-or-name nil])
                                     ::mb.viz/table-column-enabled true})))
         enabled-table-cols (filter ::mb.viz/table-column-enabled table-columns')
         cols-vector        (into [] cols)
