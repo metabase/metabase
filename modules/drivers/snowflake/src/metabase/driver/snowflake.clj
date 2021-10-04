@@ -275,10 +275,6 @@
 
 (defmethod sql.qp/current-datetime-honeysql-form :snowflake [_] :%current_timestamp)
 
-(defmethod driver/format-custom-field-name :snowflake
-  [_ s]
-  (str/lower-case s))
-
 ;; See https://docs.snowflake.net/manuals/sql-reference/data-types-datetime.html#timestamp.
 (defmethod driver.common/current-db-time-date-formatters :snowflake
   [_]
