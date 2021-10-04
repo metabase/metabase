@@ -1,6 +1,6 @@
 import styled from "styled-components";
 
-export const ClampedDiv = styled.div`
+export const ClampedDiv = styled.div<{visibleLines: number | null}>`
   max-height: ${props =>
     props.visibleLines == null
       ? "unset"

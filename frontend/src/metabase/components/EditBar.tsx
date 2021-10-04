@@ -2,7 +2,9 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 
-class EditBar extends Component {
+type Props = PropTypes.InferProps<typeof EditBar["propTypes"]>;
+
+class EditBar extends Component<Props> {
   static propTypes = {
     title: PropTypes.string.isRequired,
     subtitle: PropTypes.string,
