@@ -19,6 +19,7 @@ const SummarizeButton = props => (
   <ViewButton
     medium
     icon="insight"
+    color={color("accent1")}
     labelBreakpoint="sm"
     {...props}
   />
