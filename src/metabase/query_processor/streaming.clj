@@ -34,6 +34,11 @@
        (mbql.u/uniquify-names (map :name cols))))
 
 (defn- field-ref->map-key
+  "Converts the field-ref of a column to a vector that is used for lookups in the `cols-index` map in
+  `export-column-order`.
+
+  TODO: Figure out why keywords in the field-ref in `cols` are strings in the equivalent fields in `table-columns`.
+  If this can be fixed, we could use the entire field-ref directly as a map key."
   [field-ref]
   [(keyword (first field-ref)) (second field-ref)])
 
