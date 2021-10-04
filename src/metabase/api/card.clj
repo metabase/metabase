@@ -687,8 +687,10 @@
                              :middleware  middleware))
         dashboard (db/select-one [Dashboard :cache_ttl] :id (:dashboard-id ids))
         database  (db/select-one [Database :cache_ttl] :id (:database_id card))
-        ttl       (ttl-hierarchy card dashboard database query)]
-    (assoc query :cache-ttl ttl)))
+        ttl       (ttl-hierarchy card dashboard database query)
+        ;; Stored TTL's are in hours: query wants seconds
+        ttl-secs  (* 3600 ttl)]
+    (assoc query :cache-ttl ttl-secs)))
 
 (defn run-query-for-card-async
   "Run the query for Card with `parameters` and `constraints`, and return results in a `StreamingResponse` that should
