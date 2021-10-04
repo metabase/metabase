@@ -5,16 +5,16 @@ import styled from "styled-components";
 
 // NOTE: some of this is duplicated from NotebookCell.jsx
 const ViewButton = styled(Button)`
-  background-color: ${props =>
-    props.active ? color(props.color) : alpha(color(props.color), 0.2)};
-  color: ${props => (props.active ? "white" : color(props.color))};
+  background-color: ${({ active, color = getDefaultColor() }) =>
+    active ? color(color) : alpha(color, 0.2)};
+  color: ${({ active, color = getDefaultColor() }) =>
+    active ? "white" : color};
   border: none;
   &:hover {
-    background-color: ${props =>
-      props.active
-        ? alpha(color(props.color), 0.8)
-        : alpha(color(props.color), 0.35)};
-    color: ${props => (props.active ? "white" : color(props.color))};
+    background-color: ${({ active, color = getDefaultColor() }) =>
+      active ? alpha(color, 0.8) : alpha(color, 0.35)};
+    color: ${({ active, color = getDefaultColor() }) =>
+      active ? "white" : color};
   }
   transition: background 300ms linear, border 300ms linear;
   > .Icon {
@@ -22,9 +22,6 @@ const ViewButton = styled(Button)`
   }
 `;
 
-// TODO
-ViewButton.defaultProps = {
-  color: "brand",
-};
+const getDefaultColor = () => color("brand");
 
 export default ViewButton;
