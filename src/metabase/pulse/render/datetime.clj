@@ -20,7 +20,6 @@
   [timezone-id s-or-t col]
   (let [s (if (string? s-or-t)
             s-or-t
-            ;;
             (qp.format-rows/format-value s-or-t timezone-id))]
     (if (str/blank? s)
       ""
