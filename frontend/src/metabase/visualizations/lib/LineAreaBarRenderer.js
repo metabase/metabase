@@ -410,7 +410,13 @@ function getDcjsChart(cardType, parent) {
   }
 }
 
-function applyChartLineBarSettings(chart, settings, chartType, seriesSettings) {
+function applyChartLineBarSettings(
+  chart,
+  settings,
+  chartType,
+  seriesSettings,
+  forceCenterBar,
+) {
   // LINE/AREA:
   // for chart types that have an 'interpolate' option (line/area charts), enable based on settings
   if (chart.interpolate) {
@@ -430,7 +436,9 @@ function applyChartLineBarSettings(chart, settings, chartType, seriesSettings) {
   if (chart.barPadding) {
     chart
       .barPadding(BAR_PADDING_RATIO)
-      .centerBar(settings["graph.x_axis.scale"] !== "ordinal");
+      .centerBar(
+        forceCenterBar || settings["graph.x_axis.scale"] !== "ordinal",
+      );
   }
 
   // AREA/BAR:
@@ -532,6 +540,24 @@ function getCharts(
   const isHeterogenousOrdinal =
     settings["graph.x_axis.scale"] === "ordinal" && isHeterogenous;
 
+  if (isHeterogenousOrdinal) {
+    // HACK: ordinal + mix of line and bar results in uncentered points, shift by
+    // half the width
+    parent.on("renderlet.shift", () => {
+      // ordinal, so we can get the first two points to determine spacing
+      const scale = parent.x();
+      const values = scale.domain();
+      const spacing = scale(values[1]) - scale(values[0]);
+      parent
+        .svg()
+        // shift bar/line and dots
+        .selectAll(".stack, .dc-tooltip")
+        .each(function() {
+          this.setAttribute("transform", `translate(${spacing / 2}, 0)`);
+        });
+    });
+  }
+
   return groups.map((group, index) => {
     const single = series[index];
     const seriesSettings = settings.series(single);
@@ -570,7 +596,13 @@ function getCharts(
       chart.stack(group[i]);
     }
 
-    applyChartLineBarSettings(chart, settings, seriesChartType, seriesSettings);
+    applyChartLineBarSettings(
+      chart,
+      settings,
+      seriesChartType,
+      seriesSettings,
+      isHeterogenousOrdinal,
+    );
 
     return chart;
   });
