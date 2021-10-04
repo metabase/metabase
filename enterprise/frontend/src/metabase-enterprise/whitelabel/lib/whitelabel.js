@@ -21,10 +21,11 @@ const RANDOM_COLOR = Color({ r: 0xab, g: 0xcd, b: 0xed });
 function colorScheme() {
   // FIXME: Ugh? initially load public setting as "application_color" but if the admin updates it
   // we need to use "application-colors"
-  return (
+  const colors =
     MetabaseSettings.get("application-colors") ||
-    MetabaseSettings.get("application_colors")
-  );
+    MetabaseSettings.get("application_colors");
+
+  return { ...originalColors, ...colors };
 }
 
 function applicationName() {
