@@ -21,6 +21,7 @@ import EntityListLoader, {
 
 import Collections from "metabase/entities/collections";
 
+// TODO
 const COLLECTION_ICON_COLOR = color("text-light");
 
 const isRoot = collection => collection.id === "root" || collection.id == null;

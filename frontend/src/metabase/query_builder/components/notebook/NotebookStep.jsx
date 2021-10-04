@@ -27,6 +27,7 @@ import SummarizeStep from "./steps/SummarizeStep";
 import SortStep from "./steps/SortStep";
 import LimitStep from "./steps/LimitStep";
 
+// TODO
 const STEP_UI = {
   data: {
     title: t`Data`,

@@ -28,6 +28,7 @@ const ARROW_HEIGHT = ((OUTER_RADIUS - INNER_RADIUS) * 2.5) / 4; // 2/3 of segmen
 const ARROW_BASE = ARROW_HEIGHT / Math.tan((64 / 180) * Math.PI);
 const ARROW_STROKE_THICKNESS = 1.25;
 
+// TODO
 // colors
 const BACKGROUND_ARC_COLOR = color("bg-medium");
 const SEGMENT_LABEL_COLOR = color("text-dark");

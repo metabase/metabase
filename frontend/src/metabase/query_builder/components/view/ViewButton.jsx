@@ -19,6 +19,8 @@ const ViewButton = styled(Button)`
     opacity: 0.6;
   }
 `;
+
+// TODO
 ViewButton.defaultProps = {
   color: color("brand"),
 };

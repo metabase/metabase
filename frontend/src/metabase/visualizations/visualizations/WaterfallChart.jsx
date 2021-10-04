@@ -21,6 +21,7 @@ export default class WaterfallChart extends LineAreaBarChart {
 
   static settings = {
     ...GRAPH_AXIS_SETTINGS,
+    // TODO
     "waterfall.increase_color": {
       section: t`Display`,
       props: { title: t`Increase color` },

@@ -27,6 +27,7 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 import { findDOMNode } from "react-dom";
 
+// TODO
 const PIVOT_BG_LIGHT = lighten(color("brand"), 0.65);
 const PIVOT_BG_DARK = lighten(color("brand"), 0.6);
 

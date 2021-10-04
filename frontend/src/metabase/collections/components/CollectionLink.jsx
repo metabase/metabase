@@ -4,6 +4,7 @@ import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 import { SIDEBAR_SPACER } from "metabase/collections/constants";
 
+// TODO
 const dimmedIconCss = css`
   fill: ${color("white")};
   opacity: 0.8;

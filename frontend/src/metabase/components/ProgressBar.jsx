@@ -47,6 +47,7 @@ export default class ProgressBar extends Component {
 
   static defaultProps = {
     animated: false,
+    // TODO
     color: color("brand"),
     height: 10,
   };

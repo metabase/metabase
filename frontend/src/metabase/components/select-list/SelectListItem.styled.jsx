@@ -14,6 +14,7 @@ export const ItemIcon = styled(Icon)`
   justify-self: end;
 `;
 
+// TODO
 const activeItemCss = css`
   background-color: ${color("brand")};
 

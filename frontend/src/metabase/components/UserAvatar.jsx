@@ -15,6 +15,7 @@ const Avatar = styled(Flex)`
   ${color};
 `;
 
+// TODO
 Avatar.defaultProps = {
   bg: brandColor("brand"),
   color: "white",
