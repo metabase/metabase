@@ -689,7 +689,7 @@
         database  (db/select-one [Database :cache_ttl] :id (:database_id card))
         ttl       (ttl-hierarchy card dashboard database query)
         ;; Stored TTL's are in hours: query wants seconds
-        ttl-secs  (* 3600 ttl)]
+        ttl-secs  (if (nil? ttl) nil (* 3600 ttl))]
     (assoc query :cache-ttl ttl-secs)))
 
 (defn run-query-for-card-async
