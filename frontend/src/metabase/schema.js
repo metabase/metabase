@@ -3,6 +3,13 @@
 import { schema } from "normalizr";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/constants";
 
+const processField = ({ ...field }) => {
+  if (Array.isArray(field.id)) {
+    field.id = field.id[1];
+  }
+  return field;
+};
+
 export const QuestionSchema = new schema.Entity("questions");
 export const DashboardSchema = new schema.Entity("dashboards");
 export const PulseSchema = new schema.Entity("pulses");
@@ -28,11 +35,21 @@ export const TableSchema = new schema.Entity(
           database: { id: databaseId },
         };
       }
+      table.fields = table.fields.map(processField);
       return table;
     },
   },
 );
-export const FieldSchema = new schema.Entity("fields");
+
+export const FieldSchema = new schema.Entity(
+  "fields",
+  {},
+  {
+    processStrategy(field) {
+      return processField(field);
+    },
+  },
+);
 export const SegmentSchema = new schema.Entity("segments");
 export const MetricSchema = new schema.Entity("metrics");
 export const SnippetSchema = new schema.Entity("snippets");
