@@ -14,7 +14,7 @@ import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 
 import { PermissionsEditorBreadcrumbs } from "./PermissionsEditorBreadcrumbs";
 
-export const permissionEditorPropTypes = {
+export const permissionEditorContentPropTypes = {
   title: PropTypes.string.isRequired,
   description: PropTypes.string,
   columns: PropTypes.array,
@@ -100,4 +100,4 @@ export function PermissionsEditorContent({
   );
 }
 
-PermissionsEditorContent.propTypes = permissionEditorPropTypes;
+PermissionsEditorContent.propTypes = permissionEditorContentPropTypes;
