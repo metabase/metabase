@@ -37,10 +37,16 @@
   "Converts the field-ref of a column to a vector that is used for lookups in the `cols-index` map in
   `export-column-order`.
 
-  TODO: Figure out why keywords in the field-ref in `cols` are strings in the equivalent fields in `table-columns`.
-  If this can be fixed, we could use the entire field-ref directly as a map key."
+  This key is similar to the original field-ref, but should only contain the minimum amount of information necessary to
+  uniquely identify a field, while omitting extra metadata.
+
+  TODO: It would be better if we could use the entire field-ref directly as the map key, or use a separate identifier.
+  The issue currently is that `table-columns` is passed down from the frontend for unsaved cards (in the viz settings)
+  and has to be parsed from JSON, so some fields in metadata might be strings instead of keywords."
   [field-ref]
-  [(keyword (first field-ref)) (second field-ref)])
+  (if-let [join-alias (:join-alias (last field-ref))]
+    [(keyword (first field-ref)) (second field-ref) {:join-alias join-alias}]
+    [(keyword (first field-ref)) (second field-ref)]))
 
 (defn- export-column-order
   "For each entry in `table-columns` that is enabled, finds the index of the corresponding
@@ -58,7 +64,6 @@
                                     ::mb.viz/table-column-enabled true})))
         enabled-table-cols (filter ::mb.viz/table-column-enabled table-columns')
         cols-vector        (into [] cols)
-        ;; `cols-index` maps field refs (excluding metadata) to indices in `cols`
         cols-index         (reduce-kv (fn [m i col]
                                         (if-let [field-ref (:field_ref col)]
                                           ;; Use first two entries of field-ref, if available
