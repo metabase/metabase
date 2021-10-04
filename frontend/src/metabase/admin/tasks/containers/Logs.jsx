@@ -16,7 +16,6 @@ import Select, { Option } from "metabase/components/Select";
 import { addCSSRule } from "metabase/lib/dom";
 import { color } from "metabase/lib/colors";
 
-// TODO
 const ANSI_COLORS = {
   black: color("text-dark"),
   white: color("text-white"),
