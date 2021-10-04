@@ -1,12 +1,9 @@
 import { ORDERS, SAMPLE_DATASET } from "__support__/sample_dataset_fixture";
 import Question from "metabase-lib/lib/Question";
 
-const TEST_EXPRESSION = ["*", ["field", ORDERS.TOTAL.id, null], 2];
-const TEST_EXPRESSION_2 = [
-  "-",
-  ["field", ORDERS.TOTAL.id, null],
-  ["field", ORDERS.SUBTOTAL.id, null],
-];
+const TEST_EXPRESSION = ["+", 1, 1];
+const TEST_EXPRESSION_2 = ["+", 2, 2];
+const TEST_EXPRESSION_3 = ["+", 3, 3];
 
 function getQuery({ expressions } = {}) {
   const question = new Question({
@@ -174,6 +171,28 @@ describe("StructuredQuery", () => {
 
       expect(query.expressions()).toEqual({
         "Double Total": TEST_EXPRESSION,
+      });
+    });
+
+    it("should handle duplicate expression names", () => {
+      let query = getQuery({
+        expressions: {
+          double_total: TEST_EXPRESSION,
+          "double_total (1)": TEST_EXPRESSION_2,
+          "double_total (2)": TEST_EXPRESSION_3,
+        },
+      });
+
+      query = query.updateExpression(
+        "double_total",
+        TEST_EXPRESSION_3,
+        "double_total (2)",
+      );
+
+      expect(query.expressions()).toEqual({
+        double_total: TEST_EXPRESSION,
+        "double_total (1)": TEST_EXPRESSION_2,
+        "double_total (3)": TEST_EXPRESSION_3,
       });
     });
   });

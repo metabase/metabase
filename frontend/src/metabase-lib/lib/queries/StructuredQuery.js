@@ -1011,13 +1011,21 @@ export default class StructuredQuery extends AtomicQuery {
   }
 
   updateExpression(name, expression, oldName) {
-    let query = this._updateQuery(Q.updateExpression, arguments);
+    const isRename = oldName && oldName !== name;
+    const uniqueName = isRename
+      ? getUniqueExpressionName(this.expressions(), name)
+      : name;
+    let query = this._updateQuery(Q.updateExpression, [
+      uniqueName,
+      expression,
+      oldName,
+    ]);
     // extra logic for renaming expressions in fields clause
     // TODO: push into query/expression?
-    if (name !== oldName) {
+    if (isRename) {
       const index = query._indexOfField(["expression", oldName]);
       if (index >= 0) {
-        query = query.updateField(index, ["expression", name]);
+        query = query.updateField(index, ["expression", uniqueName]);
       }
     }
     return query;
