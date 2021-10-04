@@ -12,6 +12,9 @@ executors:
     docker:
       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
       - image: maildev/maildev
+      - image: metabase/qa-databases:postgres-sample-12
+      - image: metabase/qa-databases:mongo-sample-4.0
+      - image: metabase/qa-databases:mysql-sample-8
 
   java-8:
     working_directory: /home/circleci/metabase/metabase/
@@ -200,25 +203,6 @@ executors:
     # Run Docker images with 8GB or RAM instead of the default 4GB for medium instances. The Druid Docker image runs
     # OOM all the time with the default medium size.
     resource_class: large
-
-  fe-mongo-4:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
-      - image: metabase/qa-databases:mongo-sample-4.0
-
-  fe-postgres-12:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
-      - image: metabase/qa-databases:postgres-sample-12
-
-  fe-mysql-8:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
-      - image: metabase/qa-databases:mysql-sample-8
-
 
 ########################################################################################################################
 #                                             MAP FRAGMENTS AND CACHE KEYS                                             #
@@ -1279,6 +1263,14 @@ workflows:
             - build-uberjar-<< matrix.edition >>
           cypress-group: "<< matrix.folder >>-<< matrix.edition >>"
           source-folder: << matrix.folder >>
+          qa-db: true
+          before-steps:
+            - wait-for-port:
+                port: 3306
+            - wait-for-port:
+                port: 5432
+            - wait-for-port:
+                port: 27017
 
       - fe-tests-cypress:
           matrix:
@@ -1289,42 +1281,3 @@ workflows:
             - build-uberjar-<< matrix.edition >>
           cypress-group: "percy-visual-<< matrix.edition >>"
           test-files: "./frontend/test/metabase-visual/**/*.cy.spec.js"
-
-      - fe-tests-cypress:
-          name: e2e-tests-mongo-4-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          e: fe-mongo-4
-          cypress-group: "mongo"
-          source-folder: mongo
-          qa-db: true
-          before-steps:
-            - wait-for-port:
-                port: 27017
-          <<: *Matrix
-
-      - fe-tests-cypress:
-          name: e2e-tests-postgres-12-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          e: fe-postgres-12
-          cypress-group: "postgres"
-          source-folder: postgres
-          qa-db: true
-          before-steps:
-            - wait-for-port:
-                port: 5432
-          <<: *Matrix
-
-      - fe-tests-cypress:
-          name: e2e-tests-mysql-8-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          e: fe-mysql-8
-          cypress-group: "mysql"
-          source-folder: mysql
-          qa-db: true
-          before-steps:
-            - wait-for-port:
-                port: 3306
-          <<: *Matrix

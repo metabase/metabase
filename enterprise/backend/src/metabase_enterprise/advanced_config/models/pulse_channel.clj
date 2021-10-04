@@ -39,4 +39,5 @@
                                (pr-str domain)
                                (str/join ", " allowed-domains))
                           {:email           email
-                           :allowed-domains allowed-domains})))))))
+                           :allowed-domains allowed-domains
+                           :status-code     403})))))))

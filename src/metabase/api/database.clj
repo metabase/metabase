@@ -696,7 +696,11 @@
   "Returns a list of all the schemas found for the database `id`"
   [id]
   (api/read-check Database id)
-  (->> (db/select-field :schema Table :db_id id, :active true, {:order-by [[:%lower.schema :asc]]})
+  (->> (db/select-field :schema Table
+         :db_id id :active true
+         ;; a non-nil value means Table is hidden -- see [[metabase.models.table/visibility-types]]
+         :visibility_type nil
+         {:order-by [[:%lower.schema :asc]]})
        (filter (partial can-read-schema? id))
        ;; for `nil` schemas return the empty string
        (map #(if (nil? %) "" %))
@@ -723,6 +727,7 @@
                          :db_id           db-id
                          :schema          schema
                          :active          true
+                         ;; a non-nil value means Table is hidden -- see [[metabase.models.table/visibility-types]]
                          :visibility_type nil
                          {:order-by [[:display_name :asc]]})))
 

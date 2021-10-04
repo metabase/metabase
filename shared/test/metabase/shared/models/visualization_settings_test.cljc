@@ -83,8 +83,8 @@
           norm-col-nm         {::mb.viz/column-title  "Name Column"
                                ::mb.viz/show-mini-bar true}
           norm-click-bhvr-map {::mb.viz/click-behavior norm-click-behavior}
-          norm-col-settings {(mb.viz/field-id->column-ref f-id {"base-type" "type/Integer"}) norm-click-bhvr-map
-                             (mb.viz/column-name->column-ref col-name)                       norm-col-nm}
+          norm-col-settings   {(mb.viz/field-id->column-ref f-id {"base-type" "type/Integer"}) norm-click-bhvr-map
+                               (mb.viz/column-name->column-ref col-name)                       norm-col-nm}
           norm-viz-settings   {::mb.viz/column-settings norm-col-settings
                                ::mb.viz/table-columns [{::mb.viz/table-column-name      "ID"
                                                         ::mb.viz/table-column-field-ref [:field f-id nil]
@@ -98,7 +98,14 @@
           (let [to-db (mb.viz/norm->db to-norm)]
             (t/is (= db-form to-db)))))
       ;; for a non-table card, the :click_behavior map is directly underneath :visualization_settings
-      (t/is (= norm-click-bhvr-map (mb.viz/db->norm db-click-bhv-map))))))
+      (t/is (= norm-click-bhvr-map (mb.viz/db->norm db-click-bhv-map)))))
+
+  (t/testing "The deprecated k:mm :time_style is converted to HH:mm when normalized, and kept in the new style when converted back to the DB form"
+    (let [db-col-settings-old {:column_settings {"[\"name\",\"Column Name\"]" {:time_style "k:mm"}}}
+          db-col-settings-new {:column_settings {"[\"name\",\"Column Name\"]" {:time_style "HH:mm"}}}
+          norm-col-settings   {::mb.viz/column-settings {{::mb.viz/column-name "Column Name"} {::mb.viz/time-style "HH:mm"}}}]
+      (t/is (= norm-col-settings (mb.viz/db->norm db-col-settings-old)))
+      (t/is (= db-col-settings-new (mb.viz/norm->db norm-col-settings))))))
 
 (t/deftest virtual-card-test
   (t/testing "Virtual card in visualization settings is preserved through normalization roundtrip"

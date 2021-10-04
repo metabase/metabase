@@ -9,6 +9,8 @@ import { connect } from "react-redux";
 import {
   getDatabasesPermissionEditor,
   getGroupsSidebar,
+  getIsLoadingDatabaseTables,
+  getLoadingDatabaseTablesError,
 } from "../../selectors/data-permissions";
 import { updateDataPermission } from "../../permissions";
 import {
@@ -44,6 +46,8 @@ const mapStateToProps = (state, props) => {
   return {
     sidebar: getGroupsSidebar(state, props),
     permissionEditor: getDatabasesPermissionEditor(state, props),
+    isEditorLoading: getIsLoadingDatabaseTables(state, props),
+    editorError: getLoadingDatabaseTablesError(state, props),
   };
 };
 
@@ -53,7 +57,7 @@ const propTypes = {
     databaseId: PropTypes.string,
     schemaName: PropTypes.string,
   }),
-  children: PropTypes.node.isRequired,
+  children: PropTypes.node,
   sidebar: PropTypes.shape(permissionSidebarPropTypes),
   permissionEditor: PropTypes.shape(permissionEditorPropTypes),
   navigateToItem: PropTypes.func.isRequired,
@@ -61,7 +65,8 @@ const propTypes = {
   navigateToTableItem: PropTypes.func.isRequired,
   updateDataPermission: PropTypes.func.isRequired,
   dispatch: PropTypes.func.isRequired,
-  navigateToDatabase: PropTypes.func.isRequired,
+  isEditorLoading: PropTypes.bool,
+  editorError: PropTypes.string,
 };
 
 function GroupsPermissionsPage({
@@ -73,6 +78,8 @@ function GroupsPermissionsPage({
   switchView,
   navigateToTableItem,
   updateDataPermission,
+  isEditorLoading,
+  editorError,
   dispatch,
 }) {
   const handleEntityChange = useCallback(
@@ -115,6 +122,7 @@ function GroupsPermissionsPage({
 
   const handleBreadcrumbsItemSelect = item => dispatch(push(item.url));
 
+  const showEmptyState = !permissionEditor && !isEditorLoading && !editorError;
   return (
     <React.Fragment>
       <PermissionsSidebar
@@ -123,16 +131,18 @@ function GroupsPermissionsPage({
         onEntityChange={handleEntityChange}
       />
 
-      {!permissionEditor && (
+      {showEmptyState && (
         <PermissionsEditorEmptyState
           icon="group"
           message={t`Select a group to see its data permissions`}
         />
       )}
 
-      {permissionEditor && (
+      {!showEmptyState && (
         <PermissionsEditor
           {...permissionEditor}
+          isLoading={isEditorLoading}
+          error={editorError}
           onSelect={handleTableItemSelect}
           onChange={handlePermissionChange}
           onAction={handleAction}

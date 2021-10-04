@@ -16,12 +16,12 @@
 
 ;;; ----------------------------------------------- Constants + Entity -----------------------------------------------
 
-(def ^:const visibility-types
+(def visibility-types
   "Valid values for `Table.visibility_type` (field may also be `nil`).
    (Basically any non-nil value is a reason for hiding the table.)"
   #{:hidden :technical :cruft})
 
-(def ^:const field-orderings
+(def field-orderings
   "Valid values for `Table.field_order`.
   `:database`     - use the same order as in the table definition in the DB;
   `:alphabetical` - order alphabetically by name;

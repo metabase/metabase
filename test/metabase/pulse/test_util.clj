@@ -138,3 +138,26 @@
                                          :rendered-info
                                          (fn [ri] (m/map-vals some? ri)))
                                  attachment-info))))
+
+(def test-dashboard
+  "A test dashboard with only the :parameters field included, for testing that dashboard filters
+  render correctly in Slack messages and emails"
+  {:parameters
+   [{:name "State",
+     :slug "state",
+     :id "63e719d0",
+     :default ["CA", "NY"],
+     :type "string/=",
+     :sectionId "location"}
+    {:name "Quarter and Year",
+     :slug "quarter_and_year",
+     :id "a6db3d8b",
+     :default "Q1-2021"
+     :type "date/quarter-year",
+     :sectionId "date"}
+    ;; Filter without default, should not be included in subscription
+    {:name "Product title contains",
+     :slug "product_title_contains",
+     :id "acd0dfab",
+     :type "string/contains",
+     :sectionId "string"}]})

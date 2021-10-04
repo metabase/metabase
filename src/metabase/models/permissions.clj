@@ -181,6 +181,7 @@
             [metabase.models.permissions.delete-sandboxes :as delete-sandboxes]
             [metabase.models.permissions.parse :as perms-parse]
             [metabase.plugins.classloader :as classloader]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :as ui18n :refer [deferred-tru trs tru]]
@@ -859,6 +860,11 @@
                  (delete-block-perms-for-this-db!))
         ;; TODO -- should this code be enterprise only?
         :block (do
+                 (when-not (premium-features/has-feature? :advanced-permissions)
+                   (throw
+                    (ex-info
+                     (tru "Can''t use block permissions without having the advanced-permissions premium feature")
+                     {:status-code 402})))
                  (revoke-data-perms! group-id db-id)
                  (grant-permissions! group-id (database-block-perms-path db-id)))
         (when (map? schemas)

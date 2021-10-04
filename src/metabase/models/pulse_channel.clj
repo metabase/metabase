@@ -140,7 +140,7 @@
         (resolve 'metabase-enterprise.advanced-config.models.pulse-channel/validate-email-domains))
       (constantly nil)))
 
-(defn- validate-email-domains
+(defn validate-email-domains
   "For channels that are being sent to raw email addresses: check that the domains in the emails are allowed by
   the [[metabase-enterprise.advanced-config.models.pulse-channel/subscription-allowed-domains]] Setting, if set. This
   will no-op if `subscription-allowed-domains` is unset or if we do not have a premium token with the

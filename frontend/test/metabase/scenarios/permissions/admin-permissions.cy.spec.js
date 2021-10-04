@@ -16,6 +16,22 @@ describe("scenarios > admin > permissions", () => {
     cy.signInAsAdmin();
   });
 
+  it("shows hidden tables", () => {
+    cy.visit("/admin/datamodel/database/1");
+    cy.icon("eye_crossed_out")
+      .eq(0)
+      .click();
+
+    cy.visit("admin/permissions/data/group/1/database/1");
+
+    assertPermissionTable([
+      ["Orders", "No self-service", "No"],
+      ["People", "No self-service", "No"],
+      ["Products", "No self-service", "No"],
+      ["Reviews", "No self-service", "No"],
+    ]);
+  });
+
   it("should display error on failed save", () => {
     // revoke some permissions
     cy.visit("/admin/permissions/data/group/1");

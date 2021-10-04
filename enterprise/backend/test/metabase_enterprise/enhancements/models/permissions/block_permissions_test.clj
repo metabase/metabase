@@ -65,17 +65,32 @@
 (defn- api-grant-block-perms! [group-id]
   (let [current-graph (perms/data-perms-graph)
         new-graph     (assoc-in current-graph [:groups group-id (mt/id)] {:schemas :block})
-        result        (mt/user-http-request :crowberto :put 200 "permissions/graph" new-graph)]
+        result        (premium-features-test/with-premium-features #{:advanced-permissions}
+                        (mt/user-http-request :crowberto :put 200 "permissions/graph" new-graph))]
     (is (= "block"
            (get-in result [:groups
                            (keyword (str group-id))
                            (keyword (str (mt/id)))
                            :schemas])))))
 
+(deftest api-throws-error-if-premium-feature-not-enabled
+  (testing "PUT /api/permissions/graph"
+    (testing (str "fails when a group has a block permission set, and the instance doesn't have the "
+                  ":advanced-permissions premium feature enabled")
+      (mt/with-temp PermissionsGroup [{group-id :id}]
+        (let [current-graph (perms/data-perms-graph)
+              new-graph     (assoc-in current-graph [:groups group-id (mt/id)] {:schemas :block})
+              result        (premium-features-test/with-premium-features #{} ; disable premium features
+                              (mt/user-http-request :crowberto :put 402 "permissions/graph" new-graph))]
+          (is (= "Can't use block permissions without having the advanced-permissions premium feature"
+                 result)))))))
+
 (deftest update-graph-test
   (testing "Should be able to set block permissions with"
     (doseq [[description grant!] {"the graph update function"
-                                  grant-block-perms!
+                                  (fn [group-id]
+                                    (premium-features-test/with-premium-features #{:advanced-permissions}
+                                      (grant-block-perms! group-id)))
 
                                   "the perms graph API endpoint"
                                   api-grant-block-perms!}]
@@ -100,7 +115,7 @@
 
 (deftest update-graph-delete-sandboxes-test
   (testing "When setting `:block` permissions any GTAP rows for that Group/Database should get deleted."
-    (premium-features-test/with-premium-features #{:sandboxes}
+    (premium-features-test/with-premium-features #{:sandboxes :advanced-permissions}
       (mt/with-model-cleanup [Permissions]
         (mt/with-temp* [PermissionsGroup       [{group-id :id}]
                         GroupTableAccessPolicy [_ {:table_id (mt/id :venues)
@@ -139,7 +154,8 @@
                                       {:schemas :block, :native :write})]
           (is (schema= {:message  #".*DB permissions with a valid combination of values for :native and :schemas.*"
                         s/Keyword s/Any}
-                       (mt/user-http-request :crowberto :put 500 "permissions/graph" new-graph))))))))
+                       (premium-features-test/with-premium-features #{:advanced-permissions}
+                         (mt/user-http-request :crowberto :put 500 "permissions/graph" new-graph)))))))))
 
 (deftest delete-database-delete-block-perms-test
   (testing "If a Database gets DELETED, any block permissions for it should get deleted too."

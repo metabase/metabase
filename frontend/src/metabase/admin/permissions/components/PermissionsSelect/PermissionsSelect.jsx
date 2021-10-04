@@ -25,7 +25,7 @@ import {
 
 const propTypes = {
   options: PropTypes.arrayOf(PropTypes.shape(optionShape)).isRequired,
-  actions: PropTypes.arrayOf(PropTypes.shape(optionShape)),
+  actions: PropTypes.object,
   value: PropTypes.string.isRequired,
   toggleLabel: PropTypes.string,
   onChange: PropTypes.func.isRequired,

@@ -7,7 +7,7 @@ import {
 import { push } from "react-router-redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import { clearGoogleAuthCredentials } from "metabase/lib/auth";
+import { clearGoogleAuthCredentials, deleteSession } from "metabase/lib/auth";
 
 import { refreshSiteSettings } from "metabase/redux/settings";
 
@@ -69,7 +69,7 @@ export const LOGOUT = "metabase/auth/LOGOUT";
 export const logout = createThunkAction(LOGOUT, function() {
   return async function(dispatch, getState) {
     // actively delete the session and remove the cookie
-    await SessionApi.delete();
+    await deleteSession();
 
     // clear Google auth credentials if any are present
     await clearGoogleAuthCredentials();

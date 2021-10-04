@@ -23,9 +23,9 @@ const CLJS_SRC_PATH = __dirname + "/frontend/src/cljs";
 const TEST_SUPPORT_PATH = __dirname + "/frontend/test/__support__";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 
-// default NODE_ENV to development
-const NODE_ENV = process.env.NODE_ENV || "development";
-const devMode = NODE_ENV !== "production";
+// default WEBPACK_BUNDLE to development
+const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
+const devMode = WEBPACK_BUNDLE !== "production";
 
 // Babel:
 const BABEL_CONFIG = {
@@ -173,7 +173,7 @@ const config = (module.exports = {
   ],
 });
 
-if (NODE_ENV === "hot") {
+if (WEBPACK_BUNDLE === "hot") {
   config.target = "web";
   // suffixing with ".hot" allows us to run both `yarn run build-hot` and `yarn run test` or `yarn run test-watch` simultaneously
   config.output.filename = "[name].hot.bundle.js?[contenthash]";
@@ -232,7 +232,7 @@ if (NODE_ENV === "hot") {
   );
 }
 
-if (NODE_ENV !== "production") {
+if (WEBPACK_BUNDLE !== "production") {
   // replace minified files with un-minified versions
   for (const name in config.resolve.alias) {
     const minified = config.resolve.alias[name];
