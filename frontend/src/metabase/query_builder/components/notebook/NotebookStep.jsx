@@ -116,7 +116,7 @@ export default class NotebookStep extends React.Component {
     const { title, getColor, component: NotebookStepComponent } =
       STEP_UI[step.type] || {};
 
-    const color = getColor()
+    const color = getColor();
     const canPreview = step.previewQuery && step.previewQuery.isValid();
     const showPreviewButton = !showPreview && canPreview;
 

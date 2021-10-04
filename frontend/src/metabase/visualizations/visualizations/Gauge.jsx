@@ -28,13 +28,12 @@ const ARROW_HEIGHT = ((OUTER_RADIUS - INNER_RADIUS) * 2.5) / 4; // 2/3 of segmen
 const ARROW_BASE = ARROW_HEIGHT / Math.tan((64 / 180) * Math.PI);
 const ARROW_STROKE_THICKNESS = 1.25;
 
-// TODO
 // colors
-const BACKGROUND_ARC_COLOR = color("bg-medium");
-const SEGMENT_LABEL_COLOR = color("text-dark");
-const CENTER_LABEL_COLOR = color("text-dark");
-const ARROW_FILL_COLOR = color("text-medium");
-const ARROW_STROKE_COLOR = "white";
+const getBackgroundArcColor = () => color("bg-medium");
+const getSegmentLabelColor = () => color("text-dark");
+const getCenterLabelColor = () => color("text-dark");
+const getArrowFillColor = () => color("text-medium");
+const getArrowStrokeColor = () => "white";
 
 // in ems, but within the scaled 100px SVG element
 const FONT_SIZE_SEGMENT_LABEL = 0.25;
@@ -260,7 +259,7 @@ export default class Gauge extends Component {
               <GaugeArc
                 start={angle(range[0])}
                 end={angle(range[1])}
-                fill={BACKGROUND_ARC_COLOR}
+                fill={getBackgroundArcColor()}
               />
               {/* SEGMENT ARCS */}
               {segments.map((segment, index) => (
@@ -304,7 +303,7 @@ export default class Gauge extends Component {
                         OUTER_RADIUS * LABEL_OFFSET_PERCENT,
                       )}
                       style={{
-                        fill: SEGMENT_LABEL_COLOR,
+                        fill: getSegmentLabelColor(),
                       }}
                     >
                       {label}
@@ -318,7 +317,7 @@ export default class Gauge extends Component {
                 x={0}
                 y={0}
                 style={{
-                  fill: CENTER_LABEL_COLOR,
+                  fill: getCenterLabelColor(),
                   fontSize: "1em",
                   fontWeight: "bold",
                   textAnchor: "middle",
@@ -392,9 +391,9 @@ const GaugeNeedle = ({ angle, isAnimated = true }) => (
       angle,
     )}, 0, ${INNER_RADIUS})`}
     style={isAnimated ? { transition: "transform 1.5s ease-in-out" } : null}
-    stroke={ARROW_STROKE_COLOR}
+    stroke={getArrowStrokeColor()}
     strokeWidth={ARROW_STROKE_THICKNESS}
-    fill={ARROW_FILL_COLOR}
+    fill={getArrowFillColor()}
   />
 );
 
