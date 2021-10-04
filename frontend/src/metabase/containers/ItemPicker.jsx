@@ -21,8 +21,7 @@ import EntityListLoader, {
 
 import Collections from "metabase/entities/collections";
 
-// TODO
-const COLLECTION_ICON_COLOR = color("text-light");
+const getCollectionIconColor = color("text-light");
 
 const isRoot = collection => collection.id === "root" || collection.id == null;
 
@@ -220,7 +219,7 @@ export default class ItemPicker extends React.Component {
                       key={`collection-${collection.id}`}
                       item={collection}
                       name={collection.name}
-                      color={color(icon.color) || COLLECTION_ICON_COLOR}
+                      color={color(icon.color) || getCollectionIconColor()}
                       icon={icon}
                       selected={canSelect && isSelected(collection)}
                       canSelect={canSelect}

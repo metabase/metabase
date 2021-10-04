@@ -47,13 +47,11 @@ export default class ProgressBar extends Component {
 
   static defaultProps = {
     animated: false,
-    // TODO
-    color: color("brand"),
     height: 10,
   };
 
   render() {
-    const { percentage, animated, color } = this.props;
+    const { percentage, animated, color = color("brand") } = this.props;
 
     const width = percentage * 100;
 
