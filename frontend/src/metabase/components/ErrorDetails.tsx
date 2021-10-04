@@ -3,7 +3,15 @@ import React from "react";
 import { t } from "ttag";
 import cx from "classnames";
 
-export default class ErrorDetails extends React.Component {
+type Props = {
+  // Should this be optional since we stringify it? Maybe `| any`?
+  details: string | Error;
+  centered?: boolean,
+  className?: string,
+}
+
+
+export default class ErrorDetails extends React.Component<Props> {
   state = {
     showError: false,
   };
