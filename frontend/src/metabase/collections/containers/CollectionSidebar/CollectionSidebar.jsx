@@ -1,9 +1,11 @@
-/* eslint-disable react/prop-types */
-import React from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
+import _ from "underscore";
 
 import Collection from "metabase/entities/collections";
+import { getUser } from "metabase/selectors/user";
 
 import {
   LoadingContainer,
@@ -20,12 +22,7 @@ import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { getParentPath } from "metabase/collections/utils";
 import { updateOpenCollectionList } from "./updateOpenCollectionList";
 
-const getCurrentUser = ({ currentUser }) => ({ currentUser });
-
-@Collection.loadList({
-  /* pass "tree" here so that the collection entity knows to use the /tree endpoint and send children in the response
-    we should eventually refactor code elsewhere in the app to use this by default instead of determining the relationships clientside, but this works in the interim
-  */
+const collectionEntityQuery = {
   query: () => ({ tree: true }),
 
   // Using the default loading wrapper breaks the UI,
@@ -33,88 +30,93 @@ const getCurrentUser = ({ currentUser }) => ({ currentUser });
   // It's disabled, so loading can be displayed appropriately
   // See: https://github.com/metabase/metabase/issues/14603
   loadingAndErrorWrapper: false,
-})
-class CollectionSidebar extends React.Component {
-  state = {
-    openCollections: [],
+};
+
+function mapStateToProps(state) {
+  return {
+    currentUser: getUser(state),
   };
+}
 
-  componentDidUpdate(prevProps) {
-    const { collectionId, collections, loading } = this.props;
-    const loaded = prevProps.loading && !loading;
+CollectionSidebar.propTypes = {
+  currentUser: PropTypes.object.isRequired,
+  collectionId: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  collections: PropTypes.arrayOf(PropTypes.object).isRequired,
+  isRoot: PropTypes.bool,
+  allFetched: PropTypes.bool,
+  loading: PropTypes.bool,
+  list: PropTypes.arrayOf(PropTypes.object),
+  shouldDisplayMobileSidebar: PropTypes.bool,
+  handleToggleMobileSidebar: PropTypes.func,
+};
 
-    if (loaded) {
+function CollectionSidebar({
+  currentUser,
+  collectionId,
+  collections,
+  isRoot,
+  allFetched,
+  loading,
+  list,
+  shouldDisplayMobileSidebar,
+  handleToggleMobileSidebar,
+}) {
+  const [openCollections, setOpenCollections] = useState([]);
+
+  const onOpen = useCallback(
+    id => {
+      setOpenCollections([...openCollections, id]);
+    },
+    [openCollections],
+  );
+
+  const onClose = useCallback(
+    id => {
+      const newOpenCollections = updateOpenCollectionList(
+        id,
+        collections,
+        openCollections,
+      );
+      setOpenCollections(newOpenCollections);
+    },
+    [collections, openCollections],
+  );
+
+  useEffect(() => {
+    if (!loading && collections && collectionId) {
       const ancestors = getParentPath(collections, collectionId) || [];
-      this.setState({ openCollections: ancestors });
+      setOpenCollections(ancestors);
     }
-  }
+  }, [collectionId, collections, loading]);
 
-  onOpen = id => {
-    this.setState({ openCollections: this.state.openCollections.concat(id) });
-  };
-
-  onClose = id => {
-    const { openCollections } = this.state;
-    const { collections } = this.props;
-
-    const newOpenCollections = updateOpenCollectionList(
-      id,
-      collections,
-      openCollections,
-    );
-
-    this.setState({ openCollections: newOpenCollections });
-  };
-
-  renderContent = () => {
-    const {
-      currentUser,
-      handleToggleMobileSidebar,
-      isRoot,
-      collectionId,
-      list,
-    } = this.props;
-    return (
-      <React.Fragment>
-        <ToggleMobileSidebarIcon onClick={handleToggleMobileSidebar} />
-
-        <Collection.Loader id="root">
-          {({ collection: root }) => (
-            <RootCollectionLink
-              handleToggleMobileSidebar={handleToggleMobileSidebar}
-              isRoot={isRoot}
-              root={root}
-            />
-          )}
-        </Collection.Loader>
-
-        <Collections
-          collectionId={collectionId}
-          currentUserId={currentUser.id}
-          handleToggleMobileSidebar={handleToggleMobileSidebar}
-          list={list}
-          onClose={this.onClose}
-          onOpen={this.onOpen}
-          openCollections={this.state.openCollections}
-        />
-
-        <Footer isAdmin={currentUser.is_superuser} />
-      </React.Fragment>
-    );
-  };
-
-  render() {
-    const { allFetched, shouldDisplayMobileSidebar } = this.props;
-
-    return (
-      <Sidebar
-        role="tree"
-        shouldDisplayMobileSidebar={shouldDisplayMobileSidebar}
-      >
-        {allFetched ? this.renderContent() : <LoadingView />}
-      </Sidebar>
-    );
-  }
+  return (
+    <Sidebar
+      role="tree"
+      shouldDisplayMobileSidebar={shouldDisplayMobileSidebar}
+    >
+      {allFetched ? (
+        <React.Fragment>
+          <ToggleMobileSidebarIcon onClick={handleToggleMobileSidebar} />
+          <RootCollectionLink
+            isRoot={isRoot}
+            handleToggleMobileSidebar={handleToggleMobileSidebar}
+          />
+          <Collections
+            list={list}
+            openCollections={openCollections}
+            collectionId={collectionId}
+            currentUserId={currentUser.id}
+            handleToggleMobileSidebar={handleToggleMobileSidebar}
+            onOpen={onOpen}
+            onClose={onClose}
+          />
+          <Footer isAdmin={currentUser.is_superuser} />
+        </React.Fragment>
+      ) : (
+        <LoadingView />
+      )}
+    </Sidebar>
+  );
 }
 
 function LoadingView() {
@@ -126,4 +128,7 @@ function LoadingView() {
   );
 }
 
-export default connect(getCurrentUser)(CollectionSidebar);
+export default _.compose(
+  Collection.loadList(collectionEntityQuery),
+  connect(mapStateToProps),
+)(CollectionSidebar);
