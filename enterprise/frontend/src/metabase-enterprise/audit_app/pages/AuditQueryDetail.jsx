@@ -64,6 +64,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
+import ExplicitSize from "metabase/components/ExplicitSize";
 import { loadMetadataForCard } from "metabase/query_builder/actions";
 
 const mapStateToProps = state => ({ metadata: getMetadata(state) });
@@ -73,6 +74,7 @@ const mapDispatchToProps = { loadMetadataForCard };
   mapStateToProps,
   mapDispatchToProps,
 )
+@ExplicitSize()
 class QueryBuilderReadOnly extends React.Component {
   state = {
     isNativeEditorOpen: false,
