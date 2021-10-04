@@ -31,63 +31,63 @@ import LimitStep from "./steps/LimitStep";
 const STEP_UI = {
   data: {
     title: t`Data`,
-    color: c("brand"),
     component: DataStep,
+    getColor: () => c("brand"),
   },
   join: {
     title: t`Join data`,
-    color: c("brand"),
     icon: "join_left_outer",
     component: JoinStep,
     priority: 1,
+    getColor: () => c("brand"),
   },
   expression: {
     title: t`Custom column`,
-    color: c("bg-dark"),
     icon: "add_data",
     component: ExpressionStep,
+    getColor: () => c("bg-dark"),
   },
   filter: {
     title: t`Filter`,
-    color: c("accent7"),
     icon: "filter",
     component: FilterStep,
     priority: 10,
+    getColor: () => c("accent7"),
   },
   summarize: {
     title: t`Summarize`,
-    color: c("accent1"),
     icon: "sum",
     component: SummarizeStep,
     priority: 5,
+    getColor: () => c("accent1"),
   },
   aggregate: {
     title: t`Aggregate`,
-    color: c("accent1"),
     icon: "sum",
     component: AggregateStep,
     priority: 5,
+    getColor: () => c("accent1"),
   },
   breakout: {
     title: t`Breakout`,
-    color: c("accent4"),
     icon: "segment",
     component: BreakoutStep,
     priority: 1,
+    getColor: () => c("accent4"),
   },
   sort: {
     title: t`Sort`,
-    color: c("bg-dark"),
     icon: "smartscalar",
     component: SortStep,
     compact: true,
+    getColor: () => c("bg-dark"),
   },
   limit: {
     title: t`Row limit`,
-    color: c("bg-dark"),
     icon: "list",
     component: LimitStep,
     compact: true,
+    getColor: () => c("bg-dark"),
   },
 };
 
@@ -113,9 +113,10 @@ export default class NotebookStep extends React.Component {
     } = this.props;
     const { showPreview } = this.state;
 
-    const { title, color, component: NotebookStepComponent } =
+    const { title, getColor, component: NotebookStepComponent } =
       STEP_UI[step.type] || {};
 
+    const color = getColor()
     const canPreview = step.previewQuery && step.previewQuery.isValid();
     const showPreviewButton = !showPreview && canPreview;
 
@@ -131,6 +132,7 @@ export default class NotebookStep extends React.Component {
           <ActionButton
             mr={isLastStep ? 2 : 1}
             mt={isLastStep ? 2 : null}
+            color={color}
             large={largeActionButtons}
             {...(STEP_UI[action.type] || {})}
             key={`actionButton_${STEP_UI[action.type].title}`}
