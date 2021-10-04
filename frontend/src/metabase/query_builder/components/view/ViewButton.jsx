@@ -6,7 +6,7 @@ import styled from "styled-components";
 // NOTE: some of this is duplicated from NotebookCell.jsx
 const ViewButton = styled(Button)`
   background-color: ${({ active, color = getDefaultColor() }) =>
-    active ? color(color) : alpha(color, 0.2)};
+    active ? color : alpha(color, 0.2)};
   color: ${({ active, color = getDefaultColor() }) =>
     active ? "white" : color};
   border: none;
