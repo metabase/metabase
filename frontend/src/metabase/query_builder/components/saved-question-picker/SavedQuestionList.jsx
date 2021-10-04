@@ -1,6 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 import PropTypes from "prop-types";
+import _ from "underscore";
 import { Box } from "grid-styled";
 
 import { PLUGIN_MODERATION } from "metabase/plugins";
@@ -59,7 +60,7 @@ export default function SavedQuestionList({
                 : schema.tables;
             return (
               <React.Fragment>
-                {tables.map(t => (
+                {_.sortBy(tables, "display_name").map(t => (
                   <SavedQuestionListItem
                     id={t.id}
                     isSelected={selectedId === t.id}
