@@ -413,15 +413,6 @@
                                      202
                                      (str "card/" (u/the-id card))
                                      {:cache_ttl 1234}))))))
-    (testing "executing query after actually does the hour conversion"
-      (mt/with-temp Card [card]
-        (mt/user-http-request :rasta
-                              :put
-                              202
-                              (str "card/" (u/the-id card))
-                              {:cache_ttl 1})
-        (is (= 3600
-               (:cache-ttl (card-api/query-for-card (db/select-one Card, :id (u/the-id card)) {} {} {}))))))
     (testing "nilling out cache ttl works"
       (mt/with-temp Card [card]
         (is (= nil
@@ -1378,17 +1369,17 @@
     (public-settings/enable-query-caching true)
     (testing "card ttl only"
       (mt/with-temp* [Card [card {:cache_ttl 1337}]]
-        (is (= 1337 (:cache-ttl (card-api/query-for-card card {} {} {}))))))
+        (is (= (* 3600 1337) (:cache-ttl (card-api/query-for-card card {} {} {}))))))
     (testing "multiple ttl, dash wins"
       (mt/with-temp* [Database [db {:cache_ttl 1337}]
                       Dashboard [dash {:cache_ttl 1338}]
                       Card [card {:database_id (u/the-id db)}]]
-        (is (= 1338 (:cache-ttl (card-api/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))
+        (is (= (* 3600 1338) (:cache-ttl (card-api/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))
     (testing "multiple ttl, db wins"
       (mt/with-temp* [Database [db {:cache_ttl 1337}]
                       Dashboard [dash]
                       Card [card {:database_id (u/the-id db)}]]
-        (is (= 1337 (:cache-ttl (card-api/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))
+        (is (= (* 3600 1337) (:cache-ttl (card-api/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))
     (testing "no ttl, nil res"
       (mt/with-temp* [Database [db]
                       Dashboard [dash]
