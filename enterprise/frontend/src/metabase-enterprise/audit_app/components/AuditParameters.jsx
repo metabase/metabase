@@ -52,7 +52,7 @@ export default class AuditParameters extends React.Component {
     const { parameters, children, buttons, hasResults } = this.props;
     const { inputValues, committedValues } = this.state;
 
-    const disabled =
+    const isEmpty =
       hasResults === false &&
       inputValues &&
       Object.values(inputValues).every(v => v === "");
@@ -60,26 +60,26 @@ export default class AuditParameters extends React.Component {
     return (
       <div>
         <div className="pt4">
-          {parameters.map(({ key, placeholder, icon }) => (
+          {parameters.map(({ key, placeholder, icon, disabled }) => (
             <AuditParametersInput
               key={key}
               type="text"
               value={inputValues[key] || ""}
               placeholder={placeholder}
-              disabled={disabled}
+              disabled={isEmpty || disabled}
               onChange={value => {
                 this.changeValue(key, value);
               }}
               icon={icon}
             />
           ))}
-          {buttons?.map(({ key, onClick, label }) => (
+          {buttons?.map(({ key, label, disabled, onClick }) => (
             <Button
-              primary
-              key={key}
-              onClick={onClick}
-              disabled={disabled}
               className="ml2"
+              key={key}
+              primary
+              disabled={isEmpty || disabled}
+              onClick={onClick}
             >
               {label}
             </Button>

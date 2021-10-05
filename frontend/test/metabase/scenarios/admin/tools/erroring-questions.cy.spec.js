@@ -38,9 +38,6 @@ describeWithToken("admin > tools > erroring questions ", () => {
         .click();
 
       cy.location("pathname").should("eq", TOOLS_ERRORS_URL);
-
-      cy.findByText("No results");
-
       cy.findByRole("link", { name: "Erroring Questions" })
         .should("have.attr", "href")
         .and("eq", TOOLS_ERRORS_URL);
@@ -49,17 +46,11 @@ describeWithToken("admin > tools > erroring questions ", () => {
     it("should disable search input fields (metabase#18050)", () => {
       cy.visit(TOOLS_ERRORS_URL);
 
-      // When the issue gets fixed, it's safe to merge these assertions with the main test above
+      cy.findByText("No results");
+      cy.button("Rerun Selected").should("be.disabled");
       cy.findByPlaceholderText("Error contents").should("be.disabled");
       cy.findByPlaceholderText("DB name").should("be.disabled");
       cy.findByPlaceholderText("Collection name").should("be.disabled");
-    });
-
-    it('should disable "Rerun Selected" button (metabase#18048)', () => {
-      cy.visit(TOOLS_ERRORS_URL);
-
-      // When the issue gets fixed, it's safe to merge these assertions with the main test above
-      cy.button("Rerun Selected").should("be.disabled");
     });
   });
 
@@ -70,11 +61,6 @@ describeWithToken("admin > tools > erroring questions ", () => {
       });
 
       cy.visit(TOOLS_ERRORS_URL);
-    });
-
-    it('should disable "Rerun Selected" button (metabase#18048)', () => {
-      // When the issue gets fixed, merge it with the main test below
-      cy.button("Rerun Selected").should("be.disabled");
     });
 
     it("should render correctly", () => {
@@ -90,6 +76,7 @@ describeWithToken("admin > tools > erroring questions ", () => {
 
       // The question is still there because we didn't fix it
       cy.findByText(brokenQuestionDetails.name);
+      cy.button("Rerun Selected").should("be.disabled");
 
       cy.findByPlaceholderText("Error contents").should("not.be.disabled");
       cy.findByPlaceholderText("DB name").should("not.be.disabled");
