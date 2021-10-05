@@ -18,4 +18,11 @@ export function setupSMTP() {
     "email-smtp-security": "none",
     "email-from-address": "mailer@metabase.test",
   });
+
+  // We must always clear Webmail's inbox before each test
+  clearInbox();
+}
+
+export function clearInbox() {
+  cy.request("DELETE", "http://localhost:80/email/all");
 }

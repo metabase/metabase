@@ -50,8 +50,6 @@ describe("scenarios > admin > settings > email settings", () => {
   });
 
   it("should send a test email for a valid SMTP configuration", () => {
-    // We must clear maildev inbox before each run - this will be extracted and automated
-    cy.request("DELETE", "http://localhost:80/email/all");
     setupSMTP();
 
     cy.visit("/admin/settings/email");

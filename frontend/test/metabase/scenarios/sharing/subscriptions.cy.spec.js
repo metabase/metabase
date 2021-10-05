@@ -66,7 +66,6 @@ describe("scenarios > dashboard > subscriptions", () => {
 
   describe("with email set up", () => {
     beforeEach(() => {
-      cy.request("DELETE", "http://localhost:80/email/all");
       setupSMTP();
     });
 

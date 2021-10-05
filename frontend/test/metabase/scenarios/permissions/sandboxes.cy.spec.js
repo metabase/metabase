@@ -1034,7 +1034,6 @@ describeWithToken("formatting > sandboxes", () => {
     });
 
     it("sandboxed user should receive sandboxed dashboard subscription", () => {
-      cy.request("DELETE", "http://localhost:80/email/all");
       setupSMTP();
 
       cy.sandboxTable({

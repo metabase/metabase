@@ -5,7 +5,6 @@ describe.skip("issue 18009", () => {
     restore();
     cy.signInAsAdmin();
 
-    cy.request("DELETE", "http://localhost:80/email/all");
     setupSMTP();
 
     cy.signIn("nodata");
