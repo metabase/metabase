@@ -50,7 +50,7 @@ describeWithToken("admin > tools > erroring questions ", () => {
       cy.visit(TOOLS_ERRORS_URL);
 
       // When the issue gets fixed, it's safe to merge these assertions with the main test above
-      cy.findByPlaceholderText("Error content").should("be.disabled");
+      cy.findByPlaceholderText("Error contents").should("be.disabled");
       cy.findByPlaceholderText("DB name").should("be.disabled");
       cy.findByPlaceholderText("Collection name").should("be.disabled");
     });
@@ -91,7 +91,7 @@ describeWithToken("admin > tools > erroring questions ", () => {
       // The question is still there because we didn't fix it
       cy.findByText(brokenQuestionDetails.name);
 
-      cy.findByPlaceholderText("Error content").should("not.be.disabled");
+      cy.findByPlaceholderText("Error contents").should("not.be.disabled");
       cy.findByPlaceholderText("DB name").should("not.be.disabled");
       cy.findByPlaceholderText("Collection name")
         .should("not.be.disabled")

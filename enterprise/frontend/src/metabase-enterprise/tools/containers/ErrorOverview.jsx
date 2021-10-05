@@ -26,7 +26,6 @@ export default function ErrorOverview(props) {
   });
 
   const [rowChecked, setRowChecked] = useState({});
-  const [rowFilter, setRowFilter] = useState({});
   const [rowToCardId, setRowToCardId] = useState({});
 
   const handleAllSelectClick = e => {
@@ -60,9 +59,14 @@ export default function ErrorOverview(props) {
     const checkedCardIds = Object.values(
       _.pick(rowToCardId, (member, key) => rowChecked[key]),
     );
-    checkedCardIds.map(async member => await CardApi.query({ cardId: member })),
-      setRowFilter(rowChecked);
+
+    await Promise.all(
+      checkedCardIds.map(
+        async member => await CardApi.query({ cardId: member }),
+      ),
+    );
     setRowChecked({});
+    reloadRef.current().reload();
   };
 
   const handleSortingChange = sorting => setSorting(sorting);
@@ -96,7 +100,6 @@ export default function ErrorOverview(props) {
           isSortable
           isSelectable
           rowChecked={rowChecked}
-          rowFilter={rowFilter}
           sorting={sorting}
           onSortingChange={handleSortingChange}
           onAllSelectClick={handleAllSelectClick}

@@ -33,7 +33,6 @@ const propTypes = {
   }),
   isSelectable: PropTypes.bool,
   rowChecked: PropTypes.object,
-  rowFilter: PropTypes.object,
   onAllSelectClick: PropTypes.func,
   onRowSelectClick: PropTypes.func,
 };
@@ -101,7 +100,6 @@ export default class AuditTableVisualization extends React.Component {
       isSortable,
       isSelectable,
       rowChecked,
-      rowFilter,
       onRemoveRow,
     } = this.props;
 
@@ -159,77 +157,74 @@ export default class AuditTableVisualization extends React.Component {
           </tr>
         </thead>
         <tbody>
-          {rows.map(
-            (row, rowIndex) =>
-              (!rowFilter || !rowFilter[rowIndex]) && (
-                <tr key={rowIndex}>
-                  {isSelectable && (
-                    <td>
-                      <CheckBox
-                        checked={rowChecked[rowIndex] || false}
-                        onChange={e =>
-                          this.handleRowSelectClick(
-                            { ...e, originRow: rowIndex },
-                            row,
-                            rowIndex,
-                          )
-                        }
-                      />
-                    </td>
-                  )}
+          {rows.map((row, rowIndex) => (
+            <tr key={rowIndex}>
+              {isSelectable && (
+                <td>
+                  <CheckBox
+                    checked={rowChecked[rowIndex] || false}
+                    onChange={e =>
+                      this.handleRowSelectClick(
+                        { ...e, originRow: rowIndex },
+                        row,
+                        rowIndex,
+                      )
+                    }
+                  />
+                </td>
+              )}
 
-                  {columnIndexes.map(colIndex => {
-                    const value = row[colIndex];
-                    const column = cols[colIndex];
-                    const clicked = { column, value, origin: { row, cols } };
-                    const clickable = visualizationIsClickable(clicked);
-                    const columnSettings = {
-                      ...settings.column(column),
-                      ...settings["table.columns"][colIndex],
-                    };
+              {columnIndexes.map(colIndex => {
+                const value = row[colIndex];
+                const column = cols[colIndex];
+                const clicked = { column, value, origin: { row, cols } };
+                const clickable = visualizationIsClickable(clicked);
+                const columnSettings = {
+                  ...settings.column(column),
+                  ...settings["table.columns"][colIndex],
+                };
 
-                    return (
-                      <td
-                        key={colIndex}
-                        className={cx({
-                          "text-brand cursor-pointer": clickable,
-                          "text-right": isColumnRightAligned(column),
-                        })}
-                        onClick={
-                          clickable ? () => onVisualizationClick(clicked) : null
-                        }
-                      >
-                        <div
-                          className={cx({
-                            "text-code background-light": column["code"],
-                          })}
-                        >
-                          {formatValue(value, {
-                            ...columnSettings,
-                            type: "cell",
-                            jsx: true,
-                            rich: true,
-                            clicked: clicked,
-                            // always show timestamps in local time for the audit app
-                            local: true,
-                          })}
-                        </div>
-                      </td>
-                    );
-                  })}
+                return (
+                  <td
+                    key={colIndex}
+                    className={cx({
+                      "text-brand cursor-pointer": clickable,
+                      "text-right": isColumnRightAligned(column),
+                    })}
+                    onClick={
+                      clickable ? () => onVisualizationClick(clicked) : null
+                    }
+                  >
+                    <div
+                      className={cx({
+                        "text-code background-light": column["code"],
+                      })}
+                    >
+                      {formatValue(value, {
+                        ...columnSettings,
+                        type: "cell",
+                        jsx: true,
+                        rich: true,
+                        clicked: clicked,
+                        // always show timestamps in local time for the audit app
+                        local: true,
+                      })}
+                    </div>
+                  </td>
+                );
+              })}
 
-                  {canRemoveRows && (
-                    <td>
-                      <RemoveRowButton
-                        onClick={() => this.handleRemoveRowClick(row, cols)}
-                      >
-                        <Icon name="close" color="text-light" />
-                      </RemoveRowButton>
-                    </td>
-                  )}
-                </tr>
-              ),
-          )}
+              {canRemoveRows && (
+                <td>
+                  <RemoveRowButton
+                    onClick={() => this.handleRemoveRowClick(row, cols)}
+                  >
+                    <Icon name="close" color="text-light" />
+                  </RemoveRowButton>
+                </td>
+              )}
+            </tr>
+          ))}
         </tbody>
       </table>
     );
