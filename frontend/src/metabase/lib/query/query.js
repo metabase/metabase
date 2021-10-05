@@ -182,14 +182,20 @@ function setBreakoutClause(query: SQ, breakoutClause: ?BreakoutClause): SQ {
     const sortId = FIELD_REF.getFieldTargetId(sortField);
     if (sortId != null) {
       // Remove invalid field reference
-      if (!breakoutIds.includes(sortId)) {
+      if (
+        !breakoutIds.some(breakoutId =>
+          FIELD_REF.isSameColumnField(breakoutId, sortId),
+        )
+      ) {
         query = removeOrderBy(query, index);
       } else {
         // Update the field, since it can change its binning, temporal unit, etc
         const breakoutFields = B.getBreakouts(breakoutClause);
-        const breakoutField = breakoutFields.find(
-          field => FIELD_REF.getFieldTargetId(field) === sortId,
-        );
+        const breakoutField = breakoutFields.find(field => {
+          const breakoutFieldId = FIELD_REF.getFieldTargetId(field);
+
+          return FIELD_REF.isSameColumnField(breakoutFieldId, sortId);
+        });
         if (breakoutField) {
           const direction = sort[0];
           query = updateOrderBy(query, index, [direction, breakoutField]);

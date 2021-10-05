@@ -38,13 +38,30 @@ export function isSameField(fieldA, fieldB, exact = false) {
 /**
  * Get the target field ID (recursively) from a Field clause. For Field clauses that use string Field names, this
  * returns the Field clause directly. FIXME !!!
+ * NOTE: When a field is a column of a saved question it is important to return the field clause
+ * because it is used as a key in a metadata field lookup.
  */
 export function getFieldTargetId(field: FieldReference): ?FieldId {
   if (isLocalField(field)) {
     const type = typeof field[1];
-    return type === "number" || type === "string" ? field[1] : field;
+    return type === "number" ? field[1] : field;
   }
   console.warn("Unknown field type:", field);
+}
+
+/**
+ * This function exists because getFieldTargetId() may return field clauses
+ * instead of numeric or string IDs for questions based on other native questions.
+ */
+export function isSameColumnField(field, otherField) {
+  if (isLocalField(field) && isLocalField(otherField)) {
+    const hasStringFieldIDs =
+      typeof field[1] === "string" && typeof otherField[1] === "string";
+
+    return hasStringFieldIDs && field[1] === otherField[1];
+  }
+
+  return field === otherField;
 }
 
 /*
