@@ -252,6 +252,7 @@ export class ViewTitleHeader extends React.Component {
         <div className="ml-auto flex align-center">
           {isDirty ? (
             <Link
+              disabled={!question.canRun()}
               className="text-brand text-bold py1 px2 rounded bg-white bg-light-hover"
               data-metabase-event={
                 isShowingNotebook

@@ -3,14 +3,17 @@ import PropTypes from "prop-types";
 import { AxisBottom, AxisLeft } from "@visx/axis";
 import { GridRows } from "@visx/grid";
 import { scaleBand, scaleLinear } from "@visx/scale";
-import { Bar } from "@visx/shape";
+import { LinePath } from "@visx/shape";
+import { Text } from "@visx/text";
 import {
+  getXTickWidth,
   getXTickLabelProps,
   getYTickLabelProps,
   getYTickWidth,
+  getXTickHeight,
 } from "../../lib/axes";
-import { formatDate } from "../../lib/dates";
 import { formatNumber } from "../../lib/numbers";
+import { truncateText } from "../../lib/text";
 
 const propTypes = {
   data: PropTypes.array.isRequired,
@@ -47,22 +50,33 @@ const layout = {
     textLight: "#b8bbc3",
     textMedium: "#949aab",
   },
-  numTicks: 5,
   barPadding: 0.2,
   labelPadding: 12,
+  maxTickWidth: 100,
   strokeDasharray: "4",
 };
 
-const TimeSeriesBarChart = ({ data, accessors, settings, labels, colors }) => {
+const CategoricalLineChart = ({
+  data,
+  accessors,
+  settings,
+  labels,
+  colors,
+}) => {
+  const isVertical = data.length > 10;
+  const xTickWidth = getXTickWidth(data, accessors, layout.maxTickWidth);
+  const xTickHeight = getXTickHeight(xTickWidth);
   const yTickWidth = getYTickWidth(data, accessors, settings);
+  const xLabelOffset = xTickHeight + layout.labelPadding + layout.font.size;
   const yLabelOffset = yTickWidth + layout.labelPadding;
   const xMin = yLabelOffset + layout.font.size * 1.5;
   const xMax = layout.width - layout.margin.right;
-  const yMax = layout.height - layout.margin.bottom;
+  const yMin = isVertical ? xLabelOffset : layout.margin.bottom;
+  const yMax = layout.height - yMin;
   const innerWidth = xMax - xMin;
-  const innerHeight = yMax - layout.margin.top;
+  const textBaseline = Math.floor(layout.font.size / 2);
   const leftLabel = labels?.left;
-  const bottomLabel = labels?.bottom;
+  const bottomLabel = !isVertical ? labels?.bottom : undefined;
   const palette = { ...layout.colors, ...colors };
 
   const xScale = scaleBand({
@@ -78,13 +92,14 @@ const TimeSeriesBarChart = ({ data, accessors, settings, labels, colors }) => {
     nice: true,
   });
 
-  const getBarProps = d => {
-    const width = xScale.bandwidth();
-    const height = innerHeight - yScale(accessors.y(d));
-    const x = xScale(accessors.x(d));
-    const y = yMax - height;
+  const getXTickProps = ({ x, y, formattedValue, ...props }) => {
+    const textWidth = isVertical ? xTickWidth : xScale.bandwidth();
+    const truncatedText = truncateText(formattedValue, textWidth);
+    const transform = isVertical
+      ? `rotate(45, ${x} ${y}) translate(-${textBaseline} 0)`
+      : undefined;
 
-    return { x, y, width, height, fill: palette.brand };
+    return { ...props, x, y, transform, children: truncatedText };
   };
 
   return (
@@ -95,9 +110,13 @@ const TimeSeriesBarChart = ({ data, accessors, settings, labels, colors }) => {
         width={innerWidth}
         strokeDasharray={layout.strokeDasharray}
       />
-      {data.map((d, index) => (
-        <Bar key={index} {...getBarProps(d)} />
-      ))}
+      <LinePath
+        data={data}
+        stroke={palette.brand}
+        strokeWidth={layout.strokeWidth}
+        x={d => xScale(accessors.x(d)) + xScale.bandwidth() / 2}
+        y={d => yScale(accessors.y(d))}
+      />
       <AxisLeft
         scale={yScale}
         left={xMin}
@@ -112,16 +131,16 @@ const TimeSeriesBarChart = ({ data, accessors, settings, labels, colors }) => {
         scale={xScale}
         top={yMax}
         label={bottomLabel}
-        numTicks={layout.numTicks}
+        numTicks={data.length}
         stroke={palette.textLight}
         tickStroke={palette.textLight}
-        tickFormat={value => formatDate(value, settings?.x)}
-        tickLabelProps={() => getXTickLabelProps(layout)}
+        tickComponent={props => <Text {...getXTickProps(props)} />}
+        tickLabelProps={() => getXTickLabelProps(layout, isVertical)}
       />
     </svg>
   );
 };
 
-TimeSeriesBarChart.propTypes = propTypes;
+CategoricalLineChart.propTypes = propTypes;
 
-export default TimeSeriesBarChart;
+export default CategoricalLineChart;

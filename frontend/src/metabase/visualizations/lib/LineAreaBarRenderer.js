@@ -535,12 +535,12 @@ function getCharts(
   const { settings, chartType, series, onChangeCardAndRun } = props;
   const { yAxisSplit } = yAxisProps;
 
-  const isHeterogenous =
-    _.uniq(series.map(single => getSeriesDisplay(settings, single))).length > 1;
-  const isHeterogenousOrdinal =
-    settings["graph.x_axis.scale"] === "ordinal" && isHeterogenous;
+  const displays = _.uniq(series.map(s => getSeriesDisplay(settings, s)));
+  const isMixedBar = displays.includes("bar") && displays.length > 1;
+  const isOrdinal = settings["graph.x_axis.scale"] === "ordinal";
+  const isMixedOrdinalBar = isMixedBar && isOrdinal;
 
-  if (isHeterogenousOrdinal) {
+  if (isMixedOrdinalBar) {
     // HACK: ordinal + mix of line and bar results in uncentered points, shift by
     // half the width
     parent.on("renderlet.shift", () => {
@@ -601,7 +601,7 @@ function getCharts(
       settings,
       seriesChartType,
       seriesSettings,
-      isHeterogenousOrdinal,
+      isMixedOrdinalBar,
     );
 
     return chart;

@@ -28,8 +28,8 @@ export default function ErrorOverview(props) {
   const [rowChecked, setRowChecked] = useState({});
   const [rowToCardId, setRowToCardId] = useState({});
   const handleRowSelectClick = e => {
-    const newRowChecked = rowChecked;
-    const newRowToCardId = rowToCardId;
+    const newRowChecked = { ...rowChecked };
+    const newRowToCardId = { ...rowToCardId };
     newRowChecked[e.rowIndex] = !(rowChecked[e.rowIndex] || false);
     newRowToCardId[e.rowIndex] = e.row[CARD_ID_COL];
     setRowChecked(newRowChecked);
@@ -68,6 +68,7 @@ export default function ErrorOverview(props) {
         {
           key: "reloadSelected",
           label: t`Rerun Selected`,
+          disabled: Object.values(rowChecked).every(isChecked => !isChecked),
           onClick: handleReloadSelected,
         },
       ]}
