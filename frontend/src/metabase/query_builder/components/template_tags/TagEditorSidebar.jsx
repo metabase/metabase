@@ -138,7 +138,7 @@ const SettingsPane = ({
   query,
   setDatasetQuery,
   setTemplateTag,
-                        setParameterValue,
+  setParameterValue,
 }) => (
   <div>
     {tags.map(tag => (
