@@ -390,6 +390,11 @@
   (testing "LocalTime"
     (is (= [#inst "1899-12-31T10:12:06.000-00:00"]
            (second (xlsx-export [{:id 0, :name "Col"}] {} [[#t "10:12:06.681"]])))))
+  (testing "LocalDateTime formatted as a string with a temporal semantic type"
+    (is (= [#inst "2020-03-28T10:12:06.681-00:00"]
+           (second (xlsx-export [{:id 0, :name "Col" :semantic_type :type/DateTime}]
+                                {}
+                                [["2020-03-28T10:12:06.681"]])))))
   (mt/with-everything-store
     (binding [metabase.driver/*driver* :h2]
       (testing "OffsetDateTime"
