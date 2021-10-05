@@ -33,6 +33,9 @@ const Link = styled(BaseLink)`
   ${space}
   ${hover}
   ${color}
+
+  transition: color 0.3s linear;
+  transition: opacity 0.3s linear;
 `;
 
 export default Link;
