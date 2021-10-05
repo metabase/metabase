@@ -83,11 +83,14 @@ function CollectionSidebar({
   );
 
   useEffect(() => {
-    if (!loading && collections && collectionId) {
-      const ancestors = getParentPath(collections, collectionId) || [];
+    if (!loading && collectionId) {
+      const ancestors = getParentPath(collections || [], collectionId) || [];
       setOpenCollections(ancestors);
     }
-  }, [collectionId, collections, loading]);
+    // collections list is intentionally not listed in dependencies
+    // otherwise, the hook can close manually opened collections
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [collectionId, loading]);
 
   return (
     <Sidebar
