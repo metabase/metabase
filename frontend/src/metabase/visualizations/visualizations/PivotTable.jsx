@@ -27,8 +27,8 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 import { findDOMNode } from "react-dom";
 
-const getBgLightColor = lighten(color("brand"), 0.65);
-const getBgDarkColor = lighten(color("brand"), 0.6);
+const getBgLightColor = () => lighten(color("brand"), 0.65);
+const getBgDarkColor = () => lighten(color("brand"), 0.6);
 
 const partitions = [
   {
