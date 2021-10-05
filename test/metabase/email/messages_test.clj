@@ -74,4 +74,9 @@
       (is (= "Run weekly on Monday at 8 AM America/Pacific"
              (@#'messages/alert-schedule-text {:schedule_type :weekly
                                                :schedule_day  "mon"
-                                               :schedule_hour 8}))))))
+                                               :schedule_hour 8})))))
+  (testing "If report-timezone is not set, falls back to UTC"
+    (tu/with-temporary-setting-values [report-timezone nil]
+      (is (= "Run daily at 12 AM UTC"
+             (@#'messages/alert-schedule-text {:schedule_type :daily
+                                               :schedule_hour 0}))))))
