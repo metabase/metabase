@@ -3,6 +3,7 @@ import {
   popover,
   restore,
   openNativeEditor,
+  mockSessionProperty,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
@@ -375,6 +376,74 @@ describe("scenarios > dashboard > parameters", () => {
     cy.icon("pencil").click();
     cy.findByText("Text contains").click();
     cy.findByText("No valid fields");
+  });
+
+  it("should render other categories filter that allows selecting multiple values (metabase#18113)", () => {
+    mockSessionProperty("field-filter-operators-enabled?", false);
+    const filter = {
+      id: "c2967a17",
+      name: "Category",
+      slug: "category",
+      type: "category",
+    };
+
+    cy.createNativeQuestion({
+      name: "Products SQL",
+      native: {
+        query: "select * from products",
+        "template-tags": {},
+      },
+      display: "table",
+    }).then(({ body: { id: card_id } }) => {
+      cy.createQuestion({
+        name: "Products use saved SQL question",
+        query: {
+          "source-table": `card__${card_id}`,
+          aggregation: [],
+          breakout: [],
+        },
+      }).then(({ body: { id: card_id } }) => {
+        cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
+          // Add previously created question to the dashboard
+          cy.request("POST", `/api/dashboard/${dashboard_id}/cards`, {
+            cardId: card_id,
+          }).then(({ body: { id } }) => {
+            cy.addFilterToDashboard({ filter, dashboard_id });
+            cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+              cards: [
+                {
+                  id,
+                  card_id,
+                  row: 0,
+                  col: 0,
+                  sizeX: 8,
+                  sizeY: 6,
+                  parameter_mappings: [
+                    {
+                      card_id: 5,
+                      parameter_id: "c2967a17",
+                      target: [
+                        "dimension",
+                        ["field", "TITLE", { "base-type": "type/Text" }],
+                      ],
+                    },
+                  ],
+                },
+              ],
+            });
+          });
+
+          cy.visit(`/dashboard/${dashboard_id}`);
+        });
+      });
+    });
+
+    cy.findByText("Category").click();
+    cy.findByPlaceholderText("Enter some text").type(
+      "Small Marble Hat{enter}Enormous Marble Wallet{enter}",
+    );
+    cy.button("Add filter").click();
+    cy.get("tbody > tr").should("have.length", 2);
   });
 
   it("should be removable from dashboard", () => {
