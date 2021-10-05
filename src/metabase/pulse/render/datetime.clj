@@ -14,8 +14,8 @@
   (t/format new-format-string (u.date/parse s timezone-id)))
 
 (defn format-temporal-str
-  "Reformat a datetime value `t` or temporal literal string `s` (i.e., an ISO-8601 string) with a human-friendly
-  format based on the column `:unit`."
+  "Reformat a temporal literal string `s` (i.e., an ISO-8601 string) with a human-friendly format based on the
+  column `:unit`."
   [timezone-id s col]
   (if (str/blank? s)
     ""
