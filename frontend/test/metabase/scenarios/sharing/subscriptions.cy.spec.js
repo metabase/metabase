@@ -1,6 +1,6 @@
 import {
   restore,
-  setupDummySMTP,
+  setupSMTP,
   describeWithToken,
   popover,
   mockSessionProperty,
@@ -289,7 +289,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     beforeEach(() => {
       cy.skipOn(!!Cypress.env("HAS_ENTERPRISE_TOKEN"));
       cy.visit(`/dashboard/1`);
-      setupDummySMTP();
+      setupSMTP();
     });
 
     describe("with parameters", () => {
@@ -310,7 +310,7 @@ describe("scenarios > dashboard > subscriptions", () => {
   describeWithToken("EE email subscriptions", () => {
     beforeEach(() => {
       cy.visit(`/dashboard/1`);
-      setupDummySMTP();
+      setupSMTP();
     });
 
     describe("with no parameters", () => {
