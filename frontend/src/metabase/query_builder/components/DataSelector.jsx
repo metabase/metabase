@@ -6,6 +6,8 @@ import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/constants";
+
 import ListSearchField from "metabase/components/ListSearchField";
 import ExternalLink from "metabase/components/ExternalLink";
 import Icon from "metabase/components/Icon";
@@ -359,7 +361,8 @@ export class UnconnectedDataSelector extends Component {
       selectedDatabase &&
       selectedSchema &&
       selectedSchema.database.id !== selectedDatabase.id &&
-      !selectedSchema.database.is_saved_questions;
+      selectedSchema.database.id !== SAVED_QUESTIONS_VIRTUAL_DB_ID;
+
     const invalidTable =
       selectedSchema &&
       selectedTable &&
