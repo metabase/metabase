@@ -395,6 +395,8 @@
            (second (xlsx-export [{:id 0, :name "Col" :semantic_type :type/DateTime}]
                                 {}
                                 [["2020-03-28T10:12:06.681"]])))))
+  (testing "String with a temporal semantic type that can't be parsed as a timestamp (should not fail export)"
+    (is (= ["asdf"] (second (xlsx-export [{:id 0, :name "Col" :semantic_type :type/DateTime}] {} [["asdf"]])))))
   (mt/with-everything-store
     (binding [metabase.driver/*driver* :h2]
       (testing "OffsetDateTime"

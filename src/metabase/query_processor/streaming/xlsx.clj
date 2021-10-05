@@ -388,7 +388,9 @@
             ;; dashboard subscription generation. If this is the case, we should parse them here.
             parsed-value (if (and (string? value)
                                   (isa? (:semantic_type col) :type/Temporal))
-                           (u.date/parse value)
+                           (try (u.date/parse value)
+                                ;; Fallback to string value if it couldn't be parsed
+                                (catch java.time.format.DateTimeParseException _ value))
                            scaled-val)]
         (set-cell! (.createCell ^SXSSFRow row ^Integer index) parsed-value id-or-name)))
     row))
