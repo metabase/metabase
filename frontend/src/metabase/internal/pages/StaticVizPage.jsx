@@ -61,6 +61,9 @@ export default function StaticVizPage() {
                 left: "Count",
                 bottom: "Created At",
               },
+              colors: {
+                brand: "#88BF4D",
+              },
             }}
           />
         </Box>
