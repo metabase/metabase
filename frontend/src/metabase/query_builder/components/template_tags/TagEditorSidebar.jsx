@@ -105,12 +105,12 @@ export default class TagEditorSidebar extends React.Component {
             <SettingsPane
               tags={tags}
               parametersById={parametersById}
-              onUpdate={setTemplateTag}
               databaseFields={databaseFields}
               database={database}
               databases={databases}
               query={query}
               setDatasetQuery={setDatasetQuery}
+              setTemplateTag={setTemplateTag}
             />
           ) : (
             <TagEditorHelp
@@ -129,12 +129,12 @@ export default class TagEditorSidebar extends React.Component {
 const SettingsPane = ({
   tags,
   parametersById,
-  onUpdate,
   databaseFields,
   database,
   databases,
   query,
   setDatasetQuery,
+  setTemplateTag,
 }) => (
   <div>
     {tags.map(tag => (
@@ -149,10 +149,10 @@ const SettingsPane = ({
           <TagEditorParam
             tag={tag}
             parameter={parametersById[tag.id]}
-            onUpdate={onUpdate}
             databaseFields={databaseFields}
             database={database}
             databases={databases}
+            setTemplateTag={setTemplateTag}
           />
         )}
       </div>
@@ -162,7 +162,7 @@ const SettingsPane = ({
 
 SettingsPane.propTypes = {
   tags: PropTypes.array.isRequired,
-  onUpdate: PropTypes.func.isRequired,
+  setTemplateTag: PropTypes.func.isRequired,
   setDatasetQuery: PropTypes.func.isRequired,
   query: NativeQuery,
   databaseFields: PropTypes.array,

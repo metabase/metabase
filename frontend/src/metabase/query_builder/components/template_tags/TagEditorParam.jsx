@@ -24,7 +24,7 @@ import type { FieldId } from "metabase-types/types/Field";
 
 type Props = {
   tag: TemplateTag,
-  onUpdate: (tag: TemplateTag) => void,
+  setTemplateTag: (tag: TemplateTag) => void,
   databaseFields: Field[],
   database: Database,
   databases: Database[],
@@ -52,7 +52,7 @@ export default class TagEditorParam extends Component {
   setParameterAttribute(attr, val) {
     // only register an update if the value actually changes
     if (this.props.tag[attr] !== val) {
-      this.props.onUpdate({
+      this.props.setTemplateTag({
         ...this.props.tag,
         [attr]: val,
       });
@@ -61,7 +61,7 @@ export default class TagEditorParam extends Component {
 
   setRequired(required) {
     if (this.props.tag.required !== required) {
-      this.props.onUpdate({
+      this.props.setTemplateTag({
         ...this.props.tag,
         required: required,
         default: undefined,
@@ -71,7 +71,7 @@ export default class TagEditorParam extends Component {
 
   setType(type) {
     if (this.props.tag.type !== type) {
-      this.props.onUpdate({
+      this.props.setTemplateTag({
         ...this.props.tag,
         type: type,
         dimension: undefined,
@@ -81,7 +81,7 @@ export default class TagEditorParam extends Component {
   }
 
   setDimension(fieldId) {
-    const { tag, onUpdate, metadata } = this.props;
+    const { tag, setTemplateTag, metadata } = this.props;
     const dimension = ["field", fieldId, null];
     if (!_.isEqual(tag.dimension !== dimension)) {
       const field = metadata.field(dimension[1]);
@@ -98,7 +98,7 @@ export default class TagEditorParam extends Component {
       } else if (options.length > 0) {
         widgetType = options[0].type;
       }
-      onUpdate({
+      setTemplateTag({
         ...tag,
         dimension,
         "widget-type": widgetType,
