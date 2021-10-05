@@ -378,7 +378,10 @@ export function getDashboardParametersWithFieldMetadata(
     const hasOnlyFieldTargets = mappings.every(x => x.field_id != null);
 
     const fields = _.uniq(
-      mappings.map(mapping => mapping.field).filter(field => field != null),
+      mappings
+        .map(mapping => mapping.field)
+        .filter(field => field != null)
+        .map(field => field.target ?? field),
       field => field.id,
     );
 
