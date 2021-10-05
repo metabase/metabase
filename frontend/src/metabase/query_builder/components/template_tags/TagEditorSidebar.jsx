@@ -45,10 +45,11 @@ export default class TagEditorSidebar extends React.Component {
   static propTypes = {
     card: PropTypes.object.isRequired,
     onClose: PropTypes.func.isRequired,
-    setTemplateTag: PropTypes.func.isRequired,
     databaseFields: PropTypes.array,
-    setDatasetQuery: PropTypes.func.isRequired,
     sampleDatasetId: PropTypes.number,
+    setDatasetQuery: PropTypes.func.isRequired,
+    setTemplateTag: PropTypes.func.isRequired,
+    setParameterValue: PropTypes.func.isRequired,
   };
 
   setSection(section) {
@@ -68,6 +69,7 @@ export default class TagEditorSidebar extends React.Component {
       setDatasetQuery,
       query,
       setTemplateTag,
+      setParameterValue,
       onClose,
     } = this.props;
     // The tag editor sidebar excludes snippets since they have a separate sidebar.
@@ -111,6 +113,7 @@ export default class TagEditorSidebar extends React.Component {
               query={query}
               setDatasetQuery={setDatasetQuery}
               setTemplateTag={setTemplateTag}
+              setParameterValue={setParameterValue}
             />
           ) : (
             <TagEditorHelp
@@ -135,6 +138,7 @@ const SettingsPane = ({
   query,
   setDatasetQuery,
   setTemplateTag,
+                        setParameterValue,
 }) => (
   <div>
     {tags.map(tag => (
@@ -153,6 +157,7 @@ const SettingsPane = ({
             database={database}
             databases={databases}
             setTemplateTag={setTemplateTag}
+            setParameterValue={setParameterValue}
           />
         )}
       </div>
@@ -162,8 +167,9 @@ const SettingsPane = ({
 
 SettingsPane.propTypes = {
   tags: PropTypes.array.isRequired,
-  setTemplateTag: PropTypes.func.isRequired,
-  setDatasetQuery: PropTypes.func.isRequired,
   query: NativeQuery,
   databaseFields: PropTypes.array,
+  setDatasetQuery: PropTypes.func.isRequired,
+  setTemplateTag: PropTypes.func.isRequired,
+  setParameterValue: PropTypes.func.isRequired,
 };

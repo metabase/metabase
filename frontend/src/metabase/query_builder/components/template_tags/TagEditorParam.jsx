@@ -49,33 +49,42 @@ export default class TagEditorParam extends Component {
     }
   }
 
+  setType(type) {
+    const { tag, setTemplateTag } = this.props;
+
+    if (tag.type !== type) {
+      setTemplateTag({
+        ...tag,
+        type: type,
+        dimension: undefined,
+        "widget-type": undefined,
+      });
+    }
+  }
+
+  setWidgetType(widgetType) {
+    const { tag, setTemplateTag, setParameterValue } = this.props;
+
+    if (tag["widget-type"] !== widgetType) {
+      setTemplateTag({ ...this.props.tag, "widget-type": widgetType });
+      setParameterValue(tag.id, null);
+    }
+  }
+
+  setRequired(required) {
+    const { tag, setTemplateTag } = this.props;
+
+    if (tag.required !== required) {
+      setTemplateTag({ ...tag, required: required, default: undefined });
+    }
+  }
+
   setParameterAttribute(attr, val) {
     // only register an update if the value actually changes
     if (this.props.tag[attr] !== val) {
       this.props.setTemplateTag({
         ...this.props.tag,
         [attr]: val,
-      });
-    }
-  }
-
-  setRequired(required) {
-    if (this.props.tag.required !== required) {
-      this.props.setTemplateTag({
-        ...this.props.tag,
-        required: required,
-        default: undefined,
-      });
-    }
-  }
-
-  setType(type) {
-    if (this.props.tag.type !== type) {
-      this.props.setTemplateTag({
-        ...this.props.tag,
-        type: type,
-        dimension: undefined,
-        "widget-type": undefined,
       });
     }
   }
@@ -185,8 +194,7 @@ export default class TagEditorParam extends Component {
               // (see Uncontrollable.jsx, metabase#13825)
               value={tag["widget-type"] || "none"}
               onChange={e =>
-                this.setParameterAttribute(
-                  "widget-type",
+                this.setWidgetType(
                   e.target.value === "none" ? undefined : e.target.value,
                 )
               }
