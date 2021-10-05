@@ -57,7 +57,13 @@ const layout = {
   strokeDasharray: "4",
 };
 
-const CategoricalAreaChart = ({ data, accessors, settings, labels, colors }) => {
+const CategoricalAreaChart = ({
+  data,
+  accessors,
+  settings,
+  labels,
+  colors,
+}) => {
   const isVertical = data.length > 10;
   const xTickWidth = getXTickWidth(data, accessors, layout.maxTickWidth);
   const xTickHeight = getXTickHeight(xTickWidth);

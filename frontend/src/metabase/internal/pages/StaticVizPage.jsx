@@ -34,9 +34,6 @@ export default function StaticVizPage() {
               labels: {
                 left: "Count",
                 bottom: "Created At",
-              },
-              colors: {
-                brand: "#88BF4D",
               }
             }}
           />
@@ -63,6 +60,9 @@ export default function StaticVizPage() {
               labels: {
                 left: "Count",
                 bottom: "Created At",
+              },
+              colors: {
+                brand: "#88BF4D",
               },
             }}
           />
