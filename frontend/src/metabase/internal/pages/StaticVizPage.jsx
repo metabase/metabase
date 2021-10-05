@@ -34,7 +34,7 @@ export default function StaticVizPage() {
               labels: {
                 left: "Count",
                 bottom: "Created At",
-              }
+              },
             }}
           />
         </Box>
