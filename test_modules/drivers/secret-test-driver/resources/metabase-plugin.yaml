@@ -17,13 +17,20 @@ driver:
       secret-kind: password
       placeholder: foo
       required: false
+    - name: use-keystore
+      type: boolean
+      display-name: Use Keystore?
     - name: keystore-password
       display-name: Keystore Password
       type: secret
       secret-kind: password
       required: false
+      visible-if:
+        use-keystore: true
     - name: keystore
       display-name: Keystore
       type: secret
       secret-kind: keystore
       required: false
+      visible-if:
+        use-keystore: true

@@ -13,7 +13,7 @@
             [metabase.models.secret :as secret]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
+            [metabase.util.i18n :refer [trs tru]]
             [toucan.db :as db]
             [toucan.models :as models]))
 
@@ -88,6 +88,10 @@
         value     (if-let [v (value-kw details)]     ; the -value suffix was specified; use that
                     v
                     (when-let [path (path-kw details)] ; the -path suffix was specified; this is actually a :file-path
+                      (when (driver.u/is-hosted?) ; TODO: swap out with real implementation
+                        (throw (ex-info
+                                (tru "{0} (a local file path) cannot be used in Metabase hosted environment" path-kw)
+                                {:invalid-db-details-entry (select-keys details [path-kw])})))
                       path))
         kind      (:secret-kind conn-prop)
         source    (when (path-kw details)
