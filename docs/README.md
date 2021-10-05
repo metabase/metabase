@@ -52,7 +52,7 @@ This guide lists existing community drivers, and shows how to get started with d
 
 ### [Embedding reference apps][embedding-ref-apps]
 
-Code examples for embedding Metabase in 
+Code examples for embedding Metabase in
 
 ## Metabase community
 
@@ -88,7 +88,7 @@ This page describes the anonymous usage information we collect (only if you opt-
 [blog]: /blog
 [case-studies]: https://www.metabase.com/case_studies/
 [embedding-ref-apps]: https://github.com/metabase/embedding-reference-apps
-[enterprise]: /enterprise-guide/start.md
+[enterprise]: enterprise-guide/start.md
 [enterprise-landing]: /enterprise
 [data-stories]: /community
 [developers]: developers-guide/start.md

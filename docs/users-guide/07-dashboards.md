@@ -21,7 +21,7 @@ You can make as many dashboards as you want. Go nuts.
 
 ## How to create a dashboard
 
-In the top right of the screen, click the **+** icon to open the **Create** menu, and select **New Dashboard**. Give your new dashboard a name and a description, choose which [collection](06-sharing-answers.md#collections) the dashboard should go in, then click **Create**, and Metabase will take you to your shiny new dashboard.
+In the top right of the screen, click the **+** icon to open the **Create** menu, and select **New Dashboard**. Give your new dashboard a name and a description, choose which [collections](collections.md) the dashboard should go in, then click **Create**, and Metabase will take you to your shiny new dashboard.
 
 ![Create Dashboard](images/dashboards/DashboardCreate.png)
 
@@ -142,7 +142,7 @@ There is one important limitation with the `fullscreen` option: for security rea
 ## Archiving a dashboard
 
 Archiving a dashboard removes the dashboard from searches and collections. Archiving a dashboard does not archive the individual saved questions on it — it just archives the dashboard.
- 
+
 To archive a dashboard, click the **pencil** icon to enter edit mode, then click the **...** menu, and select **Archive**.
 
 To view all archived items, click the **menu** icon in the top-right of any collection page. You can **unarchive** a dashboard by clicking the icon of the box with the upward arrow next to that dashboard.
@@ -153,7 +153,7 @@ To make a great dashboard, you first need to decide what you want the dashboard 
 
 Some tips:
 
-- **Emphasize the most important questions**. To draw people’s attention to what matters most, place the most important saved question cards near the top of the dashboard, and/or make them bigger than the other cards, 
+- **Emphasize the most important questions**. To draw people’s attention to what matters most, place the most important saved question cards near the top of the dashboard, and/or make them bigger than the other cards,
 - **Keep dashboards focused**. If you have more than 10 cards on a dashboard, think about breaking the dashboard into two separate ones. You don't want to overwhelm people with too much information, and each dashboard should revolve around one theme or topic. Remember — you can make as many dashboards as you want, so you don’t have to cram everything into just one.
 - **Add filters to your dashboard**. [Adding filters](08-dashboard-filters.md) to dashboards makes them more useful. For example, instead of your dashboard being full of questions that are restricted to a specific time span, you can make more general questions and use dashboard filters to change the time span you're looking at.
 - **Make your dashboards interactive.** [Customize what happens when users click on a chart or table in your dashboard](interactive-dashboards.md).
