@@ -65,6 +65,23 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
             cy.findByText(representativeResult);
           });
         });
+
+        it("when the widget type is changed (metabase#16756)", () => {
+          const anotherSubType = Object.keys(DATE_FILTER_SUBTYPES).find((type) => type !== subType)
+          const anotherValue = DATE_FILTER_SUBTYPES[anotherSubType].value;
+
+          FieldFilter.setWidgetType(anotherSubType);
+          dateFilterSelector({ filterType: anotherSubType, filterValue: anotherValue });
+
+          FieldFilter.setWidgetType(subType);
+          dateFilterSelector({ filterType: subType, filterValue: value });
+
+          SQLFilter.runQuery();
+
+          cy.get(".Visualization").within(() => {
+            cy.findByText(representativeResult);
+          });
+        })
       });
     },
   );
