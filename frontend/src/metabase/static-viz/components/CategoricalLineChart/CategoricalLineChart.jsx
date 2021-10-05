@@ -29,6 +29,7 @@ const propTypes = {
     left: PropTypes.string,
     bottom: PropTypes.string,
   }),
+  colors: PropTypes.object,
 };
 
 const layout = {
@@ -55,7 +56,7 @@ const layout = {
   strokeDasharray: "4",
 };
 
-const CategoricalLineChart = ({ data, accessors, settings, labels }) => {
+const CategoricalLineChart = ({ data, accessors, settings, labels, colors }) => {
   const isVertical = data.length > 10;
   const xTickWidth = getXTickWidth(data, accessors, layout.maxTickWidth);
   const xTickHeight = getXTickHeight(xTickWidth);
@@ -70,6 +71,7 @@ const CategoricalLineChart = ({ data, accessors, settings, labels }) => {
   const textBaseline = Math.floor(layout.font.size / 2);
   const leftLabel = labels?.left;
   const bottomLabel = !isVertical ? labels?.bottom : undefined;
+  const palette = { ...layout.colors, ...colors };
 
   const xScale = scaleBand({
     domain: data.map(accessors.x),
@@ -104,7 +106,7 @@ const CategoricalLineChart = ({ data, accessors, settings, labels }) => {
       />
       <LinePath
         data={data}
-        stroke={layout.colors.brand}
+        stroke={palette.brand}
         strokeWidth={layout.strokeWidth}
         x={d => xScale(accessors.x(d)) + xScale.bandwidth() / 2}
         y={d => yScale(accessors.y(d))}
@@ -124,8 +126,8 @@ const CategoricalLineChart = ({ data, accessors, settings, labels }) => {
         top={yMax}
         label={bottomLabel}
         numTicks={data.length}
-        stroke={layout.colors.textLight}
-        tickStroke={layout.colors.textLight}
+        stroke={palette.textLight}
+        tickStroke={palette.textLight}
         tickComponent={props => <Text {...getXTickProps(props)} />}
         tickLabelProps={() => getXTickLabelProps(layout, isVertical)}
       />

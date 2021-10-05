@@ -29,6 +29,7 @@ const propTypes = {
     left: PropTypes.string,
     bottom: PropTypes.string,
   }),
+  colors: PropTypes.object,
 };
 
 const layout = {
@@ -46,17 +47,17 @@ const layout = {
   },
   colors: {
     brand: "#509ee3",
-    brandLight: "#DDECFA",
     textLight: "#b8bbc3",
     textMedium: "#949aab",
   },
   barPadding: 0.2,
   labelPadding: 12,
   maxTickWidth: 100,
+  areaOpacity: 0.2,
   strokeDasharray: "4",
 };
 
-const CategoricalAreaChart = ({ data, accessors, settings, labels }) => {
+const CategoricalAreaChart = ({ data, accessors, settings, labels, colors }) => {
   const isVertical = data.length > 10;
   const xTickWidth = getXTickWidth(data, accessors, layout.maxTickWidth);
   const xTickHeight = getXTickHeight(xTickWidth);
@@ -71,6 +72,7 @@ const CategoricalAreaChart = ({ data, accessors, settings, labels }) => {
   const textBaseline = Math.floor(layout.font.size / 2);
   const leftLabel = labels?.left;
   const bottomLabel = !isVertical ? labels?.bottom : undefined;
+  const palette = { ...layout.colors, ...colors };
 
   const xScale = scaleBand({
     domain: data.map(accessors.x),
@@ -106,7 +108,8 @@ const CategoricalAreaChart = ({ data, accessors, settings, labels }) => {
       <AreaClosed
         data={data}
         yScale={yScale}
-        fill={layout.colors.brandLight}
+        fill={palette.brand}
+        opacity={layout.areaOpacity}
         x={d => xScale(accessors.x(d)) + xScale.bandwidth() / 2}
         y={d => yScale(accessors.y(d))}
       />
@@ -122,7 +125,7 @@ const CategoricalAreaChart = ({ data, accessors, settings, labels }) => {
       />
       <LinePath
         data={data}
-        stroke={layout.colors.brand}
+        stroke={palette.brand}
         strokeWidth={layout.strokeWidth}
         x={d => xScale(accessors.x(d)) + xScale.bandwidth() / 2}
         y={d => yScale(accessors.y(d))}
@@ -132,8 +135,8 @@ const CategoricalAreaChart = ({ data, accessors, settings, labels }) => {
         top={yMax}
         label={bottomLabel}
         numTicks={data.length}
-        stroke={layout.colors.textLight}
-        tickStroke={layout.colors.textLight}
+        stroke={palette.textLight}
+        tickStroke={palette.textLight}
         tickComponent={props => <Text {...getXTickProps(props)} />}
         tickLabelProps={() => getXTickLabelProps(layout, isVertical)}
       />
