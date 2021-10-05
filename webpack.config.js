@@ -131,6 +131,7 @@ const config = (module.exports = {
         vendors: {
           test: /[\\/]node_modules[\\/]/,
           chunks: "all",
+          name: "vendor",
         },
       },
     },
