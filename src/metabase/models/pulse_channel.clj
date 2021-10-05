@@ -7,6 +7,7 @@
             [metabase.models.user :as user :refer [User]]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
+            [metabase.util.i18n :refer [tru]]
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.models :as models]))
@@ -145,9 +146,36 @@
   the [[metabase-enterprise.advanced-config.models.pulse-channel/subscription-allowed-domains]] Setting, if set. This
   will no-op if `subscription-allowed-domains` is unset or if we do not have a premium token with the
   `:advanced-config` feature."
-  [{{:keys [emails]} :details, :as pulse-channel}]
+  [{{:keys [emails]} :details, :keys [recipients], :as pulse-channel}]
+  ;; Raw email addresses can be in either `[:details :emails]` or in `:recipients`, depending on who is invoking this
+  ;; function. Make sure we handle both situations.
+  ;;
+  ;;    {:details {:emails [\"email@example.com\" ...]}}
+  ;;
+  ;;  The Dashboard Subscription FE currently sends raw email address recipients in this format:
+  ;;
+  ;;    {:recipients [{:email \"email@example.com\"} ...]}
+  ;;
   (u/prog1 pulse-channel
-    (validate-email-domains* emails)))
+    (let [raw-email-recipients (remove :id recipients)
+          user-recipients      (filter :id recipients)
+          emails               (concat emails (map :email raw-email-recipients))]
+      (validate-email-domains* emails)
+      ;; validate User `:id` & `:email` match up for User recipients. This is mostly to make sure people don't try to
+      ;; be sneaky and pass in a valid User ID but different email so they can send test Pulses out to arbitrary email
+      ;; addresses
+      (when-let [user-ids (not-empty (into #{} (comp (filter some?) (map :id)) user-recipients))]
+        (let [user-id->email (db/select-id->field :email User, :id [:in user-ids])]
+          (doseq [{:keys [id email]} user-recipients
+                  :let               [correct-email (get user-id->email id)]]
+            (when-not correct-email
+              (throw (ex-info (tru "User {0} does not exist." id)
+                              {:status-code 404})))
+            ;; only validate the email address if it was explicitly specified, which is not explicitly required.
+            (when (and email
+                       (not= email correct-email))
+              (throw (ex-info (tru "Wrong email address for User {0}." id)
+                              {:status-code 403})))))))))
 
 (u/strict-extend (class PulseChannel)
   models/IModel
