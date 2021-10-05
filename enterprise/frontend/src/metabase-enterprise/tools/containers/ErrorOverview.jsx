@@ -114,7 +114,7 @@ export default function ErrorOverview(props) {
             sorting.column,
             getSortOrder(sorting.isAscending),
           )}
-          className={"bounded-overflow-x-scroll"}
+          className={"mt2 bounded-overflow-x-scroll"}
         />
       )}
     </AuditParameters>
