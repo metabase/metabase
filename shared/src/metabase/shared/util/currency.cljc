@@ -635,7 +635,7 @@
           :code "PEN",
           :name_plural "Peruvian nuevos soles"}],
    [:PGK {:symbol "K",
-          :name "Papua New Guinean kina",
+          :name "Papua New Guinean Kina",
           :symbol_native "K",
           :decimal_digits 2,
           :rounding 0,
