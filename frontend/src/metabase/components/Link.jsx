@@ -1,4 +1,5 @@
 import React from "react";
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { Link as ReactRouterLink } from "react-router";
 import styled from "styled-components";
@@ -7,15 +8,19 @@ import { stripLayoutProps } from "metabase/lib/utils";
 
 BaseLink.propTypes = {
   to: PropTypes.string.isRequired,
+  disabled: PropTypes.bool,
   className: PropTypes.string,
   children: PropTypes.node,
 };
 
-function BaseLink({ to, className, children, ...props }) {
+function BaseLink({ to, className, children, disabled, ...props }) {
   return (
     <ReactRouterLink
       to={to}
-      className={className || "link"}
+      className={cx(className || "link", {
+        disabled: disabled,
+        "text-light": disabled,
+      })}
       {...stripLayoutProps(props)}
     >
       {children}
