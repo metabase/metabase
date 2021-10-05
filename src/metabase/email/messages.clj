@@ -23,6 +23,7 @@
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.streaming :as qp.streaming]
             [metabase.query-processor.streaming.interface :as qp.streaming.i]
+            [metabase.task.send-pulses :as send-pulses]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :as i18n :refer [deferred-trs trs tru]]
@@ -546,13 +547,13 @@
     :daily
     (format "Run daily at %s %s"
             (schedule-hour-text channel)
-            (driver/report-timezone))
+            (send-pulses/pulse-timezone))
 
     :weekly
     (format "Run weekly on %s at %s %s"
             (schedule-day-text channel)
             (schedule-hour-text channel)
-            (driver/report-timezone))))
+            (send-pulses/pulse-timezone))))
 
 (defn- alert-context
   "Context that is applicable only to the actual alert template (not alert management templates)"
