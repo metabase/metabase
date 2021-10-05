@@ -7,6 +7,7 @@ import {
   popover,
   restore,
   remapDisplayValueToFK,
+  setupSMTP,
 } from "__support__/e2e/cypress";
 import { USER_GROUPS } from "__support__/e2e/cypress_data";
 
@@ -1034,14 +1035,8 @@ describeWithToken("formatting > sandboxes", () => {
 
     it("sandboxed user should receive sandboxed dashboard subscription", () => {
       cy.request("DELETE", "http://localhost:80/email/all");
-      cy.request("PUT", "/api/setting", {
-        "email-smtp-host": "localhost",
-        "email-smtp-port": "25",
-        "email-smtp-username": "admin",
-        "email-smtp-password": "admin",
-        "email-smtp-security": "none",
-        "email-from-address": "mailer@metabase.test",
-      });
+      setupSMTP();
+
       cy.sandboxTable({
         table_id: ORDERS_ID,
         attribute_remappings: {
