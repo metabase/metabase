@@ -29,12 +29,8 @@ export const VerifyButton = styled(Button).attrs({
   iconSize: 20,
 })`
   border: none;
-
+  color: ${color(verifiedIconColor)};
   padding: 8px;
-
-  &:hover {
-    color: ${color(verifiedIconColor)};
-  }
 
   &:disabled {
     color: ${color("text-medium")};
