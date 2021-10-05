@@ -700,9 +700,9 @@ export const replaceAllCardVisualizationSettings = settings => async (
   );
 };
 
-export const UPDATE_TEMPLATE_TAG = "metabase/qb/UPDATE_TEMPLATE_TAG";
-export const updateTemplateTag = createThunkAction(
-  UPDATE_TEMPLATE_TAG,
+export const SET_TEMPLATE_TAG = "metabase/qb/SET_TEMPLATE_TAG";
+export const setTemplateTag = createThunkAction(
+  SET_TEMPLATE_TAG,
   templateTag => {
     return (dispatch, getState) => {
       const {

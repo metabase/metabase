@@ -24,7 +24,7 @@ type Props = {
   query: NativeQuery,
 
   setDatasetQuery: (datasetQuery: DatasetQuery) => void,
-  updateTemplateTag: (tag: TemplateTag) => void,
+  setTemplateTag: (tag: TemplateTag) => void,
 
   databaseFields: FieldObject[],
   databases: Database[],
@@ -45,7 +45,7 @@ export default class TagEditorSidebar extends React.Component {
   static propTypes = {
     card: PropTypes.object.isRequired,
     onClose: PropTypes.func.isRequired,
-    updateTemplateTag: PropTypes.func.isRequired,
+    setTemplateTag: PropTypes.func.isRequired,
     databaseFields: PropTypes.array,
     setDatasetQuery: PropTypes.func.isRequired,
     sampleDatasetId: PropTypes.number,
@@ -67,7 +67,7 @@ export default class TagEditorSidebar extends React.Component {
       sampleDatasetId,
       setDatasetQuery,
       query,
-      updateTemplateTag,
+      setTemplateTag,
       onClose,
     } = this.props;
     // The tag editor sidebar excludes snippets since they have a separate sidebar.
@@ -105,7 +105,7 @@ export default class TagEditorSidebar extends React.Component {
             <SettingsPane
               tags={tags}
               parametersById={parametersById}
-              onUpdate={updateTemplateTag}
+              onUpdate={setTemplateTag}
               databaseFields={databaseFields}
               database={database}
               databases={databases}
