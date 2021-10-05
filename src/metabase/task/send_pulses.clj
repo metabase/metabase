@@ -76,19 +76,15 @@
       (< start-of-last-week curr-day-of-month) :last
       :else                                    :other)))
 
-(defn pulse-timezone
-  "The timezone in which pulse schedules should be based."
-  []
-  (or (driver/report-timezone) "UTC"))
-
 ;; triggers the sending of all pulses which are scheduled to run in the current hour
 (jobs/defjob SendPulses [_]
   (try
     (task-history/with-task-history {:task "send-pulses"}
-      ;; determine what time it is right now (hour-of-day & day-of-week) in reporting timezone,
-      ;; defaulting to UTC if not set
-      (let [reporting-timezone (pulse-timezone)
-            now                (time/to-time-zone (time/now) (time/time-zone-for-id reporting-timezone))
+      ;; determine what time it is right now (hour-of-day & day-of-week) in reporting timezone
+      (let [reporting-timezone (driver/report-timezone)
+            now                (if (empty? reporting-timezone)
+                                 (time/now)
+                                 (time/to-time-zone (time/now) (time/time-zone-for-id reporting-timezone)))
             curr-hour          (time/hour now)
             ;; joda time produces values of 1-7 here (Mon -> Sun) and we subtract 1 from it to
             ;; make the values zero based to correspond to the indexes in pulse-channel/days-of-week

@@ -23,7 +23,6 @@
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.streaming :as qp.streaming]
             [metabase.query-processor.streaming.interface :as qp.streaming.i]
-            [metabase.task.send-pulses :as send-pulses]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :as i18n :refer [deferred-trs trs tru]]
@@ -536,6 +535,10 @@
         "sat" "Saturday"}
        day))
 
+(defn- schedule-timezone
+  []
+  (or (driver/report-timezone) "UTC"))
+
 (defn- alert-schedule-text
   "Returns a string that describes the run schedule of an alert (i.e. how often results are checked),
   for inclusion in the email template. Not translated, since emails in general are not currently translated."
@@ -547,13 +550,13 @@
     :daily
     (format "Run daily at %s %s"
             (schedule-hour-text channel)
-            (send-pulses/pulse-timezone))
+            (schedule-timezone))
 
     :weekly
     (format "Run weekly on %s at %s %s"
             (schedule-day-text channel)
             (schedule-hour-text channel)
-            (send-pulses/pulse-timezone))))
+            (schedule-timezone))))
 
 (defn- alert-context
   "Context that is applicable only to the actual alert template (not alert management templates)"
