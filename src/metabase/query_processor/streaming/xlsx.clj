@@ -388,7 +388,7 @@
             ;; dashboard subscription generation. If this is the case, we should parse them here.
             parsed-value (if (and (string? value)
                                   (isa? (:semantic_type col) :type/Temporal))
-                           (metabase.util.date-2/parse value)
+                           (u.date/parse value)
                            scaled-val)]
         (set-cell! (.createCell ^SXSSFRow row ^Integer index) parsed-value id-or-name)))
     row))
