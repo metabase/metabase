@@ -82,50 +82,50 @@
               [:user_name       {:display_name "Created By",         :base_type :type/Text    :remapped_from :user_id}]
               [:updated_at      {:display_name "Updated At",         :base_type :type/DateTime}]]
    :results (common/reducible-query
-              (->
-                {:with      [cards/query-runs
-                             cards/latest-qe
-                             cards/dashboards-count]
-                 :select    [[:card.id :card_id]
-                             [:card.name :card_name]
-                             [(hsql/call :concat
-                                         (hsql/call
-                                           :substring
-                                           :latest_qe.error
-                                           (if (= (mdb.connection/db-type) :mysql) 1 0)
-                                           60)
-                                         "...")
-                              :error_substr]
-                             :collection_id
-                             [(hsql/call :coalesce :coll.name "Our Analytics") :collection_name]
-                             :card.database_id
-                             [:db.name :database_name]
-                             [:t.schema :schema_name]
-                             :card.table_id
-                             [:t.name :table_name]
-                             [:latest_qe.started_at :last_run_at]
-                             [:query_runs.count :total_runs]
-                             [(hsql/call :coalesce :dash_card.count 0) :num_dashboards]
-                             [:card.creator_id :user_id]
-                             [(common/user-full-name :u) :user_name]
-                             [:card.updated_at :updated_at]]
-                 :from      [[:report_card :card]]
-                 :left-join [[:collection :coll]                [:= :card.collection_id :coll.id]
-                             [:metabase_database :db]           [:= :card.database_id :db.id]
-                             [:metabase_table :t]               [:= :card.table_id :t.id]
-                             [:core_user :u]                    [:= :card.creator_id :u.id]
-                             :latest_qe                         [:= :card.id :latest_qe.card_id]
-                             :query_runs                        [:= :card.id :query_runs.card_id]
-                             :dash_card                         [:= :card.id :dash_card.card_id]]
-                 :where     [:and
-                             [:= :card.archived false]
-                             [:<> :latest_qe.error nil]]}
-                (common/add-search-clause error-filter :latest_qe.error)
-                (common/add-search-clause db-filter :db.name)
-                (common/add-search-clause collection-filter :coll.name)
-                (common/add-sort-clause
-                  (or sort-column "card.name")
-                  (or sort-direction "asc"))))}))
+              (let [coll-name    (hsql/call :coalesce :coll.name "Our Analytics")
+                    error-substr (hsql/call :concat
+                                            (hsql/call :substring :latest_qe.error
+                                              (if (= (mdb.connection/db-type) :mysql) 1 0)
+                                              60)
+                                            "...")
+                    dash-count   (hsql/call :coalesce :dash_card.count 0)]
+                (->
+                  {:with      [cards/query-runs
+                               cards/latest-qe
+                               cards/dashboards-count]
+                   :select    [[:card.id :card_id]
+                               [:card.name :card_name]
+                               [error-substr :error_substr]
+                               :collection_id
+                               [coll-name :collection_name]
+                               :card.database_id
+                               [:db.name :database_name]
+                               [:t.schema :schema_name]
+                               :card.table_id
+                               [:t.name :table_name]
+                               [:latest_qe.started_at :last_run_at]
+                               [:query_runs.count :total_runs]
+                               [dash-count :num_dashboards]
+                               [:card.creator_id :user_id]
+                               [(common/user-full-name :u) :user_name]
+                               [:card.updated_at :updated_at]]
+                   :from      [[:report_card :card]]
+                   :left-join [[:collection :coll]                [:= :card.collection_id :coll.id]
+                               [:metabase_database :db]           [:= :card.database_id :db.id]
+                               [:metabase_table :t]               [:= :card.table_id :t.id]
+                               [:core_user :u]                    [:= :card.creator_id :u.id]
+                               :latest_qe                         [:= :card.id :latest_qe.card_id]
+                               :query_runs                        [:= :card.id :query_runs.card_id]
+                               :dash_card                         [:= :card.id :dash_card.card_id]]
+                   :where     [:and
+                               [:= :card.archived false]
+                               [:<> :latest_qe.error nil]]}
+                  (common/add-search-clause error-filter :latest_qe.error)
+                  (common/add-search-clause db-filter :db.name)
+                  (common/add-search-clause collection-filter coll-name)
+                  (common/add-sort-clause
+                    (or sort-column "card.name")
+                    (or sort-direction "asc")))))}))
 
 ;; A list of all questions.
 ;;
