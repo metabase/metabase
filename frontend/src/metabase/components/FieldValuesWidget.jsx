@@ -233,9 +233,16 @@ export class FieldValuesWidget extends Component {
   }
 
   shouldList() {
+    // Virtual fields come from questions that are based on other questions.
+    // Currently, the back end does not return `has_field_values` in their metadata,
+    // so we ignore them for now.
+    const nonVirtualFields = this.props.fields.filter(
+      field => typeof field.id === "number",
+    );
+
     return (
       !this.props.disableSearch &&
-      this.props.fields.every(field => field.has_field_values === "list")
+      nonVirtualFields.every(field => field.has_field_values === "list")
     );
   }
 
