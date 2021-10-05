@@ -118,4 +118,45 @@ describe("visual tests > visualizations > line", () => {
 
     cy.percySnapshot();
   });
+
+  it("with multiple series and different display types (metabase#11216)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"], ["sum", ["field", ORDERS.TOTAL, null]]],
+          breakout: [
+            [
+              "field",
+              ORDERS.CREATED_AT,
+              {
+                "temporal-unit": "year",
+              },
+            ],
+          ],
+        },
+        database: 1,
+      },
+      display: "line",
+      visualization_settings: {
+        series_settings: {
+          sum: {
+            display: "line",
+          },
+          count: {
+            display: "area",
+          },
+        },
+        "graph.dimensions": ["CREATED_AT"],
+        "graph.x_axis.scale": "ordinal",
+        "graph.show_values": true,
+        "graph.metrics": ["count", "sum"],
+      },
+    });
+
+    cy.wait("@dataset");
+
+    cy.percySnapshot();
+  });
 });
