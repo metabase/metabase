@@ -4,38 +4,23 @@ import { connect } from "react-redux";
 import querystring from "querystring";
 
 import ParametersList from "metabase/parameters/components/ParametersList";
-import { syncQueryParamsWithURL } from "./syncQueryParamsWithURL";
-import { collateParametersWithValues } from "metabase/meta/Parameter";
+import { getParameterValuesBySlug } from "metabase/meta/Parameter";
 import { getMetadata } from "metabase/selectors/metadata";
 
 @connect(state => ({ metadata: getMetadata(state) }))
 export default class Parameters extends Component {
-  defaultProps = {
-    syncQueryString: false,
-  };
-
-  constructor(props) {
-    super(props);
-
-    syncQueryParamsWithURL(props);
-  }
-
   componentDidUpdate() {
-    const { parameters, parameterValues } = this.props;
+    const { parameters, parameterValues, dashboard } = this.props;
 
     if (this.props.syncQueryString) {
       // sync parameters to URL query string
-      const queryParams = {};
-      for (const parameter of collateParametersWithValues(
+      const parameterValuesBySlug = getParameterValuesBySlug(
         parameters,
         parameterValues,
-      )) {
-        if (parameter.value) {
-          queryParams[parameter.slug] = parameter.value;
-        }
-      }
+        dashboard && { preserveDefaultedParameters: true },
+      );
 
-      let search = querystring.stringify(queryParams);
+      let search = querystring.stringify(parameterValuesBySlug);
       search = search ? "?" + search : "";
 
       if (search !== window.location.search) {
@@ -65,11 +50,8 @@ export default class Parameters extends Component {
       vertical,
       commitImmediately,
 
-      setParameterName,
       setParameterValue,
-      setParameterDefaultValue,
       setParameterIndex,
-      removeParameter,
       setEditingParameter,
     } = this.props;
 
@@ -87,11 +69,8 @@ export default class Parameters extends Component {
         isQB={isQB}
         vertical={vertical}
         commitImmediately={commitImmediately}
-        setParameterName={setParameterName}
         setParameterValue={setParameterValue}
-        setParameterDefaultValue={setParameterDefaultValue}
         setParameterIndex={setParameterIndex}
-        removeParameter={removeParameter}
         setEditingParameter={setEditingParameter}
       />
     );

@@ -2,36 +2,20 @@
 import Question from "../Question";
 
 import Base from "./Base";
-import Database from "./Database";
-import Schema from "./Schema";
-import Field from "./Field";
-
-import Dimension from "../Dimension";
 
 import { singularize } from "metabase/lib/formatting";
 import { getAggregationOperatorsWithFields } from "metabase/lib/schema_metadata";
 import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
 
-import type { SchemaName } from "metabase-types/types/Table";
-import type StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-
-type EntityType = string; // TODO: move somewhere central
+/**
+ * @typedef { import("./metadata").SchemaName } SchemaName
+ * @typedef { import("./metadata").EntityType } EntityType
+ * @typedef { import("./metadata").StructuredQuery } StructuredQuery
+ */
 
 /** This is the primary way people interact with tables */
 export default class Table extends Base {
-  description: string;
-
-  db: Database;
-
-  schema: ?Schema;
-  // @deprecated: use schema.name (all tables should have a schema object, in theory)
-  schema_name: ?SchemaName;
-
-  fields: Field[];
-
-  entity_type: ?EntityType;
-
-  hasSchema(): boolean {
+  hasSchema() {
     return (this.schema_name && this.db && this.db.schemas.length > 1) || false;
   }
 
@@ -40,13 +24,13 @@ export default class Table extends Base {
     return this.db;
   }
 
-  newQuestion(): Question {
+  newQuestion() {
     return this.question()
       .setDefaultQuery()
       .setDefaultDisplay();
   }
 
-  question(): Question {
+  question() {
     return Question.create({
       databaseId: this.db && this.db.id,
       tableId: this.id,
@@ -54,7 +38,7 @@ export default class Table extends Base {
     });
   }
 
-  isSavedQuestion(): boolean {
+  isSavedQuestion() {
     return this.savedQuestionId() !== null;
   }
 
@@ -63,13 +47,16 @@ export default class Table extends Base {
     return match ? parseInt(match[1]) : null;
   }
 
-  query(query = {}): StructuredQuery {
+  /**
+   * @returns {StructuredQuery}
+   */
+  query(query = {}) {
     return this.question()
       .query()
       .updateQuery(q => ({ ...q, ...query }));
   }
 
-  dimensions(): Dimension[] {
+  dimensions() {
     return this.fields.map(field => field.dimension());
   }
 
@@ -89,7 +76,7 @@ export default class Table extends Base {
     return singularize(this.displayName());
   }
 
-  dateFields(): Field[] {
+  dateFields() {
     return this.fields.filter(field => field.isDate());
   }
 
@@ -129,5 +116,24 @@ export default class Table extends Base {
   // @deprecated: use fieldsLookup
   get fields_lookup() {
     return this.fieldsLookup();
+  }
+
+  /**
+   * @private
+   * @param {string} description
+   * @param {Database} db
+   * @param {Schema?} schema
+   * @param {SchemaName} [schema_name]
+   * @param {Field[]} fields
+   * @param {EntityType} entity_type
+   */
+  /* istanbul ignore next */
+  _constructor(description, db, schema, schema_name, fields, entity_type) {
+    this.description = description;
+    this.db = db;
+    this.schema = schema;
+    this.schema_name = schema_name;
+    this.fields = fields;
+    this.entity_type = entity_type;
   }
 }

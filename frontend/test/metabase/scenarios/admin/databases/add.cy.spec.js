@@ -1,4 +1,9 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  describeWithToken,
+  mockSessionProperty,
+} from "__support__/e2e/cypress";
 
 function typeField(label, value) {
   cy.findByLabelText(label)
@@ -184,7 +189,7 @@ describe("scenarios > admin > databases > add", () => {
     );
   });
 
-  it.skip("should respect users' decision to manually sync large database (metabase#17450)", () => {
+  it("should respect users' decision to manually sync large database (metabase#17450)", () => {
     const H2_CONNECTION_STRING =
       "zip:./target/uberjar/metabase.jar!/sample-dataset.db;USER=GUEST;PASSWORD=guest";
 
@@ -221,6 +226,11 @@ describe("scenarios > admin > databases > add", () => {
       cy.visit("/admin/databases/create");
 
       chooseDatabase("BigQuery");
+
+      //Ensure deprecation warning is shown
+      cy.findByTestId("database-setup-driver-warning").within(() => {
+        cy.contains("The old driver has been deprecated");
+      });
 
       // enter text
       typeField("Name", "bq db");
@@ -297,6 +307,53 @@ describe("scenarios > admin > databases > add", () => {
             "https://accounts.google.com/o/oauth2/auth?access_type=offline&redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code&scope=https://www.googleapis.com/auth/analytics.readonly&client_id=999",
           );
         });
+    });
+  });
+
+  describeWithToken("caching", () => {
+    beforeEach(() => {
+      mockSessionProperty("enable-query-caching", true);
+    });
+
+    it("sets cache ttl to null by default", () => {
+      cy.intercept("POST", "/api/database", { id: 42 }).as("createDatabase");
+      cy.visit("/admin/databases/create");
+
+      typeField("Name", "Test db name");
+      typeField("Host", "localhost");
+      typeField("Database name", "test_postgres_db");
+      typeField("Username", "uberadmin");
+
+      cy.button("Save").click();
+
+      cy.wait("@createDatabase").then(({ request }) => {
+        expect(request.body.cache_ttl).to.equal(null);
+      });
+    });
+
+    it("allows to set cache ttl", () => {
+      cy.intercept("POST", "/api/database", { id: 42 }).as("createDatabase");
+      cy.visit("/admin/databases/create");
+
+      typeField("Name", "Test db name");
+      typeField("Host", "localhost");
+      typeField("Database name", "test_postgres_db");
+      typeField("Username", "uberadmin");
+
+      cy.findByText("Use instance default (TTL)").click();
+      popover()
+        .findByText("Custom")
+        .click();
+      cy.findByDisplayValue("24")
+        .clear()
+        .type("48")
+        .blur();
+
+      cy.button("Save").click();
+
+      cy.wait("@createDatabase").then(({ request }) => {
+        expect(request.body.cache_ttl).to.equal(48);
+      });
     });
   });
 });

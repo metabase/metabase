@@ -275,8 +275,7 @@
                   :expressions {"double-price" [:* $price 2]}})))))))
 
 #_(deftest multiple-cumulative-sums-test
-  ;; sample-dataset doesn't work on Redshift yet -- see #14784
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :expression-aggregations) :redshift)
+  (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
     (testing "The results of divide or multiply two CumulativeSum should be correct (#15118)"
       (mt/dataset sample-dataset
         (is (= [["2016-01-01T00:00:00Z" 3236  2458.0  5694.0   1]

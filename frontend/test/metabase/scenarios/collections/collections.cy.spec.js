@@ -205,7 +205,7 @@ describe("scenarios > collection_defaults", () => {
     describe("a new dashboard", () => {
       it("should be in the root collection", () => {
         // Make new dashboard and check collection name
-        cy.createDashboard(dashboard_name);
+        cy.createDashboard({ name: dashboard_name });
 
         cy.visit("/collection/root");
         cy.findByText(dashboard_name);
@@ -240,7 +240,7 @@ describe("scenarios > collection_defaults", () => {
     describe("a new dashboard", () => {
       it("should be in the root collection", () => {
         // Make new dashboard and check collection name
-        cy.createDashboard(dashboard_name);
+        cy.createDashboard({ name: dashboard_name });
 
         cy.visit("/collection/root");
         cy.findByText(dashboard_name);
@@ -329,7 +329,7 @@ describe("scenarios > collection_defaults", () => {
       });
     });
 
-    it.skip("sub-collection should be available in save and move modals (#14122)", () => {
+    it("sub-collection should be available in save and move modals (#14122)", () => {
       const COLLECTION = "14122C";
       // Create Parent collection within `Our analytics`
       cy.request("POST", "/api/collection", {
@@ -600,7 +600,7 @@ describe("scenarios > collection_defaults", () => {
     it("collections list on the home page shouldn't depend on the name of the first 50 objects (metabase#16784)", () => {
       // Although there are already some objects in the default snapshot (3 questions, 1 dashboard, 3 collections),
       // let's create 50 more dashboards with the letter of alphabet `D` coming before the first letter of the existing collection `F`.
-      _.times(50, i => cy.createDashboard(`Dashboard ${i}`));
+      _.times(50, i => cy.createDashboard({ name: `Dashboard ${i}` }));
 
       cy.visit("/");
       // There is already a collection named "First collection" in the default snapshot

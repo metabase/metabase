@@ -8,7 +8,13 @@ import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Database from "metabase-lib/lib/metadata/Database";
 import Table from "metabase-lib/lib/metadata/Table";
 
-import { PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_PERMISSION_VALUE } from "metabase/plugins";
+import {
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_PERMISSION_VALUE,
+  PLUGIN_ADVANCED_PERMISSIONS,
+} from "metabase/plugins";
+
+export const isRestrictivePermission = value =>
+  PLUGIN_ADVANCED_PERMISSIONS.isBlockPermission(value) || value === "none";
 
 import type {
   Group,
@@ -150,7 +156,7 @@ export function downgradeNativePermissionsIfNeeded(
     databaseId,
   });
 
-  if (value === "none") {
+  if (isRestrictivePermission(value)) {
     // if changing schemas to none, downgrade native to none
     return updateNativePermission(
       permissions,
@@ -452,7 +458,7 @@ function diffDatabasePermissions(
       tableId: table.id,
     });
     if (oldFieldsPerm !== newFieldsPerm) {
-      if (newFieldsPerm === "none") {
+      if (isRestrictivePermission(newFieldsPerm)) {
         databaseDiff.revokedTables[table.id] = { name: table.display_name };
       } else {
         databaseDiff.grantedTables[table.id] = { name: table.display_name };

@@ -2,7 +2,12 @@
   (:require [compojure.core :as compojure]
             [metabase-enterprise.sso.api.sso :as sso]))
 
-;; This needs to be installed in the `metabase.server.routes/routes` -- not `metabase.api.routes/routes` !!!
+;; This needs to be injected into [[metabase.server.routes/routes]] -- not [[metabase.api.routes/routes]] !!!
+;;
+;; TODO -- should we make a `metabase-enterprise.routes` namespace where this can live instead of injecting it
+;; directly?
+;;
+;; TODO -- we need to feature-flag this based on the `:sso` feature
 (compojure/defroutes ^{:doc "Ring routes for auth (SAML) API endpoints."} routes
   (compojure/context
    "/auth"

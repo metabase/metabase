@@ -31,14 +31,15 @@
 
 ;; TODO -- I think this only applied to Fields now -- see
 ;; https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language. It definitely doesn't apply
-;; to Tables. Not sure about project/dataset identifiers.
+;; to Tables. Datasets can be passed as `dataset-id` or `project-id`.`dataset-id`.
+;; TODO -- Needs to change frontend too
 (defn- valid-bigquery-identifier?
   "Is String `s` a valid BigQuery identifier? Identifiers are only allowed to contain letters, numbers, and underscores;
-  cannot start with a number; and can be at most 128 characters long."
+  cannot start with a number; and can be at most 1054 characters long (30 for maximum lenght of project names and 1024 for dataset)."
   [s]
   (boolean
    (and (string? s)
-        (re-matches #"^([a-zA-Z_][a-zA-Z_0-9]*){1,128}$" s))))
+        (re-matches #"^[a-zA-Z_0-9\.\-]{1,1054}$" s))))
 
 (def ^:private BigQueryIdentifierString
   (s/pred valid-bigquery-identifier? "Valid BigQuery identifier"))
@@ -500,9 +501,9 @@
   [_ custom-field-name]
   (->valid-field-identifier custom-field-name))
 
-(defmethod sql.qp/field->alias :bigquery
-  [driver field]
-  (->valid-field-identifier ((get-method sql.qp/field->alias :sql) driver field)))
+(defmethod sql.qp/escape-alias :bigquery
+  [_ alias-name]
+  (->valid-field-identifier alias-name))
 
 (defmethod sql.qp/prefix-field-alias :bigquery
   [driver prefix field-alias]

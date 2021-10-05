@@ -8,11 +8,15 @@ Problems, their causes, how to detect them, and how to fix them.
 
 ### Using Metabase
 
-- [Logging in][login].
+- [People can't log in to Metabase][login].
 
 - [Saving questions or dashboards][proxies].
 
-- [My question or dashboard is slow][performance].
+- [My dashboard is slow][slow-dashboard].
+
+- [My dashboard filters don't work][filters].
+
+- [My dashboard's linked filters don't work][linked-filters].
 
 ### Setup and administration
 
@@ -24,13 +28,13 @@ Problems, their causes, how to detect them, and how to fix them.
 
 - [Setting up LDAP][ldap].
 
-- [Setting up email][email].
+- [Metabase isn't sending email][not-sending-email].
 
-- [Using the default H2 application database][appdb].
+- [Using or migrating from an H2 application database][appdb].
 
-- [Loading an exported H2 application database][loadh2].
+- [The dates and times in my questions and charts are wrong][incorrect-times].
 
-- [Handling timezones][timezones].
+- [I can't see my tables][cant-see-tables].
 
 - [Managing data sandboxing][sandbox].
 
@@ -53,7 +57,7 @@ Metabase will log errors, both on the server and in the browser console, dependi
 - [Safari][safari]
 - [Edge][edge]
 
-## Metabase tutorials 
+## Metabase tutorials
 
 For tutorials that walk you through how to use Metabase features, check out [Learn Metabase][learn].
 
@@ -71,26 +75,28 @@ Metabase adds new features and squashes bugs with each release. [Upgrading to th
 
 [appdb]: ./application-database.html
 [bugs]: ./bugs.html
+[cant-see-tables]: ./cant-see-tables.html
 [chrome]: https://developers.google.com/web/tools/chrome-devtools/open#console
-[cloud]: https://www.metabase.com/start/ 
+[cloud]: https://www.metabase.com/start/
 [datawarehouse]: ./datawarehouse.html
 [docker]: ./docker.html
 [edge]: https://docs.microsoft.com/en-us/microsoft-edge/devtools-guide-chromium
-[email]: ../operations-guide/upgrading-metabase.html
 [faq]: /faq
+[filters]: ./filters.html
 [firefox]: https://developer.mozilla.org/en-US/docs/Tools/Web_Console/Opening_the_Web_Console
 [forum]: https://discourse.metabase.com/
+[incorrect-times]: ./timezones.html
 [ldap]: ./ldap.html
 [learn]: https://www.metabase.com/learn
-[login]: ./loggingin.html
-[loadh2]: ./loading-from-h2.html
-[performance]: ./performance.html
+[linked-filters]: ./linked-filters.html
+[login]: ./cant-log-in.html
+[not-sending-email]: ./cant-send-email.html
 [proxies]: ./proxies.html
 [releases]: https://github.com/metabase/metabase/releases
 [running]: ./running.html
 [safari]: https://support.apple.com/guide/safari-developer/develop-menu-dev39df999c1/mac
 [server-logs]: ./server-logs.html
 [sandbox]: ./sandboxing.html
+[slow-dashboard]: ./my-dashboard-is-slow.html
 [sync-fingerprint-scan]: ./sync-fingerprint-scan.html
-[timezones]: ./timezones.html
 [upgrade]: ../operations-guide/upgrading-metabase.html

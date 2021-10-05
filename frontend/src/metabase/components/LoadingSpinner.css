@@ -11,6 +11,12 @@
     cubic-bezier(0.785, 0.135, 0.15, 0.86);
 }
 
+@media (prefers-reduced-motion) {
+  .LoadingSpinner {
+    animation: none;
+  }
+}
+
 .LoadingSpinner:after {
   content: "";
 

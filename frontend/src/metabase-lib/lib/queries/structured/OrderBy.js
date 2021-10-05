@@ -43,7 +43,7 @@ export default class OrderBy extends MBQLClause {
   /**
    * Predicate function to test if a given order-by clause is valid
    */
-  isValid(): boolean {
+  isValid() {
     const query = this.query();
     return !query || query.sortOptions(this).hasDimension(this.dimension());
   }

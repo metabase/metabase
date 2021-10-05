@@ -1,15 +1,18 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import {
-  SortableContainer,
-  SortableElement,
-  SortableHandle,
-} from "react-sortable-hoc";
 import cx from "classnames";
 
 import StaticParameterWidget from "./ParameterWidget";
 import Icon from "metabase/components/Icon";
-import { collateParametersWithValues } from "metabase/meta/Parameter";
+import {
+  SortableContainer,
+  SortableElement,
+  SortableHandle,
+} from "metabase/components/sortable";
+import {
+  getValuePopulatedParameters,
+  getVisibleParameters,
+} from "metabase/meta/Parameter";
 
 import type {
   ParameterId,
@@ -34,14 +37,7 @@ type Props = {
   vertical?: boolean,
   commitImmediately?: boolean,
 
-  setParameterName?: (parameterId: ParameterId, name: string) => void,
-  setParameterValue?: (parameterId: ParameterId, value: string) => void,
-  setParameterDefaultValue?: (
-    parameterId: ParameterId,
-    defaultValue: string,
-  ) => void,
   setParameterIndex?: (parameterId: ParameterId, index: number) => void,
-  removeParameter?: (parameterId: ParameterId) => void,
   setEditingParameter?: (parameterId: ParameterId) => void,
 };
 
@@ -81,9 +77,7 @@ function ParametersList({
   vertical,
   commitImmediately,
 
-  setParameterName,
   setParameterValue,
-  setParameterDefaultValue,
   setParameterIndex,
   removeParameter,
   setEditingParameter,
@@ -105,13 +99,14 @@ function ParametersList({
     }
   };
 
-  const hiddenParameters =
-    typeof hideParameters === "string"
-      ? new Set(hideParameters.split(","))
-      : new Set();
-  const collatedParameters = collateParametersWithValues(
+  const valuePopulatedParameters = getValuePopulatedParameters(
     parameters,
     parameterValues,
+  );
+
+  const visibleValuePopulatedParameters = getVisibleParameters(
+    valuePopulatedParameters,
+    hideParameters,
   );
 
   let ParameterWidget;
@@ -137,41 +132,29 @@ function ParametersList({
       onSortStart={handleSortStart}
       onSortEnd={handleSortEnd}
     >
-      {collatedParameters
-        .filter(p => !hiddenParameters.has(p.slug))
-        .map((parameter, index) => (
-          <ParameterWidget
-            key={parameter.id}
-            className={cx({ mb2: vertical })}
-            isEditing={isEditing}
-            isFullscreen={isFullscreen}
-            isNightMode={isNightMode}
-            parameter={parameter}
-            parameters={collatedParameters}
-            dashboard={dashboard}
-            editingParameter={editingParameter}
-            setEditingParameter={setEditingParameter}
-            index={index}
-            setName={
-              setParameterName && (name => setParameterName(parameter.id, name))
-            }
-            setValue={
-              setParameterValue &&
-              (value => setParameterValue(parameter.id, value))
-            }
-            setDefaultValue={
-              setParameterDefaultValue &&
-              (value => setParameterDefaultValue(parameter.id, value))
-            }
-            remove={removeParameter && (() => removeParameter(parameter.id))}
-            commitImmediately={commitImmediately}
-            dragHandle={
-              isEditing && setParameterIndex ? (
-                <SortableParameterHandle />
-              ) : null
-            }
-          />
-        ))}
+      {visibleValuePopulatedParameters.map((valuePopulatedParameter, index) => (
+        <ParameterWidget
+          key={valuePopulatedParameter.id}
+          className={cx({ mb2: vertical })}
+          isEditing={isEditing}
+          isFullscreen={isFullscreen}
+          isNightMode={isNightMode}
+          parameter={valuePopulatedParameter}
+          parameters={valuePopulatedParameters}
+          dashboard={dashboard}
+          editingParameter={editingParameter}
+          setEditingParameter={setEditingParameter}
+          index={index}
+          setValue={
+            setParameterValue &&
+            (value => setParameterValue(valuePopulatedParameter.id, value))
+          }
+          commitImmediately={commitImmediately}
+          dragHandle={
+            isEditing && setParameterIndex ? <SortableParameterHandle /> : null
+          }
+        />
+      ))}
     </ParameterWidgetList>
   );
 }

@@ -803,7 +803,7 @@
 (deftest chain-filter-ignore-current-user-permissions-test
   (testing "Should not fail if request is authenticated but current user does not have data permissions"
     (mt/with-temp-copy-of-db
-      (perms/revoke-permissions! (group/all-users) (mt/db))
+      (perms/revoke-data-perms! (group/all-users) (mt/db))
       (with-chain-filter-fixtures [{:keys [dashboard param-keys values-url search-url]}]
         (db/update! Dashboard (:id dashboard)
           :embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"})

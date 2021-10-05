@@ -29,7 +29,12 @@ import Utils from "metabase/lib/utils";
 import { defer } from "metabase/lib/promise";
 import Question from "metabase-lib/lib/Question";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
-import { cardIsEquivalent, cardQueryIsEquivalent } from "metabase/meta/Card";
+import {
+  cardIsEquivalent,
+  cardQueryIsEquivalent,
+  getValueAndFieldIdPopulatedParametersFromCard,
+} from "metabase/meta/Card";
+import { getParameterValuesByIdFromQueryParams } from "metabase/meta/Parameter";
 import { normalize } from "cljs/metabase.mbql.js";
 
 import {
@@ -49,6 +54,7 @@ import {
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
   getSnippetCollectionId,
+  getQueryResults,
 } from "./selectors";
 
 import { MetabaseApi, CardApi, UserApi } from "metabase/services";
@@ -313,15 +319,11 @@ export const RESET_QB = "metabase/qb/RESET_QB";
 export const resetQB = createAction(RESET_QB);
 
 export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
-export const initializeQB = (location, params) => {
+export const initializeQB = (location, params, queryParams) => {
   return async (dispatch, getState) => {
     // do this immediately to ensure old state is cleared before the user sees it
     dispatch(resetQB());
     dispatch(cancelQuery());
-
-    // preload metadata that's used in DataSelector
-    dispatch(Databases.actions.fetchList({ include: "tables" }));
-    dispatch(Databases.actions.fetchList({ saved: true }));
 
     const { currentUser } = getState();
 
@@ -520,12 +522,20 @@ export const initializeQB = (location, params) => {
     }
 
     card = question && question.card();
+    const metadata = getMetadata(getState());
+    const parameters = getValueAndFieldIdPopulatedParametersFromCard(card);
+    const parameterValues = getParameterValuesByIdFromQueryParams(
+      parameters,
+      queryParams,
+      metadata,
+    );
 
     // Update the question to Redux state together with the initial state of UI controls
     dispatch.action(INITIALIZE_QB, {
       card,
       originalCard,
       uiControls,
+      parameterValues,
     });
 
     // if we have loaded up a card that we can run then lets kick that off as well
@@ -920,6 +930,15 @@ export const updateQuestion = (
     }
     // </PIVOT LOGIC>
 
+    // Native query should never be in notebook mode (metabase#12651)
+    if (getQueryBuilderMode(getState()) !== "view" && newQuestion.isNative()) {
+      await dispatch(
+        setQueryBuilderMode("view", {
+          shouldUpdateUrl: false,
+        }),
+      );
+    }
+
     // Replace the current question with a new one
     await dispatch.action(UPDATE_QUESTION, { card: newQuestion.card() });
 
@@ -1039,7 +1058,6 @@ export const apiUpdateQuestion = question => {
     // so we want the databases list to be re-fetched next time we hit "New Question" so it shows up
     dispatch(setRequestUnloaded(["entities", "databases"]));
 
-    dispatch(updateUrl(updatedQuestion.card(), { dirty: false }));
     MetabaseAnalytics.trackEvent(
       "QueryBuilder",
       "Update Card",
@@ -1133,20 +1151,31 @@ export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
 export const queryCompleted = (question, queryResults) => {
   return async (dispatch, getState) => {
     const [{ data }] = queryResults;
+    const [{ data: prevData }] = getQueryResults(getState()) || [{}];
     const originalQuestion = getOriginalQuestion(getState());
     const dirty =
       !originalQuestion ||
       (originalQuestion && question.isDirtyComparedTo(originalQuestion));
+
     if (dirty) {
+      if (question.isNative()) {
+        question = question.syncColumnsAndSettings(
+          originalQuestion,
+          queryResults[0],
+        );
+      }
       // Only update the display if the question is new or has been changed.
       // Otherwise, trust that the question was saved with the correct display.
       question = question
         // if we are going to trigger autoselection logic, check if the locked display no longer is "sensible".
-        .syncColumnsAndSettings(originalQuestion, queryResults[0])
-        .maybeUnlockDisplay(getSensibleDisplays(data))
+        .maybeUnlockDisplay(
+          getSensibleDisplays(data),
+          prevData && getSensibleDisplays(prevData),
+        )
         .setDefaultDisplay()
         .switchTableScalar(data);
     }
+
     dispatch.action(QUERY_COMPLETED, { card: question.card(), queryResults });
   };
 };

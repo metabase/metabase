@@ -6,7 +6,7 @@
             [metabase.mbql.normalize :as normalize]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.collection :as collection]
-            [metabase.models.dependency :as dependency]
+            [metabase.models.dependency :as dependency :refer [Dependency]]
             [metabase.models.field-values :as field-values]
             [metabase.models.interface :as i]
             [metabase.models.params :as params]
@@ -33,6 +33,31 @@
   {:hydrate :dashboard_count}
   [{:keys [id]}]
   (db/count 'DashboardCard, :card_id id))
+
+(defn average-query-time
+  "Average query time of card, taken by query executions which didn't hit cache.
+  If it's nil we don't have any query executions on file"
+  {:hydrate :average_query_time}
+  [{:keys [id]}]
+  (-> (db/query {:select [:%avg.running_time]
+                 :from [:query_execution]
+                 :where [:and
+                         [:not= :running_time nil]
+                         [:not= :cache_hit true]
+                         [:= :card_id id]]})
+      first vals first))
+
+(defn last-query-start
+  "Timestamp for start of last query of this card."
+  {:hydrate :last_query_start}
+  [{:keys [id]}]
+  (-> (db/query {:select [:%max.started_at]
+                 :from [:query_execution]
+                 :where [:and
+                         [:not= :running_time nil]
+                         [:not= :cache_hit true]
+                         [:= :card_id id]]})
+      first vals first))
 
 ;; There's more hydration in the shared metabase.moderation namespace, but it needs to be required:
 (comment moderation/keep-me)
@@ -203,7 +228,8 @@
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (defn- pre-delete [{:keys [id]}]
   (db/delete! 'ModerationReview :moderated_item_type "card", :moderated_item_id id)
-  (db/delete! 'Revision :model "Card", :model_id id))
+  (db/delete! 'Revision :model "Card", :model_id id)
+  (db/delete! 'Dependency :model "Card", :model_id id))
 
 (defn- result-metadata-out
   "Transform the Card result metadata as it comes out of the DB. Convert columns to keywords where appropriate."

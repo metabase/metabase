@@ -206,7 +206,7 @@
                                                  :query    {:source-table (->> left
                                                                                :source
                                                                                u/the-id
-                                                                               (str "card__" ))}})))
+                                                                               (str "card__"))}})))
                            :title       (tru "Compare with entire dataset")
                            :description ""}])))
       (as-> related

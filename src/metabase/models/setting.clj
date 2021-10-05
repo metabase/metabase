@@ -118,9 +118,9 @@
    :visibility  Visibility       ; where this setting should be visible (default: :admin)
    :cache?      s/Bool           ; should the getter always fetch this value "fresh" from the DB? (default: false)
 
-   ;; called whenever setting value changes, whether from update-setting! or a cache refresh. used to handle cases
-   ;; where a change to the cache necessitates a change to some value outside the cache, like when a change the
-   ;; `:site-locale` setting requires a call to `java.util.Locale/setDefault`
+  ;; called whenever setting value changes, whether from update-setting! or a cache refresh. used to handle cases
+  ;; where a change to the cache necessitates a change to some value outside the cache, like when a change the
+  ;; `:site-locale` setting requires a call to `java.util.Locale/setDefault`
    :on-change   (s/maybe clojure.lang.IFn)})
 
 (defonce ^:private registered-settings
@@ -614,15 +614,30 @@
      ;; :refer-clojure :exclude doesn't seem to work in this case
      (metabase.models.setting/set! setting new-value))))
 
-(defn- is-expression? [symbols expression]
-  (when (list? expression)
-    ((set symbols) (first expression))))
+;; The next few functions are for validating the Setting description (i.e., docstring) at macroexpansion time. They
+;; check that the docstring is a valid deferred i18n form (e.g. [[metabase.util.i18n/deferred-tru]]) so the Setting
+;; description will be localized properly when it shows up in the FE admin interface.
+
+(def ^:private allowed-deferred-i18n-forms
+  #{`deferred-trs `deferred-tru})
+
+(defn- is-form?
+  "Whether `form` is a function call/macro call form starting with a symbol in `symbols`.
+
+    (is-form? #{`deferred-tru} `(deferred-tru \"wow\")) ; -> true"
+  [symbols form]
+  (when (and (list? form)
+             (symbol? (first form)))
+    ;; resolve the symbol to a var and convert back to a symbol so we can get the actual name rather than whatever
+    ;; alias the current namespace happens to be using
+    (let [symb (symbol (resolve (first form)))]
+      ((set symbols) symb))))
 
 (defn- valid-trs-or-tru? [desc]
-  (is-expression? #{'deferred-trs 'deferred-tru `deferred-trs `deferred-tru} desc))
+  (is-form? allowed-deferred-i18n-forms desc))
 
 (defn- valid-str-of-trs-or-tru? [maybe-str-expr]
-  (when (is-expression? #{'str `str} maybe-str-expr)
+  (when (is-form? #{`str} maybe-str-expr)
     ;; When there are several i18n'd sentences, there will probably be a surrounding `str` invocation and a space in
     ;; between the sentences, remove those to validate the i18n clauses
     (let [exprs-without-strs (remove (every-pred string? str/blank?) (rest maybe-str-expr))]
@@ -631,15 +646,19 @@
            (every? valid-trs-or-tru? exprs-without-strs)))))
 
 (defn- validate-description
-  "Validates the description expression `desc-expr`, ensuring it contains an i18n form, or a string consisting of 1 or
-  more i18n forms"
-  [desc]
-  (when-not (or (valid-trs-or-tru? desc)
-                (valid-str-of-trs-or-tru? desc))
-    (throw (IllegalArgumentException.
-            (trs "defsetting descriptions strings must have `:visibilty` `:internal`, `:setter` `:none`, or internationalized, found: `{0}`"
-                 (pr-str desc)))))
-  desc)
+  "Check that `description-form` is a i18n form (e.g. [[metabase.util.i18n/deferred-tru]]), or a [[str]] form consisting
+  of one or more deferred i18n forms. Returns `description-form` as-is."
+  [description-form]
+  (when-not (or (valid-trs-or-tru? description-form)
+                (valid-str-of-trs-or-tru? description-form))
+    ;; this doesn't need to be i18n'ed because it's a compile-time error.
+    (throw (ex-info (str "defsetting docstrings must be an *deferred* i18n form unless the Setting has"
+                         " `:visibilty` `:internal` or `:setter` `:none`."
+                         (format " Got: ^%s %s"
+                                 (some-> description-form class (.getCanonicalName))
+                                 (pr-str description-form)))
+                    {:description-form description-form})))
+  description-form)
 
 (defmacro defsetting
   "Defines a new Setting that will be added to the DB at some point in the future.
@@ -658,9 +677,8 @@
    *  `:default`    - The default value of the setting. This must be of the same type as the Setting type, e.g. the
                       default for an `:integer` setting must be some sort of integer. (default: `nil`)
 
-   *  `:type`       - `:string` (default), `:boolean`, `:integer`, `:json`, `:double`, or `:timestamp`. Non-`:string`
-                      Settings have special default getters and setters that automatically coerce values to the correct
-                      types.
+   *  `:type`       - `:string` (default) or one of the other types listed in [[Type]]. Non-`:string` Settings have
+                       special default getters and setters that automatically coerce values to the correct types.
 
    *  `:visibility` - `:public`, `:authenticated`, `:admin` (default), or `:internal`. Controls where this setting is
                       visible

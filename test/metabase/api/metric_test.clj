@@ -219,7 +219,7 @@
       (mt/with-temp* [Database [db]
                       Table    [table  {:db_id (u/the-id db)}]
                       Metric   [metric {:table_id (u/the-id table)}]]
-        (perms/revoke-permissions! (group/all-users) db)
+        (perms/revoke-data-perms! (group/all-users) db)
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403 (str "metric/" (u/the-id metric)))))))
 
@@ -242,7 +242,7 @@
       (mt/with-temp* [Database [db]
                       Table    [table  {:db_id (u/the-id db)}]
                       Metric   [metric {:table_id (u/the-id table)}]]
-        (perms/revoke-permissions! (group/all-users) db)
+        (perms/revoke-data-perms! (group/all-users) db)
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403 (format "metric/%d/revisions" (u/the-id metric)))))))
 

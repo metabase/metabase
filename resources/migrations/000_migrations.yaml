@@ -8464,6 +8464,82 @@ databaseChangeLog:
                 UPDATE setting SET value='simple' WHERE key='humanization-strategy'
                 AND value='advanced'
 
+  - changeSet:
+      id: 312
+      author: noahmoss
+      comment: Added 0.41.0 Backfill collection_id for dashboard subscriptions
+      changes:
+        - sql:
+            dbms: mariadb,mysql
+            sql: >-
+              UPDATE pulse p
+              INNER JOIN report_dashboard d
+              ON p.dashboard_id = d.id
+              SET p.collection_id = d.collection_id;
+        - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE pulse p
+              SET collection_id = d.collection_id
+              FROM report_dashboard d
+              WHERE p.dashboard_id = d.id
+              AND p.dashboard_id IS NOT NULL;
+        - sql:
+            dbms: h2
+            sql: >-
+              UPDATE pulse p
+              SET collection_id = (
+                SELECT d.collection_id
+                FROM report_dashboard d
+                WHERE d.id = p.dashboard_id
+              )
+              WHERE dashboard_id IS NOT NULL;
+
+  - changeSet:
+      id: 314
+      author: howonlee
+      comment: Added 0.41.0 Fine grained caching controls
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: cache_ttl
+                  type: integer
+                  remarks: "Granular cache TTL for specific database."
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: 315
+      author: howonlee
+      comment: Added 0.41.0 Fine grained caching controls, pt 2
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: cache_ttl
+                  type: integer
+                  remarks: "Granular cache TTL for specific dashboard."
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: 316
+      author: howonlee
+      comment: Added 0.41.0 Fine grained caching controls, pt 3
+      changes:
+        - addColumn:
+            tableName: view_log
+            columns:
+              - column:
+                  name: metadata
+                  type: text
+                  remarks: "Serialized JSON corresponding to metadata for view."
+                  constraints:
+                    nullable: true
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

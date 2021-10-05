@@ -34,7 +34,8 @@
   false)
 
 (def ^:dynamic *current-user-permissions-set*
-  "Delay to the set of permissions granted to the current user."
+  "Delay to the set of permissions granted to the current user. See documentation in [[metabase.models.permissions]] for
+  more information about the Metabase permissions system."
   (atom #{}))
 
 
@@ -247,7 +248,6 @@
   "Impl macro for `defendpoint`; don't use this directly."
   [{:keys [method route fn-name docstr args arg->schema original-body body]}]
   {:pre [(or (string? route) (vector? route))]}
-  (require 'compojure.core)
   `(def ~(vary-meta fn-name
                     assoc
 

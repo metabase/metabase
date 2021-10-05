@@ -188,7 +188,10 @@ function testOfficialBadgePresence(expectBadge = true) {
       collection_id: collectionId,
       query: TEST_QUESTION_QUERY,
     });
-    cy.createDashboard("Official Dashboard", { collection_id: collectionId });
+    cy.createDashboard({
+      name: "Official Dashboard",
+      collection_id: collectionId,
+    });
     cy.visit(`/collection/${collectionId}`);
   });
 
@@ -247,7 +250,7 @@ function testOfficialQuestionBadgeInRegularDashboard(expectBadge = true) {
         collection_id: collectionId,
         query: TEST_QUESTION_QUERY,
       },
-      dashboardName: "Regular Dashboard",
+      dashboardDetails: { name: "Regular Dashboard" },
     });
   });
 

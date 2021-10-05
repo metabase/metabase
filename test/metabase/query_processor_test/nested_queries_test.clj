@@ -67,12 +67,12 @@
           [4  6]]
    :cols [(cond-> (qp.test/breakout-col (qp.test/col :venues :price))
             native-source?
-            (-> (assoc :field_ref [:field "PRICE" {:base-type :type/Integer}])
+            (-> (assoc :field_ref [:field "PRICE" {:base-type :type/Integer}]
+                       :effective_type :type/Integer)
                 (dissoc :description :parent_id :visibility_type))
 
             (not has-source-metadata?)
-            (dissoc :id :semantic_type :settings :fingerprint :table_id
-                    :effective_type :coercion_strategy))
+            (dissoc :id :semantic_type :settings :fingerprint :table_id :coercion_strategy))
           (qp.test/aggregate-col :count)]})
 
 (deftest mbql-source-query-breakout-aggregation-test
@@ -400,7 +400,7 @@
                        :unit      :day)
                 ;; because this field literal comes from a native query that does not include `:source-metadata` it won't have
                 ;; the usual extra keys
-                (dissoc :semantic_type :effective_type :coercion_strategy :table_id
+                (dissoc :semantic_type :coercion_strategy :table_id
                         :id :settings :fingerprint))
             (qp.test/aggregate-col :count)]
            (mt/cols
@@ -508,7 +508,7 @@
     (testing "You should be able to read a Card with a source Card if you can read that Card and their Collections (#12354)\n"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp-copy-of-db
-          (perms/revoke-permissions! (group/all-users) (mt/id))
+          (perms/revoke-data-perms! (group/all-users) (mt/id))
           (mt/with-temp* [Collection [collection]
                           Card       [card-1 {:collection_id (u/the-id collection)
                                               :dataset_query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 2})}]
@@ -1051,17 +1051,12 @@
                                      :value  "Widget"}]})))))))
 
 (deftest nested-queries-with-expressions-and-joins-test
-  ;; sample-dataset doesn't work on Redshift yet -- see #14784
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :foreign-keys :nested-queries :left-join) :redshift)
+  (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries :left-join)
     (mt/dataset sample-dataset
       (testing "Do nested queries in combination with joins and expressions still work correctly? (#14969)"
-        ;; not sure why Snowflake has slightly different results
-        (is (= (if (= driver/*driver* :snowflake)
-                 [["Twitter" "Widget" 0 510.82]
-                  ["Twitter" nil 0 407.93]]
-                 (cond-> [["Twitter" "Widget" 0 498.59]
-                          ["Twitter" nil      0 401.51]]
-                   (mt/sorts-nil-first? driver/*driver*) reverse))
+        (is (= (cond-> [["Twitter" "Widget" 0 498.59]
+                        ["Twitter" nil      0 401.51]]
+                 (mt/sorts-nil-first? driver/*driver* :type/Text) reverse)
                (mt/formatted-rows [str str int 2.0]
                  (mt/run-mbql-query orders
                    {:source-query {:source-table $$orders
@@ -1104,21 +1099,14 @@
                                     :fk-field-id  %product_id}]}))))))))
 
 (deftest multi-level-aggregations-with-post-aggregation-filtering-test
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :foreign-keys :nested-queries) :redshift) ; sample-dataset doesn't work on Redshift yet -- see #14784
+  (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
     (testing "Multi-level aggregations with filter is the last section (#14872)"
       (mt/dataset sample-dataset
-        ;; not 100% sure why Snowflake has slightly different results
-        (is (= (if (= driver/*driver* :snowflake)
-                 [["Awesome Bronze Plate" 115.22]
-                  ["Mediocre Rubber Shoes" 101.06]
-                  ["Mediocre Wooden Bench" 117.04]
-                  ["Sleek Steel Table" 134.94]
-                  ["Small Marble Hat" 102.77]]
-                 [["Awesome Bronze Plate" 115.23]
-                  ["Mediocre Rubber Shoes" 101.04]
-                  ["Mediocre Wooden Bench" 117.03]
-                  ["Sleek Steel Table" 134.91]
-                  ["Small Marble Hat" 102.8]])
+        (is (= [["Awesome Bronze Plate" 115.23]
+                ["Mediocre Rubber Shoes" 101.04]
+                ["Mediocre Wooden Bench" 117.03]
+                ["Sleek Steel Table" 134.91]
+                ["Small Marble Hat" 102.8]]
                (mt/formatted-rows [str 2.0]
                  (mt/run-mbql-query orders
                    {:source-query {:source-query {:source-table $$orders
@@ -1133,7 +1121,7 @@
                     :filter       [:> *sum/Float 100]}))))))))
 
 (deftest date-range-test
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :foreign-keys :nested-queries) :redshift) ; sample-dataset doesn't work on Redshift yet -- see #14784
+  (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
     (testing "Date ranges should work the same in nested queries as is regular queries (#15352)"
       (mt/dataset sample-dataset
         (let [q1        (mt/mbql-query orders
@@ -1181,13 +1169,11 @@
 
 (deftest nested-query-with-expressions-test
   (testing "Nested queries with expressions should work in top-level native queries (#12236)"
-    (mt/test-drivers (disj (mt/normal-drivers-with-feature
-                            :nested-queries
-                            :basic-aggregations
-                            :expression-aggregations
-                            :foreign-keys)
-                           ;; sample-dataset doesn't work on Redshift yet -- see #14784
-                           :redshift)
+    (mt/test-drivers (mt/normal-drivers-with-feature
+                      :nested-queries
+                      :basic-aggregations
+                      :expression-aggregations
+                      :foreign-keys)
       (mt/dataset sample-dataset
         (mt/with-temp Card [card {:dataset_query (mt/mbql-query orders
                                                    {:filter      [:between $total 30 60]
@@ -1206,7 +1192,6 @@
                                              :type         :card
                                              :card-id      (u/the-id card)}}})]
             (is (= [["2016-04-01T00:00:00Z" 1]
-                    ;; not sure why Snowflake gives slightly different results, it must be a timezone bug.
-                    ["2016-05-01T00:00:00Z" (if (= driver/*driver* :snowflake) 4 5)]]
+                    ["2016-05-01T00:00:00Z" 5]]
                    (mt/formatted-rows [str int]
                      (qp/process-query query))))))))))

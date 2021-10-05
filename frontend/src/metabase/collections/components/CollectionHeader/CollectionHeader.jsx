@@ -20,13 +20,15 @@ import {
   ToggleMobileSidebarIcon,
 } from "./CollectionHeader.styled";
 
-const { CollectionAuthorityLevelIcon } = PLUGIN_COLLECTION_COMPONENTS;
-
 function Title({ collection, handleToggleMobileSidebar }) {
   return (
     <Flex align="center">
       <ToggleMobileSidebarIcon onClick={handleToggleMobileSidebar} />
-      <CollectionAuthorityLevelIcon collection={collection} mr={1} size={24} />
+      <PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon
+        collection={collection}
+        mr={1}
+        size={24}
+      />
       <PageHeading className="text-wrap">{collection.name}</PageHeading>
       {collection.description && (
         <Tooltip tooltip={collection.description}>

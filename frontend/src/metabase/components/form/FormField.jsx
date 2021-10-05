@@ -9,6 +9,7 @@ import { FieldRow, Label, InfoIcon, InputContainer } from "./FormField.styled";
 const formFieldCommon = {
   title: PropTypes.string,
   description: PropTypes.string,
+  descriptionPosition: PropTypes.oneOf(["top", "bottom"]),
   info: PropTypes.string,
   hidden: PropTypes.bool,
   horizontal: PropTypes.bool,
@@ -44,6 +45,9 @@ function FormField(props) {
     formField,
     title = formField && formField.title,
     description = formField && formField.description,
+    descriptionPosition = descriptionPosition ||
+      (formField && formField.descriptionPosition) ||
+      "top",
     info = formField && formField.info,
     hidden = formField && (formField.hidden || formField.type === "hidden"),
     horizontal = formField &&
@@ -93,10 +97,15 @@ function FormField(props) {
               </Tooltip>
             )}
           </FieldRow>
-          {description && <div className="mb1">{description}</div>}
+          {description && descriptionPosition === "top" && (
+            <div className="mb1">{description}</div>
+          )}
         </div>
       )}
       <InputContainer horizontal={horizontal}>{children}</InputContainer>
+      {description && descriptionPosition === "bottom" && (
+        <div className="mt1">{description}</div>
+      )}
     </div>
   );
 }

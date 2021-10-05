@@ -13,7 +13,7 @@
             [metabase.models.interface :as i]
             [metabase.models.params :as params]
             [metabase.models.permissions :as perms]
-            [metabase.models.pulse :refer [Pulse]]
+            [metabase.models.pulse :as pulse :refer [Pulse]]
             [metabase.models.pulse-card :as pulse-card :refer [PulseCard]]
             [metabase.models.revision :as revision]
             [metabase.models.revision.diff :refer [build-sentence]]
@@ -85,7 +85,7 @@
     (collection/check-collection-namespace Dashboard (:collection_id dashboard))))
 
 (defn- update-dashboard-subscription-pulses!
-  "Updates the pulses' names and syncs the PulseCards"
+  "Updates the pulses' names and collection IDs, and syncs the PulseCards"
   [dashboard]
   (let [dashboard-id (u/the-id dashboard)
         affected     (db/query
@@ -121,9 +121,11 @@
                                     :dashboard_card_id dashcard-id
                                     :position          position})]
         (db/transaction
-          (db/update-where! Pulse {:dashboard_id dashboard-id}
-            :name (:name dashboard))
-          (pulse-card/bulk-create! new-pulse-cards))))))
+         (binding [pulse/*allow-moving-dashboard-subscriptions* true]
+           (db/update-where! Pulse {:dashboard_id dashboard-id}
+                             :name (:name dashboard)
+                             :collection_id (:collection_id dashboard))
+           (pulse-card/bulk-create! new-pulse-cards)))))))
 
 (defn- post-update
   [dashboard]
@@ -151,7 +153,7 @@
   "Serialize a Dashboard for use in a Revision."
   [dashboard]
   (-> dashboard
-      (select-keys [:description :name])
+      (select-keys [:description :name :cache_ttl])
       (assoc :cards (vec (for [dashboard-card (ordered-cards dashboard)]
                            (-> (select-keys dashboard-card [:sizeX :sizeY :row :col :id :card_id])
                                (assoc :series (mapv :id (dashboard-card/series dashboard-card)))))))))
@@ -164,7 +166,8 @@
   ;; Now update the cards as needed
   (let [serialized-cards    (:cards serialized-dashboard)
         id->serialized-card (zipmap (map :id serialized-cards) serialized-cards)
-        current-cards       (db/select [DashboardCard :sizeX :sizeY :row :col :id :card_id], :dashboard_id dashboard-id)
+        current-cards       (db/select [DashboardCard :sizeX :sizeY :row :col :id :card_id :dashboard_id]
+                                       :dashboard_id dashboard-id)
         id->current-card    (zipmap (map :id current-cards) current-cards)
         all-dashcard-ids    (concat (map :id serialized-cards)
                                     (map :id current-cards))]
@@ -187,41 +190,46 @@
 
 (defn- diff-dashboards-str
   "Describe the difference between two Dashboard instances."
-  [_ dashboard₁ dashboard₂]
-  (when dashboard₁
-    (let [[removals changes]  (diff dashboard₁ dashboard₂)
-          check-series-change (fn [idx card-changes]
-                                (when (and (:series card-changes)
-                                           (get-in dashboard₁ [:cards idx :card_id]))
-                                  (let [num-series₁ (count (get-in dashboard₁ [:cards idx :series]))
-                                        num-series₂ (count (get-in dashboard₂ [:cards idx :series]))]
-                                    (cond
-                                      (< num-series₁ num-series₂)
-                                      (format "added some series to card %d" (get-in dashboard₁ [:cards idx :card_id]))
+  [_ dashboard1 dashboard2]
+  (let [[removals changes]  (diff dashboard1 dashboard2)
+        check-series-change (fn [idx card-changes]
+                              (when (and (:series card-changes)
+                                         (get-in dashboard1 [:cards idx :card_id]))
+                                (let [num-series₁ (count (get-in dashboard1 [:cards idx :series]))
+                                      num-series₂ (count (get-in dashboard2 [:cards idx :series]))]
+                                  (cond
+                                    (< num-series₁ num-series₂)
+                                    (format "added some series to card %d" (get-in dashboard1 [:cards idx :card_id]))
 
-                                      (> num-series₁ num-series₂)
-                                      (format "removed some series from card %d" (get-in dashboard₁ [:cards idx :card_id]))
+                                    (> num-series₁ num-series₂)
+                                    (format "removed some series from card %d" (get-in dashboard1 [:cards idx :card_id]))
 
-                                      :else
-                                      (format "modified the series on card %d" (get-in dashboard₁ [:cards idx :card_id]))))))]
-      (-> [(when (:name changes)
-             (format "renamed it from \"%s\" to \"%s\"" (:name dashboard₁) (:name dashboard₂)))
-           (when (:description changes)
+                                    :else
+                                    (format "modified the series on card %d" (get-in dashboard1 [:cards idx :card_id]))))))]
+    (-> [(when (and dashboard1 (:name changes))
+           (format "renamed it from \"%s\" to \"%s\"" (:name dashboard1) (:name dashboard2)))
+         (when (:description changes)
+           (cond
+             (nil? (:description dashboard1)) "added a description"
+             (nil? (:description dashboard2)) "removed the description"
+             :else (format "changed the description from \"%s\" to \"%s\""
+                           (:description dashboard1) (:description dashboard2))))
+         (when (:cache_ttl changes)
+           (cond
+             (nil? (:cache_ttl dashboard1)) "added a cache ttl"
+             (nil? (:cache_ttl dashboard2)) "removed the cache ttl"
+             :else (format "changed the cache ttl from \"%s\" to \"%s\""
+                           (:cache_ttl dashboard1) (:cache_ttl dashboard2))))
+         (when (or (:cards changes) (:cards removals))
+           (let [num-cards1  (count (:cards dashboard1))
+                 num-cards2  (count (:cards dashboard2))]
              (cond
-               (nil? (:description dashboard₁)) "added a description"
-               (nil? (:description dashboard₂)) "removed the description"
-               :else (format "changed the description from \"%s\" to \"%s\""
-                             (:description dashboard₁) (:description dashboard₂))))
-           (when (or (:cards changes) (:cards removals))
-             (let [num-cards₁  (count (:cards dashboard₁))
-                   num-cards₂  (count (:cards dashboard₂))]
-               (cond
-                 (< num-cards₁ num-cards₂) "added a card"
-                 (> num-cards₁ num-cards₂) "removed a card"
-                 :else                     "rearranged the cards")))]
-          (concat (map-indexed check-series-change (:cards changes)))
-          (->> (filter identity)
-               build-sentence)))))
+               (< num-cards1 num-cards2) "added a card"
+               (> num-cards1 num-cards2) "removed a card"
+               :else                     "rearranged the cards")))]
+        (concat (map-indexed check-series-change (:cards changes)))
+        (->> (filter identity)
+             build-sentence))))
 
 (u/strict-extend (class Dashboard)
   revision/IRevisioned

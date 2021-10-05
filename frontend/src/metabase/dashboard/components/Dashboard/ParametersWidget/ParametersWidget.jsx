@@ -1,6 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 
+import { getValuePopulatedParameters } from "metabase/meta/Parameter";
 import Parameters from "metabase/parameters/components/Parameters/Parameters";
 
 const propTypes = {
@@ -12,11 +13,8 @@ const propTypes = {
   location: PropTypes.object,
   parameterValues: PropTypes.object,
   parameters: PropTypes.array,
-  removeParameter: PropTypes.func,
   setEditingParameter: PropTypes.func,
-  setParameterDefaultValue: PropTypes.func,
   setParameterIndex: PropTypes.func,
-  setParameterName: PropTypes.func,
   setParameterValue: PropTypes.func,
   shouldRenderAsNightMode: PropTypes.bool.isRequired,
 };
@@ -30,11 +28,8 @@ const ParametersWidget = ({
   location,
   parameterValues,
   parameters,
-  removeParameter,
   setEditingParameter,
-  setParameterDefaultValue,
   setParameterIndex,
-  setParameterName,
   setParameterValue,
   shouldRenderAsNightMode,
 }) => {
@@ -46,17 +41,11 @@ const ParametersWidget = ({
       isFullscreen={isFullscreen}
       isNightMode={shouldRenderAsNightMode}
       hideParameters={hideParameters}
-      parameters={parameters.map(p => ({
-        ...p,
-        value: parameterValues[p.id],
-      }))}
+      parameters={getValuePopulatedParameters(parameters, parameterValues)}
       query={location.query}
       editingParameter={editingParameter}
       setEditingParameter={setEditingParameter}
-      setParameterName={setParameterName}
       setParameterIndex={setParameterIndex}
-      setParameterDefaultValue={setParameterDefaultValue}
-      removeParameter={removeParameter}
       setParameterValue={setParameterValue}
     />
   ) : null;

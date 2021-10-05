@@ -61,7 +61,7 @@ describe("scenarios > dashboard > permissions", () => {
       }).then(({ body: { id } }) => (secondQuestionId = id));
     });
 
-    cy.createDashboard("dashboard").then(({ body: { id: dashId } }) => {
+    cy.createDashboard().then(({ body: { id: dashId } }) => {
       cy.request("POST", `/api/dashboard/${dashId}/cards`, {
         cardId: firstQuestionId,
       }).then(({ body: { id: dashCardIdA } }) => {

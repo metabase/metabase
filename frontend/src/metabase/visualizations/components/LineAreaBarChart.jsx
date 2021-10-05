@@ -103,6 +103,10 @@ export default class LineAreaBarChart extends Component {
   }
 
   static checkRenderable(series, settings) {
+    if (series.length > this.maxMetricsSupported) {
+      throw new Error(t`${this.uiName} chart does not support multiple series`);
+    }
+
     const singleSeriesHasNoRows = ({ data: { cols, rows } }) => rows.length < 1;
     if (_.every(series, singleSeriesHasNoRows)) {
       throw new MinRowsError(1, 0);
@@ -358,6 +362,8 @@ export default class LineAreaBarChart extends Component {
       hovered,
       headerIcon,
       actionButtons,
+      isFullscreen,
+      isQueryBuilder,
       onHoverChange,
       onAddSeries,
       onRemoveSeries,
@@ -381,6 +387,7 @@ export default class LineAreaBarChart extends Component {
           this.getHoverClasses(),
           this.props.className,
         )}
+        isQueryBuilder={isQueryBuilder}
       >
         {hasTitle && (
           <ChartLegendCaption
@@ -397,6 +404,8 @@ export default class LineAreaBarChart extends Component {
           hovered={hovered}
           hasLegend={hasLegend}
           actionButtons={!hasTitle ? actionButtons : undefined}
+          isFullscreen={isFullscreen}
+          isQueryBuilder={isQueryBuilder}
           onHoverChange={onHoverChange}
           onAddSeries={!hasBreakout ? onAddSeries : undefined}
           onRemoveSeries={!hasBreakout ? onRemoveSeries : undefined}

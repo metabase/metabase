@@ -262,7 +262,7 @@
   [entity _]
   entity)
 
-(deftest dump-load-entities-testw
+(deftest dump-load-entities-test
   (try
     ;; in case it already exists
     (u/ignore-exceptions
@@ -288,7 +288,10 @@
                                :sqlserver ; ORDER BY not allowed not allowed in derived tables (subselects)
                                :vertica   ; bare table name doesn't work; it's test_data_venues instead of venues
                                :sqlite    ; foreign-keys is not supported by this driver
-                               :sparksql))  ; foreign-keys is not supported by this driver
+                               :sparksql  ; foreign-keys is not supported by this driver
+                               ;; foreign-keys is not supported by the below driver even though it has joins
+                               :bigquery-cloud-sdk
+                               ))
 
       (let [fingerprint (ts/with-world
                           (qp.store/fetch-and-store-database! db-id)
@@ -372,7 +375,7 @@
                                            [Card               (Card card-id-with-native-snippet)]
                                            [Card               (Card card-join-card-id)]]})]
         (with-world-cleanup
-          (load dump-dir {:on-error :continue :mode :update})
+          (load dump-dir {:on-error :continue :mode :skip})
           (mt/with-db (db/select-one Database :name ts/temp-db-name)
             (doseq [[model entity] (:entities fingerprint)]
               (testing (format "%s \"%s\"" (type model) (:name entity))

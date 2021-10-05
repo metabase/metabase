@@ -525,6 +525,9 @@ export function pivot(data, normalCol, pivotCol, cellCol) {
     return row;
   });
 
+  // keep a record of which row the data came from for onVisualizationClick
+  const sourceRows = normalValues.map(() => pivotValues.map(() => null));
+
   // fill it up with the data
   for (let j = 0; j < data.rows.length; j++) {
     const normalColIdx = normalValues.lastIndexOf(data.rows[j][normalCol]);
@@ -532,6 +535,7 @@ export function pivot(data, normalCol, pivotCol, cellCol) {
 
     pivotedRows[normalColIdx][0] = data.rows[j][normalCol];
     pivotedRows[normalColIdx][pivotColIdx] = data.rows[j][cellCol];
+    sourceRows[normalColIdx][pivotColIdx] = j;
   }
 
   // provide some column metadata to maintain consistency
@@ -558,6 +562,7 @@ export function pivot(data, normalCol, pivotCol, cellCol) {
     cols: cols,
     columns: pivotValues,
     rows: pivotedRows,
+    sourceRows,
   };
 }
 

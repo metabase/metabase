@@ -323,12 +323,15 @@
 
 
 (defmulti sorts-nil-first?
-  "Whether this database will sort nil values before or after non-nil values. Defaults to `true`."
-  {:arglists '([driver])}
+  "Whether this database will sort nil values (of type `base-type`) before or after non-nil values. Defaults to `true`.
+  Of course, in real queries, multiple sort columns can be specified, so considering only one `base-type` isn't 100%
+  correct. However, it is good enough for our test cases, which currently don't sort nulls across multiple columns
+  having different types."
+  {:arglists '([driver base-type])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-(defmethod sorts-nil-first? ::test-extensions [_] true)
+(defmethod sorts-nil-first? ::test-extensions [_ _] true)
 
 
 (defmulti aggregate-column-info

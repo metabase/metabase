@@ -5,27 +5,35 @@ describe("scenarios > admin > settings > email settings", () => {
     restore();
     cy.signInAsAdmin();
   });
-  it("should be able to save email settings", () => {
+
+  it("should be able to save email settings (metabase#17615)", () => {
     cy.visit("/admin/settings/email");
-    cy.findByPlaceholderText("smtp.yourservice.com")
+    cy.findByLabelText("SMTP Host")
       .type("localhost")
       .blur();
-    cy.findByPlaceholderText("587")
+    cy.findByLabelText("SMTP Port")
       .type("25")
       .blur();
-    cy.findByPlaceholderText("youlooknicetoday")
+    cy.findByLabelText("SMTP Username")
       .type("admin")
       .blur();
-    cy.findByPlaceholderText("Shhh...")
+    cy.findByLabelText("SMTP Password")
       .type("admin")
       .blur();
-    cy.findByPlaceholderText("metabase@yourcompany.com")
+    cy.findByLabelText("From Address")
       .type("mailer@metabase.test")
       .blur();
     cy.findByText("Save changes").click();
 
-    cy.findByText("Changes saved!");
+    cy.findByText("Changes saved!", { timeout: 10000 });
+
+    // This part was added as a repro for metabase#17615
+    cy.findByDisplayValue("localhost");
+    cy.findByDisplayValue("25");
+    cy.findAllByDisplayValue("admin");
+    cy.findByDisplayValue("mailer@metabase.test");
   });
+
   it("should show an error if test email fails", () => {
     // Reuse Email setup without relying on the previous test
     cy.request("PUT", "/api/setting", {
@@ -64,12 +72,9 @@ describe("scenarios > admin > settings > email settings", () => {
   it("should be able to clear email settings", () => {
     cy.visit("/admin/settings/email");
     cy.findByText("Clear").click();
-    cy.findByPlaceholderText("smtp.yourservice.com").should("have.value", "");
-    cy.findByPlaceholderText("587").should("have.value", "");
-    cy.findByPlaceholderText("metabase@yourcompany.com").should(
-      "have.value",
-      "",
-    );
+    cy.findByLabelText("SMTP Host").should("have.value", "");
+    cy.findByLabelText("SMTP Port").should("have.value", "");
+    cy.findByLabelText("From Address").should("have.value", "");
   });
 
   it("should not offer to save email changes when there aren't any (metabase#14749)", () => {
@@ -82,29 +87,33 @@ describe("scenarios > admin > settings > email settings", () => {
     cy.button("Save changes").should("be.disabled");
   });
 
-  it.skip("should not reset previously populated fields when validation fails for just one of them (metabase#16226)", () => {
+  it("should not reset previously populated fields when validation fails for just one of them (metabase#16226)", () => {
+    cy.intercept("PUT", "/api/email").as("updateSettings");
+
     cy.visit("/admin/settings/email");
 
     // First we fill out wrong settings
-    cy.findByPlaceholderText("smtp.yourservice.com")
+    cy.findByLabelText("SMTP Host")
       .type("foo") // Invalid SMTP host
       .blur();
-    cy.findByPlaceholderText("587")
+    cy.findByLabelText("SMTP Port")
       .type("25")
       .blur();
-    cy.findByPlaceholderText("youlooknicetoday")
+    cy.findByLabelText("SMTP Username")
       .type("admin")
       .blur();
-    cy.findByPlaceholderText("Shhh...")
+    cy.findByLabelText("SMTP Password")
       .type("admin")
       .blur();
-    cy.findByPlaceholderText("metabase@yourcompany.com")
+    cy.findByLabelText("From Address")
       .type("mailer@metabase.test")
       .blur();
 
     // Trying to save will trigger the error (as it should)
     cy.button("Save changes").click();
-    cy.findByText("Sorry, something went wrong. Please try again.");
+
+    cy.wait("@updateSettings");
+    cy.contains("Wrong host or port");
 
     // But it shouldn't delete field values
     cy.findByDisplayValue("mailer@metabase.test");

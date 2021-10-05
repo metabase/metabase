@@ -52,7 +52,9 @@
         user                             (tdb/select-one user/User)
         query-results                    (binding [qp.perms/*card-id* nil]
                                            (qp/process-query-and-save-execution!
-                                            (assoc dataset_query :async? false)
+                                            (-> dataset_query
+                                                (assoc :async? false)
+                                                (assoc-in [:middleware :process-viz-settings?] true))
                                             {:executed-by (:id user)
                                              :context     :pulse
                                              :card-id     card-id}))

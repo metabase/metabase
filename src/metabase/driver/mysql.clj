@@ -79,7 +79,9 @@
   "Server SSL certificate chain, in PEM format."
   {:name         "ssl-cert"
    :display-name (deferred-tru "Server SSL certificate chain")
-   :placeholder  ""})
+   :placeholder  ""
+   :visible-if   {"ssl" true}}
+)
 
 (defmethod driver/connection-properties :mysql
   [_]

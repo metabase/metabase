@@ -170,6 +170,11 @@
                              "HH:mm"
                              (str "h" base-time-format)
 
+                             ;; Deprecated time style which should be already converted to HH:mm when viz settings are
+                             ;; normalized, but we'll handle it here too just in case. (#18112)
+                             "k:mm"
+                             (str "h" base-time-format)
+
                              "h:mm A"
                              (str base-time-format " am/pm")
 

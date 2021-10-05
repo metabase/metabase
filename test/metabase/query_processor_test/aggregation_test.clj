@@ -198,7 +198,6 @@
 
 
 ;;; ------------------------------------------------ CUMULATIVE COUNT ------------------------------------------------
-
 (deftest cumulative-count-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "cumulative count aggregations"
