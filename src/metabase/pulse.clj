@@ -46,8 +46,7 @@
                               (binding [qp.perms/*card-id* card-id]
                                 (qp/process-query-and-save-with-max-results-constraints!
                                  (assoc query :middleware {:process-viz-settings? true
-                                                           :js-int-to-string?     false
-                                                           :format-rows?          false})
+                                                           :js-int-to-string?     false})
                                  (merge {:executed-by pulse-creator-id
                                          :context     :pulse
                                          :card-id     card-id}
@@ -80,8 +79,7 @@
                     :export-format :api
                     :parameters    params
                     :middleware    {:process-viz-settings? true
-                                    :js-int-to-string?     false
-                                    :format-rows?          false}
+                                    :js-int-to-string?     false}
                     :run (fn [query info]
                            (qp/process-query-and-save-with-max-results-constraints! (assoc query :async? false) info))))]
       {:card card

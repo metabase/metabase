@@ -378,13 +378,19 @@
                   (inc (.getLastRowNum sheet)))
         row (.createRow sheet row-num)]
     (doseq [[value col index] (map vector values cols (range (count values)))]
-      (let [id-or-name (or (:id col) (:name col))
-            settings   (or (get col-settings {::mb.viz/field-id id-or-name})
-                           (get col-settings {::mb.viz/column-name id-or-name}))
-            scaled-val (if (and value (::mb.viz/scale settings))
-                         (* value (::mb.viz/scale settings))
-                         value)]
-        (set-cell! (.createCell ^SXSSFRow row ^Integer index) scaled-val id-or-name)))
+      (let [id-or-name   (or (:id col) (:name col))
+            settings     (or (get col-settings {::mb.viz/field-id id-or-name})
+                             (get col-settings {::mb.viz/column-name id-or-name}))
+            scaled-val   (if (and value (::mb.viz/scale settings))
+                           (* value (::mb.viz/scale settings))
+                           value)
+            ;; Temporal values may have been formatted by strings in the format-rows QP middleware, particularly during
+            ;; dashboard subscription generation. If this is the case, we should parse them here.
+            parsed-value (if (and (string? value)
+                                  (isa? (:semantic_type col) :type/Temporal))
+                           (metabase.util.date-2/parse value)
+                           scaled-val)]
+        (set-cell! (.createCell ^SXSSFRow row ^Integer index) parsed-value id-or-name)))
     row))
 
 (defn- column-titles

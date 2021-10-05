@@ -3,7 +3,6 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [java-time :as t]
-            [metabase.query-processor.middleware.format-rows :as qp.format-rows]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.schema :as su]
@@ -17,26 +16,23 @@
 (defn format-temporal-str
   "Reformat a datetime value `t` or temporal literal string `s` (i.e., an ISO-8601 string) with a human-friendly
   format based on the column `:unit`."
-  [timezone-id s-or-t col]
-  (let [s (if (string? s-or-t)
-            s-or-t
-            (qp.format-rows/format-value s-or-t timezone-id))]
-    (if (str/blank? s)
-      ""
-      (case (:unit col)
-        ;; these types have special formatting
-        :hour    (reformat-temporal-str timezone-id s "h a - MMM yyyy")
-        :week    (str "Week " (reformat-temporal-str timezone-id s "w - YYYY"))
-        :month   (reformat-temporal-str timezone-id s "MMMM yyyy")
-        :quarter (reformat-temporal-str timezone-id s "QQQ - yyyy")
+  [timezone-id s col]
+  (if (str/blank? s)
+    ""
+    (case (:unit col)
+      ;; these types have special formatting
+      :hour    (reformat-temporal-str timezone-id s "h a - MMM yyyy")
+      :week    (str "Week " (reformat-temporal-str timezone-id s "w - YYYY"))
+      :month   (reformat-temporal-str timezone-id s "MMMM yyyy")
+      :quarter (reformat-temporal-str timezone-id s "QQQ - yyyy")
 
-        ;; no special formatting here : return as ISO-8601
-        ;; TODO: probably shouldn't even be showing sparkline for x-of-y groupings?
-        (:year :hour-of-day :day-of-week :week-of-year :month-of-year)
-        s
+      ;; no special formatting here : return as ISO-8601
+      ;; TODO: probably shouldn't even be showing sparkline for x-of-y groupings?
+      (:year :hour-of-day :day-of-week :week-of-year :month-of-year)
+      s
 
-        ;; for everything else return in this format
-        (reformat-temporal-str timezone-id s "MMM d, yyyy")))))
+      ;; for everything else return in this format
+      (reformat-temporal-str timezone-id s "MMM d, yyyy"))))
 
 (def ^:private RenderableInterval
   {:interval-start     Temporal
