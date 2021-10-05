@@ -161,7 +161,7 @@ export default class AuditTableVisualization extends React.Component {
         <tbody>
           {rows.map(
             (row, rowIndex) =>
-              !rowFilter[rowIndex] && (
+              rowFilter && !rowFilter[rowIndex] && (
                 <tr key={rowIndex}>
                   {isSelectable && (
                     <td>
