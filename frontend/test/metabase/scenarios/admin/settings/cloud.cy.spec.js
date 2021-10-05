@@ -1,6 +1,6 @@
 import { restore, setupMetabaseCloud } from "__support__/e2e/cypress";
 
-describe("Cloud settings section", () => {
+describe.skip("Cloud settings section", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
