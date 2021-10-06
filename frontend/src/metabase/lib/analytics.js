@@ -1,4 +1,5 @@
 /*global ga*/
+/*global snowplow*/
 
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -19,6 +20,10 @@ const MetabaseAnalytics = {
         ga("set", "page", url);
         ga("send", "pageview", url);
       }
+
+      if (typeof snowplow === "function") {
+        snowplow("trackPageView");
+      }
     }
   },
 
@@ -32,10 +37,17 @@ const MetabaseAnalytics = {
     const { tag } = MetabaseSettings.get("version") || {};
 
     // category & action are required, rest are optional
-    if (typeof ga === "function" && category && action) {
-      ga("set", "dimension1", tag);
-      ga("send", "event", category, action, label, value);
+    if (category && action) {
+      if (typeof ga === "function") {
+        ga("set", "dimension1", tag);
+        ga("send", "event", category, action, label, value);
+      }
+
+      if (typeof snowplow === "function") {
+        snowplow("trackStructEvent", category, action, label, "", value)
+      }
     }
+
     if (DEBUG) {
       console.log("trackEvent", { category, action, label, value });
     }

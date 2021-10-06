@@ -20,6 +20,8 @@
                      "frontend_client/inline_js/index_bootstrap.js"
                      ;; inline script in index.html that loads Google Analytics
                      "frontend_client/inline_js/index_ganalytics.js"
+                     ;; inline script in index.html that loads Snowplow
+                     "frontend_client/inline_js/index_snowplow.js"
                      ;; inline script in init.html
                      "frontend_client/inline_js/init.js"])))
 
