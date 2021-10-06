@@ -32,18 +32,23 @@ describeWithToken("scenarios > alert (EE)", () => {
     cy.findByText(errorMessage);
   });
 
-  it("should validate approved email domains for a dashboard subscription", () => {
+  it("should validate approved email domains for a dashboard subscription (metabase#17977)", () => {
     cy.visit("/dashboard/1");
 
     cy.icon("share").click();
     cy.findByText("Dashboard subscriptions").click();
     cy.findByText("Email it").click();
+
     cy.findByPlaceholderText("Enter user names or email addresses")
       .click()
       .type(`${email}`)
       .blur();
 
     sidebar().within(() => {
+      // Reproduces metabase#17977
+      cy.findByText("Send email now").click();
+      cy.findByText("Sending failed");
+
       cy.button("Done").click();
       cy.findByText(errorMessage);
     });
