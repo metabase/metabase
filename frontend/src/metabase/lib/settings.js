@@ -141,11 +141,21 @@ class Settings {
 
   docsUrl(page = "", anchor = "") {
     let { tag } = this.get("version", {});
-    if (/^v1\.\d+\.\d+$/.test(tag)) {
-      // if it's a normal EE version, link to the corresponding CE docs
-      tag = tag.replace("v1", "v0");
-    } else if (!tag || /v1/.test(tag) || /SNAPSHOT$/.test(tag)) {
-      // if there's no tag or it's an EE version that might not have a matching CE version, or it's a local build, link to latest
+    const matches = tag.match(/v[01]\.(\d+)(?:\.\d+)?(-.*)?/);
+    if (matches) {
+      if (
+        matches.length > 2 &&
+        matches[2] &&
+        "-snapshot" === matches[2].toLowerCase()
+      ) {
+        // always point -SNAPSHOT suffixes to "latest", since this is likely a development build off of master
+        tag = "latest";
+      } else {
+        // otherwise, it's a regular OSS or EE version string, just link to the major OSS doc link
+        tag = "v0." + matches[1];
+      }
+    } else {
+      // otherwise, just link to the latest tag
       tag = "latest";
     }
     if (page) {
