@@ -197,7 +197,8 @@ export default class AuditTableVisualization extends React.Component {
                   >
                     <div
                       className={cx({
-                        "text-code background-light": column["code"],
+                        "rounded p1 text-dark text-monospace text-small bg-light":
+                          column["code"],
                       })}
                     >
                       {formatValue(value, {
