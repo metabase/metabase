@@ -390,13 +390,12 @@
   (testing "LocalTime"
     (is (= [#inst "1899-12-31T10:12:06.000-00:00"]
            (second (xlsx-export [{:id 0, :name "Col"}] {} [[#t "10:12:06.681"]])))))
-  (testing "LocalDateTime formatted as a string with a temporal semantic type"
-    (is (= [#inst "2020-03-28T10:12:06.681-00:00"]
-           (second (xlsx-export [{:id 0, :name "Col" :semantic_type :type/DateTime}]
-                                {}
-                                [["2020-03-28T10:12:06.681"]])))))
-  (testing "String with a temporal semantic type that can't be parsed as a timestamp (should not fail export)"
-    (is (= ["asdf"] (second (xlsx-export [{:id 0, :name "Col" :semantic_type :type/DateTime}] {} [["asdf"]])))))
+  (testing "LocalDateTime formatted as a string; should be parsed when *parse-temporal-string-values* is true"
+    (is (= ["2020-03-28T10:12:06.681"]
+           (second (xlsx-export [{:id 0, :name "Col"}] {} [["2020-03-28T10:12:06.681"]]))))
+    (binding [xlsx/*parse-temporal-string-values* true]
+      (is (= [#inst "2020-03-28T10:12:06.681"]
+             (second (xlsx-export [{:id 0, :name "Col"}] {} [["2020-03-28T10:12:06.681"]]))))))
   (mt/with-everything-store
     (binding [metabase.driver/*driver* :h2]
       (testing "OffsetDateTime"

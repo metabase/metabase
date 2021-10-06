@@ -368,6 +368,11 @@
 (defmethod set-cell! nil [^Cell cell _ _]
   (.setBlank cell))
 
+(def ^:dynamic *parse-temporal-string-values*
+  "When true, XLSX exports will attempt to parse string values into corresponding java.time classes so that
+  formatting can be applied. This should be enabled for generation of pulse/dashboard subscription attachments."
+  false)
+
 (defn- add-row!
   "Adds a row of values to the spreadsheet. Values with the `scaled` viz setting are scaled prior to being added.
 
@@ -384,12 +389,11 @@
             scaled-val   (if (and value (::mb.viz/scale settings))
                            (* value (::mb.viz/scale settings))
                            value)
-            ;; Temporal values may have been formatted by strings in the format-rows QP middleware, particularly during
-            ;; dashboard subscription generation. If this is the case, we should parse them here.
-            parsed-value (if (and (string? value)
-                                  (isa? (:semantic_type col) :type/Temporal))
+            ;; Temporal values are converted into strings in the format-rows QP middleware, which is enabled during
+            ;; dashboard subscription/pulse generation. If so, we should parse them here so that formatting is applied.
+            parsed-value (if (and *parse-temporal-string-values* (string? value))
                            (try (u.date/parse value)
-                                ;; Fallback to string value if it couldn't be parsed
+                                ;; Fallback to plain string value if it couldn't be parsed
                                 (catch java.time.format.DateTimeParseException _ value))
                            scaled-val)]
         (set-cell! (.createCell ^SXSSFRow row ^Integer index) parsed-value id-or-name)))
