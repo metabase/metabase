@@ -286,7 +286,7 @@ if (WEBPACK_BUNDLE !== "production") {
   });
 
   config.plugins.push(
-    new TerserPlugin({ parallel: true, test: /\.jsx?($|\?)/i }),
+    new TerserPlugin({ parallel: true, test: /\.(tsx?|jsx?)($|\?)/i }),
   );
 
   config.devtool = "source-map";
