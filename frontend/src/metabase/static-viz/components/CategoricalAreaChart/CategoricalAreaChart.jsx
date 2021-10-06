@@ -20,11 +20,11 @@ const propTypes = {
   accessors: PropTypes.shape({
     x: PropTypes.func.isRequired,
     y: PropTypes.func.isRequired,
-    colors: PropTypes.object,
   }).isRequired,
   settings: PropTypes.shape({
     x: PropTypes.object,
     y: PropTypes.object,
+    colors: PropTypes.object,
   }),
   labels: PropTypes.shape({
     left: PropTypes.string,
