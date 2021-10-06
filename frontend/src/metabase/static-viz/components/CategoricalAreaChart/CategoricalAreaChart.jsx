@@ -20,6 +20,7 @@ const propTypes = {
   accessors: PropTypes.shape({
     x: PropTypes.func.isRequired,
     y: PropTypes.func.isRequired,
+    colors: PropTypes.object,
   }).isRequired,
   settings: PropTypes.shape({
     x: PropTypes.object,
@@ -29,7 +30,6 @@ const propTypes = {
     left: PropTypes.string,
     bottom: PropTypes.string,
   }),
-  colors: PropTypes.object,
 };
 
 const layout = {
@@ -57,13 +57,8 @@ const layout = {
   strokeDasharray: "4",
 };
 
-const CategoricalAreaChart = ({
-  data,
-  accessors,
-  settings,
-  labels,
-  colors,
-}) => {
+const CategoricalAreaChart = ({ data, accessors, settings, labels }) => {
+  const colors = settings?.colors;
   const isVertical = data.length > 10;
   const xTickWidth = getXTickWidth(data, accessors, layout.maxTickWidth);
   const xTickHeight = getXTickHeight(xTickWidth);
