@@ -43,16 +43,6 @@ To move a question, dashboard, or pulse into a collection, or from one collectio
 
 Note that you have to have Curate permission for the collection that you're moving a question into _and_ the collection you're moving the question out of.
 
-### Search
-
-![Search results](./images/collections/search-results.gif)
-
-Use the search bar to find dashboards, questions, collections, and pulses. You can select from the typeahead's dropdown results, or hit enter to view a search results page. You can also activate the search bar from anywhere by pressing the `/` key.
-
-Searches take into account items’ titles, descriptions, and other metadata — you can even search the contents of your SQL queries. For example, you can search for things like `SELECT escape_pod FROM mothership` and find that one question you worked on six months ago. The results will display an item’s description, which collection it’s saved in, what kind of object it is, and whether it’s pinned. Note that you'll only ever see items in collections you have permission to view.
-
-![Search results](./images/collections/search-results.png)
-
 ### Archiving items
 
 Sometimes questions outlive their usefulness and need to be sent to Question Heaven. To archive a question or dashboard, just click on the `…` menu that appears on the far right when you hover over a question and pick the Archive action. You'll only see that option if you have "curate" permission for the current collection. You can also archive multiple items at once, the same way as you move multiple items. Note that archiving a question removes it from all dashboards or Pulses where it appears, so be careful!
