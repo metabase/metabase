@@ -9,6 +9,7 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 const HtmlWebpackHarddiskPlugin = require("html-webpack-harddisk-plugin");
 const TerserPlugin = require("terser-webpack-plugin");
 const WebpackNotifierPlugin = require("webpack-notifier");
+const CopyWebpackPlugin = require("copy-webpack-plugin");
 
 const fs = require("fs");
 
@@ -180,6 +181,11 @@ const config = (module.exports = {
         "/*\n* This file is subject to the terms and conditions defined in\n * file 'LICENSE.txt', which is part of this source code package.\n */\n",
     }),
     new NodePolyfillPlugin(), // for crypto, among others
+    new CopyWebpackPlugin({
+      patterns: [
+        require.resolve("@snowplow/javascript-tracker/dist/sp.lite.js")
+      ]
+    })
   ],
 });
 

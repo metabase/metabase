@@ -75,6 +75,7 @@
    (let [{:keys [anon-tracking-enabled google-auth-client-id], :as public-settings} (setting/properties :public)]
      {:bootstrapJS        (load-inline-js "index_bootstrap")
       :googleAnalyticsJS  (load-inline-js "index_ganalytics")
+      :snowplowJS         (load-inline-js "index_snowplow")
       :bootstrapJSON      (escape-script (json/generate-string public-settings))
       :localizationJSON   (escape-script (load-localization))
       :favicon            (h.util/escape-html (public-settings/application-favicon-url))
