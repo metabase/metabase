@@ -390,6 +390,12 @@
   (testing "LocalTime"
     (is (= [#inst "1899-12-31T10:12:06.000-00:00"]
            (second (xlsx-export [{:id 0, :name "Col"}] {} [[#t "10:12:06.681"]])))))
+  (testing "LocalDateTime formatted as a string; should be parsed when *parse-temporal-string-values* is true"
+    (is (= ["2020-03-28T10:12:06.681"]
+           (second (xlsx-export [{:id 0, :name "Col"}] {} [["2020-03-28T10:12:06.681"]]))))
+    (binding [xlsx/*parse-temporal-string-values* true]
+      (is (= [#inst "2020-03-28T10:12:06.681"]
+             (second (xlsx-export [{:id 0, :name "Col"}] {} [["2020-03-28T10:12:06.681"]]))))))
   (mt/with-everything-store
     (binding [metabase.driver/*driver* :h2]
       (testing "OffsetDateTime"
