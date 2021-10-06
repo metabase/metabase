@@ -8,6 +8,7 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 import FieldList from "metabase/query_builder/components/FieldList";
 import Join from "metabase-lib/lib/queries/structured/Join";
+import { isDateTimeField } from "metabase/lib/query/field_ref";
 
 import {
   NotebookCell,
@@ -154,7 +155,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
   } else if (join.parentDimensions().length > 0) {
     // subsequent can be one of the previously joined tables
     // NOTE: `lhsDimension` would probably be a better name for `parentDimension`
-    lhsTable = join.parentDimensions()[0].field().table;
+    lhsTable = join.parentDimensions()[0]?.field().table;
   }
 
   function onSourceTableSet(newJoin) {
@@ -165,9 +166,13 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
     }
   }
 
-  function onParentDimensionChange(index, fieldRef) {
+  function onParentDimensionChange(index, fieldRef, { overwrite } = {}) {
     join
-      .setParentDimension({ index, dimension: fieldRef })
+      .setParentDimension({
+        index,
+        dimension: fieldRef,
+        overwriteTemporalUnit: overwrite,
+      })
       .setDefaultAlias()
       .parent()
       .update(updateQuery);
@@ -176,9 +181,13 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
     }
   }
 
-  function onJoinDimensionChange(index, fieldRef) {
+  function onJoinDimensionChange(index, fieldRef, { overwrite } = {}) {
     join
-      .setJoinDimension({ index, dimension: fieldRef })
+      .setJoinDimension({
+        index,
+        dimension: fieldRef,
+        overwriteTemporalUnit: overwrite,
+      })
       .parent()
       .update(updateQuery);
   }
@@ -268,8 +277,8 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
                       query={query}
                       dimension={parentDimensions[index]}
                       options={parentDimensionOptions}
-                      onChange={fieldRef =>
-                        onParentDimensionChange(index, fieldRef)
+                      onChange={(fieldRef, opts) =>
+                        onParentDimensionChange(index, fieldRef, opts)
                       }
                       onRemove={removeParentDimension}
                       ref={ref =>
@@ -285,8 +294,8 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
                       query={query}
                       dimension={joinDimensions[index]}
                       options={joinDimensionOptions}
-                      onChange={fieldRef =>
-                        onJoinDimensionChange(index, fieldRef)
+                      onChange={(fieldRef, opts) =>
+                        onJoinDimensionChange(index, fieldRef, opts)
                       }
                       onRemove={removeJoinDimension}
                       ref={ref =>
@@ -531,10 +540,17 @@ const joinDimensionCellItemPropTypes = {
 };
 
 function getDimensionSourceName(dimension) {
-  return dimension
-    .query()
-    .table()
-    .displayName();
+  return dimension.field()?.table?.display_name || t`Previous results`;
+}
+
+function getDimensionDisplayName(dimension) {
+  if (!dimension) {
+    return t`Pick a column...`;
+  }
+  if (dimension.temporalUnit()) {
+    return `${dimension.displayName()}: ${dimension.subDisplayName()}`;
+  }
+  return dimension.displayName();
 }
 
 function JoinDimensionCellItem({ dimension, color, testID, onRemove }) {
@@ -547,7 +563,7 @@ function JoinDimensionCellItem({ dimension, color, testID, onRemove }) {
               {getDimensionSourceName(dimension)}
             </DimensionSourceName>
           )}
-          {dimension?.displayName() || t`Pick a column...`}
+          {getDimensionDisplayName(dimension)}
         </div>
         {dimension && <RemoveDimensionIcon onClick={onRemove} />}
       </DimensionContainer>
@@ -575,6 +591,7 @@ class JoinDimensionPicker extends React.Component {
   open() {
     this._popover.open();
   }
+
   render() {
     const { dimension, onChange, onRemove, options, query, color } = this.props;
     const testID = this.props["data-testid"] || "join-dimension";
@@ -603,10 +620,15 @@ class JoinDimensionPicker extends React.Component {
             fieldOptions={options}
             table={query.table()}
             query={query}
-            onFieldChange={field => {
-              onChange(field);
+            onFieldChange={(field, { isSubDimension = false } = {}) => {
+              if (isDateTimeField(field)) {
+                onChange(field, { overwrite: isSubDimension });
+              } else {
+                onChange(field);
+              }
               onClose();
             }}
+            enableSubDimensions
             data-testid={`${testID}-picker`}
           />
         )}

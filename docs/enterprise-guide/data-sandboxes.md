@@ -1,6 +1,6 @@
 ## Sandboxing your data
 
-Data sandboxes are a powerful and flexible permissions tool in Metabase Enterprise Edition that allow you to grant filtered access to specific tables.
+Data sandboxes are a powerful and flexible permissions tool in Metabase Enterprise Edition that allow you to grant filtered access to specific tables. If you haven't already, check out our [overview of how permissions work in Metabase][permissions-overview].
 
 Say you have users who you want to be able to log into your Metabase instance, but who should only be able to view data that pertains to them. For example, you might have some customers or partners who you want to let view your Orders table, but you only want them to see their orders. Sandboxes let you do just that.
 
@@ -47,9 +47,7 @@ Next we’ll see a worksheet that will ask us how we want to filter this table f
 
 ![Sandbox settings](images/sandboxing/select-user-attribute.png)
 
-We’ll click Done, then we’ll click Save Changes at the top of the screen to save the changes we’ve made to our permissions. If we ever want to edit how this table should be filtered for users in this group, we can just click on the blue box and select “Edit sandboxed access.”
-
-![Edit access](images/sandboxing/edit-sandboxed-access.png)
+We’ll click Done, then we’ll click Save Changes at the top of the screen to save the changes we’ve made to our permissions. If we ever want to edit how this table should be filtered for users in this group, we can just click on the __Data access__ dropdown for that group and select __Edit sandboxed access__.
 
 To test this out, we’ll open up a new incognito browser window and log in with our test user account. We’ll click on the Sample Dataset on the home page and then pick the Orders table. As you can see here, this user correctly only sees orders where the User ID column is equal to 1, because that’s what this user’s user_id attribute is.
 
@@ -99,6 +97,21 @@ The filtering question that I'll create will exclude columns that I don't want t
 
 ![Filtering question](images/sandboxing/advanced-example-2-filtering-question.png)
 
+And here's the code:
+
+```
+SELECT
+  id,
+  created_at, 
+  product_id, 
+  quantity, 
+  total, 
+  user_id 
+FROM 
+  orders
+[[WHERE user_id = {%raw%}{{cid}}{%endraw%}]]
+```
+
 Going back over to the Permissions section, when I open up the sandboxed access modal and select the second option and select my filtering question, I'll see an additional section which allows me to map the variable I defined in my question with a user attribute:
 
 ![Sandboxing options](images/sandboxing/advanced-example-2-sandboxing-options.png)
@@ -147,4 +160,5 @@ Public questions and dashboards can't be sandboxed. Sandboxing works by filterin
 The next section will explain [how to embed](full-app-embedding.md) interactive dashboards and charts, or even whole sections of Metabase within your app.
 
 [permissions]: /learn/permissions/index.html
+[permissions-overview]: ../administration-guide/05-setting-permissions.md
 [troubleshoot-sandbox]: ../troubleshooting-guide/sandboxing.html

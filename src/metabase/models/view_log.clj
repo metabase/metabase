@@ -13,7 +13,8 @@
 (u/strict-extend (class ViewLog)
   models/IModel
   (merge models/IModelDefaults
-         {:pre-insert pre-insert})
+         {:pre-insert pre-insert
+          :types      (constantly {:metadata :json})})
   i/IObjectPermissions
   (merge i/IObjectPermissionsDefaults
          {:can-read?  (constantly true)

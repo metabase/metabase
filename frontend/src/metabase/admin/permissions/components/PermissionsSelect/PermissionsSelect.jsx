@@ -25,7 +25,7 @@ import {
 
 const propTypes = {
   options: PropTypes.arrayOf(PropTypes.shape(optionShape)).isRequired,
-  actions: PropTypes.arrayOf(PropTypes.shape(optionShape)),
+  actions: PropTypes.object,
   value: PropTypes.string.isRequired,
   toggleLabel: PropTypes.string,
   onChange: PropTypes.func.isRequired,
@@ -52,38 +52,36 @@ export const PermissionsSelect = memo(function PermissionsSelect({
   const selectedOption = options.find(option => option.value === value);
   const selectableOptions = options.filter(option => option !== selectedOption);
 
-  const shouldShowDisabledTooltip = isDisabled;
   const selectedOptionValue = (
-    <Tooltip tooltip={disabledTooltip} isEnabled={shouldShowDisabledTooltip}>
-      <PermissionsSelectRoot
-        isDisabled={isDisabled}
-        aria-haspopup="listbox"
-        data-testid="permissions-select"
-      >
-        {isDisabled ? (
-          <DisabledPermissionOption
-            {...selectedOption}
-            isHighlighted={isHighlighted}
-            iconColor="text-light"
-          />
-        ) : (
-          <PermissionsSelectOption {...selectedOption} />
-        )}
-
-        {warning && (
-          <Tooltip tooltip={warning}>
-            <WarningIcon />
-          </Tooltip>
-        )}
-
-        <Icon
-          style={{ visibility: isDisabled ? "hidden" : "visible" }}
-          name="chevrondown"
-          size={16}
-          color={lighten("text-light", 0.15)}
+    <PermissionsSelectRoot
+      isDisabled={isDisabled}
+      aria-haspopup="listbox"
+      data-testid="permissions-select"
+    >
+      {isDisabled ? (
+        <DisabledPermissionOption
+          {...selectedOption}
+          isHighlighted={isHighlighted}
+          hint={disabledTooltip}
+          iconColor="text-light"
         />
-      </PermissionsSelectRoot>
-    </Tooltip>
+      ) : (
+        <PermissionsSelectOption {...selectedOption} />
+      )}
+
+      {warning && (
+        <Tooltip tooltip={warning}>
+          <WarningIcon />
+        </Tooltip>
+      )}
+
+      <Icon
+        style={{ visibility: isDisabled ? "hidden" : "visible" }}
+        name="chevrondown"
+        size={16}
+        color={lighten("text-light", 0.15)}
+      />
+    </PermissionsSelectRoot>
   );
 
   const actionsForCurrentValue = actions?.[selectedOption?.value] || [];

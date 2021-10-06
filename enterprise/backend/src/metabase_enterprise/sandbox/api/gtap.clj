@@ -3,7 +3,7 @@
   (:require [compojure.core :refer [DELETE GET POST PUT]]
             [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
             [metabase.api.common :as api]
-            [metabase.public-settings.metastore :as metastore]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
@@ -67,7 +67,7 @@
   "Wrap the Ring handler to make sure sandboxes are enabled before allowing access to the API endpoints."
   [handler]
   (fn [request respond raise]
-    (if-not (metastore/enable-sandboxes?)
+    (if-not (premium-features/enable-sandboxes?)
       (raise (ex-info (str (tru "Error: sandboxing is not enabled for this instance.")
                            " "
                            (tru "Please check you have set a valid Enterprise token and try again."))

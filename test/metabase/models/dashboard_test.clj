@@ -34,6 +34,7 @@
                   DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]]
     (is (= {:name         "Test Dashboard"
             :description  nil
+            :cache_ttl    nil
             :cards        [{:sizeX   2
                             :sizeY   2
                             :row     0
@@ -75,11 +76,12 @@
                           :card_id 1
                           :series  []}]})))
 
-  (is (= "rearranged the cards, modified the series on card 1 and added some series to card 2."
+  (is (= "changed the cache ttl from \"333\" to \"1227\", rearranged the cards, modified the series on card 1 and added some series to card 2."
          (#'dashboard/diff-dashboards-str
           nil
           {:name        "Diff Test"
            :description nil
+           :cache_ttl   333
            :cards       [{:sizeX   2
                           :sizeY   2
                           :row     0
@@ -96,6 +98,7 @@
                           :series  []}]}
           {:name        "Diff Test"
            :description nil
+           :cache_ttl   1227
            :cards       [{:sizeX   2
                           :sizeY   2
                           :row     0
@@ -124,10 +127,15 @@
                                          :id      (= dashcard-id id)
                                          :card_id (= card-id card_id)
                                          :series  (= [series-id-1 series-id-2] series))])
+          empty-dashboard      {:name        "Revert Test"
+                                :description "something"
+                                :cache_ttl   nil
+                                :cards       []}
           serialized-dashboard (serialize-dashboard dashboard)]
       (testing "original state"
         (is (= {:name         "Test Dashboard"
                 :description  nil
+                :cache_ttl    nil
                 :cards        [{:sizeX   2
                                 :sizeY   2
                                 :row     0
@@ -142,14 +150,13 @@
           :name        "Revert Test"
           :description "something")
         (testing "capture updated Dashboard state"
-          (is (= {:name        "Revert Test"
-                  :description "something"
-                  :cards       []}
+          (is (= empty-dashboard
                  (serialize-dashboard (Dashboard dashboard-id))))))
       (testing "now do the reversion; state should return to original"
         (#'dashboard/revert-dashboard! nil dashboard-id (users/user->id :crowberto) serialized-dashboard)
         (is (= {:name         "Test Dashboard"
                 :description  nil
+                :cache_ttl    nil
                 :cards        [{:sizeX   2
                                 :sizeY   2
                                 :row     0
@@ -157,7 +164,11 @@
                                 :id      false
                                 :card_id true
                                 :series  true}]}
-               (update (serialize-dashboard (Dashboard dashboard-id)) :cards check-ids)))))))
+               (update (serialize-dashboard (Dashboard dashboard-id)) :cards check-ids))))
+      (testing "revert back to the empty state"
+        (#'dashboard/revert-dashboard! nil dashboard-id (users/user->id :crowberto) empty-dashboard)
+        (is (= empty-dashboard
+               (serialize-dashboard (Dashboard dashboard-id))))))))
 
 (deftest public-sharing-test
   (testing "test that a Dashboard's :public_uuid comes back if public sharing is enabled..."

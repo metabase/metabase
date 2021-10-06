@@ -16,6 +16,7 @@ import {
   isBoolean,
   isString,
   isSummable,
+  isScope,
   isCategory,
   isAddress,
   isCity,
@@ -119,6 +120,9 @@ export default class Field extends Base {
   }
   isSummable() {
     return isSummable(this);
+  }
+  isScope() {
+    return isScope(this);
   }
   isCategory() {
     return isCategory(this);
@@ -354,6 +358,7 @@ export default class Field extends Base {
    * @param {?Field} name_field
    * @param {Metadata} metadata
    */
+  /* istanbul ignore next */
   _constructor(
     id,
     name,

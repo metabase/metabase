@@ -27,66 +27,67 @@ import SummarizeStep from "./steps/SummarizeStep";
 import SortStep from "./steps/SortStep";
 import LimitStep from "./steps/LimitStep";
 
+// TODO
 const STEP_UI = {
   data: {
     title: t`Data`,
-    color: c("brand"),
     component: DataStep,
+    getColor: () => c("brand"),
   },
   join: {
     title: t`Join data`,
-    color: c("brand"),
     icon: "join_left_outer",
     component: JoinStep,
     priority: 1,
+    getColor: () => c("brand"),
   },
   expression: {
     title: t`Custom column`,
-    color: c("bg-dark"),
     icon: "add_data",
     component: ExpressionStep,
+    getColor: () => c("bg-dark"),
   },
   filter: {
     title: t`Filter`,
-    color: c("accent7"),
     icon: "filter",
     component: FilterStep,
     priority: 10,
+    getColor: () => c("accent7"),
   },
   summarize: {
     title: t`Summarize`,
-    color: c("accent1"),
     icon: "sum",
     component: SummarizeStep,
     priority: 5,
+    getColor: () => c("accent1"),
   },
   aggregate: {
     title: t`Aggregate`,
-    color: c("accent1"),
     icon: "sum",
     component: AggregateStep,
     priority: 5,
+    getColor: () => c("accent1"),
   },
   breakout: {
     title: t`Breakout`,
-    color: c("accent4"),
     icon: "segment",
     component: BreakoutStep,
     priority: 1,
+    getColor: () => c("accent4"),
   },
   sort: {
     title: t`Sort`,
-    color: c("bg-dark"),
     icon: "smartscalar",
     component: SortStep,
     compact: true,
+    getColor: () => c("bg-dark"),
   },
   limit: {
     title: t`Row limit`,
-    color: c("bg-dark"),
     icon: "list",
     component: LimitStep,
     compact: true,
+    getColor: () => c("bg-dark"),
   },
 };
 
@@ -112,9 +113,10 @@ export default class NotebookStep extends React.Component {
     } = this.props;
     const { showPreview } = this.state;
 
-    const { title, color, component: NotebookStepComponent } =
+    const { title, getColor, component: NotebookStepComponent } =
       STEP_UI[step.type] || {};
 
+    const color = getColor();
     const canPreview = step.previewQuery && step.previewQuery.isValid();
     const showPreviewButton = !showPreview && canPreview;
 
@@ -130,6 +132,7 @@ export default class NotebookStep extends React.Component {
           <ActionButton
             mr={isLastStep ? 2 : 1}
             mt={isLastStep ? 2 : null}
+            color={color}
             large={largeActionButtons}
             {...(STEP_UI[action.type] || {})}
             key={`actionButton_${STEP_UI[action.type].title}`}
@@ -142,14 +145,6 @@ export default class NotebookStep extends React.Component {
     actions.sort((a, b) => (b.priority || 0) - (a.priority || 0));
     const actionButtons = actions.map(action => action.button);
 
-    let onRemove = null;
-    if (step.revert) {
-      const reverted = step.revert(step.query).clean();
-      if (reverted.isValid()) {
-        onRemove = () => reverted.update(updateQuery);
-      }
-    }
-
     return (
       <ExpandingContent isInitiallyOpen={!isLastOpened} isOpen>
         <Box
@@ -158,25 +153,21 @@ export default class NotebookStep extends React.Component {
           className="hover-parent hover--visibility"
           data-testid={getTestId(step)}
         >
-          {(title || onRemove) && (
-            <Flex
-              mb={1}
-              width={CONTENT_WIDTH}
-              className="text-bold"
-              style={{ color }}
-            >
-              {title}
-              {onRemove && (
-                <Icon
-                  name="close"
-                  className="ml-auto cursor-pointer text-light text-medium-hover hover-child"
-                  tooltip={t`Remove`}
-                  onClick={onRemove}
-                  data-testid="remove-step"
-                />
-              )}
-            </Flex>
-          )}
+          <Flex
+            mb={1}
+            width={CONTENT_WIDTH}
+            className="text-bold"
+            style={{ color }}
+          >
+            {title}
+            <Icon
+              name="close"
+              className="ml-auto cursor-pointer text-light text-medium-hover hover-child"
+              tooltip={t`Remove`}
+              onClick={() => step.revert(step.query).update(updateQuery)}
+              data-testid="remove-step"
+            />
+          </Flex>
 
           {NotebookStepComponent && (
             <Flex align="center">
@@ -211,7 +202,11 @@ export default class NotebookStep extends React.Component {
             />
           )}
 
-          {actionButtons.length > 0 && <Box mt={1}>{actionButtons}</Box>}
+          {actionButtons.length > 0 && (
+            <Box mt={1} data-testid="action-buttons">
+              {actionButtons}
+            </Box>
+          )}
         </Box>
       </ExpandingContent>
     );

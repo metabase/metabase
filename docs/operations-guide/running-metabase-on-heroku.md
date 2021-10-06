@@ -37,7 +37,7 @@ Now that you’ve installed Metabase, it’s time to [set it up and connect it t
 ### Troubleshooting
 
 * If your Metabase instance is getting stuck part way through the initialization process and only every shows roughly 30% completion on the loading progress.
-    * The most likely culprit here is a stale database migrations lock that was not cleared.  This can happen if for some reason Heroku kills your Metabase dyno at the wrong time during startup.  __To fix it:__ you can either clear the lock using the built-in [release-locks](../troubleshooting-guide/application-database.md) command line function, or if needed you can login to your Metabase application database directly and delete the row in the `DATABASECHANGELOGLOCK` table.  Then just restart Metabase.
+    * The most likely culprit here is a stale database migrations lock that was not cleared.  This can happen if for some reason Heroku kills your Metabase dyno at the wrong time during startup.  __To fix it:__ you can either clear the lock using the built-in [release-locks](../troubleshooting-guide/loading-from-h2.md) command line function, or if needed you can login to your Metabase application database directly and delete the row in the `DATABASECHANGELOGLOCK` table.  Then just restart Metabase.
 
 
 ## Deploying New Versions of Metabase
@@ -51,7 +51,7 @@ Here's each step:
 * Clone the metabase-deploy repo to your local machine:
 
 ```bash
-git clone https://github.com/metabase/metabase-deploy.git  
+git clone https://github.com/metabase/metabase-deploy.git
 cd metabase-deploy
 ```
 
@@ -97,7 +97,7 @@ git push master
 
 ### Database Syncs
 
-You may want to ensure that your staging database is synced with production before you deploy a new version. Luckily with Heroku you can restore a backup from one app to another. 
+You may want to ensure that your staging database is synced with production before you deploy a new version. Luckily with Heroku you can restore a backup from one app to another.
 
 For example, assuming your production app is named `awesome-metabase-prod`, this command will create a backup:
 
@@ -117,12 +117,12 @@ Once this is done, restart your staging app and begin testing.
 
 ### Pinning Metabase versions
 
-For whatever reason, should you want to pin Metabase to a specific version, you can append the version number to the buildpack URL (as long as that tag exists in the [`metabase-buildpack`](https://github.com/metabase/metabase-buildpack) repository). 
+For whatever reason, should you want to pin Metabase to a specific version, you can append the version number to the buildpack URL (as long as that tag exists in the [`metabase-buildpack`](https://github.com/metabase/metabase-buildpack) repository).
 
 If you haven't cloned the `metabase-deploy` repository, this can be done with the Heroku CLI:
 
 ```bash
-heroku buildpacks:set --index 2 https://github.com/metabase/metabase-buildpack#0.34.1 \ 
+heroku buildpacks:set --index 2 https://github.com/metabase/metabase-buildpack#0.34.1 \
   --app <YOUR-APP-NAME>
 ```
 

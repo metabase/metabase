@@ -44,13 +44,22 @@ module.exports = (on, config) => {
    **                         BROWSERS                               **
    ********************************************************************/
 
-  //  Open dev tools in Chrome by default
   on("before:browser:launch", (browser = {}, launchOptions) => {
+    //  Open dev tools in Chrome by default
     if (browser.name === "chrome" || browser.name === "chromium") {
       launchOptions.args.push("--auto-open-devtools-for-tabs");
-
-      return launchOptions;
     }
+
+    // Start browsers with prefers-reduced-motion set to "reduce"
+    if (browser.family === "firefox") {
+      launchOptions.preferences["ui.prefersReducedMotion"] = 1;
+    }
+
+    if (browser.family === "chromium") {
+      launchOptions.args.push("--force-prefers-reduced-motion");
+    }
+
+    return launchOptions;
   });
 
   /********************************************************************
@@ -58,8 +67,9 @@ module.exports = (on, config) => {
    ********************************************************************/
 
   if (!isQaDatabase) {
-    config.ignoreTestFiles = "**/metabase-db/**";
+    config.ignoreTestFiles = "qa-db.cy.snap.js";
   }
+
   config.env.HAS_ENTERPRISE_TOKEN = hasEnterpriseToken;
 
   return config;

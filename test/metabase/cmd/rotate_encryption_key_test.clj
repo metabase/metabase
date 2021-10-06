@@ -13,12 +13,15 @@
             [metabase.models.interface :as interface]
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
+            [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
             [metabase.util.encryption :as encrypt]
             [metabase.util.encryption-test :as eu]
             [toucan.db :as db]
             [toucan.models :as models])
   (:import java.nio.charset.StandardCharsets))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn do-with-model-type
   [mtype in-type-fns f]

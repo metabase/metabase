@@ -10,7 +10,7 @@
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.interface :as mi]
             [metabase.models.pulse :as pulse :refer [Pulse]]
-            [metabase.models.pulse-channel :refer [channel-types PulseChannel]]
+            [metabase.models.pulse-channel :as pulse-channel :refer [channel-types PulseChannel]]
             [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
             [metabase.plugins.classloader :as classloader]
             [metabase.pulse :as p]
@@ -62,11 +62,13 @@
    parameters          [su/Map]}
   ;; make sure we are allowed to *read* all the Cards we want to put in this Pulse
   (check-card-read-permissions cards)
-  ;; if we're trying to create this Pulse inside a Collection, make sure we have write permissions for that collection
-  (collection/check-write-perms-for-collection collection_id)
-  ;; prohibit sending dashboard subs for unauthorized dashboards
+  ;; if we're trying to create this Pulse inside a Collection, and it is not a dashboard subscription,
+  ;; make sure we have write permissions for that collection
+  (when-not dashboard_id
+    (collection/check-write-perms-for-collection collection_id))
+  ;; prohibit creating dashboard subs if the the user doesn't have at least read access for the dashboard
   (when dashboard_id
-    (api/write-check Dashboard dashboard_id))
+    (api/read-check Dashboard dashboard_id))
   (let [pulse-data {:name                name
                     :creator_id          api/*current-user-id*
                     :skip_if_empty       skip_if_empty
@@ -203,6 +205,9 @@
    collection_position (s/maybe su/IntGreaterThanZero)
    dashboard_id        (s/maybe su/IntGreaterThanZero)}
   (check-card-read-permissions cards)
+  ;; make sure any email addresses that are specified are allowed before sending the test Pulse.
+  (doseq [channel channels]
+    (pulse-channel/validate-email-domains channel))
   (p/send-pulse! (assoc body :creator_id api/*current-user-id*))
   {:ok true})
 

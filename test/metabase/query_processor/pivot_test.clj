@@ -34,9 +34,9 @@
 (deftest breakout-combinations-test
   (testing "Should return the combos that Paul specified in (#14329)"
     (is (= [[0 1 2]
-            [0 1  ]
-            [0    ]
-            [     ]]
+            [0 1]
+            [0]
+            []]
            (#'pivot/breakout-combinations 3 [0 1 2] [])))
     (is (= (sort-by
             (partial #'pivot/group-bitmask 4)
@@ -46,24 +46,24 @@
              [0     3]
              [0 1   3]
              ;; row totals
-             [0 1 2  ]
+             [0 1 2]
              ;; subtotal rows within "row totals"
-             [0      ]
-             [0 1    ]
+             [0]
+             [0 1]
              ;; "grand totals" row
              [      3]
              ;; bottom right corner
-             [       ]])
+             []])
            (#'pivot/breakout-combinations 4 [0 1 2] [3])))
     (testing "If pivot-rows and pivot-cols aren't specified, then just return the powerset"
       (is (= [[0 1 2]
               [  1 2]
               [0   2]
               [    2]
-              [0 1  ]
-              [  1  ]
-              [0    ]
-              [     ]]
+              [0 1]
+              [  1]
+              [0]
+              []]
              (#'pivot/breakout-combinations 3 [] []))))))
 
 (deftest validate-pivot-rows-cols-test
@@ -76,11 +76,11 @@
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Invalid pivot-cols: specified breakout at index 3, but we only have 3 breakouts"
-         (#'pivot/breakout-combinations 3 [] [0 1 2 3]))))
+         (#'pivot/breakout-combinations 3 [] [0 1 2 3])))))
   ;; TODO -- we should require these columns to be distinct as well (I think?)
   ;; TODO -- require all numbers to be positive
   ;; TODO -- can you specify something in both pivot-rows and pivot-cols?
-  )
+
 
 (defn- test-query []
   (mt/dataset sample-dataset
@@ -164,20 +164,20 @@
               "Count"]
              (map :display_name (mt/cols results))))
       (is (apply distinct? rows))
-      (is (= [["Doohickey" "Facebook" "2019-01-01T00:00:00Z" 0  263 ]
-              ["Doohickey" "Facebook" "2020-01-01T00:00:00Z" 0  89  ]
-              ["Doohickey" "Google"   "2019-01-01T00:00:00Z" 0  276 ]
-              ["Doohickey" "Google"   "2020-01-01T00:00:00Z" 0  100 ]
-              ["Gizmo"     "Facebook" "2019-01-01T00:00:00Z" 0  361 ]
-              ["Gizmo"     "Facebook" "2020-01-01T00:00:00Z" 0  113 ]
-              ["Gizmo"     "Google"   "2019-01-01T00:00:00Z" 0  325 ]
-              ["Gizmo"     "Google"   "2020-01-01T00:00:00Z" 0  101 ]
-              ["Doohickey" "Facebook" nil                    4  352 ]
-              ["Doohickey" "Google"   nil                    4  376 ]
-              ["Gizmo"     "Facebook" nil                    4  474 ]
-              ["Gizmo"     "Google"   nil                    4  426 ]
-              ["Doohickey" nil        nil                    6  728 ]
-              ["Gizmo"     nil        nil                    6  900 ]
+      (is (= [["Doohickey" "Facebook" "2019-01-01T00:00:00Z" 0  263]
+              ["Doohickey" "Facebook" "2020-01-01T00:00:00Z" 0  89]
+              ["Doohickey" "Google"   "2019-01-01T00:00:00Z" 0  276]
+              ["Doohickey" "Google"   "2020-01-01T00:00:00Z" 0  100]
+              ["Gizmo"     "Facebook" "2019-01-01T00:00:00Z" 0  361]
+              ["Gizmo"     "Facebook" "2020-01-01T00:00:00Z" 0  113]
+              ["Gizmo"     "Google"   "2019-01-01T00:00:00Z" 0  325]
+              ["Gizmo"     "Google"   "2020-01-01T00:00:00Z" 0  101]
+              ["Doohickey" "Facebook" nil                    4  352]
+              ["Doohickey" "Google"   nil                    4  376]
+              ["Gizmo"     "Facebook" nil                    4  474]
+              ["Gizmo"     "Google"   nil                    4  426]
+              ["Doohickey" nil        nil                    6  728]
+              ["Gizmo"     nil        nil                    6  900]
               [nil         nil        nil                    7  1628]]
              rows)))))
 

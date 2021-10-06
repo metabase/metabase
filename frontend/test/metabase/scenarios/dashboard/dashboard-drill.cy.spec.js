@@ -138,6 +138,42 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
   });
 
+  it("should insert data from the correct row in the URL for pivot tables (metabase#17920)", () => {
+    const query =
+      "SELECT STATE, SOURCE, COUNT(*) AS CNT from PEOPLE GROUP BY STATE, SOURCE";
+    const questionSettings = {
+      "table.pivot": true,
+      "table.pivot_column": "SOURCE",
+      "table.cell_column": "CNT",
+    };
+    const columnKey = JSON.stringify(["name", "CNT"]);
+    const dashCardSettings = {
+      column_settings: {
+        [columnKey]: {
+          click_behavior: {
+            type: "link",
+            linkType: "url",
+            linkTemplate: "/test/{{CNT}}/{{STATE}}/{{SOURCE}}",
+          },
+        },
+      },
+    };
+    createQuestion(
+      { query, visualization_settings: questionSettings },
+      questionId => {
+        createDashboard(
+          { questionId, visualization_settings: dashCardSettings },
+          dashboardIdA => cy.visit(`/dashboard/${dashboardIdA}`),
+        );
+      },
+    );
+
+    cy.findAllByText("18")
+      .first()
+      .click();
+    cy.location("pathname").should("eq", "/test/18/CO/Organic");
+  });
+
   it("should handle question click through on a table", () => {
     createDashboardWithQuestion({}, dashboardId =>
       cy.visit(`/dashboard/${dashboardId}`),
@@ -174,7 +210,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     cy.findByText("num: 111").click();
 
     // show filtered question
-    cy.findByText("Orders");
+    cy.findAllByText("Orders");
     cy.findByText("User ID is 111");
     cy.findByText("Category is Widget");
     cy.findByText("Showing 5 rows");
@@ -904,7 +940,9 @@ function createQuestion(options, callback) {
     dataset_query: {
       database: 1,
       type: "native",
-      native: { query: "select 111 as my_number, 'foo' as my_string" },
+      native: {
+        query: options.query || "select 111 as my_number, 'foo' as my_string",
+      },
     },
     display: "table",
     visualization_settings: options.visualization_settings || {},

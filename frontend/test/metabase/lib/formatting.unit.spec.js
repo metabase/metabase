@@ -282,6 +282,19 @@ describe("formatting", () => {
         }),
       ).toEqual("00:00");
     });
+    it("should not include time for type/Date type (metabase#7494)", () => {
+      expect(
+        formatValue("2019-07-07T00:00:00.000Z", {
+          date_style: "M/D/YYYY",
+          time_enabled: "minutes",
+          time_style: "HH:mm",
+          column: {
+            base_type: "type/Date",
+            unit: "hour-of-day",
+          },
+        }),
+      ).toEqual("7/7/2019");
+    });
   });
 
   describe("formatUrl", () => {

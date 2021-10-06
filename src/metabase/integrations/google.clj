@@ -51,19 +51,11 @@
        (when-not (= (:email_verified <>) "true")
          (throw (ex-info (tru "Email is not verified.") {:status-code 400})))))))
 
-; TODO - are these general enough to move to `metabase.util`?
-(defn- email->domain ^String [email]
-  (last (re-find #"^.*@(.*$)" email)))
-
-(defn- email-in-domain? ^Boolean [email domain]
-  {:pre [(u/email? email)]}
-  (= (email->domain email) domain))
-
 (defn- autocreate-user-allowed-for-email? [email]
   (boolean
    (when-let [domains (google.i/google-auth-auto-create-accounts-domain)]
      (some
-      (partial email-in-domain? email)
+      (partial u/email-in-domain? email)
       (str/split domains #"\s*,\s*")))))
 
 (defn- check-autocreate-user-allowed-for-email

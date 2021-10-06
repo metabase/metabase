@@ -15,15 +15,16 @@
             [metabase.api.geojson :as geojson]
             [metabase.api.ldap :as ldap]
             [metabase.api.login-history :as login-history]
-            [metabase.api.metastore :as metastore]
             [metabase.api.metric :as metric]
             [metabase.api.native-query-snippet :as native-query-snippet]
             [metabase.api.notify :as notify]
             [metabase.api.permissions :as permissions]
+            [metabase.api.premium-features :as premium-features]
             [metabase.api.preview-embed :as preview-embed]
             [metabase.api.public :as public]
             [metabase.api.pulse :as pulse]
             [metabase.api.revision :as revision]
+            [metabase.api.routes.common :refer [+apikey +auth +generic-exceptions +message-only-exceptions]]
             [metabase.api.search :as search]
             [metabase.api.segment :as segment]
             [metabase.api.session :as session]
@@ -39,36 +40,23 @@
             [metabase.api.util :as util]
             [metabase.config :as config]
             [metabase.plugins.classloader :as classloader]
-            [metabase.server.middleware.auth :as middleware.auth]
-            [metabase.server.middleware.exceptions :as middleware.exceptions]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru]]))
 
-(u/ignore-exceptions (classloader/require '[metabase-enterprise.sandbox.api.routes :as ee.sandbox.routes]))
-(u/ignore-exceptions (classloader/require '[metabase-enterprise.moderation.api.review :as ee.moderation.review]))
+(u/ignore-exceptions (classloader/require 'metabase-enterprise.api.routes))
 
-(def ^:private +generic-exceptions
-  "Wrap `routes` so any Exception thrown is just returned as a generic 400, to prevent details from leaking in public
-  endpoints."
-  middleware.exceptions/genericize-exceptions)
-
-(def ^:private +message-only-exceptions
-  "Wrap `routes` so any Exception thrown is just returned as a 400 with only the message from the original
-  Exception (i.e., remove the original stacktrace), to prevent details from leaking in public endpoints."
-  middleware.exceptions/message-only-exceptions)
-
-(def ^:private +apikey
-  "Wrap `routes` so they may only be accessed with a correct API key header."
-  middleware.auth/enforce-api-key)
-
-(def ^:private +auth
-  "Wrap `routes` so they may only be accessed with proper authentication credentials."
-  middleware.auth/enforce-authentication)
+;; EE routes defined in [[metabase-enterprise.api.routes/routes]] always get the first chance to handle a request, if
+;; they exist. If they don't exist, this handler returns `nil` which means Compojure will try the next handler.
+(def ^:private ^{:arglists '([request respond raise])} ee-routes
+  ;; resolve the var for every request so we pick up any changes to it in interactive development
+  (if-let [ee-handler-var (resolve 'metabase-enterprise.api.routes/routes)]
+    (fn [request respond raise]
+      ((var-get ee-handler-var) request respond raise))
+    (fn [_request respond _raise]
+      (respond nil))))
 
 (defroutes ^{:doc "Ring routes for API endpoints."} routes
-  (or (some-> (resolve 'ee.sandbox.routes/routes) var-get)
-      (fn [_ respond _]
-        (respond nil)))
+  ee-routes
   (context "/activity"             [] (+auth activity/routes))
   (context "/alert"                [] (+auth alert/routes))
   (context "/automagic-dashboards" [] (+auth magic/routes))
@@ -83,11 +71,8 @@
   (context "/geojson"              [] geojson/routes)
   (context "/ldap"                 [] (+auth ldap/routes))
   (context "/login-history"        [] (+auth login-history/routes))
-  (context "/metastore"            [] (+auth metastore/routes))
+  (context "/premium-features"     [] (+auth premium-features/routes))
   (context "/metric"               [] (+auth metric/routes))
-  (if-some [moderation-routes (some-> (resolve 'ee.moderation.review/routes) var-get)]
-    (context "/moderation-review"  [] (+auth moderation-routes))
-    (fn [_ respond _] (respond nil)))
   (context "/native-query-snippet" [] (+auth native-query-snippet/routes))
   (context "/notify"               [] (+apikey notify/routes))
   (context "/permissions"          [] (+auth permissions/routes))

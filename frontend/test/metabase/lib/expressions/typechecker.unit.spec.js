@@ -176,6 +176,19 @@ describe("type-checker", () => {
       expect(() => validate("CONTAINS([Type],'X','Y')")).toThrow();
       expect(() => validate("CONTAINS([Type],'P','Q','R')")).toThrow();
     });
+
+    it("should allow a comparison (lexicographically) on strings", () => {
+      expect(() => validate("'A' <= 'B'")).not.toThrow();
+    });
+
+    it("should allow a comparison (lexicographically) on functions returning string", () => {
+      expect(() => validate("Lower([State]) > 'AB'")).not.toThrow();
+    });
+
+    it("should reject a less/greater comparison on functions returning boolean", () => {
+      expect(() => validate("IsEmpty([Tax]) < 5")).toThrow();
+      expect(() => validate("IsEmpty([Tax]) >= 0")).toThrow();
+    });
   });
 
   describe("for an aggregation", () => {

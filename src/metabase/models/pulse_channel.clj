@@ -5,7 +5,9 @@
             [metabase.models.interface :as i]
             [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
             [metabase.models.user :as user :refer [User]]
+            [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
+            [metabase.util.i18n :refer [tru]]
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.models :as models]))
@@ -40,7 +42,7 @@
   #{:first :mid :last})
 
 (defn schedule-frame?
-  "Is FRAME a valid schedule frame?"
+  "Is `frame` a valid schedule frame?"
   [frame]
   (contains? schedule-frames frame))
 
@@ -83,7 +85,7 @@
   {:email {:type              "email"
            :name              "Email"
            :allows_recipients true
-           :recipients        ["user", "email"]
+           :recipients        ["user" "email"]
            :schedules         [:hourly :daily :weekly :monthly]}
    :slack {:type              "slack"
            :name              "Slack"
@@ -126,19 +128,86 @@
                 :order-by [[:u.id :asc]]})]
      (user/add-common-name user))))
 
+(defn- pre-delete [pulse-channel]
+  ;; Call [[metabase.models.pulse/will-delete-channel]] to let it know we're about to delete a PulseChannel; that
+  ;; function will decide whether or not to automatically archive the Pulse as well.
+  (classloader/require 'metabase.models.pulse)
+  ((resolve 'metabase.models.pulse/will-delete-channel) pulse-channel))
+
+;; we want to load this at the top level so the Setting the namespace defines gets loaded
+(def ^:private ^{:arglists '([email-addresses])} validate-email-domains*
+  (or (u/ignore-exceptions
+        (classloader/require 'metabase-enterprise.advanced-config.models.pulse-channel)
+        (resolve 'metabase-enterprise.advanced-config.models.pulse-channel/validate-email-domains))
+      (constantly nil)))
+
+(defn validate-email-domains
+  "For channels that are being sent to raw email addresses: check that the domains in the emails are allowed by
+  the [[metabase-enterprise.advanced-config.models.pulse-channel/subscription-allowed-domains]] Setting, if set. This
+  will no-op if `subscription-allowed-domains` is unset or if we do not have a premium token with the
+  `:advanced-config` feature."
+  [{{:keys [emails]} :details, :keys [recipients], :as pulse-channel}]
+  ;; Raw email addresses can be in either `[:details :emails]` or in `:recipients`, depending on who is invoking this
+  ;; function. Make sure we handle both situations.
+  ;;
+  ;;    {:details {:emails [\"email@example.com\" ...]}}
+  ;;
+  ;;  The Dashboard Subscription FE currently sends raw email address recipients in this format:
+  ;;
+  ;;    {:recipients [{:email \"email@example.com\"} ...]}
+  ;;
+  (u/prog1 pulse-channel
+    (let [raw-email-recipients (remove :id recipients)
+          user-recipients      (filter :id recipients)
+          emails               (concat emails (map :email raw-email-recipients))]
+      (validate-email-domains* emails)
+      ;; validate User `:id` & `:email` match up for User recipients. This is mostly to make sure people don't try to
+      ;; be sneaky and pass in a valid User ID but different email so they can send test Pulses out to arbitrary email
+      ;; addresses
+      (when-let [user-ids (not-empty (into #{} (comp (filter some?) (map :id)) user-recipients))]
+        (let [user-id->email (db/select-id->field :email User, :id [:in user-ids])]
+          (doseq [{:keys [id email]} user-recipients
+                  :let               [correct-email (get user-id->email id)]]
+            (when-not correct-email
+              (throw (ex-info (tru "User {0} does not exist." id)
+                              {:status-code 404})))
+            ;; only validate the email address if it was explicitly specified, which is not explicitly required.
+            (when (and email
+                       (not= email correct-email))
+              (throw (ex-info (tru "Wrong email address for User {0}." id)
+                              {:status-code 403})))))))))
+
 (u/strict-extend (class PulseChannel)
   models/IModel
   (merge
    models/IModelDefaults
    {:hydration-keys (constantly [:pulse_channel])
     :types          (constantly {:details :json, :channel_type :keyword, :schedule_type :keyword, :schedule_frame :keyword})
-    :properties     (constantly {:timestamped? true})})
+    :properties     (constantly {:timestamped? true})
+    :pre-delete     pre-delete
+    :pre-insert     validate-email-domains
+    :pre-update     validate-email-domains})
 
   i/IObjectPermissions
   (merge
    i/IObjectPermissionsDefaults
    {:can-read?  (constantly true)
     :can-write? i/superuser?}))
+
+(defn will-delete-recipient
+  "This function is called by [[metabase.models.pulse-channel-recipient/pre-delete]] when a `PulseChannelRecipient` is
+  about to be deleted. Deletes `PulseChannel` if the recipient being deleted is its last recipient. (This only applies
+  to PulseChannels with User subscriptions; Slack PulseChannels and ones with email address subscriptions are not
+  automatically deleted.)"
+  [{channel-id :pulse_channel_id, pulse-channel-recipient-id :id}]
+  (let [other-recipients-count (db/count PulseChannelRecipient :pulse_channel_id channel-id, :id [:not= pulse-channel-recipient-id])
+        last-recipient?        (zero? other-recipients-count)]
+    (when last-recipient?
+      ;; make sure this channel doesn't have any email-address (non-User) recipients.
+      (let [details              (db/select-one-field :details PulseChannel :id channel-id)
+            has-email-addresses? (seq (:emails details))]
+        (when-not has-email-addresses?
+          (db/delete! PulseChannel :id channel-id))))))
 
 
 ;; ## Persistence Functions
@@ -171,18 +240,18 @@
                                       weekday)]
     (db/select [PulseChannel :id :pulse_id :schedule_type :channel_type]
       {:where [:and [:= :enabled true]
-                    [:or [:= :schedule_type "hourly"]
-                         [:and [:= :schedule_type "daily"]
-                               [:= :schedule_hour hour]]
-                         [:and [:= :schedule_type "weekly"]
-                               [:= :schedule_hour hour]
-                               [:= :schedule_day weekday]]
-                         [:and [:= :schedule_type "monthly"]
-                               [:= :schedule_hour hour]
-                               [:= :schedule_frame schedule-frame]
-                               [:or [:= :schedule_day weekday]
-                                    ;; this is here specifically to allow for cases where day doesn't have to match
-                                    [:= :schedule_day monthly-schedule-day-or-nil]]]]]})))
+               [:or [:= :schedule_type "hourly"]
+                [:and [:= :schedule_type "daily"]
+                 [:= :schedule_hour hour]]
+                [:and [:= :schedule_type "weekly"]
+                 [:= :schedule_hour hour]
+                 [:= :schedule_day weekday]]
+                [:and [:= :schedule_type "monthly"]
+                 [:= :schedule_hour hour]
+                 [:= :schedule_frame schedule-frame]
+                 [:or [:= :schedule_day weekday]
+                  ;; this is here specifically to allow for cases where day doesn't have to match
+                  [:= :schedule_day monthly-schedule-day-or-nil]]]]]})))
 
 
 (defn update-recipients!
