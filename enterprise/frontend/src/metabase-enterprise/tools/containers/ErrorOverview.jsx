@@ -15,7 +15,7 @@ const getSortOrder = isAscending => (isAscending ? "asc" : "desc");
 const CARD_ID_COL = 0;
 
 export default function ErrorOverview(props) {
-  const reloadRef = useRef();
+  const reloadRef = useRef(null);
   // TODO: use isReloading to display a loading overlay
   // eslint-disable-next-line no-unused-vars
   const [isReloading, setIsReloading] = useState(false);
@@ -49,7 +49,6 @@ export default function ErrorOverview(props) {
   };
 
   const handleReloadSelected = async () => {
-    setIsReloading(true);
     const checkedCardIds = Object.keys(_.pick(rowChecked, _.identity));
 
     await Promise.all(
@@ -58,7 +57,7 @@ export default function ErrorOverview(props) {
       ),
     );
     setRowChecked({});
-    console.log(reloadRef);
+    setIsReloading(true);
   };
 
   const handleSortingChange = sorting => setSorting(sorting);
@@ -88,7 +87,7 @@ export default function ErrorOverview(props) {
       {({ errorFilter, dbFilter, collectionFilter }) => (
         <AuditTable
           {...props}
-          reloadRef={reloadRef}
+          ref={reloadRef}
           pageSize={50}
           isSortable
           isSelectable
