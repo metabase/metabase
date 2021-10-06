@@ -220,7 +220,7 @@
 (defn lowercase-field
   "Lowercase a SQL field, to enter into honeysql query"
   [field]
-  (keyword (str "%lower." (name field))))
+  (hsql/call :lower field))
 
 (defn add-45-days-clause
   "Add an appropriate `WHERE` clause to limit query to 45 days"

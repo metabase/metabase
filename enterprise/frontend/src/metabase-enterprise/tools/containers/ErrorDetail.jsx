@@ -104,17 +104,20 @@ function ErrorDetailDisplay(props) {
     );
 
     return [
-      <h2 className="PageTitle p1" key="card_name">
+      <h2 className="PageTitle py2" key="card_name">
         {
           <Link to={cardUrlVal} className={cardLinkClass}>
             {resRow[nameToResCol.card_name]}
           </Link>
         }
       </h2>,
-      <div key="error_str" className="p1 text-code">
+      <div
+        key="error_str"
+        className="half rounded p2 text-dark text-monospace text-small bg-light"
+      >
         {resRow[nameToResCol.error_str]}
       </div>,
-      <table key="table" className="ContentTable">
+      <table key="table" className="mt4 half ContentTable">
         <tbody>{[ordinaryRows, dashIdRows]}</tbody>
       </table>,
     ];
@@ -141,12 +144,16 @@ function ErrorDetail(props) {
 
   return (
     <div>
+      <Button
+        primary
+        className="float-right"
+        onClick={() => errorRetry(cardId)}
+      >
+        {t`Rerun this question`}
+      </Button>
       <QuestionResultLoader question={question}>
         {({ rawSeries, result }) => <ErrorDetailDisplay result={result} />}
       </QuestionResultLoader>
-      <Button className="float-right" onClick={() => errorRetry(cardId)}>
-        {t`Rerun Question`}
-      </Button>
     </div>
   );
 }

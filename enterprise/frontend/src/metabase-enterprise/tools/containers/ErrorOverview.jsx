@@ -26,28 +26,39 @@ export default function ErrorOverview(props) {
   });
 
   const [rowChecked, setRowChecked] = useState({});
-  const [rowToCardId, setRowToCardId] = useState({});
+
+  const handleAllSelectClick = e => {
+    const newRowChecked = { ...rowChecked };
+    const noRowChecked = Object.values(rowChecked).every(v => !v);
+    for (const rowIndex of Array(e.rows.length).keys()) {
+      const cardIndex = e.rows[rowIndex][CARD_ID_COL];
+      if (noRowChecked) {
+        newRowChecked[cardIndex] = true;
+      } else {
+        newRowChecked[cardIndex] = false;
+      }
+    }
+    setRowChecked(newRowChecked);
+  };
+
   const handleRowSelectClick = e => {
     const newRowChecked = { ...rowChecked };
-    const newRowToCardId = { ...rowToCardId };
-    newRowChecked[e.rowIndex] = !(rowChecked[e.rowIndex] || false);
-    newRowToCardId[e.rowIndex] = e.row[CARD_ID_COL];
+    const cardIndex = e.row[CARD_ID_COL];
+    newRowChecked[cardIndex] = !(rowChecked[cardIndex] || false);
     setRowChecked(newRowChecked);
-    setRowToCardId(newRowToCardId);
   };
 
   const handleReloadSelected = async () => {
-    setIsReloading(true);
-    const checkedCardIds = Object.values(
-      _.pick(rowToCardId, (member, key) => rowChecked[key]),
-    );
+    const checkedCardIds = Object.keys(_.pick(rowChecked, _.identity));
+
     await Promise.all(
       checkedCardIds.map(
         async member => await CardApi.query({ cardId: member }),
       ),
     );
     setRowChecked({});
-    reloadRef.current().reload();
+    setIsReloading(true);
+    reloadRef.current?.();
   };
 
   const handleSortingChange = sorting => setSorting(sorting);
@@ -60,7 +71,7 @@ export default function ErrorOverview(props) {
   return (
     <AuditParameters
       parameters={[
-        { key: "errorFilter", placeholder: t`Error name` },
+        { key: "errorFilter", placeholder: t`Error contents` },
         { key: "dbFilter", placeholder: t`DB name` },
         { key: "collectionFilter", placeholder: t`Collection name` },
       ]}
@@ -81,10 +92,10 @@ export default function ErrorOverview(props) {
           pageSize={50}
           isSortable
           isSelectable
-          selectHeader={t`Rerun?`}
           rowChecked={rowChecked}
           sorting={sorting}
           onSortingChange={handleSortingChange}
+          onAllSelectClick={handleAllSelectClick}
           onRowSelectClick={handleRowSelectClick}
           onLoad={handleLoad}
           mode={ErrorMode}
@@ -95,6 +106,7 @@ export default function ErrorOverview(props) {
             sorting.column,
             getSortOrder(sorting.isAscending),
           )}
+          className={"mt2 bounded-overflow-x-scroll"}
         />
       )}
     </AuditParameters>
