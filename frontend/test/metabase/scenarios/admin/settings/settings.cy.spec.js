@@ -359,6 +359,7 @@ describe("scenarios > admin > settings", () => {
       .contains(lastItem);
   });
 
+  // Unskip when mocking Cloud in Cypress is fixed (#18289)
   it.skip("should hide self-hosted settings when running Metabase Cloud", () => {
     setupMetabaseCloud();
     cy.visit("/admin/settings/general");
@@ -370,6 +371,7 @@ describe("scenarios > admin > settings", () => {
     cy.findByText("Updates").should("not.exist");
   });
 
+  // Unskip when mocking Cloud in Cypress is fixed (#18289)
   it.skip("should hide the store link when running Metabase Cloud", () => {
     setupMetabaseCloud();
     cy.visit("/admin/settings/general");
@@ -411,6 +413,7 @@ describeWithToken("scenarios > admin > settings (EE)", () => {
     cy.signInAsAdmin();
   });
 
+  // Unskip when mocking Cloud in Cypress is fixed (#18289)
   it.skip("should hide Enterprise page when running Metabase Cloud", () => {
     setupMetabaseCloud();
     cy.visit("/admin/settings/general");
