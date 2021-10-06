@@ -7,16 +7,41 @@ import Tooltip from "./Tooltip";
 
 import cx from "classnames";
 
+type Inner<T> = T & {
+  isOpen?: boolean;
+  onClose?: (event: React.MouseEvent<HTMLElement>) => void;
+  target: () => void;
+}
+
+type Props<T> = Inner<T> & {
+  isInitiallyOpen?: boolean;
+  triggerId: string;
+  triggerClasses: string;
+  triggerStyle: string;
+  triggerClassesOpen: string;
+  triggerClassesClose: string;
+  triggerElement: any;
+  closeOnObscuredTrigger?: boolean;
+  disabled?: boolean;
+};
+
+type State = {
+  isOpen: boolean,
+}
+
 // higher order component that takes a component which takes props "isOpen" and optionally "onClose"
 // and returns a component that renders a <a> element "trigger", and tracks whether that component is open or not
-export default ComposedComponent =>
-  class extends Component {
+const Triggerable = <T extends unknown>(ComposedComponent: React.ComponentType<Inner<T>>) =>
+  class extends Component<Props<T>, State> {
     static displayName =
       "Triggerable[" +
       (ComposedComponent.displayName || ComposedComponent.name) +
       "]";
 
-    constructor(props, context) {
+    private trigger: React.RefObject<HTMLAnchorElement>;
+    private _offscreenTimer: any | null = null;
+
+    constructor(props: Props<T>, context: any) {
       super(props, context);
 
       this.state = {
@@ -45,9 +70,9 @@ export default ComposedComponent =>
       this.setState({ isOpen });
     }
 
-    onClose(e) {
+    onClose(e: React.MouseEvent<HTMLElement>) {
       // don't close if clicked the actual trigger, it will toggle
-      if (e && e.target && this.trigger.current.contains(e.target)) {
+      if (e && e.target && this.trigger.current?.contains(e.target as Node)) {
         return;
       }
 
@@ -128,6 +153,7 @@ export default ComposedComponent =>
         React.Children.only(children).props.onClose === undefined &&
         typeof React.Children.only(children).type !== "string"
       ) {
+        // TODO: This is a big type mess, should probably break out into a function with proper type guards
         // if we have a single child which isn't an HTML element and doesn't have an onClose prop go ahead and inject it directly
         children = React.cloneElement(children, { onClose: this.onClose });
       }
@@ -167,3 +193,5 @@ export default ComposedComponent =>
       );
     }
   };
+
+export default Triggerable;
