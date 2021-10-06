@@ -51,9 +51,10 @@
                                    "'unsafe-eval'" ; TODO - we keep working towards removing this entirely
                                    "https://maps.google.com"
                                    "https://apis.google.com"
-                                   "https://www.google-analytics.com" ; Safari requires the protocol
                                    "https://*.googleapis.com"
                                    "*.gstatic.com"
+                                   (when (public-settings/anon-tracking-enabled)
+                                     "https://www.google-analytics.com")
                                    ;; for webpack hot reloading
                                    (when config/is-dev?
                                      "localhost:8080")
