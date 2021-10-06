@@ -550,6 +550,13 @@ jobs:
             else
                echo '' > .CACHE-PREFIX
             fi
+      - run:
+          name: 'Check for branch name to bust caches if it is a release branch'
+          command: |
+            if [[ $CIRCLE_BRANCH == release* ]]; then
+              echo 'This is a release branch; using cache-busting prefix'
+                echo '<< pipeline.id >>' > .CACHE-PREFIX
+            fi
       - run-yarn-command:
           command-name: Create static visualization js bundle
           command: build-static-viz
