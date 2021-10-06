@@ -5,7 +5,9 @@ import {
   popover,
   openPeopleTable,
   describeWithToken,
+  setupSMTP,
 } from "__support__/e2e/cypress";
+
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 // Ported from alert.e2e.spec.js
 // *** We should also check that alerts can be set up through slack
@@ -221,7 +223,7 @@ describeWithToken("scenarios > alert (EE)", () => {
     const email = "mailer@metabase.test";
     const domain = "metabase.example";
 
-    setupDummySMTP();
+    setupSMTP();
     setAllowedEmailDomains(domain);
 
     cy.createQuestion({
