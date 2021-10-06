@@ -16,9 +16,12 @@ import type { MetricId } from "metabase-types/types/Metric";
 export const SORTABLE_AGGREGATION_TYPES = new Set([
   "avg",
   "count",
+  "count-where",
   "distinct",
   "stddev",
   "sum",
+  "sum-where",
+  "cum-sum",
   "min",
   "max",
 ]);
