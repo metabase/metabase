@@ -31,6 +31,14 @@
  [shared.u
   qualified-name])
 
+(defn add-period
+  "Fixes strings that don't terminate in a period."
+  [s]
+  (if (or (str/blank? s)
+          (#{\. \? \!} (last s)))
+    s
+    (str s ".")))
+
 (defn lower-case-en
   "Locale-agnostic version of `clojure.string/lower-case`.
   `clojure.string/lower-case` uses the default locale in conversions, turning
@@ -566,7 +574,9 @@
   "Is `s` a Base-64 encoded string?"
   ^Boolean [s]
   (boolean (when (string? s)
-             (re-matches #"^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$" s))))
+             (as-> s s
+                   (str/replace s #"\s" "")
+                   (re-matches #"^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$" s)))))
 
 (defn decode-base64
   "Decodes a Base64 string to a UTF-8 string"
@@ -923,3 +933,20 @@
            q))
        (doto q
          (.offer item))))))
+
+(defn email->domain
+  "Extract the domain portion of an `email-address`.
+
+    (email->domain \"cam@toucan.farm\") ; -> \"toucan.farm\""
+  ^String [email-address]
+  (when (string? email-address)
+    (last (re-find #"^.*@(.*$)" email-address))))
+
+(defn email-in-domain?
+  "Is `email-address` in `domain`?
+
+    (email-in-domain? \"cam@toucan.farm\" \"toucan.farm\")  ; -> true
+    (email-in-domain? \"cam@toucan.farm\" \"metabase.com\") ; -> false"
+  [email-address domain]
+  {:pre [(email? email-address)]}
+  (= (email->domain email-address) domain))

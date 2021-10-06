@@ -48,13 +48,17 @@
   "~25% gray."
   "#394340")
 
+(def ^:const color-text-light
+  "Color for light text."
+  "#B8BBC3")
+
 (def ^:const color-text-medium
   "Color for medium text."
-  "#74838f")
+  "#949AAB")
 
 (def ^:const color-text-dark
   "Color for dark text."
-  "#2E353B")
+  "#4C5773")
 
 (def ^:const color-header-row-border
   "Used as color for the bottom border of table headers for charts with `:table` vizualization."
@@ -91,9 +95,9 @@
   []
   (merge
    (font-style)
-   {:font-size       :16px
+   {:font-size       :14px
     :font-weight     700
-    :color           color-gray-4
+    :color           (primary-color)
     :text-decoration :none}))
 
 (defn scalar-style
@@ -103,4 +107,4 @@
    (font-style)
    {:font-size   :24px
     :font-weight 700
-    :color       (primary-color)}))
+    :color       color-text-dark}))

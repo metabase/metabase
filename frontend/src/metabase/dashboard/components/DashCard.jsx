@@ -20,7 +20,7 @@ import WithVizSettingsData from "metabase/visualizations/hoc/WithVizSettingsData
 import Icon, { iconPropTypes } from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
-import { isVirtualDashCard } from "metabase/dashboard/dashboard";
+import { isVirtualDashCard } from "metabase/dashboard/utils";
 import DashCardParameterMapper from "./DashCardParameterMapper";
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
@@ -390,6 +390,7 @@ const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) => (
       </Tooltip>
     }
     triggerClasses="text-dark-hover cursor-pointer flex align-center flex-no-shrink mr1 drag-disabled"
+    enableMouseEvents
   >
     <ChartSettingsWithState
       className="spread"

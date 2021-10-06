@@ -2,4 +2,4 @@
 (https://www.metabase.com/docs/latest/developers-guide.html)
 is often referred to in various issues, discussions, etc -->
 
-Please refer to the detailed [Developer's Guide](developers-guide/index.md).
+Please refer to the detailed [Developer's Guide](developers-guide/start.md).

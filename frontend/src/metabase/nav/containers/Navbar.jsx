@@ -13,6 +13,7 @@ import { Flex, Box } from "grid-styled";
 
 import * as Urls from "metabase/lib/urls";
 import { color, darken } from "metabase/lib/colors";
+import MetabaseSettings from "metabase/lib/settings";
 
 import Icon, { IconWrapper } from "metabase/components/Icon";
 import EntityMenu from "metabase/components/EntityMenu";
@@ -42,7 +43,8 @@ const mapStateToProps = (state, props) => ({
   hasNativeWrite: getHasNativeWrite(state),
 });
 
-import { DefaultSearchColor } from "metabase/nav/constants";
+import { getDefaultSearchColor } from "metabase/nav/constants";
+import StoreLink from "metabase/nav/components/StoreLink";
 
 const mapDispatchToProps = {
   onChangeLocation: push,
@@ -62,6 +64,7 @@ const AdminNavItem = ({ name, path, currentPath }) => (
   </li>
 );
 
+// TODO
 const NavHover = {
   backgroundColor: darken(color("nav")),
   color: "white",
@@ -156,6 +159,7 @@ export default class Navbar extends Component {
             />
           </ul>
 
+          {!MetabaseSettings.isPaidPlan() && <StoreLink />}
           <ProfileLink {...this.props} />
         </div>
         {this.renderModal()}
@@ -204,7 +208,7 @@ export default class Navbar extends Component {
             className="relative cursor-pointer z2 rounded flex justify-center transition-background"
             p={1}
             mx={1}
-            hover={{ backgroundColor: DefaultSearchColor }}
+            hover={{ backgroundColor: getDefaultSearchColor() }}
           >
             <Flex
               style={{ minWidth: 32, height: 32 }}

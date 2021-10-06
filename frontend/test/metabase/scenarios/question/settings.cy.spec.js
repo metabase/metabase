@@ -26,7 +26,7 @@ describe("scenarios > question > settings", () => {
       cy.contains("Settings").click();
 
       // wait for settings sidebar to open
-      cy.get(".border-right.overflow-x-hidden")
+      cy.findByTestId("sidebar-left")
         .invoke("width")
         .should("be.gt", 350);
 

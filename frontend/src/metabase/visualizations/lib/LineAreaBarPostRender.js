@@ -368,6 +368,22 @@ function onRenderAddExtraClickHandlers(chart) {
   }
 }
 
+function onRenderSetZeroGridLineClassName(chart) {
+  const yAxis = chart.y();
+  if (!yAxis) {
+    return;
+  }
+
+  const yZero = yAxis(0).toString();
+  chart
+    .select(".grid-line.horizontal")
+    .selectAll("line")
+    .filter(function() {
+      return d3.select(this).attr("y1") === yZero;
+    })
+    .attr("class", "zero");
+}
+
 // the various steps that get called
 function onRender(
   chart,
@@ -398,6 +414,7 @@ function onRender(
   onRenderSetClassName(chart, isStacked);
   onRenderRotateAxis(chart);
   onRenderAddExtraClickHandlers(chart);
+  onRenderSetZeroGridLineClassName(chart);
 }
 
 // +-------------------------------------------------------------------------------------------------------------------+
@@ -457,6 +474,11 @@ function computeXAxisLabelMaxSize(chart) {
   let maxWidth = 0;
   let maxHeight = 0;
   chart.selectAll("g.x text").each(function() {
+    // jsdom doesn't support getBBox https://github.com/jsdom/jsdom/issues/918
+    if (!this.getBBox) {
+      return;
+    }
+
     const { width, height } = this.getBBox();
     maxWidth = Math.max(maxWidth, width);
     maxHeight = Math.max(maxHeight, height);

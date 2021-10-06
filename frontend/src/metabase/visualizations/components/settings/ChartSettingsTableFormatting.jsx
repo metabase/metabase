@@ -14,8 +14,10 @@ import ColorRangePicker, {
   ColorRangePreview,
 } from "metabase/components/ColorRangePicker";
 import NumericInput from "metabase/components/NumericInput";
-
-import { SortableContainer, SortableElement } from "react-sortable-hoc";
+import {
+  SortableContainer,
+  SortableElement,
+} from "metabase/components/sortable";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { isNumeric, isString } from "metabase/lib/schema_metadata";
@@ -52,6 +54,7 @@ export const ALL_OPERATOR_NAMES = {
 
 import { color, desaturated } from "metabase/lib/colors";
 
+// TODO
 const COLORS = Object.values(desaturated);
 const COLOR_RANGES = [].concat(
   ...COLORS.map(color => [["white", color], [color, "white"]]),
@@ -215,7 +218,6 @@ const RuleListing = ({ rules, cols, onEdit, onAdd, onRemove, onMove }) => (
           onRemove={onRemove}
           onSortEnd={({ oldIndex, newIndex }) => onMove(oldIndex, newIndex)}
           distance={10}
-          helperClass="z5"
         />
       </div>
     ) : null}

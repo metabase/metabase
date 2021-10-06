@@ -1,4 +1,7 @@
 import { t } from "ttag";
+import { push } from "react-router-redux";
+import { assocIn } from "icepick";
+
 import {
   createAction,
   createThunkAction,
@@ -7,6 +10,7 @@ import {
 } from "metabase/lib/redux";
 import { CollectionsApi, PermissionsApi } from "metabase/services";
 import Group from "metabase/entities/groups";
+import Tables from "metabase/entities/tables";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import {
   inferAndUpdateEntityPermissions,
@@ -15,8 +19,9 @@ import {
   updateSchemasPermission,
   updateTablesPermission,
 } from "metabase/lib/permissions";
-import { getMetadata } from "metabase/selectors/metadata";
-import { assocIn } from "icepick";
+import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
+import { isDatabaseEntityId } from "./utils/data-entity-id";
+import { getMetadataWithHiddenTables } from "./selectors/data-permissions";
 
 const INITIALIZE_DATA_PERMISSIONS =
   "metabase/admin/permissions/INITIALIZE_DATA_PERMISSIONS";
@@ -59,13 +64,42 @@ export const loadCollectionPermissions = createThunkAction(
   },
 );
 
+export const LIMIT_DATABASE_PERMISSION =
+  "metabase/admin/permissions/LIMIT_DATABASE_PERMISSION";
+export const limitDatabasePermission = createThunkAction(
+  LIMIT_DATABASE_PERMISSION,
+  (groupId, entityId, newValue) => dispatch => {
+    if (newValue) {
+      dispatch(
+        updateDataPermission({
+          groupId,
+          permission: { name: "access" },
+          value: newValue,
+          entityId,
+        }),
+      );
+    }
+
+    dispatch(push(getGroupFocusPermissionsUrl(groupId, entityId)));
+  },
+);
+
 const UPDATE_DATA_PERMISSION =
   "metabase/admin/permissions/UPDATE_DATA_PERMISSION";
 export const updateDataPermission = createThunkAction(
   UPDATE_DATA_PERMISSION,
   ({ groupId, permission, value, entityId, view }) => {
     return (dispatch, getState) => {
-      const metadata = getMetadata(getState());
+      if (isDatabaseEntityId(entityId)) {
+        dispatch(
+          Tables.actions.fetchList({
+            dbId: entityId.databaseId,
+            include_hidden: true,
+          }),
+        );
+      }
+
+      const metadata = getMetadataWithHiddenTables(getState(), null);
       if (permission.postActions) {
         const action = permission.postActions?.[value]?.(
           entityId,
@@ -74,7 +108,7 @@ export const updateDataPermission = createThunkAction(
         );
         if (action) {
           dispatch(action);
-          return null;
+          return;
         }
       }
 

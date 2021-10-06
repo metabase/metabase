@@ -238,11 +238,12 @@ export function getExpandedCollectionsById(
 
   // "My personal collection"
   if (userPersonalCollectionId != null) {
+    const personalCollection = collectionsById[userPersonalCollectionId];
     collectionsById[ROOT_COLLECTION.id].children.push({
       ...PERSONAL_COLLECTION,
       id: userPersonalCollectionId,
       parent: collectionsById[ROOT_COLLECTION.id],
-      children: [],
+      children: personalCollection?.children || [],
       is_personal: true,
     });
   }

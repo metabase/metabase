@@ -329,7 +329,7 @@ describe("scenarios > collection_defaults", () => {
       });
     });
 
-    it.skip("sub-collection should be available in save and move modals (#14122)", () => {
+    it("sub-collection should be available in save and move modals (#14122)", () => {
       const COLLECTION = "14122C";
       // Create Parent collection within `Our analytics`
       cy.request("POST", "/api/collection", {

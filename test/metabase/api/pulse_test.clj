@@ -8,6 +8,7 @@
             [metabase.models :refer [Card Collection Dashboard Pulse PulseCard PulseChannel PulseChannelRecipient]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
+            [metabase.models.pulse-channel :as pulse-channel]
             [metabase.models.pulse-test :as pulse-test]
             [metabase.pulse.render.png :as png]
             [metabase.server.middleware.util :as middleware.u]
@@ -813,12 +814,9 @@
                (with-pulses-in-readable-collection [pulse-id]
                  (mt/user-http-request :rasta :get 404 (str "pulse/" pulse-id)))))))))
 
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                              POST /api/pulse/test                                              |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
 (deftest send-test-pulse-test
+  ;; see [[metabase-enterprise.advanced-config.api.pulse-test/test-pulse-endpoint-should-respect-email-domain-allow-list-test]]
+  ;; for additional EE-specific tests
   (testing "POST /api/pulse/test"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-fake-inbox
@@ -844,6 +842,36 @@
               (is (= (mt/email-to :rasta {:subject "Pulse: Daily Sad Toucans"
                                           :body    {"Daily Sad Toucans" true}})
                      (mt/regex-email-bodies #"Daily Sad Toucans"))))))))))
+
+(deftest send-test-pulse-validate-emails-test
+  (testing (str "POST /api/pulse/test should call " `pulse-channel/validate-email-domains)
+    (mt/with-temp Card [card {:dataset_query (mt/mbql-query venues)}]
+      (with-redefs [pulse-channel/validate-email-domains (fn [& _]
+                                                           (throw (ex-info "Nope!" {:status-code 403})))]
+        ;; make sure we validate raw emails whether they're part of `:details` or part of `:recipients` -- we
+        ;; technically allow either right now
+        (doseq [channel [{:details {:emails ["test@metabase.com"]}}
+                         {:recipients [{:email "test@metabase.com"}]
+                          :details    {}}]
+                :let    [pulse-name   (mt/random-name)
+                         request-body {:name          pulse-name
+                                       :cards         [{:id                (u/the-id card)
+                                                        :include_csv       false
+                                                        :include_xls       false
+                                                        :dashboard_card_id nil}]
+                                       :channels      [(assoc channel
+                                                              :enabled       true
+                                                              :channel_type  "email"
+                                                              :schedule_type "daily"
+                                                              :schedule_hour 12
+                                                              :schedule_day  nil)]
+                                       :skip_if_empty false}]]
+          (testing (format "\nchannel =\n%s" (u/pprint-to-str channel))
+            (mt/with-fake-inbox
+              (is (= "Nope!"
+                     (mt/user-http-request :rasta :post 403 "pulse/test" request-body)))
+              (is (not (contains? (set (keys (mt/regex-email-bodies (re-pattern pulse-name))))
+                                  "test@metabase.com"))))))))))
 
 ;; This test follows a flow that the user/UI would follow by first creating a pulse, then making a small change to
 ;; that pulse and testing it. The primary purpose of this test is to ensure tha the pulse/test endpoint accepts data

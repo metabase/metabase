@@ -231,6 +231,7 @@
 
                                        (and min_value max_value
                                             (isa? base_type :type/Number)
+                                            (not (isa? semantic_type :Relation/*))
                                             (supports-numeric-binning? driver))
                                        [numeric-default-index numeric-dimension-indexes]
 

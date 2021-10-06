@@ -24,7 +24,7 @@ import type { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
 
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 
-import Dimension, { TemplateTagDimension } from "../Dimension";
+import Dimension, { TemplateTagDimension, FieldDimension } from "../Dimension";
 import Variable, { TemplateTagVariable } from "../Variable";
 import DimensionOptions from "../DimensionOptions";
 
@@ -457,5 +457,27 @@ export default class NativeQuery extends AtomicQuery {
       }
     }
     return {};
+  }
+
+  dependentMetadata() {
+    const templateTags = this.templateTags();
+
+    return templateTags
+      .filter(
+        tag =>
+          tag.type === "dimension" &&
+          FieldDimension.isFieldClause(tag.dimension),
+      )
+      .map(tag => {
+        const dimension = FieldDimension.parseMBQL(
+          tag.dimension,
+          this.metadata(),
+        );
+
+        return {
+          type: "field",
+          id: dimension.field().id,
+        };
+      });
   }
 }
