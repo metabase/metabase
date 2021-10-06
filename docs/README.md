@@ -52,7 +52,7 @@ This guide lists existing community drivers, and shows how to get started with d
 
 ### [Embedding reference apps][embedding-ref-apps]
 
-Code examples for embedding Metabase in
+Code examples for embedding Metabase in applications.
 
 ## Metabase community
 
