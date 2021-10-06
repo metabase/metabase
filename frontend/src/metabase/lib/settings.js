@@ -141,10 +141,19 @@ class Settings {
 
   docsUrl(page = "", anchor = "") {
     let { tag } = this.get("version", {});
-    let matches = tag.match(/v[01]\.(\d+)(?:\.\d+)?(?:-.*)?/);
+    const matches = tag.match(/v[01]\.(\d+)(?:\.\d+)?(-.*)?/);
     if (matches) {
-      // if it's a regular OSS or EE version string, just link to the major OSS doc link
-      tag = "v0." + matches[1];
+      if (
+        matches.length > 2 &&
+        matches[2] &&
+        "-snapshot" === matches[2].toLowerCase()
+      ) {
+        // always point -SNAPSHOT suffixes to "latest", since this is likely a development build off of master
+        tag = "latest";
+      } else {
+        // otherwise, it's a regular OSS or EE version string, just link to the major OSS doc link
+        tag = "v0." + matches[1];
+      }
     } else {
       // otherwise, just link to the latest tag
       tag = "latest";
