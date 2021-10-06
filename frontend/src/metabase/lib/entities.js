@@ -31,7 +31,6 @@ import _ from "underscore";
 //
 
 import type { APIMethod } from "metabase/lib/api";
-import type { FormDefinition } from "metabase/containers/Form";
 
 type EntityName = string;
 
@@ -48,9 +47,6 @@ type EntityDefinition = {
 
   nameOne?: string,
   nameMany?: string,
-
-  form?: FormDefinition,
-  forms?: { [key: string]: FormDefinition },
 
   displayNameOne?: string,
   displayNameMany?: string,
@@ -106,9 +102,6 @@ export type Entity = {
 
   displayNameOne: string,
   displayNameMany: string,
-
-  form?: FormDefinition,
-  forms?: { [key: string]: FormDefinition },
 
   path?: string,
   api: {
