@@ -26,12 +26,10 @@ type State = {
   result: null | "success" | "failed",
 };
 
-export default class ActionButton extends Component {
-  props: Props;
-  state: State;
-
-  timeout: ?any;
-  actionPromise: ?{ cancel: () => void };
+export default class ActionButton extends Component<Props, State> {
+  
+  timeout?: any;
+  actionPromise?: { cancel: () => void };
 
   constructor(props: Props) {
     super(props);

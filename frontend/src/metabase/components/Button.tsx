@@ -8,7 +8,26 @@ import _ from "underscore";
 import styled from "styled-components";
 import { color, space } from "styled-system";
 
-const BUTTON_VARIANTS = [
+type Variants =
+  | "small"
+  | "medium"
+  | "large"
+  | "round"
+  | "primary"
+  | "danger"
+  | "warning"
+  | "cancel"
+  | "success"
+  | "purple"
+  | "white"
+  | "borderless"
+  | "onlyIcon";
+
+type Props = PropTypes.InferProps<typeof propTypes & {
+  [name in Variants]: boolean
+}>;
+
+const BUTTON_VARIANTS: Variants[] = [
   "small",
   "medium",
   "large",
@@ -24,7 +43,7 @@ const BUTTON_VARIANTS = [
   "onlyIcon",
 ];
 
-const BaseButton = ({
+const BaseButton: React.FC<Props> = ({
   className,
   icon,
   iconRight,
@@ -77,7 +96,7 @@ const BaseButton = ({
   );
 };
 
-BaseButton.propTypes = {
+const propTypes = {
   className: PropTypes.string,
   icon: PropTypes.string,
   iconSize: PropTypes.number,
@@ -94,6 +113,8 @@ BaseButton.propTypes = {
 
   borderless: PropTypes.bool,
 };
+
+BaseButton.propTypes = propTypes;
 
 const Button = styled(BaseButton)`
   ${color};
