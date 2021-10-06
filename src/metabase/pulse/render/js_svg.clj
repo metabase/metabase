@@ -102,7 +102,7 @@
 
 (defn timelineseries-line
   "Clojure entrypoint to render a timeseries line char. Rows should be tuples of [datetime numeric-value]. Labels is a
-  map of {:left \"left-label\" :right \"right-label\"}. Returns a byte array of a png file."
+  map of {:left \"left-label\" :botton \"bottom-label\"}. Returns a byte array of a png file."
   [rows labels settings]
   (let [svg-string (.asString (js/execute-fn-name @context "timeseries_line" rows
                                                   (map (fn [[k v]] [(name k) v]) labels)
@@ -111,16 +111,25 @@
 
 (defn timelineseries-bar
   "Clojure entrypoint to render a timeseries bar char. Rows should be tuples of [datetime numeric-value]. Labels is a
-  map of {:left \"left-label\" :right \"right-label\"}. Returns a byte array of a png file."
+  map of {:left \"left-label\" :botton \"bottom-label\"}. Returns a byte array of a png file."
   [rows labels settings]
   (let [svg-string (.asString (js/execute-fn-name @context "timeseries_bar" rows
                                                   (map (fn [[k v]] [(name k) v]) labels)
                                                   (json/generate-string settings)))]
     (svg-string->bytes svg-string)))
 
+(defn categorical-line
+  "Clojure entrypoint to render a categorical line chart. Rows should be tuples of [stringable numeric-value]. Labels is
+  a map of {:left \"left-label\" :botton \"bottom-label\". Returns a byte array of a png file."
+  [rows labels settings]
+  (let [svg-string (.asString (js/execute-fn-name @context "categorical_line" rows
+                                                  (map (fn [[k v]] [(name k) v]) labels)
+                                                  (json/generate-string settings)))]
+    (svg-string->bytes svg-string)))
+
 (defn categorical-bar
   "Clojure entrypoint to render a categorical bar chart. Rows should be tuples of [stringable numeric-value]. Labels is
-  a map of {:left \"left-label\" :right \"right-label\". Returns a byte array of a png file. "
+  a map of {:left \"left-label\" :botton \"bottom-label\". Returns a byte array of a png file."
   [rows labels settings]
   (let [svg-string (.asString (js/execute-fn-name @context "categorical_bar" rows
                                                   (map (fn [[k v]] [(name k) v]) labels)
