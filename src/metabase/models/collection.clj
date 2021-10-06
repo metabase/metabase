@@ -11,7 +11,7 @@
             [metabase.models.collection.root :as collection.root]
             [metabase.models.interface :as i]
             [metabase.models.permissions :as perms :refer [Permissions]]
-            [metabase.public-settings.metastore :as settings.metastore]
+            [metabase.public-settings.premium-features :as settings.premium-features]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :as ui18n :refer [trs tru]]
@@ -862,7 +862,7 @@
                      collection-or-id)]
     ;; HACK Collections in the "snippets" namespace have no-op permissions unless EE enhancements are enabled
     (if (and (= (u/qualified-name (:namespace collection)) "snippets")
-             (not (settings.metastore/enable-enhancements?)))
+             (not (settings.premium-features/enable-enhancements?)))
       #{}
       ;; This is not entirely accurate as you need to be a superuser to modifiy a collection itself (e.g., changing its
       ;; name) but if you have write perms you can add/remove cards

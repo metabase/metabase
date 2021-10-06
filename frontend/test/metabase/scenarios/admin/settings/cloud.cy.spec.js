@@ -1,6 +1,7 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, setupMetabaseCloud } from "__support__/e2e/cypress";
 
-describe("Cloud settings section", () => {
+// Unskip when mocking Cloud in Cypress is fixed (#18289)
+describe.skip("Cloud settings section", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -29,9 +30,3 @@ describe("Cloud settings section", () => {
     cy.findByText(/Cloud Settings/i).should("not.exist");
   });
 });
-
-function setupMetabaseCloud() {
-  cy.request("PUT", "/api/setting/site-url", {
-    value: "https://CYPRESSTESTENVIRONMENT.metabaseapp.com",
-  });
-}

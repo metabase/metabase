@@ -66,6 +66,9 @@
 
 ;;; -------------------------------------------------- Loading Data --------------------------------------------------
 
+(defmethod tx/format-name :bigquery-cloud-sdk [_ table-or-field-name]
+  (u/snake-key table-or-field-name))
+
 (defn- create-dataset! [^String dataset-id]
   {:pre [(seq dataset-id)]}
   (.create (bigquery) (DatasetInfo/of (DatasetId/of (project-id) dataset-id)) (u/varargs BigQuery$DatasetOption))
@@ -86,8 +89,7 @@
     (let [sql (apply format format-string args)]
       (printf "[BigQuery] %s\n" sql)
       (flush)
-      (bigquery/with-finished-response [response (#'bigquery/execute-bigquery-on-db (data/db) sql nil)]
-        response))))
+      (#'bigquery/execute-bigquery-on-db (data/db) sql nil nil nil))))
 
 (def ^:private valid-field-types
   #{:BOOLEAN :DATE :DATETIME :FLOAT :INTEGER :NUMERIC :RECORD :STRING :TIME :TIMESTAMP})
@@ -124,8 +126,8 @@
         respond                       (fn [_ rows]
                                         (ffirst rows))
         client                        (bigquery)
-        ^TableResult query-response   (#'bigquery/execute-bigquery client sql [])]
-    (#'bigquery/post-process-native (test-db-details) respond query-response)))
+        ^TableResult query-response   (#'bigquery/execute-bigquery client sql [] nil nil)]
+    (#'bigquery/post-process-native (test-db-details) respond query-response (atom false))))
 
 (defprotocol ^:private Insertable
   (^:private ->insertable [this]

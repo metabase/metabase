@@ -6,7 +6,7 @@ import Icon from "metabase/components/Icon";
 
 export const ItemTitle = styled(Label)`
   margin: 0;
-  white-space: nowrap;
+  word-break: break-word;
 `;
 
 export const ItemIcon = styled(Icon)`
@@ -30,7 +30,7 @@ const VERTICAL_PADDING_BY_SIZE = {
 
 export const ItemRoot = styled.li`
   display: grid;
-  grid-template-columns: min-content min-content 1fr;
+  grid-template-columns: min-content 1fr min-content;
   gap: 0.5rem;
   align-items: center;
   cursor: pointer;

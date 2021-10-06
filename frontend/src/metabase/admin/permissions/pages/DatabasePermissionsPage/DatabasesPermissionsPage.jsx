@@ -8,7 +8,9 @@ import { connect } from "react-redux";
 
 import {
   getGroupsDataPermissionEditor,
-  getDatabasesSidebar,
+  getDataFocusSidebar,
+  getIsLoadingDatabaseTables,
+  getLoadingDatabaseTablesError,
 } from "../../selectors/data-permissions";
 import { updateDataPermission } from "../../permissions";
 
@@ -42,8 +44,10 @@ const mapDispatchToProps = dispatch => ({
 
 const mapStateToProps = (state, props) => {
   return {
-    sidebar: getDatabasesSidebar(state, props),
+    sidebar: getDataFocusSidebar(state, props),
     permissionEditor: getGroupsDataPermissionEditor(state, props),
+    isSidebarLoading: getIsLoadingDatabaseTables(state, props),
+    sidebarError: getLoadingDatabaseTablesError(state, props),
   };
 };
 
@@ -53,13 +57,15 @@ const propTypes = {
     schemaName: PropTypes.string,
     tableId: PropTypes.string,
   }),
-  children: PropTypes.node.isRequired,
+  children: PropTypes.node,
   sidebar: PropTypes.shape(permissionSidebarPropTypes),
   permissionEditor: PropTypes.shape(permissionEditorPropTypes),
   navigateToItem: PropTypes.func.isRequired,
   switchView: PropTypes.func.isRequired,
   updateDataPermission: PropTypes.func.isRequired,
   navigateToDatabaseList: PropTypes.func.isRequired,
+  isSidebarLoading: PropTypes.bool,
+  sidebarError: PropTypes.string,
   dispatch: PropTypes.func.isRequired,
 };
 
@@ -73,6 +79,8 @@ function DatabasesPermissionsPage({
   switchView,
   updateDataPermission,
   dispatch,
+  isSidebarLoading,
+  sidebarError,
 }) {
   const handleEntityChange = useCallback(
     entityType => {
@@ -104,6 +112,8 @@ function DatabasesPermissionsPage({
     <React.Fragment>
       <PermissionsSidebar
         {...sidebar}
+        error={sidebarError}
+        isLoading={isSidebarLoading}
         onSelect={navigateToItem}
         onBack={params.databaseId == null ? null : navigateToDatabaseList}
         onEntityChange={handleEntityChange}

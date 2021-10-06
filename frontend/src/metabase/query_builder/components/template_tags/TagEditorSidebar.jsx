@@ -24,7 +24,7 @@ type Props = {
   query: NativeQuery,
 
   setDatasetQuery: (datasetQuery: DatasetQuery) => void,
-  updateTemplateTag: (tag: TemplateTag) => void,
+  setTemplateTag: (tag: TemplateTag) => void,
 
   databaseFields: FieldObject[],
   databases: Database[],
@@ -45,10 +45,11 @@ export default class TagEditorSidebar extends React.Component {
   static propTypes = {
     card: PropTypes.object.isRequired,
     onClose: PropTypes.func.isRequired,
-    updateTemplateTag: PropTypes.func.isRequired,
     databaseFields: PropTypes.array,
-    setDatasetQuery: PropTypes.func.isRequired,
     sampleDatasetId: PropTypes.number,
+    setDatasetQuery: PropTypes.func.isRequired,
+    setTemplateTag: PropTypes.func.isRequired,
+    setParameterValue: PropTypes.func.isRequired,
   };
 
   setSection(section) {
@@ -67,7 +68,8 @@ export default class TagEditorSidebar extends React.Component {
       sampleDatasetId,
       setDatasetQuery,
       query,
-      updateTemplateTag,
+      setTemplateTag,
+      setParameterValue,
       onClose,
     } = this.props;
     // The tag editor sidebar excludes snippets since they have a separate sidebar.
@@ -105,12 +107,13 @@ export default class TagEditorSidebar extends React.Component {
             <SettingsPane
               tags={tags}
               parametersById={parametersById}
-              onUpdate={updateTemplateTag}
               databaseFields={databaseFields}
               database={database}
               databases={databases}
               query={query}
               setDatasetQuery={setDatasetQuery}
+              setTemplateTag={setTemplateTag}
+              setParameterValue={setParameterValue}
             />
           ) : (
             <TagEditorHelp
@@ -129,12 +132,13 @@ export default class TagEditorSidebar extends React.Component {
 const SettingsPane = ({
   tags,
   parametersById,
-  onUpdate,
   databaseFields,
   database,
   databases,
   query,
   setDatasetQuery,
+  setTemplateTag,
+  setParameterValue,
 }) => (
   <div>
     {tags.map(tag => (
@@ -149,10 +153,11 @@ const SettingsPane = ({
           <TagEditorParam
             tag={tag}
             parameter={parametersById[tag.id]}
-            onUpdate={onUpdate}
             databaseFields={databaseFields}
             database={database}
             databases={databases}
+            setTemplateTag={setTemplateTag}
+            setParameterValue={setParameterValue}
           />
         )}
       </div>
@@ -162,8 +167,9 @@ const SettingsPane = ({
 
 SettingsPane.propTypes = {
   tags: PropTypes.array.isRequired,
-  onUpdate: PropTypes.func.isRequired,
-  setDatasetQuery: PropTypes.func.isRequired,
   query: NativeQuery,
   databaseFields: PropTypes.array,
+  setDatasetQuery: PropTypes.func.isRequired,
+  setTemplateTag: PropTypes.func.isRequired,
+  setParameterValue: PropTypes.func.isRequired,
 };

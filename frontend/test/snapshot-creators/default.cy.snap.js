@@ -26,7 +26,9 @@ describe("snapshots", () => {
           SAMPLE_DATASET,
         );
       });
+
       snapshot("default");
+
       restore("blank");
     });
   });

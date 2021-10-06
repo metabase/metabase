@@ -1,5 +1,5 @@
 import {
-  getDatabasesSidebar,
+  getDataFocusSidebar,
   getGroupsDataPermissionEditor,
 } from "./data-permissions";
 import { normalizedMetadata } from "./data-permissions.unit.spec.fixtures";
@@ -60,22 +60,22 @@ const getProps = ({ databaseId, schemaName, tableId, groupId }) => ({
   },
 });
 
-describe("getDatabasesSidebar", () => {
+describe("getDataFocusSidebar", () => {
   describe("when database is not selected", () => {
     it("returns a correct placeholder for databases list search", () => {
-      const sidebarData = getDatabasesSidebar(state, getProps({}));
+      const sidebarData = getDataFocusSidebar(state, getProps({}));
 
       expect(sidebarData.filterPlaceholder).toEqual("Search for a database");
     });
 
     it("returns entity switch value = database", () => {
-      const sidebarData = getDatabasesSidebar(state, getProps({}));
+      const sidebarData = getDataFocusSidebar(state, getProps({}));
 
       expect(sidebarData.entitySwitch.value).toEqual("database");
     });
 
     it("returns list of databases", () => {
-      const sidebarData = getDatabasesSidebar(state, getProps({}));
+      const sidebarData = getDataFocusSidebar(state, getProps({}));
 
       expect(sidebarData.entityGroups).toEqual([
         [
@@ -102,7 +102,7 @@ describe("getDatabasesSidebar", () => {
 
   describe("when a database is selected", () => {
     it("returns a correct placeholder for databases list search", () => {
-      const sidebarData = getDatabasesSidebar(
+      const sidebarData = getDataFocusSidebar(
         state,
         getProps({ databaseId: 2 }),
       );
@@ -111,7 +111,7 @@ describe("getDatabasesSidebar", () => {
     });
 
     it("returns tree of schemas and tables for a database with schemas", () => {
-      const sidebarData = getDatabasesSidebar(
+      const sidebarData = getDataFocusSidebar(
         state,
         getProps({ databaseId: 2 }),
       );
@@ -155,16 +155,6 @@ describe("getDatabasesSidebar", () => {
                 entityId: {
                   databaseId: 2,
                   schemaName: "schema_2",
-                  tableId: 7,
-                },
-                icon: "table",
-                id: "table:7",
-                name: "Tupac Sightings Sightings",
-              },
-              {
-                entityId: {
-                  databaseId: 2,
-                  schemaName: "schema_2",
                   tableId: 8,
                 },
                 icon: "table",
@@ -181,6 +171,16 @@ describe("getDatabasesSidebar", () => {
                 id: "table:9",
                 name: "Tupac Sightings Cities",
               },
+              {
+                entityId: {
+                  databaseId: 2,
+                  schemaName: "schema_2",
+                  tableId: 7,
+                },
+                icon: "table",
+                id: "table:7",
+                name: "Tupac Sightings Sightings",
+              },
             ],
             entityId: {
               databaseId: 2,
@@ -195,7 +195,7 @@ describe("getDatabasesSidebar", () => {
     });
 
     it("returns flat list of tables for a schemaless database", () => {
-      const sidebarData = getDatabasesSidebar(
+      const sidebarData = getDataFocusSidebar(
         state,
         getProps({ databaseId: 3 }),
       );
@@ -226,21 +226,21 @@ describe("getDatabasesSidebar", () => {
             entityId: {
               databaseId: 3,
               schemaName: null,
-              tableId: 12,
-            },
-            icon: "table",
-            id: "table:12",
-            name: "Badminton Women's Singles Results",
-          },
-          {
-            entityId: {
-              databaseId: 3,
-              schemaName: null,
               tableId: 13,
             },
             icon: "table",
             id: "table:13",
             name: "Badminton Mixed Singles Results",
+          },
+          {
+            entityId: {
+              databaseId: 3,
+              schemaName: null,
+              tableId: 12,
+            },
+            icon: "table",
+            id: "table:12",
+            name: "Badminton Women's Singles Results",
           },
         ],
       ]);
@@ -305,12 +305,6 @@ describe("getGroupsDataPermissionEditor", () => {
         iconColor: "accent5",
         label: "No self-service",
         value: "none",
-      },
-      {
-        icon: "close",
-        iconColor: "danger",
-        label: "Block",
-        value: "block",
       },
     ]);
 

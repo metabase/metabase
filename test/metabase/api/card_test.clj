@@ -3,6 +3,7 @@
   (:require [cheshire.core :as json]
             [clojure.string :as str]
             [clojure.test :refer :all]
+            [clojure.tools.macro :as tools.macro]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [java-time :as t]
             [medley.core :as m]
@@ -12,10 +13,12 @@
             [metabase.http-client :as http]
             [metabase.models :refer [Card CardFavorite Collection Dashboard Database ModerationReview
                                      Pulse PulseCard PulseChannel PulseChannelRecipient Table ViewLog]]
+            [metabase.models.moderation-review :as moderation-review]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.revision :as revision :refer [Revision]]
             [metabase.models.user :refer [User]]
+            [metabase.public-settings :as public-settings]
             [metabase.query-processor :as qp]
             [metabase.query-processor.async :as qp.async]
             [metabase.query-processor.middleware.constraints :as constraints]
@@ -26,7 +29,8 @@
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]])
   (:import java.io.ByteArrayInputStream
            java.util.UUID))
 
@@ -53,7 +57,13 @@
    :public_uuid         nil
    :query_type          nil
    :cache_ttl           nil
+   :average_query_time  nil
+   :last_query_start    nil
    :result_metadata     nil})
+
+;; Used in dashboard tests
+(def card-defaults-no-hydrate
+  (dissoc card-defaults :average_query_time :last_query_start))
 
 (defn mbql-count-query
   ([]
@@ -382,6 +392,34 @@
                                            "card"
                                            (assoc card :result_metadata   []
                                                        :metadata_checksum md-checksum))))))))
+
+(deftest cache-ttl-save
+  (testing "POST /api/card/:id"
+    (testing "saving cache ttl by post actually saves it"
+      (mt/with-model-cleanup [Card]
+        (let [card        (card-with-name-and-query)]
+          (is (= 1234
+                 (:cache_ttl (mt/user-http-request :rasta
+                                                   :post
+                                                   202
+                                                   "card"
+                                                   (assoc card :cache_ttl 1234)))))))))
+  (testing "PUT /api/card/:id"
+    (testing "saving cache ttl by put actually saves it"
+      (mt/with-temp Card [card]
+        (is (= 1234
+               (:cache_ttl (mt/user-http-request :rasta
+                                     :put
+                                     202
+                                     (str "card/" (u/the-id card))
+                                     {:cache_ttl 1234}))))))
+    (testing "nilling out cache ttl works"
+      (mt/with-temp Card [card]
+        (is (= nil
+               (do
+               (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:cache_ttl 1234})
+               (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:cache_ttl nil})
+               (:cache_ttl (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card)))))))))))
 
 (defn- fingerprint-integers->doubles
   "Converts the min/max fingerprint values to doubles so simulate how the FE will change the metadata when POSTing a
@@ -1326,6 +1364,28 @@
               (is (= {:constraints {:max-results 10, :max-results-bare-rows 10}}
                      (mt/user-http-request :rasta :post 200 (format "card/%d/query" (u/the-id card))))))))))))
 
+(deftest query-cache-ttl-hierarchy-test
+  (mt/discard-setting-changes [enable-query-caching]
+    (public-settings/enable-query-caching true)
+    (testing "card ttl only"
+      (mt/with-temp* [Card [card {:cache_ttl 1337}]]
+        (is (= (* 3600 1337) (:cache-ttl (card-api/query-for-card card {} {} {}))))))
+    (testing "multiple ttl, dash wins"
+      (mt/with-temp* [Database [db {:cache_ttl 1337}]
+                      Dashboard [dash {:cache_ttl 1338}]
+                      Card [card {:database_id (u/the-id db)}]]
+        (is (= (* 3600 1338) (:cache-ttl (card-api/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))
+    (testing "multiple ttl, db wins"
+      (mt/with-temp* [Database [db {:cache_ttl 1337}]
+                      Dashboard [dash]
+                      Card [card {:database_id (u/the-id db)}]]
+        (is (= (* 3600 1337) (:cache-ttl (card-api/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))
+    (testing "no ttl, nil res"
+      (mt/with-temp* [Database [db]
+                      Dashboard [dash]
+                      Card [card {:database_id (u/the-id db)}]]
+        (is (= nil (:cache-ttl (card-api/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))))
+
 (defn- test-download-response-headers
   [url]
   (-> (http/client-full-response (test-users/username->token :rasta)
@@ -1453,6 +1513,93 @@
 
    :collections
    (collection-names cards-or-card-ids)))
+
+(deftest changed?-test
+  (letfn [(changed? [before after]
+            (#'card-api/changed? before after {:ignore card-api/card-compare-ignores}))]
+   (testing "Ignores keyword/string"
+     (is (false? (changed? {:dataset_query {:type :query}} {:dataset_query {:type "query"}}))))
+   (testing "Ignores properties passed in `card-api/card-compare-ignores"
+     (is (false? (changed? {:collection_id 1
+                            :collection_position 0}
+                           {:collection_id 2
+                            :collection_position 1}))))
+   (testing "Sees changes"
+     (is (true? (changed? {:description "foo"} {:description "diff"})))
+     (testing "But only when they are different in the after"
+       (is (false? (changed? {:description "foo" :title "something" :collection_id 1}
+                             {:collection_id 1})))
+       (is (true? (changed? {:description "foo" :title "something" :collection_id 1}
+                            {:description nil :title nil :collection_id 1})))))))
+
+(deftest update-verified-card-test
+  (tools.macro/macrolet
+      [(with-card [verified & body]
+         `(mt/with-temp* ~(cond-> `[Collection [~'collection]
+                                    Collection [~'collection2]
+                                    Card       [~'card {:collection_id (u/the-id ~'collection)
+                                                        :dataset_query (mt/mbql-query ~'venues)}]]
+                            (= verified :verified)
+                            (into
+                             `[ModerationReview
+                               [~'review {:moderated_item_id   (:id ~'card)
+                                          :moderated_item_type "card"
+                                          :moderator_id        (mt/user->id :rasta)
+                                          :most_recent         true
+                                          :status              "verified"
+                                          :text                "lookin good"}]]))
+            ~@body))]
+      (letfn [(verified? [card]
+                (-> card (hydrate [:moderation_reviews :moderator_details])
+                    :moderation_reviews first :status #{"verified"} boolean))
+              (reviews [card]
+                (db/select ModerationReview
+                           :moderated_item_type "card"
+                           :moderated_item_id (u/the-id card)
+                           {:order-by [[:id :desc]]}))
+              (update-card [card diff]
+                (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) (merge card diff)))]
+        (testing "Changing core attributes un-verifies the card"
+          (with-card :verified
+            (is (verified? card))
+            (update-card card {:description "a new description"})
+            (is (not (verified? card)))
+            (testing "The unverification edit has explanatory text"
+              (is (= "Unverified due to edit"
+                     (-> (reviews card) first :text))))))
+        (testing "Changing some attributes does not unverify"
+          (tools.macro/macrolet [(remains-verified [& body]
+                                   `(~'with-card :verified
+                                     (is (~'verified? ~'card) "Not verified initially")
+                                     ~@body
+                                     (is (~'verified? ~'card) "Not verified after action")))]
+            (testing "changing collection"
+              (remains-verified
+               (update-card card {:collection_id (u/the-id collection2)})))
+            (testing "pinning"
+              (remains-verified
+               (update-card card {:collection_position 1})))
+            (testing "making public"
+              (remains-verified
+               (update-card card {:made_public_by_id (mt/user->id :rasta)
+                                  :public_uuid (UUID/randomUUID)})))))
+        (testing "Does not add a new nil moderation review when not verified"
+          (with-card :not-verified
+            (is (empty? (reviews card)))
+            (update-card card {:description "a new description"})
+            (is (empty? (reviews card)))))
+        (testing "Does not add nil moderation reviews when there are reviews but not verified"
+          ;; testing that we aren't just adding a nil moderation each time we update a card
+          (with-card :verified
+            (is (verified? card))
+            (moderation-review/create-review! {:moderated_item_id   (u/the-id card)
+                                               :moderated_item_type "card"
+                                               :moderator_id        (mt/user->id :rasta)
+                                               :status              nil})
+            (is (not (verified? card)))
+            (is (= 2 (count (reviews card))))
+            (update-card card {:description "a new description"})
+            (is (= 2 (count (reviews card)))))))))
 
 (deftest test-that-we-can-bulk-move-some-cards-with-no-collection-into-a-collection
   (mt/with-temp* [Collection [collection {:name "Pog Collection"}]

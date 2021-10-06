@@ -3,11 +3,10 @@ import PropTypes from "prop-types";
 import { Box } from "grid-styled";
 import { t } from "ttag";
 
+import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
 import Search from "metabase/entities/search";
 import SearchResult from "metabase/search/components/SearchResult";
 import EmptyState from "metabase/components/EmptyState";
-
-const SEARCH_LIMIT = 50;
 
 const propTypes = {
   searchText: PropTypes.string,
@@ -16,7 +15,7 @@ const propTypes = {
 export const SearchResults = ({ searchText }) => {
   return (
     <Search.ListLoader
-      query={{ q: searchText, limit: SEARCH_LIMIT }}
+      query={{ q: searchText, limit: DEFAULT_SEARCH_LIMIT }}
       wrapped
       reload
       debounced

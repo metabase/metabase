@@ -18,7 +18,7 @@ import {
   API_CREATE_QUESTION,
   API_UPDATE_QUESTION,
   SET_CARD_AND_RUN,
-  UPDATE_TEMPLATE_TAG,
+  SET_TEMPLATE_TAG,
   SET_PARAMETER_VALUE,
   UPDATE_QUESTION,
   RUN_QUERY,
@@ -258,7 +258,7 @@ export const card = handleActions(
     [API_CREATE_QUESTION]: { next: (state, { payload }) => payload },
     [API_UPDATE_QUESTION]: { next: (state, { payload }) => payload },
 
-    [UPDATE_TEMPLATE_TAG]: { next: (state, { payload }) => payload },
+    [SET_TEMPLATE_TAG]: { next: (state, { payload }) => payload },
 
     [UPDATE_QUESTION]: (state, { payload: { card } }) => card,
 
@@ -380,6 +380,9 @@ export const queryStartTime = handleActions(
 
 export const parameterValues = handleActions(
   {
+    [INITIALIZE_QB]: {
+      next: (state, { payload: { parameterValues } }) => parameterValues,
+    },
     [SET_PARAMETER_VALUE]: {
       next: (state, { payload: { id, value } }) =>
         value == null ? dissoc(state, id) : assoc(state, id, value),

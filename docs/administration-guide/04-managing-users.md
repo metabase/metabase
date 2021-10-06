@@ -36,6 +36,12 @@ Right now, the only special role someone can have is Admin. The only difference 
 
 To make someone an admin, click on the Groups dropdown and click the check mark next to the Administrators group.
 
+### Unsubscribe from all subscriptions / alerts
+
+This action will delete any dashboard subscriptions or alerts the person has created, and remove them as a recipient from any other subscriptions or alerts.
+
+This action doesn't affect email distribution lists that are managed outside of Metabase.
+
 ### Adding people to Groups
 
 Adding people to groups allows you to assign [data access](05-setting-permissions.md) and [collection permissions](06-collections.md) to them. To add someone to one or more groups, just click the Groups dropdown and click the checkboxes next to the group(s) you want to add the person to.

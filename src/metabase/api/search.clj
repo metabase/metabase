@@ -171,7 +171,9 @@
   [model archived?]
   (if archived?
     [:= 1 0]  ; No tables should appear in archive searches
-    [:= (hsql/qualify (model->alias model) :active) true]))
+    [:and
+     [:= (hsql/qualify (model->alias model) :active) true]
+     [:= (hsql/qualify (model->alias model) :visibility_type) nil]]))
 
 (defn- wildcard-match
   [s]

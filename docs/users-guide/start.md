@@ -17,6 +17,7 @@
 **Sharing results**
 
 - [Sharing and organizing your saved questions](06-sharing-answers.md)
+- [Collections](collections.md)
 - [Creating dashboards](07-dashboards.md)
 - [Adding filters to dashboards](08-dashboard-filters.md)
 - [Making dashboards interactive](interactive-dashboards.md)
