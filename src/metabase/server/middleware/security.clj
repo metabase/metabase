@@ -78,6 +78,13 @@
                   :connect-src  ["'self'"
                                  ;; MailChimp. So people can sign up for the Metabase mailing list in the sign up process
                                  "metabase.us10.list-manage.com"
+                                 ;; Google analytics
+                                 (when (public-settings/anon-tracking-enabled)
+                                   "www.google-analytics.com")
+                                 ;; Snowplow analytics
+                                 (when (public-settings/anon-tracking-enabled)
+                                   "sp.metabase.com")
+                                 ;; Webpack hot reloading
                                  (when config/is-dev?
                                    "localhost:8080 ws://localhost:8080")]
                   :manifest-src ["'self'"]}]
