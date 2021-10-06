@@ -27,12 +27,12 @@ module.exports = {
   module: {
     rules: [
       {
-        test: /\.(js|jsx|ts|tsx)$/,
+        test: /\.(tsx?|jsx?)$/,
         exclude: /node_modules/,
         use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
       },
       {
-        test: /\.(js|jsx|ts|tsx)$/,
+        test: /\.(tsx?|jsx?)$/,
         exclude: /node_modules/,
         use: [
           {

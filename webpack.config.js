@@ -63,12 +63,12 @@ const config = (module.exports = {
   module: {
     rules: [
       {
-        test: /\.(js|jsx|ts|tsx)$/,
+        test: /\.(tsx?|jsx?)$/,
         exclude: /node_modules|cljs/,
         use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
       },
       {
-        test: /\.(js|jsx|ts|tsx)$/,
+        test: /\.(tsx?|jsx?)$/,
         exclude: /node_modules|cljs|\.spec\.js/,
         use: [
           {
