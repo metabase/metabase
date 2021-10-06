@@ -5,7 +5,7 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import { DEBUG } from "metabase/lib/debug";
 
-// Simple module for in-app analytics.  Currently sends data to GA but could be extended to anything else.
+// Simple module for in-app analytics. Supports Google Analytics and Snowplow
 const MetabaseAnalytics = {
   // track a pageview (a.k.a. route change)
   trackPageView: function(url: string) {
@@ -44,7 +44,7 @@ const MetabaseAnalytics = {
       }
 
       if (typeof snowplow === "function") {
-        snowplow("trackStructEvent", category, action, label, "", value)
+        snowplow("trackStructEvent", category, action, label, "", value);
       }
     }
 
