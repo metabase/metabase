@@ -17,18 +17,6 @@ export function createBasicAlert({ firstAlert, includeNormal } = {}) {
   cy.findByText("Let's set up your alert").should("not.exist");
 }
 
-export function setupDummySMTP() {
-  cy.log("Set up dummy SMTP server");
-  cy.request("PUT", "/api/setting", {
-    "email-smtp-host": "smtp.foo.test",
-    "email-smtp-port": "587",
-    "email-smtp-security": "none",
-    "email-smtp-username": "nevermind",
-    "email-smtp-password": "it-is-secret-NOT",
-    "email-from-address": "nonexisting@metabase.test",
-  });
-}
-
 export function createNativeQuestion(name, query) {
   return cy.request("POST", "/api/card", {
     name,
