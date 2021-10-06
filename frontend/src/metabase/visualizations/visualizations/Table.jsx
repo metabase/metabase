@@ -227,6 +227,12 @@ export default class Table extends Component {
       },
       readDependencies: ["table.column_formatting", "table.pivot"],
     },
+    "table.pivot_cohort": {
+      section: t`Columns`,
+      title: t`Cohort`,
+      widget: "toggle",
+      default: false,
+    },
   };
 
   static columnSettings = column => {
@@ -350,6 +356,12 @@ export default class Table extends Component {
           settings,
         ),
       });
+      if (settings["table.pivot_cohort"]) {
+        cohortswitch(true);
+      }
+      else {
+        cohortswitch(false);
+      }
     } else {
       const { cols, rows } = data;
       const columnSettings = settings["table.columns"];
@@ -436,5 +448,57 @@ export default class Table extends Component {
         getColumnTitle={this.getColumnTitle}
       />
     );
+  }
+}
+
+function PrepareCohortData() {
+  let defaultValue = [];
+  let cells = document.getElementsByClassName("table-cell");
+  if(cells.length) {
+    // Get cells data for cohort analysis
+    for (let i = 0; i < cells.length; i++) {
+      let cohortValue;
+      let rowindex = cells.item(i).dataset.rowindex;
+      let columnindex = cells.item(i).dataset.columnindex;
+      let div = cells.item(i).getElementsByTagName('div');
+      if(columnindex != 0) {
+        if(columnindex == 1) {
+          defaultValue[rowindex] = div[0].innerHTML ? div[0].innerHTML : 1;
+        }
+        else if(typeof div[0].dataset.cohortValue == "undefined") {
+          let cellVal = parseFloat(div[0].innerHTML);
+          if(defaultValue[rowindex] && cellVal) {
+            cohortValue = Math.round(cellVal / defaultValue[rowindex] * 100 * 100) / 100;
+          }
+          else {
+            cohortValue = 0;
+          }
+          div[0].dataset.cohortValue = cohortValue;
+          div[0].dataset.originalValue = div[0].innerHTML ? div[0].innerHTML : "";
+        }
+      }
+    }
+  }
+}
+
+// switch data between original and cohort
+function cohortswitch(cohortSwitch) {
+  let cells = document.getElementsByClassName("table-cell");
+
+  for (let i = 0; i < cells.length; i++) {
+    if(cells.item(i).dataset.columnindex != 0 && cells.item(i).dataset.columnindex != 1) {
+      let div = cells.item(i).getElementsByTagName('div');
+      if(div[0].dataset.cohortValue && div[0].dataset.originalValue) {
+        if(cohortSwitch) {
+          div[0].innerHTML = div[0].dataset.cohortValue;
+        }
+        else {
+          div[0].innerHTML = div[0].dataset.originalValue;
+        }
+      }
+      else {
+        PrepareCohortData();
+      }
+    }
   }
 }
