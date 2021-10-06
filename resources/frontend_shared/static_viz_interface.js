@@ -56,6 +56,15 @@ function categorical_bar(data, labels, settings) {
   });
 }
 
+function categorical_line(data, labels, settings) {
+  return StaticViz.RenderChart("categorical/line", {
+    data: toJSArray(data),
+    labels: toJSMap(labels),
+    accessors: positional_accessors,
+    settings: JSON.parse(settings),
+  });
+}
+
 function categorical_donut(rows, colors) {
   return StaticViz.RenderChart("categorical/donut", {
     data: toJSArray(rows),
