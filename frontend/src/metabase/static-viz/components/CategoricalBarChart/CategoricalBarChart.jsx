@@ -24,12 +24,12 @@ const propTypes = {
   settings: PropTypes.shape({
     x: PropTypes.object,
     y: PropTypes.object,
+    colors: PropTypes.object,
   }),
   labels: PropTypes.shape({
     left: PropTypes.string,
     bottom: PropTypes.string,
   }),
-  colors: PropTypes.object,
 };
 
 const layout = {
@@ -56,7 +56,8 @@ const layout = {
   strokeDasharray: "4",
 };
 
-const CategoricalBarChart = ({ data, accessors, settings, labels, colors }) => {
+const CategoricalBarChart = ({ data, accessors, settings, labels }) => {
+  const colors = settings?.colors;
   const isVertical = data.length > 10;
   const xTickWidth = getXTickWidth(data, accessors, layout.maxTickWidth);
   const xTickHeight = getXTickHeight(xTickWidth);
