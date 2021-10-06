@@ -8,13 +8,13 @@ import { formatNumber } from "../../lib/numbers";
 
 const propTypes = {
   data: PropTypes.array,
+  colors: PropTypes.object,
   accessors: PropTypes.shape({
     dimension: PropTypes.func,
     metric: PropTypes.func,
   }),
   settings: PropTypes.shape({
     metric: PropTypes.object,
-    colors: PropTypes.object,
   }),
 };
 
@@ -37,8 +37,7 @@ const layout = {
   labelFontSize: 14,
 };
 
-const CategoricalDonutChart = ({ data, accessors, settings }) => {
-  const colors = settings?.colors;
+const CategoricalDonutChart = ({ data, colors, accessors, settings }) => {
   const innerWidth = layout.width - layout.margin * 2;
   const innerHeight = layout.height - layout.margin * 2;
   const outerRadius = Math.min(innerWidth, innerHeight) / 2;
