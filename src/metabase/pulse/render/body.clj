@@ -295,14 +295,23 @@
         y-col-settings
         (assoc :y (for-js y-col-settings y-col))))))
 
+(defn- x-and-y-axis-label-info
+  "Generate the X and Y axis labels passed in as the `labels` argument
+  to [[metabase.pulse.render.js-svg/timelineseries-bar]] and other similar functions for rendering charts with X and Y
+  axes. Respects custom display names in `viz-settings`; otherwise uses `x-col` and `y-col` display names."
+  [x-col y-col viz-settings]
+  {:bottom (or (:graph.x_axis.title_text viz-settings)
+               (:display_name x-col))
+   :left   (or (:graph.y_axis.title_text viz-settings)
+               (:display_name y-col))})
+
 (s/defmethod render :bar :- common/RenderedPulseCard
   [_ render-type _timezone-id :- (s/maybe s/Str) card {:keys [cols rows viz-settings] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
         rows                        (map (juxt x-axis-rowfn y-axis-rowfn)
                                          (common/non-nil-rows x-axis-rowfn y-axis-rowfn rows))
         [x-col y-col]               ((juxt x-axis-rowfn y-axis-rowfn) cols)
-        labels                      {:bottom (:display_name x-col)
-                                     :left   (:display_name y-col)}
+        labels                      (x-and-y-axis-label-info x-col y-col viz-settings)
         image-bundle                (image-bundle/make-image-bundle
                                      render-type
                                      (if (isa? (-> cols x-axis-rowfn :effective_type) :type/Temporal)
@@ -449,8 +458,7 @@
         image-bundle   (image-bundle/make-image-bundle
                         render-type
                         (js-svg/timelineseries-line (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)
-                                                    {:bottom (:display_name x-col)
-                                                     :left   (:display_name y-col)}
+                                                    (x-and-y-axis-label-info x-col y-col viz-settings)
                                                     (->js-viz x-col y-col viz-settings)))]
     {:attachments
      (when image-bundle
