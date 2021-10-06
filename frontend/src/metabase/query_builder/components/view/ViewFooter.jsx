@@ -220,6 +220,7 @@ const VizSettingsButton = ({ ...props }) => (
 
 const Well = styled(Flex)`
   border-radius: 99px;
+  background-color: ${color("bg-medium")};
   &:hover {
     background-color: ${darken(color("bg-medium"), 0.05)};
   }
@@ -230,7 +231,6 @@ Well.defaultProps = {
   px: "6px",
   py: "4px",
   align: "center",
-  bg: color("bg-medium"),
 };
 
 const ToggleIcon = styled(Flex)`

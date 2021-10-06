@@ -13,10 +13,10 @@ const Avatar = styled(Flex)`
   ${height};
   ${width};
   ${color};
+  background-color: ${({ bg = brandColor("brand") }) => bg};
 `;
 
 Avatar.defaultProps = {
-  bg: brandColor("brand"),
   color: "white",
   height: ["3em"],
   width: ["3em"],
