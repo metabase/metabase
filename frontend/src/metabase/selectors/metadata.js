@@ -169,6 +169,10 @@ export const getMetadata = createSelector(
   },
 );
 
+export const getMetadataWithHiddenTables = (state, props) => {
+  return getMetadata(state, { ...props, includeHiddenTables: true });
+};
+
 export const getDatabases = createSelector(
   [getMetadata],
   ({ databases }) => databases,
