@@ -4,7 +4,7 @@
             [metabase.models.interface :as i]
             [metabase.models.native-query-snippet.permissions :as snippet.perms]
             [metabase.models.permissions :as perms]
-            [metabase.public-settings.metastore :as settings.metastore]
+            [metabase.public-settings.premium-features :as settings.premium-features]
             [metabase.util.schema :as su]
             [pretty.core :refer [PrettyPrintable]]
             [schema.core :as s]
@@ -46,7 +46,7 @@
   "EE implementation of NativeQuerySnippet permissions. Uses Collection permissions instead allowing anyone to view or
   edit all Snippets. (Only when a valid Enterprise Edition token is present. Otherwise, this forwards method
   invocations to the default impl)."
-  (ee-strategy-impl/reify-ee-strategy-impl #'settings.metastore/enable-enhancements? ee-impl* snippet.perms/default-impl
+  (ee-strategy-impl/reify-ee-strategy-impl #'settings.premium-features/enable-enhancements? ee-impl* snippet.perms/default-impl
     snippet.perms/PermissionsImpl))
 
 (snippet.perms/set-impl! ee-impl)

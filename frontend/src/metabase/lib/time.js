@@ -13,8 +13,8 @@ function addAbbreviatedLocale() {
     relativeTime: {
       future: "in %s",
       past: "%s",
-      s: "%d s",
-      ss: "%d s",
+      s: t`just now`,
+      ss: t`just now`,
       m: "%d m",
       mm: "%d m",
       h: "%d h",
@@ -174,4 +174,21 @@ export function getRelativeTimeAbbreviated(timestamp) {
   }
 
   return getRelativeTime(timestamp);
+}
+
+export function msToSeconds(ms) {
+  return ms / 1000;
+}
+
+export function msToMinutes(ms) {
+  return msToSeconds(ms) / 60;
+}
+
+export function msToHours(ms) {
+  const hours = msToMinutes(ms) / 60;
+  return hours;
+}
+
+export function hoursToSeconds(hours) {
+  return hours * 60 * 60;
 }

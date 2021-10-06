@@ -97,3 +97,11 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
       left: 0;
     `}
 `;
+
+export const CardsContainer = styled(FullWidthContainer)`
+  ${({ addMarginTop }) =>
+    addMarginTop &&
+    css`
+      margin-top: ${space(2)};
+    `}
+`;

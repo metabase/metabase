@@ -36,7 +36,8 @@
     "/frontend/src/cljs/",
     "/frontend/src/metabase/internal/",
     "/frontend/test/",
-    ".styled.jsx"
+    ".styled.jsx",
+    ".info.js"
   ],
   "testEnvironment": "jsdom",
   "watchPlugins": [

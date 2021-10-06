@@ -6,7 +6,7 @@
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.table :refer [Table]]
             [metabase.models.user :refer [User]]
-            [metabase.public-settings.metastore-test :as metastore-test]
+            [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.server.middleware.session :as mw.session]
             [metabase.test.data :as data]
             [metabase.test.data.impl :as data.impl]
@@ -68,7 +68,7 @@
               (let [{:keys [gtaps attributes]} (s/validate WithGTAPsArgs (args-fn))]
                 ;; set user login_attributes
                 (with-user-attributes test-user-name-or-user-id attributes
-                  (metastore-test/with-metastore-token-features #{:sandboxes}
+                  (premium-features-test/with-premium-features #{:sandboxes}
                     ;; create Cards/GTAPs from defs
                     (do-with-gtap-defs group gtaps
                       (fn []

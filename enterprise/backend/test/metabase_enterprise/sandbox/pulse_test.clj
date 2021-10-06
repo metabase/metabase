@@ -40,7 +40,7 @@
                                             :user_id          (mt/user->id :rasta)}]]
     (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
       (mt/with-fake-inbox
-        (with-redefs [messages/render-pulse-email (fn [_ _ [{:keys [result]}]]
+        (with-redefs [messages/render-pulse-email (fn [_ _ _ [{:keys [result]}]]
                                                     [{:result result}])]
           (mt/with-test-user nil
             (pulse/send-pulse! pulse)))
@@ -117,7 +117,7 @@
                                                                                  :enabled      :true
                                                                                  :recipients   [{:id    (mt/user->id :rasta)
                                                                                                  :email "rasta@metabase.com"}]}]})
-                (let [[{html :content} {attachment :content}] (get-in @mt/inbox ["rasta@metabase.com" 0 :body])]
+                (let [[{html :content} {_icon :content} {attachment :content}] (get-in @mt/inbox ["rasta@metabase.com" 0 :body])]
                   (testing "email"
                     (is (= 22
                            (html->row-count html))))
@@ -145,7 +145,7 @@
               (mt/with-test-user nil
                 (pulse/send-pulse! (models.pulse/retrieve-pulse pulse-id)))
               (let [email-results                           @mt/inbox
-                    [{html :content} {attachment :content}] (get-in email-results ["rasta@metabase.com" 0 :body])]
+                    [{html :content} {_icon :attachment} {attachment :content}] (get-in email-results ["rasta@metabase.com" 0 :body])]
                 (testing "email"
                   (is (= 22
                          (html->row-count html))))

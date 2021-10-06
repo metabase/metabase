@@ -174,7 +174,11 @@ export default class QueryBuilder extends Component {
   }
 
   UNSAFE_componentWillMount() {
-    this.props.initializeQB(this.props.location, this.props.params);
+    this.props.initializeQB(
+      this.props.location,
+      this.props.params,
+      this.props.location.query,
+    );
   }
 
   componentDidMount() {
@@ -253,9 +257,10 @@ export default class QueryBuilder extends Component {
   };
 
   handleSave = async card => {
-    const { question, apiUpdateQuestion } = this.props;
+    const { question, apiUpdateQuestion, updateUrl } = this.props;
     const questionWithUpdatedCard = question.setCard(card);
     await apiUpdateQuestion(questionWithUpdatedCard);
+    await updateUrl(questionWithUpdatedCard.card(), { dirty: false });
 
     if (this.props.fromUrl) {
       this.props.onChangeLocation(this.props.fromUrl);

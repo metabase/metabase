@@ -9,7 +9,7 @@ import StoreAccount from "./containers/StoreAccount";
 
 export default function getRoutes() {
   return (
-    <Route path="store" title={t`Store`}>
+    <Route key="store" path="store" title={t`Store`}>
       <IndexRoute component={StoreAccount} />
       <Route path="activate" component={StoreActivate} />
     </Route>

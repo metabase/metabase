@@ -8,6 +8,16 @@
             [metabase.test :as mt]
             [metabase.util :as u]))
 
+(deftest add-period-test
+  (is (= "This sentence needs a period."
+         (u/add-period "This sentence needs a period")))
+  (is (= "This sentence doesn't need a period!"
+         (u/add-period "This sentence doesn't need a period!")))
+  (is (= "What about this one?"
+         (u/add-period "What about this one?")))
+  (is (= "   "
+         (u/add-period "   "))))
+
 (deftest decolorize-test
   (is (= "[31mmessage[0m"
          (u/colorize 'red "message")))
@@ -176,6 +186,9 @@
     "QQ"           false
     "QQ="          false
     "QQ=="         true
+    ;; line breaks and spaces should be OK
+    "Q\rQ\n=\r\n=" true
+    " Q Q = = "    true
     ;; padding has to go at the end
     "==QQ"         false))
 
@@ -328,3 +341,19 @@
          (transduce (map identity)
                     (u/sorted-take size kompare)
                     coll)))))
+(deftest email->domain-test
+  (are [domain email] (is (= domain
+                             (u/email->domain email))
+                          (format "Domain of email address '%s'" email))
+    nil              nil
+    "metabase.com"   "cam@metabase.com"
+    "metabase.co.uk" "cam@metabase.co.uk"
+    "metabase.com"   "cam.saul+1@metabase.com"))
+
+(deftest email-in-domain-test
+  (are [in-domain? email domain] (is (= in-domain?
+                                        (u/email-in-domain? email domain))
+                                     (format "Is email '%s' in domain '%s'?" email domain))
+    true  "cam@metabase.com"          "metabase.com"
+    false "cam.saul+1@metabase.co.uk" "metabase.com"
+    true  "cam.saul+1@metabase.com"   "metabase.com"))

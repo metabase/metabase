@@ -41,6 +41,13 @@ export const MONTH_DAY_OPTIONS = [
   { name: t`15th (Midpoint)`, value: "mid" },
 ];
 
+const optionNameTranslations = {
+  hourly: t`Hourly`,
+  daily: t`Daily`,
+  weekly: t`Weekly`,
+  monthly: t`Monthly`,
+};
+
 /**
  * Picker for selecting a hourly/daily/weekly/monthly schedule.
  *
@@ -271,7 +278,7 @@ export default class SchedulePicker extends Component {
               this.handleChangeProperty("schedule_type", value)
             }
             options={scheduleOptions}
-            optionNameFn={o => capitalize(o)}
+            optionNameFn={o => optionNameTranslations[o] || capitalize(o)}
             optionValueFn={o => o}
           />
           {scheduleType === "weekly" && this.renderDayPicker()}

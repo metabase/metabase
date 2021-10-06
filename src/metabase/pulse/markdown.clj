@@ -7,8 +7,10 @@
             HardLineBreak Heading HtmlBlock HtmlCommentBlock HtmlEntity HtmlInline HtmlInlineBase HtmlInlineComment
             HtmlInnerBlockComment Image ImageRef IndentedCodeBlock Link LinkRef MailLink OrderedList OrderedListItem
             Paragraph Reference SoftLineBreak StrongEmphasis Text ThematicBreak]
+           com.vladsch.flexmark.html.HtmlRenderer
            com.vladsch.flexmark.parser.Parser
            [com.vladsch.flexmark.util.ast Document Node]
+           com.vladsch.flexmark.util.data.MutableDataSet
            java.net.URI))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -297,6 +299,13 @@
 
       joined-content)))
 
+(def ^:private renderer
+  "An instance of a Flexmark HTML renderer"
+  (let [options (.. (MutableDataSet.)
+                    (set (. HtmlRenderer ESCAPE_HTML) true)
+                    (toImmutable))]
+    (delay (.build (HtmlRenderer/builder options)))))
+
 (defmulti process-markdown
   "Converts a markdown string from a virtual card into a form that can be sent to a channel
   (mrkdwn for Slack; HTML for email)."
@@ -308,3 +317,8 @@
       to-clojure
       ast->mrkdwn
       str/trim))
+
+(defmethod process-markdown :html
+  [markdown _]
+  (let [ast (.parse ^Parser @parser ^String markdown)]
+    (.render ^HtmlRenderer @renderer ^Document ast)))

@@ -81,7 +81,7 @@
                   ["Paul Pelican"   "SoMa Squadron"]
                   ["Peter Pelican"  "SoMa Squadron"]
                   ["Russell Crow"   "Mission Street Murder"]]
-            rows (if (tx/sorts-nil-first? driver/*driver*)
+            rows (if (tx/sorts-nil-first? driver/*driver* :type/Text)
                    (cons [nil "Fillmore Flock"] rows)
                    (conj rows [nil "Fillmore Flock"]))]
         (is (= rows
@@ -129,7 +129,7 @@
                   ["Paul Pelican"     "SoMa Squadron"]
                   ["Peter Pelican"    "SoMa Squadron"]
                   ["Russell Crow"     "Mission Street Murder"]]
-            rows (if (tx/sorts-nil-first? driver/*driver*)
+            rows (if (tx/sorts-nil-first? driver/*driver* :type/Text)
                    (cons [nil "Fillmore Flock"] rows)
                    (conj rows [nil "Fillmore Flock"]))]
         (is (= rows
@@ -521,8 +521,7 @@
 
 (deftest join-source-queries-with-joins-test
   (testing "Should be able to join against source queries that themselves contain joins (#12928)"
-    ;; sample-dataset doesn't work on Redshift yet -- see #14784
-    (mt/test-drivers (disj (mt/normal-drivers-with-feature :nested-queries :left-join :foreign-keys) :redshift)
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join :foreign-keys)
       (mt/dataset sample-dataset
         (testing "(#12928)"
           (let [query (mt/mbql-query orders
@@ -550,6 +549,8 @@
                                                                         :alias        "P2"}]
                                                         :aggregation  [[:avg $reviews.rating]]
                                                         :breakout     [&P2.products.category]}}]
+                         :order-by     [[:asc &P1.products.category]
+                                        [:asc [:field %people.source {:join-alias "People"}]]]
                          :limit        2})]
             (is (= [["Doohickey" "Affiliate" 783 "Doohickey" 3]
                     ["Doohickey" "Facebook" 816 "Doohickey" 3]]

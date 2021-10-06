@@ -4,25 +4,11 @@ import { connect } from "react-redux";
 import querystring from "querystring";
 
 import ParametersList from "metabase/parameters/components/ParametersList";
-import { syncQueryParamsWithURL } from "./syncQueryParamsWithURL";
-import {
-  getParameterValuesBySlug,
-  removeUndefaultedNilValuedPairs,
-} from "metabase/meta/Parameter";
+import { getParameterValuesBySlug } from "metabase/meta/Parameter";
 import { getMetadata } from "metabase/selectors/metadata";
 
 @connect(state => ({ metadata: getMetadata(state) }))
 export default class Parameters extends Component {
-  defaultProps = {
-    syncQueryString: false,
-  };
-
-  constructor(props) {
-    super(props);
-
-    syncQueryParamsWithURL(props);
-  }
-
   componentDidUpdate() {
     const { parameters, parameterValues, dashboard } = this.props;
 
@@ -31,7 +17,7 @@ export default class Parameters extends Component {
       const parameterValuesBySlug = getParameterValuesBySlug(
         parameters,
         parameterValues,
-        dashboard && removeUndefaultedNilValuedPairs,
+        dashboard && { preserveDefaultedParameters: true },
       );
 
       let search = querystring.stringify(parameterValuesBySlug);
@@ -64,11 +50,8 @@ export default class Parameters extends Component {
       vertical,
       commitImmediately,
 
-      setParameterName,
       setParameterValue,
-      setParameterDefaultValue,
       setParameterIndex,
-      removeParameter,
       setEditingParameter,
     } = this.props;
 
@@ -86,11 +69,8 @@ export default class Parameters extends Component {
         isQB={isQB}
         vertical={vertical}
         commitImmediately={commitImmediately}
-        setParameterName={setParameterName}
         setParameterValue={setParameterValue}
-        setParameterDefaultValue={setParameterDefaultValue}
         setParameterIndex={setParameterIndex}
-        removeParameter={removeParameter}
         setEditingParameter={setEditingParameter}
       />
     );

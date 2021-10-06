@@ -510,8 +510,7 @@
 (deftest execute-public-dashcard-dimension-value-params-test
   (testing "GET /api/public/dashboard/:uuid/card/:card-id"
     (testing (str "make sure DimensionValue params also work if they have a default value, even if some is passed in "
-                  "for some reason as part of the query (#7253) If passed in as part of the query however make sure it "
-                  "doesn't override what's actually in the DB")
+                  "for some reason as part of the query (#7253)")
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (mt/with-temp Card [card {:dataset_query {:database (mt/id)
                                                   :type     :native
@@ -530,14 +529,14 @@
               :parameter_mappings [{:card_id      (u/the-id card)
                                     :target       [:variable [:template-tag :msg]]
                                     :parameter_id "181da7c5"}])
-            (is (= [["Wow"]]
+            (is (= [["World"]]
                    (-> ((mt/user->client :crowberto)
                         :get (str (dashcard-url dash card)
                                   "?parameters="
                                   (json/generate-string
                                    [{:type    :category
                                      :target  [:variable [:template-tag :msg]]
-                                     :value   nil
+                                     :value   "World"
                                      :default "Hello"}])))
                        mt/rows)))))))))
 

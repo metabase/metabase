@@ -790,7 +790,7 @@ describe("scenarios > question > filter", () => {
     cy.button("Done").should("not.be.disabled");
   });
 
-  it.skip("custom expression filter should work with numeric value before an operator (metabase#15893)", () => {
+  it("custom expression filter should refuse to work with numeric value before an operator (metabase#15893)", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
     openOrdersTable({ mode: "notebook" });
@@ -799,11 +799,7 @@ describe("scenarios > question > filter", () => {
     cy.get("[contenteditable=true]")
       .type("0 < [ID]")
       .blur();
-    cy.button("Done").click();
-    cy.button("Visualize").click();
-    cy.wait("@dataset").then(xhr => {
-      expect(xhr.response.body.error).to.not.exist;
-    });
+    cy.findByText("Expecting field but found 0");
   });
 
   it.skip("should work on twice summarized questions (metabase#15620)", () => {
@@ -848,7 +844,7 @@ describe("scenarios > question > filter", () => {
     cy.button("Add filter").isVisibleInPopover();
   });
 
-  it.skip("shoud retain all data series after saving a question where custom expression formula is the first metric (metabase#15882)", () => {
+  it("shoud retain all data series after saving a question where custom expression formula is the first metric (metabase#15882)", () => {
     visitQuestionAdhoc({
       dataset_query: {
         database: 1,
@@ -884,7 +880,7 @@ describe("scenarios > question > filter", () => {
     cy.get(".line").should("have.length", 3);
 
     function assertOnLegendLabels() {
-      cy.get(".Card-title")
+      cy.findAllByTestId("legend-item")
         .should("contain", "Discount %")
         .and("contain", "Count")
         .and("contain", "Average of Total");

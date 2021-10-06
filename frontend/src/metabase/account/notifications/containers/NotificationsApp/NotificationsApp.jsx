@@ -25,9 +25,11 @@ const mapDispatchToProps = {
 export default _.compose(
   Alerts.loadList({
     query: state => ({ user_id: getUserId(state) }),
+    reload: true,
   }),
   Pulses.loadList({
     query: state => ({ user_id: getUserId(state) }),
+    reload: true,
   }),
   connect(
     mapStateToProps,

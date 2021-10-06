@@ -4,8 +4,13 @@ import { scaleLinear, scaleTime } from "@visx/scale";
 import { GridRows } from "@visx/grid";
 import { AxisBottom, AxisLeft } from "@visx/axis";
 import { AreaClosed, LinePath } from "@visx/shape";
-import { formatDate } from "../../lib/formatDate";
-import { formatNumber } from "../../lib/formatNumber";
+import {
+  getXTickLabelProps,
+  getYTickLabelProps,
+  getYTickWidth,
+} from "../../lib/axes";
+import { formatDate } from "../../lib/dates";
+import { formatNumber } from "../../lib/numbers";
 
 const propTypes = {
   data: PropTypes.array.isRequired,
@@ -16,6 +21,7 @@ const propTypes = {
   settings: PropTypes.shape({
     x: PropTypes.object,
     y: PropTypes.object,
+    colors: PropTypes.object,
   }),
   labels: PropTypes.shape({
     left: PropTypes.string,
@@ -44,22 +50,29 @@ const layout = {
   },
   numTicks: 5,
   strokeWidth: 2,
+  labelPadding: 12,
+  areaOpacity: 0.2,
   strokeDasharray: "4",
 };
 
 const TimeSeriesAreaChart = ({ data, accessors, settings, labels }) => {
+  const colors = settings?.colors;
+  const yTickWidth = getYTickWidth(data, accessors, settings);
+  const yLabelOffset = yTickWidth + layout.labelPadding;
+  const xMin = yLabelOffset + layout.font.size * 1.5;
   const xMax = layout.width - layout.margin.right;
   const yMax = layout.height - layout.margin.bottom;
-  const innerWidth = xMax - layout.margin.left;
+  const innerWidth = xMax - xMin;
   const leftLabel = labels?.left;
   const bottomLabel = labels?.bottom;
+  const palette = { ...layout.colors, ...colors };
 
   const xScale = scaleTime({
     domain: [
       Math.min(...data.map(accessors.x)),
       Math.max(...data.map(accessors.x)),
     ],
-    range: [layout.margin.left, xMax],
+    range: [xMin, xMax],
   });
 
   const yScale = scaleLinear({
@@ -68,60 +81,48 @@ const TimeSeriesAreaChart = ({ data, accessors, settings, labels }) => {
     nice: true,
   });
 
-  const getLeftTickLabelProps = () => ({
-    fontSize: layout.font.size,
-    fontFamily: layout.font.family,
-    fill: layout.colors.textMedium,
-    textAnchor: "end",
-  });
-
-  const getBottomTickLabelProps = () => ({
-    fontSize: layout.font.size,
-    fontFamily: layout.font.family,
-    fill: layout.colors.textMedium,
-    textAnchor: "middle",
-  });
-
   return (
     <svg width={layout.width} height={layout.height}>
       <GridRows
         scale={yScale}
-        left={layout.margin.left}
+        left={xMin}
         width={innerWidth}
         strokeDasharray={layout.strokeDasharray}
       />
       <AreaClosed
         data={data}
         yScale={yScale}
-        fill={layout.colors.brandLight}
+        fill={palette.brand}
+        opacity={layout.areaOpacity}
         x={d => xScale(accessors.x(d))}
         y={d => yScale(accessors.y(d))}
       />
       <LinePath
         data={data}
-        stroke={layout.colors.brand}
+        stroke={palette.brand}
         strokeWidth={layout.strokeWidth}
         x={d => xScale(accessors.x(d))}
         y={d => yScale(accessors.y(d))}
       />
       <AxisLeft
         scale={yScale}
-        left={layout.margin.left}
+        left={xMin}
         label={leftLabel}
+        labelOffset={yLabelOffset}
         hideTicks
         hideAxisLine
         tickFormat={value => formatNumber(value, settings?.y)}
-        tickLabelProps={() => getLeftTickLabelProps()}
+        tickLabelProps={() => getYTickLabelProps(layout)}
       />
       <AxisBottom
         scale={xScale}
         top={yMax}
         label={bottomLabel}
         numTicks={layout.numTicks}
-        stroke={layout.colors.textLight}
-        tickStroke={layout.colors.textLight}
+        stroke={palette.textLight}
+        tickStroke={palette.textLight}
         tickFormat={value => formatDate(value, settings?.x)}
-        tickLabelProps={() => getBottomTickLabelProps()}
+        tickLabelProps={() => getXTickLabelProps(layout)}
       />
     </svg>
   );

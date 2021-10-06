@@ -301,7 +301,7 @@ describe("scenarios > question > new", () => {
       });
     });
 
-    it.skip("should remove `/notebook` from URL when converting question to SQL/Native (metabase#12651)", () => {
+    it("should remove `/notebook` from URL when converting question to SQL/Native (metabase#12651)", () => {
       cy.server();
       cy.route("POST", "/api/dataset").as("dataset");
       openOrdersTable();
@@ -315,7 +315,7 @@ describe("scenarios > question > new", () => {
       cy.url().should("include", "question#");
     });
 
-    it.skip("should correctly choose between 'Object Detail' and 'Table (metabase#13717)", () => {
+    it("should correctly choose between 'Object Detail' and 'Table (metabase#13717)", () => {
       // set ID to `No semantic type`
       cy.request("PUT", `/api/field/${ORDERS.ID}`, {
         semantic_type: null,
@@ -340,7 +340,7 @@ describe("scenarios > question > new", () => {
       cy.log(
         "**It should display the table with all orders with the selected quantity.**",
       );
-      cy.findByText("Fantastic Wool Shirt"); // order ID#3 with the same quantity
+      cy.get(".TableInteractive");
     });
 
     it("should display date granularity on Summarize when opened from saved question (metabase#11439)", () => {

@@ -1,8 +1,9 @@
 import React, { useCallback, useState } from "react";
 import PropTypes from "prop-types";
-import { msgid, ngettext, t } from "ttag";
+import { t } from "ttag";
 import Settings from "metabase/lib/settings";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
+import { formatChannelRecipients } from "metabase/lib/notifications";
 import Button from "metabase/components/Button";
 import ModalContent from "metabase/components/ModalContent";
 import FormMessage from "metabase/components/form/FormMessage";
@@ -120,34 +121,7 @@ const getDateMessage = (item, type) => {
 };
 
 const getRecipientsMessage = item => {
-  const emailCount = getRecipientsCount(item, "email");
-  const slackCount = getRecipientsCount(item, "slack");
-
-  const emailMessage = ngettext(
-    msgid`${emailCount} email`,
-    `${emailCount} emails`,
-    emailCount,
-  );
-
-  const slackMessage = ngettext(
-    msgid`${slackCount} Slack channel`,
-    `${slackCount} Slack channels`,
-    slackCount,
-  );
-
-  if (emailCount && slackCount) {
-    return t`It’s currently being sent to ${emailMessage} and ${slackMessage}.`;
-  } else if (emailCount) {
-    return t`It’s currently being sent to ${emailMessage}.`;
-  } else if (slackCount) {
-    return t`It’s currently being sent to ${slackMessage}.`;
-  }
-};
-
-const getRecipientsCount = (item, channelType) => {
-  return item.channels
-    .filter(channel => channel.channel_type === channelType)
-    .reduce((total, channel) => total + channel.recipients.length, 0);
+  return t`It’s currently being sent to ${formatChannelRecipients(item)}.`;
 };
 
 export default ArchiveModal;

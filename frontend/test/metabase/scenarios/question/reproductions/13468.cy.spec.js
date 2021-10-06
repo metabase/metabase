@@ -1,6 +1,6 @@
 import { restore, openOrdersTable } from "__support__/e2e/cypress";
 
-describe.skip("issue 13468", () => {
+describe("issue 13468", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
     restore();
