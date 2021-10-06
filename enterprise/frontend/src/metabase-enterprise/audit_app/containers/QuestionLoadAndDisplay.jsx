@@ -20,12 +20,12 @@ const QuestionLoadAndDisplay = ({
   reloadRef,
   ...props
 }) => {
-  const reloadFnRef = useRef();
+  const reloadFnRef = useRef(null);
 
   useImperativeHandle(reloadRef, () => () => reloadFnRef.current?.());
 
   useEffect(() => {
-    reload && reloadFnRef.current();
+    reload && reloadFnRef.current?.();
   }, [reload]);
 
   return (

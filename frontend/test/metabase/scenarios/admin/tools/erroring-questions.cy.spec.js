@@ -29,7 +29,8 @@ describeWithToken("admin > tools > erroring questions ", () => {
   });
 
   describe("without broken questions", () => {
-    it('should render the "Tools" tab and navigate to the "Erroring Questions" by clicking on it', () => {
+    it.skip('should render the "Tools" tab and navigate to the "Erroring Questions" by clicking on it', () => {
+      // The sidebar has been taken out, because it looks awkward when there's only one elem on it: put it back in when there's more than one
       cy.visit("/admin");
 
       cy.get("nav")
@@ -40,10 +41,14 @@ describeWithToken("admin > tools > erroring questions ", () => {
       cy.findByRole("link", { name: "Erroring Questions" })
         .should("have.attr", "href")
         .and("eq", TOOLS_ERRORS_URL);
+    });
+
+    it("should disable search input fields (metabase#18050)", () => {
+      cy.visit(TOOLS_ERRORS_URL);
 
       cy.findByText("No results");
       cy.button("Rerun Selected").should("be.disabled");
-      cy.findByPlaceholderText("Error name").should("be.disabled");
+      cy.findByPlaceholderText("Error contents").should("be.disabled");
       cy.findByPlaceholderText("DB name").should("be.disabled");
       cy.findByPlaceholderText("Collection name").should("be.disabled");
     });
@@ -71,9 +76,9 @@ describeWithToken("admin > tools > erroring questions ", () => {
 
       // The question is still there because we didn't fix it
       cy.findByText(brokenQuestionDetails.name);
-
       cy.button("Rerun Selected").should("be.disabled");
-      cy.findByPlaceholderText("Error name").should("not.be.disabled");
+
+      cy.findByPlaceholderText("Error contents").should("not.be.disabled");
       cy.findByPlaceholderText("DB name").should("not.be.disabled");
       cy.findByPlaceholderText("Collection name")
         .should("not.be.disabled")

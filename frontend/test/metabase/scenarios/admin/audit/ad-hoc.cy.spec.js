@@ -29,6 +29,7 @@ describeWithToken("audit > ad-hoc", () => {
 
       cy.findByText("Native")
         .parent()
+        .parent()
         .within(() => {
           cy.findByText("Ad-hoc").click();
         });

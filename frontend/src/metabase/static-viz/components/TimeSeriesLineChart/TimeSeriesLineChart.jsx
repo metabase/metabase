@@ -21,12 +21,12 @@ const propTypes = {
   settings: PropTypes.shape({
     x: PropTypes.object,
     y: PropTypes.object,
+    colors: PropTypes.object,
   }),
   labels: PropTypes.shape({
     left: PropTypes.string,
     bottom: PropTypes.string,
   }),
-  colors: PropTypes.object,
 };
 
 const layout = {
@@ -53,7 +53,8 @@ const layout = {
   strokeDasharray: "4",
 };
 
-const TimeSeriesLineChart = ({ data, accessors, settings, labels, colors }) => {
+const TimeSeriesLineChart = ({ data, accessors, settings, labels }) => {
+  const colors = settings?.colors;
   const yTickWidth = getYTickWidth(data, accessors, settings);
   const yLabelOffset = yTickWidth + layout.labelPadding;
   const xMin = yLabelOffset + layout.font.size * 1.5;

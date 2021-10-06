@@ -17,7 +17,7 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [schema.core :as s])
-  (:import (java.text DecimalFormat DecimalFormatSymbols)))
+  (:import [java.text DecimalFormat DecimalFormatSymbols]))
 
 (def ^:private error-rendered-info
   "Default rendered-info map when there is an error displaying a card. Is a delay due to the call to `trs`."
@@ -289,7 +289,7 @@
                 (u/update-when :date_style update-date-style (:unit col))))]
     (let [x-col-settings (settings x-col)
           y-col-settings (settings y-col)]
-      (cond-> {}
+      (cond-> {:colors (public-settings/application-colors)}
         x-col-settings
         (assoc :x (for-js x-col-settings x-col))
         y-col-settings
