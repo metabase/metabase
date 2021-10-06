@@ -162,7 +162,7 @@ export const addSampleDataset = createThunkAction(
   },
 );
 
-export const proceedWithDbCreation = function(database) {
+export const proceedWithDbCreation = function(database, otherArg) {
   return async function(dispatch, getState) {
     if (database.details["let-user-control-scheduling"]) {
       try {
@@ -195,6 +195,9 @@ export const proceedWithDbCreation = function(database) {
 
 export const createDatabase = function(database) {
   editParamsForUserControlledScheduling(database);
+  /*eslint-disable*/
+  console.log("🚀", { database });
+  return;
 
   return async function(dispatch, getState) {
     try {

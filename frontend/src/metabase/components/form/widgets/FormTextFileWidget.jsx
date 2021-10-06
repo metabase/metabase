@@ -3,8 +3,9 @@ import React from "react";
 import cx from "classnames";
 import { formDomOnlyProps } from "metabase/lib/redux";
 
-const FormTextFileWidget = ({ field }) => {
+const FormTextFileWidget = ({ field, ...somethingElse }) => {
   // setting value on a file input throws an error
+  console.log("🚀", { field, somethingElse });
   const { value, ...otherProps } = formDomOnlyProps(field); // eslint-disable-line no-unused-vars
   return (
     <input

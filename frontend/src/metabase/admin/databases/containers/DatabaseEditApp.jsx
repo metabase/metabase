@@ -209,12 +209,18 @@ export default class DatabaseEditApp extends Component {
                         <Flex>
                           <Box width={620}>
                             <Form>
-                              {formFields.map(formField => (
-                                <FormField
-                                  key={formField.name}
-                                  name={formField.name}
-                                />
-                              ))}
+                              {formFields.map(formField => {
+                                console.log("🚀", { formField });
+                                return (
+                                  <FormField
+                                    key={formField.name}
+                                    name={formField.name}
+                                    treatBeforePosting={
+                                      formField["treat-before-posting"]
+                                    }
+                                  />
+                                );
+                              })}
                               <FormMessage />
                               <div className="Form-actions text-centered">
                                 <FormSubmit className="block mb2">
