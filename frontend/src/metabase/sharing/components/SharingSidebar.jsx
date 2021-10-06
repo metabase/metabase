@@ -21,6 +21,7 @@ import {
   cleanPulse,
   createChannel,
   getPulseParameters,
+  NEW_PULSE_TEMPLATE,
 } from "metabase/lib/pulse";
 
 import { getEditingPulse, getPulseFormInput } from "metabase/pulse/selectors";
@@ -28,7 +29,6 @@ import { getEditingPulse, getPulseFormInput } from "metabase/pulse/selectors";
 import { getUser } from "metabase/selectors/user";
 
 import {
-  setEditingPulse,
   updateEditingPulse,
   saveEditingPulse,
   fetchPulseFormInput,
@@ -99,7 +99,6 @@ const mapStateToProps = (state, props) => ({
 });
 
 const mapDispatchToProps = {
-  setEditingPulse,
   updateEditingPulse,
   saveEditingPulse,
   fetchPulseFormInput,
@@ -131,7 +130,6 @@ class SharingSidebar extends React.Component {
     initialCollectionId: PropTypes.number,
     pulse: PropTypes.object.isRequired,
     saveEditingPulse: PropTypes.func.isRequired,
-    setEditingPulse: PropTypes.func.isRequired,
     testPulse: PropTypes.func.isRequired,
     updateEditingPulse: PropTypes.func.isRequired,
     pulses: PropTypes.array.isRequired,
@@ -146,7 +144,7 @@ class SharingSidebar extends React.Component {
   };
 
   setPulseWithChannel = type => {
-    const { dashboard, pulse, formInput } = this.props;
+    const { dashboard, formInput } = this.props;
 
     const channelSpec = formInput.channels[type];
     if (!channelSpec) {
@@ -156,7 +154,7 @@ class SharingSidebar extends React.Component {
     const channel = createChannel(channelSpec);
 
     const newPulse = {
-      ...pulse,
+      ...NEW_PULSE_TEMPLATE,
       channels: [channel],
       cards: nonTextCardsFromDashboard(dashboard),
     };
@@ -251,8 +249,6 @@ class SharingSidebar extends React.Component {
         returnMode: returnMode.concat([editingMode]),
       };
     });
-
-    this.props.setEditingPulse(null, null);
   };
 
   editPulse = (pulse, channelType) => {

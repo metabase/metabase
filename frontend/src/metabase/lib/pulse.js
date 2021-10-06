@@ -4,6 +4,15 @@ import {
   hasParameterValue,
 } from "metabase/meta/Parameter";
 
+export const NEW_PULSE_TEMPLATE = {
+  name: null,
+  cards: [],
+  channels: [],
+  skip_if_empty: false,
+  collection_id: null,
+  parameters: [],
+};
+
 export function channelIsValid(channel, channelSpec) {
   if (!channelSpec) {
     return false;
