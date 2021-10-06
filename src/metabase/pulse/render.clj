@@ -97,7 +97,7 @@
         (and (= @col-sample-count 2)
              (> @row-sample-count 1)
              (number-field? @col-2)
-             (not= display-type :waterfall))
+             (not (#{:waterfall :pie} display-type)))
         (chart-type :sparkline "result has 2 cols (%s and %s (number)) and > 1 row" (col-description @col-1) (col-description @col-2))
 
         (and (= @col-sample-count 2)
