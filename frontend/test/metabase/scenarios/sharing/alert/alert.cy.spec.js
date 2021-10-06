@@ -4,15 +4,11 @@ import {
   createBasicAlert,
   popover,
   openPeopleTable,
-  describeWithToken,
-  setupSMTP,
 } from "__support__/e2e/cypress";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 // Ported from alert.e2e.spec.js
 // *** We should also check that alerts can be set up through slack
 
-const { ORDERS_ID } = SAMPLE_DATASET;
 const raw_q_id = 1;
 const timeseries_q_id = 3;
 
@@ -212,49 +208,3 @@ describe("scenarios > alert", () => {
     });
   });
 });
-
-describeWithToken("scenarios > alert (EE)", () => {
-  beforeEach(() => {
-    restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should validate for approved email domains", () => {
-    const email = "mailer@metabase.test";
-    const domain = "metabase.example";
-
-    setupSMTP();
-    setAllowedEmailDomains(domain);
-
-    cy.createQuestion({
-      name: "Orders",
-      query: { "source-table": ORDERS_ID },
-    }).then(({ body: { id: questionId } }) => {
-      cy.visit(`/question/${questionId}`);
-    });
-
-    cy.icon("bell").click();
-    cy.findByText("Set up an alert").click();
-    addEmailRecipient(email);
-    cy.findByText("Done").click();
-
-    cy.findByText(
-      'You cannot create new subscriptions for the domain "metabase.test". Allowed domains are: metabase.example',
-    );
-  });
-});
-
-function addEmailRecipient(email) {
-  cy.findByText("Email alerts to:")
-    .parent()
-    .find("input")
-    .click()
-    .type(`${email}{enter}`)
-    .blur();
-}
-
-function setAllowedEmailDomains(domains) {
-  cy.request("PUT", "/api/setting/subscription-allowed-domains", {
-    value: domains,
-  });
-}
