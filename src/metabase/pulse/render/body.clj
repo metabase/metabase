@@ -19,7 +19,7 @@
             [schema.core :as s])
   (:import (java.text DecimalFormat DecimalFormatSymbols)))
 
-(def error-rendered-info
+(def ^:private error-rendered-info
   "Default rendered-info map when there is an error displaying a card. Is a delay due to the call to `trs`."
   (delay {:attachments
           nil
@@ -455,11 +455,14 @@
         labels         (datetime/format-temporal-string-pair timezone-id
                                                              (map x-axis-rowfn last-rows)
                                                              (x-axis-rowfn cols))
+        render-fn      (if (isa? (-> cols x-axis-rowfn :effective_type) :type/Temporal)
+                         js-svg/timelineseries-line
+                         js-svg/categorical-line)
         image-bundle   (image-bundle/make-image-bundle
                         render-type
-                        (js-svg/timelineseries-line (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)
-                                                    (x-and-y-axis-label-info x-col y-col viz-settings)
-                                                    (->js-viz x-col y-col viz-settings)))]
+                        (render-fn (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)
+                                   (x-and-y-axis-label-info x-col y-col viz-settings)
+                                   (->js-viz x-col y-col viz-settings)))]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))
