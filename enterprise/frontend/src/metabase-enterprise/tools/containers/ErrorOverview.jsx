@@ -15,7 +15,7 @@ const getSortOrder = isAscending => (isAscending ? "asc" : "desc");
 const CARD_ID_COL = 0;
 
 export default function ErrorOverview(props) {
-  const reloadRef = useRef(null);
+  const reloadRef = useRef();
   // TODO: use isReloading to display a loading overlay
   // eslint-disable-next-line no-unused-vars
   const [isReloading, setIsReloading] = useState(false);
@@ -26,39 +26,31 @@ export default function ErrorOverview(props) {
   });
 
   const [rowChecked, setRowChecked] = useState({});
-  const [rowToCardId, setRowToCardId] = useState({});
 
   const handleAllSelectClick = e => {
-    const newRowChecked = rowChecked;
-    const newRowToCardId = rowToCardId;
+    const newRowChecked = { ...rowChecked };
     const noRowChecked = Object.values(rowChecked).every(v => !v);
     for (const rowIndex of Array(e.rows.length).keys()) {
+      const cardIndex = e.rows[rowIndex][CARD_ID_COL];
       if (noRowChecked) {
-        newRowChecked[rowIndex] = true;
-        newRowToCardId[rowIndex] = e.rows[rowIndex][CARD_ID_COL];
+        newRowChecked[cardIndex] = true;
       } else {
-        newRowChecked[rowIndex] = false;
-        newRowToCardId[rowIndex] = null;
+        newRowChecked[cardIndex] = false;
       }
     }
     setRowChecked(newRowChecked);
-    setRowToCardId(newRowToCardId);
   };
 
   const handleRowSelectClick = e => {
     const newRowChecked = { ...rowChecked };
-    const newRowToCardId = { ...rowToCardId };
-    newRowChecked[e.rowIndex] = !(rowChecked[e.rowIndex] || false);
-    newRowToCardId[e.rowIndex] = e.row[CARD_ID_COL];
+    const cardIndex = e.row[CARD_ID_COL];
+    newRowChecked[cardIndex] = !(rowChecked[cardIndex] || false);
     setRowChecked(newRowChecked);
-    setRowToCardId(newRowToCardId);
   };
 
   const handleReloadSelected = async () => {
     setIsReloading(true);
-    const checkedCardIds = Object.values(
-      _.pick(rowToCardId, (member, key) => rowChecked[key]),
-    );
+    const checkedCardIds = Object.keys(_.pick(rowChecked, _.identity));
 
     await Promise.all(
       checkedCardIds.map(
@@ -66,7 +58,7 @@ export default function ErrorOverview(props) {
       ),
     );
     setRowChecked({});
-    reloadRef.current().reload();
+    console.log(reloadRef);
   };
 
   const handleSortingChange = sorting => setSorting(sorting);

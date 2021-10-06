@@ -64,7 +64,7 @@ export function fieldRefWithOption(
 export const keyForColumn = (column: Column): string => {
   let fieldRef = column.field_ref;
   if (!fieldRef) {
-    console.error("column is missing field_ref", column);
+    // console.error("column is missing field_ref", column);
     fieldRef = new FieldDimension(column.name).mbql();
   }
 

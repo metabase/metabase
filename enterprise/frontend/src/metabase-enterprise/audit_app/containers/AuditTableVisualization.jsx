@@ -37,6 +37,8 @@ const propTypes = {
   onRowSelectClick: PropTypes.func,
 };
 
+const ROW_ID_IDX = 0;
+
 export default class AuditTableVisualization extends React.Component {
   static identifier = "audit-table";
   static noHeader = true;
@@ -162,7 +164,7 @@ export default class AuditTableVisualization extends React.Component {
               {isSelectable && (
                 <td>
                   <CheckBox
-                    checked={rowChecked[rowIndex] || false}
+                    checked={rowChecked[row[ROW_ID_IDX]] || false}
                     onChange={e =>
                       this.handleRowSelectClick(
                         { ...e, originRow: rowIndex },
