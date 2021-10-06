@@ -22,6 +22,7 @@ const MetabaseAnalytics = {
       }
 
       if (typeof snowplow === "function") {
+        snowplow("setCustomUrl", url)
         snowplow("trackPageView");
       }
     }
