@@ -25,7 +25,7 @@ export default function ErrorOverview(props) {
   });
 
   const [rowChecked, setRowChecked] = useState({});
-  const [, forceUpdate] = useReducer((x) => x + 1, 0);
+  const [, forceUpdate] = useReducer(x => x + 1, 0);
 
   const handleAllSelectClick = e => {
     const newRowChecked = { ...rowChecked };
