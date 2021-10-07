@@ -46,8 +46,10 @@ describe("scenarios > admin > databases > add", () => {
 
     typeField("Name", "Test db name");
     typeField("Host", "localhost");
-    typeField("Database name", "test_postgres_db");
-    typeField("Username", "uberadmin");
+    typeField("Port", "5432");
+    typeField("Database name", "sample");
+    typeField("Username", "metabase");
+    typeField("Password", "metasample123");
 
     cy.button("Save")
       .should("not.be.disabled")
@@ -64,8 +66,10 @@ describe("scenarios > admin > databases > add", () => {
 
     typeField("Name", "Test db name");
     typeField("Host", "localhost  \n  ");
-    typeField("Database name", " test_postgres_db");
-    typeField("Username", "   uberadmin   ");
+    typeField("Port", "5432");
+    typeField("Database name", " sample");
+    typeField("Username", "   metabase   ");
+    typeField("Password", "metasample123");
 
     cy.findByText("Save").click();
 
@@ -109,8 +113,12 @@ describe("scenarios > admin > databases > add", () => {
     cy.visit("/admin/databases/create");
 
     typeField("Name", "Test db name");
-    typeField("Database name", "test_postgres_db");
-    typeField("Username", "uberadmin");
+    typeField("Host", "localhost");
+    typeField("Port", "5432");
+    typeField("Database name", "sample");
+    typeField("Username", "metabase");
+    typeField("Password", "metasample123");
+    
 
     cy.button("Save").should("not.be.disabled");
 
