@@ -20,7 +20,7 @@ export function addMySQLDatabase(name = "QA MySQL8") {
 function addQADatabase(engine, db_display_name, port) {
   const PASS_KEY = engine === "mongo" ? "pass" : "password";
   const AUTH_DB = engine === "mongo" ? "admin" : null;
-  const OPTIONS = engine === "mysql" ? "allowPublicKeyRetrieval=true" : null;
+  const OPTIONS = engine === "postgres" ? "sslmode=prefer" : null;
 
   cy.log(`**-- Adding ${engine.toUpperCase()} DB --**`);
   cy.request("POST", "/api/database", {
