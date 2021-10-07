@@ -974,29 +974,6 @@ describe("scenarios > question > notebook", () => {
     });
   });
 
-  describe("help text", () => {
-    it("should appear while inside a function", () => {
-      openProductsTable({ mode: "notebook" });
-      cy.findByText("Custom column").click();
-      cy.get("[contenteditable='true']").type("Lower(");
-      cy.findByText("lower(text)");
-    });
-
-    it("should not appear while outside a function", () => {
-      openProductsTable({ mode: "notebook" });
-      cy.findByText("Custom column").click();
-      cy.get("[contenteditable='true']").type("Lower([Category])");
-      cy.findByText("lower(text)").should("not.exist");
-    });
-
-    it("should appear after a field reference", () => {
-      openProductsTable({ mode: "notebook" });
-      cy.findByText("Custom column").click();
-      cy.get("[contenteditable='true']").type("Lower([Category]");
-      cy.findByText("lower(text)");
-    });
-  });
-
   it("should correctly insert function suggestion with the opening parenthesis", () => {
     openProductsTable({ mode: "notebook" });
     cy.findByText("Custom column").click();
