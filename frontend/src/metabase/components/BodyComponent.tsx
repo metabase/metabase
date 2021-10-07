@@ -2,14 +2,18 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 
-export default ComposedComponent =>
-  class extends Component {
+type Props<T> = T & { className?: string };
+
+export default <T extends unknown>(ComposedComponent: React.ComponentType<T>) =>
+  class extends Component<Props<T>> {
     static displayName =
       "BodyComponent[" +
       (ComposedComponent.displayName || ComposedComponent.name) +
       "]";
 
-    constructor(props) {
+    private _element: HTMLDivElement;
+
+    constructor(props: Props<T>) {
       super(props);
 
       this._element = document.createElement("div");
