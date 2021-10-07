@@ -450,36 +450,6 @@ describe("scenarios > question > custom columns", () => {
     cy.button("Done").should("not.be.disabled");
   });
 
-  it("should maintain data type (metabase#13122)", () => {
-    openOrdersTable({ mode: "notebook" });
-    cy.findByText("Custom column").click();
-    enterCustomColumnDetails({
-      formula: "case([Discount] > 0, [Created At], [Product → Created At])",
-      name: "13112",
-    });
-    cy.button("Done").click();
-    cy.findByText("Filter").click();
-    popover()
-      .findByText("13112")
-      .click();
-    cy.findByPlaceholderText("Enter a number").should("not.exist");
-  });
-
-  it("filter based on `concat` function should not offer numeric options (metabase#13217)", () => {
-    openPeopleTable({ mode: "notebook" });
-    cy.findByText("Custom column").click();
-    enterCustomColumnDetails({
-      formula: `concat("State: ", [State])`,
-      name: "13217",
-    });
-    cy.button("Done").click();
-    cy.findByText("Filter").click();
-    popover()
-      .findByText("13217")
-      .click();
-    cy.findByPlaceholderText("Enter a number").should("not.exist");
-  });
-
   it("custom expression helper shouldn't be visible when formula field is not in focus (metabase#15891)", () => {
     openPeopleTable({ mode: "notebook" });
     cy.findByText("Custom column").click();

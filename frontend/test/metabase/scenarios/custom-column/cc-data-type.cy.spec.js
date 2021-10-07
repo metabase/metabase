@@ -10,7 +10,7 @@ describe("scenarios > question > custom column > data type", () => {
     cy.signInAsAdmin();
   });
 
-  it("should understand string functions", () => {
+  it("should understand string functions (metabase#13217)", () => {
     openCustomColumnInTable(PRODUCTS_ID);
 
     enterCustomColumnDetails({
@@ -46,7 +46,7 @@ describe("scenarios > question > custom column > data type", () => {
     cy.findByText("Days");
   });
 
-  it("should handle CASE", () => {
+  it("should handle CASE (metabase#13122)", () => {
     openCustomColumnInTable(ORDERS_ID);
 
     enterCustomColumnDetails({
