@@ -349,7 +349,7 @@ export default class AggregationPopover extends Component {
             field={fieldId}
             fieldOptions={query.aggregationFieldOptions(agg)}
             onFieldChange={this.onPickField}
-            enableSubDimensions={false}
+            enableSubDimensions
           />
         </div>
       );
