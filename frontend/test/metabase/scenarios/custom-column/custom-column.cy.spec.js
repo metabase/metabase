@@ -2,7 +2,6 @@ import {
   restore,
   popover,
   openOrdersTable,
-  openProductsTable,
   openPeopleTable,
   visitQuestionAdhoc,
 } from "__support__/e2e/cypress";
@@ -388,86 +387,6 @@ describe("scenarios > question > custom columns", () => {
       expect(xhr.response.body.error).to.not.exist;
     });
     cy.contains("37.65");
-  });
-
-  describe("data type", () => {
-    it("should understand string functions", () => {
-      openProductsTable({ mode: "notebook" });
-      cy.findByText("Custom column").click();
-      popover().within(() => {
-        cy.get("[contenteditable='true']")
-          .type("concat([Category], [Title])")
-          .blur();
-        cy.findByPlaceholderText("Something nice and descriptive").type(
-          "CategoryTitle",
-        );
-        cy.button("Done").click();
-      });
-      cy.findByText("Filter").click();
-      popover()
-        .findByText("CategoryTitle")
-        .click();
-      cy.findByPlaceholderText("Enter a number").should("not.exist");
-      cy.findByPlaceholderText("Enter some text");
-    });
-
-    it("should relay the type of a date field", () => {
-      openPeopleTable({ mode: "notebook" });
-      cy.findByText("Custom column").click();
-
-      enterCustomColumnDetails({ formula: "[Birth Date]", name: "DoB" });
-      cy.findByText("Done").click();
-
-      cy.findByText("Filter").click();
-      popover()
-        .findByText("DoB")
-        .click();
-      cy.findByPlaceholderText("Enter a number").should("not.exist");
-      cy.findByText("Previous");
-      cy.findByText("Days");
-    });
-
-    it("should handle CASE", () => {
-      openOrdersTable({ mode: "notebook" });
-      cy.findByText("Custom column").click();
-      popover().within(() => {
-        cy.get("[contenteditable='true']")
-          .type("case([Discount] > 0, [Created At], [Product → Created At])")
-          .blur();
-        cy.findByPlaceholderText("Something nice and descriptive").type(
-          "MiscDate",
-        );
-        cy.button("Done").click();
-      });
-      cy.findByText("Filter").click();
-      popover()
-        .findByText("MiscDate")
-        .click();
-      cy.findByPlaceholderText("Enter a number").should("not.exist");
-      cy.findByText("Previous");
-      cy.findByText("Days");
-    });
-
-    it("should handle COALESCE", () => {
-      openOrdersTable({ mode: "notebook" });
-      cy.findByText("Custom column").click();
-      popover().within(() => {
-        cy.get("[contenteditable='true']")
-          .type("COALESCE([Product → Created At], [Created At])")
-          .blur();
-        cy.findByPlaceholderText("Something nice and descriptive").type(
-          "MiscDate",
-        );
-        cy.button("Done").click();
-      });
-      cy.findByText("Filter").click();
-      popover()
-        .findByText("MiscDate")
-        .click();
-      cy.findByPlaceholderText("Enter a number").should("not.exist");
-      cy.findByText("Previous");
-      cy.findByText("Days");
-    });
   });
 
   it("should handle using `case()` when referencing the same column names (metabase#14854)", () => {
