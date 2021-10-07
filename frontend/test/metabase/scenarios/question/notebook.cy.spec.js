@@ -133,7 +133,7 @@ describe("scenarios > question > notebook", () => {
     });
   });
 
-  it("should append indexes to duplicate custom expression names", () => {
+  it("should append indexes to duplicate custom expression names (metabase#12104)", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
     openProductsTable({ mode: "notebook" });
 
