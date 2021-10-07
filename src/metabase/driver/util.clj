@@ -4,6 +4,7 @@
             [clojure.tools.logging :as log]
             [metabase.config :as config]
             [metabase.driver :as driver]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db])
@@ -11,7 +12,8 @@
            [java.security.cert CertificateFactory X509Certificate]
            java.security.KeyStore
            javax.net.SocketFactory
-           [javax.net.ssl SSLContext TrustManagerFactory X509TrustManager]))
+           [javax.net.ssl SSLContext TrustManagerFactory X509TrustManager]
+           (java.util Base64)))
 
 (def ^:private can-connect-timeout-ms
   "Consider `can-connect?`/`can-connect-with-details?` to have failed after this many milliseconds.
@@ -88,18 +90,13 @@
              :when  (driver/available? driver)]
          driver)))
 
-(defn is-hosted?
-  "TODO: swap out for https://github.com/metabase/metabase/pull/17256"
-  []
-  false)
-
 (defn- expand-secret-conn-prop [{prop-name :name :as conn-prop}]
   (case (:secret-kind conn-prop)
     "password" [(-> conn-prop
                     (assoc :type "password")
                     (assoc :name (str prop-name "-value"))
                     (dissoc :secret-kind))]
-    "keystore" (if (is-hosted?)
+    "keystore" (if (premium-features/is-hosted?)
                  [(-> (assoc conn-prop
                         :name (str prop-name "-value")
                         :type "textFile"
@@ -145,25 +142,29 @@
   [driver db-details]
   (when db-details
     (assert (some? driver))
-    (let [secret-prop-names (reduce (fn [acc prop]
-                                      (if (= "secret" (:type prop))
-                                        (conj acc (:name prop))
-                                        acc))
-                                    []
-                                    (driver/connection-properties driver))]
-      (reduce (fn [acc prop-name]
-                (let [subprop (fn [suffix]
-                                (keyword (str prop-name suffix)))
-                      path-kw (subprop "-path")
-                      val-kw  (subprop "-value")
-                      path    (path-kw acc)
-                      value   (val-kw acc)]
-                  (cond-> acc
-                    path  (dissoc val-kw) ; local path specified; remove the -value entry, if it exists
-                    value (dissoc path-kw) ; value specified; remove the -path entry, if it exists
-                    true  (dissoc (subprop "-options")))))
-              db-details
-              secret-prop-names))))
+    (let [secret-names->props (reduce (fn [acc prop]
+                                        (if (= "secret" (:type prop))
+                                          (assoc acc (:name prop) prop)
+                                          acc))
+                                      {}
+                                      (driver/connection-properties driver))]
+      (reduce-kv (fn [acc prop-name prop]
+                   (let [subprop (fn [suffix]
+                                   (keyword (str prop-name suffix)))
+                         path-kw (subprop "-path")
+                         val-kw  (subprop "-value")
+                         path    (path-kw acc)
+                         treat   (:treat-before-posting prop)
+                         value   (let [^String v (val-kw acc)]
+                                   (case treat
+                                     "base64" (.decode (Base64/getDecoder) v)
+                                     v))]
+                     (cond-> (assoc acc val-kw value)
+                       path  (dissoc val-kw) ; local path specified; remove the -value entry, if it exists
+                       value (dissoc path-kw) ; value specified; remove the -path entry, if it exists
+                       true  (dissoc (subprop "-options")))))
+                 db-details
+                 secret-names->props))))
 
 (defn available-drivers-info
   "Return info about all currently available drivers, including their connection properties fields and supported

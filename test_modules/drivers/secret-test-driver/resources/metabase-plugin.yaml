@@ -32,5 +32,6 @@ driver:
       type: secret
       secret-kind: keystore
       required: false
+      treat-before-posting: base64
       visible-if:
         use-keystore: true
