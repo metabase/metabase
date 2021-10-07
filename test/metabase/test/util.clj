@@ -1018,3 +1018,36 @@
 
         :else
         (throw (ex-info "expected parameter must be a string or bytes" {:expected expected :value value}))))
+
+(defn select-keys-sequentially
+  "`expected` is a vector of maps, and `actual` is a sequence of maps.  Maps a function over all items in `actual` that
+  performs `select-keys` on the map at the equivalent index from `expected`.  Note the actual values of the maps in
+  `expected` don't matter here, only the keys.
+
+  Sample invocation:
+  (select-keys-sequentially [{:a nil :b nil}
+                             {:a nil :b nil}
+                             {:b nil :x nil}] [{:a 1 :b 2}
+                                               {:a 3 :b 4 :c 5 :d 6}
+                                               {:b 7 :x 10 :y 11}])
+  => ({:a 1, :b 2} {:a 3, :b 4} {:b 7, :x 10})
+
+  This function can be used to help assert that certain (but not necessarily all) key/value pairs in a
+  `connection-properties` vector match against some expected data."
+  [expected actual]
+  (cond (vector? expected)
+    (map-indexed (fn [idx prop]
+                   (reduce-kv (fn [acc k v]
+                                (assoc acc k (if (map? v)
+                                               (select-keys-sequentially (get (nth expected idx) k) v)
+                                               v)))
+                              {}
+                              (select-keys prop (keys (nth expected idx)))))
+                 actual)
+
+    (map? expected)
+    ;; recursive case (ex: to turn value that might be a flatland.ordered.map into a regular Clojure map)
+    (select-keys actual (keys expected))
+
+    :else
+    actual))
