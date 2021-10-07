@@ -3,7 +3,7 @@ import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 import { push } from "react-router-redux";
 
-import { getMetadata } from "metabase/selectors/metadata";
+import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 
 import Group from "metabase/entities/groups";
 import Tables from "metabase/entities/tables";
@@ -49,10 +49,6 @@ import {
   getGroupFocusPermissionsUrl,
 } from "../utils/urls";
 import { limitDatabasePermission } from "../permissions";
-
-export const getMetadataWithHiddenTables = (state, props) => {
-  return getMetadata(state, { ...props, includeHiddenTables: true });
-};
 
 const getGroupsWithoutMetabot = createSelector(
   Group.selectors.getList,
