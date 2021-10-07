@@ -2,7 +2,6 @@ import {
   restore,
   popover,
   openOrdersTable,
-  openPeopleTable,
   visitQuestionAdhoc,
   enterCustomColumnDetails,
 } from "__support__/e2e/cypress";
@@ -408,39 +407,6 @@ describe("scenarios > question > custom column", () => {
     enterCustomColumnDetails({ formula: ".5 * [Discount]", name: "Foo" });
     cy.findByText("Unknown Field: .5").should("not.exist");
     cy.button("Done").should("not.be.disabled");
-  });
-
-  it("custom expression helper shouldn't be visible when formula field is not in focus (metabase#15891)", () => {
-    openPeopleTable({ mode: "notebook" });
-    cy.findByText("Custom column").click();
-    popover().within(() => {
-      cy.get("[contenteditable='true']").type(`rou{enter}1.5`, {
-        delay: 100,
-      });
-    });
-    cy.findByText("round([Temperature])");
-    cy.findByText(/Field formula/i).click(); // Click outside of formula field instead of blur
-    cy.findByText("round([Temperature])").should("not.exist");
-
-    // Should also work with escape key
-    popover().within(() => cy.get("[contenteditable='true']").click());
-    cy.findByText("round([Temperature])");
-    popover().within(() => cy.get("[contenteditable='true']").type("{esc}"));
-    cy.findByText("round([Temperature])").should("not.exist");
-  });
-
-  it("custom expression helper shouldn't be hidden when clicked on (metabase#17548)", () => {
-    openPeopleTable({ mode: "notebook" });
-    cy.findByText("Custom column").click();
-    popover().within(() => {
-      cy.get("[contenteditable='true']").type(`rou{enter}`, {
-        delay: 100,
-      });
-    });
-
-    // Shouldn't hide on click
-    cy.findByText("round([Temperature])").click();
-    cy.findByText("round([Temperature])");
   });
 
   it.skip("should work with `isNull` function (metabase#15922)", () => {
