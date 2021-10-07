@@ -1,7 +1,9 @@
 import React from "react";
 import PropTypes from "prop-types";
 
-export default function EditWarning({ title }) {
+type Props = PropTypes.InferProps<typeof propTypes>;
+
+const EditWarning: React.FC<Props> = ({ title }) => {
   if (title) {
     return (
       <div className="EditHeader wrapper py1 flex align-center">
@@ -13,6 +15,10 @@ export default function EditWarning({ title }) {
   }
 }
 
-EditWarning.propTypes = {
+const propTypes = {
   title: PropTypes.string.isRequired,
 };
+
+EditWarning.propTypes = propTypes;
+
+export default EditWarning;

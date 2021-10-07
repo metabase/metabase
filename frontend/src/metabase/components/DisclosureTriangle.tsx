@@ -4,7 +4,9 @@ import { Motion, spring, presets } from "react-motion";
 
 import Icon from "metabase/components/Icon";
 
-const DisclosureTriangle = ({ open, className }) => (
+type Props = { open: boolean, className: string };
+
+const DisclosureTriangle: React.FC<Props> = ({ open, className }) => (
   <Motion
     defaultStyle={{ deg: 0 }}
     style={{

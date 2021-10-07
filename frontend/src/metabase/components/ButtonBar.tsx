@@ -3,7 +3,7 @@ import React from "react";
 
 import { Flex } from "grid-styled";
 
-function normalizeArray(array) {
+function normalizeArray(array: any) {
   if (Array.isArray(array)) {
     array = array.filter(a => a);
     if (array.length === 0) {
@@ -13,13 +13,20 @@ function normalizeArray(array) {
   return array;
 }
 
-export default function ButtonBar({
+type Props = {
+  children: React.ReactNode;
+  left: React.ReactNode;
+  center: React.ReactNode;
+  right: React.ReactNode;
+}
+
+const ButtonBar: React.FC<Props> = ({
   children,
   left = children,
   center,
   right,
   ...props
-}) {
+}) => {
   left = normalizeArray(left);
   center = normalizeArray(center);
   right = normalizeArray(right);
@@ -43,3 +50,5 @@ export default function ButtonBar({
     </Flex>
   );
 }
+
+export default ButtonBar;

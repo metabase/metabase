@@ -11,7 +11,7 @@ import type { ColorString } from "metabase/lib/colors";
 
 type Props = {
   value: ColorString[],
-  onChange: (ColorString[]) => void,
+  onChange: (colors: ColorString[]) => void,
   ranges: ColorString[][],
   className?: string,
   style?: { [key: string]: any },

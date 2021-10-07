@@ -1,7 +1,12 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-const AdminContentTable = ({ columnTitles, children }) => (
+type Props = {
+  columnTitles: string[];
+  children: React.ReactNode;
+}
+
+const AdminContentTable: React.FC<Props> = ({ columnTitles, children }) => (
   <table className="ContentTable">
     <thead>
       <tr>
