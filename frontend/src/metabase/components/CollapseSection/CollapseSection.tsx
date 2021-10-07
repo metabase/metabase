@@ -14,7 +14,9 @@ const propTypes = {
   iconPosition: PropTypes.oneOf(["left", "right"]),
 };
 
-function CollapseSection({
+type Props = PropTypes.InferProps<typeof propTypes>;
+
+const CollapseSection: React.FC<Props> = ({
   initialState = "collapsed",
   iconVariant = "right-down",
   iconPosition = "left",
@@ -23,7 +25,7 @@ function CollapseSection({
   className,
   bodyClass,
   children,
-}) {
+}) => {
   const [isExpanded, setIsExpanded] = useState(initialState === "expanded");
 
   const toggle = useCallback(() => {
