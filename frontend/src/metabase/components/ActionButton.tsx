@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
 
-import { cancelable } from "metabase/lib/promise";
+import { cancelable, CancelablePromise } from "metabase/lib/promise";
 import { t } from "ttag";
 import cx from "classnames";
 
@@ -29,7 +29,7 @@ type State = {
 export default class ActionButton extends Component<Props, State> {
   
   timeout?: any;
-  actionPromise?: { cancel: () => void };
+  actionPromise?: CancelablePromise<any>;
 
   constructor(props: Props) {
     super(props);
@@ -75,7 +75,7 @@ export default class ActionButton extends Component<Props, State> {
     );
   };
 
-  onClick = (event: MouseEvent) => {
+  onClick = (event: React.MouseEvent<HTMLElement>) => {
     event.preventDefault();
 
     // set state to active
@@ -137,8 +137,8 @@ export default class ActionButton extends Component<Props, State> {
             ? cx("Button", "Button--waiting")
             : cx(className, {
                 "Button--waiting": active,
-                [successClassName]: result === "success",
-                [failedClassName]: result === "failed",
+                [successClassName || ""]: result === "success",
+                [failedClassName || ""]: result === "failed",
                 "pointer-events-none": isActionDisabled,
               })
         }
