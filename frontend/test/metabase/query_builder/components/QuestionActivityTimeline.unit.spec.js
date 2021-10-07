@@ -3,8 +3,7 @@ import { render, screen } from "@testing-library/react";
 
 import { QuestionActivityTimeline } from "metabase/query_builder/components/QuestionActivityTimeline";
 
-// FIXME: fix and unskip
-describe.skip("QuestionActivityTimeline", () => {
+describe("QuestionActivityTimeline", () => {
   let question;
   let revisions;
   let revertToRevision;
@@ -35,6 +34,7 @@ describe.skip("QuestionActivityTimeline", () => {
     beforeEach(() => {
       question = {
         canWrite: () => false,
+        getModerationReviews: () => [],
       };
 
       render(
@@ -55,6 +55,7 @@ describe.skip("QuestionActivityTimeline", () => {
     beforeEach(() => {
       question = {
         canWrite: () => true,
+        getModerationReviews: () => [],
       };
 
       render(
