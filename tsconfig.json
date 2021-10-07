@@ -17,7 +17,8 @@
         "./enterprise/frontend/test/*"
       ]
     },
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "typeRoots": ["./node_modules/@types"]
   },
   "include": [
     "frontend/src/**/*.ts",
