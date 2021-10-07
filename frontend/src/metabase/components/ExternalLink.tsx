@@ -3,7 +3,14 @@ import React from "react";
 
 import { getUrlTarget } from "metabase/lib/dom";
 
-const ExternalLink = ({
+type Props = {
+  href: string,
+  target?: string,
+  className?: string,
+  children?: React.ReactNode
+}
+
+const ExternalLink: React.FC<Props> = ({
   href,
   target = getUrlTarget(href),
   className,

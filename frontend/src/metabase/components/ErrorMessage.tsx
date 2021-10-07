@@ -7,7 +7,9 @@ import cx from "classnames";
 
 // NOTE: currently relies on .QueryError CSS selectors residing in query_builder.css
 
-const ErrorMessage = ({ title, type, message, action, className }) => {
+type Props = PropTypes.InferProps<typeof propTypes>;
+
+const ErrorMessage: React.FC<Props> = ({ title, type, message, action, className }) => {
   return (
     <div className={cx(className, "QueryError flex align-center")}>
       <div className={`QueryError-image QueryError-image--${type}`} />
@@ -20,12 +22,14 @@ const ErrorMessage = ({ title, type, message, action, className }) => {
   );
 };
 
-ErrorMessage.propTypes = {
+const propTypes = {
   title: PropTypes.string.isRequired,
   type: PropTypes.string.isRequired,
   message: PropTypes.string.isRequired,
   action: PropTypes.node,
   className: PropTypes.string,
 };
+
+ErrorMessage.propTypes = propTypes;
 
 export default ErrorMessage;

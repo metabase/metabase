@@ -11,7 +11,7 @@ export const CardContent = styled.div`
   justify-content: center;
 `;
 
-export const IconContainer = styled.div`
+export const IconContainer = styled.div<{ hasCircle?: boolean }>`
   border-radius: 99px !important;
   flex-shrink: 0;
   display: flex;
@@ -37,7 +37,7 @@ export const WarningIcon = styled(Icon)`
   color: ${color("accent5")};
 `;
 
-export const WarningParagraph = styled.p`
+export const WarningParagraph = styled.p<{ hasMargin?: boolean }>`
   margin: ${props => (props.hasMargin ? `${space(1)} 0;` : 0)};
   color: ${color("text-medium")};
 `;

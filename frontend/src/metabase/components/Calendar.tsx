@@ -9,8 +9,10 @@ import moment from "moment";
 import { t } from "ttag";
 import Icon from "metabase/components/Icon";
 
-export default class Calendar extends Component {
-  constructor(props) {
+type Props = PropTypes.InferProps<typeof Calendar["propTypes"]>;
+
+export default class Calendar extends Component<Props> {
+  constructor(props: Props) {
     super(props);
     this.state = {
       current: moment(props.initial || undefined),
@@ -28,7 +30,7 @@ export default class Calendar extends Component {
     isRangePicker: true,
   };
 
-  UNSAFE_componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps: Props) {
     if (
       // `selected` became null or not null
       (nextProps.selected == null) !== (this.props.selected == null) ||
