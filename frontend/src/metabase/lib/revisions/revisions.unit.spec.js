@@ -191,6 +191,7 @@ describe("getRevisionDescription | common", () => {
       },
     });
     expect(getRevisionDescription(revision)).toEqual([
+      "changed the display from table to bar",
       "changed the visualization settings",
       "edited the question",
     ]);
