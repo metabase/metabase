@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import React, { useMemo } from "react";
 import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
@@ -58,7 +58,7 @@ export default function AddMemberRow({
   );
 }
 
-const COLORS = [
+const getColorPalette = () => [
   color("brand"),
   color("accent1"),
   color("accent2"),
@@ -70,26 +70,30 @@ const AddMemberTypeahead = Typeahead({
   optionFilter: (text, user) =>
     (user.common_name || "").toLowerCase().includes(text.toLowerCase()),
   optionIsEqual: (userA, userB) => userA.id === userB.id,
-})(({ suggestions, selectedSuggestion, onSuggestionAccepted }) => (
-  <Popover
-    className="bordered"
-    hasArrow={false}
-    targetOffsetY={2}
-    targetOffsetX={0}
-    horizontalAttachments={["left"]}
-  >
-    {suggestions &&
-      suggestions.map((user, index) => (
-        <AddMemberAutocompleteSuggestion
-          key={index}
-          user={user}
-          color={COLORS[index % COLORS.length]}
-          selected={selectedSuggestion && user.id === selectedSuggestion.id}
-          onClick={onSuggestionAccepted.bind(null, user)}
-        />
-      ))}
-  </Popover>
-));
+})(({ suggestions, selectedSuggestion, onSuggestionAccepted }) => {
+  const colors = useMemo(getColorPalette, []);
+
+  return (
+    <Popover
+      className="bordered"
+      hasArrow={false}
+      targetOffsetY={2}
+      targetOffsetX={0}
+      horizontalAttachments={["left"]}
+    >
+      {suggestions &&
+        suggestions.map((user, index) => (
+          <AddMemberAutocompleteSuggestion
+            key={index}
+            user={user}
+            color={colors[index % colors.length]}
+            selected={selectedSuggestion && user.id === selectedSuggestion.id}
+            onClick={onSuggestionAccepted.bind(null, user)}
+          />
+        ))}
+    </Popover>
+  );
+});
 
 const AddMemberAutocompleteSuggestion = ({
   user,

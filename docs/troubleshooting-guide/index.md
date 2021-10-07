@@ -73,7 +73,7 @@ For quick answers to common questions, check out our [Frequently Asked Questions
 
 Metabase adds new features and squashes bugs with each release. [Upgrading to the latest and greatest][upgrade] may resolve your issue. If you're using [Metabase Cloud][cloud], we'll handle the upgrades for you. You can checkout the [release notes][releases] to see what's new.
 
-[appdb]: ./application-database.html
+[appdb]: ./loading-from-h2.html
 [bugs]: ./bugs.html
 [cant-see-tables]: ./cant-see-tables.html
 [chrome]: https://developers.google.com/web/tools/chrome-devtools/open#console

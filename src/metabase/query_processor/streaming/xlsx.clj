@@ -368,6 +368,11 @@
 (defmethod set-cell! nil [^Cell cell _ _]
   (.setBlank cell))
 
+(def ^:dynamic *parse-temporal-string-values*
+  "When true, XLSX exports will attempt to parse string values into corresponding java.time classes so that
+  formatting can be applied. This should be enabled for generation of pulse/dashboard subscription attachments."
+  false)
+
 (defn- add-row!
   "Adds a row of values to the spreadsheet. Values with the `scaled` viz setting are scaled prior to being added.
 
@@ -378,13 +383,20 @@
                   (inc (.getLastRowNum sheet)))
         row (.createRow sheet row-num)]
     (doseq [[value col index] (map vector values cols (range (count values)))]
-      (let [id-or-name (or (:id col) (:name col))
-            settings   (or (get col-settings {::mb.viz/field-id id-or-name})
-                           (get col-settings {::mb.viz/column-name id-or-name}))
-            scaled-val (if (and value (::mb.viz/scale settings))
-                         (* value (::mb.viz/scale settings))
-                         value)]
-        (set-cell! (.createCell ^SXSSFRow row ^Integer index) scaled-val id-or-name)))
+      (let [id-or-name   (or (:id col) (:name col))
+            settings     (or (get col-settings {::mb.viz/field-id id-or-name})
+                             (get col-settings {::mb.viz/column-name id-or-name}))
+            scaled-val   (if (and value (::mb.viz/scale settings))
+                           (* value (::mb.viz/scale settings))
+                           value)
+            ;; Temporal values are converted into strings in the format-rows QP middleware, which is enabled during
+            ;; dashboard subscription/pulse generation. If so, we should parse them here so that formatting is applied.
+            parsed-value (if (and *parse-temporal-string-values* (string? value))
+                           (try (u.date/parse value)
+                                ;; Fallback to plain string value if it couldn't be parsed
+                                (catch java.time.format.DateTimeParseException _ value))
+                           scaled-val)]
+        (set-cell! (.createCell ^SXSSFRow row ^Integer index) parsed-value id-or-name)))
     row))
 
 (defn- column-titles

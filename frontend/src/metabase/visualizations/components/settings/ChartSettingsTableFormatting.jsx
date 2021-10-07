@@ -54,6 +54,7 @@ export const ALL_OPERATOR_NAMES = {
 
 import { color, desaturated } from "metabase/lib/colors";
 
+// TODO
 const COLORS = Object.values(desaturated);
 const COLOR_RANGES = [].concat(
   ...COLORS.map(color => [["white", color], [color, "white"]]),

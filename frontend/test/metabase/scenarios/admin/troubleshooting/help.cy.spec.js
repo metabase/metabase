@@ -11,7 +11,8 @@ describe("scenarios > admin > troubleshooting > help", () => {
     cy.signInAsAdmin();
   });
 
-  it("should add the support link when running Metabase Cloud", () => {
+  // Unskip when mocking Cloud in Cypress is fixed (#18289)
+  it.skip("should add the support link when running Metabase Cloud", () => {
     setupMetabaseCloud();
     cy.visit("/admin/troubleshooting/help");
 

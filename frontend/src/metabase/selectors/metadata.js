@@ -114,7 +114,7 @@ export const getMetadata = createSelector(
       }
 
       return Object.values(meta.tables).filter(
-        table => table.db_id === database.id,
+        table => table.schema && table.db_id === database.id,
       );
     });
 

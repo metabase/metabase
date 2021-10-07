@@ -1,16 +1,16 @@
 import styled from "styled-components";
 import { space } from "styled-system";
 
-import { DefaultSearchColor } from "metabase/nav/constants";
+import { getDefaultSearchColor } from "metabase/nav/constants";
 import { color, lighten } from "metabase/lib/colors";
 
-const ActiveSearchColor = lighten(color("nav"), 0.1);
+const getActiveSearchColor = () => lighten(color("nav"), 0.1);
 
 export const SearchWrapper = styled.div`
   display: flex;
   position: relative;
   background-color: ${props =>
-    props.active ? ActiveSearchColor : DefaultSearchColor};
+    props.active ? getActiveSearchColor() : getDefaultSearchColor()};
   border-radius: 6px;
   flex: 1 1 auto;
   max-width: 50em;
@@ -18,7 +18,7 @@ export const SearchWrapper = styled.div`
   color: white;
   transition: background 300ms ease-in;
   &:hover {
-    background-color: ${ActiveSearchColor};
+    background-color: ${getActiveSearchColor()};
   }
 `;
 

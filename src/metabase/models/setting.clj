@@ -123,7 +123,6 @@
   ;; `:site-locale` setting requires a call to `java.util.Locale/setDefault`
    :on-change   (s/maybe clojure.lang.IFn)})
 
-
 (defonce ^:private registered-settings
   (atom {}))
 

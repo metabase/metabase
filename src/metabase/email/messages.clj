@@ -23,6 +23,7 @@
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.streaming :as qp.streaming]
             [metabase.query-processor.streaming.interface :as qp.streaming.i]
+            [metabase.query-processor.streaming.xlsx :as xlsx]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :as i18n :refer [deferred-trs trs tru]]
@@ -368,24 +369,25 @@
   Results are streamed synchronosuly. Caller is responsible for closing `os` when this call is complete."
   [export-format ^OutputStream os {{:keys [rows]} :data, database-id :database_id, :as results}]
   ;; make sure Database/driver info is available for the streaming results writers -- they might need this in order to
-    ;; get timezone information when writing results
+  ;; get timezone information when writing results
   (driver/with-driver (driver.u/database->driver database-id)
     (qp.store/with-store
       (qp.store/fetch-and-store-database! database-id)
-      (let [w                           (qp.streaming.i/streaming-results-writer export-format os)
-            cols                        (-> results :data :cols)
-            viz-settings                (-> results :data :viz-settings)
-            [ordered-cols output-order] (qp.streaming/order-cols cols viz-settings)
-            viz-settings'               (assoc viz-settings :output-order output-order)]
-        (qp.streaming.i/begin! w
-                               (assoc-in results [:data :ordered-cols] ordered-cols)
-                               viz-settings')
-        (dorun
-         (map-indexed
-          (fn [i row]
-            (qp.streaming.i/write-row! w row i ordered-cols viz-settings'))
-          rows))
-        (qp.streaming.i/finish! w results)))))
+      (binding [xlsx/*parse-temporal-string-values* true]
+        (let [w                           (qp.streaming.i/streaming-results-writer export-format os)
+              cols                        (-> results :data :cols)
+              viz-settings                (-> results :data :viz-settings)
+              [ordered-cols output-order] (qp.streaming/order-cols cols viz-settings)
+              viz-settings'               (assoc viz-settings :output-order output-order)]
+          (qp.streaming.i/begin! w
+                                 (assoc-in results [:data :ordered-cols] ordered-cols)
+                                 viz-settings')
+          (dorun
+           (map-indexed
+            (fn [i row]
+              (qp.streaming.i/write-row! w row i ordered-cols viz-settings'))
+            rows))
+          (qp.streaming.i/finish! w results))))))
 
 (defn- result-attachment
   [{{card-name :name, :as card} :card, {{:keys [rows], :as result-data} :data, :as result} :result}]
