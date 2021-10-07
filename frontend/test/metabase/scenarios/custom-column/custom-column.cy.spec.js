@@ -12,6 +12,8 @@ const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
 
 describe("scenarios > question > custom columns", () => {
   beforeEach(() => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
     restore();
     cy.signInAsNormalUser();
   });
@@ -23,11 +25,9 @@ describe("scenarios > question > custom columns", () => {
     enterCustomColumnDetails({ formula: "1 + 1", name: "Math" });
     cy.button("Done").click();
 
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
-
     cy.button("Visualize").click();
     cy.wait("@dataset");
+
     cy.findByText("There was a problem with your question").should("not.exist");
     cy.get(".Visualization").contains("Math");
   });
@@ -51,11 +51,9 @@ describe("scenarios > question > custom columns", () => {
       enterCustomColumnDetails({ formula, name });
       cy.button("Done").click();
 
-      cy.server();
-      cy.route("POST", "/api/dataset").as("dataset");
-
       cy.button("Visualize").click();
       cy.wait("@dataset");
+
       cy.get(".Visualization").contains(name);
     });
   });
@@ -94,11 +92,9 @@ describe("scenarios > question > custom columns", () => {
     });
     cy.button("Done").click();
 
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
-
     cy.button("Visualize").click();
     cy.wait("@dataset");
+
     cy.findByText("There was a problem with your question").should("not.exist");
     // This is a pre-save state of the question but the column name should appear
     // both in tabular and graph views (regardless of which one is currently selected)
@@ -127,9 +123,6 @@ describe("scenarios > question > custom columns", () => {
     popover().within(() => {
       cy.findByText("Created At").click();
     });
-
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
 
     cy.button("Visualize").click();
     cy.wait("@dataset");
@@ -203,8 +196,7 @@ describe("scenarios > question > custom columns", () => {
         },
       },
     }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.server();
-      cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
+      cy.intercept("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
 
       cy.visit(`/question/${QUESTION_ID}`);
 
@@ -212,9 +204,9 @@ describe("scenarios > question > custom columns", () => {
       cy.wait("@cardQuery").then(xhr => {
         expect(xhr.response.body.error).not.to.exist;
       });
-
-      cy.findByText(CC_NAME);
     });
+
+    cy.findByText(CC_NAME);
   });
 
   it("should work with implicit joins (metabase#14080)", () => {
@@ -241,8 +233,7 @@ describe("scenarios > question > custom columns", () => {
       },
       display: "line",
     }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.server();
-      cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
+      cy.intercept("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
 
       cy.visit(`/question/${QUESTION_ID}`);
 
@@ -250,10 +241,10 @@ describe("scenarios > question > custom columns", () => {
       cy.wait("@cardQuery").then(xhr => {
         expect(xhr.response.body.error).not.to.exist;
       });
-
-      cy.contains(`Sum of ${CC_NAME}`);
-      cy.get(".Visualization .dot").should("have.length.of.at.least", 8);
     });
+
+    cy.contains(`Sum of ${CC_NAME}`);
+    cy.get(".Visualization .dot").should("have.length.of.at.least", 8);
   });
 
   it.skip("should create custom column after aggregation with 'cum-sum/count' (metabase#13634)", () => {
@@ -364,9 +355,6 @@ describe("scenarios > question > custom columns", () => {
         },
       },
     }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.server();
-      cy.route("POST", "/api/dataset").as("dataset");
-
       cy.visit(`/question/${QUESTION_ID}/notebook`);
     });
 
@@ -391,9 +379,6 @@ describe("scenarios > question > custom columns", () => {
 
   it("should handle using `case()` when referencing the same column names (metabase#14854)", () => {
     const CC_NAME = "CE with case";
-
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
 
     visitQuestionAdhoc({
       dataset_query: {
@@ -577,8 +562,6 @@ describe("scenarios > question > custom columns", () => {
   });
 
   it.skip("should work with `isNull` function (metabase#15922)", () => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
     openOrdersTable({ mode: "notebook" });
     cy.findByText("Custom column").click();
     enterCustomColumnDetails({
@@ -595,8 +578,6 @@ describe("scenarios > question > custom columns", () => {
   });
 
   it.skip("should work with relative date filter applied to a custom column (metabase#16273)", () => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
     openOrdersTable({ mode: "notebook" });
     cy.findByText("Custom column").click();
     popover().within(() => {
