@@ -101,47 +101,6 @@ describe("scenarios > question > custom columns", () => {
     cy.get(".Visualization").contains(columnName);
   });
 
-  it.skip("should allow 'zoom in' drill-through when grouped by custom column (metabase#13289)", () => {
-    openOrdersTable({ mode: "notebook" });
-
-    // Add custom column that will be used later in summarize (group by)
-    cy.findByText("Custom column").click();
-    enterCustomColumnDetails({ formula: "1 + 1", name: "Math" });
-    cy.button("Done").click();
-
-    cy.findByText("Summarize").click();
-    cy.findByText("Count of rows").click();
-    cy.findByText("Pick a column to group by").click();
-    popover()
-      .findByText("Math")
-      .click();
-
-    cy.icon("add")
-      .last()
-      .click();
-
-    popover().within(() => {
-      cy.findByText("Created At").click();
-    });
-
-    cy.button("Visualize").click();
-    cy.wait("@dataset");
-
-    cy.get(".Visualization").within(() => {
-      cy.get("circle")
-        .eq(5) // random circle in the graph (there is no specific reason for this index)
-        .click({ force: true });
-    });
-
-    // Test should work even without this request, but it reduces a chance for a flake
-    cy.route("POST", "/api/dataset").as("zoom-in-dataset");
-
-    cy.findByText("Zoom in").click();
-    cy.wait("@zoom-in-dataset");
-
-    cy.findByText("There was a problem with your question").should("not.exist");
-  });
-
   it("should not return same results for columns with the same name (metabase#12649)", () => {
     openOrdersTable({ mode: "notebook" });
     // join with Products
