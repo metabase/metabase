@@ -9,7 +9,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 
 import Table from "metabase/entities/tables";
 
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/constants";
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
 
