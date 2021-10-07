@@ -1,4 +1,9 @@
-import { restore, openTable, popover } from "__support__/e2e/cypress";
+import {
+  restore,
+  openTable,
+  popover,
+  enterCustomColumnDetails,
+} from "__support__/e2e/cypress";
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
@@ -90,11 +95,4 @@ describe("scenarios > question > custom column > data type", () => {
 function openCustomColumnInTable(table) {
   openTable({ table, mode: "notebook" });
   cy.findByText("Custom column").click();
-}
-
-function enterCustomColumnDetails({ formula, name } = {}) {
-  cy.get("[contenteditable='true']")
-    .as("formula")
-    .type(formula);
-  cy.findByPlaceholderText("Something nice and descriptive").type(name);
 }

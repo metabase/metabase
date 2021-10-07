@@ -4,13 +4,14 @@ import {
   openOrdersTable,
   openPeopleTable,
   visitQuestionAdhoc,
+  enterCustomColumnDetails,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
 
-describe("scenarios > question > custom columns", () => {
+describe("scenarios > question > custom column", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
@@ -486,10 +487,3 @@ describe("scenarios > question > custom columns", () => {
     cy.findByText("MiscDate");
   });
 });
-
-function enterCustomColumnDetails({ formula, name } = {}) {
-  cy.get("[contenteditable='true']")
-    .as("formula")
-    .type(formula);
-  cy.findByPlaceholderText("Something nice and descriptive").type(name);
-}

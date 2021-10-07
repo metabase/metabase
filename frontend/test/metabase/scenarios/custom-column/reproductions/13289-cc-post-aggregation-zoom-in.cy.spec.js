@@ -1,4 +1,9 @@
-import { restore, openOrdersTable, popover } from "__support__/e2e/cypress";
+import {
+  restore,
+  openOrdersTable,
+  popover,
+  enterCustomColumnDetails,
+} from "__support__/e2e/cypress";
 
 const CC_NAME = "Math";
 describe("issue 13289", () => {
@@ -52,10 +57,3 @@ describe("issue 13289", () => {
     cy.findByText(`${CC_NAME} is equal to 2`);
   });
 });
-
-function enterCustomColumnDetails({ formula, name } = {}) {
-  cy.get("[contenteditable='true']")
-    .as("formula")
-    .type(formula);
-  cy.findByPlaceholderText("Something nice and descriptive").type(name);
-}

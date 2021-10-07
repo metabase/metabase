@@ -1,4 +1,8 @@
-import { restore, openOrdersTable } from "__support__/e2e/cypress";
+import {
+  restore,
+  openOrdersTable,
+  enterCustomColumnDetails,
+} from "__support__/e2e/cypress";
 
 // ExpressionEditorTextfield jsx component
 describe("scenarios > question > custom column > expression editor", () => {
@@ -51,10 +55,3 @@ describe("scenarios > question > custom column > expression editor", () => {
     cy.button("Done").should("not.be.disabled");
   });
 });
-
-function enterCustomColumnDetails({ formula, name } = {}) {
-  cy.get("[contenteditable='true']")
-    .as("formula")
-    .type(formula);
-  cy.findByPlaceholderText("Something nice and descriptive").type(name);
-}
