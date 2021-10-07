@@ -44,6 +44,7 @@ function getWidgetComponent(formField) {
 
 const FormWidget = ({ field, formField, ...props }) => {
   const Widget = getWidgetComponent(formField);
+  console.log("🚀", { field, formField, props });
   return <Widget field={field} {...formField} {...props} />;
 };
 

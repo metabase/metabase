@@ -127,6 +127,7 @@ export class CustomFormField extends React.Component {
       "title",
       "description",
       "initial",
+      "treat-before-posting",
       "validate",
       "normalize",
     );

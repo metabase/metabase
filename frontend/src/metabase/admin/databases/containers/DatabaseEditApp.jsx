@@ -141,6 +141,8 @@ export default class DatabaseEditApp extends Component {
 
     const showTabs = editingExistingDatabase && letUserControlSchedulingSaved;
 
+    console.log("🚀", "props", this.props);
+
     const crumbs = [
       [t`Databases`, "/admin/databases"],
       [addingNewDatabase ? t`Add Database` : database.name],
@@ -210,14 +212,10 @@ export default class DatabaseEditApp extends Component {
                           <Box width={620}>
                             <Form>
                               {formFields.map(formField => {
-                                console.log("🚀", { formField });
                                 return (
                                   <FormField
                                     key={formField.name}
                                     name={formField.name}
-                                    treatBeforePosting={
-                                      formField["treat-before-posting"]
-                                    }
                                   />
                                 );
                               })}
