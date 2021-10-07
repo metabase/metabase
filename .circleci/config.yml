@@ -1272,6 +1272,7 @@ workflows:
                   "dashboard",
                   "dashboard-filters",
                   "dashboard-filters-sql",
+                  "joins",
                   "moderation",
                   "native",
                   "native-filters",
