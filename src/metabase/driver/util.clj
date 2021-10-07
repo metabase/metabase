@@ -90,7 +90,7 @@
              :when  (driver/available? driver)]
          driver)))
 
-(defn- expand-secret-conn-prop [{prop-name :name :as conn-prop}]
+(defn- expand-secret-conn-prop [{prop-name :name, visible-if :visible-if, :as conn-prop}]
   (case (:secret-kind conn-prop)
     "password" [(-> conn-prop
                     (assoc :type "password")
@@ -102,13 +102,14 @@
                         :type "textFile"
                         :treat-before-posting "base64")
                       (dissoc :secret-kind))]
-                 [{:name (str prop-name "-options")
-                   :type "select"
-                   :options [{:name "Local file path"
-                              :value "local"}
-                             {:name "Uploaded file path"
-                              :value "uploaded"}]
-                   :default "local"}
+                 [(cond-> {:name (str prop-name "-options")
+                           :type "select"
+                           :options [{:name "Local file path"
+                                      :value "local"}
+                                     {:name "Uploaded file path"
+                                      :value "uploaded"}]
+                           :default "local"}
+                    visible-if (assoc :visible-if visible-if))
                   (-> (assoc conn-prop
                         :name (str prop-name "-value")
                         :type "textFile"

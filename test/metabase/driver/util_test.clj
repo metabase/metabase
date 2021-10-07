@@ -63,7 +63,8 @@
                                                  :value "local"}
                                                 {:name  "Uploaded file path"
                                                  :value "uploaded"}]
-                                      :type    "select"}
+                                      :type    "select"
+                                      :visible-if {:use-keystore true}}
                                      ;; keystore-value
                                      (om :name "keystore-value", :display-name "Keystore", :type "textFile",
                                          :required false,
