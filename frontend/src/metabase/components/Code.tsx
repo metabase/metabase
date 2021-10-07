@@ -2,7 +2,9 @@
 import React from "react";
 import PropTypes from "prop-types";
 
-const Code: React.FC<PropTypes.InferProps<typeof propTypes>> = ({ children, block }) => {
+type Props = PropTypes.InferProps<typeof propTypes>;
+
+const Code: React.FC<Props> = ({ children, block }) => {
   if (block) {
     return <div className="text-code">{children}</div>;
   } else if (typeof children === "string" && children.split(/\n/g).length > 1) {
