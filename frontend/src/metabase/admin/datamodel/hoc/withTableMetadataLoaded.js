@@ -20,7 +20,6 @@ export default ComposedComponent => {
     fetch() {
       this.props.table.fetchMetadataAndForeignTables({
         params: { include_sensitive_fields: true },
-        selectorName: "getObjectUnfiltered",
       });
     }
 
