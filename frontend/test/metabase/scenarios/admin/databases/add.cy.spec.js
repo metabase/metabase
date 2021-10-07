@@ -50,6 +50,10 @@ describe("scenarios > admin > databases > add", () => {
     typeField("Database name", "sample");
     typeField("Username", "metabase");
     typeField("Password", "metasample123");
+    typeAndBlurUsingLabel(
+      "Additional JDBC connection string options",
+      "sslmode=prefer",
+    );
 
     cy.button("Save")
       .should("not.be.disabled")
@@ -70,6 +74,10 @@ describe("scenarios > admin > databases > add", () => {
     typeField("Database name", " sample");
     typeField("Username", "   metabase   ");
     typeField("Password", "metasample123");
+    typeAndBlurUsingLabel(
+      "Additional JDBC connection string options",
+      "sslmode=prefer",
+    );
 
     cy.findByText("Save").click();
 
@@ -118,6 +126,10 @@ describe("scenarios > admin > databases > add", () => {
     typeField("Database name", "sample");
     typeField("Username", "metabase");
     typeField("Password", "metasample123");
+    typeAndBlurUsingLabel(
+      "Additional JDBC connection string options",
+      "sslmode=prefer",
+    );
     
 
     cy.button("Save").should("not.be.disabled");
