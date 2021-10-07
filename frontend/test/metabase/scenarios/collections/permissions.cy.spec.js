@@ -673,7 +673,7 @@ describe("collection permissions", () => {
 
                 // Should be able to revert back again
                 cy.findByText("Revision history").click();
-                clickRevert("rearranged the cards.");
+                clickRevert("rearranged the cards");
                 cy.wait("@revert").then(xhr => {
                   expect(xhr.status).to.eq(200);
                   expect(xhr.cause).not.to.exist;
