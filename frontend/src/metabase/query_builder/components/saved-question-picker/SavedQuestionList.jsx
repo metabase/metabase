@@ -1,11 +1,12 @@
 import React from "react";
 import { t } from "ttag";
 import PropTypes from "prop-types";
+import _ from "underscore";
 import { Box } from "grid-styled";
 
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import Schemas from "metabase/entities/schemas";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/constants";
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
 import EmptyState from "metabase/components/EmptyState";
 import { generateSchemaId } from "metabase/schema";
 
@@ -59,7 +60,7 @@ export default function SavedQuestionList({
                 : schema.tables;
             return (
               <React.Fragment>
-                {tables.map(t => (
+                {_.sortBy(tables, "display_name").map(t => (
                   <SavedQuestionListItem
                     id={t.id}
                     isSelected={selectedId === t.id}
