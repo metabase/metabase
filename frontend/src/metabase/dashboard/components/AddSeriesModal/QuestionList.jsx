@@ -6,6 +6,9 @@ import { AutoSizer, List } from "react-virtualized";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Icon from "metabase/components/Icon";
 import MetabaseAnalytics from "metabase/lib/analytics";
+import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+import EmptyState from "metabase/components/EmptyState";
 
 import {
   LoadMoreButton,
@@ -13,11 +16,10 @@ import {
   SearchContainer,
   SearchInput,
   QuestionListContainer,
+  EmptyStateContainer,
 } from "./QuestionList.styled";
 import { QuestionListItem } from "./QuestionListItem";
 import { isQuestionCompatible } from "./utils";
-import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 
 const LOAD_CHUNK_SIZE = 15;
 
@@ -111,6 +113,7 @@ export const QuestionList = React.memo(function QuestionList({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredQuestions.length]);
 
+  const hasQuestionsToShow = compatibleQuestions.length > 0;
   const canLoadMore = questionsWithoutMetadata.length > 0;
   const rowsCount = canLoadMore
     ? compatibleQuestions.length + 1
@@ -178,6 +181,11 @@ export const QuestionList = React.memo(function QuestionList({
                 />
               )}
             </AutoSizer>
+            {!hasQuestionsToShow && (
+              <EmptyStateContainer>
+                <EmptyState message={t`Nothing here`} icon="all" />
+              </EmptyStateContainer>
+            )}
           </QuestionListContainer>
         )}
       </LoadingAndErrorWrapper>

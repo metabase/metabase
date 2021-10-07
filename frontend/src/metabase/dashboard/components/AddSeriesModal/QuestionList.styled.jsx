@@ -37,3 +37,11 @@ export const SearchContainer = styled.div`
 export const SearchInput = styled(TextInput)`
   width: 100%;
 `;
+
+export const EmptyStateContainer = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+`;
