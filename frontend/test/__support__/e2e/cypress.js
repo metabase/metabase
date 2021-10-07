@@ -17,6 +17,7 @@ export * from "./helpers/e2e-qa-databases-helpers";
 export * from "./helpers/e2e-ad-hoc-question-helpers";
 export * from "./helpers/e2e-enterprise-helpers";
 export * from "./helpers/e2e-mock-app-settings-helpers";
+export * from "./helpers/e2e-notebook-helpers";
 export * from "./helpers/e2e-assertion-helpers";
 export * from "./helpers/e2e-cloud-helpers";
 export * from "./helpers/e2e-data-model-helpers";
