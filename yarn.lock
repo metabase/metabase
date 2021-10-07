@@ -2505,12 +2505,12 @@
   resolved "https://registry.yarnpkg.com/@types/prop-types/-/prop-types-15.7.4.tgz#fcf7205c25dff795ee79af1e30da2c9790808f11"
   integrity sha512-rZ5drC/jWjrArrS8BR6SIr4cWpW09RNTYt9AMZo3Jwwif+iacXAqgVjm0B0Bv/S1jhDXKHqRVNCbACkJ89RAnQ==
 
-"@types/react-dom@^17.0.9":
-  version "17.0.9"
-  resolved "https://registry.yarnpkg.com/@types/react-dom/-/react-dom-17.0.9.tgz#441a981da9d7be117042e1a6fd3dac4b30f55add"
-  integrity sha512-wIvGxLfgpVDSAMH5utdL9Ngm5Owu0VsGmldro3ORLXV8CShrL8awVj06NuEXFQ5xyaYfdca7Sgbk/50Ri1GdPg==
+"@types/react-dom@~16.9.14":
+  version "16.9.14"
+  resolved "https://registry.yarnpkg.com/@types/react-dom/-/react-dom-16.9.14.tgz#674b8f116645fe5266b40b525777fc6bb8eb3bcd"
+  integrity sha512-FIX2AVmPTGP30OUJ+0vadeIFJJ07Mh1m+U0rxfgyW34p3rTlXI+nlenvAxNn4BP36YyI9IJ/+UJ7Wu22N1pI7A==
   dependencies:
-    "@types/react" "*"
+    "@types/react" "^16"
 
 "@types/react-motion@^0.0.31":
   version "0.0.31"
@@ -2519,10 +2519,27 @@
   dependencies:
     "@types/react" "*"
 
+"@types/react-redux@^5.0.4":
+  version "5.0.22"
+  resolved "https://registry.yarnpkg.com/@types/react-redux/-/react-redux-5.0.22.tgz#4fad491f397e2ed583ade5ffdc8a22026eb12d0e"
+  integrity sha512-Q9coRey6ypGCA9NV2mXbdA4Ofpp3ZlHGcEuav8tXsA+kZwoeikO+5aWv2KFzQTnZdanf9E4yMqq3ounTtgl0Zg==
+  dependencies:
+    "@types/react" "*"
+    redux "^3.6.0"
+
 "@types/react@*":
   version "17.0.14"
   resolved "https://registry.yarnpkg.com/@types/react/-/react-17.0.14.tgz#f0629761ca02945c4e8fea99b8177f4c5c61fb0f"
   integrity sha512-0WwKHUbWuQWOce61UexYuWTGuGY/8JvtUe/dtQ6lR4sZ3UiylHotJeWpf3ArP9+DSGUoLY3wbU59VyMrJps5VQ==
+  dependencies:
+    "@types/prop-types" "*"
+    "@types/scheduler" "*"
+    csstype "^3.0.2"
+
+"@types/react@^16":
+  version "16.14.16"
+  resolved "https://registry.yarnpkg.com/@types/react/-/react-16.14.16.tgz#0ad1adaefbba4ccc307ddf364d071b3c81e0ce30"
+  integrity sha512-7waDQ0h1TkAk99S04wV0LUiiSXpT02lzrdDF4WZFqn2W0XE5ICXLBMtqXWZ688aX2dJislQ3knmZX/jH53RluQ==
   dependencies:
     "@types/prop-types" "*"
     "@types/scheduler" "*"
@@ -13346,7 +13363,7 @@ redux@*, redux@^4.0.0:
     loose-envify "^1.4.0"
     symbol-observable "^1.2.0"
 
-redux@^3.5.2:
+redux@^3.5.2, redux@^3.6.0:
   version "3.7.2"
   resolved "https://registry.yarnpkg.com/redux/-/redux-3.7.2.tgz#06b73123215901d25d065be342eb026bc1c8537b"
   integrity sha512-pNqnf9q1hI5HHZRBkj3bAngGZW/JMCmexDlOxw4XagXY2o1327nHH54LoTjiPJ0gizoqPDRqWyX/00g0hD6w+A==

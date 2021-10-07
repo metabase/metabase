@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
-export const withBackground = className => ComposedComponent => {
-  return class extends Component {
+export const withBackground = (className: string) => <T extends unknown>(ComposedComponent: React.ComponentType<T>) => {
+  return class extends Component<T> {
     static displayName = "BackgroundApplicator";
 
     UNSAFE_componentWillMount() {
@@ -19,15 +19,19 @@ export const withBackground = className => ComposedComponent => {
   };
 };
 
+type Props<T> = T & {
+  bgClassName: string;
+}
+
 import { connect } from "react-redux";
 import { PLUGIN_SELECTORS } from "metabase/plugins";
 
-export const withLogoBackground = ComposedComponent => {
+export const withLogoBackground = <T extends unknown>(ComposedComponent: React.ComponentType<T>)  => {
   const mapStateToProps = (state, props) => ({
     bgClassName: PLUGIN_SELECTORS.getLogoBackgroundClass(state, props),
   });
   return connect(mapStateToProps)(
-    class extends Component {
+    class extends Component<Props<T>> {
       static displayName = "BackgroundApplicator";
 
       UNSAFE_componentWillMount() {
