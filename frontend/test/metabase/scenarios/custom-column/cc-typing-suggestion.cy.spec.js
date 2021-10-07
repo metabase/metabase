@@ -44,4 +44,9 @@ describe("scenarios > question > custom column > typing suggestion", () => {
 
     cy.get("[contenteditable='true']").contains("length([Title])");
   });
+
+  it("should correctly insert function suggestion with the opening parenthesis", () => {
+    cy.get("[contenteditable='true']").type("LOW{enter}");
+    cy.get("[contenteditable='true']").contains("lower(");
+  });
 });
