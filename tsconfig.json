@@ -17,7 +17,9 @@
         "./enterprise/frontend/test/*"
       ]
     },
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "esModuleInterop": true,
+    "allowJs": true
   },
   "include": [
     "frontend/src/**/*.ts",
