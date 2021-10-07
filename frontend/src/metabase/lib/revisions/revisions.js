@@ -98,6 +98,10 @@ const CHANGE_DESCRIPTIONS = {
     [CHANGE_TYPE.ADD]: t`edited the question`,
     [CHANGE_TYPE.UPDATE]: t`edited the question`,
   },
+  display: {
+    [CHANGE_TYPE.UPDATE]: (prevDisplay, display) =>
+      t`changed the display from ${prevDisplay} to ${display}`,
+  },
   visualization_settings: {
     [CHANGE_TYPE.ADD]: t`changed the visualization settings`,
     [CHANGE_TYPE.UPDATE]: t`changed the visualization settings`,
