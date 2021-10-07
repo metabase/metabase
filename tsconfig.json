@@ -29,11 +29,5 @@
     "enterprise/frontend/test/**/*.ts",
     "enterprise/frontend/test/**/*.tsx"
   ],
-  "exclude": [
-    "node_modules",
-    "frontend/**/*.js",
-    "frontend/**/*.jsx",
-    "enterprise/frontend/**/*.js",
-    "enterprise/frontend/**/*.jsx"
-  ]
+  "exclude": ["node_modules"]
 }
