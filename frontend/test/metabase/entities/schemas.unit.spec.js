@@ -3,6 +3,8 @@ import mock from "xhr-mock";
 import { getStore } from "__support__/entities-store";
 
 import Schemas from "metabase/entities/schemas";
+import Questions from "metabase/entities/questions";
+import { ROOT_COLLECTION_VIRTUAL_SCHEMA } from "metabase/lib/saved-questions";
 
 describe("schema entity", () => {
   let store;
@@ -79,6 +81,182 @@ describe("schema entity", () => {
     expect(tables).toEqual({
       "123": { id: 123, name: "foo" },
       "234": { id: 234, name: "bar" },
+    });
+  });
+
+  describe("saved questions schema | reducer", () => {
+    function getQuestion({
+      id = 5,
+      name = "Q1",
+      collection = null,
+      dataset_query = { database: 1 },
+      archived = false,
+    } = {}) {
+      return {
+        id,
+        name,
+        collection,
+        dataset_query,
+        archived,
+      };
+    }
+
+    function getCreateAction(question) {
+      return {
+        type: Questions.actionTypes.CREATE,
+        payload: {
+          question,
+          object: question,
+        },
+      };
+    }
+
+    function getUpdateAction(question) {
+      return {
+        type: Questions.actionTypes.UPDATE,
+        payload: {
+          question,
+          object: question,
+        },
+      };
+    }
+
+    it("should add new question ID to collection schema tables", () => {
+      const question = getQuestion();
+
+      const nextState = Schemas.reducer(
+        {
+          [ROOT_COLLECTION_VIRTUAL_SCHEMA]: {
+            tables: ["card__123"],
+          },
+        },
+        getCreateAction(question),
+      );
+
+      expect(nextState).toEqual({
+        [ROOT_COLLECTION_VIRTUAL_SCHEMA]: {
+          tables: ["card__123", `card__${question.id}`],
+        },
+      });
+    });
+
+    it("should add new question ID to it's collection schema correctly", () => {
+      const question = getQuestion({
+        collection: { id: 4, name: "Marketing" },
+      });
+
+      const nextState = Schemas.reducer(
+        {
+          [ROOT_COLLECTION_VIRTUAL_SCHEMA]: {
+            tables: ["card__123"],
+          },
+          "-1337:Marketing": {
+            tables: ["card__51"],
+          },
+        },
+        getCreateAction(question),
+      );
+
+      expect(nextState).toEqual({
+        [ROOT_COLLECTION_VIRTUAL_SCHEMA]: {
+          tables: ["card__123"],
+        },
+        "-1337:Marketing": {
+          tables: ["card__51", `card__${question.id}`],
+        },
+      });
+    });
+
+    it("should not add new question ID if it's already present", () => {
+      const question = getQuestion();
+      const id = `card__${question.id}`;
+
+      const nextState = Schemas.reducer(
+        {
+          [ROOT_COLLECTION_VIRTUAL_SCHEMA]: {
+            tables: [id],
+          },
+        },
+        getCreateAction(getQuestion()),
+      );
+
+      expect(nextState).toEqual({
+        [ROOT_COLLECTION_VIRTUAL_SCHEMA]: {
+          tables: [id],
+        },
+      });
+    });
+
+    it("should not add new ID if it's collection schema is not present in store", () => {
+      const nextState = Schemas.reducer(
+        {
+          [ROOT_COLLECTION_VIRTUAL_SCHEMA]: {
+            tables: ["card__123"],
+          },
+        },
+        getCreateAction(getQuestion({ collection: { id: 3, name: "foo" } })),
+      );
+
+      expect(nextState).toEqual({
+        [ROOT_COLLECTION_VIRTUAL_SCHEMA]: {
+          tables: ["card__123"],
+        },
+      });
+    });
+
+    it("should remove question ID from it's collection schema when question is archived", () => {
+      const question = getQuestion();
+
+      const nextState = Schemas.reducer(
+        {
+          [ROOT_COLLECTION_VIRTUAL_SCHEMA]: {
+            tables: ["card__123", `card__${question.id}`],
+          },
+        },
+        getUpdateAction(getQuestion({ ...question, archived: true })),
+      );
+
+      expect(nextState).toEqual({
+        [ROOT_COLLECTION_VIRTUAL_SCHEMA]: {
+          tables: ["card__123"],
+        },
+      });
+    });
+
+    it("should add question ID to collection schema tables when question is unarchived", () => {
+      const question = getQuestion();
+
+      const nextState = Schemas.reducer(
+        {
+          [ROOT_COLLECTION_VIRTUAL_SCHEMA]: {
+            tables: ["card__123"],
+          },
+        },
+        getUpdateAction(question),
+      );
+
+      expect(nextState).toEqual({
+        [ROOT_COLLECTION_VIRTUAL_SCHEMA]: {
+          tables: ["card__123", `card__${question.id}`],
+        },
+      });
+    });
+
+    it("should not add question ID when it is unarchived if collection schema is not present in store", () => {
+      const nextState = Schemas.reducer(
+        {
+          [ROOT_COLLECTION_VIRTUAL_SCHEMA]: {
+            tables: ["card__123"],
+          },
+        },
+        getUpdateAction(getQuestion({ collection: { id: 3, name: "foo" } })),
+      );
+
+      expect(nextState).toEqual({
+        [ROOT_COLLECTION_VIRTUAL_SCHEMA]: {
+          tables: ["card__123"],
+        },
+      });
     });
   });
 });
