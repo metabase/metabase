@@ -23,6 +23,10 @@ describe("admin > database > add > external databases", () => {
     typeAndBlurUsingLabel("Database name", "sample");
     typeAndBlurUsingLabel("Username", "metabase");
     typeAndBlurUsingLabel("Password", "metasample123");
+    typeAndBlurUsingLabel(
+      "Additional JDBC connection string options",
+      "sslmode=prefer",
+    );
 
     cy.findByText("Save")
       .should("not.be.disabled")
@@ -82,13 +86,6 @@ describe("admin > database > add > external databases", () => {
     typeAndBlurUsingLabel("Database name", "sample");
     typeAndBlurUsingLabel("Username", "metabase");
     typeAndBlurUsingLabel("Password", "metasample123");
-
-    // Bypass the RSA public key error for MySQL database
-    // https://github.com/metabase/metabase/issues/12545
-    typeAndBlurUsingLabel(
-      "Additional JDBC connection string options",
-      "allowPublicKeyRetrieval=true",
-    );
 
     cy.findByText("Save")
       .should("not.be.disabled")
