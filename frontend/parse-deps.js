@@ -9,7 +9,7 @@ const parser = require("@babel/parser");
 const traverse = require("@babel/traverse").default;
 const readline = require("readline");
 
-const PATTERN = "{enterprise/,}frontend/src/**/*.{js,jsx}";
+const PATTERN = "{enterprise/,}frontend/src/**/*.{js,jsx,ts,tsx}";
 
 // after webpack.config.js
 const ALIAS = {
@@ -67,27 +67,37 @@ function dependencies() {
         const realName = parts.join(path.sep);
         return realName;
       })
-      .map(name => {
-        if (fs.existsSync(name)) {
-          if (
-            fs.lstatSync(name).isDirectory() &&
-            fs.existsSync(name + "/index.js")
-          ) {
-            return name + "/index.js";
-          }
-          return name;
-        } else if (fs.existsSync(name + ".js")) {
-          return name + ".js";
-        } else if (fs.existsSync(name + ".jsx")) {
-          return name + ".jsx";
-        }
-        return name;
-      })
+      .map(getFilePathFromImportPath)
       .filter(name => minimatch(name, PATTERN));
 
     return { source: fileName, dependencies: absoluteImportList.sort() };
   });
   return deps;
+}
+
+function getFilePathFromImportPath(name) {
+  const scriptsExtensions = ["js", "ts"];
+  const scriptsExtensionsWithJsx = [...scriptsExtensions, "jsx", "tsx"];
+
+  for (let extension of scriptsExtensionsWithJsx) {
+    const path = `${name}.${extension}`;
+
+    if (fs.existsSync(path)) {
+      return path;
+    }
+  }
+
+  const isDirectory = fs.existsSync(name) && fs.lstatSync(name).isDirectory();
+
+  for (let extension of scriptsExtensions) {
+    const indexScriptPath = `${name}/index.${extension}`;
+
+    if (isDirectory && fs.existsSync(indexScriptPath)) {
+      return indexScriptPath;
+    }
+  }
+
+  return name;
 }
 
 function dependents() {
