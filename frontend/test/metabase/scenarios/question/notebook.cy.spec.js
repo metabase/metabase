@@ -7,6 +7,7 @@ import {
   modal,
   visitQuestionAdhoc,
   interceptPromise,
+  getNotebookStep,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
@@ -138,37 +139,19 @@ describe("scenarios > question > notebook", () => {
     openProductsTable({ mode: "notebook" });
 
     cy.findByText("Custom column").click();
-    popover()
-      .findByText("Category")
-      .click();
-    cy.findByPlaceholderText("Something nice and descriptive")
-      .click()
-      .type("EXPR");
-    cy.button("Done").click();
+    addSimpleCustomColumn("EXPR");
 
-    cy.findByTestId("step-expression-0-0").within(() => {
+    getNotebookStep("expression").within(() => {
       cy.icon("add").click();
     });
-    popover()
-      .findByText("Category")
-      .click();
-    cy.findByPlaceholderText("Something nice and descriptive")
-      .click()
-      .type("EXPR");
-    cy.button("Done").click();
+    addSimpleCustomColumn("EXPR");
 
-    cy.findByTestId("step-expression-0-0").within(() => {
+    getNotebookStep("expression").within(() => {
       cy.icon("add").click();
     });
-    popover()
-      .findByText("Category")
-      .click();
-    cy.findByPlaceholderText("Something nice and descriptive")
-      .click()
-      .type("EXPR");
-    cy.button("Done").click();
+    addSimpleCustomColumn("EXPR");
 
-    cy.findByTestId("step-expression-0-0").within(() => {
+    getNotebookStep("expression").within(() => {
       cy.findByText("EXPR");
       cy.findByText("EXPR (1)");
       cy.findByText("EXPR (2)");
@@ -1070,4 +1053,14 @@ function joinTwoSavedQuestions() {
       cy.url().should("contain", "/notebook");
     });
   });
+}
+
+function addSimpleCustomColumn(name) {
+  popover()
+    .findByText("Category")
+    .click();
+  cy.findByPlaceholderText("Something nice and descriptive")
+    .click()
+    .type(name);
+  cy.button("Done").click();
 }
