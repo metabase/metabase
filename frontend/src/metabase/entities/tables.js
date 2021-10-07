@@ -94,10 +94,9 @@ const Tables = createEntity({
       ({ id }, options = {}) => async (dispatch, getState) => {
         await dispatch(Tables.actions.fetchMetadata({ id }, options));
         // fetch foreign key linked table's metadata as well
-        const table = Tables.selectors[options.selectorName || "getObject"](
-          getState(),
-          { entityId: id },
-        );
+        const table = Tables.selectors[
+          options.selectorName || "getObjectUnfiltered"
+        ](getState(), { entityId: id });
         await Promise.all(
           getTableForeignKeyTableIds(table).map(id =>
             dispatch(Tables.actions.fetchMetadata({ id }, options)),
