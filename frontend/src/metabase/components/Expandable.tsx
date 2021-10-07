@@ -1,25 +1,30 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-const Expandable = ComposedComponent =>
-  class extends Component {
+type Props<T> = T & PropTypes.InferProps<typeof propTypes>;
+
+type State = {
+  expanded: boolean,
+}
+
+const Expandable = <T extends unknown>(ComposedComponent: React.ComponentType<T>) =>
+  class extends Component<Props<T>, State> {
     static displayName =
       "Expandable[" +
       (ComposedComponent.displayName || ComposedComponent.name) +
       "]";
 
-    constructor(props, context) {
+    constructor(props: Props<T>, context: any) {
       super(props, context);
       this.state = {
         expanded: false,
       };
-      this.expand = () => this.setState({ expanded: true });
     }
 
-    static propTypes = {
-      items: PropTypes.array.isRequired,
-      initialItemLimit: PropTypes.number.isRequired,
-    };
+    expand = () => this.setState({ expanded: true });
+
+    static propTypes = propTypes;
+
     static defaultProps = {
       initialItemLimit: 4,
     };
@@ -41,5 +46,10 @@ const Expandable = ComposedComponent =>
       );
     }
   };
+
+const propTypes = {
+  items: PropTypes.array.isRequired,
+  initialItemLimit: PropTypes.number.isRequired,
+};
 
 export default Expandable;
