@@ -9,7 +9,7 @@ const parser = require("@babel/parser");
 const traverse = require("@babel/traverse").default;
 const readline = require("readline");
 
-const PATTERN = "{enterprise/,}frontend/src/**/*.{js,jsx}";
+const PATTERN = "{enterprise/,}frontend/src/**/*.{js,jsx,ts,tsx}";
 
 // after webpack.config.js
 const ALIAS = {
@@ -208,6 +208,7 @@ cmd must be one of:
                 files   Display list of source files
          dependencies   Show the dependencies of each source file
            dependents   Show the dependents of each source file
+  sorted-dependencies   List of all source files sorted by number of dependencies (ascending)
     filter-dependents   Filter direct dependents based on stdin
 filter-all-dependents   Filter all indirect and direct dependents based on stdin
      count-dependents   List the total count of direct dependents
@@ -227,6 +228,11 @@ function main(args) {
         break;
       case "dependents":
         console.log(JSON.stringify(dependents(), null, 2));
+        break;
+      case "sorted-dependencies":
+        const deps = dependencies();
+        deps.sort((a, b) => a.dependencies.length - b.dependencies.length);
+        console.log(JSON.stringify(deps.map(dep => dep.source), null, 2));
         break;
       case "filter-dependents":
         filterDependents();
