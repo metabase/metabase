@@ -751,13 +751,27 @@ describe("scenarios > dashboard > dashboard drill", () => {
           cy.intercept("POST", `/api/card/${QUESTION2_ID}/query`).as(
             "secondCardQuery",
           );
-          cy.visit(`/dashboard/${DASHBOARD_ID}`);
 
+          cy.visit(`/dashboard/${DASHBOARD_ID}`);
           cy.wait("@secondCardQuery");
+
+          cy.get(".bar")
+            .first()
+            .trigger("mousemove");
+
+          popover().within(() => {
+            testPairedTooltipValues("AXIS", "1");
+            testPairedTooltipValues("VALUE", "5");
+          });
+
           cy.get(".bar")
             .last()
             .trigger("mousemove");
-          popover().contains("10");
+
+          popover().within(() => {
+            testPairedTooltipValues("AXIS", "1");
+            testPairedTooltipValues("VALUE", "10");
+          });
         });
       });
     });
@@ -1015,4 +1029,11 @@ function drillThroughCardTitle(title) {
     .contains(title)
     .click();
   cy.contains(`Started from ${title}`);
+}
+
+function testPairedTooltipValues(val1, val2) {
+  cy.contains(val1)
+    .closest("td")
+    .siblings("td")
+    .findByText(val2);
 }
