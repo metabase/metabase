@@ -171,6 +171,29 @@ describe("binning related reproductions", () => {
     cy.findByText("CREATED_AT");
   });
 
+  it("should allow changing binning for aggregation (metabase#13098)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
+    cy.visit("/question/new");
+    cy.findByText("Custom question").click();
+    cy.findByText("Sample Dataset").click();
+    cy.findByText("Products").click();
+
+    cy.findByText("Pick the metric you want to see").click();
+    cy.findByText("Number of distinct values of ...").click();
+
+    popover()
+      .findByText("Created At")
+      .closest(".List-item")
+      .findByText("by month")
+      .click({ force: true });
+    cy.findByText("Quarter").click();
+
+    cy.button("Visualize").click();
+    cy.wait("@dataset");
+    cy.findByText("13");
+  });
+
   describe("binning should work on nested question based on question that has aggregation (metabase#16379)", () => {
     beforeEach(() => {
       cy.createQuestion({
