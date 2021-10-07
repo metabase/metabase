@@ -1,3 +1,4 @@
+import _ from "underscore";
 import {
   metadata,
   SAMPLE_DATASET,
@@ -5,7 +6,12 @@ import {
   ORDERS,
   PRODUCTS,
 } from "__support__/sample_dataset_fixture";
+import MetabaseSettings from "metabase/lib/settings";
 import {
+  getParameterSections,
+  createParameter,
+  setParameterName,
+  setParameterDefaultValue,
   getParameterMappingOptions,
   hasMapping,
   isDashboardParameterWithoutMapping,
@@ -37,7 +43,180 @@ function native(native) {
   // };
 }
 
+MetabaseSettings.get = jest.fn();
+
+function mockFieldFilterOperatorsFlag(value) {
+  MetabaseSettings.get.mockImplementation(flag => {
+    if (flag === "field-filter-operators-enabled?") {
+      return value;
+    }
+  });
+}
+
 describe("meta/Dashboard", () => {
+  describe("getParameterSections", () => {
+    beforeEach(() => {
+      mockFieldFilterOperatorsFlag(false);
+    });
+
+    describe("when `field-filter-operators-enabled?` is false", () => {
+      it("should not have a number section", () => {
+        expect(
+          _.findWhere(getParameterSections(), { id: "number" }),
+        ).not.toBeDefined();
+      });
+
+      it("should have location options that map to location/* parameters", () => {
+        const locationSection = _.findWhere(getParameterSections(), {
+          id: "location",
+        });
+        expect(
+          locationSection.options.every(option =>
+            option.type.startsWith("location"),
+          ),
+        );
+      });
+
+      it("should have a category section", () => {
+        expect(
+          _.findWhere(getParameterSections(), { id: "category" }),
+        ).toBeDefined();
+
+        expect(
+          _.findWhere(getParameterSections(), { id: "string" }),
+        ).not.toBeDefined();
+      });
+    });
+
+    describe("when `field-filter-operators-enabled?` is true", () => {
+      beforeEach(() => {
+        mockFieldFilterOperatorsFlag(true);
+      });
+
+      it("should have a number section", () => {
+        expect(
+          _.findWhere(getParameterSections(), { id: "number" }),
+        ).toBeDefined();
+      });
+
+      it("should have location options that map to string/* parameters", () => {
+        const locationSection = _.findWhere(getParameterSections(), {
+          id: "location",
+        });
+        expect(
+          locationSection.options.every(option =>
+            option.type.startsWith("string"),
+          ),
+        );
+      });
+
+      it("should have a string section", () => {
+        expect(
+          _.findWhere(getParameterSections(), { id: "category" }),
+        ).not.toBeDefined();
+
+        expect(
+          _.findWhere(getParameterSections(), { id: "string" }),
+        ).toBeDefined();
+      });
+    });
+  });
+
+  describe("createParameter", () => {
+    it("should create a new parameter using the given parameter option", () => {
+      expect(
+        createParameter(
+          {
+            name: "foo bar",
+            type: "category",
+            sectionId: "abc",
+          },
+          [],
+        ),
+      ).toEqual({
+        id: expect.any(String),
+        name: "foo bar",
+        sectionId: "abc",
+        slug: "foo_bar",
+        type: "category",
+      });
+    });
+
+    it("should prioritize using `combinedName` over `name`", () => {
+      expect(
+        createParameter(
+          {
+            combinedName: "foo bar baz",
+            name: "foo bar",
+            type: "category",
+            sectionId: "abc",
+          },
+          [],
+        ),
+      ).toEqual({
+        id: expect.any(String),
+        name: "foo bar baz",
+        sectionId: "abc",
+        slug: "foo_bar_baz",
+        type: "category",
+      });
+    });
+
+    it("should prevent a duplicate name", () => {
+      expect(
+        createParameter(
+          {
+            name: "foo bar",
+            type: "category",
+            sectionId: "abc",
+          },
+          [
+            createParameter(
+              {
+                name: "foo bar",
+                type: "category",
+                sectionId: "abc",
+              },
+              [],
+            ),
+          ],
+        ),
+      ).toEqual({
+        id: expect.any(String),
+        name: "foo bar 1",
+        sectionId: "abc",
+        slug: "foo_bar_1",
+        type: "category",
+      });
+    });
+  });
+
+  describe("setParameterName", () => {
+    it("should set a name and a slug on parameter", () => {
+      expect(setParameterName({ abc: 123 }, "foo")).toEqual({
+        abc: 123,
+        name: "foo",
+        slug: "foo",
+      });
+    });
+
+    it("should default", () => {
+      expect(setParameterName({}, "")).toEqual({
+        name: "unnamed",
+        slug: "unnamed",
+      });
+    });
+  });
+
+  describe("setParameterDefaultValue", () => {
+    it("should set a `default` property on a parameter", () => {
+      expect(setParameterDefaultValue({ foo: "bar" }, 123)).toEqual({
+        foo: "bar",
+        default: 123,
+      });
+    });
+  });
+
   describe("getParameterMappingOptions", () => {
     describe("Structured Query", () => {
       it("should return field-id and fk-> dimensions", () => {
