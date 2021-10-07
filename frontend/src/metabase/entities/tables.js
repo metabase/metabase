@@ -19,8 +19,13 @@ import { TableSchema } from "metabase/schema";
 import Metrics from "metabase/entities/metrics";
 import Segments from "metabase/entities/segments";
 import Fields from "metabase/entities/fields";
+import Questions from "metabase/entities/questions";
 
 import { GET, PUT } from "metabase/lib/api";
+import {
+  convertSavedQuestionToVirtualTable,
+  getQuestionVirtualTableId,
+} from "metabase/lib/saved-questions";
 
 import { getMetadata } from "metabase/selectors/metadata";
 
@@ -125,6 +130,30 @@ const Tables = createEntity({
   },
 
   reducer: (state = {}, { type, payload, error }) => {
+    if (type === Questions.actionTypes.CREATE) {
+      const card = payload.question;
+      const virtualQuestionTable = convertSavedQuestionToVirtualTable(card);
+      return {
+        ...state,
+        [virtualQuestionTable.id]: virtualQuestionTable,
+      };
+    }
+
+    if (type === Questions.actionTypes.UPDATE) {
+      const card = payload.question;
+      const virtualQuestionId = getQuestionVirtualTableId(card);
+
+      if (card.archived && state[virtualQuestionId]) {
+        delete state[virtualQuestionId];
+        return state;
+      }
+
+      return {
+        ...state,
+        [virtualQuestionId]: convertSavedQuestionToVirtualTable(card),
+      };
+    }
+
     if (type === Segments.actionTypes.CREATE) {
       const { table_id: tableId, id: segmentId } = payload.segment;
       const table = state[tableId];

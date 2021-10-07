@@ -50,12 +50,21 @@
                                          {:cols [{:base_type :type/Text}
                                                  {:base_type :type/Number}]
                                           :rows [["A" 2]]})))
+
+  ;; timeseries line chart
   (is (= :sparkline
          (render/detect-pulse-chart-type {:display :line}
                                          {:cols [{:base_type :type/Temporal}
                                                  {:base_type :type/Number}]
                                           :rows [[#t "2020" 2]
                                                  [#t "2021" 3]]})))
+  ;; Category line chart
+  (is (= :sparkline
+         (render/detect-pulse-chart-type {:display :line}
+                                         {:cols [{:base_type :type/Text}
+                                                 {:base_type :type/Number}]
+                                          :rows [["Red" 2]
+                                                 ["Blue" 3]]})))
   (is (= :categorical/donut
          (render/detect-pulse-chart-type {:display :pie}
                                          {:cols [{:base_type :type/Text}
