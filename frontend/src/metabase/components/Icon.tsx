@@ -11,7 +11,13 @@ import { stripLayoutProps } from "metabase/lib/utils";
 
 import Tooltipify from "metabase/hoc/Tooltipify";
 
-export const IconWrapper = styled("div")`
+type IconWrapperProps = {
+  space: any;
+  hover: any;
+  open: boolean;
+}
+
+export const IconWrapper = styled<IconWrapperProps, "div">("div")`
   ${space};
   display: flex;
   align-items: center;
@@ -54,72 +60,65 @@ export const iconPropTypes = {
   className: PropTypes.string,
 };
 
-const defaultProps = {
-  defaultName: "unknown",
-};
+type Props = PropTypes.InferProps<typeof iconPropTypes>;
 
-class BaseIcon extends Component {
-  render() {
-    const { name, defaultName, className, ...rest } = this.props;
+const BaseIcon: React.FC<Props> = ({ name, defaultName, className, ...rest }) => {
+  const icon = loadIcon(name) || loadIcon(defaultName ?? "unknown");
+  if (!icon) {
+    console.warn(`Icon "${name}" does not exist.`);
+    return <span />;
+  }
 
-    const icon = loadIcon(name) || loadIcon(defaultName);
-    if (!icon) {
-      console.warn(`Icon "${name}" does not exist.`);
-      return <span />;
-    }
+  const props = {
+    ...icon.attrs,
+    ...stripLayoutProps(rest),
+    className: cx(icon.attrs.className, className),
+  };
 
-    const props = {
-      ...icon.attrs,
-      ...stripLayoutProps(rest),
-      className: cx(icon.attrs.className, className),
-    };
+  for (const prop of ["width", "height", "size", "scale"]) {
+    if (typeof props[prop] === "string") {
+      props[prop] = parseInt(props[prop], 10);
+    }
+  }
+  if (props.size != null) {
+    props.width = props.size;
+    props.height = props.size;
+  }
+  if (props.scale != null && props.width != null && props.height != null) {
+    props.width *= props.scale;
+    props.height *= props.scale;
+  }
+  delete props.size, props.scale;
 
-    for (const prop of ["width", "height", "size", "scale"]) {
-      if (typeof props[prop] === "string") {
-        props[prop] = parseInt(props[prop], 10);
-      }
-    }
-    if (props.size != null) {
-      props.width = props.size;
-      props.height = props.size;
-    }
-    if (props.scale != null && props.width != null && props.height != null) {
-      props.width *= props.scale;
-      props.height *= props.scale;
-    }
-    delete props.size, props.scale;
-
-    if (icon.img) {
-      // avoid passing `role="img"` to an actual image file
-      // eslint-disable-next-line no-unused-vars
-      const { role, ...rest } = props;
-      return (
-        <img
-          src={icon.img}
-          srcSet={`
-          ${icon.img}    1x,
-          ${icon.img_2x} 2x
-        `}
-          {...rest}
-        />
-      );
-    } else if (icon.svg) {
-      return <svg {...props} dangerouslySetInnerHTML={{ __html: icon.svg }} />;
-    } else if (icon.path) {
-      return (
-        <svg {...props}>
-          <path d={icon.path} />
-        </svg>
-      );
-    } else {
-      console.warn(`Icon "${name}" must have an img, svg, or path`);
-      return <span />;
-    }
+  if (icon.img) {
+    // avoid passing `role="img"` to an actual image file
+    // eslint-disable-next-line no-unused-vars
+    const { role, ...rest } = props;
+    return (
+      <img
+        src={icon.img}
+        srcSet={`
+        ${icon.img}    1x,
+        ${icon.img_2x} 2x
+      `}
+        {...rest}
+      />
+    );
+  } else if (icon.svg) {
+    return <svg {...props} dangerouslySetInnerHTML={{ __html: icon.svg }} />;
+  } else if (icon.path) {
+    return (
+      <svg {...props}>
+        <path d={icon.path} />
+      </svg>
+    );
+  } else {
+    console.warn(`Icon "${name}" must have an img, svg, or path`);
+    return <span />;
   }
 }
 
 BaseIcon.propTypes = iconPropTypes;
-BaseIcon.defaultProps = defaultProps;
 
 const Icon = styled(BaseIcon)`
   ${space}
