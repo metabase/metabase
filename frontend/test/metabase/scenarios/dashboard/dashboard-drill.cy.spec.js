@@ -751,67 +751,30 @@ describe("scenarios > dashboard > dashboard drill", () => {
           cy.intercept("POST", `/api/card/${QUESTION2_ID}/query`).as(
             "secondCardQuery",
           );
-          cy.visit(`/dashboard/${DASHBOARD_ID}`);
 
+          cy.visit(`/dashboard/${DASHBOARD_ID}`);
           cy.wait("@secondCardQuery");
+
+          cy.get(".bar")
+            .first()
+            .trigger("mousemove");
+
+          popover().within(() => {
+            testPairedTooltipValues("AXIS", "1");
+            testPairedTooltipValues("VALUE", "5");
+          });
+
           cy.get(".bar")
             .last()
             .trigger("mousemove");
-          popover().contains("10");
+
+          popover().within(() => {
+            testPairedTooltipValues("AXIS", "1");
+            testPairedTooltipValues("VALUE", "10");
+          });
         });
       });
     });
-  });
-
-  it("should drill-through on chart based on a custom column (metabase#13289)", () => {
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
-
-    cy.createQuestion({
-      name: "13289Q",
-      display: "line",
-      query: {
-        "source-table": ORDERS_ID,
-        expressions: {
-          two: ["+", 1, 1],
-        },
-        aggregation: [["count"]],
-        breakout: [
-          ["expression", "two"],
-          [
-            "field",
-            ORDERS.CREATED_AT,
-            {
-              "temporal-unit": "month",
-            },
-          ],
-        ],
-      },
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
-        // Add question to the dashboard
-        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-          cardId: QUESTION_ID,
-          row: 0,
-          col: 0,
-          sizeX: 12,
-          sizeY: 8,
-        });
-
-        cy.visit(`/dashboard/${DASHBOARD_ID}`);
-      });
-    });
-
-    cy.get(".Card circle")
-      .eq(1)
-      .click({ force: true });
-
-    cy.findByText("Zoom in").click();
-
-    cy.wait("@dataset");
-
-    cy.findByText("two is equal to 2");
-    cy.findByText("Created At is May, 2016");
   });
 
   describe("should preserve dashboard filter and apply it to the question on a drill-through (metabase#11503)", () => {
@@ -1015,4 +978,11 @@ function drillThroughCardTitle(title) {
     .contains(title)
     .click();
   cy.contains(`Started from ${title}`);
+}
+
+function testPairedTooltipValues(val1, val2) {
+  cy.contains(val1)
+    .closest("td")
+    .siblings("td")
+    .findByText(val2);
 }

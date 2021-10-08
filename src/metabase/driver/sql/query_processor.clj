@@ -1067,7 +1067,7 @@
   [driver query]
   (let [subselect (-> query
                       (select-keys [:joins :source-table :source-query :source-metadata :expressions])
-                      (assoc :fields (-> (mbql.u/match (dissoc query :source-query :joins)
+                      (assoc :fields (-> (mbql.u/match (dissoc query :source-query :joins :expressions)
                                            ;; remove the bucketing/binning operations from the source query -- we'll
                                            ;; do that at the parent level
                                            [:field id-or-name opts]
