@@ -1,7 +1,5 @@
 import React from "react";
-import { Provider } from "react-redux";
-import { reducer as form } from "redux-form";
-import { render, screen } from "@testing-library/react";
+import { render, screen } from "__support__/ui";
 import userEvent from "@testing-library/user-event";
 import mock from "xhr-mock";
 
@@ -15,7 +13,6 @@ import {
   ORDERS,
   metadata,
 } from "__support__/sample_dataset_fixture";
-import { getStore } from "__support__/entities-store";
 
 function mockCachingEnabled(enabled = true) {
   const original = MetabaseSettings.get;
@@ -29,23 +26,20 @@ function mockCachingEnabled(enabled = true) {
 }
 
 const renderSaveQuestionModal = (question, originalQuestion) => {
-  const store = getStore({ form });
   const onCreateMock = jest.fn(() => Promise.resolve());
   const onSaveMock = jest.fn(() => Promise.resolve());
   const onCloseMock = jest.fn();
   render(
-    <Provider store={store}>
-      <SaveQuestionModal
-        card={question.card()}
-        originalCard={originalQuestion && originalQuestion.card()}
-        tableMetadata={question.table()}
-        onCreate={onCreateMock}
-        onSave={onSaveMock}
-        onClose={onCloseMock}
-      />
-    </Provider>,
+    <SaveQuestionModal
+      card={question.card()}
+      originalCard={originalQuestion && originalQuestion.card()}
+      tableMetadata={question.table()}
+      onCreate={onCreateMock}
+      onSave={onSaveMock}
+      onClose={onCloseMock}
+    />,
   );
-  return { store, onSaveMock, onCreateMock, onCloseMock };
+  return { onSaveMock, onCreateMock, onCloseMock };
 };
 
 const EXPECTED_SUGGESTED_NAME = "Orders, Count";

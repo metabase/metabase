@@ -1,11 +1,8 @@
 import React from "react";
 import _ from "underscore";
-import { Provider } from "react-redux";
-import { reducer as form } from "redux-form";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "__support__/ui";
 import userEvent from "@testing-library/user-event";
 import xhrMock from "xhr-mock";
-import { getStore } from "__support__/entities-store";
 import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_CACHING, PLUGIN_FORM_WIDGETS } from "metabase/plugins";
 import NumericFormField from "metabase/components/form/widgets/FormNumericInputWidget";
@@ -48,11 +45,11 @@ function setup({ mockDashboardUpdateResponse = true } = {}) {
     },
   });
 
-  render(
-    <Provider store={getStore({ form, dashboard: dashboardReducer })}>
-      <DashboardDetailsModal onClose={onClose} />
-    </Provider>,
-  );
+  render(<DashboardDetailsModal onClose={onClose} />, {
+    reducers: {
+      dashboard: dashboardReducer,
+    },
+  });
 
   return {
     onClose,

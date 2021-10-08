@@ -1,10 +1,7 @@
 import React from "react";
-import { Provider } from "react-redux";
-import { reducer as form } from "redux-form";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "__support__/ui";
 import userEvent from "@testing-library/user-event";
 import xhrMock from "xhr-mock";
-import { getStore } from "__support__/entities-store";
 import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import CreateDashboardModal from "./CreateDashboardModal";
@@ -29,11 +26,7 @@ function setup({ mockCreateDashboardResponse = true } = {}) {
     );
   }
 
-  render(
-    <Provider store={getStore({ form })}>
-      <CreateDashboardModal onClose={onClose} />
-    </Provider>,
-  );
+  render(<CreateDashboardModal onClose={onClose} />);
 
   return {
     onClose,

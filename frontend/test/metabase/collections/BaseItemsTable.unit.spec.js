@@ -1,10 +1,7 @@
 import React from "react";
-import { render } from "@testing-library/react";
+import { render } from "__support__/ui";
 import userEvent from "@testing-library/user-event";
 import moment from "moment";
-
-import HTML5Backend from "react-dnd-html5-backend";
-import { DragDropContextProvider } from "react-dnd";
 
 import {
   DEFAULT_DATE_STYLE,
@@ -32,14 +29,13 @@ describe("Collections BaseItemsTable", () => {
 
   function setup({ items = [ITEM], ...props } = {}) {
     return render(
-      <DragDropContextProvider backend={HTML5Backend}>
-        <BaseItemsTable
-          items={items}
-          sortingOptions={{ sort_column: "name", sort_direction: "asc" }}
-          onSortingOptionsChange={jest.fn()}
-          {...props}
-        />
-      </DragDropContextProvider>,
+      <BaseItemsTable
+        items={items}
+        sortingOptions={{ sort_column: "name", sort_direction: "asc" }}
+        onSortingOptionsChange={jest.fn()}
+        {...props}
+      />,
+      { withDND: true },
     );
   }
 
