@@ -7,6 +7,7 @@ import {
   modal,
   visitQuestionAdhoc,
   interceptPromise,
+  getNotebookStep,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
@@ -131,6 +132,37 @@ describe("scenarios > question > notebook", () => {
         .type("Sum Divide");
       cy.contains(/^CASE expects 2 arguments or more/i);
     });
+  });
+
+  it("should append indexes to duplicate custom expression names (metabase#12104)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    openProductsTable({ mode: "notebook" });
+
+    cy.findByText("Custom column").click();
+    addSimpleCustomColumn("EXPR");
+
+    getNotebookStep("expression").within(() => {
+      cy.icon("add").click();
+    });
+    addSimpleCustomColumn("EXPR");
+
+    getNotebookStep("expression").within(() => {
+      cy.icon("add").click();
+    });
+    addSimpleCustomColumn("EXPR");
+
+    getNotebookStep("expression").within(() => {
+      cy.findByText("EXPR");
+      cy.findByText("EXPR (1)");
+      cy.findByText("EXPR (2)");
+    });
+
+    cy.button("Visualize").click();
+    cy.wait("@dataset");
+
+    cy.findByText("EXPR");
+    cy.findByText("EXPR (1)");
+    cy.findByText("EXPR (2)");
   });
 
   it("should process the updated expression when pressing Enter", () => {
@@ -1021,4 +1053,14 @@ function joinTwoSavedQuestions() {
       cy.url().should("contain", "/notebook");
     });
   });
+}
+
+function addSimpleCustomColumn(name) {
+  popover()
+    .findByText("Category")
+    .click();
+  cy.findByPlaceholderText("Something nice and descriptive")
+    .click()
+    .type(name);
+  cy.button("Done").click();
 }
