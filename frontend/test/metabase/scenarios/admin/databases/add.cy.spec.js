@@ -50,9 +50,9 @@ describe("scenarios > admin > databases > add", () => {
     typeField("Database name", "sample");
     typeField("Username", "metabase");
     typeField("Password", "metasample123");
-    typeAndBlurUsingLabel(
+    typeField(
       "Additional JDBC connection string options",
-      "sslmode=prefer",
+      "sslmode=allow",
     );
 
     cy.button("Save")
@@ -74,9 +74,9 @@ describe("scenarios > admin > databases > add", () => {
     typeField("Database name", " sample");
     typeField("Username", "   metabase   ");
     typeField("Password", "metasample123");
-    typeAndBlurUsingLabel(
+    typeField(
       "Additional JDBC connection string options",
-      "sslmode=prefer",
+      "sslmode=allow",
     );
 
     cy.findByText("Save").click();
@@ -126,9 +126,9 @@ describe("scenarios > admin > databases > add", () => {
     typeField("Database name", "sample");
     typeField("Username", "metabase");
     typeField("Password", "metasample123");
-    typeAndBlurUsingLabel(
+    typeField(
       "Additional JDBC connection string options",
-      "sslmode=prefer",
+      "sslmode=allow",
     );
     
 
@@ -341,8 +341,14 @@ describe("scenarios > admin > databases > add", () => {
 
       typeField("Name", "Test db name");
       typeField("Host", "localhost");
-      typeField("Database name", "test_postgres_db");
-      typeField("Username", "uberadmin");
+      typeField("Port", "5432");
+      typeField("Database name", "sample");
+      typeField("Username", "metabase");
+      typeField("Password", "metasample123");
+      typeField(
+        "Additional JDBC connection string options",
+        "sslmode=allow",
+      );
 
       cy.button("Save").click();
 
@@ -357,8 +363,14 @@ describe("scenarios > admin > databases > add", () => {
 
       typeField("Name", "Test db name");
       typeField("Host", "localhost");
-      typeField("Database name", "test_postgres_db");
-      typeField("Username", "uberadmin");
+      typeField("Port", "5432");
+      typeField("Database name", "sample");
+      typeField("Username", "metabase");
+      typeField("Password", "metasample123");
+      typeField(
+        "Additional JDBC connection string options",
+        "sslmode=allow",
+      );
 
       cy.findByText("Use instance default (TTL)").click();
       popover()
