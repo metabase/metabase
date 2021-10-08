@@ -16,36 +16,25 @@ export const NEW_PULSE_TEMPLATE = {
 };
 
 export function channelIsValid(channel, channelSpec) {
-  if (!channelSpec) {
-    return false;
-  }
-
-  if (channelSpec.recipients) {
-    // default from formInput is an empty array, not a null array
-    // check for both
-    if (!channel.recipients || channel.recipients.length < 1) {
-      return false;
-    }
-
-    if (!channel.recipients.every(recipientIsValid)) {
-      return false;
-    }
-  }
-
-  if (channelSpec.fields) {
-    for (const field of channelSpec.fields) {
-      if (
-        field.required &&
+  switch (channel.channel_type) {
+    case "email":
+      return (
+        channel.recipients &&
+        channel.recipients.length > 0 &&
+        channel.recipients.every(recipientIsValid) &&
+        fieldsAreValid(channel, channelSpec) &&
+        scheduleIsValid(channel)
+      );
+    case "slack":
+      return (
         channel.details &&
-        (channel.details[field.name] == null ||
-          channel.details[field.name] === "")
-      ) {
-        return false;
-      }
-    }
+        channel.details.channel &&
+        fieldsAreValid(channel, channelSpec) &&
+        scheduleIsValid(channel)
+      );
+    default:
+      return false;
   }
-
-  return scheduleIsValid(channel);
 }
 
 export function scheduleIsValid(channel) {
@@ -73,6 +62,20 @@ export function scheduleIsValid(channel) {
   }
 
   return true;
+}
+
+export function fieldsAreValid(channel, channelSpec) {
+  if (!channelSpec) {
+    return false;
+  }
+
+  if (!channelSpec.fields) {
+    return true;
+  }
+
+  return channelSpec.fields
+    .filter(field => field.required)
+    .every(field => Boolean(channel.details?.[field.name]));
 }
 
 function pulseChannelsAreValid(pulse, channelSpecs) {

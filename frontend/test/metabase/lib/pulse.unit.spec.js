@@ -1,6 +1,6 @@
 import {
-  getPulseParameters,
   getActivePulseParameters,
+  getPulseParameters,
 } from "metabase/lib/pulse";
 
 describe("metabase/lib/pulse", () => {
