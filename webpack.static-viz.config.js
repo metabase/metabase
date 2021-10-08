@@ -27,12 +27,12 @@ module.exports = {
   module: {
     rules: [
       {
-        test: /\.(js|jsx)$/,
+        test: /\.(tsx?|jsx?)$/,
         exclude: /node_modules/,
         use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
       },
       {
-        test: /\.(js|jsx)$/,
+        test: /\.(tsx?|jsx?)$/,
         exclude: /node_modules/,
         use: [
           {
@@ -46,11 +46,9 @@ module.exports = {
     ],
   },
   resolve: {
-    extensions: [".webpack.js", ".web.js", ".js", ".jsx"],
+    extensions: [".webpack.js", ".web.js", ".js", ".jsx", ".ts", ".tsx"],
     alias: {
       metabase: SRC_PATH,
     },
   },
-
-}
-
+};
