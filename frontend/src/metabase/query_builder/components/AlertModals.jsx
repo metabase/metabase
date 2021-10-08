@@ -49,6 +49,7 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 
 // types
 import type { AlertType } from "metabase-lib/lib/Alert";
+import { alertIsValid } from "metabase/lib/alert";
 
 const getScheduleFromChannel = channel =>
   _.pick(
@@ -152,6 +153,7 @@ export class CreateAlertModalContent extends Component {
     const channelRequirementsMet = isAdmin
       ? hasConfiguredAnyChannel
       : hasConfiguredEmailChannel;
+    const isValid = alertIsValid(alert);
 
     if (hasLoadedChannelInfo && !channelRequirementsMet) {
       return (
@@ -191,6 +193,7 @@ export class CreateAlertModalContent extends Component {
             <Button onClick={onCancel} className="mr2">{t`Cancel`}</Button>
             <ButtonWithStatus
               titleForState={{ default: t`Done` }}
+              disabled={!isValid}
               onClickOperation={this.onCreateAlert}
             />
           </AlertModalFooter>
@@ -352,6 +355,8 @@ export class UpdateAlertModalContent extends Component {
 
     const isCurrentUser = alert.creator.id === user.id;
     const title = isCurrentUser ? t`Edit your alert` : t`Edit alert`;
+    const isValid = alertIsValid(alert);
+
     // TODO: Remove PulseEdit css hack
     return (
       <ModalContent onClose={onCancel}>
@@ -376,6 +381,7 @@ export class UpdateAlertModalContent extends Component {
             <Button onClick={onCancel} className="mr2">{t`Cancel`}</Button>
             <ButtonWithStatus
               titleForState={{ default: t`Save changes` }}
+              disabled={!isValid}
               onClickOperation={this.onUpdateAlert}
             />
           </AlertModalFooter>

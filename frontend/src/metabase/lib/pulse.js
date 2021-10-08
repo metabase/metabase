@@ -45,6 +45,10 @@ export function channelIsValid(channel, channelSpec) {
     }
   }
 
+  return scheduleIsValid(channel);
+}
+
+export function scheduleIsValid(channel) {
   switch (channel.schedule_type) {
     case "monthly":
       if (channel.schedule_frame != null && channel.schedule_hour != null) {
