@@ -576,6 +576,7 @@
                                               [:field "count" {:base-type :type/BigInteger, :join-alias "Q2"}]
                                               [:field "count" {:base-type :type/BigInteger}]]}
                          :limit        2})]
+            ;; This result is actually wrong due to metabase#18086, the correct result is [4 89 0.46 41].
             (is (= [[4 89 0.46 89]]
                    (mt/formatted-rows [int int 2.0 int]
                      (qp/process-query query))))))))))
