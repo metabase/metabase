@@ -16,7 +16,9 @@ const propTypes = {
   onChangeLocation: PropTypes.func,
 };
 
-const AccountHeader = ({ user, path, onChangeLocation }) => {
+type Props = PropTypes.InferProps<typeof propTypes>;
+
+const AccountHeader: React.FC<Props> = ({ user, path, onChangeLocation }) => {
   const hasPasswordChange = useMemo(
     () => PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS.every(f => f(user)),
     [user],

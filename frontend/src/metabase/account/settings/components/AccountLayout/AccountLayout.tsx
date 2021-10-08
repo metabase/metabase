@@ -8,7 +8,9 @@ const propTypes = {
   children: PropTypes.node,
 };
 
-const AccountLayout = ({ children, ...props }) => {
+type Props = PropTypes.InferProps<typeof propTypes>;
+
+const AccountLayout: React.FC<Props> = ({ children, ...props }) => {
   return (
     <div>
       <AccountHeader {...props} />

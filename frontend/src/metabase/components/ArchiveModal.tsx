@@ -7,7 +7,16 @@ import Button from "metabase/components/Button";
 import ModalContent from "metabase/components/ModalContent";
 import FormMessage from "metabase/components/form/FormMessage";
 
-class ArchiveModal extends React.Component {
+type Props = {
+  title: string;
+  message: string;
+  onClose: () => void;
+  onArchive: () => void;
+};
+
+type State = { error: Error | null };
+
+class ArchiveModal extends React.Component<Props, State> {
   state = {
     error: null,
   };

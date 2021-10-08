@@ -15,12 +15,14 @@ const propTypes = {
   items: PropTypes.array.isRequired,
   user: PropTypes.object.isRequired,
   children: PropTypes.node,
-  onHelp: PropTypes.func,
-  onUnsubscribe: PropTypes.func,
-  onArchive: PropTypes.func,
+  onHelp: PropTypes.func.isRequired,
+  onUnsubscribe: PropTypes.func.isRequired,
+  onArchive: PropTypes.func.isRequired,
 };
 
-const NotificationList = ({
+type Props = PropTypes.InferProps<typeof propTypes>;
+
+const NotificationList: React.FC<Props> = ({
   items,
   user,
   children,

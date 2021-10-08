@@ -14,11 +14,13 @@ const propTypes = {
   type: PropTypes.oneOf(["alert", "pulse"]).isRequired,
   user: PropTypes.object,
   hasUnsubscribed: PropTypes.bool,
-  onArchive: PropTypes.func,
-  onClose: PropTypes.func,
+  onArchive: PropTypes.func.isRequired,
+  onClose: PropTypes.func.isRequired,
 };
 
-const ArchiveModal = ({
+type Props = PropTypes.InferProps<typeof propTypes>;
+
+const ArchiveModal: React.FC<Props> = ({
   item,
   type,
   user,

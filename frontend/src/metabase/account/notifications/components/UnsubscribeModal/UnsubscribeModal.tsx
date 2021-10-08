@@ -9,12 +9,14 @@ const propTypes = {
   item: PropTypes.object.isRequired,
   type: PropTypes.oneOf(["alert", "pulse"]).isRequired,
   user: PropTypes.object,
-  onUnsubscribe: PropTypes.func,
-  onArchive: PropTypes.func,
-  onClose: PropTypes.func,
+  onUnsubscribe: PropTypes.func.isRequired,
+  onArchive: PropTypes.func.isRequired,
+  onClose: PropTypes.func.isRequired,
 };
 
-const UnsubscribeModal = ({
+type Props = PropTypes.InferProps<typeof propTypes>;
+
+const UnsubscribeModal: React.FC<Props> = ({
   item,
   type,
   user,

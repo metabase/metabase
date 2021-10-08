@@ -3,10 +3,12 @@ import PropTypes from "prop-types";
 import User from "metabase/entities/users";
 
 const propTypes = {
-  user: PropTypes.object,
+  user: PropTypes.object.isRequired,
 };
 
-const UserProfileForm = ({ user }) => {
+type Props = PropTypes.InferProps<typeof propTypes>;
+
+const UserProfileForm: React.FC<Props> = ({ user }) => {
   const handleSaved = useCallback(
     ({ locale }) => {
       if (locale !== user.locale) {

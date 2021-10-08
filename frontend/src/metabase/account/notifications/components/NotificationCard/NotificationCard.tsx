@@ -22,11 +22,13 @@ const propTypes = {
   item: PropTypes.object.isRequired,
   type: PropTypes.oneOf(["pulse", "alert"]).isRequired,
   user: PropTypes.object.isRequired,
-  onUnsubscribe: PropTypes.func,
-  onArchive: PropTypes.func,
+  onUnsubscribe: PropTypes.func.isRequired,
+  onArchive: PropTypes.func.isRequired,
 };
 
-const NotificationCard = ({ item, type, user, onUnsubscribe, onArchive }) => {
+type Props = PropTypes.InferProps<typeof propTypes>;
+
+const NotificationCard: React.FC<Props> = ({ item, type, user, onUnsubscribe, onArchive }) => {
   const hasArchive = canArchive(item, user);
 
   const onUnsubscribeClick = useCallback(() => {

@@ -7,10 +7,12 @@ import ModalContent from "metabase/components/ModalContent";
 import { ModalLink, ModalMessage } from "./HelpModal.styled";
 
 const propTypes = {
-  onClose: PropTypes.func,
+  onClose: PropTypes.func.isRequired,
 };
 
-const HelpModal = ({ onClose }) => {
+type Props = PropTypes.InferProps<typeof propTypes>;
+
+const HelpModal: React.FC<Props> = ({ onClose }) => {
   const email = Settings.get("admin-email");
 
   const handleClose = () => onClose(true);
@@ -38,11 +40,11 @@ const HelpModal = ({ onClose }) => {
 
 HelpModal.propTypes = propTypes;
 
-const getAdminLink = (email, text) => {
+const getAdminLink = (email: string, text: string) => {
   return email ? <ModalLink href={`mailto:${email}`}>{text}</ModalLink> : text;
 };
 
-const getAdminMessage = email => {
+const getAdminMessage = (email: string) => {
   const adminLink = getAdminLink(email, t`your instance administrator`);
   return jt`Metabase doesn’t manage those lists, so we’d recommend contacting ${adminLink}. `;
 };

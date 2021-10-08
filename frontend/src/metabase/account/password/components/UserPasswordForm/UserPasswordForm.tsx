@@ -5,11 +5,13 @@ import User from "metabase/entities/users";
 
 const propTypes = {
   user: PropTypes.object,
-  validatePassword: PropTypes.func,
-  updatePassword: PropTypes.func,
+  validatePassword: PropTypes.func.isRequired,
+  updatePassword: PropTypes.func.isRequired,
 };
 
-const UserPasswordForm = ({ user, validatePassword, updatePassword }) => {
+type Props = PropTypes.InferProps<typeof propTypes>;
+
+const UserPasswordForm: React.FC<Props> = ({ user, validatePassword, updatePassword }) => {
   const handleAsyncValidate = useCallback(
     async ({ password }) => {
       try {
