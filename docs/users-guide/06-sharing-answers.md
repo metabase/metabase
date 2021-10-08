@@ -22,9 +22,9 @@ Once you save your question, a down arrow will appear to the right of the questi
 
 - **Edit details** (Pencil icon). Change the title of the question, and add some description for context. Adding a description will also make the question easier to find using the search bar. You can also select more options to [cache the results of the question](#caching-results).
 - **Add to dashbboard** (Dashboard icon with plus symbol). See [dashboards][dashboards].
-- **Move** (Document icon with right arrow). Relocate the question to a different [collection](#collections).
+- **Move** (Document icon with right arrow). Relocate the question to a different [collection][collections].
 - **Duplicate** (Square with little square). Create a copy of the question. Keep in mind that whenever you start editing a saved question, Metabase will create a copy of the question. You can either save your edits as a new question, or overwrite the original saved question.
-- **Archive** (Folder with down arrow). See [Archiving items](#archiving-items).
+- **Archive** (Folder with down arrow). See [Archiving items][archiving-items].
 
 ### Caching results
 
@@ -75,6 +75,7 @@ You can set up questions to run periodically and notify you if the results are i
 Next, we'll learn about how to organize our questions in [collections][collections].
 
 [alerts]: 15-alerts.md
+[archiving-items]: collections.md#archiving-items
 [caching]: ../administration-guide/14-caching.md
 [collections]: collections.md
 [dashboards]: 07-dashboards.md
