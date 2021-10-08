@@ -25,7 +25,7 @@ describe("admin > database > add > external databases", () => {
     typeAndBlurUsingLabel("Password", "metasample123");
     typeAndBlurUsingLabel(
       "Additional JDBC connection string options",
-      "sslmode=allow",
+      "sslmode=disable",
     );
 
     cy.findByText("Save")
