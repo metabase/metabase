@@ -17,6 +17,9 @@
         "./enterprise/frontend/test/*"
       ]
     },
+    "allowJs": true,
+    "esModuleInterop": true,
+    "experimentalDecorators": true,
     "forceConsistentCasingInFileNames": true
   },
   "include": [
