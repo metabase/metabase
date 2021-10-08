@@ -50,7 +50,7 @@ Metabase will log errors, both on the server and in the browser console, dependi
 
 **Accessing the Metabase server logs**: You can look for the logs that Metabase leaves on the server's file system (or wherever else you collect logs). If you're logged into Metabase with an Admin account, you can also access the logs by clicking on the **gears icon** in the top right of the main nav, selecting **Admin**, clicking on the **Troubleshooting** tab, then viewing the **Logs** tab. Check out [How to read the server logs][server-logs].
 
-**Checking for Javascript console errors:** Metabase will send debugging information and errors to your browser's developer console. To open the developer console, follow the instructions for web browser:
+**Checking for Javascript console errors:** Metabase will send debugging information and errors to your browser's developer console. To open the developer console, follow the instructions for your web browser:
 
 - [Chrome][chrome]
 - [Firefox][firefox]

@@ -2,30 +2,27 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import cx from "classnames";
 import { getIn } from "icepick";
 import { connect } from "react-redux";
 import { createSelector } from "reselect";
 
 import Visualization from "metabase/visualizations/components/Visualization";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
-import CheckBox from "metabase/components/CheckBox";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
 
 import Questions from "metabase/entities/questions";
-import { getMetadata } from "metabase/selectors/metadata";
+import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { loadMetadataForQueries } from "metabase/redux/metadata";
 
 import Question from "metabase-lib/lib/Question";
 
 import { getVisualizationRaw } from "metabase/visualizations";
 
+import { QuestionList } from "./QuestionList";
+
 const getQuestions = createSelector(
-  [getMetadata, (state, ownProps) => ownProps.questions],
+  [getMetadataWithHiddenTables, (_state, props) => props.questions],
   (metadata, questions) =>
     questions && questions.map(card => new Question(card, metadata)),
 );
@@ -43,10 +40,10 @@ export default class AddSeriesModal extends Component {
     super(props, context);
 
     this.state = {
-      searchValue: "",
       error: null,
       series: props.dashcard.series || [],
       badQuestions: {},
+      isLoadingMetadata: false,
     };
   }
 
@@ -61,25 +58,7 @@ export default class AddSeriesModal extends Component {
   };
   static defaultProps = {};
 
-  async UNSAFE_componentWillMount() {
-    const { questions, loadMetadataForQueries } = this.props;
-    try {
-      await loadMetadataForQueries(questions.map(question => question.query()));
-    } catch (error) {
-      console.error("AddSeriesModal loadMetadataForQueries", error);
-      this.setState({ error });
-    }
-  }
-
-  handleSearchFocus = () => {
-    MetabaseAnalytics.trackEvent("Dashboard", "Edit Series Modal", "search");
-  };
-
-  handleSearchChange = e => {
-    this.setState({ searchValue: e.target.value.toLowerCase() });
-  };
-
-  async handleQuestionSelectedChange(question, selected) {
+  handleQuestionSelectedChange = async (question, selected) => {
     const { dashcard, dashcardData } = this.props;
     const { visualization } = getVisualizationRaw([{ card: dashcard.card }]);
     const card = question.card();
@@ -144,7 +123,7 @@ export default class AddSeriesModal extends Component {
       });
       setTimeout(() => this.setState({ state: null }), 2000);
     }
-  }
+  };
 
   handleRemoveSeries(card) {
     this.setState({ series: this.state.series.filter(c => c.id !== card.id) });
@@ -160,74 +139,19 @@ export default class AddSeriesModal extends Component {
     MetabaseAnalytics.trackEvent("Dashboard", "Edit Series Modal", "done");
   };
 
-  filteredQuestions = () => {
-    const { questions, dashcard, dashcardData } = this.props;
-    const { searchValue } = this.state;
-
-    const initialSeries = {
-      card: dashcard.card,
-      data: getIn(dashcardData, [dashcard.id, dashcard.card.id, "data"]),
-    };
-
-    const { visualization } = getVisualizationRaw([{ card: dashcard.card }]);
-
-    return questions.filter(question => {
-      try {
-        // filter out the card itself
-        if (question.id() === dashcard.card.id) {
-          return false;
-        }
-        if (question.isStructured()) {
-          if (
-            !visualization.seriesAreCompatible(initialSeries, {
-              card: question.card(),
-              data: { cols: question.query().columns(), rows: [] },
-            })
-          ) {
-            return false;
-          }
-        }
-        // search
-        if (
-          searchValue &&
-          question
-            .displayName()
-            .toLowerCase()
-            .indexOf(searchValue) < 0
-        ) {
-          return false;
-        }
-        return true;
-      } catch (e) {
-        console.warn(e);
-        return false;
-      }
-    });
+  handleLoadMetadata = async queries => {
+    this.setState({ isLoadingMetadata: true });
+    await this.props.loadMetadataForQueries(queries);
+    this.setState({ isLoadingMetadata: false });
   };
 
   render() {
     const { dashcard, dashcardData, questions } = this.props;
     const { badQuestions } = this.state;
 
-    let error = this.state.error;
+    const { visualization } = getVisualizationRaw([{ card: dashcard.card }]);
 
-    let filteredQuestions;
-    if (!error && questions) {
-      filteredQuestions = this.filteredQuestions();
-      if (filteredQuestions.length === 0) {
-        error = new Error("Whoops, no compatible questions match your search.");
-      }
-      // SQL cards at the bottom
-      filteredQuestions.sort((a, b) => {
-        if (!a.isNative()) {
-          return 1;
-        } else if (!b.isNative()) {
-          return -1;
-        } else {
-          return 0;
-        }
-      });
-    }
+    const error = this.state.error;
 
     const enabledQuestions = {};
     for (const card of this.state.series) {
@@ -291,70 +215,25 @@ export default class AddSeriesModal extends Component {
           </div>
         </div>
         <div
-          className="border-left flex flex-column scroll-y"
+          className="border-left flex flex-column"
           style={{
             width: 370,
             backgroundColor: color("bg-light"),
             borderColor: color("border"),
           }}
         >
-          <div
-            className="flex-no-shrink border-bottom flex flex-row align-center"
-            style={{ borderColor: color("border") }}
-          >
-            <Icon className="ml2" name="search" size={16} />
-            <input
-              className="h4 input full pl1"
-              style={{ border: "none", backgroundColor: "transparent" }}
-              type="search"
-              placeholder={t`Search for a question`}
-              onFocus={this.handleSearchFocus}
-              onChange={this.handleSearchChange}
-            />
-          </div>
-          <LoadingAndErrorWrapper
-            className="flex flex-full"
-            loading={!filteredQuestions}
+          <QuestionList
+            questions={questions}
+            badQuestions={badQuestions}
+            enabledQuestions={enabledQuestions}
             error={error}
-            noBackground
-          >
-            {() => (
-              <ul className="pr1">
-                {filteredQuestions.map(question => (
-                  <li
-                    key={question.id()}
-                    className={cx("my1 pl2 py1 flex align-center", {
-                      disabled: badQuestions[question.id()],
-                    })}
-                  >
-                    <span className="px1 flex-no-shrink">
-                      <CheckBox
-                        label={question.displayName()}
-                        checked={enabledQuestions[question.id()]}
-                        onChange={e =>
-                          this.handleQuestionSelectedChange(
-                            question,
-                            e.target.checked,
-                          )
-                        }
-                      />
-                    </span>
-                    {!question.isStructured() && (
-                      <Tooltip
-                        tooltip={t`We're not sure if this question is compatible`}
-                      >
-                        <Icon
-                          className="px1 flex-align-right text-light text-medium-hover cursor-pointer flex-no-shrink"
-                          name="warning"
-                          size={20}
-                        />
-                      </Tooltip>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </LoadingAndErrorWrapper>
+            onSelect={this.handleQuestionSelectedChange}
+            dashcard={this.props.dashcard}
+            dashcardData={this.props.dashcardData}
+            loadMetadataForQueries={this.handleLoadMetadata}
+            visualization={visualization}
+            isLoadingMetadata={this.state.isLoadingMetadata}
+          />
         </div>
       </div>
     );
