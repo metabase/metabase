@@ -66,8 +66,3 @@ The X-ray suggestions that appear on the homepage of Metabase will be hidden if 
 
 If you still have questions about X-rays or comparisons, you can head over to our [discussion forum](https://discourse.metabase.com/). See you there!
 
----
-
-## Next: setting up alerts
-
-Learn how to get notified when one of your questions meets or goal or has results with [alerts](15-alerts.md).
