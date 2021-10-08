@@ -320,8 +320,8 @@ function augmentMappingsWithValueMetadata(mappings) {
 function getMappings(dashboard, metadata) {
   const mappings = dashboard.ordered_cards
     .map(dashcard => {
-      const cards = [dashcard.card].concat(dashcard.series);
-      return dashcard.parameter_mappings.map(mapping => {
+      const cards = [dashcard.card, ...(dashcard.series || [])];
+      return (dashcard.parameter_mappings || []).map(mapping => {
         const card = _.findWhere(cards, { id: mapping.card_id });
         const field = getMappingTargetField(card, mapping, metadata);
 
