@@ -50,10 +50,6 @@ describe("scenarios > admin > databases > add", () => {
     typeField("Database name", "sample");
     typeField("Username", "metabase");
     typeField("Password", "metasample123");
-    typeField(
-      "Additional JDBC connection string options",
-      "sslmode=disable",
-    );
 
     cy.button("Save")
       .should("not.be.disabled")
@@ -74,10 +70,6 @@ describe("scenarios > admin > databases > add", () => {
     typeField("Database name", " sample");
     typeField("Username", "   metabase   ");
     typeField("Password", "metasample123");
-    typeField(
-      "Additional JDBC connection string options",
-      "sslmode=disable",
-    );
 
     cy.findByText("Save").click();
 
@@ -126,11 +118,6 @@ describe("scenarios > admin > databases > add", () => {
     typeField("Database name", "sample");
     typeField("Username", "metabase");
     typeField("Password", "metasample123");
-    typeField(
-      "Additional JDBC connection string options",
-      "sslmode=disable",
-    );
-    
 
     cy.button("Save").should("not.be.disabled");
 
@@ -345,10 +332,6 @@ describe("scenarios > admin > databases > add", () => {
       typeField("Database name", "sample");
       typeField("Username", "metabase");
       typeField("Password", "metasample123");
-      typeField(
-        "Additional JDBC connection string options",
-        "sslmode=disable",
-      );
 
       cy.button("Save").click();
 
@@ -367,10 +350,6 @@ describe("scenarios > admin > databases > add", () => {
       typeField("Database name", "sample");
       typeField("Username", "metabase");
       typeField("Password", "metasample123");
-      typeField(
-        "Additional JDBC connection string options",
-        "sslmode=disable",
-      );
 
       cy.findByText("Use instance default (TTL)").click();
       popover()
