@@ -24,6 +24,7 @@ const propTypes = {
   settings: PropTypes.shape({
     x: PropTypes.object,
     y: PropTypes.object,
+    colors: PropTypes.object,
   }),
   labels: PropTypes.shape({
     left: PropTypes.string,
@@ -56,6 +57,7 @@ const layout = {
 };
 
 const CategoricalBarChart = ({ data, accessors, settings, labels }) => {
+  const colors = settings?.colors;
   const isVertical = data.length > 10;
   const xTickWidth = getXTickWidth(data, accessors, layout.maxTickWidth);
   const xTickHeight = getXTickHeight(xTickWidth);
@@ -71,6 +73,7 @@ const CategoricalBarChart = ({ data, accessors, settings, labels }) => {
   const textBaseline = Math.floor(layout.font.size / 2);
   const leftLabel = labels?.left;
   const bottomLabel = !isVertical ? labels?.bottom : undefined;
+  const palette = { ...layout.colors, ...colors };
 
   const xScale = scaleBand({
     domain: data.map(accessors.x),
@@ -91,7 +94,7 @@ const CategoricalBarChart = ({ data, accessors, settings, labels }) => {
     const x = xScale(accessors.x(d));
     const y = yMax - height;
 
-    return { x, y, width, height, fill: layout.colors.brand };
+    return { x, y, width, height, fill: palette.brand };
   };
 
   const getXTickProps = ({ x, y, formattedValue, ...props }) => {
@@ -130,8 +133,8 @@ const CategoricalBarChart = ({ data, accessors, settings, labels }) => {
         top={yMax}
         label={bottomLabel}
         numTicks={data.length}
-        stroke={layout.colors.textLight}
-        tickStroke={layout.colors.textLight}
+        stroke={palette.textLight}
+        tickStroke={palette.textLight}
         tickComponent={props => <Text {...getXTickProps(props)} />}
         tickLabelProps={() => getXTickLabelProps(layout, isVertical)}
       />

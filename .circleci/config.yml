@@ -550,6 +550,13 @@ jobs:
             else
                echo '' > .CACHE-PREFIX
             fi
+      - run:
+          name: 'Check for branch name to bust caches if it is a release branch'
+          command: |
+            if [[ $CIRCLE_BRANCH == release* || $CIRCLE_BRANCH == master  ]]; then
+              echo 'This is a release or master branch; using cache-busting prefix'
+                echo '<< pipeline.id >>' > .CACHE-PREFIX
+            fi
       - run-yarn-command:
           command-name: Create static visualization js bundle
           command: build-static-viz
@@ -1263,6 +1270,7 @@ workflows:
             - build-uberjar-<< matrix.edition >>
           cypress-group: "<< matrix.folder >>-<< matrix.edition >>"
           source-folder: << matrix.folder >>
+          qa-db: true
           before-steps:
             - wait-for-port:
                 port: 3306
@@ -1280,21 +1288,3 @@ workflows:
             - build-uberjar-<< matrix.edition >>
           cypress-group: "percy-visual-<< matrix.edition >>"
           test-files: "./frontend/test/metabase-visual/**/*.cy.spec.js"
-
-      - fe-tests-cypress:
-          name: e2e-tests-mongo-4-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "mongo"
-          source-folder: mongo
-          qa-db: true
-          <<: *Matrix
-
-      - fe-tests-cypress:
-          name: e2e-tests-mysql-8-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "mysql"
-          source-folder: mysql
-          qa-db: true
-          <<: *Matrix

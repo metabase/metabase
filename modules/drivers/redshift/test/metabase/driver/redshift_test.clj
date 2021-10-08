@@ -295,3 +295,31 @@
                       (is (contains? (schemas) fake-schema-name))))
                   (testing "normally, ::fake-schema should be filtered out (because it does not exist)"
                     (is (not (contains? (schemas) fake-schema-name)))))))))))))
+
+(deftest connection-details->spec-test
+  (mt/with-temporary-setting-values [redshift-fetch-size "14"]
+    (testing "Configure connection without additional-options should include defaultRowFetchSize"
+      (is (= {:classname                     "com.amazon.redshift.jdbc42.Driver"
+              :subprotocol                   "redshift"
+              :subname                       "//testhost:5432/testdb?defaultRowFetchSize=14"
+              :OpenSourceSubProtocolOverride false
+              :user                          "testuser"
+              :ssl                           true}
+             (sql-jdbc.conn/connection-details->spec :redshift
+               {:host "testhost"
+                :port 5432
+                :db   "testdb"
+                :user "testuser"}))))
+    (testing "Configure connection with additional-options should not replace defaultRowFetchSize"
+      (is (= {:classname                     "com.amazon.redshift.jdbc42.Driver"
+              :subprotocol                   "redshift"
+              :subname                       "//testhost:5432/testdb?defaultRowFetchSize=14&TCPKeepAlive=FALSE"
+              :OpenSourceSubProtocolOverride false
+              :user                          "testuser"
+              :ssl                           true}
+             (sql-jdbc.conn/connection-details->spec :redshift
+               {:host               "testhost"
+                :port               5432
+                :db                 "testdb"
+                :user               "testuser"
+                :additional-options "TCPKeepAlive=FALSE"}))))))

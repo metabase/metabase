@@ -1,12 +1,11 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover, setupSMTP } from "__support__/e2e/cypress";
 
 describe.skip("issue 18009", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
 
-    cy.request("DELETE", "http://localhost:80/email/all");
-    setUpEmail();
+    setupSMTP();
 
     cy.signIn("nodata");
   });
@@ -39,14 +38,3 @@ describe.skip("issue 18009", () => {
     });
   });
 });
-
-function setUpEmail() {
-  cy.request("PUT", "/api/setting", {
-    "email-smtp-host": "localhost",
-    "email-smtp-port": "25",
-    "email-smtp-username": "admin",
-    "email-smtp-password": "admin",
-    "email-smtp-security": "none",
-    "email-from-address": "mailer@metabase.test",
-  });
-}

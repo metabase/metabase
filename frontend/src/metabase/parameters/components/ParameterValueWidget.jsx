@@ -257,9 +257,12 @@ function getFields(metadata, parameter) {
   if (!metadata) {
     return [];
   }
-  return getFieldIds(parameter)
-    .map(id => metadata.field(id))
-    .filter(f => f != null);
+  return (
+    parameter.fields ??
+    getFieldIds(parameter)
+      .map(id => metadata.field(id))
+      .filter(f => f != null)
+  );
 }
 
 function getFieldIds(parameter) {

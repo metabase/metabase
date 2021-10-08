@@ -21,6 +21,7 @@ const propTypes = {
   settings: PropTypes.shape({
     x: PropTypes.object,
     y: PropTypes.object,
+    colors: PropTypes.object,
   }),
   labels: PropTypes.shape({
     left: PropTypes.string,
@@ -53,6 +54,7 @@ const layout = {
 };
 
 const TimeSeriesLineChart = ({ data, accessors, settings, labels }) => {
+  const colors = settings?.colors;
   const yTickWidth = getYTickWidth(data, accessors, settings);
   const yLabelOffset = yTickWidth + layout.labelPadding;
   const xMin = yLabelOffset + layout.font.size * 1.5;
@@ -61,6 +63,7 @@ const TimeSeriesLineChart = ({ data, accessors, settings, labels }) => {
   const innerWidth = xMax - xMin;
   const leftLabel = labels?.left;
   const bottomLabel = labels?.bottom;
+  const palette = { ...layout.colors, ...colors };
 
   const xScale = scaleTime({
     domain: [
@@ -86,7 +89,7 @@ const TimeSeriesLineChart = ({ data, accessors, settings, labels }) => {
       />
       <LinePath
         data={data}
-        stroke={layout.colors.brand}
+        stroke={palette.brand}
         strokeWidth={layout.strokeWidth}
         x={d => xScale(accessors.x(d))}
         y={d => yScale(accessors.y(d))}
@@ -106,8 +109,8 @@ const TimeSeriesLineChart = ({ data, accessors, settings, labels }) => {
         top={yMax}
         label={bottomLabel}
         numTicks={layout.numTicks}
-        stroke={layout.colors.textLight}
-        tickStroke={layout.colors.textLight}
+        stroke={palette.textLight}
+        tickStroke={palette.textLight}
         tickFormat={value => formatDate(value, settings?.x)}
         tickLabelProps={() => getXTickLabelProps(layout)}
       />

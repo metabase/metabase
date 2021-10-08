@@ -21,6 +21,7 @@ const propTypes = {
   settings: PropTypes.shape({
     x: PropTypes.object,
     y: PropTypes.object,
+    colors: PropTypes.object,
   }),
   labels: PropTypes.shape({
     left: PropTypes.string,
@@ -53,6 +54,7 @@ const layout = {
 };
 
 const TimeSeriesBarChart = ({ data, accessors, settings, labels }) => {
+  const colors = settings?.colors;
   const yTickWidth = getYTickWidth(data, accessors, settings);
   const yLabelOffset = yTickWidth + layout.labelPadding;
   const xMin = yLabelOffset + layout.font.size * 1.5;
@@ -62,6 +64,7 @@ const TimeSeriesBarChart = ({ data, accessors, settings, labels }) => {
   const innerHeight = yMax - layout.margin.top;
   const leftLabel = labels?.left;
   const bottomLabel = labels?.bottom;
+  const palette = { ...layout.colors, ...colors };
 
   const xScale = scaleBand({
     domain: data.map(accessors.x),
@@ -82,7 +85,7 @@ const TimeSeriesBarChart = ({ data, accessors, settings, labels }) => {
     const x = xScale(accessors.x(d));
     const y = yMax - height;
 
-    return { x, y, width, height, fill: layout.colors.brand };
+    return { x, y, width, height, fill: palette.brand };
   };
 
   return (
@@ -111,8 +114,8 @@ const TimeSeriesBarChart = ({ data, accessors, settings, labels }) => {
         top={yMax}
         label={bottomLabel}
         numTicks={layout.numTicks}
-        stroke={layout.colors.textLight}
-        tickStroke={layout.colors.textLight}
+        stroke={palette.textLight}
+        tickStroke={palette.textLight}
         tickFormat={value => formatDate(value, settings?.x)}
         tickLabelProps={() => getXTickLabelProps(layout)}
       />

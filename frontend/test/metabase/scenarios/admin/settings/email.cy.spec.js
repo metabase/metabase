@@ -1,4 +1,4 @@
-import { restore, setupDummySMTP } from "__support__/e2e/cypress";
+import { restore, setupSMTP } from "__support__/e2e/cypress";
 
 describe("scenarios > admin > settings > email settings", () => {
   beforeEach(() => {
@@ -50,16 +50,8 @@ describe("scenarios > admin > settings > email settings", () => {
   });
 
   it("should send a test email for a valid SMTP configuration", () => {
-    // We must clear maildev inbox before each run - this will be extracted and automated
-    cy.request("DELETE", "http://localhost:80/email/all");
-    cy.request("PUT", "/api/setting", {
-      "email-smtp-host": "localhost",
-      "email-smtp-port": "25",
-      "email-smtp-username": "admin",
-      "email-smtp-password": "admin",
-      "email-smtp-security": "none",
-      "email-from-address": "mailer@metabase.test",
-    });
+    setupSMTP();
+
     cy.visit("/admin/settings/email");
     cy.findByText("Send test email").click();
     cy.findByText("Sent!");
@@ -79,7 +71,7 @@ describe("scenarios > admin > settings > email settings", () => {
 
   it("should not offer to save email changes when there aren't any (metabase#14749)", () => {
     // Make sure some settings are already there
-    setupDummySMTP();
+    setupSMTP();
 
     cy.visit("/admin/settings/email");
     cy.findByText("Send test email").scrollIntoView();

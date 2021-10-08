@@ -34,6 +34,7 @@ describe("QuestionActivityTimeline", () => {
     beforeEach(() => {
       question = {
         canWrite: () => false,
+        getModerationReviews: () => [],
       };
 
       render(
@@ -54,6 +55,7 @@ describe("QuestionActivityTimeline", () => {
     beforeEach(() => {
       question = {
         canWrite: () => true,
+        getModerationReviews: () => [],
       };
 
       render(

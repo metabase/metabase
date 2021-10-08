@@ -519,6 +519,13 @@
       (dissoc :parameterMapping)
       (set/rename-keys db->norm-click-behavior-keys)))
 
+(defn- db->norm-time-style
+  "Converts the deprecated k:mm format to HH:mm (#18112)"
+  [v]
+  (if (= v "k:mm")
+    "HH:mm"
+    v))
+
 (defn- db->norm-table-columns [v]
   (-> v
     (assoc ::table-columns (mapv (fn [tbl-col]
@@ -531,7 +538,12 @@
   `norm->db-column-settings-entry`."
   [m k v]
   (case k
-    :click_behavior (assoc m ::click-behavior (db->norm-click-behavior v))
+    :click_behavior
+    (assoc m ::click-behavior (db->norm-click-behavior v))
+
+    :time_style
+    (assoc m ::time-style (db->norm-time-style v))
+
     (assoc m (db->norm-column-settings-keys k) v)))
 
 (defn db->norm-column-settings-entries

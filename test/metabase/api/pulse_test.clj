@@ -848,25 +848,30 @@
     (mt/with-temp Card [card {:dataset_query (mt/mbql-query venues)}]
       (with-redefs [pulse-channel/validate-email-domains (fn [& _]
                                                            (throw (ex-info "Nope!" {:status-code 403})))]
-        (let [pulse-name (mt/random-name)]
-          (mt/with-fake-inbox
-            (is (= "Nope!"
-                   (mt/user-http-request
-                    :rasta :post 403 "pulse/test"
-                    {:name          pulse-name
-                     :cards         [{:id                (u/the-id card)
-                                      :include_csv       false
-                                      :include_xls       false
-                                      :dashboard_card_id nil}]
-                     :channels      [{:enabled       true
-                                      :channel_type  "email"
-                                      :schedule_type "daily"
-                                      :schedule_hour 12
-                                      :schedule_day  nil
-                                      :details       {:emails ["test@metabase.com"]}}]
-                     :skip_if_empty false})))
-            (is (not (contains? (set (keys (mt/regex-email-bodies (re-pattern pulse-name))))
-                                "test@metabase.com")))))))))
+        ;; make sure we validate raw emails whether they're part of `:details` or part of `:recipients` -- we
+        ;; technically allow either right now
+        (doseq [channel [{:details {:emails ["test@metabase.com"]}}
+                         {:recipients [{:email "test@metabase.com"}]
+                          :details    {}}]
+                :let    [pulse-name   (mt/random-name)
+                         request-body {:name          pulse-name
+                                       :cards         [{:id                (u/the-id card)
+                                                        :include_csv       false
+                                                        :include_xls       false
+                                                        :dashboard_card_id nil}]
+                                       :channels      [(assoc channel
+                                                              :enabled       true
+                                                              :channel_type  "email"
+                                                              :schedule_type "daily"
+                                                              :schedule_hour 12
+                                                              :schedule_day  nil)]
+                                       :skip_if_empty false}]]
+          (testing (format "\nchannel =\n%s" (u/pprint-to-str channel))
+            (mt/with-fake-inbox
+              (is (= "Nope!"
+                     (mt/user-http-request :rasta :post 403 "pulse/test" request-body)))
+              (is (not (contains? (set (keys (mt/regex-email-bodies (re-pattern pulse-name))))
+                                  "test@metabase.com"))))))))))
 
 ;; This test follows a flow that the user/UI would follow by first creating a pulse, then making a small change to
 ;; that pulse and testing it. The primary purpose of this test is to ensure tha the pulse/test endpoint accepts data

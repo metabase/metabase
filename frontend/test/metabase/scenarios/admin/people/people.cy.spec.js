@@ -3,7 +3,7 @@ import {
   restore,
   modal,
   popover,
-  setupDummySMTP,
+  setupSMTP,
   describeWithToken,
 } from "__support__/e2e/cypress";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
@@ -182,7 +182,7 @@ describe("scenarios > admin > people", () => {
       const { first_name, last_name } = normal;
       const FULL_NAME = `${first_name} ${last_name}`;
 
-      setupDummySMTP();
+      setupSMTP();
 
       cy.visit("/admin/people");
       showUserOptions(FULL_NAME);

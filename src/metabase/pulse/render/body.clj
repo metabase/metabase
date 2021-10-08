@@ -17,9 +17,9 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [schema.core :as s])
-  (:import (java.text DecimalFormat DecimalFormatSymbols)))
+  (:import [java.text DecimalFormat DecimalFormatSymbols]))
 
-(def error-rendered-info
+(def ^:private error-rendered-info
   "Default rendered-info map when there is an error displaying a card. Is a delay due to the call to `trs`."
   (delay {:attachments
           nil
@@ -289,11 +289,21 @@
                 (u/update-when :date_style update-date-style (:unit col))))]
     (let [x-col-settings (settings x-col)
           y-col-settings (settings y-col)]
-      (cond-> {}
+      (cond-> {:colors (public-settings/application-colors)}
         x-col-settings
         (assoc :x (for-js x-col-settings x-col))
         y-col-settings
         (assoc :y (for-js y-col-settings y-col))))))
+
+(defn- x-and-y-axis-label-info
+  "Generate the X and Y axis labels passed in as the `labels` argument
+  to [[metabase.pulse.render.js-svg/timelineseries-bar]] and other similar functions for rendering charts with X and Y
+  axes. Respects custom display names in `viz-settings`; otherwise uses `x-col` and `y-col` display names."
+  [x-col y-col viz-settings]
+  {:bottom (or (:graph.x_axis.title_text viz-settings)
+               (:display_name x-col))
+   :left   (or (:graph.y_axis.title_text viz-settings)
+               (:display_name y-col))})
 
 (s/defmethod render :bar :- common/RenderedPulseCard
   [_ render-type _timezone-id :- (s/maybe s/Str) card {:keys [cols rows viz-settings] :as data}]
@@ -301,8 +311,7 @@
         rows                        (map (juxt x-axis-rowfn y-axis-rowfn)
                                          (common/non-nil-rows x-axis-rowfn y-axis-rowfn rows))
         [x-col y-col]               ((juxt x-axis-rowfn y-axis-rowfn) cols)
-        labels                      {:bottom (:display_name x-col)
-                                     :left   (:display_name y-col)}
+        labels                      (x-and-y-axis-label-info x-col y-col viz-settings)
         image-bundle                (image-bundle/make-image-bundle
                                      render-type
                                      (if (isa? (-> cols x-axis-rowfn :effective_type) :type/Temporal)
@@ -446,12 +455,14 @@
         labels         (datetime/format-temporal-string-pair timezone-id
                                                              (map x-axis-rowfn last-rows)
                                                              (x-axis-rowfn cols))
+        render-fn      (if (isa? (-> cols x-axis-rowfn :effective_type) :type/Temporal)
+                         js-svg/timelineseries-line
+                         js-svg/categorical-line)
         image-bundle   (image-bundle/make-image-bundle
                         render-type
-                        (js-svg/timelineseries-line (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)
-                                                    {:bottom (:display_name x-col)
-                                                     :left   (:display_name y-col)}
-                                                    (->js-viz x-col y-col viz-settings)))]
+                        (render-fn (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)
+                                   (x-and-y-axis-label-info x-col y-col viz-settings)
+                                   (->js-viz x-col y-col viz-settings)))]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))

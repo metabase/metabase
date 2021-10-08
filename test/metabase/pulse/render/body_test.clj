@@ -502,3 +502,14 @@
     (is (= "1,234,543 21%" (body/format-percentage 12345.4321 " ")))
     (is (= "1,234,543.21%" (body/format-percentage 12345.4321 nil)))
     (is (= "1,234,543.21%" (body/format-percentage 12345.4321 "")))))
+
+(deftest x-and-y-axis-label-info-test
+  (let [x-col {:display_name "X col"}
+        y-col {:display_name "Y col"}]
+    (testing "no custom viz settings"
+      (is (= {:bottom "X col", :left "Y col"}
+             (#'body/x-and-y-axis-label-info x-col y-col nil))))
+    (testing "w/ custom viz settings"
+      (is (= {:bottom "X custom", :left "Y custom"}
+             (#'body/x-and-y-axis-label-info x-col y-col {:graph.x_axis.title_text "X custom"
+                                                          :graph.y_axis.title_text "Y custom"}))))))

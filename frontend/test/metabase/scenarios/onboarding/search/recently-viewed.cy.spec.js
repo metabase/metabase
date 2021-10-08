@@ -15,6 +15,7 @@ describe(`search > recently viewed`, () => {
 
     // "Orders in a dashboard" dashboard
     cy.visit("/dashboard/1");
+    cy.findByText("Product ID");
 
     // inside the "Orders in a dashboard" dashboard, the order is queried again,
     // which elicits a ViewLog entry
