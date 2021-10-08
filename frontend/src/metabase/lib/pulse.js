@@ -1,4 +1,5 @@
 import _ from "underscore";
+import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import {
   hasDefaultParameterValue,
@@ -81,6 +82,12 @@ function pulseChannelsAreValid(pulse, channelSpecs) {
 export function recipientIsValid(recipient) {
   const domains = MetabaseSettings.subscriptionAllowedDomains();
   return recipient.id != null || domains.includes(recipient.email);
+}
+
+export function getRecipientErrorMessage() {
+  const domains = MetabaseSettings.subscriptionAllowedDomains();
+  const domainsList = domains.join(", ");
+  return t`You are only allowed to use email addresses ending in ${domainsList}`;
 }
 
 export function pulseIsValid(pulse, channelSpecs) {
