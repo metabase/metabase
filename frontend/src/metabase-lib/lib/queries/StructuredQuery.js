@@ -3,6 +3,7 @@
  */
 
 import * as Q from "metabase/lib/query/query";
+import { getUniqueExpressionName } from "metabase/lib/query/expression";
 import {
   format as formatExpression,
   DISPLAY_QUOTES,
@@ -999,23 +1000,32 @@ export default class StructuredQuery extends AtomicQuery {
   }
 
   addExpression(name, expression) {
-    let query = this._updateQuery(Q.addExpression, arguments);
+    const uniqueName = getUniqueExpressionName(this.expressions(), name);
+    let query = this._updateQuery(Q.addExpression, [uniqueName, expression]);
     // extra logic for adding expressions in fields clause
     // TODO: push into query/expression?
     if (query.hasFields() && query.isRaw()) {
-      query = query.addField(["expression", name]);
+      query = query.addField(["expression", uniqueName]);
     }
     return query;
   }
 
   updateExpression(name, expression, oldName) {
-    let query = this._updateQuery(Q.updateExpression, arguments);
+    const isRename = oldName && oldName !== name;
+    const uniqueName = isRename
+      ? getUniqueExpressionName(this.expressions(), name)
+      : name;
+    let query = this._updateQuery(Q.updateExpression, [
+      uniqueName,
+      expression,
+      oldName,
+    ]);
     // extra logic for renaming expressions in fields clause
     // TODO: push into query/expression?
-    if (name !== oldName) {
+    if (isRename) {
       const index = query._indexOfField(["expression", oldName]);
       if (index >= 0) {
-        query = query.updateField(index, ["expression", name]);
+        query = query.updateField(index, ["expression", uniqueName]);
       }
     }
     return query;
