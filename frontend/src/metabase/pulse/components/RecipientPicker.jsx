@@ -4,11 +4,10 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import { getRecipientErrorMessage, recipientIsValid } from "metabase/lib/pulse";
 import MetabaseAnalytics from "metabase/lib/analytics";
+import MetabaseUtils from "metabase/lib/utils";
 import TokenField from "metabase/components/TokenField";
 import UserAvatar from "metabase/components/UserAvatar";
 import { ErrorMessage } from "./RecipientPicker.styled";
-
-const VALID_EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default class RecipientPicker extends Component {
   static propTypes = {
@@ -91,7 +90,7 @@ export default class RecipientPicker extends Component {
             }
             validateValue={value => recipientIsValid(value)}
             parseFreeformValue={inputValue => {
-              if (VALID_EMAIL_REGEX.test(inputValue)) {
+              if (MetabaseUtils.isEmail(inputValue)) {
                 return { email: inputValue };
               }
             }}

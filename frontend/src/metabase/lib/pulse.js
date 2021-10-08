@@ -1,6 +1,7 @@
 import _ from "underscore";
 import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
+import MetabaseUtils from "metabase/lib/utils";
 import {
   hasDefaultParameterValue,
   hasParameterValue,
@@ -80,14 +81,20 @@ function pulseChannelsAreValid(pulse, channelSpecs) {
 }
 
 export function recipientIsValid(recipient) {
-  const domains = MetabaseSettings.subscriptionAllowedDomains();
-  return recipient.id != null || domains.includes(recipient.email);
+  if (recipient.id) {
+    return true;
+  }
+
+  const recipientDomain = MetabaseUtils.getEmailDomain(recipient.email);
+  const allowedDomains = MetabaseSettings.subscriptionAllowedDomains();
+
+  return allowedDomains.includes(recipientDomain);
 }
 
 export function getRecipientErrorMessage() {
-  const domains = MetabaseSettings.subscriptionAllowedDomains();
-  const domainsList = domains.join(", ");
-  return t`You are only allowed to use email addresses ending in ${domainsList}`;
+  const allowedDomains = MetabaseSettings.subscriptionAllowedDomains();
+  const allowedDomainList = allowedDomains.join(", ");
+  return t`You are only allowed to use email addresses ending in ${allowedDomainList}`;
 }
 
 export function pulseIsValid(pulse, channelSpecs) {
