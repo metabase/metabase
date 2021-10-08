@@ -1,4 +1,5 @@
 import _ from "underscore";
+import MetabaseSettings from "metabase/lib/settings";
 import {
   hasDefaultParameterValue,
   hasParameterValue,
@@ -22,6 +23,10 @@ export function channelIsValid(channel, channelSpec) {
     // default from formInput is an empty array, not a null array
     // check for both
     if (!channel.recipients || channel.recipients.length < 1) {
+      return false;
+    }
+
+    if (!channel.recipients.every(recipientIsValid)) {
       return false;
     }
   }
@@ -71,6 +76,11 @@ function pulseChannelsAreValid(pulse, channelSpecs) {
       channelIsValid(c, channelSpecs && channelSpecs[c.channel_type]),
     ).length > 0 || false
   );
+}
+
+export function recipientIsValid(recipient) {
+  const domains = MetabaseSettings.subscriptionAllowedDomains();
+  return recipient.id != null || domains.includes(recipient.email);
 }
 
 export function pulseIsValid(pulse, channelSpecs) {
