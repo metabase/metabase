@@ -16,8 +16,6 @@ const {
   ORDERS_ID,
   PRODUCTS,
   PRODUCTS_ID,
-  PEOPLE,
-  PEOPLE_ID,
   REVIEWS,
   REVIEWS_ID,
 } = SAMPLE_DATASET;
@@ -531,26 +529,6 @@ describe("scenarios > question > filter", () => {
       .click()
       .type("m");
     popover().contains(/Sum of Total/i);
-  });
-
-  it("should correctly filter custom column by 'Not equal to' (metabase#14843)", () => {
-    const CC_NAME = "City Length";
-
-    cy.server();
-    cy.route("POST", "/api/card/*/query").as("cardQuery");
-
-    cy.createQuestion({
-      name: "14843",
-      query: {
-        "source-table": PEOPLE_ID,
-        expressions: { [CC_NAME]: ["length", ["field", PEOPLE.CITY, null]] },
-        filter: ["!=", ["expression", CC_NAME], 3],
-      },
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.visit(`/question/${QUESTION_ID}`);
-    });
-    cy.wait("@cardQuery");
-    cy.findByText("Rye").should("not.exist");
   });
 
   it("should filter using IsNull() and IsEmpty()", () => {
