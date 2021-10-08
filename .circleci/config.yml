@@ -550,6 +550,13 @@ jobs:
             else
                echo '' > .CACHE-PREFIX
             fi
+      - run:
+          name: 'Check for branch name to bust caches if it is a release branch'
+          command: |
+            if [[ $CIRCLE_BRANCH == release* || $CIRCLE_BRANCH == master  ]]; then
+              echo 'This is a release or master branch; using cache-busting prefix'
+                echo '<< pipeline.id >>' > .CACHE-PREFIX
+            fi
       - run-yarn-command:
           command-name: Create static visualization js bundle
           command: build-static-viz
@@ -1257,7 +1264,25 @@ workflows:
           matrix:
             parameters:
               edition: ["ee", "oss"]
-              folder: ["admin", "binning", "collections", "dashboard", "dashboard-filters", "dashboard-filters-sql", "moderation", "native", "native-filters", "onboarding", "permissions", "question", "sharing", "smoketest", "visualizations"]
+              folder:
+                [
+                  "admin",
+                  "binning",
+                  "collections",
+                  "custom-column",
+                  "dashboard",
+                  "dashboard-filters",
+                  "dashboard-filters-sql",
+                  "moderation",
+                  "native",
+                  "native-filters",
+                  "onboarding",
+                  "permissions",
+                  "question",
+                  "sharing",
+                  "smoketest",
+                  "visualizations",
+                ]
           name: e2e-tests-<< matrix.folder >>-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>

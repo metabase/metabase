@@ -11,19 +11,23 @@ const BORDER_RADIUS = {
   md: "8px",
 };
 
-const COLOR_BY_VARIANT = {
+const BORDER_COLOR = {
   default: () => color("brand"),
   admin: () => color("accent7"),
+  transparent: () => "transparent",
 };
 
 export const Input = styled.input`
-  border: 1px solid ${color("border")};
+  border: 1px solid ${props =>
+    props.colorScheme === "transparent" ? "transparent" : color("border")};
   outline: none;
   width: 100%;
   font-size: 1.12em;
   font-weight: 400;
   color: ${color("text-dark")};
   min-width: 200px;
+  background-color: ${props =>
+    props.colorScheme === "transparent" ? "transparent" : color("white")};
 
   ${({ borderRadius, padding }) => css`
     border-radius: ${BORDER_RADIUS[borderRadius]};
@@ -45,7 +49,7 @@ export const Input = styled.input`
       : null}
 
   &:focus {
-    border-color: ${props => COLOR_BY_VARIANT[props.colorScheme]()};
+    border-color: ${props => BORDER_COLOR[props.colorScheme]()};
   }
 `;
 

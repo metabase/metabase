@@ -4,8 +4,8 @@
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$": "<rootDir>/frontend/test/__mocks__/fileMock.js",
     "^promise-loader\\?global\\!metabase\\/lib\\/ga-metadata$": "<rootDir>/frontend/src/metabase/lib/ga-metadata.js"
   },
-  "testPathIgnorePatterns": ["<rootDir>/frontend/test/.*/.*.tz.unit.spec.js"],
-  "testMatch": ["<rootDir>/**/*.unit.spec.js"],
+  "testPathIgnorePatterns": ["<rootDir>/frontend/test/.*/.*.tz.unit.spec.{js,ts}"],
+  "testMatch": ["<rootDir>/**/*.unit.spec.js", "<rootDir>/**/*.unit.spec.{js,ts}"],
   "modulePaths": [
     "<rootDir>/frontend/test",
     "<rootDir>/frontend/src",
@@ -25,10 +25,8 @@
   "coverageDirectory": "./coverage",
   "coverageReporters": ["text", "html", "lcov"],
   "collectCoverageFrom": [
-    "frontend/src/**/*.js",
-    "frontend/src/**/*.jsx",
-    "enterprise/frontend/src/**/*.js",
-    "enterprise/frontend/src/**/*.jsx"
+    "frontend/src/**/*.{js,jsx,ts,tsx}",
+    "enterprise/frontend/src/**/*.{js,jsx,ts,tsx}"
   ],
   "coveragePathIgnorePatterns": [
     "/node_modules/",
@@ -36,7 +34,7 @@
     "/frontend/src/cljs/",
     "/frontend/src/metabase/internal/",
     "/frontend/test/",
-    ".styled.jsx",
+    ".styled.{jsx,tsx}",
     ".info.js"
   ],
   "testEnvironment": "jsdom",

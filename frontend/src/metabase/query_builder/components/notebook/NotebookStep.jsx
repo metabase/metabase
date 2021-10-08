@@ -126,20 +126,24 @@ export default class NotebookStep extends React.Component {
 
     const actions = [];
     actions.push(
-      ...step.actions.map(action => ({
-        priority: (STEP_UI[action.type] || {}).priority,
-        button: (
-          <ActionButton
-            mr={isLastStep ? 2 : 1}
-            mt={isLastStep ? 2 : null}
-            color={color}
-            large={largeActionButtons}
-            {...(STEP_UI[action.type] || {})}
-            key={`actionButton_${STEP_UI[action.type].title}`}
-            onClick={() => action.action({ query: step.query, openStep })}
-          />
-        ),
-      })),
+      ...step.actions.map(action => {
+        const stepUi = STEP_UI[action.type];
+
+        return {
+          priority: stepUi.priority,
+          button: (
+            <ActionButton
+              mr={isLastStep ? 2 : 1}
+              mt={isLastStep ? 2 : null}
+              color={stepUi.getColor()}
+              large={largeActionButtons}
+              {...stepUi}
+              key={`actionButton_${stepUi.title}`}
+              onClick={() => action.action({ query: step.query, openStep })}
+            />
+          ),
+        };
+      }),
     );
 
     actions.sort((a, b) => (b.priority || 0) - (a.priority || 0));
