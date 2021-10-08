@@ -27,7 +27,7 @@ export type DatabaseNativePermission = "write" | "read";
 export type Database = {
   id: DatabaseId,
   name: string,
-  description: ?string,
+  description?: string | null,
 
   tables: Table[],
 
@@ -38,8 +38,8 @@ export type Database = {
   is_sample: boolean,
   native_permissions: DatabaseNativePermission,
 
-  caveats: ?string,
-  points_of_interest: ?string,
+  caveats?: string | null,
+  points_of_interest?: string | null,
 
   created_at: ISO8601Time,
   updated_at: ISO8601Time,

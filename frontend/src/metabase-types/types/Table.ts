@@ -15,7 +15,7 @@ export type Table = {
   id: TableId,
   db_id: DatabaseId,
 
-  schema: ?SchemaName,
+  schema?: SchemaName | null,
   name: string,
   display_name: string,
 
@@ -32,8 +32,8 @@ export type Table = {
 
   rows: number,
 
-  caveats: ?string,
-  points_of_interest: ?string,
+  caveats?: string | null,
+  points_of_interest?: string | null,
   show_in_getting_started: boolean,
 
   updated_at: ISO8601Time,

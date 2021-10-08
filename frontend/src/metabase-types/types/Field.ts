@@ -26,17 +26,17 @@ export type Field = {
   visibility_type: FieldVisibilityType,
   preview_display: boolean,
   position: number,
-  parent_id: ?FieldId,
+  parent_id?: FieldId | null,
 
   table_id: TableId,
 
-  fk_target_field_id: ?FieldId,
+  fk_target_field_id?: FieldId | null,
 
-  max_value: ?number,
-  min_value: ?number,
+  max_value?: number | null,
+  min_value?: number | null,
 
-  caveats: ?string,
-  points_of_interest: ?string,
+  caveats?: string | null,
+  points_of_interest?: string | null,
 
   last_analyzed: ISO8601Time,
   created_at: ISO8601Time,

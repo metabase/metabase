@@ -57,11 +57,11 @@ export type ParameterInstance = {
 };
 
 export type ParameterMappingUIOption = ParameterMappingOption & {
-  icon: ?string,
+  icon?: string | null,
   sectionName: string,
   isForeign?: boolean,
 };
 
 export type ParameterValues = {
-  [id: ParameterId]: ParameterValue,
+  [id in ParameterId]: ParameterValue;
 };

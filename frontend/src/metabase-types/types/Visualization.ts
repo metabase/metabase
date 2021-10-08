@@ -21,7 +21,7 @@ export type HoverObject = {
   index?: number,
   axisIndex?: number,
   data?: HoverData,
-  element?: ?HTMLElement,
+  element?: HTMLElement,
   event?: MouseEvent,
 };
 
@@ -32,7 +32,7 @@ export type DimensionValue = {
 
 export type ClickObject = {
   value?: Value,
-  column?: ?Column,
+  column?: Column,
   dimensions?: DimensionValue[],
   event?: MouseEvent,
   element?: HTMLElement,
@@ -49,9 +49,9 @@ export type ClickAction = {
   title?: any, // React Element
   icon?: string,
   popover?: (props: ClickActionPopoverProps) => any, // React Element
-  question?: () => ?Question,
+  question?: () => Question | void,
   url?: () => string,
-  action?: () => ?ReduxAction,
+  action?: () => ReduxAction | void,
   section?: string,
   name?: string,
   default?: boolean,
@@ -63,9 +63,9 @@ export type ClickActionProps = {
   clicked?: ClickObject,
 };
 
-export type OnChangeCardAndRun = ({
+export type OnChangeCardAndRun = (data: {
   nextCard: Card,
-  previousCard?: ?Card,
+  previousCard?: Card,
 }) => void;
 
 export type ClickActionPopoverProps = {
@@ -86,10 +86,10 @@ export type VisualizationProps = {
   settings: VisualizationSettings,
 
   className?: string,
-  gridSize: ?{
+  gridSize?: {
     width: number,
     height: number,
-  },
+  } | null,
 
   width: number,
   height: number,
@@ -100,19 +100,19 @@ export type VisualizationProps = {
   isSettings: boolean,
   actionButtons: Node,
 
-  onRender: ({
+  onRender: (data: {
     yAxisSplit?: number[][],
     warnings?: string[],
   }) => void,
-  onRenderError: (error: ?Error) => void,
+  onRenderError: (error?: Error | null) => void,
 
-  hovered: ?HoverObject,
-  onHoverChange: (?HoverObject) => void,
-  onVisualizationClick: (?ClickObject) => void,
-  visualizationIsClickable: (?ClickObject) => boolean,
+  hovered?: HoverObject | null,
+  onHoverChange: (data?: HoverObject) => void,
+  onVisualizationClick: (data?: ClickObject) => void,
+  visualizationIsClickable: (data?: ClickObject) => boolean,
   onChangeCardAndRun: OnChangeCardAndRun,
 
-  onUpdateVisualizationSettings: ({ [key: string]: any }) => void,
+  onUpdateVisualizationSettings: (data: { [key: string]: any }) => void,
 
   onAddSeries?: Function,
   onEditSeries?: Function,
