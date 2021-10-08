@@ -533,26 +533,6 @@ describe("scenarios > question > filter", () => {
     popover().contains(/Sum of Total/i);
   });
 
-  it("should correctly filter custom column by 'Not equal to' (metabase#14843)", () => {
-    const CC_NAME = "City Length";
-
-    cy.server();
-    cy.route("POST", "/api/card/*/query").as("cardQuery");
-
-    cy.createQuestion({
-      name: "14843",
-      query: {
-        "source-table": PEOPLE_ID,
-        expressions: { [CC_NAME]: ["length", ["field", PEOPLE.CITY, null]] },
-        filter: ["!=", ["expression", CC_NAME], 3],
-      },
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.visit(`/question/${QUESTION_ID}`);
-    });
-    cy.wait("@cardQuery");
-    cy.findByText("Rye").should("not.exist");
-  });
-
   it("should filter using IsNull() and IsEmpty()", () => {
     openReviewsTable({ mode: "notebook" });
     cy.findByText("Filter").click();
