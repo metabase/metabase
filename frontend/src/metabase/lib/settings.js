@@ -251,7 +251,7 @@ class Settings {
 
   subscriptionAllowedDomains() {
     const setting = this.get("subscription-allowed-domains") ?? "";
-    return setting.split(",");
+    return setting ? setting.split(",") : [];
   }
 }
 
