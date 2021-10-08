@@ -62,6 +62,7 @@ type Props = {
   onFocus?: () => void,
   onBlur?: () => void,
 
+  validateValue: (value: Value) => boolean,
   updateOnInputChange?: boolean,
   updateOnInputBlur?: boolean,
   // if provided, parseFreeformValue parses the input string into a value,
@@ -121,6 +122,7 @@ export default class TokenField extends Component {
     valueRenderer: value => <span>{value}</span>,
     optionRenderer: option => <span>{option}</span>,
     layoutRenderer: props => <DefaultTokenFieldLayout {...props} />,
+    validateValue: () => true,
 
     color: "brand",
 
@@ -503,6 +505,7 @@ export default class TokenField extends Component {
       placeholder,
       multi,
 
+      validateValue,
       parseFreeformValue,
       updateOnInputChange,
 
@@ -570,7 +573,10 @@ export default class TokenField extends Component {
         {value.map((v, index) => (
           <li
             key={index}
-            className={cx("flex align-center mr1 mb1 px1 rounded bg-medium")}
+            className={cx(
+              "flex align-center mr1 mb1 px1 rounded bg-medium",
+              !validateValue(v) && "text-error",
+            )}
             style={{ paddingTop: "12px", paddingBottom: "12px" }}
           >
             <span
@@ -581,7 +587,10 @@ export default class TokenField extends Component {
             </span>
             {multi && (
               <a
-                className="text-medium flex align-center text-error-hover px1"
+                className={cx(
+                  "flex align-center text-error-hover px1",
+                  validateValue(v) ? "text-medium" : "text-error",
+                )}
                 onClick={e => {
                   e.preventDefault();
                   this.removeValue(v);

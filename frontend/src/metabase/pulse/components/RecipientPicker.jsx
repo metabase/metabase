@@ -2,11 +2,10 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-
+import { recipientIsValid } from "metabase/lib/pulse";
+import MetabaseAnalytics from "metabase/lib/analytics";
 import TokenField from "metabase/components/TokenField";
 import UserAvatar from "metabase/components/UserAvatar";
-
-import MetabaseAnalytics from "metabase/lib/analytics";
 
 const VALID_EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -86,6 +85,7 @@ export default class RecipientPicker extends Component {
               .toLowerCase()
               .indexOf(filterString.toLowerCase())
           }
+          validateValue={value => recipientIsValid(value)}
           parseFreeformValue={inputValue => {
             if (VALID_EMAIL_REGEX.test(inputValue)) {
               return { email: inputValue };
