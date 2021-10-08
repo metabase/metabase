@@ -23,8 +23,7 @@ import type {
 
 export type AugmentedParameterMapping = ParameterMapping & {
   dashcard_id: DashCardId,
-  overlapMax?: number,
-  mappingsWithValues?: number,
+  hasDisjointValueSets?: boolean,
   values: Array<string>,
 };
 

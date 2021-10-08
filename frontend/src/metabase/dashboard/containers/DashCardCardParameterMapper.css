@@ -18,6 +18,7 @@
 :local(.warn) {
   border-color: var(--color-accent3) !important;
   color: var(--color-error) !important;
+  background-color: var(--color-white);
 }
 
 :local(.disabled) {

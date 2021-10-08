@@ -273,95 +273,90 @@ export function isDashboardParameterWithoutMapping(parameter, dashboard) {
   return parameterExistsOnDashboard && !parameterHasMapping;
 }
 
+function getMappingTargetField(card, mapping, metadata) {
+  if (!card) {
+    return null;
+  }
+
+  const fieldId = getParameterTargetFieldId(mapping.target, card.dataset_query);
+  let field = metadata.field(fieldId);
+
+  if (!field) {
+    const rawField = _.findWhere(card.result_metadata, {
+      name: fieldId,
+    });
+    field = rawField && new Field(rawField, metadata);
+  }
+
+  return field;
+}
+
+function augmentMappingsWithValueMetadata(mappings) {
+  const mappingsGroupedByParameterId = _.groupBy(mappings, "parameter_id");
+
+  _.each(mappingsGroupedByParameterId, mappingsGroup => {
+    const mappingsWithValues = mappingsGroup
+      .map(mapping => [mapping, mapping.field?.fieldValues() ?? []])
+      .filter(([, values]) => values.length > 0);
+    const values = mappingsWithValues
+      .map(([, values]) => values)
+      .flat()
+      .map(value => (Array.isArray(value) ? value[0] : value));
+
+    const distinctValues = new Set(values);
+
+    const hasMultipleMappingsWithValues = mappingsWithValues.length > 1;
+    const hasDisjointValueSets =
+      hasMultipleMappingsWithValues && distinctValues.size === values.length;
+
+    mappingsWithValues.forEach(([mapping]) => {
+      mapping.hasDisjointValueSets = hasDisjointValueSets;
+    });
+  });
+
+  return mappings;
+}
+
+function getMappings(dashboard, metadata) {
+  const mappings = dashboard.ordered_cards
+    .map(dashcard => {
+      const cards = [dashcard.card].concat(dashcard.series);
+      return dashcard.parameter_mappings.map(mapping => {
+        const card = _.findWhere(cards, { id: mapping.card_id });
+        const field = getMappingTargetField(card, mapping, metadata);
+
+        return {
+          ...mapping,
+          parameter_id: mapping.parameter_id,
+          dashcard_id: dashcard.id,
+          card_id: mapping.card_id,
+          field_id: field?.id ?? field?.name,
+          field,
+        };
+      });
+    })
+    .flat();
+
+  return augmentMappingsWithValueMetadata(mappings);
+}
+
 export function getMappingsByParameter(metadata, dashboard) {
   if (!dashboard) {
     return {};
   }
 
-  let mappingsByParameter = {};
-  const mappings = [];
-  const countsByParameter = {};
-  for (const dashcard of dashboard.ordered_cards) {
-    const cards: Card[] = [dashcard.card].concat(dashcard.series);
-    for (const mapping of dashcard.parameter_mappings || []) {
-      const card = _.findWhere(cards, { id: mapping.card_id });
-      const fieldId =
-        card && getParameterTargetFieldId(mapping.target, card.dataset_query);
-      let field = metadata.field(fieldId);
+  const mappings = getMappings(dashboard, metadata);
+  const mappingsByParameterIdByDashcardIdByCardId = mappings.reduce(
+    (map, mapping) =>
+      setIn(
+        map,
+        [mapping.parameter_id, mapping.dashcard_id, mapping.card_id],
+        mapping,
+      ),
+    {},
+  );
 
-      if (!field) {
-        const rawField = _.findWhere(dashcard.card.result_metadata, {
-          name: fieldId,
-        });
-
-        field = rawField && new Field(rawField, metadata);
-      }
-
-      const values = field?.fieldValues() || [];
-      if (values.length) {
-        countsByParameter[mapping.parameter_id] =
-          countsByParameter[mapping.parameter_id] || {};
-      }
-      for (const value of values) {
-        countsByParameter[mapping.parameter_id][value] =
-          (countsByParameter[mapping.parameter_id][value] || 0) + 1;
-      }
-
-      const augmentedMapping = {
-        ...mapping,
-        parameter_id: mapping.parameter_id,
-        dashcard_id: dashcard.id,
-        card_id: mapping.card_id,
-        field_id: fieldId,
-        field,
-        values,
-      };
-      mappingsByParameter = setIn(
-        mappingsByParameter,
-        [mapping.parameter_id, dashcard.id, mapping.card_id],
-        augmentedMapping,
-      );
-      mappings.push(augmentedMapping);
-    }
-  }
-  const mappingsWithValuesByParameter = {};
-  // update max values overlap for each mapping
-  for (const mapping of mappings) {
-    if (mapping.values && mapping.values.length > 0) {
-      const overlapMax = Math.max(
-        ...mapping.values.map(
-          value => countsByParameter[mapping.parameter_id][value],
-        ),
-      );
-      mappingsByParameter = setIn(
-        mappingsByParameter,
-        [
-          mapping.parameter_id,
-          mapping.dashcard_id,
-          mapping.card_id,
-          "overlapMax",
-        ],
-        overlapMax,
-      );
-      mappingsWithValuesByParameter[mapping.parameter_id] =
-        (mappingsWithValuesByParameter[mapping.parameter_id] || 0) + 1;
-    }
-  }
-  // update count of mappings with values
-  for (const mapping of mappings) {
-    mappingsByParameter = setIn(
-      mappingsByParameter,
-      [
-        mapping.parameter_id,
-        mapping.dashcard_id,
-        mapping.card_id,
-        "mappingsWithValues",
-      ],
-      mappingsWithValuesByParameter[mapping.parameter_id] || 0,
-    );
-  }
-
-  return mappingsByParameter;
+  return mappingsByParameterIdByDashcardIdByCardId;
 }
 
 export function getDashboardParametersWithFieldMetadata(

@@ -408,6 +408,117 @@ describe("meta/Dashboard", () => {
       dashboard = DASHBOARD_WITH_BOOLEAN_PARAMETER;
     });
 
+    it("should add a hasDisjointValueSets property", () => {
+      metadata.fields[120].fieldValues = () => [
+        ["a", undefined],
+        ["b", undefined],
+      ];
+      metadata.fields[134].fieldValues = () => [["c", undefined]];
+
+      expect(getMappingsByParameter(metadata, dashboard)).toEqual({
+        parameter1: {
+          "81": {
+            "56": expect.objectContaining({
+              hasDisjointValueSets: true,
+            }),
+          },
+          "86": {
+            "59": expect.objectContaining({
+              hasDisjointValueSets: true,
+            }),
+          },
+          "87": {
+            "62": expect.not.objectContaining({
+              hasDisjointValueSets: true,
+            }),
+          },
+        },
+      });
+    });
+
+    it("should not add hasDisjointValueSets when the fields do not have attached field values", () => {
+      metadata.fields[134].fieldValues = () => [];
+
+      expect(getMappingsByParameter(metadata, dashboard)).toEqual({
+        parameter1: {
+          "81": {
+            "56": expect.not.objectContaining({
+              hasDisjointValueSets: true,
+            }),
+          },
+          "86": {
+            "59": expect.not.objectContaining({
+              hasDisjointValueSets: true,
+            }),
+          },
+          "87": {
+            "62": expect.not.objectContaining({
+              hasDisjointValueSets: true,
+            }),
+          },
+        },
+      });
+    });
+
+    it("should add hasDisjointValueSets value of false when there is overlap between different field values", () => {
+      metadata.fields[120].fieldValues = () => [
+        ["a", undefined],
+        ["b", undefined],
+      ];
+      metadata.fields[134].fieldValues = () => [
+        ["c", undefined],
+        ["a", undefined],
+      ];
+
+      expect(getMappingsByParameter(metadata, dashboard)).toEqual({
+        parameter1: {
+          "81": {
+            "56": expect.objectContaining({
+              hasDisjointValueSets: false,
+            }),
+          },
+          "86": {
+            "59": expect.objectContaining({
+              hasDisjointValueSets: false,
+            }),
+          },
+          "87": {
+            "62": expect.not.objectContaining({
+              hasDisjointValueSets: true,
+            }),
+          },
+        },
+      });
+    });
+
+    it("should handle remapped values by relying on original value", () => {
+      metadata.fields[120].fieldValues = () => [
+        ["a", "remapped value"],
+        ["b", undefined],
+      ];
+      metadata.fields[134].fieldValues = () => [["a", undefined]];
+
+      expect(getMappingsByParameter(metadata, dashboard)).toEqual({
+        parameter1: {
+          "81": {
+            "56": expect.objectContaining({
+              hasDisjointValueSets: false,
+            }),
+          },
+          "86": {
+            "59": expect.objectContaining({
+              hasDisjointValueSets: false,
+            }),
+          },
+          "87": {
+            "62": expect.not.objectContaining({
+              hasDisjointValueSets: true,
+            }),
+          },
+        },
+      });
+    });
+
     it("should generate a map of parameter mappings with added field metadata", () => {
       expect(getMappingsByParameter(metadata, dashboard)).toEqual({
         parameter1: {
@@ -424,10 +535,8 @@ describe("meta/Dashboard", () => {
                 table_id: 6,
               }),
               field_id: 120,
-              mappingsWithValues: 0,
               parameter_id: "parameter1",
               target: ["dimension", ["field", 120, null]],
-              values: [],
             },
           },
           "86": {
@@ -443,10 +552,8 @@ describe("meta/Dashboard", () => {
                 table_id: 8,
               }),
               field_id: 134,
-              mappingsWithValues: 0,
               parameter_id: "parameter1",
               target: ["dimension", ["template-tag", "bbb"]],
-              values: [],
             },
           },
           "87": {
@@ -481,13 +588,11 @@ describe("meta/Dashboard", () => {
                 semantic_type: null,
               }),
               field_id: "boolean",
-              mappingsWithValues: 0,
               parameter_id: "parameter1",
               target: [
                 "dimension",
                 ["field", "boolean", { "base-type": "type/Boolean" }],
               ],
-              values: [],
             },
           },
         },

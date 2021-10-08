@@ -106,11 +106,7 @@ export default class DashCardCardParameterMapper extends Component {
       dashcard.id,
       card.id,
     ]);
-    const noOverlap = !!(
-      mapping &&
-      mapping.mappingsWithValues > 1 &&
-      mapping.overlapMax === 1
-    );
+    const hasDisjointValueSets = mapping?.hasDisjointValueSets ?? false;
 
     let selectedFieldWarning = null;
     if (
@@ -150,7 +146,7 @@ export default class DashCardCardParameterMapper extends Component {
               tooltip={
                 disabled
                   ? "This card doesn't have any fields or parameters that can be mapped to this parameter type."
-                  : noOverlap
+                  : hasDisjointValueSets
                   ? "The values in this field don't overlap with the values of any other fields you've chosen."
                   : null
               }
@@ -163,7 +159,7 @@ export default class DashCardCardParameterMapper extends Component {
               <div
                 className={cx(S.button, {
                   [S.mapped]: !!selected,
-                  [S.warn]: noOverlap,
+                  [S.warn]: hasDisjointValueSets,
                   [S.disabled]: disabled,
                 })}
               >
