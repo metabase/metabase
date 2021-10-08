@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    "jsx": "react",
+    "target": "esnext",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowSyntheticDefaultImports": true,
+    "module": "commonjs",
+    "isolatedModules": true,
+    "strict": true,
+    "moduleResolution": "node",
+    "skipLibCheck": true,
+    "paths": {
+      "*": [
+        "./frontend/src/*",
+        "./frontend/test/*",
+        "./enterprise/frontend/src/*",
+        "./enterprise/frontend/test/*"
+      ]
+    },
+    "allowJs": true,
+    "esModuleInterop": true,
+    "experimentalDecorators": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": [
+    "frontend/src/**/*.ts",
+    "frontend/src/**/*.tsx",
+    "enterprise/frontend/src/**/*.ts",
+    "enterprise/frontend/src/**/*.tsx",
+    "frontend/test/**/*.ts",
+    "frontend/test/**/*.tsx",
+    "enterprise/frontend/test/**/*.ts",
+    "enterprise/frontend/test/**/*.tsx"
+  ],
+  "exclude": ["node_modules"]
+}

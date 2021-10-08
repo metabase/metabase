@@ -256,10 +256,10 @@
 
 (deftest export-format-test
   (testing "Different format strings are used for ints and numbers that round to ints (with 2 decimal places)"
-    (is (= [["#,##0"] ["#,##0.##"] ["#,##0"] ["#,##0.##"]]
+    (is (= [["#,##0"] ["#,##0.##"] ["#,##0"] ["#,##0.##"] ["#,##0"] ["#,##0.##"]]
            (rest (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost}]
                               {}
-                              [[1] [1.23] [1.004] [1.005]]
+                              [[1] [1.23] [1.004] [1.005] [10000000000] [10000000000.123]]
                               parse-format-strings)))))
 
   (testing "Misc format strings are included correctly in exports"

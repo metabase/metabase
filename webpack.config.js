@@ -63,12 +63,12 @@ const config = (module.exports = {
   module: {
     rules: [
       {
-        test: /\.(js|jsx)$/,
+        test: /\.(tsx?|jsx?)$/,
         exclude: /node_modules|cljs/,
         use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
       },
       {
-        test: /\.(js|jsx)$/,
+        test: /\.(tsx?|jsx?)$/,
         exclude: /node_modules|cljs|\.spec\.js/,
         use: [
           {
@@ -101,7 +101,16 @@ const config = (module.exports = {
     ],
   },
   resolve: {
-    extensions: [".webpack.js", ".web.js", ".js", ".jsx", ".css", ".svg"],
+    extensions: [
+      ".webpack.js",
+      ".web.js",
+      ".js",
+      ".jsx",
+      ".ts",
+      ".tsx",
+      ".css",
+      ".svg",
+    ],
     alias: {
       assets: ASSETS_PATH,
       fonts: FONTS_PATH,
@@ -269,14 +278,15 @@ if (WEBPACK_BUNDLE !== "production") {
     }),
   );
 } else {
-
   // Don't bother with ESLint for CI/production (we catch linting errors with another CI run)
   config.module.rules = config.module.rules.filter(rule => {
-    return Array.isArray(rule.use) ? rule.use[0].loader != "eslint-loader" : true
+    return Array.isArray(rule.use)
+      ? rule.use[0].loader != "eslint-loader"
+      : true;
   });
 
   config.plugins.push(
-    new TerserPlugin({ parallel: true, test: /\.jsx?($|\?)/i }),
+    new TerserPlugin({ parallel: true, test: /\.(tsx?|jsx?)($|\?)/i }),
   );
 
   config.devtool = "source-map";

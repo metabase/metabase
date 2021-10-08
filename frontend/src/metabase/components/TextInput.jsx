@@ -22,7 +22,8 @@ TextInput.propTypes = {
   icon: PropTypes.node,
   padding: PropTypes.oneOf(["sm", "md"]),
   borderRadius: PropTypes.oneOf(["sm", "md"]),
-  colorScheme: PropTypes.oneOf(["default", "admin"]),
+  colorScheme: PropTypes.oneOf(["default", "admin", "transparent"]),
+  hasBorder: PropTypes.bool,
   innerRef: PropTypes.object,
 };
 
