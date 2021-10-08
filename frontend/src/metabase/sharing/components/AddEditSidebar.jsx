@@ -56,7 +56,6 @@ export const AddEditSlackSidebar = connect(mapStateToProps)(
 function _AddEditEmailSidebar({
   pulse,
   formInput,
-  formError,
   channel,
   channelSpec,
   users,
@@ -78,7 +77,6 @@ function _AddEditEmailSidebar({
   return (
     <Sidebar
       closeIsDisabled={!dashboardPulseIsValid(pulse, formInput.channels)}
-      formError={formError}
       onClose={handleSave}
       onCancel={onCancel}
     >
@@ -188,7 +186,6 @@ function _AddEditEmailSidebar({
 _AddEditEmailSidebar.propTypes = {
   pulse: PropTypes.object.isRequired,
   formInput: PropTypes.object.isRequired,
-  formError: PropTypes.object,
   channel: PropTypes.object.isRequired,
   channelSpec: PropTypes.object.isRequired,
   users: PropTypes.array,
@@ -271,7 +268,6 @@ function getConfirmItems(pulse) {
 function _AddEditSlackSidebar({
   pulse,
   formInput,
-  formError,
   channel,
   channelSpec,
   parameters,
@@ -290,7 +286,6 @@ function _AddEditSlackSidebar({
   return (
     <Sidebar
       closeIsDisabled={!dashboardPulseIsValid(pulse, formInput.channels)}
-      formError={formError}
       onClose={handleSave}
       onCancel={onCancel}
     >
@@ -371,7 +366,6 @@ function _AddEditSlackSidebar({
 _AddEditSlackSidebar.propTypes = {
   pulse: PropTypes.object.isRequired,
   formInput: PropTypes.object.isRequired,
-  formError: PropTypes.object,
   channel: PropTypes.object.isRequired,
   channelSpec: PropTypes.object.isRequired,
   users: PropTypes.array,
