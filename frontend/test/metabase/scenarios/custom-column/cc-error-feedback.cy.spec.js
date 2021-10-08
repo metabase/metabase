@@ -1,7 +1,6 @@
 import {
   restore,
   openProductsTable,
-  popover,
   enterCustomColumnDetails,
 } from "__support__/e2e/cypress";
 
