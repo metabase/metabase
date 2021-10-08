@@ -62,7 +62,7 @@ Connect with others using Metabase and catch up on the latest news.
 
 A place to get help on installation, setting up as well as sharing tips and tricks.
 
-### [Data stories][data-stories]
+### [Data Bytes][data-bytes]
 
 Real stories about teams working and learning with data. You can also share your own stories.
 
@@ -90,7 +90,7 @@ This page describes the anonymous usage information we collect (only if you opt-
 [embedding-ref-apps]: https://github.com/metabase/embedding-reference-apps
 [enterprise]: enterprise-guide/start.md
 [enterprise-landing]: /enterprise
-[data-stories]: /community
+[data-bytes]: /community
 [developers]: developers-guide/start.md
 [drivers]: developers-guide-drivers.md
 [faq]: faq/start.md
