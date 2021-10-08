@@ -249,17 +249,18 @@ function getEngineFormFields(engine, details, id) {
       const overrides = DATABASE_DETAIL_OVERRIDES[field.name];
 
       return {
-        name: `details.${field.name}`,
-        title: field["display-name"],
-        type: field.type,
         description: field.description,
-        placeholder: field.placeholder || field.default,
-        options: field.options,
-        validate: value => (field.required && !value ? t`required` : null),
-        normalize: value => normalizeFieldValue(value, field),
         horizontal: field.type === "boolean",
         initial: field.default,
+        name: `details.${field.name}`,
+        normalize: value => normalizeFieldValue(value, field),
+        options: field.options,
+        placeholder: field.placeholder || field.default,
         readOnly: field.readOnly || false,
+        title: field["display-name"],
+        treatBeforePosting: field["treat-before-posting"],
+        type: field.type,
+        validate: value => (field.required && !value ? t`required` : null),
         ...(overrides && overrides(engine, details, id)),
       };
     });

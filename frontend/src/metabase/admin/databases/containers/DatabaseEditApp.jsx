@@ -141,7 +141,7 @@ export default class DatabaseEditApp extends Component {
 
     const showTabs = editingExistingDatabase && letUserControlSchedulingSaved;
 
-    console.log("🚀", "props", this.props);
+    // console.log("🚀", "props", this.props);
 
     const crumbs = [
       [t`Databases`, "/admin/databases"],
