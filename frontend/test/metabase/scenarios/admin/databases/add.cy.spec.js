@@ -83,8 +83,8 @@ describe("scenarios > admin > databases > add", () => {
 
     cy.wait("@createDatabase").then(({ request }) => {
       expect(request.body.details.host).to.equal("localhost");
-      expect(request.body.details.dbname).to.equal("test_postgres_db");
-      expect(request.body.details.user).to.equal("uberadmin");
+      expect(request.body.details.dbname).to.equal("sample");
+      expect(request.body.details.user).to.equal("metabase");
     });
   });
 
@@ -147,7 +147,7 @@ describe("scenarios > admin > databases > add", () => {
     cy.wait("@createDatabase").then(({ request }) => {
       expect(request.body.engine).to.equal("postgres");
       expect(request.body.name).to.equal("Test db name");
-      expect(request.body.details.user).to.equal("uberadmin");
+      expect(request.body.details.user).to.equal("metabase");
     });
 
     cy.url().should("match", /\/admin\/databases\?created=42$/);
