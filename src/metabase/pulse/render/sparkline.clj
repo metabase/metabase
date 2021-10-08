@@ -97,7 +97,6 @@
                            (/ (double (- v ymin)) yrange)))]
     (image-bundle/make-image-bundle render-type (render-sparkline-to-png x-axis-values y-axis-values))))
 
-
 (s/defn cleaned-rows
   "Get sorted rows from query results, with nils removed, appropriate for rendering as a sparkline."
   [timezone-id :- (s/maybe s/Str) card {:keys [rows cols], :as data}]

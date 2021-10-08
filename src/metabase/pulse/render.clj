@@ -6,6 +6,7 @@
             [metabase.pulse.render.image-bundle :as image-bundle]
             [metabase.pulse.render.png :as png]
             [metabase.pulse.render.style :as style]
+            [metabase.types :as types]
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.urls :as urls]
             [schema.core :as s]))
@@ -96,6 +97,7 @@
 
         (and (= @col-sample-count 2)
              (> @row-sample-count 1)
+             (or (types/temporal-field? @col-1) (number-field? @col-1))
              (number-field? @col-2)
              (not (#{:waterfall :pie} display-type)))
         (chart-type :sparkline "result has 2 cols (%s and %s (number)) and > 1 row" (col-description @col-1) (col-description @col-2))
