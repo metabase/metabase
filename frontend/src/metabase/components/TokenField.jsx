@@ -8,6 +8,7 @@ import cx from "classnames";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
+import { TokenFieldAddon, TokenFieldItem } from "./TokenField.styled";
 
 import {
   KEYCODE_ESCAPE,
@@ -571,14 +572,7 @@ export default class TokenField extends Component {
         onMouseDownCapture={this.onMouseDownCapture}
       >
         {value.map((v, index) => (
-          <li
-            key={index}
-            className={cx(
-              "flex align-center mr1 mb1 px1 rounded bg-medium",
-              !validateValue(v) && "text-error",
-            )}
-            style={{ paddingTop: "12px", paddingBottom: "12px" }}
-          >
+          <TokenFieldItem key={index} isValid={validateValue(v)}>
             <span
               style={{ ...defaultStyleValue, ...valueStyle }}
               className={multi ? "pl1 pr0" : "px1"}
@@ -586,11 +580,8 @@ export default class TokenField extends Component {
               {valueRenderer(v)}
             </span>
             {multi && (
-              <a
-                className={cx(
-                  "flex align-center text-error-hover px1",
-                  validateValue(v) ? "text-medium" : "text-error",
-                )}
+              <TokenFieldAddon
+                isValid={validateValue(v)}
                 onClick={e => {
                   e.preventDefault();
                   this.removeValue(v);
@@ -598,9 +589,9 @@ export default class TokenField extends Component {
                 onMouseDown={e => e.preventDefault()}
               >
                 <Icon name="close" className="flex align-center" size={12} />
-              </a>
+              </TokenFieldAddon>
             )}
-          </li>
+          </TokenFieldItem>
         ))}
         <li className={cx("flex-full flex align-center mr1 mb1 p1")}>
           <input
