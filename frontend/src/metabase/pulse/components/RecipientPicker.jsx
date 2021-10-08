@@ -2,8 +2,9 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import { getRecipientErrorMessage, recipientIsValid } from "metabase/lib/pulse";
+import { recipientIsValid } from "metabase/lib/pulse";
 import MetabaseAnalytics from "metabase/lib/analytics";
+import MetabaseSettings from "metabase/lib/settings";
 import MetabaseUtils from "metabase/lib/utils";
 import TokenField from "metabase/components/TokenField";
 import UserAvatar from "metabase/components/UserAvatar";
@@ -17,6 +18,7 @@ export default class RecipientPicker extends Component {
     isNewPulse: PropTypes.bool.isRequired,
     onRecipientsChange: PropTypes.func.isRequired,
     autoFocus: PropTypes.bool,
+    invalidRecipientText: PropTypes.func.isRequired,
   };
 
   static defaultProps = {
@@ -49,8 +51,9 @@ export default class RecipientPicker extends Component {
   }
 
   render() {
-    const { recipients, users, autoFocus } = this.props;
+    const { recipients, users, autoFocus, invalidRecipientText } = this.props;
     const isValid = recipients.every(r => recipientIsValid(r));
+    const domains = MetabaseSettings.subscriptionAllowedDomains().join(", ");
 
     return (
       <div>
@@ -97,7 +100,9 @@ export default class RecipientPicker extends Component {
             updateOnInputBlur
           />
         </div>
-        {!isValid && <ErrorMessage>{getRecipientErrorMessage()}</ErrorMessage>}
+        {!isValid && (
+          <ErrorMessage>{invalidRecipientText(domains)}</ErrorMessage>
+        )}
       </div>
     );
   }
