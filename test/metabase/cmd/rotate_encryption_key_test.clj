@@ -15,9 +15,9 @@
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
             [metabase.test.fixtures :as fixtures]
-            [metabase.util.i18n :as i18n]
             [metabase.util.encryption :as encrypt]
             [metabase.util.encryption-test :as eu]
+            [metabase.util.i18n :as i18n]
             [toucan.db :as db]
             [toucan.models :as models]))
 
