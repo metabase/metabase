@@ -6,7 +6,7 @@ Whenever you’ve arrived at an answer that you want to save for later, click th
 
 ![Save button](images/sharing-answers/save-button.png)
 
-A pop-up box will appear, prompting you to give your question a name and description, and to pick which [collection](#collection) to save it in. Note that your administrator might have set things up so that you're only allowed to [save questions in certain collection](#collection-permissions), but you can always save things in your Personal Collection. After saving your question, you'll be asked if you want to add it to a new or existing dashboard.
+A pop-up box will appear, prompting you to give your question a name and description, and to pick which [collection](#collection) to save it in. Note that your administrator might have set things up so that you're only allowed to [save questions in certain collection][collection-permissions], but you can always save things in your Personal Collection. After saving your question, you'll be asked if you want to add it to a new or existing dashboard.
 
 Now, whenever you want to refer to your question again you can find it by searching for it in the search bar at the top of Metabase, or by navigating to the collection where you saved it.
 
@@ -78,4 +78,5 @@ Next, we'll learn about how to organize our questions in [collections][collectio
 [archiving-items]: collections.md#archiving-items
 [caching]: ../administration-guide/14-caching.md
 [collections]: collections.md
+[collection-permissions]: collections.md#collection-permissions
 [dashboards]: 07-dashboards.md
