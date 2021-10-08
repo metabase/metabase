@@ -1,6 +1,11 @@
-import { restore, openProductsTable, popover } from "__support__/e2e/cypress";
+import {
+  restore,
+  openProductsTable,
+  popover,
+  enterCustomColumnDetails,
+} from "__support__/e2e/cypress";
 
-describe("scenarios > question > custom column > help text", () => {
+describe("scenarios > question > custom column > error feedback", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -9,69 +14,73 @@ describe("scenarios > question > custom column > help text", () => {
     cy.findByText("Custom column").click();
   });
 
-  describe("error feedback", () => {
-    it("should catch mismatched parentheses", () => {
-      popover().within(() => {
-        cy.get("[contenteditable='true']").type("FLOOR [Price]/2)");
-        cy.findByPlaceholderText("Something nice and descriptive")
-          .click()
-          .type("Massive Discount");
-
-        cy.contains(/^Expecting an opening parenthesis after function FLOOR/i);
-      });
+  it("should catch mismatched parentheses", () => {
+    enterCustomColumnDetails({
+      formula: "FLOOR [Price]/2)",
+      name: "Massive Discount",
     });
 
-    it("should catch missing parentheses", () => {
-      popover().within(() => {
-        cy.get("[contenteditable='true']").type("LOWER [Vendor]");
-        cy.findByPlaceholderText("Something nice and descriptive")
-          .click()
-          .type("Massive Discount");
+    cy.contains(/^Expecting an opening parenthesis after function FLOOR/i);
+  });
 
-        cy.contains(/^Expecting an opening parenthesis after function LOWER/i);
-      });
+  it("should catch missing parentheses", () => {
+    enterCustomColumnDetails({
+      formula: "LOWER [Vendor]",
+      name: "Massive Discount",
     });
 
-    it("should catch invalid characters", () => {
-      popover().within(() => {
-        cy.get("[contenteditable='true']").type("[Price] / #");
-        cy.findByPlaceholderText("Something nice and descriptive")
-          .click()
-          .type("Massive Discount");
-        cy.contains(/^Invalid character: #/i);
-      });
+    cy.contains(/^Expecting an opening parenthesis after function LOWER/i);
+  });
+
+  it("should catch invalid characters", () => {
+    enterCustomColumnDetails({
+      formula: "[Price] / #",
+      name: "Massive Discount",
     });
 
-    it("should catch unterminated string literals", () => {
-      popover().within(() => {
-        cy.get("[contenteditable='true']")
-          .type('[Category] = "widget')
-          .blur();
+    cy.contains(/^Invalid character: #/i);
+  });
 
-        cy.findByText("Missing closing quotes");
-      });
+  it("should catch unterminated string literals", () => {
+    cy.get("[contenteditable='true']")
+      .type('[Category] = "widget')
+      .blur();
+
+    cy.findByText("Missing closing quotes");
+  });
+
+  it("should catch unterminated field reference", () => {
+    enterCustomColumnDetails({
+      formula: "[Price / 2",
+      name: "Massive Discount",
     });
 
-    it("should catch unterminated field reference", () => {
-      popover().within(() => {
-        cy.get("[contenteditable='true']").type("[Price / 2");
-        cy.findByPlaceholderText("Something nice and descriptive")
-          .click()
-          .type("Massive Discount");
+    cy.contains(/^Missing a closing bracket/i);
+  });
 
-        cy.contains(/^Missing a closing bracket/i);
-      });
+  it("should catch non-existent field reference", () => {
+    enterCustomColumnDetails({
+      formula: "abcdef",
+      name: "Non-existent",
     });
 
-    it("should catch non-existent field reference", () => {
-      popover().within(() => {
-        cy.get("[contenteditable='true']").type("abcdef");
-        cy.findByPlaceholderText("Something nice and descriptive")
-          .click()
-          .type("Non-existent");
+    cy.contains(/^Unknown Field: abcdef/i);
+  });
 
-        cy.contains(/^Unknown Field: abcdef/i);
-      });
+  it("should show the correct number of CASE arguments in a custom expression", () => {
+    enterCustomColumnDetails({
+      formula: "CASE([Price]>0)",
+      name: "Sum Divide",
     });
+
+    cy.contains(/^CASE expects 2 arguments or more/i);
+  });
+
+  it("should show the correct number of function arguments in a custom expression", () => {
+    cy.get("[contenteditable='true']")
+      .type("contains([Category])")
+      .blur();
+
+    cy.contains(/^Function contains expects 2 arguments/i);
   });
 });

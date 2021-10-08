@@ -108,32 +108,6 @@ describe("scenarios > question > notebook", () => {
     });
   });
 
-  it("should show the correct number of function arguments in a custom expression", () => {
-    openProductsTable({ mode: "notebook" });
-    cy.findByText("Filter").click();
-    cy.findByText("Custom Expression").click();
-    cy.get("[contenteditable='true']")
-      .click()
-      .clear()
-      .type("contains([Category])", { delay: 50 });
-    cy.button("Done")
-      .should("not.be.disabled")
-      .click();
-    cy.contains(/^Function contains expects 2 arguments/i);
-  });
-
-  it("should show the correct number of CASE arguments in a custom expression", () => {
-    openProductsTable({ mode: "notebook" });
-    cy.findByText("Custom column").click();
-    popover().within(() => {
-      cy.get("[contenteditable='true']").type("CASE([Price]>0)");
-      cy.findByPlaceholderText("Something nice and descriptive")
-        .click()
-        .type("Sum Divide");
-      cy.contains(/^CASE expects 2 arguments or more/i);
-    });
-  });
-
   it("should append indexes to duplicate custom expression names (metabase#12104)", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
     openProductsTable({ mode: "notebook" });
