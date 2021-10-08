@@ -1,6 +1,6 @@
 import { restore, popover } from "__support__/e2e/cypress";
 
-describe.skip("admin > database > add > Presto", () => {
+describe("admin > database > add > Presto", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
