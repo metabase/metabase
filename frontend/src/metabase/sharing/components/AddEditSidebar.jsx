@@ -74,9 +74,11 @@ function _AddEditEmailSidebar({
   handleArchive,
   setPulseParameters,
 }) {
+  const isValid = dashboardPulseIsValid(pulse, formInput.channels);
+
   return (
     <Sidebar
-      closeIsDisabled={!dashboardPulseIsValid(pulse, formInput.channels)}
+      closeIsDisabled={!isValid}
       onClose={handleSave}
       onCancel={onCancel}
     >
@@ -133,7 +135,7 @@ function _AddEditEmailSidebar({
             testPulse={testPulse}
             normalText={t`Send email now`}
             successText={t`Email sent`}
-            disabled={channel.recipients.length === 0}
+            disabled={!isValid}
           />
         </div>
         {PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component ? (
@@ -286,9 +288,11 @@ function _AddEditSlackSidebar({
   handleArchive,
   setPulseParameters,
 }) {
+  const isValid = dashboardPulseIsValid(pulse, formInput.channels);
+
   return (
     <Sidebar
-      closeIsDisabled={!dashboardPulseIsValid(pulse, formInput.channels)}
+      closeIsDisabled={!isValid}
       onClose={handleSave}
       onCancel={onCancel}
     >
@@ -329,7 +333,7 @@ function _AddEditSlackSidebar({
             testPulse={testPulse}
             normalText={t`Send to Slack now`}
             successText={t`Slack sent`}
-            disabled={channel.details.channel === undefined}
+            disabled={!isValid}
           />
         </div>
         {PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component ? (

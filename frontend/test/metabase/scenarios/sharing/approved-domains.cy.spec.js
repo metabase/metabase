@@ -1,15 +1,15 @@
 import {
+  describeWithToken,
   restore,
   setupSMTP,
-  describeWithToken,
   sidebar,
 } from "__support__/e2e/cypress";
 
 const allowedDomain = "metabase.test";
 const deniedDomain = "metabase.example";
-const email = "mailer@" + deniedDomain;
-
-const errorMessage = `You cannot create new subscriptions for the domain "${deniedDomain}". Allowed domains are: ${allowedDomain}`;
+const deniedEmail = `mailer@${deniedDomain}`;
+const subscriptionError = `You're only allowed to email subscriptions to addresses ending in ${allowedDomain}`;
+const alertError = `You're only allowed to email alerts to addresses ending in ${allowedDomain}`;
 
 describeWithToken("scenarios > alert (EE)", () => {
   beforeEach(() => {
@@ -26,10 +26,10 @@ describeWithToken("scenarios > alert (EE)", () => {
     cy.icon("bell").click();
     cy.findByText("Set up an alert").click();
 
-    addEmailRecipient(email);
+    addEmailRecipient(deniedEmail);
 
-    cy.button("Done").click();
-    cy.findByText(errorMessage);
+    cy.findByText("Done").should("be.disabled");
+    cy.findByText(alertError);
   });
 
   it("should validate approved email domains for a dashboard subscription (metabase#17977)", () => {
@@ -41,16 +41,14 @@ describeWithToken("scenarios > alert (EE)", () => {
 
     cy.findByPlaceholderText("Enter user names or email addresses")
       .click()
-      .type(`${email}`)
+      .type(`${deniedEmail}`)
       .blur();
 
     sidebar().within(() => {
       // Reproduces metabase#17977
-      cy.findByText("Send email now").click();
-      cy.findByText("Sending failed");
-
-      cy.button("Done").click();
-      cy.findByText(errorMessage);
+      cy.findByText("Send email now").should("be.disabled");
+      cy.findByText("Done").should("be.disabled");
+      cy.findByText(subscriptionError);
     });
   });
 });
