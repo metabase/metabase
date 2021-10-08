@@ -5,8 +5,7 @@ const path = require("path");
 
 const glob = require("glob");
 const minimatch = require("minimatch");
-const parser = require("@babel/parser");
-const traverse = require("@babel/traverse").default;
+const babel = require("@babel/core");
 const readline = require("readline");
 
 const PATTERN = "{enterprise/,}frontend/src/**/*.{js,jsx,ts,tsx}";
@@ -24,19 +23,20 @@ function files() {
 }
 
 function dependencies() {
-  const deps = files().map(fileName => {
-    const contents = fs.readFileSync(fileName, "utf-8");
-    const options = {
-      allowImportExportEverywhere: true,
-      allowReturnOutsideFunction: true,
-      decoratorsBeforeExport: true,
-      sourceType: "unambiguous",
-      plugins: ["jsx", "flow", "decorators-legacy", "exportDefaultFrom"],
-    };
+  const deps = files().map(filename => {
+    const contents = fs.readFileSync(filename, "utf-8");
+
     const importList = [];
     try {
-      const ast = parser.parse(contents, options);
-      traverse(ast, {
+      const file = babel.transformSync(contents, {
+        filename,
+        plugins: ["@babel/plugin-transform-flow-strip-types"],
+        presets: ["@babel/preset-typescript"],
+        ast: true,
+        code: false,
+      });
+
+      babel.traverse(file.ast, {
         enter(path) {
           if (path.node.type === "ImportDeclaration") {
             importList.push(path.node.source.value);
@@ -53,11 +53,11 @@ function dependencies() {
         },
       });
     } catch (e) {
-      console.error(fileName, e.toString());
+      console.error(filename, e.toString());
       process.exit(-1);
       n;
     }
-    const base = path.dirname(fileName) + path.sep;
+    const base = path.dirname(filename) + path.sep;
     const absoluteImportList = importList
       .map(name => {
         const absName = name[0] === "." ? path.normalize(base + name) : name;
@@ -70,7 +70,7 @@ function dependencies() {
       .map(getFilePathFromImportPath)
       .filter(name => minimatch(name, PATTERN));
 
-    return { source: fileName, dependencies: absoluteImportList.sort() };
+    return { source: filename, dependencies: absoluteImportList.sort() };
   });
   return deps;
 }
