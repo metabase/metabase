@@ -22,7 +22,9 @@ describe("smoketest > user", () => {
     cy.findByText("Pick a column to group by").click();
     cy.findByText("Title").click();
 
-    cy.findByText("Average of Rating");
+    cy.findAllByText("Average of Rating: Auto binned").click();
+    cy.findByText("Auto binned").click();
+    cy.findByText("Don't bin").click();
 
     cy.button("Visualize").click();
 
