@@ -103,7 +103,7 @@ yarn test-unit-watch # Watch for file changes
 
 ## Backend development
 
-Clojure REPL is the main development tool for the backend. There are some directions below on how to setup your REPL for easier development.
+Clojure REPL is the main development tool for the backend. There are some directions [below](#developing-with-repl) on how to setup your REPL for easier development.
 
 And of course your Jetty development server is available via
 
@@ -193,6 +193,37 @@ You'll probably want to tell Emacs to store customizations in a different file. 
 (ignore-errors                                                ; load customizations from ~/.emacs.d/.custom.el
   (load-file custom-file))
 ```
+
+### Developing with REPL
+In order to develop using this REPL you first have to "prep" the Java dependencies. Note that this step only needs to run once:
+
+```sh
+clojure -X:deps prep
+```
+also do 
+```sh
+cd modules/drivers && clojure -X:deps prep
+``` 
+if want to use `:drivers` alias to include driver source paths in the classpath.
+
+
+To start the repl you have 2 options:
+- If you want to use [nrepl](https://nrepl.org/nrepl/usage/server.html#using-clojure-cli-tools) to connect to your editor:
+```sh
+clojure -M:dev:nrepl
+```
+
+- If you prefer the clojure repl:
+```sh
+clojure -A:dev
+```
+
+Once inside the repl run
+```clojure
+(require 'dev)
+(dev/start!)
+```
+to start the Jetty development server
 
 ## Developing with Visual Studio Code
 
