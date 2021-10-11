@@ -99,6 +99,8 @@ export const getMetadata = createSelector(
     meta.segments = copyObjects(meta, segments, instantiateSegment);
     meta.metrics = copyObjects(meta, metrics, instantiateMetric);
 
+    // database
+    hydrateList(meta.databases, "tables", meta.tables);
     // schema
     hydrate(meta.schemas, "database", s => meta.database(s.database));
     // table
@@ -107,16 +109,6 @@ export const getMetadata = createSelector(
     hydrateList(meta.tables, "metrics", meta.metrics);
     hydrate(meta.tables, "db", t => meta.database(t.db_id || t.db));
     hydrate(meta.tables, "schema", t => meta.schema(t.schema));
-
-    hydrate(meta.databases, "tables", database => {
-      if (database.tables?.length > 0) {
-        return database.tables.map(tableId => meta.table(tableId));
-      }
-
-      return Object.values(meta.tables).filter(
-        table => table.schema && table.db_id === database.id,
-      );
-    });
 
     // NOTE: special handling for schemas
     // This is pretty hacky
