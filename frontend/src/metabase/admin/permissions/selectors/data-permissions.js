@@ -3,7 +3,7 @@ import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 import { push } from "react-router-redux";
 
-import { getMetadata } from "metabase/selectors/metadata";
+import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 
 import Group from "metabase/entities/groups";
 import Tables from "metabase/entities/tables";
@@ -19,7 +19,7 @@ import {
   getNativePermission,
   getSchemasPermission,
   getTablesPermission,
-  diffPermissions,
+  diffDataPermissions,
   isRestrictivePermission,
 } from "metabase/lib/permissions";
 import {
@@ -50,9 +50,29 @@ import {
 } from "../utils/urls";
 import { limitDatabasePermission } from "../permissions";
 
-export const getMetadataWithHiddenTables = (state, props) => {
-  return getMetadata(state, { ...props, includeHiddenTables: true });
-};
+export const getDatabasesWithTables = createSelector(
+  state => state.entities.databases,
+  state => state.entities.tables,
+  (databases, tables) => {
+    if (!databases || !tables) {
+      return [];
+    }
+    const databasesList = Object.values(databases);
+    const tablesList = Object.values(tables);
+
+    return databasesList.map(database => {
+      const databaseTables = tablesList.filter(
+        table => table.db_id === database.id,
+      );
+
+      return {
+        id: database.id,
+        name: database.name,
+        tables: databaseTables,
+      };
+    });
+  },
+);
 
 const getGroupsWithoutMetabot = createSelector(
   Group.selectors.getList,
@@ -67,12 +87,12 @@ export const getIsDirty = createSelector(
 );
 
 export const getDiff = createSelector(
-  getMetadataWithHiddenTables,
+  getDatabasesWithTables,
   getGroupsWithoutMetabot,
   state => state.admin.permissions.dataPermissions,
   state => state.admin.permissions.originalDataPermissions,
-  (metadata, groups, permissions, originalPermissions) =>
-    diffPermissions(permissions, originalPermissions, groups, metadata),
+  (databases, groups, permissions, originalPermissions) =>
+    diffDataPermissions(permissions, originalPermissions, groups, databases),
 );
 
 export const getIsLoadingDatabaseTables = (state, props) => {
