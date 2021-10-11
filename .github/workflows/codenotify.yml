@@ -1,4 +1,5 @@
-name: codenotify
+name: Codenotify
+
 on:
   pull_request:
     types: [opened, synchronize, ready_for_review]
@@ -12,3 +13,5 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
       - uses: sourcegraph/codenotify@v0.4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
