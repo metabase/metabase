@@ -203,21 +203,18 @@ export const MBQL_CLAUSES = {
     displayName: `contains`,
     type: "boolean",
     args: ["string", "string"],
-    multiple: true,
     hasOptions: true,
   },
   "starts-with": {
     displayName: `startsWith`,
     type: "boolean",
     args: ["string", "string"],
-    multiple: true,
     hasOptions: true,
   },
   "ends-with": {
     displayName: `endsWith`,
     type: "boolean",
     args: ["string", "string"],
-    multiple: true,
     hasOptions: true,
   },
   between: {
