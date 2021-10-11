@@ -21,7 +21,7 @@ export type HoverObject = {
   index?: number,
   axisIndex?: number,
   data?: HoverData,
-  element?: HTMLElement,
+  element?: HTMLElement | null,
   event?: MouseEvent,
 };
 
@@ -32,7 +32,7 @@ export type DimensionValue = {
 
 export type ClickObject = {
   value?: Value,
-  column?: Column,
+  column?: Column | null,
   dimensions?: DimensionValue[],
   event?: MouseEvent,
   element?: HTMLElement,
@@ -65,7 +65,7 @@ export type ClickActionProps = {
 
 export type OnChangeCardAndRun = (data: {
   nextCard: Card,
-  previousCard?: Card,
+  previousCard?: Card | null,
 }) => void;
 
 export type ClickActionPopoverProps = {

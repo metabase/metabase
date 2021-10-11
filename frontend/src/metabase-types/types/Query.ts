@@ -68,8 +68,8 @@ export type NativeQuery = {
 };
 
 export type StructuredQuery = {
-  "source-table"?: TableId,
-  "source-query"?: StructuredQuery,
+  "source-table"?: TableId | null,
+  "source-query"?: StructuredQuery | null,
   aggregation?: AggregationClause,
   breakout?: BreakoutClause,
   filter?: FilterClause,
