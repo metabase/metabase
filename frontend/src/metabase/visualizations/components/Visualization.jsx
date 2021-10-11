@@ -273,9 +273,7 @@ export default class Visualization extends React.PureComponent {
   handleMouseLeave = e => {
     // When reseting the hover wait in case we're simply transitioning from one
     // element to another. This allows visualizations to use mouseleave events etc.
-    console.log("mouse leave")
     this._resetHoverTimer = setTimeout(() => {
-      console.log("hover reset")
       this.setState({ hovered: null });
       this._resetHoverTimer = null;
     }, 0);
