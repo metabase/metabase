@@ -17,7 +17,8 @@
    (render/render-pulse-card-for-display (pulse/defaulted-timezone card) card results)))
 
 (defn- render-results [query]
-  (mt/with-temp Card [card {:dataset_query query}]
+  (mt/with-temp Card [card {:dataset_query query
+                            :display       :line}]
     (render-pulse-card card)))
 
 (deftest render-test
