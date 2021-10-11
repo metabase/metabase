@@ -3,7 +3,7 @@ import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { PEOPLE_ID, PEOPLE, REVIEWS_ID } = SAMPLE_DATASET;
 
-describe.skip("issue 18384", () => {
+describe("issue 18384", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

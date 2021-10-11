@@ -476,10 +476,10 @@ function diffGroupPermissions(
   newPerms: GroupsPermissions,
   oldPerms: GroupsPermissions,
   groupId: GroupId,
-  metadata: Metadata,
+  databases: Array<Object>,
 ): GroupPermissionsDiff {
   const groupDiff: GroupPermissionsDiff = { databases: {} };
-  for (const database of metadata.databasesList()) {
+  for (const database of databases) {
     groupDiff.databases[database.id] = diffDatabasePermissions(
       newPerms,
       oldPerms,
@@ -495,20 +495,20 @@ function diffGroupPermissions(
   return groupDiff;
 }
 
-export function diffPermissions(
+export function diffDataPermissions(
   newPerms: GroupsPermissions,
   oldPerms: GroupsPermissions,
   groups: Array<Group>,
-  metadata: Metadata,
+  databases: Array<Object>,
 ): PermissionsDiff {
   const permissionsDiff: PermissionsDiff = { groups: {} };
-  if (newPerms && oldPerms && metadata) {
+  if (newPerms && oldPerms && databases) {
     for (const group of groups) {
       permissionsDiff.groups[group.id] = diffGroupPermissions(
         newPerms,
         oldPerms,
         group.id,
-        metadata,
+        databases,
       );
       deleteIfEmpty(permissionsDiff.groups, group.id);
       if (permissionsDiff.groups[group.id]) {
