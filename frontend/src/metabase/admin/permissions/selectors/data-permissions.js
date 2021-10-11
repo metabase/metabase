@@ -67,6 +67,7 @@ export const getDatabasesWithTables = createSelector(
 
       return {
         id: database.id,
+        name: database.name,
         tables: databaseTables,
       };
     });
