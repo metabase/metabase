@@ -777,57 +777,6 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
   });
 
-  it("should drill-through on chart based on a custom column (metabase#13289)", () => {
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
-
-    cy.createQuestion({
-      name: "13289Q",
-      display: "line",
-      query: {
-        "source-table": ORDERS_ID,
-        expressions: {
-          two: ["+", 1, 1],
-        },
-        aggregation: [["count"]],
-        breakout: [
-          ["expression", "two"],
-          [
-            "field",
-            ORDERS.CREATED_AT,
-            {
-              "temporal-unit": "month",
-            },
-          ],
-        ],
-      },
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
-        // Add question to the dashboard
-        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-          cardId: QUESTION_ID,
-          row: 0,
-          col: 0,
-          sizeX: 12,
-          sizeY: 8,
-        });
-
-        cy.visit(`/dashboard/${DASHBOARD_ID}`);
-      });
-    });
-
-    cy.get(".Card circle")
-      .eq(1)
-      .click({ force: true });
-
-    cy.findByText("Zoom in").click();
-
-    cy.wait("@dataset");
-
-    cy.findByText("two is equal to 2");
-    cy.findByText("Created At is May, 2016");
-  });
-
   describe("should preserve dashboard filter and apply it to the question on a drill-through (metabase#11503)", () => {
     const ordersIdFilter = {
       name: "Orders ID",
