@@ -578,11 +578,11 @@
 (s/defn ^:private breakouts-and-ags->projected-fields :- [(s/pair su/NonBlankString "projected-field-name"
                                                                   s/Any             "source")]
   "Determine field projections for MBQL breakouts and aggregations. Returns a sequence of pairs like
-  `[projectied-field-name source]`."
+  `[projected-field-name source]`."
   [breakout-fields aggregations]
   (concat
-   (for [field breakout-fields]
-     [(->lvalue field) (format "$_id.%s" (->lvalue field))])
+   (for [field-or-expr breakout-fields]
+     [(->lvalue field-or-expr) (format "$_id.%s" (->lvalue field-or-expr))])
    (for [ag aggregations
          :let [ag-name (annotate/aggregation-name ag)]]
      [ag-name (if (mbql.u/is-clause? :distinct (unwrap-named-ag ag))
@@ -607,10 +607,10 @@
   [[[(annotate/aggregation-name ag) (aggregation->rvalue ag)]]])
 
 (defn- group-and-post-aggregations
-  "Mongo is picky (and somewhat stupid) which top-level aggregations it alows with groups. Eg. even
-   though [:/ [:coun-if ...] [:count]] is a perfectly fine reduction, it's not allowed. Therefore
+  "Mongo is picky (and somewhat stupid) which top-level aggregations it allows with groups. Eg. even
+   though [:/ [:count-if ...] [:count]] is a perfectly fine reduction, it's not allowed. Therefore
    more complex aggregations are split in two: the reductions are done in `$group` stage after which
-   we do postprocessing in `$addFields` stage to arrive at the final result. The intermitent results
+   we do postprocessing in `$addFields` stage to arrive at the final result. The intermittent results
    accrued in `$group` stage are discarded in the final `$project` stage."
   [id aggregations]
   (let [expanded-ags (map expand-aggregation aggregations)
@@ -638,7 +638,10 @@
         (str/split (->lvalue field-clause) #"\.")
 
         [:field (field-name :guard string?) _]
-        [field-name])
+        [field-name]
+
+        [:expression expr-name]
+        [expr-name])
       (->rvalue field-clause)))
    (ordered-map/ordered-map)
    fields))
@@ -668,13 +671,14 @@
     ;; if both aggregations and breakouts are empty, there's nothing to do...
     pipeline-ctx
     ;; determine the projections we'll need. projected-fields is like [[projected-field-name source]]`
-    (let [projected-fields (breakouts-and-ags->projected-fields breakout-fields aggregations)]
-      (-> pipeline-ctx
-          ;; add :projections key which is just a sequence of the names of projections from above
-          (assoc :projections (vec (for [[field] projected-fields]
-                                     field)))
-          ;; now add additional clauses to the end of :query as applicable
-          (update :query into (breakouts-and-ags->pipeline-stages projected-fields breakout-fields aggregations))))))
+    (let [projected-fields (breakouts-and-ags->projected-fields breakout-fields aggregations)
+          pipeline-stages  (breakouts-and-ags->pipeline-stages projected-fields breakout-fields aggregations)]
+          (-> pipeline-ctx
+              ;; add :projections key which is just a sequence of the names of projections from above
+              (assoc :projections (vec (for [[field] projected-fields]
+                                         field)))
+              ;; now add additional clauses to the end of :query as applicable
+              (update :query into pipeline-stages)))))
 
 
 ;;; ---------------------------------------------------- order-by ----------------------------------------------------
