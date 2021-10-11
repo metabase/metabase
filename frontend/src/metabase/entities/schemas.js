@@ -79,5 +79,8 @@ export default createEntity({
 });
 
 function addTableAvoidingDuplicates(tables, tableId) {
+  if (!Array.isArray(tables)) {
+    return [tableId];
+  }
   return tables.includes(tableId) ? tables : [...tables, tableId];
 }
