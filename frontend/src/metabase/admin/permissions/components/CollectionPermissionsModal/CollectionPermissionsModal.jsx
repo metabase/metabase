@@ -19,7 +19,6 @@ import Groups from "metabase/entities/groups";
 import { PermissionsTable } from "../PermissionsTable";
 import { permissionEditorPropTypes } from "../PermissionsEditor";
 import {
-  getDiff,
   getIsDirty,
   getCollectionsPermissionEditor,
 } from "../../selectors/collection-permissions";
@@ -52,7 +51,6 @@ const mapStateToProps = (state, props) => {
     collectionsList: Collections.selectors.getList(state, {
       entityQuery: { tree: true },
     }),
-    diff: getDiff(state, props),
     isDirty: getIsDirty(state, props),
   };
 };
