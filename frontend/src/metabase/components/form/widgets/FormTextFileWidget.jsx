@@ -6,16 +6,17 @@ import { formDomOnlyProps } from "metabase/lib/redux";
 // This is a special-case widget
 // setting value on a file input widget throws an error
 
-const FormTextFileWidget = ({ field }) => {
+const FormTextFileWidget = ({ field, treatBeforePosting }) => {
   const { value, ...otherProps } = formDomOnlyProps(field);
+
   return (
     <input
       type="file"
       className={cx({ "Form-file-input--has-value": value }, "Form-file-input")}
       aria-labelledby={`${field.name}-label`}
       {...otherProps}
-      onChange={wrapHandler(field.onChange)}
-      onBlur={wrapHandler(field.onBlur)}
+      onChange={wrapHandler(field.onChange, treatBeforePosting)}
+      onBlur={wrapHandler(field.onBlur, treatBeforePosting)}
     />
   );
 };
@@ -25,11 +26,18 @@ function wrapHandler(h, treatBeforePosting) {
     if (files.length === 0) {
       h("");
     }
+
     const fr = new FileReader();
-    fr.onload = () => {
-      return h(fr.result);
-    };
-    fr.readAsText(files[0]);
+
+    fr.onload = () => h(fr.result);
+
+    const [file] = files;
+
+    if (treatBeforePosting === "base64") {
+      fr.readAsDataURL(file);
+    } else {
+      fr.readAsText(file);
+    }
   };
 }
 

@@ -162,7 +162,10 @@ export class CustomFormField extends React.Component {
 
     return (
       <FormField {...props}>
-        <FormWidget {...props} />
+        <FormWidget
+          {...props}
+          onChangeField={() => console.log("🚀", "heyheyhey")}
+        />
       </FormField>
     );
   }
