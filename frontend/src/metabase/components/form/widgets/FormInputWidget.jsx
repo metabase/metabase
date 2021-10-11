@@ -3,6 +3,9 @@ import React from "react";
 
 import { formDomOnlyProps } from "metabase/lib/redux";
 
+// Important: do NOT use this as an input of type="file"
+// For file inputs, See component FormTextFileWidget.jsx
+
 const FormInputWidget = ({
   type = "text",
   placeholder,
