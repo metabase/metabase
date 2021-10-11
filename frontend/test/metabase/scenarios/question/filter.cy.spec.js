@@ -629,7 +629,7 @@ describe("scenarios > question > filter", () => {
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
     cy.get("[contenteditable='true']").contains(
-      'NOT contains([Title], "Wallet")',
+      'NOT contains([Title], "Wallet", "case-insensitive")',
     );
   });
 
