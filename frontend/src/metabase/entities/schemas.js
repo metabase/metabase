@@ -54,10 +54,8 @@ export default createEntity({
         return state;
       }
       const virtualQuestionId = getQuestionVirtualTableId(question);
-      return updateIn(
-        state,
-        [getCollectionVirtualSchemaId(question.collection), "tables"],
-        tables => addTableAvoidingDuplicates(tables, virtualQuestionId),
+      return updateIn(state, [schema, "tables"], tables =>
+        addTableAvoidingDuplicates(tables, virtualQuestionId),
       );
     }
 
@@ -68,16 +66,12 @@ export default createEntity({
         return state;
       }
       const virtualQuestionId = getQuestionVirtualTableId(question);
-      return updateIn(
-        state,
-        [getCollectionVirtualSchemaId(question.collection), "tables"],
-        tables => {
-          if (question.archived) {
-            return tables.filter(id => id !== virtualQuestionId);
-          }
-          return addTableAvoidingDuplicates(tables, virtualQuestionId);
-        },
-      );
+      return updateIn(state, [schema, "tables"], tables => {
+        if (question.archived) {
+          return tables.filter(id => id !== virtualQuestionId);
+        }
+        return addTableAvoidingDuplicates(tables, virtualQuestionId);
+      });
     }
 
     return state;
