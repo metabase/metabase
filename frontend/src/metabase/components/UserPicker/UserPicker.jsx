@@ -68,7 +68,8 @@ const UserPicker = ({ value, validateValue, users, onChange }) => {
         filterOption={filterOption}
         parseFreeformValue={parseFreeformValue}
         placeholder={placeholder}
-        multi={true}
+        multi
+        updateOnInputBlur
         onChange={onChange}
       />
     </UserPickerRoot>
