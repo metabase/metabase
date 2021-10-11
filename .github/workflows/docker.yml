@@ -13,8 +13,10 @@ jobs:
     timeout-minutes: 40
     steps:
     - uses: actions/checkout@v2
+    - name: Update runner
+      run: sudo apt-get update && sudo apt-get upgrade -y
     - name: Build container image
-      run: docker build -t test-container-image .
+      run: DOCKER_BUILDKIT=1 docker build -t test-container-image .
     - name: Launch container
       run: docker run -dp 3000:3000 test-container-image
       timeout-minutes: 5
