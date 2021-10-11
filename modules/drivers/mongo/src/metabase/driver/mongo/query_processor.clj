@@ -417,7 +417,21 @@
 (defn- filter-expr [operator field value]
   (let [field-rvalue (->rvalue field)
         value-rvalue (->rvalue value)]
-    {:$expr {operator [field-rvalue value-rvalue]}}))
+    (if (and (rvalue-is-field? field-rvalue)
+             (not (rvalue-is-field? value-rvalue))
+             (rvalue-can-be-compared-directly? value-rvalue))
+      ;; if we don't need to do anything fancy with field we can generate a clause like
+      ;;
+      ;;    {field {$lte 100}}
+      {(str/replace-first field-rvalue #"^\$" "")
+       ;; for the $eq operator we actually don't need to do {field {$eq 100}}, we can just do {field 100}
+       (if (= (name operator) "$eq")
+         value-rvalue
+         {operator value-rvalue})}
+      ;; if we need to do something fancy then we have to use `$expr` e.g.
+      ;;
+      ;;    {$expr {$lte [{$add [$field 1]} 100]}}
+      {:$expr {operator [field-rvalue value-rvalue]}})))
 
 (defmethod compile-filter :=  [[_ field value]] (filter-expr $eq field value))
 (defmethod compile-filter :!= [[_ field value]] (filter-expr $ne field value))
