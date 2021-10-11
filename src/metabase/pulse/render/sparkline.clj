@@ -102,7 +102,6 @@
   (or (types/temporal-field? column)
       (types/field-is-type? :type/Number column)))
 
-
 (s/defn cleaned-rows
   "Get sorted rows from query results, with nils removed, appropriate for rendering as a sparkline."
   [timezone-id :- (s/maybe s/Str) card {:keys [rows cols], :as data}]
