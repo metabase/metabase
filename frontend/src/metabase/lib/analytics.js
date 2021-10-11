@@ -22,8 +22,15 @@ const MetabaseAnalytics = {
       }
 
       if (typeof snowplow === "function") {
+        const context = [
+          {
+            schema: "iglu:com.metabase/tag/jsonschema/1-0-0",
+            data: { tag },
+          },
+        ];
+
         snowplow("setCustomUrl", url);
-        snowplow("trackPageView");
+        snowplow("trackPageView", { context });
       }
     }
   },
@@ -38,15 +45,9 @@ const MetabaseAnalytics = {
     const { tag } = MetabaseSettings.get("version") || {};
 
     // category & action are required, rest are optional
-    if (category && action) {
-      if (typeof ga === "function") {
-        ga("set", "dimension1", tag);
-        ga("send", "event", category, action, label, value);
-      }
-
-      if (typeof snowplow === "function") {
-        snowplow("trackStructEvent", category, action, label, "", value);
-      }
+    if (typeof ga === "function" && category && action) {
+      ga("set", "dimension1", tag);
+      ga("send", "event", category, action, label, value);
     }
 
     if (DEBUG) {
