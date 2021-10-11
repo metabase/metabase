@@ -252,6 +252,7 @@ export default class Visualization extends React.PureComponent {
   handleHoverChange = hovered => {
     if (hovered) {
       const { yAxisSplit } = this.state;
+      console.log("hover change");
       // if we have Y axis split info then find the Y axis index (0 = left, 1 = right)
       if (yAxisSplit) {
         const axisIndex = _.findIndex(yAxisSplit, indexes =>
@@ -266,14 +267,18 @@ export default class Visualization extends React.PureComponent {
         clearTimeout(this._resetHoverTimer);
         this._resetHoverTimer = null;
       }
-    } else {
-      // When reseting the hover wait in case we're simply transitioning from one
-      // element to another. This allows visualizations to use mouseleave events etc.
-      this._resetHoverTimer = setTimeout(() => {
-        this.setState({ hovered: null });
-        this._resetHoverTimer = null;
-      }, 0);
     }
+  };
+
+  handleMouseLeave = e => {
+    // When reseting the hover wait in case we're simply transitioning from one
+    // element to another. This allows visualizations to use mouseleave events etc.
+    console.log("mouse leave")
+    this._resetHoverTimer = setTimeout(() => {
+      console.log("hover reset")
+      this.setState({ hovered: null });
+      this._resetHoverTimer = null;
+    }, 0);
   };
 
   @memoize
@@ -519,6 +524,7 @@ export default class Visualization extends React.PureComponent {
 
     return (
       <div
+        onMouseLeave={this.handleMouseLeave}
         className={cx(className, "flex flex-column full-height")}
         style={style}
       >

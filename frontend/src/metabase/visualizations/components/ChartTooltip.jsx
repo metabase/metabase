@@ -49,7 +49,11 @@ export default class ChartTooltip extends Component {
       hovered &&
       ((hovered.element && document.body.contains(hovered.element)) ||
         hovered.event);
-    const isOpen = rows.length > 0 && !!hasEventOrElement;
+    const isOpen = !!hasEventOrElement;
+    if (hovered === null) {
+      debugger; // eslint-disable-line
+    }
+    console.log("hoevered", hovered);
     return (
       <TooltipPopover
         target={hovered && hovered.element}
