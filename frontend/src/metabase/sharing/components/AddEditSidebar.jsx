@@ -100,7 +100,7 @@ function _AddEditEmailSidebar({
               onChannelPropertyChange("recipients", recipients)
             }
             invalidRecipientText={domains =>
-              t`You're only allowed to email subscriptions to ${domains}`
+              t`You're only allowed to email subscriptions to addresses ending in ${domains}`
             }
           />
         </div>
