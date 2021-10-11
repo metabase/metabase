@@ -28,7 +28,7 @@ describeWithToken("scenarios > alert (EE)", () => {
 
     addEmailRecipient(deniedEmail);
 
-    cy.findByText("Done").should("be.disabled");
+    cy.button("Done").should("be.disabled");
     cy.findByText(alertError);
   });
 
@@ -37,7 +37,7 @@ describeWithToken("scenarios > alert (EE)", () => {
 
     cy.icon("share").click();
     cy.findByText("Dashboard subscriptions").click();
-    cy.findByText("Email it").click();
+    cy.button("Email it").click();
 
     cy.findByPlaceholderText("Enter user names or email addresses")
       .click()
@@ -46,8 +46,8 @@ describeWithToken("scenarios > alert (EE)", () => {
 
     sidebar().within(() => {
       // Reproduces metabase#17977
-      cy.findByText("Send email now").should("be.disabled");
-      cy.findByText("Done").should("be.disabled");
+      cy.button("Send email now").should("be.disabled");
+      cy.button("Done").should("be.disabled");
       cy.findByText(subscriptionError);
     });
   });
