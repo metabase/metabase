@@ -417,20 +417,7 @@
 (defn- filter-expr [operator field value]
   (let [field-rvalue (->rvalue field)
         value-rvalue (->rvalue value)]
-    (if (and (rvalue-is-field? field-rvalue)
-             (rvalue-can-be-compared-directly? value-rvalue))
-      ;; if we don't need to do anything fancy with field we can generate a clause like
-      ;;
-      ;;    {field {$lte 100}}
-      {(str/replace-first field-rvalue #"^\$" "")
-       ;; for the $eq operator we actually don't need to do {field {$eq 100}}, we can just do {field 100}
-       (if (= (name operator) "$eq")
-         value-rvalue
-         {operator value-rvalue})}
-      ;; if we need to do something fancy then we have to use `$expr` e.g.
-      ;;
-      ;;    {$expr {$lte [{$add [$field 1]} 100]}}
-      {:$expr {operator [field-rvalue value-rvalue]}})))
+    {:$expr {operator [field-rvalue value-rvalue]}}))
 
 (defmethod compile-filter :=  [[_ field value]] (filter-expr $eq field value))
 (defmethod compile-filter :!= [[_ field value]] (filter-expr $ne field value))
@@ -673,12 +660,12 @@
     ;; determine the projections we'll need. projected-fields is like [[projected-field-name source]]`
     (let [projected-fields (breakouts-and-ags->projected-fields breakout-fields aggregations)
           pipeline-stages  (breakouts-and-ags->pipeline-stages projected-fields breakout-fields aggregations)]
-          (-> pipeline-ctx
-              ;; add :projections key which is just a sequence of the names of projections from above
-              (assoc :projections (vec (for [[field] projected-fields]
-                                         field)))
-              ;; now add additional clauses to the end of :query as applicable
-              (update :query into pipeline-stages)))))
+      (-> pipeline-ctx
+          ;; add :projections key which is just a sequence of the names of projections from above
+          (assoc :projections (vec (for [[field] projected-fields]
+                                     field)))
+          ;; now add additional clauses to the end of :query as applicable
+          (update :query into pipeline-stages)))))
 
 
 ;;; ---------------------------------------------------- order-by ----------------------------------------------------
