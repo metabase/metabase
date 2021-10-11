@@ -12,11 +12,12 @@ import {
 
 const propTypes = {
   value: PropTypes.array.isRequired,
+  validateValue: PropTypes.func,
   users: PropTypes.array.isRequired,
   onChange: PropTypes.func,
 };
 
-const UserPicker = ({ value, users, onChange }) => {
+const UserPicker = ({ value, validateValue, users, onChange }) => {
   const placeholder = !value.length
     ? t`Enter user names or email addresses`
     : null;
@@ -60,6 +61,7 @@ const UserPicker = ({ value, users, onChange }) => {
       <TokenField
         idKey={idKey}
         value={value}
+        validateValue={validateValue}
         valueRenderer={valueRenderer}
         options={options}
         optionRenderer={optionRenderer}
