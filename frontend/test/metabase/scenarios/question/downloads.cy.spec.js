@@ -1,28 +1,37 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, analyzeRawXML } from "__support__/e2e/cypress";
 
 const xlsx = require("xlsx");
 
 // csv and Excel files have different sheet names, so define them here and we'll reuse it throughout
-const testCases = [
-  { type: "csv", firstSheetName: "Sheet1" },
-  { type: "xlsx", firstSheetName: "Query result" },
-];
+const testCases = [{ type: "csv", firstSheetName: "Sheet1" }, { type: "xlsx" }];
 
-function testWorkbookDatetimes(workbook, download_type, sheetName) {
-  expect(workbook.SheetNames[0]).to.eq(sheetName);
-  expect(workbook.Sheets[sheetName]["A1"].v).to.eq("birth_date");
-  expect(workbook.Sheets[sheetName]["B1"].v).to.eq("created_at");
-
+function testWorkbookDatetimes(payload, download_type, sheetName) {
   // Excel and CSV will have different formats
   if (download_type === "csv") {
+    const workbook = xlsx.read(payload, {
+      type: "binary",
+      raw: true,
+    });
+
+    expect(workbook.SheetNames[0]).to.eq(sheetName);
+    expect(workbook.Sheets[sheetName]["A1"].v).to.eq("birth_date");
+    expect(workbook.Sheets[sheetName]["B1"].v).to.eq("created_at");
+
     expect(workbook.Sheets[sheetName]["A2"].v).to.eq("2020-06-03");
     expect(workbook.Sheets[sheetName]["B2"].v).to.eq("2020-06-03T23:41:23");
   } else if (download_type === "xlsx") {
-    // We tell the xlsx library to read raw and not parse dates
-    // So for the _date_ format we expect an integer
-    // And for timestamp, we expect a float
-    expect(workbook.Sheets[sheetName]["A2"].v).to.eq(43985);
-    expect(workbook.Sheets[sheetName]["B2"].v).to.eq(43985.98707175926);
+    analyzeRawXML(payload, xml => {
+      const A1 = xml.querySelector("[r='A1']");
+      const B1 = xml.querySelector("[r='B1']");
+      const A2 = xml.querySelector("[r='A2']");
+      const B2 = xml.querySelector("[r='A2']");
+
+      expect(A1).to.contain("birth_date");
+      expect(B1).to.contain("created_at");
+
+      expect(A2).to.contain("43985.0");
+      expect(B2).to.contain("43985.98707175926");
+    });
   }
 }
 
@@ -44,12 +53,12 @@ describe("scenarios > question > download", () => {
 
     // Programatically issue download requests for this query for both CSV and Excel
 
-    cy.wrap(testCases).each(testCase => {
-      const downloadClassName = `.Icon-${testCase.type}`;
-      const endpoint = `/api/dataset/${testCase.type}`;
-      const sheetName = testCase.firstSheetName;
+    cy.wrap(testCases).each(({ type, firstSheetName }) => {
+      const downloadClassName = `.Icon-${type}`;
+      const endpoint = `/api/dataset/${type}`;
+      const sheetName = firstSheetName;
 
-      cy.log(`downloading a ${testCase.type} file`);
+      cy.log(`downloading a ${type} file`);
 
       cy.get(downloadClassName)
         .parent()
@@ -63,12 +72,27 @@ describe("scenarios > question > download", () => {
             form: true,
             body: { query: download_query_params },
             encoding: "binary",
-          }).then(resp => {
-            const workbook = xlsx.read(resp.body, { type: "binary" });
+          }).then(({ body: payload }) => {
+            if (type === "csv") {
+              const workbook = xlsx.read(payload, { type: "binary" });
 
-            expect(workbook.SheetNames[0]).to.eq(sheetName);
-            expect(workbook.Sheets[sheetName]["A1"].v).to.eq("Count");
-            expect(workbook.Sheets[sheetName]["A2"].v).to.eq(18760);
+              expect(workbook.SheetNames[0]).to.eq(sheetName);
+              expect(workbook.Sheets[sheetName]["A1"].v).to.eq("Count");
+              expect(workbook.Sheets[sheetName]["A2"].v).to.eq(18760);
+            }
+
+            if (type === "xlsx") {
+              analyzeRawXML(payload, xml => {
+                const A1 = xml.querySelector("[r='A1']");
+                const A2 = xml.querySelector("[r='A2']");
+
+                expect(A1).to.contain("Count");
+                expect(A1.getAttribute("t")).to.eq("inlineStr");
+
+                expect(A2).to.contain("18760.0");
+                expect(A2.getAttribute("t")).to.eq("n");
+              });
+            }
           });
         });
     });
@@ -100,14 +124,9 @@ describe("scenarios > question > download", () => {
             url: endpoint,
             method: "POST",
             encoding: "binary",
-          }).then(resp => {
-            const workbook = xlsx.read(resp.body, {
-              type: "binary",
-              raw: true,
-            });
-
+          }).then(({ body: payload }) => {
             testWorkbookDatetimes(
-              workbook,
+              payload,
               testCase.type,
               testCase.firstSheetName,
             );
@@ -127,10 +146,10 @@ describe("scenarios > question > download", () => {
           .click();
         cy.icon("download").click();
 
-        cy.wrap(testCases).each(testCase => {
-          cy.log(`downloading a ${testCase.type} file`);
-          const downloadClassName = `.Icon-${testCase.type}`;
-          const endpoint = `/api/dataset/${testCase.type}`;
+        cy.wrap(testCases).each(({ type, firstSheetName }) => {
+          cy.log(`downloading a ${type} file`);
+          const downloadClassName = `.Icon-${type}`;
+          const endpoint = `/api/dataset/${type}`;
 
           cy.get(downloadClassName)
             .parent()
@@ -144,17 +163,8 @@ describe("scenarios > question > download", () => {
                 form: true,
                 body: { query: download_query_params },
                 encoding: "binary",
-              }).then(resp => {
-                const workbook = xlsx.read(resp.body, {
-                  type: "binary",
-                  raw: true,
-                });
-
-                testWorkbookDatetimes(
-                  workbook,
-                  testCase.type,
-                  testCase.firstSheetName,
-                );
+              }).then(({ body: payload }) => {
+                testWorkbookDatetimes(payload, type, firstSheetName);
               });
             });
         });
