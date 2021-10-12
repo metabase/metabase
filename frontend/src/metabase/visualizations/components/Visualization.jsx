@@ -279,9 +279,23 @@ export default class Visualization extends React.PureComponent {
     }
   };
 
+  handleMouseEnter = e => {
+    console.log("mouse enter")
+    if (this._setTooltipTimer) {
+      clearTimeout(this._setTooltipTimer);
+      this._setTooltipTimer = null;
+    }
+  };
+
   handleMouseLeave = e => {
+    console.log("mouse leave")
+    // The mouseenter handler below gets fired after this one, so we have to
+    // preserve the tooltip
     if (this.state.tooltip) {
-      this.setState({ tooltip: null });
+      this._setTooltipTimer = setTimeout(() => {
+        this.setState({ tooltip: null });
+        this._setTooltipTimer = null;
+      }, 0);
     }
   };
 
@@ -393,6 +407,15 @@ export default class Visualization extends React.PureComponent {
     return hovered;
   };
 
+  getMouseState = (clickActions) => {
+    const { hovered, tooltip, } = this.state;
+    // disable hover when click action is active
+    if (clickActions.length > 0) {
+      return [null, null];
+    }
+    return [hovered, tooltip];
+  };
+
   render() {
     const {
       actionButtons,
@@ -416,7 +439,7 @@ export default class Visualization extends React.PureComponent {
     let { style } = this.props;
 
     const clickActions = this.getClickActions(clicked);
-    let hovered = this.getHovered(clickActions);
+    let [hovered, tooltip] = this.getMouseState(clickActions);
 
     let error = this.props.error || this.state.error;
     const loading = !(
@@ -634,8 +657,9 @@ export default class Visualization extends React.PureComponent {
         )}
         <ChartTooltip
           series={series}
-          hovered={hovered}
+          hovered={hovered || tooltip}
           settings={settings}
+          onMouseEnter={this.handleMouseEnter}
         />
         {this.props.onChangeCardAndRun && (
           <ChartClickActions
