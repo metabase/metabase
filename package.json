@@ -83,6 +83,7 @@
     "redux-router": "^2.1.2",
     "regenerator": "^0.14.1",
     "regexp.escape": "^1.1.0",
+    "remark-gfm": "1.0.0",
     "reselect": "^3.0.0",
     "resize-observer-polyfill": "^1.5.1",
     "screenfull": "^4.2.1",
