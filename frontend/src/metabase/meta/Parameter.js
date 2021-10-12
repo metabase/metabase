@@ -1,5 +1,4 @@
 import MetabaseSettings from "metabase/lib/settings";
-import type { DatasetQuery } from "metabase-types/types/Card";
 import type {
   TemplateTag,
   LocalFieldReference,
@@ -370,25 +369,26 @@ export function getTemplateTagParameters(tags: TemplateTag[]): Parameter[] {
     });
 }
 
+function isDimensionTarget(target) {
+  return target?.[0] === "dimension";
+}
+
 /** Returns the field ID that this parameter target points to, or null if it's not a dimension target. */
 export function getParameterTargetFieldId(
   target: ?ParameterTarget,
-  datasetQuery: ?DatasetQuery,
+  metadata,
+  question,
 ): ?FieldId {
-  if (target && target[0] === "dimension") {
-    const dimension = target[1];
-    if (Array.isArray(dimension) && dimension[0] === "template-tag") {
-      if (datasetQuery && datasetQuery.type === "native") {
-        const templateTag =
-          datasetQuery.native["template-tags"][String(dimension[1])];
-        if (templateTag && templateTag.type === "dimension") {
-          return FIELD_REF.getFieldTargetId(templateTag.dimension);
-        }
-      }
-    } else {
-      return FIELD_REF.getFieldTargetId(dimension);
-    }
+  if (isDimensionTarget(target)) {
+    const dimension = Dimension.parseMBQL(
+      target[1],
+      metadata,
+      question.query(),
+    );
+    const field = dimension?.field();
+    return field?.id;
   }
+
   return null;
 }
 

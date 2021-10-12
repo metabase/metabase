@@ -277,14 +277,12 @@ export const makeGetMergedParameterFieldValues = () => {
 // clone each object in the provided mapping of objects
 export function copyObjects(metadata, objects, instantiate) {
   const copies = {};
-  for (const object of Object.values(objects)) {
-    if (object && object.id != null) {
-      copies[object.id] = instantiate(object);
-      copies[object.id].metadata = metadata;
-    } else {
-      console.warn("Missing id:", object);
-    }
+
+  for (const [id, object] of Object.entries(objects)) {
+    copies[id] = instantiate(object);
+    copies[id].metadata = metadata;
   }
+
   return copies;
 }
 

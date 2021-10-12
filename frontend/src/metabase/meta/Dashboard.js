@@ -278,7 +278,10 @@ function getMappingTargetField(card, mapping, metadata) {
     return null;
   }
 
-  const fieldId = getParameterTargetFieldId(mapping.target, card.dataset_query);
+  const question = new Question(card, metadata);
+
+  const fieldId = getParameterTargetFieldId(mapping.target, metadata, question);
+
   let field = metadata.field(fieldId);
 
   if (!field) {

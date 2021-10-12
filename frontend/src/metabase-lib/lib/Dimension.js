@@ -555,9 +555,17 @@ export class FieldDimension extends Dimension {
       );
     }
 
-    if (this._query) {
-      // TODO: more efficient lookup
-      const field = _.findWhere(this._query.table().fields, {
+    if (this.isStringFieldName() && this.query()) {
+      const virtualFieldId = `${this.query().tableId()}:${this._fieldIdOrName}`;
+      const field = this._metadata.field(virtualFieldId);
+      if (field) {
+        return field;
+      }
+    }
+
+    if (this.query() && this.query().table()) {
+      const table = this.query().table();
+      const field = _.findWhere(table.fields, {
         name: this._fieldIdOrName,
       });
       if (field) {
@@ -1175,6 +1183,16 @@ export class TemplateTagDimension extends FieldDimension {
     });
   }
 
+  static parseMBQL(mbql, metadata = null, query = null): ?FieldDimension {
+    return TemplateTagDimension.isTemplateTagClause(mbql)
+      ? Object.freeze(new TemplateTagDimension(mbql[1], metadata, query))
+      : null;
+  }
+
+  static isTemplateTagClause(clause) {
+    return Array.isArray(clause) && clause[0] === "template-tag";
+  }
+
   dimension() {
     if (this._query) {
       const tag = this.tag();
@@ -1216,4 +1234,5 @@ const DIMENSION_TYPES: typeof Dimension[] = [
   FieldDimension,
   ExpressionDimension,
   AggregationDimension,
+  TemplateTagDimension,
 ];

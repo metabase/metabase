@@ -117,9 +117,13 @@ export const getDatabaseFields = createSelector(
 );
 
 export const getParameters = createSelector(
-  [getCard, getParameterValues],
-  (card, parameterValues) =>
-    getValueAndFieldIdPopulatedParametersFromCard(card, parameterValues),
+  [getCard, getMetadata, getParameterValues],
+  (card, metadata, parameterValues) =>
+    getValueAndFieldIdPopulatedParametersFromCard(
+      card,
+      metadata,
+      parameterValues,
+    ),
 );
 
 const getLastRunDatasetQuery = createSelector(

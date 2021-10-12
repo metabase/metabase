@@ -1016,6 +1016,7 @@ export default class Question {
   parameters(): ParameterObject[] {
     return getValueAndFieldIdPopulatedParametersFromCard(
       this.card(),
+      this.metadata(),
       this._parameterValues,
     );
   }

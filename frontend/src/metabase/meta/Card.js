@@ -10,6 +10,7 @@ import * as Query from "metabase/lib/query/query";
 import * as Q_DEPRECATED from "metabase/lib/query"; // legacy
 import Utils from "metabase/lib/utils";
 import * as Urls from "metabase/lib/urls";
+import Question from "metabase-lib/lib/Question";
 
 import _ from "underscore";
 import { assoc, updateIn } from "icepick";
@@ -137,6 +138,7 @@ export function getParametersFromCard(card: ?Card): Parameter[] {
 
 export function getValueAndFieldIdPopulatedParametersFromCard(
   card: Card,
+  metadata,
   parameterValues?: ParameterValues,
 ): Parameter[] {
   const parameters = getParametersFromCard(card);
@@ -144,12 +146,14 @@ export function getValueAndFieldIdPopulatedParametersFromCard(
     parameters,
     parameterValues,
   );
+  const question = new Question(card, metadata);
 
   return valuePopulatedParameters.map(parameter => {
     // if we have a field id for this parameter, set "field_id"
     const fieldId = getParameterTargetFieldId(
       parameter.target,
-      card.dataset_query,
+      metadata,
+      question,
     );
     if (fieldId != null) {
       parameter = assoc(parameter, "field_id", fieldId);
