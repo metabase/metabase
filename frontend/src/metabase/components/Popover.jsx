@@ -54,6 +54,9 @@ export default class Popover extends Component {
     noOnClickOutsideWrapper: PropTypes.bool,
     targetOffsetX: PropTypes.number,
     targetOffsetY: PropTypes.number,
+    // Allows consumers to keep the tooltip open when hovering over datapoints
+    onMouseEnter: PropTypes.func,
+    onMouseLeave: PropTypes.func,
     onClose: PropTypes.func,
     containerClassName: PropTypes.string,
     className: PropTypes.string,
@@ -146,12 +149,15 @@ export default class Popover extends Component {
             "PopoverBody--withArrow":
               this.props.hasArrow && this.props.hasBackground,
             "PopoverBody--autoWidth": this.props.autoWidth,
+            "PopoverBody--pointerEvents": this.props.onMouseEnter || this.props.onMouseLeave,
           },
           // TODO kdoh 10/16/2017 we should eventually remove this
           this.props.className,
         )}
         role={this.props.role}
         style={this.props.style}
+        onMouseEnter={this.props.onMouseEnter}
+        onMouseLeave={this.props.onMouseLeave}
       >
         {typeof this.props.children === "function"
           ? this.props.children(childProps)

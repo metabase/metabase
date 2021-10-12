@@ -11,6 +11,9 @@ export default class ChartTooltip extends Component {
   static propTypes = {
     hovered: PropTypes.object,
     settings: PropTypes.object,
+    // Allows consumers to keep the tooltip open when hovering over datapoints
+    onMouseEnter: PropTypes.func,
+    onMouseLeave: PropTypes.func,
   };
 
   _getRows() {
@@ -43,22 +46,20 @@ export default class ChartTooltip extends Component {
   }
 
   render() {
-    const { hovered, settings } = this.props;
+    const { hovered, settings, onMouseEnter, onMouseLeave } = this.props;
     const rows = this._getRows();
     const hasEventOrElement =
       hovered &&
       ((hovered.element && document.body.contains(hovered.element)) ||
         hovered.event);
     const isOpen = !!hasEventOrElement;
-    if (hovered === null) {
-      debugger; // eslint-disable-line
-    }
-    console.log("hoevered", hovered);
     return (
       <TooltipPopover
         target={hovered && hovered.element}
         targetEvent={hovered && hovered.event}
         verticalAttachments={["bottom", "top"]}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
         isOpen={isOpen}
         // Make sure that for chart tooltips we don't constrain the width so longer strings don't get cut off
         constrainedWidth={false}

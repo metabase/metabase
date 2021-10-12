@@ -30,6 +30,16 @@
   max-width: none;
 }
 
+/* 
+ * Reenable pointer events so users can select tooltip text. This style
+ * is marked important because it's enabled by the <Popover> component when
+ * onMouseEnter/onMouseLeave are set, which are useless if something else
+ * overrides pointer events on the tooltip 
+ */
+.PopoverBody.PopoverBody--pointerEvents {
+  pointer-events: all !important;
+}
+
 .PopoverBody.PopoverBody--tooltip {
   color: white;
   font-weight: bold;

@@ -127,6 +127,7 @@ type State = {
   computedSettings: VisualizationSettings,
 
   hovered: ?HoverObject,
+  tooltip: ?HoverObject,
   clicked: ?ClickObject,
 
   error: ?Error,
@@ -147,6 +148,7 @@ export default class Visualization extends React.PureComponent {
 
     this.state = {
       hovered: null,
+      tooltip: null,
       clicked: null,
       error: null,
       warnings: [],
@@ -252,7 +254,6 @@ export default class Visualization extends React.PureComponent {
   handleHoverChange = hovered => {
     if (hovered) {
       const { yAxisSplit } = this.state;
-      console.log("hover change");
       // if we have Y axis split info then find the Y axis index (0 = left, 1 = right)
       if (yAxisSplit) {
         const axisIndex = _.findIndex(yAxisSplit, indexes =>
@@ -267,16 +268,26 @@ export default class Visualization extends React.PureComponent {
         clearTimeout(this._resetHoverTimer);
         this._resetHoverTimer = null;
       }
+    } else {
+      // When reseting the hover wait in case we're simply transitioning from one
+      // element to another. This allows visualizations to use mouseleave events etc.
+      this._resetHoverTimer = setTimeout(() => {
+        this.setState({ hovered: null });
+        this._resetHoverTimer = null;
+      }, 0);
+    }
+  };
+
+  handleMouseEnter = e => {
+    if (this.state.hovered) {
+      this.setState({ tooltip: this.state.hovered });
     }
   };
 
   handleMouseLeave = e => {
-    // When reseting the hover wait in case we're simply transitioning from one
-    // element to another. This allows visualizations to use mouseleave events etc.
-    this._resetHoverTimer = setTimeout(() => {
-      this.setState({ hovered: null });
-      this._resetHoverTimer = null;
-    }, 0);
+    if (this.state.tooltip) {
+      this.setState({ tooltip: null });
+    }
   };
 
   @memoize
@@ -376,6 +387,17 @@ export default class Visualization extends React.PureComponent {
     }
   };
 
+  getHovered = (clickActions) => {
+    const { hovered, tooltip, } = this.state;
+    // disable hover when click action is active
+    if (clickActions.length > 0) {
+      return null;
+    } else if (tooltip) {
+      return tooltip;
+    }
+    return hovered;
+  };
+
   render() {
     const {
       actionButtons,
@@ -395,14 +417,11 @@ export default class Visualization extends React.PureComponent {
     const small = width < 330;
 
     // these may be overridden below
-    let { series, hovered, clicked } = this.state;
+    let { series, clicked } = this.state;
     let { style } = this.props;
 
     const clickActions = this.getClickActions(clicked);
-    // disable hover when click action is active
-    if (clickActions.length > 0) {
-      hovered = null;
-    }
+    let hovered = this.getHovered(clickActions);
 
     let error = this.props.error || this.state.error;
     const loading = !(
@@ -522,7 +541,6 @@ export default class Visualization extends React.PureComponent {
 
     return (
       <div
-        onMouseLeave={this.handleMouseLeave}
         className={cx(className, "flex flex-column full-height")}
         style={style}
       >
@@ -618,7 +636,13 @@ export default class Visualization extends React.PureComponent {
             }
           />
         )}
-        <ChartTooltip series={series} hovered={hovered} settings={settings} />
+        <ChartTooltip
+          series={series}
+          hovered={hovered}
+          settings={settings}
+          onMouseEnter={this.handleMouseEnter}
+          onMouseLeave={this.handleMouseLeave}
+        />
         {this.props.onChangeCardAndRun && (
           <ChartClickActions
             clicked={clicked}
