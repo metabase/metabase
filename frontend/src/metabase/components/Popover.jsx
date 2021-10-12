@@ -54,7 +54,6 @@ export default class Popover extends Component {
     noOnClickOutsideWrapper: PropTypes.bool,
     targetOffsetX: PropTypes.number,
     targetOffsetY: PropTypes.number,
-    // Allows consumers to keep the tooltip open when hovering over datapoints
     onMouseEnter: PropTypes.func,
     onMouseLeave: PropTypes.func,
     onClose: PropTypes.func,

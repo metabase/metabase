@@ -11,7 +11,6 @@ export default class ChartTooltip extends Component {
   static propTypes = {
     hovered: PropTypes.object,
     settings: PropTypes.object,
-    // Allows consumers to keep the tooltip open when hovering over datapoints
     onMouseEnter: PropTypes.func,
     onMouseLeave: PropTypes.func,
   };
