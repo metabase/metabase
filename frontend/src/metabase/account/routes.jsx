@@ -22,5 +22,5 @@ const getRoutes = (store, IsAuthenticated) => {
   );
 };
 
-// sample change
+// a sample change
 export default getRoutes;
