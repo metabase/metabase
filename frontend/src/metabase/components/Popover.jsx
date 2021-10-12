@@ -149,7 +149,8 @@ export default class Popover extends Component {
             "PopoverBody--withArrow":
               this.props.hasArrow && this.props.hasBackground,
             "PopoverBody--autoWidth": this.props.autoWidth,
-            "PopoverBody--pointerEvents": this.props.onMouseEnter || this.props.onMouseLeave,
+            "PopoverBody--pointerEvents":
+              this.props.onMouseEnter || this.props.onMouseLeave,
           },
           // TODO kdoh 10/16/2017 we should eventually remove this
           this.props.className,

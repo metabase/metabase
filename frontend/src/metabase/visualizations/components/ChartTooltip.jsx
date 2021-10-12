@@ -52,7 +52,7 @@ export default class ChartTooltip extends Component {
       hovered &&
       ((hovered.element && document.body.contains(hovered.element)) ||
         hovered.event);
-    const isOpen = !!hasEventOrElement;
+    const isOpen = rows.length > 0 && !!hasEventOrElement;
     return (
       <TooltipPopover
         target={hovered && hovered.element}

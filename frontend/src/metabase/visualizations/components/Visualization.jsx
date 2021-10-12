@@ -142,6 +142,7 @@ export default class Visualization extends React.PureComponent {
   props: Props;
 
   _resetHoverTimer: ?number;
+  _setTooltipTimer: ?number;
 
   constructor(props: Props) {
     super(props);
@@ -261,7 +262,7 @@ export default class Visualization extends React.PureComponent {
         );
         hovered = assoc(hovered, "axisIndex", axisIndex);
       }
-      this.setState({ hovered });
+      this.setState({ hovered, tooltip: hovered });
       // If we previously set a timeout for clearing the hover clear it now since we received
       // a new hover.
       if (this._resetHoverTimer !== null) {
@@ -275,12 +276,6 @@ export default class Visualization extends React.PureComponent {
         this.setState({ hovered: null });
         this._resetHoverTimer = null;
       }, 0);
-    }
-  };
-
-  handleMouseEnter = e => {
-    if (this.state.hovered) {
-      this.setState({ tooltip: this.state.hovered });
     }
   };
 
@@ -387,8 +382,8 @@ export default class Visualization extends React.PureComponent {
     }
   };
 
-  getHovered = (clickActions) => {
-    const { hovered, tooltip, } = this.state;
+  getHovered = clickActions => {
+    const { hovered, tooltip } = this.state;
     // disable hover when click action is active
     if (clickActions.length > 0) {
       return null;
@@ -543,6 +538,7 @@ export default class Visualization extends React.PureComponent {
       <div
         className={cx(className, "flex flex-column full-height")}
         style={style}
+        onMouseLeave={this.handleMouseLeave}
       >
         {!!hasHeader && (
           <div className="p1 flex-no-shrink">
@@ -640,8 +636,6 @@ export default class Visualization extends React.PureComponent {
           series={series}
           hovered={hovered}
           settings={settings}
-          onMouseEnter={this.handleMouseEnter}
-          onMouseLeave={this.handleMouseLeave}
         />
         {this.props.onChangeCardAndRun && (
           <ChartClickActions
