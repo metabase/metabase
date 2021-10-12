@@ -136,6 +136,7 @@
     "eslint-plugin-import": "^2.22.0",
     "eslint-plugin-react": "^7.22.0",
     "eslint-plugin-react-hooks": "^4.2.0",
+    "extract-zip": "^2.0.1",
     "fs-promise": "^2.0.2",
     "glob": "^7.1.1",
     "html-webpack-harddisk-plugin": "^2.0.0",
