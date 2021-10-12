@@ -12,19 +12,19 @@
 
 (def avg-exec-time-45
   "HoneySQL for a CTE to include the average execution time for each Card for 45 days."
-  [:avg_exec_time (-> {:select   [:card_id
-                                  [:%avg.running_time :avg_running_time_ms]]
-                       :from     [:query_execution]
-                       :group-by [:card_id]}
-                      (common/add-45-days-clause :started_at))])
+  [:avg_exec_time_45 (-> {:select   [:card_id
+                                     [:%avg.running_time :avg_running_time_ms]]
+                          :from     [:query_execution]
+                          :group-by [:card_id]}
+                         (common/add-45-days-clause :started_at))])
 
 (def total-exec-time-45
   "HoneySQL for a CTE to include the total execution time for each Card for 45 days."
-  [:total_runtime (-> {:select   [:card_id
-                                  [:%sum.running_time :total_running_time_ms]]
-                       :from     [:query_execution]
-                       :group-by [:card_id]}
-                      (common/add-45-days-clause :started_at))])
+  [:total_runtime_45 (-> {:select   [:card_id
+                                     [:%sum.running_time :total_running_time_ms]]
+                          :from     [:query_execution]
+                          :group-by [:card_id]}
+                         (common/add-45-days-clause :started_at))])
 
 (def latest-qe
   "HoneySQL for a CTE to get latest QueryExecution for a Card."
