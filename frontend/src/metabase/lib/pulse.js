@@ -1,4 +1,6 @@
 import _ from "underscore";
+import MetabaseSettings from "metabase/lib/settings";
+import MetabaseUtils from "metabase/lib/utils";
 import {
   hasDefaultParameterValue,
   hasParameterValue,
@@ -14,31 +16,28 @@ export const NEW_PULSE_TEMPLATE = {
 };
 
 export function channelIsValid(channel, channelSpec) {
-  if (!channelSpec) {
-    return false;
-  }
-
-  if (channelSpec.recipients) {
-    // default from formInput is an empty array, not a null array
-    // check for both
-    if (!channel.recipients || channel.recipients.length < 1) {
-      return false;
-    }
-  }
-
-  if (channelSpec.fields) {
-    for (const field of channelSpec.fields) {
-      if (
-        field.required &&
+  switch (channel.channel_type) {
+    case "email":
+      return (
+        channel.recipients &&
+        channel.recipients.length > 0 &&
+        channel.recipients.every(recipientIsValid) &&
+        fieldsAreValid(channel, channelSpec) &&
+        scheduleIsValid(channel)
+      );
+    case "slack":
+      return (
         channel.details &&
-        (channel.details[field.name] == null ||
-          channel.details[field.name] === "")
-      ) {
-        return false;
-      }
-    }
+        channel.details.channel &&
+        fieldsAreValid(channel, channelSpec) &&
+        scheduleIsValid(channel)
+      );
+    default:
+      return false;
   }
+}
 
+export function scheduleIsValid(channel) {
   switch (channel.schedule_type) {
     case "monthly":
       if (channel.schedule_frame != null && channel.schedule_hour != null) {
@@ -65,12 +64,36 @@ export function channelIsValid(channel, channelSpec) {
   return true;
 }
 
+export function fieldsAreValid(channel, channelSpec) {
+  if (!channelSpec) {
+    return false;
+  }
+
+  if (!channelSpec.fields) {
+    return true;
+  }
+
+  return channelSpec.fields
+    .filter(field => field.required)
+    .every(field => Boolean(channel.details?.[field.name]));
+}
+
 function pulseChannelsAreValid(pulse, channelSpecs) {
   return (
     pulse.channels.filter(c =>
       channelIsValid(c, channelSpecs && channelSpecs[c.channel_type]),
     ).length > 0 || false
   );
+}
+
+export function recipientIsValid(recipient) {
+  if (recipient.id) {
+    return true;
+  }
+
+  const recipientDomain = MetabaseUtils.getEmailDomain(recipient.email);
+  const allowedDomains = MetabaseSettings.subscriptionAllowedDomains();
+  return _.isEmpty(allowedDomains) || allowedDomains.includes(recipientDomain);
 }
 
 export function pulseIsValid(pulse, channelSpecs) {
