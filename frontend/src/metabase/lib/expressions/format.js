@@ -88,10 +88,22 @@ function formatSegment([, segmentId], options) {
   return formatSegmentName(segment, options);
 }
 
+// HACK: very specific to some string functions for now
+function formatFunctionOptions(fnOptions) {
+  if (Object.prototype.hasOwnProperty.call(fnOptions, "case-sensitive")) {
+    const caseSensitive = fnOptions["case-sensitive"];
+    if (!caseSensitive) {
+      return "case-insensitive";
+    }
+  }
+}
+
 function formatFunction([fn, ...args], options) {
   if (hasOptions(args)) {
-    // FIXME: how should we format args?
-    args = args.slice(0, -1);
+    const fnOptions = formatFunctionOptions(args.pop());
+    if (fnOptions) {
+      args = [...args, fnOptions];
+    }
   }
   const formattedName = getExpressionName(fn);
   const formattedArgs = args.map(arg => format(arg, options));

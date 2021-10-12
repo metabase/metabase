@@ -8,6 +8,7 @@ import {
   OPERATOR_PRECEDENCE,
 } from "../expressions";
 
+import { MBQL_CLAUSES } from "./config";
 import { ExpressionCstVisitor, parse } from "./parser";
 
 const NEGATIVE_FILTER_SHORTHANDS = {
@@ -82,8 +83,22 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
     if (!fn) {
       throw new Error(`Unknown Function: ${functionName}`);
     }
-    const args = (ctx.arguments || []).map(argument => this.visit(argument));
-    return [fn, ...args];
+    const parameters = ctx.arguments || [];
+    const options = [];
+    const clause = MBQL_CLAUSES[fn];
+    if (clause && clause.hasOptions) {
+      if (parameters.length === clause.args.length + 1) {
+        // the last one holds the function options
+        const fnOptions = this.visit(parameters.pop());
+
+        // HACK: very specific to some string functions for now
+        if (fnOptions === "case-insensitive") {
+          options.push({ "case-sensitive": false });
+        }
+      }
+    }
+    const args = parameters.map(argument => this.visit(argument));
+    return [fn, ...args, ...options];
   }
 
   caseExpression(ctx) {
