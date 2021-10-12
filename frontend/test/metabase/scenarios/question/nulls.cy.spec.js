@@ -159,7 +159,7 @@ describe("scenarios > question > null", () => {
     });
   });
 
-  it.skip("should filter by clicking on the row with `null` value (metabase#18386)", () => {
+  it("should filter by clicking on the row with `null` value (metabase#18386)", () => {
     openOrdersTable();
 
     // Total of "39.72", and the next cell is the `discount` (which is empty)
