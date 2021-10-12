@@ -172,11 +172,11 @@
                [:table_name      {:display_name "Table",                :base_type :type/Text,    :remapped_from :table_id}]
                [:user_id         {:display_name "Created By ID",        :base_type :type/Integer, :remapped_to   :user_name}]
                [:user_name       {:display_name "Created By",           :base_type :type/Text,    :remapped_from :user_id}]
-               [:public_link     {:display_name "Public Link",          :base_type :type/URL}]
-               [:cache_ttl       {:display_name "Cache Duration",       :base_type :type/Number}]
+               [:cache_ttl       {:display_name "Cache Duration",       :base_type :type/Integer}]
                [:avg_exec_time   {:display_name "Average Runtime (ms)", :base_type :type/Integer}]
-               [:total_runtime   {:display_name "Total Runtime (ms)",   :base_type :type/Number}]
-               [:query_runs      {:display_name "Query Runs",           :base_type :type/Integer}]]
+               [:total_runtime   {:display_name "Total Runtime (ms)",   :base_type :type/Integer}]
+               [:query_runs      {:display_name "Query Runs",           :base_type :type/Integer}]
+               [:public_link     {:display_name "Public Link",          :base_type :type/URL}]]
     :results  (common/reducible-query
                (->
                 {:with      [cards/avg-exec-time-45
@@ -192,18 +192,18 @@
                              [:t.name :table_name]
                              [:card.creator_id :user_id]
                              [(common/user-full-name :u) :user_name]
-                             [(common/card-public-url :card.public_uuid) :public_link]
                              :card.cache_ttl
-                             [:avg_exec_time.avg_running_time_ms :avg_exec_time]
-                             [:total_runtime.total_running_time_ms :total_runtime]
-                             [:query_runs.count :query_runs]]
+                             [:avg_exec_time_45.avg_running_time_ms :avg_exec_time]
+                             [:total_runtime_45.total_running_time_ms :total_runtime]
+                             [:query_runs.count :query_runs]
+                             [(common/card-public-url :card.public_uuid) :public_link]]
                  :from      [[:report_card :card]]
                  :left-join [[:collection :coll]      [:= :card.collection_id :coll.id]
                              [:metabase_database :db] [:= :card.database_id :db.id]
                              [:metabase_table :t]     [:= :card.table_id :t.id]
                              [:core_user :u]          [:= :card.creator_id :u.id]
-                             :avg_exec_time           [:= :card.id :avg_exec_time.card_id]
-                             :total_runtime           [:= :card.id :total_runtime.card_id]
+                             :avg_exec_time_45        [:= :card.id :avg_exec_time_45.card_id]
+                             :total_runtime_45        [:= :card.id :total_runtime_45.card_id]
                              :query_runs              [:= :card.id :query_runs.card_id]]
                  :where     [:= :card.archived false]}
                 (common/add-search-clause question-filter :card.name)
