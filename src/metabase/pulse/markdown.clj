@@ -2,12 +2,14 @@
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as str]
-            [metabase.public-settings :as public-settings])
+            [metabase.public-settings :as public-settings]
+            [metabase.util.urls :as url])
   (:import [com.vladsch.flexmark.ast AutoLink BlockQuote BulletList BulletListItem Code Emphasis FencedCodeBlock
             HardLineBreak Heading HtmlBlock HtmlCommentBlock HtmlEntity HtmlInline HtmlInlineBase HtmlInlineComment
             HtmlInnerBlockComment Image ImageRef IndentedCodeBlock Link LinkRef MailLink OrderedList OrderedListItem
             Paragraph Reference SoftLineBreak StrongEmphasis Text ThematicBreak]
-           com.vladsch.flexmark.html.HtmlRenderer
+           [com.vladsch.flexmark.html HtmlRenderer LinkResolver LinkResolverFactory]
+           [com.vladsch.flexmark.html.renderer LinkResolverBasicContext LinkStatus]
            com.vladsch.flexmark.parser.Parser
            [com.vladsch.flexmark.util.ast Document Node]
            com.vladsch.flexmark.util.data.MutableDataSet
@@ -301,10 +303,19 @@
 
 (def ^:private renderer
   "An instance of a Flexmark HTML renderer"
-  (let [options (.. (MutableDataSet.)
-                    (set (. HtmlRenderer ESCAPE_HTML) true)
-                    (toImmutable))]
-    (delay (.build (HtmlRenderer/builder options)))))
+  (let [options    (.. (MutableDataSet.)
+                       (set HtmlRenderer/ESCAPE_HTML true)
+                       (toImmutable))
+        lr-factory (reify LinkResolverFactory
+                     (^LinkResolver apply [_this ^LinkResolverBasicContext _context]
+                      (reify LinkResolver
+                        (resolveLink [_this node context link]
+                          (if-let [url (resolve-uri (.getUrl link))]
+                            (.. link
+                                (withStatus LinkStatus/VALID)
+                                (withUrl url))
+                            link)))))]
+    (delay (.build (.linkResolverFactory (HtmlRenderer/builder options) lr-factory)))))
 
 (defmulti process-markdown
   "Converts a markdown string from a virtual card into a form that can be sent to a channel

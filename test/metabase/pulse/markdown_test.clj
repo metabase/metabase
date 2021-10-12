@@ -175,8 +175,11 @@
            (html "1. foo\n   1. bar")))
     (is (= "<p>/</p>\n"
            (html "\\/")))
-    (is (= "<p><img src=\"image.png\" alt=\"alt-text\" /></p>\n"
-           (html "![alt-text](image.png)"))))
+    (tu/with-temporary-setting-values [site-url "https://example.com"]
+      (is (= "<p><img src=\"https://example.com/image.png\" alt=\"alt-text\" /></p>\n"
+             (html "![alt-text](/image.png)")))
+      (is (= "<p><a href=\"https://example.com/dashboard/1\">dashboard 1</a></p>\n"
+             (html "[dashboard 1](/dashboard/1)")))))
 
   (testing "HTML in the source markdown is escaped properly, but HTML entities are retained"
     (is (= "<p>&lt;h1&gt;header&lt;/h1&gt;</p>\n" (html "<h1>header</h1>")))
