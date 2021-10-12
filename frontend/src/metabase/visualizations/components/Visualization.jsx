@@ -280,7 +280,6 @@ export default class Visualization extends React.PureComponent {
   };
 
   handleMouseEnter = e => {
-    console.log("mouse enter")
     if (this._setTooltipTimer) {
       clearTimeout(this._setTooltipTimer);
       this._setTooltipTimer = null;
@@ -288,7 +287,6 @@ export default class Visualization extends React.PureComponent {
   };
 
   handleMouseLeave = e => {
-    console.log("mouse leave")
     // The mouseenter handler below gets fired after this one, so we have to
     // preserve the tooltip
     if (this.state.tooltip) {
@@ -407,8 +405,8 @@ export default class Visualization extends React.PureComponent {
     return hovered;
   };
 
-  getMouseState = (clickActions) => {
-    const { hovered, tooltip, } = this.state;
+  getMouseState = clickActions => {
+    const { hovered, tooltip } = this.state;
     // disable hover when click action is active
     if (clickActions.length > 0) {
       return [null, null];
