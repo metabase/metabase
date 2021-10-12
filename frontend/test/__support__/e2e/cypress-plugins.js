@@ -29,6 +29,8 @@ const webpackPluginOptions = {
   watchOptions: {},
 };
 
+const extract = require("extract-zip");
+
 module.exports = (on, config) => {
   // `on` is used to hook into various events Cypress emits
   // `config` is the resolved Cypress config
@@ -39,6 +41,19 @@ module.exports = (on, config) => {
    ********************************************************************/
 
   on("file:preprocessor", webpack(webpackPluginOptions));
+
+  /********************************************************************
+   **                       CUSTOM TASKS                             **
+   ********************************************************************/
+
+  on("task", {
+    async unzip({ source, target }) {
+      await extract(source, { dir: `${process.cwd()}/${target}` });
+      console.log("Extraction complete");
+
+      return null;
+    },
+  });
 
   /********************************************************************
    **                         BROWSERS                               **
