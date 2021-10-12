@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import xhrMock from "xhr-mock";
 
 import { InfoText } from "./InfoText";
@@ -17,7 +17,7 @@ async function setup(result) {
     body: JSON.stringify(database),
   });
 
-  render(<InfoText result={result} />);
+  renderWithProviders(<InfoText result={result} />);
 }
 
 describe("InfoText", () => {

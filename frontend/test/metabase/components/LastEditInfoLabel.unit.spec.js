@@ -1,5 +1,5 @@
 import React from "react";
-import { render } from "__support__/ui";
+import { renderWithProviders } from "__support__/ui";
 import mockDate from "mockdate";
 import moment from "moment";
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
@@ -30,7 +30,7 @@ describe("LastEditInfoLabel", () => {
       return isLastEditedByCurrentUser ? TEST_USER : { id: TEST_USER.id + 1 };
     }
 
-    return render(<LastEditInfoLabel item={testItem} />, {
+    return renderWithProviders(<LastEditInfoLabel item={testItem} />, {
       reducers: {
         currentUser: userReducer,
       },

@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import xhrMock from "xhr-mock";
 import RecentsList from "./RecentsList";
 
@@ -50,7 +50,7 @@ function mockRecentsEndpoint(recents) {
 async function setup(recents = recentsData) {
   mockRecentsEndpoint(recents);
 
-  render(<RecentsList />);
+  renderWithProviders(<RecentsList />);
 
   await waitFor(() => screen.queryByText("Recently viewed"));
 }

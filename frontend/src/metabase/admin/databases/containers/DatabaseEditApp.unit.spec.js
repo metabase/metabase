@@ -1,5 +1,9 @@
 import React from "react";
-import { render, screen, waitForElementToBeRemoved } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitForElementToBeRemoved,
+} from "__support__/ui";
 import admin from "metabase/admin/admin";
 import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_CACHING } from "metabase/plugins";
@@ -39,7 +43,10 @@ function mockSettings({ cachingEnabled = false }) {
 
 async function setup({ cachingEnabled = false } = {}) {
   mockSettings({ cachingEnabled });
-  render(<DatabaseEditApp />, { withRouter: true, reducers: { admin } });
+  renderWithProviders(<DatabaseEditApp />, {
+    withRouter: true,
+    reducers: { admin },
+  });
   await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
 }
 

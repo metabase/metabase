@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen } from "__support__/ui";
+import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import userEvent from "@testing-library/user-event";
 import xhrMock from "xhr-mock";
 import { PLUGIN_CACHING, PLUGIN_FORM_WIDGETS } from "metabase/plugins";
@@ -37,7 +37,7 @@ function setup({ cachingEnabled = true } = {}) {
     card: () => QUESTION,
   };
 
-  render(
+  renderWithProviders(
     <EditQuestionInfoModal
       question={question}
       onSave={onSave}

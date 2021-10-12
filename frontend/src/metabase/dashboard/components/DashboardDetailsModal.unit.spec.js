@@ -1,6 +1,6 @@
 import React from "react";
 import _ from "underscore";
-import { fireEvent, render, screen } from "__support__/ui";
+import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import userEvent from "@testing-library/user-event";
 import xhrMock from "xhr-mock";
 import MetabaseSettings from "metabase/lib/settings";
@@ -45,7 +45,7 @@ function setup({ mockDashboardUpdateResponse = true } = {}) {
     },
   });
 
-  render(<DashboardDetailsModal onClose={onClose} />, {
+  renderWithProviders(<DashboardDetailsModal onClose={onClose} />, {
     reducers: {
       dashboard: dashboardReducer,
     },

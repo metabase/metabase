@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import userEvent from "@testing-library/user-event";
 import mock from "xhr-mock";
 
@@ -29,7 +29,7 @@ const renderSaveQuestionModal = (question, originalQuestion) => {
   const onCreateMock = jest.fn(() => Promise.resolve());
   const onSaveMock = jest.fn(() => Promise.resolve());
   const onCloseMock = jest.fn();
-  render(
+  renderWithProviders(
     <SaveQuestionModal
       card={question.card()}
       originalCard={originalQuestion && originalQuestion.card()}

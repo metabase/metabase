@@ -1,5 +1,5 @@
 import React from "react";
-import { render } from "__support__/ui";
+import { renderWithProviders } from "__support__/ui";
 import userEvent from "@testing-library/user-event";
 import moment from "moment";
 
@@ -28,7 +28,7 @@ describe("Collections BaseItemsTable", () => {
   };
 
   function setup({ items = [ITEM], ...props } = {}) {
-    return render(
+    return renderWithProviders(
       <BaseItemsTable
         items={items}
         sortingOptions={{ sort_column: "name", sort_direction: "asc" }}

@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React, { useState } from "react";
 import {
-  render,
+  renderWithProviders,
   screen,
   fireEvent,
   within,
@@ -63,7 +63,7 @@ describe("Notebook Editor > Join Step", () => {
       revert: jest.fn(),
     };
 
-    render(
+    renderWithProviders(
       <JoinStepWrapped
         initialQuery={query}
         step={TEST_STEP}

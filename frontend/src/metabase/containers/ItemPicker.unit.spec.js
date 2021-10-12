@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  render,
+  renderWithProviders,
   screen,
   waitForElementToBeRemoved,
   within,
@@ -134,9 +134,12 @@ async function setup({
 
   const onChange = jest.fn();
 
-  render(<ItemPicker models={models} onChange={onChange} {...props} />, {
-    currentUser: CURRENT_USER,
-  });
+  renderWithProviders(
+    <ItemPicker models={models} onChange={onChange} {...props} />,
+    {
+      currentUser: CURRENT_USER,
+    },
+  );
 
   await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
 

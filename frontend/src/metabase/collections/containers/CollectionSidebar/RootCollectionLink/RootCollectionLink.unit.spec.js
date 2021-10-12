@@ -1,11 +1,15 @@
 import React from "react";
-import { render, screen, waitForElementToBeRemoved } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitForElementToBeRemoved,
+} from "__support__/ui";
 import xhrMock from "xhr-mock";
 
 import RootCollectionLink from "./RootCollectionLink";
 
 async function setup() {
-  render(<RootCollectionLink isRoot={false} />, { withDND: true });
+  renderWithProviders(<RootCollectionLink isRoot={false} />, { withDND: true });
   await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
 }
 

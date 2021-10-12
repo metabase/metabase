@@ -30,7 +30,7 @@ function getUser(user = {}) {
  * @param {React.ReactElement} JSX to render
  * @param {object} various wrapper settings and RTL render options
  */
-function customRender(
+export function renderWithProviders(
   ui,
   {
     currentUser,
@@ -113,4 +113,3 @@ function MaybeDNDProvider({ children, hasDND }) {
 }
 
 export * from "@testing-library/react";
-export { customRender as render };

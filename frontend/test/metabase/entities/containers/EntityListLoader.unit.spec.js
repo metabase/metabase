@@ -1,5 +1,5 @@
 import React from "react";
-import { render } from "__support__/ui";
+import { renderWithProviders } from "__support__/ui";
 import "mutationobserver-shim";
 import EntityListLoader from "metabase/entities/containers/EntityListLoader";
 import { Api } from "metabase/lib/api";
@@ -18,7 +18,7 @@ describe("EntityListLoader", () => {
 
   describe("with entityType of search", () => {
     it("should handle object entityQuery", async () => {
-      render(
+      renderWithProviders(
         <EntityListLoader
           entityType="search"
           entityQuery={{ collection: "foo" }}
@@ -30,7 +30,7 @@ describe("EntityListLoader", () => {
     });
 
     it("should handle function entityQuery", async () => {
-      render(
+      renderWithProviders(
         <EntityListLoader
           entityType="search"
           entityQuery={(state, props) => ({ collection: props.collectionId })}

@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen } from "__support__/ui";
+import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import userEvent from "@testing-library/user-event";
 import xhrMock from "xhr-mock";
 import MetabaseSettings from "metabase/lib/settings";
@@ -26,7 +26,7 @@ function setup({ mockCreateDashboardResponse = true } = {}) {
     );
   }
 
-  render(<CreateDashboardModal onClose={onClose} />);
+  renderWithProviders(<CreateDashboardModal onClose={onClose} />);
 
   return {
     onClose,

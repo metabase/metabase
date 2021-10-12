@@ -1,12 +1,12 @@
 import React from "react";
-import { render, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import userEvent from "@testing-library/user-event";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import CollectionsList from "./CollectionsList";
 
 describe("CollectionsList", () => {
   function setup({ collections = [], openCollections = [], ...props } = {}) {
-    render(
+    renderWithProviders(
       <CollectionsList
         collections={collections}
         openCollections={openCollections}
