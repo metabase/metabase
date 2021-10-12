@@ -110,16 +110,19 @@ export default class DatabaseEditApp extends Component {
     location: PropTypes.object,
   };
 
-  async UNSAFE_componentWillMount() {
+  async componentDidMount() {
     await this.props.reset();
     await this.props.initializeDatabase(this.props.params.databaseId);
   }
 
-  UNSAFE_componentWillReceiveProps(nextProps) {
-    const isNew = !nextProps.database || !nextProps.database.id;
-    if (isNew) {
-      // Update the current creation step (= active tab) if adding a new database
-      this.setState({ currentTab: nextProps.databaseCreationStep });
+  componentDidUpdate() {
+    const { database, databaseCreationStep } = this.props;
+    const { currentTab } = this.state;
+    const isNew = !database || !database.id;
+    const isCreationTab = currentTab === databaseCreationStep;
+
+    if (isNew && !isCreationTab) {
+      this.setState({ currentTab: databaseCreationStep });
     }
   }
 

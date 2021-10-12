@@ -36,18 +36,8 @@ export default class SettingsSlackForm extends Component {
     updateSettings: PropTypes.func.isRequired,
   };
 
-  UNSAFE_componentWillMount() {
-    // this gives us an opportunity to load up our formData with any existing values for elements
-    const formData = {};
-    this.props.elements.forEach(function(element) {
-      formData[element.key] =
-        element.value == null ? element.defaultValue : element.value;
-    });
-
-    this.setState({ formData });
-  }
-
   componentDidMount() {
+    this.setFormData();
     this.validateForm();
   }
 
@@ -79,6 +69,17 @@ export default class SettingsSlackForm extends Component {
           ? validationMessage || t`That's not a valid integer`
           : null;
     }
+  }
+
+  setFormData() {
+    // this gives us an opportunity to load up our formData with any existing values for elements
+    const formData = {};
+    this.props.elements.forEach(function(element) {
+      formData[element.key] =
+        element.value == null ? element.defaultValue : element.value;
+    });
+
+    this.setState({ formData });
   }
 
   validateForm() {
