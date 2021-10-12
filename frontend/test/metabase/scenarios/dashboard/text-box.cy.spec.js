@@ -95,7 +95,7 @@ describe("scenarios > dashboard > text-box", () => {
         .scrollTo("bottom");
     });
 
-    it.skip("should literal links, and not just the markdown flavor of it (metabse#18114)", () => {
+    it("should literal links, and not just the markdown flavor of it (metabse#18114)", () => {
       addTextBox(
         "- Visit https://www.metabase.com{enter}- Or go to [Metabase](https://www.metabase.com)",
       );
