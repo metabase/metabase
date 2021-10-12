@@ -608,7 +608,7 @@
   [[[(annotate/aggregation-name ag) (aggregation->rvalue ag)]]])
 
 (defn- group-and-post-aggregations
-  "Mongo is picky (and somewhat stupid) which top-level aggregations it allows with groups. Eg. even
+  "Mongo is picky about which top-level aggregations it allows with groups. Eg. even
    though [:/ [:count-if ...] [:count]] is a perfectly fine reduction, it's not allowed. Therefore
    more complex aggregations are split in two: the reductions are done in `$group` stage after which
    we do postprocessing in `$addFields` stage to arrive at the final result. The intermittent results
