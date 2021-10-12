@@ -11,6 +11,7 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Icon from "metabase/components/Icon";
 import DownloadButton from "metabase/components/DownloadButton";
 import Tooltip from "metabase/components/Tooltip";
+import MetabaseSettings from "metabase/lib/settings";
 
 import * as Urls from "metabase/lib/urls";
 
@@ -186,6 +187,9 @@ QueryDownloadWidget.defaultProps = {
 };
 
 QueryDownloadWidget.shouldRender = ({ result, isResultDirty }) =>
-  !isResultDirty && result && !result.error;
+  !isResultDirty &&
+  result &&
+  !result.error &&
+  MetabaseSettings.downloadsEnabled();
 
 export default QueryDownloadWidget;

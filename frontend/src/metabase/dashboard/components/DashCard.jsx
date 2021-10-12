@@ -16,6 +16,7 @@ import QueryDownloadWidget from "metabase/query_builder/components/QueryDownload
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import { ChartSettingsWithState } from "metabase/visualizations/components/ChartSettings";
 import WithVizSettingsData from "metabase/visualizations/hoc/WithVizSettingsData";
+import MetabaseSettings from "metabase/lib/settings";
 
 import Icon, { iconPropTypes } from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
@@ -229,7 +230,7 @@ export default class DashCard extends Component {
               : { width: dashcard.sizeX, height: dashcard.sizeY }
           }
           actionButtons={
-            isEmbed ? (
+            isEmbed && MetabaseSettings.downloadsEnabled() ? (
               <QueryDownloadWidget
                 className="m1 text-brand-hover text-light"
                 classNameClose="hover-child"

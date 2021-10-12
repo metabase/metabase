@@ -283,6 +283,12 @@
   :default    true
   :visibility :authenticated)
 
+(defsetting enable-downloads
+  (deferred-tru "Allow users to download query results")
+  :type       :boolean
+  :default    true
+  :visibility :authenticated)
+
 (defsetting show-homepage-data
   (deferred-tru "Whether or not to display data on the homepage. Admins might turn this off in order to direct users to better content than raw data")
   :type       :boolean

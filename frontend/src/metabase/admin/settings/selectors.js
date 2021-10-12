@@ -87,6 +87,12 @@ const SECTIONS = updateSectionsWithPlugins({
         type: "boolean",
       },
       {
+        key: "enable-downloads",
+        display_name: t`Download Results`,
+        type: "boolean",
+        defaultValue: true,
+      },
+      {
         key: "humanization-strategy",
         display_name: t`Friendly Table and Field Names`,
         type: "select",

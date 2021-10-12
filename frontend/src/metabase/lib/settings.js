@@ -17,6 +17,7 @@ export type SettingName =
   | "enable-enhancements?"
   | "enable-public-sharing"
   | "enable-xrays"
+  | "enable-downloads"
   | "engines"
   | "ga-code"
   | "google-auth-client-id"
@@ -80,6 +81,10 @@ class Settings {
 
   enhancementsEnabled() {
     return this.get("enable-enhancements?");
+  }
+
+  downloadsEnabled() {
+    return this.get("enable-downloads");
   }
 
   isEmailConfigured() {

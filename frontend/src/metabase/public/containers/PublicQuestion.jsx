@@ -8,6 +8,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import EmbedFrame from "../components/EmbedFrame";
 import title from "metabase/hoc/Title";
+import MetabaseSettings from "metabase/lib/settings";
 
 import type { Card } from "metabase-types/types/Card";
 import type { Dataset } from "metabase-types/types/Dataset";
@@ -194,7 +195,7 @@ export default class PublicQuestion extends Component {
     } = this.props;
     const { card, result, initialized, parameterValues } = this.state;
 
-    const actionButtons = result && (
+    const actionButtons = result && MetabaseSettings.downloadsEnabled() && (
       <QueryDownloadWidget
         className="m1 text-medium-hover"
         uuid={uuid}

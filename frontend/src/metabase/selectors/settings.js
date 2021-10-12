@@ -7,6 +7,9 @@ export const getIsApplicationEmbeddingEnabled = state =>
   state.settings.values["enable-embedding"];
 // Whether or not xrays are enabled on the instance
 export const getXraysEnabled = state => state.settings.values["enable-xrays"];
+// Are users allowed to download results?
+export const getDownloadsEnabled = state =>
+  state.settings.values["enable-downloads"];
 
 export const getShowHomepageData = state =>
   state.settings.values["show-homepage-data"];
