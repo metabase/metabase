@@ -946,7 +946,7 @@ Send email notifications to users in Admin group, when a new SSO users is create
 Type: boolean<br>
 Default: `true`
 
-Send email notifications to users in about login activity, every time they log in from a new IP or Device.
+Send email notification to user, when they login from a new device. Set to `false` to stop sending "We've noticed a new login on your Metabase account" emails for all users.
 
 #### `MB_SESSION_COOKIES`
 
