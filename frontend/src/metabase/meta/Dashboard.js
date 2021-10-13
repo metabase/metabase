@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
 import Question from "metabase-lib/lib/Question";
-import Field from "metabase-lib/lib/metadata/Field";
 
 import { ExpressionDimension } from "metabase-lib/lib/Dimension";
 

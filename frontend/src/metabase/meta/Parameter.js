@@ -1,5 +1,4 @@
 import MetabaseSettings from "metabase/lib/settings";
-import type { DatasetQuery } from "metabase-types/types/Card";
 import type {
   TemplateTag,
   LocalFieldReference,
