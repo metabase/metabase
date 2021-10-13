@@ -1,6 +1,6 @@
 import {
   getTemplateTagParameters,
-  getParameterTargetFieldId,
+  getParameterTargetField,
   parameterToMBQLFilter,
   normalizeParameterValue,
   getValuePopulatedParameters,
@@ -150,15 +150,12 @@ export function getValueAndFieldIdPopulatedParametersFromCard(
 
   return valuePopulatedParameters.map(parameter => {
     // if we have a field id for this parameter, set "field_id"
-    const fieldId = getParameterTargetFieldId(
-      parameter.target,
-      metadata,
-      question,
-    );
-    if (fieldId != null) {
-      parameter = assoc(parameter, "field_id", fieldId);
+    const field = getParameterTargetField(parameter.target, metadata, question);
+    if (field != null) {
+      parameter = assoc(parameter, "fields", [field]);
+      parameter = assoc(parameter, "field_id", field.id);
     }
-    parameter = assoc(parameter, "hasOnlyFieldTargets", fieldId != null);
+    parameter = assoc(parameter, "hasOnlyFieldTargets", field != null);
     return parameter;
   });
 }

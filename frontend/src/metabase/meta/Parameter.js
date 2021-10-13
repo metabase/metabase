@@ -1,4 +1,5 @@
 import MetabaseSettings from "metabase/lib/settings";
+import type { DatasetQuery } from "metabase-types/types/Card";
 import type {
   TemplateTag,
   LocalFieldReference,
@@ -374,7 +375,7 @@ function isDimensionTarget(target) {
 }
 
 /** Returns the field ID that this parameter target points to, or null if it's not a dimension target. */
-export function getParameterTargetFieldId(
+export function getParameterTargetField(
   target: ?ParameterTarget,
   metadata,
   question,
@@ -385,8 +386,8 @@ export function getParameterTargetFieldId(
       metadata,
       question.query(),
     );
-    const field = dimension?.field();
-    return field?.id;
+
+    return dimension?.field();
   }
 
   return null;

@@ -557,7 +557,7 @@ export class FieldDimension extends Dimension {
 
     if (this.isStringFieldName() && this.query()) {
       const virtualFieldId = `${this.query().tableId()}:${this._fieldIdOrName}`;
-      const field = this._metadata.field(virtualFieldId);
+      const field = this._metadata?.field(virtualFieldId);
       if (field) {
         return field;
       }

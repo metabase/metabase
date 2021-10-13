@@ -23,7 +23,7 @@ import {
   getParameterOptions,
   PARAMETER_OPERATOR_TYPES,
   getOperatorDisplayName,
-  getParameterTargetFieldId,
+  getParameterTargetField,
 } from "metabase/meta/Parameter";
 
 import { slugify } from "metabase/lib/formatting";
@@ -279,18 +279,7 @@ function getMappingTargetField(card, mapping, metadata) {
   }
 
   const question = new Question(card, metadata);
-
-  const fieldId = getParameterTargetFieldId(mapping.target, metadata, question);
-
-  let field = metadata.field(fieldId);
-
-  if (!field) {
-    const rawField = _.findWhere(card.result_metadata, {
-      name: fieldId,
-    });
-    field = rawField && new Field(rawField, metadata);
-  }
-
+  const field = getParameterTargetField(mapping.target, metadata, question);
   return field;
 }
 
