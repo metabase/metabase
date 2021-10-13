@@ -145,6 +145,7 @@
   [uuid export-format :as {{:keys [parameters]} :params}]
   {parameters    (s/maybe su/JSONString)
    export-format dataset-api/ExportFormat}
+  (api/check-downloads-enabled)
   (run-query-for-card-with-public-uuid-async
    uuid
    export-format

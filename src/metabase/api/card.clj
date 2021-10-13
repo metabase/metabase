@@ -741,6 +741,7 @@
   [card-id export-format :as {{:keys [parameters]} :params}]
   {parameters    (s/maybe su/JSONString)
    export-format dataset-api/ExportFormat}
+  (api/check-downloads-enabled)
   (run-query-for-card-async
    card-id export-format
    :parameters  (json/parse-string parameters keyword)
