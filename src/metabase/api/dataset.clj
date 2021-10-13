@@ -6,7 +6,6 @@
             [compojure.core :refer [POST]]
             [metabase.api.common :as api]
             [metabase.events :as events]
-            [metabase.public-settings :as public-settings]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.card :refer [Card]]
             [metabase.models.database :as database :refer [Database]]
@@ -102,32 +101,28 @@
      (keyword json-key)))
 
 (api/defendpoint ^:streaming POST ["/:export-format", :export-format export-format-regex]
-  "Execute a query and download the result data as a file in the specified format.
-  If downloading is disabled, returns 403."
+  "Execute a query and download the result data as a file in the specified format."
   [export-format :as {{:keys [query visualization_settings] :or {visualization_settings "{}"}} :params}]
   {query                  su/JSONString
    visualization_settings su/JSONString
    export-format          ExportFormat}
-   (if (public-settings/enable-downloads)
-    (let [query        (json/parse-string query keyword)
-            viz-settings (mb.viz/db->norm (json/parse-string visualization_settings viz-setting-key-fn))
-            query        (-> (assoc query
-                                    :async? true
-                                    :viz-settings viz-settings)
-                            (dissoc :constraints)
-                            (update :middleware #(-> %
-                                                      (dissoc :add-default-userland-constraints? :js-int-to-string?)
-                                                      (assoc :process-viz-settings? true
-                                                            :skip-results-metadata? true
-                                                            :format-rows? false))))]
-        (run-query-async
-        query
-        :export-format export-format
-        :context       (export-format->context export-format)
-        :qp-runner     qp/process-query-and-save-execution!))
-    (throw (ex-info (tru "Query downloads are disabled.")
-                      {:status-code    403}))
-                      ))
+  (api/check-downloads-enabled)
+  (let [query        (json/parse-string query keyword)
+        viz-settings (mb.viz/db->norm (json/parse-string visualization_settings viz-setting-key-fn))
+        query        (-> (assoc query
+                                :async? true
+                                :viz-settings viz-settings)
+                         (dissoc :constraints)
+                         (update :middleware #(-> %
+                                                  (dissoc :add-default-userland-constraints? :js-int-to-string?)
+                                                  (assoc :process-viz-settings? true
+                                                         :skip-results-metadata? true
+                                                         :format-rows? false))))]
+    (run-query-async
+     query
+     :export-format export-format
+     :context       (export-format->context export-format)
+     :qp-runner     qp/process-query-and-save-execution!)))
 
 
 ;;; ------------------------------------------------ Other Endpoints -------------------------------------------------

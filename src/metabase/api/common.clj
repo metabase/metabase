@@ -406,6 +406,12 @@
   (check (public-settings/enable-public-sharing)
     [400 (tru "Public sharing is not enabled.")]))
 
+(defn check-downloads-enabled
+  "Check that the `enable-downloads` Setting is `true` or throw a `400`."
+  []
+  (check (public-settings/enable-downloads)
+    [400 (tru "Downloading query results is not enabled.")]))
+
 (defn check-embedding-enabled
   "Is embedding of Cards or Objects (secured access via `/api/embed` endpoints with a signed JWT enabled?"
   []
