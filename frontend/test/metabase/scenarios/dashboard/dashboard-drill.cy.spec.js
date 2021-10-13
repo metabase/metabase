@@ -188,8 +188,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
     // show filtered question
     cy.findAllByText("Orders");
-    cy.findByText("User ID is 111");
-    cy.findByText("Category is Widget");
+    cy.findAllByText("User ID is 111").should("be.visible");
+    cy.findAllByText("Category is Widget").should("be.visible");
     cy.findByText("Showing 5 rows");
   });
 
