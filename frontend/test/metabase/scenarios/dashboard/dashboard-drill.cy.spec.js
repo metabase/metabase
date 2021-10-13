@@ -336,8 +336,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
       cy.findByText("xavier").click();
       cy.findByText("=").click();
 
-      cy.findByText("Reviewer is xavier");
-      cy.findByText("Rating is equal to 2 selections");
+      cy.findAllByText("Reviewer is xavier").should("be.visible");
+      cy.findAllByText("Rating is equal to 2 selections").should("be.visible");
       cy.contains("Reprehenderit non error"); // xavier's review
     });
 
