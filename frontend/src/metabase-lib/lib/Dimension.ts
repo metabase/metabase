@@ -1,9 +1,8 @@
+/* eslint-disable */
 import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
-
 import { stripId, FK_SYMBOL } from "metabase/lib/formatting";
 import { TYPE } from "metabase/lib/types";
-
 import Field from "./metadata/Field";
 import type {
   AggregationOperator,
@@ -11,30 +10,25 @@ import type {
   Metadata,
   Query,
 } from "./metadata/Metadata";
-
 import type {
   ConcreteField,
   LocalFieldReference,
   ExpressionReference,
   DatetimeUnit,
 } from "metabase-types/types/Query";
-
 import type { IconName } from "metabase-types/types";
-
 import { DATETIME_UNITS, formatBucketing } from "metabase/lib/query_time";
 import type Aggregation from "./queries/structured/Aggregation";
 import StructuredQuery from "./queries/StructuredQuery";
-
 import { infer, MONOTYPE } from "metabase/lib/expressions/typeinferencer";
 
 /**
  * A dimension option returned by the query_metadata API
  */
 type DimensionOption = {
-  mbql: any,
-  name?: string,
+  mbql: any;
+  name?: string;
 };
-
 /* Heirarchy:
  *
  * - Dimension (abstract)
@@ -52,24 +46,24 @@ type DimensionOption = {
  *
  * @abstract
  */
-export default class Dimension {
-  _parent: ?Dimension;
-  _args: any;
-  _metadata: ?Metadata;
-  _query: ?Query;
 
+export default class Dimension {
+  _parent: Dimension | null | undefined;
+  _args: any;
+  _metadata: Metadata | null | undefined;
+  _query: Query | null | undefined;
   // Display names provided by the backend
-  _subDisplayName: ?String;
-  _subTriggerDisplayName: ?String;
+  _subDisplayName: String | null | undefined;
+  _subTriggerDisplayName: String | null | undefined;
 
   /**
    * Dimension constructor
    */
   constructor(
-    parent: ?Dimension,
+    parent: Dimension | null | undefined,
     args: any[],
     metadata?: Metadata,
-    query?: ?StructuredQuery,
+    query?: StructuredQuery | null | undefined,
   ) {
     this._parent = parent;
     this._args = args;
@@ -84,28 +78,33 @@ export default class Dimension {
   static parseMBQL(
     mbql: ConcreteField,
     metadata?: Metadata,
-    query?: ?StructuredQuery,
-  ): ?Dimension {
+    query?: StructuredQuery | null | undefined,
+  ): Dimension | null | undefined {
     for (const D of DIMENSION_TYPES) {
       const dimension = D.parseMBQL(mbql, metadata, query);
+
       if (dimension != null) {
         return Object.freeze(dimension);
       }
     }
+
     return null;
   }
 
-  parseMBQL(mbql: ConcreteField): ?Dimension {
+  parseMBQL(mbql: ConcreteField): Dimension | null | undefined {
     return Dimension.parseMBQL(mbql, this._metadata, this._query);
   }
 
   /**
    * Returns true if these two dimensions are identical to one another.
    */
-  static isEqual(a: ?Dimension | ConcreteField, b: ?Dimension): boolean {
-    const dimensionA: ?Dimension =
+  static isEqual(
+    a: (Dimension | null | undefined) | ConcreteField,
+    b: Dimension | null | undefined,
+  ): boolean {
+    const dimensionA: Dimension | null | undefined =
       a instanceof Dimension ? a : Dimension.parseMBQL(a);
-    const dimensionB: ?Dimension =
+    const dimensionB: Dimension | null | undefined =
       b instanceof Dimension ? b : Dimension.parseMBQL(b);
     return !!dimensionA && !!dimensionB && dimensionA.isEqual(dimensionB);
   }
@@ -129,7 +128,7 @@ export default class Dimension {
    * The default sub-dimension for the provided dimension of this type, if any.
    * @abstract
    */
-  static defaultDimension(parent: Dimension): ?Dimension {
+  static defaultDimension(parent: Dimension): Dimension | null | undefined {
     return null;
   }
 
@@ -141,11 +140,12 @@ export default class Dimension {
   // Also making it clear in the method name that we're working with sub-dimensions would be good
   dimensions(DimensionTypes?: typeof Dimension[]): Dimension[] {
     const dimensionOptions = this.field().dimension_options;
+
     if (!DimensionTypes && dimensionOptions) {
-      return dimensionOptions.map(option => this._dimensionForOption(option));
+      return dimensionOptions.map((option) => this._dimensionForOption(option));
     } else {
       return [].concat(
-        ...(DimensionTypes || []).map(DimensionType =>
+        ...(DimensionTypes || []).map((DimensionType) =>
           DimensionType.dimensions(this),
         ),
       );
@@ -156,10 +156,14 @@ export default class Dimension {
    * Returns the default sub-dimension of this dimension, if any.
    * @abstract
    */
-  defaultDimension(DimensionTypes: any[] = DIMENSION_TYPES): ?Dimension {
+  defaultDimension(
+    DimensionTypes: any[] = DIMENSION_TYPES,
+  ): Dimension | null | undefined {
     const defaultDimensionOption = this.field().default_dimension_option;
+
     if (defaultDimensionOption) {
       const dimension = this._dimensionForOption(defaultDimensionOption);
+
       // NOTE: temporarily disable for DatetimeFieldDimension until backend automatically picks appropriate bucketing
       if (!(isFieldDimension(dimension) && dimension.temporalUnit())) {
         return dimension;
@@ -168,6 +172,7 @@ export default class Dimension {
 
     for (const DimensionType of DimensionTypes) {
       const defaultDimension = DimensionType.defaultDimension(this);
+
       if (defaultDimension) {
         return defaultDimension;
       }
@@ -183,32 +188,38 @@ export default class Dimension {
     // fill in the parent field ref
     const fieldRef = this.baseDimension().mbql();
     let mbql = option.mbql;
+
     if (mbql) {
       mbql = [mbql[0], fieldRef, ...mbql.slice(2)];
     } else {
       mbql = fieldRef;
     }
+
     const dimension = this.parseMBQL(mbql);
+
     if (dimension && option.name) {
       dimension._subDisplayName = option.name;
       dimension._subTriggerDisplayName = option.name;
     }
+
     return dimension;
   }
 
   /**
    * Is this dimension idential to another dimension or MBQL clause
    */
-  isEqual(other: ?Dimension | ConcreteField): boolean {
+  isEqual(other: (Dimension | null | undefined) | ConcreteField): boolean {
     if (other == null) {
       return false;
     }
 
-    const otherDimension: ?Dimension =
+    const otherDimension: Dimension | null | undefined =
       other instanceof Dimension ? other : this.parseMBQL(other);
+
     if (!otherDimension) {
       return false;
     }
+
     // assumes .mbql() returns canonical form
     return _.isEqual(this.mbql(), otherDimension.mbql());
   }
@@ -216,17 +227,17 @@ export default class Dimension {
   /**
    * Does this dimension have the same underlying base dimension, typically a field
    */
-  isSameBaseDimension(other: ?Dimension | ConcreteField): boolean {
+  isSameBaseDimension(
+    other: (Dimension | null | undefined) | ConcreteField,
+  ): boolean {
     if (other == null) {
       return false;
     }
 
-    const otherDimension: ?Dimension =
+    const otherDimension: Dimension | null | undefined =
       other instanceof Dimension ? other : this.parseMBQL(other);
-
     const baseDimensionA = this.baseDimension();
     const baseDimensionB = otherDimension && otherDimension.baseDimension();
-
     return (
       !!baseDimensionA &&
       !!baseDimensionB &&
@@ -275,14 +286,14 @@ export default class Dimension {
   /**
    * The operator with the provided operator name (e.x. `=`, `<`, etc)
    */
-  filterOperator(operatorName: string): ?FilterOperator {
+  filterOperator(operatorName: string): FilterOperator | null | undefined {
     return this.field().filterOperator(operatorName);
   }
 
   /**
    * The default filter operator for this dimension
    */
-  defaultFilterOperator(): ?FilterOperator {
+  defaultFilterOperator(): FilterOperator | null | undefined {
     // let the DatePicker choose the default operator, otherwise use the first one
     // TODO: replace with a defaultFilter()- or similar which includes arguments
     return this.field().isDate() ? null : this.filterOperators()[0];
@@ -300,19 +311,23 @@ export default class Dimension {
   /**
    * Valid filter operators on this dimension
    */
-  aggregationOperator(operatorName: string): ?AggregationOperator {
+  aggregationOperator(
+    operatorName: string,
+  ): AggregationOperator | null | undefined {
     return this.field().aggregationOperator(operatorName);
   }
 
-  defaultAggregationOperator(): ?AggregationOperator {
+  defaultAggregationOperator(): AggregationOperator | null | undefined {
     return this.aggregationOperators()[0];
   }
 
   defaultAggregation() {
     const aggregation = this.defaultAggregationOperator();
+
     if (aggregation) {
       return [aggregation.short, this.mbql()];
     }
+
     return null;
   }
 
@@ -326,6 +341,7 @@ export default class Dimension {
    */
   defaultBreakout() {
     const defaultSubDimension = this.defaultDimension();
+
     if (defaultSubDimension) {
       return defaultSubDimension.mbql();
     } else {
@@ -377,11 +393,11 @@ export default class Dimension {
    * An icon name representing this dimension's type, to be used in the <Icon> component.
    * @abstract
    */
-  icon(): ?IconName {
+  icon(): IconName | null | undefined {
     return null;
   }
 
-  query(): ?StructuredQuery {
+  query(): StructuredQuery | null | undefined {
     return this._query;
   }
 
@@ -404,10 +420,10 @@ export default class Dimension {
     return JSON.stringify(this.mbql());
   }
 }
-
 /**
  * `:field` clause e.g. `["field", fieldIdOrName, options]`
  */
+
 export class FieldDimension extends Dimension {
   /**
    * Whether `clause` is an array, and a valid `:field` clause
@@ -418,12 +434,17 @@ export class FieldDimension extends Dimension {
     );
   }
 
-  static parseMBQL(mbql, metadata = null, query = null): ?FieldDimension {
+  static parseMBQL(
+    mbql,
+    metadata = null,
+    query = null,
+  ): FieldDimension | null | undefined {
     if (FieldDimension.isFieldClause(mbql)) {
       return Object.freeze(
         new FieldDimension(mbql[1], mbql[2], metadata, query),
       );
     }
+
     return null;
   }
 
@@ -431,7 +452,11 @@ export class FieldDimension extends Dimension {
    * Parse MBQL field clause or log a warning message if it could not be parsed. Use this when you expect the clause to
    * be a `:field` clause
    */
-  static parseMBQLOrWarn(mbql, metadata = null, query = null): ?FieldDimension {
+  static parseMBQLOrWarn(
+    mbql,
+    metadata = null,
+    query = null,
+  ): FieldDimension | null | undefined {
     // if some some reason someone passes in a raw integer ID instead of a proper Field form, go ahead and parse it
     // anyway -- there seems to be a lot of code that does this -- but log an error message so we can fix it.
     if (typeof mbql === "number") {
@@ -445,10 +470,13 @@ export class FieldDimension extends Dimension {
         query,
       );
     }
+
     const dimension = FieldDimension.parseMBQL(mbql, metadata, query);
+
     if (!dimension) {
       console.warn("Unknown MBQL Field clause", mbql);
     }
+
     return dimension;
   }
 
@@ -461,13 +489,11 @@ export class FieldDimension extends Dimension {
     }
 
     // recursively normalize maps inside options.
-    options = _.mapObject(options, val =>
+    options = _.mapObject(options, (val) =>
       typeof val === "object" ? this.normalizeOptions(val) : val,
     );
-
     // remove null/undefined options from map.
-    options = _.omit(options, value => value == null);
-
+    options = _.omit(options, (value) => value == null);
     return _.isEmpty(options) ? null : options;
   }
 
@@ -483,7 +509,7 @@ export class FieldDimension extends Dimension {
     this._options = Object.freeze(FieldDimension.normalizeOptions(options));
 
     if (additionalProperties) {
-      Object.keys(additionalProperties).forEach(k => {
+      Object.keys(additionalProperties).forEach((k) => {
         this[k] = additionalProperties[k];
       });
     }
@@ -498,6 +524,7 @@ export class FieldDimension extends Dimension {
         _.isEqual(somethingElse._options, this._options)
       );
     }
+
     // this should be considered equivalent to an equivalent MBQL clause
     if (FieldDimension.isFieldClause(somethingElse)) {
       const dimension = FieldDimension.parseMBQL(
@@ -507,6 +534,7 @@ export class FieldDimension extends Dimension {
       );
       return dimension ? this.isEqual(dimension) : false;
     }
+
     return false;
   }
 
@@ -560,10 +588,12 @@ export class FieldDimension extends Dimension {
       const field = _.findWhere(this._query.table().fields, {
         name: this._fieldIdOrName,
       });
+
       if (field) {
         return field;
       }
     }
+
     return new Field({
       id: this.mbql(),
       name: this._fieldIdOrName,
@@ -645,7 +675,9 @@ export class FieldDimension extends Dimension {
    * Return a copy of this FieldDimension, bucketed by the specified temporal unit.
    */
   withTemporalUnit(unit: string): FieldDimension {
-    return this.withOptions({ "temporal-unit": unit });
+    return this.withOptions({
+      "temporal-unit": unit,
+    });
   }
 
   // no idea what this does or if it's even used anywhere.
@@ -654,6 +686,7 @@ export class FieldDimension extends Dimension {
       return dimension.withSourceField(this._fieldIdOrName);
     }
   }
+
   columnName() {
     return this.isIntegerFieldId() ? super.columnName() : this._fieldIdOrName;
   }
@@ -680,6 +713,7 @@ export class FieldDimension extends Dimension {
     if (this.sourceField()) {
       return this.displayName();
     }
+
     return "Default";
   }
 
@@ -699,6 +733,7 @@ export class FieldDimension extends Dimension {
       const n = this.getBinningOption("num-bins");
       return ngettext(msgid`${n} bin`, `${n} bins`, n);
     }
+
     if (this.binningStrategy() === "bin-width") {
       const binWidth = this.getBinningOption("bin-width");
       const units = this.field().isCoordinate() ? "°" : "";
@@ -720,15 +755,16 @@ export class FieldDimension extends Dimension {
 
   dimensions(DimensionTypes?: typeof Dimension[]): FieldDimension[] {
     let dimensions = super.dimensions(DimensionTypes);
-
     const joinAlias = this.joinAlias();
+
     if (joinAlias) {
-      return dimensions.map(d => d.withJoinAlias(joinAlias));
+      return dimensions.map((d) => d.withJoinAlias(joinAlias));
     }
 
     const sourceField = this.sourceField();
+
     if (sourceField) {
-      return dimensions.map(d => d.withSourceField(sourceField));
+      return dimensions.map((d) => d.withSourceField(sourceField));
     }
 
     const field = this.field();
@@ -736,10 +772,12 @@ export class FieldDimension extends Dimension {
     // Add FK dimensions if this field is an FK
     if (field.target && field.target.table && field.target.table.fields) {
       const fkDimensions = field.target.table.fields.map(
-        field =>
+        (field) =>
           new FieldDimension(
             field.id,
-            { "source-field": this._fieldIdOrName },
+            {
+              "source-field": this._fieldIdOrName,
+            },
             this._metadata,
             this._query,
           ),
@@ -751,14 +789,16 @@ export class FieldDimension extends Dimension {
     if (field.isDate() && !this.isIntegerFieldId()) {
       const temporalDimensions = _.difference(
         DATETIME_UNITS,
-        dimensions.map(dim => dim.temporalUnit()),
-      ).map(unit => this.withTemporalUnit(unit));
+        dimensions.map((dim) => dim.temporalUnit()),
+      ).map((unit) => this.withTemporalUnit(unit));
+
       dimensions = [...dimensions, ...temporalDimensions];
     }
 
     const baseType = this.getOption("base-type");
+
     if (baseType) {
-      dimensions = dimensions.map(dimension =>
+      dimensions = dimensions.map((dimension) =>
         dimension.withOption("base-type", baseType),
       );
     }
@@ -768,6 +808,7 @@ export class FieldDimension extends Dimension {
 
   defaultDimension(dimensionTypes = []): FieldDimension {
     const field = this.field();
+
     if (field && field.isDate()) {
       return this.withTemporalUnit(field.getDefaultDateTimeUnit());
     }
@@ -779,16 +820,19 @@ export class FieldDimension extends Dimension {
     }
 
     const sourceField = this.sourceField();
+
     if (sourceField) {
       dimension = dimension.withSourceField(sourceField);
     }
 
     const joinAlias = this.joinAlias();
+
     if (joinAlias) {
       dimension = dimension.withJoinAlias(joinAlias);
     }
 
     const baseType = this.getOption("base-type");
+
     if (baseType) {
       dimension = dimension.withOption("base-type", baseType);
     }
@@ -856,12 +900,7 @@ export class FieldDimension extends Dimension {
 
     if (this.fk()) {
       const fkDisplayName =
-        this.fk() &&
-        stripId(
-          this.fk()
-            .field()
-            .displayName(),
-        );
+        this.fk() && stripId(this.fk().field().displayName());
       displayName = `${fkDisplayName} ${FK_SYMBOL} ${displayName}`;
     } else if (this.joinAlias()) {
       displayName = `${this.joinAlias()} ${FK_SYMBOL} ${displayName}`;
@@ -880,18 +919,16 @@ export class FieldDimension extends Dimension {
 
   column(extra = {}) {
     const more = {};
+
     if (typeof this.sourceField() === "number") {
       more.fk_field_id = this.sourceField();
     }
+
     if (this.temporalUnit()) {
       more.unit = this.temporalUnit();
     }
 
-    return {
-      ...super.column(),
-      ...more,
-      ...extra,
-    };
+    return { ...super.column(), ...more, ...extra };
   }
 
   /**
@@ -899,6 +936,7 @@ export class FieldDimension extends Dimension {
    */
   fk() {
     const sourceFieldIdOrName = this.sourceField();
+
     if (!sourceFieldIdOrName) {
       return null;
     }
@@ -938,7 +976,9 @@ export class FieldDimension extends Dimension {
   }
 
   withSourceField(sourceField) {
-    return this.withOptions({ "source-field": sourceField });
+    return this.withOptions({
+      "source-field": sourceField,
+    });
   }
 
   /**
@@ -952,7 +992,9 @@ export class FieldDimension extends Dimension {
    * Return a copy of this field with join alias set to `newAlias`.
    */
   withJoinAlias(newAlias) {
-    return this.withOptions({ "join-alias": newAlias });
+    return this.withOptions({
+      "join-alias": newAlias,
+    });
   }
 
   join() {
@@ -969,7 +1011,9 @@ export class FieldDimension extends Dimension {
   }
 
   withBinningOptions(newBinningOptions) {
-    return this.withOptions({ binning: newBinningOptions });
+    return this.withOptions({
+      binning: newBinningOptions,
+    });
   }
 
   getBinningOption(option) {
@@ -981,7 +1025,7 @@ export class FieldDimension extends Dimension {
   }
 }
 
-const isFieldDimension = dimension => dimension instanceof FieldDimension;
+const isFieldDimension = (dimension) => dimension instanceof FieldDimension;
 
 /**
  * Expression reference, `["expression", expression-name]`
@@ -991,9 +1035,9 @@ export class ExpressionDimension extends Dimension {
 
   static parseMBQL(
     mbql: any,
-    metadata?: ?Metadata,
-    query?: ?StructuredQuery,
-  ): ?Dimension {
+    metadata?: Metadata | null | undefined,
+    query?: StructuredQuery | null | undefined,
+  ): Dimension | null | undefined {
     if (Array.isArray(mbql) && mbql[0] === "expression") {
       return new ExpressionDimension(null, mbql.slice(1), metadata, query);
     }
@@ -1018,12 +1062,13 @@ export class ExpressionDimension extends Dimension {
   field() {
     const query = this._query;
     const table = query ? query.table() : null;
-
     let type = MONOTYPE.Number; // fallback
+
     if (query) {
       const datasetQuery = query.query();
       const expressions = datasetQuery ? datasetQuery.expressions : {};
-      const env = mbql => {
+
+      const env = (mbql) => {
         const dimension = Dimension.parseMBQL(
           mbql,
           this._metadata,
@@ -1031,21 +1076,26 @@ export class ExpressionDimension extends Dimension {
         );
         return dimension.field().base_type;
       };
+
       type = infer(expressions[this.name()], env);
     } else {
       type = infer(this._args[0]);
     }
 
     let base_type = type;
+
     if (!type.startsWith("type/")) {
       base_type = "type/Float"; // fallback
+
       switch (type) {
         case MONOTYPE.String:
           base_type = "type/Text";
           break;
+
         case MONOTYPE.Boolean:
           base_type = "type/Boolean";
           break;
+
         default:
           break;
       }
@@ -1064,9 +1114,11 @@ export class ExpressionDimension extends Dimension {
 
   icon(): IconName {
     const { base_type } = this.field();
+
     switch (base_type) {
       case "type/Text":
         return "string";
+
       default:
         break;
     }
@@ -1074,7 +1126,6 @@ export class ExpressionDimension extends Dimension {
     return "int";
   }
 }
-
 // These types aren't aggregated. e.g. if you take the distinct count of a FK
 // column, you now have a normal integer and should see relevant filters for
 // that type.
@@ -1086,9 +1137,9 @@ const UNAGGREGATED_SEMANTIC_TYPES = new Set([TYPE.FK, TYPE.PK]);
 export class AggregationDimension extends Dimension {
   static parseMBQL(
     mbql: any,
-    metadata?: ?Metadata,
-    query?: ?StructuredQuery,
-  ): ?Dimension {
+    metadata?: Metadata | null | undefined,
+    query?: StructuredQuery | null | undefined,
+  ): Dimension | null | undefined {
     if (Array.isArray(mbql) && mbql[0] === "aggregation") {
       return new AggregationDimension(null, mbql.slice(1), metadata, query);
     }
@@ -1099,18 +1150,16 @@ export class AggregationDimension extends Dimension {
   }
 
   column(extra = {}) {
-    return {
-      ...super.column(),
-      source: "aggregation",
-      ...extra,
-    };
+    return { ...super.column(), source: "aggregation", ...extra };
   }
 
   field() {
     const aggregation = this.aggregation();
+
     if (!aggregation) {
       return super.field();
     }
+
     const dimension = aggregation.dimension();
     const field = dimension && dimension.field();
     const { semantic_type } = field || {};
@@ -1119,7 +1168,9 @@ export class AggregationDimension extends Dimension {
       display_name: aggregation.displayName(),
       base_type: aggregation.baseType(),
       // don't pass through `semantic_type` when aggregating these types
-      ...(!UNAGGREGATED_SEMANTIC_TYPES.has(semantic_type) && { semantic_type }),
+      ...(!UNAGGREGATED_SEMANTIC_TYPES.has(semantic_type) && {
+        semantic_type,
+      }),
       query: this._query,
       metadata: this._metadata,
     });
@@ -1137,25 +1188,31 @@ export class AggregationDimension extends Dimension {
    */
   aggregation() {
     const aggregation = this._aggregation();
+
     if (aggregation) {
       return aggregation.aggregation();
     }
+
     return null;
   }
 
   displayName(): string {
     const aggregation = this._aggregation();
+
     if (aggregation) {
       return aggregation.displayName();
     }
+
     return null;
   }
 
   columnName() {
     const aggregation = this._aggregation();
+
     if (aggregation) {
       return aggregation.columnName();
     }
+
     return null;
   }
 
@@ -1167,7 +1224,6 @@ export class AggregationDimension extends Dimension {
     return "int";
   }
 }
-
 export class TemplateTagDimension extends FieldDimension {
   constructor(tagName, metadata, query) {
     super(null, null, metadata, query, {
@@ -1178,10 +1234,12 @@ export class TemplateTagDimension extends FieldDimension {
   dimension() {
     if (this._query) {
       const tag = this.tag();
+
       if (tag && tag.type === "dimension") {
         return this.parseMBQL(tag.dimension);
       }
     }
+
     return null;
   }
 
@@ -1211,7 +1269,6 @@ export class TemplateTagDimension extends FieldDimension {
     return ["template-tag", this.tagName()];
   }
 }
-
 const DIMENSION_TYPES: typeof Dimension[] = [
   FieldDimension,
   ExpressionDimension,

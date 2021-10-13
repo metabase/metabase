@@ -1,6 +1,6 @@
+/* eslint-disable */
 import _ from "underscore";
 import { chain, assoc, dissoc, assocIn, getIn } from "icepick";
-
 // NOTE: the order of these matters due to circular dependency issues
 import StructuredQuery, {
   STRUCTURED_QUERY_TEMPLATE,
@@ -10,23 +10,18 @@ import NativeQuery, {
 } from "metabase-lib/lib/queries/NativeQuery";
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 import InternalQuery from "./queries/InternalQuery";
-
 import Query from "metabase-lib/lib/queries/Query";
-
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Database from "metabase-lib/lib/metadata/Database";
 import Table from "metabase-lib/lib/metadata/Table";
 import Field from "metabase-lib/lib/metadata/Field";
-
 import {
   AggregationDimension,
   FieldDimension,
 } from "metabase-lib/lib/Dimension";
 import Mode from "metabase-lib/lib/Mode";
 import { isStandard } from "metabase/lib/query/filter";
-
 import { memoize, sortObject } from "metabase-lib/lib/utils";
-
 // TODO: remove these dependencies
 import * as Card_DEPRECATED from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
@@ -54,7 +49,6 @@ import {
 } from "metabase/modes/lib/actions";
 import { MetabaseApi, CardApi, maybeUsePivotEndpoint } from "metabase/services";
 import Questions from "metabase/entities/questions";
-
 import type {
   Parameter as ParameterObject,
   ParameterValues,
@@ -68,18 +62,16 @@ import type { Dataset, Value } from "metabase-types/types/Dataset";
 import type { TableId } from "metabase-types/types/Table";
 import type { DatabaseId } from "metabase-types/types/Database";
 import type { ClickObject } from "metabase-types/types/Visualization";
-
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
   ALERT_TYPE_ROWS,
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/lib/Alert";
-
-type QuestionUpdateFn = (q: Question) => ?Promise<void>;
-
+type QuestionUpdateFn = (q: Question) => Promise<void> | null | undefined;
 /**
  * This is a wrapper around a question/card object, which may contain one or more Query objects
  */
+
 export default class Question {
   /**
    * The plain object presentation of this question, equal to the format that Metabase REST API understands.
@@ -102,7 +94,7 @@ export default class Question {
   /**
    * Bound update function, if any
    */
-  _update: ?QuestionUpdateFn;
+  _update: QuestionUpdateFn | null | undefined;
 
   /**
    * Question constructor
@@ -111,7 +103,7 @@ export default class Question {
     card: CardObject,
     metadata?: Metadata,
     parameterValues?: ParameterValues,
-    update?: ?QuestionUpdateFn,
+    update?: QuestionUpdateFn | null | undefined,
   ) {
     this._card = card;
     this._metadata =
@@ -153,15 +145,15 @@ export default class Question {
       ? NATIVE_QUERY_TEMPLATE
       : STRUCTURED_QUERY_TEMPLATE,
   }: {
-    databaseId?: DatabaseId,
-    tableId?: TableId,
-    metadata: Metadata,
-    parameterValues?: ParameterValues,
-    type?: "query" | "native",
-    name?: string,
-    display?: string,
-    visualization_settings?: VisualizationSettings,
-    dataset_query?: DatasetQuery,
+    databaseId?: DatabaseId;
+    tableId?: TableId;
+    metadata: Metadata;
+    parameterValues?: ParameterValues;
+    type?: "query" | "native";
+    name?: string;
+    display?: string;
+    visualization_settings?: VisualizationSettings;
+    dataset_query?: DatasetQuery;
   } = {}) {
     let card: CardObject = {
       name,
@@ -169,9 +161,11 @@ export default class Question {
       visualization_settings,
       dataset_query,
     };
+
     if (tableId != null) {
       card = assocIn(card, ["dataset_query", "query", "source-table"], tableId);
     }
+
     if (databaseId != null) {
       card = assocIn(card, ["dataset_query", "database"], databaseId);
     }
@@ -186,6 +180,7 @@ export default class Question {
   card() {
     return this._card;
   }
+
   setCard(card: CardObject): Question {
     const q = this.clone();
     q._card = card;
@@ -261,6 +256,7 @@ export default class Question {
         assoc(this.card(), "dataset_query", newQuery.datasetQuery()),
       );
     }
+
     return this;
   }
 
@@ -277,9 +273,11 @@ export default class Question {
    */
   atomicQueries(): AtomicQuery[] {
     const query = this.query();
+
     if (query instanceof AtomicQuery) {
       return [query];
     }
+
     return [];
   }
 
@@ -289,6 +287,7 @@ export default class Question {
   display(): string {
     return this._card && this._card.display;
   }
+
   setDisplay(display) {
     return this.setCard(assoc(this.card(), "display", display));
   }
@@ -297,9 +296,11 @@ export default class Question {
   lockDisplay(): Question {
     return this.setDisplayIsLocked(true);
   }
+
   setDisplayIsLocked(locked: boolean): Question {
     return this.setCard(assoc(this.card(), "displayIsLocked", locked));
   }
+
   displayIsLocked(): boolean {
     return this._card && this._card.displayIsLocked;
   }
@@ -311,7 +312,6 @@ export default class Question {
       previousSensibleDisplays == null ||
       previousSensibleDisplays.includes(this.display());
     const isSensible = sensibleDisplays.includes(this.display());
-
     const shouldUnlock = wasSensible && !isSensible;
     const locked = this.displayIsLocked() && !shouldUnlock;
     return this.setDisplayIsLocked(locked);
@@ -323,20 +323,16 @@ export default class Question {
     if (this.displayIsLocked()) {
       return this;
     }
+
     const display = this.display();
     const isScalar = ["scalar", "progress", "gauge"].includes(display);
     const isOneByOne = rows.length === 1 && cols.length === 1;
-
     const newDisplay =
-      !isScalar && isOneByOne
-        ? // if we have a 1x1 data result then this should always be viewed as a scalar
-          "scalar"
-        : isScalar && !isOneByOne
-        ? // any time we were a scalar and now have more than 1x1 data switch to table view
-          "table"
-        : // otherwise leave the display unchanged
-          display;
-
+      !isScalar && isOneByOne // if we have a 1x1 data result then this should always be viewed as a scalar
+        ? "scalar"
+        : isScalar && !isOneByOne // any time we were a scalar and now have more than 1x1 data switch to table view
+        ? "table" // otherwise leave the display unchanged
+        : display;
     return this.setDisplay(newDisplay);
   }
 
@@ -344,19 +340,24 @@ export default class Question {
     if (this.displayIsLocked()) {
       return this;
     }
+
     const query = this.query();
+
     if (query instanceof StructuredQuery) {
       // TODO: move to StructuredQuery?
       const aggregations = query.aggregations();
       const breakouts = query.breakouts();
-      const breakoutDimensions = breakouts.map(b => b.dimension());
-      const breakoutFields = breakoutDimensions.map(d => d.field());
+      const breakoutDimensions = breakouts.map((b) => b.dimension());
+      const breakoutFields = breakoutDimensions.map((d) => d.field());
+
       if (aggregations.length === 0 && breakouts.length === 0) {
         return this.setDisplay("table");
       }
+
       if (aggregations.length === 1 && breakouts.length === 0) {
         return this.setDisplay("scalar");
       }
+
       if (aggregations.length === 1 && breakouts.length === 1) {
         if (breakoutFields[0].isState()) {
           return this.setDisplay("map").updateSettings({
@@ -370,6 +371,7 @@ export default class Question {
           });
         }
       }
+
       if (aggregations.length >= 1 && breakouts.length === 1) {
         if (breakoutFields[0].isDate()) {
           if (
@@ -382,20 +384,24 @@ export default class Question {
             return this.setDisplay("line");
           }
         }
+
         if (
           breakoutDimensions[0] instanceof FieldDimension &&
           breakoutDimensions[0].binningStrategy()
         ) {
           return this.setDisplay("bar");
         }
+
         if (breakoutFields[0].isCategory()) {
           return this.setDisplay("bar");
         }
       }
+
       if (aggregations.length === 1 && breakouts.length === 2) {
-        if (_.any(breakoutFields, f => f.isDate())) {
+        if (_.any(breakoutFields, (f) => f.isDate())) {
           return this.setDisplay("line");
         }
+
         if (
           breakoutFields[0].isCoordinate() &&
           breakoutFields[1].isCoordinate()
@@ -404,30 +410,33 @@ export default class Question {
             "map.type": "grid",
           });
         }
-        if (_.all(breakoutFields, f => f.isCategory())) {
+
+        if (_.all(breakoutFields, (f) => f.isCategory())) {
           return this.setDisplay("bar");
         }
       }
     }
+
     return this.setDisplay("table");
   }
 
   setDefaultQuery() {
-    return this.query()
-      .setDefaultQuery()
-      .question();
+    return this.query().setDefaultQuery().question();
   }
 
   settings(): VisualizationSettings {
     return (this._card && this._card.visualization_settings) || {};
   }
+
   setting(settingName, defaultValue = undefined) {
     const value = this.settings()[settingName];
     return value === undefined ? defaultValue : value;
   }
+
   setSettings(settings: VisualizationSettings) {
     return this.setCard(assoc(this.card(), "visualization_settings", settings));
   }
+
   updateSettings(settings: VisualizationSettings) {
     return this.setSettings({ ...this.settings(), ...settings });
   }
@@ -439,6 +448,7 @@ export default class Question {
   isEmpty(): boolean {
     return this.query().isEmpty();
   }
+
   /**
    * Question is valid (as far as we know) and can be executed
    */
@@ -478,7 +488,6 @@ export default class Question {
       const vizSettings = visualizationSettings
         ? visualizationSettings
         : this.card().visualization_settings;
-
       const goalEnabled = vizSettings["graph.show_goal"];
       const hasSingleYAxisColumn =
         vizSettings["graph.metrics"] &&
@@ -504,29 +513,36 @@ export default class Question {
   aggregate(a): Question {
     return aggregate(this, a) || this;
   }
-  breakout(b): ?Question {
+
+  breakout(b): Question | null | undefined {
     return breakout(this, b) || this;
   }
+
   filter(operator, column, value): Question {
     return filter(this, operator, column, value) || this;
   }
+
   pivot(breakouts = [], dimensions = []): Question {
     return pivot(this, breakouts, dimensions) || this;
   }
+
   drillUnderlyingRecords(dimensions): Question {
     return drillUnderlyingRecords(this, dimensions) || this;
   }
+
   toUnderlyingRecords(): Question {
     return toUnderlyingRecords(this) || this;
   }
+
   toUnderlyingData(): Question {
     return this.setDisplay("table");
   }
+
   distribution(column): Question {
     return distribution(this, column) || this;
   }
 
-  composeThisQuery(): ?Question {
+  composeThisQuery(): Question | null | undefined {
     if (this.id()) {
       const card = {
         display: "table",
@@ -542,7 +558,7 @@ export default class Question {
     }
   }
 
-  drillPK(field: Field, value: Value): ?Question {
+  drillPK(field: Field, value: Value): Question | null | undefined {
     const query = this.query();
 
     if (!(query instanceof StructuredQuery)) {
@@ -551,8 +567,9 @@ export default class Question {
 
     const otherPKFilters = query
       .filters()
-      ?.filter(filter => {
+      ?.filter((filter) => {
         const filterField = filter?.field();
+
         if (!filterField) {
           return false;
         }
@@ -561,20 +578,16 @@ export default class Question {
         const isPKEqualsFilter =
           filterField.isPK() && filter.operatorName() === "=";
         const isFromSameTable = filterField.table.id === field.table.id;
-
         return isPKEqualsFilter && isNotSameField && isFromSameTable;
       })
-      .map(filter => filter.raw());
-
+      .map((filter) => filter.raw());
     const filtersToApply = [
       ["=", ["field", field.id, null], value],
       ...otherPKFilters,
     ];
-
     const resultedQuery = filtersToApply.reduce((query, filter) => {
       return query.addFilter(filter);
     }, query.reset().setTable(field.table));
-
     return resultedQuery.question();
   }
 
@@ -594,6 +607,7 @@ export default class Question {
       query.columnNames(),
       previousQuery.columnNames(),
     );
+
     const removedColumnNames = _.difference(
       previousQuery.columnNames(),
       query.columnNames(),
@@ -605,9 +619,10 @@ export default class Question {
       removedColumnNames.length === 0
     ) {
       const addedMetricColumnNames = addedColumnNames.filter(
-        name =>
+        (name) =>
           query.columnDimensionWithName(name) instanceof AggregationDimension,
       );
+
       if (addedMetricColumnNames.length > 0) {
         return this.updateSettings({
           "graph.metrics": [
@@ -626,7 +641,7 @@ export default class Question {
       return this.updateSettings({
         "table.columns": [
           ...this.setting("table.columns"),
-          ...addedColumnNames.map(name => {
+          ...addedColumnNames.map((name) => {
             const dimension = query.columnDimensionWithName(name);
             return {
               name: name,
@@ -646,35 +661,33 @@ export default class Question {
     // "table.columns" receive a value only if there are custom settings
     // e.g. some columns are hidden. If it's empty, it means everything is visible
     const isUsingDefaultSettings = vizSettings.length === 0;
+
     if (isUsingDefaultSettings) {
       return this;
     }
 
-    let addedColumns = cols.filter(col => {
+    let addedColumns = cols.filter((col) => {
       const hasVizSettings =
         findColumnSettingIndexForColumn(vizSettings, col) >= 0;
       return !hasVizSettings;
     });
-
-    const validVizSettings = vizSettings.filter(colSetting => {
+    const validVizSettings = vizSettings.filter((colSetting) => {
       const hasColumn = findColumnIndexForColumnSetting(cols, colSetting) >= 0;
       const isMutatingColumn =
         findColumnIndexForColumnSetting(addedColumns, colSetting) >= 0;
       return hasColumn && !isMutatingColumn;
     });
-
     const noColumnsRemoved = validVizSettings.length === vizSettings.length;
 
     if (noColumnsRemoved && addedColumns.length === 0) {
       return this;
     }
 
-    addedColumns = addedColumns.map(col => ({
+    addedColumns = addedColumns.map((col) => ({
       name: col.name,
       fieldRef: col.field_ref,
       enabled: true,
     }));
-
     return this.updateSettings({
       "table.columns": [...validVizSettings, ...addedColumns],
     });
@@ -683,10 +696,13 @@ export default class Question {
   syncColumnsAndSettings(previous, queryResults) {
     const query = this.query();
     const isQueryResultValid = queryResults && !queryResults.error;
+
     if (query instanceof NativeQuery && isQueryResultValid) {
       return this._syncNativeQuerySettings(queryResults);
     }
+
     const previousQuery = previous && previous.query();
+
     if (
       query instanceof StructuredQuery &&
       previousQuery instanceof StructuredQuery
@@ -696,6 +712,7 @@ export default class Question {
         previousQuery,
       );
     }
+
     return this;
   }
 
@@ -704,6 +721,7 @@ export default class Question {
    */
   topLevelQuestion(): Question {
     const query = this.query();
+
     if (query instanceof StructuredQuery && query !== query.topLevelQuery()) {
       return this.setQuery(query.topLevelQuery());
     } else {
@@ -716,13 +734,14 @@ export default class Question {
    */
   topLevelClicked(clicked: ClickObject): ClickObject {
     const query = this.query();
+
     if (query instanceof StructuredQuery && query !== query.topLevelQuery()) {
       return {
         ...clicked,
         column: clicked.column && query.topLevelColumn(clicked.column),
         dimensions:
           clicked.dimensions &&
-          clicked.dimensions.map(dimension => ({
+          clicked.dimensions.map((dimension) => ({
             ...dimension,
             column: dimension.column && query.topLevelColumn(dimension.column),
           })),
@@ -733,7 +752,7 @@ export default class Question {
   }
 
   @memoize
-  mode(): ?Mode {
+  mode(): Mode | null | undefined {
     return Mode.forQuestion(this);
   }
 
@@ -749,8 +768,10 @@ export default class Question {
 
   objectDetailPK(): any {
     const query = this.query();
+
     if (this.isObjectDetail() && query instanceof StructuredQuery) {
       const filters = query.filters();
+
       if (filters[0] && isStandard(filters[0])) {
         return filters[0][2];
       }
@@ -760,7 +781,7 @@ export default class Question {
   /**
    * A user-defined name for the question
    */
-  displayName(): ?string {
+  displayName(): string | null | undefined {
     return this._card && this._card.name;
   }
 
@@ -768,9 +789,10 @@ export default class Question {
     return this.setCard(assoc(this.card(), "name", name));
   }
 
-  collectionId(): ?number {
+  collectionId(): number | null | undefined {
     return this._card && this._card.collection_id;
   }
+
   setCollectionId(collectionId: number) {
     return this.setCard(assoc(this.card(), "collection_id", collectionId));
   }
@@ -785,7 +807,7 @@ export default class Question {
     );
   }
 
-  description(): ?string {
+  description(): string | null | undefined {
     return this._card && this._card.description;
   }
 
@@ -801,21 +823,24 @@ export default class Question {
     return this._card && this._card.public_uuid;
   }
 
-  database(): ?Database {
+  database(): Database | null | undefined {
     const query = this.query();
     return query && typeof query.database === "function"
       ? query.database()
       : null;
   }
-  databaseId(): ?DatabaseId {
+
+  databaseId(): DatabaseId | null | undefined {
     const db = this.database();
     return db ? db.id : null;
   }
-  table(): ?Table {
+
+  table(): Table | null | undefined {
     const query = this.query();
     return query && typeof query.table === "function" ? query.table() : null;
   }
-  tableId(): ?TableId {
+
+  tableId(): TableId | null | undefined {
     const table = this.table();
     return table ? table.id : null;
   }
@@ -826,10 +851,10 @@ export default class Question {
     query,
     includeDisplayIsLocked,
   }: {
-    originalQuestion?: Question,
-    clean?: boolean,
-    query?: { [string]: any },
-    includeDisplayIsLocked?: boolean,
+    originalQuestion?: Question;
+    clean?: boolean;
+    query?: Record<string, any>;
+    includeDisplayIsLocked?: boolean;
   } = {}): string {
     if (
       !this.id() ||
@@ -837,7 +862,10 @@ export default class Question {
     ) {
       return Urls.question(
         null,
-        this._serializeForUrl({ clean, includeDisplayIsLocked }),
+        this._serializeForUrl({
+          clean,
+          includeDisplayIsLocked,
+        }),
         query,
       );
     } else {
@@ -845,15 +873,21 @@ export default class Question {
     }
   }
 
-  getAutomaticDashboardUrl(filters /*?: Filter[] = []*/) {
+  getAutomaticDashboardUrl(
+    filters,
+    /*?: Filter[] = []*/
+  ) {
     let cellQuery = "";
+
     if (filters.length > 0) {
       const mbqlFilter = filters.length > 1 ? ["and", ...filters] : filters[0];
       cellQuery = `/cell/${Card_DEPRECATED.utf8_to_b64url(
         JSON.stringify(mbqlFilter),
       )}`;
     }
+
     const questionId = this.id();
+
     if (questionId != null && !isTransientId(questionId)) {
       return `/auto/dashboard/question/${questionId}${cellQuery}`;
     } else {
@@ -864,18 +898,25 @@ export default class Question {
     }
   }
 
-  getComparisonDashboardUrl(filters /*?: Filter[] = []*/) {
+  getComparisonDashboardUrl(
+    filters,
+    /*?: Filter[] = []*/
+  ) {
     let cellQuery = "";
+
     if (filters.length > 0) {
       const mbqlFilter = filters.length > 1 ? ["and", ...filters] : filters[0];
       cellQuery = `/cell/${Card_DEPRECATED.utf8_to_b64url(
         JSON.stringify(mbqlFilter),
       )}`;
     }
+
     const questionId = this.id();
     const query = this.query();
+
     if (query instanceof StructuredQuery) {
       const tableId = query.tableId();
+
       if (tableId) {
         if (questionId != null && !isTransientId(questionId)) {
           return `/auto/dashboard/question/${questionId}${cellQuery}/compare/table/${tableId}`;
@@ -892,7 +933,6 @@ export default class Question {
   setResultsMetadata(resultsMetadata) {
     const metadataColumns = resultsMetadata && resultsMetadata.columns;
     const metadataChecksum = resultsMetadata && resultsMetadata.checksum;
-
     return this.setCard({
       ...this.card(),
       result_metadata: metadataColumns,
@@ -913,6 +953,7 @@ export default class Question {
     } else if (!_.isEqual(this.parameters(), other.parameters())) {
       return false;
     }
+
     return true;
   }
 
@@ -928,14 +969,10 @@ export default class Question {
     ignoreCache = false,
   } = {}): Promise<[Dataset]> {
     // TODO Atte Keinänen 7/5/17: Should we clean this query with Query.cleanQuery(query) before executing it?
-
     const canUseCardApiEndpoint = !isDirty && this.isSaved();
-
-    const parameters = this.parametersList()
-      // include only parameters that have a value applied
-      .filter(param => _.has(param, "value"))
-      // only the superset of parameters object that API expects
-      .map(param => _.pick(param, "type", "target", "value"))
+    const parameters = this.parametersList() // include only parameters that have a value applied
+      .filter((param) => _.has(param, "value")) // only the superset of parameters object that API expects
+      .map((param) => _.pick(param, "type", "target", "value"))
       .map(({ type, value, target }) => {
         return {
           type,
@@ -950,7 +987,6 @@ export default class Question {
         ignore_cache: ignoreCache,
         parameters,
       };
-
       return [
         await maybeUsePivotEndpoint(
           CardApi.query,
@@ -961,23 +997,23 @@ export default class Question {
         }),
       ];
     } else {
-      const getDatasetQueryResult = datasetQuery => {
-        const datasetQueryWithParameters = {
-          ...datasetQuery,
-          parameters,
-        };
-
+      const getDatasetQueryResult = (datasetQuery) => {
+        const datasetQueryWithParameters = { ...datasetQuery, parameters };
         return maybeUsePivotEndpoint(
           MetabaseApi.dataset,
           this.card(),
           this.metadata(),
         )(
           datasetQueryWithParameters,
-          cancelDeferred ? { cancelled: cancelDeferred.promise } : {},
+          cancelDeferred
+            ? {
+                cancelled: cancelDeferred.promise,
+              }
+            : {},
         );
       };
 
-      const datasetQueries = this.atomicQueries().map(query =>
+      const datasetQueries = this.atomicQueries().map((query) =>
         query.datasetQuery(),
       );
       return Promise.all(datasetQueries.map(getDatasetQueryResult));
@@ -1003,7 +1039,12 @@ export default class Question {
 
   async reduxUpdate(dispatch) {
     const action = await dispatch(
-      Questions.actions.update({ id: this.id() }, this.card()),
+      Questions.actions.update(
+        {
+          id: this.id(),
+        },
+        this.card(),
+      ),
     );
     return this.setCard(Questions.HACK_getObjectFromAction(action));
   }
@@ -1021,7 +1062,7 @@ export default class Question {
   }
 
   parametersList(): ParameterObject[] {
-    return (Object.values(this.parameters()): ParameterObject[]);
+    return Object.values(this.parameters()) as ParameterObject[];
   }
 
   // predicate function that dermines if the question is "dirty" compared to the given question
@@ -1036,15 +1077,17 @@ export default class Question {
         originalQuestion._serializeForUrl({
           includeOriginalCardId: false,
         });
+
       const currentCardSerialized = this._serializeForUrl({
         includeOriginalCardId: false,
       });
+
       return currentCardSerialized !== origCardSerialized;
     }
   }
 
   isDirtyComparedToWithoutParameters(originalQuestion: Question) {
-    const [a, b] = [this, originalQuestion].map(q => {
+    const [a, b] = [this, originalQuestion].map((q) => {
       return q && new Question(q.card(), this.metadata()).setParameters([]);
     });
     return a.isDirtyComparedTo(b);
@@ -1057,7 +1100,6 @@ export default class Question {
     includeDisplayIsLocked = false,
   } = {}) {
     const query = clean ? this.query().clean() : this.query();
-
     const cardCopy = {
       name: this._card.name,
       description: this._card.description,
@@ -1066,10 +1108,15 @@ export default class Question {
       parameters: this._card.parameters,
       ...(_.isEmpty(this._parameterValues)
         ? undefined
-        : { parameterValues: this._parameterValues }), // this is kinda wrong. these values aren't really part of the card, but this is a convenient place to put them
+        : {
+            parameterValues: this._parameterValues,
+          }),
+      // this is kinda wrong. these values aren't really part of the card, but this is a convenient place to put them
       visualization_settings: this._card.visualization_settings,
       ...(includeOriginalCardId
-        ? { original_card_id: this._card.original_card_id }
+        ? {
+            original_card_id: this._card.original_card_id,
+          }
         : {}),
       ...(includeDisplayIsLocked
         ? {
@@ -1077,7 +1124,6 @@ export default class Question {
           }
         : {}),
     };
-
     return Card_DEPRECATED.utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
   }
 
@@ -1085,6 +1131,7 @@ export default class Question {
     if (!this.isStructured()) {
       return this;
     }
+
     return this.parametersList()
       .reduce(
         (query, parameter) =>
@@ -1109,7 +1156,6 @@ export default class Question {
     return getIn(this, ["_card", "moderation_reviews"]) || [];
   }
 }
-
 window.Question = Question;
 window.NativeQuery = NativeQuery;
 window.StructuredQuery = StructuredQuery;

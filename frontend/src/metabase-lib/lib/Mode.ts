@@ -1,12 +1,11 @@
+/* eslint-disable */
 import Question from "metabase-lib/lib/Question";
 import { getMode } from "metabase/modes/lib/modes";
-
 import type {
   ClickAction,
   ClickObject,
   QueryMode,
 } from "metabase-types/types/Visualization";
-
 export default class Mode {
   _question: Question;
   _queryMode: QueryMode;
@@ -16,7 +15,7 @@ export default class Mode {
     this._queryMode = queryMode;
   }
 
-  static forQuestion(question: Question): ?Mode {
+  static forQuestion(question: Question): Mode | null | undefined {
     // TODO Atte Keinänen 6/22/17: Move getMode here and refactor it after writing tests
     const queryMode = getMode(question);
 
@@ -35,8 +34,12 @@ export default class Mode {
     return this._queryMode.name;
   }
 
-  actionsForClick(clicked: ?ClickObject, settings, extraData): ClickAction[] {
-    return this._queryMode.drills().flatMap(actionCreator =>
+  actionsForClick(
+    clicked: ClickObject | null | undefined,
+    settings,
+    extraData,
+  ): ClickAction[] {
+    return this._queryMode.drills().flatMap((actionCreator) =>
       actionCreator({
         question: this._question,
         settings,

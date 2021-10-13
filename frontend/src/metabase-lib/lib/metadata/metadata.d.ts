@@ -1,3 +1,4 @@
+/* eslint-disable */
 // to help declaring nominal types
 interface Flavoring<FlavorT> {
     _type?: FlavorT;
