@@ -60,7 +60,7 @@ export type TemplateTag = {
   default?: string,
 };
 
-export type TemplateTags = { [key: TemplateTagName]: TemplateTag };
+export type TemplateTags = { [key in TemplateTagName]: TemplateTag };
 
 export type NativeQuery = {
   query: string,
@@ -68,8 +68,8 @@ export type NativeQuery = {
 };
 
 export type StructuredQuery = {
-  "source-table"?: ?TableId,
-  "source-query"?: ?StructuredQuery,
+  "source-table"?: TableId | null,
+  "source-query"?: StructuredQuery | null,
   aggregation?: AggregationClause,
   breakout?: BreakoutClause,
   filter?: FilterClause,
@@ -286,7 +286,7 @@ export type BinnedField = [
 export type AggregateField = ["aggregation", number];
 
 export type ExpressionClause = {
-  [key: ExpressionName]: Expression,
+  [key in ExpressionName]: Expression;
 };
 
 export type Expression = [

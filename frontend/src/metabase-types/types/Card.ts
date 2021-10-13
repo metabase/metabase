@@ -21,8 +21,8 @@ export type UnsavedCard = {
 
 export type Card = {
   id: CardId,
-  name: ?string,
-  description: ?string,
+  name?: string | null,
+  description?: string | null,
   dataset_query: DatasetQuery,
   display: string,
   visualization_settings: VisualizationSettings,
@@ -36,14 +36,14 @@ export type Card = {
 
 export type StructuredDatasetQuery = {
   type: "query",
-  database: ?DatabaseId,
+  database?: DatabaseId | null,
   query: StructuredQuery,
   parameters?: Array<ParameterInstance>,
 };
 
 export type NativeDatasetQuery = {
   type: "native",
-  database: ?DatabaseId,
+  database?: DatabaseId | null,
   native: NativeQuery,
   parameters?: Array<ParameterInstance>,
 };

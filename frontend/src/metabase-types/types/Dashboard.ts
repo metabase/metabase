@@ -9,27 +9,27 @@ export type Dashboard = {
   name: string,
   favorite: boolean,
   archived: boolean,
-  created_at: ?string,
+  created_at?: string | null,
   creator_id: number,
-  description: ?string,
+  description?: string | null,
   caveats?: string,
   points_of_interest?: string,
   show_in_getting_started?: boolean,
   // incomplete
   parameters: Array<Parameter>,
-  collection_id: ?number,
+  collection_id?: number | null,
 };
 
 // TODO Atte Keinänen 4/5/16: After upgrading Flow, use spread operator `...Dashboard`
 export type DashboardWithCards = {
   id: DashboardId,
   name: string,
-  description: ?string,
+  description?: string | null,
   ordered_cards: Array<DashCard>,
   embedding_params: EmbeddingParams,
   // incomplete
   parameters: Array<Parameter>,
-  collection_id: ?number,
+  collection_id?: number | null,
 };
 
 export type DashCardId = number;

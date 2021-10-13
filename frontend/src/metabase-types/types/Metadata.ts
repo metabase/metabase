@@ -7,23 +7,23 @@ import type { Segment, SegmentId } from "metabase-types/types/Segment";
 import type { Metric, MetricId } from "metabase-types/types/Metric";
 
 export type Metadata = {
-  databases: { [id: DatabaseId]: DatabaseMetadata },
-  tables: { [id: TableId]: TableMetadata },
-  fields: { [id: FieldId]: FieldMetadata },
-  metrics: { [id: MetricId]: MetricMetadata },
-  segments: { [id: SegmentId]: SegmentMetadata },
+  databases: { [id in DatabaseId]: DatabaseMetadata },
+  tables: { [id in TableId]: TableMetadata },
+  fields: { [id in FieldId]: FieldMetadata },
+  metrics: { [id in MetricId]: MetricMetadata },
+  segments: { [id in SegmentId]: SegmentMetadata },
 };
 
 export type DatabaseMetadata = Database & {
   tables: TableMetadata[],
-  tables_lookup: { [id: TableId]: TableMetadata },
+  tables_lookup: { [id in TableId]: TableMetadata },
 };
 
 export type TableMetadata = Table & {
   db: DatabaseMetadata,
 
   fields: FieldMetadata[],
-  fields_lookup: { [id: FieldId]: FieldMetadata },
+  fields_lookup: { [id in FieldId]: FieldMetadata },
 
   segments: SegmentMetadata[],
   metrics: MetricMetadata[],
@@ -36,7 +36,7 @@ export type FieldMetadata = Field & {
   target: FieldMetadata,
 
   filter_operators: FilterOperator[],
-  filter_operators_lookup: { [key: FilterOperatorName]: FilterOperator },
+  filter_operators_lookup: { [key in FilterOperatorName]: FilterOperator },
 };
 
 export type SegmentMetadata = Segment & {

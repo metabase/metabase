@@ -14,11 +14,11 @@ export type PermissionsGraph = {
 };
 
 export type GroupsPermissions = {
-  [key: GroupId]: GroupPermissions,
+  [key in GroupId]: GroupPermissions;
 };
 
 export type GroupPermissions = {
-  [key: DatabaseId]: DatabasePermissions,
+  [key in DatabaseId]: DatabasePermissions;
 };
 
 export type DatabasePermissions = {
@@ -32,14 +32,14 @@ export type SchemasPermissions =
   | "all"
   | "none"
   | {
-      [key: SchemaName]: TablesPermissions,
+      [key in SchemaName]: TablesPermissions;
     };
 
 export type TablesPermissions =
   | "all"
   | "none"
   | {
-      [key: TableId]: FieldsPermissions,
+      [key in TableId]: FieldsPermissions;
     };
 
 export type FieldsPermissions = "all" | "none";

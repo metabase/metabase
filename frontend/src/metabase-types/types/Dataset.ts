@@ -13,11 +13,11 @@ export type BinningInfo = {
 
 // TODO: incomplete
 export type Column = {
-  id: ?(FieldId | FieldLiteral), // NOTE: sometimes id is a field reference, e.x. nested queries?
+  id?: FieldId | FieldLiteral | null, // NOTE: sometimes id is a field reference, e.x. nested queries?
   name: ColumnName,
   display_name: string,
   base_type: string,
-  semantic_type: ?string,
+  semantic_type?: string | null,
   source?: "fields" | "aggregation" | "breakout",
   unit?: DatetimeUnit,
   binning_info?: BinningInfo,
