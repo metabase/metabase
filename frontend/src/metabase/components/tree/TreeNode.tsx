@@ -1,8 +1,7 @@
 import React from "react";
-import PropTypes from "prop-types";
 import _ from "underscore";
 
-import Icon, { iconPropTypes } from "metabase/components/Icon";
+import Icon from "metabase/components/Icon";
 
 import {
   TreeNodeRoot,
@@ -12,25 +11,18 @@ import {
   IconContainer,
   RightArrowContainer,
 } from "./TreeNode.styled";
+import { TreeColorScheme, TreeItem, TreeNodeId } from "./types";
 
-const propTypes = {
-  isExpanded: PropTypes.bool.isRequired,
-  isSelected: PropTypes.bool.isRequired,
-  hasChildren: PropTypes.bool.isRequired,
-  onToggleExpand: PropTypes.func,
-  onSelect: PropTypes.func.isRequired,
-  depth: PropTypes.number.isRequired,
-  item: PropTypes.shape({
-    name: PropTypes.string.isRequired,
-    icon: PropTypes.oneOfType([
-      PropTypes.string,
-      PropTypes.shape(iconPropTypes),
-    ]),
-    hasRightArrow: PropTypes.string,
-    id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
-  }).isRequired,
-  colorScheme: PropTypes.oneOf(["default", "admin"]),
-};
+interface TreeNodeProps {
+  isExpanded: boolean;
+  isSelected: boolean;
+  hasChildren: boolean;
+  onToggleExpand: (id: TreeNodeId) => void;
+  onSelect: (item: TreeItem) => void;
+  depth: number;
+  item: TreeItem;
+  colorScheme: TreeColorScheme;
+}
 
 // eslint-disable-next-line react/display-name
 export const TreeNode = React.memo(
@@ -44,7 +36,7 @@ export const TreeNode = React.memo(
       depth,
       item,
       colorScheme,
-    },
+    }: TreeNodeProps,
     ref,
   ) {
     const { name, icon, hasRightArrow, id } = item;
@@ -56,7 +48,7 @@ export const TreeNode = React.memo(
       onToggleExpand(id);
     };
 
-    const handleKeyDown = ({ key }) => {
+    const handleKeyDown = ({ key }: React.KeyboardEvent<HTMLElement>) => {
       switch (key) {
         case "Enter":
           onSelect(item);
@@ -72,7 +64,7 @@ export const TreeNode = React.memo(
 
     return (
       <TreeNodeRoot
-        innerRef={ref}
+        innerRef={ref as any}
         role="menuitem"
         tabIndex={0}
         colorScheme={colorScheme}
@@ -86,14 +78,17 @@ export const TreeNode = React.memo(
         </ExpandToggleButton>
 
         {icon && (
-          <IconContainer colorScheme={colorScheme}>
+          <IconContainer>
             <Icon {...iconProps} />
           </IconContainer>
         )}
         <NameContainer>{name}</NameContainer>
 
         {hasRightArrow && (
-          <RightArrowContainer isSelected={isSelected}>
+          <RightArrowContainer
+            isSelected={isSelected}
+            colorScheme={colorScheme}
+          >
             <Icon name="chevronright" size={14} />
           </RightArrowContainer>
         )}
@@ -101,5 +96,3 @@ export const TreeNode = React.memo(
     );
   }),
 );
-
-TreeNode.propTypes = propTypes;

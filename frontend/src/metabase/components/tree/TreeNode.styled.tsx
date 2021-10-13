@@ -1,8 +1,14 @@
 import styled, { css } from "styled-components";
 import colors, { lighten } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
+import { TreeColorScheme } from "./types";
 
-const COLOR_SCHEMES = {
+const COLOR_SCHEMES: {
+  [key in TreeColorScheme]: {
+    text: () => string;
+    background: () => string;
+  };
+} = {
   admin: {
     text: () => colors["text-medium"],
     background: () => colors["accent7"],
@@ -13,7 +19,13 @@ const COLOR_SCHEMES = {
   },
 };
 
-export const TreeNodeRoot = styled.li`
+interface TreeNodeRootProps {
+  isSelected: boolean;
+  colorScheme: TreeColorScheme;
+  depth: number;
+}
+
+export const TreeNodeRoot = styled.li<TreeNodeRootProps>`
   display: flex;
   align-items: center;
   color: ${props =>
@@ -44,7 +56,11 @@ export const ExpandToggleButton = styled.button`
   visibility: ${props => (props.hidden ? "hidden" : "visible")};
 `;
 
-export const ExpandToggleIcon = styled(Icon).attrs({
+interface ExpandToggleIconProps {
+  isExpanded: boolean;
+}
+
+export const ExpandToggleIcon = styled(Icon).attrs<ExpandToggleIconProps>({
   name: "chevronright",
   size: 12,
 })`
@@ -69,7 +85,12 @@ export const IconContainer = styled.div`
   opacity: 0.5;
 `;
 
-export const RightArrowContainer = styled.div`
+interface RightArrowContainerProps {
+  isSelected: boolean;
+  colorScheme: TreeColorScheme;
+}
+
+export const RightArrowContainer = styled.div<RightArrowContainerProps>`
   display: flex;
   align-items: center;
   color: ${props =>

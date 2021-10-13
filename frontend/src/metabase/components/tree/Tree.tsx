@@ -1,17 +1,17 @@
 import React, { useState, useCallback } from "react";
-import PropTypes from "prop-types";
 import { TreeNodeList } from "./TreeNodeList";
 import { TreeNode } from "./TreeNode";
 import { getInitialExpandedIds } from "./utils";
+import { TreeItem, TreeNodeId, TreeColorScheme } from "./types";
 
-const propTypes = {
-  TreeNodeComponent: PropTypes.object,
-  data: PropTypes.array.isRequired,
-  onSelect: PropTypes.func.isRequired,
-  colorScheme: PropTypes.oneOf(["default", "admin"]),
-  selectedId: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
-  emptyState: PropTypes.node,
-};
+interface TreeProps {
+  TreeNodeComponent: (props: any) => React.ReactElement | null;
+  data: TreeItem[];
+  onSelect: (item: TreeItem) => void;
+  colorScheme: TreeColorScheme;
+  selectedId: TreeNodeId;
+  emptyState: React.ReactNode;
+}
 
 export function Tree({
   TreeNodeComponent = TreeNode,
@@ -20,7 +20,7 @@ export function Tree({
   selectedId,
   colorScheme = "default",
   emptyState = null,
-}) {
+}: TreeProps) {
   const [expandedIds, setExpandedIds] = useState(
     new Set(selectedId != null ? getInitialExpandedIds(selectedId, data) : []),
   );
@@ -37,7 +37,7 @@ export function Tree({
   );
 
   if (data.length === 0) {
-    return <React.Fragment>{emptyState}</React.Fragment>;
+    return <>{emptyState}</>;
   }
 
   return (
@@ -53,5 +53,3 @@ export function Tree({
     />
   );
 }
-
-Tree.propTypes = propTypes;

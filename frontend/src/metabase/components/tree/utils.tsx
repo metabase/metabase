@@ -1,6 +1,11 @@
-export const getInitialExpandedIds = (selectedId, nodes) =>
+import { TreeNodeId } from "./types";
+
+export const getInitialExpandedIds = (
+  selectedId: TreeNodeId,
+  nodes: Array<any>,
+): Array<TreeNodeId> =>
   nodes
-    .map(node => {
+    .map<any>(node => {
       if (node.id === selectedId) {
         return [node.id];
       }
@@ -10,4 +15,5 @@ export const getInitialExpandedIds = (selectedId, nodes) =>
         return path.length > 0 ? [node.id, ...path] : [];
       }
     })
+    .filter(id => id)
     .flat();
