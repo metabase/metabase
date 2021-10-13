@@ -317,6 +317,18 @@
             [{::mb.viz/table-column-field-ref ["expression" "Name1"], ::mb.viz/table-column-enabled true}
              {::mb.viz/table-column-field-ref ["expression" "Name0"], ::mb.viz/table-column-enabled true}]))))
 
+  (testing "correlation of fields using deprecated field dimensions"
+    (is (= [1 0]
+           (@#'qp.streaming/export-column-order
+            [{:id 0, :field_ref [:field_literal "Name0"]}, {:id 1, :field_ref [:field_literal "Name1"]}]
+            [{::mb.viz/table-column-field-ref ["field_literal" "Name1"], ::mb.viz/table-column-enabled true}
+             {::mb.viz/table-column-field-ref ["field_literal" "Name0"], ::mb.viz/table-column-enabled true}])))
+    (is (= [1 0]
+           (@#'qp.streaming/export-column-order
+            [{:id 0, :field_ref [:field_id 0]}, {:id 1, :field_ref [:field_id 1]}]
+            [{::mb.viz/table-column-field-ref ["field_id" 1], ::mb.viz/table-column-enabled true}
+             {::mb.viz/table-column-field-ref ["field_id" 0], ::mb.viz/table-column-enabled true}]))))
+
   (testing "disabled columns are excluded from ordering"
     (is (= [0]
            (@#'qp.streaming/export-column-order
@@ -332,7 +344,8 @@
   (testing "remapped columns use the index of the new column"
     (is (= [1]
            (@#'qp.streaming/export-column-order
-            [{:id 0, :name "Col1", :remapped_to "Col2"}, {:id 1, :name "Col2", :remapped_from "Col1"}]
+            [{:id 0, :name "Col1", :remapped_to "Col2", :field_ref ["field" 0 nil]},
+             {:id 1, :name "Col2", :remapped_from "Col1", :field_ref ["field" 1 nil]}]
             [{::mb.viz/table-column-field-ref ["field" 0 nil], ::mb.viz/table-column-enabled true}]))))
 
   (testing "entries in table-columns without corresponding entries in cols are ignored"

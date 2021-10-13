@@ -71,10 +71,11 @@
         cols-vector        (into [] cols)
         ;; cols-index is a map from keys representing fields to their indices into `cols`
         cols-index         (reduce-kv (fn [m i col]
-                                        ;; Always add [:field col-name] as a key, for native queries and old fields using :field-literal (#18382)
+                                        ;; Always add [:field col-name] as a key, so that native queries,
+                                        ;; remapped fields, and old fields using :field-literal work correctly (#18382)
                                         (let [m' (assoc m [:field (:name col)] i)]
                                           (if-let [field-ref (:field_ref col)]
-                                            ;; Construct a map key from the column's field-ref, if available
+                                            ;; Add a map key based on the column's field-ref, if available
                                             (assoc m' (field-ref->map-key field-ref) i)
 
                                             ;; Otherwise construct a key using the id of the column, if available
