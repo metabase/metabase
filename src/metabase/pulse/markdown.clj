@@ -191,11 +191,14 @@
 (defn- resolve-uri
   "If the provided URI is a relative path, resolve it relative to the site URL so that links work
   correctly in Slack/Email."
-  [uri]
-  (when uri
-    (if-let [site-url (public-settings/site-url)]
-      (.toString (.resolve (new URI ^String site-url) ^String uri))
-      uri)))
+  [^String uri]
+  (letfn [(ensure-slash [s] (when s
+                              (cond-> s
+                                (not (str/ends-with? s "/")) (str "/"))))]
+    (when uri
+      (if-let [^String site-url (ensure-slash (public-settings/site-url))]
+        (.. (URI. site-url) (resolve uri) toString)
+        uri))))
 
 (defn- ast->mrkdwn
   "Takes an AST representing Markdown input, and converts it to a mrkdwn string that will render nicely in Slack.
