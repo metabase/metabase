@@ -299,8 +299,7 @@ function augmentMappingsWithValueMetadata(mappings) {
       .map(mapping => [mapping, mapping.field?.fieldValues() ?? []])
       .filter(([, values]) => values.length > 0);
     const values = mappingsWithValues
-      .map(([, values]) => values)
-      .flat()
+      .flatMap(([, values]) => values)
       .map(value => (Array.isArray(value) ? value[0] : value));
 
     const distinctValues = new Set(values);
@@ -317,25 +316,27 @@ function augmentMappingsWithValueMetadata(mappings) {
   return mappings;
 }
 
-function getMappings(dashboard, metadata) {
-  const mappings = dashboard.ordered_cards
-    .map(dashcard => {
-      const cards = [dashcard.card, ...(dashcard.series || [])];
-      return (dashcard.parameter_mappings || []).map(mapping => {
-        const card = _.findWhere(cards, { id: mapping.card_id });
-        const field = getMappingTargetField(card, mapping, metadata);
+function getMapping(dashcard, metadata) {
+  const cards = [dashcard.card, ...(dashcard.series || [])];
+  return (dashcard.parameter_mappings || []).map(mapping => {
+    const card = _.findWhere(cards, { id: mapping.card_id });
+    const field = getMappingTargetField(card, mapping, metadata);
 
-        return {
-          ...mapping,
-          parameter_id: mapping.parameter_id,
-          dashcard_id: dashcard.id,
-          card_id: mapping.card_id,
-          field_id: field?.id ?? field?.name,
-          field,
-        };
-      });
-    })
-    .flat();
+    return {
+      ...mapping,
+      parameter_id: mapping.parameter_id,
+      dashcard_id: dashcard.id,
+      card_id: mapping.card_id,
+      field_id: field?.id ?? field?.name,
+      field,
+    };
+  });
+}
+
+function getMappings(dashboard, metadata) {
+  const mappings = dashboard.ordered_cards.flatMap(dashcard =>
+    getMapping(dashcard, metadata),
+  );
 
   return augmentMappingsWithValueMetadata(mappings);
 }
