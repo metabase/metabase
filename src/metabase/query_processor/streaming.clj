@@ -44,9 +44,14 @@
   The issue currently is that `table-columns` is passed down from the frontend for unsaved cards (in the viz settings)
   and has to be parsed from JSON, so some fields in metadata might be strings instead of keywords."
   [field-ref]
-  (if-let [join-alias (:join-alias (last field-ref))]
-    [(keyword (first field-ref)) (second field-ref) {:join-alias join-alias}]
-    [(keyword (first field-ref)) (second field-ref)]))
+  (let [field-ref-first-part (keyword (first field-ref))
+        key-first-part       (if (= :aggregation field-ref-first-part)
+                               :aggregation
+                               ;; Convert the deprecated :field-id to :field so that it matches the field refs in `cols` (#18382)
+                               :field)]
+    (if-let [join-alias (:join-alias (last field-ref))]
+      [key-first-part (second field-ref) {:join-alias join-alias}]
+      [key-first-part (second field-ref)])))
 
 (defn- export-column-order
   "For each entry in `table-columns` that is enabled, finds the index of the corresponding
@@ -64,14 +69,18 @@
                                     ::mb.viz/table-column-enabled true})))
         enabled-table-cols (filter ::mb.viz/table-column-enabled table-columns')
         cols-vector        (into [] cols)
+        ;; cols-index is a map from keys representing fields to their indices into `cols`
         cols-index         (reduce-kv (fn [m i col]
-                                        (if-let [field-ref (:field_ref col)]
-                                          ;; Use first two entries of field-ref, if available
-                                          (assoc m (field-ref->map-key field-ref) i)
-                                          ;; Otherwise construct a key using the name and/or id of the column
-                                          (let [m' (assoc m [:field (:name col)] i)]
+                                        ;; Always add [:field col-name] as a key, for native queries and old fields using :field-literal (#18382)
+                                        (let [m' (assoc m [:field (:name col)] i)]
+                                          (if-let [field-ref (:field_ref col)]
+                                            ;; Construct a map key from the column's field-ref, if available
+                                            (assoc m' (field-ref->map-key field-ref) i)
+
+                                            ;; Otherwise construct a key using the id of the column, if available
                                             (if (:id col)
-                                              (assoc m' [:field (:id col)] i) m'))))
+                                              (assoc m' [:field (:id col)] i)
+                                              m'))))
                                       {}
                                       cols-vector)]
     (->> (map
