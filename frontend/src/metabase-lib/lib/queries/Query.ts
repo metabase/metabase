@@ -1,18 +1,16 @@
+/* eslint-disable */
 import type { DatasetQuery } from "metabase-types/types/Card";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
 import type Question from "metabase-lib/lib/Question";
 import type Dimension from "metabase-lib/lib/Dimension";
 import type Variable from "metabase-lib/lib/Variable";
-
 import { memoize } from "metabase-lib/lib/utils";
-
 import DimensionOptions from "metabase-lib/lib/DimensionOptions";
-
 type QueryUpdateFn = (datasetQuery: DatasetQuery) => void;
-
 /**
  * An abstract class for all query types (StructuredQuery & NativeQuery)
  */
+
 export default class Query {
   _metadata: Metadata;
 

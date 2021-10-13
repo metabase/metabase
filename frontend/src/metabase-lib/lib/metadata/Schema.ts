@@ -1,10 +1,10 @@
+/* eslint-disable */
 import Base from "./Base";
-
 import { titleize, humanize } from "metabase/lib/formatting";
-
 /**
  * Wrapper class for a {@link Database} schema. Contains {@link Table}s.
  */
+
 export default class Schema extends Base {
   displayName() {
     return titleize(humanize(this.name));
@@ -20,6 +20,7 @@ export default class Schema extends Base {
    * @param {Database} database
    * @param {Table[]} tables
    */
+
   /* istanbul ignore next */
   _constructor(name, database, tables) {
     this.name = name;

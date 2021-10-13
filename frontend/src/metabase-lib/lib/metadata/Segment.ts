@@ -1,5 +1,5 @@
+/* eslint-disable */
 import Base from "./Base";
-
 /**
  * @typedef { import("./metadata").FilterClause } FilterClause
  */
@@ -7,6 +7,7 @@ import Base from "./Base";
 /**
  * Wrapper class for a segment. Belongs to a {@link Database} and possibly a {@link Table}
  */
+
 export default class Segment extends Base {
   displayName() {
     return this.name;
@@ -32,6 +33,7 @@ export default class Segment extends Base {
    * @param {number} id
    * @param {boolean} archived
    */
+
   /* istanbul ignore next */
   _constructor(name, description, database, table, id, archived) {
     this.name = name;

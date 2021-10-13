@@ -1,11 +1,8 @@
+/* eslint-disable */
 import Question from "../Question";
-
 import Base from "./Base";
-
 import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
-
 import { generateSchemaId } from "metabase/schema";
-
 /**
  * @typedef { import("./metadata").SchemaName } SchemaName
  */
@@ -15,9 +12,9 @@ import { generateSchemaId } from "metabase/schema";
  *
  * Backed by types/Database data structure which matches the backend API contract
  */
+
 export default class Database extends Base {
   // TODO Atte Keinänen 6/11/17: List all fields here (currently only in types/Database)
-
   displayName() {
     return this.name;
   }
@@ -32,7 +29,7 @@ export default class Database extends Base {
   }
 
   schemaNames() {
-    return this.schemas.map(s => s.name).sort((a, b) => a.localeCompare(b));
+    return this.schemas.map((s) => s.name).sort((a, b) => a.localeCompare(b));
   }
 
   getSchemas() {
@@ -48,7 +45,6 @@ export default class Database extends Base {
   }
 
   // TABLES
-
   @memoize
   tablesLookup() {
     return createLookupByProperty(this.tables, "id");
@@ -70,7 +66,9 @@ export default class Database extends Base {
     if (!feature) {
       return true;
     }
+
     const set = new Set(this.features);
+
     if (feature === "join") {
       return (
         set.has("left-join") ||
@@ -88,14 +86,15 @@ export default class Database extends Base {
   }
 
   // QUESTIONS
-
   newQuestion() {
-    return this.question()
-      .setDefaultQuery()
-      .setDefaultDisplay();
+    return this.question().setDefaultQuery().setDefaultDisplay();
   }
 
-  question(query = { "source-table": null }) {
+  question(
+    query = {
+      "source-table": null,
+    },
+  ) {
     return Question.create({
       metadata: this.metadata,
       dataset_query: {
@@ -127,7 +126,7 @@ export default class Database extends Base {
 
   /** Returns a database containing only the saved questions from the same database, if any */
   savedQuestionsDatabase() {
-    return this.metadata.databasesList().find(db => db.is_saved_questions);
+    return this.metadata.databasesList().find((db) => db.is_saved_questions);
   }
 
   /**
@@ -140,6 +139,7 @@ export default class Database extends Base {
    * @param {Metadata} metadata
    * @param {boolean} auto_run_queries
    */
+
   /* istanbul ignore next */
   _constructor(
     id,

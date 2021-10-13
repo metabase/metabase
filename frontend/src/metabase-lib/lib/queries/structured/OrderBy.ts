@@ -1,10 +1,9 @@
+/* eslint-disable */
 import MBQLClause from "./MBQLClause";
-
 import type { OrderBy as OrderByObject } from "metabase-types/types/Query";
 import type StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type Dimension from "metabase-lib/lib/Dimension";
 import type Field from "metabase-lib/lib/metadata/Field";
-
 export default class OrderBy extends MBQLClause {
   /**
    * Replaces the order-by clause in the parent query and returns the new StructuredQuery
@@ -35,7 +34,7 @@ export default class OrderBy extends MBQLClause {
   /**
    * Returns the display name for the order-by
    */
-  displayName(): ?string {
+  displayName(): string | null | undefined {
     const dimension = this.dimension();
     return dimension && dimension.render();
   }

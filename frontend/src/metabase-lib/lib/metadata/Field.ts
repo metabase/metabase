@@ -1,11 +1,8 @@
+/* eslint-disable */
 import Base from "./Base";
-
 import moment from "moment";
-
 import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
-
 import Dimension from "../Dimension";
-
 import { formatField, stripId } from "metabase/lib/formatting";
 import { getFieldValues } from "metabase/lib/query/field";
 import {
@@ -33,7 +30,6 @@ import {
   getIconForField,
   getFilterOperators,
 } from "metabase/lib/schema_metadata";
-
 /**
  * @typedef { import("./metadata").FieldValues } FieldValues
  */
@@ -41,6 +37,7 @@ import {
 /**
  * Wrapper class for field metadata objects. Belongs to a Table.
  */
+
 export default class Field extends Base {
   parent() {
     return this.metadata ? this.metadata.field(this.parent_id) : null;
@@ -49,24 +46,30 @@ export default class Field extends Base {
   path() {
     const path = [];
     let field = this;
+
     do {
       path.unshift(field);
     } while ((field = field.parent()));
+
     return path;
   }
 
   displayName({ includeSchema, includeTable, includePath = true } = {}) {
     let displayName = "";
+
     if (includeTable && this.table) {
-      displayName += this.table.displayName({ includeSchema }) + " → ";
+      displayName +=
+        this.table.displayName({
+          includeSchema,
+        }) + " → ";
     }
+
     if (includePath) {
-      displayName += this.path()
-        .map(formatField)
-        .join(": ");
+      displayName += this.path().map(formatField).join(": ");
     } else {
       displayName += formatField(this);
     }
+
     return displayName;
   }
 
@@ -82,51 +85,67 @@ export default class Field extends Base {
   isDate() {
     return isDate(this);
   }
+
   isTime() {
     return isTime(this);
   }
+
   isNumber() {
     return isNumber(this);
   }
+
   isNumeric() {
     return isNumeric(this);
   }
+
   isBoolean() {
     return isBoolean(this);
   }
+
   isString() {
     return isString(this);
   }
+
   isAddress() {
     return isAddress(this);
   }
+
   isCity() {
     return isCity(this);
   }
+
   isZipCode() {
     return isZipCode(this);
   }
+
   isState() {
     return isState(this);
   }
+
   isCountry() {
     return isCountry(this);
   }
+
   isCoordinate() {
     return isCoordinate(this);
   }
+
   isLocation() {
     return isLocation(this);
   }
+
   isSummable() {
     return isSummable(this);
   }
+
   isScope() {
     return isScope(this);
   }
+
   isCategory() {
     return isCategory(this);
   }
+
   isMetric() {
     return isMetric(this);
   }
@@ -138,15 +157,19 @@ export default class Field extends Base {
   isDimension() {
     return isDimension(this);
   }
+
   isID() {
     return isPK(this) || isFK(this);
   }
+
   isPK() {
     return isPK(this);
   }
+
   isFK() {
     return isFK(this);
   }
+
   isEntityName() {
     return isEntityName(this);
   }
@@ -192,7 +215,6 @@ export default class Field extends Base {
   }
 
   // FILTERS
-
   @memoize
   filterOperators(selected) {
     return getFilterOperators(this, this.table, selected);
@@ -211,20 +233,20 @@ export default class Field extends Base {
   get filter_operators() {
     return this.filterOperators();
   }
+
   // @deprecated: use filterOperatorsLookup
   get filter_operators_lookup() {
     return this.filterOperatorsLookup();
   }
 
   // AGGREGATIONS
-
   @memoize
   aggregationOperators() {
     return this.table
       ? this.table
           .aggregationOperators()
           .filter(
-            aggregation =>
+            (aggregation) =>
               aggregation.validFieldsFilters[0] &&
               aggregation.validFieldsFilters[0]([this]).length === 1,
           )
@@ -244,6 +266,7 @@ export default class Field extends Base {
   get aggregation_operators() {
     return this.aggregationOperators();
   }
+
   // @deprecated: use aggregationOperatorsLookup
   get aggregation_operators_lookup() {
     return this.aggregationOperatorsLookup();
@@ -268,6 +291,7 @@ export default class Field extends Base {
         moment(fingerprint.earliest),
         "day",
       );
+
       if (days < 1) {
         return "minute";
       } else if (days < 31) {
@@ -291,14 +315,17 @@ export default class Field extends Base {
   remappedField() {
     const displayFieldId =
       this.dimensions && this.dimensions.human_readable_field_id;
+
     if (displayFieldId != null) {
       return this.metadata.field(displayFieldId);
     }
+
     // this enables "implicit" remappings from type/PK to type/Name on the same table,
     // used in FieldValuesWidget, but not table/object detail listings
     if (this.name_field) {
       return this.name_field;
     }
+
     return null;
   }
 
@@ -311,6 +338,7 @@ export default class Field extends Base {
     if (this.isNumeric() && typeof value !== "number") {
       value = parseFloat(value);
     }
+
     return this.remapping && this.remapping.get(value);
   }
 
@@ -323,6 +351,7 @@ export default class Field extends Base {
     if (this.isNumeric() && typeof value !== "number") {
       value = parseFloat(value);
     }
+
     return this.remapping && this.remapping.has(value);
   }
 
@@ -336,7 +365,10 @@ export default class Field extends Base {
   }
 
   column(extra = {}) {
-    return this.dimension().column({ source: "fields", ...extra });
+    return this.dimension().column({
+      source: "fields",
+      ...extra,
+    });
   }
 
   /**
@@ -358,6 +390,7 @@ export default class Field extends Base {
    * @param {?Field} name_field
    * @param {Metadata} metadata
    */
+
   /* istanbul ignore next */
   _constructor(
     id,

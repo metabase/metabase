@@ -1,7 +1,10 @@
+/* eslint-disable */
 export default class Base {
   _plainObject = null;
+
   constructor(object = {}) {
     this._plainObject = object;
+
     for (const property in object) {
       this[property] = object[property];
     }

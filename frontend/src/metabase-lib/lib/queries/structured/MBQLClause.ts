@@ -1,12 +1,18 @@
+/* eslint-disable */
 import type StructuredQuery from "../StructuredQuery";
-
 export default class MBQLArrayClause extends Array {
   _index: number;
   _query: StructuredQuery;
 
-  constructor(mbql: Array<any>, index?: ?number, query?: StructuredQuery) {
+  constructor(
+    mbql: Array<any>,
+    index?: number | null | undefined,
+    query?: StructuredQuery,
+  ) {
     super(...mbql);
+
     _private(this, "_index", index);
+
     _private(this, "_query", query);
   }
 
@@ -14,7 +20,7 @@ export default class MBQLArrayClause extends Array {
   // so we need to reconcile things in the MBQLArrayClause[Symbol.species] constructor function
   // See https://stackoverflow.com/questions/54522949
   static get [Symbol.species]() {
-    return Object.assign(function(...items) {
+    return Object.assign(function (...items) {
       return new MBQLArrayClause(new Array(...items), this._index, this._query);
     }, MBQLArrayClause);
   }
@@ -64,14 +70,19 @@ export default class MBQLArrayClause extends Array {
     return [...this];
   }
 }
-
 export class MBQLObjectClause {
   _index: number;
   _query: StructuredQuery;
 
-  constructor(mbql: Object, index?: ?number, query?: StructuredQuery) {
+  constructor(
+    mbql: Record<string, any>,
+    index?: number | null | undefined,
+    query?: StructuredQuery,
+  ) {
     Object.assign(this, mbql);
+
     _private(this, "_index", index);
+
     _private(this, "_query", query);
   }
 
@@ -117,7 +128,7 @@ export class MBQLObjectClause {
   }
 
   raw() {
-    const entriesWithDefinedValue = Object.entries(this).filter(entry => {
+    const entriesWithDefinedValue = Object.entries(this).filter((entry) => {
       const [, value] = entry;
       return value !== undefined;
     });
@@ -127,5 +138,8 @@ export class MBQLObjectClause {
 
 function _private(object, key, value) {
   // this prevents properties from being serialized
-  Object.defineProperty(object, key, { value: value, enumerable: false });
+  Object.defineProperty(object, key, {
+    value: value,
+    enumerable: false,
+  });
 }

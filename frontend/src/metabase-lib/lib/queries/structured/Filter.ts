@@ -1,5 +1,5 @@
+/* eslint-disable */
 import MBQLClause from "./MBQLClause";
-
 import type {
   Filter as FilterObject,
   FieldFilter,
@@ -8,7 +8,6 @@ import type {
 import type { FilterOperator } from "metabase-types/types/Metadata";
 import type StructuredQuery from "../StructuredQuery";
 import type Dimension from "../../Dimension";
-
 import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
 import {
   isStandard,
@@ -17,13 +16,10 @@ import {
   isFieldFilter,
   hasFilterOptions,
 } from "metabase/lib/query/filter";
-
 import { isExpression } from "metabase/lib/expressions";
 import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
-
 import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
-
 export default class Filter extends MBQLClause {
   /**
    * Replaces the filter in the parent query and returns the new StructuredQuery
@@ -79,34 +75,43 @@ export default class Filter extends MBQLClause {
     if (this.isStandard()) {
       // has an operator name and dimension or expression
       const dimension = this.dimension();
+
       if (!dimension && isExpression(this[1])) {
         return true;
       }
+
       const query = this.query();
+
       if (
         !dimension ||
         !(query && query.filterDimensionOptions().hasDimension(dimension))
       ) {
         return false;
       }
+
       const operator = this.operator();
+
       if (operator) {
         const args = this.arguments();
+
         // has the mininum number of arguments
         if (args.length < operator.fields.length) {
           return false;
         }
+
         // arguments are non-null/undefined
-        if (!_.all(args, arg => arg != null)) {
+        if (!_.all(args, (arg) => arg != null)) {
           return false;
         }
       }
+
       return true;
     } else if (this.isSegment()) {
       return !!this.segment();
     } else if (this.isCustom()) {
       return true;
     }
+
     return false;
   }
 
@@ -141,7 +146,6 @@ export default class Filter extends MBQLClause {
   }
 
   // SEGMENT FILTERS
-
   segmentId() {
     if (this.isSegment()) {
       return this[1];
@@ -155,8 +159,7 @@ export default class Filter extends MBQLClause {
   }
 
   // FIELD FILTERS
-
-  dimension(): ?Dimension {
+  dimension(): Dimension | null | undefined {
     if (this.isFieldFilter()) {
       return this._query.parseFieldReference(this[1]);
     }
@@ -171,7 +174,7 @@ export default class Filter extends MBQLClause {
     return this[0];
   }
 
-  operator(): ?FilterOperator {
+  operator(): FilterOperator | null | undefined {
     const dimension = this.dimension();
     return dimension ? dimension.filterOperator(this.operatorName()) : null;
   }
@@ -179,7 +182,6 @@ export default class Filter extends MBQLClause {
   setOperator(operatorName: string) {
     const dimension = this.dimension();
     const operator = dimension && dimension.filterOperator(operatorName);
-
     const filter: FieldFilter = [operatorName, dimension && dimension.mbql()];
 
     if (operator) {
@@ -190,11 +192,14 @@ export default class Filter extends MBQLClause {
           filter.push(undefined);
         }
       }
+
       if (operator.optionsDefaults) {
         filter.push(operator.optionsDefaults);
       }
+
       const oldOperator = this.operator();
       const oldFilter = this;
+
       if (oldOperator) {
         // copy over values of the same type
         for (let i = 0; i < oldFilter.length - 2; i++) {
@@ -204,6 +209,7 @@ export default class Filter extends MBQLClause {
           const oldField = oldOperator.multi
             ? oldOperator.fields[0]
             : oldOperator.fields[i];
+
           if (
             field &&
             oldField &&
@@ -215,40 +221,45 @@ export default class Filter extends MBQLClause {
         }
       }
     }
+
     return this.set(filter);
   }
 
   setDimension(
-    fieldRef: ?Field,
-    { useDefaultOperator = false }: { useDefaultOperator?: boolean } = {},
+    fieldRef: Field | null | undefined,
+    {
+      useDefaultOperator = false,
+    }: {
+      useDefaultOperator?: boolean;
+    } = {},
   ): Filter {
     if (!fieldRef) {
       return this.set([]);
     }
+
     const dimension = this._query.parseFieldReference(fieldRef);
+
     if (
       dimension &&
       (!this.isFieldFilter() || !dimension.isEqual(this.dimension()))
     ) {
-      const operator =
-        // see if the new dimension supports the existing operator
-        dimension.filterOperator(this.operatorName()) ||
-        // otherwise use the default operator, if enabled
+      const operator = // see if the new dimension supports the existing operator
+        dimension.filterOperator(this.operatorName()) || // otherwise use the default operator, if enabled
         (useDefaultOperator && dimension.defaultFilterOperator());
-
       const operatorName = operator && operator.name;
-
       const filter: Filter = this.set(
         this.isFieldFilter()
           ? [this[0], dimension.mbql(), ...this.slice(2)]
           : [null, dimension.mbql()],
       );
+
       if (operatorName && filter.operatorName() !== operatorName) {
         return filter.setOperator(operatorName);
       } else {
         return filter;
       }
     }
+
     return this;
   }
 
@@ -264,7 +275,7 @@ export default class Filter extends MBQLClause {
     return this.set([...this.slice(0, 2), ...values]);
   }
 
-  filterOperators(selected: string): ?(FilterOperator[]) {
+  filterOperators(selected: string): FilterOperator[] | null | undefined {
     const dimension = this.dimension();
     return dimension ? dimension.filterOperators(selected) : null;
   }
@@ -277,6 +288,7 @@ export default class Filter extends MBQLClause {
     const dimension = this.dimension();
     const operator = this.operator();
     const args = this.arguments();
+
     if (operator && operator.multi && args.length > maxDisplayValues) {
       const n = args.length;
       return [ngettext(msgid`${n} selection`, `${n} selections`, n)];
@@ -294,10 +306,10 @@ export default class Filter extends MBQLClause {
         ])
         .filter(([value, options]) => value !== undefined && !options.hide)
         .map(
-          ([value, options], index) =>
-            // FIXME: remapping
-            value,
-          // <Value
+          (
+            [value, options],
+            index, // FIXME: remapping
+          ) => value, // <Value
           //   key={index}
           //   value={value}
           //   column={dimension.field()}

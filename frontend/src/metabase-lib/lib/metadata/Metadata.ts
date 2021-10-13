@@ -1,9 +1,7 @@
+/* eslint-disable */
 import _ from "underscore";
-
 import Base from "./Base";
-
 import Question from "../Question";
-
 /**
  * @typedef { import("./metadata").DatabaseId } DatabaseId
  * @typedef { import("./metadata").SchemaId } SchemaId
@@ -16,6 +14,7 @@ import Question from "../Question";
 /**
  * Wrapper class for the entire metadata store
  */
+
 export default class Metadata extends Base {
   /**
    * @deprecated this won't be sorted or filtered in a meaningful way
@@ -24,8 +23,8 @@ export default class Metadata extends Base {
   databasesList({ savedQuestions = true } = {}) {
     return _.chain(this.databases)
       .values()
-      .filter(db => savedQuestions || !db.is_saved_questions)
-      .sortBy(db => db.name)
+      .filter((db) => savedQuestions || !db.is_saved_questions)
+      .sortBy((db) => db.name)
       .value();
   }
 
@@ -57,7 +56,6 @@ export default class Metadata extends Base {
    * @param {SegmentId} segmentId
    * @returns {?Segment}
    */
-
   segment(segmentId) {
     return (segmentId != null && this.segments[segmentId]) || null;
   }
@@ -115,6 +113,7 @@ export default class Metadata extends Base {
    * @param {Object.<number, Metric>} metrics
    * @param {Object.<number, Segment>} segments
    */
+
   /* istanbul ignore next */
   _constructor(databases, tables, fields, metrics, segments) {
     this.databases = databases;

@@ -1,12 +1,10 @@
+/* eslint-disable */
 // NOTE: this needs to be imported first due to some cyclical dependency nonsense
 import Question from "../Question";
-
 import Base from "./Base";
-
 import { singularize } from "metabase/lib/formatting";
 import { getAggregationOperatorsWithFields } from "metabase/lib/schema_metadata";
 import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
-
 /**
  * @typedef { import("./metadata").SchemaName } SchemaName
  * @typedef { import("./metadata").EntityType } EntityType
@@ -14,6 +12,7 @@ import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
  */
 
 /** This is the primary way people interact with tables */
+
 export default class Table extends Base {
   hasSchema() {
     return (this.schema_name && this.db && this.db.schemas.length > 1) || false;
@@ -25,9 +24,7 @@ export default class Table extends Base {
   }
 
   newQuestion() {
-    return this.question()
-      .setDefaultQuery()
-      .setDefaultDisplay();
+    return this.question().setDefaultQuery().setDefaultDisplay();
   }
 
   question() {
@@ -53,11 +50,11 @@ export default class Table extends Base {
   query(query = {}) {
     return this.question()
       .query()
-      .updateQuery(q => ({ ...q, ...query }));
+      .updateQuery((q) => ({ ...q, ...query }));
   }
 
   dimensions() {
-    return this.fields.map(field => field.dimension());
+    return this.fields.map((field) => field.dimension());
   }
 
   displayName({ includeSchema } = {}) {
@@ -77,11 +74,10 @@ export default class Table extends Base {
   }
 
   dateFields() {
-    return this.fields.filter(field => field.isDate());
+    return this.fields.filter((field) => field.isDate());
   }
 
   // AGGREGATIONS
-
   @memoize
   aggregationOperators() {
     return getAggregationOperatorsWithFields(this);
@@ -107,7 +103,6 @@ export default class Table extends Base {
   }
 
   // FIELDS
-
   @memoize
   fieldsLookup() {
     return createLookupByProperty(this.fields, "id");
@@ -127,6 +122,7 @@ export default class Table extends Base {
    * @param {Field[]} fields
    * @param {EntityType} entity_type
    */
+
   /* istanbul ignore next */
   _constructor(description, db, schema, schema_name, fields, entity_type) {
     this.description = description;
