@@ -16,6 +16,8 @@ import L from "leaflet";
 
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 
+const WORLD_BOUNDS = [[-90, -180], [90, 180]];
+
 type Props = VisualizationProps;
 
 type State = {
@@ -159,7 +161,7 @@ export default class PinMap extends Component {
       onUpdateWarnings(warnings);
     }
 
-    const bounds = L.latLngBounds(points);
+    const bounds = L.latLngBounds(points.length > 0 ? points : WORLD_BOUNDS);
 
     const min = d3.min(points, point => point[2]);
     const max = d3.max(points, point => point[2]);
