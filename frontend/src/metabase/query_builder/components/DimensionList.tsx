@@ -14,32 +14,28 @@ import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
 export type AccordionListItem = {};
 
 export type AccordionListSection = {
-  name: ?string,
-  items: AccordionListItem[],
+  name: string | null,
+  items: AccordionListItem[]
 };
 
 type Props = {
   className?: string,
   maxHeight?: number,
-  width?: ?number | ?string,
-
-  dimension?: ?Dimension,
+  width?: number | null | string | null,
+  dimension?: Dimension | null,
   dimensions?: Dimension[],
-  onChangeDimension: (dimension: Dimension) => void,
-  onChangeOther?: (item: any) => void,
-
-  onAddDimension?: (dimension: Dimension, item: AccordionListItem) => void,
-  onRemoveDimension?: (dimension: Dimension, item: AccordionListItem) => void,
-
+  onChangeDimension: ((dimension: Dimension) => void),
+  onChangeOther?: ((item: any) => void),
+  onAddDimension?: ((dimension: Dimension, item: AccordionListItem) => void),
+  onRemoveDimension?: ((dimension: Dimension, item: AccordionListItem) => void),
   sections: AccordionListSection[],
-
   alwaysExpanded?: boolean,
   enableSubDimensions?: boolean,
-  useOriginalDimension?: boolean,
+  useOriginalDimension?: boolean
 };
 
 type State = {
-  sections: AccordionListSection[],
+  sections: AccordionListSection[]
 };
 
 const SUBMENU_TETHER_OPTIONS = {

@@ -30,156 +30,125 @@ import _ from "underscore";
 // schema: normalizr schema, defaults to `new schema.Entity(entity.name)`
 //
 
-import type { APIMethod } from "metabase/lib/api";
-import type { FormDefinition } from "metabase/containers/Form";
+import { APIMethod } from "metabase/lib/api";
+import { FormDefinition } from "metabase/containers/Form";
 
 type EntityName = string;
-
 type ActionType = string;
 type ActionCreator = Function;
 type ObjectActionCreator = Function;
 type ObjectSelector = Function;
-
 type Action = any;
-export type Reducer = (state: any, action: Action) => any;
+export type Reducer = ((state: any, action: Action) => any);
 
 type EntityDefinition = {
   name: EntityName,
-
   nameOne?: string,
   nameMany?: string,
-
   form?: FormDefinition,
-  forms?: { [key: string]: FormDefinition },
-
+  forms?: {
+    [K in string]: FormDefinition;
+  },
   displayNameOne?: string,
   displayNameMany?: string,
-
   schema?: schema.Entity,
   path?: string,
-  api?: { [method: string]: APIMethod },
+  api?: {
+    [K in string]: APIMethod;
+  },
   actions?: {
-    [name: string]: ActionCreator,
+    [K in string]: ActionCreator;
   },
   selectors?: {
-    [name: string]: Function,
+    [K in string]: Function;
   },
-  createSelectors?: ({ [name: string]: Function }) => {
-    [name: string]: Function,
-  },
+  createSelectors?: ((
+    arg0: {
+      [K in string]: Function;
+    }
+  ) => {
+    [K in string]: Function;
+  }),
   objectActions?: {
-    [name: string]: ObjectActionCreator,
+    [K in string]: ObjectActionCreator;
   },
   objectSelectors?: {
-    [name: string]: ObjectSelector,
+    [K in string]: ObjectSelector;
   },
   reducer?: Reducer,
-  wrapEntity?: (object: EntityObject) => any,
-  actionShouldInvalidateLists?: (action: Action) => boolean,
-
+  wrapEntity?: ((object: EntityObject) => any),
+  actionShouldInvalidateLists?: ((action: Action) => boolean),
   // list of properties for this object which should be persisted
-  writableProperties?: string[],
+  writableProperties?: string[]
 };
 
 type EntityObject = any;
 
 type EntityQuery = {
-  [name: string]: string | number | boolean | null,
+  [K in string]: string | number | boolean | null;
 };
 
 type FetchOptions = {
-  reload?: boolean,
+  reload?: boolean
 };
+
 type UpdateOptions = {
-  notify?:
-    | { verb?: string, subject?: string, undo?: boolean, message?: any }
-    | false,
+  notify?: {
+    verb?: string,
+    subject?: string,
+    undo?: boolean,
+    message?: any
+  } | false
 };
 
 type Result = any; // FIXME
 
 export type Entity = {
   name: EntityName,
-
   nameOne: string,
   nameMany: string,
-
   displayNameOne: string,
   displayNameMany: string,
-
   form?: FormDefinition,
-  forms?: { [key: string]: FormDefinition },
-
+  forms?: {
+    [K in string]: FormDefinition;
+  },
   path?: string,
   api: {
-    list: APIMethod,
-    create: APIMethod,
-    get: APIMethod,
-    update: APIMethod,
-    delete: APIMethod,
-    [method: string]: APIMethod,
+    [K in string]: APIMethod;
   },
   schema: schema.Entity,
   actionTypes: {
-    [name: string]: ActionType,
-    CREATE: ActionType,
-    FETCH: ActionType,
-    UPDATE: ActionType,
-    DELETE: ActionType,
-    FETCH_LIST: ActionType,
+    [K in string]: ActionType;
   },
   actionDecorators: {
-    [name: string]: Function, // TODO: better type
+    [K in string]: Function;
   },
   actions: {
-    [name: string]: ActionCreator,
-    fetchList: (
-      entityQuery?: EntityQuery,
-      options?: FetchOptions,
-    ) => Promise<Result>,
+    [K in string]: ActionCreator;
   },
-  reducers: { [name: string]: Reducer },
+  reducers: {
+    [K in string]: Reducer;
+  },
   selectors: {
-    getList: Function,
-    getObject: Function,
-    getLoading: Function,
-    getLoaded: Function,
-    getFetched: Function,
-    getError: Function,
-    [name: string]: Function,
+    [K in string]: Function;
   },
   objectActions: {
-    [name: string]: ObjectActionCreator,
-    create: (entityObject: EntityObject) => Promise<Result>,
-    fetch: (
-      entityObject: EntityObject,
-      options?: FetchOptions,
-    ) => Promise<Result>,
-    update: (
-      entityObject: EntityObject,
-      updatedObject: EntityObject,
-      options?: UpdateOptions,
-    ) => Promise<Result>,
-    delete: (entityObject: EntityObject) => Promise<Result>,
+    [K in string]: ObjectActionCreator;
   },
   objectSelectors: {
-    [name: string]: ObjectSelector,
+    [K in string]: ObjectSelector;
   },
-  wrapEntity: (object: EntityObject) => any,
-
+  wrapEntity: ((object: EntityObject) => any),
   requestsReducer: Reducer,
-  actionShouldInvalidateLists: (action: Action) => boolean,
-
+  actionShouldInvalidateLists: ((action: Action) => boolean),
   writableProperties?: string[],
-  getAnalyticsMetadata?: () => any,
-
-  normalize: (object: EntityObject, schema?: schema.Entity) => any, // FIXME: return type
-  normalizeList: (list: EntityObject[], schema?: schema.Entity) => any, // FIXME: return type
-
+  getAnalyticsMetadata?: (() => any),
+  normalize: ((object: EntityObject, schema?: schema.Entity) => any) // FIXME: return type,
+  normalizeList: ((list: EntityObject[], schema?: schema.Entity) => any) // FIXME: return type,
   getObjectStatePath: Function,
   getListStatePath: Function,
-
-  HACK_getObjectFromAction: (action: Action) => any,
+  HACK_getObjectFromAction: ((action: Action) => any)
 };
 
 export function createEntity(def: EntityDefinition): Entity {
@@ -660,7 +629,7 @@ export function createEntity(def: EntityDefinition): Entity {
     // dispatched using it, otherwise the actions will be returned
     //
     class EntityWrapper {
-      _dispatch: ?(action: any) => any;
+      _dispatch: ((action: any) => any) | null;
 
       constructor(object, dispatch = null) {
         Object.assign(this, object);
@@ -701,10 +670,14 @@ export function createEntity(def: EntityDefinition): Entity {
 }
 
 type CombinedEntities = {
-  entities: { [key: EntityName]: Entity },
-  reducers: { [name: string]: Reducer },
+  entities: {
+    [K in EntityName]: Entity;
+  },
+  reducers: {
+    [K in string]: Reducer;
+  },
   reducer: Reducer,
-  requestsReducer: Reducer,
+  requestsReducer: Reducer
 };
 
 export function combineEntities(entities: Entity[]): CombinedEntities {

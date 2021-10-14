@@ -6,59 +6,57 @@ import _ from "underscore";
 
 import { updateSettings } from "metabase/visualizations/lib/settings";
 
-import type {
-  Settings,
-  ExtraProps,
-  WidgetDef,
-} from "metabase/visualizations/lib/settings";
-import type {
+import { Settings, ExtraProps, WidgetDef } from "metabase/visualizations/lib/settings";
+import {
   NestedObject,
   NestedObjectKey,
   SettingsWidgetsForObjectGetter,
   NestedObjectKeyGetter,
 } from "metabase/visualizations/lib/settings/nested";
-import type { Series } from "metabase-types/types/Visualization";
+import { Series } from "metabase-types/types/Visualization";
 
 export type NestedSettingComponentProps = {
   objects: NestedObject[],
-  object: ?NestedObject,
-  objectSettingsWidgets: ?(WidgetDef[]),
-  onChangeEditingObject: (editingObject: ?NestedObject) => void,
-  onChangeObjectSettings: (object: NestedObject, newSettings: Settings) => void,
+  object: NestedObject | null,
+  objectSettingsWidgets: WidgetDef[] | null,
+  onChangeEditingObject: ((editingObject: NestedObject | null) => void),
+  onChangeObjectSettings: ((object: NestedObject, newSettings: Settings) => void),
   getObjectKey: NestedObjectKeyGetter,
   settings: Settings,
-  allComputedSettings: Settings,
+  allComputedSettings: Settings
 };
 type NestedSettingComponent = React.ComponentClass;
 
-type SettingsByObjectKey = { [key: NestedObjectKey]: Settings };
+type SettingsByObjectKey = {
+  [K in NestedObjectKey]: Settings;
+};
 
 type Props = {
   value: SettingsByObjectKey,
-  onChange: (newSettings: SettingsByObjectKey) => void,
-  onEndShowWidget?: () => void,
+  onChange: ((newSettings: SettingsByObjectKey) => void),
+  onEndShowWidget?: (() => void),
   series: Series,
   extra: ExtraProps,
   objects: NestedObject[],
-  initialKey?: NestedObjectKey,
+  initialKey?: NestedObjectKey
 };
 
 type State = {
-  editingObjectKey: ?NestedObjectKey,
+  editingObjectKey: NestedObjectKey | null
 };
 
 type ChartSettingsNestedSettingHOCProps = {
   getObjectKey: NestedObjectKeyGetter,
-  getSettingsWidgetsForObject: SettingsWidgetsForObjectGetter,
+  getSettingsWidgetsForObject: SettingsWidgetsForObjectGetter
 };
 
 const chartSettingNestedSettings = ({
   getObjectKey,
-  getSettingsWidgetsForObject,
+  getSettingsWidgetsForObject
 }: ChartSettingsNestedSettingHOCProps) => (
   ComposedComponent: NestedSettingComponent,
 ) =>
-  class extends React.Component {
+  (class extends React.Component {
     props: Props;
     state: State;
 
@@ -77,7 +75,7 @@ const chartSettingNestedSettings = ({
       );
     };
 
-    handleChangeEditingObject = (editingObject: ?NestedObject) => {
+    handleChangeEditingObject = (editingObject: NestedObject | null) => {
       // objectKeyOverride allows child components to set the editing object key to a different value than is derived
       // from the props. For example, this is used by the "More options" button in ChartNestedSettingSeries.
       this.setState({
@@ -161,6 +159,6 @@ const chartSettingNestedSettings = ({
         />
       );
     }
-  };
+  });
 
 export default chartSettingNestedSettings;

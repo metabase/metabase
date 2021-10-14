@@ -39,99 +39,86 @@ export const ERROR_MESSAGE_PERMISSION = t`Sorry, you don't have permission to se
 import Question from "metabase-lib/lib/Question";
 import Query from "metabase-lib/lib/queries/Query";
 import Mode from "metabase-lib/lib/Mode";
-import type {
-  Card as CardObject,
-  VisualizationSettings,
-} from "metabase-types/types/Card";
-import type {
-  HoverObject,
-  ClickObject,
-  Series,
-  RawSeries,
-  OnChangeCardAndRun,
-} from "metabase-types/types/Visualization";
+import { Card as CardObject, VisualizationSettings } from "metabase-types/types/Card";
+import { HoverObject, ClickObject, Series, RawSeries, OnChangeCardAndRun } from "metabase-types/types/Visualization";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import { memoize } from "metabase-lib/lib/utils";
 
 type Props = {
   rawSeries: RawSeries,
-
   className: string,
-  style: { [key: string]: any },
-
+  style: {
+    [K in string]: any;
+  },
   showTitle: boolean,
   isDashboard: boolean,
   isEditing: boolean,
   isSettings: boolean,
   isQueryBuilder: boolean,
-
   headerIcon?: {
     name: string,
     color?: string,
     size?: Number,
-    tooltip?: string,
+    tooltip?: string
   },
-
   actionButtons: React.Element<any>,
-
   // errors
   error: string,
   errorIcon: string,
-
   // slow card warnings
   isSlow: boolean,
   expectedDuration: number,
-
   // injected by ExplicitSize
   width: number,
   height: number,
-
   // settings overrides from settings panel
   settings: VisualizationSettings,
-
   // for click actions
   metadata: Metadata,
   dispatch: Function,
   onChangeCardAndRun: OnChangeCardAndRun,
-  onChangeLocation: (url: string) => void,
-
+  onChangeLocation: ((url: string) => void),
   // for checking renderability
   query: Query,
-
   mode?: Mode,
-
   // used for showing content in place of visualization, e.x. dashcard filter mapping
   replacementContent: React.Element<any>,
-
   // misc
-  onUpdateWarnings: (string[]) => void,
-  onOpenChartSettings: ({ section?: ?string, widget?: ?any }) => void,
-  onUpdateVisualizationSettings: (settings: { [key: string]: any }) => void,
-
+  onUpdateWarnings: ((arg0: string[]) => void),
+  onOpenChartSettings: ((
+    arg0: {
+      section?: string | null,
+      widget?: any | null
+    }
+  ) => void),
+  onUpdateVisualizationSettings: ((
+    settings: {
+      [K in string]: any;
+    }
+  ) => void),
   // number of grid cells wide and tall
-  gridSize?: { width: number, height: number },
+  gridSize?: {
+    width: number,
+    height: number
+  },
   // if gridSize isn't specified, compute using this gridSize (4x width, 3x height)
   gridUnit?: number,
-
   classNameWidgets?: string,
-
-  getExtraDataForClick?: Function,
+  getExtraDataForClick?: Function
 };
 
 type State = {
-  series: ?Series,
-  visualization: ?(React.Component<void, VisualizationSettings, void> & {
-    checkRenderable: (any, any, any) => void,
-    noHeader: boolean,
-  }),
+  series: Series | null,
+  visualization: React.Component<void, VisualizationSettings, void> & {
+    checkRenderable: ((arg0: any, arg1: any, arg2: any) => void),
+    noHeader: boolean
+  } | null,
   computedSettings: VisualizationSettings,
-
-  hovered: ?HoverObject,
-  clicked: ?ClickObject,
-
-  error: ?Error,
+  hovered: HoverObject | null,
+  clicked: ClickObject | null,
+  error: Error | null,
   warnings: string[],
-  yAxisSplit: ?(number[][]),
+  yAxisSplit: number[][] | null
 };
 
 // NOTE: pass `CardVisualization` so that we don't include header when providing size to child element
@@ -140,7 +127,7 @@ export default class Visualization extends React.PureComponent {
   state: State;
   props: Props;
 
-  _resetHoverTimer: ?number;
+  _resetHoverTimer: number | null;
 
   constructor(props: Props) {
     super(props);
@@ -281,7 +268,7 @@ export default class Visualization extends React.PureComponent {
     return metadata && card && new Question(card, metadata);
   }
 
-  getClickActions(clicked: ?ClickObject) {
+  getClickActions(clicked: ClickObject | null) {
     if (!clicked) {
       return [];
     }
@@ -344,15 +331,15 @@ export default class Visualization extends React.PureComponent {
   // Add the underlying card of current series to onChangeCardAndRun if available
   handleOnChangeCardAndRun = ({
     nextCard,
-    seriesIndex,
+    seriesIndex
   }: {
     nextCard: CardObject,
-    seriesIndex: number,
+    seriesIndex: number
   }) => {
     const { series, clicked } = this.state;
 
     const index = seriesIndex || (clicked && clicked.seriesIndex) || 0;
-    const previousCard: ?CardObject =
+    const previousCard: CardObject | null =
       series && series[index] && series[index].card;
 
     this.props.onChangeCardAndRun({ nextCard, previousCard });

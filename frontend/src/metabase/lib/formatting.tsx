@@ -32,7 +32,7 @@ import {
   getDataFromClicked,
 } from "metabase/lib/click-behavior";
 
-import type {
+import {
   DateStyle,
   TimeEnabled,
   TimeStyle,
@@ -50,11 +50,11 @@ import {
 } from "metabase/lib/formatting/link";
 import { NULL_DISPLAY_VALUE, NULL_NUMERIC_VALUE } from "metabase/lib/constants";
 
-import type Field from "metabase-lib/lib/metadata/Field";
-import type { Column, Value } from "metabase-types/types/Dataset";
-import type { DatetimeUnit } from "metabase-types/types/Query";
-import type { Moment } from "metabase-types/types";
-import type { ClickObject } from "metabase-types/types/Visualization";
+import Field from "metabase-lib/lib/metadata/Field";
+import { Column, Value } from "metabase-types/types/Dataset";
+import { DatetimeUnit } from "metabase-types/types/Query";
+import { Moment } from "metabase-types/types";
+import { ClickObject } from "metabase-types/types/Visualization";
 
 // a one or two character string specifying the decimal and grouping separator characters
 export type NumberSeparators = ".," | ", " | ",." | "." | ".’";
@@ -64,48 +64,48 @@ export type DateSeparator = "/" | "-" | ".";
 
 export type FormattingOptions = {
   // GENERIC
-  column?: Column | Field,
-  majorWidth?: number,
-  type?: "axis" | "cell" | "tooltip",
-  jsx?: boolean,
-  remap?: boolean,
+  column?: Column | Field;
+  majorWidth?: number;
+  type?: "axis" | "cell" | "tooltip";
+  jsx?: boolean;
+  remap?: boolean;
   // render links for type/URLs, type/Email, etc
-  rich?: boolean,
-  compact?: boolean,
+  rich?: boolean;
+  compact?: boolean;
   // always format as the start value rather than the range, e.x. for bar histogram
-  noRange?: boolean,
+  noRange?: boolean;
   // NUMBER
   // TODO: docoument these:
-  number_style?: null | "decimal" | "percent" | "scientific" | "currency",
-  prefix?: string,
-  suffix?: string,
-  scale?: number,
-  negativeInParentheses?: boolean,
+  number_style?: null | "decimal" | "percent" | "scientific" | "currency";
+  prefix?: string;
+  suffix?: string;
+  scale?: number;
+  negativeInParentheses?: boolean;
   // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/toLocaleString
-  scale?: number,
-  number_separators?: NumberSeparators,
-  minimumFractionDigits?: number,
-  maximumFractionDigits?: number,
+  scale?: number;
+  number_separators?: NumberSeparators;
+  minimumFractionDigits?: number;
+  maximumFractionDigits?: number;
   // decimals sets both minimumFractionDigits and maximumFractionDigits
-  decimals?: number,
+  decimals?: number;
   // STRING
-  view_as?: null | "link" | "email_link" | "image" | "auto",
-  link_text?: string,
-  link_template?: string,
-  clicked?: ClickObject,
+  view_as?: null | "link" | "email_link" | "image" | "auto";
+  link_text?: string;
+  link_template?: string;
+  clicked?: ClickObject;
   // DATE/TIME
   // date/timeout style string that is used to derive a date_format or time_format for different units, see metabase/lib/formatting/date
-  date_style?: DateStyle,
-  date_separator?: DateSeparator,
-  date_abbreviate?: boolean,
-  date_format?: string,
-  time_style?: TimeStyle,
-  time_enabled?: TimeEnabled,
-  time_format?: string,
+  date_style?: DateStyle;
+  date_separator?: DateSeparator;
+  date_abbreviate?: boolean;
+  date_format?: string;
+  time_style?: TimeStyle;
+  time_enabled?: TimeEnabled;
+  time_format?: string;
   // display in local timezone or parsed timezone
-  local?: boolean,
+  local?: boolean;
   // markdown template
-  markdown_template?: string,
+  markdown_template?: string;
 };
 
 type FormattedString = string | React.Element;
@@ -785,7 +785,7 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
 export function getRemappedValue(
   value: Value,
   { remap, column }: FormattingOptions = {},
-): ?string {
+): string | null {
   if (remap && column) {
     if (column.hasRemappedValue && column.hasRemappedValue(value)) {
       return column.remappedValue(value);

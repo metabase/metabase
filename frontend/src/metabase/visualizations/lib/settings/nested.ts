@@ -7,44 +7,34 @@ import { getComputedSettings, getSettingsWidgets } from "../settings";
 
 import chartSettingNestedSettings from "metabase/visualizations/components/settings/ChartSettingNestedSettings";
 
-import type {
-  SettingId,
-  SettingDef,
-  SettingDefs,
-  Settings,
-  WidgetDef,
-  ExtraProps,
-} from "metabase/visualizations/lib/settings";
+import { SettingId, SettingDef, SettingDefs, Settings, WidgetDef, ExtraProps } from "metabase/visualizations/lib/settings";
 
-import type { Series } from "metabase-types/types/Visualization";
+import { Series } from "metabase-types/types/Visualization";
 
 export type NestedObject = any;
 export type NestedObjectKey = string;
 
 type NestedSettingDef = SettingDef & {
   objectName: string,
-  getObjects: (series: Series, settings: Settings) => NestedObject[],
-  getObjectKey: (object: NestedObject) => string,
-  getSettingDefintionsForObject: (
-    series: Series,
-    object: NestedObject,
-  ) => SettingDefs,
-  getInheritedSettingsForObject?: (
-    object: NestedObject,
-  ) => { [key: string]: any },
+  getObjects: ((series: Series, settings: Settings) => NestedObject[]),
+  getObjectKey: ((object: NestedObject) => string),
+  getSettingDefintionsForObject: ((series: Series, object: NestedObject) => SettingDefs),
+  getInheritedSettingsForObject?: ((object: NestedObject) => {
+    [K in string]: any;
+  }),
   component: React.ComponentClass,
-  id?: SettingId,
+  id?: SettingId
 };
 
-export type SettingsWidgetsForObjectGetter = (
+export type SettingsWidgetsForObjectGetter = ((
   series: Series,
   object: NestedObject,
   storedSettings: Settings,
-  onChangeSettings: (newSettings: Settings) => void,
-  extra: ExtraProps,
-) => WidgetDef[];
+  onChangeSettings: ((newSettings: Settings) => void),
+  extra: ExtraProps
+) => WidgetDef[]);
 
-export type NestedObjectKeyGetter = (object: NestedObject) => NestedObjectKey;
+export type NestedObjectKeyGetter = ((object: NestedObject) => NestedObjectKey);
 
 export function nestedSettings(
   id: SettingId,

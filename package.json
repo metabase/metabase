@@ -10,6 +10,10 @@
     "yarn": ">=1.12.3"
   },
   "dependencies": {
+    "@types/color": "^3.0.2",
+    "@types/d3": "^7.0.0",
+    "@types/icepick": "^2.3.0",
+    "@types/underscore": "^1.11.3",
     "@visx/axis": "1.8.0",
     "@visx/grid": "1.16.0",
     "@visx/group": "1.7.0",
@@ -116,6 +120,7 @@
     "@testing-library/jest-dom": "^4.0.0",
     "@testing-library/react": "^11.0.2",
     "@testing-library/user-event": "^12.6.0",
+    "@types/node": "^16.10.9",
     "@types/styled-components": "^3.0.4",
     "@typescript-eslint/eslint-plugin": "^4.33.0",
     "@typescript-eslint/parser": "^4.33.0",

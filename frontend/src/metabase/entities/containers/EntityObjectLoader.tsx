@@ -25,12 +25,12 @@ export type Props = {
   // selectorName overrides the default getObject selector
   selectorName?: string,
   // Children render prop
-  children?: (props: RenderProps) => ?React.Element,
+  children?: ((props: RenderProps) => React.Element | null)
 };
 
 export type RenderProps = {
   // the loaded objecvt itself
-  object: ?any,
+  object: any | null,
   // data was loaded at least once
   fetched: boolean,
   // data is loaded and no pending requests
@@ -38,8 +38,8 @@ export type RenderProps = {
   //  request is pending
   loading: boolean,
   // error occured
-  error: ?any,
-  remove: () => Promise<void>,
+  error: any | null,
+  remove: (() => Promise<void>)
 };
 
 // props that shouldn't be passed to children in order to properly stack
@@ -78,7 +78,7 @@ export default class EntityObjectLoader extends React.Component {
     wrapped: false,
   };
 
-  _getWrappedObject: ?(props: Props) => any;
+  _getWrappedObject: ((props: Props) => any) | null;
 
   constructor(props: Props) {
     super(props);

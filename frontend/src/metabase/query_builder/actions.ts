@@ -1,6 +1,6 @@
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 
-declare var ace: any;
+declare const ace: any;
 
 import { createAction } from "redux-actions";
 import _ from "underscore";
@@ -75,14 +75,14 @@ import Snippets from "metabase/entities/snippets";
 import { getMetadata } from "metabase/selectors/metadata";
 import { setRequestUnloaded } from "metabase/redux/requests";
 
-import type { Card } from "metabase-types/types/Card";
+import { Card } from "metabase-types/types/Card";
 
 type UiControls = {
   isEditing?: boolean,
   isShowingTemplateTagsEditor?: boolean,
   isShowingNewbModal?: boolean,
   queryBuilderMode?: "view" | "notebook",
-  isShowingSummarySidebar?: boolean,
+  isShowingSummarySidebar?: boolean
 };
 
 const PREVIEW_RESULT_LIMIT = 10;
@@ -1074,23 +1074,22 @@ export const apiUpdateQuestion = question => {
  */
 export type RunQueryParams = {
   shouldUpdateUrl?: boolean,
-  ignoreCache?: boolean, // currently only implemented for saved cards
-  overrideWithCard?: Card, // override the current question with the provided card
+  ignoreCache?: boolean // currently only implemented for saved cards,
+  overrideWithCard?: Card // override the current question with the provided card
 };
 export const RUN_QUERY = "metabase/qb/RUN_QUERY";
 export const runQuestionQuery = ({
   shouldUpdateUrl = true,
   ignoreCache = false,
-  overrideWithCard,
+  overrideWithCard
 }: RunQueryParams = {}) => {
   return async (dispatch, getState) => {
-    const questionFromCard = (card: Card): Question =>
-      card && new Question(card, getMetadata(getState()));
+    const questionFromCard = (card: Card): Question => card && new Question(card, getMetadata(getState()));
 
     let question: Question = overrideWithCard
       ? questionFromCard(overrideWithCard)
       : getQuestion(getState());
-    const originalQuestion: ?Question = getOriginalQuestion(getState());
+    const originalQuestion: Question | null = getOriginalQuestion(getState());
 
     const cardIsDirty = originalQuestion
       ? question.isDirtyComparedToWithoutParameters(originalQuestion)

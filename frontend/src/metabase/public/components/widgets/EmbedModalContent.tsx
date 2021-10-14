@@ -25,19 +25,16 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
-import type { Parameter, ParameterId } from "metabase-types/types/Parameter";
-import type {
-  EmbeddableResource,
-  EmbeddingParams,
-} from "metabase/public/lib/types";
+import { Parameter, ParameterId } from "metabase-types/types/Parameter";
+import { EmbeddableResource, EmbeddingParams } from "metabase/public/lib/types";
 
 export type Pane = "preview" | "code";
 export type EmbedType = null | "simple" | "application";
 
 export type DisplayOptions = {
-  theme: ?string,
+  theme: string | null,
   bordered: boolean,
-  titled: boolean,
+  titled: boolean
 };
 
 type Props = {
@@ -45,22 +42,19 @@ type Props = {
   resource: EmbeddableResource,
   resourceType: string,
   resourceParameters: Parameter[],
-
   isAdmin: boolean,
   siteUrl: string,
   secretKey: string,
-
   // Flow doesn't understand these are provided by @connect?
   // isPublicSharingEnabled: bool,
   // isApplicationEmbeddingEnabled: bool,
 
-  getPublicUrl: (resource: EmbeddableResource, extension: ?string) => string,
-
-  onUpdateEnableEmbedding: (enable_embedding: boolean) => Promise<void>,
-  onUpdateEmbeddingParams: (embedding_params: EmbeddingParams) => Promise<void>,
-  onCreatePublicLink: () => Promise<void>,
-  onDisablePublicLink: () => Promise<void>,
-  onClose: () => void,
+  getPublicUrl: ((resource: EmbeddableResource, extension: string | null) => string),
+  onUpdateEnableEmbedding: ((enable_embedding: boolean) => Promise<void>),
+  onUpdateEmbeddingParams: ((embedding_params: EmbeddingParams) => Promise<void>),
+  onCreatePublicLink: (() => Promise<void>),
+  onDisablePublicLink: (() => Promise<void>),
+  onClose: (() => void)
 };
 
 type State = {
@@ -68,7 +62,9 @@ type State = {
   embedType: EmbedType,
   embeddingParams: EmbeddingParams,
   displayOptions: DisplayOptions,
-  parameterValues: { [id: ParameterId]: string },
+  parameterValues: {
+    [K in ParameterId]: string;
+  }
 };
 
 const mapStateToProps = (state, props) => ({
@@ -288,10 +284,10 @@ export default class EmbedModalContent extends Component {
 
 export const EmbedTitle = ({
   type,
-  onClick,
+  onClick
 }: {
-  type: ?string,
-  onClick: () => any,
+  type: string | null,
+  onClick: (() => any)
 }) => (
   <a className="flex align-center" onClick={onClick}>
     <span className="text-brand-hover">{t`Sharing`}</span>

@@ -8,13 +8,9 @@ import Field from "metabase-lib/lib/metadata/Field";
 
 import { ExpressionDimension } from "metabase-lib/lib/Dimension";
 
-import type Metadata from "metabase-lib/lib/metadata/Metadata";
-import type { Card } from "metabase-types/types/Card";
-import type {
-  ParameterOption,
-  Parameter,
-  ParameterMappingUIOption,
-} from "metabase-types/types/Parameter";
+import Metadata from "metabase-lib/lib/metadata/Metadata";
+import { Card } from "metabase-types/types/Card";
+import { ParameterOption, Parameter, ParameterMappingUIOption } from "metabase-types/types/Parameter";
 
 import {
   dimensionFilterForParameter,
@@ -32,7 +28,7 @@ export type ParameterSection = {
   id: string,
   name: string,
   description: string,
-  options: ParameterOption[],
+  options: ParameterOption[]
 };
 
 const areFieldFilterOperatorsEnabled = () =>
@@ -138,11 +134,7 @@ export function getParameterSections(): ParameterSection[] {
   ].filter(Boolean);
 }
 
-export function getParameterMappingOptions(
-  metadata: Metadata,
-  parameter: ?Parameter = null,
-  card: Card,
-): ParameterMappingUIOption[] {
+export function getParameterMappingOptions(metadata: Metadata, parameter: Parameter | null = null, card: Card): ParameterMappingUIOption[] {
   const options = [];
   if (card.display === "text") {
     // text cards don't have parameters
@@ -206,10 +198,7 @@ export function getParameterMappingOptions(
   return options;
 }
 
-export function createParameter(
-  option: ParameterOption,
-  parameters: Parameter[] = [],
-): Parameter {
+export function createParameter(option: ParameterOption, parameters: Parameter[] = []): Parameter {
   let name = option.combinedName || option.name;
   let nameIndex = 0;
   // get a unique name
@@ -227,10 +216,7 @@ export function createParameter(
   return setParameterName(parameter, name);
 }
 
-export function setParameterName(
-  parameter: Parameter,
-  name: string,
-): Parameter {
+export function setParameterName(parameter: Parameter, name: string): Parameter {
   if (!name) {
     name = "unnamed";
   }
@@ -242,10 +228,7 @@ export function setParameterName(
   };
 }
 
-export function setParameterDefaultValue(
-  parameter: Parameter,
-  value: string,
-): Parameter {
+export function setParameterDefaultValue(parameter: Parameter, value: string): Parameter {
   return {
     ...parameter,
     default: value,
@@ -254,9 +237,12 @@ export function setParameterDefaultValue(
 
 export function hasMapping(parameter, dashboard) {
   return dashboard.ordered_cards.some(ordered_card => {
-    return ordered_card?.parameter_mappings?.some(parameter_mapping => {
-      return parameter_mapping.parameter_id === parameter.id;
-    });
+    return (
+      // Auto generated from flowToTs. Please clean me!
+      (ordered_card === null || ordered_card === undefined ? undefined : ordered_card.parameter_mappings) === null || (ordered_card === null || ordered_card === undefined ? undefined : ordered_card.parameter_mappings) === undefined ? undefined : (ordered_card === null || ordered_card === undefined ? undefined : ordered_card.parameter_mappings).some(parameter_mapping => {
+        return parameter_mapping.parameter_id === parameter.id;
+      })
+    );
   });
 }
 
@@ -297,7 +283,8 @@ export function getMappingsByParameter(metadata, dashboard) {
         field = rawField && new Field(rawField, metadata);
       }
 
-      const values = field?.fieldValues() || [];
+      const values = // Auto generated from flowToTs. Please clean me!
+      field === null || field === undefined ? undefined : field.fieldValues() || [];
       if (values.length) {
         countsByParameter[mapping.parameter_id] =
           countsByParameter[mapping.parameter_id] || {};
@@ -381,7 +368,8 @@ export function getDashboardParametersWithFieldMetadata(
       mappings
         .map(mapping => mapping.field)
         .filter(field => field != null)
-        .map(field => field.target ?? field),
+        .map(field => // Auto generated from flowToTs. Please clean me!
+      field.target !== null && field.target !== undefined ? field.target : field),
       field => field.id,
     );
 

@@ -8,17 +8,21 @@ import { IFRAMED } from "metabase/lib/dom";
 type TransformFn = (o: any) => any;
 
 export type Options = {
-  noEvent?: boolean,
-  json?: boolean,
-  retry?: boolean,
-  retryCount?: number,
-  retryDelayIntervals?: number[],
-  transformResponse?: TransformFn,
-  cancelled?: Promise<any>,
-  raw?: { [key: string]: boolean },
-  headers?: { [key: string]: string },
-  hasBody?: boolean,
-  bodyParamName?: string,
+  noEvent?: boolean;
+  json?: boolean;
+  retry?: boolean;
+  retryCount?: number;
+  retryDelayIntervals?: number[];
+  transformResponse?: TransformFn;
+  cancelled?: Promise<any>;
+  raw?: {
+    [K in string]: boolean;
+  };
+  headers?: {
+    [K in string]: string;
+  };
+  hasBody?: boolean;
+  bodyParamName?: string;
 };
 
 const ONE_SECOND = 1000;
@@ -29,7 +33,7 @@ const ANTI_CSRF_HEADER = "X-Metabase-Anti-CSRF-Token";
 let ANTI_CSRF_TOKEN = null;
 
 export type Data = {
-  [key: string]: any,
+  [K in string]: any;
 };
 
 const DEFAULT_OPTIONS: Options = {
@@ -67,7 +71,10 @@ export class Api extends EventEmitter {
     this.PUT = this._makeMethod("PUT", { hasBody: true });
   }
 
-  _makeMethod(method: string, creatorOptions?: Options = {}): APICreator {
+  _makeMethod = function(
+    method: string,
+    creatorOptions?: Options = {},
+  ): APICreator {
     return (
       urlTemplate: string,
       methodOptions?: Options | TransformFn = {},
@@ -109,7 +116,9 @@ export class Api extends EventEmitter {
           }
         }
 
-        const headers: { [key: string]: string } = options.json
+        const headers: {
+          [K in string]: string;
+        } = options.json
           ? { Accept: "application/json", "Content-Type": "application/json" }
           : {};
 
@@ -149,7 +158,7 @@ export class Api extends EventEmitter {
         }
       };
     };
-  }
+  };
 
   async _makeRequestWithRetries(method, url, headers, body, data, options) {
     // Get a copy of the delay intervals that we can remove items from as we retry

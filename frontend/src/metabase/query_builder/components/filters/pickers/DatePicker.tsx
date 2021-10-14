@@ -13,7 +13,7 @@ import Calendar from "metabase/components/Calendar";
 
 import { FieldDimension } from "metabase-lib/lib/Dimension";
 
-import type {
+import {
   FieldFilter,
   TimeIntervalFilter,
   DatetimeUnit,
@@ -104,12 +104,12 @@ NextPicker.horizontalLayout = true;
 
 type CurrentPickerProps = {
   filter: TimeIntervalFilter,
-  onFilterChange: (filter: TimeIntervalFilter) => void,
-  className?: string,
+  onFilterChange: ((filter: TimeIntervalFilter) => void),
+  className?: string
 };
 
 type CurrentPickerState = {
-  showUnits: boolean,
+  showUnits: boolean
 };
 
 class CurrentPicker extends Component {
@@ -166,10 +166,7 @@ const hasTime = value =>
  * Returns MBQL :field clause with temporal bucketing applied.
  * @deprecated -- just use FieldDimension to do this stuff.
  */
-function getDateTimeField(
-  field: ConcreteField,
-  bucketing: ?DatetimeUnit,
-): ConcreteField {
+function getDateTimeField(field: ConcreteField, bucketing: DatetimeUnit | null): ConcreteField {
   const dimension = FieldDimension.parseMBQLOrWarn(field);
   if (dimension) {
     if (bucketing) {
@@ -181,9 +178,7 @@ function getDateTimeField(
   return field;
 }
 
-export function getDateTimeFieldTarget(
-  field: ConcreteField,
-): LocalFieldReference | ForeignFieldReference | ExpressionReference {
+export function getDateTimeFieldTarget(field: ConcreteField): LocalFieldReference | ForeignFieldReference | ExpressionReference {
   const dimension = FieldDimension.parseMBQLOrWarn(field);
   if (dimension && dimension.temporalUnit()) {
     return dimension.withoutTemporalBucketing().mbql();
@@ -193,10 +188,7 @@ export function getDateTimeFieldTarget(
 }
 
 // add temporal-unit to fields if any of them have a time component
-function getDateTimeFieldAndValues(
-  filter: FieldFilter,
-  count: number,
-): [ConcreteField, any] {
+function getDateTimeFieldAndValues(filter: FieldFilter, count: number): [ConcreteField, any] {
   const values = filter
     .slice(2, 2 + count)
     .map(value => value && getDate(value));
@@ -205,25 +197,17 @@ function getDateTimeFieldAndValues(
   return [field, ...values];
 }
 
-export type OperatorName =
-  | "all"
-  | "previous"
-  | "next"
-  | "current"
-  | "before"
-  | "after"
-  | "on"
-  | "between"
-  | "empty"
-  | "not-empty";
+export type OperatorName = "all" | "previous" | "next" | "current" | "before" | "after" | "on" | "between" | "empty" | "not-empty";
 
 export type Operator = {
   name: OperatorName,
   displayName: string,
   widget?: any,
-  init: (filter: FieldFilter) => any,
-  test: (filter: FieldFilter) => boolean,
-  options?: { [key: string]: any },
+  init: ((filter: FieldFilter) => any),
+  test: ((filter: FieldFilter) => boolean),
+  options?: {
+    [K in string]: any;
+  }
 };
 
 const ALL_TIME_OPERATOR = {
@@ -334,15 +318,15 @@ export function getOperator(
 type Props = {
   className?: string,
   filter: FieldFilter,
-  onFilterChange: (filter: FieldFilter) => void,
-  hideEmptinessOperators?: boolean, // Don't show is empty / not empty dialog
+  onFilterChange: ((filter: FieldFilter) => void),
+  hideEmptinessOperators?: boolean // Don't show is empty / not empty dialog,
   hideTimeSelectors?: boolean,
   includeAllTime?: boolean,
-  operators?: Operator[],
+  operators?: Operator[]
 };
 
 type State = {
-  operators: Operator[],
+  operators: Operator[]
 };
 
 export default class DatePicker extends Component {

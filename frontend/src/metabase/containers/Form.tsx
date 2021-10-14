@@ -23,20 +23,17 @@ export {
 type FormFieldName = string;
 type FormFieldTitle = string;
 type FormFieldDescription = string;
-type FormFieldType =
-  | "input"
-  | "password"
-  | "select"
-  | "text"
-  | "color"
-  | "hidden"
-  | "collection"
-  | "snippetCollection";
-
+type FormFieldType = "input" | "password" | "select" | "text" | "color" | "hidden" | "collection" | "snippetCollection";
 type FormValue = any;
 type FormError = string;
-type FormValues = { [name: FormFieldName]: FormValue };
-type FormErrors = { [name: FormFieldName]: FormError };
+
+type FormValues = {
+  [K in FormFieldName]: FormValue;
+};
+
+type FormErrors = {
+  [K in FormFieldName]: FormError;
+};
 
 export type FormFieldDefinition = {
   name: FormFieldName,
@@ -44,52 +41,52 @@ export type FormFieldDefinition = {
   title?: FormFieldTitle,
   description?: FormFieldDescription,
   initial?: FormValue | (() => FormValue),
-  normalize?: (value: FormValue) => FormValue,
-  validate?: (value: FormValue, props: FormProps) => ?FormError | boolean,
-  readOnly?: boolean,
+  normalize?: ((value: FormValue) => FormValue),
+  validate?: ((value: FormValue, props: FormProps) => FormError | null | boolean),
+  readOnly?: boolean
 };
 
 export type FormDefinition = {
-  fields:
-    | ((values: FormValues) => FormFieldDefinition[])
-    | FormFieldDefinition[],
+  fields: ((values: FormValues) => FormFieldDefinition[]) | FormFieldDefinition[],
   initial?: FormValues | (() => FormValues),
-  normalize?: (values: FormValues) => FormValues,
-  validate?: (values: FormValues, props: FormProps) => FormErrors,
+  normalize?: ((values: FormValues) => FormValues),
+  validate?: ((values: FormValues, props: FormProps) => FormErrors)
 };
 
 type FormObject = {
-  fields: (values: FormValues) => FormFieldDefinition[],
-  fieldNames: (values: FormValues) => FormFieldName[],
-  initial: () => FormValues,
-  normalize: (values: FormValues) => FormValues,
-  validate: (values: FormValues, props: FormProps) => FormErrors,
-  disablePristineSubmit?: boolean,
+  fields: ((values: FormValues) => FormFieldDefinition[]),
+  fieldNames: ((values: FormValues) => FormFieldName[]),
+  initial: (() => FormValues),
+  normalize: ((values: FormValues) => FormValues),
+  validate: ((values: FormValues, props: FormProps) => FormErrors),
+  disablePristineSubmit?: boolean
 };
 
 type FormProps = {
-  values?: FormValues,
+  values?: FormValues
 };
 
 type Props = {
   form: FormDefinition,
-  initialValues?: ?FormValues,
+  initialValues?: FormValues | null,
   formName?: string,
-  onSubmit: (values: FormValues) => Promise<any>,
-  onSubmitSuccess: (action: any) => Promise<any>,
+  onSubmit: ((values: FormValues) => Promise<any>),
+  onSubmitSuccess: ((action: any) => Promise<any>),
   formComponent?: React.Component,
   dispatch: Function,
-  values: FormValues,
+  values: FormValues
 };
 
 type State = {
-  inlineFields: { [name: FormFieldName]: FormFieldDefinition },
+  inlineFields: {
+    [K in FormFieldName]: FormFieldDefinition;
+  }
 };
 
 type SubmitState = {
   submitting: boolean,
   failed: boolean,
-  result: any,
+  result: any
 };
 
 let FORM_ID = 0;
@@ -137,10 +134,10 @@ export default class Form extends React.Component {
     result: undefined,
   };
 
-  _getFormDefinition: () => FormDefinition;
-  _getFormObject: () => FormObject;
-  _getInitialValues: () => FormValues;
-  _getFieldNames: () => FormFieldName[];
+  _getFormDefinition: (() => FormDefinition);
+  _getFormObject: (() => FormObject);
+  _getInitialValues: (() => FormValues);
+  _getFieldNames: (() => FormFieldName[]);
 
   constructor(props: Props) {
     super(props);

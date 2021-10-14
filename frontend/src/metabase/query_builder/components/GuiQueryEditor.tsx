@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 /* eslint-disable react/no-string-refs */
-import React from "react";
+import React, { Children } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
@@ -17,9 +17,8 @@ import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/compo
 
 import cx from "classnames";
 
-import type { DatasetQuery } from "metabase-types/types/Card";
-import type { Aggregation, Breakout } from "metabase-types/types/Query";
-import type { Children } from "react";
+import { DatasetQuery } from "metabase-types/types/Card";
+import { Aggregation, Breakout } from "metabase-types/types/Query";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 export type GuiQueryEditorFeatures = {
@@ -32,15 +31,10 @@ export type GuiQueryEditorFeatures = {
 
 type Props = {
   children?: Children,
-
   features: GuiQueryEditorFeatures,
-
   query: StructuredQuery,
-
   supportMultipleAggregations?: boolean,
-
   setDatasetQuery: (datasetQuery: DatasetQuery) => void,
-
   isShowingDataReference?: boolean,
 };
 
@@ -78,7 +72,11 @@ export default class GuiQueryEditor extends React.Component {
     supportMultipleAggregations: true,
   };
 
-  renderAdd(text: ?string, onClick: ?() => void, targetRefName?: string) {
+  renderAdd(
+    text: string | null,
+    onClick: (() => void) | null,
+    targetRefName?: string,
+  ) {
     const className =
       "AddButton text-light text-bold flex align-center text-medium-hover cursor-pointer no-decoration transition-color";
     if (onClick) {
@@ -193,7 +191,7 @@ export default class GuiQueryEditor extends React.Component {
 
     // aggregation clause.  must have table details available
     if (query.isEditable()) {
-      const aggregations: (Aggregation | null)[] = query.aggregations();
+      const aggregations: Aggregation | null[] = query.aggregations();
 
       if (aggregations.length === 0) {
         // add implicit rows aggregation
@@ -255,7 +253,7 @@ export default class GuiQueryEditor extends React.Component {
 
     const breakoutList = [];
 
-    const breakouts: (Breakout | null)[] = query.breakouts();
+    const breakouts: Breakout | null[] = query.breakouts();
 
     // Placeholder breakout for showing the add button
     if (query.canAddBreakout()) {

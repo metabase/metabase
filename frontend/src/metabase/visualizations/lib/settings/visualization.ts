@@ -2,15 +2,17 @@ import {
   getComputedSettings,
   getSettingsWidgets,
   getPersistableDefaultSettings,
+  Settings,
+  SettingDefs,
+  WidgetDef,
 } from "../settings";
 
 import { getVisualizationRaw } from "metabase/visualizations";
 import { normalizeFieldRef } from "metabase/lib/dataset";
 import { t } from "ttag";
 
-import type { Settings, SettingDefs, WidgetDef } from "../settings";
-import type { Series } from "metabase-types/types/Visualization";
-import type { VisualizationSettings } from "metabase-types/types/Card";
+import { Series } from "metabase-types/types/Visualization";
+import { VisualizationSettings } from "metabase-types/types/Card";
 
 const COMMON_SETTINGS = {
   "card.title": {
@@ -31,7 +33,7 @@ const COMMON_SETTINGS = {
   click_behavior: {},
 };
 
-function getSettingDefintionsForSeries(series: ?Series): SettingDefs {
+function getSettingDefintionsForSeries(series: Series | null): SettingDefs {
   if (!series) {
     return {};
   }
@@ -60,7 +62,7 @@ function normalizeColumnSettings(columnSettings) {
   return newColumnSettings;
 }
 
-export function getStoredSettingsForSeries(series: ?Series): Settings {
+export function getStoredSettingsForSeries(series: Series | null): Settings {
   const storedSettings: VisualizationSettings =
     (series && series[0] && series[0].card.visualization_settings) || {};
   if (storedSettings.column_settings) {
@@ -72,7 +74,7 @@ export function getStoredSettingsForSeries(series: ?Series): Settings {
   return storedSettings;
 }
 
-export function getComputedSettingsForSeries(series: ?Series): Settings {
+export function getComputedSettingsForSeries(series: Series | null): Settings {
   if (!series) {
     return {};
   }
@@ -82,7 +84,7 @@ export function getComputedSettingsForSeries(series: ?Series): Settings {
 }
 
 export function getPersistableDefaultSettingsForSeries(
-  series: ?Series,
+  series: Series | null,
 ): Settings {
   // A complete set of settings (not only defaults) is loaded because
   // some persistable default settings need other settings as dependency for calculating the default value
@@ -92,7 +94,7 @@ export function getPersistableDefaultSettingsForSeries(
 }
 
 export function getSettingsWidgetsForSeries(
-  series: ?Series,
+  series: Series | null,
   onChangeSettings: (settings: Settings) => void,
   isDashboard: boolean = false,
 ): WidgetDef[] {

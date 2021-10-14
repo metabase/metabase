@@ -6,7 +6,9 @@ import { deterministicAssign } from "./deterministic";
 
 export type ColorName = string;
 export type ColorString = string;
-export type ColorFamily = { [name: ColorName]: ColorString };
+export type ColorFamily = {
+  [K in ColorName]: ColorString;
+};
 
 // NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
 // NOTE: KEEP SYNCRONIZED WITH COLORS.CSS
@@ -47,7 +49,7 @@ const colors = {
   "saturated-red": "#ED6E6E",
   "saturated-yellow": "#F9CF48",
 };
-/* eslint-enable no-color-literals */
+/* eslint-disable */
 export default colors;
 
 export const aliases = {
@@ -250,7 +252,11 @@ function getPreferredColor(key: Key) {
 // returns a mapping of deterministically assigned colors to keys, optionally with a fixed value mapping
 export function getColorsForValues(
   keys: string[],
-  existingAssignments: ?{ [key: Key]: ColorString } = {},
+  existingAssignments:
+    | {
+        [K in Key]: ColorString;
+      }
+    | null = {},
 ) {
   const all = Object.values(harmony);
   const primaryTier = all.slice(0, 8);

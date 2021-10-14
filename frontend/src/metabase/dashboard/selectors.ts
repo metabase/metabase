@@ -12,28 +12,23 @@ import {
 
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
-import type { CardId, Card } from "metabase-types/types/Card";
-import type { DashCardId } from "metabase-types/types/Dashboard";
-import type {
-  ParameterId,
-  Parameter,
-  ParameterMapping,
-  ParameterMappingUIOption,
-} from "metabase-types/types/Parameter";
+import { CardId, Card } from "metabase-types/types/Card";
+import { DashCardId } from "metabase-types/types/Dashboard";
+import { ParameterId, Parameter, ParameterMapping, ParameterMappingUIOption } from "metabase-types/types/Parameter";
 
 export type AugmentedParameterMapping = ParameterMapping & {
   dashcard_id: DashCardId,
   overlapMax?: number,
   mappingsWithValues?: number,
-  values: Array<string>,
+  values: Array<string>
 };
 
 export type MappingsByParameter = {
-  [key: ParameterId]: {
-    [key: DashCardId]: {
-      [key: CardId]: AugmentedParameterMapping,
-    },
-  },
+  [K in ParameterId]: {
+    [K in DashCardId]: {
+      [K in CardId]: AugmentedParameterMapping;
+    };
+  };
 };
 
 export const getDashboardId = state => state.dashboard.dashboardId;
@@ -103,7 +98,8 @@ export const getEditingParameterId = createSelector(
   [getSidebar],
   sidebar => {
     return sidebar.name === SIDEBAR_NAME.editParameter
-      ? sidebar.props?.parameterId
+      ? // Auto generated from flowToTs. Please clean me!
+    sidebar.props === null || sidebar.props === undefined ? undefined : sidebar.props.parameterId
       : null;
   },
 );
@@ -152,11 +148,7 @@ export const getParameters = createSelector(
 export const makeGetParameterMappingOptions = () => {
   const getParameterMappingOptions = createSelector(
     [getMetadata, getEditingParameter, getCard],
-    (
-      metadata,
-      parameter: Parameter,
-      card: Card,
-    ): Array<ParameterMappingUIOption> => {
+    (metadata, parameter: Parameter, card: Card): Array<ParameterMappingUIOption> => {
       return _getParameterMappingOptions(metadata, parameter, card);
     },
   );

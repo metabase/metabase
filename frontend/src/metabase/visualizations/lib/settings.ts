@@ -20,48 +20,60 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 export type SettingId = string;
 
 export type Settings = {
-  [settingId: SettingId]: any,
+  [K in SettingId]: any;
 };
 
 export type SettingDefs = {
-  [settingId: SettingId]: SettingDef,
+  [K in SettingId]: SettingDef;
 };
 
 export type SettingDef = {
-  title?: string,
-  props?: { [key: string]: any },
-  default?: any,
-  hidden?: boolean,
-  disabled?: boolean,
-  getTitle?: (object: any, settings: Settings, extra: ExtraProps) => ?string,
-  getHidden?: (object: any, settings: Settings, extra: ExtraProps) => boolean,
-  getDisabled?: (object: any, settings: Settings, extra: ExtraProps) => boolean,
+  title?: string;
+  props?: {
+    [K in string]: any;
+  };
+  default?: any;
+  hidden?: boolean;
+  disabled?: boolean;
+  getTitle?: (
+    object: any,
+    settings: Settings,
+    extra: ExtraProps,
+  ) => string | null;
+  getHidden?: (object: any, settings: Settings, extra: ExtraProps) => boolean;
+  getDisabled?: (object: any, settings: Settings, extra: ExtraProps) => boolean;
   getProps?: (
     object: any,
     settings: Settings,
     onChange: Function,
     extra: ExtraProps,
-  ) => { [key: string]: any },
-  getDefault?: (object: any, settings: Settings, extra: ExtraProps) => any,
-  getValue?: (object: any, settings: Settings, extra: ExtraProps) => any,
-  isValid?: (object: any, settings: Settings, extra: ExtraProps) => boolean,
-  widget?: string | React.Component,
-  writeDependencies?: SettingId[],
-  readDependencies?: SettingId[],
+  ) => {
+    [K in string]: any;
+  };
+  getDefault?: (object: any, settings: Settings, extra: ExtraProps) => any;
+  getValue?: (object: any, settings: Settings, extra: ExtraProps) => any;
+  isValid?: (object: any, settings: Settings, extra: ExtraProps) => boolean;
+  widget?: string | React.Component;
+  writeDependencies?: SettingId[];
+  readDependencies?: SettingId[];
 };
 
 export type WidgetDef = {
-  id: SettingId,
-  value: any,
-  title: ?string,
-  hidden: boolean,
-  disabled: boolean,
-  props: { [key: string]: any },
-  widget?: React.Component,
-  onChange: (value: any) => void,
+  id: SettingId;
+  value: any;
+  title: string | null;
+  hidden: boolean;
+  disabled: boolean;
+  props: {
+    [K in string]: any;
+  };
+  widget?: React.Component;
+  onChange: (value: any) => void;
 };
 
-export type ExtraProps = { [key: string]: any };
+export type ExtraProps = {
+  [K in string]: any;
+};
 
 const WIDGETS = {
   input: ChartSettingInput,
@@ -82,7 +94,7 @@ export function getComputedSettings(
   settingsDefs: SettingDefs,
   object: any,
   storedSettings: Settings,
-  extra?: ExtraProps = {},
+  extra: ExtraProps = {},
 ) {
   const computedSettings = {};
   for (const settingId in settingsDefs) {
@@ -99,7 +111,8 @@ export function getComputedSettings(
 }
 
 function getComputedSetting(
-  computedSettings: Settings, // MUTATED!
+  // MUTATED!
+  computedSettings: Settings,
   settingDefs: SettingDefs,
   settingId: SettingId,
   object: any,

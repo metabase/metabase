@@ -1,16 +1,9 @@
 import { parseTimestamp } from "metabase/lib/time";
-import type { DateSeparator } from "metabase/lib/formatting";
+import { DateSeparator } from "metabase/lib/formatting";
 
-import type { DatetimeUnit } from "metabase-types/types/Query";
+import { DatetimeUnit } from "metabase-types/types/Query";
 
-export type DateStyle =
-  | "M/D/YYYY"
-  | "D/M/YYYY"
-  | "YYYY/M/D"
-  | "MMMM D, YYYY"
-  | "MMMM D, YYYY"
-  | "D MMMM, YYYY"
-  | "dddd, MMMM D, YYYY";
+export type DateStyle = "M/D/YYYY" | "D/M/YYYY" | "YYYY/M/D" | "MMMM D, YYYY" | "MMMM D, YYYY" | "D MMMM, YYYY" | "dddd, MMMM D, YYYY";
 
 export type TimeStyle = "h:mm A" | "HH:mm" | "h A";
 
@@ -20,7 +13,9 @@ export type TimeFormat = MomentFormat;
 
 export type TimeEnabled = null | "minutes" | "seconds" | "milliseconds";
 
-const DEFAULT_DATE_FORMATS: { [unit: DatetimeUnit]: MomentFormat } = {
+const DEFAULT_DATE_FORMATS: {
+  [K in DatetimeUnit]: MomentFormat;
+} = {
   year: "YYYY",
   quarter: "[Q]Q - YYYY",
   "minute-of-hour": "m",
@@ -34,7 +29,9 @@ const DEFAULT_DATE_FORMATS: { [unit: DatetimeUnit]: MomentFormat } = {
 
 // a "date style" is essentially a "day" format with overrides for larger units
 const DATE_STYLE_TO_FORMAT: {
-  [style: DateStyle]: { [unit: DatetimeUnit]: MomentFormat },
+  [K in DateStyle]: {
+    [K in DatetimeUnit]: MomentFormat;
+  };
 } = {
   "M/D/YYYY": {
     month: "M/YYYY",
@@ -60,11 +57,7 @@ const DATE_STYLE_TO_FORMAT: {
 
 export const DEFAULT_DATE_STYLE: DateStyle = "MMMM D, YYYY";
 
-export function getDateFormatFromStyle(
-  style: DateStyle,
-  unit: ?DatetimeUnit,
-  separator?: DateSeparator,
-): DateFormat {
+export function getDateFormatFromStyle(style: DateStyle, unit: DatetimeUnit | null, separator?: DateSeparator): DateFormat {
   const replaceSeparators = format =>
     separator && format ? format.replace(/\//g, separator) : format;
 
@@ -101,18 +94,14 @@ const UNITS_WITH_DAY: DatetimeUnit[] = [
 const UNITS_WITH_HOUR_SET = new Set(UNITS_WITH_HOUR);
 const UNITS_WITH_DAY_SET = new Set(UNITS_WITH_DAY);
 
-export const hasHour = (unit: ?DatetimeUnit) =>
+export const hasHour = (unit: DatetimeUnit | null) =>
   unit == null || UNITS_WITH_HOUR_SET.has(unit);
-export const hasDay = (unit: ?DatetimeUnit) =>
+export const hasDay = (unit: DatetimeUnit | null) =>
   unit == null || UNITS_WITH_DAY_SET.has(unit);
 
 export const DEFAULT_TIME_STYLE: TimeStyle = "h:mm A";
 
-export function getTimeFormatFromStyle(
-  style: TimeStyle,
-  unit: DatetimeUnit,
-  timeEnabled: ?TimeEnabled,
-): TimeFormat {
+export function getTimeFormatFromStyle(style: TimeStyle, unit: DatetimeUnit, timeEnabled: TimeEnabled | null): TimeFormat {
   const format = style;
   if (!timeEnabled || timeEnabled === "milliseconds") {
     return format.replace(/mm/, "mm:ss.SSS");

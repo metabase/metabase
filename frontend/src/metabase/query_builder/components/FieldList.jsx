@@ -5,36 +5,32 @@ import DimensionList from "./DimensionList";
 import Dimension from "metabase-lib/lib/Dimension";
 import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 
-import type { ConcreteField } from "metabase-types/types/Query";
-import type Metadata from "metabase-lib/lib/metadata/Metadata";
-import type StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import { ConcreteField } from "metabase-types/types/Query";
+import Metadata from "metabase-lib/lib/metadata/Metadata";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 // import type { Section } from "metabase/components/AccordionList";
 export type AccordionListItem = {};
 
 export type AccordionListSection = {
-  name: ?string,
+  name: string | null,
   items: AccordionListItem[],
 };
 
 type Props = {
-  field: ?ConcreteField,
+  field: ConcreteField | null,
   onFieldChange: (field: ConcreteField) => void,
   fieldOptions: any,
-
   // HACK: for segments
   onFilterChange?: (filter: any) => void,
-
   // query should be included otherwise FieldList may not display field-literal display name correctly
   query?: StructuredQuery,
   metadata?: Metadata,
-
   // AccordionList props:
   className?: string,
   maxHeight?: number,
   width?: number,
   alwaysExpanded?: boolean,
-
   // DimensionList props:
   enableSubDimensions?: boolean,
   useOriginalDimension?: boolean,

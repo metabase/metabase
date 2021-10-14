@@ -5,40 +5,18 @@ import MetabaseUtils from "metabase/lib/utils";
 import moment from "moment";
 
 // TODO: dump this from backend settings definitions
-export type SettingName =
-  | "admin-email"
-  | "anon-tracking-enabled"
-  | "available-locales"
-  | "available-timezones"
-  | "custom-formatting"
-  | "custom-geojson"
-  | "email-configured?"
-  | "enable-embedding"
-  | "enable-enhancements?"
-  | "enable-public-sharing"
-  | "enable-xrays"
-  | "engines"
-  | "ga-code"
-  | "google-auth-client-id"
-  | "has-sample-dataset?"
-  | "hide-embed-branding?"
-  | "ldap-configured?"
-  | "map-tile-server-url"
-  | "password-complexity"
-  | "search-typeahead-enabled"
-  | "setup-token"
-  | "site-url"
-  | "types"
-  | "version"
-  | "version-info"
-  | "version-info-last-checked";
+export type SettingName = "admin-email" | "anon-tracking-enabled" | "available-locales" | "available-timezones" | "custom-formatting" | "custom-geojson" | "email-configured?" | "enable-embedding" | "enable-enhancements?" | "enable-public-sharing" | "enable-xrays" | "engines" | "ga-code" | "google-auth-client-id" | "has-sample-dataset?" | "hide-embed-branding?" | "ldap-configured?" | "map-tile-server-url" | "password-complexity" | "search-typeahead-enabled" | "setup-token" | "site-url" | "types" | "version" | "version-info" | "version-info-last-checked";
 
-type SettingsMap = { [key: SettingName]: any };
+type SettingsMap = {
+  [K in SettingName]: any;
+};
 
 // provides access to Metabase application settings
 class Settings {
   _settings: SettingsMap;
-  _listeners: { [key: SettingName]: Function[] };
+  _listeners: {
+    [K in SettingName]: Function[];
+  };
 
   constructor(settings: SettingsMap) {
     this._settings = settings;
@@ -250,7 +228,8 @@ class Settings {
   }
 
   subscriptionAllowedDomains() {
-    const setting = this.get("subscription-allowed-domains") ?? "";
+    const setting = // Auto generated from flowToTs. Please clean me!
+    this.get("subscription-allowed-domains") !== null && this.get("subscription-allowed-domains") !== undefined ? this.get("subscription-allowed-domains") : "";
     return setting ? setting.split(",") : [];
   }
 }

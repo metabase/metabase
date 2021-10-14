@@ -2,33 +2,33 @@ import React from "react";
 import PropTypes from "prop-types";
 import { defer } from "metabase/lib/promise";
 
-import type { Dataset } from "metabase-types/types/Dataset";
-import type { RawSeries } from "metabase-types/types/Visualization";
+import { Dataset } from "metabase-types/types/Dataset";
+import { RawSeries } from "metabase-types/types/Visualization";
 
 import Question from "metabase-lib/lib/Question";
 
 export type ChildProps = {
   loading: boolean,
-  error: ?any,
-  results: ?(Dataset[]),
-  result: ?Dataset,
-  rawSeries: ?RawSeries,
-  cancel: () => void,
-  reload: () => void,
+  error: any | null,
+  results: Dataset[] | null,
+  result: Dataset | null,
+  rawSeries: RawSeries | null,
+  cancel: (() => void),
+  reload: (() => void)
 };
 
-type OnLoadCallback = (results: ?(Dataset[])) => void;
+type OnLoadCallback = ((results: Dataset[] | null) => void);
 
 type Props = {
-  question: ?Question,
-  children?: (props: ChildProps) => React.Element,
-  onLoad?: OnLoadCallback,
+  question: Question | null,
+  children?: ((props: ChildProps) => React.Element),
+  onLoad?: OnLoadCallback
 };
 
 type State = {
-  results: ?(Dataset[]),
+  results: Dataset[] | null,
   loading: boolean,
-  error: ?any,
+  error: any | null
 };
 
 const propTypes = {
@@ -64,7 +64,7 @@ export class QuestionResultLoader extends React.Component {
     error: null,
   };
 
-  _cancelDeferred: ?() => void;
+  _cancelDeferred: (() => void) | null;
 
   UNSAFE_componentWillMount = () => {
     this._reload();

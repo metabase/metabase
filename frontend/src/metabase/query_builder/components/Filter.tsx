@@ -11,22 +11,24 @@ import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
 
 import { t, ngettext, msgid } from "ttag";
 
-import type { Filter as FilterObject } from "metabase-types/types/Query";
-import type { Value as ValueType } from "metabase-types/types/Dataset";
+import { Filter as FilterObject } from "metabase-types/types/Query";
+import { Value as ValueType } from "metabase-types/types/Dataset";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import FilterWrapper from "metabase-lib/lib/queries/structured/Filter";
 
-export type FilterRenderer = ({
-  field?: React.Element,
-  operator: ?string,
-  values: (React.Element | string)[],
-}) => React.Element;
+export type FilterRenderer = ((
+  arg0: {
+    field?: React.Element,
+    operator: string | null,
+    values: React.Element | string[]
+  }
+) => React.Element);
 
 type Props = {
   filter: FilterObject | FilterWrapper,
   metadata: Metadata,
   maxDisplayValues?: number,
-  children?: FilterRenderer,
+  children?: FilterRenderer
 };
 
 const DEFAULT_FILTER_RENDERER: FilterRenderer = ({
@@ -58,7 +60,7 @@ export const OperatorFilter = ({
   filter,
   metadata,
   maxDisplayValues,
-  children = DEFAULT_FILTER_RENDERER,
+  children = DEFAULT_FILTER_RENDERER
 }: Props) => {
   const [op, field] = filter;
   const values: ValueType[] = hasFilterOptions(filter)
@@ -106,7 +108,7 @@ export const SegmentFilter = ({
   filter,
   metadata,
   maxDisplayValues,
-  children = DEFAULT_FILTER_RENDERER,
+  children = DEFAULT_FILTER_RENDERER
 }: Props) => {
   const segment = metadata.segment(filter[1]);
   return children({
@@ -115,7 +117,10 @@ export const SegmentFilter = ({
   });
 };
 
-const Filter = ({ filter, ...props }: Props) =>
+const Filter = ({
+  filter,
+  ...props
+}: Props) =>
   filter[0] === "segment" ? (
     <SegmentFilter filter={filter} {...props} />
   ) : (

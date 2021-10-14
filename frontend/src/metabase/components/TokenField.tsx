@@ -31,64 +31,57 @@ type Option = any;
 
 export type LayoutRendererProps = {
   valuesList: React.Element,
-  optionsList: ?React.Element,
+  optionsList: React.Element | null,
   isFocused: boolean,
   isAllSelected: boolean,
   isFiltered: boolean,
-  onClose: () => void,
+  onClose: (() => void)
 };
 
 type Props = {
   value: Value[],
-  onChange: (value: Value[]) => void,
-
+  onChange: ((value: Value[]) => void),
   options: Option[],
-
   placeholder?: string,
   autoFocus?: boolean,
   multi?: boolean,
-
-  style: { [key: string]: string | number },
+  style: {
+    [K in string]: string | number;
+  },
   color: string,
-
   idKey: string | number | (() => string),
   valueKey: string | number | (() => any),
   labelKey: string | number | (() => string),
-
   removeSelected?: boolean,
-  filterOption: (option: Option, searchValue: string) => boolean,
-
-  onInputChange?: string => string,
-  onInputKeyDown?: event => void,
-  onFocus?: () => void,
-  onBlur?: () => void,
-
-  validateValue: (value: Value) => boolean,
+  filterOption: ((option: Option, searchValue: string) => boolean),
+  onInputChange?: ((arg0: string) => string),
+  onInputKeyDown?: ((event: event) => void),
+  onFocus?: (() => void),
+  onBlur?: (() => void),
+  validateValue: ((value: Value) => boolean),
   updateOnInputChange?: boolean,
   updateOnInputBlur?: boolean,
   // if provided, parseFreeformValue parses the input string into a value,
   // or returns null to indicate an invalid value
-  parseFreeformValue: (value: string) => ?Value,
-
-  valueRenderer: (value: Value) => React.Element,
-  optionRenderer: (option: Option) => React.Element,
-  layoutRenderer: (props: LayoutRendererProps) => React.Element,
-
+  parseFreeformValue: ((value: string) => Value | null),
+  valueRenderer: ((value: Value) => React.Element),
+  optionRenderer: ((option: Option) => React.Element),
+  layoutRenderer: ((props: LayoutRendererProps) => React.Element),
   style?: any,
   className?: string,
   valueStyle?: any,
   optionsStyle?: any,
-  optionsClassName?: string,
+  optionsClassName?: string
 };
 
 type State = {
   inputValue: string,
   searchValue: string,
   filteredOptions: Option[],
-  selectedOptionValue: ?Value,
+  selectedOptionValue: Value | null,
   isFocused: boolean,
   isAllSelected: boolean,
-  listIsHovered: boolean,
+  listIsHovered: boolean
 };
 
 // somewhat matches react-select's API: https://github.com/JedWatson/react-select
@@ -96,7 +89,7 @@ export default class TokenField extends Component {
   props: Props;
   state: State;
 
-  scrollElement: ?HTMLDivElement = null;
+  scrollElement: HTMLDivElement | null = null;
 
   constructor(props: Props) {
     super(props);
@@ -137,11 +130,14 @@ export default class TokenField extends Component {
   }
 
   UNSAFE_componentWillReceiveProps(nextProps: Props) {
-    this._updateFilteredValues((nextProps: Props));
+    this._updateFilteredValues(nextProps as Props);
   }
 
   setInputValue(inputValue: string, setSearchValue: boolean = true) {
-    const newState: { inputValue: string, searchValue?: string } = {
+    const newState: {
+      inputValue: string,
+      searchValue?: string
+    } = {
       inputValue,
     };
     if (setSearchValue) {

@@ -9,15 +9,15 @@ import { serializeCardForUrl } from "metabase/lib/card";
 
 export type ChildProps = {
   loading: boolean,
-  error: ?any,
-  question: ?Question,
+  error: any | null,
+  question: Question | null
 };
 
 type Props = {
-  questionObject?: any, // FIXME: minimal card
-  questionId?: ?number,
-  questionHash?: ?string,
-  children?: (props: ChildProps) => React.Element,
+  questionObject?: any // FIXME: minimal card,
+  questionId?: number | null,
+  questionHash?: string | null,
+  children?: ((props: ChildProps) => React.Element)
 };
 
 /*
@@ -61,7 +61,7 @@ const QuestionLoader = ({
   questionObject,
   questionId,
   questionHash,
-  children,
+  children
 }: Props) =>
   questionObject != null ? (
     <AdHocQuestionLoader questionHash={serializeCardForUrl(questionObject)}>

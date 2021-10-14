@@ -1,15 +1,14 @@
-/* flow */
 import React, { Component } from "react";
 import CopyButton from "metabase/components/CopyButton";
 import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 
 type State = {
-  visible: boolean,
+  visible: boolean;
 };
 
 type Props = {
-  password: string,
+  password: string;
 };
 
 const styles = {

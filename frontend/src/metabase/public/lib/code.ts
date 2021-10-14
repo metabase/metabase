@@ -1,56 +1,12 @@
+// @ts-nocheck
 import { optionsToHashParams } from "./embed";
 
 export type CodeSampleOption = {
-  name: string,
-  source: () => string,
-  mode?: string,
-  embedOption?: string,
+  name: string;
+  source: () => string;
+  mode?: string;
+  embedOption?: string;
 };
-
-export const getPublicEmbedOptions = ({
-  iframeUrl,
-}: {
-  iframeUrl: string,
-}): CodeSampleOption[] => [
-  {
-    name: "HTML",
-    source: () => html({ iframeUrl: `"${iframeUrl}"` }),
-    mode: "ace/mode/html",
-  },
-];
-
-export const getSignedEmbedOptions = (): CodeSampleOption[] => [
-  {
-    name: "Mustache",
-    source: () => html({ iframeUrl: `"{{iframeUrl}}"`, mode: "ace/mode/html" }),
-  },
-  { name: "Pug / Jade", source: () => pug({ iframeUrl: `iframeUrl` }) },
-  { name: "ERB", source: () => html({ iframeUrl: `"<%= @iframe_url %>"` }) },
-  {
-    name: "JSX",
-    source: () => jsx({ iframeUrl: `{iframeUrl}`, mode: "ace/mode/jsx" }),
-  },
-];
-
-export const getSignTokenOptions = (params: any): CodeSampleOption[] => [
-  {
-    name: "Node.js",
-    source: () => node(params),
-    mode: "ace/mode/javascript",
-    embedOption: "Pug / Jade",
-  },
-  {
-    name: "Ruby",
-    source: () => ruby(params),
-    mode: "ace/mode/ruby",
-    embedOption: "ERB",
-  },
-  { name: "Python", source: () => python(params), mode: "ace/mode/python" },
-  { name: "Clojure", source: () => clojure(params), mode: "ace/mode/clojure" },
-];
-
-export const getPublicEmbedHTML = (iframeUrl: string): string =>
-  html({ iframeUrl: JSON.stringify(iframeUrl) });
 
 const html = ({ iframeUrl }) =>
   `<iframe
@@ -78,36 +34,6 @@ const pug = ({ iframeUrl }) =>
     height="600"
     allowtransparency
 )`;
-
-const node = ({
-  siteUrl,
-  secretKey,
-  resourceType,
-  resourceId,
-  params,
-  displayOptions,
-}) =>
-  `// you will need to install via 'npm install jsonwebtoken' or in your package.json
-
-var jwt = require("jsonwebtoken");
-
-var METABASE_SITE_URL = ${JSON.stringify(siteUrl)};
-var METABASE_SECRET_KEY = ${JSON.stringify(secretKey)};
-
-var payload = {
-  resource: { ${resourceType}: ${resourceId} },
-  params: ${JSON.stringify(params, null, 2)
-    .split("\n")
-    .join("\n  ")},
-  exp: Math.round(Date.now() / 1000) + (10 * 60) // 10 minute expiration
-};
-var token = jwt.sign(payload, METABASE_SECRET_KEY);
-
-var iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token${
-    optionsToHashParams(displayOptions)
-      ? " + " + JSON.stringify(optionsToHashParams(displayOptions))
-      : ""
-  };`;
 
 const ruby = ({
   siteUrl,
@@ -206,3 +132,78 @@ const clojure = ({
       ? " " + JSON.stringify(optionsToHashParams(displayOptions))
       : ""
   }))`;
+
+export const getPublicEmbedOptions = ({
+  iframeUrl,
+}: {
+  iframeUrl: string;
+}): CodeSampleOption[] => [
+  {
+    name: "HTML",
+    source: () => html({ iframeUrl: `"${iframeUrl}"` }),
+    mode: "ace/mode/html",
+  },
+];
+
+export const getSignedEmbedOptions = (): CodeSampleOption[] => [
+  {
+    name: "Mustache",
+    source: () => html({ iframeUrl: `"{{iframeUrl}}"`, mode: "ace/mode/html" }),
+  },
+  { name: "Pug / Jade", source: () => pug({ iframeUrl: `iframeUrl` }) },
+  { name: "ERB", source: () => html({ iframeUrl: `"<%= @iframe_url %>"` }) },
+  {
+    name: "JSX",
+    source: () => jsx({ iframeUrl: `{iframeUrl}`, mode: "ace/mode/jsx" }),
+  },
+];
+
+export const getSignTokenOptions = (params: any): CodeSampleOption[] => [
+  {
+    name: "Node.js",
+    source: () => node(params),
+    mode: "ace/mode/javascript",
+    embedOption: "Pug / Jade",
+  },
+  {
+    name: "Ruby",
+    source: () => ruby(params),
+    mode: "ace/mode/ruby",
+    embedOption: "ERB",
+  },
+  { name: "Python", source: () => python(params), mode: "ace/mode/python" },
+  { name: "Clojure", source: () => clojure(params), mode: "ace/mode/clojure" },
+];
+
+export const getPublicEmbedHTML = (iframeUrl: string): string =>
+  html({ iframeUrl: JSON.stringify(iframeUrl) });
+
+const node = ({
+  siteUrl,
+  secretKey,
+  resourceType,
+  resourceId,
+  params,
+  displayOptions,
+}) =>
+  `// you will need to install via 'npm install jsonwebtoken' or in your package.json
+
+var jwt = require("jsonwebtoken");
+
+var METABASE_SITE_URL = ${JSON.stringify(siteUrl)};
+var METABASE_SECRET_KEY = ${JSON.stringify(secretKey)};
+
+var payload = {
+  resource: { ${resourceType}: ${resourceId} },
+  params: ${JSON.stringify(params, null, 2)
+    .split("\n")
+    .join("\n  ")},
+  exp: Math.round(Date.now() / 1000) + (10 * 60) // 10 minute expiration
+};
+var token = jwt.sign(payload, METABASE_SECRET_KEY);
+
+var iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token${
+    optionsToHashParams(displayOptions)
+      ? " + " + JSON.stringify(optionsToHashParams(displayOptions))
+      : ""
+  };`;
