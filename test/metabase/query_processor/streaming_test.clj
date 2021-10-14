@@ -270,6 +270,22 @@
                   :time-tz        #inst "1899-12-31T23:23:18.000-00:00"})))))))))
 
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                             Export E2E tests                                                   |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;;; This section contains helper functions and tests that call export APIs to generate XLSX, CSV and JSON results,
+;;; and assert on the results. These tests should generally be for ensuring that specific types of queries or
+;;; behaviors work across all endpoints that generate exports. Tests that are specific to single endpoints
+;;; (like `/api/dataset/:format`) should go in the corresponding test namespaces for those files
+;;; (like `metabase.api.dataset-test`).
+;;; TODO: migrate the test cases above to use these functions, if possible
+
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                        Streaming logic unit tests                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest export-column-order-test
   (testing "correlation of columns by field ref"
