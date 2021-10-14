@@ -50,7 +50,7 @@ function QuestionActionButtons({ canWrite, onOpenModal }) {
         <Tooltip tooltip={t`Move`}>
           <Button
             onlyIcon
-            icon="move"
+            icon="arrow_right"
             iconSize={ICON_SIZE}
             onClick={() => onOpenModal(MODAL_TYPES.MOVE)}
             data-testid={MOVE_TESTID}
@@ -61,7 +61,7 @@ function QuestionActionButtons({ canWrite, onOpenModal }) {
         <Tooltip tooltip={t`Duplicate this question`}>
           <Button
             onlyIcon
-            icon="segment"
+            icon="clone"
             iconSize={ICON_SIZE}
             onClick={() => onOpenModal(MODAL_TYPES.CLONE)}
             data-testid={CLONE_TESTID}

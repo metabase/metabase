@@ -166,6 +166,7 @@ export default class NotebookStep extends React.Component {
             {title}
             <Icon
               name="close"
+              size="12"
               className="ml-auto cursor-pointer text-light text-medium-hover hover-child"
               tooltip={t`Remove`}
               onClick={() => step.revert(step.query).update(updateQuery)}

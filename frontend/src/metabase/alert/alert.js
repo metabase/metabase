@@ -56,7 +56,6 @@ export const createAlert = alert => {
         // eslint-disable-next-line react/display-name
         message: () => (
           <div className="flex align-center text-bold">
-            <Icon name="alert_confirm" size="19" className="mr2 text-success" />
             {t`Your alert is all set up.`}
           </div>
         ),
@@ -97,7 +96,6 @@ export const updateAlert = alert => {
         // eslint-disable-next-line react/display-name
         message: () => (
           <div className="flex align-center text-bold">
-            <Icon name="alert_confirm" size="19" className="mr2 text-success" />
             {t`Your alert was updated.`}
           </div>
         ),
@@ -145,7 +143,6 @@ export const deleteAlert = alertId => {
         // eslint-disable-next-line react/display-name
         message: () => (
           <div className="flex align-center text-bold">
-            <Icon name="alert_confirm" size="19" className="mr2 text-success" />
             {t`The alert was successfully deleted.`}
           </div>
         ),

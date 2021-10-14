@@ -35,6 +35,7 @@ export default function ClauseStep({
                 <Icon
                   ml={1}
                   name="close"
+                  size="8"
                   onClick={e => {
                     e.stopPropagation();
                     onRemove(item, index);

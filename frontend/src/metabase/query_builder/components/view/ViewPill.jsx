@@ -40,7 +40,7 @@ export default function ViewPill({
       {onRemove && (
         <Icon
           name="close"
-          size={12}
+          size={8}
           className="ml1"
           onClick={e => {
             e.stopPropagation();

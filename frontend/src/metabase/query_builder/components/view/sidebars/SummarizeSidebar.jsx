@@ -101,6 +101,7 @@ const SummarizeAggregation = ({ className, aggregation, index, query }) => {
               <Icon
                 className="flex ml-auto faded fade-in-hover"
                 name="close"
+                size="12"
                 onClick={() => {
                   updateAndRun(query.removeAggregation(index));
                 }}
