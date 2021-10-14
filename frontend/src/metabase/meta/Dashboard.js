@@ -291,31 +291,6 @@ function getMappingTargetField(card, mapping, metadata) {
   return field;
 }
 
-function augmentMappingsWithValueMetadata(mappings) {
-  const mappingsGroupedByParameterId = _.groupBy(mappings, "parameter_id");
-
-  _.each(mappingsGroupedByParameterId, mappingsGroup => {
-    const mappingsWithValues = mappingsGroup
-      .map(mapping => [mapping, mapping.field?.fieldValues() ?? []])
-      .filter(([, values]) => values.length > 0);
-    const values = mappingsWithValues
-      .flatMap(([, values]) => values)
-      .map(value => (Array.isArray(value) ? value[0] : value));
-
-    const distinctValues = new Set(values);
-
-    const hasMultipleMappingsWithValues = mappingsWithValues.length > 1;
-    const hasDisjointValueSets =
-      hasMultipleMappingsWithValues && distinctValues.size === values.length;
-
-    mappingsWithValues.forEach(([mapping]) => {
-      mapping.hasDisjointValueSets = hasDisjointValueSets;
-    });
-  });
-
-  return mappings;
-}
-
 function getMapping(dashcard, metadata) {
   const cards = [dashcard.card, ...(dashcard.series || [])];
   return (dashcard.parameter_mappings || []).map(mapping => {
@@ -338,7 +313,7 @@ function getMappings(dashboard, metadata) {
     getMapping(dashcard, metadata),
   );
 
-  return augmentMappingsWithValueMetadata(mappings);
+  return mappings;
 }
 
 export function getMappingsByParameter(metadata, dashboard) {
