@@ -97,6 +97,7 @@
 (def ^:private with-temp-defaults-fns
   {Card
    (fn [_] {:creator_id             (rasta-id)
+            :database_id            (data/id)
             :dataset_query          {}
             :display                :table
             :name                   (random-name)
