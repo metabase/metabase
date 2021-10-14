@@ -146,6 +146,7 @@ export class ViewTitleHeader extends React.Component {
         className={cx("border-bottom", className)}
         style={style}
         py={[1]}
+        data-testid="view-section"
       >
         {isSaved ? (
           <div>
@@ -197,7 +198,10 @@ export class ViewTitleHeader extends React.Component {
           </div>
         ) : (
           <div>
-            <div className="flex align-baseline flex-wrap">
+            <div
+              className="flex align-baseline flex-wrap"
+              data-testid="question-header"
+            >
               <ViewHeading className="mt1 mr2 mb1">
                 {isNative ? (
                   t`New question`
