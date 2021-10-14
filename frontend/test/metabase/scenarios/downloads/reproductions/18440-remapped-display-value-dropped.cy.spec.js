@@ -18,7 +18,7 @@ const testCases = [
   { type: "xlsx", sheetName: "Query result" },
 ];
 
-describe.skip("issue 18440", () => {
+describe("issue 18440", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/card").as("saveQuestion");
 
