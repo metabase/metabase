@@ -255,6 +255,11 @@ class Settings {
       return null;
     }
   }
+
+  subscriptionAllowedDomains() {
+    const setting = this.get("subscription-allowed-domains") ?? "";
+    return setting ? setting.split(",") : [];
+  }
 }
 
 const n2w = n => MetabaseUtils.numberToWord(n);

@@ -120,7 +120,6 @@ class SharingSidebar extends React.Component {
     // use this to know where to go "back" to
     returnMode: [],
     isSaving: false,
-    formError: null,
   };
 
   static propTypes = {
@@ -231,12 +230,10 @@ class SharingSidebar extends React.Component {
     );
 
     try {
-      this.setState({ isSaving: true, formError: null });
+      this.setState({ isSaving: true });
       await this.props.updateEditingPulse(cleanedPulse);
       await this.props.saveEditingPulse();
       this.setState({ editingMode: "list-pulses", returnMode: [] });
-    } catch (e) {
-      this.setState({ formError: e });
     } finally {
       this.setState({ isSaving: false });
     }
@@ -283,7 +280,7 @@ class SharingSidebar extends React.Component {
   };
 
   render() {
-    const { editingMode, formError } = this.state;
+    const { editingMode } = this.state;
     const {
       pulse,
       pulses,
@@ -329,7 +326,6 @@ class SharingSidebar extends React.Component {
         <AddEditEmailSidebar
           pulse={pulse}
           formInput={formInput}
-          formError={formError}
           channel={channel}
           channelSpec={channelSpec}
           handleSave={this.handleSave}
@@ -372,7 +368,6 @@ class SharingSidebar extends React.Component {
         <AddEditSlackSidebar
           pulse={pulse}
           formInput={formInput}
-          formError={formError}
           channel={channel}
           channelSpec={channelSpec}
           handleSave={this.handleSave}

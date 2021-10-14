@@ -159,6 +159,27 @@ describe("scenarios > question > null", () => {
     });
   });
 
+  it("should filter by clicking on the row with `null` value (metabase#18386)", () => {
+    openOrdersTable();
+
+    // Total of "39.72", and the next cell is the `discount` (which is empty)
+    cy.findByText("39.72")
+      .closest(".TableInteractive-cellWrapper")
+      .next()
+      .find("div")
+      .should("be.empty")
+      // Open the context menu that lets us apply filter using this column directly
+      .click({ force: true });
+
+    popover()
+      .contains("=")
+      .click();
+
+    cy.findByText("39.72");
+    // This row ([id] 3) had the `discount` column value and should be filtered out now
+    cy.findByText("49.21").should("not.exist");
+  });
+
   describe("aggregations with null values", () => {
     beforeEach(() => {
       cy.server();
