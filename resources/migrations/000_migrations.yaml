@@ -8540,6 +8540,15 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
+  - changeSet:
+      id: 317
+      author: camsaul
+      comment: Added 0.42.0 Remove unused column
+      changes:
+        - dropColumn:
+            tableName: metabase_table
+            columnName: entity_name
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
