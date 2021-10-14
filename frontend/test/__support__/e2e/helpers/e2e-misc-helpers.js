@@ -16,13 +16,20 @@ export function visitAlias(alias) {
 /**
  * Open native (SQL) editor and alias it.
  *
- * @param {string} alias - The alias that can be used later in the test as `cy.get("@" + alias)`.
+ * @param {object} options
+ * @param {string} [options.databaseName] - If there is more than one database, select the desired one by its name.
+ * @param {string} [options.alias="editor"] - The alias that can be used later in the test as `cy.get("@" + alias)`.
  * @example
  * openNativeEditor().type("SELECT 123");
+ * @example
+ * openNativeEditor({ databaseName: "QA Mongo4" }).type("SELECT 123");
  */
-export function openNativeEditor(alias = "editor") {
+export function openNativeEditor({ databaseName, alias = "editor" } = {}) {
   cy.visit("/");
   cy.icon("sql").click();
+
+  databaseName && cy.findByText(databaseName).click();
+
   return cy
     .get(".ace_content")
     .as(alias)
