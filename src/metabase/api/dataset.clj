@@ -21,7 +21,8 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.schema :as su]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [metabase.mbql.normalize :as normalize]))
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
 
@@ -106,8 +107,12 @@
   {query                  su/JSONString
    visualization_settings su/JSONString
    export-format          ExportFormat}
+  (def my-query query)
+  (def my-viz-settings visualization_settings)
   (let [query        (json/parse-string query keyword)
-        viz-settings (mb.viz/db->norm (json/parse-string visualization_settings viz-setting-key-fn))
+        viz-settings (-> (json/parse-string visualization_settings viz-setting-key-fn)
+                         (update-in [:table.columns] normalize/normalize)
+                         mb.viz/db->norm)
         query        (-> (assoc query
                                 :async? true
                                 :viz-settings viz-settings)

@@ -33,25 +33,25 @@
        cols
        (mbql.u/uniquify-names (map :name cols))))
 
-(defn- field-ref->map-key
-  "Converts the field-ref of a column to a vector that is used for lookups in the `cols-index` map in
-  `export-column-order`.
+; (defn- field-ref->map-key
+;   "Converts the field-ref of a column to a vector that is used for lookups in the `cols-index` map in
+;   `export-column-order`.
 
-  This key is similar to the original field-ref, but should only contain the minimum amount of information necessary to
-  uniquely identify a field, while omitting extra metadata.
+;   This key is similar to the original field-ref, but should only contain the minimum amount of information necessary to
+;   uniquely identify a field, while omitting extra metadata.
 
-  TODO: It would be better if we could use the entire field-ref directly as the map key, or use a separate identifier.
-  The issue currently is that `table-columns` is passed down from the frontend for unsaved cards (in the viz settings)
-  and has to be parsed from JSON, so some fields in metadata might be strings instead of keywords."
-  [field-ref]
-  (let [field-ref-first-part (keyword (first field-ref))
-        key-first-part       (if (= :aggregation field-ref-first-part)
-                               :aggregation
-                               ;; Convert the deprecated :field-id to :field so that it matches the field refs in `cols` (#18382)
-                               :field)]
-    (if-let [join-alias (:join-alias (last field-ref))]
-      [key-first-part (second field-ref) {:join-alias join-alias}]
-      [key-first-part (second field-ref)])))
+;   TODO: It would be better if we could use the entire field-ref directly as the map key, or use a separate identifier.
+;   The issue currently is that `table-columns` is passed down from the frontend for unsaved cards (in the viz settings)
+;   and has to be parsed from JSON, so some fields in metadata might be strings instead of keywords."
+;   [field-ref]
+;   (let [field-ref-first-part (keyword (first field-ref))
+;         key-first-part       (if (= :aggregation field-ref-first-part)
+;                                :aggregation
+;                                ;; Convert the deprecated :field-id to :field so that it matches the field refs in `cols` (#18382)
+;                                :field)]
+;     (if-let [join-alias (:join-alias (last field-ref))]
+;       [key-first-part (second field-ref) {:join-alias join-alias}]
+;       [key-first-part (second field-ref)])))
 
 (defn- export-column-order
   "For each entry in `table-columns` that is enabled, finds the index of the corresponding
@@ -59,6 +59,10 @@
 
   The resulting list of indices determines the order of column names and data in exports."
   [cols table-columns]
+  (def my-cols cols)
+  (comment (clojure.pprint/pprint my-cols))
+  (def my-table-columns table-columns)
+  (comment (clojure.pprint/pprint my-table-columns))
   (let [table-columns'     (or table-columns
                                ;; If table-columns is not provided (e.g. for saved cards), we can construct a fake one
                                ;; that retains the original column ordering in `cols`
@@ -71,12 +75,12 @@
         cols-vector        (into [] cols)
         ;; cols-index is a map from keys representing fields to their indices into `cols`
         cols-index         (reduce-kv (fn [m i col]
-                                        ;; Always add [:field col-name] as a key, so that native queries,
+                                        ;; Always add col-name as a key, so that native queries,
                                         ;; remapped fields, and old fields using :field-literal work correctly (#18382)
-                                        (let [m' (assoc m [:field (:name col)] i)]
+                                        (let [m' (assoc m (:name col) i)]
                                           (if-let [field-ref (:field_ref col)]
                                             ;; Add a map key based on the column's field-ref, if available
-                                            (assoc m' (field-ref->map-key field-ref) i)
+                                            (assoc m' field-ref i)
 
                                             ;; Otherwise construct a key using the id of the column, if available
                                             (if (:id col)
@@ -85,16 +89,17 @@
                                       {}
                                       cols-vector)]
     (->> (map
-          (fn [{field-ref ::mb.viz/table-column-field-ref}]
-            (let [index         (get cols-index (field-ref->map-key field-ref))
-                  col           (get cols-vector index)
-                  remapped-to   (:remapped_to col)
-                  remapped-from (:remapped_from col)]
+          (fn [{field-ref ::mb.viz/table-column-field-ref, col-name ::mb.viz/table-column-name}]
+            (let [index              (or (get cols-index field-ref)
+                                         (get cols-index col-name))
+                  col                (get cols-vector index)
+                  remapped-to-name   (:remapped_to col)
+                  remapped-from-name (:remapped_from col)]
               (cond
-                remapped-to
-                (get cols-index [:field remapped-to])
+                remapped-to-name
+                (get cols-index remapped-to-name)
 
-                (not remapped-from)
+                (not remapped-from-name)
                 index)))
           enabled-table-cols)
          (remove nil?))))
@@ -113,6 +118,8 @@
 
 (defn- streaming-rff [results-writer]
   (fn [{:keys [cols viz-settings] :as initial-metadata}]
+    (def my-viz-settings viz-settings)
+    (comment (clojure.pprint/pprint my-viz-settings))
     (let [[ordered-cols output-order] (order-cols cols viz-settings)
           viz-settings'               (assoc viz-settings :output-order output-order)
           row-count                   (volatile! 0)]
