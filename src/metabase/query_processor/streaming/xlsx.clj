@@ -292,7 +292,7 @@
   "Returns whether a number should be formatted as an integer after being rounded to 2 decimal places."
   [value]
   (let [rounded (.setScale (bigdec value) 2 java.math.RoundingMode/HALF_UP)]
-    (== (int rounded) rounded)))
+    (== (bigint rounded) rounded)))
 
 (defmulti ^:private set-cell!
   "Sets a cell to the provided value, with an approrpiate style if necessary.
