@@ -7,7 +7,7 @@ import { DEBUG } from "metabase/lib/debug";
 // Simple module for in-app analytics.  Currently sends data to GA but could be extended to anything else.
 const MetabaseAnalytics = {
   // track a pageview (a.k.a. route change)
-  trackPageView: function(url: string) {
+  trackPageView: function(url) {
     if (url) {
       // scrub query builder urls to remove serialized json queries from path
       url = url.lastIndexOf("/q/", 0) === 0 ? "/q/" : url;
@@ -23,12 +23,7 @@ const MetabaseAnalytics = {
   },
 
   // track an event
-  trackEvent: function(
-    category: string,
-    action?: ?string,
-    label?: ?(string | number | boolean),
-    value?: ?number,
-  ) {
+  trackEvent: function(category, action, label, value) {
     const { tag } = MetabaseSettings.get("version") || {};
 
     // category & action are required, rest are optional

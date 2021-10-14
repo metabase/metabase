@@ -17,12 +17,7 @@ const defaultTitleForState = {
  * When the button is clicked, `inProgress` text is shown, and when the promise resolves, `completed` text is shown.
  */
 export default class ButtonWithStatus extends Component {
-  props: {
-    onClickOperation: any => Promise<void>,
-    titleForState?: string[],
-    disabled?: boolean,
-    className?: string,
-  };
+  props;
 
   state = {
     progressState: "default",

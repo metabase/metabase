@@ -35,32 +35,14 @@ const mapDispatchToProps = {
   updateTableSandboxingPermission,
 };
 
-type GTAP = {
-  table_id: ?number,
-  group_id: ?number,
-  card_id: ?number,
-  attribute_remappings: { [attribute: string]: any },
-};
-
-type Props = {
-  params: { [name: string]: string },
-  push: (url: string) => void,
-};
-type State = {
-  gtap: ?GTAP,
-  attributesOptions: ?(string[]),
-  simple: boolean,
-  error: ?string,
-};
-
 @withRouter
 @connect(
   mapStateToProps,
   mapDispatchToProps,
 )
 export default class GTAPModal extends React.Component {
-  props: Props;
-  state: State = {
+  props;
+  state = {
     gtap: null,
     attributesOptions: null,
     simple: true,
@@ -331,7 +313,7 @@ const SummaryRow = ({ icon, content }) => (
   </div>
 );
 
-const GTAPSummary = ({ gtap }: { gtap: GTAP }) => {
+const GTAPSummary = ({ gtap }) => {
   return (
     <div>
       <div className="px1 pb2 text-uppercase text-small text-grey-4">
@@ -408,7 +390,7 @@ const TableName = ({ tableId }) => (
   </EntityObjectLoader>
 );
 
-const TargetName = ({ gtap, target }: { gtap: GTAP, target: any }) => {
+const TargetName = ({ gtap, target }) => {
   if (Array.isArray(target)) {
     if (
       (target[0] === "variable" || target[0] === "dimension") &&

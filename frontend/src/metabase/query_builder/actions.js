@@ -1,7 +1,5 @@
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 
-declare var ace: any;
-
 import { createAction } from "redux-actions";
 import _ from "underscore";
 import { getIn, assocIn, updateIn } from "icepick";
@@ -75,19 +73,9 @@ import Snippets from "metabase/entities/snippets";
 import { getMetadata } from "metabase/selectors/metadata";
 import { setRequestUnloaded } from "metabase/redux/requests";
 
-import type { Card } from "metabase-types/types/Card";
-
-type UiControls = {
-  isEditing?: boolean,
-  isShowingTemplateTagsEditor?: boolean,
-  isShowingNewbModal?: boolean,
-  queryBuilderMode?: "view" | "notebook",
-  isShowingSummarySidebar?: boolean,
-};
-
 const PREVIEW_RESULT_LIMIT = 10;
 
-const getTemplateTagWithoutSnippetsCount = (question: Question) => {
+const getTemplateTagWithoutSnippetsCount = question => {
   const query = question.query();
   return query instanceof NativeQuery
     ? query.templateTagsWithoutSnippets().length
@@ -329,7 +317,7 @@ export const initializeQB = (location, params, queryParams) => {
 
     const cardId = Urls.extractEntityId(params.slug);
     let card, originalCard;
-    const uiControls: UiControls = {
+    const uiControls = {
       isEditing: false,
       isShowingTemplateTagsEditor: false,
       queryBuilderMode: getQueryBuilderModeFromLocation(location),
@@ -1072,25 +1060,20 @@ export const apiUpdateQuestion = question => {
  * Queries the result for the currently active question or alternatively for the card provided in `overrideWithCard`.
  * The API queries triggered by this action creator can be cancelled using the deferred provided in RUN_QUERY action.
  */
-export type RunQueryParams = {
-  shouldUpdateUrl?: boolean,
-  ignoreCache?: boolean, // currently only implemented for saved cards
-  overrideWithCard?: Card, // override the current question with the provided card
-};
 export const RUN_QUERY = "metabase/qb/RUN_QUERY";
 export const runQuestionQuery = ({
   shouldUpdateUrl = true,
   ignoreCache = false,
   overrideWithCard,
-}: RunQueryParams = {}) => {
+} = {}) => {
   return async (dispatch, getState) => {
-    const questionFromCard = (card: Card): Question =>
+    const questionFromCard = card =>
       card && new Question(card, getMetadata(getState()));
 
-    let question: Question = overrideWithCard
+    let question = overrideWithCard
       ? questionFromCard(overrideWithCard)
       : getQuestion(getState());
-    const originalQuestion: ?Question = getOriginalQuestion(getState());
+    const originalQuestion = getOriginalQuestion(getState());
 
     const cardIsDirty = originalQuestion
       ? question.isDirtyComparedToWithoutParameters(originalQuestion)

@@ -1,22 +1,4 @@
 import MetabaseSettings from "metabase/lib/settings";
-import type { DatasetQuery } from "metabase-types/types/Card";
-import type {
-  TemplateTag,
-  LocalFieldReference,
-  ForeignFieldReference,
-  FieldFilter,
-} from "metabase-types/types/Query";
-import type {
-  Parameter,
-  ParameterOption,
-  ParameterInstance,
-  ParameterTarget,
-  ParameterValue,
-  ParameterValueOrArray,
-} from "metabase-types/types/Parameter";
-import type { FieldId } from "metabase-types/types/Field";
-import type Metadata from "metabase-lib/lib/metadata/Metadata";
-import type Field from "metabase-lib/lib/metadata/Field";
 import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
 import moment from "moment";
 import { t } from "ttag";
@@ -32,11 +14,6 @@ import {
 } from "metabase/lib/schema_metadata";
 
 import Variable, { TemplateTagVariable } from "metabase-lib/lib/Variable";
-
-type DimensionFilter = (dimension: Dimension) => boolean;
-type TemplateTagFilter = (tag: TemplateTag) => boolean;
-type FieldPredicate = (field: Field) => boolean;
-type VariableFilter = (variable: Variable) => boolean;
 
 const areFieldFilterOperatorsEnabled = () =>
   MetabaseSettings.get("field-filter-operators-enabled?");
@@ -163,7 +140,7 @@ const OPTIONS_WITH_OPERATOR_SUBTYPES = [
   },
 ];
 
-export function getParameterOptions(): ParameterOption[] {
+export function getParameterOptions() {
   return [
     {
       type: "id",
@@ -228,18 +205,18 @@ function getParameterSubType(parameter) {
   return subtype;
 }
 
-function fieldFilterForParameter(parameter: Parameter): FieldPredicate {
+function fieldFilterForParameter(parameter) {
   const type = getParameterType(parameter);
   const subtype = getParameterSubType(parameter);
   switch (type) {
     case "date":
-      return (field: Field) => field.isDate();
+      return field => field.isDate();
     case "id":
-      return (field: Field) => field.isID();
+      return field => field.isID();
     case "category":
-      return (field: Field) => field.isCategory();
+      return field => field.isCategory();
     case "location":
-      return (field: Field) => {
+      return field => {
         switch (subtype) {
           case "city":
             return field.isCity();
@@ -254,19 +231,19 @@ function fieldFilterForParameter(parameter: Parameter): FieldPredicate {
         }
       };
     case "number":
-      return (field: Field) => field.isNumber() && !field.isCoordinate();
+      return field => field.isNumber() && !field.isCoordinate();
     case "string":
-      return (field: Field) => {
+      return field => {
         return subtype === "=" || subtype === "!="
           ? field.isCategory() && !field.isLocation()
           : field.isString() && !field.isLocation();
       };
   }
 
-  return (field: Field) => false;
+  return field => false;
 }
 
-export function parameterOptionsForField(field: Field): ParameterOption[] {
+export function parameterOptionsForField(field) {
   return getParameterOptions()
     .filter(option => fieldFilterForParameter(option)(field))
     .map(option => {
@@ -277,9 +254,7 @@ export function parameterOptionsForField(field: Field): ParameterOption[] {
     });
 }
 
-export function dimensionFilterForParameter(
-  parameter: Parameter,
-): DimensionFilter {
+export function dimensionFilterForParameter(parameter) {
   const fieldFilter = fieldFilterForParameter(parameter);
   return dimension => fieldFilter(dimension.field());
 }
@@ -297,9 +272,7 @@ export function getTagOperatorFilterForParameter(parameter) {
   };
 }
 
-export function variableFilterForParameter(
-  parameter: Parameter,
-): VariableFilter {
+export function variableFilterForParameter(parameter) {
   const tagFilter = tagFilterForParameter(parameter);
   return variable => {
     if (variable instanceof TemplateTagVariable) {
@@ -310,33 +283,33 @@ export function variableFilterForParameter(
   };
 }
 
-function tagFilterForParameter(parameter: Parameter): TemplateTagFilter {
+function tagFilterForParameter(parameter) {
   const type = getParameterType(parameter);
   const subtype = getParameterSubType(parameter);
   const operator = getParameterOperatorName(subtype);
   if (operator !== "=") {
-    return (tag: TemplateTag) => false;
+    return tag => false;
   }
 
   switch (type) {
     case "date":
-      return (tag: TemplateTag) => subtype === "single" && tag.type === "date";
+      return tag => subtype === "single" && tag.type === "date";
     case "location":
-      return (tag: TemplateTag) => tag.type === "number" || tag.type === "text";
+      return tag => tag.type === "number" || tag.type === "text";
     case "id":
-      return (tag: TemplateTag) => tag.type === "number" || tag.type === "text";
+      return tag => tag.type === "number" || tag.type === "text";
     case "category":
-      return (tag: TemplateTag) => tag.type === "number" || tag.type === "text";
+      return tag => tag.type === "number" || tag.type === "text";
     case "number":
-      return (tag: TemplateTag) => tag.type === "number";
+      return tag => tag.type === "number";
     case "string":
-      return (tag: TemplateTag) => tag.type === "text";
+      return tag => tag.type === "text";
   }
-  return (tag: TemplateTag) => false;
+  return tag => false;
 }
 
 // NOTE: this should mirror `template-tag-parameters` in src/metabase/api/embed.clj
-export function getTemplateTagParameters(tags: TemplateTag[]): Parameter[] {
+export function getTemplateTagParameters(tags) {
   function getTemplateTagType(tag) {
     const { type } = tag;
     if (type === "date") {
@@ -371,10 +344,7 @@ export function getTemplateTagParameters(tags: TemplateTag[]): Parameter[] {
 }
 
 /** Returns the field ID that this parameter target points to, or null if it's not a dimension target. */
-export function getParameterTargetFieldId(
-  target: ?ParameterTarget,
-  datasetQuery: ?DatasetQuery,
-): ?FieldId {
+export function getParameterTargetFieldId(target, datasetQuery) {
   if (target && target[0] === "dimension") {
     const dimension = target[1];
     if (Array.isArray(dimension) && dimension[0] === "template-tag") {
@@ -392,12 +362,6 @@ export function getParameterTargetFieldId(
   return null;
 }
 
-type Deserializer = { testRegex: RegExp, deserialize: DeserializeFn };
-type DeserializeFn = (
-  match: any[],
-  fieldRef: LocalFieldReference | ForeignFieldReference,
-) => FieldFilter;
-
 const withTemporalUnit = (fieldRef, unit) => {
   const dimension =
     (fieldRef && FieldDimension.parseMBQLOrWarn(fieldRef)) ||
@@ -406,7 +370,7 @@ const withTemporalUnit = (fieldRef, unit) => {
   return dimension.withTemporalUnit(unit).mbql();
 };
 
-const timeParameterValueDeserializers: Deserializer[] = [
+const timeParameterValueDeserializers = [
   {
     testRegex: /^past([0-9]+)([a-z]+)s(~)?$/,
     deserialize: (matches, fieldRef) =>
@@ -469,12 +433,9 @@ const timeParameterValueDeserializers: Deserializer[] = [
   },
 ];
 
-export function dateParameterValueToMBQL(
-  parameterValue: ParameterValue,
-  fieldRef: LocalFieldReference | ForeignFieldReference,
-): ?FieldFilter {
-  const deserializer: ?Deserializer = timeParameterValueDeserializers.find(
-    des => des.testRegex.test(parameterValue),
+export function dateParameterValueToMBQL(parameterValue, fieldRef) {
+  const deserializer = timeParameterValueDeserializers.find(des =>
+    des.testRegex.test(parameterValue),
   );
 
   if (deserializer) {
@@ -487,22 +448,16 @@ export function dateParameterValueToMBQL(
   }
 }
 
-export function stringParameterValueToMBQL(
-  parameter: Parameter,
-  fieldRef: LocalFieldReference | ForeignFieldReference,
-): ?FieldFilter {
-  const parameterValue: ParameterValueOrArray = parameter.value;
+export function stringParameterValueToMBQL(parameter, fieldRef) {
+  const parameterValue = parameter.value;
   const subtype = getParameterSubType(parameter);
   const operatorName = getParameterOperatorName(subtype);
 
   return [operatorName, fieldRef].concat(parameterValue);
 }
 
-export function numberParameterValueToMBQL(
-  parameter: ParameterInstance,
-  fieldRef: LocalFieldReference | ForeignFieldReference,
-): ?FieldFilter {
-  const parameterValue: ParameterValue = parameter.value;
+export function numberParameterValueToMBQL(parameter, fieldRef) {
+  const parameterValue = parameter.value;
   const subtype = getParameterSubType(parameter);
   const operatorName = getParameterOperatorName(subtype);
 
@@ -512,10 +467,7 @@ export function numberParameterValueToMBQL(
 }
 
 /** compiles a parameter with value to an MBQL clause */
-export function parameterToMBQLFilter(
-  parameter: ParameterInstance,
-  metadata: Metadata,
-): ?FieldFilter {
+export function parameterToMBQLFilter(parameter, metadata) {
   if (
     !parameter.target ||
     parameter.target[0] !== "dimension" ||
@@ -525,8 +477,7 @@ export function parameterToMBQLFilter(
     return null;
   }
 
-  const fieldRef: LocalFieldReference | ForeignFieldReference =
-    parameter.target[1];
+  const fieldRef = parameter.target[1];
 
   if (parameter.type.indexOf("date/") === 0) {
     return dateParameterValueToMBQL(parameter.value, fieldRef);
@@ -542,7 +493,7 @@ export function parameterToMBQLFilter(
   }
 }
 
-export function getParameterIconName(parameter: ?Parameter) {
+export function getParameterIconName(parameter) {
   const type = getParameterType(parameter);
   switch (type) {
     case "date":

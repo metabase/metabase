@@ -4,10 +4,6 @@ import { Harmonizer } from "color-harmony";
 
 import { deterministicAssign } from "./deterministic";
 
-export type ColorName = string;
-export type ColorString = string;
-export type ColorFamily = { [name: ColorName]: ColorString };
-
 // NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
 // NOTE: KEEP SYNCRONIZED WITH COLORS.CSS
 /* eslint-disable no-color-literals */
@@ -126,18 +122,12 @@ function syncDeprecatedColorFamilies() {
   normal.text = colors["text-dark"];
 }
 
-export const getRandomColor = (family: ColorFamily): ColorString => {
-  const colors: ColorString[] = Object.values(family);
+export const getRandomColor = family => {
+  const colors = Object.values(family);
   return colors[Math.floor(Math.random() * colors.length)];
 };
 
-type ColorScale = (input: number) => ColorString;
-
-export const getColorScale = (
-  extent: [number, number],
-  colors: string[],
-  quantile: boolean = false,
-): ColorScale => {
+export const getColorScale = (extent, colors, quantile = false) => {
   if (quantile) {
     return d3.scale
       .quantile()
@@ -158,7 +148,7 @@ export const getColorScale = (
 
 // HACK: d3 may return rgb values with decimals but certain rendering engines
 // don't support that (e.x. Safari and CSSBox)
-export function roundColor(color: ColorString): ColorString {
+export function roundColor(color) {
   return color.replace(
     /rgba\((\d+(?:\.\d+)),\s*(\d+(?:\.\d+)),\s*(\d+(?:\.\d+)),\s*(\d+\.\d+)\)/,
     (_, r, g, b, a) =>
@@ -166,7 +156,7 @@ export function roundColor(color: ColorString): ColorString {
   );
 }
 
-export function color(color: ColorString | ColorName): ColorString {
+export function color(color) {
   if (color in colors) {
     return colors[color];
   }
@@ -176,23 +166,17 @@ export function color(color: ColorString | ColorName): ColorString {
   // TODO: validate this is a ColorString
   return color;
 }
-export function alpha(c: ColorString | ColorName, a: number): ColorString {
+export function alpha(c, a) {
   return Color(color(c))
     .alpha(a)
     .string();
 }
-export function darken(
-  c: ColorString | ColorName,
-  f: number = 0.25,
-): ColorString {
+export function darken(c, f = 0.25) {
   return Color(color(c))
     .darken(f)
     .string();
 }
-export function lighten(
-  c: ColorString | ColorName,
-  f: number = 0.5,
-): ColorString {
+export function lighten(c, f = 0.5) {
   return Color(color(c))
     .lighten(f)
     .string();
@@ -241,17 +225,12 @@ for (const color in PREFERRED_COLORS) {
   }
 }
 
-type Key = string;
-
-function getPreferredColor(key: Key) {
+function getPreferredColor(key) {
   return color(PREFERRED_COLORS_MAP[key.toLowerCase()]);
 }
 
 // returns a mapping of deterministically assigned colors to keys, optionally with a fixed value mapping
-export function getColorsForValues(
-  keys: string[],
-  existingAssignments: ?{ [key: Key]: ColorString } = {},
-) {
+export function getColorsForValues(keys, existingAssignments = {}) {
   const all = Object.values(harmony);
   const primaryTier = all.slice(0, 8);
   const secondaryTier = all.slice(8);
@@ -265,6 +244,6 @@ export function getColorsForValues(
 }
 
 // conviennce for a single color (only use for visualizations with a single color)
-export function getColorForValue(key: Key) {
+export function getColorForValue(key) {
   return getColorsForValues([key])[key];
 }

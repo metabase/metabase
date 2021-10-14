@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
 
@@ -26,14 +27,7 @@ const mapStateToProps = (state, props) => ({
   mapDispatchToProps,
 )
 export default class FieldsToGroupBy extends Component {
-  props: {
-    fields: Object,
-    databaseId: number,
-    metric: Object,
-    title: string,
-    onChangeLocation: string => void,
-    metadata: Metadata,
-  };
+  props;
 
   render() {
     const {

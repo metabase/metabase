@@ -8,14 +8,6 @@ import Field from "metabase-lib/lib/metadata/Field";
 
 import { ExpressionDimension } from "metabase-lib/lib/Dimension";
 
-import type Metadata from "metabase-lib/lib/metadata/Metadata";
-import type { Card } from "metabase-types/types/Card";
-import type {
-  ParameterOption,
-  Parameter,
-  ParameterMappingUIOption,
-} from "metabase-types/types/Parameter";
-
 import {
   dimensionFilterForParameter,
   getTagOperatorFilterForParameter,
@@ -27,13 +19,6 @@ import {
 } from "metabase/meta/Parameter";
 
 import { slugify } from "metabase/lib/formatting";
-
-export type ParameterSection = {
-  id: string,
-  name: string,
-  description: string,
-  options: ParameterOption[],
-};
 
 const areFieldFilterOperatorsEnabled = () =>
   MetabaseSettings.get("field-filter-operators-enabled?");
@@ -58,7 +43,7 @@ const LOCATION_OPTIONS = [
 ];
 const CATEGORY_OPTIONS = [{ type: "category", name: t`Category` }];
 
-export function getParameterSections(): ParameterSection[] {
+export function getParameterSections() {
   const parameterOptions = getParameterOptions();
 
   return [
@@ -138,11 +123,7 @@ export function getParameterSections(): ParameterSection[] {
   ].filter(Boolean);
 }
 
-export function getParameterMappingOptions(
-  metadata: Metadata,
-  parameter: ?Parameter = null,
-  card: Card,
-): ParameterMappingUIOption[] {
+export function getParameterMappingOptions(metadata, parameter = null, card) {
   const options = [];
   if (card.display === "text") {
     // text cards don't have parameters
@@ -206,10 +187,7 @@ export function getParameterMappingOptions(
   return options;
 }
 
-export function createParameter(
-  option: ParameterOption,
-  parameters: Parameter[] = [],
-): Parameter {
+export function createParameter(option, parameters = []) {
   let name = option.combinedName || option.name;
   let nameIndex = 0;
   // get a unique name
@@ -227,10 +205,7 @@ export function createParameter(
   return setParameterName(parameter, name);
 }
 
-export function setParameterName(
-  parameter: Parameter,
-  name: string,
-): Parameter {
+export function setParameterName(parameter, name) {
   if (!name) {
     name = "unnamed";
   }
@@ -242,10 +217,7 @@ export function setParameterName(
   };
 }
 
-export function setParameterDefaultValue(
-  parameter: Parameter,
-  value: string,
-): Parameter {
+export function setParameterDefaultValue(parameter, value) {
   return {
     ...parameter,
     default: value,
@@ -282,7 +254,7 @@ export function getMappingsByParameter(metadata, dashboard) {
   const mappings = [];
   const countsByParameter = {};
   for (const dashcard of dashboard.ordered_cards) {
-    const cards: Card[] = [dashcard.card].concat(dashcard.series);
+    const cards = [dashcard.card].concat(dashcard.series);
     for (const mapping of dashcard.parameter_mappings || []) {
       const card = _.findWhere(cards, { id: mapping.card_id });
       const fieldId =

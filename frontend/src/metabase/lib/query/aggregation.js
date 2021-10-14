@@ -4,15 +4,6 @@ import { STANDARD_AGGREGATIONS } from "metabase/lib/expressions";
 
 import _ from "underscore";
 
-import type {
-  AggregationClause,
-  Aggregation,
-  AggregationWithOptions,
-  AggregationOptions,
-  ConcreteField,
-} from "metabase-types/types/Query";
-import type { MetricId } from "metabase-types/types/Metric";
-
 export const SORTABLE_AGGREGATION_TYPES = new Set([
   "avg",
   "count",
@@ -24,15 +15,13 @@ export const SORTABLE_AGGREGATION_TYPES = new Set([
 ]);
 
 // returns canonical list of Aggregations, i.e. with deprecated "rows" removed
-export function getAggregations(
-  aggregation: ?AggregationClause,
-): Aggregation[] {
-  let aggregations: Aggregation[];
+export function getAggregations(aggregation) {
+  let aggregations;
   if (Array.isArray(aggregation) && Array.isArray(aggregation[0])) {
-    aggregations = (aggregation: any);
+    aggregations = aggregation;
   } else if (Array.isArray(aggregation) && typeof aggregation[0] === "string") {
     // legacy
-    aggregations = [(aggregation: any)];
+    aggregations = [aggregation];
   } else {
     aggregations = [];
   }
@@ -40,7 +29,7 @@ export function getAggregations(
 }
 
 // turns a list of Aggregations into the canonical AggregationClause
-function getAggregationClause(aggregations: Aggregation[]): ?AggregationClause {
+function getAggregationClause(aggregations) {
   aggregations = getAggregations(aggregations);
   if (aggregations.length === 0) {
     return undefined;
@@ -49,44 +38,34 @@ function getAggregationClause(aggregations: Aggregation[]): ?AggregationClause {
   }
 }
 
-export function addAggregation(
-  aggregation: ?AggregationClause,
-  newAggregation: Aggregation,
-): ?AggregationClause {
+export function addAggregation(aggregation, newAggregation) {
   return getAggregationClause(
     add(getAggregations(aggregation), newAggregation),
   );
 }
-export function updateAggregation(
-  aggregation: ?AggregationClause,
-  index: number,
-  updatedAggregation: Aggregation,
-): ?AggregationClause {
+export function updateAggregation(aggregation, index, updatedAggregation) {
   return getAggregationClause(
     update(getAggregations(aggregation), index, updatedAggregation),
   );
 }
-export function removeAggregation(
-  aggregation: ?AggregationClause,
-  index: number,
-): ?AggregationClause {
+export function removeAggregation(aggregation, index) {
   return getAggregationClause(remove(getAggregations(aggregation), index));
 }
-export function clearAggregations(ac: ?AggregationClause): ?AggregationClause {
+export function clearAggregations(ac) {
   return getAggregationClause(clear());
 }
 
 // MISC
 
-export function isBareRows(ac: ?AggregationClause) {
+export function isBareRows(ac) {
   return getAggregations(ac).length === 0;
 }
 
-export function hasEmptyAggregation(ac: ?AggregationClause): boolean {
+export function hasEmptyAggregation(ac) {
   return _.any(getAggregations(ac), aggregation => !noNullValues(aggregation));
 }
 
-export function hasValidAggregation(ac: ?AggregationClause): boolean {
+export function hasValidAggregation(ac) {
   return _.all(getAggregations(ac), aggregation => noNullValues(aggregation));
 }
 
@@ -94,7 +73,7 @@ export function hasValidAggregation(ac: ?AggregationClause): boolean {
 
 // NOTE: these only differentiate between "standard", "metric", and "custom", but do not validate the aggregation
 
-export function isStandard(aggregation: any): boolean {
+export function isStandard(aggregation) {
   return (
     Array.isArray(aggregation) &&
     STANDARD_AGGREGATIONS.has(aggregation[0]) &&
@@ -104,50 +83,44 @@ export function isStandard(aggregation: any): boolean {
   );
 }
 
-export function isMetric(aggregation: any): boolean {
+export function isMetric(aggregation) {
   return Array.isArray(aggregation) && aggregation[0] === "metric";
 }
 
-export function isCustom(aggregation: any): boolean {
+export function isCustom(aggregation) {
   return !isStandard(aggregation) && !isMetric(aggregation);
 }
 
 // AGGREGATION OPTIONS / NAMED AGGREGATIONS
 
-export function hasOptions(aggregation: any): boolean {
+export function hasOptions(aggregation) {
   return Array.isArray(aggregation) && aggregation[0] === "aggregation-options";
 }
-export function getOptions(aggregation: any): AggregationOptions {
+export function getOptions(aggregation) {
   return hasOptions(aggregation) && aggregation[2] ? aggregation[2] : {};
 }
-export function getContent(aggregation: any): Aggregation {
+export function getContent(aggregation) {
   return hasOptions(aggregation) ? aggregation[1] : aggregation;
 }
-export function isNamed(aggregation: any): boolean {
+export function isNamed(aggregation) {
   return !!getName(aggregation);
 }
-export function getName(aggregation: any): ?string {
+export function getName(aggregation) {
   return getOptions(aggregation)["display-name"];
 }
-export function setName(
-  aggregation: any,
-  name: string,
-): AggregationWithOptions {
+export function setName(aggregation, name) {
   return [
     "aggregation-options",
     getContent(aggregation),
     { name, "display-name": name, ...getOptions(aggregation) },
   ];
 }
-export function setContent(
-  aggregation: any,
-  content: Aggregation,
-): AggregationWithOptions {
+export function setContent(aggregation, content) {
   return ["aggregation-options", content, getOptions(aggregation)];
 }
 
 // METRIC
-export function getMetric(aggregation: any): ?MetricId {
+export function getMetric(aggregation) {
   if (isMetric(aggregation)) {
     return aggregation[1];
   } else {
@@ -158,7 +131,7 @@ export function getMetric(aggregation: any): ?MetricId {
 // STANDARD
 
 // get the operator from a standard aggregation clause
-export function getOperator(aggregation: any) {
+export function getOperator(aggregation) {
   if (isStandard(aggregation)) {
     return aggregation[0];
   } else {
@@ -167,7 +140,7 @@ export function getOperator(aggregation: any) {
 }
 
 // get the fieldId from a standard aggregation clause
-export function getField(aggregation: any): ?ConcreteField {
+export function getField(aggregation) {
   if (isStandard(aggregation)) {
     return aggregation[1];
   } else {
@@ -176,7 +149,7 @@ export function getField(aggregation: any): ?ConcreteField {
 }
 
 // set the fieldId on a standard aggregation clause
-export function setField(aggregation: any, fieldRef: ConcreteField) {
+export function setField(aggregation, fieldRef) {
   if (isStandard(aggregation)) {
     return [aggregation[0], fieldRef];
   } else {
@@ -187,6 +160,6 @@ export function setField(aggregation: any, fieldRef: ConcreteField) {
 
 // MISC
 
-export function isSortable(aggregation: any) {
+export function isSortable(aggregation) {
   return SORTABLE_AGGREGATION_TYPES.has(getContent(aggregation)[0]);
 }

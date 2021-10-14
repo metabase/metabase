@@ -5,53 +5,24 @@ import MetabaseUtils from "metabase/lib/utils";
 import moment from "moment";
 
 // TODO: dump this from backend settings definitions
-export type SettingName =
-  | "admin-email"
-  | "anon-tracking-enabled"
-  | "available-locales"
-  | "available-timezones"
-  | "custom-formatting"
-  | "custom-geojson"
-  | "email-configured?"
-  | "enable-embedding"
-  | "enable-enhancements?"
-  | "enable-public-sharing"
-  | "enable-xrays"
-  | "engines"
-  | "ga-code"
-  | "google-auth-client-id"
-  | "has-sample-dataset?"
-  | "hide-embed-branding?"
-  | "ldap-configured?"
-  | "map-tile-server-url"
-  | "password-complexity"
-  | "search-typeahead-enabled"
-  | "setup-token"
-  | "site-url"
-  | "types"
-  | "version"
-  | "version-info"
-  | "version-info-last-checked";
-
-type SettingsMap = { [key: SettingName]: any };
 
 // provides access to Metabase application settings
 class Settings {
-  _settings: SettingsMap;
-  _listeners: { [key: SettingName]: Function[] };
+  _settings;
+  _listeners;
 
-  constructor(settings: SettingsMap) {
+  constructor(settings) {
     this._settings = settings;
     this._listeners = {};
   }
 
-  get(key: SettingName, defaultValue: any = null) {
+  get(key, defaultValue = null) {
     return this._settings[key] !== undefined
       ? this._settings[key]
       : defaultValue;
   }
 
-  set(key: SettingName, value: any) {
+  set(key, value) {
     if (this._settings[key] !== value) {
       this._settings[key] = value;
       if (this._listeners[key]) {
@@ -62,7 +33,7 @@ class Settings {
     }
   }
 
-  setAll(settings: SettingsMap) {
+  setAll(settings) {
     for (const [key, value] of Object.entries(settings)) {
       this.set(key, value);
     }

@@ -5,12 +5,7 @@ import { Link } from "react-router";
 import { color } from "metabase/lib/colors";
 
 export default class NewQueryOption extends Component {
-  props: {
-    image: string,
-    title: string,
-    description: string,
-    to: string,
-  };
+  props;
 
   state = {
     hover: false,

@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
@@ -7,14 +8,8 @@ import MetabaseSettings from "metabase/lib/settings";
 import Button from "metabase/components/Button";
 import ModalContent from "metabase/components/ModalContent";
 
-type Props = {
-  databaseId: number,
-  onClose: () => void,
-  onDone: () => void,
-};
-
 export default class CreatedDatabaseModal extends Component {
-  props: Props;
+  props;
 
   render() {
     const { onClose, onDone, databaseId } = this.props;

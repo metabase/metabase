@@ -19,34 +19,6 @@ const getIconForParameter = parameter =>
     ? "calendar"
     : "unknown";
 
-import type { EmbedType, DisplayOptions } from "./EmbedModalContent";
-import type {
-  EmbeddableResource,
-  EmbeddingParams,
-} from "metabase/public/lib/types";
-import type { Parameter, ParameterId } from "metabase-types/types/Parameter";
-
-type Props = {
-  className?: string,
-
-  embedType: EmbedType,
-
-  resourceType: string,
-  resource: EmbeddableResource,
-  resourceParameters: Parameter[],
-
-  embeddingParams: EmbeddingParams,
-  onChangeEmbeddingParameters: EmbeddingParams => void,
-
-  displayOptions: DisplayOptions,
-  previewParameters: Parameter[],
-  parameterValues: { [id: ParameterId]: any },
-
-  onChangeDisplayOptions: DisplayOptions => void,
-  onChangeParameterValue: (id: ParameterId, value: any) => void,
-  onUnpublish: () => Promise<void>,
-};
-
 const AdvancedSettingsPane = ({
   className,
   embedType,
@@ -63,7 +35,7 @@ const AdvancedSettingsPane = ({
   previewParameters,
   parameterValues,
   onChangeParameterValue,
-}: Props) => (
+}) => (
   <div
     className={cx(className, "p4 full-height flex flex-column bg-light")}
     style={{ width: 400 }}

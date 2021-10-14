@@ -3,9 +3,7 @@ import React from "react";
 import { connect } from "react-redux";
 import { bindActionCreators } from "redux";
 
-export default (entityType?: string) => (
-  ComposedComponent: React.ComponentClass,
-) => {
+export default entityType => ComposedComponent => {
   const mapStateToProps = (state, props) => ({
     entityDef:
       // dynamic require due to dependency load order issues
@@ -20,7 +18,7 @@ export default (entityType?: string) => (
     class extends React.Component {
       static displayName = "EntityType";
 
-      _boundActionCreators: { [key: string]: Function } = {};
+      _boundActionCreators = {};
 
       constructor(props) {
         super(props);

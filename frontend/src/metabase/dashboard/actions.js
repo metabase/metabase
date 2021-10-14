@@ -26,13 +26,6 @@ import {
 import * as Urls from "metabase/lib/urls";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
-import type {
-  DashboardWithCards,
-  DashCard,
-  DashCardId,
-} from "metabase-types/types/Dashboard";
-import type { CardId } from "metabase-types/types/Card";
-
 import Utils from "metabase/lib/utils";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
 import { clickBehaviorIsValid } from "metabase/lib/click-behavior";
@@ -202,23 +195,20 @@ export const setMultipleDashCardAttributes = createAction(
   SET_MULTIPLE_DASHCARD_ATTRIBUTES,
 );
 
-export const addCardToDashboard = ({
-  dashId,
-  cardId,
-}: {
-  dashId: DashCardId,
-  cardId: CardId,
-}) => async (dispatch, getState) => {
+export const addCardToDashboard = ({ dashId, cardId }) => async (
+  dispatch,
+  getState,
+) => {
   await dispatch(Questions.actions.fetch({ id: cardId }));
   const card = Questions.selectors.getObject(getState(), {
     entityId: cardId,
   });
   const { dashboards, dashcards } = getState().dashboard;
-  const dashboard: DashboardWithCards = dashboards[dashId];
-  const existingCards: Array<DashCard> = dashboard.ordered_cards
+  const dashboard = dashboards[dashId];
+  const existingCards = dashboard.ordered_cards
     .map(id => dashcards[id])
     .filter(dc => !dc.isRemoved);
-  const dashcard: DashCard = {
+  const dashcard = {
     id: Math.random(), // temporary id
     dashboard_id: dashId,
     card_id: card.id,
@@ -234,20 +224,14 @@ export const addCardToDashboard = ({
   dispatch(loadMetadataForDashboard([dashcard]));
 };
 
-export const addDashCardToDashboard = function({
-  dashId,
-  dashcardOverrides,
-}: {
-  dashId: DashCardId,
-  dashcardOverrides: {},
-}) {
+export const addDashCardToDashboard = function({ dashId, dashcardOverrides }) {
   return function(dispatch, getState) {
     const { dashboards, dashcards } = getState().dashboard;
-    const dashboard: DashboardWithCards = dashboards[dashId];
-    const existingCards: Array<DashCard> = dashboard.ordered_cards
+    const dashboard = dashboards[dashId];
+    const existingCards = dashboard.ordered_cards
       .map(id => dashcards[id])
       .filter(dc => !dc.isRemoved);
-    const dashcard: DashCard = {
+    const dashcard = {
       id: Math.random(), // temporary id
       card_id: null,
       card: null,
@@ -262,11 +246,7 @@ export const addDashCardToDashboard = function({
   };
 };
 
-export const addTextDashCardToDashboard = function({
-  dashId,
-}: {
-  dashId: DashCardId,
-}) {
+export const addTextDashCardToDashboard = function({ dashId }) {
   const virtualTextCard = createCard();
   virtualTextCard.display = "text";
   virtualTextCard.archived = false;

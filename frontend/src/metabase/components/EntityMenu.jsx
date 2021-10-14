@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { Motion, spring } from "react-motion";
 import cx from "classnames";
@@ -7,23 +8,8 @@ import EntityMenuTrigger from "metabase/components/EntityMenuTrigger";
 import EntityMenuItem from "metabase/components/EntityMenuItem";
 import Popover from "metabase/components/Popover";
 
-type EntityMenuOption = {
-  icon: string,
-  title: string,
-  action?: () => void,
-  link?: string,
-};
-
-type Props = {
-  items: Array<EntityMenuOption>,
-  triggerIcon: string,
-  className?: string,
-  tooltip?: string,
-  triggerProps: Object,
-};
-
 class EntityMenu extends Component {
-  props: Props;
+  props;
 
   state = {
     open: false,
@@ -40,11 +26,11 @@ class EntityMenu extends Component {
     this.setState({ open, menuItemContent: null });
   };
 
-  setFreezeMenu = (freezeMenu: boolean) => {
+  setFreezeMenu = freezeMenu => {
     this.setState({ freezeMenu });
   };
 
-  replaceMenuWithItemContent = (menuItemContent: any) => {
+  replaceMenuWithItemContent = menuItemContent => {
     this.setState({ menuItemContent });
   };
 

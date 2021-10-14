@@ -6,11 +6,9 @@ import ColumnItem from "./ColumnItem";
 const displayNameForColumn = column =>
   column ? column.display_name || column.name : "[Unknown]";
 
-import type { NestedSettingComponentProps } from "./ChartSettingNestedSettings";
-
 // various props injected by chartSettingNestedSettings HOC
 export default class ChartNestedSettingColumns extends React.Component {
-  props: NestedSettingComponentProps;
+  props;
 
   render() {
     const { object, objects, onChangeEditingObject } = this.props;

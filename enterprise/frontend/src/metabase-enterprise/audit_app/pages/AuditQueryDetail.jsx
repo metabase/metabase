@@ -14,11 +14,7 @@ import * as QueryDetailCards from "../lib/cards/query_detail";
 
 import { serializeCardForUrl } from "metabase/lib/card";
 
-type Props = {
-  params: { [key: string]: string },
-};
-
-const AuditQueryDetail = ({ params: { queryHash } }: Props) => (
+const AuditQueryDetail = ({ params: { queryHash } }) => (
   <AuditCustomView card={QueryDetailCards.details(queryHash)}>
     {({ result }) => {
       if (!result) {

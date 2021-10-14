@@ -21,14 +21,6 @@ import {
   getHasNativeWrite,
 } from "metabase/new_query/selectors";
 
-import type { NestedObjectKey } from "metabase/visualizations/lib/settings/nested";
-
-type Props = {
-  hasDataAccess: Boolean,
-  hasNativeWrite: Boolean,
-  initialKey?: NestedObjectKey,
-};
-
 const mapStateToProps = state => ({
   hasDataAccess: getHasDataAccess(state),
   hasNativeWrite: getHasNativeWrite(state),
@@ -46,7 +38,7 @@ const PAGE_PADDING = [1, 4];
   mapDispatchToProps,
 )
 export default class NewQueryOptions extends Component {
-  props: Props;
+  props;
 
   UNSAFE_componentWillMount(props) {
     const { location, push } = this.props;

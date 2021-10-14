@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { Link } from "react-router";
 import cx from "classnames";
@@ -13,13 +14,6 @@ import MetabotLogo from "metabase/components/MetabotLogo";
 import ProgressBar from "metabase/components/ProgressBar";
 import Quotes from "metabase/components/Quotes";
 
-type Props = {
-  params: {
-    databaseId?: number,
-  },
-  fitClassNames: string,
-};
-
 const QUOTES = [
   t`Metabot is admiring your integers…`,
   t`Metabot is performing billions of differential equations…`,
@@ -32,7 +26,7 @@ const QUOTES = [
 
 @fitViewport
 export default class PostSetupApp extends Component {
-  props: Props;
+  props;
   render() {
     return (
       <div className={cx(this.props.fitClassNames, "align-center")}>

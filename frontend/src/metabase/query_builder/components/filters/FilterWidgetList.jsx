@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { findDOMNode } from "react-dom";
 import { t } from "ttag";
@@ -6,23 +7,11 @@ import FilterWidget from "./FilterWidget";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 
-type Props = {
-  query: StructuredQuery,
-  filters: Filter[],
-  removeFilter?: (index: number) => void,
-  updateFilter?: (index: number, filter: Filter) => void,
-  maxDisplayValues?: number,
-};
-
-type State = {
-  shouldScroll: boolean,
-};
-
 export default class FilterWidgetList extends React.Component {
-  props: Props;
-  state: State;
+  props;
+  state;
 
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
     this.state = {
       shouldScroll: false,
@@ -35,7 +24,7 @@ export default class FilterWidgetList extends React.Component {
       : null;
   }
 
-  UNSAFE_componentWillReceiveProps(nextProps: Props) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     // only scroll when a filter is added
     if (nextProps.filters.length > this.props.filters.length) {
       this.setState({ shouldScroll: true });

@@ -11,8 +11,6 @@ import Select, { Option } from "metabase/components/Select";
 import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget";
 
 import { parameterOptionsForField } from "metabase/meta/Parameter";
-import type { TemplateTag } from "metabase-types/types/Query";
-import type { Database } from "metabase-types/types/Database";
 
 import Field from "metabase-lib/lib/metadata/Field";
 import { fetchField } from "metabase/redux/metadata";
@@ -20,24 +18,13 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import MetabaseSettings from "metabase/lib/settings";
-import type { FieldId } from "metabase-types/types/Field";
-
-type Props = {
-  tag: TemplateTag,
-  setTemplateTag: (tag: TemplateTag) => void,
-  databaseFields: Field[],
-  database: Database,
-  databases: Database[],
-  metadata: Metadata,
-  fetchField: FieldId => void,
-};
 
 @connect(
   state => ({ metadata: getMetadata(state) }),
   { fetchField },
 )
 export default class TagEditorParam extends Component {
-  props: Props;
+  props;
 
   UNSAFE_componentWillMount() {
     const { tag, fetchField } = this.props;
