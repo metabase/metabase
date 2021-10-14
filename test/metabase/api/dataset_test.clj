@@ -227,6 +227,24 @@
             (is (= 101
                    (count (csv/read-csv result))))))))))
 
+(deftest export-with-remapped-fields
+  (testing "POST /api/dataset/:format"
+    (testing "Downloaded CSV/JSON/XLSX results should respect remapped fields (#18440)"
+      (let [query (json/generate-string {:database (mt/id)
+                                         :type     :query
+                                         :query    {:source-table (mt/id :venues)
+                                                    :limit 1}
+                                         :middleware
+                                         {:add-default-userland-constraints? true
+                                          :userland-query?                   true}})]
+        (mt/with-column-remappings [venues.category_id categories.name]
+          (let [result (mt/user-http-request :rasta :post 200 "dataset/csv"
+                                             :query query)]
+            (is (str/includes? result "Asian"))))
+        (mt/with-column-remappings [venues.category_id (values-of categories.name)]
+          (let [result (mt/user-http-request :rasta :post 200 "dataset/csv"
+                                             :query query)]
+            (is (str/includes? result "Asian"))))))))
 
 (deftest non--download--queries-should-still-get-the-default-constraints
   (testing (str "non-\"download\" queries should still get the default constraints "
