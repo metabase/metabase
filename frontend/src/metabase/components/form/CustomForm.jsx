@@ -131,7 +131,7 @@ export class CustomFormField extends React.Component {
       "normalize",
     );
   }
-  UNSAFE_componentWillMount() {
+  componentDidMount() {
     if (this.context.registerFormField) {
       this.context.registerFormField(this._getFieldDefinition());
     }
