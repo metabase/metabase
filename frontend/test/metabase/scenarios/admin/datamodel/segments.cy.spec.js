@@ -113,7 +113,11 @@ describe("scenarios > admin > datamodel > segments", () => {
         .click()
         .type("14", { delay: 100 });
       cy.findByText("Add filter").click();
-      cy.findByText("Product ID is 14");
+
+      cy.findByTestId("view-section").within(() => {
+        cy.findByText("Product ID is 14");
+      });
+
       cy.findByText("Save").click();
       cy.findAllByText("Save")
         .last()
