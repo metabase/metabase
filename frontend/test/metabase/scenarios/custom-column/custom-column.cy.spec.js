@@ -115,8 +115,10 @@ describe("scenarios > question > custom column", () => {
     cy.button("Visualize").click();
 
     // wait for results to load
-    cy.get(".LoadingSpinner").should("not.exist");
-    cy.button("Visualize").should("not.exist");
+    cy.findByTestId("query-visualization").within(() => {
+      cy.get(".LoadingSpinner").should("not.exist");
+      cy.button("Visualize").should("not.exist");
+    });
 
     cy.log(
       "**Fails in 0.35.0, 0.35.1, 0.35.2, 0.35.4 and the latest master (2020-10-21)**",
@@ -165,7 +167,9 @@ describe("scenarios > question > custom column", () => {
       });
     });
 
-    cy.findByText(CC_NAME);
+    cy.findByTestId("query-visualization").within(() => {
+      cy.findByText(CC_NAME);
+    });
   });
 
   it("should work with implicit joins (metabase#14080)", () => {
@@ -282,7 +286,9 @@ describe("scenarios > question > custom column", () => {
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.visit(`/question/${QUESTION_ID}`);
 
-      cy.findByText(CC_NAME);
+      cy.findByTestId("query-visualization").within(() => {
+        cy.findByText(CC_NAME);
+      });
       cy.findByText("Gizmo2");
     });
   });
@@ -372,7 +378,10 @@ describe("scenarios > question > custom column", () => {
       expect(xhr.response.body.error).not.to.exist;
     });
 
-    cy.findByText(CC_NAME);
+    cy.findByTestId("query-visualization").within(() => {
+      cy.findByText(CC_NAME);
+    });
+
     cy.contains("37.65");
   });
 
