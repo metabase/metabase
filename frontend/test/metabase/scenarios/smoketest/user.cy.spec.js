@@ -77,9 +77,12 @@ describe("smoketest > user", () => {
   it("should filter via the sidebar, header, and notebook editor", () => {
     // Sidebar filter
 
-    cy.wait(1000)
-      .findByText("Visualize")
-      .should("not.exist");
+    cy.wait(1000);
+
+    cy.findByTestId("question-header").within(() => {
+      cy.findByText("Visualize").should("not.exist");
+    });
+
     cy.findAllByText("Filter")
       .first()
       .click();
@@ -88,12 +91,13 @@ describe("smoketest > user", () => {
     cy.findByText("Gadget").click();
     cy.findByText("Add filter").click();
 
-    cy.findByText("Vendor is not empty");
+    cy.findByTestId("view-section").within(() => {
+      cy.findByText("Vendor is not empty");
+      // Can delete filter in header
 
-    // Can delete filter in header
-
-    cy.findByText("Category is Gadget").click(140, 10);
-    cy.findByText("Category is Gadget").should("not.exist");
+      cy.findByText("Category is Gadget").click(140, 10);
+      cy.findByText("Category is Gadget").should("not.exist");
+    });
 
     // Notebook editor filter
 
@@ -108,19 +112,23 @@ describe("smoketest > user", () => {
     cy.findByText("Add filter").click();
     cy.button("Visualize").click();
 
-    cy.button("Visualize").should("not.exist");
+    cy.findByTestId("view-section").within(() => {
+      cy.button("Visualize").should("not.exist");
+    });
+
     cy.get("svg");
-    cy.findByText("Average of Rating is greater than or equal to 5");
 
     // Can delete filter in header again
 
-    cy.findByText("Average of Rating is greater than or equal to 5").click(
-      300,
-      10,
-    );
-    cy.findByText("Average of Rating is greater than or equal to 5").should(
-      "not.exist",
-    );
+    cy.findByTestId("view-section").within(() => {
+      cy.findByText("Average of Rating is greater than or equal to 5").click(
+        300,
+        10,
+      );
+      cy.findByText("Average of Rating is greater than or equal to 5").should(
+        "not.exist",
+      );
+    });
 
     // Header filter
 
@@ -128,7 +136,10 @@ describe("smoketest > user", () => {
       .eq(1)
       .contains("0");
 
-    cy.findAllByText("Average of Rating").click();
+    cy.findByTestId("query-visualization").within(() => {
+      cy.findByText("Average of Rating").click();
+    });
+
     cy.findByText("Filter by this column").click();
     cy.findByText("Equal to").click();
     cy.findByText("Greater than or equal to").click();
@@ -139,13 +150,15 @@ describe("smoketest > user", () => {
       .eq(1)
       .contains("4.2");
 
-    // Can minimize Filter dispay in header
+    // Can minimize Filter display in header
 
     cy.icon("filter")
       .first()
       .click();
 
-    cy.findByText("Vendor is not empty").should("not.exist");
+    cy.findByTestId("view-section").within(() => {
+      cy.findByText("Vendor is not empty").should("not.exist");
+    });
   });
 
   it("should summarize via both the sidebar and notebook editor", () => {
@@ -162,12 +175,19 @@ describe("smoketest > user", () => {
     cy.findAllByText("Summarize")
       .first()
       .click();
-    cy.icon("close")
-      .first()
-      .click();
+
+    cy.findByTestId("sidebar-right").within(() => {
+      cy.icon("close")
+        .first()
+        .click();
+    });
+
     cy.findByText("Done").click();
 
-    cy.findByText("Average of Rating by Category").should("not.exist");
+    cy.findByTestId("question-header").within(() => {
+      cy.findByText("Average of Rating by Category").should("not.exist");
+    });
+
     cy.get("span")
       .findByText("Group")
       .should("not.exist");
