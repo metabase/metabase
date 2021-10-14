@@ -2372,6 +2372,7 @@ databaseChangeLog:
             columnName: visibility_type
             defaultNullValue: unset
             tableName: metabase_field
+
   - changeSet:
       id: 31
       author: agilliland
@@ -8543,11 +8544,28 @@ databaseChangeLog:
   - changeSet:
       id: 317
       author: camsaul
-      comment: Added 0.42.0 Remove unused column
+      comment: Added 0.42.0 Remove unused column (#5240)
       changes:
         - dropColumn:
             tableName: metabase_table
             columnName: entity_name
+
+  - changeSet:
+      id: 318
+      author: camsaul
+      comment: Added 0.42.0 Added constraint we should have had all along (#5999)
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT count(*) FROM report_card WHERE database_id IS NULL
+      changes:
+        - addNotNullConstraint:
+            columnDataType: int
+            defaultNullValue: unset
+            tableName: report_card
+            columnName: database_id
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
