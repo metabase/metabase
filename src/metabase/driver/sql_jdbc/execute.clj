@@ -14,6 +14,7 @@
             [metabase.driver.sql-jdbc.execute.old-impl :as execute.old]
             [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync]
             [metabase.mbql.util :as mbql.u]
+            [metabase.models.setting :refer [defsetting]]
             [metabase.query-processor.context :as context]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.interface :as qp.i]
@@ -196,6 +197,12 @@
         (catch Throwable e
           (log/debug e (trs "Error setting connection to read-only"))))
       (try
+        ;; set autocommit to false so that pg honors fetchSize. Otherwise it commits the transaction and needs the
+        ;; entire realized result set
+        (.setAutoCommit conn false)
+        (catch Throwable e
+          (log/debug e (trs "Error setting connection to autoCommit false"))))
+      (try
         (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
         (catch Throwable e
           (log/debug e (trs "Error setting default holdability for connection"))))
@@ -267,6 +274,13 @@
       (set-parameter driver stmt (inc i) param))
     params)))
 
+(defsetting ^:private sql-jdbc-fetch-size
+  "Fetch size for result sets. We want to ensure that the jdbc ResultSet objects are not realizing the entire results
+  in memory."
+  :default 100
+  :type :integer
+  :visibility :internal)
+
 (defmethod prepared-statement :sql-jdbc
   [driver ^Connection conn ^String sql params]
   (let [stmt (.prepareStatement conn
@@ -279,6 +293,10 @@
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
           (log/debug e (trs "Error setting prepared statement fetch direction to FETCH_FORWARD"))))
+      (try
+        (.setFetchSize stmt (sql-jdbc-fetch-size))
+        (catch Throwable e
+          (log/debug e (trs "Error setting prepared statement fetch size to fetch-size"))))
       (set-parameters! driver stmt params)
       stmt
       (catch Throwable e
@@ -301,6 +319,10 @@
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
           (log/debug e (trs "Error setting statement fetch direction to FETCH_FORWARD"))))
+      (try
+        (.setFetchSize stmt (sql-jdbc-fetch-size))
+        (catch Throwable e
+          (log/debug e (trs "Error setting statement fetch size to fetch-size"))))
       stmt
       (catch Throwable e
         (.close stmt)
