@@ -39,7 +39,10 @@ describe("issue 14843", () => {
     cy.button("Visualize").click();
     cy.wait("@dataset");
 
-    cy.findByText(`${CC_NAME} is not equal to 3`);
+    cy.findByTestId("view-section").within(() => {
+      cy.findByText(`${CC_NAME} is not equal to 3`);
+    });
+
     cy.findByText("Rye").should("not.exist");
   });
 });
