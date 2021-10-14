@@ -138,6 +138,17 @@ function enterDefaultValue(value) {
 }
 
 /**
+ * @param {string} searchTerm
+ * @param {string} result
+ */
+export function pickDefaultValue(searchTerm, result) {
+  cy.findByPlaceholderText("Enter a default value...").type(searchTerm);
+  cy.findByText(result).click();
+
+  cy.button("Add filter").click();
+}
+
+/**
  *
  * @param {string|Array.<string>} value
  * @returns {boolean}
