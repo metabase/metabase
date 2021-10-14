@@ -54,6 +54,8 @@ describe("issue 13289", () => {
 
     cy.findByText("There was a problem with your question").should("not.exist");
 
-    cy.findByText(`${CC_NAME} is equal to 2`);
+    cy.findByTestId("view-section").within(() => {
+      cy.findByText(`${CC_NAME} is equal to 2`);
+    });
   });
 });
