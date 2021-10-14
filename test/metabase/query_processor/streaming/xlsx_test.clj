@@ -225,6 +225,10 @@
 ;;; |                                               XLSX export tests                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+;; These are tests that generate an XLSX binary and then parse and assert on its contents, to test logic and value
+;; formatting that is specific to the XLSX format. These do NOT test any of the column ordering logic in
+;; `metabase.query-processor.streaming`, or anything that happens in the API handlers for generating exports.
+
 (defn- parse-cell-content
   [sheet]
   (for [row (spreadsheet/into-seq sheet)]
