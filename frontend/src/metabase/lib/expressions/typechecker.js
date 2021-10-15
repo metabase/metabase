@@ -72,24 +72,30 @@ export function typeCheck(cst, rootType) {
       const functionToken = ctx.functionName[0].tokenType;
       const clause = CLAUSE_TOKENS.get(functionToken);
       const name = functionToken.name;
-      const expectedArgsLength = clause.args.length;
-      if (!clause.multiple && clause.args.length !== args.length) {
-        const message = ngettext(
-          msgid`Function ${name} expects ${expectedArgsLength} argument`,
-          `Function ${name} expects ${expectedArgsLength} arguments`,
-          expectedArgsLength,
-        );
-        this.errors.push({ message });
-      } else {
-        // check for return value sub-type mismatch
-        const type = this.typeStack[0];
-        if (type === "number") {
-          const op = getMBQLName(name);
-          const returnType = MBQL_CLAUSES[op].type;
-          if (returnType !== "number" && returnType !== "string") {
-            const message = t`Expecting ${type} but found function ${name} returning ${returnType}`;
-            this.errors.push({ message });
-          }
+
+      // check for return value sub-type mismatch
+      const type = this.typeStack[0];
+      if (type === "number") {
+        const op = getMBQLName(name);
+        const returnType = MBQL_CLAUSES[op].type;
+        if (returnType !== "number" && returnType !== "string") {
+          const message = t`Expecting ${type} but found function ${name} returning ${returnType}`;
+          this.errors.push({ message });
+        }
+      }
+
+      if (!clause.multiple) {
+        const expectedArgsLength = clause.args.length;
+        const maxArgCount = clause.hasOptions
+          ? expectedArgsLength + 1
+          : expectedArgsLength;
+        if (args.length < expectedArgsLength || args.length > maxArgCount) {
+          const message = ngettext(
+            msgid`Function ${name} expects ${expectedArgsLength} argument`,
+            `Function ${name} expects ${expectedArgsLength} arguments`,
+            expectedArgsLength,
+          );
+          this.errors.push({ message });
         }
 
         // check for argument type matching

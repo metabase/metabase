@@ -119,7 +119,7 @@ export default class FieldApp extends React.Component {
     this.saveStatusRef = React.createRef();
   }
 
-  async UNSAFE_componentWillMount() {
+  async componentDidMount() {
     const {
       databaseId,
       tableId,

@@ -146,9 +146,10 @@
   [card-results]
   (let [{channel-id :id} (slack/files-channel)]
     (->> (for [card-result card-results]
-           (let [{{card-id :id, card-name :name, :as card} :card, result :result} card-result]
+           (let [{{card-id :id, card-name :name, :as card} :card, dashcard :dashcard, result :result} card-result]
              (if (and card result)
-               {:title           card-name
+               {:title           (or (-> dashcard :visualization_settings :card.title)
+                                     card-name)
                 :rendered-info   (render/render-pulse-card :inline (defaulted-timezone card) card nil result)
                 :title_link      (urls/card-url card-id)
                 :attachment-name "image.png"

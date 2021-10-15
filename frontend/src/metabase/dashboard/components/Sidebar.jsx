@@ -1,23 +1,18 @@
-/* eslint-disable react/prop-types */
 import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-
 import Button from "metabase/components/Button";
-import { getErrorMessage } from "metabase/components/form/FormMessage";
-import { SidebarError, SidebarFooter } from "./Sidebar.styled";
 
 const WIDTH = 384;
 
 const propTypes = {
   closeIsDisabled: PropTypes.bool,
-  formError: PropTypes.object,
   children: PropTypes.node,
   onClose: PropTypes.func,
   onCancel: PropTypes.func,
 };
 
-function Sidebar({ closeIsDisabled, formError, children, onClose, onCancel }) {
+function Sidebar({ closeIsDisabled, children, onClose, onCancel }) {
   return (
     <aside
       style={{ width: WIDTH, minWidth: WIDTH }}
@@ -49,11 +44,6 @@ function Sidebar({ closeIsDisabled, formError, children, onClose, onCancel }) {
             >{t`Done`}</Button>
           )}
         </div>
-      )}
-      {formError && (
-        <SidebarFooter>
-          <SidebarError>{getErrorMessage(formError)}</SidebarError>
-        </SidebarFooter>
       )}
     </aside>
   );
