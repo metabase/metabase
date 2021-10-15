@@ -1,5 +1,4 @@
 import {
-  createNativeQuestion,
   restore,
   openOrdersTable,
   openProductsTable,
@@ -235,8 +234,15 @@ describe("scenarios > question > notebook", () => {
 
     it("should join on field literals", () => {
       // create two native questions
-      createNativeQuestion("question a", "select 'foo' as a_column");
-      createNativeQuestion("question b", "select 'foo' as b_column");
+      cy.createNativeQuestion({
+        name: "question a",
+        native: { query: "select 'foo' as a_column" },
+      });
+
+      cy.createNativeQuestion({
+        name: "question b",
+        native: { query: "select 'foo' as b_column" },
+      });
 
       // start a custom question with question a
       cy.visit("/question/new");
