@@ -67,7 +67,7 @@ describeWithToken("postgres > user > query", () => {
           expect(xhr.response.body.error).not.to.exist;
         });
 
-        cy.findByText(CC_NAME);
+        cy.findAllByText(CC_NAME).filter(":visible");
         cy.findByText(/^Hudson$/);
       });
     });
