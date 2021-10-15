@@ -138,9 +138,7 @@ describe("scenarios > visualizations > maps", () => {
       expect(xhr.request.body.query.filter).not.to.contain("Texas");
     });
 
-    cy.findByTestId("view-section").within(() => {
-      cy.findByText("State is TX");
-    });
+    cy.findAllByText("State is TX").filter(":visible");
 
     cy.findByText("171 Olive Oyle Lane"); // Address in the first row
   });

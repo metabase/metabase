@@ -29,9 +29,7 @@ describe("scenarios > visualizations > object detail", () => {
       .findByText("93")
       .click();
 
-    cy.findByTestId("view-section").within(() => {
-      cy.findByText("Product ID is 1");
-    });
+    cy.findAllByText("Product ID is 1").filter(":visible");
   });
 
   it("should allow clicking the next arrow", () => {
