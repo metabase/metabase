@@ -208,35 +208,6 @@
                     (partial into {})
                     (db/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]}))))))))))
 
-(defn- assert-jdbc-url-fetch-size [db fetch-size]
-  (with-open [conn (.getConnection (sql-jdbc.execute/datasource db))]
-    (let [md  (.getMetaData conn)
-          url (.getURL md)]
-      (is (str/includes? url (str "defaultRowFetchSize=" fetch-size))))))
-
-(deftest test-jdbc-fetch-size
-  (testing "Redshift JDBC fetch size is set correctly in PreparedStatement"
-    (mt/test-driver :redshift
-      ;; the default value should always be picked up if nothing is set
-      (assert-jdbc-url-fetch-size (mt/db) (:default (setting/resolve-setting :redshift-fetch-size)))
-      (mt/with-temporary-setting-values [redshift-fetch-size "14"]
-        ;; create a new DB in order to pick up the change to the setting here
-        (mt/with-temp Database [db {:engine :redshift, :details (:details (mt/db))}]
-          (mt/with-db db
-            ;; make sure the JDBC URL has the defaultRowFetchSize parameter set correctly
-            (assert-jdbc-url-fetch-size db 14)
-            ;; now, actually run a query and see if the PreparedStatement has the right fetchSize set
-            (mt/with-everything-store
-              (let [orig-fn sql-jdbc.execute/reducible-rows
-                    new-fn  (fn [driver ^ResultSet rs ^ResultSetMetaData rsmeta canceled-chan]
-                              (is (= 14 (.getFetchSize (.getStatement rs))))
-                              (orig-fn driver rs rsmeta canceled-chan))]
-                (with-redefs [sql-jdbc.execute/reducible-rows new-fn]
-                  (is (= [[1]] (-> {:query "SELECT 1"}
-                                   (mt/native-query)
-                                   (qp/process-query)
-                                   (mt/rows)))))))))))))
-
 (deftest syncable-schemas-test
   (mt/test-driver :redshift
     (testing "Should filter out schemas for which the user has no perms"
