@@ -22,7 +22,7 @@ export function visitAlias(alias) {
  * @example
  * openNativeEditor().type("SELECT 123");
  * @example
- * openNativeEditor({ databaseName: "QA Mongo4" }).type("SELECT 123");
+ * openNativeEditor({ databaseName: "QA Postgres12" }).type("SELECT 123");
  */
 export function openNativeEditor({ databaseName, alias = "editor" } = {}) {
   cy.visit("/");
