@@ -30,7 +30,8 @@ function mapTokenType(token) {
 }
 
 function createSpans(source) {
-  const isFunction = name => FUNCTIONS.has(getMBQLName(name));
+  const isFunction = name =>
+    name.toLowerCase() === "case" || FUNCTIONS.has(getMBQLName(name));
   const { tokens } = tokenize(source);
   let lastPos = 0;
   const spans = [];
