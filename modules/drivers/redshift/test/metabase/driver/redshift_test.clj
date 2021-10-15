@@ -21,8 +21,7 @@
             [metabase.test.util :as tu]
             [metabase.util :as u]
             [toucan.db :as db])
-  (:import [java.sql ResultSet ResultSetMetaData]
-           metabase.plugins.jdbc_proxy.ProxyDriver))
+  (:import metabase.plugins.jdbc_proxy.ProxyDriver))
 
 (use-fixtures :once (fixtures/initialize :plugins))
 (use-fixtures :once (fixtures/initialize :db))
