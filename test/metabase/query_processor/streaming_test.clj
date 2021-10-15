@@ -186,6 +186,7 @@
   (zipmap col-names (vals row)))
 
 ;; see also `metabase.query-processor.streaming.xlsx-test/report-timezone-test`
+;; TODO this test doesn't seem to run?
 (deftest report-timezone-test
   (testing "Export downloads should format stuff with the report timezone rather than UTC (#13677)\n"
     (mt/test-driver :postgres
@@ -269,77 +270,41 @@
                   :time-tz        #inst "1899-12-31T23:23:18.000-00:00"})))))))))
 
 (deftest export-column-order-test
-  (testing "basic correlation of columns between cols and table-columns by index"
+  (testing "correlation of columns by field ref"
     (is (= [0 1]
            (@#'qp.streaming/export-column-order
-            [{:id 0, :name "Col1"}, {:id 1, :name "Col2"}]
-            [{::mb.viz/table-column-field-ref ["field" 0 nil], ::mb.viz/table-column-enabled true}
-             {::mb.viz/table-column-field-ref ["field" 1 nil], ::mb.viz/table-column-enabled true}])))
+            [{:id 0, :name "Col1" :field_ref [:field 0 nil]}, {:id 1, :name "Col2" :field_ref [:field 1 nil]}]
+            [{::mb.viz/table-column-field-ref [:field 0 nil], ::mb.viz/table-column-enabled true}
+             {::mb.viz/table-column-field-ref [:field 1 nil], ::mb.viz/table-column-enabled true}])))
     (is (= [1 0]
            (@#'qp.streaming/export-column-order
-            [{:id 0, :name "Col1"}, {:id 1, :name "Col2"}]
-            [{::mb.viz/table-column-field-ref ["field" 1 nil], ::mb.viz/table-column-enabled true}
-             {::mb.viz/table-column-field-ref ["field" 0 nil], ::mb.viz/table-column-enabled true}]))))
+            [{:id 0, :name "Col1" :field_ref [:field 0 nil]}, {:id 1, :name "Col2" :field_ref [:field 1 nil]}]
+            [{::mb.viz/table-column-field-ref [:field 1 nil], ::mb.viz/table-column-enabled true}
+             {::mb.viz/table-column-field-ref [:field 0 nil], ::mb.viz/table-column-enabled true}]))))
 
-  (testing "basic correlation of columns between cols and table-columns by name"
+  (testing "correlation of columns by name"
     (is (= [0 1]
            (@#'qp.streaming/export-column-order
-            [{:id 0, :name "Col1"}, {:id 1, :name "Col2"}]
-            [{::mb.viz/table-column-field-ref ["field" "Col1"  nil], ::mb.viz/table-column-enabled true}
-             {::mb.viz/table-column-field-ref ["field" "Col2" nil], ::mb.viz/table-column-enabled true}])))
+            [{:name "Col1"}, {:name "Col2"}]
+            [{::mb.viz/table-column-name "Col1", ::mb.viz/table-column-enabled true}
+             {::mb.viz/table-column-name "Col2", ::mb.viz/table-column-enabled true}])))
     (is (= [1 0]
            (@#'qp.streaming/export-column-order
             [{:id 0, :name "Col1"}, {:id 1, :name "Col2"}]
-            [{::mb.viz/table-column-field-ref ["field" "Col2" nil], ::mb.viz/table-column-enabled true}
-             {::mb.viz/table-column-field-ref ["field" "Col1" nil], ::mb.viz/table-column-enabled true}]))))
+            [{::mb.viz/table-column-name "Col2", ::mb.viz/table-column-enabled true}
+             {::mb.viz/table-column-name "Col1", ::mb.viz/table-column-enabled true}]))))
 
-  (testing "correlation of aggregation fields by field_ref"
-    (is (= [0 1]
-           (@#'qp.streaming/export-column-order
-            [{:id 0, :field_ref [:aggregation 0]}, {:id 1, :field_ref [:aggregation 1]}]
-            [{::mb.viz/table-column-field-ref ["aggregation" 0], ::mb.viz/table-column-enabled true}
-             {::mb.viz/table-column-field-ref ["aggregation" 1], ::mb.viz/table-column-enabled true}])))
-    (is (= [1 0]
-           (@#'qp.streaming/export-column-order
-            [{:id 0, :field_ref [:aggregation 0]}, {:id 1, :field_ref [:aggregation 1]}]
-            [{::mb.viz/table-column-field-ref ["aggregation" 1], ::mb.viz/table-column-enabled true}
-             {::mb.viz/table-column-field-ref ["aggregation" 0], ::mb.viz/table-column-enabled true}]))))
-
-  (testing "correlation of custom expressions by field_ref"
-    (is (= [0 1]
-           (@#'qp.streaming/export-column-order
-            [{:id 0, :field_ref [:expression "Name0"]}, {:id 1, :field_ref [:expression "Name1"]}]
-            [{::mb.viz/table-column-field-ref ["expression" "Name0"], ::mb.viz/table-column-enabled true}
-             {::mb.viz/table-column-field-ref ["expression" "Name1"], ::mb.viz/table-column-enabled true}])))
-    (is (= [1 0]
-           (@#'qp.streaming/export-column-order
-            [{:id 0, :field_ref [:expression "Name0"]}, {:id 1, :field_ref [:expression "Name1"]}]
-            [{::mb.viz/table-column-field-ref ["expression" "Name1"], ::mb.viz/table-column-enabled true}
-             {::mb.viz/table-column-field-ref ["expression" "Name0"], ::mb.viz/table-column-enabled true}]))))
-
-  (testing "correlation of fields using deprecated field dimensions"
-    (is (= [1 0]
-           (@#'qp.streaming/export-column-order
-            [{:id 0, :field_ref [:field_literal "Name0"]}, {:id 1, :field_ref [:field_literal "Name1"]}]
-            [{::mb.viz/table-column-field-ref ["field_literal" "Name1"], ::mb.viz/table-column-enabled true}
-             {::mb.viz/table-column-field-ref ["field_literal" "Name0"], ::mb.viz/table-column-enabled true}])))
-    (is (= [1 0]
-           (@#'qp.streaming/export-column-order
-            [{:id 0, :field_ref [:field_id 0]}, {:id 1, :field_ref [:field_id 1]}]
-            [{::mb.viz/table-column-field-ref ["field_id" 1], ::mb.viz/table-column-enabled true}
-             {::mb.viz/table-column-field-ref ["field_id" 0], ::mb.viz/table-column-enabled true}]))))
-
-  (testing "disabled columns are excluded from ordering"
+  (testing "correlation of columns by field ref"
     (is (= [0]
            (@#'qp.streaming/export-column-order
-            [{:id 0, :name "Col1"}, {:id 1, :name "Col2"}]
-            [{::mb.viz/table-column-field-ref ["field" 0 nil], ::mb.viz/table-column-enabled true}
-             {::mb.viz/table-column-field-ref ["field" 1 nil], ::mb.viz/table-column-enabled false}])))
+            [{:id 0, :name "Col1" :field_ref [:field 0 nil]}, {:id 1, :name "Col2" :field_ref [:field 1 nil]}]
+            [{::mb.viz/table-column-field-ref [:field 0 nil], ::mb.viz/table-column-enabled true}
+             {::mb.viz/table-column-field-ref [:field 1 nil], ::mb.viz/table-column-enabled false}])))
     (is (= [1]
            (@#'qp.streaming/export-column-order
-            [{:id 0, :name "Col1"}, {:id 1, :name "Col2"}]
-            [{::mb.viz/table-column-field-ref ["field" 0 nil], ::mb.viz/table-column-enabled false}
-             {::mb.viz/table-column-field-ref ["field" 1 nil], ::mb.viz/table-column-enabled true}]))))
+            [{:id 0, :name "Col1" :field_ref [:field 0 nil]}, {:id 1, :name "Col2" :field_ref [:field 1 nil]}]
+            [{::mb.viz/table-column-field-ref [:field 0 nil], ::mb.viz/table-column-enabled false}
+             {::mb.viz/table-column-field-ref [:field 1 nil], ::mb.viz/table-column-enabled true}]))))
 
   (testing "remapped columns use the index of the new column"
     (is (= [1]
@@ -351,9 +316,9 @@
   (testing "entries in table-columns without corresponding entries in cols are ignored"
     (is (= [0]
            (@#'qp.streaming/export-column-order
-            [{:id 0, :name "Col1"}]
-            [{::mb.viz/table-column-field-ref ["field" 0 nil], ::mb.viz/table-column-enabled true}
-             {::mb.viz/table-column-field-ref ["field" 1 nil], ::mb.viz/table-column-enabled true}]))))
+            [{:id 0, :name "Col1" :field_ref [:field 0 nil]}]
+            [{::mb.viz/table-column-field-ref [:field 0 nil], ::mb.viz/table-column-enabled true}
+             {::mb.viz/table-column-field-ref [:field 1 nil], ::mb.viz/table-column-enabled true}]))))
 
   (testing "if table-columns is nil, original order of cols is used"
     (is (= [0 1]
