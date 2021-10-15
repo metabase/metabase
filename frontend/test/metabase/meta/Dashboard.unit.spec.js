@@ -13,6 +13,8 @@ import {
 } from "metabase/meta/Dashboard";
 import DASHBOARD_WITH_BOOLEAN_PARAMETER from "./dashboard-with-boolean-parameter.json";
 
+import Field from "metabase-lib/lib/metadata/Field";
+
 function structured(query) {
   return SAMPLE_DATASET.question(query).card();
   // return {
@@ -367,7 +369,7 @@ describe("meta/Dashboard", () => {
     beforeEach(() => {
       metadata = {
         fields: {
-          120: {
+          120: new Field({
             values: {
               values: [false, true],
               human_readable_values: [],
@@ -382,8 +384,8 @@ describe("meta/Dashboard", () => {
             name_field: null,
             dimensions: {},
             fieldValues: () => [],
-          },
-          134: {
+          }),
+          134: new Field({
             values: {
               values: [false, true],
               human_readable_values: [],
@@ -398,31 +400,7 @@ describe("meta/Dashboard", () => {
             name_field: null,
             dimensions: {},
             fieldValues: () => [],
-          },
-          "card__61:integer": {
-            semantic_type: null,
-            table_id: "card__61",
-            name: "integer",
-            field_ref: ["field", "integer", { "base-type": "type/Integer" }],
-            effective_type: "type/Integer",
-            id: ["field", "integer", { "base-type": "type/Integer" }],
-            display_name: "integer",
-            base_type: "type/Integer",
-            fieldValues: () => [],
-          },
-          "card__61:boolean": {
-            semantic_type: null,
-            table_id: "card__61",
-            name: "boolean",
-            dimension_options: [],
-            field_ref: ["field", "boolean", { "base-type": "type/Boolean" }],
-            effective_type: "type/Boolean",
-            id: ["field", "boolean", { "base-type": "type/Boolean" }],
-            default_dimension_option: null,
-            display_name: "boolean",
-            base_type: "type/Boolean",
-            fieldValues: () => [],
-          },
+          }),
         },
         field(id) {
           return this.fields[id];
@@ -434,20 +412,15 @@ describe("meta/Dashboard", () => {
     });
 
     it("should generate a map of parameter mappings with added field metadata", () => {
-      expect(getMappingsByParameter(metadata, dashboard)).toEqual({
+      const mappings = getMappingsByParameter(metadata, dashboard);
+
+      expect(mappings).toEqual({
         parameter1: {
           "81": {
             "56": {
               card_id: 56,
               dashcard_id: 81,
-              field: expect.objectContaining({
-                base_type: "type/Boolean",
-                has_field_values: "list",
-                id: 120,
-                name_field: null,
-                semantic_type: null,
-                table_id: 6,
-              }),
+              field: metadata.field(120),
               field_id: 120,
               parameter_id: "parameter1",
               target: ["dimension", ["field", 120, null]],
@@ -457,14 +430,7 @@ describe("meta/Dashboard", () => {
             "59": {
               card_id: 59,
               dashcard_id: 86,
-              field: expect.objectContaining({
-                base_type: "type/Boolean",
-                has_field_values: "list",
-                id: 134,
-                name_field: null,
-                semantic_type: "type/Category",
-                table_id: 8,
-              }),
+              field: metadata.field(134),
               field_id: 134,
               parameter_id: "parameter1",
               target: ["dimension", ["template-tag", "bbb"]],
@@ -474,23 +440,8 @@ describe("meta/Dashboard", () => {
             "62": {
               card_id: 62,
               dashcard_id: 87,
-              field: expect.objectContaining({
-                semantic_type: null,
-                table_id: "card__61",
-                name: "boolean",
-                dimension_options: [],
-                field_ref: [
-                  "field",
-                  "boolean",
-                  { "base-type": "type/Boolean" },
-                ],
-                effective_type: "type/Boolean",
-                id: ["field", "boolean", { "base-type": "type/Boolean" }],
-                default_dimension_option: null,
-                display_name: "boolean",
-                base_type: "type/Boolean",
-              }),
-              field_id: ["field", "boolean", { "base-type": "type/Boolean" }],
+              field: expect.any(Field),
+              field_id: "boolean",
               parameter_id: "parameter1",
               target: [
                 "dimension",
@@ -500,6 +451,12 @@ describe("meta/Dashboard", () => {
           },
         },
       });
+
+      expect(mappings.parameter1["87"]["62"].field).toEqual(
+        expect.objectContaining({
+          name: "boolean",
+        }),
+      );
     });
   });
 });
