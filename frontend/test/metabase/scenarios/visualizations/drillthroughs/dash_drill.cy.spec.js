@@ -194,7 +194,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
             cy.findByText(QUESTION_NAME).click();
 
             cy.wait("@dataset");
-            cy.findByText("Category is Doohickey");
+            cy.findAllByText("Category is Doohickey").filter(":visible");
             cy.findByText("177"); // Doohickeys for 2016
           });
         });
