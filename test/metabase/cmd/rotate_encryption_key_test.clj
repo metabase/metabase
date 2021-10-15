@@ -69,7 +69,7 @@
                               "BCQbKNVu6N8TQ2BwyTC0U0oCBqsvFVr2uhEM/tRgJUM="]]
       (mt/test-drivers #{:postgres :h2 :mysql}
         (with-model-type :encrypted-json {:out #'interface/encrypted-json-out}
-          (binding [;; EXPLANATION FOR WHY THIS TEST IS FLAKY
+          (binding [;; EXPLANATION FOR WHY THIS TEST WAS FLAKY
                     ;; at this point, all the state switching craziness that happens for
                     ;; `metabase.util.i18n.impl/site-locale-from-setting` has already taken place, so this function has
                     ;; been bootstrapped to now return the site locale from the real, actual setting function
