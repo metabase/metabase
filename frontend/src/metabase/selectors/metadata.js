@@ -278,17 +278,12 @@ export const makeGetMergedParameterFieldValues = () => {
 export function copyObjects(metadata, objects, instantiate) {
   const copies = {};
 
-  for (const [id, object] of Object.entries(objects)) {
+  for (const [, object] of Object.entries(objects)) {
     if (object && object.id != null) {
       const instance = instantiate(object);
       instance.metadata = metadata;
 
       copies[object.id] = instance;
-      // fields can have ids that are arrays that get coerced into non-unique strings
-      // however, we seem to be relying on these broken ids somewhere, so keeping both for now?
-      if (String(object.id) !== id) {
-        copies[id] = instance;
-      }
     } else {
       console.warn("Missing id:", object);
     }
