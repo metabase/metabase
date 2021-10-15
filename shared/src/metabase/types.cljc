@@ -332,12 +332,17 @@
    (into {} (for [t (descendants root)]
               {t (parents t)}))))
 
+(defn field-is-type?
+  "True if a Metabase `Field` instance has a temporal base or semantic type, i.e. if this Field represents a value
+  relating to a moment in time."
+  [tyype {base-type :base_type, effective-type :effective_type}]
+  (some #(isa? % tyype) [base-type effective-type]))
+
 (defn temporal-field?
   "True if a Metabase `Field` instance has a temporal base or semantic type, i.e. if this Field represents a value
   relating to a moment in time."
-  {:arglists '([field])}
-  [{base-type :base_type, effective-type :effective_type}]
-  (some #(isa? % :type/Temporal) [base-type effective-type]))
+  [field]
+  (field-is-type? :type/Temporal field))
 
 #?(:cljs
    (defn ^:export isa

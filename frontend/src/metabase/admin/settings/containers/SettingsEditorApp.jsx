@@ -65,7 +65,7 @@ export default class SettingsEditorApp extends Component {
     this.saveStatusRef = React.createRef();
   }
 
-  UNSAFE_componentWillMount() {
+  componentDidMount() {
     this.props.initializeSettings();
   }
 

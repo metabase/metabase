@@ -23,9 +23,11 @@
   false)
 
 (s/defn ^:private make-title-if-needed :- (s/maybe common/RenderedPulseCard)
-  [render-type card]
+  [render-type card dashcard]
   (when *include-title*
-    (let [image-bundle (when *include-buttons*
+    (let [card-name    (or (-> dashcard :visualization_settings :card.title)
+                           (-> card :name))
+          image-bundle (when *include-buttons*
                          (image-bundle/external-link-image-bundle render-type))]
       {:attachments (when image-bundle
                       (image-bundle/image-bundle->attachment image-bundle))
@@ -37,7 +39,7 @@
                        [:td {:style (style/style {:padding :0
                                                   :margin  :0})}
                         [:span {:style (style/style (style/header-style))}
-                         (-> card :name h)]]
+                         (h card-name)]]
                        [:td {:style (style/style {:text-align :right})}
                         (when *include-buttons*
                           [:img {:style (style/style {:width :16px})
@@ -97,7 +99,7 @@
         (and (= @col-sample-count 2)
              (> @row-sample-count 1)
              (number-field? @col-2)
-             (not (#{:waterfall :pie} display-type)))
+             (not (#{:waterfall :pie :table} display-type)))
         (chart-type :sparkline "result has 2 cols (%s and %s (number)) and > 1 row" (col-description @col-1) (col-description @col-2))
 
         (and (= @col-sample-count 2)
@@ -139,7 +141,7 @@
 - render/text : raw text suitable for substituting on clients when text is preferable. (Currently slack uses this for
   scalar results where text is preferable to an image of a div of a single result."
   [render-type timezone-id :- (s/maybe s/Str) card dashcard results]
-  (let [{title :content, title-attachments :attachments} (make-title-if-needed render-type card)
+  (let [{title :content, title-attachments :attachments} (make-title-if-needed render-type card dashcard)
         {description :content}                           (make-description-if-needed dashcard)
         {pulse-body       :content
          body-attachments :attachments

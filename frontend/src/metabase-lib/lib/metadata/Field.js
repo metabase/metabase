@@ -166,7 +166,7 @@ export default class Field extends Base {
    * @returns {FieldValues}
    */
   fieldValues() {
-    return getFieldValues(this._object);
+    return getFieldValues(this._plainObject);
   }
 
   icon() {

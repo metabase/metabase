@@ -11,7 +11,7 @@ const {
   admin: { first_name, last_name },
 } = USERS;
 
-describe.skip("issue 18344", () => {
+describe("issue 18344", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

@@ -33,7 +33,7 @@ describe("scenarios > filters > sql filters > field filter > String", () => {
   });
 
   Object.entries(STRING_FILTER_SUBTYPES).forEach(
-    ([subType, { value, representativeResult }]) => {
+    ([subType, { searchTerm, value, representativeResult }]) => {
       describe(`should work for ${subType}`, () => {
         it("when set through the filter widget", () => {
           FieldFilter.setWidgetType(subType);
@@ -54,7 +54,10 @@ describe("scenarios > filters > sql filters > field filter > String", () => {
           SQLFilter.toggleRequired();
 
           FieldFilter.openEntryForm({ isFilterRequired: true });
-          FieldFilter.addDefaultStringFilter(value);
+
+          searchTerm
+            ? FieldFilter.pickDefaultValue(searchTerm, value)
+            : FieldFilter.addDefaultStringFilter(value);
 
           SQLFilter.runQuery();
 

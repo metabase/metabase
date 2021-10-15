@@ -20,7 +20,6 @@ import {
 import { setParameterMapping } from "../actions";
 
 import cx from "classnames";
-import { getIn } from "icepick";
 
 import type { Card } from "metabase-types/types/Card";
 import type { DashCard } from "metabase-types/types/Dashboard";
@@ -92,25 +91,7 @@ export default class DashCardCardParameterMapper extends Component {
   };
 
   render() {
-    const {
-      mappingOptions,
-      target,
-      mappingsByParameter,
-      parameter,
-      dashcard,
-      card,
-    } = this.props;
-
-    const mapping = getIn(mappingsByParameter, [
-      parameter.id,
-      dashcard.id,
-      card.id,
-    ]);
-    const noOverlap = !!(
-      mapping &&
-      mapping.mappingsWithValues > 1 &&
-      mapping.overlapMax === 1
-    );
+    const { mappingOptions, target, parameter, dashcard, card } = this.props;
 
     let selectedFieldWarning = null;
     if (
@@ -150,8 +131,6 @@ export default class DashCardCardParameterMapper extends Component {
               tooltip={
                 disabled
                   ? "This card doesn't have any fields or parameters that can be mapped to this parameter type."
-                  : noOverlap
-                  ? "The values in this field don't overlap with the values of any other fields you've chosen."
                   : null
               }
               verticalAttachments={["bottom", "top"]}
@@ -163,7 +142,6 @@ export default class DashCardCardParameterMapper extends Component {
               <div
                 className={cx(S.button, {
                   [S.mapped]: !!selected,
-                  [S.warn]: noOverlap,
                   [S.disabled]: disabled,
                 })}
               >

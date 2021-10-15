@@ -629,7 +629,7 @@ describe("scenarios > question > filter", () => {
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
     cy.get("[contenteditable='true']").contains(
-      'NOT contains([Title], "Wallet")',
+      'NOT contains([Title], "Wallet", "case-insensitive")',
     );
   });
 
@@ -657,7 +657,7 @@ describe("scenarios > question > filter", () => {
     cy.get("[contenteditable='true']");
   });
 
-  it.skip("should be able to convert case-insensitive filter to custom expression (metabase#14959)", () => {
+  it("should be able to convert case-insensitive filter to custom expression (metabase#14959)", () => {
     cy.server();
     cy.route("POST", "/api/dataset").as("dataset");
 
@@ -683,10 +683,10 @@ describe("scenarios > question > filter", () => {
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
     cy.get("[contenteditable='true']").contains(
-      'contains([Reviewer], "MULLER")',
+      'contains([Reviewer], "MULLER", "case-insensitive")',
     );
     cy.button("Done").click();
-    cy.wait("@dataset.2").then(xhr => {
+    cy.wait("@dataset").then(xhr => {
       expect(xhr.response.body.data.rows).to.have.lengthOf(1);
     });
     cy.findByText("wilma-muller");
