@@ -25,9 +25,15 @@ describe("database entity", () => {
       Databases.objectActions.fetchDatabaseMetadata({ id: 123 }),
     );
     const { databases, schemas, tables } = store.getState().entities;
-    expect(databases).toEqual({ "123": { id: 123, tables: [234] } });
+    expect(databases).toEqual({
+      "123": { id: 123, tables: [234], is_saved_questions: false },
+    });
     expect(schemas).toEqual({
-      "123:public": { database: 123, id: "123:public", name: "public" },
+      "123:public": {
+        database: 123,
+        id: "123:public",
+        name: "public",
+      },
     });
     expect(tables).toEqual({
       "234": {

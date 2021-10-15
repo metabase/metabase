@@ -58,29 +58,25 @@ export default class SettingsBatchForm extends Component {
     updateSettings: PropTypes.func.isRequired,
   };
 
-  UNSAFE_componentWillMount() {
-    // this gives us an opportunity to load up our formData with any existing values for elements
-    this.updateFormData(this.props);
+  componentDidMount() {
+    this.updateFormData();
+    this.validateForm();
   }
 
-  UNSAFE_componentWillReceiveProps(nextProps) {
-    this.updateFormData(nextProps);
+  componentDidUpdate(prevProps) {
+    if (this.props.elements !== prevProps.elements) {
+      this.updateFormData();
+    }
+
+    this.validateForm();
   }
 
-  updateFormData(props) {
+  updateFormData() {
     const formData = {};
-    for (const element of props.elements) {
+    for (const element of this.props.elements) {
       formData[element.key] = element.value;
     }
     this.setState({ formData, pristine: true });
-  }
-
-  componentDidMount() {
-    this.validateForm();
-  }
-
-  componentDidUpdate() {
-    this.validateForm();
   }
 
   setSubmitting(submitting) {

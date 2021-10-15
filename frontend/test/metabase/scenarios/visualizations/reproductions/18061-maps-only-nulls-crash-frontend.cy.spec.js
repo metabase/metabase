@@ -52,7 +52,7 @@ const filter = {
 
 const dashboardDetails = { name: "18061D", parameters: [filter] };
 
-describe.skip("issue 18061", () => {
+describe("issue 18061", () => {
   beforeEach(() => {
     mockSessionProperty("field-filter-operators-enabled?", true);
 
@@ -108,7 +108,6 @@ describe.skip("issue 18061", () => {
 
       cy.button("Update filter").click();
 
-      cy.wait("@getCard");
       cy.findByText("Something went wrong").should("not.exist");
 
       cy.findByText("ID is less than 2");

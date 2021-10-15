@@ -1,7 +1,6 @@
 import {
   restore,
   popover,
-  createNativeQuestion,
   openOrdersTable,
   remapDisplayValueToFK,
   visitQuestionAdhoc,
@@ -196,11 +195,16 @@ describe("scenarios > question > nested", () => {
   });
 
   it.skip("should show all filter options for a nested question (metabase#13186)", () => {
-    cy.log("Create and save native question Q1");
+    const nativeQuestionDetails = {
+      name: "13816_Q1",
+      native: {
+        query: "SELECT * FROM PRODUCTS",
+      },
+    };
 
-    createNativeQuestion("13816_Q1", "SELECT * FROM PRODUCTS").then(
+    cy.createNativeQuestion(nativeQuestionDetails).then(
       ({ body: { id: Q1_ID } }) => {
-        cy.log("Convert it to `query` and save as Q2");
+        cy.log("Convert Q1 to `query` and save as Q2");
         cy.createQuestion({
           name: "13816_Q2",
           query: {
@@ -223,7 +227,8 @@ describe("scenarios > question > nested", () => {
 
     // Add filter to the dashboard...
     cy.icon("filter").click();
-    cy.findByText("Other Categories").click();
+    cy.findByText("Text or Category").click();
+    cy.findByText("Dropdown").click();
     // ...and try to connect it to the question
     cy.findByText("Select…").click();
 

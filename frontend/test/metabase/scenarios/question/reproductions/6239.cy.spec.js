@@ -1,6 +1,6 @@
 import { restore, popover, openOrdersTable } from "__support__/e2e/cypress";
 
-describe.skip("issue 6239", () => {
+describe("issue 6239", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
