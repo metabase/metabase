@@ -28,7 +28,7 @@ export function PermissionsEditBar({
     <Confirm
       title={t`Save permissions?`}
       action={onSave}
-      content={<PermissionsConfirm diff={diff} />}
+      content={diff ? <PermissionsConfirm diff={diff} /> : null}
       triggerClasses={cx({ disabled: !isDirty })}
       key="save"
     >

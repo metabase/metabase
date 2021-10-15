@@ -17,19 +17,6 @@ export function createBasicAlert({ firstAlert, includeNormal } = {}) {
   cy.findByText("Let's set up your alert").should("not.exist");
 }
 
-export function createNativeQuestion(name, query) {
-  return cy.request("POST", "/api/card", {
-    name,
-    dataset_query: {
-      type: "native",
-      native: { query },
-      database: 1,
-    },
-    display: "table",
-    visualization_settings: {},
-  });
-}
-
 export function setupLocalHostEmail() {
   // Email info
   cy.findByPlaceholderText("smtp.yourservice.com").type("localhost");

@@ -163,7 +163,7 @@ const getNextRunParameterValues = createSelector(
 );
 
 function normalizeClause(clause) {
-  return typeof clause.raw === "function" ? clause.raw() : clause;
+  return typeof clause?.raw === "function" ? clause.raw() : clause;
 }
 
 // Certain differences in a query should be ignored. `normalizeQuery`
