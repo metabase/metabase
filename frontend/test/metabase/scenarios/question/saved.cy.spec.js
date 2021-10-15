@@ -68,7 +68,7 @@ describe("scenarios > question > saved", () => {
       cy.findByPlaceholderText("Search the list").type("100");
       cy.findByText("Update filter").click();
     });
-    cy.findByText("Quantity is equal to 100");
+    cy.findAllByText("Quantity is equal to 100").filter(":visible");
     cy.findByText("Showing 2 rows"); // query updated
 
     // check that save will give option to replace
