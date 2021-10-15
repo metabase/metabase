@@ -167,14 +167,21 @@ describe("scenarios > question > view", () => {
       // Filter by category and vendor
       // TODO: this should show values and allow searching
       cy.findByText("This question is written in SQL.");
-      cy.findByPlaceholderText("VENDOR")
-        .click()
-        .clear()
-        .type("Balistreri-Muller");
-      cy.findByPlaceholderText("CATEGORY")
-        .click()
-        .clear()
-        .type("Widget");
+      cy.findAllByText("VENDOR")
+        .first()
+        .click();
+      popover().within(() => {
+        cy.findByPlaceholderText("Enter some text").type("Balistreri-Muller");
+        cy.findByText("Add filter").click();
+      });
+      cy.findAllByText("CATEGORY")
+        .first()
+        .click();
+      popover().within(() => {
+        cy.findByPlaceholderText("Enter some text").type("Widget");
+        cy.findByText("Add filter").click();
+      });
+
       cy.get(".RunButton")
         .last()
         .click();
