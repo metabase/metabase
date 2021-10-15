@@ -144,7 +144,9 @@ function chooseInitialBinningOption({
   mode = null,
 } = {}) {
   openTable({ table, mode });
-  cy.findByText("Summarize").click();
+  cy.findAllByText("Summarize")
+    .filter(":visible")
+    .click();
 
   if (mode === "notebook") {
     cy.findByText("Count of rows").click();
