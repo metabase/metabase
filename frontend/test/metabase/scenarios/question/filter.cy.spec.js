@@ -429,9 +429,9 @@ describe("scenarios > question > filter", () => {
 
     cy.wait("@dataset");
 
-    cy.findByTestId("view-section").within(() => {
-      cy.findByText(/Created At > Product? → Created At/i).click();
-    });
+    cy.findAllByText(/Created At > Product? → Created At/i)
+      .filter(":visible")
+      .click();
 
     cy.get("[contenteditable='true']").contains(
       /\[Created At\] > \[Products? → Created At\]/,
@@ -577,9 +577,9 @@ describe("scenarios > question > filter", () => {
     cy.contains("Showing 0 rows");
 
     // change the corresponding custom expression
-    cy.findByTestId("view-section").within(() => {
-      cy.findByText("Reviewer is empty").click();
-    });
+    cy.findAllByText("Reviewer is empty")
+      .filter(":visible")
+      .click();
 
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
@@ -604,9 +604,9 @@ describe("scenarios > question > filter", () => {
     cy.contains("Showing 0 rows");
 
     // change the corresponding custom expression
-    cy.findByTestId("view-section").within(() => {
-      cy.findByText("Rating is empty").click();
-    });
+    cy.findAllByText("Rating is empty")
+      .filter(":visible")
+      .click();
 
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
@@ -637,9 +637,9 @@ describe("scenarios > question > filter", () => {
       display: "table",
     });
 
-    cy.findByTestId("view-section").within(() => {
-      cy.findByText("Title does not contain Wallet").click();
-    });
+    cy.findAllByText("Title does not contain Wallet")
+      .filter(":visible")
+      .click();
 
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
@@ -695,9 +695,9 @@ describe("scenarios > question > filter", () => {
     cy.wait("@dataset");
     cy.findByText("wilma-muller");
 
-    cy.findByTestId("view-section").within(() => {
-      cy.findByText("Reviewer contains MULLER").click();
-    });
+    cy.findAllByText("Reviewer contains MULLER")
+      .filter(":visible")
+      .click();
 
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
@@ -989,7 +989,7 @@ describe("scenarios > question > filter", () => {
         cy.wait("@dataset");
       });
 
-      it.only("from the column popover (metabase#16386-1)", () => {
+      it("from the column popover (metabase#16386-1)", () => {
         cy.get(".cellData")
           .contains("boolean")
           .click();
@@ -1049,11 +1049,7 @@ describe("scenarios > question > filter", () => {
 
       function assertOnTheResult() {
         // Filter name
-        cy.findByTestId("view-section").within(() => {
-          cy.findByText("Category is Doohickey");
-        });
-
-        cy.findByText(`boolean is ${condition}`);
+        cy.findAllByText(`boolean is ${condition}`).filter(":visible");
         cy.findByText(integerAssociatedWithCondition);
       }
     });
