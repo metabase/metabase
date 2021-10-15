@@ -91,8 +91,6 @@
 
 (defn- streaming-rff [results-writer]
   (fn [{:keys [cols viz-settings] :as initial-metadata}]
-    (def my-viz-settings viz-settings)
-    (comment (clojure.pprint/pprint my-viz-settings))
     (let [[ordered-cols output-order] (order-cols cols viz-settings)
           viz-settings'               (assoc viz-settings :output-order output-order)
           row-count                   (volatile! 0)]
