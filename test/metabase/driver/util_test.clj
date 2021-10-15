@@ -1,11 +1,11 @@
 (ns metabase.driver.util-test
   (:require [clojure.test :refer :all]
             [metabase.driver.util :as driver.u]
-            [metabase.test.fixtures :as fixtures]
             [metabase.public-settings.premium-features :as premium-features]
-            [metabase.test :as mt])
-  (:import (java.util Base64)
-           (java.nio.charset StandardCharsets)))
+            [metabase.test :as mt]
+            [metabase.test.fixtures :as fixtures])
+  (:import java.nio.charset.StandardCharsets
+           java.util.Base64))
 
 (use-fixtures :once (fixtures/initialize :plugins :test-drivers))
 

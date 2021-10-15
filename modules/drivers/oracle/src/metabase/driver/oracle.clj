@@ -9,6 +9,7 @@
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql :as sql]
+            [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -16,6 +17,7 @@
             [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
             [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.models.secret :as secret]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs]]
@@ -66,7 +68,7 @@
   [_ column-type]
   (database-type->base-type column-type))
 
-(defn- non-ssl-spec [spec host port sid service-name]
+(defn- non-ssl-spec [details spec host port sid service-name]
   (assoc spec :subname (str "@" host
                             ":" port
                             (when sid
@@ -74,17 +76,38 @@
                             (when service-name
                               (str "/" service-name)))))
 
-(defn- ssl-spec [spec host port sid service-name]
-  (assoc spec :subname
-              (format "@(DESCRIPTION=(ADDRESS=(PROTOCOL=tcps)(HOST=%s)(PORT=%d))(CONNECT_DATA=%s%s))"
-                      host
-                      port
-                      (if sid (str "(SID=" sid ")") "")
-                      (if service-name (str "(SERVICE_NAME=" service-name ")") ""))))
+(defn- ssl-spec [details spec host port sid service-name]
+  (-> (assoc spec :subname
+                  (format "@(DESCRIPTION=(ADDRESS=(PROTOCOL=tcps)(HOST=%s)(PORT=%d))(CONNECT_DATA=%s%s))"
+                          host
+                          port
+                          (if sid (str "(SID=" sid ")") "")
+                          (if service-name (str "(SERVICE_NAME=" service-name ")") "")))
+      (sql-jdbc.common/handle-additional-options details)))
 
 (def ^:private ^:const prog-name-property
   "The connection property used by the Oracle JDBC Thin Driver to control the program name."
   "v$session.program")
+
+(defn- handle-ssl-options [{:keys [ssl ssl-use-keystore ssl-use-truststore] :as details}]
+  (if ssl
+    (cond-> details
+
+      ssl-use-keystore
+      (assoc :javax.net.ssl.keyStoreType "JKS"
+             :javax.net.ssl.keyStore (-> (secret/db-details-prop->secret-map details "ssl-keystore")
+                                         secret/value->file!)
+             :javax.net.ssl.keyStorePassword (-> (secret/db-details-prop->secret-map details "ssl-keystore-password")
+                                                 secret/value->string))
+
+      ssl-use-truststore
+      (assoc :javax.net.ssl.trustStoreType "JKS"
+             :javax.net.ssl.trustStore (-> (secret/db-details-prop->secret-map details "ssl-truststore")
+                                           secret/value->file!)
+             :javax.net.ssl.trustStorePassword (-> (secret/db-details-prop->secret-map details
+                                                                                       "ssl-truststore-password")
+                                                   secret/value->string)))
+    details))
 
 (defmethod sql-jdbc.conn/connection-details->spec :oracle
   [_ {:keys [host port sid service-name]
@@ -92,7 +115,7 @@
       :as   details}]
   (assert (or sid service-name))
   (let [spec      {:classname "oracle.jdbc.OracleDriver", :subprotocol "oracle:thin"}
-        finish-fn (if (:ssl details) ssl-spec non-ssl-spec)
+        finish-fn (partial (if (:ssl details) ssl-spec non-ssl-spec) details)
         ;; the v$session.program value has a max length of 48 (see T4Connection), so we have to make it more terse than
         ;; the usual config/mb-version-and-process-identifier string and ensure we truncate to a length of 48
         prog-nm   (as-> (format "MB %s %s" (config/mb-version-info :tag) config/local-process-uuid) s
@@ -100,6 +123,7 @@
     (-> (merge spec details)
         (dissoc :host :port :sid :service-name :ssl)
         (assoc prog-name-property prog-nm)
+        handle-ssl-options
         (finish-fn host port sid service-name))))
 
 (defmethod driver/can-connect? :oracle

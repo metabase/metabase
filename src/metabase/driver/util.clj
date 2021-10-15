@@ -11,9 +11,9 @@
   (:import java.io.ByteArrayInputStream
            [java.security.cert CertificateFactory X509Certificate]
            java.security.KeyStore
+           java.util.Base64
            javax.net.SocketFactory
-           [javax.net.ssl SSLContext TrustManagerFactory X509TrustManager]
-           (java.util Base64)))
+           [javax.net.ssl SSLContext TrustManagerFactory X509TrustManager]))
 
 (def ^:private can-connect-timeout-ms
   "Consider `can-connect?`/`can-connect-with-details?` to have failed after this many milliseconds.
