@@ -98,8 +98,13 @@ describe("scenarios > question > notebook", () => {
     });
 
     cy.wait("@dataset");
-    cy.findByText("ID between 96 97").click();
+
+    cy.findAllByText("ID between 96 97")
+      .filter(":visible")
+      .click();
+
     cy.findByText("Between").click();
+
     popover().within(() => {
       cy.contains("Is not");
       cy.contains("Greater than");
@@ -133,9 +138,9 @@ describe("scenarios > question > notebook", () => {
     cy.button("Visualize").click();
     cy.wait("@dataset");
 
-    cy.findByText("EXPR");
-    cy.findByText("EXPR (1)");
-    cy.findByText("EXPR (2)");
+    cy.findAllByText("EXPR").filter(":visible");
+    cy.findAllByText("EXPR (1)").filter(":visible");
+    cy.findAllByText("EXPR (2)").filter(":visible");
   });
 
   it("should process the updated expression when pressing Enter", () => {
@@ -284,8 +289,9 @@ describe("scenarios > question > notebook", () => {
 
       // join to question b
       cy.icon("join_left_outer").click();
+
       popover().within(() => {
-        cy.findByText("Sample Dataset").click();
+        cy.icon("chevronleft").click();
         cy.findByText("Saved Questions").click();
         cy.findByText("question b").click();
       });
@@ -295,11 +301,10 @@ describe("scenarios > question > notebook", () => {
       popover().within(() => cy.findByText("B_COLUMN").click());
 
       cy.button("Visualize").click();
-      cy.queryByText("Visualize").then($el => cy.wrap($el).should("not.exist")); // wait for that screen to disappear to avoid "multiple elements" errors
 
       // check that query worked
       cy.findByText("question a + question b");
-      cy.findByText("A_COLUMN");
+      cy.findAllByText("A_COLUMN").filter(":visible");
       cy.findByText("Question 5 → B Column");
       cy.findByText("Showing 1 row");
     });
@@ -336,7 +341,7 @@ describe("scenarios > question > notebook", () => {
       cy.wait("@cardQuery").then(xhr => {
         expect(xhr.response.body.error).not.to.exist;
       });
-      cy.findByText("Sum Divide");
+      cy.findAllByText("Sum Divide").filter(":visible");
     });
 
     it("should show correct column title with foreign keys (metabase#11452)", () => {
@@ -442,7 +447,7 @@ describe("scenarios > question > notebook", () => {
       cy.findByText("12928_Q1").click();
       cy.icon("join_left_outer").click();
       popover().within(() => {
-        cy.findByText("Sample Dataset").click();
+        cy.icon("chevronleft").click();
         cy.findByText("Saved Questions").click();
       });
       cy.findByText("12928_Q2").click();
@@ -617,7 +622,7 @@ describe("scenarios > question > notebook", () => {
         },
       });
 
-      cy.findByText("User ID is 1");
+      cy.findAllByText("User ID is 1").filter(":visible");
       cy.findByText("37.65");
     });
 
