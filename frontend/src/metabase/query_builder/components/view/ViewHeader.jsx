@@ -274,6 +274,7 @@ export class ViewTitleHeader extends React.Component {
           {QuestionFilterWidget.shouldRender(this.props) && (
             <QuestionFilterWidget
               className="hide sm-show"
+              data-testid="open-filter-widget-button"
               ml={1}
               isShowingFilterSidebar={isShowingFilterSidebar}
               onAddFilter={onAddFilter}
