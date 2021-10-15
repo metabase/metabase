@@ -407,7 +407,10 @@ describe("scenarios > visualizations > line chart", () => {
         },
         display: "line",
       });
-      cy.findByText("Category is Doohickey");
+
+      cy.findByTestId("view-section").within(() => {
+        cy.findByText("Category is Doohickey");
+      });
     });
 
     it.skip("should not drop the chart legend (metabase#4995)", () => {

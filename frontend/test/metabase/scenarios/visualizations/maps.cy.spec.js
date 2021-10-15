@@ -137,7 +137,11 @@ describe("scenarios > visualizations > maps", () => {
     cy.wait("@dataset").then(xhr => {
       expect(xhr.request.body.query.filter).not.to.contain("Texas");
     });
-    cy.findByText("State is TX");
+
+    cy.findByTestId("view-section").within(() => {
+      cy.findByText("State is TX");
+    });
+
     cy.findByText("171 Olive Oyle Lane"); // Address in the first row
   });
 

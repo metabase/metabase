@@ -83,28 +83,45 @@ describe("scenarios > visualizations > pivot tables", () => {
     createAndVisitTestQuestion();
     // open actions menu
     cy.findByText("783").click();
+
     // drill through to orders list
     cy.findByText("View these Orders").click();
+
     // filters are applied
-    cy.findByText("Source is Affiliate");
-    cy.findByText("Category is Doohickey");
+    cy.findByTestId("view-section").within(() => {
+      cy.findByText("Source is Affiliate");
+      cy.findByText("Category is Doohickey");
+    });
+
     // data loads
     cy.findByText("45.04");
   });
 
   it("should allow drill through on left/top header values", () => {
     createAndVisitTestQuestion();
+
     // open actions menu and filter to that value
-    cy.findByText("Doohickey").click();
+    cy.findByTestId("query-visualization").within(() => {
+      cy.findByText("Doohickey").click();
+    });
+
     popover().within(() => cy.findByText("=").click());
+
     // filter is applied
-    cy.findByText("Category is Doohickey");
+    cy.findByTestId("view-section").within(() => {
+      cy.findByText("Category is Doohickey");
+    });
+
     // filter out affiliate as a source
     cy.findByText("Affiliate").click();
     popover().within(() => cy.findByText("≠").click());
+
     // filter is applied and value is gone from the left header
-    cy.findByText("Source is not Affiliate");
-    cy.findByText("Affiliate").should("not.exist");
+    cy.findByTestId("view-section").within(() => {
+      cy.findByText("Source is not Affiliate");
+      cy.findByText("Affiliate").should("not.exist");
+    });
+
     cy.findByText("3,193"); // new grand total
   });
 
@@ -193,10 +210,13 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("215"); // see a non-subtotal value
 
     // click to collapse rows
-    cy.findByText("Doohickey")
-      .parent()
-      .find(".Icon-dash")
-      .click();
+    cy.findByTestId("query-visualization").within(() => {
+      cy.findByText("Doohickey")
+        .parent()
+        .find(".Icon-dash")
+        .click();
+    });
+
     cy.findByText("1,352"); // subtotal is still there
     cy.findByText("215").should("not.exist"); // value is hidden
 
@@ -208,10 +228,13 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("215"); // ...and it's back!
 
     // collapse the column
-    cy.findByText("Product → Category")
-      .parent()
-      .find(".Icon-dash")
-      .click();
+    cy.findByTestId("query-visualization").within(() => {
+      cy.findByText("Product → Category")
+        .parent()
+        .find(".Icon-dash")
+        .click();
+    });
+
     cy.findByText("215").should("not.exist"); // value is hidden
     cy.findByText("294").should("not.exist"); // value in another section is also hidden
 
@@ -511,7 +534,10 @@ describe("scenarios > visualizations > pivot tables", () => {
         display: "pivot",
       });
 
-      cy.findByText("category_foo");
+      cy.findByTestId("query-visualization").within(() => {
+        cy.findByText("category_foo");
+      });
+
       cy.findByText("Doohickeyfoo");
       cy.findByText("42"); // count of Doohickeyfoo
       cy.findByText("200"); // grand total
@@ -562,7 +588,12 @@ describe("scenarios > visualizations > pivot tables", () => {
       assertOnPivotFields();
       cy.findByText("Google").click(); // open actions menu
       popover().within(() => cy.findByText("=").click()); // drill with additional filter
-      cy.findByText("Source is Google"); // filter was added
+
+      // filter was added
+      cy.findByTestId("view-section").within(() => {
+        cy.findByText("Source is Google");
+      });
+
       cy.findByText("Row totals"); // it's still a pivot table
       cy.findByText("1,027"); // primary data value
       cy.findByText("3,798"); // subtotal value
@@ -798,7 +829,11 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("November 9, 2016");
     cy.findByText("November 10, 2016");
     cy.findByText("November 11, 2016");
-    collapseRowsFor("Created At: Day");
+
+    cy.findByTestId("query-visualization").within(() => {
+      collapseRowsFor("Created At: Day");
+    });
+
     cy.findByText("Totals for November 9, 2016");
     cy.findByText("Totals for November 10, 2016");
     cy.findByText("Totals for November 11, 2016");
