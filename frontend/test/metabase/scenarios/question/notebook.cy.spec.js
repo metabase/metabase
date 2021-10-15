@@ -102,8 +102,13 @@ describe("scenarios > question > notebook", () => {
     });
 
     cy.wait("@dataset");
-    cy.findByText("ID between 96 97").click();
+
+    cy.findAllByText("ID between 96 97")
+      .filter(":visible")
+      .click();
+
     cy.findByText("Between").click();
+
     popover().within(() => {
       cy.contains("Is not");
       cy.contains("Greater than");
@@ -136,9 +141,9 @@ describe("scenarios > question > notebook", () => {
 
     visualize();
 
-    cy.findByText("EXPR");
-    cy.findByText("EXPR (1)");
-    cy.findByText("EXPR (2)");
+    cy.findAllByText("EXPR").filter(":visible");
+    cy.findAllByText("EXPR (1)").filter(":visible");
+    cy.findAllByText("EXPR (2)").filter(":visible");
   });
 
   it("should process the updated expression when pressing Enter", () => {
@@ -292,8 +297,9 @@ describe("scenarios > question > notebook", () => {
 
       // join to question b
       cy.icon("join_left_outer").click();
+
       popover().within(() => {
-        cy.findByText("Sample Dataset").click();
+        cy.icon("chevronleft").click();
         cy.findByText("Saved Questions").click();
         cy.findByText("question b").click();
       });
@@ -306,7 +312,7 @@ describe("scenarios > question > notebook", () => {
 
       // check that query worked
       cy.findByText("question a + question b");
-      cy.findByText("A_COLUMN");
+      cy.findAllByText("A_COLUMN").filter(":visible");
       cy.findByText("Question 5 → B Column");
       cy.findByText("Showing 1 row");
     });
@@ -339,9 +345,16 @@ describe("scenarios > question > notebook", () => {
           .click();
       });
 
+<<<<<<< HEAD
       visualize();
 
       cy.findByText("Sum Divide");
+=======
+      cy.wait("@cardQuery").then(xhr => {
+        expect(xhr.response.body.error).not.to.exist;
+      });
+      cy.findAllByText("Sum Divide").filter(":visible");
+>>>>>>> 326a8f980 (Update question notebook tests)
     });
 
     it("should show correct column title with foreign keys (metabase#11452)", () => {
@@ -447,7 +460,7 @@ describe("scenarios > question > notebook", () => {
       cy.icon("join_left_outer").click();
 
       popover().within(() => {
-        cy.findByText("Sample Dataset").click();
+        cy.icon("chevronleft").click();
         cy.findByText("Saved Questions").click();
       });
       cy.findByText("12928_Q2").click();
@@ -623,7 +636,7 @@ describe("scenarios > question > notebook", () => {
         },
       });
 
-      cy.findByText("User ID is 1");
+      cy.findAllByText("User ID is 1").filter(":visible");
       cy.findByText("37.65");
     });
 
