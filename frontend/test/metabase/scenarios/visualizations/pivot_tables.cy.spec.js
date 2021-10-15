@@ -528,7 +528,9 @@ describe("scenarios > visualizations > pivot tables", () => {
         display: "pivot",
       });
 
-      cy.findAllByText("category_foo").filter(":visible");
+      cy.findByTestId("query-visualization").within(() => {
+        cy.findByText("category_foo");
+      });
 
       cy.findByText("Doohickeyfoo");
       cy.findByText("42"); // count of Doohickeyfoo

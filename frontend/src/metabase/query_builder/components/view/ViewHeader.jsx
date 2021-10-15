@@ -230,10 +230,7 @@ export class ViewTitleHeader extends React.Component {
                 />
               )}
             </div>
-            <div
-              className="flex align-center flex-wrap"
-              data-testid="question-subheader"
-            >
+            <div className="flex align-center flex-wrap">
               {isSummarized && (
                 <QuestionDataSource
                   className="mb1"
