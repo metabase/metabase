@@ -25,7 +25,6 @@ import {
   getCollectionsPermissionEditor,
   getCollectionEntity,
   getIsDirty,
-  getDiff,
 } from "../../selectors/collection-permissions";
 import {
   PermissionsSidebar,
@@ -45,7 +44,6 @@ const mapStateToProps = (state, props) => {
     sidebar: getCollectionsSidebar(state, props),
     permissionEditor: getCollectionsPermissionEditor(state, props),
     isDirty: getIsDirty(state, props),
-    diff: getDiff(state, props),
     collection: getCollectionEntity(state, props),
   };
 };
@@ -61,7 +59,6 @@ const propTypes = {
   navigateToItem: PropTypes.func.isRequired,
   updateCollectionPermission: PropTypes.func.isRequired,
   isDirty: PropTypes.bool,
-  diff: PropTypes.object,
   savePermissions: PropTypes.func.isRequired,
   loadPermissions: PropTypes.func.isRequired,
   initialize: PropTypes.func.isRequired,
@@ -73,7 +70,6 @@ function CollectionsPermissionsPage({
   permissionEditor,
   collection,
   isDirty,
-  diff,
   savePermissions,
   loadPermissions,
   updateCollectionPermission,
@@ -100,7 +96,6 @@ function CollectionsPermissionsPage({
   return (
     <PermissionsPageLayout
       tab="collections"
-      diff={diff}
       isDirty={isDirty}
       route={route}
       onSave={savePermissions}

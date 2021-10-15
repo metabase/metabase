@@ -92,7 +92,9 @@
           :when        f]
     (assert (fn? f))
     (testing (format "sent to %s channel" channel-type)
-      (mt/with-temp* [Card          [{card-id :id} (merge {:name card-name} card)]]
+      (mt/with-temp* [Card          [{card-id :id} (merge {:name    card-name
+                                                           :display :line}
+                                                          card)]]
         (with-pulse-for-card [{pulse-id :id}
                               {:card       card-id
                                :pulse      pulse
@@ -380,7 +382,8 @@
       :fixture
       (fn [{:keys [pulse-id]} thunk]
         (mt/with-temp* [Card [{card-id-2 :id} (assoc (checkins-query-card {:breakout [!month.date]})
-                                                     :name "card 2")]
+                                                     :name "card 2"
+                                                     :display :line)]
                         PulseCard [_ {:pulse_id pulse-id
                                       :card_id  card-id-2
                                       :position 1}]]

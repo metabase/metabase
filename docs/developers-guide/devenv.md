@@ -64,13 +64,13 @@ Some systems may have trouble detecting changes to frontend files. You can enabl
 
 ## Frontend testing
 
-All frontend tests are located in `frontend/test` directory. Run all frontend tests with
+Run all unit and Cypress end-to-end tests with
 
 ```
 yarn test
 ```
 
-which will run unit and Cypress end-to-end tests in sequence.
+Cypress tests and some unit tests are located in `frontend/test` directory. New unit test files are added next to the files they test.
 
 ## Frontend debugging
 
@@ -250,3 +250,18 @@ Steps:
 4. Use the menu _View_, _Command Palette_, search for and choose _Tasks: Run Build Task_ (alternatively, use the shortcut `Ctrl+Shift+B`).
 
 5. After a while (after all JavaScript and Clojure dependencies are completely downloaded), open localhost:3000 with your web browser.
+
+## Continuous integration
+
+All front-end and back-end linters and tests can be executed with
+
+```sh
+$ yarn ci
+```
+
+It is also possible to execute front-end and back-end checks separately
+
+```sh
+$ yarn ci-frontend
+$ yarn ci-backend
+```

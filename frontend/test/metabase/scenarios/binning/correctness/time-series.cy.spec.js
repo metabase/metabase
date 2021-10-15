@@ -105,6 +105,8 @@ describe("scenarios > binning > correctness > time series", () => {
     restore();
     cy.signInAsAdmin();
 
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
     openOrdersTable();
     cy.findByText("Summarize").click();
     openPopoverFromDefaultBucketSize("Created At", "by month");
@@ -121,6 +123,7 @@ describe("scenarios > binning > correctness > time series", () => {
       it(`should return correct values for ${bucketSize}`, () => {
         popover().within(() => {
           cy.findByText(bucketSize).click();
+          cy.wait("@dataset");
         });
 
         cy.get(".List-item--selected")

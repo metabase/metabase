@@ -173,8 +173,13 @@ describe("type-checker", () => {
     it("should catch mismatched number of function parameters", () => {
       expect(() => validate("CONTAINS()")).toThrow();
       expect(() => validate("CONTAINS([Name])")).toThrow();
-      expect(() => validate("CONTAINS([Type],'X','Y')")).toThrow();
-      expect(() => validate("CONTAINS([Type],'P','Q','R')")).toThrow();
+      expect(() => validate("CONTAINS([Type],'A','B','C')")).toThrow();
+      expect(() => validate("StartsWith()")).toThrow();
+      expect(() => validate("StartsWith([Name])")).toThrow();
+      expect(() => validate("StartsWith([Type],'P','Q','R')")).toThrow();
+      expect(() => validate("EndsWith()")).toThrow();
+      expect(() => validate("EndsWith([Name])")).toThrow();
+      expect(() => validate("EndsWith([Type],'X','Y','Z')")).toThrow();
     });
 
     it("should allow a comparison (lexicographically) on strings", () => {

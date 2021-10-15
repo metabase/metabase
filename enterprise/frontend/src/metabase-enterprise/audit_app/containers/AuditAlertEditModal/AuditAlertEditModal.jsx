@@ -1,6 +1,7 @@
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
+import { t } from "ttag";
 import Alerts from "metabase/entities/alerts";
 import Users from "metabase/entities/users";
 import AuditNotificationEditModal from "../../components/AuditNotificationEditModal";
@@ -8,6 +9,8 @@ import AuditNotificationEditModal from "../../components/AuditNotificationEditMo
 const mapStateToProps = (state, { alert }) => ({
   item: alert,
   type: "alert",
+  invalidRecipientText: domains =>
+    t`You're only allowed to email alerts to addresses ending in ${domains}`,
 });
 
 const mapDispatchToProps = {

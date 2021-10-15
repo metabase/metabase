@@ -374,3 +374,11 @@
     display: inherit;
   }
 }
+
+/*
+ * Override d3 styles so the chart axis labels are selectable. See issue #17613
+ */
+.dc-chart g.axis g.tick text {
+  pointer-events: all;
+  user-select: auto;
+}
