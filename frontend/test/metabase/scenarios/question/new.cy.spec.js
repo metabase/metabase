@@ -49,7 +49,9 @@ describe("scenarios > question > new", () => {
   it("binning on values from joined table should work (metabase#15648)", () => {
     // Simple question
     openOrdersTable();
-    cy.findByText("Summarize").click();
+    cy.findAllByText("Summarize")
+      .filter(":visible")
+      .click();
     cy.findByText("Group by")
       .parent()
       .findByText("Rating")
@@ -119,7 +121,7 @@ describe("scenarios > question > new", () => {
           .click();
         cy.url().should("include", "question#");
         cy.findByText("Sample Dataset");
-        cy.findByText("Orders");
+        cy.findAllByText("Orders").filter(":visible");
       });
     });
 
@@ -143,7 +145,7 @@ describe("scenarios > question > new", () => {
         cy.findByText("Visualize").click();
         cy.url().should("include", "question#");
         cy.findByText("Sample Dataset");
-        cy.findByText("Orders");
+        cy.findAllByText("Orders").filter(":visible");
       });
     });
 
@@ -357,7 +359,9 @@ describe("scenarios > question > new", () => {
       cy.findByText("Simple question").click();
       cy.findByText("Saved Questions").click();
       cy.findByText("11439").click();
-      cy.findByText("Summarize").click();
+      cy.findAllByText("Summarize")
+        .filter(":visible")
+        .click();
       cy.findByText("Group by")
         .parent()
         .within(() => {
