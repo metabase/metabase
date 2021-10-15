@@ -4,9 +4,11 @@
             [clojure.test :refer :all]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [medley.core :as m]
+            [metabase.models.card :as card :refer [Card]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.streaming :as qp.streaming]
             [metabase.shared.models.visualization-settings :as mb.viz]
+            [metabase.query-processor.streaming.xlsx-test :as xlsx-test]
             [metabase.test :as mt]
             [metabase.util :as u]
             [toucan.db :as db])
@@ -186,7 +188,6 @@
   (zipmap col-names (vals row)))
 
 ;; see also `metabase.query-processor.streaming.xlsx-test/report-timezone-test`
-;; TODO this test doesn't seem to run?
 (deftest report-timezone-test
   (testing "Export downloads should format stuff with the report timezone rather than UTC (#13677)\n"
     (mt/test-driver :postgres
@@ -281,7 +282,72 @@
 ;;; (like `metabase.api.dataset-test`).
 ;;; TODO: migrate the test cases above to use these functions, if possible
 
+(defn- do-test
+  [message {:keys [fixture query viz-settings assertions]}]
+  (testing message
+    (let [query-json        (json/generate-string query)
+          viz-settings-json (json/generate-string viz-settings)]
+      (mt/with-temp Card [card (if viz-settings
+                                 {:dataset_query query, :visualization_settings viz-settings}
+                                 {:dataset_query query})]
+        (doall
+         (for [export-format (keys assertions)
+               ;; TODO: make endpoints configurable
+               endpoint      [:dataset :card :public]]
+           (case endpoint
+             :dataset
+             (let [results (mt/user-http-request :rasta :post 200
+                                                 (format "dataset/%s" (name export-format))
+                                                 {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
+                                                 :query query-json
+                                                 :visualization_settings viz-settings-json)]
+               ((-> assertions export-format) results))
 
+             :card
+             (let [results (mt/user-http-request :rasta :post 200
+                                                 (format "card/%d/query/%s" (:id card) (name export-format))
+                                                 {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
+               ((-> assertions export-format) results))
+
+             :public
+             (let [results (mt/user-http-request :rasta :get 200
+                                                 (format "public/card/%d/query/%s" (:id card) (name export-format))
+                                                 {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
+               ((-> assertions export-format) results)))))))))
+
+(defn- parse-json-results
+  "Convert JSON results into a convenient format for test assertions. Results are transformed into a nested list,
+  column titles in the first list as strings rather than keywords."
+  [results]
+  (let [col-titles (map name (keys (first results)))
+        values     (map vals results)]
+    (into values [col-titles])))
+
+(deftest basic-export-test
+  (do-test
+   "A simple export of a table succeeds"
+   {:query      {:database   (mt/id)
+                 :type       :query
+                 :query      {:source-table (mt/id :venues)
+                              :limit 2}}
+
+    :assertions {:csv (fn [results]
+                        (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
+                                ["1" "Red Medicine" "4" "10.0646" "-165.374" "3"]
+                                ["2" "Stout Burgers & Beers" "11" "34.0996" "-118.329" "2"]]
+                               (csv/read-csv results))))
+
+                 :json (fn [results]
+                         (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
+                                 [1 "Red Medicine" 4 10.0646 -165.374 3]
+                                 [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]
+                                (parse-json-results results))))
+
+                 :xlsx (fn [results]
+                        (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
+                                [1.0 "Red Medicine" 4.0 10.0646 -165.374 3.0]
+                                [2.0 "Stout Burgers & Beers" 11.0 34.0996 -118.329 2.0]]
+                               (xlsx-test/parse-xlsx-results results))))}}))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Streaming logic unit tests                                              |
