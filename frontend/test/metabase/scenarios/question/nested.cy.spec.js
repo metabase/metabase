@@ -578,7 +578,7 @@ describe("scenarios > question > nested", () => {
         "not.be.calledWith",
         "Removing invalid MBQL clause",
       );
-      cy.findByText("Sum of VAL");
+      cy.findAllByText("Sum of VAL").filter(":visible");
     });
 
     it("Count of rows by CAT + add sum of VAL later from the sidebar (metabase#15725-2)", () => {
