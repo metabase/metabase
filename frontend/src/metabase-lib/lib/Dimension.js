@@ -546,7 +546,7 @@ export class FieldDimension extends Dimension {
   field(): {} {
     if (this.isIntegerFieldId()) {
       return (
-        (this._metadata && this._metadata.field(this._fieldIdOrName)) ||
+        (this._metadata && this._metadata.field(this.fieldIdOrName())) ||
         new Field({
           id: this._fieldIdOrName,
           metadata: this._metadata,
@@ -555,24 +555,37 @@ export class FieldDimension extends Dimension {
       );
     }
 
-    if (this.query() && this.query().table()) {
+    // look for a "virtual" field on the query's table or question
+    // for example, fields from a question based on a nested question have fields
+    // that show up in a card's `result_metadata`
+    if (this.query()) {
       const table = this.query().table();
-      const field = _.findWhere(table.fields, {
-        name: this._fieldIdOrName,
-      });
-      if (field) {
-        return field;
+      if (table != null) {
+        const field = _.findWhere(table.fields, { name: this.fieldIdOrName() });
+
+        if (field) {
+          return field;
+        }
+      }
+
+      const question = this.query().question();
+      if (question != null) {
+        const field = _.findWhere(question.getResultMetadata(), {
+          name: this.fieldIdOrName(),
+        });
+
+        if (field) {
+          return new Field({
+            ...field,
+            metadata: this._metadata,
+            query: this._query,
+          });
+        }
       }
     }
 
-    if (this.isStringFieldName() && this.query()) {
-      const virtualFieldId = `${this.query().tableId()}:${this._fieldIdOrName}`;
-      const field = this._metadata?.field(virtualFieldId);
-      if (field) {
-        return field;
-      }
-    }
-
+    // despite being unable to find a field, we _might_ still have enough data to know a few things about it
+    // for example, if we have an mbql field reference, it might contained a `base-type`
     return new Field({
       id: this.mbql(),
       name: this._fieldIdOrName,
@@ -580,7 +593,6 @@ export class FieldDimension extends Dimension {
       // if a `FieldDimension` isn't associated with a query then we don't know which table it belongs to
       display_name: this._fieldIdOrName,
       base_type: this.getOption("base-type"),
-      // HACK: need to thread the query through to this fake Field
       query: this._query,
       metadata: this._metadata,
     });
@@ -1198,7 +1210,7 @@ export class TemplateTagDimension extends FieldDimension {
     if (this._query) {
       const tag = this.tag();
       if (tag && tag.type === "dimension") {
-        return this.parseMBQL(tag.dimension);
+        return Dimension.parseMBQL(tag.dimension, this._metadata, this._query);
       }
     }
     return null;

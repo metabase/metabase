@@ -900,6 +900,10 @@ export default class Question {
     });
   }
 
+  getResultMetadata() {
+    return this.card().result_metadata ?? [];
+  }
+
   /**
    * Returns true if the questions are equivalent (including id, card, and parameters)
    */
