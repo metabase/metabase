@@ -367,7 +367,9 @@ describe("scenarios > question > filter", () => {
 
   it("in a simple question should display popup for custom expression options (metabase#14341) (metabase#15244)", () => {
     openProductsTable();
-    cy.findByTestId("open-filter-widget-button").click();
+    cy.findAllByText("Filter")
+      .filter(":visible")
+      .click();
     cy.findByText("Custom Expression").click();
 
     // This issue has two problematic parts. We're testing for both:
@@ -713,7 +715,9 @@ describe("scenarios > question > filter", () => {
   it("should reject a number literal", () => {
     openProductsTable();
 
-    cy.findByTestId("open-filter-widget-button").click();
+    cy.findAllByText("Filter")
+      .filter(":visible")
+      .click();
     cy.findByText("Custom Expression").click();
 
     cy.get("[contenteditable='true']")
@@ -728,7 +732,9 @@ describe("scenarios > question > filter", () => {
   it("should reject a string literal", () => {
     openProductsTable();
 
-    cy.findByTestId("open-filter-widget-button").click();
+    cy.findAllByText("Filter")
+      .filter(":visible")
+      .click();
     cy.findByText("Custom Expression").click();
 
     cy.get("[contenteditable='true']")
