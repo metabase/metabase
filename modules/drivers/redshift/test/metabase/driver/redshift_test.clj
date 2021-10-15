@@ -9,7 +9,6 @@
             [metabase.driver.sql-jdbc.sync.describe-database :as sync.describe-database]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :refer [Field]]
-            [metabase.models.setting :as setting]
             [metabase.models.table :refer [Table]]
             [metabase.plugins.jdbc-proxy :as jdbc-proxy]
             [metabase.public-settings :as pubset]
