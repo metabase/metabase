@@ -6,6 +6,7 @@
             [compojure.core :refer [POST]]
             [metabase.api.common :as api]
             [metabase.events :as events]
+            [metabase.mbql.normalize :as normalize]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.card :refer [Card]]
             [metabase.models.database :as database :refer [Database]]
@@ -21,8 +22,7 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.schema :as su]
-            [schema.core :as s]
-            [metabase.mbql.normalize :as normalize]))
+            [schema.core :as s]))
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
 
@@ -107,8 +107,6 @@
   {query                  su/JSONString
    visualization_settings su/JSONString
    export-format          ExportFormat}
-  (def my-query query)
-  (def my-viz-settings visualization_settings)
   (let [query        (json/parse-string query keyword)
         viz-settings (-> (json/parse-string visualization_settings viz-setting-key-fn)
                          (update-in [:table.columns] normalize/normalize)
