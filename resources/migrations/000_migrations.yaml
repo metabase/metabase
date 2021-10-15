@@ -8562,7 +8562,6 @@ databaseChangeLog:
       changes:
         - addNotNullConstraint:
             columnDataType: int
-            defaultNullValue: unset
             tableName: report_card
             columnName: database_id
 
