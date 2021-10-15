@@ -108,7 +108,9 @@ describe("scenarios > binning > correctness > time series", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
     openOrdersTable();
-    cy.findByText("Summarize").click();
+    cy.findAllByText("Summarize")
+      .filter(":visible")
+      .click();
     openPopoverFromDefaultBucketSize("Created At", "by month");
   });
 

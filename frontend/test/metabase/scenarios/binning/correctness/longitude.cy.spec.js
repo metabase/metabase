@@ -28,7 +28,9 @@ describe("scenarios > binning > correctness > longitude", () => {
     restore();
     cy.signInAsAdmin();
     openPeopleTable();
-    cy.findByText("Summarize").click();
+    cy.findAllByText("Summarize")
+      .filter(":visible")
+      .click();
     openPopoverFromDefaultBucketSize("Longitude", "Auto bin");
   });
 
