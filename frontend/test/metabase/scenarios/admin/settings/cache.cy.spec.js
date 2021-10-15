@@ -107,7 +107,11 @@ function refresh() {
   cy.wait("@cardQuery");
 }
 
-function refreshUntilCached() {
+function refreshUntilCached(loop = 0) {
+  if (loop > 5) {
+    throw new Error("Caching mechanism seems to be broken.");
+  }
+
   refresh();
 
   getCellText().then(res => {
@@ -117,7 +121,7 @@ function refreshUntilCached() {
       } else {
         cy.wrap(res).as("tempResult");
 
-        refreshUntilCached();
+        refreshUntilCached(++loop);
       }
     });
   });
