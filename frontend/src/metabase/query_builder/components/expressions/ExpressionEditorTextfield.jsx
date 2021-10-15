@@ -426,6 +426,7 @@ export default class ExpressionEditorTextfield extends React.Component {
           style={{ ...inputStyle, paddingLeft: 26, whiteSpace: "pre-wrap" }}
           placeholder={placeholder}
           value={source}
+          startRule={this.props.startRule}
           parserOptions={this._getParserOptions()}
           onChange={e => this.onExpressionChange(e.target.value)}
           onKeyDown={this.onInputKeyDown}

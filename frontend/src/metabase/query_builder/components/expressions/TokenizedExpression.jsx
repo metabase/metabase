@@ -6,6 +6,7 @@ import "./TokenizedExpression.css";
 import cx from "classnames";
 
 import { tokenize, TOKEN, OPERATOR } from "metabase/lib/expressions/tokenizer";
+import { getMBQLName, FUNCTIONS } from "metabase/lib/expressions/config";
 
 function mapTokenType(token) {
   const { type, op } = token;
@@ -21,14 +22,15 @@ function mapTokenType(token) {
     case TOKEN.String:
       return "string-literal";
     case TOKEN.Identifier:
-      // FIXME function-name vs metric vs dimension vs segment
-      return "segment";
+      // FIXME metric vs dimension vs segment
+      return "dimension";
     default:
-      return ""; // fallback
+      return "token";
   }
 }
 
 function createSpans(source) {
+  const isFunction = name => FUNCTIONS.has(getMBQLName(name));
   const { tokens } = tokenize(source);
   let lastPos = 0;
   const spans = [];
@@ -40,10 +42,9 @@ function createSpans(source) {
         text: str,
       });
     }
-    spans.push({
-      kind: mapTokenType(token),
-      text: source.substring(token.start, token.end),
-    });
+    const text = source.substring(token.start, token.end);
+    const kind = isFunction(text) ? "function-name" : mapTokenType(token);
+    spans.push({ kind, text });
     lastPos = token.end;
   });
   const tail = source.substring(lastPos);
@@ -58,11 +59,10 @@ function createSpans(source) {
 
 export default class TokenizedExpression extends React.Component {
   render() {
-    const { source } = this.props;
+    const { source, startRule } = this.props;
     const spans = createSpans(source);
-    const topLevel = "boolean"; // FIXME aggregation
     return (
-      <span className={cx(`Expression-node`, `Expression-${topLevel}`)}>
+      <span className={cx(`Expression-node`, `Expression-${startRule}`)}>
         {spans.map(({ kind, text }, index) => (
           <span
             key={index}
