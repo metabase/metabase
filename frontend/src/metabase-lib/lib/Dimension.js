@@ -555,14 +555,6 @@ export class FieldDimension extends Dimension {
       );
     }
 
-    if (this.isStringFieldName() && this.query()) {
-      const virtualFieldId = `${this.query().tableId()}:${this._fieldIdOrName}`;
-      const field = this._metadata?.field(virtualFieldId);
-      if (field) {
-        return field;
-      }
-    }
-
     if (this.query() && this.query().table()) {
       const table = this.query().table();
       const field = _.findWhere(table.fields, {
@@ -572,6 +564,15 @@ export class FieldDimension extends Dimension {
         return field;
       }
     }
+
+    if (this.isStringFieldName() && this.query()) {
+      const virtualFieldId = `${this.query().tableId()}:${this._fieldIdOrName}`;
+      const field = this._metadata?.field(virtualFieldId);
+      if (field) {
+        return field;
+      }
+    }
+
     return new Field({
       id: this.mbql(),
       name: this._fieldIdOrName,
