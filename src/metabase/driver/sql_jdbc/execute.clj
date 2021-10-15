@@ -277,7 +277,7 @@
 (defsetting ^:private sql-jdbc-fetch-size
   "Fetch size for result sets. We want to ensure that the jdbc ResultSet objects are not realizing the entire results
   in memory."
-  :default 100
+  :default 500
   :type :integer
   :visibility :internal)
 
