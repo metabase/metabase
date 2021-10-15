@@ -294,7 +294,8 @@
         (catch Throwable e
           (log/debug e (trs "Error setting prepared statement fetch direction to FETCH_FORWARD"))))
       (try
-        (.setFetchSize stmt (sql-jdbc-fetch-size))
+        (when (zero? (.getFetchSize stmt))
+          (.setFetchSize stmt (sql-jdbc-fetch-size)))
         (catch Throwable e
           (log/debug e (trs "Error setting prepared statement fetch size to fetch-size"))))
       (set-parameters! driver stmt params)
@@ -320,7 +321,8 @@
         (catch Throwable e
           (log/debug e (trs "Error setting statement fetch direction to FETCH_FORWARD"))))
       (try
-        (.setFetchSize stmt (sql-jdbc-fetch-size))
+        (when (zero? (.getFetchSize stmt))
+          (.setFetchSize stmt (sql-jdbc-fetch-size)))
         (catch Throwable e
           (log/debug e (trs "Error setting statement fetch size to fetch-size"))))
       stmt
