@@ -15,11 +15,6 @@
   color: var(--color-white);
 }
 
-:local(.warn) {
-  border-color: var(--color-accent3) !important;
-  color: var(--color-error) !important;
-}
-
 :local(.disabled) {
   composes: disabled from "style";
   border-color: inherit;
