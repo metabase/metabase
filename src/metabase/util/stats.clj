@@ -10,6 +10,7 @@
             [metabase.email :as email]
             [metabase.integrations.google :as google]
             [metabase.integrations.slack :as slack]
+            [metabase.integrations.telegram :as telegram]
             [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field Metric PermissionsGroup Pulse PulseCard PulseChannel QueryCache QueryExecution Segment Table User]]
             [metabase.models.humanization :as humanization]
             [metabase.public-settings :as public-settings]
@@ -118,6 +119,7 @@
    :friendly_names       (= (humanization/humanization-strategy) "advanced")
    :email_configured     (email/email-configured?)
    :slack_configured     (slack/slack-configured?)
+   :telegram_configured  (telegram/telegram-configured?)
    :sso_configured       (boolean (google/google-auth-client-id))
    :instance_started     (instance-start-date)
    :has_sample_data      (db/exists? Database, :is_sample true)})

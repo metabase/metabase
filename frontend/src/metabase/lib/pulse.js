@@ -32,6 +32,13 @@ export function channelIsValid(channel, channelSpec) {
         fieldsAreValid(channel, channelSpec) &&
         scheduleIsValid(channel)
       );
+    case "telegram":
+      return (
+        channel.details &&
+        channel.details['chat-id'] &&
+        fieldsAreValid(channel, channelSpec) &&
+        scheduleIsValid(channel)
+      );
     default:
       return false;
   }

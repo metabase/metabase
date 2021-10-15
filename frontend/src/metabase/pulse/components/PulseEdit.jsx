@@ -126,6 +126,15 @@ export default class PulseEdit extends Component {
           )}`}
           .
         </span>
+      ): c.channel_type === "telegram" ? (
+        <span key={index}>
+          {jt`Telegram channel ${(
+            <strong>{c.details && c.details.channel}</strong>
+          )} will no longer get this pulse ${(
+            <strong>{c.schedule_type}</strong>
+          )}`}
+          .
+        </span>
       ) : (
         <span key={index}>
           {jt`Channel ${(

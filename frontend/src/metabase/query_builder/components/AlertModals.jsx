@@ -161,7 +161,7 @@ export class CreateAlertModalContent extends Component {
           user={user}
           onClose={onCancel}
           entityNamePlural={t`alerts`}
-          channels={isAdmin ? ["email", "Slack"] : ["email"]}
+          channels={isAdmin ? ["email", "Slack", "Telegram"] : ["email"]}
           fullPageModal
         />
       );
@@ -407,6 +407,10 @@ export class DeleteAlertSection extends Component {
         )}.`}</span>
       ) : c.channel_type === "slack" ? (
         <span>{jt`Slack channel ${(
+          <strong>{c.details && c.details.channel}</strong>
+        )} will no longer get this alert.`}</span>
+      ) : c.channel_type === "telegram" ? (
+        <span>{jt`Telegram channel ${(
           <strong>{c.details && c.details.channel}</strong>
         )} will no longer get this alert.`}</span>
       ) : (

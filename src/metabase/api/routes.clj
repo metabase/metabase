@@ -31,6 +31,7 @@
             [metabase.api.setting :as setting]
             [metabase.api.setup :as setup]
             [metabase.api.slack :as slack]
+            [metabase.api.telegram :as telegram]
             [metabase.api.table :as table]
             [metabase.api.task :as task]
             [metabase.api.testing :as testing]
@@ -86,6 +87,7 @@
   (context "/setting"              [] (+auth setting/routes))
   (context "/setup"                [] setup/routes)
   (context "/slack"                [] (+auth slack/routes))
+  (context "/telegram"             [] (+auth telegram/routes))
   (context "/table"                [] (+auth table/routes))
   (context "/task"                 [] (+auth task/routes))
   (context "/testing"              [] (if (or (not config/is-prod?)

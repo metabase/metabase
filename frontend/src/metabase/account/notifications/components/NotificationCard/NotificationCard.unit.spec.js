@@ -73,6 +73,17 @@ describe("NotificationCard", () => {
     screen.getByText("Slack’d hourly to @channel");
   });
 
+  it("should render a telegram alert", () => {
+    const alert = getAlert({
+      channels: [getChannel({ channel_type: "telegram" })],
+    });
+    const user = getUser();
+
+    render(<NotificationCard item={alert} type="alert" user={user} />);
+
+    screen.getByText("Telegrammed hourly to @channel");
+  });
+
   it("should render a daily alert", () => {
     const alert = getAlert({
       channels: [getChannel({ schedule_type: "daily" })],

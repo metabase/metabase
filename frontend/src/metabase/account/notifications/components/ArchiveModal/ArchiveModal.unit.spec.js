@@ -86,6 +86,39 @@ describe("ArchiveModal", () => {
     screen.getByText("2 emails and 3 Slack channels", { exact: false });
   });
 
+  it("should render a telegram pulse", () => {
+    const pulse = getPulse({
+      channels: [getChannel({ channel_type: "telegram" })],
+    });
+
+    render(<ArchiveModal item={pulse} type="pulse" />);
+
+    screen.getByText("1 Telegram channel", { exact: false });
+  });
+
+  it("should render an alert with email, slack and telegram channels", () => {
+    const alert = getAlert({
+      channels: [
+        getChannel({
+          channel_type: "email",
+          recipients: [getUser(), getUser()],
+        }),
+        getChannel({
+          channel_type: "slack",
+          recipients: [getUser(), getUser(), getUser()],
+        }),
+        getChannel({
+          channel_type: "telegram",
+          recipients: [getUser(), getUser(), getUser()],
+        }),
+      ],
+    });
+
+    render(<ArchiveModal item={alert} type="alert" />);
+
+    screen.getByText("2 emails and 3 Slack channels and 3 Telegram channels", { exact: false });
+  });
+
   it("should close on submit", async () => {
     const alert = getAlert();
     const onArchive = jest.fn();

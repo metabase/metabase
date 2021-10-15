@@ -86,7 +86,7 @@ function _PulsesListSidebar({
                     name={
                       pulse.channels[0].channel_type === "email"
                         ? "mail"
-                        : "slack"
+                        : pulse.channels[0].channel_type
                     }
                     className="mr1"
                     style={{ paddingBottom: "5px" }}
@@ -121,6 +121,8 @@ function canEditPulse(pulse, formInput) {
       return formInput.channels.email != null;
     case "slack":
       return formInput.channels.slack != null;
+    case "telegram":
+      return formInput.channels.telegram != null;
   }
 }
 
@@ -223,6 +225,8 @@ function friendlySchedule(channel) {
   if (channel.channel_type === "email") {
     scheduleString += t`Emailed `;
   } else if (channel.channel_type === "slack") {
+    scheduleString += t`Sent to ` + channel.details.channel + " ";
+  } else if (channel.channel_type === "telegram") {
     scheduleString += t`Sent to ` + channel.details.channel + " ";
   } else {
     scheduleString += t`Sent `;

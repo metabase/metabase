@@ -13,6 +13,7 @@ import Select, { Option } from "metabase/components/Select";
 import Toggle from "metabase/components/Toggle";
 import Icon from "metabase/components/Icon";
 import ChannelSetupMessage from "metabase/components/ChannelSetupMessage";
+import TextInput from "metabase/components/TextInput";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
@@ -21,11 +22,13 @@ import { channelIsValid, createChannel } from "metabase/lib/pulse";
 export const CHANNEL_ICONS = {
   email: "mail",
   slack: "slack",
+  telegram: "telegram",
 };
 
 const CHANNEL_NOUN_PLURAL = {
   email: t`Emails`,
   slack: t`Slack messages`,
+  telegram: t`Telegram messages`,
 };
 
 export default class PulseEditChannels extends Component {
@@ -155,7 +158,7 @@ export default class PulseEditChannels extends Component {
         {channelSpec.fields.map(field => (
           <div key={field.name} className={field.name}>
             <span className="h4 text-bold mr1">{field.displayName}</span>
-            {field.type === "select" ? (
+            {field.type === "select" && (
               <Select
                 className="h4 text-bold bg-white inline-block"
                 value={valueForField(field)}
@@ -175,7 +178,21 @@ export default class PulseEditChannels extends Component {
                   </Option>
                 ))}
               </Select>
-            ) : null}
+            )}
+            {field.type === "string" && (
+              <TextInput
+                colorScheme="admin"
+                placeholder={t`chat id (number id or @yourchannelname)`}
+                padding="sm"
+                borderRadius="md"
+                value={valueForField(field)}
+                onChange={v =>
+                  this.onChannelPropertyChange(index, "details", {
+                  ...channel.details,
+                  [field.name]: v})
+                }
+              />
+            )}
           </div>
         ))}
       </div>
@@ -299,6 +316,7 @@ export default class PulseEditChannels extends Component {
     const channels = formInput.channels || {
       email: { name: t`Email`, type: "email" },
       slack: { name: t`Slack`, type: "slack" },
+      telegram: { name: t`Telegram`, type: "telegram" },
     };
     return (
       <ul className="bordered rounded bg-white">

@@ -14,8 +14,10 @@ function NewPulseSidebar({
   onCancel,
   emailConfigured,
   slackConfigured,
+  telegramConfigured,
   onNewEmailPulse,
   onNewSlackPulse,
+  onNewTelegramPulse,
 }) {
   return (
     <Sidebar onCancel={onCancel}>
@@ -101,6 +103,44 @@ function NewPulseSidebar({
             </Text>
           </div>
         </Card>
+        <Card
+          flat
+          className={cx({
+            "cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit": telegramConfigured,
+          })}
+          onClick={onNewTelegramPulse}
+        >
+          <div className="px3 pt3 pb2">
+            <div className="flex align-center mb1">
+              <Icon
+                name={telegramConfigured ? "telegram_colorized" : "telegram"}
+                size={24}
+                className={cx("mr1", {
+                  "text-light": !telegramConfigured,
+                  "hover-child hover--inherit": telegramConfigured,
+                })}
+              />
+              <h3
+                className={cx({ "text-light": !telegramConfigured })}
+              >{t`Send it to Telegram`}</h3>
+            </div>
+            <Text
+              lineHeight={1.5}
+              className={cx("text-medium", {
+                "hover-child hover--inherit": telegramConfigured,
+              })}
+            >
+              {!telegramConfigured &&
+              jt`First, you'll have to ${(
+                <Link key="link" to="/admin/settings/telegram" className="link">
+                  configure Telegram
+                </Link>
+              )}.`}
+              {telegramConfigured &&
+              t`Pick a channel and a schedule, and Metabase will do the rest.`}
+            </Text>
+          </div>
+        </Card>
       </div>
     </Sidebar>
   );
@@ -110,8 +150,10 @@ NewPulseSidebar.propTypes = {
   onCancel: PropTypes.func.isRequired,
   emailConfigured: PropTypes.bool.isRequired,
   slackConfigured: PropTypes.bool.isRequired,
+  telegramConfigured: PropTypes.bool.isRequired,
   onNewEmailPulse: PropTypes.func.isRequired,
   onNewSlackPulse: PropTypes.func.isRequired,
+  onNewTelegramPulse: PropTypes.func.isRequired,
 };
 
 export default NewPulseSidebar;

@@ -175,6 +175,8 @@ export class AlertListItem extends Component {
     const emailEnabled = emailChannel && emailChannel.enabled;
     const slackChannel = alert.channels.find(c => c.channel_type === "slack");
     const slackEnabled = slackChannel && slackChannel.enabled;
+    const telegramChannel = alert.channels.find(c => c.channel_type === "telegram");
+    const telegramEnabled = telegramChannel && telegramChannel.enabled;
 
     if (hasJustUnsubscribed) {
       return <UnsubscribedListItem />;
@@ -236,6 +238,12 @@ export class AlertListItem extends Component {
                 {(slackChannel.details &&
                   slackChannel.details.channel.replace("#", "")) ||
                   t`No channel`}
+              </li>
+            )}
+            {isAdmin && telegramEnabled && (
+              <li className="ml3 flex align-center">
+                <Icon name="telegram" size={16} className="mr1" />
+                {(telegramChannel.details && telegramChannel.details.channel) || t`No channel`}
               </li>
             )}
           </ul>

@@ -8,6 +8,7 @@ import NewPulseSidebar from "metabase/sharing/components/NewPulseSidebar";
 import PulsesListSidebar from "metabase/sharing/components/PulsesListSidebar";
 import {
   AddEditSlackSidebar,
+  AddEditTelegramSidebar,
   AddEditEmailSidebar,
 } from "metabase/sharing/components/AddEditSidebar";
 import Sidebar from "metabase/dashboard/components/Sidebar";
@@ -38,6 +39,7 @@ import {
 export const CHANNEL_ICONS = {
   email: "mail",
   slack: "slack",
+  telegram: "telegram",
 };
 
 const cardsFromDashboard = dashboard => {
@@ -389,17 +391,60 @@ class SharingSidebar extends React.Component {
       );
     }
 
+    if (
+      editingMode === "add-edit-telegram" &&
+      (pulse.channels && pulse.channels.length > 0)
+    ) {
+      const channelDetails = pulse.channels
+        .map((c, i) => [c, i])
+        .filter(([c, i]) => c.enabled && c.channel_type === "telegram");
+
+      // protection from a failure where the channels aren't loaded yet
+      if (channelDetails.length === 0) {
+        return <Sidebar />;
+      }
+
+      const [channel, index] = channelDetails[0];
+      const channelSpec = formInput.channels.telegram;
+      return (
+        <AddEditTelegramSidebar
+          pulse={pulse}
+          formInput={formInput}
+          channel={channel}
+          channelSpec={channelSpec}
+          handleSave={this.handleSave}
+          onCancel={this.onCancel}
+          onChannelPropertyChange={_.partial(
+            this.onChannelPropertyChange,
+            index,
+          )}
+          onChannelScheduleChange={_.partial(
+            this.onChannelScheduleChange,
+            index,
+          )}
+          testPulse={testPulse}
+          toggleSkipIfEmpty={this.toggleSkipIfEmpty}
+          handleArchive={this.handleArchive}
+          dashboard={dashboard}
+          setPulseParameters={this.setPulseParameters}
+        />
+      );
+    }
+
     if (editingMode === "new-pulse" || pulses.length === 0) {
       const { configured: emailConfigured = false } =
         formInput.channels.email || {};
       const { configured: slackConfigured = false } =
         formInput.channels.slack || {};
+      const { configured: telegramConfigured = false } =
+        formInput.channels.telegram || {};
 
       return (
         <NewPulseSidebar
           onCancel={this.onCancel}
           emailConfigured={emailConfigured}
           slackConfigured={slackConfigured}
+          telegramConfigured={telegramConfigured}
           onNewEmailPulse={() => {
             if (emailConfigured) {
               this.setState(({ returnMode }) => {
@@ -420,6 +465,17 @@ class SharingSidebar extends React.Component {
                 };
               });
               this.setPulseWithChannel("slack");
+            }
+          }}
+          onNewTelegramPulse={() => {
+            if (telegramConfigured) {
+              this.setState(({ returnMode }) => {
+                return {
+                  editingMode: "add-edit-telegram",
+                  returnMode: returnMode.concat([editingMode]),
+                };
+              });
+              this.setPulseWithChannel("telegram");
             }
           }}
         />

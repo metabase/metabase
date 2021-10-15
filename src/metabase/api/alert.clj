@@ -54,6 +54,9 @@
 (defn- slack-channel [alert]
   (m/find-first #(= :slack (keyword (:channel_type %))) (:channels alert)))
 
+(defn- telegram-chat [alert]
+  (m/find-first #(= :telegram (keyword (:channel_type %))) (:channels alert)))
+
 (defn- key-by [key-fn coll]
   (zipmap (map key-fn coll) coll))
 
@@ -187,7 +190,8 @@
                           ;; automatically archive alert if it now has no recipients
                           (when (and (contains? alert-updates :channels)
                                      (not (seq (:recipients (email-channel alert-updates))))
-                                     (not (slack-channel alert-updates)))
+                                     (not (slack-channel alert-updates))
+                                     (not (telegram-chat alert-updates)))
                             {:archived true})))]
 
       ;; Only admins can update recipients or explicitly archive an alert

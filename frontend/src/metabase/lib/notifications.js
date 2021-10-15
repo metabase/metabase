@@ -45,6 +45,8 @@ export const formatChannelType = ({ channel_type }) => {
       return t`emailed`;
     case "slack":
       return t`slack’d`;
+    case "telegram":
+      return t`telegrammed`;
     default:
       return t`sent`;
   }
@@ -83,11 +85,15 @@ export const formatChannelDetails = ({ channel_type, details }) => {
   if (channel_type === "slack" && details) {
     return `to ${details.channel}`;
   }
+  if (channel_type === "telegram" && details) {
+    return `to ${details.channel}`;
+  }
 };
 
 export const formatChannelRecipients = item => {
   const emailCount = getRecipientsCount(item, "email");
   const slackCount = getRecipientsCount(item, "slack");
+  const telegramCount = getRecipientsCount(item, "telegram");
 
   const emailMessage = ngettext(
     msgid`${emailCount} email`,
@@ -101,13 +107,25 @@ export const formatChannelRecipients = item => {
     slackCount,
   );
 
-  if (emailCount && slackCount) {
-    return t`${emailMessage} and ${slackMessage}.`;
-  } else if (emailCount) {
-    return emailMessage;
-  } else if (slackCount) {
-    return slackMessage;
+  const telegramMessage = ngettext(
+    msgid`${telegramCount} Telegram channel`,
+    `${telegramCount} Telegram channels`,
+    telegramCount,
+  );
+
+  const messages = [];
+
+  if (emailCount) {
+    messages.push(emailMessage);
   }
+  if (slackCount) {
+    messages.push(slackMessage);
+  }
+  if (telegramCount) {
+    messages.push(telegramMessage);
+  }
+
+  return t`${messages.join(' and ')}.`;
 };
 
 export const getRecipientsCount = (item, channelType) => {

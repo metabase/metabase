@@ -6,6 +6,7 @@
             [metabase.email :as email]
             [metabase.email.messages :as messages]
             [metabase.integrations.slack :as slack]
+            [metabase.integrations.telegram :as telegram]
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :refer [DashboardCard]]
@@ -257,6 +258,44 @@
             (goal-comparison goal-val (comparison-col-rowfn row)))
           (get-in first-result [:result :data :rows]))))
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         Telegram                                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- telegram-title-url
+  "Returns dashboard or pulse url"
+  [{pulse-dashboard-id :dashboard_id, :as pulse}
+   dashboard]
+  (if dashboard
+    (params/dashboard-url (u/the-id dashboard) (params/parameters pulse dashboard))
+    (if pulse-dashboard-id
+      (params/dashboard-url pulse-dashboard-id (params/parameters pulse dashboard))
+      ;; For some reason, the pulse model does not contain the id
+      (urls/pulse-url 0))))
+
+(defn- telegram-pulse-alert-message
+  "Sends a message via Telegram, using the image and the pulse/dashboard name and url, and the card name and url as a caption"
+  [{card-name :name, :as card}
+   {pulse-name :name, pulse-dashboard-id :dashboard_id, :as pulse}
+   dashboard]
+  (let [title-url (telegram-title-url pulse dashboard)
+        title-text (if dashboard (:name dashboard) pulse-name)
+        subtitle-url (urls/card-url (u/the-id card))
+        subtitle-text card-name]
+    (format "[*%s*](%s) → [%s](%s)" title-text title-url subtitle-text subtitle-url)))
+
+(def telegram-width
+  "Width of the rendered png of html to be sent to Telegram."
+  510)
+
+(defn post-telegram-message!
+  "Post a photo for a given Card by rendering its result into an image and sending it."
+  [card-results chat-id pulse dashboard]
+  (doall (for [{{card-id :id, card-name :name, :as card} :card, result :result, dashcard :dashcard} card-results]
+           (let [image-byte-array (render/render-pulse-card-to-png (defaulted-timezone card) card result telegram-width dashcard)]
+             (telegram/post-photo! image-byte-array
+                                   (telegram-pulse-alert-message card pulse dashboard)
+                                   chat-id)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Creating Notifications To Send                                         |
@@ -295,7 +334,7 @@
 
 (defmulti ^:private notification
   "Polymorphoic function for creating notifications. This logic is different for pulse type (i.e. alert vs. pulse) and
-  channel_type (i.e. email vs. slack)"
+  channel_type (i.e. email vs. slack vs. telegram)"
   {:arglists '([alert-or-pulse results channel])}
   (fn [pulse _ {:keys [channel_type]}]
     [(alert-or-pulse pulse) (keyword channel_type)]))
@@ -326,6 +365,15 @@
                                     (create-slack-attachment-data results)
                                     (when dashboard (slack-dashboard-footer pulse dashboard))]))}))
 
+(defmethod notification [:pulse :telegram]
+           [{pulse-id :id, pulse-name :name, dashboard-id :dashboard_id, :as pulse}
+            results
+            {{chat-id :chat-id} :details}]
+           (log/debug (u/format-color 'cyan (trs "Sending Pulse ({0}: {1}) with {2} Cards via Telegram"
+                                                 pulse-id (pr-str pulse-name) (count results))))
+           (let [dashboard (Dashboard :id dashboard-id)]
+             {:chat-id  chat-id :attachments results :pulse pulse :dashboard dashboard}))
+
 (defmethod notification [:alert :email]
   [{:keys [id] :as pulse} results channel]
   (log/debug (trs "Sending Alert ({0}: {1}) via email" id name))
@@ -350,6 +398,13 @@
                                         :text (str "🔔 " (first-question-name pulse))
                                         :emoji true}}]}
                       (create-slack-attachment-data results))})
+
+(defmethod notification [:alert :telegram]
+  [pulse results {{chat-id :chat-id} :details}]
+  (log/debug (u/format-color 'cyan (trs "Sending Alert ({0}: {1}) via Telegram" (:id pulse) (:name pulse))))
+  {:chat-id  chat-id
+   :message (str "🔔 " (first-question-name pulse))
+   :attachments results})
 
 (defmethod notification :default
   [_ _ {:keys [channel_type]}]
@@ -386,15 +441,19 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmulti ^:private send-notification!
-  "Invokes the side-effecty function for sending emails/slacks depending on the notification type"
+  "Invokes the side-effecty function for sending emails/slacks/telegrams depending on the notification type"
   {:arglists '([pulse-or-alert])}
-  (fn [{:keys [channel-id]}]
-    (if channel-id :slack :email)))
+  (fn [{:keys [channel-id chat-id], :as whatever}]
+    (if channel-id :slack (if chat-id :telegram :email))))
 
 (defmethod send-notification! :slack
   [{:keys [channel-id message attachments]}]
   (let [attachments (create-and-upload-slack-attachments! attachments)]
     (slack/post-chat-message! channel-id message attachments)))
+
+(defmethod send-notification! :telegram
+  [{:keys [chat-id attachments pulse dashboard]}]
+  (post-telegram-message! attachments chat-id pulse dashboard))
 
 (defmethod send-notification! :email
   [{:keys [subject recipients message-type message]}]

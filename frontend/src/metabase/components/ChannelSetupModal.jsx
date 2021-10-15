@@ -16,7 +16,7 @@ export default class ChannelSetupModal extends Component {
   };
 
   static defaultProps = {
-    channels: ["email", "Slack"],
+    channels: ["email", "Slack", "Telegram"],
   };
 
   render() {

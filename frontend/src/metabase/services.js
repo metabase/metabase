@@ -207,6 +207,10 @@ export const SlackApi = {
   updateSettings: PUT("/api/slack/settings"),
 };
 
+export const TelegramApi = {
+  updateSettings: PUT("/api/telegram/settings"),
+};
+
 export const LdapApi = {
   updateSettings: PUT("/api/ldap/settings"),
 };

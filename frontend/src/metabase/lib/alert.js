@@ -11,6 +11,8 @@ export function channelIsValid(channel) {
       );
     case "slack":
       return channel.details && scheduleIsValid(channel);
+    case "telegram":
+      return channel.details && scheduleIsValid(channel);
     default:
       return false;
   }

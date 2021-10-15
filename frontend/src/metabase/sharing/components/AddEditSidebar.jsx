@@ -30,6 +30,7 @@ import {
   getDefaultParametersById,
   getParameters,
 } from "metabase/dashboard/selectors";
+import TextInput from "metabase/components/TextInput";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -44,6 +45,7 @@ Heading.propTypes = { children: PropTypes.any };
 const CHANNEL_NOUN_PLURAL = {
   email: t`Emails`,
   slack: t`Slack messages`,
+  telegram: t`Telegram messages`,
 };
 
 export const AddEditEmailSidebar = connect(mapStateToProps)(
@@ -51,6 +53,9 @@ export const AddEditEmailSidebar = connect(mapStateToProps)(
 );
 export const AddEditSlackSidebar = connect(mapStateToProps)(
   _AddEditSlackSidebar,
+);
+export const AddEditTelegramSidebar = connect(mapStateToProps)(
+  _AddEditTelegramSidebar,
 );
 
 function _AddEditEmailSidebar({
@@ -257,6 +262,15 @@ function getConfirmItems(pulse) {
         )}`}
         .
       </span>
+    ) : c.channel_type === "telegram" ? (
+      <span key={index}>
+        {jt`Telegram channel ${(
+          <strong key="msg">{c.details && c.details.channel}</strong>
+        )} will no longer get this dashboard ${(
+          <strong key="type">{c.schedule_type}</strong>
+        )}`}
+        .
+      </span>
     ) : (
       <span key={index}>
         {jt`Channel ${(
@@ -389,6 +403,126 @@ _AddEditSlackSidebar.propTypes = {
   setPulseParameters: PropTypes.func.isRequired,
 };
 
+
+function _AddEditTelegramSidebar({
+                                pulse,
+                                formInput,
+                                channel,
+                                channelSpec,
+                                parameters,
+                                defaultParametersById,
+                                dashboard,
+                                // form callbacks
+                                handleSave,
+                                onCancel,
+                                onChannelPropertyChange,
+                                onChannelScheduleChange,
+                                testPulse,
+                                toggleSkipIfEmpty,
+                                handleArchive,
+                                setPulseParameters,
+                              }) {
+  const isValid = dashboardPulseIsValid(pulse, formInput.channels);
+
+  return (
+    <Sidebar
+      closeIsDisabled={!isValid}
+      onClose={handleSave}
+      onCancel={onCancel}
+    >
+      <div className="pt4 flex align-center px4 mb3">
+        <Icon name="telegram" className="mr1" size={21} />
+        <Heading>{t`Send this dashboard to Telegram`}</Heading>
+      </div>
+      <CaveatMessage />
+      <div className="pb2 px4">
+        {channelSpec.fields && (
+          <ChannelFields
+            channel={channel}
+            channelSpec={channelSpec}
+            onChannelPropertyChange={onChannelPropertyChange}
+          />
+        )}
+        <SchedulePicker
+          schedule={_.pick(
+            channel,
+            "schedule_day",
+            "schedule_frame",
+            "schedule_hour",
+            "schedule_type",
+          )}
+          scheduleOptions={channelSpec.schedules}
+          textBeforeInterval={t`Sent`}
+          textBeforeSendTime={t`${CHANNEL_NOUN_PLURAL[
+          channelSpec && channelSpec.type
+            ] || t`Messages`} will be sent at`}
+          onScheduleChange={(newSchedule, changedProp) =>
+            onChannelScheduleChange(newSchedule, changedProp)
+          }
+        />
+        <div className="pt2 pb1">
+          <SendTestPulse
+            channel={channel}
+            pulse={pulse}
+            testPulse={testPulse}
+            normalText={t`Send to Telegram now`}
+            successText={t`Telegram sent`}
+            disabled={!isValid}
+          />
+        </div>
+        {PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component ? (
+          <PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component
+            className="py3 mt2 border-top"
+            parameters={parameters}
+            dashboard={dashboard}
+            pulse={pulse}
+            setPulseParameters={setPulseParameters}
+            defaultParametersById={defaultParametersById}
+          />
+        ) : (
+          <DefaultParametersSection
+            className="py3 mt2 border-top"
+            parameters={parameters}
+            defaultParametersById={defaultParametersById}
+          />
+        )}
+        <div className="text-bold py2 flex justify-between align-center border-top">
+          <Heading>{t`Don't send if there aren't results`}</Heading>
+          <Toggle
+            value={pulse.skip_if_empty || false}
+            onChange={toggleSkipIfEmpty}
+          />
+        </div>
+        {pulse.id != null && (
+          <DeleteSubscriptionAction
+            pulse={pulse}
+            handleArchive={handleArchive}
+          />
+        )}
+      </div>
+    </Sidebar>
+  );
+}
+
+_AddEditTelegramSidebar.propTypes = {
+  pulse: PropTypes.object.isRequired,
+  formInput: PropTypes.object.isRequired,
+  channel: PropTypes.object.isRequired,
+  channelSpec: PropTypes.object.isRequired,
+  users: PropTypes.array,
+  parameters: PropTypes.array.isRequired,
+  defaultParametersById: PropTypes.object.isRequired,
+  dashboard: PropTypes.object.isRequired,
+  handleSave: PropTypes.func.isRequired,
+  onCancel: PropTypes.func.isRequired,
+  onChannelPropertyChange: PropTypes.func.isRequired,
+  onChannelScheduleChange: PropTypes.func.isRequired,
+  testPulse: PropTypes.func.isRequired,
+  toggleSkipIfEmpty: PropTypes.func.isRequired,
+  handleArchive: PropTypes.func.isRequired,
+  setPulseParameters: PropTypes.func.isRequired,
+};
+
 function CaveatMessage() {
   return (
     <Text className="mx4 my2 p2 bg-light text-dark rounded">
@@ -417,7 +551,7 @@ function ChannelFields({ channel, channelSpec, onChannelPropertyChange }) {
       {channelSpec.fields.map(field => (
         <div key={field.name} className={field.name}>
           <span className="text-bold mr1">{field.displayName}</span>
-          {field.type === "select" ? (
+          {field.type === "select" && (
             <Select
               className="text-bold bg-white inline-block"
               value={valueForField(field)}
@@ -437,7 +571,22 @@ function ChannelFields({ channel, channelSpec, onChannelPropertyChange }) {
                 </Option>
               ))}
             </Select>
-          ) : null}
+          )}
+          {field.type === "string" && (
+            <TextInput
+              colorScheme="admin"
+              placeholder={t`chat id (number or @yourchannelname)`}
+              padding="sm"
+              borderRadius="md"
+              value={valueForField(field)}
+              onChange={v =>
+                onChannelPropertyChange("details", {
+                  ...channel.details,
+                  [field.name]: v,
+                })
+              }
+            />
+          )}
         </div>
       ))}
     </div>

@@ -185,8 +185,10 @@
 
 (s/defn render-pulse-card-to-png :- bytes
   "Render a `pulse-card` as a PNG. `data` is the `:data` from a QP result (I think...)"
-  [timezone-id :- (s/maybe s/Str) pulse-card result width]
-  (png/render-html-to-png (render-pulse-card :inline timezone-id pulse-card nil result) width))
+  ([timezone-id :- (s/maybe s/Str) pulse-card result width]
+       (render-pulse-card-to-png timezone-id pulse-card result width nil))
+  ([timezone-id :- (s/maybe s/Str) pulse-card result width dashcard]
+       (png/render-html-to-png (render-pulse-card :inline timezone-id pulse-card nil result) width)))
 
 (s/defn png-from-render-info :- bytes
   "Create a PNG file (as a byte array) from rendering info."

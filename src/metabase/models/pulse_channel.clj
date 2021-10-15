@@ -81,7 +81,8 @@
    which contains any other relevant information for defining the channel.  E.g.
 
    {:email {:name \"Email\", :recipients? true}
-    :slack {:name \"Slack\", :recipients? false}}"
+    :slack {:name \"Slack\", :recipients? false}}
+    :telegram {:name \"Telegram\", :recipients? false}}"
   {:email {:type              "email"
            :name              "Email"
            :allows_recipients true
@@ -93,6 +94,15 @@
            :schedules         [:hourly :daily :weekly :monthly]
            :fields            [{:name        "channel"
                                 :type        "select"
+                                :displayName "Post to"
+                                :options     []
+                                :required    true}]}
+   :telegram {:type           "telegram"
+           :name              "Telegram"
+           :allows_recipients false
+           :schedules         [:hourly :daily :weekly :monthly]
+           :fields            [{:name        "chat-id"
+                                :type        "string"
                                 :displayName "Post to"
                                 :options     []
                                 :required    true}]}})
