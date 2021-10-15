@@ -23,7 +23,9 @@ describe("scenarios > binning > from a saved sql question", () => {
       cy.findByText("Simple question").click();
       cy.findByText("Saved Questions").click();
       cy.findByText("SQL Binning").click();
-      cy.findByText("Summarize").click();
+      cy.findAllByText("Summarize")
+        .filter(":visible")
+        .click();
       cy.wait("@dataset");
     });
 
