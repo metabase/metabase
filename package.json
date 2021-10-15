@@ -176,7 +176,7 @@
     "type-check": "yarn && tsc --noEmit",
     "lint": "yarn lint-eslint && yarn lint-prettier && yarn lint-docs-links && yarn lint-yaml && yarn type-check",
     "lint-eslint": "yarn build-quick:cljs && eslint --ext .js --ext .jsx --rulesdir frontend/lint/eslint-rules --max-warnings 0 enterprise/frontend/src frontend/src frontend/test",
-    "lint-prettier": "yarn && prettier -l '{enterprise/,}frontend/**/*.{js,jsx,css}' || (echo '\nThese files are not formatted correctly. Did you forget to \"yarn prettier\"?' && false)",
+    "lint-prettier": "yarn && prettier -l '{enterprise/,}frontend/**/*.{js,jsx,ts,tsx,css}' || (echo '\nThese files are not formatted correctly. Did you forget to \"yarn prettier\"?' && false)",
     "lint-docs-links": "yarn && ./bin/verify-doc-links",
     "lint-yaml": "yamllint **/*.{yaml,yml} --ignore=node_modules/**/*.{yaml,yml}",
     "test": "yarn test-unit && yarn test-timezones && yarn test-cypress",
@@ -204,12 +204,9 @@
     "build-static-viz": "yarn && webpack --config webpack.static-viz.config.js",
     "precommit": "lint-staged",
     "preinstall": "echo $npm_execpath | grep -q yarn || echo '\\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\\033[0m'",
-    "prettier": "prettier --write '{enterprise/,}frontend/**/*.{js,jsx,css}'",
-    "eslint-fix": "yarn && eslint --fix --ext .js --ext .jsx --rulesdir frontend/lint/eslint-rules {enterprise/,}frontend/{src,test}",
+    "prettier": "prettier --write '{enterprise/,}frontend/**/*.{js,jsx,ts,tsx,css}'",
+    "eslint-fix": "yarn && eslint --fix --ext .js,.jsx,.ts,.tsx --rulesdir frontend/lint/eslint-rules {enterprise/,}frontend/{src,test}",
     "docs": "documentation serve --watch frontend/src/metabase-lib/lib/**",
-    "ci": "yarn ci-frontend && yarn ci-backend",
-    "ci-frontend": "yarn lint && yarn test",
-    "ci-backend": "clojure -X:dev:ee:ee-dev:drivers:drivers-dev:eastwood && clojure -X:dev:test",
     "test-cypress": "yarn build && ./bin/build-for-test && yarn test-cypress-no-build",
     "test-cypress-open": "./bin/build-for-test && yarn test-cypress-no-build --open",
     "test-cypress-open-no-backend": "E2E_HOST='http://localhost:3000' yarn test-cypress-no-build --open",
@@ -220,7 +217,7 @@
     "prepare": "husky install"
   },
   "lint-staged": {
-    "frontend/**/*.{js,jsx,css}": [
+    "frontend/**/*.{js,jsx,ts,tsx,css}": [
       "prettier --write"
     ]
   },
