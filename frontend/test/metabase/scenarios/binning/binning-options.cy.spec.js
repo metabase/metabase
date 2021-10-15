@@ -264,7 +264,9 @@ describe("scenarios > binning > binning options", () => {
 
 function chooseInitialBinningOption({ table, column, mode = null } = {}) {
   openTable({ table, mode });
-  cy.findByText("Summarize").click();
+  cy.findAllByText("Summarize")
+    .filter(":visible")
+    .click();
 
   if (mode === "notebook") {
     cy.findByText("Count of rows").click();
