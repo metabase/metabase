@@ -159,9 +159,7 @@ describe("scenarios > question > custom column", () => {
       });
     });
 
-    cy.findByTestId("query-visualization").within(() => {
-      cy.findByText(CC_NAME);
-    });
+    cy.findAllByText(CC_NAME).filter(":visible");
   });
 
   it("should work with implicit joins (metabase#14080)", () => {
@@ -281,6 +279,7 @@ describe("scenarios > question > custom column", () => {
       cy.findByTestId("query-visualization").within(() => {
         cy.findByText(CC_NAME);
       });
+
       cy.findByText("Gizmo2");
     });
   });
@@ -370,9 +369,7 @@ describe("scenarios > question > custom column", () => {
       expect(xhr.response.body.error).not.to.exist;
     });
 
-    cy.findByTestId("query-visualization").within(() => {
-      cy.findByText(CC_NAME);
-    });
+    cy.findAllByText(CC_NAME).filter(":visible");
 
     cy.contains("37.65");
   });

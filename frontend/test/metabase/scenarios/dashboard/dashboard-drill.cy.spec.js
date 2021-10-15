@@ -187,11 +187,9 @@ describe("scenarios > dashboard > dashboard drill", () => {
     cy.findByText("num: 111").click();
 
     // show filtered question
-    cy.findAllByText("Orders");
-    cy.findByTestId("question-subheader").within(() => {
-      cy.findByText("User ID is 111");
-      cy.findByText("Category is Widget");
-    });
+    cy.findAllByText("Orders").filter(":visible");
+    cy.findAllByText("User ID is 111").filter(":visible");
+    cy.findAllByText("Category is Widget").filter(":visible");
 
     cy.findByText("Showing 5 rows");
   });
@@ -347,9 +345,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     it("when clicking on the card title (metabase#13062-2)", () => {
       cy.findByText(questionDetails.name).click();
 
-      cy.findByTestId("question-subheader").within(() => {
-        cy.findByText("Rating is equal to 2 selections");
-      });
+      cy.findAllByText("Rating is equal to 2 selections").filter(":visible");
 
       cy.contains("Ad perspiciatis quis et consectetur."); // 5 star review
     });
@@ -861,9 +857,9 @@ describe("scenarios > dashboard > dashboard drill", () => {
     }
 
     function postDrillAssertion() {
-      cy.findByTestId("question-subheader").within(() => {
-        cy.findByText("ID is 2 selections").click();
-      });
+      cy.findAllByText("ID is 2 selections")
+        .filter(":visible")
+        .click();
 
       popover().within(() => {
         cy.get("li")
