@@ -3,7 +3,6 @@ import Utils from "metabase/lib/utils";
 
 import * as QUERY from "./query/query";
 import * as FieldRef from "./query/field_ref";
-import { SORTABLE_AGGREGATION_TYPES } from "./query/aggregation";
 
 export * from "./query/query";
 export * from "./query/field_ref";
@@ -158,9 +157,5 @@ function canSortByAggregateField(query, index) {
     return false;
   }
   const aggregations = QUERY.getAggregations(query);
-  return (
-    aggregations[index] &&
-    aggregations[index][0] &&
-    SORTABLE_AGGREGATION_TYPES.has(aggregations[index][0])
-  );
+  return aggregations[index] && aggregations[index][0];
 }

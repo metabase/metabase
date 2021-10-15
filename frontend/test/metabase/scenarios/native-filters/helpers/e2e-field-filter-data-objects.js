@@ -1,25 +1,31 @@
 export const STRING_FILTER_SUBTYPES = {
   String: {
+    searchTerm: "Synerg",
     value: "Synergistic Granite Chair",
     representativeResult: "Synergistic Granite Chair",
   },
   "String is not": {
+    searchTerm: "Synerg",
     value: "Synergistic Granite Chair",
     representativeResult: "Rustic Paper Wallet",
   },
   "String contains": {
+    searchTerm: null,
     value: "Bronze",
     representativeResult: "Incredible Bronze Pants",
   },
   "String does not contain": {
+    searchTerm: null,
     value: "Bronze",
     representativeResult: "Rustic Paper Wallet",
   },
   "String starts with": {
+    searchTerm: null,
     value: "Rustic",
     representativeResult: "Rustic Paper Wallet",
   },
   "String ends with": {
+    searchTerm: null,
     value: "Hat",
     representativeResult: "Small Marble Hat",
   },

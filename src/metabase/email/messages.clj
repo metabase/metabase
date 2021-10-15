@@ -464,7 +464,7 @@
         icon-attachment (first (map make-message-attachment (icon-bundle icon-name)))
         filters         (when dashboard
                           (render-filters notification dashboard))
-        message-body    (assoc message-context :pulse   (html (vec (cons :div (map :content rendered-cards))))
+        message-body    (assoc message-context :pulse (html (vec (cons :div (map :content rendered-cards))))
                                :filters filters
                                :iconCid (:content-id icon-attachment))
         attachments     (apply merge (map :attachments rendered-cards))]

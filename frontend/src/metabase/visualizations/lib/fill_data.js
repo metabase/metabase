@@ -22,9 +22,20 @@ function fillMissingValues(rows, xValues, fillValue, getKey = v => v) {
     const fillValues = rows[0].slice(1).map(d => fillValue);
 
     const map = new Map();
+
     for (const row of rows) {
-      map.set(getKey(row[0]), row);
+      const key = getKey(row[0]);
+      const oldRow = map.get(key);
+
+      if (oldRow) {
+        const newRow = row.map((_, i) => row[i] ?? oldRow[i]);
+        newRow._origin = row._origin;
+        map.set(key, newRow);
+      } else {
+        map.set(key, row);
+      }
     }
+
     const newRows = xValues.map(value => {
       const key = getKey(value);
       const row = map.get(key);

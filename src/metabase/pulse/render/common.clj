@@ -53,7 +53,9 @@
         base               (if (= number-style "scientific") "0" "#,###")
         integral?          (isa? (or effective_type base_type) :type/Integer)
         fmt-str            (cond-> (cond
-                                     decimals  (apply str base "." (repeat decimals "0"))
+                                     decimals  (if (zero? decimals)
+                                                 base
+                                                 (apply str base "." (repeat decimals "0")))
                                      integral? base
                                      :else     (str base ".00"))
                              (= number-style "scientific") (str "E0")

@@ -2,6 +2,9 @@ name: Kerberized Presto Integration Test
 
 on:
   pull_request:
+    paths:
+    - '**/presto_jdbc/**'
+    - '**/presto_jdbc.clj'
   push:
     branches:
       - master

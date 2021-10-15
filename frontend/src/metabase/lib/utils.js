@@ -24,6 +24,8 @@ const LAYOUT_PROPS = [
   "bordered",
 ];
 
+const EMAIL_REGEX = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+
 export function stripLayoutProps(props) {
   return _.omit(props, LAYOUT_PROPS);
 }
@@ -144,8 +146,12 @@ const MetabaseUtils = {
   },
 
   isEmail(email) {
-    const re = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-    return re.test(email);
+    return EMAIL_REGEX.test(email);
+  },
+
+  getEmailDomain(email) {
+    const match = EMAIL_REGEX.exec(email);
+    return match && match[5];
   },
 
   equals(a, b) {
