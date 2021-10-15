@@ -88,10 +88,8 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("View these Orders").click();
 
     // filters are applied
-    cy.findByTestId("view-section").within(() => {
-      cy.findByText("Source is Affiliate");
-      cy.findByText("Category is Doohickey");
-    });
+    cy.findAllByText("Source is Affiliate").filter(":visible");
+    cy.findAllByText("Category is Doohickey").filter(":visible");
 
     // data loads
     cy.findByText("45.04");
@@ -101,16 +99,14 @@ describe("scenarios > visualizations > pivot tables", () => {
     createAndVisitTestQuestion();
 
     // open actions menu and filter to that value
-    cy.findByTestId("query-visualization").within(() => {
-      cy.findByText("Doohickey").click();
-    });
+    cy.findAllByText("Doohickey")
+      .filter(":visible")
+      .click();
 
     popover().within(() => cy.findByText("=").click());
 
     // filter is applied
-    cy.findByTestId("view-section").within(() => {
-      cy.findByText("Category is Doohickey");
-    });
+    cy.findAllByText("Category is Doohickey").filter(":visible");
 
     // filter out affiliate as a source
     cy.findByText("Affiliate").click();
@@ -210,12 +206,11 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("215"); // see a non-subtotal value
 
     // click to collapse rows
-    cy.findByTestId("query-visualization").within(() => {
-      cy.findByText("Doohickey")
-        .parent()
-        .find(".Icon-dash")
-        .click();
-    });
+    cy.findAllByText("Doohickey")
+      .filter(":visible")
+      .parent()
+      .find(".Icon-dash")
+      .click();
 
     cy.findByText("1,352"); // subtotal is still there
     cy.findByText("215").should("not.exist"); // value is hidden
@@ -228,12 +223,11 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("215"); // ...and it's back!
 
     // collapse the column
-    cy.findByTestId("query-visualization").within(() => {
-      cy.findByText("Product → Category")
-        .parent()
-        .find(".Icon-dash")
-        .click();
-    });
+    cy.findAllByText("Product → Category")
+      .filter(":visible")
+      .parent()
+      .find(".Icon-dash")
+      .click();
 
     cy.findByText("215").should("not.exist"); // value is hidden
     cy.findByText("294").should("not.exist"); // value in another section is also hidden
@@ -534,9 +528,7 @@ describe("scenarios > visualizations > pivot tables", () => {
         display: "pivot",
       });
 
-      cy.findByTestId("query-visualization").within(() => {
-        cy.findByText("category_foo");
-      });
+      cy.findAllByText("category_foo").filter(":visible");
 
       cy.findByText("Doohickeyfoo");
       cy.findByText("42"); // count of Doohickeyfoo
