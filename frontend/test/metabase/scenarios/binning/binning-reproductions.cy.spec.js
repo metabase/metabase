@@ -300,5 +300,7 @@ function openSummarizeOptions(questionType) {
   cy.findByText(questionType).click();
   cy.findByText("Saved Questions").click();
   cy.findByText("16379").click();
-  cy.findByText("Summarize").click();
+  cy.findAllByText("Summarize")
+    .filter(":visible")
+    .click();
 }
