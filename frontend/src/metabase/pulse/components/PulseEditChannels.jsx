@@ -188,8 +188,9 @@ export default class PulseEditChannels extends Component {
                 value={valueForField(field)}
                 onChange={v =>
                   this.onChannelPropertyChange(index, "details", {
-                  ...channel.details,
-                  [field.name]: v})
+                    ...channel.details,
+                    [field.name]: v,
+                  })
                 }
               />
             )}

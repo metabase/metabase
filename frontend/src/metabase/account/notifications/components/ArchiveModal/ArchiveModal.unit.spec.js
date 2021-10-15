@@ -116,7 +116,9 @@ describe("ArchiveModal", () => {
 
     render(<ArchiveModal item={alert} type="alert" />);
 
-    screen.getByText("2 emails and 3 Slack channels and 3 Telegram channels", { exact: false });
+    screen.getByText("2 emails and 3 Slack channels and 3 Telegram channels", {
+      exact: false,
+    });
   });
 
   it("should close on submit", async () => {

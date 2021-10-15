@@ -35,7 +35,7 @@ export function channelIsValid(channel, channelSpec) {
     case "telegram":
       return (
         channel.details &&
-        channel.details['chat-id'] &&
+        channel.details["chat-id"] &&
         fieldsAreValid(channel, channelSpec) &&
         scheduleIsValid(channel)
       );

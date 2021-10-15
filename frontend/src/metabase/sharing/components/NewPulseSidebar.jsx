@@ -131,13 +131,17 @@ function NewPulseSidebar({
               })}
             >
               {!telegramConfigured &&
-              jt`First, you'll have to ${(
-                <Link key="link" to="/admin/settings/telegram" className="link">
-                  configure Telegram
-                </Link>
-              )}.`}
+                jt`First, you'll have to ${(
+                  <Link
+                    key="link"
+                    to="/admin/settings/telegram"
+                    className="link"
+                  >
+                    configure Telegram
+                  </Link>
+                )}.`}
               {telegramConfigured &&
-              t`Pick a channel and a schedule, and Metabase will do the rest.`}
+                t`Pick a channel and a schedule, and Metabase will do the rest.`}
             </Text>
           </div>
         </Card>

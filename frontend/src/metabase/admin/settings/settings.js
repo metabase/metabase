@@ -5,7 +5,13 @@ import {
   combineReducers,
 } from "metabase/lib/redux";
 
-import { SettingsApi, EmailApi, SlackApi, TelegramApi, LdapApi } from "metabase/services";
+import {
+  SettingsApi,
+  EmailApi,
+  SlackApi,
+  TelegramApi,
+  LdapApi,
+} from "metabase/services";
 
 import { refreshSiteSettings } from "metabase/redux/settings";
 

@@ -125,7 +125,7 @@ export const formatChannelRecipients = item => {
     messages.push(telegramMessage);
   }
 
-  return t`${messages.join(' and ')}.`;
+  return t`${messages.join(" and ")}.`;
 };
 
 export const getRecipientsCount = (item, channelType) => {

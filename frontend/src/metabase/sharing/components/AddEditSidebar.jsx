@@ -403,25 +403,24 @@ _AddEditSlackSidebar.propTypes = {
   setPulseParameters: PropTypes.func.isRequired,
 };
 
-
 function _AddEditTelegramSidebar({
-                                pulse,
-                                formInput,
-                                channel,
-                                channelSpec,
-                                parameters,
-                                defaultParametersById,
-                                dashboard,
-                                // form callbacks
-                                handleSave,
-                                onCancel,
-                                onChannelPropertyChange,
-                                onChannelScheduleChange,
-                                testPulse,
-                                toggleSkipIfEmpty,
-                                handleArchive,
-                                setPulseParameters,
-                              }) {
+  pulse,
+  formInput,
+  channel,
+  channelSpec,
+  parameters,
+  defaultParametersById,
+  dashboard,
+  // form callbacks
+  handleSave,
+  onCancel,
+  onChannelPropertyChange,
+  onChannelScheduleChange,
+  testPulse,
+  toggleSkipIfEmpty,
+  handleArchive,
+  setPulseParameters,
+}) {
   const isValid = dashboardPulseIsValid(pulse, formInput.channels);
 
   return (
@@ -454,8 +453,8 @@ function _AddEditTelegramSidebar({
           scheduleOptions={channelSpec.schedules}
           textBeforeInterval={t`Sent`}
           textBeforeSendTime={t`${CHANNEL_NOUN_PLURAL[
-          channelSpec && channelSpec.type
-            ] || t`Messages`} will be sent at`}
+            channelSpec && channelSpec.type
+          ] || t`Messages`} will be sent at`}
           onScheduleChange={(newSchedule, changedProp) =>
             onChannelScheduleChange(newSchedule, changedProp)
           }
