@@ -140,11 +140,7 @@ class TokenizedInput extends Component {
     const restore = saveSelection(inputNode);
 
     inputNode.innerHTML = ReactDOMServer.renderToStaticMarkup(
-      <TokenizedExpression
-        source={this._getValue()}
-        syntaxTree={this.props.syntaxTree}
-        parserOptions={this.props.parserOptions}
-      />,
+      <TokenizedExpression source={this._getValue()} />,
     );
 
     if (document.activeElement === inputNode) {
@@ -192,7 +188,6 @@ TokenizedInput.propTypes = {
   onKeyDown: PropTypes.func,
   parserOptions: PropTypes.object,
   style: PropTypes.object,
-  syntaxTree: PropTypes.object,
   tokenizedEditing: PropTypes.bool,
   value: PropTypes.string,
 };
