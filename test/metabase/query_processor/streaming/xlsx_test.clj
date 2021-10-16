@@ -230,9 +230,21 @@
 ;; `metabase.query-processor.streaming`, or anything that happens in the API handlers for generating exports.
 
 (defn parse-cell-content
+  "Parses an XLSX sheet and returns the raw data in each row"
   [sheet]
   (for [row (spreadsheet/into-seq sheet)]
     (map spreadsheet/read-cell row)))
+
+(defn parse-xlsx-results
+  "Given a byte array representing an XLSX document, parses the query result sheet using the provided `parse-fn`"
+  ([bytea]
+   (parse-xlsx-results bytea parse-cell-content))
+
+  ([bytea parse-fn]
+   (with-open [is (BufferedInputStream. (ByteArrayInputStream. bytea))]
+     (let [workbook (spreadsheet/load-workbook-from-stream is)
+           sheet    (spreadsheet/select-sheet "Query result" workbook)]
+       (parse-fn sheet)))))
 
 (defn- xlsx-export
   ([ordered-cols viz-settings rows]
@@ -249,16 +261,6 @@
        (i/finish! results-writer {:row_count (count rows)}))
      (let [bytea (.toByteArray bos)]
        (parse-xlsx-results bytea parse-fn)))))
-
-(defn parse-xlsx-results
-  ([bytea]
-   (parse-xlsx-results bytea parse-cell-content))
-
-  ([bytea parse-fn]
-   (with-open [is (BufferedInputStream. (ByteArrayInputStream. bytea))]
-     (let [workbook (spreadsheet/load-workbook-from-stream is)
-           sheet    (spreadsheet/select-sheet "Query result" workbook)]
-       (parse-fn sheet)))))
 
 (defn- parse-format-strings
   [sheet]

@@ -4,15 +4,17 @@
             [clojure.test :refer :all]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [medley.core :as m]
+            [metabase.api.embed-test :as embed-test]
             [metabase.models.card :as card :refer [Card]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.streaming :as qp.streaming]
-            [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.query-processor.streaming.xlsx-test :as xlsx-test]
+            [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.test :as mt]
             [metabase.util :as u]
             [toucan.db :as db])
-  (:import [java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream InputStream InputStreamReader]))
+  (:import [java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream InputStream InputStreamReader]
+           java.util.UUID))
 
 (defmulti ^:private parse-result*
   {:arglists '([export-format ^InputStream input-stream column-names])}
@@ -188,6 +190,7 @@
   (zipmap col-names (vals row)))
 
 ;; see also `metabase.query-processor.streaming.xlsx-test/report-timezone-test`
+;; TODO this test doesn't seem to run?
 (deftest report-timezone-test
   (testing "Export downloads should format stuff with the report timezone rather than UTC (#13677)\n"
     (mt/test-driver :postgres
@@ -283,37 +286,46 @@
 ;;; TODO: migrate the test cases above to use these functions, if possible
 
 (defn- do-test
-  [message {:keys [fixture query viz-settings assertions]}]
+  [message {:keys [query viz-settings assertions endpoints]}]
   (testing message
     (let [query-json        (json/generate-string query)
-          viz-settings-json (json/generate-string viz-settings)]
-      (mt/with-temp Card [card (if viz-settings
-                                 {:dataset_query query, :visualization_settings viz-settings}
-                                 {:dataset_query query})]
-        (doall
-         (for [export-format (keys assertions)
-               ;; TODO: make endpoints configurable
-               endpoint      [:dataset :card :public]]
-           (case endpoint
-             :dataset
-             (let [results (mt/user-http-request :rasta :post 200
-                                                 (format "dataset/%s" (name export-format))
-                                                 {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
-                                                 :query query-json
-                                                 :visualization_settings viz-settings-json)]
-               ((-> assertions export-format) results))
+          viz-settings-json (json/generate-string viz-settings)
+          public-uuid       (str (UUID/randomUUID))
+          card-defaults     {:dataset_query query, :public_uuid public-uuid, :enable_embedding true}]
+      (mt/with-temporary-setting-values [enable-public-sharing true
+                                         enable-embedding      true]
+        (embed-test/with-new-secret-key
+          (mt/with-temp Card [card (if viz-settings
+                                     (assoc card-defaults :visualization_settings viz-settings)
+                                     card-defaults)]
+            (doseq [export-format (keys assertions)
+                    endpoint      (or endpoints [:dataset :card :public :embed])]
+              (case endpoint
+                :dataset
+                (let [results (mt/user-http-request :rasta :post 200
+                                                    (format "dataset/%s" (name export-format))
+                                                    {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
+                                                    :query query-json
+                                                    :visualization_settings viz-settings-json)]
+                  ((-> assertions export-format) results))
 
-             :card
-             (let [results (mt/user-http-request :rasta :post 200
-                                                 (format "card/%d/query/%s" (:id card) (name export-format))
-                                                 {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
-               ((-> assertions export-format) results))
+                :card
+                (let [results (mt/user-http-request :rasta :post 200
+                                                    (format "card/%d/query/%s" (:id card) (name export-format))
+                                                    {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
+                  ((-> assertions export-format) results))
 
-             :public
-             (let [results (mt/user-http-request :rasta :get 200
-                                                 (format "public/card/%d/query/%s" (:id card) (name export-format))
-                                                 {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
-               ((-> assertions export-format) results)))))))))
+                :public
+                (let [results (mt/user-http-request :rasta :get 200
+                                                    (format "public/card/%s/query/%s" public-uuid (name export-format))
+                                                    {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
+                  ((-> assertions export-format) results))
+
+                :embed
+                (let [results (mt/user-http-request :rasta :get 200
+                                                    (embed-test/card-query-url card (str "/" (name export-format)))
+                                                    {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
+                  ((-> assertions export-format) results))))))))))
 
 (defn- parse-json-results
   "Convert JSON results into a convenient format for test assertions. Results are transformed into a nested list,
@@ -326,12 +338,18 @@
 (deftest basic-export-test
   (do-test
    "A simple export of a table succeeds"
-   {:query      {:database   (mt/id)
-                 :type       :query
-                 :query      {:source-table (mt/id :venues)
-                              :limit 2}}
+   {:query      {:database (mt/id)
+                 :type     :query
+                 :query    {:source-table (mt/id :venues)
+                            :limit 2}}
 
-    :assertions {:csv (fn [results]
+    :assertions {:api (fn [results]
+                        (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
+                                ["1" "Red Medicine" "4" "10.0646" "-165.374" "3"]
+                                ["2" "Stout Burgers & Beers" "11" "34.0996" "-118.329" "2"]]
+                               results)))
+
+                 :csv (fn [results]
                         (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
                                 ["1" "Red Medicine" "4" "10.0646" "-165.374" "3"]
                                 ["2" "Stout Burgers & Beers" "11" "34.0996" "-118.329" "2"]]
@@ -348,6 +366,67 @@
                                 [1.0 "Red Medicine" 4.0 10.0646 -165.374 3.0]
                                 [2.0 "Stout Burgers & Beers" 11.0 34.0996 -118.329 2.0]]
                                (xlsx-test/parse-xlsx-results results))))}}))
+
+(deftest reordered-columns-test
+  (do-test
+   "Reordered and hidden columns are respected in the export"
+   {:query {:database (mt/id)
+            :type     :query
+            :query    {:source-table (mt/id :venues)
+                       :limit 1}}
+
+    :viz-settings {:column_settings {},
+                   :table.columns
+                   [{:name "NAME", :fieldRef [:field (mt/id :venues :name) nil], :enabled true}
+                    {:name "ID", :fieldRef [:field (mt/id :venues :id) nil], :enabled true}
+                    {:name "CATEGORY_ID", :fieldRef [:field (mt/id :venues :category_id) nil], :enabled true}
+                    {:name "LATITUDE", :fieldRef [:field (mt/id :venues :latitude) nil], :enabled false}
+                    {:name "LONGITUDE", :fieldRef [:field (mt/id :venues :longitude) nil], :enabled false}
+                    {:name "PRICE", :fieldRef [:field (mt/id :venues :price) nil], :enabled true}]}
+
+    :assertions {:csv (fn [results]
+                        (is (= [["Name" "ID" "Category ID" "Price"]
+                                ["Red Medicine" "1" "4" "3"]]
+                               (csv/read-csv results))))
+
+                 :json (fn [results]
+                         (is (= [["Name" "ID" "Category ID" "Price"]
+                                 ["Red Medicine" 1 4 3]]
+                                (parse-json-results results))))
+
+                 :xlsx (fn [results]
+                        (is (= [["Name" "ID" "Category ID" "Price"]
+                                ["Red Medicine" 1.0 4.0 3.0]]
+                               (xlsx-test/parse-xlsx-results results))))}}))
+
+(deftest remapped-columns-test
+  (letfn [(testfn []
+            (do-test
+             "Remapped values are used in exports"
+             {:query {:database (mt/id)
+                      :type     :query
+                      :query    {:source-table (mt/id :venues)
+                                 :limit 1}}
+
+              :assertions {:csv (fn [results]
+                                  (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
+                                          ["1" "Red Medicine" "Asian" "10.0646" "-165.374" "3"]]
+                                         (csv/read-csv results))))
+
+                           :json (fn [results]
+                                   (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
+                                           [1 "Red Medicine" "Asian" 10.0646 -165.374 3]]
+                                          (parse-json-results results))))
+
+                           :xlsx (fn [results]
+                                   (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
+                                           [1.0 "Red Medicine" "Asian" 10.0646 -165.374 3.0]]
+                                          (xlsx-test/parse-xlsx-results results))))}}))]
+    (mt/with-column-remappings [venues.category_id categories.name]
+      (testfn))
+    (mt/with-column-remappings [venues.category_id (values-of categories.name)]
+      (testfn))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Streaming logic unit tests                                              |
