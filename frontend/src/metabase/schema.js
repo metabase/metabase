@@ -40,7 +40,6 @@ export const TableSchema = new schema.Entity(
   },
 );
 export const FieldSchema = new schema.Entity("fields");
-
 export const SegmentSchema = new schema.Entity("segments");
 export const MetricSchema = new schema.Entity("metrics");
 export const SnippetSchema = new schema.Entity("snippets");

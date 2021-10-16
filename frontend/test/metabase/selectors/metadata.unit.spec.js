@@ -86,6 +86,18 @@ describe("copyObjects", () => {
       expect(db.metadata).toBe(meta);
     });
   });
+
+  it("should exclude an `objects` entry if it does not have an id property", () => {
+    const meta = new Metadata();
+    const objects = [{}];
+    const copiedObjects = copyObjects(meta, objects, () => {
+      throw new Error(
+        "This function should not be triggered due to there being no `objects` entries with `id`",
+      );
+    });
+
+    expect(copiedObjects).toEqual({});
+  });
 });
 
 describe("instantiateDatabase", () => {
