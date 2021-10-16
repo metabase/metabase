@@ -16,13 +16,14 @@ import type {
 import type { FieldId } from "metabase-types/types/Field";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
 import type Field from "metabase-lib/lib/metadata/Field";
-import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
+import Dimension, {
+  FieldDimension,
+  TemplateTagDimension,
+} from "metabase-lib/lib/Dimension";
 import moment from "moment";
 import { t } from "ttag";
 import _ from "underscore";
-import * as FIELD_REF from "metabase/lib/query/field_ref";
 import {
-  isNumericBaseType,
   doesOperatorExist,
   getOperatorByTypeAndName,
   STRING,
@@ -511,6 +512,11 @@ export function numberParameterValueToMBQL(
   );
 }
 
+function isDateParameter(parameter) {
+  const type = getParameterType(parameter);
+  return type === "date";
+}
+
 /** compiles a parameter with value to an MBQL clause */
 export function parameterToMBQLFilter(
   parameter: ParameterInstance,
@@ -518,27 +524,23 @@ export function parameterToMBQLFilter(
 ): ?FieldFilter {
   if (
     !parameter.target ||
-    parameter.target[0] !== "dimension" ||
+    !isDimensionTarget(parameter.target) ||
     !Array.isArray(parameter.target[1]) ||
-    parameter.target[1][0] === "template-tag"
+    TemplateTagDimension.isTemplateTagClause(parameter.target[1])
   ) {
     return null;
   }
 
-  const fieldRef: LocalFieldReference | ForeignFieldReference =
-    parameter.target[1];
+  const dimension = Dimension.parseMBQL(parameter.target[1], metadata);
+  const field = dimension.field();
+  const fieldRef = dimension.mbql();
 
-  if (parameter.type.indexOf("date/") === 0) {
+  if (isDateParameter(parameter)) {
     return dateParameterValueToMBQL(parameter.value, fieldRef);
+  } else if (field.isNumeric()) {
+    return numberParameterValueToMBQL(parameter, fieldRef);
   } else {
-    const fieldId = FIELD_REF.getFieldTargetId(fieldRef);
-    const field = metadata.field(fieldId);
-    // if the field is numeric, parse the value as a number
-    if (isNumericBaseType(field)) {
-      return numberParameterValueToMBQL(parameter, fieldRef);
-    } else {
-      return stringParameterValueToMBQL(parameter, fieldRef);
-    }
+    return stringParameterValueToMBQL(parameter, fieldRef);
   }
 }
 
