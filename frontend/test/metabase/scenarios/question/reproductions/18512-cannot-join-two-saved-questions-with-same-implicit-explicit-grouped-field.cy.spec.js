@@ -31,8 +31,12 @@ describe.skip("issue 18512", () => {
       cy.findByText("18512#2").click();
     });
 
-    cy.findByText("Products → Created At").click();
-    cy.findByText("Products → Created At").click();
+    popover()
+      .findByText("Products → Created At")
+      .click();
+    popover()
+      .findByText("Products → Created At")
+      .click();
 
     cy.button("Visualize").click();
 
