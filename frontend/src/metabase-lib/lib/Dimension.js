@@ -585,7 +585,7 @@ export class FieldDimension extends Dimension {
     }
 
     // despite being unable to find a field, we _might_ still have enough data to know a few things about it
-    // for example, if we have an mbql field reference, it might contained a `base-type`
+    // for example, if we have an mbql field reference, it might contain a `base-type`
     return new Field({
       id: this.mbql(),
       name: this._fieldIdOrName,
