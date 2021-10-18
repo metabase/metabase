@@ -60,7 +60,7 @@ describe("meta/Dashboard", () => {
           locationSection.options.every(option =>
             option.type.startsWith("location"),
           ),
-        );
+        ).toBe(true);
       });
 
       it("should have a category section", () => {
@@ -93,7 +93,7 @@ describe("meta/Dashboard", () => {
           locationSection.options.every(option =>
             option.type.startsWith("string"),
           ),
-        );
+        ).toBe(true);
       });
 
       it("should have a string section", () => {
