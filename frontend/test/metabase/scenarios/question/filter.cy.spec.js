@@ -506,7 +506,7 @@ describe("scenarios > question > filter", () => {
       .and("not.eq", transparent);
   });
 
-  it.skip("should provide accurate auto-complete custom-expression suggestions based on the aggregated column name (metabase#14776)", () => {
+  it("should provide accurate auto-complete custom-expression suggestions based on the aggregated column name (metabase#14776)", () => {
     cy.viewport(1400, 1000); // We need a bit taller window for this repro to see all custom filter options in the popover
     cy.createQuestion({
       name: "14776",
