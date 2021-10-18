@@ -900,6 +900,10 @@ export default class Question {
     });
   }
 
+  getResultMetadata() {
+    return this.card().result_metadata ?? [];
+  }
+
   /**
    * Returns true if the questions are equivalent (including id, card, and parameters)
    */
@@ -1016,6 +1020,7 @@ export default class Question {
   parameters(): ParameterObject[] {
     return getValueAndFieldIdPopulatedParametersFromCard(
       this.card(),
+      this.metadata(),
       this._parameterValues,
     );
   }
