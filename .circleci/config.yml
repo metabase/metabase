@@ -890,13 +890,7 @@ jobs:
                   # INTERACTIVE=false will tell the clojure build scripts not to do interactive retries etc.
                   INTERACTIVE: "false"
                   MB_EDITION: << parameters.edition >>
-                command: |
-                  if [[ $CIRCLE_BRANCH == release* || $CIRCLE_BRANCH == master  ]]; then
-                    echo 'This is a release or master branch; building a complete Uberjar'
-                    ./bin/build
-                  else
-                    ./bin/build version uberjar
-                  fi
+                command: ./bin/build version uberjar
                 no_output_timeout: 15m
             - store_artifacts:
                 path: /home/circleci/metabase/metabase/target/uberjar/metabase.jar
