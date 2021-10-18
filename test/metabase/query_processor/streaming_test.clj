@@ -442,7 +442,7 @@
                    [{:name "ID", :fieldRef [:field (mt/id :venues :id) nil], :enabled true}
                     {:name "NAME", :fieldRef [:field (mt/id :venues :name) nil], :enabled true}
                     {:name "CATEGORY_ID", :fieldRef [:field (mt/id :venues :category_id) nil], :enabled true}
-                    {:name "NAME_2", :fieldRef [:field (mt/id :categories :id) {:join-alias "Categories"}], :enabled true}]}
+                    {:name "NAME_2", :fieldRef [:field (mt/id :categories :name) {:join-alias "Categories"}], :enabled true}]}
 
     :assertions {:csv (fn [results]
                         (is (= [["ID" "Name" "Category ID" "Categories → Name"]
