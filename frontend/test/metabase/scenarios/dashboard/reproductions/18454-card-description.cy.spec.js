@@ -30,7 +30,7 @@ function createDashboardWithQuestionWithDescription() {
       aggregation: [["count"]],
       breakout: [["field", PRODUCTS.CATEGORY, null]],
     },
-    display: "pie",
+    display: "line",
   };
 
   cy.createQuestionAndDashboard({ questionDetails }).then(
