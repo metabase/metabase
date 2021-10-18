@@ -593,7 +593,7 @@ describe("metabase/meta/Parameter", () => {
       expect(getParameterTargetField(["variable", "foo"], metadata)).toBe(null);
     });
 
-    it.only("should return a template tag field filter id", () => {
+    it("should return the mapped field behind a template tag field filter", () => {
       const target = ["dimension", ["template-tag", "foo"]];
       const question = SAMPLE_DATASET.nativeQuestion({
         query: "select * from PRODUCTS where {{foo}}",
@@ -610,23 +610,7 @@ describe("metabase/meta/Parameter", () => {
       );
     });
 
-    it("should return null for a template tag that is not a dimension/field filter", () => {
-      const target = ["dimension", ["template-tag", "foo"]];
-      const question = SAMPLE_DATASET.nativeQuestion({
-        query: "select * from PRODUCTS where {{foo}}",
-        "template-tags": {
-          foo: {
-            id: "abc",
-            name: "foo",
-            type: "text",
-          },
-        },
-      });
-
-      expect(getParameterTargetField(target, metadata, question)).toEqual(null);
-    });
-
-    it("should return the fieldId of a field dimension target", () => {
+    it("should return the target field", () => {
       const target = ["dimension", ["field", PRODUCTS.CATEGORY.id, null]];
       const question = SAMPLE_DATASET.question({
         "source-table": PRODUCTS.id,
