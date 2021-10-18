@@ -9,7 +9,6 @@
             [metabase.driver.sql-jdbc.sync.describe-database :as sync.describe-database]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :refer [Field]]
-            [metabase.models.setting :as setting]
             [metabase.models.table :refer [Table]]
             [metabase.plugins.jdbc-proxy :as jdbc-proxy]
             [metabase.public-settings :as pubset]
@@ -22,8 +21,7 @@
             [metabase.test.util :as tu]
             [metabase.util :as u]
             [toucan.db :as db])
-  (:import [java.sql ResultSet ResultSetMetaData]
-           metabase.plugins.jdbc_proxy.ProxyDriver))
+  (:import metabase.plugins.jdbc_proxy.ProxyDriver))
 
 (use-fixtures :once (fixtures/initialize :plugins))
 (use-fixtures :once (fixtures/initialize :db))
@@ -208,35 +206,6 @@
                     (partial into {})
                     (db/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]}))))))))))
 
-(defn- assert-jdbc-url-fetch-size [db fetch-size]
-  (with-open [conn (.getConnection (sql-jdbc.execute/datasource db))]
-    (let [md  (.getMetaData conn)
-          url (.getURL md)]
-      (is (str/includes? url (str "defaultRowFetchSize=" fetch-size))))))
-
-(deftest test-jdbc-fetch-size
-  (testing "Redshift JDBC fetch size is set correctly in PreparedStatement"
-    (mt/test-driver :redshift
-      ;; the default value should always be picked up if nothing is set
-      (assert-jdbc-url-fetch-size (mt/db) (:default (setting/resolve-setting :redshift-fetch-size)))
-      (mt/with-temporary-setting-values [redshift-fetch-size "14"]
-        ;; create a new DB in order to pick up the change to the setting here
-        (mt/with-temp Database [db {:engine :redshift, :details (:details (mt/db))}]
-          (mt/with-db db
-            ;; make sure the JDBC URL has the defaultRowFetchSize parameter set correctly
-            (assert-jdbc-url-fetch-size db 14)
-            ;; now, actually run a query and see if the PreparedStatement has the right fetchSize set
-            (mt/with-everything-store
-              (let [orig-fn sql-jdbc.execute/reducible-rows
-                    new-fn  (fn [driver ^ResultSet rs ^ResultSetMetaData rsmeta canceled-chan]
-                              (is (= 14 (.getFetchSize (.getStatement rs))))
-                              (orig-fn driver rs rsmeta canceled-chan))]
-                (with-redefs [sql-jdbc.execute/reducible-rows new-fn]
-                  (is (= [[1]] (-> {:query "SELECT 1"}
-                                   (mt/native-query)
-                                   (qp/process-query)
-                                   (mt/rows)))))))))))))
-
 (deftest syncable-schemas-test
   (mt/test-driver :redshift
     (testing "Should filter out schemas for which the user has no perms"
@@ -295,31 +264,3 @@
                       (is (contains? (schemas) fake-schema-name))))
                   (testing "normally, ::fake-schema should be filtered out (because it does not exist)"
                     (is (not (contains? (schemas) fake-schema-name)))))))))))))
-
-(deftest connection-details->spec-test
-  (mt/with-temporary-setting-values [redshift-fetch-size "14"]
-    (testing "Configure connection without additional-options should include defaultRowFetchSize"
-      (is (= {:classname                     "com.amazon.redshift.jdbc42.Driver"
-              :subprotocol                   "redshift"
-              :subname                       "//testhost:5432/testdb?defaultRowFetchSize=14"
-              :OpenSourceSubProtocolOverride false
-              :user                          "testuser"
-              :ssl                           true}
-             (sql-jdbc.conn/connection-details->spec :redshift
-               {:host "testhost"
-                :port 5432
-                :db   "testdb"
-                :user "testuser"}))))
-    (testing "Configure connection with additional-options should not replace defaultRowFetchSize"
-      (is (= {:classname                     "com.amazon.redshift.jdbc42.Driver"
-              :subprotocol                   "redshift"
-              :subname                       "//testhost:5432/testdb?defaultRowFetchSize=14&TCPKeepAlive=FALSE"
-              :OpenSourceSubProtocolOverride false
-              :user                          "testuser"
-              :ssl                           true}
-             (sql-jdbc.conn/connection-details->spec :redshift
-               {:host               "testhost"
-                :port               5432
-                :db                 "testdb"
-                :user               "testuser"
-                :additional-options "TCPKeepAlive=FALSE"}))))))
