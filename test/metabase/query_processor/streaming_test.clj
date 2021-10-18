@@ -439,10 +439,10 @@
 
     :viz-settings {:column_settings {},
                    :table.columns
-                   [{:name "ID", :fieldRef ["field" 52 nil], :enabled true}
-                    {:name "NAME", :fieldRef ["field" 51 nil], :enabled true}
-                    {:name "CATEGORY_ID", :fieldRef ["field" 48 nil], :enabled true}
-                    {:name "NAME_2", :fieldRef [:field 37 {:join-alias "Categories"}], :enabled true}]}
+                   [{:name "ID", :fieldRef [:field (mt/id :venues :id) nil], :enabled true}
+                    {:name "NAME", :fieldRef [:field (mt/id :venues :name) nil], :enabled true}
+                    {:name "CATEGORY_ID", :fieldRef [:field (mt/id :venues :category_id) nil], :enabled true}
+                    {:name "NAME_2", :fieldRef [:field (mt/id :categories :id) {:join-alias "Categories"}], :enabled true}]}
 
     :assertions {:csv (fn [results]
                         (is (= [["ID" "Name" "Category ID" "Categories → Name"]
