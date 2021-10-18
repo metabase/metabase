@@ -7,12 +7,11 @@ import {
   getOperatorDisplayName,
   dimensionFilterForParameter,
   getTagOperatorFilterForParameter,
-  getParameterTargetFieldId,
+  getParameterTargetField,
   dateParameterValueToMBQL,
   stringParameterValueToMBQL,
   numberParameterValueToMBQL,
   parameterToMBQLFilter,
-  getParameterIconName,
   parameterOptionsForField,
   normalizeParameterValue,
   deriveFieldOperatorFromParameter,
@@ -24,7 +23,11 @@ import {
   buildHiddenParametersSlugSet,
   getVisibleParameters,
 } from "metabase/meta/Parameter";
-import { metadata, PRODUCTS } from "__support__/sample_dataset_fixture";
+import {
+  metadata,
+  PRODUCTS,
+  SAMPLE_DATASET,
+} from "__support__/sample_dataset_fixture";
 
 MetabaseSettings.get = jest.fn();
 
@@ -585,53 +588,52 @@ describe("metabase/meta/Parameter", () => {
     });
   });
 
-  describe("getParameterTargetFieldId", () => {
+  describe("getParameterTargetField", () => {
     it("should return null when the target is not a dimension", () => {
-      expect(getParameterTargetFieldId([])).toBe(null);
+      expect(getParameterTargetField(["variable", "foo"], metadata)).toBe(null);
     });
 
-    it("should return a template tag field filter id", () => {
+    it.only("should return a template tag field filter id", () => {
       const target = ["dimension", ["template-tag", "foo"]];
-
-      const datasetQuery = {
-        type: "native",
-        native: {
-          "template-tags": {
-            foo: {
-              id: "abc",
-              name: "foo",
-              type: "dimension",
-              dimension: ["field", 123, null],
-            },
+      const question = SAMPLE_DATASET.nativeQuestion({
+        query: "select * from PRODUCTS where {{foo}}",
+        "template-tags": {
+          foo: {
+            type: "dimension",
+            dimension: ["field", PRODUCTS.CATEGORY.id, null],
           },
         },
-      };
+      });
 
-      expect(getParameterTargetFieldId(target, datasetQuery)).toEqual(123);
+      expect(getParameterTargetField(target, metadata, question)).toBe(
+        PRODUCTS.CATEGORY,
+      );
     });
 
     it("should return null for a template tag that is not a dimension/field filter", () => {
       const target = ["dimension", ["template-tag", "foo"]];
-
-      const datasetQuery = {
-        type: "native",
-        native: {
-          "template-tags": {
-            foo: {
-              id: "abc",
-              name: "foo",
-              type: "text",
-            },
+      const question = SAMPLE_DATASET.nativeQuestion({
+        query: "select * from PRODUCTS where {{foo}}",
+        "template-tags": {
+          foo: {
+            id: "abc",
+            name: "foo",
+            type: "text",
           },
         },
-      };
+      });
 
-      expect(getParameterTargetFieldId(target, datasetQuery)).toEqual(null);
+      expect(getParameterTargetField(target, metadata, question)).toEqual(null);
     });
 
     it("should return the fieldId of a field dimension target", () => {
-      const target = ["dimension", ["field", 123, null]];
-      expect(getParameterTargetFieldId(target)).toEqual(123);
+      const target = ["dimension", ["field", PRODUCTS.CATEGORY.id, null]];
+      const question = SAMPLE_DATASET.question({
+        "source-table": PRODUCTS.id,
+      });
+      expect(getParameterTargetField(target, metadata, question)).toBe(
+        PRODUCTS.CATEGORY,
+      );
     });
   });
 

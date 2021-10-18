@@ -374,7 +374,6 @@ function isDimensionTarget(target) {
   return target?.[0] === "dimension";
 }
 
-/** Returns the field ID that this parameter target points to, or null if it's not a dimension target. */
 export function getParameterTargetField(
   target: ?ParameterTarget,
   metadata,
