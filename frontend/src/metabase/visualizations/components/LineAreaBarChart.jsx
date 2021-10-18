@@ -283,7 +283,7 @@ export default class LineAreaBarChart extends Component {
     } = this.props;
 
     const title = settings["card.title"] || card.name;
-    const description = series["card.description"];
+    const description = settings["card.description"];
 
     const rawSeries = series._raw || series;
     const cardIds = new Set(rawSeries.map(s => s.card.id));
