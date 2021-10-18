@@ -421,6 +421,66 @@
     (mt/with-column-remappings [venues.category_id (values-of categories.name)]
       (testfn))))
 
+(deftest join-export-test
+  (do-test
+   "A query with a join can be exported succesfully"
+   {:query {:database (mt/id)
+            :query
+            {:source-table (mt/id :venues)
+             :joins
+             [{:fields "all",
+               :source-table (mt/id :categories)
+               :condition ["="
+                           ["field" (mt/id :venues :category_id) nil]
+                           ["field" (mt/id :categories :id) {:join-alias "Categories"}]],
+               :alias "Categories"}]
+             :limit 1}
+            :type "query"}
+
+    :viz-settings {:column_settings {},
+                   :table.columns
+                   [{:name "ID", :fieldRef ["field" 52 nil], :enabled true}
+                    {:name "NAME", :fieldRef ["field" 51 nil], :enabled true}
+                    {:name "CATEGORY_ID", :fieldRef ["field" 48 nil], :enabled true}
+                    {:name "NAME_2", :fieldRef [:field 37 {:join-alias "Categories"}], :enabled true}]}
+
+    :assertions {:csv (fn [results]
+                        (is (= [["ID" "Name" "Category ID" "Categories → Name"]
+                                ["1" "Red Medicine" "4" "Asian"]]
+                               (csv/read-csv results))))
+
+                 :json (fn [results]
+                         (is (= [["ID" "Name" "Category ID" "Categories → Name"]
+                                 [1 "Red Medicine" 4 "Asian"]]
+                                (parse-json-results results))))
+
+                 :xlsx (fn [results]
+                         (is (= [["ID" "Name" "Category ID" "Categories → Name"]
+                                 [1.0 "Red Medicine" 4.0 "Asian"]]
+                                (xlsx-test/parse-xlsx-results results))))}}))
+
+(deftest native-query-test
+  (do-test
+   "A native query can be exported succesfully, and duplicate fields work in CSV/XLSX"
+   {:query (mt/native-query {:query "SELECT id, id, name FROM venues LIMIT 1;"})
+
+    :assertions {:csv (fn [results]
+                        (is (= [["ID" "ID" "NAME"]
+                                ["1" "1" "Red Medicine"]]
+                               (csv/read-csv results))))
+
+                 :json (fn [results]
+                         ;; Second ID field is omitted since each col is stored in a JSON object rather than an array.
+                         ;; TODO we should be able to include the second column if it is renamed.
+                         (is (= [["ID" "NAME"]
+                                 [1 "Red Medicine"]]
+                                (parse-json-results results))))
+
+                 :xlsx (fn [results]
+                         (is (= [["ID" "ID" "NAME"]
+                                 [1.0 1.0 "Red Medicine"]]
+                                (xlsx-test/parse-xlsx-results results))))}}))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Streaming logic unit tests                                              |
