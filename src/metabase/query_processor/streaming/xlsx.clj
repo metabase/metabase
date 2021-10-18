@@ -428,12 +428,17 @@
   This ensures the cells in the header row have enough room for the filter dropdown icon."
   (* 4 256))
 
+(def ^:private max-column-width
+  "Cap column widths at 255 characters"
+  (* 255 256))
+
 (defn- autosize-columns!
   "Adjusts each column to fit its largest value, plus a constant amount of extra padding."
   [sheet]
   (doseq [i (.getTrackedColumnsForAutoSizing ^SXSSFSheet sheet)]
     (.autoSizeColumn ^SXSSFSheet sheet i)
-    (.setColumnWidth ^SXSSFSheet sheet i (+ (.getColumnWidth ^SXSSFSheet sheet i) extra-column-width))
+    (.setColumnWidth ^SXSSFSheet sheet i (min max-column-width
+                                              (+ (.getColumnWidth ^SXSSFSheet sheet i) extra-column-width)))
     (.untrackColumnForAutoSizing ^SXSSFSheet sheet i)))
 
 (defn- setup-header-row!
