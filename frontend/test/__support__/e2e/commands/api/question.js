@@ -25,6 +25,7 @@ Cypress.Commands.add(
  *
  * @param {object} questionDetails
  * @param {string} [questionDetails.name="test question"]
+ * @param {string} questionDetails.description
  * @param {object} questionDetails.native
  * @param {object} questionDetails.query
  * @param {number} [questionDetails.database=1]
@@ -41,6 +42,7 @@ function question(
   type,
   {
     name = "test question",
+    description,
     native,
     query,
     database = 1,
@@ -53,6 +55,7 @@ function question(
 ) {
   cy.request("POST", "/api/card", {
     name,
+    description,
     dataset_query: {
       type,
       [type]: type === "native" ? native : query,
