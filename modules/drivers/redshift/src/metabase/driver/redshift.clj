@@ -207,8 +207,7 @@
    (merge
     {:classname                     "com.amazon.redshift.jdbc42.Driver"
      :subprotocol                   "redshift"
-     :subname                       (str "//" host ":" port "/" db
-                                         "?defaultRowFetchSize=" (pubset/redshift-fetch-size))
+     :subname                       (str "//" host ":" port "/" db)
      :ssl                           true
      :OpenSourceSubProtocolOverride false}
     (dissoc opts :host :port :db))))
