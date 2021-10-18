@@ -26,4 +26,8 @@ export const NotebookContainer = styled.div`
       opacity: 1;
       transform: translateY(0);
     `}
+
+  @media (prefers-reduced-motion) {
+    transition: none;
+  }
 `;
