@@ -23,24 +23,10 @@ import Field from "metabase-lib/lib/metadata/Field";
 
 function structured(query) {
   return SAMPLE_DATASET.question(query).card();
-  // return {
-  //   dataset_query: {
-  //     database: SAMPLE_DATASET.id,
-  //     type: "query",
-  //     query: query,
-  //   },
-  // };
 }
 
 function native(native) {
   return SAMPLE_DATASET.nativeQuestion(native).card();
-  // return {
-  //   dataset_query: {
-  //     database: SAMPLE_DATASET.id,
-  //     type: "native",
-  //     native: native,
-  //   },
-  // };
 }
 
 MetabaseSettings.get = jest.fn();
