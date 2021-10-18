@@ -916,8 +916,13 @@ export function pluralize(...args) {
   return inflection.pluralize(...args);
 }
 
-export function capitalize(...args) {
-  return inflection.capitalize(...args);
+export function capitalize(str, { lowercase = true } = {}) {
+  const firstChar = str.charAt(0).toUpperCase();
+  let rest = str.slice(1);
+  if (lowercase) {
+    rest = rest.toLowerCase();
+  }
+  return firstChar + rest;
 }
 
 export function inflect(...args) {
