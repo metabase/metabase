@@ -70,6 +70,20 @@ describeWithToken("audit > auditing > questions", () => {
       cy.get("tbody > tr").should("have.length", 1);
       cy.findByText("My question");
     });
+
+    it.skip("should display total runtime correctly (metabase#18317)", () => {
+      const runtimeIndex = 4;
+
+      cy.visit("/admin/audit/questions/all");
+
+      cy.get("th")
+        .eq(runtimeIndex)
+        .should("contain", "Total Runtime (ms)");
+
+      cy.get("td")
+        .eq(runtimeIndex)
+        .should("not.contain", "Link");
+    });
   });
 });
 
