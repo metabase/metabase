@@ -55,7 +55,7 @@ export default class Setup extends Component {
 
   componentDidMount() {
     this.setDefaultLanguage();
-    this.setDefaultUserDetails();
+    this.setDefaultDetails();
   }
 
   setDefaultLanguage() {
@@ -77,14 +77,14 @@ export default class Setup extends Component {
     }
   }
 
-  setDefaultUserDetails() {
+  setDefaultDetails() {
     const { hash } = this.props.location;
 
     try {
       const userDetails = hash && JSON.parse(b64hash_to_utf8(hash));
-      this.setState({ defaultUserDetails: userDetails });
+      this.setState({ defaultDetails: userDetails });
     } catch (e) {
-      this.setState({ defaultUserDetails: undefined });
+      this.setState({ defaultDetails: undefined });
     }
   }
 
@@ -176,7 +176,7 @@ export default class Setup extends Component {
               <UserStep
                 {...this.props}
                 stepNumber={USER_STEP_NUMBER}
-                defaultUserDetails={this.state.defaultUserDetails}
+                defaultUserDetails={this.state.defaultDetails?.user}
               />
               <DatabaseConnectionStep
                 {...this.props}
