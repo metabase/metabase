@@ -11,9 +11,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
   context("via simple question", () => {
     beforeEach(() => {
       cy.visit("/question/1");
-      cy.findAllByText("Summarize")
-        .filter(":visible")
-        .click();
+      cy.findByText("Summarize").click();
     });
 
     it("should work for time series", () => {

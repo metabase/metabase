@@ -367,9 +367,7 @@ describe("scenarios > question > filter", () => {
 
   it("in a simple question should display popup for custom expression options (metabase#14341) (metabase#15244)", () => {
     openProductsTable();
-    cy.findAllByText("Filter")
-      .filter(":visible")
-      .click();
+    cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
 
     // This issue has two problematic parts. We're testing for both:
@@ -430,11 +428,7 @@ describe("scenarios > question > filter", () => {
     });
 
     cy.wait("@dataset");
-
-    cy.findAllByText(/Created At > Product? → Created At/i)
-      .filter(":visible")
-      .click();
-
+    cy.findByText(/Created At > Product? → Created At/i).click();
     cy.get("[contenteditable='true']").contains(
       /\[Created At\] > \[Products? → Created At\]/,
     );
@@ -578,10 +572,7 @@ describe("scenarios > question > filter", () => {
     cy.contains("Showing 0 rows");
 
     // change the corresponding custom expression
-    cy.findAllByText("Reviewer is empty")
-      .filter(":visible")
-      .click();
-
+    cy.findByText("Reviewer is empty").click();
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
     cy.get("[contenteditable='true']").contains("isempty([Reviewer])");
@@ -605,10 +596,7 @@ describe("scenarios > question > filter", () => {
     cy.contains("Showing 0 rows");
 
     // change the corresponding custom expression
-    cy.findAllByText("Rating is empty")
-      .filter(":visible")
-      .click();
-
+    cy.findByText("Rating is empty").click();
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
     cy.get("[contenteditable='true']").contains("isnull([Rating])");
@@ -637,11 +625,7 @@ describe("scenarios > question > filter", () => {
       },
       display: "table",
     });
-
-    cy.findAllByText("Title does not contain Wallet")
-      .filter(":visible")
-      .click();
-
+    cy.findByText("Title does not contain Wallet").click();
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
     cy.get("[contenteditable='true']").contains(
@@ -695,11 +679,7 @@ describe("scenarios > question > filter", () => {
     });
     cy.wait("@dataset");
     cy.findByText("wilma-muller");
-
-    cy.findAllByText("Reviewer contains MULLER")
-      .filter(":visible")
-      .click();
-
+    cy.findByText("Reviewer contains MULLER").click();
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
     cy.get("[contenteditable='true']").contains(
@@ -714,10 +694,7 @@ describe("scenarios > question > filter", () => {
 
   it("should reject a number literal", () => {
     openProductsTable();
-
-    cy.findAllByText("Filter")
-      .filter(":visible")
-      .click();
+    cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
 
     cy.get("[contenteditable='true']")
@@ -731,10 +708,7 @@ describe("scenarios > question > filter", () => {
 
   it("should reject a string literal", () => {
     openProductsTable();
-
-    cy.findAllByText("Filter")
-      .filter(":visible")
-      .click();
+    cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
 
     cy.get("[contenteditable='true']")
@@ -1047,7 +1021,7 @@ describe("scenarios > question > filter", () => {
 
       function assertOnTheResult() {
         // Filter name
-        cy.findAllByText(`boolean is ${condition}`).filter(":visible");
+        cy.findByText(`boolean is ${condition}`);
         cy.findByText(integerAssociatedWithCondition);
       }
     });

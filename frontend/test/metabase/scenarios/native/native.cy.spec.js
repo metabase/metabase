@@ -117,9 +117,7 @@ describe("scenarios > question > native", () => {
     FILTERS.forEach(filter => {
       // Clicking on a question's name in UI resets previously applied filters
       // We can ask variations of that question "on the fly"
-      cy.findAllByText(QUESTION)
-        .filter(":visible")
-        .click();
+      cy.findByText(QUESTION).click();
 
       cy.log("Apply a filter");
       cy.findAllByText("Filter")
@@ -138,11 +136,7 @@ describe("scenarios > question > native", () => {
       cy.log(
         `**Mid-point assertion for "${filter}" filter| FAILING in v0.36.6**`,
       );
-
-      cy.findAllByText(`V ${filter.toLowerCase()} This has a value`).filter(
-        ":visible",
-      );
-
+      cy.findByText(`V ${filter.toLowerCase()} This has a value`);
       cy.findByText("No results!").should("not.exist");
 
       cy.log(

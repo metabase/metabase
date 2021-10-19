@@ -147,7 +147,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       .click();
 
     // Make sure filter is set
-    cy.findAllByText("Rating is equal to 5").filter(":visible");
+    cy.findByText("Rating is equal to 5");
 
     // Make sure it's connected to the original question
     cy.contains("Started from 16334");

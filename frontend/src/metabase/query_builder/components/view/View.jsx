@@ -85,13 +85,6 @@ export default class View extends React.Component {
     });
   };
 
-  handleTransitionEnd = event => {
-    console.log("🚀", event);
-    if (event.propertyName === "opacity") {
-      console.log("🚀", event.propertyName);
-    }
-  };
-
   render() {
     const {
       question,
