@@ -517,3 +517,27 @@
                        :iso-day-of-year :millisecond)]
       (testing unit
         (is (some? (#'magic/humanize-datetime "1990-09-09T12:30:00" unit)))))))
+
+;;; ------------------- Cell titles -------------------
+(deftest cell-title-test
+  (mt/$ids venues
+    (let [query (query/adhoc-query {:query    {:source-table (mt/id :venues)
+                                               :aggregation  [:count]}
+                                    :type     :query
+                                    :database (mt/id)})
+          root  (magic/->root query)]
+      (testing "Should humanize equal filter"
+        (is (= "number of Venues where Name is Test"
+               ;; Test specifically the un-normalized form (metabase#15737)
+               (magic/cell-title root ["=" ["field" %name nil] "Test"]))))
+      (testing "Should humanize and filter"
+        (is (= "number of Venues where Name is Test and Price is 0"
+               (magic/cell-title root ["and"
+                                       ["=" $name "Test"]
+                                       ["=" $price 0]]))))
+      (testing "Should humanize between filter"
+        (is (= "number of Venues where Name is between A and J"
+               (magic/cell-title root ["between" $name "A", "J"]))))
+      (testing "Should humanize inside filter"
+        (is (= "number of Venues where Longitude is between 2 and 4; and Latitude is between 3 and 1"
+               (magic/cell-title root ["inside" (mt/$ids venues $latitude) (mt/$ids venues $longitude) 1 2 3 4])))))))
