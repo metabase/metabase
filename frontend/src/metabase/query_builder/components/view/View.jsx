@@ -4,6 +4,8 @@ import { t } from "ttag";
 
 import cx from "classnames";
 
+import { isReducedMotionPreferred } from "metabase/lib/dom";
+
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Popover from "metabase/components/Popover";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
@@ -195,7 +197,7 @@ export default class View extends React.Component {
 
     const MOTION_Y = -100;
 
-    const preferReducedMotion = true; // FIXME: get it from mediaQuery
+    const preferReducedMotion = isReducedMotionPreferred();
 
     const springOpts = preferReducedMotion
       ? { stiffness: 500 }
