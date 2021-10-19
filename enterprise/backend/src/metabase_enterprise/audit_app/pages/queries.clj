@@ -193,8 +193,8 @@
                              [:card.creator_id :user_id]
                              [(common/user-full-name :u) :user_name]
                              :card.cache_ttl
-                             [(common/zero-if-null :avg_exec_time_45.avg_running_time_ms) :avg_exec_time]
-                             [(common/zero-if-null :total_runtime_45.total_running_time_ms) :total_runtime]
+                             [:avg_exec_time_45.avg_running_time_ms :avg_exec_time]
+                             [:total_runtime_45.total_running_time_ms :total_runtime]
                              [(common/zero-if-null :query_runs.count) :query_runs]
                              [(common/card-public-url :card.public_uuid) :public_link]]
                  :from      [[:report_card :card]]
