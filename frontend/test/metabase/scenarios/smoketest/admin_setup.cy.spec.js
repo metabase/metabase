@@ -4,6 +4,7 @@ import {
   restore,
   setupLocalHostEmail,
   modal,
+  openPeopleTable,
 } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 
@@ -508,8 +509,7 @@ describe("smoketest > admin_setup", () => {
 
       // Check table hidden in notebook editor
 
-      cy.findByText("People").click();
-      cy.icon("notebook").click({ force: true });
+      openPeopleTable({ mode: "notebook" });
 
       cy.findByText("Join data").click();
 
