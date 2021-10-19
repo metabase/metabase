@@ -5,6 +5,7 @@ import {
   setupLocalHostEmail,
   modal,
   openPeopleTable,
+  visualize,
 } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 
@@ -477,7 +478,8 @@ describe("smoketest > admin_setup", () => {
         .last()
         .click();
       cy.findByText("Add filter").click();
-      cy.button("Visualize").click();
+
+      visualize();
 
       cy.findAllByText("Awesome Concrete Shoes");
       cy.findByText("Mediocre Wooden Bench").should("not.exist");

@@ -1,4 +1,9 @@
-import { restore, popover, openOrdersTable } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  openOrdersTable,
+  visualize,
+} from "__support__/e2e/cypress";
 
 describe("issue 17710", () => {
   beforeEach(() => {
@@ -19,7 +24,7 @@ describe("issue 17710", () => {
       cy.icon("add").click();
     });
 
-    visualizeResults();
+    visualize();
 
     cy.icon("notebook")
       .click()
@@ -31,8 +36,3 @@ describe("issue 17710", () => {
       });
   });
 });
-
-function visualizeResults() {
-  cy.button("Visualize").click();
-  cy.wait("@dataset");
-}

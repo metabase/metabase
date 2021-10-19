@@ -1,4 +1,4 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover, visualize } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
@@ -33,9 +33,7 @@ describe.skip("issue 18502", () => {
     cy.findByText("Created At").click();
     cy.findByText("Birth Date").click();
 
-    cy.button("Visualize").click();
-
-    cy.wait("@dataset").then(({ response }) => {
+    visualize(response => {
       expect(response.body.error).to.not.exist;
     });
 

@@ -1,11 +1,9 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover, visualize } from "__support__/e2e/cypress";
 
 const MYSQL_DB_NAME = "QA MySQL8";
 
 describe.skip("issue 15342", () => {
   beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("query");
-
     restore("mysql-8");
     cy.signInAsAdmin();
 
@@ -32,8 +30,7 @@ describe.skip("issue 15342", () => {
       joinType: "inner",
     });
 
-    cy.button("Visualize").click();
-    cy.wait("@query");
+    visualize();
 
     cy.get(".Visualization").within(() => {
       cy.findByText("Email"); // from People table

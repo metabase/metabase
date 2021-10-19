@@ -110,11 +110,7 @@ describe("scenarios > question > custom column", () => {
     enterCustomColumnDetails({ formula: "1 + 1", name: "x" });
     cy.button("Done").click();
 
-    cy.button("Visualize").click();
-
-    // wait for results to load
-    cy.get(".LoadingSpinner").should("not.exist");
-    cy.button("Visualize").should("not.exist");
+    visualize();
 
     cy.log(
       "**Fails in 0.35.0, 0.35.1, 0.35.2, 0.35.4 and the latest master (2020-10-21)**",
@@ -326,7 +322,6 @@ describe("scenarios > question > custom column", () => {
     cy.get("[class*=NotebookCellItem]")
       .contains(CE_NAME)
       .should("not.exist");
-    cy.button("Visualize").click();
 
     visualize(response => {
       expect(response.body.error).to.not.exist;
