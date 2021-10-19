@@ -117,9 +117,13 @@ export const getDatabaseFields = createSelector(
 );
 
 export const getParameters = createSelector(
-  [getCard, getParameterValues],
-  (card, parameterValues) =>
-    getValueAndFieldIdPopulatedParametersFromCard(card, parameterValues),
+  [getCard, getMetadata, getParameterValues],
+  (card, metadata, parameterValues) =>
+    getValueAndFieldIdPopulatedParametersFromCard(
+      card,
+      metadata,
+      parameterValues,
+    ),
 );
 
 const getLastRunDatasetQuery = createSelector(
@@ -163,7 +167,7 @@ const getNextRunParameterValues = createSelector(
 );
 
 function normalizeClause(clause) {
-  return typeof clause.raw === "function" ? clause.raw() : clause;
+  return typeof clause?.raw === "function" ? clause.raw() : clause;
 }
 
 // Certain differences in a query should be ignored. `normalizeQuery`

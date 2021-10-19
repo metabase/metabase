@@ -5,7 +5,7 @@ const questionDetails = {
   native: { query: "select REVIEWER from REVIEWS LIMIT 1" },
 };
 
-describe.skip("issue 18364", () => {
+describe("issue 18364", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/card").as("cardCreated");
 

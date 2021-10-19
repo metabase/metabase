@@ -1,9 +1,4 @@
-import {
-  restore,
-  openOrdersTable,
-  openProductsTable,
-  popover,
-} from "__support__/e2e/cypress";
+import { restore, openOrdersTable, popover } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATASET;
@@ -27,19 +22,28 @@ describe("scenarios > question > joined questions", () => {
       name: "15578",
       query: { "source-table": ORDERS_ID },
     });
-    openProductsTable({ mode: "notebook" });
-    cy.findByText("Join data").click();
+
+    cy.visit("/question/new");
+    cy.findByText("Custom question").click();
+    cy.findByText("Sample Dataset").click();
+    cy.findByText("Products").click();
+
+    cy.icon("join_left_outer").click();
+
     popover()
       .findByText("Sample Dataset")
       .click();
     cy.findByText("Saved Questions").click();
     cy.findByText("15578").click();
+
     popover()
       .findByText("ID")
       .click();
     popover()
-      .findByText("Product ID") // Implicit assertion - test will fail for multiple strings
+      // Implicit assertion - test will fail for multiple strings
+      .findByText("Product ID")
       .click();
+
     cy.button("Visualize").click();
     cy.wait("@dataset").then(xhr => {
       expect(xhr.response.body.error).not.to.exist;

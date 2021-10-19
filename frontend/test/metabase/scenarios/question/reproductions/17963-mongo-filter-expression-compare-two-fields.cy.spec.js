@@ -1,6 +1,6 @@
 import { restore, popover } from "__support__/e2e/cypress";
 
-describe.skip("issue 17963", () => {
+describe("issue 17963", () => {
   beforeEach(() => {
     restore("mongo-4");
     cy.signInAsAdmin();

@@ -451,4 +451,10 @@
                                              {}
                                              [["abcdef"] ["abcedf"] ["abcdef"]]
                                              parse-column-width))]
-        (is (<= 2800 col-width 2900))))))
+        (is (<= 2800 col-width 2900)))))
+  (testing "An auto-sized column does not exceed max-column-width (the width of 255 characters)"
+    (let [[col-width] (second (xlsx-export [{:id 0, :name "Col1"}]
+                                           {}
+                                           [[(apply str (repeat 256 "0"))]]
+                                           parse-column-width))]
+      (is (= 65280 col-width)))))

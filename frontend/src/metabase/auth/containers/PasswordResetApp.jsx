@@ -29,7 +29,7 @@ export default class PasswordResetApp extends Component {
     resetSuccess: false,
   };
 
-  async UNSAFE_componentWillMount() {
+  async componentDidMount() {
     try {
       const result = await SessionApi.password_reset_token_valid({
         token: this.props.token,

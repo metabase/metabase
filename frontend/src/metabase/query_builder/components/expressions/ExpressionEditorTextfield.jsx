@@ -139,7 +139,7 @@ export default class ExpressionEditorTextfield extends React.Component {
       const parserOptions = this._getParserOptions(newProps);
       const source = format(newProps.expression, parserOptions);
 
-      const { expression, compileError, syntaxTree } =
+      const { expression, compileError } =
         source && source.length
           ? this._processSource({
               source,
@@ -149,14 +149,12 @@ export default class ExpressionEditorTextfield extends React.Component {
               expression: null,
               tokenizerError: [],
               compileError: null,
-              syntaxTree: null,
             };
       this.setState({
         source,
         expression,
         tokenizeError: [],
         compileError,
-        syntaxTree,
         suggestions: [],
         highlightedSuggestionIndex: 0,
       });
@@ -319,13 +317,7 @@ export default class ExpressionEditorTextfield extends React.Component {
     const endsWithWhitespace = /\s$/.test(source);
     const targetOffset = !hasSelection ? selectionEnd : null;
 
-    const {
-      expression,
-      compileError,
-      suggestions,
-      helpText,
-      syntaxTree,
-    } = source
+    const { expression, compileError, suggestions, helpText } = source
       ? this._processSource({
           source,
           targetOffset,
@@ -336,7 +328,6 @@ export default class ExpressionEditorTextfield extends React.Component {
           compileError: null,
           suggestions: [],
           helpText: null,
-          syntaxTree: null,
         };
 
     const isValid = expression !== undefined;
@@ -385,7 +376,6 @@ export default class ExpressionEditorTextfield extends React.Component {
     this.setState({
       source,
       expression,
-      syntaxTree,
       tokenizerError,
       compileError,
       displayError: null,
@@ -406,7 +396,7 @@ export default class ExpressionEditorTextfield extends React.Component {
 
   render() {
     const { placeholder } = this.props;
-    const { displayError, source, suggestions, syntaxTree } = this.state;
+    const { displayError, source, suggestions } = this.state;
 
     const inputClassName = cx("input text-bold text-monospace", {
       "text-dark": source,
@@ -436,7 +426,7 @@ export default class ExpressionEditorTextfield extends React.Component {
           style={{ ...inputStyle, paddingLeft: 26, whiteSpace: "pre-wrap" }}
           placeholder={placeholder}
           value={source}
-          syntaxTree={syntaxTree}
+          startRule={this.props.startRule}
           parserOptions={this._getParserOptions()}
           onChange={e => this.onExpressionChange(e.target.value)}
           onKeyDown={this.onInputKeyDown}

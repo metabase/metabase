@@ -15,7 +15,7 @@ const mapDispatchToProps = {
   mapDispatchToProps,
 )
 export default class LogoutApp extends Component {
-  UNSAFE_componentWillMount() {
+  componentDidMount() {
     this.props.logout();
   }
 

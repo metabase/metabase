@@ -43,6 +43,7 @@ export default class PulseEditChannels extends Component {
     cardPreviews: PropTypes.object,
     hideSchedulePicker: PropTypes.bool,
     emailRecipientText: PropTypes.string,
+    invalidRecipientText: PropTypes.func.isRequired,
   };
   static defaultProps = {};
 
@@ -203,6 +204,7 @@ export default class PulseEditChannels extends Component {
               onRecipientsChange={recipients =>
                 this.onChannelPropertyChange(index, "recipients", recipients)
               }
+              invalidRecipientText={this.props.invalidRecipientText}
             />
           </div>
         )}

@@ -2,13 +2,13 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-
+import { recipientIsValid } from "metabase/lib/pulse";
+import MetabaseAnalytics from "metabase/lib/analytics";
+import MetabaseSettings from "metabase/lib/settings";
+import MetabaseUtils from "metabase/lib/utils";
 import TokenField from "metabase/components/TokenField";
 import UserAvatar from "metabase/components/UserAvatar";
-
-import MetabaseAnalytics from "metabase/lib/analytics";
-
-const VALID_EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import { ErrorMessage } from "./RecipientPicker.styled";
 
 export default class RecipientPicker extends Component {
   static propTypes = {
@@ -18,6 +18,7 @@ export default class RecipientPicker extends Component {
     isNewPulse: PropTypes.bool.isRequired,
     onRecipientsChange: PropTypes.func.isRequired,
     autoFocus: PropTypes.bool,
+    invalidRecipientText: PropTypes.func.isRequired,
   };
 
   static defaultProps = {
@@ -50,49 +51,58 @@ export default class RecipientPicker extends Component {
   }
 
   render() {
-    const { recipients, users, autoFocus } = this.props;
+    const { recipients, users, autoFocus, invalidRecipientText } = this.props;
+    const isValid = recipients.every(r => recipientIsValid(r));
+    const domains = MetabaseSettings.subscriptionAllowedDomains().join(", ");
+
     return (
-      <div className="bordered rounded" style={{ padding: "2px" }}>
-        <TokenField
-          value={recipients}
-          options={
-            users
-              ? users.map(user => ({ label: user.common_name, value: user }))
-              : []
-          }
-          onChange={this.handleOnChange}
-          placeholder={
-            recipients.length === 0
-              ? t`Enter user names or email addresses`
-              : null
-          }
-          autoFocus={autoFocus && recipients.length === 0}
-          multi
-          valueRenderer={value => value.common_name || value.email}
-          optionRenderer={option => (
-            <div className="flex align-center">
-              <span className="text-white">
-                <UserAvatar user={option.value} />
-              </span>
-              <span className="ml1">{option.value.common_name}</span>
-            </div>
-          )}
-          filterOption={(option, filterString) =>
-            // case insensitive search of name or email
-            ~option.value.common_name
-              .toLowerCase()
-              .indexOf(filterString.toLowerCase()) ||
-            ~option.value.email
-              .toLowerCase()
-              .indexOf(filterString.toLowerCase())
-          }
-          parseFreeformValue={inputValue => {
-            if (VALID_EMAIL_REGEX.test(inputValue)) {
-              return { email: inputValue };
+      <div>
+        <div className="bordered rounded" style={{ padding: "2px" }}>
+          <TokenField
+            value={recipients}
+            options={
+              users
+                ? users.map(user => ({ label: user.common_name, value: user }))
+                : []
             }
-          }}
-          updateOnInputBlur
-        />
+            onChange={this.handleOnChange}
+            placeholder={
+              recipients.length === 0
+                ? t`Enter user names or email addresses`
+                : null
+            }
+            autoFocus={autoFocus && recipients.length === 0}
+            multi
+            valueRenderer={value => value.common_name || value.email}
+            optionRenderer={option => (
+              <div className="flex align-center">
+                <span className="text-white">
+                  <UserAvatar user={option.value} />
+                </span>
+                <span className="ml1">{option.value.common_name}</span>
+              </div>
+            )}
+            filterOption={(option, filterString) =>
+              // case insensitive search of name or email
+              ~option.value.common_name
+                .toLowerCase()
+                .indexOf(filterString.toLowerCase()) ||
+              ~option.value.email
+                .toLowerCase()
+                .indexOf(filterString.toLowerCase())
+            }
+            validateValue={value => recipientIsValid(value)}
+            parseFreeformValue={inputValue => {
+              if (MetabaseUtils.isEmail(inputValue)) {
+                return { email: inputValue };
+              }
+            }}
+            updateOnInputBlur
+          />
+        </div>
+        {!isValid && (
+          <ErrorMessage>{invalidRecipientText(domains)}</ErrorMessage>
+        )}
       </div>
     );
   }

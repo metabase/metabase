@@ -115,3 +115,4 @@ jobs:
         run: yarn run test-visual-no-build
         env:
           PERCY_TOKEN: ${{ secrets.PERCY_TOKEN }}
+        if: env.PERCY_TOKEN != null

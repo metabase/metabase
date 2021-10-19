@@ -1273,6 +1273,7 @@ workflows:
                   "dashboard",
                   "dashboard-filters",
                   "dashboard-filters-sql",
+                  "downloads",
                   "moderation",
                   "native",
                   "native-filters",

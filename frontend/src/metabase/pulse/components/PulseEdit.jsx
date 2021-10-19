@@ -202,6 +202,9 @@ export default class PulseEdit extends Component {
               {...this.props}
               setPulse={this.setPulse}
               pulseIsValid={isValid}
+              invalidRecipientText={domains =>
+                t`You're only allowed to email pulses to addresses ending in ${domains}`
+              }
             />
           </div>
           <PulseEditSkip {...this.props} setPulse={this.setPulse} />
