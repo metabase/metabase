@@ -4,7 +4,7 @@ import Utils from "metabase/lib/utils";
 import * as Urls from "metabase/lib/urls";
 
 import { CardApi } from "metabase/services";
-import { b64url_to_utf8, utf8_to_b64url } from "metabase/lib/encoding";
+import { b64hash_to_utf8, utf8_to_b64url } from "metabase/lib/encoding";
 
 export function createCard(name = null) {
   return {
@@ -91,8 +91,7 @@ export function serializeCardForUrl(card) {
 }
 
 export function deserializeCardFromUrl(serialized) {
-  serialized = serialized.replace(/^#/, "");
-  return JSON.parse(b64url_to_utf8(serialized));
+  return JSON.parse(b64hash_to_utf8(serialized));
 }
 
 export function urlForCardState(state, dirty) {
