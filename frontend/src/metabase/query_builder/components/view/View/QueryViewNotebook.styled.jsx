@@ -13,8 +13,13 @@ export const NotebookContainer = styled.div`
   right: 0;
   top: 0;
   transform: translateY(-100%);
-  transition: transform 0.4s, opacity 0.4s;
   z-index: 2;
+
+  ${({ transitionTime }) =>
+    transitionTime &&
+    css`
+      transition: transform ${transitionTime}ms, opacity ${transitionTime}ms;
+    `}
 
   ${({ isOpen }) =>
     isOpen &&

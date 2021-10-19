@@ -35,13 +35,12 @@ import SummarizeSidebar from "./sidebars/SummarizeSidebar";
 import FilterSidebar from "./sidebars/FilterSidebar";
 import QuestionDetailsSidebar from "./sidebars/QuestionDetailsSidebar";
 
-import Notebook from "../notebook/Notebook";
 import { Motion, spring } from "react-motion";
 
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
-import { NotebookContainer } from "./View.styled";
+import QueryViewNotebook from "./View/Notebook";
 
 const DEFAULT_POPOVER_STATE = {
   aggregationIndex: null,
@@ -84,6 +83,13 @@ export default class View extends React.Component {
     this.setState({
       ...DEFAULT_POPOVER_STATE,
     });
+  };
+
+  handleTransitionEnd = event => {
+    console.log("🚀", event);
+    if (event.propertyName === "opacity") {
+      console.log("🚀", event.propertyName);
+    }
   };
 
   render() {
@@ -229,9 +235,10 @@ export default class View extends React.Component {
 
           <div className="flex flex-full relative">
             {query instanceof StructuredQuery && (
-              <NotebookContainer isOpen={isNotebookContainerOpen}>
-                <Notebook {...this.props} />
-              </NotebookContainer>
+              <QueryViewNotebook
+                isNotebookContainerOpen={isNotebookContainerOpen}
+                {...this.props}
+              />
             )}
 
             <ViewSidebar side="left" isOpen={!!leftSideBar}>
