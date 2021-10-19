@@ -100,10 +100,7 @@ describe("issue 18061", () => {
         .parent()
         .contains("1")
         .click();
-
-      cy.findAllByText("ID is less than 3")
-        .filter(":visible")
-        .click();
+      cy.findByText("ID is less than 3").click();
 
       popover()
         .find("input")
@@ -113,8 +110,7 @@ describe("issue 18061", () => {
 
       cy.findByText("Something went wrong").should("not.exist");
 
-      cy.findAllByText("ID is less than 2").filter(":visible");
-
+      cy.findByText("ID is less than 2");
       cy.get(".PinMap");
 
       cy.window().should("have.prop", "beforeReload", true);

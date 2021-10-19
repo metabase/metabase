@@ -187,10 +187,9 @@ describe("scenarios > dashboard > dashboard drill", () => {
     cy.findByText("num: 111").click();
 
     // show filtered question
-    cy.findAllByText("Orders").filter(":visible");
-    cy.findAllByText("User ID is 111").filter(":visible");
-    cy.findAllByText("Category is Widget").filter(":visible");
-
+    cy.findAllByText("Orders");
+    cy.findByText("User ID is 111");
+    cy.findByText("Category is Widget");
     cy.findByText("Showing 5 rows");
   });
 
@@ -337,16 +336,14 @@ describe("scenarios > dashboard > dashboard drill", () => {
       cy.findByText("xavier").click();
       cy.findByText("=").click();
 
-      cy.findAllByText("Reviewer is xavier").should("be.visible");
-      cy.findAllByText("Rating is equal to 2 selections").should("be.visible");
+      cy.findByText("Reviewer is xavier");
+      cy.findByText("Rating is equal to 2 selections");
       cy.contains("Reprehenderit non error"); // xavier's review
     });
 
     it("when clicking on the card title (metabase#13062-2)", () => {
       cy.findByText(questionDetails.name).click();
-
-      cy.findAllByText("Rating is equal to 2 selections").filter(":visible");
-
+      cy.findByText("Rating is equal to 2 selections");
       cy.contains("Ad perspiciatis quis et consectetur."); // 5 star review
     });
   });
@@ -857,10 +854,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     }
 
     function postDrillAssertion() {
-      cy.findAllByText("ID is 2 selections")
-        .filter(":visible")
-        .click();
-
+      cy.findByText("ID is 2 selections").click();
       popover().within(() => {
         cy.get("li")
           .should("have.length", 3) // The third one is an input field

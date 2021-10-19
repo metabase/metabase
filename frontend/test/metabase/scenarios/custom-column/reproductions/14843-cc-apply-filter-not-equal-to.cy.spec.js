@@ -38,8 +38,7 @@ describe("issue 14843", () => {
 
     visualize();
 
-    cy.findAllByText(`${CC_NAME} is not equal to 3`).filter(":visible");
-
+    cy.findByText(`${CC_NAME} is not equal to 3`);
     cy.findByText("Rye").should("not.exist");
   });
 });

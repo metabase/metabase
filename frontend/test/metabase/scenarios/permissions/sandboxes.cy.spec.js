@@ -349,7 +349,7 @@ describeWithToken("formatting > sandboxes", () => {
         cy.wait("@dataset").then(xhr => {
           expect(xhr.response.body.error).not.to.exist;
         });
-        cy.findAllByText("Category is Doohickey").filter(":visible");
+        cy.findByText("Category is Doohickey");
         cy.findByText("97.44"); // Subtotal for order #10
       });
     });
@@ -423,7 +423,7 @@ describeWithToken("formatting > sandboxes", () => {
 
       cy.wait("@dataset");
       cy.log("Reported failing on v1.36.4");
-      cy.findAllByText("Category is Doohickey").filter(":visible");
+      cy.findByText("Category is Doohickey");
       cy.findByText("97.44"); // Subtotal for order #10
     });
 

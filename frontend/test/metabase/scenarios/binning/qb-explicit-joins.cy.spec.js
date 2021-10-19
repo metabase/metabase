@@ -60,9 +60,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       cy.findByText("Simple question").click();
       cy.findByText("Saved Questions").click();
       cy.findByText("QB Binning").click();
-      cy.findAllByText("Summarize")
-        .filter(":visible")
-        .click();
+      cy.findByText("Summarize").click();
       cy.wait("@dataset");
     });
 
