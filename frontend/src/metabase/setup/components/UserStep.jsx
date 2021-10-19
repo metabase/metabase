@@ -98,9 +98,9 @@ export default class UserStep extends Component {
                   <FormField name="last_name" className="flex-full" />
                 </Flex>
                 <FormField name="email" />
+                <FormField name="site_name" />
                 <FormField name="password" />
                 <FormField name="password_confirm" />
-                <FormField name="site_name" />
                 <FormFooter submitTitle={t`Next`} />
               </Form>
             )}
