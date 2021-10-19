@@ -121,7 +121,6 @@ export default class QueryVisualization extends Component {
             "Visualization--errors": result && result.error,
             "Visualization--loading": isRunning,
           })}
-          data-testid="query-visualization"
         >
           {result && result.error ? (
             <VisualizationError
