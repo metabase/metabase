@@ -6,6 +6,7 @@ import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
+import { b64hash_to_utf8 } from "metabase/lib/encoding";
 
 import AddDatabaseHelpCard from "metabase/components/AddDatabaseHelpCard";
 import DriverWarning from "metabase/components/DriverWarning";
@@ -30,6 +31,7 @@ const PREFERENCES_STEP_NUMBER = 5;
 
 export default class Setup extends Component {
   static propTypes = {
+    location: PropTypes.object.isRequired,
     activeStep: PropTypes.number.isRequired,
     setupComplete: PropTypes.bool.isRequired,
     userDetails: PropTypes.object,
@@ -52,6 +54,11 @@ export default class Setup extends Component {
   }
 
   componentDidMount() {
+    this.setDefaultLanguage();
+    this.setDefaultUserDetails();
+  }
+
+  setDefaultLanguage() {
     const locales = MetabaseSettings.get("available-locales") || [];
     const browserLocale = (navigator.language || "").toLowerCase();
     const defaultLanguage =
@@ -67,6 +74,17 @@ export default class Setup extends Component {
       const [code, name] = defaultLanguage;
       this.setState({ defaultLanguage: { name, code } });
       MetabaseSettings.set("user-locale", code);
+    }
+  }
+
+  setDefaultUserDetails() {
+    const { hash } = this.props.location;
+
+    try {
+      const userDetails = hash && JSON.parse(b64hash_to_utf8(hash));
+      this.setState({ defaultUserDetails: userDetails });
+    } catch (e) {
+      this.setState({ defaultUserDetails: undefined });
     }
   }
 
@@ -155,7 +173,11 @@ export default class Setup extends Component {
                 stepNumber={LANGUAGE_STEP_NUMBER}
                 defaultLanguage={this.state.defaultLanguage}
               />
-              <UserStep {...this.props} stepNumber={USER_STEP_NUMBER} />
+              <UserStep
+                {...this.props}
+                stepNumber={USER_STEP_NUMBER}
+                defaultUserDetails={this.state.defaultUserDetails}
+              />
               <DatabaseConnectionStep
                 {...this.props}
                 stepNumber={DATABASE_CONNECTION_STEP_NUMBER}

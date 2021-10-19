@@ -84,7 +84,7 @@ export default {
       ...PASSWORD_FORM_FIELDS(),
       {
         name: "site_name",
-        title: t`Your company or team name`,
+        title: t`Company or team name`,
         placeholder: t`Department of Awesome`,
         validate: validate.required(),
       },

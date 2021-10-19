@@ -18,3 +18,7 @@ export function utf8_to_b64url(str) {
 export function b64url_to_utf8(b64url) {
   return b64_to_utf8(b64url.replace(/-/g, "+").replace(/_/g, "/"));
 }
+
+export function b64hash_to_utf8(b64hash) {
+  return b64url_to_utf8(b64hash.replace(/^#/, ""));
+}

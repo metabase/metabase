@@ -19,6 +19,7 @@ export default class UserStep extends Component {
     setActiveStep: PropTypes.func.isRequired,
 
     userDetails: PropTypes.object,
+    defaultUserDetails: PropTypes.object,
     setUserDetails: PropTypes.func.isRequired,
     validatePassword: PropTypes.func.isRequired,
   };
@@ -43,7 +44,14 @@ export default class UserStep extends Component {
   };
 
   render() {
-    const { activeStep, setActiveStep, stepNumber, userDetails } = this.props;
+    const {
+      activeStep,
+      setActiveStep,
+      stepNumber,
+      userDetails,
+      defaultUserDetails,
+    } = this.props;
+
     const stepText =
       activeStep <= stepNumber
         ? t`What should we call you?`
@@ -70,12 +78,11 @@ export default class UserStep extends Component {
           <User.Form
             className="mt1"
             form={User.forms.setup()}
-            user={
-              userDetails && {
-                ...userDetails,
-                password_confirm: userDetails.password,
-              }
-            }
+            user={{
+              ...defaultUserDetails,
+              ...userDetails,
+              password_confirm: userDetails?.password,
+            }}
             onSubmit={this.handleSubmit}
             asyncValidate={this.handleAsyncValidate}
             asyncBlurFields={["password"]}
