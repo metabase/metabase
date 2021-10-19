@@ -193,6 +193,14 @@ export default class View extends React.Component {
 
     const isSidebarOpen = leftSideBar || rightSideBar;
 
+    const MOTION_Y = -100;
+
+    const preferReducedMotion = true; // FIXME: get it from mediaQuery
+
+    const springOpts = preferReducedMotion
+      ? { stiffness: 500 }
+      : { stiffness: 170 };
+
     return (
       <div className={fitClassNames}>
         <div className={cx("QueryBuilder flex flex-column bg-white spread")}>
@@ -226,34 +234,36 @@ export default class View extends React.Component {
                 defaultStyle={
                   isNewQuestion
                     ? { opacity: 1, translateY: 0 }
-                    : { opacity: 0, translateY: -100 }
+                    : { opacity: 0, translateY: MOTION_Y }
                 }
                 style={
                   queryBuilderMode === "notebook"
                     ? {
-                        opacity: spring(1),
-                        translateY: spring(0),
+                        opacity: spring(1, springOpts),
+                        translateY: spring(0, springOpts),
                       }
                     : {
-                        opacity: spring(0),
-                        translateY: spring(-100),
+                        opacity: spring(0, springOpts),
+                        translateY: spring(MOTION_Y, springOpts),
                       }
                 }
               >
-                {({ opacity, translateY }) =>
-                  opacity > 0 ? (
+                {({ opacity, translateY }) => {
+                  const snapY = translateY < MOTION_Y / 2 ? MOTION_Y : 0;
+                  const shiftY = preferReducedMotion ? snapY : translateY;
+                  return opacity > 0 ? (
                     // note the `bg-white class here is necessary to obscure the other layer
                     <div
                       className="spread bg-white scroll-y z2 border-top border-bottom"
                       style={{
                         // opacity: opacity,
-                        transform: `translateY(${translateY}%)`,
+                        transform: `translateY(${shiftY}%)`,
                       }}
                     >
                       <Notebook {...this.props} />
                     </div>
-                  ) : null
-                }
+                  ) : null;
+                }}
               </Motion>
             )}
 
