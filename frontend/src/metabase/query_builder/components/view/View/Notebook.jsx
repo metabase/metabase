@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import Notebook from "../../notebook/Notebook";
 import { NotebookContainer } from "./QueryViewNotebook.styled";
 
-const delayBeforeNotRenderingNotebook = 400;
+const delayBeforeNotRenderingNotebook = 300;
 
 const QueryViewNotebook = ({ isNotebookContainerOpen, ...props }) => {
   const [shouldShowNotebook, setShouldShowNotebook] = useState(
@@ -12,17 +12,20 @@ const QueryViewNotebook = ({ isNotebookContainerOpen, ...props }) => {
   );
 
   useEffect(() => {
-    const delay = isNotebookContainerOpen ? 0 : delayBeforeNotRenderingNotebook;
-
-    setTimeout(() => {
-      setShouldShowNotebook(isNotebookContainerOpen);
-    }, delay);
+    isNotebookContainerOpen && setShouldShowNotebook(isNotebookContainerOpen);
   }, [isNotebookContainerOpen]);
+
+  const handleTransitionEnd = event => {
+    if (event.propertyName === "opacity" && !isNotebookContainerOpen) {
+      setShouldShowNotebook(false);
+    }
+  };
 
   return (
     <NotebookContainer
       isOpen={isNotebookContainerOpen}
       transitionTime={delayBeforeNotRenderingNotebook}
+      onTransitionEnd={handleTransitionEnd}
     >
       {shouldShowNotebook && <Notebook {...props} />}
     </NotebookContainer>
