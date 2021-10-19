@@ -74,7 +74,11 @@ export default class UserStep extends Component {
           className="SetupStep SetupStep--active rounded bg-white full relative"
         >
           <StepTitle title={stepText} circleText={String(stepNumber)} />
-
+          {defaultUserDetails && (
+            <div className="Form-field">
+              {t`We know you’ve already created one of these. We like to keep billing and product accounts separate so that you don’t have to share logins.`}
+            </div>
+          )}
           <User.Form
             className="mt1"
             form={User.forms.setup()}
