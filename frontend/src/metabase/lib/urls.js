@@ -47,9 +47,7 @@ export function question(card, hash = "", query = "") {
     return `/question${query}${hash}`;
   }
 
-  if (!card.name) {
-    return `/question/${card.id}${query}${hash}`;
-  }
+  const { card_id, id, name } = card;
 
   /**
    * If the question has been added to the dashboard we're reading the dashCard's properties.
@@ -57,9 +55,19 @@ export function question(card, hash = "", query = "") {
    *
    * There can be multiple instances of the same question in a dashboard, hence this distinction.
    */
-  const { card_id, id } = card;
+  const questionId = card_id || id;
 
-  const path = appendSlug(`/question/${card_id || id}`, slugg(card.name));
+  /**
+   * Although it's not possible to intentionally save a question without a name,
+   * it is possible that the `name` is not recognized if it contains symbols.
+   *
+   * Please see: https://github.com/metabase/metabase/pull/15989#pullrequestreview-656646149
+   */
+  if (!name) {
+    return `/question/${questionId}${query}${hash}`;
+  }
+
+  const path = appendSlug(`/question/${questionId}`, slugg(name));
 
   return `${path}${query}${hash}`;
 }
