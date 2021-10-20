@@ -4,8 +4,6 @@ import { t } from "ttag";
 
 import cx from "classnames";
 
-import { isReducedMotionPreferred } from "metabase/lib/dom";
-
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Popover from "metabase/components/Popover";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
