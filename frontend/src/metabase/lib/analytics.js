@@ -79,7 +79,7 @@ const trackSnowplowSchemaEvent = (schema, data) => {
 
 const isTrackingEnabled = () => {
   return isProduction && Settings.trackingEnabled();
-}
+};
 
 const handleStructEventClick = event => {
   if (!isTrackingEnabled()) {
