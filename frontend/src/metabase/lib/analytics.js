@@ -10,20 +10,20 @@ export const createTracker = () => {
 };
 
 export const trackPageView = url => {
-  if (isTrackingEnabled()) {
+  if (isTrackingEnabled() && url) {
     trackGoogleAnalyticsPageView(url);
     trackSnowplowPageView(url);
   }
 };
 
 export const trackStructEvent = (category, action, label, value) => {
-  if (isTrackingEnabled()) {
+  if (isTrackingEnabled() && category && label) {
     trackGoogleAnalyticsStructEvent(category, action, label, value);
   }
 };
 
 export const trackSchemaEvent = (schema, data) => {
-  if (isTrackingEnabled()) {
+  if (isTrackingEnabled() && schema) {
     trackSnowplowSchemaEvent(schema, data);
   }
 };
