@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import "mutationobserver-shim";
 
 import { ORDERS, PRODUCTS, PEOPLE } from "__support__/sample_dataset_fixture";
-import { FieldValuesWidget } from "metabase/components/FieldValuesWidget";
+import { FieldValuesWidget } from "metabase/components/FieldValuesWidget2";
 
 const mock = (object, properties) =>
   Object.assign(Object.create(object), properties);
@@ -44,7 +44,7 @@ describe("FieldValuesWidget", () => {
       it("should call fetchFieldValues", () => {
         const fetchFieldValues = jest.fn();
         renderFieldValuesWidget({ ...props, fetchFieldValues });
-        expect(fetchFieldValues).toHaveBeenCalledWith(PRODUCTS.CATEGORY.id);
+        expect(fetchFieldValues).toHaveBeenCalledWith(PRODUCTS.CATEGORY);
       });
 
       it("should have 'Search the list' as the placeholder text", () => {

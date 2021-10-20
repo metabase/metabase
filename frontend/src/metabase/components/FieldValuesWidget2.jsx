@@ -20,7 +20,7 @@ import { useAsyncFunction } from "metabase/hooks/use-async-function";
 
 const MAX_SEARCH_RESULTS = 100;
 
-FieldValuesWidget2.propTypes = {
+FieldValuesWidget.propTypes = {
   addRemappings: PropTypes.func.isRequired,
   fetchFieldValues: PropTypes.func.isRequired,
   onChange: PropTypes.func.isRequired,
@@ -359,7 +359,7 @@ function isSearchEndpointExhausted(value, latestSearch, options, maxResults) {
   );
 }
 
-function FieldValuesWidget2({
+export function FieldValuesWidget({
   value,
   onChange,
   fields,
@@ -631,4 +631,4 @@ export default _.compose(
     mapStateToProps,
     mapDispatchToProps,
   ),
-)(FieldValuesWidget2);
+)(FieldValuesWidget);
