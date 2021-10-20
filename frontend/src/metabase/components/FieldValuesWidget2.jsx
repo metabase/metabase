@@ -209,23 +209,23 @@ function getOptions(
   options,
   disablePKRemappingForSearch,
 ) {
-  let _options = [];
+  let computedOptions = [];
   if (
     hasList(fields, disableSearch, dashboard, loadingState, options) &&
     !usesChainFilterEndpoints(dashboard)
   ) {
-    _options = dedupeValues(fields.map(field => field.values));
+    computedOptions = dedupeValues(fields.map(field => field.values));
   } else if (
     loadingState === "LOADED" &&
     (isSearchable(fields, disableSearch, disablePKRemappingForSearch) ||
       usesChainFilterEndpoints(dashboard))
   ) {
-    _options = options;
+    computedOptions = options;
   } else {
-    _options = [];
+    computedOptions = [];
   }
 
-  return _options;
+  return computedOptions;
 }
 
 function dedupeValues(valuesList) {
@@ -370,6 +370,7 @@ function FieldValuesWidget2({
   style = {},
   parameter,
   parameters,
+  placeholder,
 
   isSidebar,
   expand,
@@ -523,7 +524,7 @@ function FieldValuesWidget2({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const placeholder = getTokenFieldPlaceholder(
+  const computedPlaceholder = getTokenFieldPlaceholder(
     fields,
     placeholder,
     disableSearch,
@@ -533,7 +534,7 @@ function FieldValuesWidget2({
     disablePKRemappingForSearch,
   );
 
-  const _options = getOptions(
+  const computedOptions = getOptions(
     fields,
     disableSearch,
     dashboard,
@@ -565,7 +566,7 @@ function FieldValuesWidget2({
       <TokenField
         value={value.filter(v => v != null)}
         onChange={onChange}
-        placeholder={placeholder}
+        placeholder={computedPlaceholder}
         updateOnInputChange
         multi={multi}
         autoFocus={autoFocus}
@@ -573,7 +574,7 @@ function FieldValuesWidget2({
         style={{ ...style, minWidth: "inherit" }}
         className={className}
         optionsStyle={!parameter ? { maxHeight: "none" } : {}}
-        options={_options}
+        options={computedOptions}
         valueKey={0}
         valueRenderer={value =>
           renderValue(
@@ -596,7 +597,7 @@ function FieldValuesWidget2({
               disableSearch,
               dashboard,
               loadingState,
-              _options,
+              computedOptions,
               disablePKRemappingForSearch,
             )}
           </div>
