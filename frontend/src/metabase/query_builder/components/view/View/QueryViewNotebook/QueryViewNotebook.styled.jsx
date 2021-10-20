@@ -16,7 +16,6 @@ export const NotebookContainer = styled.div`
   z-index: 2;
 
   ${({ transitionTime }) =>
-    transitionTime &&
     css`
       transition: transform ${transitionTime}ms, opacity ${transitionTime}ms;
     `}
