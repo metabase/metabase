@@ -40,7 +40,7 @@ import { Motion, spring } from "react-motion";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
-import QueryViewNotebook from "./View/Notebook";
+import QueryViewNotebook from "./View/QueryViewNotebook";
 
 const DEFAULT_POPOVER_STATE = {
   aggregationIndex: null,
