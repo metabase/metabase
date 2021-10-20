@@ -3,10 +3,6 @@
 import React, { Component } from "react";
 import cx from "classnames";
 
-import "./NativeQueryEditor.css";
-
-import { ResizableBox } from "react-resizable";
-
 import "ace/ace";
 import "ace/ext-language_tools";
 
@@ -22,14 +18,18 @@ import "ace/snippets/mysql";
 import "ace/snippets/pgsql";
 import "ace/snippets/sqlserver";
 import "ace/snippets/json";
+
 import { t } from "ttag";
+import _ from "underscore";
+
+import { ResizableBox } from "react-resizable";
+
+import "./NativeQueryEditor.css";
 
 import { isMac } from "metabase/lib/browser";
 import { isEventOverElement } from "metabase/lib/dom";
 import { delay } from "metabase/lib/promise";
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
-
-import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
 import ExplicitSize from "metabase/components/ExplicitSize";
@@ -39,26 +39,9 @@ import Snippets from "metabase/entities/snippets";
 import SnippetCollections from "metabase/entities/snippet-collections";
 
 import Parameters from "metabase/parameters/components/Parameters/Parameters";
-
-const SCROLL_MARGIN = 8;
-const LINE_HEIGHT = 16;
-
-const MIN_HEIGHT_LINES = 13;
-
-const ICON_SIZE = 18;
-
-const getEditorLineHeight = lines => lines * LINE_HEIGHT + 2 * SCROLL_MARGIN;
-const getLinesForHeight = height => (height - 2 * SCROLL_MARGIN) / LINE_HEIGHT;
-
 import Question from "metabase-lib/lib/Question";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
-import type { DatasetQuery } from "metabase-types/types/Card";
-import type { DatabaseId } from "metabase-types/types/Database";
-import type { TableId } from "metabase-types/types/Table";
-import type { ParameterId } from "metabase-types/types/Parameter";
-import type { LocationDescriptor } from "metabase-types/types";
-import type { RunQueryParams } from "metabase/query_builder/actions";
 import {
   DatabaseDataSelector,
   SchemaAndTableDataSelector,
@@ -69,6 +52,13 @@ import RunButtonWithTooltip from "./RunButtonWithTooltip";
 import DataReferenceButton from "./view/DataReferenceButton";
 import NativeVariablesButton from "./view/NativeVariablesButton";
 import SnippetSidebarButton from "./view/SnippetSidebarButton";
+
+import type { DatasetQuery } from "metabase-types/types/Card";
+import type { DatabaseId } from "metabase-types/types/Database";
+import type { TableId } from "metabase-types/types/Table";
+import type { ParameterId } from "metabase-types/types/Parameter";
+import type { LocationDescriptor } from "metabase-types/types";
+import type { RunQueryParams } from "metabase/query_builder/actions";
 
 type AutoCompleteResult = [string, string, string];
 type AceEditor = any; // TODO;
@@ -111,10 +101,21 @@ type Props = {
   snippets: { name: string }[],
   snippetCollections: { can_write: boolean }[],
 };
+
 type State = {
   initialHeight: number,
   isSelectedTextPopoverOpen: boolean,
 };
+
+const SCROLL_MARGIN = 8;
+const LINE_HEIGHT = 16;
+
+const MIN_HEIGHT_LINES = 13;
+
+const ICON_SIZE = 18;
+
+const getEditorLineHeight = lines => lines * LINE_HEIGHT + 2 * SCROLL_MARGIN;
+const getLinesForHeight = height => (height - 2 * SCROLL_MARGIN) / LINE_HEIGHT;
 
 @ExplicitSize()
 @Snippets.loadList({ loadingAndErrorWrapper: false })
