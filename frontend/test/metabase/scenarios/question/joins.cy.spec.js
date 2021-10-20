@@ -1,8 +1,8 @@
 import {
   restore,
   openOrdersTable,
-  openProductsTable,
   popover,
+  visualize,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
@@ -27,22 +27,30 @@ describe("scenarios > question > joined questions", () => {
       name: "15578",
       query: { "source-table": ORDERS_ID },
     });
-    openProductsTable({ mode: "notebook" });
-    cy.findByText("Join data").click();
+
+    cy.visit("/question/new");
+    cy.findByText("Custom question").click();
+    cy.findByText("Sample Dataset").click();
+    cy.findByText("Products").click();
+
+    cy.icon("join_left_outer").click();
+
     popover()
       .findByText("Sample Dataset")
       .click();
     cy.findByText("Saved Questions").click();
     cy.findByText("15578").click();
+
     popover()
       .findByText("ID")
       .click();
     popover()
-      .findByText("Product ID") // Implicit assertion - test will fail for multiple strings
+      // Implicit assertion - test will fail for multiple strings
+      .findByText("Product ID")
       .click();
-    cy.button("Visualize").click();
-    cy.wait("@dataset").then(xhr => {
-      expect(xhr.response.body.error).not.to.exist;
+
+    visualize(response => {
+      expect(response.body.error).to.not.exist;
     });
   });
 
@@ -60,8 +68,7 @@ describe("scenarios > question > joined questions", () => {
     selectFromDropdown("Created At");
     selectFromDropdown("Created At");
 
-    cy.button("Visualize").click();
-    cy.wait("@dataset");
+    visualize();
 
     // 415 rows mean the join is done correctly,
     // (join on product's FK + join on the same "created_at" field)
@@ -69,7 +76,6 @@ describe("scenarios > question > joined questions", () => {
   });
 
   it("should allow joins on date-time fields", () => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
     openOrdersTable({ mode: "notebook" });
 
     joinTable("Products");
@@ -99,8 +105,7 @@ describe("scenarios > question > joined questions", () => {
     cy.findByText("Summarize").click();
     selectFromDropdown("Count of rows");
 
-    cy.button("Visualize").click();
-    cy.wait("@dataset");
+    visualize();
 
     // 2087 rows mean the join is done correctly,
     // (orders joined with products on the same day-month-year)
@@ -108,7 +113,6 @@ describe("scenarios > question > joined questions", () => {
   });
 
   it("should show 'Previous results' instead of a table name for non-field dimensions", () => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
     openOrdersTable({ mode: "notebook" });
 
     cy.findByText("Summarize").click();

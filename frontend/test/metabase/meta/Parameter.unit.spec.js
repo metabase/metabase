@@ -1,8 +1,17 @@
+import _ from "underscore";
+
 import MetabaseSettings from "metabase/lib/settings";
 import {
+  PARAMETER_OPERATOR_TYPES,
+  getParameterOptions,
+  getOperatorDisplayName,
+  dimensionFilterForParameter,
+  getTagOperatorFilterForParameter,
+  getParameterTargetField,
   dateParameterValueToMBQL,
   stringParameterValueToMBQL,
   numberParameterValueToMBQL,
+  parameterToMBQLFilter,
   parameterOptionsForField,
   normalizeParameterValue,
   deriveFieldOperatorFromParameter,
@@ -14,6 +23,11 @@ import {
   buildHiddenParametersSlugSet,
   getVisibleParameters,
 } from "metabase/meta/Parameter";
+import {
+  metadata,
+  PRODUCTS,
+  SAMPLE_DATASET,
+} from "__support__/sample_dataset_fixture";
 
 MetabaseSettings.get = jest.fn();
 
@@ -27,7 +41,89 @@ function mockFieldFilterOperatorsFlag(value) {
 
 describe("metabase/meta/Parameter", () => {
   beforeEach(() => {
+    jest.clearAllMocks();
     MetabaseSettings.get.mockReturnValue(false);
+  });
+
+  describe("getParameterOptions", () => {
+    describe("when `field-filter-operators-enabled?` is false", () => {
+      beforeEach(() => {
+        mockFieldFilterOperatorsFlag(false);
+      });
+
+      it("should return options without operator subtypes (except for date parameters)", () => {
+        const options = new Set(_.map(getParameterOptions(), "type"));
+        const expectedOptionTypes = [
+          "id",
+          "category",
+          "location/city",
+          "location/state",
+          "location/zip_code",
+          "location/country",
+        ].concat(_.map(PARAMETER_OPERATOR_TYPES.date, "type"));
+
+        expect(expectedOptionTypes.length).toEqual(options.size);
+        expect(expectedOptionTypes.every(option => options.has(option))).toBe(
+          true,
+        );
+      });
+    });
+
+    describe("when `field-filter-operators-enabled?` is true", () => {
+      beforeEach(() => {
+        mockFieldFilterOperatorsFlag(true);
+      });
+
+      it("should return options with operator subtypes", () => {
+        const options = new Set(_.map(getParameterOptions(), "type"));
+        const expectedOptionTypes = ["id"].concat(
+          _.map(PARAMETER_OPERATOR_TYPES.number, "type"),
+          _.map(PARAMETER_OPERATOR_TYPES.string, "type"),
+          _.map(PARAMETER_OPERATOR_TYPES.date, "type"),
+        );
+
+        expect(expectedOptionTypes.length).toEqual(options.size);
+        expect(expectedOptionTypes.every(option => options.has(option))).toBe(
+          true,
+        );
+      });
+
+      it("should add a `combinedName` property to options", () => {
+        const optionsByType = _.indexBy(getParameterOptions(), "type");
+
+        expect(optionsByType["string/="].combinedName).toEqual("String");
+        expect(optionsByType["string/!="].combinedName).toEqual(
+          "String is not",
+        );
+        expect(optionsByType["number/!="].combinedName).toEqual("Not equal to");
+        expect(optionsByType["date/single"].combinedName).toEqual(
+          "Single Date",
+        );
+      });
+    });
+  });
+
+  describe("getOperatorDisplayName", () => {
+    it("should return an option's name when the operator is a date or a number", () => {
+      expect(getOperatorDisplayName({ name: "foo" }, "date")).toEqual("foo");
+      expect(getOperatorDisplayName({ name: "foo" }, "number")).toEqual("foo");
+    });
+
+    it("should return an option's section name for the string/= option", () => {
+      expect(
+        getOperatorDisplayName({ name: "foo", operator: "=" }, "string", "bar"),
+      ).toEqual("bar");
+    });
+
+    it("should otherwise return a combined sectionName + option name", () => {
+      expect(
+        getOperatorDisplayName(
+          { name: "Foo", operator: "!=" },
+          "string",
+          "Bar",
+        ),
+      ).toEqual("Bar foo");
+    });
   });
 
   describe("dateParameterValueToMBQL", () => {
@@ -179,6 +275,123 @@ describe("metabase/meta/Parameter", () => {
     });
   });
 
+  describe("parameterToMBQLFilter", () => {
+    it("should return null for parameter targets that are not field dimension targets", () => {
+      expect(
+        parameterToMBQLFilter({
+          target: null,
+          type: "category",
+          value: ["foo"],
+        }),
+      ).toBe(null);
+
+      expect(
+        parameterToMBQLFilter({ target: [], type: "category", value: ["foo"] }),
+      ).toBe(null);
+
+      expect(
+        parameterToMBQLFilter({
+          target: ["dimension"],
+          type: "category",
+          value: ["foo"],
+        }),
+      ).toBe(null);
+
+      expect(
+        parameterToMBQLFilter({
+          target: ["dimension", ["template-tag", "foo"]],
+          type: "category",
+          value: ["foo"],
+        }),
+      ).toBe(null);
+    });
+
+    it("should return mbql filter for date parameter", () => {
+      expect(
+        parameterToMBQLFilter(
+          {
+            target: ["dimension", ["field", PRODUCTS.CREATED_AT.id, null]],
+            type: "date/single",
+            value: "01-01-2020",
+          },
+          metadata,
+        ),
+      ).toEqual(["=", ["field", PRODUCTS.CREATED_AT.id, null], "01-01-2020"]);
+    });
+
+    it("should return mbql filter for string parameter", () => {
+      expect(
+        parameterToMBQLFilter(
+          {
+            target: ["dimension", ["field", PRODUCTS.CATEGORY.id, null]],
+            type: "string/starts-with",
+            value: "foo",
+          },
+          metadata,
+        ),
+      ).toEqual(["starts-with", ["field", PRODUCTS.CATEGORY.id, null], "foo"]);
+
+      expect(
+        parameterToMBQLFilter(
+          {
+            target: ["dimension", ["field", PRODUCTS.CATEGORY.id, null]],
+            type: "string/starts-with",
+            value: ["foo"],
+          },
+          metadata,
+        ),
+      ).toEqual(["starts-with", ["field", PRODUCTS.CATEGORY.id, null], "foo"]);
+    });
+
+    it("should return mbql filter for category parameter", () => {
+      expect(
+        parameterToMBQLFilter(
+          {
+            target: ["dimension", ["field", PRODUCTS.CATEGORY.id, null]],
+            type: "category",
+            value: ["foo", "bar"],
+          },
+          metadata,
+        ),
+      ).toEqual(["=", ["field", PRODUCTS.CATEGORY.id, null], "foo", "bar"]);
+    });
+
+    it("should return mbql filter for number parameter", () => {
+      expect(
+        parameterToMBQLFilter(
+          {
+            target: ["dimension", ["field", PRODUCTS.RATING.id, null]],
+            type: "number/=",
+            value: [111],
+          },
+          metadata,
+        ),
+      ).toEqual(["=", ["field", PRODUCTS.RATING.id, null], 111]);
+
+      expect(
+        parameterToMBQLFilter(
+          {
+            target: ["dimension", ["field", PRODUCTS.RATING.id, null]],
+            type: "number/=",
+            value: 111,
+          },
+          metadata,
+        ),
+      ).toEqual(["=", ["field", PRODUCTS.RATING.id, null], 111]);
+
+      expect(
+        parameterToMBQLFilter(
+          {
+            target: ["dimension", ["field", PRODUCTS.RATING.id, null]],
+            type: "number/between",
+            value: [1, 100],
+          },
+          metadata,
+        ),
+      ).toEqual(["between", ["field", PRODUCTS.RATING.id, null], 1, 100]);
+    });
+  });
+
   describe("parameterOptionsForField", () => {
     const field = {
       isDate: () => false,
@@ -214,6 +427,197 @@ describe("metabase/meta/Parameter", () => {
         availableOptions.length > 0 &&
           availableOptions.every(option => option.type.startsWith("id")),
       ).toBe(true);
+    });
+
+    it("should return the specific location/state option for a state field", () => {
+      const stateField = {
+        ...field,
+        isState: () => true,
+      };
+      const availableOptions = parameterOptionsForField(stateField);
+      expect(availableOptions).toEqual([
+        expect.objectContaining({ type: "location/state" }),
+      ]);
+    });
+
+    it("as a result of all location parameters haiving subtypes should return nothing for a generic location field", () => {
+      const locationField = { ...field, isLocation: () => true };
+      const availableOptions = parameterOptionsForField(locationField);
+      expect(availableOptions).toEqual([]);
+    });
+  });
+
+  describe("dimensionFilterForParameter", () => {
+    const field = {
+      isDate: () => false,
+      isID: () => false,
+      isCategory: () => false,
+      isCity: () => false,
+      isState: () => false,
+      isZipCode: () => false,
+      isCountry: () => false,
+      isNumber: () => false,
+      isString: () => false,
+      isLocation: () => false,
+    };
+    const typelessDimension = {
+      field: () => field,
+    };
+
+    [
+      [
+        { type: "date/single" },
+        {
+          type: "date",
+          field: () => ({ ...field, isDate: () => true }),
+        },
+      ],
+      [
+        { type: "id" },
+        {
+          type: "id",
+          field: () => ({ ...field, isID: () => true }),
+        },
+      ],
+      [
+        { type: "category" },
+        {
+          type: "category",
+          field: () => ({ ...field, isCategory: () => true }),
+        },
+      ],
+      [
+        { type: "location/city" },
+        {
+          type: "city",
+          field: () => ({ ...field, isCity: () => true }),
+        },
+      ],
+      [
+        { type: "number/!=" },
+        {
+          type: "number",
+          field: () => ({
+            ...field,
+            isNumber: () => true,
+            isCoordinate: () => false,
+          }),
+        },
+      ],
+      [
+        { type: "string/=" },
+        {
+          type: "category",
+          field: () => ({
+            ...field,
+            isCategory: () => true,
+          }),
+        },
+      ],
+      [
+        { type: "string/!=" },
+        {
+          type: "category",
+          field: () => ({
+            ...field,
+            isCategory: () => true,
+          }),
+        },
+      ],
+      [
+        { type: "string/starts-with" },
+        {
+          type: "string",
+          field: () => ({
+            ...field,
+            isString: () => true,
+          }),
+        },
+      ],
+    ].forEach(([parameter, dimension]) => {
+      it(`should return a predicate that evaluates to true for a ${dimension.type} dimension when given a ${parameter.type} parameter`, () => {
+        const predicate = dimensionFilterForParameter(parameter);
+        expect(predicate(typelessDimension)).toBe(false);
+        expect(predicate(dimension)).toBe(true);
+      });
+    });
+
+    it("should return a predicate that evaluates to false for a coordinate dimension when given a number parameter", () => {
+      const coordinateDimension = {
+        field: () => ({
+          ...field,
+          isNumber: () => true,
+          isCoordinate: () => true,
+        }),
+      };
+
+      const predicate = dimensionFilterForParameter({ type: "number/between" });
+      expect(predicate(coordinateDimension)).toBe(false);
+    });
+
+    it("should return a predicate that evaluates to false for a location dimension when given a category parameter", () => {
+      const locationDimension = {
+        field: () => ({
+          ...field,
+          isLocation: () => true,
+        }),
+      };
+
+      const predicate = dimensionFilterForParameter({ type: "category" });
+      expect(predicate(locationDimension)).toBe(false);
+    });
+  });
+
+  describe("getTagOperatorFilterForParameter", () => {
+    it("should return a predicate that evaluates to true for a template tag that has the same subtype operator as the given parameter", () => {
+      const predicate = getTagOperatorFilterForParameter({
+        type: "string/starts-with",
+      });
+      const templateTag1 = {
+        "widget-type": "string/starts-with",
+      };
+      const templateTag2 = {
+        "widget-type": "foo/starts-with",
+      };
+      const templateTag3 = {
+        "widget-type": "string/ends-with",
+      };
+      expect(predicate(templateTag1)).toBe(true);
+      expect(predicate(templateTag2)).toBe(true);
+      expect(predicate(templateTag3)).toBe(false);
+    });
+  });
+
+  describe("getParameterTargetField", () => {
+    it("should return null when the target is not a dimension", () => {
+      expect(getParameterTargetField(["variable", "foo"], metadata)).toBe(null);
+    });
+
+    it("should return the mapped field behind a template tag field filter", () => {
+      const target = ["dimension", ["template-tag", "foo"]];
+      const question = SAMPLE_DATASET.nativeQuestion({
+        query: "select * from PRODUCTS where {{foo}}",
+        "template-tags": {
+          foo: {
+            type: "dimension",
+            dimension: ["field", PRODUCTS.CATEGORY.id, null],
+          },
+        },
+      });
+
+      expect(getParameterTargetField(target, metadata, question)).toBe(
+        PRODUCTS.CATEGORY,
+      );
+    });
+
+    it("should return the target field", () => {
+      const target = ["dimension", ["field", PRODUCTS.CATEGORY.id, null]];
+      const question = SAMPLE_DATASET.question({
+        "source-table": PRODUCTS.id,
+      });
+      expect(getParameterTargetField(target, metadata, question)).toBe(
+        PRODUCTS.CATEGORY,
+      );
     });
   });
 
