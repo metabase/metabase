@@ -24,7 +24,7 @@
             [schema.core :as s]
             [toucan.db :as db]))
 
-(def ^:private ^:const default-limit 1000)
+(def ^:private ^:const default-limit Integer/MAX_VALUE)
 
 (defn- add-default-params [honeysql-query]
   (let [{:keys [limit offset]} qp.middleware.audit/*additional-query-params*]
