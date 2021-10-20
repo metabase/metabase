@@ -15,33 +15,45 @@ import { usePagination } from "metabase/hooks/use-pagination";
 import { AuditMode } from "../lib/mode";
 import QuestionLoadAndDisplay from "./QuestionLoadAndDisplay";
 import "./AuditTableVisualization";
+import { PaginationControlsContainer } from "./AuditTable.styled";
 
 const mapStateToProps = state => ({
   metadata: getMetadata(state),
 });
-
-const mapDispatchToProps = {
-  onChangeLocation: push,
-};
 
 const DEFAULT_PAGE_SIZE = 100;
 
 AuditTable.propTypes = {
   metadata: PropTypes.object.isRequired,
   table: PropTypes.object.isRequired,
-  onChangeLocation: PropTypes.func.isRequired,
   pageSize: PropTypes.number.isRequired,
+  reload: PropTypes.bool,
+  children: PropTypes.node,
+  dispatch: PropTypes.func.isRequired,
+  onLoad: PropTypes.func,
+  mode: PropTypes.shape({
+    name: PropTypes.string.isRequired,
+    drills: PropTypes.func.isRequired,
+  }),
 };
 
 function AuditTable({
   metadata,
   table,
-  onChangeLocation,
   pageSize = DEFAULT_PAGE_SIZE,
+  mode = AuditMode,
+  children,
+  dispatch,
+  onLoad,
   ...rest
 }) {
   const [loadedCount, setLoadedCount] = useState(0);
   const { handleNextPage, handlePreviousPage, page } = usePagination();
+
+  const handleOnLoad = results => {
+    setLoadedCount(results[0].row_count);
+    onLoad(results);
+  };
 
   const card = chain(table.card)
     .assoc("display", "audit-table")
@@ -51,6 +63,7 @@ function AuditTable({
 
   const question = new Question(card, metadata);
   const shouldShowPagination = page > 0 || loadedCount === pageSize;
+  const handleChangeLocation = url => dispatch(push(url));
 
   return (
     <div>
@@ -59,13 +72,14 @@ function AuditTable({
         className="mt3"
         question={question}
         metadata={metadata}
-        mode={AuditMode}
-        onChangeLocation={onChangeLocation}
+        mode={mode}
+        onChangeLocation={handleChangeLocation}
         onChangeCardAndRun={() => {}}
-        onLoad={results => setLoadedCount(results[0].row_count)}
+        onLoad={handleOnLoad}
+        dispatch={dispatch}
         {...rest}
       />
-      <div className="mt1 pt2 border-top flex justify-end">
+      <PaginationControlsContainer>
         {shouldShowPagination && (
           <PaginationControls
             page={page}
@@ -75,14 +89,10 @@ function AuditTable({
             onPreviousPage={handlePreviousPage}
           />
         )}
-      </div>
+      </PaginationControlsContainer>
+      {children}
     </div>
   );
 }
 
-export default _.compose(
-  connect(
-    mapStateToProps,
-    mapDispatchToProps,
-  ),
-)(AuditTable);
+export default _.compose(connect(mapStateToProps))(AuditTable);

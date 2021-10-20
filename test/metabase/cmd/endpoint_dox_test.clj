@@ -23,7 +23,7 @@
                   :doc
                   "### `GET /api/activity/recent_views`\n\nGet the list of 10 things the current user has been viewing most recently."}]})
 
-(def section-markdown "## Activity\n\n  - [GET /api/activity/](#get-apiactivity)\n  - [GET /api/activity/recent_views](#get-apiactivityrecentviews)\n\n### `GET /api/activity/`\n\nGet recent activity.\n\n### `GET /api/activity/recent_views`\n\nGet the list of 10 things the current user has been viewing most recently.")
+(def section-markdown "## Activity\n\n  - [GET /api/activity/](#get-apiactivity)\n  - [GET /api/activity/recent_views](#get-apiactivityrecent_views)\n\n### `GET /api/activity/`\n\nGet recent activity.\n\n### `GET /api/activity/recent_views`\n\nGet the list of 10 things the current user has been viewing most recently.")
 
 (deftest endpoint-section-test
   (is (= (first (endpoint-dox/endpoint-section endpoints))

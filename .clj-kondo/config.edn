@@ -1,0 +1,9 @@
+{:linters {:unresolved-symbol {:exclude [schema= re=]}}
+ :hooks   {:analyze-call {metabase.test.data/dataset        hooks.metabase.test.data/dataset
+                          metabase.test/dataset             hooks.metabase.test.data/dataset
+                          metabase.test.data/$ids           hooks.metabase.test.data/$ids
+                          metabase.test/$ids                hooks.metabase.test.data/$ids
+                          metabase.test.data/mbql-query     hooks.metabase.test.data/$ids
+                          metabase.test/mbql-query          hooks.metabase.test.data/$ids
+                          metabase.test.data/run-mbql-query hooks.metabase.test.data/$ids
+                          metabase.test/run-mbql-query      hooks.metabase.test.data/$ids}}}

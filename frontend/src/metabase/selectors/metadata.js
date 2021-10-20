@@ -22,10 +22,14 @@ import { getIn } from "icepick";
 export const getNormalizedDatabases = state => state.entities.databases;
 export const getNormalizedSchemas = state => state.entities.schemas;
 const getNormalizedTablesUnfiltered = state => state.entities.tables;
+const getIncludeHiddenTables = (_state, props) => props?.includeHiddenTables;
 export const getNormalizedTables = createSelector(
-  [getNormalizedTablesUnfiltered],
+  [getNormalizedTablesUnfiltered, getIncludeHiddenTables],
   // remove hidden tables from the metadata graph
-  tables => filterValues(tables, table => table.visibility_type == null),
+  (tables, includeHiddenTables) =>
+    includeHiddenTables
+      ? tables
+      : filterValues(tables, table => table.visibility_type == null),
 );
 
 const getNormalizedFieldsUnfiltered = state => state.entities.fields;
@@ -156,6 +160,10 @@ export const getMetadata = createSelector(
     return meta;
   },
 );
+
+export const getMetadataWithHiddenTables = (state, props) => {
+  return getMetadata(state, { ...props, includeHiddenTables: true });
+};
 
 export const getDatabases = createSelector(
   [getMetadata],

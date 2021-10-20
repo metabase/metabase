@@ -103,6 +103,10 @@ export default class LineAreaBarChart extends Component {
   }
 
   static checkRenderable(series, settings) {
+    if (series.length > this.maxMetricsSupported) {
+      throw new Error(t`${this.uiName} chart does not support multiple series`);
+    }
+
     const singleSeriesHasNoRows = ({ data: { cols, rows } }) => rows.length < 1;
     if (_.every(series, singleSeriesHasNoRows)) {
       throw new MinRowsError(1, 0);
@@ -279,7 +283,7 @@ export default class LineAreaBarChart extends Component {
     } = this.props;
 
     const title = settings["card.title"] || card.name;
-    const description = series["card.description"];
+    const description = settings["card.description"];
 
     const rawSeries = series._raw || series;
     const cardIds = new Set(rawSeries.map(s => s.card.id));

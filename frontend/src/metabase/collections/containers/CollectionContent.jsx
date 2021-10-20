@@ -41,7 +41,6 @@ function CollectionContent({
   isAdmin,
   isRoot,
   handleToggleMobileSidebar,
-  shouldDisplayMobileSidebar,
 }) {
   const [selectedItems, setSelectedItems] = useState(null);
   const [selectedAction, setSelectedAction] = useState(null);

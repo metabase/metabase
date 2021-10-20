@@ -3,6 +3,7 @@ import {
   SAMPLE_DATASET,
   ORDERS,
   PRODUCTS,
+  createMetadata,
 } from "__support__/sample_dataset_fixture";
 
 import { assoc, dissoc } from "icepick";
@@ -623,6 +624,71 @@ describe("Question", () => {
           },
         });
       });
+
+      describe("with composite PK", () => {
+        // Making TOTAL a PK column in addition to ID
+        const metadata = createMetadata(state =>
+          state.assocIn(
+            ["entities", "fields", ORDERS.TOTAL.id, "semantic_type"],
+            "type/PK",
+          ),
+        );
+        let question;
+
+        beforeEach(() => {
+          question = new Question(orders_raw_card, metadata);
+        });
+
+        it("when drills to one column of a composite key returns equals filter by the column", () => {
+          const drilledQuestion = question.drillPK(ORDERS.ID, 1);
+
+          expect(drilledQuestion.canRun()).toBe(true);
+          expect(drilledQuestion._card.dataset_query).toEqual({
+            type: "query",
+            database: SAMPLE_DATASET.id,
+            query: {
+              "source-table": ORDERS.id,
+              filter: ["=", ["field", ORDERS.ID.id, null], 1],
+            },
+          });
+        });
+
+        it("when drills to both columns of a composite key returns query with equality filter by both PKs", () => {
+          const drilledQuestion = question
+            .drillPK(ORDERS.ID, 1)
+            .drillPK(ORDERS.TOTAL, 1);
+
+          expect(drilledQuestion.canRun()).toBe(true);
+          expect(drilledQuestion._card.dataset_query).toEqual({
+            type: "query",
+            database: SAMPLE_DATASET.id,
+            query: {
+              "source-table": ORDERS.id,
+              filter: [
+                "and",
+                ["=", ["field", ORDERS.TOTAL.id, null], 1],
+                ["=", ["field", ORDERS.ID.id, null], 1],
+              ],
+            },
+          });
+        });
+
+        it("when drills to other table PK removes the previous table PK filters", () => {
+          const drilledQuestion = question
+            .drillPK(ORDERS.ID, 1)
+            .drillPK(PRODUCTS.ID, 1);
+
+          expect(drilledQuestion.canRun()).toBe(true);
+          expect(drilledQuestion._card.dataset_query).toEqual({
+            type: "query",
+            database: SAMPLE_DATASET.id,
+            query: {
+              "source-table": PRODUCTS.id,
+              filter: ["=", ["field", PRODUCTS.ID.id, null], 1],
+            },
+          });
+        });
+      });
     });
   });
 
@@ -834,6 +900,24 @@ describe("Question", () => {
           ],
         });
       });
+    });
+  });
+
+  describe("Question.prototype.getResultMetadata", () => {
+    it("shoud return the `result_metadata` property off the underlying card", () => {
+      const question = new Question(
+        { ...card, result_metadata: [1, 2, 3] },
+        metadata,
+      );
+      expect(question.getResultMetadata()).toEqual([1, 2, 3]);
+    });
+
+    it("should default to an array", () => {
+      const question = new Question(
+        { ...card, result_metadata: null },
+        metadata,
+      );
+      expect(question.getResultMetadata()).toEqual([]);
     });
   });
 });

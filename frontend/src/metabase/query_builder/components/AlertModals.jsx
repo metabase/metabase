@@ -15,12 +15,13 @@ import Icon from "metabase/components/Icon";
 import ChannelSetupModal from "metabase/components/ChannelSetupModal";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import PulseEditChannels from "metabase/pulse/components/PulseEditChannels";
+import { AlertModalFooter } from "./AlertModals.styled";
 
 import User from "metabase/entities/users";
 
 // actions
 import { createAlert, deleteAlert, updateAlert } from "metabase/alert/alert";
-import { apiUpdateQuestion } from "metabase/query_builder/actions";
+import { apiUpdateQuestion, updateUrl } from "metabase/query_builder/actions";
 import { fetchPulseFormInput } from "metabase/pulse/actions";
 
 // selectors
@@ -48,6 +49,7 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 
 // types
 import type { AlertType } from "metabase-lib/lib/Alert";
+import { alertIsValid } from "metabase/lib/alert";
 
 const getScheduleFromChannel = channel =>
   _.pick(
@@ -71,7 +73,7 @@ const textStyle = {
     hasConfiguredAnyChannel: hasConfiguredAnyChannelSelector(state),
     hasConfiguredEmailChannel: hasConfiguredEmailChannelSelector(state),
   }),
-  { createAlert, fetchPulseFormInput, apiUpdateQuestion },
+  { createAlert, fetchPulseFormInput, apiUpdateQuestion, updateUrl },
 )
 export class CreateAlertModalContent extends Component {
   props: {
@@ -113,20 +115,20 @@ export class CreateAlertModalContent extends Component {
   onAlertChange = alert => this.setState({ alert });
 
   onCreateAlert = async () => {
-    const { createAlert, apiUpdateQuestion, onAlertCreated } = this.props;
+    const {
+      question,
+      createAlert,
+      apiUpdateQuestion,
+      updateUrl,
+      onAlertCreated,
+    } = this.props;
     const { alert } = this.state;
 
-    // Resave the question here (for persisting the x/y axes; see #6749)
-    await apiUpdateQuestion();
-
+    await apiUpdateQuestion(question);
     await createAlert(alert);
+    await updateUrl(question.card(), { dirty: false });
 
-    // should close be triggered manually like this
-    // but the creation notification would appear automatically ...?
-    // OR should the modal visibility be part of QB redux state
-    // (maybe check how other modals are implemented)
     onAlertCreated();
-
     MetabaseAnalytics.trackEvent("Alert", "Create", alert.alert_condition);
   };
 
@@ -151,6 +153,7 @@ export class CreateAlertModalContent extends Component {
     const channelRequirementsMet = isAdmin
       ? hasConfiguredAnyChannel
       : hasConfiguredEmailChannel;
+    const isValid = alertIsValid(alert);
 
     if (hasLoadedChannelInfo && !channelRequirementsMet) {
       return (
@@ -186,14 +189,14 @@ export class CreateAlertModalContent extends Component {
             alert={alert}
             onAlertChange={this.onAlertChange}
           />
-          <div className="flex align-center mt4">
-            <div className="flex-full" />
+          <AlertModalFooter>
             <Button onClick={onCancel} className="mr2">{t`Cancel`}</Button>
             <ButtonWithStatus
               titleForState={{ default: t`Done` }}
+              disabled={!isValid}
               onClickOperation={this.onCreateAlert}
             />
-          </div>
+          </AlertModalFooter>
         </div>
       </ModalContent>
     );
@@ -290,7 +293,7 @@ export class AlertEducationalScreen extends Component {
     question: getQuestion(state),
     visualizationSettings: getVisualizationSettings(state),
   }),
-  { apiUpdateQuestion, updateAlert, deleteAlert },
+  { apiUpdateQuestion, updateAlert, deleteAlert, updateUrl },
 )
 export class UpdateAlertModalContent extends Component {
   props: {
@@ -312,13 +315,18 @@ export class UpdateAlertModalContent extends Component {
   onAlertChange = modifiedAlert => this.setState({ modifiedAlert });
 
   onUpdateAlert = async () => {
-    const { apiUpdateQuestion, updateAlert, onAlertUpdated } = this.props;
+    const {
+      question,
+      apiUpdateQuestion,
+      updateAlert,
+      updateUrl,
+      onAlertUpdated,
+    } = this.props;
     const { modifiedAlert } = this.state;
 
-    // Resave the question here (for persisting the x/y axes; see #6749)
     await apiUpdateQuestion();
-
     await updateAlert(modifiedAlert);
+    await updateUrl(question.card(), { dirty: false });
     onAlertUpdated();
 
     MetabaseAnalytics.trackEvent(
@@ -347,6 +355,8 @@ export class UpdateAlertModalContent extends Component {
 
     const isCurrentUser = alert.creator.id === user.id;
     const title = isCurrentUser ? t`Edit your alert` : t`Edit alert`;
+    const isValid = alertIsValid(alert);
+
     // TODO: Remove PulseEdit css hack
     return (
       <ModalContent onClose={onCancel}>
@@ -367,14 +377,14 @@ export class UpdateAlertModalContent extends Component {
             />
           )}
 
-          <div className="flex align-center mt4">
-            <div className="flex-full" />
+          <AlertModalFooter>
             <Button onClick={onCancel} className="mr2">{t`Cancel`}</Button>
             <ButtonWithStatus
               titleForState={{ default: t`Save changes` }}
+              disabled={!isValid}
               onClickOperation={this.onUpdateAlert}
             />
-          </div>
+          </AlertModalFooter>
         </div>
       </ModalContent>
     );
@@ -652,6 +662,9 @@ export class AlertEditChannels extends Component {
             setPulse={this.onSetPulse}
             hideSchedulePicker={true}
             emailRecipientText={t`Email alerts to:`}
+            invalidRecipientText={domains =>
+              t`You're only allowed to email alerts to addresses ending in ${domains}`
+            }
           />
         </div>
       </div>

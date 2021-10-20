@@ -8,7 +8,7 @@ import {
   getClickBehaviorSidebarDashcard,
 } from "metabase/dashboard/selectors";
 import { SIDEBAR_NAME } from "./constants";
-
+import Field from "metabase-lib/lib/metadata/Field";
 import { chain } from "icepick";
 
 const STATE = {
@@ -22,11 +22,11 @@ const STATE = {
     },
     dashcards: {
       0: {
-        card: { id: 0 },
+        card: { id: 0, dataset_query: { type: "query", query: {} } },
         parameter_mappings: [],
       },
       1: {
-        card: { id: 1 },
+        card: { id: 1, dataset_query: { type: "query", query: {} } },
         parameter_mappings: [],
       },
     },
@@ -57,6 +57,7 @@ describe("dashboard/selectors", () => {
       expect(getParameters(state)).toEqual([
         {
           id: 1,
+          fields: [],
           field_ids: [],
           field_id: null,
           hasOnlyFieldTargets: true,
@@ -75,6 +76,7 @@ describe("dashboard/selectors", () => {
       expect(getParameters(state)).toEqual([
         {
           id: 1,
+          fields: [],
           field_ids: [],
           field_id: null,
           hasOnlyFieldTargets: false,
@@ -93,6 +95,7 @@ describe("dashboard/selectors", () => {
       expect(getParameters(state)).toEqual([
         {
           id: 1,
+          fields: [expect.any(Field)],
           field_ids: [1],
           field_id: 1,
           hasOnlyFieldTargets: true,
@@ -116,6 +119,7 @@ describe("dashboard/selectors", () => {
       expect(getParameters(state)).toEqual([
         {
           id: 1,
+          fields: [expect.any(Field)],
           field_ids: [1],
           field_id: 1,
           hasOnlyFieldTargets: true,
@@ -139,6 +143,7 @@ describe("dashboard/selectors", () => {
       expect(getParameters(state)).toEqual([
         {
           id: 1,
+          fields: [expect.any(Field)],
           field_ids: [1],
           field_id: 1,
           hasOnlyFieldTargets: false,
@@ -162,6 +167,7 @@ describe("dashboard/selectors", () => {
       expect(getParameters(state)).toEqual([
         {
           id: 1,
+          fields: [expect.any(Field), expect.any(Field)],
           field_ids: [1, 2],
           field_id: null,
           hasOnlyFieldTargets: true,

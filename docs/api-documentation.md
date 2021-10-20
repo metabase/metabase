@@ -8,7 +8,7 @@ Check out an introduction to the [Metabase API](https://www.metabase.com/learn/a
 ## Activity
 
   - [GET /api/activity/](#get-apiactivity)
-  - [GET /api/activity/recent_views](#get-apiactivityrecentviews)
+  - [GET /api/activity/recent_views](#get-apiactivityrecent_views)
 
 ### `GET /api/activity/`
 
@@ -63,7 +63,9 @@ Fetch all questions for the given question (`Card`) id.
 
 ##### PARAMS:
 
-*  **`id`** 
+*  **`id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+
+*  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
 ### `POST /api/alert/`
 
@@ -285,7 +287,7 @@ Return a list of candidates for automagic dashboards orderd by interestingness.
 /api/card endpoints.
 
   - [DELETE /api/card/:card-id/favorite](#delete-apicardcard-idfavorite)
-  - [DELETE /api/card/:card-id/public_link](#delete-apicardcard-idpubliclink)
+  - [DELETE /api/card/:card-id/public_link](#delete-apicardcard-idpublic_link)
   - [DELETE /api/card/:id](#delete-apicardid)
   - [GET /api/card/](#get-apicard)
   - [GET /api/card/:id](#get-apicardid)
@@ -294,7 +296,7 @@ Return a list of candidates for automagic dashboards orderd by interestingness.
   - [GET /api/card/public](#get-apicardpublic)
   - [POST /api/card/](#post-apicard)
   - [POST /api/card/:card-id/favorite](#post-apicardcard-idfavorite)
-  - [POST /api/card/:card-id/public_link](#post-apicardcard-idpubliclink)
+  - [POST /api/card/:card-id/public_link](#post-apicardcard-idpublic_link)
   - [POST /api/card/:card-id/query](#post-apicardcard-idquery)
   - [POST /api/card/:card-id/query/:export-format](#post-apicardcard-idqueryexport-format)
   - [POST /api/card/collections](#post-apicardcollections)
@@ -389,6 +391,8 @@ Create a new `Card`.
 
 *  **`name`** value must be a non-blank string.
 
+*  **`cache_ttl`** value may be nil, or if non-nil, value must be an integer greater than zero.
+
 *  **`dataset_query`** 
 
 *  **`display`** value must be a non-blank string.
@@ -424,6 +428,8 @@ Run the query associated with a Card.
 *  **`parameters`** 
 
 *  **`ignore_cache`** value may be nil, or if non-nil, value must be a boolean.
+
+*  **`dashboard_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
 ### `POST /api/card/:card-id/query/:export-format`
 
@@ -496,6 +502,8 @@ Update a `Card`.
 *  **`name`** value may be nil, or if non-nil, value must be a non-blank string.
 
 *  **`embedding_params`** value may be nil, or if non-nil, value must be a valid embedding params map.
+
+*  **`cache_ttl`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
 *  **`dataset_query`** value may be nil, or if non-nil, value must be a map.
 
@@ -693,7 +701,7 @@ You must be a superuser to do this.
 
 /api/dashboard endpoints.
 
-  - [DELETE /api/dashboard/:dashboard-id/public_link](#delete-apidashboarddashboard-idpubliclink)
+  - [DELETE /api/dashboard/:dashboard-id/public_link](#delete-apidashboarddashboard-idpublic_link)
   - [DELETE /api/dashboard/:id](#delete-apidashboardid)
   - [DELETE /api/dashboard/:id/cards](#delete-apidashboardidcards)
   - [DELETE /api/dashboard/:id/favorite](#delete-apidashboardidfavorite)
@@ -707,7 +715,7 @@ You must be a superuser to do this.
   - [GET /api/dashboard/params/valid-filter-fields](#get-apidashboardparamsvalid-filter-fields)
   - [GET /api/dashboard/public](#get-apidashboardpublic)
   - [POST /api/dashboard/](#post-apidashboard)
-  - [POST /api/dashboard/:dashboard-id/public_link](#post-apidashboarddashboard-idpubliclink)
+  - [POST /api/dashboard/:dashboard-id/public_link](#post-apidashboarddashboard-idpublic_link)
   - [POST /api/dashboard/:from-dashboard-id/copy](#post-apidashboardfrom-dashboard-idcopy)
   - [POST /api/dashboard/:id/cards](#post-apidashboardidcards)
   - [POST /api/dashboard/:id/favorite](#post-apidashboardidfavorite)
@@ -881,6 +889,8 @@ Create a new Dashboard.
 
 *  **`parameters`** value must be an array. Each value must be a map.
 
+*  **`cache_ttl`** value may be nil, or if non-nil, value must be an integer greater than zero.
+
 *  **`collection_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
 *  **`collection_position`** value may be nil, or if non-nil, value must be an integer greater than zero.
@@ -1003,6 +1013,8 @@ Update a Dashboard.
 
 *  **`embedding_params`** value may be nil, or if non-nil, value must be a valid embedding params map.
 
+*  **`cache_ttl`** value may be nil, or if non-nil, value must be an integer greater than zero.
+
 *  **`id`** 
 
 *  **`position`** value may be nil, or if non-nil, value must be an integer greater than zero.
@@ -1033,7 +1045,7 @@ Update `Cards` on a Dashboard. Request body should have the form:
   - [DELETE /api/database/:id](#delete-apidatabaseid)
   - [GET /api/database/](#get-apidatabase)
   - [GET /api/database/:id](#get-apidatabaseid)
-  - [GET /api/database/:id/autocomplete_suggestions](#get-apidatabaseidautocompletesuggestions)
+  - [GET /api/database/:id/autocomplete_suggestions](#get-apidatabaseidautocomplete_suggestions)
   - [GET /api/database/:id/fields](#get-apidatabaseidfields)
   - [GET /api/database/:id/idfields](#get-apidatabaseididfields)
   - [GET /api/database/:id/metadata](#get-apidatabaseidmetadata)
@@ -1045,11 +1057,11 @@ Update `Cards` on a Dashboard. Request body should have the form:
   - [GET /api/database/:virtual-db/schemas](#get-apidatabasevirtual-dbschemas)
   - [GET /api/database/db-ids-with-deprecated-drivers](#get-apidatabasedb-ids-with-deprecated-drivers)
   - [POST /api/database/](#post-apidatabase)
-  - [POST /api/database/:id/discard_values](#post-apidatabaseiddiscardvalues)
-  - [POST /api/database/:id/rescan_values](#post-apidatabaseidrescanvalues)
+  - [POST /api/database/:id/discard_values](#post-apidatabaseiddiscard_values)
+  - [POST /api/database/:id/rescan_values](#post-apidatabaseidrescan_values)
   - [POST /api/database/:id/sync](#post-apidatabaseidsync)
-  - [POST /api/database/:id/sync_schema](#post-apidatabaseidsyncschema)
-  - [POST /api/database/sample_dataset](#post-apidatabasesampledataset)
+  - [POST /api/database/:id/sync_schema](#post-apidatabaseidsync_schema)
+  - [POST /api/database/sample_dataset](#post-apidatabasesample_dataset)
   - [POST /api/database/validate](#post-apidatabasevalidate)
   - [PUT /api/database/:id](#put-apidatabaseid)
 
@@ -1210,6 +1222,8 @@ You must be a superuser to do this.
 
 *  **`auto_run_queries`** value may be nil, or if non-nil, value must be a boolean.
 
+*  **`cache_ttl`** value may be nil, or if non-nil, value must be an integer greater than zero.
+
 ### `POST /api/database/:id/discard_values`
 
 Discards all saved field values for this `Database`.
@@ -1291,6 +1305,8 @@ You must be a superuser to do this.
 *  **`caveats`** value may be nil, or if non-nil, value must be a string.
 
 *  **`is_full_sync`** 
+
+*  **`cache_ttl`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
 *  **`details`** value may be nil, or if non-nil, value must be a map.
 
@@ -1670,10 +1686,10 @@ Fetch the results of running a Card belonging to a Dashboard using a JSON Web To
   - [GET /api/field/:id/search/:search-id](#get-apifieldidsearchsearch-id)
   - [GET /api/field/:id/summary](#get-apifieldidsummary)
   - [GET /api/field/:id/values](#get-apifieldidvalues)
-  - [GET /api/field/field%2C:field-name%2C:options/values](#get-apifieldfield%2cfield-name%2coptionsvalues)
+  - [GET /api/field/field%2C:field-name%2C:options/values](#get-apifieldfield2cfield-name2coptionsvalues)
   - [POST /api/field/:id/dimension](#post-apifieldiddimension)
-  - [POST /api/field/:id/discard_values](#post-apifieldiddiscardvalues)
-  - [POST /api/field/:id/rescan_values](#post-apifieldidrescanvalues)
+  - [POST /api/field/:id/discard_values](#post-apifieldiddiscard_values)
+  - [POST /api/field/:id/rescan_values](#post-apifieldidrescan_values)
   - [POST /api/field/:id/values](#post-apifieldidvalues)
   - [PUT /api/field/:id](#put-apifieldid)
 
@@ -1886,16 +1902,6 @@ You must be a superuser to do this.
 Fetch recent logins for the current user.
 
 
-## Metastore
-
-  - [GET /api/metastore/token/status](#get-apimetastoretokenstatus)
-
-### `GET /api/metastore/token/status`
-
-Fetch info about the current MetaStore premium features token including whether it is `valid`, a `trial` token, its
-  `features`, and when it is `valid_thru`.
-
-
 ## Metric
 
 /api/metric endpoints.
@@ -1908,7 +1914,7 @@ Fetch info about the current MetaStore premium features token including whether 
   - [POST /api/metric/](#post-apimetric)
   - [POST /api/metric/:id/revert](#post-apimetricidrevert)
   - [PUT /api/metric/:id](#put-apimetricid)
-  - [PUT /api/metric/:id/important_fields](#put-apimetricidimportantfields)
+  - [PUT /api/metric/:id/important_fields](#put-apimetricidimportant_fields)
 
 ### `DELETE /api/metric/:id`
 
@@ -2217,6 +2223,16 @@ You must be a superuser to do this.
 *  **`group-id`** 
 
 *  **`name`** value must be a non-blank string.
+
+
+## Premium features
+
+  - [GET /api/premium-features/token/status](#get-apipremium-featurestokenstatus)
+
+### `GET /api/premium-features/token/status`
+
+Fetch info about the current Premium-Features premium features token including whether it is `valid`, a `trial` token, its
+  `features`, and when it is `valid_thru`.
 
 
 ## Preview embed
@@ -2537,27 +2553,18 @@ Fetch the results for a Card in a publicly-accessible Dashboard. Does not requir
 
 /api/pulse endpoints.
 
-  - [DELETE /api/pulse/:id](#delete-apipulseid)
-  - [DELETE /api/pulse/:id/subscription/email](#delete-apipulseidsubscriptionemail)
+  - [DELETE /api/pulse/:id/subscription](#delete-apipulseidsubscription)
   - [GET /api/pulse/](#get-apipulse)
   - [GET /api/pulse/:id](#get-apipulseid)
-  - [GET /api/pulse/form_input](#get-apipulseforminput)
-  - [GET /api/pulse/preview_card/:id](#get-apipulsepreviewcardid)
-  - [GET /api/pulse/preview_card_info/:id](#get-apipulsepreviewcardinfoid)
-  - [GET /api/pulse/preview_card_png/:id](#get-apipulsepreviewcardpngid)
+  - [GET /api/pulse/form_input](#get-apipulseform_input)
+  - [GET /api/pulse/preview_card/:id](#get-apipulsepreview_cardid)
+  - [GET /api/pulse/preview_card_info/:id](#get-apipulsepreview_card_infoid)
+  - [GET /api/pulse/preview_card_png/:id](#get-apipulsepreview_card_pngid)
   - [POST /api/pulse/](#post-apipulse)
   - [POST /api/pulse/test](#post-apipulsetest)
   - [PUT /api/pulse/:id](#put-apipulseid)
 
-### `DELETE /api/pulse/:id`
-
-Delete a Pulse. (DEPRECATED -- don't delete a Pulse anymore -- archive it instead.).
-
-##### PARAMS:
-
-*  **`id`** 
-
-### `DELETE /api/pulse/:id/subscription/email`
+### `DELETE /api/pulse/:id/subscription`
 
 For users to unsubscribe themselves from a pulse subscription.
 
@@ -2855,12 +2862,12 @@ Update a `Segment` with ID.
 /api/session endpoints.
 
   - [DELETE /api/session/](#delete-apisession)
-  - [GET /api/session/password_reset_token_valid](#get-apisessionpasswordresettokenvalid)
+  - [GET /api/session/password_reset_token_valid](#get-apisessionpassword_reset_token_valid)
   - [GET /api/session/properties](#get-apisessionproperties)
   - [POST /api/session/](#post-apisession)
-  - [POST /api/session/forgot_password](#post-apisessionforgotpassword)
-  - [POST /api/session/google_auth](#post-apisessiongoogleauth)
-  - [POST /api/session/reset_password](#post-apisessionresetpassword)
+  - [POST /api/session/forgot_password](#post-apisessionforgot_password)
+  - [POST /api/session/google_auth](#post-apisessiongoogle_auth)
+  - [POST /api/session/reset_password](#post-apisessionreset_password)
 
 ### `DELETE /api/session/`
 
@@ -2980,13 +2987,13 @@ You must be a superuser to do this.
 
 ## Setup
 
-  - [GET /api/setup/admin_checklist](#get-apisetupadminchecklist)
+  - [GET /api/setup/admin_checklist](#get-apisetupadmin_checklist)
   - [POST /api/setup/](#post-apisetup)
   - [POST /api/setup/validate](#post-apisetupvalidate)
 
 ### `GET /api/setup/admin_checklist`
 
-Return various "admin checklist" steps and whether they've been completed. You must be a superuser to see this!.
+Return various "admin checklist" steps and whether they've been completed. You must be a superuser to see this!
 
 You must be a superuser to do this.
 
@@ -3072,12 +3079,12 @@ You must be a superuser to do this.
   - [GET /api/table/](#get-apitable)
   - [GET /api/table/:id](#get-apitableid)
   - [GET /api/table/:id/fks](#get-apitableidfks)
-  - [GET /api/table/:id/query_metadata](#get-apitableidquerymetadata)
+  - [GET /api/table/:id/query_metadata](#get-apitableidquery_metadata)
   - [GET /api/table/:id/related](#get-apitableidrelated)
-  - [GET /api/table/card__:id/fks](#get-apitablecardidfks)
-  - [GET /api/table/card__:id/query_metadata](#get-apitablecardidquerymetadata)
-  - [POST /api/table/:id/discard_values](#post-apitableiddiscardvalues)
-  - [POST /api/table/:id/rescan_values](#post-apitableidrescanvalues)
+  - [GET /api/table/card__:id/fks](#get-apitablecard__idfks)
+  - [GET /api/table/card__:id/query_metadata](#get-apitablecard__idquery_metadata)
+  - [POST /api/table/:id/discard_values](#post-apitableiddiscard_values)
+  - [POST /api/table/:id/rescan_values](#post-apitableidrescan_values)
   - [PUT /api/table/](#put-apitable)
   - [PUT /api/table/:id](#put-apitableid)
   - [PUT /api/table/:id/fields/order](#put-apitableidfieldsorder)
@@ -3309,7 +3316,7 @@ Look up a database schema transform.
   - [GET /api/user/:id](#get-apiuserid)
   - [GET /api/user/current](#get-apiusercurrent)
   - [POST /api/user/](#post-apiuser)
-  - [POST /api/user/:id/send_invite](#post-apiuseridsendinvite)
+  - [POST /api/user/:id/send_invite](#post-apiuseridsend_invite)
   - [PUT /api/user/:id](#put-apiuserid)
   - [PUT /api/user/:id/password](#put-apiuseridpassword)
   - [PUT /api/user/:id/qbnewb](#put-apiuseridqbnewb)
@@ -3450,12 +3457,12 @@ You must be a superuser to do this.
 Random utilty endpoints for things that don't belong anywhere else in particular, e.g. endpoints for certain admin
   page tasks.
 
-  - [GET /api/util/bug_report_details](#get-apiutilbugreportdetails)
-  - [GET /api/util/diagnostic_info/connection_pool_info](#get-apiutildiagnosticinfoconnectionpoolinfo)
+  - [GET /api/util/bug_report_details](#get-apiutilbug_report_details)
+  - [GET /api/util/diagnostic_info/connection_pool_info](#get-apiutildiagnostic_infoconnection_pool_info)
   - [GET /api/util/logs](#get-apiutillogs)
-  - [GET /api/util/random_token](#get-apiutilrandomtoken)
+  - [GET /api/util/random_token](#get-apiutilrandom_token)
   - [GET /api/util/stats](#get-apiutilstats)
-  - [POST /api/util/password_check](#post-apiutilpasswordcheck)
+  - [POST /api/util/password_check](#post-apiutilpassword_check)
 
 ### `GET /api/util/bug_report_details`
 

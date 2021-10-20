@@ -1,8 +1,17 @@
+import _ from "underscore";
+
 import MetabaseSettings from "metabase/lib/settings";
 import {
+  PARAMETER_OPERATOR_TYPES,
+  getParameterOptions,
+  getOperatorDisplayName,
+  dimensionFilterForParameter,
+  getTagOperatorFilterForParameter,
+  getParameterTargetField,
   dateParameterValueToMBQL,
   stringParameterValueToMBQL,
   numberParameterValueToMBQL,
+  parameterToMBQLFilter,
   parameterOptionsForField,
   normalizeParameterValue,
   deriveFieldOperatorFromParameter,
@@ -14,6 +23,11 @@ import {
   buildHiddenParametersSlugSet,
   getVisibleParameters,
 } from "metabase/meta/Parameter";
+import {
+  metadata,
+  PRODUCTS,
+  SAMPLE_DATASET,
+} from "__support__/sample_dataset_fixture";
 
 MetabaseSettings.get = jest.fn();
 
@@ -27,7 +41,89 @@ function mockFieldFilterOperatorsFlag(value) {
 
 describe("metabase/meta/Parameter", () => {
   beforeEach(() => {
+    jest.clearAllMocks();
     MetabaseSettings.get.mockReturnValue(false);
+  });
+
+  describe("getParameterOptions", () => {
+    describe("when `field-filter-operators-enabled?` is false", () => {
+      beforeEach(() => {
+        mockFieldFilterOperatorsFlag(false);
+      });
+
+      it("should return options without operator subtypes (except for date parameters)", () => {
+        const options = new Set(_.map(getParameterOptions(), "type"));
+        const expectedOptionTypes = [
+          "id",
+          "category",
+          "location/city",
+          "location/state",
+          "location/zip_code",
+          "location/country",
+        ].concat(_.map(PARAMETER_OPERATOR_TYPES.date, "type"));
+
+        expect(expectedOptionTypes.length).toEqual(options.size);
+        expect(expectedOptionTypes.every(option => options.has(option))).toBe(
+          true,
+        );
+      });
+    });
+
+    describe("when `field-filter-operators-enabled?` is true", () => {
+      beforeEach(() => {
+        mockFieldFilterOperatorsFlag(true);
+      });
+
+      it("should return options with operator subtypes", () => {
+        const options = new Set(_.map(getParameterOptions(), "type"));
+        const expectedOptionTypes = ["id"].concat(
+          _.map(PARAMETER_OPERATOR_TYPES.number, "type"),
+          _.map(PARAMETER_OPERATOR_TYPES.string, "type"),
+          _.map(PARAMETER_OPERATOR_TYPES.date, "type"),
+        );
+
+        expect(expectedOptionTypes.length).toEqual(options.size);
+        expect(expectedOptionTypes.every(option => options.has(option))).toBe(
+          true,
+        );
+      });
+
+      it("should add a `combinedName` property to options", () => {
+        const optionsByType = _.indexBy(getParameterOptions(), "type");
+
+        expect(optionsByType["string/="].combinedName).toEqual("String");
+        expect(optionsByType["string/!="].combinedName).toEqual(
+          "String is not",
+        );
+        expect(optionsByType["number/!="].combinedName).toEqual("Not equal to");
+        expect(optionsByType["date/single"].combinedName).toEqual(
+          "Single Date",
+        );
+      });
+    });
+  });
+
+  describe("getOperatorDisplayName", () => {
+    it("should return an option's name when the operator is a date or a number", () => {
+      expect(getOperatorDisplayName({ name: "foo" }, "date")).toEqual("foo");
+      expect(getOperatorDisplayName({ name: "foo" }, "number")).toEqual("foo");
+    });
+
+    it("should return an option's section name for the string/= option", () => {
+      expect(
+        getOperatorDisplayName({ name: "foo", operator: "=" }, "string", "bar"),
+      ).toEqual("bar");
+    });
+
+    it("should otherwise return a combined sectionName + option name", () => {
+      expect(
+        getOperatorDisplayName(
+          { name: "Foo", operator: "!=" },
+          "string",
+          "Bar",
+        ),
+      ).toEqual("Bar foo");
+    });
   });
 
   describe("dateParameterValueToMBQL", () => {
@@ -179,6 +275,123 @@ describe("metabase/meta/Parameter", () => {
     });
   });
 
+  describe("parameterToMBQLFilter", () => {
+    it("should return null for parameter targets that are not field dimension targets", () => {
+      expect(
+        parameterToMBQLFilter({
+          target: null,
+          type: "category",
+          value: ["foo"],
+        }),
+      ).toBe(null);
+
+      expect(
+        parameterToMBQLFilter({ target: [], type: "category", value: ["foo"] }),
+      ).toBe(null);
+
+      expect(
+        parameterToMBQLFilter({
+          target: ["dimension"],
+          type: "category",
+          value: ["foo"],
+        }),
+      ).toBe(null);
+
+      expect(
+        parameterToMBQLFilter({
+          target: ["dimension", ["template-tag", "foo"]],
+          type: "category",
+          value: ["foo"],
+        }),
+      ).toBe(null);
+    });
+
+    it("should return mbql filter for date parameter", () => {
+      expect(
+        parameterToMBQLFilter(
+          {
+            target: ["dimension", ["field", PRODUCTS.CREATED_AT.id, null]],
+            type: "date/single",
+            value: "01-01-2020",
+          },
+          metadata,
+        ),
+      ).toEqual(["=", ["field", PRODUCTS.CREATED_AT.id, null], "01-01-2020"]);
+    });
+
+    it("should return mbql filter for string parameter", () => {
+      expect(
+        parameterToMBQLFilter(
+          {
+            target: ["dimension", ["field", PRODUCTS.CATEGORY.id, null]],
+            type: "string/starts-with",
+            value: "foo",
+          },
+          metadata,
+        ),
+      ).toEqual(["starts-with", ["field", PRODUCTS.CATEGORY.id, null], "foo"]);
+
+      expect(
+        parameterToMBQLFilter(
+          {
+            target: ["dimension", ["field", PRODUCTS.CATEGORY.id, null]],
+            type: "string/starts-with",
+            value: ["foo"],
+          },
+          metadata,
+        ),
+      ).toEqual(["starts-with", ["field", PRODUCTS.CATEGORY.id, null], "foo"]);
+    });
+
+    it("should return mbql filter for category parameter", () => {
+      expect(
+        parameterToMBQLFilter(
+          {
+            target: ["dimension", ["field", PRODUCTS.CATEGORY.id, null]],
+            type: "category",
+            value: ["foo", "bar"],
+          },
+          metadata,
+        ),
+      ).toEqual(["=", ["field", PRODUCTS.CATEGORY.id, null], "foo", "bar"]);
+    });
+
+    it("should return mbql filter for number parameter", () => {
+      expect(
+        parameterToMBQLFilter(
+          {
+            target: ["dimension", ["field", PRODUCTS.RATING.id, null]],
+            type: "number/=",
+            value: [111],
+          },
+          metadata,
+        ),
+      ).toEqual(["=", ["field", PRODUCTS.RATING.id, null], 111]);
+
+      expect(
+        parameterToMBQLFilter(
+          {
+            target: ["dimension", ["field", PRODUCTS.RATING.id, null]],
+            type: "number/=",
+            value: 111,
+          },
+          metadata,
+        ),
+      ).toEqual(["=", ["field", PRODUCTS.RATING.id, null], 111]);
+
+      expect(
+        parameterToMBQLFilter(
+          {
+            target: ["dimension", ["field", PRODUCTS.RATING.id, null]],
+            type: "number/between",
+            value: [1, 100],
+          },
+          metadata,
+        ),
+      ).toEqual(["between", ["field", PRODUCTS.RATING.id, null], 1, 100]);
+    });
+  });
+
   describe("parameterOptionsForField", () => {
     const field = {
       isDate: () => false,
@@ -214,6 +427,197 @@ describe("metabase/meta/Parameter", () => {
         availableOptions.length > 0 &&
           availableOptions.every(option => option.type.startsWith("id")),
       ).toBe(true);
+    });
+
+    it("should return the specific location/state option for a state field", () => {
+      const stateField = {
+        ...field,
+        isState: () => true,
+      };
+      const availableOptions = parameterOptionsForField(stateField);
+      expect(availableOptions).toEqual([
+        expect.objectContaining({ type: "location/state" }),
+      ]);
+    });
+
+    it("as a result of all location parameters haiving subtypes should return nothing for a generic location field", () => {
+      const locationField = { ...field, isLocation: () => true };
+      const availableOptions = parameterOptionsForField(locationField);
+      expect(availableOptions).toEqual([]);
+    });
+  });
+
+  describe("dimensionFilterForParameter", () => {
+    const field = {
+      isDate: () => false,
+      isID: () => false,
+      isCategory: () => false,
+      isCity: () => false,
+      isState: () => false,
+      isZipCode: () => false,
+      isCountry: () => false,
+      isNumber: () => false,
+      isString: () => false,
+      isLocation: () => false,
+    };
+    const typelessDimension = {
+      field: () => field,
+    };
+
+    [
+      [
+        { type: "date/single" },
+        {
+          type: "date",
+          field: () => ({ ...field, isDate: () => true }),
+        },
+      ],
+      [
+        { type: "id" },
+        {
+          type: "id",
+          field: () => ({ ...field, isID: () => true }),
+        },
+      ],
+      [
+        { type: "category" },
+        {
+          type: "category",
+          field: () => ({ ...field, isCategory: () => true }),
+        },
+      ],
+      [
+        { type: "location/city" },
+        {
+          type: "city",
+          field: () => ({ ...field, isCity: () => true }),
+        },
+      ],
+      [
+        { type: "number/!=" },
+        {
+          type: "number",
+          field: () => ({
+            ...field,
+            isNumber: () => true,
+            isCoordinate: () => false,
+          }),
+        },
+      ],
+      [
+        { type: "string/=" },
+        {
+          type: "category",
+          field: () => ({
+            ...field,
+            isCategory: () => true,
+          }),
+        },
+      ],
+      [
+        { type: "string/!=" },
+        {
+          type: "category",
+          field: () => ({
+            ...field,
+            isCategory: () => true,
+          }),
+        },
+      ],
+      [
+        { type: "string/starts-with" },
+        {
+          type: "string",
+          field: () => ({
+            ...field,
+            isString: () => true,
+          }),
+        },
+      ],
+    ].forEach(([parameter, dimension]) => {
+      it(`should return a predicate that evaluates to true for a ${dimension.type} dimension when given a ${parameter.type} parameter`, () => {
+        const predicate = dimensionFilterForParameter(parameter);
+        expect(predicate(typelessDimension)).toBe(false);
+        expect(predicate(dimension)).toBe(true);
+      });
+    });
+
+    it("should return a predicate that evaluates to false for a coordinate dimension when given a number parameter", () => {
+      const coordinateDimension = {
+        field: () => ({
+          ...field,
+          isNumber: () => true,
+          isCoordinate: () => true,
+        }),
+      };
+
+      const predicate = dimensionFilterForParameter({ type: "number/between" });
+      expect(predicate(coordinateDimension)).toBe(false);
+    });
+
+    it("should return a predicate that evaluates to false for a location dimension when given a category parameter", () => {
+      const locationDimension = {
+        field: () => ({
+          ...field,
+          isLocation: () => true,
+        }),
+      };
+
+      const predicate = dimensionFilterForParameter({ type: "category" });
+      expect(predicate(locationDimension)).toBe(false);
+    });
+  });
+
+  describe("getTagOperatorFilterForParameter", () => {
+    it("should return a predicate that evaluates to true for a template tag that has the same subtype operator as the given parameter", () => {
+      const predicate = getTagOperatorFilterForParameter({
+        type: "string/starts-with",
+      });
+      const templateTag1 = {
+        "widget-type": "string/starts-with",
+      };
+      const templateTag2 = {
+        "widget-type": "foo/starts-with",
+      };
+      const templateTag3 = {
+        "widget-type": "string/ends-with",
+      };
+      expect(predicate(templateTag1)).toBe(true);
+      expect(predicate(templateTag2)).toBe(true);
+      expect(predicate(templateTag3)).toBe(false);
+    });
+  });
+
+  describe("getParameterTargetField", () => {
+    it("should return null when the target is not a dimension", () => {
+      expect(getParameterTargetField(["variable", "foo"], metadata)).toBe(null);
+    });
+
+    it("should return the mapped field behind a template tag field filter", () => {
+      const target = ["dimension", ["template-tag", "foo"]];
+      const question = SAMPLE_DATASET.nativeQuestion({
+        query: "select * from PRODUCTS where {{foo}}",
+        "template-tags": {
+          foo: {
+            type: "dimension",
+            dimension: ["field", PRODUCTS.CATEGORY.id, null],
+          },
+        },
+      });
+
+      expect(getParameterTargetField(target, metadata, question)).toBe(
+        PRODUCTS.CATEGORY,
+      );
+    });
+
+    it("should return the target field", () => {
+      const target = ["dimension", ["field", PRODUCTS.CATEGORY.id, null]];
+      const question = SAMPLE_DATASET.question({
+        "source-table": PRODUCTS.id,
+      });
+      expect(getParameterTargetField(target, metadata, question)).toBe(
+        PRODUCTS.CATEGORY,
+      );
     });
   });
 
@@ -434,41 +838,95 @@ describe("metabase/meta/Parameter", () => {
   });
 
   describe("parameter collection-building utils", () => {
-    // found in queryParams and not defaulted
-    const parameter1 = {
-      id: 1,
-      slug: "foo",
-    };
-    // found in queryParams and defaulted
-    const parameter2 = {
-      id: 2,
-      slug: "bar",
-      default: "parameter2 default value",
-    };
-    // not found in queryParams and defaulted
-    const parameter3 = {
-      id: 3,
-      slug: "baz",
-      default: "parameter3 default value",
-    };
-    // not found in queryParams and not defaulted
-    const parameter4 = {
-      id: 4,
-      slug: "qux",
-    };
-    const parameters = [parameter1, parameter2, parameter3, parameter4];
-    const queryParams = {
-      foo: "parameter1 queryParam value",
-      bar: "parameter2 queryParam value",
-      valueNotFoundInParameters: "nonexistent parameter queryParam value",
-    };
+    let field1;
+    let field2;
+    let field3;
+    let field4;
+    let metadata;
+    let parameter1;
+    let parameter2;
+    let parameter3;
+    let parameter4;
+    let parameters;
+    let parameterValues;
+    let queryParams;
+    beforeEach(() => {
+      field1 = {
+        id: 1,
+        isNumeric: () => false,
+        isDate: () => false,
+        isBoolean: () => false,
+      };
+      field2 = {
+        id: 2,
+        isNumeric: () => false,
+        isDate: () => false,
+        isBoolean: () => false,
+      };
+      field3 = {
+        id: 3,
+        isNumeric: () => false,
+        isDate: () => false,
+        isBoolean: () => false,
+      };
+      field4 = {
+        id: 4,
+        isNumeric: () => false,
+        isDate: () => false,
+        isBoolean: () => false,
+      };
 
-    // typically generated using getParameterValuesByIdFromQueryParams(parameters, queryParams)
-    const parameterValues = {
-      [parameter1.id]: "parameter1 parameterValue",
-      [parameter2.id]: "parameter2 parameterValue",
-      [parameter3.id]: "parameter3 default value",
-    };
+      metadata = {
+        field(id) {
+          return this.fields[id];
+        },
+        fields: {
+          [field1.id]: field1,
+          [field2.id]: field2,
+          [field3.id]: field3,
+          [field4.id]: field4,
+        },
+      };
+
+      // found in queryParams and not defaulted
+      parameter1 = {
+        id: 111,
+        slug: "foo",
+        field_ids: [1, 4],
+      };
+      // found in queryParams and defaulted
+      parameter2 = {
+        id: 222,
+        slug: "bar",
+        default: "parameter2 default value",
+        field_id: 2,
+      };
+      // not found in queryParams and defaulted
+      parameter3 = {
+        id: 333,
+        slug: "baz",
+        default: "parameter3 default value",
+        field_ids: [["field", 3, null]],
+      };
+      // not found in queryParams and not defaulted
+      parameter4 = {
+        id: 444,
+        slug: "qux",
+      };
+      parameters = [parameter1, parameter2, parameter3, parameter4];
+      queryParams = {
+        foo: "parameter1 queryParam value",
+        bar: "parameter2 queryParam value",
+        valueNotFoundInParameters: "nonexistent parameter queryParam value",
+      };
+
+      // typically generated using getParameterValuesByIdFromQueryParams(parameters, queryParams)
+      parameterValues = {
+        [parameter1.id]: "parameter1 parameterValue",
+        [parameter2.id]: "parameter2 parameterValue",
+        [parameter3.id]: "parameter3 default value",
+      };
+    });
 
     describe("getValuePopulatedParameters", () => {
       it("should return an array of parameter objects with the `value` property set if it exists in the given `parameterValues` id, value map", () => {
@@ -503,39 +961,251 @@ describe("metabase/meta/Parameter", () => {
 
     describe("getParameterValueFromQueryParams", () => {
       it("should return undefined when given an undefined queryParams arg", () => {
-        expect(getParameterValueFromQueryParams(parameter1)).toBe(undefined);
+        expect(
+          getParameterValueFromQueryParams(parameter1, undefined, metadata),
+        ).toBe(undefined);
       });
 
       it("should return the parameter's default value when given an undefined queryParams arg", () => {
-        expect(getParameterValueFromQueryParams(parameter2)).toBe(
-          "parameter2 default value",
-        );
+        expect(
+          getParameterValueFromQueryParams(parameter2, undefined, metadata),
+        ).toBe("parameter2 default value");
       });
 
       it("should return the parameter's default value when the parameter value is not found in queryParams", () => {
-        expect(getParameterValueFromQueryParams(parameter3, queryParams)).toBe(
-          "parameter3 default value",
-        );
+        expect(
+          getParameterValueFromQueryParams(parameter3, queryParams, metadata),
+        ).toBe("parameter3 default value");
       });
 
       it("should return the parameter value found in the queryParams object", () => {
-        expect(getParameterValueFromQueryParams(parameter1, queryParams)).toBe(
-          "parameter1 queryParam value",
-        );
+        expect(
+          getParameterValueFromQueryParams(parameter1, queryParams, metadata),
+        ).toBe("parameter1 queryParam value");
       });
 
       it("should ignore the parameter's default value when the parameter value is found in queryParams", () => {
-        expect(getParameterValueFromQueryParams(parameter2, queryParams)).toBe(
-          "parameter2 queryParam value",
-        );
+        expect(
+          getParameterValueFromQueryParams(parameter2, queryParams, metadata),
+        ).toBe("parameter2 queryParam value");
       });
 
       it("should return an empty string as the value for a defaulted parameter because we handle that special case elsewhere", () => {
         expect(
-          getParameterValueFromQueryParams(parameter2, {
-            [parameter2.slug]: "",
-          }),
+          getParameterValueFromQueryParams(
+            parameter2,
+            {
+              [parameter2.slug]: "",
+            },
+            metadata,
+          ),
         ).toBe("");
+      });
+
+      it("should parse the parameter value as a float if all associated fields are numeric and not dates", () => {
+        field1.isNumeric = () => true;
+        field1.isDate = () => false;
+
+        field4.isNumeric = () => true;
+        field4.isDate = () => false;
+
+        expect(
+          getParameterValueFromQueryParams(
+            parameter1,
+            {
+              [parameter1.slug]: "123.456",
+            },
+            metadata,
+          ),
+        ).toBe(123.456);
+
+        expect(
+          getParameterValueFromQueryParams(
+            parameter1,
+            {
+              [parameter1.slug]: "",
+            },
+            metadata,
+          ),
+        ).toBe(NaN);
+      });
+
+      it("should not parse numeric values that are dates as floats", () => {
+        field1.isNumeric = () => true;
+        field1.isDate = () => true;
+
+        field4.isNumeric = () => true;
+        field4.isDate = () => false;
+
+        expect(
+          getParameterValueFromQueryParams(
+            parameter1,
+            {
+              [parameter1.slug]: "123.456",
+            },
+            metadata,
+          ),
+        ).toBe("123.456");
+      });
+
+      it("should parse a value of 'true' or 'false' as a boolean if all associated fields are booleans", () => {
+        field1.isBoolean = () => true;
+        field4.isBoolean = () => true;
+
+        expect(
+          getParameterValueFromQueryParams(
+            parameter1,
+            {
+              [parameter1.slug]: "true",
+            },
+            metadata,
+          ),
+        ).toBe(true);
+
+        expect(
+          getParameterValueFromQueryParams(
+            parameter1,
+            {
+              [parameter1.slug]: "false",
+            },
+            metadata,
+          ),
+        ).toBe(false);
+
+        expect(
+          getParameterValueFromQueryParams(
+            parameter1,
+            {
+              [parameter1.slug]: "",
+            },
+            metadata,
+          ),
+        ).toBe("");
+
+        expect(
+          getParameterValueFromQueryParams(
+            parameter1,
+            {
+              [parameter1.slug]: "foo",
+            },
+            metadata,
+          ),
+        ).toBe("foo");
+      });
+
+      it("should not normalize date parameters", () => {
+        parameter1.type = "date/foo";
+        parameter1.hasOnlyFieldTargets = true;
+
+        expect(
+          getParameterValueFromQueryParams(
+            parameter1,
+            {
+              [parameter1.slug]: "123",
+            },
+            metadata,
+          ),
+        ).toEqual("123");
+      });
+
+      it("should not normalize parameters mapped to non-field targets", () => {
+        parameter1.type = "category";
+        parameter1.hasOnlyFieldTargets = false;
+
+        expect(
+          getParameterValueFromQueryParams(
+            parameter1,
+            {
+              [parameter1.slug]: "foo",
+            },
+            metadata,
+          ),
+        ).toEqual("foo");
+      });
+
+      it("should not normalize empty string parameter values", () => {
+        parameter1.type = "category";
+        parameter1.hasOnlyFieldTargets = true;
+
+        expect(
+          getParameterValueFromQueryParams(
+            parameter1,
+            {
+              [parameter1.slug]: "",
+            },
+            metadata,
+          ),
+        ).toBe("");
+      });
+
+      it("should normalize non-date parameters mapped only to field targets", () => {
+        parameter1.type = "category";
+        parameter1.hasOnlyFieldTargets = true;
+
+        expect(
+          getParameterValueFromQueryParams(
+            parameter1,
+            {
+              [parameter1.slug]: "foo",
+            },
+            metadata,
+          ),
+        ).toEqual(["foo"]);
+
+        expect(
+          getParameterValueFromQueryParams(
+            parameter1,
+            {
+              [parameter1.slug]: ["foo", "bar"],
+            },
+            metadata,
+          ),
+        ).toEqual(["foo", "bar"]);
+      });
+
+      it("should be able to get the underlying field of a parameter tied to a dimension", () => {
+        field3.isBoolean = () => true;
+
+        expect(
+          getParameterValueFromQueryParams(
+            parameter3,
+            {
+              [parameter3.slug]: "true",
+            },
+            metadata,
+          ),
+        ).toBe(true);
+      });
+
+      it("should not try to parse parameters without fields", () => {
+        expect(
+          getParameterValueFromQueryParams(
+            parameter4,
+            {
+              [parameter4.slug]: "true",
+            },
+            metadata,
+          ),
+        ).toBe("true");
+      });
+
+      it("should not try to parse default values", () => {
+        field2.isNumeric = () => true;
+        field2.isDate = () => false;
+
+        expect(
+          getParameterValueFromQueryParams(
+            parameter2,
+            {
+              [parameter2.slug]: "parameter2 default value",
+            },
+            metadata,
+          ),
+        ).toBe(NaN);
+
+        expect(getParameterValueFromQueryParams(parameter2, {}, metadata)).toBe(
+          "parameter2 default value",
+        );
       });
     });
 
@@ -543,7 +1213,11 @@ describe("metabase/meta/Parameter", () => {
       describe("`forcefullyUnsetDefaultedParametersWithEmptyStringValue` === false", () => {
         it("should generate a map of parameter values found in the queryParams or with default values", () => {
           expect(
-            getParameterValuesByIdFromQueryParams(parameters, queryParams),
+            getParameterValuesByIdFromQueryParams(
+              parameters,
+              queryParams,
+              metadata,
+            ),
           ).toEqual({
             [parameter1.id]: "parameter1 queryParam value",
             [parameter2.id]: "parameter2 queryParam value",
@@ -552,7 +1226,13 @@ describe("metabase/meta/Parameter", () => {
         });
 
         it("should handle an undefined queryParams", () => {
-          expect(getParameterValuesByIdFromQueryParams(parameters)).toEqual({
+          expect(
+            getParameterValuesByIdFromQueryParams(
+              parameters,
+              undefined,
+              metadata,
+            ),
+          ).toEqual({
             [parameter2.id]: "parameter2 default value",
             [parameter3.id]: "parameter3 default value",
           });
@@ -569,6 +1249,7 @@ describe("metabase/meta/Parameter", () => {
             getParameterValuesByIdFromQueryParams(
               parameters,
               queryParamsWithSpecialCase,
+              metadata,
               { forcefullyUnsetDefaultedParametersWithEmptyStringValue: false },
             ),
           ).toEqual({
@@ -580,14 +1261,40 @@ describe("metabase/meta/Parameter", () => {
             getParameterValuesByIdFromQueryParams(
               parameters,
               queryParamsWithSpecialCase,
+              metadata,
             ),
           ).toEqual(
             getParameterValuesByIdFromQueryParams(
               parameters,
               queryParamsWithSpecialCase,
+              metadata,
               { forcefullyUnsetDefaultedParametersWithEmptyStringValue: false },
             ),
           );
+        });
+
+        it("should not filter out falsy non-nil values", () => {
+          field1.isNumeric = () => true;
+          field4.isNumeric = () => true;
+
+          field3.isBoolean = () => true;
+
+          expect(
+            getParameterValuesByIdFromQueryParams(
+              parameters,
+              {
+                [parameter1.slug]: "0",
+                [parameter2.slug]: "parameter2 default value",
+                [parameter3.slug]: "false",
+              },
+              metadata,
+              { forcefullyUnsetDefaultedParametersWithEmptyStringValue: false },
+            ),
+          ).toEqual({
+            [parameter1.id]: 0,
+            [parameter2.id]: "parameter2 default value",
+            [parameter3.id]: false,
+          });
         });
       });
 
@@ -603,11 +1310,35 @@ describe("metabase/meta/Parameter", () => {
             getParameterValuesByIdFromQueryParams(
               parameters,
               queryParamsWithSpecialCase,
+              metadata,
               { forcefullyUnsetDefaultedParametersWithEmptyStringValue: true },
             ),
           ).toEqual({
             [parameter3.id]: "parameter3 default value",
           });
+        });
+      });
+
+      it("should not filter out falsy non-nil, non-empty-string values", () => {
+        field1.isNumeric = () => true;
+        field4.isNumeric = () => true;
+
+        field3.isBoolean = () => true;
+
+        expect(
+          getParameterValuesByIdFromQueryParams(
+            parameters,
+            {
+              [parameter1.slug]: "0",
+              [parameter2.slug]: "",
+              [parameter3.slug]: "false",
+            },
+            metadata,
+            { forcefullyUnsetDefaultedParametersWithEmptyStringValue: true },
+          ),
+        ).toEqual({
+          [parameter1.id]: 0,
+          [parameter3.id]: false,
         });
       });
     });

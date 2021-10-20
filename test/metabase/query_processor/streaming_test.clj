@@ -4,13 +4,17 @@
             [clojure.test :refer :all]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [medley.core :as m]
+            [metabase.api.embed-test :as embed-test]
+            [metabase.models.card :as card :refer [Card]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.streaming :as qp.streaming]
+            [metabase.query-processor.streaming.xlsx-test :as xlsx-test]
             [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.test :as mt]
             [metabase.util :as u]
             [toucan.db :as db])
-  (:import [java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream InputStream InputStreamReader]))
+  (:import [java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream InputStream InputStreamReader]
+           java.util.UUID))
 
 (defmulti ^:private parse-result*
   {:arglists '([export-format ^InputStream input-stream column-names])}
@@ -186,6 +190,7 @@
   (zipmap col-names (vals row)))
 
 ;; see also `metabase.query-processor.streaming.xlsx-test/report-timezone-test`
+;; TODO this test doesn't seem to run?
 (deftest report-timezone-test
   (testing "Export downloads should format stuff with the report timezone rather than UTC (#13677)\n"
     (mt/test-driver :postgres
@@ -268,55 +273,269 @@
                   :time-ltz       #inst "1899-12-31T23:23:18.000-00:00"
                   :time-tz        #inst "1899-12-31T23:23:18.000-00:00"})))))))))
 
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                             Export E2E tests                                                   |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;;; This section contains helper functions and tests that call export APIs to generate XLSX, CSV and JSON results,
+;;; and assert on the results. These tests should generally be for ensuring that specific types of queries or
+;;; behaviors work across all endpoints that generate exports. Tests that are specific to single endpoints
+;;; (like `/api/dataset/:format`) should go in the corresponding test namespaces for those files
+;;; (like `metabase.api.dataset-test`).
+;;; TODO: migrate the test cases above to use these functions, if possible
+
+(defn- do-test
+  [message {:keys [query viz-settings assertions endpoints]}]
+  (testing message
+    (let [query-json        (json/generate-string query)
+          viz-settings-json (json/generate-string viz-settings)
+          public-uuid       (str (UUID/randomUUID))
+          card-defaults     {:dataset_query query, :public_uuid public-uuid, :enable_embedding true}]
+      (mt/with-temporary-setting-values [enable-public-sharing true
+                                         enable-embedding      true]
+        (embed-test/with-new-secret-key
+          (mt/with-temp Card [card (if viz-settings
+                                     (assoc card-defaults :visualization_settings viz-settings)
+                                     card-defaults)]
+            (doseq [export-format (keys assertions)
+                    endpoint      (or endpoints [:dataset :card :public :embed])]
+              (case endpoint
+                :dataset
+                (let [results (mt/user-http-request :rasta :post 200
+                                                    (format "dataset/%s" (name export-format))
+                                                    {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
+                                                    :query query-json
+                                                    :visualization_settings viz-settings-json)]
+                  ((-> assertions export-format) results))
+
+                :card
+                (let [results (mt/user-http-request :rasta :post 200
+                                                    (format "card/%d/query/%s" (:id card) (name export-format))
+                                                    {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
+                  ((-> assertions export-format) results))
+
+                :public
+                (let [results (mt/user-http-request :rasta :get 200
+                                                    (format "public/card/%s/query/%s" public-uuid (name export-format))
+                                                    {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
+                  ((-> assertions export-format) results))
+
+                :embed
+                (let [results (mt/user-http-request :rasta :get 200
+                                                    (embed-test/card-query-url card (str "/" (name export-format)))
+                                                    {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
+                  ((-> assertions export-format) results))))))))))
+
+(defn- parse-json-results
+  "Convert JSON results into a convenient format for test assertions. Results are transformed into a nested list,
+  column titles in the first list as strings rather than keywords."
+  [results]
+  (let [col-titles (map name (keys (first results)))
+        values     (map vals results)]
+    (into values [col-titles])))
+
+(deftest basic-export-test
+  (do-test
+   "A simple export of a table succeeds"
+   {:query      {:database (mt/id)
+                 :type     :query
+                 :query    {:source-table (mt/id :venues)
+                            :limit 2}}
+
+    :assertions {:csv (fn [results]
+                        (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
+                                ["1" "Red Medicine" "4" "10.0646" "-165.374" "3"]
+                                ["2" "Stout Burgers & Beers" "11" "34.0996" "-118.329" "2"]]
+                               (csv/read-csv results))))
+
+                 :json (fn [results]
+                         (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
+                                 [1 "Red Medicine" 4 10.0646 -165.374 3]
+                                 [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]
+                                (parse-json-results results))))
+
+                 :xlsx (fn [results]
+                        (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
+                                [1.0 "Red Medicine" 4.0 10.0646 -165.374 3.0]
+                                [2.0 "Stout Burgers & Beers" 11.0 34.0996 -118.329 2.0]]
+                               (xlsx-test/parse-xlsx-results results))))}}))
+
+(deftest reordered-columns-test
+  (do-test
+   "Reordered and hidden columns are respected in the export"
+   {:query {:database (mt/id)
+            :type     :query
+            :query    {:source-table (mt/id :venues)
+                       :limit 1}}
+
+    :viz-settings {:column_settings {},
+                   :table.columns
+                   [{:name "NAME", :fieldRef [:field (mt/id :venues :name) nil], :enabled true}
+                    {:name "ID", :fieldRef [:field (mt/id :venues :id) nil], :enabled true}
+                    {:name "CATEGORY_ID", :fieldRef [:field (mt/id :venues :category_id) nil], :enabled true}
+                    {:name "LATITUDE", :fieldRef [:field (mt/id :venues :latitude) nil], :enabled false}
+                    {:name "LONGITUDE", :fieldRef [:field (mt/id :venues :longitude) nil], :enabled false}
+                    {:name "PRICE", :fieldRef [:field (mt/id :venues :price) nil], :enabled true}]}
+
+    :assertions {:csv (fn [results]
+                        (is (= [["Name" "ID" "Category ID" "Price"]
+                                ["Red Medicine" "1" "4" "3"]]
+                               (csv/read-csv results))))
+
+                 :json (fn [results]
+                         (is (= [["Name" "ID" "Category ID" "Price"]
+                                 ["Red Medicine" 1 4 3]]
+                                (parse-json-results results))))
+
+                 :xlsx (fn [results]
+                        (is (= [["Name" "ID" "Category ID" "Price"]
+                                ["Red Medicine" 1.0 4.0 3.0]]
+                               (xlsx-test/parse-xlsx-results results))))}}))
+
+(deftest remapped-columns-test
+  (letfn [(testfn []
+            (do-test
+             "Remapped values are used in exports"
+             {:query {:database (mt/id)
+                      :type     :query
+                      :query    {:source-table (mt/id :venues)
+                                 :limit 1}}
+
+              :assertions {:csv (fn [results]
+                                  (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
+                                          ["1" "Red Medicine" "Asian" "10.0646" "-165.374" "3"]]
+                                         (csv/read-csv results))))
+
+                           :json (fn [results]
+                                   (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
+                                           [1 "Red Medicine" "Asian" 10.0646 -165.374 3]]
+                                          (parse-json-results results))))
+
+                           :xlsx (fn [results]
+                                   (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
+                                           [1.0 "Red Medicine" "Asian" 10.0646 -165.374 3.0]]
+                                          (xlsx-test/parse-xlsx-results results))))}}))]
+    (mt/with-column-remappings [venues.category_id categories.name]
+      (testfn))
+    (mt/with-column-remappings [venues.category_id (values-of categories.name)]
+      (testfn))))
+
+(deftest join-export-test
+  (do-test
+   "A query with a join can be exported succesfully"
+   {:query {:database (mt/id)
+            :query
+            {:source-table (mt/id :venues)
+             :joins
+             [{:fields "all",
+               :source-table (mt/id :categories)
+               :condition ["="
+                           ["field" (mt/id :venues :category_id) nil]
+                           ["field" (mt/id :categories :id) {:join-alias "Categories"}]],
+               :alias "Categories"}]
+             :limit 1}
+            :type "query"}
+
+    :viz-settings {:column_settings {},
+                   :table.columns
+                   [{:name "ID", :fieldRef [:field (mt/id :venues :id) nil], :enabled true}
+                    {:name "NAME", :fieldRef [:field (mt/id :venues :name) nil], :enabled true}
+                    {:name "CATEGORY_ID", :fieldRef [:field (mt/id :venues :category_id) nil], :enabled true}
+                    {:name "NAME_2", :fieldRef [:field (mt/id :categories :name) {:join-alias "Categories"}], :enabled true}]}
+
+    :assertions {:csv (fn [results]
+                        (is (= [["ID" "Name" "Category ID" "Categories → Name"]
+                                ["1" "Red Medicine" "4" "Asian"]]
+                               (csv/read-csv results))))
+
+                 :json (fn [results]
+                         (is (= [["ID" "Name" "Category ID" "Categories → Name"]
+                                 [1 "Red Medicine" 4 "Asian"]]
+                                (parse-json-results results))))
+
+                 :xlsx (fn [results]
+                         (is (= [["ID" "Name" "Category ID" "Categories → Name"]
+                                 [1.0 "Red Medicine" 4.0 "Asian"]]
+                                (xlsx-test/parse-xlsx-results results))))}}))
+
+(deftest native-query-test
+  (do-test
+   "A native query can be exported succesfully, and duplicate fields work in CSV/XLSX"
+   {:query (mt/native-query {:query "SELECT id, id, name FROM venues LIMIT 1;"})
+
+    :assertions {:csv (fn [results]
+                        (is (= [["ID" "ID" "NAME"]
+                                ["1" "1" "Red Medicine"]]
+                               (csv/read-csv results))))
+
+                 :json (fn [results]
+                         ;; Second ID field is omitted since each col is stored in a JSON object rather than an array.
+                         ;; TODO we should be able to include the second column if it is renamed.
+                         (is (= [["ID" "NAME"]
+                                 [1 "Red Medicine"]]
+                                (parse-json-results results))))
+
+                 :xlsx (fn [results]
+                         (is (= [["ID" "ID" "NAME"]
+                                 [1.0 1.0 "Red Medicine"]]
+                                (xlsx-test/parse-xlsx-results results))))}}))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                        Streaming logic unit tests                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
 (deftest export-column-order-test
-  (testing "basic correlation of columns between cols and table-columns by index"
+  (testing "correlation of columns by field ref"
     (is (= [0 1]
            (@#'qp.streaming/export-column-order
-            [{:id 0, :name "Col1"}, {:id 1, :name "Col2"}]
-            [{::mb.viz/table-column-field-ref ["field" 0 nil], ::mb.viz/table-column-enabled true}
-             {::mb.viz/table-column-field-ref ["field" 1 nil], ::mb.viz/table-column-enabled true}])))
+            [{:id 0, :name "Col1" :field_ref [:field 0 nil]}, {:id 1, :name "Col2" :field_ref [:field 1 nil]}]
+            [{::mb.viz/table-column-field-ref [:field 0 nil], ::mb.viz/table-column-enabled true}
+             {::mb.viz/table-column-field-ref [:field 1 nil], ::mb.viz/table-column-enabled true}])))
+    (is (= [1 0]
+           (@#'qp.streaming/export-column-order
+            [{:id 0, :name "Col1" :field_ref [:field 0 nil]}, {:id 1, :name "Col2" :field_ref [:field 1 nil]}]
+            [{::mb.viz/table-column-field-ref [:field 1 nil], ::mb.viz/table-column-enabled true}
+             {::mb.viz/table-column-field-ref [:field 0 nil], ::mb.viz/table-column-enabled true}]))))
+
+  (testing "correlation of columns by name"
+    (is (= [0 1]
+           (@#'qp.streaming/export-column-order
+            [{:name "Col1"}, {:name "Col2"}]
+            [{::mb.viz/table-column-name "Col1", ::mb.viz/table-column-enabled true}
+             {::mb.viz/table-column-name "Col2", ::mb.viz/table-column-enabled true}])))
     (is (= [1 0]
            (@#'qp.streaming/export-column-order
             [{:id 0, :name "Col1"}, {:id 1, :name "Col2"}]
-            [{::mb.viz/table-column-field-ref ["field" 1 nil], ::mb.viz/table-column-enabled true}
-             {::mb.viz/table-column-field-ref ["field" 0 nil], ::mb.viz/table-column-enabled true}]))))
+            [{::mb.viz/table-column-name "Col2", ::mb.viz/table-column-enabled true}
+             {::mb.viz/table-column-name "Col1", ::mb.viz/table-column-enabled true}]))))
 
-  (testing "basic correlation of columns between cols and table-columns by name"
-    (is (= [0 1]
-           (@#'qp.streaming/export-column-order
-            [{:id 0, :name "Col1"}, {:id 1, :name "Col2"}]
-            [{::mb.viz/table-column-field-ref ["field" "Col1"  nil], ::mb.viz/table-column-enabled true}
-             {::mb.viz/table-column-field-ref ["field" "Col2" nil], ::mb.viz/table-column-enabled true}])))
-    (is (= [1 0]
-           (@#'qp.streaming/export-column-order
-            [{:id 0, :name "Col1"}, {:id 1, :name "Col2"}]
-            [{::mb.viz/table-column-field-ref ["field" "Col2" nil], ::mb.viz/table-column-enabled true}
-             {::mb.viz/table-column-field-ref ["field" "Col1" nil], ::mb.viz/table-column-enabled true}]))))
-
-  (testing "disabled columns are excluded from ordering"
+  (testing "correlation of columns by field ref"
     (is (= [0]
            (@#'qp.streaming/export-column-order
-            [{:id 0, :name "Col1"}, {:id 1, :name "Col2"}]
-            [{::mb.viz/table-column-field-ref ["field" 0 nil], ::mb.viz/table-column-enabled true}
-             {::mb.viz/table-column-field-ref ["field" 1 nil], ::mb.viz/table-column-enabled false}])))
+            [{:id 0, :name "Col1" :field_ref [:field 0 nil]}, {:id 1, :name "Col2" :field_ref [:field 1 nil]}]
+            [{::mb.viz/table-column-field-ref [:field 0 nil], ::mb.viz/table-column-enabled true}
+             {::mb.viz/table-column-field-ref [:field 1 nil], ::mb.viz/table-column-enabled false}])))
     (is (= [1]
            (@#'qp.streaming/export-column-order
-            [{:id 0, :name "Col1"}, {:id 1, :name "Col2"}]
-            [{::mb.viz/table-column-field-ref ["field" 0 nil], ::mb.viz/table-column-enabled false}
-             {::mb.viz/table-column-field-ref ["field" 1 nil], ::mb.viz/table-column-enabled true}]))))
+            [{:id 0, :name "Col1" :field_ref [:field 0 nil]}, {:id 1, :name "Col2" :field_ref [:field 1 nil]}]
+            [{::mb.viz/table-column-field-ref [:field 0 nil], ::mb.viz/table-column-enabled false}
+             {::mb.viz/table-column-field-ref [:field 1 nil], ::mb.viz/table-column-enabled true}]))))
 
   (testing "remapped columns use the index of the new column"
     (is (= [1]
            (@#'qp.streaming/export-column-order
-            [{:id 0, :name "Col1", :remapped_to "Col2"}, {:id 1, :name "Col2", :remapped_from "Col1"}]
+            [{:id 0, :name "Col1", :remapped_to "Col2", :field_ref ["field" 0 nil]},
+             {:id 1, :name "Col2", :remapped_from "Col1", :field_ref ["field" 1 nil]}]
             [{::mb.viz/table-column-field-ref ["field" 0 nil], ::mb.viz/table-column-enabled true}]))))
 
   (testing "entries in table-columns without corresponding entries in cols are ignored"
     (is (= [0]
            (@#'qp.streaming/export-column-order
-            [{:id 0, :name "Col1"}]
-            [{::mb.viz/table-column-field-ref ["field" 0 nil], ::mb.viz/table-column-enabled true}
-             {::mb.viz/table-column-field-ref ["field" 1 nil], ::mb.viz/table-column-enabled true}]))))
+            [{:id 0, :name "Col1" :field_ref [:field 0 nil]}]
+            [{::mb.viz/table-column-field-ref [:field 0 nil], ::mb.viz/table-column-enabled true}
+             {::mb.viz/table-column-field-ref [:field 1 nil], ::mb.viz/table-column-enabled true}]))))
 
   (testing "if table-columns is nil, original order of cols is used"
     (is (= [0 1]

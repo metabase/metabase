@@ -4,7 +4,6 @@ import { AxisBottom, AxisLeft } from "@visx/axis";
 import { GridRows } from "@visx/grid";
 import { scaleBand, scaleLinear } from "@visx/scale";
 import { Bar } from "@visx/shape";
-import { Text } from "@visx/text";
 import {
   getXTickLabelProps,
   getYTickLabelProps,
@@ -12,7 +11,6 @@ import {
 } from "../../lib/axes";
 import { formatDate } from "../../lib/dates";
 import { formatNumber } from "../../lib/numbers";
-import { truncateText } from "../../lib/text";
 
 const propTypes = {
   data: PropTypes.array.isRequired,
@@ -23,6 +21,7 @@ const propTypes = {
   settings: PropTypes.shape({
     x: PropTypes.object,
     y: PropTypes.object,
+    colors: PropTypes.object,
   }),
   labels: PropTypes.shape({
     left: PropTypes.string,
@@ -55,6 +54,7 @@ const layout = {
 };
 
 const TimeSeriesBarChart = ({ data, accessors, settings, labels }) => {
+  const colors = settings?.colors;
   const yTickWidth = getYTickWidth(data, accessors, settings);
   const yLabelOffset = yTickWidth + layout.labelPadding;
   const xMin = yLabelOffset + layout.font.size * 1.5;
@@ -64,6 +64,7 @@ const TimeSeriesBarChart = ({ data, accessors, settings, labels }) => {
   const innerHeight = yMax - layout.margin.top;
   const leftLabel = labels?.left;
   const bottomLabel = labels?.bottom;
+  const palette = { ...layout.colors, ...colors };
 
   const xScale = scaleBand({
     domain: data.map(accessors.x),
@@ -84,14 +85,7 @@ const TimeSeriesBarChart = ({ data, accessors, settings, labels }) => {
     const x = xScale(accessors.x(d));
     const y = yMax - height;
 
-    return { x, y, width, height, fill: layout.colors.brand };
-  };
-
-  const getXTickProps = ({ formattedValue, ...props }) => {
-    const textWidth = xScale.bandwidth();
-    const truncatedText = truncateText(formattedValue, textWidth);
-
-    return { ...props, children: truncatedText };
+    return { x, y, width, height, fill: palette.brand };
   };
 
   return (
@@ -120,10 +114,9 @@ const TimeSeriesBarChart = ({ data, accessors, settings, labels }) => {
         top={yMax}
         label={bottomLabel}
         numTicks={layout.numTicks}
-        stroke={layout.colors.textLight}
-        tickStroke={layout.colors.textLight}
+        stroke={palette.textLight}
+        tickStroke={palette.textLight}
         tickFormat={value => formatDate(value, settings?.x)}
-        tickComponent={props => <Text {...getXTickProps(props)} />}
         tickLabelProps={() => getXTickLabelProps(layout)}
       />
     </svg>

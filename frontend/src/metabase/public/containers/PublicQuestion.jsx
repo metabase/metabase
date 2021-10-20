@@ -90,6 +90,7 @@ export default class PublicQuestion extends Component {
       setErrorPage,
       params: { uuid, token },
       location: { query },
+      metadata,
     } = this.props;
 
     if (uuid) {
@@ -115,10 +116,14 @@ export default class PublicQuestion extends Component {
         this.props.addFields(card.param_fields);
       }
 
-      const parameters = getParametersFromCard(card);
+      const parameters = getValueAndFieldIdPopulatedParametersFromCard(
+        card,
+        metadata,
+      );
       const parameterValuesById = getParameterValuesByIdFromQueryParams(
         parameters,
         query,
+        this.props.metadata,
       );
 
       this.setState(
@@ -140,18 +145,6 @@ export default class PublicQuestion extends Component {
         parameterValues: {
           ...this.state.parameterValues,
           [parameterId]: value,
-        },
-      },
-      this.run,
-    );
-  };
-
-  setMultipleParameterValues = parameterValues => {
-    this.setState(
-      {
-        parameterValues: {
-          ...this.state.parameterValues,
-          ...parameterValues,
         },
       },
       this.run,
@@ -202,6 +195,7 @@ export default class PublicQuestion extends Component {
   render() {
     const {
       params: { uuid, token },
+      metadata,
     } = this.props;
     const { card, result, initialized, parameterValues } = this.state;
 
@@ -215,7 +209,7 @@ export default class PublicQuestion extends Component {
     );
 
     const parameters =
-      card && getValueAndFieldIdPopulatedParametersFromCard(card);
+      card && getValueAndFieldIdPopulatedParametersFromCard(card, metadata);
 
     return (
       <EmbedFrame
@@ -225,7 +219,6 @@ export default class PublicQuestion extends Component {
         actionButtons={actionButtons}
         parameterValues={parameterValues}
         setParameterValue={this.setParameterValue}
-        setMultipleParameterValues={this.setMultipleParameterValues}
       >
         <LoadingAndErrorWrapper
           className="flex-full"

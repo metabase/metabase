@@ -94,5 +94,19 @@ describe("scenarios > dashboard > text-box", () => {
         .should("have.css", "overflow", "auto")
         .scrollTo("bottom");
     });
+
+    it("should render html links, and not just the markdown flavor of them (metabase#18114)", () => {
+      addTextBox(
+        "- Visit https://www.metabase.com{enter}- Or go to [Metabase](https://www.metabase.com)",
+      );
+
+      cy.findByText("Save").click();
+      cy.findByText("You're editing this dashboard.").should("not.exist");
+
+      cy.get(".Card")
+        .findAllByRole("link")
+        .should("be.visible")
+        .and("have.length", 2);
+    });
   });
 });

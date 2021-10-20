@@ -1,19 +1,16 @@
 /* eslint-disable react/prop-types */
 import React, { useState } from "react";
-import { Provider } from "react-redux";
 import {
-  render,
+  renderWithProviders,
   screen,
   fireEvent,
   within,
   waitForElementToBeRemoved,
-} from "@testing-library/react";
+} from "__support__/ui";
 import userEvent from "@testing-library/user-event";
 import xhrMock from "xhr-mock";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import { getStore } from "__support__/entities-store";
 import {
-  state,
   ORDERS,
   PRODUCTS,
   SAMPLE_DATASET,
@@ -66,14 +63,13 @@ describe("Notebook Editor > Join Step", () => {
       revert: jest.fn(),
     };
 
-    render(
-      <Provider store={getStore({}, state)}>
-        <JoinStepWrapped
-          initialQuery={query}
-          step={TEST_STEP}
-          onChange={onQueryChange}
-        />
-      </Provider>,
+    renderWithProviders(
+      <JoinStepWrapped
+        initialQuery={query}
+        step={TEST_STEP}
+        onChange={onQueryChange}
+      />,
+      { withSampleDataset: true },
     );
 
     if (joinTable) {

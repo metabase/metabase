@@ -30,9 +30,7 @@ Problems, their causes, how to detect them, and how to fix them.
 
 - [Metabase isn't sending email][not-sending-email].
 
-- [Using the default H2 application database][appdb].
-
-- [Loading an exported H2 application database][loadh2].
+- [Using or migrating from an H2 application database][appdb].
 
 - [The dates and times in my questions and charts are wrong][incorrect-times].
 
@@ -52,14 +50,14 @@ Metabase will log errors, both on the server and in the browser console, dependi
 
 **Accessing the Metabase server logs**: You can look for the logs that Metabase leaves on the server's file system (or wherever else you collect logs). If you're logged into Metabase with an Admin account, you can also access the logs by clicking on the **gears icon** in the top right of the main nav, selecting **Admin**, clicking on the **Troubleshooting** tab, then viewing the **Logs** tab. Check out [How to read the server logs][server-logs].
 
-**Checking for Javascript console errors:** Metabase will send debugging information and errors to your browser's developer console. To open the developer console, follow the instructions for web browser:
+**Checking for Javascript console errors:** Metabase will send debugging information and errors to your browser's developer console. To open the developer console, follow the instructions for your web browser:
 
 - [Chrome][chrome]
 - [Firefox][firefox]
 - [Safari][safari]
 - [Edge][edge]
 
-## Metabase tutorials 
+## Metabase tutorials
 
 For tutorials that walk you through how to use Metabase features, check out [Learn Metabase][learn].
 
@@ -75,11 +73,11 @@ For quick answers to common questions, check out our [Frequently Asked Questions
 
 Metabase adds new features and squashes bugs with each release. [Upgrading to the latest and greatest][upgrade] may resolve your issue. If you're using [Metabase Cloud][cloud], we'll handle the upgrades for you. You can checkout the [release notes][releases] to see what's new.
 
-[appdb]: ./application-database.html
+[appdb]: ./loading-from-h2.html
 [bugs]: ./bugs.html
 [cant-see-tables]: ./cant-see-tables.html
 [chrome]: https://developers.google.com/web/tools/chrome-devtools/open#console
-[cloud]: https://www.metabase.com/start/ 
+[cloud]: https://www.metabase.com/start/
 [datawarehouse]: ./datawarehouse.html
 [docker]: ./docker.html
 [edge]: https://docs.microsoft.com/en-us/microsoft-edge/devtools-guide-chromium
@@ -87,12 +85,11 @@ Metabase adds new features and squashes bugs with each release. [Upgrading to th
 [filters]: ./filters.html
 [firefox]: https://developer.mozilla.org/en-US/docs/Tools/Web_Console/Opening_the_Web_Console
 [forum]: https://discourse.metabase.com/
-[incorrect-times]: ./times-appear-incorrect.html
+[incorrect-times]: ./timezones.html
 [ldap]: ./ldap.html
 [learn]: https://www.metabase.com/learn
 [linked-filters]: ./linked-filters.html
 [login]: ./cant-log-in.html
-[loadh2]: ./loading-from-h2.html
 [not-sending-email]: ./cant-send-email.html
 [proxies]: ./proxies.html
 [releases]: https://github.com/metabase/metabase/releases

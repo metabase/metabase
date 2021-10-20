@@ -1,6 +1,6 @@
 import slugg from "slugg";
 import { serializeCardForUrl } from "metabase/lib/card";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/constants";
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
 import MetabaseSettings from "metabase/lib/settings";
 import Question from "metabase-lib/lib/Question";
 
@@ -94,13 +94,17 @@ function prepareModel(item) {
 }
 
 export function modelToUrl(item) {
+  const modelData = prepareModel(item);
+
   switch (item.model) {
     case "card":
-      return question(prepareModel(item));
+      return question(modelData);
     case "dashboard":
-      return dashboard(prepareModel(item));
+      return dashboard(modelData);
     case "pulse":
-      return pulse(item.model_id);
+      return pulse(modelData.id);
+    case "table":
+      return tableRowsQuery(modelData.db_id, modelData.id);
     default:
       return null;
   }

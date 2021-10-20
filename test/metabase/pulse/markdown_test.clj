@@ -157,3 +157,33 @@
     (is (= "&" (mrkdwn "&amp;")))
     (is (= ">" (mrkdwn "&gt;")))
     (is (= "ℋ" (mrkdwn "&HilbertSpace;")))))
+
+(defn- html
+  [markdown]
+  (md/process-markdown markdown :html))
+
+(deftest process-markdown-email-test
+  (testing "HTML is generated correctly from Markdown input for emails. Not an exhaustive test suite since parsing and
+           rendering is fully handled by flexmark."
+    (is (= "<h1>header</h1>\n"
+           (html "# header")))
+    (is (= "<p><strong>bold</strong></p>\n"
+           (html "**bold**")))
+    (is (= "<p><a href=\"https://metabase.com\" title=\"tooltip\">Metabase</a></p>\n"
+           (html "[Metabase](https://metabase.com \"tooltip\")")))
+    (is (= "<ol>\n<li>foo\n<ol>\n<li>bar</li>\n</ol>\n</li>\n</ol>\n"
+           (html "1. foo\n   1. bar")))
+    (is (= "<p>/</p>\n"
+           (html "\\/")))
+    (doseq [temp-setting ["https://example.com" "https://example.com/"]]
+      (tu/with-temporary-setting-values [site-url temp-setting]
+        (is (= "<p><img src=\"https://example.com/image.png\" alt=\"alt-text\" /></p>\n"
+               (html "![alt-text](/image.png)")))
+        (is (= "<p><img src=\"https://example.com/image.png\" alt=\"alt-text\" /></p>\n"
+               (html "![alt-text](image.png)")))
+        (is (= "<p><a href=\"https://example.com/dashboard/1\">dashboard 1</a></p>\n"
+               (html "[dashboard 1](/dashboard/1)"))))))
+
+  (testing "HTML in the source markdown is escaped properly, but HTML entities are retained"
+    (is (= "<p>&lt;h1&gt;header&lt;/h1&gt;</p>\n" (html "<h1>header</h1>")))
+    (is (= "<p>&amp;</p>\n"                       (html "&amp;")))))

@@ -82,6 +82,23 @@ describe("normalizeQuery", () => {
   });
 
   describe("structured query", () => {
+    it("handles null in filter clauses", () => {
+      const FILTER_WITH_NULL = ["=", ["field", ORDERS.TOTAL, null], null];
+
+      const { datasetQuery } = setup({
+        query: {
+          filter: FILTER_WITH_NULL,
+        },
+      });
+
+      const { query: normalizedQuery } = normalizeQuery(datasetQuery);
+
+      expect(normalizedQuery).toEqual({
+        ...datasetQuery.query,
+        filter: FILTER_WITH_NULL,
+      });
+    });
+
     it("adds explicit list of fields if missing", () => {
       const { datasetQuery, query, tableMetadata } = setup();
       const expectedFields = getTableFields(query.sourceTableId());

@@ -67,8 +67,8 @@ export default class DatabaseList extends Component {
     deletionError: PropTypes.object,
   };
 
-  UNSAFE_componentWillReceiveProps(newProps) {
-    if (!this.props.created && newProps.created) {
+  componentDidUpdate(oldProps) {
+    if (!oldProps.created && this.props.created) {
       this.createdDatabaseModal.current.open();
     }
   }

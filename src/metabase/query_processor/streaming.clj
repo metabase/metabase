@@ -40,31 +40,39 @@
   The resulting list of indices determines the order of column names and data in exports."
   [cols table-columns]
   (let [table-columns'     (or table-columns
-                               ;; If table-columns is not provided (e.g. for saved cards), we can construct
-                               ;; it using the original order in `cols`
+                               ;; If table-columns is not provided (e.g. for saved cards), we can construct a fake one
+                               ;; that retains the original column ordering in `cols`
                                (for [col cols]
-                                 (let [id-or-name (or (:id col) (:name col))]
-                                   {::mb.viz/table-column-field-ref ["field" id-or-name nil]
-                                    ::mb.viz/table-column-enabled true})))
+                                 (let [col-name   (:name col)
+                                       id-or-name (or (:id col) col-name)
+                                       field-ref  (:field_ref col)]
+                                   {::mb.viz/table-column-field-ref (or field-ref [:field id-or-name nil])
+                                    ::mb.viz/table-column-enabled true
+                                    ::mb.viz/table-column-name col-name})))
         enabled-table-cols (filter ::mb.viz/table-column-enabled table-columns')
         cols-vector        (into [] cols)
-        ;; `cols-index` maps column names and ids to indices in `cols`
+        ;; cols-index is a map from keys representing fields to their indices into `cols`
         cols-index         (reduce-kv (fn [m i col]
+                                        ;; Always add col-name as a key, so that native queries and remapped fields work correctly
                                         (let [m' (assoc m (:name col) i)]
-                                          (if (:id col) (assoc m' (:id col) i) m')))
+                                          (if-let [field-ref (:field_ref col)]
+                                            ;; Add a map key based on the column's field-ref, if available
+                                            (assoc m' field-ref i)
+                                            m')))
                                       {}
                                       cols-vector)]
     (->> (map
-          (fn [{[_ id-or-name _] ::mb.viz/table-column-field-ref}]
-            (let [index         (get cols-index id-or-name)
-                  col           (get cols-vector index)
-                  remapped-to   (:remapped_to col)
-                  remapped-from (:remapped_from col)]
+          (fn [{field-ref ::mb.viz/table-column-field-ref, col-name ::mb.viz/table-column-name}]
+            (let [index              (or (get cols-index field-ref)
+                                         (get cols-index col-name))
+                  col                (get cols-vector index)
+                  remapped-to-name   (:remapped_to col)
+                  remapped-from-name (:remapped_from col)]
               (cond
-                remapped-to
-                (get cols-index remapped-to)
+                remapped-to-name
+                (get cols-index remapped-to-name)
 
-                (not remapped-from)
+                (not remapped-from-name)
                 index)))
           enabled-table-cols)
          (remove nil?))))

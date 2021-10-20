@@ -3,10 +3,12 @@
  */
 
 import * as Q from "metabase/lib/query/query";
+import { getUniqueExpressionName } from "metabase/lib/query/expression";
 import {
   format as formatExpression,
   DISPLAY_QUOTES,
 } from "metabase/lib/expressions/format";
+import { isCompatibleAggregationOperatorForField } from "metabase/lib/schema_metadata";
 
 import _ from "underscore";
 import { chain, updateIn } from "icepick";
@@ -634,10 +636,13 @@ export default class StructuredQuery extends AtomicQuery {
       //
       // A real solution would have a `dimensionOptions` method instead of `fieldOptions` which would
       // enable filtering based on dimension properties.
+      const compatibleDimensions = this.expressionDimensions().filter(d =>
+        isCompatibleAggregationOperatorForField(aggregation, d.field()),
+      );
       return new DimensionOptions({
         ...fieldOptions,
         dimensions: _.uniq([
-          ...this.expressionDimensions(),
+          ...compatibleDimensions,
           ...fieldOptions.dimensions.filter(
             d => !(d instanceof ExpressionDimension),
           ),
@@ -946,10 +951,8 @@ export default class StructuredQuery extends AtomicQuery {
       }
       if (this.hasBreakouts()) {
         for (const aggregation of this.aggregations()) {
-          if (aggregation.isSortable()) {
-            sortOptions.dimensions.push(aggregation.aggregationDimension());
-            sortOptions.count++;
-          }
+          sortOptions.dimensions.push(aggregation.aggregationDimension());
+          sortOptions.count++;
         }
       }
 
@@ -999,23 +1002,32 @@ export default class StructuredQuery extends AtomicQuery {
   }
 
   addExpression(name, expression) {
-    let query = this._updateQuery(Q.addExpression, arguments);
+    const uniqueName = getUniqueExpressionName(this.expressions(), name);
+    let query = this._updateQuery(Q.addExpression, [uniqueName, expression]);
     // extra logic for adding expressions in fields clause
     // TODO: push into query/expression?
     if (query.hasFields() && query.isRaw()) {
-      query = query.addField(["expression", name]);
+      query = query.addField(["expression", uniqueName]);
     }
     return query;
   }
 
   updateExpression(name, expression, oldName) {
-    let query = this._updateQuery(Q.updateExpression, arguments);
+    const isRename = oldName && oldName !== name;
+    const uniqueName = isRename
+      ? getUniqueExpressionName(this.expressions(), name)
+      : name;
+    let query = this._updateQuery(Q.updateExpression, [
+      uniqueName,
+      expression,
+      oldName,
+    ]);
     // extra logic for renaming expressions in fields clause
     // TODO: push into query/expression?
-    if (name !== oldName) {
+    if (isRename) {
       const index = query._indexOfField(["expression", oldName]);
       if (index >= 0) {
-        query = query.updateField(index, ["expression", name]);
+        query = query.updateField(index, ["expression", uniqueName]);
       }
     }
     return query;

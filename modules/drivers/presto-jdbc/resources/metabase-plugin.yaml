@@ -30,9 +30,6 @@ driver:
         - password
         - required: false
     - ssl
-    - merge:
-        - additional-options
-        - placeholder: "trustServerCertificate=false"
     - name: kerberos
       type: boolean
       display-name: Authenticate with Kerberos?

@@ -837,6 +837,18 @@
         (is (= ["" " "]
                (mt/user-http-request :lucky :get 200 (format "database/%d/schemas" db-id))))))))
 
+(deftest get-schemas-should-not-return-schemas-with-no-visible-tables
+  (testing "GET /api/database/:id/schemas should not return schemas with no VISIBLE TABLES"
+    (mt/with-temp* [Database [{db-id :id}]
+                    Table    [_ {:db_id db-id, :schema "schema_1", :name "table_1"}]
+                    ;; table is not visible. Any non-nil value of `visibility_type` means Table shouldn't be visible
+                    Table    [_ {:db_id db-id, :schema "schema_2", :name "table_2a", :visibility_type "hidden"}]
+                    Table    [_ {:db_id db-id, :schema "schema_2", :name "table_2b", :visibility_type "cruft"}]
+                    ;; table is not active
+                    Table    [_ {:db_id db-id, :schema "schema_3", :name "table_3", :active false}]]
+      (is (= #{"schema_1"}
+             (set (mt/user-http-request :crowberto :get 200 (format "database/%d/schemas" db-id))))))))
+
 (deftest get-schema-tables-test
   (testing "GET /api/database/:id/schema/:schema\n"
     (testing "Permissions: Can we fetch the Tables in a schema?"

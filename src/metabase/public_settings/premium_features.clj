@@ -153,30 +153,13 @@
   []
   (boolean (seq (token-features))))
 
-(def ^:private ^:deprecated PLACEHOLDER-DO-NOT-RELEASE-new-41-features
-  "The following features are not yet live and thus no actual tokens have them. Until they're live (see
-  https://github.com/metabase/harbormaster/issues/2006) we will 'simulate' these features by pretending we have them
-  if we have a token with _any_ other features.
-
-  This is temporary code and needs to be removed entirely before the 0.41.0 release.
-
-  DO NOT RELEASE 0.41.0 WITH THIS CODE STILL IN PLACE!!!
-
-  @camsaul will remove this in the next week or so unless he dies. If he dies, please remove it in memory of him and
-  bury him with it."
-  #{:advanced-config
-    :advanced-permissions
-    :content-management})
-
 (defn has-feature?
   "Does this instance's premium token have `feature`?
 
     (has-feature? :sandboxes)          ; -> true
     (has-feature? :toucan-management)  ; -> false"
   [feature]
-  (if (PLACEHOLDER-DO-NOT-RELEASE-new-41-features (keyword feature))
-    (has-any-features?)
-    (contains? (token-features) (name feature))))
+  (contains? (token-features) (name feature)))
 
 (defn- default-premium-feature-getter [feature]
   (fn []
@@ -234,6 +217,13 @@
   "Should we enable official Collections, Question verifications (and more in the future, like workflows, forking,
   etc.)?"
   :content-management)
+
+(defsetting is-hosted?
+  "Is the Metabase instance running in the cloud?"
+  :type       :boolean
+  :visibility :public
+  :setter     :none
+  :getter     (fn [] (boolean ((token-features) "hosting"))))
 
 ;; `enhancements` are not currently a specific "feature" that EE tokens can have or not have. Instead, it's a
 ;; catch-all term for various bits of EE functionality that we assume all EE licenses include. (This may change in the

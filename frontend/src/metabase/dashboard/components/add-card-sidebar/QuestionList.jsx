@@ -7,6 +7,7 @@ import { PLUGIN_MODERATION } from "metabase/plugins";
 import EmptyState from "metabase/components/EmptyState";
 import Search from "metabase/entities/search";
 import { SelectList } from "metabase/components/select-list";
+import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
 
 import { EmptyStateContainer, QuestionListItem } from "./QuestionList.styled";
 
@@ -16,8 +17,6 @@ QuestionList.propTypes = {
   onSelect: PropTypes.func.isRequired,
   hasCollections: PropTypes.bool,
 };
-
-const SEARCH_LIMIT = 1000;
 
 export function QuestionList({
   searchText,
@@ -39,7 +38,7 @@ export function QuestionList({
   query = {
     ...query,
     models: "card",
-    limit: SEARCH_LIMIT,
+    limit: DEFAULT_SEARCH_LIMIT,
   };
 
   return (

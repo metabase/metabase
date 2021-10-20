@@ -209,8 +209,7 @@
      :subprotocol                   "redshift"
      :subname                       (str "//" host ":" port "/" db)
      :ssl                           true
-     :OpenSourceSubProtocolOverride false
-     :additional-options            (str "defaultRowFetchSize=" (pubset/redshift-fetch-size))}
+     :OpenSourceSubProtocolOverride false}
     (dissoc opts :host :port :db))))
 
 (prefer-method

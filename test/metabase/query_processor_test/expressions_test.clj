@@ -99,8 +99,7 @@
                                         oneplusone   [:+ 1 1]}
                           :fields      [$price [:expression oneplusone]]
                           :order-by    [[:asc $id]]
-                          :limit       3})
-          ]
+                          :limit       3})]
       (testing "If an explicit `:fields` clause is present, expressions *not* in that clause should not come back"
         (is (= [[3 2] [2 2] [2 2]]
                (mt/formatted-rows [int int]
@@ -372,9 +371,21 @@
                                                [:field "max" {:base-type :type/Number}]
                                                [:field "min" {:base-type :type/Number}]]}})))))))
 
+(deftest expression-with-duplicate-column-name
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+    (testing "Can we use expression with same column name as table (#14267)"
+      (mt/dataset sample-dataset
+        (is (= [["Doohickey2" 42]]
+               (mt/formatted-rows [str int]
+                 (mt/run-mbql-query products
+                   {:expressions {:CATEGORY [:concat $category "2"]}
+                    :breakout    [:expression :CATEGORY]
+                    :aggregation [:count]
+                    :order-by    [[:asc [:expression :CATEGORY]]]
+                    :limit       1}))))))))
+
 (deftest fk-field-and-duplicate-names-test
-  ;; Redshift hangs on sample-dataset -- See #14784
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :expressions :foreign-keys) :redshift)
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :foreign-keys)
     (testing "Expressions with `fk->` fields and duplicate names should work correctly (#14854)"
       (mt/dataset sample-dataset
         (let [results (mt/run-mbql-query orders
@@ -409,3 +420,13 @@
           (is (= [["Red Medicine" "Red" "RedMedicine"]
                   ["Rush Street" "Rush" "RushStreet"]]
                  (mt/formatted-rows [str str str] results))))))))
+
+(deftest expression-name-weird-characters-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+    (testing "An expression whose name contains weird characters works properly"
+      (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 -3]]
+             (mt/formatted-rows [int str int 4.0 4.0 int int]
+               (mt/run-mbql-query venues
+                 {:expressions {(keyword "Refund Amount (?)") [:* $price -1]}
+                  :limit       1
+                  :order-by    [[:asc $id]]})))))))

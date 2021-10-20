@@ -41,7 +41,7 @@
 
 (defmethod tx/dbdef->connection-details :oracle [& _] @connection-details)
 
-(defmethod tx/sorts-nil-first? :oracle [_] false)
+(defmethod tx/sorts-nil-first? :oracle [_ _] false)
 
 (doseq [[base-type sql-type] {:type/BigInteger             "NUMBER(*,0)"
                               :type/Boolean                "NUMBER(1)"

@@ -92,7 +92,9 @@
           :when        f]
     (assert (fn? f))
     (testing (format "sent to %s channel" channel-type)
-      (mt/with-temp* [Card          [{card-id :id} (merge {:name card-name} card)]]
+      (mt/with-temp* [Card          [{card-id :id} (merge {:name    card-name
+                                                           :display :line}
+                                                          card)]]
         (with-pulse-for-card [{pulse-id :id}
                               {:card       card-id
                                :pulse      pulse
@@ -174,9 +176,10 @@
      :slack
      (fn [{:keys [card-id]} [pulse-results]]
        (is (= {:channel-id "#general"
-               :message    "Pulse: Pulse Name"
                :attachments
-               [{:title           card-name
+               [{:blocks [{:type "header", :text {:type "plain_text", :text "Pulse: Pulse Name", :emoji true}}
+                          {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
+                {:title           card-name
                  :rendered-info   {:attachments false
                                    :content     true}
                  :title_link      (str "https://metabase.com/testmb/question/" card-id)
@@ -214,9 +217,11 @@
         (testing "\"more results in attachment\" text should not be present for Slack Pulses"
           (testing "Pulse results"
             (is (= {:channel-id "#general"
-                    :message    "Pulse: Pulse Name"
                     :attachments
-                    [{:title           card-name
+                    [{:blocks
+                       [{:type "header", :text {:type "plain_text", :text "Pulse: Pulse Name", :emoji true}}
+                        {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
+                     {:title           card-name
                       :rendered-info   {:attachments false
                                         :content     true}
                       :title_link      (str "https://metabase.com/testmb/question/" card-id)
@@ -377,7 +382,8 @@
       :fixture
       (fn [{:keys [pulse-id]} thunk]
         (mt/with-temp* [Card [{card-id-2 :id} (assoc (checkins-query-card {:breakout [!month.date]})
-                                                     :name "card 2")]
+                                                     :name "card 2"
+                                                     :display :line)]
                         PulseCard [_ {:pulse_id pulse-id
                                       :card_id  card-id-2
                                       :position 1}]]
@@ -419,7 +425,7 @@
        {:email
         (fn [_ _]
           (is (= (rasta-alert-email
-                  "Metabase alert: Test card has results"
+                  "Alert: Test card has results"
                   [(assoc test-card-result "More results have been included" false)
                    png-attachment png-attachment])
                  (mt/summarize-multipart-email test-card-regex #"More results have been included"))))
@@ -427,8 +433,8 @@
         :slack
         (fn [{:keys [card-id]} [result]]
           (is (= {:channel-id  "#general",
-                  :message     "Alert: Test card",
-                  :attachments [{:title                  card-name
+                  :attachments [{:blocks [{:type "header", :text {:type "plain_text", :text "🔔 Test card", :emoji true}}]}
+                                {:title                  card-name
                                  :rendered-info          {:attachments false
                                                           :content     true}
                                  :title_link             (str "https://metabase.com/testmb/question/" card-id)
@@ -436,7 +442,7 @@
                                  :channel-id             "FOO"
                                  :fallback               card-name}]}
                  (thunk->boolean result)))
-          (is (every? produces-bytes? (:attachments result))))}}
+          (is (every? produces-bytes? (rest (:attachments result)))))}}
 
       "with no data"
       {:card
@@ -455,7 +461,7 @@
        :assert
        {:email
         (fn [_ _]
-          (is (= (rasta-alert-email "Metabase alert: Test card has results"
+          (is (= (rasta-alert-email "Alert: Test card has results"
                                     [(merge test-card-result
                                             {"More results have been included" true
                                              "ID</th>"                         true})
@@ -472,7 +478,7 @@
        :assert
        {:email
         (fn [_ _]
-          (is (= (rasta-alert-email "Metabase alert: Test card has results"
+          (is (= (rasta-alert-email "Alert: Test card has results"
                                     [test-card-result png-attachment png-attachment csv-attachment xls-attachment])
                  (mt/summarize-multipart-email test-card-regex))))}})))
 
@@ -485,7 +491,7 @@
      :assert
      {:email
       (fn [{:keys [pulse-id]} _]
-        (is (= (rasta-alert-email "Metabase alert: Test card has results"
+        (is (= (rasta-alert-email "Alert: Test card has results"
                                   [;(assoc test-card-result "stop sending you alerts" true)
                                    test-card-result
                                    png-attachment
@@ -524,7 +530,7 @@
        :assert
        {:email
         (fn [_ _]
-          (is (= (rasta-alert-email "Metabase alert: Test card has reached its goal"
+          (is (= (rasta-alert-email "Alert: Test card has reached its goal"
                                     [test-card-result png-attachment png-attachment])
                  (mt/summarize-multipart-email test-card-regex))))}}
 
@@ -550,7 +556,7 @@
        :assert
        {:email
         (fn [_ _]
-          (is (= (rasta-alert-email "Metabase alert: Test card has reached its goal"
+          (is (= (rasta-alert-email "Alert: Test card has reached its goal"
                                     [test-card-result png-attachment])
                  (mt/summarize-multipart-email test-card-regex))))}})))
 
@@ -569,7 +575,7 @@
        :assert
        {:email
         (fn [_ _]
-          (is (= (rasta-alert-email "Metabase alert: Test card has gone below its goal"
+          (is (= (rasta-alert-email "Alert: Test card has gone below its goal"
                                     [test-card-result png-attachment png-attachment])
                  (mt/summarize-multipart-email test-card-regex))))}}
 
@@ -593,7 +599,7 @@
        :assert
        {:email
         (fn [_ _]
-          (is (= (rasta-alert-email "Metabase alert: Test card has gone below its goal"
+          (is (= (rasta-alert-email "Alert: Test card has gone below its goal"
                                     [test-card-result png-attachment])
                  (mt/summarize-multipart-email test-card-regex))))}})))
 
@@ -615,7 +621,7 @@
                                                                    :alert_above_goal true}}]
         (email-test-setup
          (pulse/send-pulse! (models.pulse/retrieve-notification pulse-id))
-         (is (= (rasta-alert-email "Metabase alert: Test card has reached its goal"
+         (is (= (rasta-alert-email "Alert: Test card has reached its goal"
                                    [test-card-result png-attachment png-attachment])
                 (mt/summarize-multipart-email test-card-regex))))))))
 
@@ -639,9 +645,11 @@
       (slack-test-setup
        (let [[slack-data] (pulse/send-pulse! (models.pulse/retrieve-pulse pulse-id))]
          (is (= {:channel-id "#general",
-                 :message    "Pulse: Pulse Name",
                  :attachments
-                 [{:title                  card-name,
+                 [{:blocks
+                   [{:type "header", :text {:type "plain_text", :text "Pulse: Pulse Name", :emoji true}}
+                    {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
+                  {:title                  card-name,
                    :rendered-info          {:attachments false
                                             :content     true}
                    :title_link             (str "https://metabase.com/testmb/question/" card-id-1),
@@ -657,7 +665,7 @@
                    :fallback               "Test card 2"}]}
                 (thunk->boolean slack-data)))
          (testing "attachments"
-           (is (true? (every? produces-bytes? (:attachments slack-data))))))))))
+           (is (true? (every? produces-bytes? (rest (:attachments slack-data)))))))))))
 
 (deftest create-and-upload-slack-attachments!-test
   (let [slack-uploader (fn [storage]
@@ -714,8 +722,10 @@
                  slack-data (m/find-first #(contains? % :channel-id) pulse-data)
                  email-data (m/find-first #(contains? % :subject) pulse-data)]
              (is (= {:channel-id  "#general"
-                     :message     "Pulse: Pulse Name"
-                     :attachments [{:title           card-name
+                     :attachments [{:blocks
+                                    [{:type "header", :text {:type "plain_text", :text "Pulse: Pulse Name", :emoji true}}
+                                     {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
+                                   {:title           card-name
                                     :title_link      (str "https://metabase.com/testmb/question/" card-id)
                                     :rendered-info   {:attachments false
                                                       :content     true}
@@ -724,7 +734,7 @@
                                     :fallback        card-name}]}
                     (thunk->boolean slack-data)))
              (is (= [true]
-                    (map (comp some? :content :rendered-info) (:attachments slack-data))))
+                    (map (comp some? :content :rendered-info) (rest (:attachments slack-data)))))
              (is (= {:subject "Pulse: Pulse Name", :recipients ["rasta@metabase.com"], :message-type :attachments}
                     (select-keys email-data [:subject :recipients :message-type])))
              (is (= 3

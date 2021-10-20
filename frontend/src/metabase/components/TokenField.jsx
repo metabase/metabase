@@ -8,6 +8,7 @@ import cx from "classnames";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
+import { TokenFieldAddon, TokenFieldItem } from "./TokenField.styled";
 
 import {
   KEYCODE_ESCAPE,
@@ -50,6 +51,7 @@ type Props = {
   style: { [key: string]: string | number },
   color: string,
 
+  idKey: string | number | (() => string),
   valueKey: string | number | (() => any),
   labelKey: string | number | (() => string),
 
@@ -61,7 +63,8 @@ type Props = {
   onFocus?: () => void,
   onBlur?: () => void,
 
-  updateOnInputChange: boolean,
+  validateValue: (value: Value) => boolean,
+  updateOnInputChange?: boolean,
   updateOnInputBlur?: boolean,
   // if provided, parseFreeformValue parses the input string into a value,
   // or returns null to indicate an invalid value
@@ -120,6 +123,7 @@ export default class TokenField extends Component {
     valueRenderer: value => <span>{value}</span>,
     optionRenderer: option => <span>{option}</span>,
     layoutRenderer: props => <DefaultTokenFieldLayout {...props} />,
+    validateValue: () => true,
 
     color: "brand",
 
@@ -150,6 +154,18 @@ export default class TokenField extends Component {
     this.setInputValue("", clearSearchValue);
   }
 
+  _id(value: Value) {
+    const { idKey } = this.props;
+
+    if (typeof idKey === "function") {
+      return idKey(value);
+    } else if (typeof idKey === "string") {
+      return value[idKey];
+    } else {
+      return value;
+    }
+  }
+
   _value(option: Option) {
     const { valueKey } = this.props;
     return typeof valueKey === "function" ? valueKey(option) : option[valueKey];
@@ -177,7 +193,9 @@ export default class TokenField extends Component {
   _updateFilteredValues = (props: Props) => {
     let { options = [], value, removeSelected, filterOption } = props;
     let { searchValue, selectedOptionValue } = this.state;
-    const selectedValues = new Set(value.map(v => JSON.stringify(v)));
+    const selectedValueIds = new Set(
+      value.map(v => JSON.stringify(this._id(v))),
+    );
 
     if (!filterOption) {
       filterOption = (option, searchValue) =>
@@ -186,8 +204,8 @@ export default class TokenField extends Component {
 
     let selectedCount = 0;
     const filteredOptions = options.filter(option => {
-      const isSelected = selectedValues.has(
-        JSON.stringify(this._value(option)),
+      const isSelected = selectedValueIds.has(
+        JSON.stringify(this._id(this._value(option))),
       );
       const isLastFreeform =
         this._isLastFreeformValue(this._value(option)) &&
@@ -488,6 +506,7 @@ export default class TokenField extends Component {
       placeholder,
       multi,
 
+      validateValue,
       parseFreeformValue,
       updateOnInputChange,
 
@@ -553,11 +572,7 @@ export default class TokenField extends Component {
         onMouseDownCapture={this.onMouseDownCapture}
       >
         {value.map((v, index) => (
-          <li
-            key={index}
-            className={cx("flex align-center mr1 mb1 px1 rounded bg-medium")}
-            style={{ paddingTop: "12px", paddingBottom: "12px" }}
-          >
+          <TokenFieldItem key={index} isValid={validateValue(v)}>
             <span
               style={{ ...defaultStyleValue, ...valueStyle }}
               className={multi ? "pl1 pr0" : "px1"}
@@ -565,8 +580,8 @@ export default class TokenField extends Component {
               {valueRenderer(v)}
             </span>
             {multi && (
-              <a
-                className="text-medium flex align-center text-error-hover px1"
+              <TokenFieldAddon
+                isValid={validateValue(v)}
                 onClick={e => {
                   e.preventDefault();
                   this.removeValue(v);
@@ -574,9 +589,9 @@ export default class TokenField extends Component {
                 onMouseDown={e => e.preventDefault()}
               >
                 <Icon name="close" className="flex align-center" size={12} />
-              </a>
+              </TokenFieldAddon>
             )}
-          </li>
+          </TokenFieldItem>
         ))}
         <li className={cx("flex-full flex align-center mr1 mb1 p1")}>
           <input

@@ -648,43 +648,45 @@ export default class NativeQueryEditor extends Component {
               closeModal={this.props.closeSnippetModal}
             />
           )}
-          <div className="flex flex-column align-center">
-            <DataReferenceButton
-              {...this.props}
-              size={ICON_SIZE}
-              className="mt3"
-            />
-            <NativeVariablesButton
-              {...this.props}
-              size={ICON_SIZE}
-              className="mt3"
-            />
-            {showSnippetSidebarButton && (
-              <SnippetSidebarButton
+          {!readOnly && (
+            <div className="flex flex-column align-center">
+              <DataReferenceButton
                 {...this.props}
                 size={ICON_SIZE}
                 className="mt3"
               />
-            )}
-            <RunButtonWithTooltip
-              disabled={!isRunnable}
-              isRunning={isRunning}
-              isDirty={isResultDirty}
-              isPreviewing={isPreviewing}
-              onRun={this.runQuery}
-              onCancel={() => cancelQuery()}
-              compact
-              className="mx2 mb2 mt-auto"
-              style={{ width: 40, height: 40 }}
-              getTooltip={() =>
-                (this.props.nativeEditorSelectedText
-                  ? t`Run selected text`
-                  : t`Run query`) +
-                " " +
-                (isMac() ? t`(⌘ + enter)` : t`(Ctrl + enter)`)
-              }
-            />
-          </div>
+              <NativeVariablesButton
+                {...this.props}
+                size={ICON_SIZE}
+                className="mt3"
+              />
+              {showSnippetSidebarButton && (
+                <SnippetSidebarButton
+                  {...this.props}
+                  size={ICON_SIZE}
+                  className="mt3"
+                />
+              )}
+              <RunButtonWithTooltip
+                disabled={!isRunnable}
+                isRunning={isRunning}
+                isDirty={isResultDirty}
+                isPreviewing={isPreviewing}
+                onRun={this.runQuery}
+                onCancel={() => cancelQuery()}
+                compact
+                className="mx2 mb2 mt-auto"
+                style={{ width: 40, height: 40 }}
+                getTooltip={() =>
+                  (this.props.nativeEditorSelectedText
+                    ? t`Run selected text`
+                    : t`Run query`) +
+                  " " +
+                  (isMac() ? t`(⌘ + enter)` : t`(Ctrl + enter)`)
+                }
+              />
+            </div>
+          )}
         </ResizableBox>
       </div>
     );

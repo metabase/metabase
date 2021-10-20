@@ -16,8 +16,6 @@ const {
   ORDERS_ID,
   PRODUCTS,
   PRODUCTS_ID,
-  PEOPLE,
-  PEOPLE_ID,
   REVIEWS,
   REVIEWS_ID,
 } = SAMPLE_DATASET;
@@ -508,7 +506,7 @@ describe("scenarios > question > filter", () => {
       .and("not.eq", transparent);
   });
 
-  it.skip("should provide accurate auto-complete custom-expression suggestions based on the aggregated column name (metabase#14776)", () => {
+  it("should provide accurate auto-complete custom-expression suggestions based on the aggregated column name (metabase#14776)", () => {
     cy.viewport(1400, 1000); // We need a bit taller window for this repro to see all custom filter options in the popover
     cy.createQuestion({
       name: "14776",
@@ -531,26 +529,6 @@ describe("scenarios > question > filter", () => {
       .click()
       .type("m");
     popover().contains(/Sum of Total/i);
-  });
-
-  it("should correctly filter custom column by 'Not equal to' (metabase#14843)", () => {
-    const CC_NAME = "City Length";
-
-    cy.server();
-    cy.route("POST", "/api/card/*/query").as("cardQuery");
-
-    cy.createQuestion({
-      name: "14843",
-      query: {
-        "source-table": PEOPLE_ID,
-        expressions: { [CC_NAME]: ["length", ["field", PEOPLE.CITY, null]] },
-        filter: ["!=", ["expression", CC_NAME], 3],
-      },
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.visit(`/question/${QUESTION_ID}`);
-    });
-    cy.wait("@cardQuery");
-    cy.findByText("Rye").should("not.exist");
   });
 
   it("should filter using IsNull() and IsEmpty()", () => {
@@ -651,7 +629,7 @@ describe("scenarios > question > filter", () => {
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
     cy.get("[contenteditable='true']").contains(
-      'NOT contains([Title], "Wallet")',
+      'NOT contains([Title], "Wallet", "case-insensitive")',
     );
   });
 
@@ -679,7 +657,7 @@ describe("scenarios > question > filter", () => {
     cy.get("[contenteditable='true']");
   });
 
-  it.skip("should be able to convert case-insensitive filter to custom expression (metabase#14959)", () => {
+  it("should be able to convert case-insensitive filter to custom expression (metabase#14959)", () => {
     cy.server();
     cy.route("POST", "/api/dataset").as("dataset");
 
@@ -705,10 +683,10 @@ describe("scenarios > question > filter", () => {
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
     cy.get("[contenteditable='true']").contains(
-      'contains([Reviewer], "MULLER")',
+      'contains([Reviewer], "MULLER", "case-insensitive")',
     );
     cy.button("Done").click();
-    cy.wait("@dataset.2").then(xhr => {
+    cy.wait("@dataset").then(xhr => {
       expect(xhr.response.body.data.rows).to.have.lengthOf(1);
     });
     cy.findByText("wilma-muller");
@@ -790,7 +768,7 @@ describe("scenarios > question > filter", () => {
     cy.button("Done").should("not.be.disabled");
   });
 
-  it.skip("custom expression filter should work with numeric value before an operator (metabase#15893)", () => {
+  it("custom expression filter should refuse to work with numeric value before an operator (metabase#15893)", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
     openOrdersTable({ mode: "notebook" });
@@ -799,11 +777,7 @@ describe("scenarios > question > filter", () => {
     cy.get("[contenteditable=true]")
       .type("0 < [ID]")
       .blur();
-    cy.button("Done").click();
-    cy.button("Visualize").click();
-    cy.wait("@dataset").then(xhr => {
-      expect(xhr.response.body.error).to.not.exist;
-    });
+    cy.findByText("Expecting field but found 0");
   });
 
   it.skip("should work on twice summarized questions (metabase#15620)", () => {
@@ -848,7 +822,7 @@ describe("scenarios > question > filter", () => {
     cy.button("Add filter").isVisibleInPopover();
   });
 
-  it.skip("shoud retain all data series after saving a question where custom expression formula is the first metric (metabase#15882)", () => {
+  it("shoud retain all data series after saving a question where custom expression formula is the first metric (metabase#15882)", () => {
     visitQuestionAdhoc({
       dataset_query: {
         database: 1,
@@ -884,7 +858,7 @@ describe("scenarios > question > filter", () => {
     cy.get(".line").should("have.length", 3);
 
     function assertOnLegendLabels() {
-      cy.get(".Card-title")
+      cy.findAllByTestId("legend-item")
         .should("contain", "Discount %")
         .and("contain", "Count")
         .and("contain", "Average of Total");

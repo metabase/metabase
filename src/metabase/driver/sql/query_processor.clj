@@ -181,18 +181,36 @@
   [_ field]
   (apply hsql/qualify (field/qualified-name-components field)))
 
+(defmulti ^String escape-alias
+  "Return the String that should be emitted in the query for the given `alias-name`, which will follow the `AS` clause.
+  This is to allow for escaping names that particular databases may not allow as aliases for custom expressions
+  or fields (even when quoted).
+
+  Defaults to identity (i.e. returns `alias-name` unchanged)."
+  {:added "0.41.0" :arglists '([driver alias-name])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod escape-alias :sql
+  [_ alias-name]
+  alias-name)
+
 (defmulti ^String field->alias
   "Return the string alias that should be used to for `field`, an instance of the Field model, i.e. in an `AS` clause.
-  The default implementation calls `:name`, which returns the *unqualified* name of the Field.
+  The default implementation calls `escape-alias` on the field `:name`, which returns the *unqualified* name of the
+  Field.
 
-  Return `nil` to prevent `field` from being aliased."
-  {:arglists '([driver field])}
+  Return `nil` to prevent `field` from being aliased.
+
+  DEPRECATED as of x.41.  This multimethod will be removed in a future release.  Instead, drivers will simply
+  override the `escape-alias` multimethod if they want to influence the alias to be used for a given field name."
+  {:arglists '([driver field]), :deprecated "0.41.0"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defmethod field->alias :sql
-  [_ field]
-  (:name field))
+  [driver field]
+  (escape-alias driver (:name field)))
 
 (defmulti quote-style
   "Return the quoting style that should be used by [HoneySQL](https://github.com/jkk/honeysql) when building a SQL
@@ -631,7 +649,7 @@
 
   ([driver field-clause unique-name-fn]
    (when-let [alias (or (mbql.u/match-one field-clause
-                          [:expression expression-name]          expression-name
+                          [:expression expression-name]          (escape-alias driver expression-name)
                           [:field (field-name :guard string?) _] field-name)
                         (unambiguous-field-alias driver field-clause))]
      (->honeysql driver (hx/identifier :field-alias (unique-name-fn alias))))))
@@ -1046,10 +1064,10 @@
       (apply-top-level-clauses driver honeysql-form inner-query))))
 
 (defn- expressions->subselect
-  [query]
+  [driver query]
   (let [subselect (-> query
                       (select-keys [:joins :source-table :source-query :source-metadata :expressions])
-                      (assoc :fields (-> (mbql.u/match (dissoc query :source-query :joins)
+                      (assoc :fields (-> (mbql.u/match (dissoc query :source-query :joins :expressions)
                                            ;; remove the bucketing/binning operations from the source query -- we'll
                                            ;; do that at the parent level
                                            [:field id-or-name opts]
@@ -1059,7 +1077,7 @@
                                          distinct)))]
     (-> (mbql.u/replace query
           [:expression expression-name]
-          [:field expression-name {:base-type (:base_type (annotate/infer-expression-type &match))}]
+          [:field (escape-alias driver expression-name) {:base-type (:base_type (annotate/infer-expression-type &match))}]
           ;; the outer select should not cast as the cast happens in the inner select
           [:field (field-id :guard int?) field-info]
           [:field field-id (assoc field-info ::outer-select true)])
@@ -1067,14 +1085,14 @@
         (assoc :source-query subselect))))
 
 (defn- preprocess-query
-  [{:keys [expressions] :as query}]
-  (cond-> query
-    expressions expressions->subselect))
+  [driver {:keys [expressions] :as query}]
+  (cond->> query
+    expressions (expressions->subselect driver)))
 
 (defn mbql->honeysql
   "Build the HoneySQL form we will compile to SQL and execute."
   [driver {inner-query :query}]
-  (u/prog1 (apply-clauses driver {} (preprocess-query inner-query))
+  (u/prog1 (apply-clauses driver {} (preprocess-query driver inner-query))
     (when-not i/*disable-qp-logging*
       (log/tracef "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>)))))
 

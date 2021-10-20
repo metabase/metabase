@@ -1,5 +1,4 @@
 import {
-  createNativeQuestion,
   restore,
   openOrdersTable,
   openProductsTable,
@@ -7,6 +6,7 @@ import {
   modal,
   visitQuestionAdhoc,
   interceptPromise,
+  getNotebookStep,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
@@ -107,30 +107,35 @@ describe("scenarios > question > notebook", () => {
     });
   });
 
-  it("should show the correct number of function arguments in a custom expression", () => {
+  it("should append indexes to duplicate custom expression names (metabase#12104)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
     openProductsTable({ mode: "notebook" });
-    cy.findByText("Filter").click();
-    cy.findByText("Custom Expression").click();
-    cy.get("[contenteditable='true']")
-      .click()
-      .clear()
-      .type("contains([Category])", { delay: 50 });
-    cy.button("Done")
-      .should("not.be.disabled")
-      .click();
-    cy.contains(/^Function contains expects 2 arguments/i);
-  });
 
-  it("should show the correct number of CASE arguments in a custom expression", () => {
-    openProductsTable({ mode: "notebook" });
     cy.findByText("Custom column").click();
-    popover().within(() => {
-      cy.get("[contenteditable='true']").type("CASE([Price]>0)");
-      cy.findByPlaceholderText("Something nice and descriptive")
-        .click()
-        .type("Sum Divide");
-      cy.contains(/^CASE expects 2 arguments or more/i);
+    addSimpleCustomColumn("EXPR");
+
+    getNotebookStep("expression").within(() => {
+      cy.icon("add").click();
     });
+    addSimpleCustomColumn("EXPR");
+
+    getNotebookStep("expression").within(() => {
+      cy.icon("add").click();
+    });
+    addSimpleCustomColumn("EXPR");
+
+    getNotebookStep("expression").within(() => {
+      cy.findByText("EXPR");
+      cy.findByText("EXPR (1)");
+      cy.findByText("EXPR (2)");
+    });
+
+    cy.button("Visualize").click();
+    cy.wait("@dataset");
+
+    cy.findByText("EXPR");
+    cy.findByText("EXPR (1)");
+    cy.findByText("EXPR (2)");
   });
 
   it("should process the updated expression when pressing Enter", () => {
@@ -261,8 +266,15 @@ describe("scenarios > question > notebook", () => {
 
     it("should join on field literals", () => {
       // create two native questions
-      createNativeQuestion("question a", "select 'foo' as a_column");
-      createNativeQuestion("question b", "select 'foo' as b_column");
+      cy.createNativeQuestion({
+        name: "question a",
+        native: { query: "select 'foo' as a_column" },
+      });
+
+      cy.createNativeQuestion({
+        name: "question b",
+        native: { query: "select 'foo' as b_column" },
+      });
 
       // start a custom question with question a
       cy.visit("/question/new");
@@ -821,156 +833,6 @@ describe("scenarios > question > notebook", () => {
       });
     });
   });
-
-  describe("error feedback", () => {
-    it("should catch mismatched parentheses", () => {
-      openProductsTable({ mode: "notebook" });
-      cy.findByText("Custom column").click();
-      popover().within(() => {
-        cy.get("[contenteditable='true']").type("FLOOR [Price]/2)");
-        cy.findByPlaceholderText("Something nice and descriptive")
-          .click()
-          .type("Massive Discount");
-        cy.contains(/^Expecting an opening parenthesis after function FLOOR/i);
-      });
-    });
-
-    it("should catch missing parentheses", () => {
-      openProductsTable({ mode: "notebook" });
-      cy.findByText("Custom column").click();
-      popover().within(() => {
-        cy.get("[contenteditable='true']").type("LOWER [Vendor]");
-        cy.findByPlaceholderText("Something nice and descriptive")
-          .click()
-          .type("Massive Discount");
-        cy.contains(/^Expecting an opening parenthesis after function LOWER/i);
-      });
-    });
-
-    it("should catch invalid characters", () => {
-      openProductsTable({ mode: "notebook" });
-      cy.findByText("Custom column").click();
-      popover().within(() => {
-        cy.get("[contenteditable='true']").type("[Price] / #");
-        cy.findByPlaceholderText("Something nice and descriptive")
-          .click()
-          .type("Massive Discount");
-        cy.contains(/^Invalid character: #/i);
-      });
-    });
-
-    it("should catch unterminated string literals", () => {
-      openProductsTable({ mode: "notebook" });
-      cy.findByText("Filter").click();
-      cy.findByText("Custom Expression").click();
-      cy.get("[contenteditable='true']")
-        .click()
-        .clear()
-        .type('[Category] = "widget', { delay: 50 });
-      cy.button("Done")
-        .should("not.be.disabled")
-        .click();
-      cy.findByText("Missing closing quotes");
-    });
-
-    it("should catch unterminated field reference", () => {
-      openProductsTable({ mode: "notebook" });
-      cy.findByText("Custom column").click();
-      popover().within(() => {
-        cy.get("[contenteditable='true']").type("[Price / 2");
-        cy.findByPlaceholderText("Something nice and descriptive")
-          .click()
-          .type("Massive Discount");
-        cy.contains(/^Missing a closing bracket/i);
-      });
-    });
-
-    it("should catch non-existent field reference", () => {
-      openProductsTable({ mode: "notebook" });
-      cy.findByText("Custom column").click();
-      popover().within(() => {
-        cy.get("[contenteditable='true']").type("abcdef");
-        cy.findByPlaceholderText("Something nice and descriptive")
-          .click()
-          .type("Non-existent");
-        cy.contains(/^Unknown Field: abcdef/i);
-      });
-    });
-  });
-
-  describe("typing suggestion", () => {
-    it("should not suggest arithmetic operators", () => {
-      openProductsTable({ mode: "notebook" });
-      cy.findByText("Custom column").click();
-      cy.get("[contenteditable='true']").type("[Price] ");
-      cy.contains("/").should("not.exist");
-    });
-
-    it("should correctly accept the chosen field suggestion", () => {
-      openProductsTable({ mode: "notebook" });
-      cy.findByText("Custom column").click();
-      cy.get("[contenteditable='true']").type(
-        "[Rating]{leftarrow}{leftarrow}{leftarrow}",
-      );
-
-      // accept the only suggested item, i.e. "[Rating]"
-      cy.get("[contenteditable='true']").type("{enter}");
-
-      // if the replacement is correct -> "[Rating]"
-      // if the replacement is wrong -> "[Rating] ng"
-      cy.get("[contenteditable='true']")
-        .contains("[Rating] ng")
-        .should("not.exist");
-    });
-
-    it("should correctly accept the chosen function suggestion", () => {
-      openProductsTable({ mode: "notebook" });
-      cy.findByText("Custom column").click();
-      cy.get("[contenteditable='true']").type("LTRIM([Title])");
-
-      // Place the cursor between "is" and "empty"
-      cy.get("[contenteditable='true']").type(
-        Array(13)
-          .fill("{leftarrow}")
-          .join(""),
-      );
-
-      // accept the first suggested function, i.e. "length"
-      cy.get("[contenteditable='true']").type("{enter}");
-
-      cy.get("[contenteditable='true']").contains("length([Title])");
-    });
-  });
-
-  describe("help text", () => {
-    it("should appear while inside a function", () => {
-      openProductsTable({ mode: "notebook" });
-      cy.findByText("Custom column").click();
-      cy.get("[contenteditable='true']").type("Lower(");
-      cy.findByText("lower(text)");
-    });
-
-    it("should not appear while outside a function", () => {
-      openProductsTable({ mode: "notebook" });
-      cy.findByText("Custom column").click();
-      cy.get("[contenteditable='true']").type("Lower([Category])");
-      cy.findByText("lower(text)").should("not.exist");
-    });
-
-    it("should appear after a field reference", () => {
-      openProductsTable({ mode: "notebook" });
-      cy.findByText("Custom column").click();
-      cy.get("[contenteditable='true']").type("Lower([Category]");
-      cy.findByText("lower(text)");
-    });
-  });
-
-  it("should correctly insert function suggestion with the opening parenthesis", () => {
-    openProductsTable({ mode: "notebook" });
-    cy.findByText("Custom column").click();
-    cy.get("[contenteditable='true']").type("LOW{enter}");
-    cy.get("[contenteditable='true']").contains("lower(");
-  });
 });
 
 // Extracted repro steps for #13000
@@ -1021,4 +883,14 @@ function joinTwoSavedQuestions() {
       cy.url().should("contain", "/notebook");
     });
   });
+}
+
+function addSimpleCustomColumn(name) {
+  popover()
+    .findByText("Category")
+    .click();
+  cy.findByPlaceholderText("Something nice and descriptive")
+    .click()
+    .type(name);
+  cy.button("Done").click();
 }

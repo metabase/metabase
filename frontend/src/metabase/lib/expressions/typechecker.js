@@ -3,6 +3,8 @@ import { ngettext, msgid, t } from "ttag";
 import { ExpressionVisitor } from "./visitor";
 import { CLAUSE_TOKENS } from "./lexer";
 
+import { MBQL_CLAUSES, getMBQLName } from "./config";
+
 export function typeCheck(cst, rootType) {
   class TypeChecker extends ExpressionVisitor {
     constructor() {
@@ -30,9 +32,19 @@ export function typeCheck(cst, rootType) {
       return result;
     }
     relationalExpression(ctx) {
-      this.typeStack.unshift("expression");
+      this.typeStack.unshift("number");
       const result = super.relationalExpression(ctx);
       this.typeStack.shift();
+
+      // backward-compatibility: literal on the left-hand side isn't allowed (MBQL limitation)
+      if (ctx.operands.length > 1) {
+        const lhs = ctx.operands[0];
+        if (lhs.name === "numberLiteral") {
+          const literal = getIn(lhs, ["children", "NumberLiteral", 0, "image"]);
+          const message = t`Expecting field but found ${literal}`;
+          this.errors.push({ message });
+        }
+      }
       return result;
     }
 
@@ -60,15 +72,33 @@ export function typeCheck(cst, rootType) {
       const functionToken = ctx.functionName[0].tokenType;
       const clause = CLAUSE_TOKENS.get(functionToken);
       const name = functionToken.name;
-      const expectedArgsLength = clause.args.length;
-      if (!clause.multiple && clause.args.length !== args.length) {
-        const message = ngettext(
-          msgid`Function ${name} expects ${expectedArgsLength} argument`,
-          `Function ${name} expects ${expectedArgsLength} arguments`,
-          expectedArgsLength,
-        );
-        this.errors.push({ message });
-      } else {
+
+      // check for return value sub-type mismatch
+      const type = this.typeStack[0];
+      if (type === "number") {
+        const op = getMBQLName(name);
+        const returnType = MBQL_CLAUSES[op].type;
+        if (returnType !== "number" && returnType !== "string") {
+          const message = t`Expecting ${type} but found function ${name} returning ${returnType}`;
+          this.errors.push({ message });
+        }
+      }
+
+      if (!clause.multiple) {
+        const expectedArgsLength = clause.args.length;
+        const maxArgCount = clause.hasOptions
+          ? expectedArgsLength + 1
+          : expectedArgsLength;
+        if (args.length < expectedArgsLength || args.length > maxArgCount) {
+          const message = ngettext(
+            msgid`Function ${name} expects ${expectedArgsLength} argument`,
+            `Function ${name} expects ${expectedArgsLength} arguments`,
+            expectedArgsLength,
+          );
+          this.errors.push({ message });
+        }
+
+        // check for argument type matching
         return args.map((arg, index) => {
           const argType = clause.args[index];
           const genericType =

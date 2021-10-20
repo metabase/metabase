@@ -173,8 +173,26 @@ describe("type-checker", () => {
     it("should catch mismatched number of function parameters", () => {
       expect(() => validate("CONTAINS()")).toThrow();
       expect(() => validate("CONTAINS([Name])")).toThrow();
-      expect(() => validate("CONTAINS([Type],'X','Y')")).toThrow();
-      expect(() => validate("CONTAINS([Type],'P','Q','R')")).toThrow();
+      expect(() => validate("CONTAINS([Type],'A','B','C')")).toThrow();
+      expect(() => validate("StartsWith()")).toThrow();
+      expect(() => validate("StartsWith([Name])")).toThrow();
+      expect(() => validate("StartsWith([Type],'P','Q','R')")).toThrow();
+      expect(() => validate("EndsWith()")).toThrow();
+      expect(() => validate("EndsWith([Name])")).toThrow();
+      expect(() => validate("EndsWith([Type],'X','Y','Z')")).toThrow();
+    });
+
+    it("should allow a comparison (lexicographically) on strings", () => {
+      expect(() => validate("'A' <= 'B'")).not.toThrow();
+    });
+
+    it("should allow a comparison (lexicographically) on functions returning string", () => {
+      expect(() => validate("Lower([State]) > 'AB'")).not.toThrow();
+    });
+
+    it("should reject a less/greater comparison on functions returning boolean", () => {
+      expect(() => validate("IsEmpty([Tax]) < 5")).toThrow();
+      expect(() => validate("IsEmpty([Tax]) >= 0")).toThrow();
     });
   });
 

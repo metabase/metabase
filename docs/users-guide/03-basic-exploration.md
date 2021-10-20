@@ -14,7 +14,7 @@ To learn more, see [Exploring data with Metabase's data browser](https://www.met
 
 #### Exploring collections
 
-Collections in Metabase are a lot like folders. They're where all your team's dashboards and charts are kept. To explore a collection, just click on one in the **Our analytics** section of the home page, or click on `Browse all items` to see everything.
+[Collections][collections] in Metabase are a lot like folders. They're where all your team's dashboards and charts are kept. To explore a collection, just click on one in the **Our analytics** section of the home page, or click on `Browse all items` to see everything.
 
 ![A collection](./images/collection-detail.png)
 
@@ -24,7 +24,7 @@ Collections have a list of any other items that are saved within them, and you c
 
 #### Exploring dashboards
 
-Dashboards are a set of questions and text cards that you want to be able to refer back to regularly. [Learn more about dashboards](07-dashboards.md).
+[Dashboards][dashboards] are a set of questions and text cards that you want to be able to refer back to regularly.
 
 If you click on a part of a chart, such as a bar in a bar chart, or a dot on a line chart, you'll see a the **Action menu**, with actions you can take to dive deeper into that result, branch off from it in a different direction, or create an [X-ray](14-x-rays.md) to see an automatic exploration of the data.
 ![Drill through](images/drill-through/drill-through.png)
@@ -57,8 +57,21 @@ When you're looking at the detail view of a question, you can use all the same a
 
 One of our personal favorite ways to explore is with the **Distribution** option. This will show you how many rows there are in a given table, grouped by the column you clicked on. So if you have a Users table, if you click on an Age column and select Distribution, you'll see a bar chart with the count of users you have in each age bracket.
 
+### Search
+
+![Search results](./images/basic-exploration/search-results.gif)
+
+Use the search bar to find dashboards, questions, collections, and pulses. You can select from the typeahead's dropdown results, or hit enter to view a search results page. You can also activate the search bar from anywhere by pressing the `/` key.
+
+Searches take into account items’ titles, descriptions, and other metadata — you can even search the contents of your SQL queries. For example, you can search for things like `SELECT escape_pod FROM mothership` and find that one question you worked on six months ago. The results will display an item’s description, which collection it’s saved in, what kind of object it is, and whether it’s pinned. Note that you'll only ever see items in collections you have permission to view.
+
+![Search results](./images/basic-exploration/search-results.png)
+
 ---
 
 ## Next: Asking custom questions
 
 So what do you do if you can't find an existing dashboard or question that's exactly what you're looking for? Let's learn about [asking our own new questions](04-asking-questions.md).
+
+[collections]: collections.md
+[dashboards]: 07-dashboards.md

@@ -38,7 +38,7 @@ function QuestionDetailsSidebarPanel({
       <SidebarPaddedContent>
         <QuestionActionButtons canWrite={canWrite} onOpenModal={onOpenModal} />
         <ClampedDescription
-          className="pb2"
+          className="pl1 pb2"
           visibleLines={8}
           description={description}
           onEdit={onDescriptionEdit}

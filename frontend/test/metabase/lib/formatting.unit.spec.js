@@ -2,6 +2,7 @@ import { isElementOfType } from "react-dom/test-utils";
 import moment from "moment-timezone";
 
 import {
+  capitalize,
   formatNumber,
   formatValue,
   formatUrl,
@@ -13,6 +14,31 @@ import ExternalLink from "metabase/components/ExternalLink";
 import { TYPE } from "metabase/lib/types";
 
 describe("formatting", () => {
+  describe("capitalize", () => {
+    it("capitalizes a single word", () => {
+      expect(capitalize("hello")).toBe("Hello");
+    });
+
+    it("capitalizes only the first char of a string", () => {
+      expect(capitalize("hello world")).toBe("Hello world");
+    });
+
+    it("converts a string to lowercase by default", () => {
+      expect(capitalize("heLLo")).toBe("Hello");
+    });
+
+    it("doesn't lowercase the string if option provided", () => {
+      expect(capitalize("hellO WoRlD", { lowercase: false })).toBe(
+        "HellO WoRlD",
+      );
+    });
+
+    it("doesn't break on an empty string", () => {
+      expect(capitalize("")).toBe("");
+      expect(capitalize("", { lowercase: false })).toBe("");
+    });
+  });
+
   describe("formatNumber", () => {
     it("should format 0 correctly", () => {
       expect(formatNumber(0)).toEqual("0");
@@ -281,6 +307,19 @@ describe("formatting", () => {
           },
         }),
       ).toEqual("00:00");
+    });
+    it("should not include time for type/Date type (metabase#7494)", () => {
+      expect(
+        formatValue("2019-07-07T00:00:00.000Z", {
+          date_style: "M/D/YYYY",
+          time_enabled: "minutes",
+          time_style: "HH:mm",
+          column: {
+            base_type: "type/Date",
+            unit: "hour-of-day",
+          },
+        }),
+      ).toEqual("7/7/2019");
     });
   });
 

@@ -1,7 +1,7 @@
 // normalizr schema for use in actions/reducers
 
 import { schema } from "normalizr";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/constants";
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
 
 export const QuestionSchema = new schema.Entity("questions");
 export const DashboardSchema = new schema.Entity("dashboards");
@@ -16,16 +16,23 @@ export const TableSchema = new schema.Entity(
   {
     // convert "schema" returned by API as a string value to an object that can be normalized
     processStrategy({ ...table }) {
-      const databaseId =
-        typeof table.id === "string"
-          ? SAVED_QUESTIONS_VIRTUAL_DB_ID
-          : table.db_id;
+      // Saved questions are represented as database tables,
+      // and collections they're saved to as schemas
+      // Virtual tables ID are strings like "card__45" (where 45 is a question ID)
+      const isVirtualSchema = typeof table.id === "string";
+
+      const databaseId = isVirtualSchema
+        ? SAVED_QUESTIONS_VIRTUAL_DB_ID
+        : table.db_id;
       if (typeof table.schema === "string" || table.schema === null) {
         table.schema_name = table.schema;
         table.schema = {
           id: generateSchemaId(databaseId, table.schema_name),
           name: table.schema_name,
-          database: { id: databaseId },
+          database: {
+            id: databaseId,
+            is_saved_questions: isVirtualSchema,
+          },
         };
       }
       return table;

@@ -7,9 +7,11 @@
             HardLineBreak Heading HtmlBlock HtmlCommentBlock HtmlEntity HtmlInline HtmlInlineBase HtmlInlineComment
             HtmlInnerBlockComment Image ImageRef IndentedCodeBlock Link LinkRef MailLink OrderedList OrderedListItem
             Paragraph Reference SoftLineBreak StrongEmphasis Text ThematicBreak]
-           com.vladsch.flexmark.html.HtmlRenderer
+           [com.vladsch.flexmark.html HtmlRenderer LinkResolver LinkResolverFactory]
+           [com.vladsch.flexmark.html.renderer LinkResolverBasicContext LinkStatus]
            com.vladsch.flexmark.parser.Parser
            [com.vladsch.flexmark.util.ast Document Node]
+           com.vladsch.flexmark.util.data.MutableDataSet
            java.net.URI))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -189,11 +191,14 @@
 (defn- resolve-uri
   "If the provided URI is a relative path, resolve it relative to the site URL so that links work
   correctly in Slack/Email."
-  [uri]
-  (when uri
-    (if-let [site-url (public-settings/site-url)]
-      (.toString (.resolve (new URI ^String site-url) ^String uri))
-      uri)))
+  [^String uri]
+  (letfn [(ensure-slash [s] (when s
+                              (cond-> s
+                                (not (str/ends-with? s "/")) (str "/"))))]
+    (when uri
+      (if-let [^String site-url (ensure-slash (public-settings/site-url))]
+        (.. (URI. site-url) (resolve uri) toString)
+        uri))))
 
 (defn- ast->mrkdwn
   "Takes an AST representing Markdown input, and converts it to a mrkdwn string that will render nicely in Slack.
@@ -300,7 +305,19 @@
 
 (def ^:private renderer
   "An instance of a Flexmark HTML renderer"
-  (delay (.build (HtmlRenderer/builder))))
+  (let [options    (.. (MutableDataSet.)
+                       (set HtmlRenderer/ESCAPE_HTML true)
+                       (toImmutable))
+        lr-factory (reify LinkResolverFactory
+                     (^LinkResolver apply [_this ^LinkResolverBasicContext _context]
+                      (reify LinkResolver
+                        (resolveLink [_this node context link]
+                          (if-let [url (resolve-uri (.getUrl link))]
+                            (.. link
+                                (withStatus LinkStatus/VALID)
+                                (withUrl url))
+                            link)))))]
+    (delay (.build (.linkResolverFactory (HtmlRenderer/builder options) lr-factory)))))
 
 (defmulti process-markdown
   "Converts a markdown string from a virtual card into a form that can be sent to a channel

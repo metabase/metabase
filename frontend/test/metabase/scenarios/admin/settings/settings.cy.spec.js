@@ -359,7 +359,8 @@ describe("scenarios > admin > settings", () => {
       .contains(lastItem);
   });
 
-  it("should hide self-hosted settings when running Metabase Cloud", () => {
+  // Unskip when mocking Cloud in Cypress is fixed (#18289)
+  it.skip("should hide self-hosted settings when running Metabase Cloud", () => {
     setupMetabaseCloud();
     cy.visit("/admin/settings/general");
 
@@ -370,7 +371,8 @@ describe("scenarios > admin > settings", () => {
     cy.findByText("Updates").should("not.exist");
   });
 
-  it("should hide the store link when running Metabase Cloud", () => {
+  // Unskip when mocking Cloud in Cypress is fixed (#18289)
+  it.skip("should hide the store link when running Metabase Cloud", () => {
     setupMetabaseCloud();
     cy.visit("/admin/settings/general");
 
@@ -382,7 +384,7 @@ describe("scenarios > admin > settings", () => {
     it("should present the form and display errors", () => {
       cy.visit("/admin/settings/slack");
       cy.contains("Answers sent right to your Slack");
-      cy.findByPlaceholderText("Enter the token you received from Slack")
+      cy.findByLabelText("Slack API Token")
         .type("not-a-real-token")
         .blur();
       cy.findByText("Save changes").click();
@@ -411,7 +413,8 @@ describeWithToken("scenarios > admin > settings (EE)", () => {
     cy.signInAsAdmin();
   });
 
-  it("should hide Enterprise page when running Metabase Cloud", () => {
+  // Unskip when mocking Cloud in Cypress is fixed (#18289)
+  it.skip("should hide Enterprise page when running Metabase Cloud", () => {
     setupMetabaseCloud();
     cy.visit("/admin/settings/general");
 

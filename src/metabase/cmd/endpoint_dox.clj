@@ -46,7 +46,7 @@
   for use in section tables of contents."
   [ep-name]
   (let [al (-> (str "#" (str/lower-case ep-name))
-               (str/replace #"[/:-_]" "")
+               (str/replace #"[/:%]" "")
                (str/replace " " "-")
                (#(str "(" % ")")))]
     (str "[" ep-name "]" al)))

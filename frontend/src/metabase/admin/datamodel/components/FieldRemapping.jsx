@@ -330,7 +330,7 @@ export class ValueRemappings extends React.Component {
     editingRemappings: new Map(),
   };
 
-  UNSAFE_componentWillMount() {
+  componentDidMount() {
     this._updateEditingRemappings(this.props.remappings);
   }
 

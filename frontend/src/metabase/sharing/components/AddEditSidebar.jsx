@@ -74,12 +74,13 @@ function _AddEditEmailSidebar({
   handleArchive,
   setPulseParameters,
 }) {
+  const isValid = dashboardPulseIsValid(pulse, formInput.channels);
+
   return (
     <Sidebar
+      closeIsDisabled={!isValid}
       onClose={handleSave}
       onCancel={onCancel}
-      className="text-dark"
-      closeIsDisabled={!dashboardPulseIsValid(pulse, formInput.channels)}
     >
       <div className="pt4 px4 flex align-center">
         <Icon name="mail" className="mr1" size={21} />
@@ -97,6 +98,9 @@ function _AddEditEmailSidebar({
             users={users}
             onRecipientsChange={recipients =>
               onChannelPropertyChange("recipients", recipients)
+            }
+            invalidRecipientText={domains =>
+              t`You're only allowed to email subscriptions to addresses ending in ${domains}`
             }
           />
         </div>
@@ -131,7 +135,7 @@ function _AddEditEmailSidebar({
             testPulse={testPulse}
             normalText={t`Send email now`}
             successText={t`Email sent`}
-            disabled={channel.recipients.length === 0}
+            disabled={!isValid}
           />
         </div>
         {PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component ? (
@@ -284,12 +288,13 @@ function _AddEditSlackSidebar({
   handleArchive,
   setPulseParameters,
 }) {
+  const isValid = dashboardPulseIsValid(pulse, formInput.channels);
+
   return (
     <Sidebar
+      closeIsDisabled={!isValid}
       onClose={handleSave}
       onCancel={onCancel}
-      className="text-dark"
-      closeIsDisabled={!dashboardPulseIsValid(pulse, formInput.channels)}
     >
       <div className="pt4 flex align-center px4 mb3">
         <Icon name="slack" className="mr1" size={21} />
@@ -328,7 +333,7 @@ function _AddEditSlackSidebar({
             testPulse={testPulse}
             normalText={t`Send to Slack now`}
             successText={t`Slack sent`}
-            disabled={channel.details.channel === undefined}
+            disabled={!isValid}
           />
         </div>
         {PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component ? (

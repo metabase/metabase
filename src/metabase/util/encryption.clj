@@ -45,18 +45,43 @@
    (trs "For more information, see")
    "https://metabase.com/docs/latest/operations-guide/encrypting-database-details-at-rest.html"))
 
+(defn encrypt-bytes
+  "Encrypt bytes `b` using a `secret-key` (a 64-byte byte array), by default is the hashed value of
+  `MB_ENCRYPTION_SECRET_KEY`."
+  {:added "0.41.0"}
+  (^String [^bytes b]
+   (encrypt-bytes default-secret-key b))
+  (^String [^String secret-key, ^bytes b]
+   (let [initialization-vector (nonce/random-bytes 16)]
+     (->> (crypto/encrypt b
+            secret-key
+            initialization-vector
+            {:algorithm :aes256-cbc-hmac-sha512})
+       (concat initialization-vector)
+       byte-array))))
+
 (defn encrypt
-  "Encrypt string `s` as hex bytes using a `secret-key` (a 64-byte byte array), by default the hashed value of
+  "Encrypt string `s` as hex bytes using a `secret-key` (a 64-byte byte array), which by default is the hashed value of
   `MB_ENCRYPTION_SECRET_KEY`."
   (^String [^String s]
    (encrypt default-secret-key s))
   (^String [^String secret-key, ^String s]
-   (let [initialization-vector (nonce/random-bytes 16)]
-     (codec/base64-encode
-      (byte-array
-       (concat initialization-vector
-               (crypto/encrypt (codecs/to-bytes s) secret-key initialization-vector
-                               {:algorithm :aes256-cbc-hmac-sha512})))))))
+   (->> (codecs/to-bytes s)
+        (encrypt-bytes secret-key)
+        codec/base64-encode)))
+
+(defn decrypt-bytes
+  "Decrypt bytes `b` using a `secret-key` (a 64-byte byte array), which by default is the hashed value of
+  `MB_ENCRYPTION_SECRET_KEY`."
+  {:added "0.41.0"}
+  (^String [^bytes b]
+   (decrypt-bytes default-secret-key b))
+  (^String [secret-key, ^bytes b]
+   (let [[initialization-vector message] (split-at 16 b)]
+     (crypto/decrypt (byte-array message)
+                     secret-key
+                     (byte-array initialization-vector)
+                     {:algorithm :aes256-cbc-hmac-sha512}))))
 
 (defn decrypt
   "Decrypt string `s` using a `secret-key` (a 64-byte byte array), by default the hashed value of
@@ -64,11 +89,7 @@
   (^String [^String s]
    (decrypt default-secret-key s))
   (^String [secret-key, ^String s]
-   (let [bytes                           (codec/base64-decode s)
-         [initialization-vector message] (split-at 16 bytes)]
-     (codecs/bytes->str (crypto/decrypt (byte-array message) secret-key (byte-array initialization-vector)
-                                        {:algorithm :aes256-cbc-hmac-sha512})))))
-
+   (codecs/bytes->str (decrypt-bytes secret-key (codec/base64-decode s)))))
 
 (defn maybe-encrypt
   "If `MB_ENCRYPTION_SECRET_KEY` is set, return an encrypted version of `s`; otherwise return `s` as-is."
@@ -80,23 +101,44 @@
        (encrypt secret-key s))
      s)))
 
+(defn maybe-encrypt-bytes
+  "If `MB_ENCRYPTION_SECRET_KEY` is set, return an encrypted version of the given bytes `b`; otherwise return `b`
+  as-is."
+  {:added "0.41.0"}
+  (^bytes [^bytes b]
+   (maybe-encrypt-bytes default-secret-key b))
+  (^bytes [secret-key, ^bytes b]
+   (if secret-key
+     (when (seq b)
+       (encrypt-bytes secret-key b))
+     b)))
+
 (def ^:private ^:const aes256-tag-length 32)
 (def ^:private ^:const aes256-block-size 16)
 
+(defn possibly-encrypted-bytes?
+  "Returns true if it's likely that `b` is an encrypted byte array.  To compute this, we need the number of bytes in
+  the input, subtract the bytes used by the cipher type tag (`aes256-tag-length`) and what is left should be divisible
+  by the cipher's block size (`aes256-block-size`). If it's not divisible by that number it is either not encrypted or
+  it has been corrupted as it must always have a multiple of the block size or it won't decrypt."
+  [^bytes b]
+  (if (nil? b)
+    false
+    (u/ignore-exceptions
+      (when-let [byte-length (alength b)]
+        (zero? (mod (- byte-length aes256-tag-length)
+                 aes256-block-size))))))
+
 (defn possibly-encrypted-string?
   "Returns true if it's likely that `s` is an encrypted string. Specifically we need `s` to be a non-blank, base64
-  encoded string of the correct length. The correct length is determined by the cipher's type tag and the cipher's
-  block size (AES+CBC). To compute this, we need the number of bytes in the input, subtract the bytes used by the
-  cipher type tag (`aes256-tag-length`) and what is left should be divisible by the cipher's block size
-  (`aes256-block-size`). If it's not divisible by that number it is either not encrypted or it has been corrupted as
-  it must always have a multiple of the block size or it won't decrypt."
-  [s]
+  encoded string of the correct length. See docstring for `possibly-encrypted-bytes?` for an explanation of correct
+  length."
+  [^String s]
   (u/ignore-exceptions
-    (when-let [str-byte-length (and (not (str/blank? s))
-                                    (u/base64-string? s)
-                                    (alength ^bytes (codec/base64-decode s)))]
-      (zero? (mod (- str-byte-length aes256-tag-length)
-                  aes256-block-size)))))
+    (when-let [b (and (not (str/blank? s))
+                      (u/base64-string? s)
+                      (codec/base64-decode s))]
+      (possibly-encrypted-bytes? b))))
 
 (defn maybe-decrypt
   "If `MB_ENCRYPTION_SECRET_KEY` is set and `s` is encrypted, decrypt `s`; otherwise return `s` as-is."

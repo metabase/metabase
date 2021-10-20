@@ -43,7 +43,7 @@ const mapStateToProps = (state, props) => ({
   hasNativeWrite: getHasNativeWrite(state),
 });
 
-import { DefaultSearchColor } from "metabase/nav/constants";
+import { getDefaultSearchColor } from "metabase/nav/constants";
 import StoreLink from "metabase/nav/components/StoreLink";
 
 const mapDispatchToProps = {
@@ -64,6 +64,7 @@ const AdminNavItem = ({ name, path, currentPath }) => (
   </li>
 );
 
+// TODO
 const NavHover = {
   backgroundColor: darken(color("nav")),
   color: "white",
@@ -207,7 +208,7 @@ export default class Navbar extends Component {
             className="relative cursor-pointer z2 rounded flex justify-center transition-background"
             p={1}
             mx={1}
-            hover={{ backgroundColor: DefaultSearchColor }}
+            hover={{ backgroundColor: getDefaultSearchColor() }}
           >
             <Flex
               style={{ minWidth: 32, height: 32 }}
