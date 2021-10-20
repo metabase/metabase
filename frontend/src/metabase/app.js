@@ -36,7 +36,7 @@ import { ThemeProvider } from "styled-components";
 import {
   trackPageView,
   enableDataAttributesTracking,
-  enableTracking,
+  createTracker,
 } from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -96,7 +96,7 @@ function _init(reducers, getRoutes, callback) {
 
   initializeEmbedding(store);
 
-  enableTracking();
+  createTracker();
   enableDataAttributesTracking();
 
   store.dispatch(refreshSiteSettings());
