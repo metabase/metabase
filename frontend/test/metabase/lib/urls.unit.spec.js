@@ -35,6 +35,16 @@ describe("urls", () => {
         );
       });
     });
+
+    describe("question ids", () => {
+      it("returns the correct url", () => {
+        expect(question(null)).toEqual("/question");
+        expect(question({ id: 1 })).toEqual("/question/1");
+        expect(question({ id: 1, card_id: 42, name: "Foo" })).toEqual(
+          "/question/42-foo",
+        );
+      });
+    });
   });
 
   describe("query", () => {
