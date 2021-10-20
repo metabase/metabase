@@ -1,18 +1,25 @@
 import MetabaseSettings from "metabase/lib/settings";
 
 /*global ga*/
+/*global snowplow*/
 
 export const trackPageView = url => {
   if (!url) {
     return;
   }
 
-  const version = MetabaseSettings.get("version");
+  const { tag } = MetabaseSettings.get("version") ?? {};
+  const trackingUrl = getUrlForTracking(url);
 
   if (typeof ga === "function") {
-    ga("set", "dimension1", version?.tag);
-    ga("set", "page", url);
+    ga("set", "dimension1", tag);
+    ga("set", "page", trackingUrl);
     ga("send", "pageview", url);
+  }
+
+  if (typeof snowplow === "function") {
+    snowplow("setCustomUrl", trackingUrl);
+    snowplow("trackPageView");
   }
 };
 
@@ -21,10 +28,10 @@ export const trackStructEvent = (category, action, label, value) => {
     return;
   }
 
-  const version = MetabaseSettings.get("version");
+  const { tag } = MetabaseSettings.get("version") ?? {};
 
   if (typeof ga === "function") {
-    ga("set", "dimension1", version?.tag);
+    ga("set", "dimension1", tag);
     ga("send", "event", category, action, label, value);
   }
 };
@@ -54,4 +61,9 @@ export const handleTrackingDataAttributes = () => {
   };
 
   document.body.addEventListener("click", handleBodyClick, true);
+};
+
+const getUrlForTracking = url => {
+  // scrub query builder urls to remove serialized json queries from path
+  return url.lastIndexOf("/q/", 0) === 0 ? "/q/" : url;
 };
