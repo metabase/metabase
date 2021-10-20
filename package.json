@@ -10,6 +10,7 @@
     "yarn": ">=1.12.3"
   },
   "dependencies": {
+    "@snowplow/browser-tracker": "^3.1.6",
     "@snowplow/javascript-tracker": "^3.1.6",
     "@visx/axis": "1.8.0",
     "@visx/grid": "1.16.0",

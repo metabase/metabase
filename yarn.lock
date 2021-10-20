@@ -2300,7 +2300,7 @@
     tslib "^2.3.0"
     uuid "^3.4.0"
 
-"@snowplow/browser-tracker@3.1.6":
+"@snowplow/browser-tracker@3.1.6", "@snowplow/browser-tracker@^3.1.6":
   version "3.1.6"
   resolved "https://registry.yarnpkg.com/@snowplow/browser-tracker/-/browser-tracker-3.1.6.tgz#f8f41b12c79e9886fda7d10924a6a487112d5cf6"
   integrity sha512-6VY/3cgEvRzE6u52n0OSZR9pSjFzud4cICNIZrH2YVcF8/lCrHKscatBVffALrLShSglSB4FZPG9CtfPCAivow==
