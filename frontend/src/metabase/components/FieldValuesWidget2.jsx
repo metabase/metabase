@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
@@ -21,14 +20,30 @@ import { useAsyncFunction } from "metabase/hooks/use-async-function";
 
 const MAX_SEARCH_RESULTS = 100;
 
-const fieldValuesWidgetPropTypes = {
-  addRemappings: PropTypes.func,
+FieldValuesWidget2.propTypes = {
+  addRemappings: PropTypes.func.isRequired,
+  fetchFieldValues: PropTypes.func.isRequired,
+  onChange: PropTypes.func.isRequired,
+  value: PropTypes.array.isRequired,
+  fields: PropTypes.arrayOf(PropTypes.object).isRequired,
+  disablePKRemappingForSearch: PropTypes.bool,
+  multi: PropTypes.bool,
+  disableSearch: PropTypes.bool,
+  autoFocus: PropTypes.bool,
+  color: PropTypes.string,
+  maxResults: PropTypes.number,
+  style: PropTypes.object,
+  placeholder: PropTypes.string,
+  formatOptions: PropTypes.object,
+  maxWidth: PropTypes.number,
+  minWidth: PropTypes.number,
+  alwaysShowOptions: PropTypes.bool,
+  dashboard: PropTypes.object,
+  parameter: PropTypes.object,
+  parameters: PropTypes.arrayOf(PropTypes.object),
+  className: PropTypes.string,
   expand: PropTypes.bool,
   isSidebar: PropTypes.bool,
-};
-
-const optionsMessagePropTypes = {
-  message: PropTypes.string.isRequired,
 };
 
 // fetch the possible values of a parameter based on the values of the other parameters in a dashboard.
@@ -55,31 +70,6 @@ const fetchParameterPossibleValues = async (
   const results = await endpoint(args);
   return results.map(result => [].concat(result));
 };
-
-// type Props = {
-//   value: Value[],
-//   onChange: (value: Value[]) => void,
-//   fields: Field[],
-//   disablePKRemappingForSearch?: boolean,
-//   multi?: boolean,
-//   autoFocus?: boolean,
-//   color?: string,
-//   fetchFieldValues: (id: FieldId) => void,
-//   maxResults: number,
-//   style?: { [key: string]: string | number },
-//   placeholder?: string,
-//   formatOptions?: FormattingOptions,
-//   maxWidth?: number,
-//   minWidth?: number,
-//   alwaysShowOptions?: boolean,
-//   disableSearch?: boolean,
-
-//   dashboard?: DashboardWithCards,
-//   parameter?: Parameter,
-//   parameters?: Parameter[],
-
-//   className?: string,
-// };
 
 function getTokenFieldPlaceholder(
   fields,
@@ -312,16 +302,18 @@ function parseFreeformValue(v, fields) {
   return v;
 }
 
-const LoadingState = () => (
-  <div
-    className="flex layout-centered align-center border-bottom"
-    style={{ minHeight: 82 }}
-  >
-    <LoadingSpinner size={32} />
-  </div>
-);
+function LoadingState() {
+  return (
+    <div
+      className="flex layout-centered align-center border-bottom"
+      style={{ minHeight: 82 }}
+    >
+      <LoadingSpinner size={32} />
+    </div>
+  );
+}
 
-const NoMatchState = ({ fields }) => {
+function NoMatchState({ fields }) {
   if (fields.length > 1) {
     // if there is more than one field, don't name them
     return <OptionsMessage message={t`No matching result`} />;
@@ -334,19 +326,27 @@ const NoMatchState = ({ fields }) => {
       )} found.`}
     />
   );
+}
+
+NoMatchState.propTypes = {
+  fields: PropTypes.arrayOf(PropTypes.object).isRequired,
 };
 
-const EveryOptionState = () => (
-  <OptionsMessage
-    message={t`Including every option in your filter probably won’t do much…`}
-  />
-);
+function EveryOptionState() {
+  return (
+    <OptionsMessage
+      message={t`Including every option in your filter probably won’t do much…`}
+    />
+  );
+}
 
-const OptionsMessage = ({ message }) => (
-  <div className="flex layout-centered p4 border-bottom">{message}</div>
-);
+function OptionsMessage({ message }) {
+  return <div className="flex layout-centered p4 border-bottom">{message}</div>;
+}
 
-OptionsMessage.propTypes = optionsMessagePropTypes;
+OptionsMessage.propTypes = {
+  message: PropTypes.string.isRequired,
+};
 
 function isSearchEndpointExhausted(value, latestSearch, options, maxResults) {
   // if this search is just an extension of the previous search, and the previous search
@@ -587,11 +587,11 @@ function FieldValuesWidget2({
         optionRenderer={option =>
           renderValue(option[0], { autoLoad: false }, fields, formatOptions)
         }
-        layoutRenderer={props => (
+        layoutRenderer={layoutRenderProps => (
           <div>
-            {props.valuesList}
+            {layoutRenderProps.valuesList}
             {renderOptions(
-              props,
+              layoutRenderProps,
               alwaysShowOptions,
               fields,
               disableSearch,
@@ -632,5 +632,3 @@ export default _.compose(
     mapDispatchToProps,
   ),
 )(FieldValuesWidget2);
-
-FieldValuesWidget2.propTypes = fieldValuesWidgetPropTypes;
