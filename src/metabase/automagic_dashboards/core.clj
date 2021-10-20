@@ -1099,10 +1099,11 @@
 
 (defn- field-reference->field
   [root field-reference]
-  (let [temporal-unit (mbql.u/match-one (normalize/normalize field-reference)
-                        [:field _ (opts :guard :temporal-unit)]
-                        (:temporal-unit opts))]
-    (cond-> (->> field-reference
+  (let [normalized-field-reference (normalize/normalize field-reference)
+        temporal-unit              (mbql.u/match-one normalized-field-reference
+                                     [:field _ (opts :guard :temporal-unit)]
+                                     (:temporal-unit opts))]
+    (cond-> (->> normalized-field-reference
                  filters/collect-field-references
                  first
                  (->field root))

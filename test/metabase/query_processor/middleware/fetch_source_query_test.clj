@@ -35,7 +35,8 @@
   (testing "make sure that the `resolve-card-id-source-tables` middleware correctly resolves MBQL queries"
     (mt/with-temp Card [card {:dataset_query (mt/mbql-query venues)}]
       (is (= (assoc (default-result-with-inner-query
-                     {:source-query {:source-table (mt/id :venues)}}
+                     {:source-query   {:source-table (mt/id :venues)}
+                      :source-card-id (u/the-id card)}
                      (qp/query->expected-cols (mt/mbql-query venues)))
                     :info {:card-id (u/the-id card)})
              (resolve-card-id-source-tables
@@ -44,9 +45,10 @@
 
       (testing "with aggregations/breakouts"
         (is (= (assoc (default-result-with-inner-query
-                       {:aggregation  [[:count]]
-                        :breakout     [[:field "price" {:base-type :type/Integer}]]
-                        :source-query {:source-table (mt/id :venues)}}
+                       {:aggregation    [[:count]]
+                        :breakout       [[:field "price" {:base-type :type/Integer}]]
+                        :source-query   {:source-table (mt/id :venues)}
+                        :source-card-id (u/the-id card)}
                        (qp/query->expected-cols (mt/mbql-query :venues)))
                       :info {:card-id (u/the-id card)})
                (resolve-card-id-source-tables
@@ -58,8 +60,9 @@
     (mt/with-temp Card [card {:dataset_query (mt/mbql-query checkins)}]
       (testing "with filters"
         (is (= (assoc (default-result-with-inner-query
-                       {:source-query {:source-table (mt/id :checkins)}
-                        :filter       [:between [:field "date" {:base-type :type/Date}] "2015-01-01" "2015-02-01"]}
+                       {:source-query   {:source-table (mt/id :checkins)}
+                        :source-card-id (u/the-id card)
+                        :filter         [:between [:field "date" {:base-type :type/Date}] "2015-01-01" "2015-02-01"]}
                        (qp/query->expected-cols (mt/mbql-query :checkins)))
                       :info {:card-id (u/the-id card)})
                (resolve-card-id-source-tables
@@ -75,9 +78,10 @@
     (mt/with-temp Card [card {:dataset_query (mt/native-query
                                                {:query (format "SELECT * FROM %s" (mt/format-name "venues"))})}]
       (is (= (assoc (default-result-with-inner-query
-                     {:aggregation  [[:count]]
-                      :breakout     [[:field "price" {:base-type :type/Integer}]]
-                      :source-query {:native (format "SELECT * FROM %s" (mt/format-name "venues"))}}
+                     {:aggregation    [[:count]]
+                      :breakout       [[:field "price" {:base-type :type/Integer}]]
+                      :source-query   {:native (format "SELECT * FROM %s" (mt/format-name "venues"))}
+                      :source-card-id (u/the-id card)}
                      nil)
                     :info {:card-id (u/the-id card)})
              (resolve-card-id-source-tables
@@ -94,11 +98,13 @@
                                                   :type     :query
                                                   :query    {:source-table (str "card__" (u/the-id card-1)), :limit 50}}}]]
       (is (= (-> (default-result-with-inner-query
-                  {:limit        25
-                   :source-query {:limit           50
-                                  :source-query    {:source-table (mt/id :venues)
-                                                    :limit        100}
-                                  :source-metadata nil}}
+                  {:limit          25
+                   :source-query   {:limit           50
+                                    :source-query    {:source-table (mt/id :venues)
+                                                      :limit        100}
+                                    :source-card-id  (u/the-id card-1)
+                                    :source-metadata nil}
+                   :source-card-id (u/the-id card-2)}
                   (qp/query->expected-cols (mt/mbql-query :venues)))
                  (assoc-in [:query :source-query :source-metadata]
                            (mt/derecordize (qp/query->expected-cols (mt/mbql-query :venues))))
@@ -126,6 +132,7 @@
       (testing "Are `card__id` source tables resolved in `:joins`?"
         (is (= (mt/mbql-query venues
                  {:joins [{:source-query    {:source-table $$categories, :limit 100}
+                           :source-card-id  card-id
                            :alias           "c",
                            :condition       [:= $category_id [:field %categories.id {:join-alias "c"}]]
                            :source-metadata metadata}]})
@@ -138,6 +145,7 @@
       (testing "Are `card__id` source tables resolved in JOINs against a source query?"
         (is (= (mt/mbql-query venues
                  {:joins [{:source-query {:source-query    {:source-table $$categories, :limit 100}
+                                          :source-card-id  card-id
                                           :source-metadata metadata}
                            :alias        "c",
                            :condition    [:= $category_id [:field %categories.id {:join-alias "c"}]]}]})
@@ -152,6 +160,7 @@
                  {:source-query {:source-table $$venues
                                  :joins        [{:source-query    {:source-table $$categories
                                                                    :limit        100}
+                                                 :source-card-id  card-id
                                                  :alias           "c"
                                                  :condition       [:= $category_id [:field %categories.id {:join-alias "c"}]]
                                                  :source-metadata metadata}]}})
@@ -172,8 +181,10 @@
                              :condition       [:= $category_id &c.$categories.id]
                              :source-query    {:source-query    {:source-table $$categories
                                                                  :limit        100}
+                                               :source-card-id  card-id
                                                :source-metadata metadata
                                                :limit           200}
+                             :source-card-id  card-2-id
                              ;; TODO - FIXME
                              ;;
                              ;; The source metadata that comes back here looks like the result of running the Card
@@ -252,11 +263,11 @@
                                      :condition    [:= *ID/Number &c.venues.id]}]})))))))
 
 (deftest ignore-user-supplied-internal-card-id-keys
-  (testing (str "The middleware uses `::fetch-source-query/card-id` internally and adds it to `:info` at the end. "
+  (testing (str "The middleware uses `:source-card-id` internally and adds it to `:info` at the end. "
                 "Make sure we ignore ones supplied by a user.")
     (is (= (mt/mbql-query venues)
            (resolve-card-id-source-tables
-            (assoc-in (mt/mbql-query venues) [:query ::fetch-source-query/card-id] 1))))))
+            (assoc-in (mt/mbql-query venues) [:query :source-card-id] 1))))))
 
 (deftest dont-overwrite-existing-card-id-test
   (testing "Don't overwrite existing values of `[:info :card-id]`"
@@ -264,6 +275,7 @@
       (let [query (assoc (mt/mbql-query nil {:source-table (format "card__%d" card-id)})
                          :info {:card-id Integer/MAX_VALUE})]
         (is (= (assoc (mt/mbql-query nil {:source-query    {:source-table (mt/id :venues)}
+                                          :source-card-id  card-id
                                           :source-metadata (mt/derecordize (qp/query->expected-cols (mt/mbql-query :venues)))})
                       :info {:card-id Integer/MAX_VALUE})
                (resolve-card-id-source-tables query)))))))

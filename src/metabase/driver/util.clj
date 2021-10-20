@@ -4,6 +4,7 @@
             [clojure.tools.logging :as log]
             [metabase.config :as config]
             [metabase.driver :as driver]
+            [metabase.models.setting :refer [defsetting]]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
@@ -15,11 +16,19 @@
            javax.net.SocketFactory
            [javax.net.ssl SSLContext TrustManagerFactory X509TrustManager]))
 
-(def ^:private can-connect-timeout-ms
-  "Consider `can-connect?`/`can-connect-with-details?` to have failed after this many milliseconds.
-   By default, this is 5 seconds. You can configure this value by setting the env var `MB_DB_CONNECTION_TIMEOUT_MS`."
-  (or (config/config-int :mb-db-connection-timeout-ms)
-      5000))
+;; This is normally set via the env var `MB_DB_CONNECTION_TIMEOUT_MS`
+(defsetting db-connection-timeout-ms
+  "Consider [[metabase.driver/can-connect?]] / [[can-connect-with-details?]] to have failed if they were not able to
+  successfully connect after this many milliseconds. By default, this is 10 seconds."
+  :visibility :internal
+  :type       :integer
+  ;; for TESTS use a timeout time of 3 seconds. This is because we have some tests that check whether
+  ;; [[driver/can-connect?]] is failing when it should, and we don't want them waiting 10 seconds to fail.
+  ;;
+  ;; Don't set the timeout too low -- I've have Circle fail when the timeout was 1000ms on *one* occasion.
+  :default    (if config/is-test?
+                3000
+                10000))
 
 (defn can-connect-with-details?
   "Check whether we can connect to a database with `driver` and `details-map` and perform a basic query such as `SELECT
@@ -32,7 +41,7 @@
   {:pre [(keyword? driver) (map? details-map)]}
   (if throw-exceptions
     (try
-      (u/with-timeout can-connect-timeout-ms
+      (u/with-timeout (db-connection-timeout-ms)
         (driver/can-connect? driver details-map))
       ;; actually if we are going to `throw-exceptions` we'll rethrow the original but attempt to humanize the message
       ;; first

@@ -3,6 +3,7 @@ import {
   openOrdersTable,
   popover,
   enterCustomColumnDetails,
+  visualize,
 } from "__support__/e2e/cypress";
 
 const CC_NAME = "Math";
@@ -40,8 +41,7 @@ describe("issue 13289", () => {
       cy.findByText("Created At").click();
     });
 
-    cy.button("Visualize").click();
-    cy.wait("@dataset");
+    visualize();
 
     cy.get(".Visualization").within(() => {
       cy.get("circle")

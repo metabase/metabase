@@ -902,4 +902,22 @@ describe("Question", () => {
       });
     });
   });
+
+  describe("Question.prototype.getResultMetadata", () => {
+    it("shoud return the `result_metadata` property off the underlying card", () => {
+      const question = new Question(
+        { ...card, result_metadata: [1, 2, 3] },
+        metadata,
+      );
+      expect(question.getResultMetadata()).toEqual([1, 2, 3]);
+    });
+
+    it("should default to an array", () => {
+      const question = new Question(
+        { ...card, result_metadata: null },
+        metadata,
+      );
+      expect(question.getResultMetadata()).toEqual([]);
+    });
+  });
 });
