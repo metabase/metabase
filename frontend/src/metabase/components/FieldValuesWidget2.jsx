@@ -444,7 +444,7 @@ function FieldValuesWidget2({
               fields.map(field =>
                 MetabaseApi.field_search(
                   {
-                    searchText,
+                    value: searchText,
                     fieldId: field.id,
                     searchFieldId: searchField(
                       field,
