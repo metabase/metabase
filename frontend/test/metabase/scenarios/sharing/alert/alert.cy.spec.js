@@ -4,6 +4,7 @@ import {
   createBasicAlert,
   popover,
   openPeopleTable,
+  visualize,
 } from "__support__/e2e/cypress";
 
 // Ported from alert.e2e.spec.js
@@ -176,7 +177,8 @@ describe("scenarios > alert", () => {
         cy.findByPlaceholderText("Find...").type("Cr");
         cy.findByText("Created At").click();
       });
-      cy.button("Visualize").click();
+
+      visualize();
 
       // Set a goal
       setGoal("35");

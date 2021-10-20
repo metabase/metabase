@@ -1,4 +1,4 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover, visualize } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const {
@@ -294,11 +294,7 @@ function chooseBucketAndAssert({
       cy.findByText(bucketSize).click();
     });
 
-  if (mode === "notebook") {
-    cy.button("Visualize").click();
-  }
-
-  waitAndAssertOnRequest("@dataset");
+  mode === "notebook" ? visualize() : waitAndAssertOnRequest("@dataset");
 
   const visualizaitonSelector = columnType === "time" ? "circle" : ".bar";
   cy.get(visualizaitonSelector);

@@ -16,6 +16,7 @@
             [metabase.models.moderation-review :as moderation-review]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
+            [metabase.models.query :as query]
             [metabase.models.revision :as revision :refer [Revision]]
             [metabase.models.user :refer [User]]
             [metabase.public-settings :as public-settings]
@@ -1367,6 +1368,13 @@
 (deftest query-cache-ttl-hierarchy-test
   (mt/discard-setting-changes [enable-query-caching]
     (public-settings/enable-query-caching true)
+    (testing "query-magic-ttl converts to seconds correctly"
+      (mt/with-temporary-setting-values [query-caching-ttl-ratio 2]
+        ;; fake average execution time (in millis)
+        (with-redefs [query/average-execution-time-ms (constantly 4000)]
+          (mt/with-temp Card [card]
+            ;; the magic multiplier should be ttl-ratio times avg execution time
+            (is (= (* 2 4) (:cache-ttl (card-api/query-for-card card {} {} {}))))))))
     (testing "card ttl only"
       (mt/with-temp* [Card [card {:cache_ttl 1337}]]
         (is (= (* 3600 1337) (:cache-ttl (card-api/query-for-card card {} {} {}))))))

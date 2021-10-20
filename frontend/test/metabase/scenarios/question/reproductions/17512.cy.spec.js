@@ -1,4 +1,9 @@
-import { restore, openOrdersTable, popover } from "__support__/e2e/cypress";
+import {
+  restore,
+  openOrdersTable,
+  popover,
+  visualize,
+} from "__support__/e2e/cypress";
 
 describe.skip("issue 17512", () => {
   beforeEach(() => {
@@ -21,10 +26,8 @@ describe.skip("issue 17512", () => {
 
     addCustomColumn("1 + 1", "CC");
 
-    cy.button("Visualize").click();
-
-    cy.wait("@dataset").then(({ response }) => {
-      expect(response.body.error).not.to.exist;
+    visualize(response => {
+      expect(response.body.error).to.not.exist;
     });
 
     cy.findByText("CE");

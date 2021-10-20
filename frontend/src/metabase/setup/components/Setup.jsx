@@ -6,6 +6,7 @@ import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
+import { b64hash_to_utf8 } from "metabase/lib/encoding";
 
 import AddDatabaseHelpCard from "metabase/components/AddDatabaseHelpCard";
 import DriverWarning from "metabase/components/DriverWarning";
@@ -30,6 +31,7 @@ const PREFERENCES_STEP_NUMBER = 5;
 
 export default class Setup extends Component {
   static propTypes = {
+    location: PropTypes.object.isRequired,
     activeStep: PropTypes.number.isRequired,
     setupComplete: PropTypes.bool.isRequired,
     userDetails: PropTypes.object,
@@ -52,6 +54,11 @@ export default class Setup extends Component {
   }
 
   componentDidMount() {
+    this.setDefaultLanguage();
+    this.setDefaultDetails();
+  }
+
+  setDefaultLanguage() {
     const locales = MetabaseSettings.get("available-locales") || [];
     const browserLocale = (navigator.language || "").toLowerCase();
     const defaultLanguage =
@@ -70,6 +77,17 @@ export default class Setup extends Component {
     }
   }
 
+  setDefaultDetails() {
+    const { hash } = this.props.location;
+
+    try {
+      const userDetails = hash && JSON.parse(b64hash_to_utf8(hash));
+      this.setState({ defaultDetails: userDetails });
+    } catch (e) {
+      this.setState({ defaultDetails: undefined });
+    }
+  }
+
   renderFooter() {
     return (
       <div className="SetupHelp bordered border-dashed p2 rounded mb4">
@@ -84,11 +102,11 @@ export default class Setup extends Component {
     );
   }
 
-  UNSAFE_componentWillReceiveProps(nextProps) {
+  componentDidUpdate(prevProps) {
     // If we are entering the scheduling step, we need to scroll to the top of scheduling step container
     if (
-      this.props.activeStep !== nextProps.activeStep &&
-      nextProps.activeStep === 3
+      prevProps.activeStep !== this.props.activeStep &&
+      this.props.activeStep === DATABASE_CONNECTION_STEP_NUMBER
     ) {
       setTimeout(() => {
         if (this.databaseSchedulingStepContainer.current) {
@@ -98,7 +116,7 @@ export default class Setup extends Component {
       }, 10);
     }
 
-    if (!this.props.setupComplete && nextProps.setupComplete) {
+    if (!prevProps.setupComplete && this.props.setupComplete) {
       MetabaseAnalytics.trackStructEvent("Setup", "Complete");
     }
   }
@@ -155,7 +173,11 @@ export default class Setup extends Component {
                 stepNumber={LANGUAGE_STEP_NUMBER}
                 defaultLanguage={this.state.defaultLanguage}
               />
-              <UserStep {...this.props} stepNumber={USER_STEP_NUMBER} />
+              <UserStep
+                {...this.props}
+                stepNumber={USER_STEP_NUMBER}
+                defaultUserDetails={this.state.defaultDetails?.user}
+              />
               <DatabaseConnectionStep
                 {...this.props}
                 stepNumber={DATABASE_CONNECTION_STEP_NUMBER}
