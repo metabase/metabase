@@ -675,7 +675,7 @@
   (when (public-settings/enable-query-caching)
     (let [ttls (map :cache_ttl [card dashboard database])
           most-granular-ttl (first (filter some? ttls))]
-      (or (when (some? most-granular-ttl) ; stored TTLs are in hours; convert to seconds
+      (or (when most-granular-ttl ; stored TTLs are in hours; convert to seconds
             (* most-granular-ttl 3600))
           (query-magic-ttl query)))))
 
