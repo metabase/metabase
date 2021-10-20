@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { useCallback } from "react";
+import React  from "react";
 
 import { t, jt } from "ttag";
 
@@ -190,48 +190,39 @@ const SortableRuleList = SortableContainer(
   },
 );
 
-const RuleListing = ({ rules, cols, onEdit, onAdd, onRemove, onMove }) => {
-  const handleAddClick = useCallback(
-    event => {
-      onAdd(event);
-      MetabaseAnalytics.trackStructEvent(
-        "Chart Settings",
-        "Table Formatting",
-        "Add Rule",
-      );
-    },
-    [onAdd],
-  );
-
-  return (
-    <div>
-      <h3>{t`Conditional formatting`}</h3>
-      <div className="mt2">
-        {t`You can add rules to make the cells in this table change color if
-      they meet certain conditions.`}
-      </div>
-      <div className="mt2">
-        <Button borderless icon="add" onClick={handleAddClick}>
-          {t`Add a rule`}
-        </Button>
-      </div>
-      {rules.length > 0 ? (
-        <div className="mt2">
-          <h3>{t`Rules will be applied in this order`}</h3>
-          <div className="mt2">{t`Click and drag to reorder.`}</div>
-          <SortableRuleList
-            rules={rules}
-            cols={cols}
-            onEdit={onEdit}
-            onRemove={onRemove}
-            onSortEnd={({ oldIndex, newIndex }) => onMove(oldIndex, newIndex)}
-            distance={10}
-          />
-        </div>
-      ) : null}
+const RuleListing = ({ rules, cols, onEdit, onAdd, onRemove, onMove }) => (
+  <div>
+    <h3>{t`Conditional formatting`}</h3>
+    <div className="mt2">
+      {t`You can add rules to make the cells in this table change color if
+    they meet certain conditions.`}
     </div>
-  );
-};
+    <div className="mt2">
+      <Button
+        borderless
+        icon="add"
+        onClick={onAdd}
+        data-metabase-event={`Chart Settings;Table Formatting;Add Rule`}
+      >
+        {t`Add a rule`}
+      </Button>
+    </div>
+    {rules.length > 0 ? (
+      <div className="mt2">
+        <h3>{t`Rules will be applied in this order`}</h3>
+        <div className="mt2">{t`Click and drag to reorder.`}</div>
+        <SortableRuleList
+          rules={rules}
+          cols={cols}
+          onEdit={onEdit}
+          onRemove={onRemove}
+          onSortEnd={({ oldIndex, newIndex }) => onMove(oldIndex, newIndex)}
+          distance={10}
+        />
+      </div>
+    ) : null}
+  </div>
+);
 
 const RulePreview = ({ rule, cols, onClick, onRemove }) => (
   <div
@@ -319,27 +310,6 @@ const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => {
 
   const hasOperand =
     rule.operator !== "is-null" && rule.operator !== "not-null";
-
-  const handleRemoveClick = useCallback(
-    event => {
-      onRemove(event);
-      MetabaseAnalytics.trackStructEvent("Chart Settings", "Table Formatting");
-    },
-    [onRemove],
-  );
-
-  const handleDoneClick = useCallback(
-    event => {
-      onDone(event);
-      MetabaseAnalytics.trackStructEvent(
-        "Chart Settings",
-        "Table Formatting",
-        isNew ? "Add Rule" : "Update Rule",
-        `Rule Type ${rule.type} Color`,
-      );
-    },
-    [rule, isNew, onDone],
-  );
 
   return (
     <div>
@@ -489,11 +459,21 @@ const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => {
       ) : null}
       <div className="mt4">
         {rule.columns.length === 0 ? (
-          <Button primary onClick={handleRemoveClick}>
+          <Button
+            primary
+            onClick={onRemove}
+            data-metabase-event={`Chart Settings;Table Formatting;`}
+          >
             {isNew ? t`Cancel` : t`Delete`}
           </Button>
         ) : (
-          <Button primary onClick={handleDoneClick}>
+          <Button
+            primary
+            onClick={onDone}
+            data-metabase-event={`Chart Setttings;Table Formatting;${
+              isNew ? "Add Rule" : "Update Rule"
+            };Rule Type ${rule.type} Color`}
+          >
             {isNew ? t`Add rule` : t`Update rule`}
           </Button>
         )}
