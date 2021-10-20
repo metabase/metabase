@@ -8498,7 +8498,7 @@ databaseChangeLog:
   - changeSet:
       id: 313
       author: jeff303
-      comment: Added 0.41.0 - Secret domain object.
+      comment: Added 0.42.0 - Secret domain object.
       changes:
         - createTable:
             tableName: secret

@@ -182,6 +182,7 @@
   random-name
   round-all-decimals
   scheduler-current-tasks
+  secret-value-equals?
   throw-if-called
   with-column-remappings
   with-discarded-collections-perms-changes
@@ -195,8 +196,7 @@
   with-temp-file
   with-temp-scheduler
   with-temp-vals-in-db
-  with-temporary-setting-values
-  secret-value-equals?]
+  with-temporary-setting-values]
 
  [tu.async
   wait-for-close
