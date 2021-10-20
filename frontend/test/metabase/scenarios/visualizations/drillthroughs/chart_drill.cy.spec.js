@@ -5,6 +5,7 @@ import {
   popover,
   sidebar,
   visitQuestionAdhoc,
+  visualize,
 } from "__support__/e2e/cypress";
 import { USER_GROUPS } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
@@ -322,8 +323,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       .type("1");
     cy.findByText("Add filter").click();
 
-    // Visualize: line
-    cy.button("Visualize").click();
+    visualize();
+
     cy.findByText("Visualization").click();
     cy.icon("line").click();
     cy.findByText("Done").click();

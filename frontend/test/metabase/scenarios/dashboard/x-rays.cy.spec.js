@@ -111,7 +111,7 @@ describe("scenarios > x-rays", () => {
       cy.get(".DashCard");
     });
 
-    it.skip(`"${action.toUpperCase()}" should not show NULL in titles of generated dashboard cards (metabase#15737)`, () => {
+    it(`"${action.toUpperCase()}" should not show NULL in titles of generated dashboard cards (metabase#15737)`, () => {
       cy.intercept("GET", "/api/automagic-dashboards/**").as("xray");
       visitQuestionAdhoc({
         name: "15737",

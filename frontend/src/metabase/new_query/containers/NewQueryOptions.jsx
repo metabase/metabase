@@ -21,11 +21,14 @@ import {
   getHasNativeWrite,
 } from "metabase/new_query/selectors";
 
+import Database from "metabase/entities/databases";
+
 import type { NestedObjectKey } from "metabase/visualizations/lib/settings/nested";
 
 type Props = {
   hasDataAccess: Boolean,
   hasNativeWrite: Boolean,
+  prefetchDatabases: Function,
   initialKey?: NestedObjectKey,
 };
 
@@ -35,6 +38,7 @@ const mapStateToProps = state => ({
 });
 
 const mapDispatchToProps = {
+  prefetchDatabases: () => Database.actions.fetchList(),
   push,
 };
 
@@ -48,7 +52,12 @@ const PAGE_PADDING = [1, 4];
 export default class NewQueryOptions extends Component {
   props: Props;
 
-  UNSAFE_componentWillMount(props) {
+  componentDidMount() {
+    // We need to check if any databases exist otherwise show an empty state.
+    // Be aware that the embedded version does not have the Navbar, which also
+    // loads databases, so we should not remove it.
+    this.props.prefetchDatabases();
+
     const { location, push } = this.props;
     if (Object.keys(location.query).length > 0) {
       const { database, table, ...options } = location.query;

@@ -1,6 +1,7 @@
 import {
   restore,
   popover,
+  visualize,
   openOrdersTable,
   visitQuestionAdhoc,
 } from "__support__/e2e/cypress";
@@ -225,7 +226,7 @@ describe("binning related reproductions", () => {
           cy.findByText("10 bins").click();
         });
 
-      cy.button("Visualize").click();
+      visualize();
       cy.get(".bar");
     });
   });

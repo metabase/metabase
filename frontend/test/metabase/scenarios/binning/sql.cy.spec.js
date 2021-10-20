@@ -1,4 +1,4 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover, visualize } from "__support__/e2e/cypress";
 
 const questionDetails = {
   name: "SQL Binning",
@@ -104,9 +104,11 @@ describe("scenarios > binning > from a saved sql question", () => {
       cy.findByText("Year").click();
 
       cy.findByText("Count by CREATED_AT: Year");
-      cy.button("Visualize").click();
 
-      waitAndAssertOnRequest("@dataset");
+      visualize(response => {
+        assertOnResponse(response);
+      });
+
       cy.get("circle");
     });
 
@@ -117,9 +119,11 @@ describe("scenarios > binning > from a saved sql question", () => {
       cy.findByText("50 bins").click();
 
       cy.findByText("Count by TOTAL: 50 bins");
-      cy.button("Visualize").click();
 
-      waitAndAssertOnRequest("@dataset");
+      visualize(response => {
+        assertOnResponse(response);
+      });
+
       cy.get(".bar");
     });
 
@@ -137,9 +141,11 @@ describe("scenarios > binning > from a saved sql question", () => {
       cy.findByText("10°").click();
 
       cy.findByText("Count by LONGITUDE: 10°");
-      cy.button("Visualize").click();
 
-      waitAndAssertOnRequest("@dataset");
+      visualize(response => {
+        assertOnResponse(response);
+      });
+
       cy.get(".bar");
     });
   });
@@ -215,7 +221,11 @@ function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {
 }
 
 function waitAndAssertOnRequest(requestAlias) {
-  cy.wait(requestAlias).then(xhr => {
-    expect(xhr.response.body.error).to.not.exist;
+  cy.wait(requestAlias).then(({ response }) => {
+    assertOnResponse(response);
   });
+}
+
+function assertOnResponse(response) {
+  expect(response.body.error).to.not.exist;
 }

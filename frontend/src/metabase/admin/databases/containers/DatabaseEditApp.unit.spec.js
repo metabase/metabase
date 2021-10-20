@@ -1,17 +1,12 @@
 import React from "react";
-import { Provider } from "react-redux";
-import { reducer as form } from "redux-form";
-import { Router, Route } from "react-router";
-import { createMemoryHistory } from "history";
 import {
-  render,
+  renderWithProviders,
   screen,
   waitForElementToBeRemoved,
-} from "@testing-library/react";
+} from "__support__/ui";
 import admin from "metabase/admin/admin";
 import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_CACHING } from "metabase/plugins";
-import { getStore } from "__support__/entities-store";
 import DatabaseEditApp from "./DatabaseEditApp";
 
 const ENGINES_MOCK = {
@@ -48,15 +43,10 @@ function mockSettings({ cachingEnabled = false }) {
 
 async function setup({ cachingEnabled = false } = {}) {
   mockSettings({ cachingEnabled });
-
-  render(
-    <Provider store={getStore({ admin, form })}>
-      <Router history={createMemoryHistory()}>
-        <Route path="/" component={DatabaseEditApp} />
-      </Router>
-    </Provider>,
-  );
-
+  renderWithProviders(<DatabaseEditApp />, {
+    withRouter: true,
+    reducers: { admin },
+  });
   await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
 }
 

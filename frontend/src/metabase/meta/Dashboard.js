@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
 import Question from "metabase-lib/lib/Question";
-import Field from "metabase-lib/lib/metadata/Field";
 
 import { ExpressionDimension } from "metabase-lib/lib/Dimension";
 
@@ -23,7 +22,7 @@ import {
   getParameterOptions,
   PARAMETER_OPERATOR_TYPES,
   getOperatorDisplayName,
-  getParameterTargetFieldId,
+  getParameterTargetField,
 } from "metabase/meta/Parameter";
 
 import { slugify } from "metabase/lib/formatting";
@@ -273,95 +272,58 @@ export function isDashboardParameterWithoutMapping(parameter, dashboard) {
   return parameterExistsOnDashboard && !parameterHasMapping;
 }
 
+function getMappingTargetField(card, mapping, metadata) {
+  if (!card) {
+    return null;
+  }
+
+  const question = new Question(card, metadata);
+  const field = getParameterTargetField(mapping.target, metadata, question);
+  return field;
+}
+
+function getMapping(dashcard, metadata) {
+  const cards = [dashcard.card, ...(dashcard.series || [])];
+  return (dashcard.parameter_mappings || []).map(mapping => {
+    const card = _.findWhere(cards, { id: mapping.card_id });
+    const field = getMappingTargetField(card, mapping, metadata);
+
+    return {
+      ...mapping,
+      parameter_id: mapping.parameter_id,
+      dashcard_id: dashcard.id,
+      card_id: mapping.card_id,
+      field_id: field?.id ?? field?.name,
+      field,
+    };
+  });
+}
+
+function getMappings(dashboard, metadata) {
+  const mappings = dashboard.ordered_cards.flatMap(dashcard =>
+    getMapping(dashcard, metadata),
+  );
+
+  return mappings;
+}
+
 export function getMappingsByParameter(metadata, dashboard) {
   if (!dashboard) {
     return {};
   }
 
-  let mappingsByParameter = {};
-  const mappings = [];
-  const countsByParameter = {};
-  for (const dashcard of dashboard.ordered_cards) {
-    const cards: Card[] = [dashcard.card].concat(dashcard.series);
-    for (const mapping of dashcard.parameter_mappings || []) {
-      const card = _.findWhere(cards, { id: mapping.card_id });
-      const fieldId =
-        card && getParameterTargetFieldId(mapping.target, card.dataset_query);
-      let field = metadata.field(fieldId);
+  const mappings = getMappings(dashboard, metadata);
+  const mappingsByParameterIdByDashcardIdByCardId = mappings.reduce(
+    (map, mapping) =>
+      setIn(
+        map,
+        [mapping.parameter_id, mapping.dashcard_id, mapping.card_id],
+        mapping,
+      ),
+    {},
+  );
 
-      if (!field) {
-        const rawField = _.findWhere(dashcard.card.result_metadata, {
-          name: fieldId,
-        });
-
-        field = rawField && new Field(rawField, metadata);
-      }
-
-      const values = field?.fieldValues() || [];
-      if (values.length) {
-        countsByParameter[mapping.parameter_id] =
-          countsByParameter[mapping.parameter_id] || {};
-      }
-      for (const value of values) {
-        countsByParameter[mapping.parameter_id][value] =
-          (countsByParameter[mapping.parameter_id][value] || 0) + 1;
-      }
-
-      const augmentedMapping = {
-        ...mapping,
-        parameter_id: mapping.parameter_id,
-        dashcard_id: dashcard.id,
-        card_id: mapping.card_id,
-        field_id: fieldId,
-        field,
-        values,
-      };
-      mappingsByParameter = setIn(
-        mappingsByParameter,
-        [mapping.parameter_id, dashcard.id, mapping.card_id],
-        augmentedMapping,
-      );
-      mappings.push(augmentedMapping);
-    }
-  }
-  const mappingsWithValuesByParameter = {};
-  // update max values overlap for each mapping
-  for (const mapping of mappings) {
-    if (mapping.values && mapping.values.length > 0) {
-      const overlapMax = Math.max(
-        ...mapping.values.map(
-          value => countsByParameter[mapping.parameter_id][value],
-        ),
-      );
-      mappingsByParameter = setIn(
-        mappingsByParameter,
-        [
-          mapping.parameter_id,
-          mapping.dashcard_id,
-          mapping.card_id,
-          "overlapMax",
-        ],
-        overlapMax,
-      );
-      mappingsWithValuesByParameter[mapping.parameter_id] =
-        (mappingsWithValuesByParameter[mapping.parameter_id] || 0) + 1;
-    }
-  }
-  // update count of mappings with values
-  for (const mapping of mappings) {
-    mappingsByParameter = setIn(
-      mappingsByParameter,
-      [
-        mapping.parameter_id,
-        mapping.dashcard_id,
-        mapping.card_id,
-        "mappingsWithValues",
-      ],
-      mappingsWithValuesByParameter[mapping.parameter_id] || 0,
-    );
-  }
-
-  return mappingsByParameter;
+  return mappingsByParameterIdByDashcardIdByCardId;
 }
 
 export function getDashboardParametersWithFieldMetadata(
