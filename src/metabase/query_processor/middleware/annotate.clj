@@ -173,9 +173,10 @@
     :field_ref       clause}))
 
 (s/defn ^:private col-info-for-field-clause*
-  [{:keys [source-metadata expressions], :as inner-query} [_ id-or-name opts :as clause] :- mbql.s/field]
-  (let [join (when (:join-alias opts)
-               (join-with-alias inner-query (:join-alias opts)))]
+  [{:keys [source-metadata source-card-id], :as inner-query} [_ id-or-name opts :as clause] :- mbql.s/field]
+  (let [join                      (when (:join-alias opts)
+                                    (join-with-alias inner-query (:join-alias opts)))
+        join-is-at-current-level? (some #(= (:alias %) (:join-alias opts)) (:joins inner-query))]
     ;; TODO -- I think we actually need two `:field_ref` columns -- one for referring to the Field at the SAME
     ;; level, and one for referring to the Field from the PARENT level.
     (cond-> {:field_ref clause}
@@ -228,7 +229,14 @@
       (or (:source-field opts)
           (:fk-field-id join))
       (assoc :fk_field_id (or (:source-field opts)
-                              (:fk-field-id join))))))
+                              (:fk-field-id join)))
+
+      ;; If the source query is from a saved question, remove the join alias as the caller should not be aware of joins
+      ;; happening inside the saved question. The `not join-is-at-current-level?` check is to ensure that we are not
+      ;; removing `:join-alias` from fields from the right side of the join.
+      (and source-card-id
+           (not join-is-at-current-level?))
+      (update :field_ref mbql.u/update-field-options dissoc :join-alias))))
 
 (s/defn ^:private col-info-for-field-clause :- {:field_ref mbql.s/Field, s/Keyword s/Any}
   "Return results column metadata for a `:field` or `:expression` clause, in the format that gets returned by QP results"

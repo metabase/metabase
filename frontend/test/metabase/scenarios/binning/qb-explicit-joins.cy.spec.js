@@ -190,32 +190,11 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       cy.findByText("QB Binning").click();
     });
 
-    /**
-     * Generated title seems to be incorrect.
-     * Please see: https://github.com/metabase/metabase/issues/16693.
-     *
-     *  1. Todo: unskip the titles in this block once #16693 gets fixed.
-     *  2. Unskip the repro for metabase#16693 which was conviniently created in this same file.
-     *
-     * Note: after #16693 gets fixed, it might even make sense to completly remove the related repro,
-     * since all other tests within this `context` will already cover that implicitly and will guard against a regression.
-     */
-
-    it.skip("should render the correct title (metabase#16693)", () => {
-      cy.findByText("People → Birth Date").click();
-      cy.findByText("Distribution").click();
-
-      cy.findByText("Count by People → Birth Date: Month");
-    });
-
     it("should work for time series", () => {
       cy.findByText("People → Birth Date").click();
       cy.findByText("Distribution").click();
 
-      /**
-       * Please see the comment no. 1 above.
-       */
-      // cy.findByText("Count by People → Birth Date: Month");
+      cy.findByText("Count by People → Birth Date: Month");
 
       assertOnXYAxisLabels({ xLabel: "People → Birth Date", yLabel: "Count" });
 
@@ -230,10 +209,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
         .click();
       cy.findByText("Quarter").click();
 
-      /**
-       * Please see the comment no. 1 above.
-       */
-      // cy.findByText("Count by People → Birth Date: Quarter");
+      cy.findByText("Count by People → Birth Date: Quarter");
 
       cy.findByText("Q1 - 1960");
       cy.findByText("Q1 - 1965");
@@ -243,10 +219,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       cy.findByText("Products → Price").click();
       cy.findByText("Distribution").click();
 
-      /**
-       * Please see the comment no. 1 above.
-       */
-      // cy.findByText("Count by Products → Price: Auto binned");
+      cy.findByText("Count by Products → Price: Auto binned");
 
       assertOnXYAxisLabels({ xLabel: "Products → Price", yLabel: "Count" });
 
@@ -260,10 +233,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       cy.findByText("People → Longitude").click();
       cy.findByText("Distribution").click();
 
-      /**
-       * Please see the comment no. 1 above.
-       */
-      // cy.findByText("Count by People → Longitude: Auto binned");
+      cy.findByText("Count by People → Longitude: Auto binned");
 
       assertOnXYAxisLabels({
         xLabel: "People → Longitude",
