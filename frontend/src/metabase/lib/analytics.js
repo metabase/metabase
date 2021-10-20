@@ -1,11 +1,10 @@
 /*global ga*/
-/*global snowplow*/
 
 import MetabaseSettings from "metabase/lib/settings";
 
 import { DEBUG } from "metabase/lib/debug";
 
-// Simple module for in-app analytics. Supports Google Analytics and Snowplow
+// Simple module for in-app analytics.  Currently sends data to GA but could be extended to anything else.
 const MetabaseAnalytics = {
   // track a pageview (a.k.a. route change)
   trackPageView: function(url: string) {
@@ -19,18 +18,6 @@ const MetabaseAnalytics = {
         ga("set", "dimension1", tag);
         ga("set", "page", url);
         ga("send", "pageview", url);
-      }
-
-      if (typeof snowplow === "function") {
-        const context = [
-          {
-            schema: "iglu:com.metabase/tag/jsonschema/1-0-0",
-            data: { tag },
-          },
-        ];
-
-        snowplow("setCustomUrl", url);
-        snowplow("trackPageView", { context });
       }
     }
   },
@@ -49,7 +36,6 @@ const MetabaseAnalytics = {
       ga("set", "dimension1", tag);
       ga("send", "event", category, action, label, value);
     }
-
     if (DEBUG) {
       console.log("trackEvent", { category, action, label, value });
     }

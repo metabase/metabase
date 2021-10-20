@@ -1,7 +1,6 @@
 /* eslint-disable no-import-assign*/
 
 global.ga = () => {};
-global.snowplow = () => {};
 global.ace.define = () => {};
 global.ace.require = () => {};
 
