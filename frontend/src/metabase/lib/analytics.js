@@ -1,29 +1,29 @@
 import Settings from "metabase/lib/settings";
 import * as Snowplow from "@snowplow/browser-tracker";
 
-export const newTracker = () => {
+export const enableTracking = () => {
   if (Settings.trackingEnabled()) {
-    newGATracker();
-    newSPTracker();
+    enableGoogleAnalyticsTracking();
+    enableSnowplowTracking();
   }
 };
 
 export const trackPageView = url => {
   if (Settings.trackingEnabled()) {
-    trackGAPageView(url);
-    trackSPPageView(url);
+    trackGoogleAnalyticsPageView(url);
+    trackSnowplowPageView(url);
   }
 };
 
 export const trackStructEvent = (category, action, label, value) => {
   if (Settings.trackingEnabled()) {
-    trackGAStructEvent(category, action, label, value);
+    trackGoogleAnalyticsStructEvent(category, action, label, value);
   }
 };
 
 export const trackSchemaEvent = (schema, data) => {
   if (Settings.trackingEnabled()) {
-    trackSPSchemaEvent(schema, data);
+    trackSnowplowSchemaEvent(schema, data);
   }
 };
 
@@ -31,7 +31,7 @@ export const enableDataAttributesTracking = () => {
   document.body.addEventListener("click", handleStructEventClick, true);
 };
 
-const newGATracker = () => {
+const enableGoogleAnalyticsTracking = () => {
   const code = Settings.get("ga-code");
   window.ga?.("create", code, "auto");
 
@@ -40,20 +40,20 @@ const newGATracker = () => {
   });
 };
 
-const trackGAPageView = url => {
+const trackGoogleAnalyticsPageView = url => {
   const version = Settings.get("version");
   window.ga?.("set", "dimension1", version?.tag);
   window.ga?.("set", "page", url);
   window.ga?.("send", "pageview", url);
 };
 
-const trackGAStructEvent = (category, action, label, value) => {
+const trackGoogleAnalyticsStructEvent = (category, action, label, value) => {
   const version = Settings.get("version");
   window.ga?.("set", "dimension1", version?.tag);
   window.ga?.("send", "event", category, action, label, value);
 };
 
-const newSPTracker = () => {
+const enableSnowplowTracking = () => {
   Snowplow.newTracker("sp", "https://sp.metabase.com", {
     appId: "metabase",
     platform: "web",
@@ -65,25 +65,26 @@ const newSPTracker = () => {
   });
 };
 
-const trackSPPageView = url => {
+const trackSnowplowPageView = url => {
   Snowplow.setCustomUrl(url);
   Snowplow.trackPageView();
 };
 
-const trackSPSchemaEvent = (schema, data) => {
-  Snowplow.trackSelfDescribingEvent({ event: { schema: `iglu:com.metabase/${schema}`, data } });
+const trackSnowplowSchemaEvent = (schema, data) => {
+  Snowplow.trackSelfDescribingEvent({
+    event: { schema: `iglu:com.metabase/${schema}`, data },
+  });
 };
 
 const handleStructEventClick = event => {
-  let node = event.target;
+  if (!Settings.trackingEnabled()) {
+    return;
+  }
 
-  // check the target and all parent elements
-  while (node) {
+  for (let node = event.target; node != null; node = node.parentNode) {
     if (node.dataset && node.dataset.metabaseEvent) {
-      // we expect our event to be a semicolon delimited string
       const parts = node.dataset.metabaseEvent.split(";").map(p => p.trim());
       trackStructEvent(...parts);
     }
-    node = node.parentNode;
   }
 };
