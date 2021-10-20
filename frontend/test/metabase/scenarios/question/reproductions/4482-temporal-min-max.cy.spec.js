@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, visualize } from "__support__/e2e/cypress";
 
 describe("issue 4482", () => {
   beforeEach(() => {
@@ -21,8 +21,8 @@ describe("issue 4482", () => {
     cy.findByText("Rating");
     cy.contains("Created At").click();
 
-    cy.button("Visualize").click();
-    cy.wait("@dataset");
+    visualize();
+
     cy.findByText("April 1, 2016, 12:00 AM");
   });
 
@@ -39,8 +39,8 @@ describe("issue 4482", () => {
     cy.findByText("Rating");
     cy.contains("Created At").click();
 
-    cy.button("Visualize").click();
-    cy.wait("@dataset");
+    visualize();
+
     cy.findByText("April 1, 2019, 12:00 AM");
   });
 

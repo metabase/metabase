@@ -546,7 +546,7 @@ export class FieldDimension extends Dimension {
   field(): {} {
     if (this.isIntegerFieldId()) {
       return (
-        (this._metadata && this._metadata.field(this._fieldIdOrName)) ||
+        (this._metadata && this._metadata.field(this.fieldIdOrName())) ||
         new Field({
           id: this._fieldIdOrName,
           metadata: this._metadata,
@@ -555,15 +555,37 @@ export class FieldDimension extends Dimension {
       );
     }
 
-    if (this._query) {
-      // TODO: more efficient lookup
-      const field = _.findWhere(this._query.table().fields, {
-        name: this._fieldIdOrName,
-      });
-      if (field) {
-        return field;
+    // look for a "virtual" field on the query's table or question
+    // for example, fields from a question based on a nested question have fields
+    // that show up in a card's `result_metadata`
+    if (this.query()) {
+      const table = this.query().table();
+      if (table != null) {
+        const field = _.findWhere(table.fields, { name: this.fieldIdOrName() });
+
+        if (field) {
+          return field;
+        }
+      }
+
+      const question = this.query().question();
+      if (question != null) {
+        const field = _.findWhere(question.getResultMetadata(), {
+          name: this.fieldIdOrName(),
+        });
+
+        if (field) {
+          return new Field({
+            ...field,
+            metadata: this._metadata,
+            query: this._query,
+          });
+        }
       }
     }
+
+    // despite being unable to find a field, we _might_ still have enough data to know a few things about it
+    // for example, if we have an mbql field reference, it might contain a `base-type`
     return new Field({
       id: this.mbql(),
       name: this._fieldIdOrName,
@@ -571,7 +593,6 @@ export class FieldDimension extends Dimension {
       // if a `FieldDimension` isn't associated with a query then we don't know which table it belongs to
       display_name: this._fieldIdOrName,
       base_type: this.getOption("base-type"),
-      // HACK: need to thread the query through to this fake Field
       query: this._query,
       metadata: this._metadata,
     });
@@ -1175,11 +1196,21 @@ export class TemplateTagDimension extends FieldDimension {
     });
   }
 
+  static parseMBQL(mbql, metadata = null, query = null): ?FieldDimension {
+    return TemplateTagDimension.isTemplateTagClause(mbql)
+      ? Object.freeze(new TemplateTagDimension(mbql[1], metadata, query))
+      : null;
+  }
+
+  static isTemplateTagClause(clause) {
+    return Array.isArray(clause) && clause[0] === "template-tag";
+  }
+
   dimension() {
     if (this._query) {
       const tag = this.tag();
       if (tag && tag.type === "dimension") {
-        return this.parseMBQL(tag.dimension);
+        return Dimension.parseMBQL(tag.dimension, this._metadata, this._query);
       }
     }
     return null;
@@ -1216,4 +1247,5 @@ const DIMENSION_TYPES: typeof Dimension[] = [
   FieldDimension,
   ExpressionDimension,
   AggregationDimension,
+  TemplateTagDimension,
 ];

@@ -1,33 +1,20 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { renderWithProviders, screen } from "__support__/ui";
 import userEvent from "@testing-library/user-event";
-import { DragDropContextProvider } from "react-dnd";
-import HTML5Backend from "react-dnd-html5-backend";
-import { Router, Route } from "react-router";
-import { createMemoryHistory } from "history";
-
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-
 import CollectionsList from "./CollectionsList";
 
 describe("CollectionsList", () => {
   function setup({ collections = [], openCollections = [], ...props } = {}) {
-    const Page = () => (
-      <DragDropContextProvider backend={HTML5Backend}>
-        <CollectionsList
-          collections={collections}
-          openCollections={openCollections}
-          filter={() => true}
-          handleToggleMobileSidebar={() => false}
-          {...props}
-        />
-      </DragDropContextProvider>
-    );
-
-    render(
-      <Router history={createMemoryHistory()}>
-        <Route path="/" component={Page} />
-      </Router>,
+    renderWithProviders(
+      <CollectionsList
+        collections={collections}
+        openCollections={openCollections}
+        filter={() => true}
+        handleToggleMobileSidebar={() => false}
+        {...props}
+      />,
+      { withRouter: true, withDND: true },
     );
   }
 

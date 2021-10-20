@@ -523,7 +523,10 @@ export const initializeQB = (location, params, queryParams) => {
 
     card = question && question.card();
     const metadata = getMetadata(getState());
-    const parameters = getValueAndFieldIdPopulatedParametersFromCard(card);
+    const parameters = getValueAndFieldIdPopulatedParametersFromCard(
+      card,
+      metadata,
+    );
     const parameterValues = getParameterValuesByIdFromQueryParams(
       parameters,
       queryParams,

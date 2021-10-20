@@ -9,6 +9,7 @@
 
     {:source-query    {...} ; Query for Card 1
      :source-metadata [...] ; metadata about columns in Card 1
+     :source-card-id  1     ; Original Card ID
      ...}
 
   This middleware resolves Card ID `:source-table`s at all levels of the query, but the top-level query often uses the
@@ -17,7 +18,7 @@
 
     {:database <virtual-id>, :type :query, :query {:source-table \"card__1\"}}
     ->
-    {:database 1, :type :query, :query {:source-query {...}, :source-metadata {...}}}
+    {:database 1, :type :query, :query {:source-query {...}, :source-metadata {...}, :source-card-id 1}}
 
   TODO - consider renaming this namespace to `metabase.query-processor.middleware.resolve-card-id-source-tables`"
   (:require [clojure.set :as set]
@@ -49,6 +50,7 @@
    {:database        mbql.s/DatabaseID
     :source-metadata [mbql.s/SourceQueryMetadata]
     :source-query    mbql.s/SourceQuery
+    :source-card-id  su/IntGreaterThanZero
     s/Keyword        s/Any}
    (complement :source-table)
    "`:source-table` should be removed"))
@@ -151,8 +153,8 @@
         source-query-and-metadata (-> card-id card-id->source-query-and-metadata)]
     (merge
      (dissoc m :source-table)
-     ;; record the `::card-id` we've resolved here. We'll include it in `:info` for permissions purposes later
-     {::card-id card-id}
+     ;; record the `card-id` we've resolved here. We'll include it in `:info` for permissions purposes later
+     {:source-card-id card-id}
      source-query-and-metadata)))
 
 (defn- resolve-all*
@@ -225,14 +227,11 @@
 
 (s/defn ^:private extract-resolved-card-id :- {:card-id (s/maybe su/IntGreaterThanZero)
                                                :query   su/Map}
-  "If the ID of the Card we've resolved (`::card-id`) was added by a previous step, remove it from `query`, and add it
+  "If the ID of the Card we've resolved (`:source-card-id`) was added by a previous step, add it
   to `:query` `:info` (so it can be included in the QueryExecution log), then return a map with the resolved
   `:card-id` and updated `:query`."
   [query :- su/Map]
-  (let [card-id (get-in query [:query ::card-id])
-        query   (mbql.u/replace-in query [:query]
-                  (&match :guard (every-pred map? ::card-id))
-                  (recur (dissoc &match ::card-id)))]
+  (let [card-id (get-in query [:query :source-card-id])]
     {:query   (cond-> query
                 card-id (update-in [:info :card-id] #(or % card-id)))
      :card-id card-id}))
@@ -242,9 +241,9 @@
   "Recursively replace all Card ID source tables in `query` with resolved `:source-query` and `:source-metadata`. Since
   the `:database` is only useful for top-level source queries, we'll remove it from all other levels."
   [query :- su/Map]
-  ;; if a `::card-id` is already in the query, remove it, so we don't pull user-supplied input up into `:info`
+  ;; if a `:source-card-id` is already in the query, remove it, so we don't pull user-supplied input up into `:info`
   ;; allowing someone to bypass permissions
-  (-> (m/dissoc-in query [:query ::card-id])
+  (-> (m/dissoc-in query [:query :source-card-id])
       check-for-circular-references
       resolve-all*
       copy-source-query-database-ids

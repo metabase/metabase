@@ -5341,7 +5341,8 @@ databaseChangeLog:
       comment: 'Added 0.32.0'
       preConditions:
         - onFail: MARK_RAN
-        - dbms: mysql, mariadb
+        - dbms:
+            type: mysql,mariadb
       changes:
         - modifyDataType:
             tableName: query_cache
@@ -8498,7 +8499,7 @@ databaseChangeLog:
   - changeSet:
       id: 313
       author: jeff303
-      comment: Added 0.41.0 - Secret domain object.
+      comment: Added 0.42.0 - Secret domain object.
       changes:
         - createTable:
             tableName: secret
