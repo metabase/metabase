@@ -470,7 +470,7 @@ function FieldValuesWidget2({
           field.remappedField() ===
           searchField(field, disablePKRemappingForSearch)
         ) {
-          addRemappings(field.id, results);
+          addRemappings(field, results);
         }
       }
 
@@ -517,7 +517,7 @@ function FieldValuesWidget2({
       if (usesChainFilterEndpoints(dashboard)) {
         fetchDashboardParamValues();
       } else {
-        fields.forEach(field => fetchFieldValues(field.id));
+        fields.forEach(field => fetchFieldValues(field));
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
