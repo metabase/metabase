@@ -668,11 +668,15 @@
         ttl-seconds))))
 
 (defn- ttl-hierarchy
+  "Returns the cache ttl (in seconds), by first checking whether there is a stored value for the database,
+  dashboard, or card (in that order of increasing preference), and if all of those don't exist, then the
+  `query-magic-ttl`, which is based on average execution time."
   [card dashboard database query]
   (when (public-settings/enable-query-caching)
     (let [ttls (map :cache_ttl [card dashboard database])
           most-granular-ttl (first (filter some? ttls))]
-      (or most-granular-ttl
+      (or (when most-granular-ttl ; stored TTLs are in hours; convert to seconds
+            (* most-granular-ttl 3600))
           (query-magic-ttl query)))))
 
 (defn query-for-card
@@ -687,9 +691,7 @@
                              :middleware  middleware))
         dashboard (db/select-one [Dashboard :cache_ttl] :id (:dashboard-id ids))
         database  (db/select-one [Database :cache_ttl] :id (:database_id card))
-        ttl       (ttl-hierarchy card dashboard database query)
-        ;; Stored TTL's are in hours: query wants seconds
-        ttl-secs  (if (nil? ttl) nil (* 3600 ttl))]
+        ttl-secs  (ttl-hierarchy card dashboard database query)]
     (assoc query :cache-ttl ttl-secs)))
 
 (defn run-query-for-card-async
