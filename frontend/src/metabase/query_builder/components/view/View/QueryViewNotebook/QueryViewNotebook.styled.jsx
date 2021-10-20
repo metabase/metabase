@@ -28,6 +28,8 @@ export const NotebookContainer = styled.div`
     `}
 
   @media (prefers-reduced-motion) {
-    transition: none;
+    // Must have some transition time, if tiny,
+    // so that it will trigger 'onTransitionEnd' in the component
+    transition: transform 10ms, opacity 10ms;
   }
 `;
