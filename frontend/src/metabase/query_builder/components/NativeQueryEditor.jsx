@@ -133,7 +133,7 @@ export default class NativeQueryEditor extends Component {
     const lines = Math.max(
       Math.min(
         this.maxAutoSizeLines(),
-        (props.query && props.query.lineCount()) || this.maxAutoSizeLines(),
+        props.query?.lineCount() || this.maxAutoSizeLines(),
       ),
       MIN_HEIGHT_LINES,
     );
@@ -143,7 +143,7 @@ export default class NativeQueryEditor extends Component {
       isSelectedTextPopoverOpen: false,
     };
 
-    // Ace sometimes fires mutliple "change" events in rapid succession
+    // Ace sometimes fires multiple "change" events in rapid succession
     // e.x. https://github.com/metabase/metabase/issues/2801
     this.onChange = _.debounce(this.onChange.bind(this), 1);
 
@@ -220,6 +220,7 @@ export default class NativeQueryEditor extends Component {
     }
 
     const editorElement = this.editor.current;
+
     if (query.hasWritePermission()) {
       this._editor.setReadOnly(false);
       editorElement.classList.remove("read-only");
@@ -227,8 +228,10 @@ export default class NativeQueryEditor extends Component {
       this._editor.setReadOnly(true);
       editorElement.classList.add("read-only");
     }
+
     const aceMode = query.aceMode();
     const session = this._editor.getSession();
+
     if (session.$modeId !== aceMode) {
       session.setMode(aceMode);
       if (aceMode.indexOf("sql") >= 0) {
@@ -278,12 +281,14 @@ export default class NativeQueryEditor extends Component {
     const { query, runQuestionQuery } = this.props;
 
     // if any text is selected, just run that
-    const selectedText = this._editor && this._editor.getSelectedText();
+    const selectedText = this._editor?.getSelectedText();
+
     if (selectedText) {
       const temporaryCard = query
         .setQueryText(selectedText)
         .question()
         .card();
+
       runQuestionQuery({
         overrideWithCard: temporaryCard,
         shouldUpdateUrl: false,
@@ -334,7 +339,7 @@ export default class NativeQueryEditor extends Component {
     };
 
     // initialize the content
-    this._editor.setValue(query ? query.queryText() : "");
+    this._editor.setValue(query?.queryText() ?? "");
 
     this._editor.renderer.setScrollMargin(SCROLL_MARGIN, SCROLL_MARGIN);
 
@@ -462,7 +467,7 @@ export default class NativeQueryEditor extends Component {
     // TODO: push more of this into metabase-lib?
     const { query } = this.props;
     const table = query.metadata().table(tableId);
-    if (table && table.name !== query.collection()) {
+    if (table?.name !== query.collection()) {
       query.setCollectionName(table.name).update(this.props.setDatasetQuery);
     }
   };
@@ -496,10 +501,8 @@ export default class NativeQueryEditor extends Component {
 
     // hide the snippet sidebar if there aren't any visible snippets/collections and the root collection isn't writable
     const showSnippetSidebarButton = !(
-      snippets &&
-      snippets.length === 0 &&
-      snippetCollections &&
-      snippetCollections.length === 1 &&
+      snippets?.length === 0 &&
+      snippetCollections?.length === 1 &&
       snippetCollections[0].can_write === false
     );
 
@@ -517,7 +520,7 @@ export default class NativeQueryEditor extends Component {
           >
             <DatabaseDataSelector
               databases={databases}
-              selectedDatabaseId={database && database.id}
+              selectedDatabaseId={database?.id}
               setDatabaseFn={this.setDatabaseId}
               isInitiallyOpen={database == null}
               readOnly={this.props.readOnly}
@@ -539,8 +542,8 @@ export default class NativeQueryEditor extends Component {
             className="GuiBuilder-section GuiBuilder-data flex align-center ml2"
           >
             <SchemaAndTableDataSelector
-              selectedTableId={selectedTable ? selectedTable.id : null}
-              selectedDatabaseId={database && database.id}
+              selectedTableId={selectedTable?.id || null}
+              selectedDatabaseId={database?.id}
               databases={[database]}
               setSourceTableFn={this.setTableId}
               isInitiallyOpen={false}
