@@ -4,8 +4,6 @@ import { t } from "ttag";
 
 import cx from "classnames";
 
-import { isReducedMotionPreferred } from "metabase/lib/dom";
-
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Popover from "metabase/components/Popover";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
@@ -35,11 +33,12 @@ import SummarizeSidebar from "./sidebars/SummarizeSidebar";
 import FilterSidebar from "./sidebars/FilterSidebar";
 import QuestionDetailsSidebar from "./sidebars/QuestionDetailsSidebar";
 
-import Notebook from "../notebook/Notebook";
 import { Motion, spring } from "react-motion";
 
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+
+import QueryViewNotebook from "./View/QueryViewNotebook";
 
 const DEFAULT_POPOVER_STATE = {
   aggregationIndex: null,
@@ -195,13 +194,8 @@ export default class View extends React.Component {
 
     const isSidebarOpen = leftSideBar || rightSideBar;
 
-    const MOTION_Y = -100;
-
-    const preferReducedMotion = isReducedMotionPreferred();
-
-    const springOpts = preferReducedMotion
-      ? { stiffness: 500 }
-      : { stiffness: 170 };
+    const isNotebookContainerOpen =
+      isNewQuestion || queryBuilderMode === "notebook";
 
     return (
       <div className={fitClassNames}>
@@ -232,41 +226,10 @@ export default class View extends React.Component {
 
           <div className="flex flex-full relative">
             {query instanceof StructuredQuery && (
-              <Motion
-                defaultStyle={
-                  isNewQuestion
-                    ? { opacity: 1, translateY: 0 }
-                    : { opacity: 0, translateY: MOTION_Y }
-                }
-                style={
-                  queryBuilderMode === "notebook"
-                    ? {
-                        opacity: spring(1, springOpts),
-                        translateY: spring(0, springOpts),
-                      }
-                    : {
-                        opacity: spring(0, springOpts),
-                        translateY: spring(MOTION_Y, springOpts),
-                      }
-                }
-              >
-                {({ opacity, translateY }) => {
-                  const snapY = translateY < MOTION_Y / 2 ? MOTION_Y : 0;
-                  const shiftY = preferReducedMotion ? snapY : translateY;
-                  return opacity > 0 ? (
-                    // note the `bg-white class here is necessary to obscure the other layer
-                    <div
-                      className="spread bg-white scroll-y z2 border-top border-bottom"
-                      style={{
-                        // opacity: opacity,
-                        transform: `translateY(${shiftY}%)`,
-                      }}
-                    >
-                      <Notebook {...this.props} />
-                    </div>
-                  ) : null;
-                }}
-              </Motion>
+              <QueryViewNotebook
+                isNotebookContainerOpen={isNotebookContainerOpen}
+                {...this.props}
+              />
             )}
 
             <ViewSidebar side="left" isOpen={!!leftSideBar}>

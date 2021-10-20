@@ -341,8 +341,8 @@ describe("scenarios > question > notebook", () => {
 
     it("should show correct column title with foreign keys (metabase#11452)", () => {
       // (Orders join Reviews on Product ID)
-      openOrdersTable();
-      cy.icon("notebook").click();
+      openOrdersTable({ mode: "notebook" });
+
       cy.findByText("Join data").click();
       cy.findByText("Reviews").click();
       cy.findByText("Product ID").click();

@@ -946,20 +946,25 @@ describe("scenarios > question > filter", () => {
 
     describe(`should be able to filter on the boolean column ${condition.toUpperCase()} (metabase#16386)`, () => {
       beforeEach(() => {
-        cy.createNativeQuestion({
-          name: "16386",
-          native: {
-            query:
-              'select 0::integer as "integer", true::boolean AS "boolean" union all \nselect 1::integer as "integer", false::boolean AS "boolean" union all \nselect null as "integer", true::boolean AS "boolean" union all \nselect -1::integer as "integer", null AS "boolean"',
+        cy.intercept("POST", "/api/dataset").as("dataset");
+
+        cy.createNativeQuestion(
+          {
+            name: "16386",
+            native: {
+              query:
+                'select 0::integer as "integer", true::boolean AS "boolean" union all \nselect 1::integer as "integer", false::boolean AS "boolean" union all \nselect null as "integer", true::boolean AS "boolean" union all \nselect -1::integer as "integer", null AS "boolean"',
+            },
+            visualization_settings: {
+              "table.pivot_column": "boolean",
+              "table.cell_column": "integer",
+            },
           },
-          visualization_settings: {
-            "table.pivot_column": "boolean",
-            "table.cell_column": "integer",
-          },
-        }).then(({ body: { id: QUESTION_ID } }) => {
-          cy.visit(`/question/${QUESTION_ID}`);
-          cy.findByText("Explore results").click();
-        });
+          { visitQuestion: true },
+        );
+
+        cy.findByText("Explore results").click();
+        cy.wait("@dataset");
       });
 
       it("from the column popover (metabase#16386-1)", () => {
@@ -999,6 +1004,7 @@ describe("scenarios > question > filter", () => {
 
       it("from the custom question (metabase#16386-3)", () => {
         cy.icon("notebook").click();
+
         cy.findByText("Filter").click();
 
         popover().within(() => {
@@ -1007,7 +1013,6 @@ describe("scenarios > question > filter", () => {
         });
 
         cy.button("Visualize").click();
-
         assertOnTheResult();
       });
 
