@@ -101,13 +101,6 @@ function _init(reducers, getRoutes, callback) {
 
   store.dispatch(refreshSiteSettings());
 
-  // enable / disable GA based on opt-out of anonymous tracking
-  MetabaseSettings.on("anon-tracking-enabled", () => {
-    window[
-      "ga-disable-" + MetabaseSettings.get("ga-code")
-    ] = MetabaseSettings.trackingEnabled() ? null : true;
-  });
-
   MetabaseSettings.on("user-locale", async locale => {
     // reload locale definition and site settings with the new locale
     await Promise.all([
