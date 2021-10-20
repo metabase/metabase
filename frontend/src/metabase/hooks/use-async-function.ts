@@ -5,7 +5,7 @@ type AsyncFn = (...args: any[]) => Promise<any>;
 
 // wraps the given async function in a promise that does not resolve
 // after the component has unmounted
-export function useAsyncFunction(fn: AsyncFn): AsyncFn {
+export function useAsyncFunction(fn: AsyncFn, deps?: any[]): AsyncFn {
   const isMounted = useIsMounted();
 
   const safeFn: AsyncFn = useCallback(
@@ -23,7 +23,8 @@ export function useAsyncFunction(fn: AsyncFn): AsyncFn {
             }
           });
       }),
-    [fn, isMounted],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    deps ? [...deps, isMounted] : [isMounted],
   );
 
   return safeFn;

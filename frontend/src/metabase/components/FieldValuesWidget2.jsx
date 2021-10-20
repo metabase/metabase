@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import { connect } from "react-redux";
@@ -18,7 +18,6 @@ import { stripId } from "metabase/lib/formatting";
 
 import Fields from "metabase/entities/fields";
 import { useAsyncFunction } from "metabase/hooks/use-async-function";
-import { useDebouncedEffect } from "metabase/hooks/use-debounced-effect";
 
 const MAX_SEARCH_RESULTS = 100;
 
@@ -390,7 +389,6 @@ function FieldValuesWidget2({
 }) {
   const [options, setOptions] = useState([]);
   const [loadingState, setLoadingState] = useState("INIT");
-  const [searchText, setSearchText] = useState("");
   const [lastQueriedSearchText, setLastQueriedSearchText] = useState("");
   const cancelRef = useRef();
 
@@ -411,70 +409,10 @@ function FieldValuesWidget2({
     }
   });
 
-  const search = useAsyncFunction(async value => {
-    if (!value) {
-      return;
-    }
-
-    const cancelDeferred = defer();
-    cancelRef.current = () => {
-      cancelRef.current = null;
-      cancelDeferred.resolve();
-    };
-
-    let results;
-    try {
-      if (usesChainFilterEndpoints(dashboard)) {
-        results = await fetchParameterPossibleValues(
-          dashboard && dashboard.id,
-          parameter,
-          parameters,
-          value,
-        );
-      } else {
-        results = dedupeValues(
-          await Promise.all(
-            fields.map(field =>
-              MetabaseApi.field_search(
-                {
-                  value,
-                  fieldId: field.id,
-                  searchFieldId: searchField(field, disablePKRemappingForSearch)
-                    .id,
-                  limit: maxResults,
-                },
-                { cancelled: cancelDeferred.promise },
-              ),
-            ),
-          ),
-        );
-
-        results = results.map(result => [].concat(result));
-      }
-    } catch (e) {
-      console.warn(e);
-    }
-
-    if (showRemapping(fields)) {
-      const [field] = fields;
+  const search = useAsyncFunction(
+    async searchText => {
       if (
-        field.remappedField() ===
-        searchField(field, disablePKRemappingForSearch)
-      ) {
-        addRemappings(field.id, results);
-      }
-    }
-
-    cancelRef.current = null;
-
-    setLastQueriedSearchText(value);
-    setOptions(results || []);
-    setLoadingState(results ? "LOADED" : "INIT");
-  });
-
-  useDebouncedEffect(
-    () => {
-      if (
+        !searchText ||
         isSearchEndpointExhausted(
           searchText,
           lastQueriedSearchText,
@@ -485,11 +423,77 @@ function FieldValuesWidget2({
         return;
       }
 
-      search(searchText);
+      const cancelDeferred = defer();
+      cancelRef.current = () => {
+        cancelRef.current = null;
+        cancelDeferred.resolve();
+      };
+
+      let results;
+      try {
+        if (usesChainFilterEndpoints(dashboard)) {
+          results = await fetchParameterPossibleValues(
+            dashboard && dashboard.id,
+            parameter,
+            parameters,
+            searchText,
+          );
+        } else {
+          results = dedupeValues(
+            await Promise.all(
+              fields.map(field =>
+                MetabaseApi.field_search(
+                  {
+                    searchText,
+                    fieldId: field.id,
+                    searchFieldId: searchField(
+                      field,
+                      disablePKRemappingForSearch,
+                    ).id,
+                    limit: maxResults,
+                  },
+                  { cancelled: cancelDeferred.promise },
+                ),
+              ),
+            ),
+          );
+
+          results = results.map(result => [].concat(result));
+        }
+      } catch (e) {
+        console.warn(e);
+      }
+
+      if (showRemapping(fields)) {
+        const [field] = fields;
+        if (
+          field.remappedField() ===
+          searchField(field, disablePKRemappingForSearch)
+        ) {
+          addRemappings(field.id, results);
+        }
+      }
+
+      cancelRef.current = null;
+
+      setLastQueriedSearchText(searchText);
+      setOptions(results || []);
+      setLoadingState(results ? "LOADED" : "INIT");
     },
-    [searchText, lastQueriedSearchText, options, maxResults, search],
-    500,
+    [
+      addRemappings,
+      dashboard,
+      disablePKRemappingForSearch,
+      fields,
+      lastQueriedSearchText,
+      maxResults,
+      options,
+      parameter,
+      parameters,
+    ],
   );
+
+  const debouncedSearch = useMemo(() => _.debounce(search, 500), [search]);
 
   function onInputChange(value) {
     if (
@@ -502,7 +506,7 @@ function FieldValuesWidget2({
         cancelRef.current();
       }
 
-      setSearchText(value);
+      debouncedSearch(value);
     }
 
     return value;
@@ -537,6 +541,17 @@ function FieldValuesWidget2({
     options,
     disablePKRemappingForSearch,
   );
+
+  const filterOption = (option, filterString) => {
+    const lowerCaseFilterString = filterString.toLowerCase();
+    return option.some(
+      value =>
+        value != null &&
+        String(value)
+          .toLowerCase()
+          .includes(lowerCaseFilterString),
+    );
+  };
 
   return (
     <div
@@ -581,21 +596,12 @@ function FieldValuesWidget2({
               disableSearch,
               dashboard,
               loadingState,
-              options,
+              _options,
               disablePKRemappingForSearch,
             )}
           </div>
         )}
-        filterOption={(option, filterString) => {
-          const lowerCaseFilterString = filterString.toLowerCase();
-          return option.some(
-            value =>
-              value != null &&
-              String(value)
-                .toLowerCase()
-                .includes(lowerCaseFilterString),
-          );
-        }}
+        filterOption={filterOption}
         onInputChange={value => onInputChange(value)}
         parseFreeformValue={value => parseFreeformValue(value, fields)}
       />
