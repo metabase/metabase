@@ -7,6 +7,7 @@ import {
   popover,
   filterWidget,
   visitQuestionAdhoc,
+  visualize,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
@@ -214,9 +215,8 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Add filter").click();
     cy.contains("Category is not Gizmo");
 
-    cy.button("Visualize").click();
-    // wait for results to load
-    cy.get(".LoadingSpinner").should("not.exist");
+    visualize();
+
     cy.log("The point of failure in 0.37.0-rc3");
     cy.contains("37.65");
     cy.findByText("There was a problem with your question").should("not.exist");
@@ -556,7 +556,8 @@ describe("scenarios > question > filter", () => {
       .click();
 
     // check that filter is applied and rows displayed
-    cy.button("Visualize").click();
+    visualize();
+
     cy.contains("Showing 1,112 rows");
   });
 
@@ -935,7 +936,8 @@ describe("scenarios > question > filter", () => {
         .parent()
         .find(".Icon-close")
         .click();
-      cy.button("Visualize");
+
+      visualize();
     });
   });
 
@@ -1006,7 +1008,7 @@ describe("scenarios > question > filter", () => {
           addBooleanFilter();
         });
 
-        cy.button("Visualize").click();
+        visualize();
 
         assertOnTheResult();
       });

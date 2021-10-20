@@ -1,4 +1,9 @@
-import { restore, openOrdersTable, sidebar } from "__support__/e2e/cypress";
+import {
+  restore,
+  openOrdersTable,
+  sidebar,
+  visualize,
+} from "__support__/e2e/cypress";
 
 describe("scenarios > question > trendline", () => {
   beforeEach(() => {
@@ -26,10 +31,8 @@ describe("scenarios > question > trendline", () => {
     cy.findByText("by month").click();
     cy.findByText("Year").click();
 
-    cy.button("Visualize").click();
+    visualize();
 
-    // Check graph is there
-    cy.button("Visualize").should("not.exist");
     cy.findByText("Visualization");
     cy.get("rect");
 
