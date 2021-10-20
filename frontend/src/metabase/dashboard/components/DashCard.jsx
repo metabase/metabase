@@ -20,7 +20,7 @@ import WithVizSettingsData from "metabase/visualizations/hoc/WithVizSettingsData
 import Icon, { iconPropTypes } from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
-import { isVirtualDashCard } from "metabase/dashboard/dashboard";
+import { isVirtualDashCard } from "metabase/dashboard/utils";
 import DashCardParameterMapper from "./DashCardParameterMapper";
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
@@ -29,7 +29,7 @@ import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
 import cx from "classnames";
 import _ from "underscore";
 import { getIn } from "icepick";
-import { getParametersBySlug } from "metabase/meta/Parameter";
+import { getParameterValuesBySlug } from "metabase/meta/Parameter";
 import Utils from "metabase/lib/utils";
 
 const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
@@ -159,7 +159,10 @@ export default class DashCard extends Component {
       errorIcon = "warning";
     }
 
-    const params = getParametersBySlug(dashboard.parameters, parameterValues);
+    const parameterValuesBySlug = getParameterValuesBySlug(
+      dashboard.parameters,
+      parameterValues,
+    );
 
     const hideBackground =
       !isEditing &&
@@ -217,7 +220,7 @@ export default class DashCard extends Component {
           isDashboard
           dispatch={this.props.dispatch}
           dashboard={dashboard}
-          parameterValuesBySlug={params}
+          parameterValuesBySlug={parameterValuesBySlug}
           isEditing={isEditing}
           isPreviewing={this.state.isPreviewingCard}
           gridSize={
@@ -231,7 +234,7 @@ export default class DashCard extends Component {
                 className="m1 text-brand-hover text-light"
                 classNameClose="hover-child"
                 card={dashcard.card}
-                params={params}
+                params={parameterValuesBySlug}
                 dashcardId={dashcard.id}
                 token={dashcard.dashboard_id}
                 icon="download"
@@ -387,6 +390,7 @@ const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) => (
       </Tooltip>
     }
     triggerClasses="text-dark-hover cursor-pointer flex align-center flex-no-shrink mr1 drag-disabled"
+    enableMouseEvents
   >
     <ChartSettingsWithState
       className="spread"

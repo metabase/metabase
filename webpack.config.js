@@ -29,7 +29,7 @@ const devMode = NODE_ENV !== "production";
 
 // Babel:
 const BABEL_CONFIG = {
-  cacheDirectory: process.env.BABEL_DISABLE_CACHE ? null : ".babel_cache",
+  cacheDirectory: process.env.BABEL_DISABLE_CACHE ? false : ".babel_cache",
 };
 
 const CSS_CONFIG = {
@@ -245,7 +245,7 @@ if (NODE_ENV !== "production") {
   // by default enable "cheap" source maps for fast re-build speed
   // with BETTER_SOURCE_MAPS we switch to sourcemaps that work with breakpoints and makes stacktraces readable
   config.devtool = process.env.BETTER_SOURCE_MAPS
-    ? "inline-module-source-map"
+    ? "inline-source-map"
     : "cheap-module-source-map";
 
   // helps with source maps

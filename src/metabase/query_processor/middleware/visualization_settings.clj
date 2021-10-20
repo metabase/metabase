@@ -1,5 +1,7 @@
 (ns metabase.query-processor.middleware.visualization-settings
-  (:require [metabase.models.card :refer [Card]]
+  (:require [medley.core :as m]
+            [metabase.models.card :refer [Card]]
+            [metabase.public-settings :as public-settings]
             [metabase.query-processor.store :as qp.store]
             [metabase.shared.models.visualization-settings :as mb.viz]
             [toucan.db :as db]))
@@ -28,9 +30,6 @@
       (when-let [card-id (-> query :info :card-id)]
         (mb.viz/db->norm (db/select-one-field :visualization_settings Card :id card-id)))))
 
-(def ^:private non-api-export-contexts
-  #{:json-download :csv-download :xlsx-download})
-
 (defn update-viz-settings
   "Middleware for fetching and processing a table's visualization settings so that they can be incorporated
   into an export.
@@ -43,8 +42,8 @@
 
   Processed viz settings are added to the metadata under the key :viz-settings."
   [qp]
-  (fn [query rff context]
-    (if (non-api-export-contexts (-> query :info :context))
+  (fn [{{:keys [process-viz-settings?]} :middleware, :as query} rff context]
+    (if process-viz-settings?
       (let [card-viz-settings           (viz-settings query)
             column-viz-settings         (::mb.viz/column-settings card-viz-settings)
             fields                      (or (-> query :query :fields)
@@ -53,7 +52,12 @@
             updated-column-viz-settings (if (= (:type query) :query)
                                           (update-card-viz-settings column-viz-settings field-ids)
                                           column-viz-settings)
-            updated-card-viz-settings   (assoc card-viz-settings ::mb.viz/column-settings updated-column-viz-settings)
-            rff' (fn [metadata] (rff (assoc metadata :viz-settings updated-card-viz-settings)))]
-        (qp query rff' context))
+            global-settings             (m/map-vals mb.viz/db->norm-column-settings-entries
+                                                    (public-settings/custom-formatting))
+            updated-card-viz-settings   (-> card-viz-settings
+                                            (assoc ::mb.viz/column-settings updated-column-viz-settings)
+                                            (assoc ::mb.viz/global-column-settings global-settings))
+            query'                      (dissoc query :viz-settings)
+            rff'                        (fn [metadata] (rff (assoc metadata :viz-settings updated-card-viz-settings)))]
+        (qp query' rff' context))
       (qp query rff context))))

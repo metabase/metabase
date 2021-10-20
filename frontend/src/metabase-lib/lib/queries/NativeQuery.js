@@ -24,7 +24,7 @@ import type { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
 
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 
-import Dimension, { TemplateTagDimension } from "../Dimension";
+import Dimension, { TemplateTagDimension, FieldDimension } from "../Dimension";
 import Variable, { TemplateTagVariable } from "../Variable";
 import DimensionOptions from "../DimensionOptions";
 
@@ -76,7 +76,7 @@ export default class NativeQuery extends AtomicQuery {
     this._nativeDatasetQuery = (datasetQuery: NativeDatasetQuery);
   }
 
-  static isDatasetQueryType(datasetQuery: DatasetQuery): boolean {
+  static isDatasetQueryType(datasetQuery: DatasetQuery) {
     return datasetQuery && datasetQuery.type === NATIVE_QUERY_TEMPLATE.type;
   }
 
@@ -133,7 +133,7 @@ export default class NativeQuery extends AtomicQuery {
   /**
    * Returns true if the database metadata (or lack thererof indicates the user can modify and run this query
    */
-  readOnly(): boolean {
+  readOnly() {
     const database = this.database();
     return !database || database.native_permissions !== "write";
   }
@@ -168,12 +168,12 @@ export default class NativeQuery extends AtomicQuery {
     return this;
   }
 
-  hasWritePermission(): boolean {
+  hasWritePermission() {
     const database = this.database();
     return database != null && database.native_permissions === "write";
   }
 
-  supportsNativeParameters(): boolean {
+  supportsNativeParameters() {
     const database = this.database();
     return (
       database != null && _.contains(database.features, "native-parameters")
@@ -270,7 +270,7 @@ export default class NativeQuery extends AtomicQuery {
   templateTagsMap(): TemplateTags {
     return getIn(this.datasetQuery(), ["native", "template-tags"]) || {};
   }
-  allTemplateTagsAreValid(): boolean {
+  allTemplateTagsAreValid() {
     return this.templateTags().every(
       // field filters require a field
       t => !(t.type === "dimension" && t.dimension == null),
@@ -457,5 +457,27 @@ export default class NativeQuery extends AtomicQuery {
       }
     }
     return {};
+  }
+
+  dependentMetadata() {
+    const templateTags = this.templateTags();
+
+    return templateTags
+      .filter(
+        tag =>
+          tag.type === "dimension" &&
+          FieldDimension.isFieldClause(tag.dimension),
+      )
+      .map(tag => {
+        const dimension = FieldDimension.parseMBQL(
+          tag.dimension,
+          this.metadata(),
+        );
+
+        return {
+          type: "field",
+          id: dimension.field().id,
+        };
+      });
   }
 }

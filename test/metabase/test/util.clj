@@ -21,6 +21,7 @@
             [metabase.models.setting.cache :as setting.cache]
             [metabase.plugins.classloader :as classloader]
             [metabase.task :as task]
+            [metabase.test-runner.effects :as effects]
             [metabase.test-runner.parallel :as test-runner.parallel]
             [metabase.test.data :as data]
             [metabase.test.fixtures :as fixtures]
@@ -29,7 +30,6 @@
             [metabase.util :as u]
             [metabase.util.files :as u.files]
             [potemkin :as p]
-            [schema.core :as s]
             [toucan.db :as db]
             [toucan.models :as t.models]
             [toucan.util.test :as tt])
@@ -38,7 +38,8 @@
            java.util.Locale
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
-(comment tu.log/keep-me)
+(comment tu.log/keep-me
+         effects/keep-me)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -50,32 +51,6 @@
   with-log-level
   with-log-messages
   with-log-messages-for-level])
-
-(defmethod assert-expr 're= [msg [_ pattern actual]]
-  `(let [pattern#  ~pattern
-         actual#   ~actual
-         matches?# (some->> actual# (re-matches pattern#))]
-     (assert (instance? java.util.regex.Pattern pattern#))
-     (do-report
-      {:type     (if matches?# :pass :fail)
-       :message  ~msg
-       :expected pattern#
-       :actual   actual#
-       :diffs    (when-not matches?#
-                   [[actual# [pattern# nil]]])})))
-
-(defmethod assert-expr 'schema=
-  [message [_ schema actual]]
-  `(let [schema# ~schema
-         actual# ~actual
-         pass?#  (nil? (s/check schema# actual#))]
-     (do-report
-      {:type     (if pass?# :pass :fail)
-       :message  ~message
-       :expected (s/explain schema#)
-       :actual   actual#
-       :diffs    (when-not pass?#
-                   [[actual# [(s/check schema# actual#) nil]]])})))
 
 (defn- random-uppercase-letter []
   (char (+ (int \A) (rand-int 26))))
@@ -374,6 +349,11 @@
         (setting/set! setting-k value)
         (testing (colorize/blue (format "\nSetting %s = %s\n" (keyword setting-k) (pr-str value)))
           (thunk))
+        (catch Throwable e
+          (throw (ex-info (str "Error in with-temporary-setting-values: " (ex-message e))
+                          {:setting setting-k
+                           :value   value}
+                          e)))
         (finally
           (setting/set! setting-k original-db-or-cache-value))))))
 

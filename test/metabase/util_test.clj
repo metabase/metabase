@@ -8,6 +8,16 @@
             [metabase.test :as mt]
             [metabase.util :as u]))
 
+(deftest add-period-test
+  (is (= "This sentence needs a period."
+         (u/add-period "This sentence needs a period")))
+  (is (= "This sentence doesn't need a period!"
+         (u/add-period "This sentence doesn't need a period!")))
+  (is (= "What about this one?"
+         (u/add-period "What about this one?")))
+  (is (= "   "
+         (u/add-period "   "))))
+
 (deftest decolorize-test
   (is (= "[31mmessage[0m"
          (u/colorize 'red "message")))
@@ -127,9 +137,28 @@
           (is (= expected
                  (u/slugify s))))))))
 
+(deftest full-exception-chain-test
+  (testing "Not an Exception"
+    (is (= nil
+           (u/full-exception-chain nil)))
+    (is (= nil
+           (u/full-exception-chain 100))))
+  (testing "No causes"
+    (let [e (ex-info "A" {:a 1})]
+      (is (= ["A"]
+             (map ex-message (u/full-exception-chain e))))
+      (is (= [{:a 1}]
+             (map ex-data (u/full-exception-chain e))))))
+  (testing "w/ causes"
+    (let [e (ex-info "A" {:a 1} (ex-info "B" {:b 2} (ex-info "C" {:c 3})))]
+      (is (= ["A" "B" "C"]
+             (map ex-message (u/full-exception-chain e))))
+      (is (= [{:a 1} {:b 2} {:c 3}]
+             (map ex-data (u/full-exception-chain e)))))))
+
 (deftest select-nested-keys-test
   (mt/are+ [m keyseq expected] (= expected
-                               (u/select-nested-keys m keyseq))
+                                  (u/select-nested-keys m keyseq))
     {:a 100, :b {:c 200, :d 300}}              [:a [:b :d] :c]   {:a 100, :b {:d 300}}
     {:a 100, :b {:c 200, :d 300}}              [:b]              {:b {:c 200, :d 300}}
     {:a 100, :b {:c 200, :d 300}}              [[:b :c :d]]      {:b {:c 200, :d 300}}
@@ -157,6 +186,9 @@
     "QQ"           false
     "QQ="          false
     "QQ=="         true
+    ;; line breaks and spaces should be OK
+    "Q\rQ\n=\r\n=" true
+    " Q Q = = "    true
     ;; padding has to go at the end
     "==QQ"         false))
 
@@ -309,3 +341,19 @@
          (transduce (map identity)
                     (u/sorted-take size kompare)
                     coll)))))
+(deftest email->domain-test
+  (are [domain email] (is (= domain
+                             (u/email->domain email))
+                          (format "Domain of email address '%s'" email))
+    nil              nil
+    "metabase.com"   "cam@metabase.com"
+    "metabase.co.uk" "cam@metabase.co.uk"
+    "metabase.com"   "cam.saul+1@metabase.com"))
+
+(deftest email-in-domain-test
+  (are [in-domain? email domain] (is (= in-domain?
+                                        (u/email-in-domain? email domain))
+                                     (format "Is email '%s' in domain '%s'?" email domain))
+    true  "cam@metabase.com"          "metabase.com"
+    false "cam.saul+1@metabase.co.uk" "metabase.com"
+    true  "cam.saul+1@metabase.com"   "metabase.com"))

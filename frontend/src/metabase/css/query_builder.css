@@ -546,6 +546,10 @@
   transition: transform 0.25s, opacity 0.25s;
 }
 
+.RunButton.RunButton--compact {
+  padding: 16px 32px;
+}
+
 .RunButton.RunButton--hidden {
   transform: translateY(-20px);
   opacity: 0;

@@ -36,7 +36,7 @@
     {:id                (.getMsgid message)
      :id-plural         (.getMsgidPlural message)
      :str               (.getMsgstr message)
-     :str-plural        (seq (remove str/blank? (.getMsgstrPlural message)))
+     :str-plural        (seq (.getMsgstrPlural message))
      :fuzzy?            (.isFuzzy message)
      :plural?           (.isPlural message)
      :source-references (seq (remove str/blank? (.getSourceReferences message)))

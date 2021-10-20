@@ -32,7 +32,7 @@
   "Map with the various allowed search parameters, used to construct the SQL query"
   {:search-string                (s/maybe su/NonBlankString)
    :archived?                    s/Bool
-   :current-user-perms           #{perms/UserPath}
+   :current-user-perms           #{perms/Path}
    (s/optional-key :models)      (s/maybe #{su/NonBlankString})
    (s/optional-key :table-db-id) (s/maybe s/Int)
    (s/optional-key :limit-int)   (s/maybe s/Int)
@@ -171,7 +171,9 @@
   [model archived?]
   (if archived?
     [:= 1 0]  ; No tables should appear in archive searches
-    [:= (hsql/qualify (model->alias model) :active) true]))
+    [:and
+     [:= (hsql/qualify (model->alias model) :active) true]
+     [:= (hsql/qualify (model->alias model) :visibility_type) nil]]))
 
 (defn- wildcard-match
   [s]
@@ -333,7 +335,7 @@
         case-clauses      (as-> columns-to-search <>
                                 (map (fn [col] [:like (hsql/call :lower col) match]) <>)
                                 (interleave <> (repeat 0))
-                                (concat <> [:else 1] ))]
+                                (concat <> [:else 1]))]
     (apply hsql/call :case case-clauses)))
 
 (defmulti ^:private check-permissions-for-model
@@ -416,7 +418,7 @@
         :limit             (:limit-int search-ctx)
         :offset            (:offset-int search-ctx)
         :table_db_id       (:table-db-id search-ctx)
-        :models            (:models search-ctx) })))
+        :models            (:models search-ctx)})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    Endpoint                                                    |
@@ -433,8 +435,8 @@
    limit :-           (s/maybe su/IntGreaterThanZero)
    offset :-          (s/maybe su/IntGreaterThanOrEqualToZero)]
   (cond-> {:search-string     search-string
-          :archived?          (Boolean/parseBoolean archived-string)
-          :current-user-perms @api/*current-user-permissions-set*}
+           :archived?          (Boolean/parseBoolean archived-string)
+           :current-user-perms @api/*current-user-permissions-set*}
     (some? table-db-id) (assoc :table-db-id table-db-id)
     (some? models)      (assoc :models
                                (apply hash-set (if (vector? models) models [models])))

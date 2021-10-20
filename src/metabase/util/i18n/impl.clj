@@ -57,14 +57,45 @@
    (when-let [locale (locale locale-or-name)]
      (LocaleUtils/isAvailableLocale locale))))
 
-(defn parent-locale
-  "For langugage + country Locales, returns the language-only Locale. Otherwise returns `nil`.
+(defn- available-locale-names*
+  []
+  (log/info "Reading available locales from locales.clj...")
+  (some-> (io/resource "locales.clj") slurp edn/read-string :locales (->> (apply sorted-set))))
 
-    (parent-locale \"en/US\") ; -> #object[java.util.Locale 0x79301688 \"en\"]"
+(def ^{:arglists '([])} available-locale-names
+  "Return sorted set of available locales, as Strings.
+
+    (available-locale-names) ; -> #{\"en\" \"nl\" \"pt-BR\" \"zh\"}"
+  (let [locales (delay (available-locale-names*))]
+    (fn [] @locales)))
+
+(defn- find-fallback-locale*
+  ^Locale [^Locale a-locale]
+  (some (fn [locale-name]
+          (let [try-locale (locale locale-name)]
+            ;; The language-only Locale is tried first by virtue of the
+            ;; list being sorted.
+            (when (and (= (.getLanguage try-locale) (.getLanguage a-locale))
+                       (not (= try-locale a-locale)))
+              try-locale)))
+        (available-locale-names)))
+
+(def ^:private ^{:arglists '([a-locale])} find-fallback-locale
+  (memoize find-fallback-locale*))
+
+(defn fallback-locale
+  "Find a translated fallback Locale in the following order:
+    1) If it is a language + country Locale, try the language-only Locale
+    2) If the language-only Locale isn't translated or the input is a language-only Locale,
+       find the first language + country Locale we have a translation for.
+   Return `nil` if no fallback Locale can be found or the input is invalid.
+
+    (fallback-locale \"en_US\") ; -> #locale\"en\"
+    (fallback-locale \"pt\") ; -> #locale\"pt_BR\"
+    (fallback-locale \"pt_PT\") ; -> #locale\"pt_BR\""
   ^Locale [locale-or-name]
   (when-let [a-locale (locale locale-or-name)]
-    (when (seq (.getCountry a-locale))
-      (locale (.getLanguage a-locale)))))
+    (find-fallback-locale a-locale)))
 
 (defn- locale-edn-resource
   "The resource URL for the edn file containing translations for `locale-or-name`. These files are built by the
@@ -106,9 +137,9 @@
     (or (when (= (.getLanguage a-locale) "en")
           format-string)
         (translated-format-string* a-locale format-string)
-        (when-let [parent-locale (parent-locale a-locale)]
-          (log/tracef "No translated string found, trying parent locale %s" (pr-str parent-locale))
-          (translated-format-string* parent-locale format-string))
+        (when-let [fallback-locale (fallback-locale a-locale)]
+          (log/tracef "No translated string found, trying fallback locale %s" (pr-str fallback-locale))
+          (translated-format-string* fallback-locale format-string))
         format-string)))
 
 (defn- message-format ^MessageFormat [locale-or-name ^String format-string]
@@ -143,18 +174,6 @@
           (catch Throwable _
             (log/errorf e "Invalid format string %s" (pr-str format-string))
             format-string))))))
-
-(defn- available-locale-names*
-  []
-  (log/info "Reading available locales from locales.clj...")
-  (some-> (io/resource "locales.clj") slurp edn/read-string :locales set))
-
-(def ^{:arglists '([])} available-locale-names
-  "Return set of available locales, as Strings.
-
-    (available-locale-names) ; -> #{\"nl\" \"pt\" \"en\" \"zh\"}"
-  (let [locales (delay (available-locale-names*))]
-    (fn [] @locales)))
 
 ;; We can't fetch the system locale until the application DB has been initiailized. Once that's done, we don't need to
 ;; do the check anymore -- swapping out the getter fn with the simpler one speeds things up substantially

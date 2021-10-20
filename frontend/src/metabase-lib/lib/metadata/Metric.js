@@ -1,23 +1,21 @@
 import Base from "./Base";
-import Database from "./Database";
-import Table from "./Table";
-import type { Aggregation } from "metabase-types/types/Query";
+
+/**
+ * @typedef { import("./metadata").Aggregation } Aggregation
+ */
 
 /**
  * Wrapper class for a metric. Belongs to a {@link Database} and possibly a {@link Table}
  */
 export default class Metric extends Base {
-  name: string;
-  description: string;
-
-  database: Database;
-  table: Table;
-
-  displayName(): string {
+  displayName() {
     return this.name;
   }
 
-  aggregationClause(): Aggregation {
+  /**
+   * @returns {Aggregation}
+   */
+  aggregationClause() {
     return ["metric", this.id];
   }
 
@@ -49,7 +47,28 @@ export default class Metric extends Base {
     }
   }
 
-  isActive(): boolean {
+  isActive() {
     return !this.archived;
+  }
+
+  /**
+   * @private
+   * @param {string} name
+   * @param {string} description
+   * @param {Database} database
+   * @param {Table} table
+   * @param {number} id
+   * @param {StructuredQuery} definition
+   * @param {boolean} archived
+   */
+  /* istanbul ignore next */
+  _constructor(name, description, database, table, id, definition, archived) {
+    this.name = name;
+    this.description = description;
+    this.database = database;
+    this.table = table;
+    this.id = id;
+    this.definition = definition;
+    this.archived = archived;
   }
 }

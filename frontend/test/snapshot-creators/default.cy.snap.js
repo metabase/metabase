@@ -1,5 +1,10 @@
 import _ from "underscore";
-import { snapshot, restore, withSampleDataset } from "__support__/e2e/cypress";
+import {
+  snapshot,
+  restore,
+  withSampleDataset,
+  addPostgresDatabase,
+} from "__support__/e2e/cypress";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
 
 const {
@@ -26,7 +31,12 @@ describe("snapshots", () => {
           SAMPLE_DATASET,
         );
       });
+
       snapshot("default");
+
+      addPostgresDatabase();
+      snapshot("postgres-12");
+
       restore("blank");
     });
   });
@@ -152,7 +162,7 @@ describe("snapshots", () => {
     });
 
     // dashboard 1: Orders in a dashboard
-    cy.createDashboard("Orders in a dashboard");
+    cy.createDashboard({ name: "Orders in a dashboard" });
     cy.request("POST", `/api/dashboard/1/cards`, { cardId: 1 }).then(
       ({ body: { id: dashCardId } }) => {
         cy.request("PUT", `/api/dashboard/1/cards`, {

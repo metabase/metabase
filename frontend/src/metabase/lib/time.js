@@ -13,8 +13,8 @@ function addAbbreviatedLocale() {
     relativeTime: {
       future: "in %s",
       past: "%s",
-      s: "%d s",
-      ss: "%d s",
+      s: t`just now`,
+      ss: t`just now`,
       m: "%d m",
       mm: "%d m",
       h: "%d h",
@@ -32,6 +32,10 @@ function addAbbreviatedLocale() {
 
   moment.locale(initialLocale);
 }
+
+const TEXT_UNIT_FORMATS = {
+  "day-of-week": value => moment.parseZone(value, "ddd").startOf("day"),
+};
 
 const NUMERIC_UNIT_FORMATS = {
   // workaround for https://github.com/metabase/metabase/issues/1992
@@ -81,6 +85,8 @@ export function parseTimestamp(value, unit = null, local = false) {
     m = value;
   } else if (typeof value === "string" && /(Z|[+-]\d\d:?\d\d)$/.test(value)) {
     m = moment.parseZone(value);
+  } else if (unit in TEXT_UNIT_FORMATS && typeof value === "string") {
+    m = TEXT_UNIT_FORMATS[unit](value);
   } else if (unit in NUMERIC_UNIT_FORMATS && typeof value == "number") {
     m = NUMERIC_UNIT_FORMATS[unit](value);
   } else {
@@ -105,6 +111,7 @@ export function parseTime(value) {
   }
 }
 
+// @deprecated - use formatTimeWithUnit(hour, "hour-of-day")
 export function formatHourAMPM(hour) {
   if (hour > 12) {
     const newHour = hour - 12;
@@ -118,6 +125,7 @@ export function formatHourAMPM(hour) {
   }
 }
 
+// @deprecated use formatDateTimeWithUnit(day, "day-of-week")
 export function formatDay(day) {
   switch (day) {
     case "mon":
@@ -166,4 +174,21 @@ export function getRelativeTimeAbbreviated(timestamp) {
   }
 
   return getRelativeTime(timestamp);
+}
+
+export function msToSeconds(ms) {
+  return ms / 1000;
+}
+
+export function msToMinutes(ms) {
+  return msToSeconds(ms) / 60;
+}
+
+export function msToHours(ms) {
+  const hours = msToMinutes(ms) / 60;
+  return hours;
+}
+
+export function hoursToSeconds(hours) {
+  return hours * 60 * 60;
 }

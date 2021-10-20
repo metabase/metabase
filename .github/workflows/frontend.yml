@@ -12,6 +12,7 @@ on:
     - 'docs/**'
     - '**/package.json'
     - '**/yarn.lock'
+    - '**/.eslintrc'
     - '.github/workflows/**'
 
 jobs:
@@ -77,7 +78,7 @@ jobs:
 
   fe-tests-unit:
     runs-on: ubuntu-20.04
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
     - uses: actions/checkout@v2
     - name: Prepare Node.js
@@ -95,8 +96,13 @@ jobs:
         path: ~/.cache/yarn
         key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
     - run: yarn install --frozen-lockfile --prefer-offline
-    - run: yarn run test-unit
+    - run: yarn run test-unit --coverage --silent
       name: Run frontend unit tests
+    - name: Upload coverage to codecov.io
+      uses: codecov/codecov-action@v2
+      with:
+        files: ./coverage/lcov.info
+        flags: front-end
 
   fe-tests-timezones:
     runs-on: ubuntu-20.04

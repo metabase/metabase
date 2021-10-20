@@ -1,134 +1,174 @@
+import { t } from "ttag";
+import { push } from "react-router-redux";
+import { assocIn } from "icepick";
+
 import {
   createAction,
   createThunkAction,
   handleActions,
   combineReducers,
 } from "metabase/lib/redux";
-
-import MetabaseAnalytics from "metabase/lib/analytics";
-import { t } from "ttag";
-import { PermissionsApi } from "metabase/services";
+import { CollectionsApi, PermissionsApi } from "metabase/services";
 import Group from "metabase/entities/groups";
+import MetabaseAnalytics from "metabase/lib/analytics";
+import {
+  inferAndUpdateEntityPermissions,
+  updateFieldsPermission,
+  updateNativePermission,
+  updateSchemasPermission,
+  updateTablesPermission,
+} from "metabase/lib/permissions";
+import { getMetadata } from "metabase/selectors/metadata";
+import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 
-const RESET = "metabase/admin/permissions/RESET";
-export const reset = createAction(RESET);
-
-const INITIALIZE = "metabase/admin/permissions/INITIALIZE";
-export const initialize = createThunkAction(
-  INITIALIZE,
-  (load, save) => async (dispatch, getState) => {
-    dispatch(reset({ load, save }));
+const INITIALIZE_DATA_PERMISSIONS =
+  "metabase/admin/permissions/INITIALIZE_DATA_PERMISSIONS";
+export const initializeDataPermissions = createThunkAction(
+  INITIALIZE_DATA_PERMISSIONS,
+  () => async dispatch => {
     await Promise.all([
-      dispatch(loadPermissions()),
+      dispatch(loadDataPermissions()),
       dispatch(Group.actions.fetchList()),
     ]);
   },
 );
 
-const LOAD_GROUPS = "metabase/admin/permissions/LOAD_GROUPS";
-export const loadGroups = createAction(LOAD_GROUPS, () =>
-  PermissionsApi.groups(),
+const LOAD_DATA_PERMISSIONS =
+  "metabase/admin/permissions/LOAD_DATA_PERMISSIONS";
+export const loadDataPermissions = createThunkAction(
+  LOAD_DATA_PERMISSIONS,
+  () => async () => PermissionsApi.graph(),
 );
 
-const LOAD_PERMISSIONS = "metabase/admin/permissions/LOAD_PERMISSIONS";
-export const loadPermissions = createThunkAction(
-  LOAD_PERMISSIONS,
-  () => async (dispatch, getState) => {
-    const { load } = getState().admin.permissions;
-    return load();
+const INITIALIZE_COLLECTION_PERMISSIONS =
+  "metabase/admin/permissions/INITIALIZE_COLLECTION_PERMISSIONS";
+export const initializeCollectionPermissions = createThunkAction(
+  INITIALIZE_COLLECTION_PERMISSIONS,
+  namespace => async dispatch => {
+    await Promise.all([
+      dispatch(loadCollectionPermissions(namespace)),
+      dispatch(Group.actions.fetchList()),
+    ]);
   },
 );
 
-const UPDATE_PERMISSION = "metabase/admin/permissions/UPDATE_PERMISSION";
-export const updatePermission = createThunkAction(
-  UPDATE_PERMISSION,
-  ({ groupId, entityId, value, updater, postAction }) => async (
-    dispatch,
-    getState,
-  ) => {
-    if (postAction) {
-      const action = postAction(groupId, entityId, value);
-      if (action) {
-        dispatch(action);
-      }
+const LOAD_COLLECTION_PERMISSIONS =
+  "metabase/admin/permissions/LOAD_COLLECTION_PERMISSIONS";
+export const loadCollectionPermissions = createThunkAction(
+  LOAD_COLLECTION_PERMISSIONS,
+  namespace => async () => {
+    const params = namespace != null ? { namespace } : {};
+    return CollectionsApi.graph(params);
+  },
+);
+
+export const LIMIT_DATABASE_PERMISSION =
+  "metabase/admin/permissions/LIMIT_DATABASE_PERMISSION";
+export const limitDatabasePermission = createThunkAction(
+  LIMIT_DATABASE_PERMISSION,
+  (groupId, entityId, newValue) => dispatch => {
+    if (newValue) {
+      dispatch(
+        updateDataPermission({
+          groupId,
+          permission: { name: "access" },
+          value: newValue,
+          entityId,
+        }),
+      );
     }
-    return updater(groupId, entityId, value);
+
+    dispatch(push(getGroupFocusPermissionsUrl(groupId, entityId)));
   },
 );
 
-const SAVE_PERMISSIONS = "metabase/admin/permissions/SAVE_PERMISSIONS";
-export const savePermissions = createThunkAction(
-  SAVE_PERMISSIONS,
-  () => async (dispatch, getState) => {
+const UPDATE_DATA_PERMISSION =
+  "metabase/admin/permissions/UPDATE_DATA_PERMISSION";
+export const updateDataPermission = createThunkAction(
+  UPDATE_DATA_PERMISSION,
+  ({ groupId, permission, value, entityId, view }) => {
+    return (dispatch, getState) => {
+      const metadata = getMetadata(getState());
+      if (permission.postActions) {
+        const action = permission.postActions?.[value]?.(
+          entityId,
+          groupId,
+          view,
+        );
+        if (action) {
+          dispatch(action);
+          return;
+        }
+      }
+
+      return { groupId, permission, value, metadata, entityId };
+    };
+  },
+);
+
+const SAVE_DATA_PERMISSIONS =
+  "metabase/admin/permissions/data/SAVE_DATA_PERMISSIONS";
+export const saveDataPermissions = createThunkAction(
+  SAVE_DATA_PERMISSIONS,
+  () => async (_dispatch, getState) => {
     MetabaseAnalytics.trackEvent("Permissions", "save");
-    const { permissions, revision, save } = getState().admin.permissions;
-    const result = await save({
-      revision: revision,
-      groups: permissions,
+    const {
+      dataPermissions,
+      dataPermissionsRevision,
+    } = getState().admin.permissions;
+    const result = await PermissionsApi.updateGraph({
+      groups: dataPermissions,
+      revision: dataPermissionsRevision,
+    });
+
+    return result;
+  },
+);
+
+const UPDATE_COLLECTION_PERMISSION =
+  "metabase/admin/permissions/UPDATE_COLLECTION_PERMISSION";
+export const updateCollectionPermission = createAction(
+  UPDATE_COLLECTION_PERMISSION,
+);
+
+const SAVE_COLLECTION_PERMISSIONS =
+  "metabase/admin/permissions/data/SAVE_COLLECTION_PERMISSIONS";
+export const saveCollectionPermissions = createThunkAction(
+  SAVE_COLLECTION_PERMISSIONS,
+  namespace => async (_dispatch, getState) => {
+    MetabaseAnalytics.trackEvent("Permissions", "save");
+    const {
+      collectionPermissions,
+      collectionPermissionsRevision,
+    } = getState().admin.permissions;
+    const result = await CollectionsApi.updateGraph({
+      namespace,
+      revision: collectionPermissionsRevision,
+      groups: collectionPermissions,
     });
     return result;
   },
 );
 
-const SET_PROPAGATE_PERMISSIONS =
-  "metabase/admin/permissions/SET_PROPAGATE_PERMISSIONS";
-export const setPropagatePermissions = createAction(SET_PROPAGATE_PERMISSIONS);
-
 const CLEAR_SAVE_ERROR = "metabase/admin/permissions/CLEAR_SAVE_ERROR";
 export const clearSaveError = createAction(CLEAR_SAVE_ERROR);
 
-const save = handleActions(
-  {
-    [RESET]: { next: (state, { payload }) => payload.save },
-  },
-  null,
-);
-const load = handleActions(
-  {
-    [RESET]: { next: (state, { payload }) => payload.load },
-  },
-  null,
-);
-
-const permissions = handleActions(
-  {
-    [RESET]: { next: () => null },
-    [LOAD_PERMISSIONS]: { next: (state, { payload }) => payload.groups },
-    [SAVE_PERMISSIONS]: { next: (state, { payload }) => payload.groups },
-    [UPDATE_PERMISSION]: { next: (state, { payload }) => payload },
-  },
-  null,
-);
-
-const originalPermissions = handleActions(
-  {
-    [RESET]: { next: () => null },
-    [LOAD_PERMISSIONS]: { next: (state, { payload }) => payload.groups },
-    [SAVE_PERMISSIONS]: { next: (state, { payload }) => payload.groups },
-  },
-  null,
-);
-
-const revision = handleActions(
-  {
-    [RESET]: { next: () => null },
-    [LOAD_PERMISSIONS]: { next: (state, { payload }) => payload.revision },
-    [SAVE_PERMISSIONS]: { next: (state, { payload }) => payload.revision },
-  },
-  null,
-);
+const savePermission = {
+  next: _state => null,
+  throw: (_state, { payload }) =>
+    (payload && typeof payload.data === "string"
+      ? payload.data
+      : payload.data.message) || t`Sorry, an error occurred.`,
+};
 
 const saveError = handleActions(
   {
-    [RESET]: { next: () => null },
-    [SAVE_PERMISSIONS]: {
+    [SAVE_DATA_PERMISSIONS]: savePermission,
+    [LOAD_DATA_PERMISSIONS]: {
       next: state => null,
-      throw: (state, { payload }) =>
-        (payload && typeof payload.data === "string"
-          ? payload.data
-          : payload.data.message) || t`Sorry, an error occurred.`,
     },
-    [LOAD_PERMISSIONS]: {
+    [SAVE_COLLECTION_PERMISSIONS]: savePermission,
+    [LOAD_COLLECTION_PERMISSIONS]: {
       next: state => null,
     },
     [CLEAR_SAVE_ERROR]: { next: () => null },
@@ -136,21 +176,157 @@ const saveError = handleActions(
   null,
 );
 
-const propagatePermissions = handleActions(
+function getDecendentCollections(collection) {
+  const subCollections = collection.children.filter(
+    collection => !collection.is_personal,
+  );
+  return subCollections.concat(...subCollections.map(getDecendentCollections));
+}
+
+const dataPermissions = handleActions(
   {
-    [SET_PROPAGATE_PERMISSIONS]: { next: (state, { payload }) => payload },
+    [LOAD_DATA_PERMISSIONS]: {
+      next: (_state, { payload }) => payload.groups,
+    },
+    [SAVE_DATA_PERMISSIONS]: { next: (_state, { payload }) => payload.groups },
+    [UPDATE_DATA_PERMISSION]: {
+      next: (state, { payload }) => {
+        if (payload == null) {
+          return state;
+        }
+
+        const { value, groupId, entityId, metadata, permission } = payload;
+
+        if (entityId.tableId != null) {
+          MetabaseAnalytics.trackEvent("Permissions", "fields", value);
+          const updatedPermissions = updateFieldsPermission(
+            state,
+            groupId,
+            entityId,
+            value,
+            metadata,
+          );
+          return inferAndUpdateEntityPermissions(
+            updatedPermissions,
+            groupId,
+            entityId,
+            metadata,
+          );
+        } else if (entityId.schemaName != null) {
+          MetabaseAnalytics.trackEvent("Permissions", "tables", value);
+          return updateTablesPermission(
+            state,
+            groupId,
+            entityId,
+            value,
+            metadata,
+          );
+        } else if (permission.name === "native") {
+          MetabaseAnalytics.trackEvent("Permissions", "native", value);
+          return updateNativePermission(
+            state,
+            groupId,
+            entityId,
+            value,
+            metadata,
+          );
+        } else {
+          MetabaseAnalytics.trackEvent("Permissions", "schemas", value);
+          return updateSchemasPermission(
+            state,
+            groupId,
+            entityId,
+            value,
+            metadata,
+          );
+        }
+      },
+    },
   },
-  true,
+  null,
+);
+
+const originalDataPermissions = handleActions(
+  {
+    [LOAD_DATA_PERMISSIONS]: {
+      next: (_state, { payload }) => payload.groups,
+    },
+    [SAVE_DATA_PERMISSIONS]: { next: (_state, { payload }) => payload.groups },
+  },
+  null,
+);
+
+const dataPermissionsRevision = handleActions(
+  {
+    [LOAD_DATA_PERMISSIONS]: {
+      next: (_state, { payload }) => payload.revision,
+    },
+    [SAVE_DATA_PERMISSIONS]: {
+      next: (_state, { payload }) => payload.revision,
+    },
+  },
+  null,
+);
+
+const collectionPermissions = handleActions(
+  {
+    [LOAD_COLLECTION_PERMISSIONS]: {
+      next: (_state, { payload }) => payload.groups,
+    },
+    [UPDATE_COLLECTION_PERMISSION]: {
+      next: (state, { payload }) => {
+        const { groupId, collection, value, shouldPropagate } = payload;
+        let newPermissions = assocIn(state, [groupId, collection.id], value);
+
+        if (shouldPropagate) {
+          for (const descendent of getDecendentCollections(collection)) {
+            newPermissions = assocIn(
+              newPermissions,
+              [groupId, descendent.id],
+              value,
+            );
+          }
+        }
+        return newPermissions;
+      },
+    },
+    [SAVE_COLLECTION_PERMISSIONS]: {
+      next: (_state, { payload }) => payload.groups,
+    },
+  },
+  null,
+);
+
+const originalCollectionPermissions = handleActions(
+  {
+    [LOAD_COLLECTION_PERMISSIONS]: {
+      next: (_state, { payload }) => payload.groups,
+    },
+    [SAVE_COLLECTION_PERMISSIONS]: {
+      next: (_state, { payload }) => payload.groups,
+    },
+  },
+  null,
+);
+
+const collectionPermissionsRevision = handleActions(
+  {
+    [LOAD_COLLECTION_PERMISSIONS]: {
+      next: (_state, { payload }) => payload.revision,
+    },
+    [SAVE_COLLECTION_PERMISSIONS]: {
+      next: (_state, { payload }) => payload.revision,
+    },
+  },
+  null,
 );
 
 export default combineReducers({
-  save,
-  load,
-
-  permissions,
-  originalPermissions,
   saveError,
-  revision,
-
-  propagatePermissions,
+  dataPermissions,
+  originalDataPermissions,
+  dataPermissionsRevision,
+  collectionPermissions,
+  originalCollectionPermissions,
+  collectionPermissionsRevision,
 });

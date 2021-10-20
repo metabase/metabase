@@ -188,6 +188,7 @@ export class UnconnectedDataSelector extends Component {
     tableFilter: PropTypes.func,
     hasTableSearch: PropTypes.bool,
     canChangeDatabase: PropTypes.bool,
+    containerClassName: PropTypes.string,
   };
 
   static defaultProps = {
@@ -667,7 +668,7 @@ export class UnconnectedDataSelector extends Component {
     });
 
   renderActiveStep() {
-    const { combineDatabaseSchemaSteps, hasTableSearch } = this.props;
+    const { combineDatabaseSchemaSteps } = this.props;
     const props = {
       ...this.state,
 
@@ -680,7 +681,7 @@ export class UnconnectedDataSelector extends Component {
       isLoading: this.state.isLoading,
       hasNextStep: !!this.getNextStep(),
       onBack: this.getPreviousStep() ? this.previousStep : null,
-      hasFiltering: !hasTableSearch,
+      hasFiltering: true,
     };
 
     switch (this.state.activeStep) {
@@ -766,10 +767,10 @@ export class UnconnectedDataSelector extends Component {
     return (
       <PopoverWithTrigger
         id="DataPopover"
-        containerClassName="DataPopoverContainer"
         autoWidth
         ref={this.popover}
         isInitiallyOpen={this.props.isInitiallyOpen}
+        containerClassName={this.props.containerClassName}
         triggerElement={this.getTriggerElement()}
         triggerClasses={this.getTriggerClasses()}
         horizontalAttachments={["center", "left", "right"]}
@@ -967,6 +968,7 @@ const TablePicker = ({
   onBack,
   isLoading,
   hasFiltering,
+  minTablesToShowSearch = 10,
 }) => {
   // In case DataSelector props get reseted
   if (!selectedDatabase) {
@@ -1009,7 +1011,10 @@ const TablePicker = ({
       },
     ];
     return (
-      <div style={{ width: 300, overflowY: "auto" }}>
+      <div
+        style={{ width: 300, overflowY: "auto" }}
+        data-testid="data-selector"
+      >
         <AccordionList
           id="TablePicker"
           key="tablePicker"
@@ -1017,7 +1022,7 @@ const TablePicker = ({
           sections={sections}
           maxHeight={Infinity}
           width={"100%"}
-          searchable={hasFiltering}
+          searchable={hasFiltering && tables.length >= minTablesToShowSearch}
           onChange={item => onChangeTable(item.table)}
           itemIsSelected={item =>
             item.table && selectedTable

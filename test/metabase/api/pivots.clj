@@ -1,14 +1,10 @@
 (ns metabase.api.pivots
   (:require [metabase.test :as mt]))
 
-;; Redshift takes A LONG TIME to insert the sample-dataset, so do not
-;; run these tests against Redshift (for now?)
-;;TODO: refactor Redshift testing to support a bulk COPY or something
-;; other than INSERT INTO statements
 (defn applicable-drivers
   "Drivers that these pivot table tests should run on"
   []
-  (disj (mt/normal-drivers-with-feature :expressions :left-join) :redshift))
+  (mt/normal-drivers-with-feature :expressions :left-join))
 
 (defn pivot-query
   "A basic pivot table query"

@@ -356,7 +356,14 @@ export default class TableInteractive extends Component {
     isPivoted,
     series,
   ) {
-    const clickedRowData = getTableClickedObjectRowData(series, rowIndex);
+    const clickedRowData = getTableClickedObjectRowData(
+      series,
+      rowIndex,
+      columnIndex,
+      isPivoted,
+      data,
+    );
+
     return getTableCellClickedObject(
       data,
       settings,

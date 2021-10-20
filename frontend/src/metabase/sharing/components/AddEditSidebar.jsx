@@ -15,7 +15,7 @@ import Text from "metabase/components/type/Text";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import RecipientPicker from "metabase/pulse/components/RecipientPicker";
 import SchedulePicker from "metabase/components/SchedulePicker";
-import SendTestEmail from "metabase/components/SendTestEmail";
+import SendTestPulse from "metabase/components/SendTestPulse";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import Toggle from "metabase/components/Toggle";
 import Select, { Option } from "metabase/components/Select";
@@ -56,6 +56,7 @@ export const AddEditSlackSidebar = connect(mapStateToProps)(
 function _AddEditEmailSidebar({
   pulse,
   formInput,
+  formError,
   channel,
   channelSpec,
   users,
@@ -76,10 +77,10 @@ function _AddEditEmailSidebar({
 }) {
   return (
     <Sidebar
+      closeIsDisabled={!dashboardPulseIsValid(pulse, formInput.channels)}
+      formError={formError}
       onClose={handleSave}
       onCancel={onCancel}
-      className="text-dark"
-      closeIsDisabled={!dashboardPulseIsValid(pulse, formInput.channels)}
     >
       <div className="pt4 px4 flex align-center">
         <Icon name="mail" className="mr1" size={21} />
@@ -125,10 +126,13 @@ function _AddEditEmailSidebar({
           }
         />
         <div className="pt2 pb1">
-          <SendTestEmail
+          <SendTestPulse
             channel={channel}
             pulse={pulse}
             testPulse={testPulse}
+            normalText={t`Send email now`}
+            successText={t`Email sent`}
+            disabled={channel.recipients.length === 0}
           />
         </div>
         {PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component ? (
@@ -184,6 +188,7 @@ function _AddEditEmailSidebar({
 _AddEditEmailSidebar.propTypes = {
   pulse: PropTypes.object.isRequired,
   formInput: PropTypes.object.isRequired,
+  formError: PropTypes.object,
   channel: PropTypes.object.isRequired,
   channelSpec: PropTypes.object.isRequired,
   users: PropTypes.array,
@@ -266,6 +271,7 @@ function getConfirmItems(pulse) {
 function _AddEditSlackSidebar({
   pulse,
   formInput,
+  formError,
   channel,
   channelSpec,
   parameters,
@@ -276,16 +282,17 @@ function _AddEditSlackSidebar({
   onCancel,
   onChannelPropertyChange,
   onChannelScheduleChange,
+  testPulse,
   toggleSkipIfEmpty,
   handleArchive,
   setPulseParameters,
 }) {
   return (
     <Sidebar
+      closeIsDisabled={!dashboardPulseIsValid(pulse, formInput.channels)}
+      formError={formError}
       onClose={handleSave}
       onCancel={onCancel}
-      className="text-dark"
-      closeIsDisabled={!dashboardPulseIsValid(pulse, formInput.channels)}
     >
       <div className="pt4 flex align-center px4 mb3">
         <Icon name="slack" className="mr1" size={21} />
@@ -317,6 +324,16 @@ function _AddEditSlackSidebar({
             onChannelScheduleChange(newSchedule, changedProp)
           }
         />
+        <div className="pt2 pb1">
+          <SendTestPulse
+            channel={channel}
+            pulse={pulse}
+            testPulse={testPulse}
+            normalText={t`Send to Slack now`}
+            successText={t`Slack sent`}
+            disabled={channel.details.channel === undefined}
+          />
+        </div>
         {PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component ? (
           <PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component
             className="py3 mt2 border-top"
@@ -354,6 +371,7 @@ function _AddEditSlackSidebar({
 _AddEditSlackSidebar.propTypes = {
   pulse: PropTypes.object.isRequired,
   formInput: PropTypes.object.isRequired,
+  formError: PropTypes.object,
   channel: PropTypes.object.isRequired,
   channelSpec: PropTypes.object.isRequired,
   users: PropTypes.array,
@@ -364,6 +382,7 @@ _AddEditSlackSidebar.propTypes = {
   onCancel: PropTypes.func.isRequired,
   onChannelPropertyChange: PropTypes.func.isRequired,
   onChannelScheduleChange: PropTypes.func.isRequired,
+  testPulse: PropTypes.func.isRequired,
   toggleSkipIfEmpty: PropTypes.func.isRequired,
   handleArchive: PropTypes.func.isRequired,
   setPulseParameters: PropTypes.func.isRequired,

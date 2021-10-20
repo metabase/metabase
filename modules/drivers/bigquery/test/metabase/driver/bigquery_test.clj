@@ -58,7 +58,7 @@
 
 (defn- do-with-view [f]
   (driver/with-driver :bigquery
-    (let [view-name (name (munge (gensym "view_")))]
+    (let [view-name (format "view_%s" (tu/random-name))]
       (mt/with-temp-copy-of-db
         (try
           (bigquery.tx/execute!

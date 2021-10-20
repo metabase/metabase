@@ -44,6 +44,7 @@ const propTypes = {
   // Modes
   variant: PropTypes.oneOf(["bubble", "normal", "underlined"]),
   vertical: PropTypes.bool,
+  colorScheme: PropTypes.oneOf(["admin", "default"]),
 };
 
 const defaultNameGetter = option => option.name;
@@ -75,6 +76,7 @@ function Radio({
   yspace,
   py,
   showButtons = vertical && variant !== "bubble",
+  colorScheme = "default",
   ...props
 }) {
   const id = useMemo(() => _.uniqueId("radio-"), []);
@@ -102,6 +104,7 @@ function Radio({
             <Item
               id={labelId}
               htmlFor={id}
+              colorScheme={colorScheme}
               selected={selected}
               last={last}
               vertical={vertical}
@@ -130,7 +133,7 @@ function Radio({
                 aria-labelledby={labelId}
               />
               {showButtons && <RadioButton checked={selected} />}
-              {optionNameFn(option)}
+              <span data-testid={`${id}-name`}>{optionNameFn(option)}</span>
             </Item>
           </li>
         );

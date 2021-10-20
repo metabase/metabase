@@ -135,4 +135,22 @@ describe("scenarios > x-rays", () => {
       cy.contains("null").should("not.exist");
     });
   });
+
+  it("should be able to save an x-ray as a dashboard and visit it immediately (metabase#18028)", () => {
+    cy.visit("/");
+    cy.contains("A look at your Orders table").click();
+
+    // There are a lot of spinners in this dashboard. Give them some time to disappear.
+    cy.get(".LoadingSpinner", { timeout: 10000 }).should("not.exist");
+
+    cy.button("Save this").click();
+
+    cy.findByText("Your dashboard was saved");
+    cy.findByText("See it").click();
+
+    cy.url().should("contain", "a-look-at-your-orders-table");
+
+    cy.get(".Card").contains("18,760");
+    cy.findByText("How these transactions are distributed");
+  });
 });

@@ -384,7 +384,7 @@ describe("collection permissions", () => {
                 });
 
                 it("should be able to change title and description", () => {
-                  cy.findByText("Change title and description").click();
+                  cy.findByText("Edit dashboard details").click();
                   cy.location("pathname").should("eq", "/dashboard/1/details");
                   cy.findByLabelText("Name")
                     .click()
@@ -528,7 +528,7 @@ describe("collection permissions", () => {
                 });
                 cy.url().should("match", /\/dashboard\/\d+-foo$/);
                 saveDashboard();
-                cy.get(".DashboardHeader").findByText(personalCollection);
+                cy.get(".QueryBuilder-section").findByText(personalCollection);
               });
 
               it("should not offer a user the ability to update or clone the question", () => {
@@ -549,11 +549,11 @@ describe("collection permissions", () => {
             });
 
             describe("managing dashboard from the dashboard's edit menu", () => {
-              it("should not be offered to change title and description for dashboard in collections they have `read` access to (metabase#15280)", () => {
+              it("should not be offered to edit dashboard details for dashboard in collections they have `read` access to (metabase#15280)", () => {
                 cy.visit("/dashboard/1");
                 cy.icon("ellipsis").click();
                 popover()
-                  .findByText("Change title and description")
+                  .findByText("Edit dashboard details")
                   .should("not.exist");
               });
 
@@ -595,7 +595,7 @@ describe("collection permissions", () => {
 
       it("shouldn't render revision history steps when there was no diff (metabase#1926)", () => {
         cy.signInAsAdmin();
-        cy.createDashboard("foo").then(({ body }) => {
+        cy.createDashboard().then(({ body }) => {
           visitAndEditDashboard(body.id);
         });
 
@@ -658,7 +658,7 @@ describe("collection permissions", () => {
                 cy.findAllByRole("button", { name: "Revert" });
               });
 
-              it.skip("should be able to revert the dashboard (metabase#15237)", () => {
+              it("should be able to revert the dashboard (metabase#15237)", () => {
                 cy.visit("/dashboard/1");
                 cy.icon("ellipsis").click();
                 cy.findByText("Revision history").click();
@@ -670,21 +670,28 @@ describe("collection permissions", () => {
                 cy.findAllByText(/Revert/).should("not.exist");
                 // We reverted the dashboard to the state prior to adding any cards to it
                 cy.findByText("This dashboard is looking empty.");
-              });
 
-              it("should be able to revert the question via the revision history modal", () => {
-                // It's possible that the mechanics of who should be able to revert the question will change (see https://github.com/metabase/metabase/issues/15131)
-                // For now that's not possible for user without data access (likely it will be again when #11719 is fixed)
-                cy.skipOn(user === "nodata");
-                cy.visit("/question/1");
-                cy.findByTestId("revision-history-button").click();
-
-                clickRevert("First revision.");
+                // Should be able to revert back again
+                cy.findByText("Revision history").click();
+                clickRevert("rearranged the cards.");
                 cy.wait("@revert").then(xhr => {
                   expect(xhr.status).to.eq(200);
                   expect(xhr.cause).not.to.exist;
                 });
-                cy.findAllByText(/Revert/).should("not.exist");
+                cy.findByText("117.03");
+              });
+
+              it("should be able to access the question's revision history via the revision history button in the header of the query builder", () => {
+                cy.skipOn(user === "nodata");
+
+                cy.visit("/question/1");
+                cy.findByTestId("revision-history-button").click();
+                cy.findByText("Revert").click();
+
+                cy.wait("@revert").then(xhr => {
+                  expect(xhr.status).to.eq(200);
+                  expect(xhr.cause).not.to.exist;
+                });
 
                 cy.contains(/^Orders$/);
               });
@@ -694,6 +701,7 @@ describe("collection permissions", () => {
 
                 cy.visit("/question/1");
                 cy.findByTestId("saved-question-header-button").click();
+                cy.findByText("History").click();
                 cy.findByText("Revert").click();
 
                 cy.wait("@revert").then(xhr => {

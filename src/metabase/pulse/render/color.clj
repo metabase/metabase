@@ -16,8 +16,8 @@
   (let [file-url (io/resource js-file-path)]
     (assert file-url (trs "Can''t find JS color selector at ''{0}''" js-file-path))
     (let [dlay (delay
-                 (doto (js/engine)
-                   (js/eval (slurp file-url))))]
+                 (doto (js/context)
+                   (js/load-resource js-file-path)))]
       (fn []
         @dlay))))
 
@@ -41,14 +41,14 @@
   ;; expensive. The JS code is written to deal with `rows` in it's native Nashorn format but since `cols` and
   ;; `viz-settings` are small, pass those as JSON so that they can be deserialized to pure JS objects once in JS
   ;; code
-  (js/invoke-by-name (js-engine) "makeCellBackgroundGetter"
-                     rows
-                     (json/generate-string cols)
-                     (json/generate-string viz-settings)))
+  (js/execute-fn-name (js-engine) "makeCellBackgroundGetter"
+                      rows
+                      (json/generate-string cols)
+                      (json/generate-string viz-settings)))
 
 (defn get-background-color
   "Get the correct color for a cell in a pulse table. Returns color as string suitable for use CSS, e.g. a hex string or
   `rgba()` string. This is intended to be invoked on each cell of every row in the table. See `make-color-selector`
   for more info."
   ^String [color-selector cell-value column-name row-index]
-  (js/invoke-function color-selector cell-value row-index column-name))
+  (.asString (js/execute-fn color-selector cell-value row-index column-name)))

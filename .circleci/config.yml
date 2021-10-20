@@ -12,6 +12,9 @@ executors:
     docker:
       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
       - image: maildev/maildev
+      - image: metabase/qa-databases:postgres-sample-12
+      - image: metabase/qa-databases:mongo-sample-4.0
+      - image: metabase/qa-databases:mysql-sample-8
 
   java-8:
     working_directory: /home/circleci/metabase/metabase/
@@ -122,11 +125,17 @@ executors:
           # MYSQL_USER: root
           # MYSQL_ALLOW_EMPTY_PASSWORD: yes
 
-  mongo:
+  mongo-4-0:
      working_directory: /home/circleci/metabase/metabase/
      docker:
        - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
        - image: circleci/mongo:4.0
+
+  mongo-latest:
+     working_directory: /home/circleci/metabase/metabase/
+     docker:
+       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+       - image: circleci/mongo:latest
 
   presto-186:
     working_directory: /home/circleci/metabase/metabase/
@@ -194,26 +203,6 @@ executors:
     # Run Docker images with 8GB or RAM instead of the default 4GB for medium instances. The Druid Docker image runs
     # OOM all the time with the default medium size.
     resource_class: large
-
-
-  fe-mongo-4:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
-      - image: metabase/qa-databases:mongo-sample-4.0
-
-  fe-postgres-12:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
-      - image: metabase/qa-databases:postgres-sample-12
-
-  fe-mysql-8:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
-      - image: metabase/qa-databases:mysql-sample-8
-
 
 ########################################################################################################################
 #                                             MAP FRAGMENTS AND CACHE KEYS                                             #
@@ -561,6 +550,9 @@ jobs:
             else
                echo '' > .CACHE-PREFIX
             fi
+      - run-yarn-command:
+          command-name: Create static visualization js bundle
+          command: build-static-viz
       - persist_to_workspace:
           root: /home/circleci/
           paths:
@@ -776,7 +768,7 @@ jobs:
             - restore-fe-deps-cache
             - run:
                 name: Run yarn to install deps
-                command: yarn;
+                command: rm -rf node_modules/ && yarn --frozen-lockfile;
                 no_output_timeout: 15m
             - save_cache:
                 name: Cache frontend dependencies
@@ -945,8 +937,9 @@ jobs:
                       name: Restore cached uberjar built in previous step
                       <<: *CacheKeyUberjar
                   - steps: << parameters.before-steps >>
+                # Make both `test-files` and `source-folder` parameters optional. Translates to: if `parameter` => run associated flag (`--spec` and `--folder`, respectively)
                 command: |
-                  run test-cypress-no-build <<# parameters.test-files >> --spec << parameters.test-files >> <</ parameters.test-files >> --folder << parameters.source-folder >>
+                  run test-cypress-no-build <<# parameters.test-files >> --spec << parameters.test-files >> <</ parameters.test-files >> <<# parameters.source-folder >> --folder << parameters.source-folder >> <</ parameters.source-folder >>
                 after-steps:
                   - store_artifacts:
                       path: /home/circleci/metabase/metabase/cypress
@@ -1014,7 +1007,8 @@ workflows:
           after-steps:
             - run:
                 name: Upload code coverage to codecov.io
-                command: bash <(curl -s https://codecov.io/bash)
+                command: bash <(curl -s https://codecov.io/bash) -F back-end
+
           skip-when-no-change: true
 
       - test-driver:
@@ -1022,6 +1016,12 @@ workflows:
           requires:
             - be-tests-ee
           driver: bigquery
+
+      - test-driver:
+          name: be-tests-bigquery-cloud-sdk-ee
+          requires:
+            - be-tests-ee
+          driver: bigquery-cloud-sdk
 
       - test-driver:
           name: be-tests-druid-ee
@@ -1038,9 +1038,18 @@ workflows:
 
       - test-driver:
           name: be-tests-mongo-ee
+          description: "(Mongo 4.0)"
           requires:
             - be-tests-ee
-          e: mongo
+          e: mongo-4-0
+          driver: mongo
+
+      - test-driver:
+          name: be-tests-mongo-latest-ee
+          description: "(Mongo latest)"
+          requires:
+            - be-tests-ee
+          e: mongo-latest
           driver: mongo
 
       - test-driver:
@@ -1248,48 +1257,44 @@ workflows:
           matrix:
             parameters:
               edition: ["ee", "oss"]
-              folder: ["admin", "binning", "collections", "dashboard", "dashboard-filters", "onboarding", "native", "native-filters", "question", "sharing", "smoketest", "visualizations"]
+              folder: ["admin", "binning", "collections", "dashboard", "dashboard-filters", "dashboard-filters-sql", "moderation", "native", "native-filters", "onboarding", "permissions", "question", "sharing", "smoketest", "visualizations"]
           name: e2e-tests-<< matrix.folder >>-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
           cypress-group: "<< matrix.folder >>-<< matrix.edition >>"
           source-folder: << matrix.folder >>
+          before-steps:
+            - wait-for-port:
+                port: 3306
+            - wait-for-port:
+                port: 5432
+            - wait-for-port:
+                port: 27017
+
+      - fe-tests-cypress:
+          matrix:
+            parameters:
+              edition: ["ee", "oss"]
+          name: percy-visual-tests-<< matrix.edition >>
+          requires:
+            - build-uberjar-<< matrix.edition >>
+          cypress-group: "percy-visual-<< matrix.edition >>"
+          test-files: "./frontend/test/metabase-visual/**/*.cy.spec.js"
 
       - fe-tests-cypress:
           name: e2e-tests-mongo-4-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
-          e: fe-mongo-4
           cypress-group: "mongo"
           source-folder: mongo
           qa-db: true
-          before-steps:
-            - wait-for-port:
-                port: 27017
-          <<: *Matrix
-
-      - fe-tests-cypress:
-          name: e2e-tests-postgres-12-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          e: fe-postgres-12
-          cypress-group: "postgres"
-          source-folder: postgres
-          qa-db: true
-          before-steps:
-            - wait-for-port:
-                port: 5432
           <<: *Matrix
 
       - fe-tests-cypress:
           name: e2e-tests-mysql-8-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
-          e: fe-mysql-8
           cypress-group: "mysql"
           source-folder: mysql
           qa-db: true
-          before-steps:
-            - wait-for-port:
-                port: 3306
           <<: *Matrix

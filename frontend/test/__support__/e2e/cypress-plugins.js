@@ -24,8 +24,6 @@ const isQaDatabase = process.env["QA_DB_ENABLED"];
 const webpack = require("@cypress/webpack-preprocessor");
 const { resolve } = require("../../../../webpack.config.js");
 
-const percyHealthCheck = require("@percy/cypress/task");
-
 const webpackPluginOptions = {
   webpackOptions: { resolve },
   watchOptions: {},
@@ -35,9 +33,6 @@ module.exports = (on, config) => {
   // `on` is used to hook into various events Cypress emits
   // `config` is the resolved Cypress config
   require("cypress-grep/src/plugin")(config);
-
-  // Required for Percy
-  on("task", percyHealthCheck);
 
   /********************************************************************
    **                          WEBPACK                               **
@@ -49,13 +44,22 @@ module.exports = (on, config) => {
    **                         BROWSERS                               **
    ********************************************************************/
 
-  //  Open dev tools in Chrome by default
   on("before:browser:launch", (browser = {}, launchOptions) => {
+    //  Open dev tools in Chrome by default
     if (browser.name === "chrome" || browser.name === "chromium") {
       launchOptions.args.push("--auto-open-devtools-for-tabs");
-
-      return launchOptions;
     }
+
+    // Start browsers with prefers-reduced-motion set to "reduce"
+    if (browser.family === "firefox") {
+      launchOptions.preferences["ui.prefersReducedMotion"] = 1;
+    }
+
+    if (browser.family === "chromium") {
+      launchOptions.args.push("--force-prefers-reduced-motion");
+    }
+
+    return launchOptions;
   });
 
   /********************************************************************

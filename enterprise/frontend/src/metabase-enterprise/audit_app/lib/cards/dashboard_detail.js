@@ -4,7 +4,7 @@ export const viewsByTime = (dashboardId: number) => ({
     display: "line",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit.pages.dashboard-detail/views-by-time",
+      fn: "metabase-enterprise.audit-app.pages.dashboard-detail/views-by-time",
       args: [dashboardId, "day"], // FIXME: should this be automatic?
     },
   },
@@ -16,7 +16,8 @@ export const revisionHistory = (dashboardId: number) => ({
     display: "table",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit.pages.dashboard-detail/revision-history",
+      fn:
+        "metabase-enterprise.audit-app.pages.dashboard-detail/revision-history",
       args: [dashboardId],
     },
     visualization_settings: {
@@ -36,7 +37,7 @@ export const cards = (dashboardId: number) => ({
     display: "table",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit.pages.dashboard-detail/cards",
+      fn: "metabase-enterprise.audit-app.pages.dashboard-detail/cards",
       args: [dashboardId],
     },
   },
@@ -48,7 +49,7 @@ export const auditLog = (dashboardId: number) => ({
     display: "table",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit.pages.dashboard-detail/audit-log",
+      fn: "metabase-enterprise.audit-app.pages.dashboard-detail/audit-log",
       args: [dashboardId],
     },
     visualization_settings: {

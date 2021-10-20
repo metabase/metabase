@@ -26,7 +26,7 @@
     (mt/with-temp Database [db]
       (is (= true
              (perms/set-has-full-permissions? (user/permissions-set (mt/user->id :rasta))
-                                              (perms/object-path db)))))))
+                                              (perms/data-perms-path db)))))))
 
 (deftest tasks-test
   (testing "Sync tasks should get scheduled for a newly created Database"

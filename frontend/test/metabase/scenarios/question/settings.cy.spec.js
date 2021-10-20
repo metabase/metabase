@@ -26,7 +26,7 @@ describe("scenarios > question > settings", () => {
       cy.contains("Settings").click();
 
       // wait for settings sidebar to open
-      cy.get(".border-right.overflow-x-hidden")
+      cy.findByTestId("sidebar-left")
         .invoke("width")
         .should("be.gt", 350);
 
@@ -164,7 +164,13 @@ describe("scenarios > question > settings", () => {
       popover().within(() => cy.icon("gear").click()); // open subtotal column settings
 
       cy.findByText("Table options").should("not.exist"); // no longer displaying the top level settings
-      cy.findByText("Column title"); // shows subtotal column settings
+      cy.findByText("Separator style"); // shows subtotal column settings
+
+      cy.get(".TableInteractive")
+        .findByText("Created At")
+        .click(); // open created_at column header actions
+      popover().within(() => cy.icon("gear").click()); // open created_at column settings
+      cy.findByText("Date style"); // shows created_at column settings
     });
   });
 

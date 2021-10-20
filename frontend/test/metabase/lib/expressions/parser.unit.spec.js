@@ -127,9 +127,6 @@ describe("metabase/lib/expressions/parser", () => {
     it("should accept a simple comparison", () => {
       expect(() => parseFilter("[Total] > 12")).not.toThrow();
     });
-    it("should accept another simple comparison", () => {
-      expect(() => parseFilter("10 < [DiscountPercent]")).not.toThrow();
-    });
     it("should accept a logical NOT", () => {
       expect(() => parseFilter("NOT [Debt] > 5")).not.toThrow();
     });
@@ -154,6 +151,9 @@ describe("metabase/lib/expressions/parser", () => {
     });
     it("should reject CASE with only one argument", () => {
       expect(() => parseFilter("case([Deal])")).toThrow();
+    });
+    it("should reject a number on the left-hand side", () => {
+      expect(() => parseFilter("10 < [DiscountPercent]")).toThrow();
     });
   });
 });

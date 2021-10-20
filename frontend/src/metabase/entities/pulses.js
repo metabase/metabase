@@ -1,40 +1,67 @@
+import { t } from "ttag";
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
-
+import { PulseApi } from "metabase/services";
+import { addUndo } from "metabase/redux/undo";
 import {
   canonicalCollectionId,
   getCollectionType,
 } from "metabase/entities/collections";
 
+export const UNSUBSCRIBE = "metabase/entities/pulses/unsubscribe";
+
 const Pulses = createEntity({
   name: "pulses",
+  nameOne: "pulse",
   path: "/api/pulse",
 
+  actionTypes: {
+    UNSUBSCRIBE,
+  },
+
   objectActions: {
-    setArchived: ({ id }, archived, opts) =>
-      Pulses.actions.update(
+    setArchived: ({ id }, archived, opts) => {
+      return Pulses.actions.update(
         { id },
         { archived },
-        undo(opts, "pulse", archived ? "archived" : "unarchived"),
-      ),
+        undo(opts, t`subscription`, archived ? t`deleted` : t`restored`),
+      );
+    },
 
-    setCollection: ({ id }, collection, opts) =>
-      Pulses.actions.update(
+    setChannels: ({ id }, channels, opts) => {
+      return Pulses.actions.update(
+        { id },
+        { channels },
+        undo(opts, t`subscription`, t`updated`),
+      );
+    },
+
+    setCollection: ({ id }, collection, opts) => {
+      return Pulses.actions.update(
         { id },
         { collection_id: canonicalCollectionId(collection && collection.id) },
-        undo(opts, "pulse", "moved"),
-      ),
+        undo(opts, t`subscription`, t`moved`),
+      );
+    },
 
-    setPinned: ({ id }, pinned, opts) =>
-      Pulses.actions.update(
+    setPinned: ({ id }, pinned, opts) => {
+      return Pulses.actions.update(
         { id },
         {
           collection_position:
             typeof pinned === "number" ? pinned : pinned ? 1 : null,
         },
         opts,
-      ),
+      );
+    },
+
+    unsubscribe: ({ id }) => async dispatch => {
+      await PulseApi.unsubscribe({ id });
+      dispatch(addUndo({ message: t`Successfully unsubscribed` }));
+      dispatch({ type: UNSUBSCRIBE, payload: { id } });
+      dispatch({ type: Pulses.actionTypes.INVALIDATE_LISTS_ACTION });
+    },
   },
 
   objectSelectors: {

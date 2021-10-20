@@ -71,7 +71,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       "13927",
       `SELECT PEOPLE.STATE, PEOPLE.CITY from PEOPLE;`,
     ).then(({ body: { id: QUESTION_ID } }) => {
-      cy.createDashboard("13927D").then(({ body: { id: DASHBOARD_ID } }) => {
+      cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
         cy.log("Add question to the dashboard");
 
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
@@ -138,6 +138,42 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
   });
 
+  it("should insert data from the correct row in the URL for pivot tables (metabase#17920)", () => {
+    const query =
+      "SELECT STATE, SOURCE, COUNT(*) AS CNT from PEOPLE GROUP BY STATE, SOURCE";
+    const questionSettings = {
+      "table.pivot": true,
+      "table.pivot_column": "SOURCE",
+      "table.cell_column": "CNT",
+    };
+    const columnKey = JSON.stringify(["name", "CNT"]);
+    const dashCardSettings = {
+      column_settings: {
+        [columnKey]: {
+          click_behavior: {
+            type: "link",
+            linkType: "url",
+            linkTemplate: "/test/{{CNT}}/{{STATE}}/{{SOURCE}}",
+          },
+        },
+      },
+    };
+    createQuestion(
+      { query, visualization_settings: questionSettings },
+      questionId => {
+        createDashboard(
+          { questionId, visualization_settings: dashCardSettings },
+          dashboardIdA => cy.visit(`/dashboard/${dashboardIdA}`),
+        );
+      },
+    );
+
+    cy.findAllByText("18")
+      .first()
+      .click();
+    cy.location("pathname").should("eq", "/test/18/CO/Organic");
+  });
+
   it("should handle question click through on a table", () => {
     createDashboardWithQuestion({}, dashboardId =>
       cy.visit(`/dashboard/${dashboardId}`),
@@ -174,7 +210,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     cy.findByText("num: 111").click();
 
     // show filtered question
-    cy.findByText("Orders");
+    cy.findAllByText("Orders");
     cy.findByText("User ID is 111");
     cy.findByText("Category is Widget");
     cy.findByText("Showing 5 rows");
@@ -407,7 +443,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       },
       display: "bar",
     }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.createDashboard("13785D").then(({ body: { id: DASHBOARD_ID } }) => {
+      cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
         cy.log("Add filter to the dashboard");
 
         cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
@@ -531,7 +567,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       name: "14919",
       query: { "source-table": PRODUCTS_ID },
     }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.createDashboard("14919D").then(({ body: { id: DASHBOARD_ID } }) => {
+      cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
         // Add previously added question to the dashboard
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
           cardId: QUESTION_ID,
@@ -605,7 +641,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         ],
       },
     }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.createDashboard("15331D").then(({ body: { id: DASHBOARD_ID } }) => {
+      cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
         // Add filter to the dashboard
         cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
           parameters: [
@@ -687,7 +723,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
           "graph.metrics": ["VALUE"],
         },
       }).then(({ body: { id: QUESTION2_ID } }) => {
-        cy.createDashboard("15612D").then(({ body: { id: DASHBOARD_ID } }) => {
+        cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
           // Add the first question to the dashboard
           cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
             cardId: QUESTION1_ID,
@@ -752,7 +788,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         ],
       },
     }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.createDashboard("13289D").then(({ body: { id: DASHBOARD_ID } }) => {
+      cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
         // Add question to the dashboard
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
           cardId: QUESTION_ID,
@@ -904,7 +940,9 @@ function createQuestion(options, callback) {
     dataset_query: {
       database: 1,
       type: "native",
-      native: { query: "select 111 as my_number, 'foo' as my_string" },
+      native: {
+        query: options.query || "select 111 as my_number, 'foo' as my_string",
+      },
     },
     display: "table",
     visualization_settings: options.visualization_settings || {},
@@ -919,45 +957,47 @@ function createDashboard(
   { dashboardName = "dashboard", questionId, visualization_settings },
   callback,
 ) {
-  cy.createDashboard(dashboardName).then(({ body: { id: dashboardId } }) => {
-    cy.request("PUT", `/api/dashboard/${dashboardId}`, {
-      parameters: [
-        {
-          name: "My Param",
-          slug: "my_param",
-          id: "e8f79be9",
-          type: "category",
-        },
-      ],
-    });
-
-    cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-      cardId: questionId,
-    }).then(({ body: { id: dashCardId } }) => {
-      cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
-        cards: [
+  cy.createDashboard({ name: dashboardName }).then(
+    ({ body: { id: dashboardId } }) => {
+      cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+        parameters: [
           {
-            id: dashCardId,
-            card_id: questionId,
-            row: 0,
-            col: 0,
-            sizeX: 6,
-            sizeY: 6,
-            parameter_mappings: [
-              {
-                parameter_id: "e8f79be9",
-                card_id: questionId,
-                target: ["dimension", ["field", 22, { "source-field": 11 }]],
-              },
-            ],
-            visualization_settings,
+            name: "My Param",
+            slug: "my_param",
+            id: "e8f79be9",
+            type: "category",
           },
         ],
       });
 
-      callback(dashboardId);
-    });
-  });
+      cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
+        cardId: questionId,
+      }).then(({ body: { id: dashCardId } }) => {
+        cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
+          cards: [
+            {
+              id: dashCardId,
+              card_id: questionId,
+              row: 0,
+              col: 0,
+              sizeX: 6,
+              sizeY: 6,
+              parameter_mappings: [
+                {
+                  parameter_id: "e8f79be9",
+                  card_id: questionId,
+                  target: ["dimension", ["field", 22, { "source-field": 11 }]],
+                },
+              ],
+              visualization_settings,
+            },
+          ],
+        });
+
+        callback(dashboardId);
+      });
+    },
+  );
 }
 
 function setParamValue(paramName, text) {

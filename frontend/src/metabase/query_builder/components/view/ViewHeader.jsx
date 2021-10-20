@@ -44,6 +44,7 @@ const viewTitleHeaderPropTypes = {
   isShowingFilterSidebar: PropTypes.bool,
   isShowingSummarySidebar: PropTypes.bool,
   isShowingQuestionDetailsSidebar: PropTypes.bool,
+  isObjectDetail: PropTypes.bool,
 
   runQuestionQuery: PropTypes.func,
   cancelQuery: PropTypes.func,
@@ -55,6 +56,7 @@ const viewTitleHeaderPropTypes = {
   onCloseFilter: PropTypes.func,
   onOpenQuestionDetails: PropTypes.func,
   onCloseQuestionDetails: PropTypes.func,
+  onOpenQuestionHistory: PropTypes.func,
 
   isPreviewable: PropTypes.bool,
   isPreviewing: PropTypes.bool,
@@ -119,6 +121,8 @@ export class ViewTitleHeader extends React.Component {
       isShowingQuestionDetailsSidebar,
       onOpenQuestionDetails,
       onCloseQuestionDetails,
+      onOpenQuestionHistory,
+      isObjectDetail,
     } = this.props;
     const { isFiltersExpanded } = this.state;
     const isShowingNotebook = queryBuilderMode === "notebook";
@@ -161,7 +165,7 @@ export class ViewTitleHeader extends React.Component {
                 <LastEditInfoLabel
                   className="ml1 text-light"
                   item={question.card()}
-                  onClick={() => onOpenModal("history")}
+                  onClick={onOpenQuestionHistory}
                 />
               )}
             </div>
@@ -171,10 +175,11 @@ export class ViewTitleHeader extends React.Component {
                 collectionId={question.collectionId()}
               />
 
-              {QuestionDataSource.shouldRender({ question }) && (
+              {QuestionDataSource.shouldRender(this.props) && (
                 <QuestionDataSource
                   className="ml3 mb1"
                   question={question}
+                  isObjectDetail={isObjectDetail}
                   subHead
                 />
               )}
@@ -197,7 +202,10 @@ export class ViewTitleHeader extends React.Component {
                 {isNative ? (
                   t`New question`
                 ) : (
-                  <QuestionDescription question={question} />
+                  <QuestionDescription
+                    question={question}
+                    isObjectDetail={isObjectDetail}
+                  />
                 )}
               </ViewHeading>
               {showFiltersInHeading &&
@@ -223,6 +231,7 @@ export class ViewTitleHeader extends React.Component {
                 <QuestionDataSource
                   className="mb1"
                   question={question}
+                  isObjectDetail={isObjectDetail}
                   subHead
                   data-metabase-event={`Question Data Source Click`}
                 />

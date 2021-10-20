@@ -6,8 +6,9 @@
 (defn copy-source-files! [driver edition]
   (u/step (format "Copy %s source files" driver)
     (let [start-time-ms (System/currentTimeMillis)
-          dirs          (for [path (:paths (c/driver-edn driver edition))]
-                          (u/filename (c/driver-project-dir driver) path))]
+          dirs          (:paths (c/driver-edn driver edition))]
+      (assert (every? u/absolute? dirs)
+              (format "All dirs should be absolute, got: %s" (pr-str dirs)))
       (u/announce "Copying files in %s" (pr-str dirs))
       (build/copy-dir
        {:src-dirs   dirs

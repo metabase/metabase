@@ -295,7 +295,7 @@
         (mt/with-temp* [Collection [collection]
                         Card       [card        {:collection_id (u/the-id collection)}]]
           (mt/with-group [group]
-            (perms/revoke-permissions! (perms-group/all-users) (mt/id))
+            (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
             (perms/grant-collection-read-permissions! group collection)
             (mt/with-test-user :rasta
               (binding [qp.perms/*card-id* (u/the-id card)]
@@ -337,7 +337,7 @@
 
 (deftest e2e-fks-test
   (mt/test-drivers (row-level-restrictions-fk-drivers)
-    (mt/with-bigquery-fks
+    (mt/with-bigquery-fks :bigquery
      (testing (str "1 - Creates a GTAP filtering question, looking for any checkins happening on or after 2014\n"
                    "2 - Apply the `user` attribute, looking for only our user (i.e. `user_id` =  5)\n"
                    "3 - Checkins are related to Venues, query for checkins, grouping by the Venue's price\n"
@@ -677,7 +677,7 @@
                        {:gtaps      {:reviews {:remappings {"user_id" [:dimension $product_id]}}}
                         :attributes {"user_id" 1}})
         ;; grant full data perms for products
-        (perms/grant-permissions! (perms-group/all-users) (perms/object-path
+        (perms/grant-permissions! (perms-group/all-users) (perms/data-perms-path
                                                            (mt/id)
                                                            (db/select-one-field :schema Table :id (mt/id :products))
                                                            (mt/id :products)))
@@ -801,7 +801,7 @@
                        {:gtaps      {:orders {:remappings {:user_id [:dimension $orders.user_id]}}}
                         :attributes {:user_id "1"}})
         ;; make sure the sandboxed group can still access the Products table, which is referenced below.
-        (perms/grant-permissions! &group (perms/object-path (mt/id) "PUBLIC" (mt/id :products)))
+        (perms/grant-permissions! &group (perms/data-perms-path (mt/id) "PUBLIC" (mt/id :products)))
         (letfn [(do-tests []
                   ;; create a query based on the sandboxed Table
                   (testing "should be able to run the query. Results should come back with correct metadata"
@@ -914,12 +914,10 @@
 
 (deftest pivot-query-test
   (mt/test-drivers (disj
-                     (mt/normal-drivers-with-feature :foreign-keys :nested-queries :left-join)
-                     ;; sample-dataset doesn't work on Redshift yet -- see #14784
-                     :redshift
-                     ;; this test relies on a FK relation between $product_id->products.category, so skip for Presto
-                     ;; JDBC, because that driver doesn't support resolving FKs from the JDBC metadata
-                     :presto-jdbc)
+                    (mt/normal-drivers-with-feature :foreign-keys :nested-queries :left-join)
+                    ;; this test relies on a FK relation between $product_id->products.category, so skip for Presto
+                    ;; JDBC, because that driver doesn't support resolving FKs from the JDBC metadata
+                    :presto-jdbc)
     (testing "Pivot table queries should work with sandboxed users (#14969)"
       (mt/dataset sample-dataset
         (mt/with-gtaps {:gtaps      (mt/$ids
@@ -927,28 +925,20 @@
                                        :products {:remappings {:user_cat [:dimension $products.category]}}})
                         :attributes {:user_id 1, :user_cat "Widget"}}
           (perms/grant-permissions! &group (perms/table-query-path (Table (mt/id :people))))
-          ;; not sure why Snowflake has slightly different results
-          (is (= (if (= driver/*driver* :snowflake)
-                   [["Twitter" "Widget" 0 510.82]
-                    ["Twitter" nil      0 407.93]
-                    [nil       "Widget" 1 510.82]
-                    [nil       nil      1 407.93]
-                    ["Twitter" nil      2 918.75]
-                    [nil       nil      3 918.75]]
-                   (->> [["Twitter" nil      0 401.51]
-                         ["Twitter" "Widget" 0 498.59]
-                         [nil       nil      1 401.51]
-                         [nil       "Widget" 1 498.59]
-                         ["Twitter" nil      2 900.1]
-                         [nil       nil      3 900.1]]
-                        (sort-by (let [nil-first? (mt/sorts-nil-first? driver/*driver*)
-                                       sort-str   (fn [s]
-                                                    (cond
-                                                      (some? s)  s
-                                                      nil-first? "A"
-                                                      :else      "Z"))]
-                                   (fn [[x y group]]
-                                     [group (sort-str x) (sort-str y)])))))
+          (is (= (->> [["Twitter" nil      0 401.51]
+                       ["Twitter" "Widget" 0 498.59]
+                       [nil       nil      1 401.51]
+                       [nil       "Widget" 1 498.59]
+                       ["Twitter" nil      2 900.1]
+                       [nil       nil      3 900.1]]
+                      (sort-by (let [nil-first? (mt/sorts-nil-first? driver/*driver* :type/Text)
+                                     sort-str   (fn [s]
+                                                  (cond
+                                                    (some? s)  s
+                                                    nil-first? "A"
+                                                    :else      "Z"))]
+                                 (fn [[x y group]]
+                                   [group (sort-str x) (sort-str y)]))))
                  (mt/formatted-rows [str str int 2.0]
                    (qp.pivot/run-pivot-query
                     (mt/mbql-query orders

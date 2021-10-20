@@ -3,18 +3,15 @@
             [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
             [metabase.http-client :as http]
             [metabase.models :refer [Card Field PermissionsGroup Table]]
-            [metabase.public-settings.metastore :as metastore]
+            [metabase.public-settings.premium-features :as premium-features]
+            [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.server.middleware.util :as middleware.u]
             [metabase.test :as mt]
             [schema.core :as s]))
 
-(defmacro ^:private with-sandboxes-enabled [& body]
-  `(with-redefs [metastore/enable-sandboxes? (constantly true)]
-     ~@body))
-
 (deftest require-auth-test
   (testing "Must be authenticated to query for GTAPs"
-    (with-sandboxes-enabled
+    (premium-features-test/with-premium-features #{:sandboxes}
       (is (= (get middleware.u/response-unauthentic :body)
              (http/client :get 401 "mt/gtap")))
 
@@ -32,7 +29,7 @@
   "Invokes `body` ensuring any `GroupTableAccessPolicy` created will be removed afterward. Leaving behind a GTAP can
   case referential integrity failures for any related `Card` that would be cleaned up as part of a `with-temp*` call"
   [& body]
-  `(with-sandboxes-enabled
+  `(premium-features-test/with-premium-features #{:sandboxes}
      (mt/with-model-cleanup [GroupTableAccessPolicy]
        ~@body)))
 
@@ -44,16 +41,16 @@
 (deftest validate-token-test
   (testing "POST /api/mt/gtap"
     (testing "Must have a valid token to use GTAPs"
-      (with-redefs [metastore/enable-sandboxes? (constantly false)]
+      (with-redefs [premium-features/enable-sandboxes? (constantly false)]
         (mt/with-temp* [Table            [{table-id :id}]
                         PermissionsGroup [{group-id :id}]
                         Card             [{card-id :id}]]
-          (is (re= #".*sandboxing is not enabled.*"
-                   (mt/user-http-request :crowberto :post 403 "mt/gtap"
-                                         {:table_id             table-id
-                                          :group_id             group-id
-                                          :card_id              card-id
-                                          :attribute_remappings {"foo" 1}}))))))))
+          (is (= "This API endpoint is only enabled if you have a premium token with the :sandboxes feature."
+                 (mt/user-http-request :crowberto :post 402 "mt/gtap"
+                                       {:table_id             table-id
+                                        :group_id             group-id
+                                        :card_id              card-id
+                                        :attribute_remappings {"foo" 1}}))))))))
 (deftest create-gtap-test
   (testing "POST /api/mt/gtap"
     (mt/with-temp* [Table            [{table-id :id}]
@@ -120,7 +117,7 @@
     (mt/with-temp* [Table                  [{table-id :id}]
                     PermissionsGroup       [{group-id :id}]
                     Card                   [{card-id :id}]]
-      (with-sandboxes-enabled
+      (premium-features-test/with-premium-features #{:sandboxes}
         (testing "Test that we can update only the attribute remappings for a GTAP"
           (mt/with-temp GroupTableAccessPolicy [{gtap-id :id} {:table_id             table-id
                                                                :group_id             group-id

@@ -100,6 +100,7 @@
               :class      java.lang.Exception
               :error      "Something went wrong"
               :stacktrace true
+              :card_id    300
               :json_query {}
               :row_count  0
               :data       {:cols []}
@@ -111,11 +112,11 @@
                                                  (context/raisef (ex-info "Something went wrong."
                                                                    {:query-execution {:a            100
                                                                                       :b            200
+                                                                                      :card_id      300
                                                                                       ;; these keys should all get removed
-                                                                                      :result_rows  300
-                                                                                      :hash         400
+                                                                                      :result_rows  400
+                                                                                      :hash         500
                                                                                       :executor_id  500
-                                                                                      :card_id      600
                                                                                       :dashboard_id 700
                                                                                       :pulse_id     800
                                                                                       :native       900}}
@@ -126,7 +127,7 @@
 
 (deftest permissions-test
   (data/with-temp-copy-of-db
-    (perms/revoke-permissions! (group/all-users) (data/id))
+    (perms/revoke-data-perms! (group/all-users) (data/id))
     (perms/grant-permissions! (group/all-users) (data/id) "PUBLIC" (data/id :venues))
     (testing (str "If someone doesn't have native query execution permissions, they shouldn't see the native version of "
                   "the query in the error response")

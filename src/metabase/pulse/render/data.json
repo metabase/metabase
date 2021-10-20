@@ -1,0 +1,643 @@
+{
+        "rows": [
+            [
+                "native",
+                "2017-06-01T00:00:00Z",
+                744863
+            ],
+            [
+                "native",
+                "2017-07-01T00:00:00Z",
+                936477
+            ],
+            [
+                "native",
+                "2017-08-01T00:00:00Z",
+                1162090
+            ],
+            [
+                "native",
+                "2017-09-01T00:00:00Z",
+                1199400
+            ],
+            [
+                "native",
+                "2017-10-01T00:00:00Z",
+                1492041
+            ],
+            [
+                "native",
+                "2017-11-01T00:00:00Z",
+                1629117
+            ],
+            [
+                "native",
+                "2017-12-01T00:00:00Z",
+                1614891
+            ],
+            [
+                "native",
+                "2018-01-01T00:00:00Z",
+                1816765
+            ],
+            [
+                "native",
+                "2018-02-01T00:00:00Z",
+                1658800
+            ],
+            [
+                "native",
+                "2018-03-01T00:00:00Z",
+                1923777
+            ],
+            [
+                "native",
+                "2018-04-01T00:00:00Z",
+                1945167
+            ],
+            [
+                "native",
+                "2018-05-01T00:00:00Z",
+                1852002
+            ],
+            [
+                "native",
+                "2018-06-01T00:00:00Z",
+                1604430
+            ],
+            [
+                "native",
+                "2018-07-01T00:00:00Z",
+                1794530
+            ],
+            [
+                "native",
+                "2018-08-01T00:00:00Z",
+                1810152
+            ],
+            [
+                "native",
+                "2018-09-01T00:00:00Z",
+                1754515
+            ],
+            [
+                "native",
+                "2018-10-01T00:00:00Z",
+                1972567
+            ],
+            [
+                "native",
+                "2018-11-01T00:00:00Z",
+                2035530
+            ],
+            [
+                "native",
+                "2018-12-01T00:00:00Z",
+                2005253
+            ],
+            [
+                "native",
+                "2019-01-01T00:00:00Z",
+                2295237
+            ],
+            [
+                "native",
+                "2019-02-01T00:00:00Z",
+                2101592
+            ],
+            [
+                "native",
+                "2019-03-01T00:00:00Z",
+                2440109
+            ],
+            [
+                "native",
+                "2019-04-01T00:00:00Z",
+                2415760
+            ],
+            [
+                "native",
+                "2019-05-01T00:00:00Z",
+                2702702
+            ],
+            [
+                "native",
+                "2019-06-01T00:00:00Z",
+                2500105
+            ],
+            [
+                "native",
+                "2019-07-01T00:00:00Z",
+                3146643
+            ],
+            [
+                "native",
+                "2019-08-01T00:00:00Z",
+                3006758
+            ],
+            [
+                "native",
+                "2019-09-01T00:00:00Z",
+                3092694
+            ],
+            [
+                "native",
+                "2019-10-01T00:00:00Z",
+                3374144
+            ],
+            [
+                "native",
+                "2019-11-01T00:00:00Z",
+                3277257
+            ],
+            [
+                "native",
+                "2019-12-01T00:00:00Z",
+                3008189
+            ],
+            [
+                "native",
+                "2020-01-01T00:00:00Z",
+                2880790
+            ],
+            [
+                "native",
+                "2020-02-01T00:00:00Z",
+                2448392
+            ],
+            [
+                "native",
+                "2020-03-01T00:00:00Z",
+                2273854
+            ],
+            [
+                "native",
+                "2020-04-01T00:00:00Z",
+                1813151
+            ],
+            [
+                "native",
+                "2020-05-01T00:00:00Z",
+                1732260
+            ],
+            [
+                "native",
+                "2020-06-01T00:00:00Z",
+                1731912
+            ],
+            [
+                "native",
+                "2020-07-01T00:00:00Z",
+                1569030
+            ],
+            [
+                "native",
+                "2020-08-01T00:00:00Z",
+                1336500
+            ],
+            [
+                "native",
+                "2020-09-01T00:00:00Z",
+                1067180
+            ],
+            [
+                "native",
+                "2020-10-01T00:00:00Z",
+                1016110
+            ],
+            [
+                "native",
+                "2020-11-01T00:00:00Z",
+                933350
+            ],
+            [
+                "native",
+                "2020-12-01T00:00:00Z",
+                899438
+            ],
+            [
+                "native",
+                "2021-01-01T00:00:00Z",
+                774105
+            ],
+            [
+                "native",
+                "2021-02-01T00:00:00Z",
+                758340
+            ],
+            [
+                "native",
+                "2021-03-01T00:00:00Z",
+                903042
+            ],
+            [
+                "native",
+                "2021-04-01T00:00:00Z",
+                68302
+            ],
+            [
+                "query",
+                "2017-06-01T00:00:00Z",
+                258529
+            ],
+            [
+                "query",
+                "2017-07-01T00:00:00Z",
+                310327
+            ],
+            [
+                "query",
+                "2017-08-01T00:00:00Z",
+                331948
+            ],
+            [
+                "query",
+                "2017-09-01T00:00:00Z",
+                317060
+            ],
+            [
+                "query",
+                "2017-10-01T00:00:00Z",
+                347146
+            ],
+            [
+                "query",
+                "2017-11-01T00:00:00Z",
+                368983
+            ],
+            [
+                "query",
+                "2017-12-01T00:00:00Z",
+                333735
+            ],
+            [
+                "query",
+                "2018-01-01T00:00:00Z",
+                423741
+            ],
+            [
+                "query",
+                "2018-02-01T00:00:00Z",
+                389661
+            ],
+            [
+                "query",
+                "2018-03-01T00:00:00Z",
+                462132
+            ],
+            [
+                "query",
+                "2018-04-01T00:00:00Z",
+                457915
+            ],
+            [
+                "query",
+                "2018-05-01T00:00:00Z",
+                427856
+            ],
+            [
+                "query",
+                "2018-06-01T00:00:00Z",
+                363055
+            ],
+            [
+                "query",
+                "2018-07-01T00:00:00Z",
+                400134
+            ],
+            [
+                "query",
+                "2018-08-01T00:00:00Z",
+                456102
+            ],
+            [
+                "query",
+                "2018-09-01T00:00:00Z",
+                472890
+            ],
+            [
+                "query",
+                "2018-10-01T00:00:00Z",
+                531318
+            ],
+            [
+                "query",
+                "2018-11-01T00:00:00Z",
+                560807
+            ],
+            [
+                "query",
+                "2018-12-01T00:00:00Z",
+                518759
+            ],
+            [
+                "query",
+                "2019-01-01T00:00:00Z",
+                680099
+            ],
+            [
+                "query",
+                "2019-02-01T00:00:00Z",
+                618118
+            ],
+            [
+                "query",
+                "2019-03-01T00:00:00Z",
+                703006
+            ],
+            [
+                "query",
+                "2019-04-01T00:00:00Z",
+                708334
+            ],
+            [
+                "query",
+                "2019-05-01T00:00:00Z",
+                765426
+            ],
+            [
+                "query",
+                "2019-06-01T00:00:00Z",
+                731396
+            ],
+            [
+                "query",
+                "2019-07-01T00:00:00Z",
+                889014
+            ],
+            [
+                "query",
+                "2019-08-01T00:00:00Z",
+                853290
+            ],
+            [
+                "query",
+                "2019-09-01T00:00:00Z",
+                914949
+            ],
+            [
+                "query",
+                "2019-10-01T00:00:00Z",
+                1047452
+            ],
+            [
+                "query",
+                "2019-11-01T00:00:00Z",
+                1043164
+            ],
+            [
+                "query",
+                "2019-12-01T00:00:00Z",
+                953842
+            ],
+            [
+                "query",
+                "2020-01-01T00:00:00Z",
+                822765
+            ],
+            [
+                "query",
+                "2020-02-01T00:00:00Z",
+                702442
+            ],
+            [
+                "query",
+                "2020-03-01T00:00:00Z",
+                649709
+            ],
+            [
+                "query",
+                "2020-04-01T00:00:00Z",
+                548865
+            ],
+            [
+                "query",
+                "2020-05-01T00:00:00Z",
+                494614
+            ],
+            [
+                "query",
+                "2020-06-01T00:00:00Z",
+                466700
+            ],
+            [
+                "query",
+                "2020-07-01T00:00:00Z",
+                517897
+            ],
+            [
+                "query",
+                "2020-08-01T00:00:00Z",
+                497896
+            ],
+            [
+                "query",
+                "2020-09-01T00:00:00Z",
+                414029
+            ],
+            [
+                "query",
+                "2020-10-01T00:00:00Z",
+                390240
+            ],
+            [
+                "query",
+                "2020-11-01T00:00:00Z",
+                389132
+            ],
+            [
+                "query",
+                "2020-12-01T00:00:00Z",
+                378273
+            ],
+            [
+                "query",
+                "2021-01-01T00:00:00Z",
+                379892
+            ],
+            [
+                "query",
+                "2021-02-01T00:00:00Z",
+                385326
+            ],
+            [
+                "query",
+                "2021-03-01T00:00:00Z",
+                452219
+            ],
+            [
+                "query",
+                "2021-04-01T00:00:00Z",
+                29811
+            ]
+        ],
+        "cols": [
+            {
+                "description": "Event label.",
+                "semantic_type": null,
+                "table_id": 1135,
+                "coercion_strategy": null,
+                "name": "ga:eventLabel",
+                "settings": null,
+                "source": "breakout",
+                "field_ref": [
+                    "field",
+                    6939,
+                    null
+                ],
+                "effective_type": "type/Text",
+                "parent_id": null,
+                "id": 6939,
+                "visibility_type": "normal",
+                "display_name": "Event Label",
+                "fingerprint": null,
+                "base_type": "type/Text"
+            },
+            {
+                "description": "The date of the session formatted as YYYYMMDD.",
+                "semantic_type": null,
+                "table_id": 1135,
+                "coercion_strategy": null,
+                "unit": "month",
+                "name": "ga:date",
+                "settings": null,
+                "source": "breakout",
+                "field_ref": [
+                    "field",
+                    6851,
+                    {
+                        "temporal-unit": "month"
+                    }
+                ],
+                "effective_type": "type/Date",
+                "parent_id": null,
+                "id": 6851,
+                "visibility_type": "normal",
+                "display_name": "Date",
+                "fingerprint": null,
+                "base_type": "type/Date"
+            },
+            {
+                "base_type": "type/Integer",
+                "name": "metric",
+                "display_name": "Total Events",
+                "source": "aggregation",
+                "field_ref": [
+                    "aggregation",
+                    0
+                ],
+                "description": "The total number of events for the profile, across all categories.",
+                "effective_type": "type/Integer"
+            }
+        ],
+        "native_form": {
+            "query": {
+                "end-date": "2021-04-03",
+                "include-empty-rows": false,
+                "filters": "ga:eventAction==Run Query;ga:eventLabel!=(not set);ga:eventLabel!=url;ga:eventLabel!=multi",
+                "max-results": 10000,
+                "ids": "ga:99395697",
+                "dimensions": "ga:eventLabel,ga:yearMonth",
+                "start-date": "2017-06-04",
+                "metrics": "ga:totalEvents",
+                "sort": "ga:eventLabel,ga:yearMonth"
+            },
+            "mbql?": true
+        },
+        "results_timezone": "GMT",
+        "requested_timezone": "US/Pacific",
+        "results_metadata": {
+            "checksum": "iIVdM2GMiBuVpHUxQ3tHAA==",
+            "columns": [
+                {
+                    "description": "Event label.",
+                    "semantic_type": null,
+                    "coercion_strategy": null,
+                    "name": "ga:eventLabel",
+                    "field_ref": [
+                        "field",
+                        6939,
+                        null
+                    ],
+                    "effective_type": "type/Text",
+                    "id": 6939,
+                    "display_name": "Event Label",
+                    "fingerprint": {
+                        "global": {
+                            "distinct-count": 2,
+                            "nil%": 0.0
+                        },
+                        "type": {
+                            "type/Text": {
+                                "percent-json": 0.0,
+                                "percent-url": 0.0,
+                                "percent-email": 0.0,
+                                "percent-state": 0.0,
+                                "average-length": 5.5
+                            }
+                        }
+                    },
+                    "base_type": "type/Text"
+                },
+                {
+                    "description": "The date of the session formatted as YYYYMMDD.",
+                    "semantic_type": null,
+                    "coercion_strategy": null,
+                    "unit": "month",
+                    "name": "ga:date",
+                    "field_ref": [
+                        "field",
+                        6851,
+                        {
+                            "temporal-unit": "month"
+                        }
+                    ],
+                    "effective_type": "type/Date",
+                    "id": 6851,
+                    "display_name": "Date",
+                    "fingerprint": {
+                        "global": {
+                            "distinct-count": 47,
+                            "nil%": 0.0
+                        },
+                        "type": {
+                            "type/DateTime": {
+                                "earliest": "2017-06-01T00:00:00Z",
+                                "latest": "2021-04-01T00:00:00Z"
+                            }
+                        }
+                    },
+                    "base_type": "type/Date"
+                },
+                {
+                    "name": "metric",
+                    "display_name": "Total Events",
+                    "base_type": "type/Integer",
+                    "effective_type": "type/Integer",
+                    "field_ref": [
+                        "aggregation",
+                        0
+                    ],
+                    "description": "The total number of events for the profile, across all categories.",
+                    "semantic_type": null,
+                    "fingerprint": {
+                        "global": {
+                            "distinct-count": 94,
+                            "nil%": 0.0
+                        },
+                        "type": {
+                            "type/Number": {
+                                "min": 29811.0,
+                                "q1": 464322.73921772424,
+                                "q3": 1806165.1078722056,
+                                "max": 3374144.0,
+                                "sd": 863991.7508750071,
+                                "avg": 1188077.7765957448
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+  "insights": null
+}

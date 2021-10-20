@@ -81,7 +81,7 @@
                   ["Paul Pelican"   "SoMa Squadron"]
                   ["Peter Pelican"  "SoMa Squadron"]
                   ["Russell Crow"   "Mission Street Murder"]]
-            rows (if (tx/sorts-nil-first? driver/*driver*)
+            rows (if (tx/sorts-nil-first? driver/*driver* :type/Text)
                    (cons [nil "Fillmore Flock"] rows)
                    (conj rows [nil "Fillmore Flock"]))]
         (is (= rows
@@ -129,7 +129,7 @@
                   ["Paul Pelican"     "SoMa Squadron"]
                   ["Peter Pelican"    "SoMa Squadron"]
                   ["Russell Crow"     "Mission Street Murder"]]
-            rows (if (tx/sorts-nil-first? driver/*driver*)
+            rows (if (tx/sorts-nil-first? driver/*driver* :type/Text)
                    (cons [nil "Fillmore Flock"] rows)
                    (conj rows [nil "Fillmore Flock"]))]
         (is (= rows
@@ -173,24 +173,24 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Can we include no Fields (with `:none`)"
       (is (= {:columns (mapv mt/format-name ["id" "name" "flock_id"])
-              :rows    [[2  "Big Red"          5  ]
-                        [7  "Callie Crow"      4  ]
+              :rows    [[2  "Big Red"          5]
+                        [7  "Callie Crow"      4]
                         [3  "Camellia Crow"    nil]
-                        [16 "Carson Crow"      4  ]
-                        [12 "Chicken Little"   5  ]
+                        [16 "Carson Crow"      4]
+                        [12 "Chicken Little"   5]
                         [5  "Geoff Goose"      nil]
-                        [9  "Gerald Goose"     1  ]
-                        [6  "Greg Goose"       1  ]
-                        [14 "McNugget"         5  ]
+                        [9  "Gerald Goose"     1]
+                        [6  "Greg Goose"       1]
+                        [14 "McNugget"         5]
                         [17 "Olita Owl"        nil]
-                        [18 "Oliver Owl"       3  ]
-                        [15 "Orville Owl"      3  ]
+                        [18 "Oliver Owl"       3]
+                        [15 "Orville Owl"      3]
                         [11 "Oswald Owl"       nil]
                         [10 "Pamela Pelican"   nil]
                         [8  "Patricia Pelican" nil]
-                        [13 "Paul Pelican"     2  ]
-                        [4  "Peter Pelican"    2  ]
-                        [1  "Russell Crow"     4  ]]}
+                        [13 "Paul Pelican"     2]
+                        [4  "Peter Pelican"    2]
+                        [1  "Russell Crow"     4]]}
              (mt/format-rows-by [#(some-> % int) str #(some-> % int)]
                (mt/rows+column-names
                  (mt/dataset bird-flocks
@@ -521,8 +521,7 @@
 
 (deftest join-source-queries-with-joins-test
   (testing "Should be able to join against source queries that themselves contain joins (#12928)"
-    ;; sample-dataset doesn't work on Redshift yet -- see #14784
-    (mt/test-drivers (disj (mt/normal-drivers-with-feature :nested-queries :left-join :foreign-keys) :redshift)
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join :foreign-keys)
       (mt/dataset sample-dataset
         (testing "(#12928)"
           (let [query (mt/mbql-query orders
@@ -550,6 +549,8 @@
                                                                         :alias        "P2"}]
                                                         :aggregation  [[:avg $reviews.rating]]
                                                         :breakout     [&P2.products.category]}}]
+                         :order-by     [[:asc &P1.products.category]
+                                        [:asc [:field %people.source {:join-alias "People"}]]]
                          :limit        2})]
             (is (= [["Doohickey" "Affiliate" 783 "Doohickey" 3]
                     ["Doohickey" "Facebook" 816 "Doohickey" 3]]

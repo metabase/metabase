@@ -90,6 +90,11 @@ const STEP_UI = {
   },
 };
 
+function getTestId(step) {
+  const { type, stageIndex, itemIndex } = step;
+  return `step-${type}-${stageIndex || 0}-${itemIndex || 0}`;
+}
+
 const CONTENT_WIDTH = [11 / 12, 8 / 12];
 
 export default class NotebookStep extends React.Component {
@@ -137,35 +142,29 @@ export default class NotebookStep extends React.Component {
     actions.sort((a, b) => (b.priority || 0) - (a.priority || 0));
     const actionButtons = actions.map(action => action.button);
 
-    let onRemove = null;
-    if (step.revert) {
-      const reverted = step.revert(step.query).clean();
-      if (reverted.isValid()) {
-        onRemove = () => reverted.update(updateQuery);
-      }
-    }
-
     return (
       <ExpandingContent isInitiallyOpen={!isLastOpened} isOpen>
-        <Box mb={[1, 2]} pb={[1, 2]} className="hover-parent hover--visibility">
-          {(title || onRemove) && (
-            <Flex
-              mb={1}
-              width={CONTENT_WIDTH}
-              className="text-bold"
-              style={{ color }}
-            >
-              {title}
-              {onRemove && (
-                <Icon
-                  name="close"
-                  className="ml-auto cursor-pointer text-light text-medium-hover hover-child"
-                  tooltip={t`Remove`}
-                  onClick={onRemove}
-                />
-              )}
-            </Flex>
-          )}
+        <Box
+          mb={[1, 2]}
+          pb={[1, 2]}
+          className="hover-parent hover--visibility"
+          data-testid={getTestId(step)}
+        >
+          <Flex
+            mb={1}
+            width={CONTENT_WIDTH}
+            className="text-bold"
+            style={{ color }}
+          >
+            {title}
+            <Icon
+              name="close"
+              className="ml-auto cursor-pointer text-light text-medium-hover hover-child"
+              tooltip={t`Remove`}
+              onClick={() => step.revert(step.query).update(updateQuery)}
+              data-testid="remove-step"
+            />
+          </Flex>
 
           {NotebookStepComponent && (
             <Flex align="center">
@@ -200,7 +199,11 @@ export default class NotebookStep extends React.Component {
             />
           )}
 
-          {actionButtons.length > 0 && <Box mt={1}>{actionButtons}</Box>}
+          {actionButtons.length > 0 && (
+            <Box mt={1} data-testid="action-buttons">
+              {actionButtons}
+            </Box>
+          )}
         </Box>
       </ExpandingContent>
     );

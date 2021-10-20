@@ -15,6 +15,7 @@
     "@visx/group": "1.7.0",
     "@visx/scale": "1.7.0",
     "@visx/shape": "1.8.0",
+    "@visx/text": "1.7.0",
     "ace-builds": "^1.4.7",
     "arg": "^5.0.0",
     "chevrotain": "^6.5.0",
@@ -107,7 +108,7 @@
     "@cypress/skip-test": "^2.6.0",
     "@cypress/webpack-preprocessor": "^5.9.1",
     "@percy/cli": "^1.0.0-beta.48",
-    "@percy/cypress": "^2.3.4",
+    "@percy/cypress": "^3.0.0",
     "@testing-library/cypress": "^5.0.2",
     "@testing-library/dom": "^7.29.0",
     "@testing-library/jest-dom": "^4.0.0",
@@ -138,6 +139,7 @@
     "husky": "^6.0.0",
     "jest": "^27.0.6",
     "jest-localstorage-mock": "^2.2.0",
+    "jest-watch-typeahead": "^0.6.4",
     "jsonwebtoken": "^7.2.1",
     "lint-staged": "^3.3.1",
     "mini-css-extract-plugin": "^1.6.0",
@@ -204,9 +206,9 @@
     "test-cypress": "yarn build && ./bin/build-for-test && yarn test-cypress-no-build",
     "test-cypress-open": "./bin/build-for-test && yarn test-cypress-no-build --open",
     "test-cypress-open-no-backend": "E2E_HOST='http://localhost:3000' yarn test-cypress-no-build --open",
-    "test-cypress-no-build": "yarn && babel-node ./frontend/test/__runner__/run_cypress_tests.js",
-    "test-visual": "percy exec -- yarn build && ./bin/build-for-test && yarn test-visual-no-build",
-    "test-visual-no-build": "yarn test-cypress-no-build --spec \"./frontend/test/metabase-visual/**/*.cy.spec.js\"",
+    "test-cypress-no-build": "yarn && ELECTRON_EXTRA_LAUNCH_ARGS=\"--force-prefers-reduced-motion\" babel-node ./frontend/test/__runner__/run_cypress_tests.js",
+    "test-visual": "ELECTRON_EXTRA_LAUNCH_ARGS=\"--force-prefers-reduced-motion\" yarn build && ./bin/build-for-test && yarn test-visual-no-build",
+    "test-visual-no-build": "percy exec -- yarn test-cypress-no-build --spec \"./frontend/test/metabase-visual/**/*.cy.spec.js\"",
     "test-visual-open": "percy exec -- yarn test-cypress-open --spec \"./frontend/test/metabase-visual/**/*.cy.spec.js\"",
     "prepare": "husky install"
   },
@@ -214,11 +216,6 @@
     "frontend/**/*.{js,jsx,css}": [
       "prettier --write"
     ]
-  },
-  "resolutions": {
-    "cypress": "6.8.0",
-    "styled-components": "3.2.6",
-    "styled-system": "2.2.5"
   },
   "browserslist": [
     "defaults"

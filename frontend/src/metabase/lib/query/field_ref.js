@@ -41,7 +41,8 @@ export function isSameField(fieldA, fieldB, exact = false) {
  */
 export function getFieldTargetId(field: FieldReference): ?FieldId {
   if (isLocalField(field)) {
-    return typeof field[1] === "number" ? field[1] : field;
+    const type = typeof field[1];
+    return type === "number" || type === "string" ? field[1] : field;
   }
   console.warn("Unknown field type:", field);
 }
@@ -106,4 +107,8 @@ export function getDatetimeUnit(fieldClause) {
     const dimension = FieldDimension.parseMBQLOrWarn(fieldClause);
     return dimension && dimension.temporalUnit();
   }
+}
+
+export function isDateTimeField(fieldClause) {
+  return Boolean(getDatetimeUnit(fieldClause));
 }

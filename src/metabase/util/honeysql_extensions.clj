@@ -4,6 +4,7 @@
             [clojure.string :as str]
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
+            honeysql.types
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [potemkin.types :as p.types]
@@ -11,6 +12,8 @@
             [schema.core :as s])
   (:import honeysql.format.ToSql
            java.util.Locale))
+
+(comment honeysql.types/keep-me)
 
 (defn- english-upper-case
   "Use this function when you need to upper-case an identifier or table name. Similar to `clojure.string/upper-case`
@@ -287,7 +290,6 @@
 (alter-meta! #'honeysql.core/format assoc :style/indent :defn)
 (alter-meta! #'honeysql.core/call   assoc :style/indent :defn)
 
-(require 'honeysql.types)
 (extend-protocol PrettyPrintable
   honeysql.types.SqlCall
   (pretty [{fn-name :name, args :args, :as this}]

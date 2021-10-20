@@ -247,3 +247,24 @@ export function setParameterDefaultValue(
     default: value,
   };
 }
+
+export function hasMapping(parameter, dashboard) {
+  return dashboard.ordered_cards.some(ordered_card => {
+    return ordered_card?.parameter_mappings?.some(parameter_mapping => {
+      return parameter_mapping.parameter_id === parameter.id;
+    });
+  });
+}
+
+export function isDashboardParameterWithoutMapping(parameter, dashboard) {
+  if (!dashboard) {
+    return false;
+  }
+
+  const parameterExistsOnDashboard = dashboard.parameters.some(
+    dashParam => dashParam.id === parameter.id,
+  );
+  const parameterHasMapping = hasMapping(parameter, dashboard);
+
+  return parameterExistsOnDashboard && !parameterHasMapping;
+}
