@@ -42,7 +42,7 @@ const testCases = [
   { type: "xlsx", sheetName: "Query result" },
 ];
 
-describe.skip("issue 18382", () => {
+describe("issue 18382", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
