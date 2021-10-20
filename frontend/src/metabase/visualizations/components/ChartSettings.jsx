@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import React, { Component, useCallback } from "react";
 import cx from "classnames";
 import { assocIn } from "icepick";
 import _ from "underscore";
@@ -341,33 +341,53 @@ class ChartSettings extends Component {
   }
 }
 
-const ChartSettingsFooter = ({ className, onDone, onCancel, onReset }) => (
-  <div className={cx("py2 px4", className)}>
-    <div className="float-right">
-      <Button
-        className="ml2"
-        onClick={onCancel}
-        data-metabase-event="Chart Settings;Cancel"
-      >{t`Cancel`}</Button>
-      <Button
-        primary
-        className="ml2"
-        onClick={onDone}
-        data-metabase-event="Chart Settings;Done"
-      >{t`Done`}</Button>
-    </div>
+const ChartSettingsFooter = ({ className, onDone, onCancel, onReset }) => {
+  const handleCancelClick = useCallback(
+    event => {
+      onCancel(event);
+      MetabaseAnalytics.trackEvent("Chart Settings", "Cancel");
+    },
+    [onCancel],
+  );
 
-    {onReset && (
-      <Button
-        borderless
-        icon="refresh"
-        className="float-right ml2"
-        data-metabase-event="Chart Settings;Reset"
-        onClick={onReset}
-      >{t`Reset to defaults`}</Button>
-    )}
-  </div>
-);
+  const handleDoneClick = useCallback(
+    event => {
+      onDone(event);
+      MetabaseAnalytics.trackEvent("Chart Settings", "Done");
+    },
+    [onDone],
+  );
+
+  const handleResetClick = useCallback(
+    event => {
+      onReset(event);
+      MetabaseAnalytics.trackEvent("Chart Settings", "Reset");
+    },
+    [onReset],
+  );
+
+  return (
+    <div className={cx("py2 px4", className)}>
+      <div className="float-right">
+        <Button className="ml2" onClick={handleCancelClick}>{t`Cancel`}</Button>
+        <Button
+          primary
+          className="ml2"
+          onClick={handleDoneClick}
+        >{t`Done`}</Button>
+      </div>
+
+      {onReset && (
+        <Button
+          borderless
+          icon="refresh"
+          className="float-right ml2"
+          onClick={handleResetClick}
+        >{t`Reset to defaults`}</Button>
+      )}
+    </div>
+  );
+};
 
 export default ChartSettings;
 
