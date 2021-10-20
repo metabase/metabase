@@ -33,8 +33,9 @@ import ReactDOM from "react-dom";
 import { Provider } from "react-redux";
 import { ThemeProvider } from "styled-components";
 
-import MetabaseAnalytics, {
-  registerAnalyticsClickListener,
+import {
+  trackPageView,
+  enableStructEventDataAttributes,
 } from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -87,14 +88,14 @@ function _init(reducers, getRoutes, callback) {
 
   // listen for location changes and use that as a trigger for page view tracking
   history.listen(location => {
-    MetabaseAnalytics.trackPageView(location.pathname);
+    trackPageView(location.pathname);
   });
 
   registerVisualizations();
 
   initializeEmbedding(store);
 
-  registerAnalyticsClickListener();
+  enableStructEventDataAttributes();
 
   store.dispatch(refreshSiteSettings());
 
