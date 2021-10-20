@@ -194,6 +194,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       cy.findByText("People → Birth Date").click();
       cy.findByText("Distribution").click();
 
+      // Reproduces metabase#16693
       cy.findByText("Count by People → Birth Date: Month");
 
       assertOnXYAxisLabels({ xLabel: "People → Birth Date", yLabel: "Count" });
@@ -209,6 +210,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
         .click();
       cy.findByText("Quarter").click();
 
+      // Reproduces metabase#16693
       cy.findByText("Count by People → Birth Date: Quarter");
 
       cy.findByText("Q1 - 1960");
@@ -219,6 +221,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       cy.findByText("Products → Price").click();
       cy.findByText("Distribution").click();
 
+      // Reproduces metabase#16693
       cy.findByText("Count by Products → Price: Auto binned");
 
       assertOnXYAxisLabels({ xLabel: "Products → Price", yLabel: "Count" });
@@ -233,6 +236,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       cy.findByText("People → Longitude").click();
       cy.findByText("Distribution").click();
 
+      // Reproduces metabase#16693
       cy.findByText("Count by People → Longitude: Auto binned");
 
       assertOnXYAxisLabels({
