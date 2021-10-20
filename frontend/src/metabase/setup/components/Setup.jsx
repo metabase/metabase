@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
 import AddDatabaseHelpCard from "metabase/components/AddDatabaseHelpCard";
@@ -48,7 +48,7 @@ export default class Setup extends Component {
 
   completeWelcome() {
     this.props.setActiveStep(LANGUAGE_STEP_NUMBER);
-    MetabaseAnalytics.trackEvent("Setup", "Welcome");
+    MetabaseAnalytics.trackStructEvent("Setup", "Welcome");
   }
 
   componentDidMount() {
@@ -99,7 +99,7 @@ export default class Setup extends Component {
     }
 
     if (!this.props.setupComplete && nextProps.setupComplete) {
-      MetabaseAnalytics.trackEvent("Setup", "Complete");
+      MetabaseAnalytics.trackStructEvent("Setup", "Complete");
     }
   }
 

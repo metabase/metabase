@@ -4,7 +4,7 @@ import {
   combineReducers,
 } from "metabase/lib/redux";
 
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import { PermissionsApi } from "metabase/services";
 
@@ -38,7 +38,7 @@ export const createMembership = createAction(
       user_id: userId,
       group_id: groupId,
     });
-    MetabaseAnalytics.trackEvent("People Groups", "Membership Added");
+    MetabaseAnalytics.trackStructEvent("People Groups", "Membership Added");
     return {
       user_id: userId,
       group_id: groupId,
@@ -51,7 +51,7 @@ export const deleteMembership = createAction(
   DELETE_MEMBERSHIP,
   async ({ membershipId }) => {
     await PermissionsApi.deleteMembership({ id: membershipId });
-    MetabaseAnalytics.trackEvent("People Groups", "Membership Deleted");
+    MetabaseAnalytics.trackStructEvent("People Groups", "Membership Deleted");
     return membershipId;
   },
 );

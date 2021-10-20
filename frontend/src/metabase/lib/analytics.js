@@ -29,7 +29,16 @@ export const trackStructEvent = (category, action, label, value) => {
   }
 };
 
-export const enableStructEventDataAttributes = () => {
+export const handleTrackingSettingsChanges = () => {
+  const handleSettingChange = enabled => {
+    const code = MetabaseSettings.get("ga-code");
+    window[`ga-disable-${code}`] = enabled ? null : true;
+  };
+
+  MetabaseSettings.on("anon-tracking-enabled", handleSettingChange);
+};
+
+export const handleTrackingDataAttributes = () => {
   const handleBodyClick = e => {
     let node = e.target;
 

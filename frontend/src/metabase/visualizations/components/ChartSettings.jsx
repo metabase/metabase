@@ -13,7 +13,7 @@ import Visualization from "metabase/visualizations/components/Visualization";
 import ChartSettingsWidget from "./ChartSettingsWidget";
 
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   getVisualizationTransformed,
   extractRemappings,
@@ -92,7 +92,7 @@ class ChartSettings extends Component {
   };
 
   handleResetSettings = () => {
-    MetabaseAnalytics.trackEvent("Chart Settings", "Reset Settings");
+    MetabaseAnalytics.trackStructEvent("Chart Settings", "Reset Settings");
 
     const settings = getClickBehaviorSettings(this._getSettings());
     this.props.onChange(settings);
@@ -345,7 +345,7 @@ const ChartSettingsFooter = ({ className, onDone, onCancel, onReset }) => {
   const handleCancelClick = useCallback(
     event => {
       onCancel(event);
-      MetabaseAnalytics.trackEvent("Chart Settings", "Cancel");
+      MetabaseAnalytics.trackStructEvent("Chart Settings", "Cancel");
     },
     [onCancel],
   );
@@ -353,7 +353,7 @@ const ChartSettingsFooter = ({ className, onDone, onCancel, onReset }) => {
   const handleDoneClick = useCallback(
     event => {
       onDone(event);
-      MetabaseAnalytics.trackEvent("Chart Settings", "Done");
+      MetabaseAnalytics.trackStructEvent("Chart Settings", "Done");
     },
     [onDone],
   );
@@ -361,7 +361,7 @@ const ChartSettingsFooter = ({ className, onDone, onCancel, onReset }) => {
   const handleResetClick = useCallback(
     event => {
       onReset(event);
-      MetabaseAnalytics.trackEvent("Chart Settings", "Reset");
+      MetabaseAnalytics.trackStructEvent("Chart Settings", "Reset");
     },
     [onReset],
   );

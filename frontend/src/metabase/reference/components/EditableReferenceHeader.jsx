@@ -10,7 +10,7 @@ import Icon from "metabase/components/Icon";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Ellipsified from "metabase/components/Ellipsified";
 import Button from "metabase/components/Button";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 const EditableReferenceHeader = ({
   entity = {},
@@ -27,7 +27,11 @@ const EditableReferenceHeader = ({
   nameFormField,
 }) => {
   const handleLinkClick = useCallback(() => {
-    MetabaseAnalytics.trackEvent("Data Reference", "Entity -> QB click", type);
+    MetabaseAnalytics.trackStructEvent(
+      "Data Reference",
+      "Entity -> QB click",
+      type,
+    );
   }, [type]);
 
   return (

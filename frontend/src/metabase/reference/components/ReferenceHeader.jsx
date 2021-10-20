@@ -9,7 +9,7 @@ import L from "metabase/components/List.css";
 import Icon from "metabase/components/Icon";
 import Ellipsified from "metabase/components/Ellipsified";
 import { t } from "ttag";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 const ReferenceHeader = ({
   name,
@@ -19,7 +19,11 @@ const ReferenceHeader = ({
   headerLink,
 }) => {
   const handleLinkClick = useCallback(() => {
-    MetabaseAnalytics.trackEvent("Data Reference", "Entity -> QB click", type);
+    MetabaseAnalytics.trackStructEvent(
+      "Data Reference",
+      "Entity -> QB click",
+      type,
+    );
   }, [type]);
 
   return (
