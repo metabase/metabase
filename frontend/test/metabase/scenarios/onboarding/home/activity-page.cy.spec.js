@@ -1,5 +1,12 @@
 //Replaces HomepageApp.e2e.spec.js
-import { restore, openProductsTable, popover } from "__support__/e2e/cypress";
+import {
+  restore,
+  openProductsTable,
+  popover,
+  sidebar,
+  editDashboard,
+  saveDashboard,
+} from "__support__/e2e/cypress";
 
 describe("metabase > scenarios > home > activity-page", () => {
   beforeEach(() => {
@@ -46,5 +53,34 @@ describe("metabase > scenarios > home > activity-page", () => {
     cy.findAllByText("joined!").should("have.length", 2);
     cy.findAllByText("Robert").should("have.length", 2);
     cy.findByText("Products, Filtered by Rating");
+  });
+
+  it.skip("should respect the (added to dashboard) card id in the link (metabase#18547)", () => {
+    cy.intercept("GET", `/api/dashboard/1`).as("dashboard");
+
+    cy.visit("/dashboard/1");
+    cy.wait("@dashboard");
+
+    editDashboard();
+
+    cy.icon("add")
+      .last()
+      .click();
+
+    sidebar().within(() => {
+      cy.get(".LoadingSpinner").should("not.exist");
+      cy.findByText("Orders").click();
+    });
+
+    saveDashboard();
+    cy.wait("@dashboard");
+
+    cy.visit("/activity");
+
+    cy.contains("You added a question to the dashboard - Orders in a dashboard")
+      .closest("li")
+      .findByRole("link", { name: "Orders" })
+      .should("have.attr", "href")
+      .and("include", "question/1");
   });
 });
