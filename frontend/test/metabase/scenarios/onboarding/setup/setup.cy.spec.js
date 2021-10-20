@@ -1,4 +1,4 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { popover, restore } from "__support__/e2e/cypress";
 
 // we're testing for one known (en) and one unknown (xx) locale
 const locales = ["en", "xx"];
@@ -44,7 +44,7 @@ describe("scenarios > setup", () => {
       cy.findByLabelText("First name").type("Testy");
       cy.findByLabelText("Last name").type("McTestface");
       cy.findByLabelText("Email").type("testy@metabase.test");
-      cy.findByLabelText("Your company or team name").type("Epic Team");
+      cy.findByLabelText("Company or team name").type("Epic Team");
 
       // test first with a weak password
       cy.findByLabelText("Create a password").type("password");
@@ -176,5 +176,33 @@ describe("scenarios > setup", () => {
       cy.findByText("Take me to Metabase").click();
       cy.location("pathname").should("eq", "/");
     });
+  });
+
+  it("should allow pre-filling user details", () => {
+    const details = {
+      user: {
+        first_name: "Testy",
+        last_name: "McTestface",
+        email: "testy@metabase.test",
+        site_name: "Epic Team",
+      },
+    };
+
+    cy.visit(`/setup#${btoa(JSON.stringify(details))}`);
+
+    cy.findByText("Welcome to Metabase");
+    cy.findByText("Let's get started").click();
+
+    cy.findByText("What's your preferred language?");
+    cy.findByTestId("language-option-en");
+    cy.findByText("Next").click();
+
+    cy.findByLabelText("First name").should("have.value", "Testy");
+    cy.findByLabelText("Last name").should("have.value", "McTestface");
+    cy.findByLabelText("Email").should("have.value", "testy@metabase.test");
+    cy.findByLabelText("Company or team name").should(
+      "have.value",
+      "Epic Team",
+    );
   });
 });

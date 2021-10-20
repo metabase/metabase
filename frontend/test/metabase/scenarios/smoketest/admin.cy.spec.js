@@ -32,7 +32,7 @@ describe("metabase-smoketest > admin", () => {
       cy.findByLabelText("First name").type(admin.first_name);
       cy.findByLabelText("Last name").type(admin.last_name);
       cy.findByLabelText("Email").type(admin.email);
-      cy.findByLabelText("Your company or team name").type("Epic Team");
+      cy.findByLabelText("Company or team name").type("Epic Team");
 
       cy.findByLabelText("Create a password")
         .clear()
