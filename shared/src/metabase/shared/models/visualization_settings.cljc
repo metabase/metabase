@@ -422,6 +422,7 @@
 (def ^:private db->norm-table-columns-keys
   {:name     ::table-column-name
    ; for now, do not translate the value of this key (the field vector)
+   :fieldref ::table-column-field-ref
    :fieldRef ::table-column-field-ref
    :enabled  ::table-column-enabled})
 
