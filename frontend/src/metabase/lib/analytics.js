@@ -29,7 +29,7 @@ export const trackStructEvent = (category, action, label, value) => {
   }
 };
 
-export const handleTrackingSettingsChanges = () => {
+export const handleTrackingSettingsChange = () => {
   const handleSettingChange = enabled => {
     const code = MetabaseSettings.get("ga-code");
     window[`ga-disable-${code}`] = enabled ? null : true;
