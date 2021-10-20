@@ -35,7 +35,8 @@ import { ThemeProvider } from "styled-components";
 
 import {
   trackPageView,
-  enableDataAttributesTracking, enableTracking,
+  enableDataAttributesTracking,
+  enableTracking,
 } from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
