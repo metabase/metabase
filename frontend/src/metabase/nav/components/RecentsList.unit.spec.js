@@ -1,8 +1,6 @@
 import React from "react";
-import { Provider } from "react-redux";
-import { render, screen, waitFor } from "@testing-library/react";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import xhrMock from "xhr-mock";
-import { getStore } from "__support__/entities-store";
 import RecentsList from "./RecentsList";
 
 const recentsData = [
@@ -52,13 +50,7 @@ function mockRecentsEndpoint(recents) {
 async function setup(recents = recentsData) {
   mockRecentsEndpoint(recents);
 
-  const store = getStore();
-
-  render(
-    <Provider store={store}>
-      <RecentsList />
-    </Provider>,
-  );
+  renderWithProviders(<RecentsList />);
 
   await waitFor(() => screen.queryByText("Recently viewed"));
 }

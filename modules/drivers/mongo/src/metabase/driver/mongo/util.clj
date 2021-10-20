@@ -13,14 +13,6 @@
             [toucan.db :as db])
   (:import [com.mongodb MongoClient MongoClientOptions MongoClientOptions$Builder MongoClientURI]))
 
-(def ^:const ^:private connection-timeout-ms
-  "Number of milliseconds to wait when attempting to establish a Mongo connection. By default, Monger uses a 10-second
-  timeout, which means `can/connect?` can take forever, especially when called with bad details. This translates to
-  our tests taking longer and the DB setup API endpoints seeming sluggish.
-
-  Don't set the timeout too low -- I've have Circle fail when the timeout was 1000ms on *one* occasion."
-  3000)
-
 (def ^:dynamic ^com.mongodb.DB *mongo-connection*
   "Connection to a Mongo database. Bound by top-level `with-mongo-connection` so it may be reused within its body."
   nil)
@@ -35,10 +27,10 @@
 ;; these options for us and return a `MongoClientOptions` like we'd prefer. Code below:
 
 (defn- client-options-for-url-params
-  "Return an instance of `MongoClientOptions` from a URL-PARAMS string, e.g.
+  "Return an instance of `MongoClientOptions` from a `url-params` string, e.g.
 
-     (client-options-for-url-params \"readPreference=nearest\")
-      ;; -> #MongoClientOptions{readPreference=nearest, ...}"
+    (client-options-for-url-params \"readPreference=nearest\")
+    ;; -> #MongoClientOptions{readPreference=nearest, ...}"
   ^MongoClientOptions [^String url-params]
   (when (seq url-params)
     ;; just make a fake connection string to tack the URL params on to. We can use that to have the Mongo lib
@@ -65,8 +57,8 @@
   (let [client-options (-> (client-options-for-url-params additional-options)
                            client-options->builder
                            (.description config/mb-app-id-string)
-                           (.connectTimeout connection-timeout-ms)
-                           (.serverSelectionTimeout connection-timeout-ms)
+                           (.connectTimeout (driver.u/db-connection-timeout-ms))
+                           (.serverSelectionTimeout (driver.u/db-connection-timeout-ms))
                            (.sslEnabled ssl?))]
     (if (not (str/blank? ssl-cert))
       (-> client-options
@@ -211,9 +203,9 @@
   (let [mongo-client (mg/connect-via-uri conn-string)]
     [(:conn mongo-client) (:db mongo-client)]))
 
-(defn -with-mongo-connection
-  "Run `f` with a new connection (bound to `*mongo-connection*`) to `database`. Don't use this directly; use
-  `with-mongo-connection`."
+(defn do-with-mongo-connection
+  "Run `f` with a new connection (bound to [[*mongo-connection*]]) to `database`. Don't use this directly; use
+  [[with-mongo-connection]]."
   [f database]
   (let [details (database->details database)]
     (ssh/with-ssh-tunnel [details-with-tunnel details]
@@ -227,24 +219,23 @@
            (mg/disconnect mongo-client)
            (log/debug (u/format-color 'cyan (trs "Closed MongoDB connection.")))))))))
 
-
 (defmacro with-mongo-connection
   "Open a new MongoDB connection to ``database-or-connection-string`, bind connection to `binding`, execute `body`, and
-  close the connection. The DB connection is re-used by subsequent calls to `with-mongo-connection` within
-  `body`. (We're smart about it: `database` isn't even evaluated if `*mongo-connection*` is already bound.)
+  close the connection. The DB connection is re-used by subsequent calls to [[with-mongo-connection]] within
+  `body`. (We're smart about it: `database` isn't even evaluated if [[*mongo-connection*]] is already bound.)
 
-     ;; delay isn't derefed if *mongo-connection* is already bound
-     (with-mongo-connection [^com.mongodb.DB conn @(:db (sel :one Table ...))]
+    ;; delay isn't derefed if *mongo-connection* is already bound
+    (with-mongo-connection [^com.mongodb.DB conn @(:db (sel :one Table ...))]
+      ...)
+
+    ;; You can use a string instead of a Database
+    (with-mongo-connection [^com.mongodb.DB conn \"mongodb://127.0.0.1:27017/test\"]
        ...)
 
-     ;; You can use a string instead of a Database
-     (with-mongo-connection [^com.mongodb.DB conn \"mongodb://127.0.0.1:27017/test\"]
-        ...)
-
-   DATABASE-OR-CONNECTION-STRING can also optionally be the connection details map on its own."
+  `database-or-connection-string` can also optionally be the connection details map on its own."
   [[binding database] & body]
   `(let [f# (fn [~binding]
               ~@body)]
      (if *mongo-connection*
        (f# *mongo-connection*)
-       (-with-mongo-connection f# ~database))))
+       (do-with-mongo-connection f# ~database))))

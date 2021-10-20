@@ -19,6 +19,7 @@ export default class UserStep extends Component {
     setActiveStep: PropTypes.func.isRequired,
 
     userDetails: PropTypes.object,
+    defaultUserDetails: PropTypes.object,
     setUserDetails: PropTypes.func.isRequired,
     validatePassword: PropTypes.func.isRequired,
   };
@@ -43,7 +44,14 @@ export default class UserStep extends Component {
   };
 
   render() {
-    const { activeStep, setActiveStep, stepNumber, userDetails } = this.props;
+    const {
+      activeStep,
+      setActiveStep,
+      stepNumber,
+      userDetails,
+      defaultUserDetails,
+    } = this.props;
+
     const stepText =
       activeStep <= stepNumber
         ? t`What should we call you?`
@@ -66,16 +74,19 @@ export default class UserStep extends Component {
           className="SetupStep SetupStep--active rounded bg-white full relative"
         >
           <StepTitle title={stepText} circleText={String(stepNumber)} />
-
+          {defaultUserDetails && (
+            <div className="Form-field">
+              {t`We know you’ve already created one of these. We like to keep billing and product accounts separate so that you don’t have to share logins.`}
+            </div>
+          )}
           <User.Form
             className="mt1"
             form={User.forms.setup()}
-            user={
-              userDetails && {
-                ...userDetails,
-                password_confirm: userDetails.password,
-              }
-            }
+            user={{
+              ...defaultUserDetails,
+              ...userDetails,
+              password_confirm: userDetails?.password,
+            }}
             onSubmit={this.handleSubmit}
             asyncValidate={this.handleAsyncValidate}
             asyncBlurFields={["password"]}
@@ -87,9 +98,9 @@ export default class UserStep extends Component {
                   <FormField name="last_name" className="flex-full" />
                 </Flex>
                 <FormField name="email" />
+                <FormField name="site_name" />
                 <FormField name="password" />
                 <FormField name="password_confirm" />
-                <FormField name="site_name" />
                 <FormFooter submitTitle={t`Next`} />
               </Form>
             )}

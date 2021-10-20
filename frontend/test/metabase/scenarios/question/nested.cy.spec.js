@@ -4,6 +4,7 @@ import {
   openOrdersTable,
   remapDisplayValueToFK,
   visitQuestionAdhoc,
+  visualize,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
@@ -383,7 +384,7 @@ describe("scenarios > question > nested", () => {
     });
   });
 
-  it.skip("'distribution' should work on a joined table from a saved question (metabase#14787)", () => {
+  it("'distribution' should work on a joined table from a saved question (metabase#14787)", () => {
     // Set the display really wide and really tall to avoid any scrolling
     cy.viewport(1600, 1200);
 
@@ -571,7 +572,8 @@ describe("scenarios > question > nested", () => {
       cy.findByText("Pick a column to group by").click();
       cy.findByText("CAT").click();
 
-      cy.button("Visualize").click();
+      visualize();
+
       cy.get("@consoleWarn").should(
         "not.be.calledWith",
         "Removing invalid MBQL clause",
@@ -583,8 +585,8 @@ describe("scenarios > question > nested", () => {
       cy.findByText("Pick a column to group by").click();
       cy.findByText("CAT").click();
 
-      cy.button("Visualize").click();
-      cy.wait("@dataset");
+      visualize();
+
       cy.findAllByRole("button")
         .contains("Summarize")
         .click();

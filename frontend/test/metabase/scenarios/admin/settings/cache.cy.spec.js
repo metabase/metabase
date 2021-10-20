@@ -15,7 +15,7 @@ describe("scenarios > admin > settings > cache", () => {
     cy.signInAsAdmin();
   });
 
-  describe.skip("issue 18458", () => {
+  describe("issue 18458", () => {
     beforeEach(() => {
       cy.visit("/admin/settings/caching");
 
