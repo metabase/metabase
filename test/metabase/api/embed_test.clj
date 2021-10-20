@@ -174,7 +174,8 @@
 
 ;;; ------------------------- GET /api/embed/card/:token/query (and JSON/CSV/XLSX variants) --------------------------
 
-(defn- card-query-url [card response-format & [additional-token-params]]
+(defn card-query-url [card response-format & [additional-token-params]]
+  "Generate a query URL for an embedded card"
   (str "embed/card/"
        (card-token card additional-token-params)
        "/query"

@@ -5341,7 +5341,8 @@ databaseChangeLog:
       comment: 'Added 0.32.0'
       preConditions:
         - onFail: MARK_RAN
-        - dbms: mysql, mariadb
+        - dbms:
+            type: mysql,mariadb
       changes:
         - modifyDataType:
             tableName: query_cache
