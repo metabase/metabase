@@ -1,4 +1,4 @@
-import { restore, sidebar } from "__support__/e2e/cypress";
+import { restore, sidebar, visualize } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 
 const { admin } = USERS;
@@ -32,7 +32,7 @@ describe("metabase-smoketest > admin", () => {
       cy.findByLabelText("First name").type(admin.first_name);
       cy.findByLabelText("Last name").type(admin.last_name);
       cy.findByLabelText("Email").type(admin.email);
-      cy.findByLabelText("Your company or team name").type("Epic Team");
+      cy.findByLabelText("Company or team name").type("Epic Team");
 
       cy.findByLabelText("Create a password")
         .clear()
@@ -165,7 +165,8 @@ describe("metabase-smoketest > admin", () => {
 
       cy.findByText("Join data").click();
       cy.findByText("People").click();
-      cy.button("Visualize").click();
+
+      visualize();
 
       // Summarize by State
       cy.findAllByText("Summarize")

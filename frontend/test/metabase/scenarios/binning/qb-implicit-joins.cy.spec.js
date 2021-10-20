@@ -1,4 +1,4 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover, visualize } from "__support__/e2e/cypress";
 
 describe("scenarios > binning > from a saved QB question using implicit joins", () => {
   beforeEach(() => {
@@ -159,10 +159,7 @@ function chooseBucketAndAssert({
       cy.findByText(bucketSize).click();
     });
 
-  if (mode === "notebook") {
-    cy.button("Visualize").click();
-  }
-  waitAndAssertOnRequest("@dataset");
+  mode === "notebook" ? visualize() : waitAndAssertOnRequest("@dataset");
 
   cy.findByText(title);
   cy.get(".cellData")

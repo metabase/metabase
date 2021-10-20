@@ -406,9 +406,3 @@
   :visibility :public
   :type       :integer
   :default    180)
-
-(defsetting redshift-fetch-size
-  (deferred-tru "Controls the fetch size used for Redshift queries (in PreparedStatement), via defaultRowFetchSize.")
-  :visibility :public
-  :type       :integer
-  :default    5000)

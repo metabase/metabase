@@ -36,6 +36,8 @@
         ;; match requests that are js/css and have a cache-busting query string
         (and query-string
              (re-matches #"^/app/dist/.*\.(js|css)$" uri))
+        ;; any resource that is named as a cache-busting hex string (e.g. fonts, images)
+        (re-matches #"^/app/dist/[a-f0-9]{20}+.*$" uri)
         ;; GeoJSON proxy requests should also be cached
         (re-matches #"^/api/geojson/.*" uri))))
 

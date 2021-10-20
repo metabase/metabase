@@ -11,12 +11,14 @@
             [metabase.driver :as driver]
             [metabase.models :refer [Database Secret Setting User]]
             [metabase.models.interface :as interface]
+            [metabase.models.setting :as setting]
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
             [metabase.util.encryption :as encrypt]
             [metabase.util.encryption-test :as eu]
+            [metabase.util.i18n :as i18n]
             [toucan.db :as db]
             [toucan.models :as models])
   (:import java.nio.charset.StandardCharsets))
@@ -72,10 +74,26 @@
           secret-id-unenc    (atom nil)]
       (mt/test-drivers #{:postgres :h2 :mysql}
         (with-model-type :encrypted-json {:out #'interface/encrypted-json-out}
-          (binding [mdb.connection/*db-type*   driver/*driver*
-                    mdb.connection/*jdbc-spec* (persistent-jdbcspec driver/*driver* db-name)
-                    db/*db-connection*         (persistent-jdbcspec driver/*driver* db-name)
-                    db/*quoting-style*         driver/*driver*]
+          (binding [;; EXPLANATION FOR WHY THIS TEST WAS FLAKY
+                    ;; at this point, all the state switching craziness that happens for
+                    ;; `metabase.util.i18n.impl/site-locale-from-setting` has already taken place, so this function has
+                    ;; been bootstrapped to now return the site locale from the real, actual setting function
+                    ;; the trouble is, when we are swapping out the app DB, attempting to fetch the setting value WILL
+                    ;; FAIL, since there is no `SETTING `table yet created
+                    ;; the `load-from-h2!`, by way of invoking `copy!`, below, needs the site locale to internationalize
+                    ;; its loading progress messages (ex: "Set up h2 source database and run migrations...")
+                    ;; the reason this test has been flaky is that if we get "lucky" the *cached* value of the site
+                    ;; locale setting is returned, instead of the setting code having to query the app DB for it, and
+                    ;; hence no error occurs, but for a cache miss, then the error happens
+                    ;; this dynamic rebinding will bypass the call to `i18n/site-locale` and hence avoid that whole mess
+                    i18n/*site-locale-override* "en"
+                    ;; while we're at it, disable the setting cache entirely; we are effectively creating a new app DB
+                    ;; so the cache itself is invalid and can only mask the real issues
+                    setting/*disable-cache*     true?
+                    mdb.connection/*db-type*    driver/*driver*
+                    mdb.connection/*jdbc-spec*  (persistent-jdbcspec driver/*driver* db-name)
+                    db/*db-connection*          (persistent-jdbcspec driver/*driver* db-name)
+                    db/*quoting-style*          driver/*driver*]
             (when-not (= driver/*driver* :h2)
               (tx/create-db! driver/*driver* {:database-name db-name}))
             (load-from-h2/load-from-h2! h2-fixture-db-file)

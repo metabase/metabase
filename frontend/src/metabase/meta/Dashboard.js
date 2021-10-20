@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
 import Question from "metabase-lib/lib/Question";
-import Field from "metabase-lib/lib/metadata/Field";
 
 import { ExpressionDimension } from "metabase-lib/lib/Dimension";
 
@@ -23,7 +22,7 @@ import {
   getParameterOptions,
   PARAMETER_OPERATOR_TYPES,
   getOperatorDisplayName,
-  getParameterTargetFieldId,
+  getParameterTargetField,
 } from "metabase/meta/Parameter";
 
 import { slugify } from "metabase/lib/formatting";
@@ -278,16 +277,8 @@ function getMappingTargetField(card, mapping, metadata) {
     return null;
   }
 
-  const fieldId = getParameterTargetFieldId(mapping.target, card.dataset_query);
-  let field = metadata.field(fieldId);
-
-  if (!field) {
-    const rawField = _.findWhere(card.result_metadata, {
-      name: fieldId,
-    });
-    field = rawField && new Field(rawField, metadata);
-  }
-
+  const question = new Question(card, metadata);
+  const field = getParameterTargetField(mapping.target, metadata, question);
   return field;
 }
 

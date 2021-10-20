@@ -1,4 +1,4 @@
-import { restore, openTable } from "__support__/e2e/cypress";
+import { restore, openTable, visualize } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { ORDERS_ID, PEOPLE_ID } = SAMPLE_DATASET;
@@ -161,7 +161,8 @@ function chooseInitialBinningOption({
       .click();
 
     cy.findByText(bucketSize).click();
-    cy.button("Visualize").click();
+
+    visualize();
   } else {
     cy.findByTestId("sidebar-right")
       .contains(column)

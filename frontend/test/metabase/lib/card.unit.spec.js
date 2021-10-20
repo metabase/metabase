@@ -1,13 +1,15 @@
 import {
   createCard,
-  utf8_to_b64,
-  b64_to_utf8,
-  utf8_to_b64url,
-  b64url_to_utf8,
   isCardDirty,
   serializeCardForUrl,
   deserializeCardFromUrl,
 } from "metabase/lib/card";
+import {
+  b64_to_utf8,
+  b64url_to_utf8,
+  utf8_to_b64,
+  utf8_to_b64url,
+} from "metabase/lib/encoding";
 
 const CARD_ID = 31;
 

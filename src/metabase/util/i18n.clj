@@ -24,10 +24,16 @@
   *use*, use the `user-locale` function instead."
   nil)
 
+(def ^:dynamic *site-locale-override*
+  "Bind this to a string, keyword, or `Locale` to override the value returned by `site-locale`. For testing purposes,
+  such as when swapping out an application database temporarily, when the setting table may not even exist."
+  nil)
+
 (defn site-locale
   "The default locale for this Metabase installation. Normally this is the value of the `site-locale` Setting."
   ^Locale []
-  (locale (or (impl/site-locale-from-setting)
+  (locale (or *site-locale-override*
+              (impl/site-locale-from-setting)
               ;; if DB is not initialized yet fall back to English
               "en")))
 
