@@ -1,11 +1,14 @@
 /* eslint-disable react/prop-types */
-
 import React from "react";
 import { t } from "ttag";
 
 import { isMac } from "metabase/lib/browser";
 
-import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
+import {
+  Container,
+  RunButtonWithTooltipStyled,
+} from "./NativeQueryEditorSidebar.styled";
+
 import DataReferenceButton from "metabase/query_builder/components/view/DataReferenceButton";
 import NativeVariablesButton from "metabase/query_builder/components/view/NativeVariablesButton";
 import SnippetSidebarButton from "metabase/query_builder/components/view/SnippetSidebarButton";
@@ -44,13 +47,13 @@ const NativeQueryEditorSidebar = props => {
   };
 
   return (
-    <div className="flex flex-column align-center">
+    <Container>
       <DataReferenceButton {...props} size={ICON_SIZE} className="mt3" />
       <NativeVariablesButton {...props} size={ICON_SIZE} className="mt3" />
       {showSnippetSidebarButton && (
         <SnippetSidebarButton {...props} size={ICON_SIZE} className="mt3" />
       )}
-      <RunButtonWithTooltip
+      <RunButtonWithTooltipStyled
         disabled={!isRunnable}
         isRunning={isRunning}
         isDirty={isResultDirty}
@@ -58,11 +61,9 @@ const NativeQueryEditorSidebar = props => {
         onRun={runQuery}
         onCancel={cancelQuery}
         compact
-        className="mx2 mb2 mt-auto"
-        style={{ width: 40, height: 40 }}
         getTooltip={getTooltip}
       />
-    </div>
+    </Container>
   );
 };
 
