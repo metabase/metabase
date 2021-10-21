@@ -411,8 +411,11 @@
                "-XX:+PrintGC"]}
 
   ;; get the H2 shell with clojure -M:h2
+  ;; TODO -- this doesn't currently work correctly -- use this instead:
+  ;;
+  ;;    java -cp `clojure -Spath` org.h2.tools.Shell
   :h2
-  {:main-opts ["-m" "org.h2.tools.Shell"]}
+  {:jvm-opts ["org.h2.tools.Shell"]}
 
   ;; clojure -M:generate-automagic-dashboards-pot
   :generate-automagic-dashboards-pot
