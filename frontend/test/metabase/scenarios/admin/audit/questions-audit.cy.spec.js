@@ -72,7 +72,7 @@ describeWithToken("audit > auditing > questions", () => {
     });
 
     it("should display total runtime correctly (metabase#18317)", () => {
-      const runtimeIndex = 4;
+      const runtimeIndex = 7;
 
       cy.visit("/admin/audit/questions/all");
 
