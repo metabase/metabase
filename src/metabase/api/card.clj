@@ -503,10 +503,12 @@
 (api/defendpoint ^:returns-chan PUT "/:id"
   "Update a `Card`."
   [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id
-                   collection_position enable_embedding embedding_params result_metadata metadata_checksum cache_ttl]
+                   collection_position enable_embedding embedding_params result_metadata metadata_checksum
+                   cache_ttl dataset]
             :as   card-updates} :body}]
   {name                   (s/maybe su/NonBlankString)
    dataset_query          (s/maybe su/Map)
+   dataset                (s/maybe s/Bool)
    display                (s/maybe su/NonBlankString)
    description            (s/maybe s/Str)
    visualization_settings (s/maybe su/Map)
@@ -530,7 +532,10 @@
                                 dataset_query
                                 result_metadata
                                 metadata_checksum)
-          out-chan             (a/promise-chan)]
+          out-chan             (a/promise-chan)
+          card-updates         (merge card-updates
+                                      (when dataset
+                                        {:display :table}))]
       ;; asynchronously wait for our updated result metadata, then after that call `update-card-async!`, which is done
       ;; on a non-core.async thread. Pipe the results of that into `out-chan`.
       (a/go

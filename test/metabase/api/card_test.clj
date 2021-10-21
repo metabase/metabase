@@ -1830,3 +1830,11 @@
             (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
             (is (= ["MS" "Organic" "Gizmo" 0 16 42] (nth rows 445)))
             (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
+
+(deftest dataset-card
+  (testing "Setting a question to a dataset makes it viz type table"
+   (mt/with-temp Card [card {:display :bar
+                             :dataset_query (mbql-count-query)}]
+     (is (= "table"
+            (:display (mt/user-http-request :crowberto :put 202 (str "card/" (u/the-id card))
+                                            (assoc card :dataset true))))))))
