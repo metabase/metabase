@@ -96,7 +96,7 @@ function _init(reducers, getRoutes, callback) {
 
   initializeEmbedding(store);
 
-  createTracker();
+  createTracker(store);
   enableDataAttributesTracking();
 
   store.dispatch(refreshSiteSettings());
