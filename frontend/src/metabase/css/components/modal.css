@@ -101,7 +101,7 @@
   transform: translate(0, -40px);
 }
 
-@media (prefers-reduced-motion: reduce) {
+@media (prefers-reduced-motion) {
   .Modal-backdrop.Modal-appear,
   .Modal-backdrop.Modal-enter,
   .Modal-backdrop.Modal-leave,
