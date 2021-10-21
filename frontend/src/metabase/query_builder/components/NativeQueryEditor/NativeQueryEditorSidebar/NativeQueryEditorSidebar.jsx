@@ -25,6 +25,18 @@ const propTypes = {
   snippets: PropTypes.array,
 };
 
+const propTypes = {
+  cancelQuery: PropTypes.func.isRequired,
+  isPreviewing: PropTypes.bool.isRequired,
+  isResultDirty: PropTypes.bool.isRequired,
+  isRunnable: PropTypes.bool.isRequired,
+  isRunning: PropTypes.bool.isRequired,
+  nativeEditorSelectedText: PropTypes.string,
+  runQuery: PropTypes.func.isRequired,
+  snippetCollections: PropTypes.array,
+  snippets: PropTypes.array,
+};
+
 const ICON_SIZE = 18;
 
 const NativeQueryEditorSidebar = props => {
