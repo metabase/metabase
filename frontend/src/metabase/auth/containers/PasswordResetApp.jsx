@@ -25,6 +25,7 @@ const mapStateToProps = (state, props) => {
 @connect(mapStateToProps)
 export default class PasswordResetApp extends Component {
   state = {
+    loading: true,
     tokenValid: false,
     resetSuccess: false,
   };
@@ -39,6 +40,8 @@ export default class PasswordResetApp extends Component {
       }
     } catch (error) {
       console.log("error validating token", error);
+    } finally {
+      this.setState({ loading: false });
     }
   }
 
@@ -57,7 +60,7 @@ export default class PasswordResetApp extends Component {
 
   render() {
     const { newUserJoining } = this.props;
-    const { resetSuccess } = this.state;
+    const { loading, resetSuccess } = this.state;
 
     const passwordComplexity = MetabaseSettings.passwordComplexityDescription();
 
@@ -66,6 +69,10 @@ export default class PasswordResetApp extends Component {
         {t`request a new reset email`}
       </Link>
     );
+
+    if (loading) {
+      return null;
+    }
 
     return (
       <AuthLayout>
