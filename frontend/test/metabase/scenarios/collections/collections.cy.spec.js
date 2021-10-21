@@ -1,7 +1,6 @@
 import _ from "underscore";
 import {
   restore,
-  setupLocalHostEmail,
   modal,
   popover,
   openOrdersTable,
@@ -29,7 +28,6 @@ const [admin, collection, sub_collection] = [
   },
 ];
 
-const pulse_name = "Test pulse";
 const dashboard_name = "Test Dashboard";
 
 describe("scenarios > collection_defaults", () => {
@@ -179,29 +177,6 @@ describe("scenarios > collection_defaults", () => {
       });
     });
 
-    // [quarantine]: cannot run tests that rely on email setup in CI (yet)
-    describe.skip("a new pulse", () => {
-      it("should be in the root collection", () => {
-        // Configure email
-        cy.visit("/admin/settings/email");
-        setupLocalHostEmail();
-
-        // Make new pulse
-        createPulse();
-
-        // Check for pulse in root collection
-        cy.visit("/collection/root");
-        cy.findByText("My personal collection").then(() => {
-          cy.icon("pulse");
-        });
-
-        // cy.request("/api/pulse").then((response) => {
-        //     // *** Should the value here really be nll or should it be "root"?
-        //     expect(response.body[0].collection_id).to.have.value(null);
-        // });
-      });
-    });
-
     describe("a new dashboard", () => {
       it("should be in the root collection", () => {
         // Make new dashboard and check collection name
@@ -217,24 +192,6 @@ describe("scenarios > collection_defaults", () => {
     beforeEach(() => {
       restore();
       cy.signInAsNormalUser();
-    });
-
-    // [quarantine]: cannot run tests that rely on email setup in CI (yet)
-    describe.skip("a new pulse", () => {
-      beforeEach(() => {
-        cy.visit("/admin/settings/email");
-        setupLocalHostEmail();
-      });
-
-      it("should be in the root collection", () => {
-        // Make new pulse
-        createPulse();
-
-        // Check for pulse in root collection
-        cy.visit("/collection/root");
-        cy.findByText("My personal collection");
-        cy.icon("pulse");
-      });
     });
 
     describe("a new dashboard", () => {
@@ -608,24 +565,6 @@ describe("scenarios > collection_defaults", () => {
     });
   });
 });
-
-function createPulse() {
-  cy.visit("/pulse/create");
-  cy.findByPlaceholderText("Important metrics").type(pulse_name);
-  cy.findByText("Select a question").click();
-  cy.findByText("Orders").click();
-  cy.findByPlaceholderText(
-    "Enter email addresses you'd like this data to go to",
-  )
-    .click()
-    .clear();
-  cy.contains("Bobby").click();
-  cy.findByText("To:").click();
-
-  cy.findByText("Robert Tableton").should("not.exist");
-  cy.findByText("Bobby Tables");
-  cy.findByText("Create pulse").click();
-}
 
 function openEllipsisMenuFor(item) {
   cy.findByText(item)
