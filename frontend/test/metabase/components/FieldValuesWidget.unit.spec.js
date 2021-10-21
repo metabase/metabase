@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import "mutationobserver-shim";
 
 import { ORDERS, PRODUCTS, PEOPLE } from "__support__/sample_dataset_fixture";
-import { FieldValuesWidget } from "metabase/components/FieldValuesWidget2";
+import { FieldValuesWidget } from "metabase/components/FieldValuesWidget/FieldValuesWidget";
 
 const mock = (object, properties) =>
   Object.assign(Object.create(object), properties);

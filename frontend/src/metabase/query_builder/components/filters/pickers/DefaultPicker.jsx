@@ -6,7 +6,7 @@ import NumberPicker from "./NumberPicker";
 import SelectPicker from "./SelectPicker";
 import TextPicker from "./TextPicker";
 
-import FieldValuesWidget from "metabase/components/FieldValuesWidget2";
+import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 
 import {
   getFilterArgumentFormatOptions,

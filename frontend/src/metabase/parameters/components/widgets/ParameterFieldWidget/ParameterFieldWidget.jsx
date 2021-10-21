@@ -5,7 +5,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 
-import FieldValuesWidget from "metabase/components/FieldValuesWidget2";
+import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import ParameterFieldWidgetValue from "./ParameterFieldWidgetValue/ParameterFieldWidgetValue";
 import Popover from "metabase/components/Popover";
 import Button from "metabase/components/Button";

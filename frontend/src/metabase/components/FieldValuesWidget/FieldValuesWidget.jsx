@@ -2,12 +2,14 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import { connect } from "react-redux";
-import { t, jt } from "ttag";
+import { t } from "ttag";
 import _ from "underscore";
 
 import TokenField from "metabase/components/TokenField";
 import ValueComponent from "metabase/components/Value";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
+import LoadingState from "./LoadingState";
+import NoMatchState from "./NoMatchState";
+import EveryOptionState from "./EveryOptionState";
 
 import AutoExpanding from "metabase/hoc/AutoExpanding";
 
@@ -301,52 +303,6 @@ function parseFreeformValue(v, fields) {
   }
   return v;
 }
-
-function LoadingState() {
-  return (
-    <div
-      className="flex layout-centered align-center border-bottom"
-      style={{ minHeight: 82 }}
-    >
-      <LoadingSpinner size={32} />
-    </div>
-  );
-}
-
-function NoMatchState({ fields }) {
-  if (fields.length > 1) {
-    // if there is more than one field, don't name them
-    return <OptionsMessage message={t`No matching result`} />;
-  }
-  const [{ display_name }] = fields;
-  return (
-    <OptionsMessage
-      message={jt`No matching ${(
-        <strong>&nbsp;{display_name}&nbsp;</strong>
-      )} found.`}
-    />
-  );
-}
-
-NoMatchState.propTypes = {
-  fields: PropTypes.arrayOf(PropTypes.object).isRequired,
-};
-
-function EveryOptionState() {
-  return (
-    <OptionsMessage
-      message={t`Including every option in your filter probably won’t do much…`}
-    />
-  );
-}
-
-function OptionsMessage({ message }) {
-  return <div className="flex layout-centered p4 border-bottom">{message}</div>;
-}
-
-OptionsMessage.propTypes = {
-  message: PropTypes.string.isRequired,
-};
 
 function isSearchEndpointExhausted(value, latestSearch, options, maxResults) {
   // if this search is just an extension of the previous search, and the previous search
