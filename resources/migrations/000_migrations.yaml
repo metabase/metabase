@@ -8554,7 +8554,7 @@ databaseChangeLog:
   - changeSet:
       id: 318
       author: camsaul
-      comment: Added 0.42.0 Attempt to add Card.database_id (by parsing query) to rows that are missing it
+      comment: Added 0.42.0 Attempt to add Card.database_id (by parsing query) to rows that are missing it (#5999)
       # If this migration fails for any reason continue with the next migration; do not fail the entire process if this one fails
       failOnError: false
       # Don't run for H2 -- the version of H2 we're using doesn't support JSON stuff.
