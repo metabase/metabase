@@ -71,7 +71,7 @@ describeWithToken("audit > auditing > questions", () => {
       cy.findByText("My question");
     });
 
-    it.skip("should display total runtime correctly (metabase#18317)", () => {
+    it("should display total runtime correctly (metabase#18317)", () => {
       const runtimeIndex = 4;
 
       cy.visit("/admin/audit/questions/all");
