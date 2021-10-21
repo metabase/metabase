@@ -1061,7 +1061,7 @@
                                 :query-filter (:query-filter root)
                                 :database     (:database root)))
        (concat (collect-metrics root question)
-               (collect-breakout-fields root question))))
+               (filter some? (collect-breakout-fields root question)))))
 
 (defn- pluralize
   [x]
@@ -1135,10 +1135,17 @@
 
 (defmethod humanize-filter-value :=
   [root [_ field-reference value]]
-  (let [field      (field-reference->field root field-reference)
-        field-name (field-name field)]
-    (if (isa? ((some-fn :effective_type :base_type) field) :type/Temporal)
+  (let [field           (field-reference->field root field-reference)
+        field-name      (field-name field)
+        expression-name (second field-reference)]
+    (cond
+      (isa? ((some-fn :effective_type :base_type) field) :type/Temporal)
       (tru "{0} is {1}" field-name (humanize-datetime value (:unit field)))
+
+      (= (first field-reference) "expression")
+      (tru "{0} is {1}" expression-name value)
+
+      :else
       (tru "{0} is {1}" field-name value))))
 
 (defmethod humanize-filter-value :between
@@ -1167,26 +1174,46 @@
 
 (defn- key-in?
   "Recursively finds key in coll, returns true or false"
-  [coll k]
+  [k coll]
   (boolean (let [coll-zip (zip/zipper coll? #(if (map? %) (vals %) %) nil coll)]
             (loop [x coll-zip]
               (when-not (zip/end? x)
                 (if-let [v (k (zip/node x))] true (recur (zip/next x))))))))
 
 (defn- splice-in
-  [join-statement card-member]
+  [to-insert pred ks card-member]
   (let [query (get-in card-member [:card :dataset_query :query])]
-    (if (key-in? query :join-alias)
-      ;; Always in the top level even if the join-alias is found deep in there
-      (assoc-in card-member [:card :dataset_query :query :joins] join-statement)
+    (if (pred query)
+      ;; Always in the top level even if the to-insert is found deep in there
+      (assoc-in card-member ks to-insert)
       card-member)))
 
 (defn- maybe-enrich-joins
   "Hack to shove back in joins when they get automagically stripped out by the question decomposition into metrics"
   [entity dashboard]
   (if-let [join-statement (get-in entity [:dataset_query :query :joins])]
-    (update dashboard :ordered_cards #(map (partial splice-in join-statement) %))
+    (update dashboard :ordered_cards #(map (partial splice-in
+                                                    join-statement
+                                                    (partial key-in? :join-alias)
+                                                    [:card :dataset_query :query :joins]) %))
     dashboard))
+
+(defn- maybe-enrich-custexps
+  "Hack to shove back in custexps when they get automagically stripped out by the whole root system"
+  [entity dashboard]
+  (if-let [expressions (get-in entity [:dataset_query :query :expressions])]
+    (update dashboard :ordered_cards #(map (partial splice-in
+                                                    expressions
+                                                    (constantly (some? expressions))
+                                                    [:card :dataset_query :query :expressions]) %))
+    dashboard))
+
+(defn- maybe-enrich-dashboard
+  [entity dashboard]
+  (->> dashboard
+       (maybe-enrich-joins entity)
+       (maybe-enrich-custexps entity)))
+
 
 (defmethod automagic-analysis (type Card)
   [card {:keys [cell-query] :as opts}]
@@ -1194,24 +1221,27 @@
         cell-url (format "%squestion/%s/cell/%s" public-endpoint
                          (u/the-id card)
                          (encode-base64-json cell-query))]
-    (maybe-enrich-joins
-     card
-     (if (table-like? card)
-       (automagic-dashboard
-        (merge (cond-> root
-                 cell-query (merge {:url          cell-url
-                                    :entity       (:source root)
-                                    :rules-prefix ["table"]}))
-               opts))
-       (let [opts (assoc opts :show :all)]
-         (cond-> (reduce populate/merge-dashboards
-                         (automagic-dashboard (merge (cond-> root
-                                                       cell-query (assoc :url cell-url))
-                                                     opts))
-                         (decompose-question root card opts))
-           cell-query (merge (let [title (tru "A closer look at {0}" (cell-title root cell-query))]
-                               {:transient_name  title
-                                :name            title}))))))))
+    (maybe-enrich-dashboard
+      card
+      (if (table-like? card)
+        (automagic-dashboard
+          (merge (cond-> root
+                   cell-query (merge {:url          cell-url
+                                      :entity       (:source root)
+                                      :rules-prefix ["table"]}))
+                 opts))
+        (let [opts              (assoc opts :show :all)
+              merged-dashboards (reduce populate/merge-dashboards
+                                        (automagic-dashboard (merge (cond-> root
+                                                                      cell-query (assoc :url cell-url))
+                                                                    opts))
+                                        (decompose-question root card opts))
+              merged-dashboards (cond-> merged-dashboards
+                                  cell-query
+                                  (merge (let [title (tru "A closer look at {0}" (cell-title root cell-query))]
+                                           {:transient_name  title
+                                            :name            title})))]
+          merged-dashboards)))))
 
 (defmethod automagic-analysis (type Query)
   [query {:keys [cell-query] :as opts}]
@@ -1219,7 +1249,7 @@
         cell-url (format "%sadhoc/%s/cell/%s" public-endpoint
                          (encode-base64-json (:dataset_query query))
                          (encode-base64-json cell-query))]
-    (maybe-enrich-joins
+    (maybe-enrich-dashboard
      query
      (if (table-like? query)
        (automagic-dashboard
