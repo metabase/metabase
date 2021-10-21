@@ -8582,7 +8582,7 @@ databaseChangeLog:
             sql: >-
               UPDATE report_card c
               JOIN (
-                SELECT *, cast(json_value(dataset_query, '$.database') AS unsigned) AS query_database_id
+                SELECT *, cast(json_value(dataset_query, '$.database') AS signed) AS query_database_id
                 FROM report_card
                 ) c2
                 ON c.id = c2.id
@@ -8595,7 +8595,7 @@ databaseChangeLog:
             sql: >-
               UPDATE report_card c
               JOIN (
-                SELECT *, cast(json_extract(dataset_query, '$.database') AS unsigned) AS query_database_id
+                SELECT *, cast(json_extract(dataset_query, '$.database') AS signed) AS query_database_id
                 FROM report_card
                 ) c2
                 ON c.id = c2.id
