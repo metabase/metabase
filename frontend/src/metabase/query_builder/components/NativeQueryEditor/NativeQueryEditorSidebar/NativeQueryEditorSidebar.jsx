@@ -1,5 +1,5 @@
-/* eslint-disable react/prop-types */
 import React from "react";
+import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import { isMac } from "metabase/lib/browser";
@@ -13,15 +13,27 @@ import DataReferenceButton from "metabase/query_builder/components/view/DataRefe
 import NativeVariablesButton from "metabase/query_builder/components/view/NativeVariablesButton";
 import SnippetSidebarButton from "metabase/query_builder/components/view/SnippetSidebarButton";
 
+const propTypes = {
+  cancelQuery: PropTypes.func.isRequired,
+  isPreviewing: PropTypes.bool.isRequired,
+  isResultDirty: PropTypes.bool.isRequired,
+  isRunnable: PropTypes.bool.isRequired,
+  isRunning: PropTypes.bool.isRequired,
+  nativeEditorSelectedText: PropTypes.string,
+  runQuery: PropTypes.func.isRequired,
+  snippetCollections: PropTypes.array,
+  snippets: PropTypes.array,
+};
+
 const ICON_SIZE = 18;
 
 const NativeQueryEditorSidebar = props => {
   const {
     cancelQuery,
+    isPreviewing,
+    isResultDirty,
     isRunnable,
     isRunning,
-    isResultDirty,
-    isPreviewing,
     nativeEditorSelectedText,
     runQuery,
     snippetCollections,
@@ -66,5 +78,7 @@ const NativeQueryEditorSidebar = props => {
     </Container>
   );
 };
+
+NativeQueryEditorSidebar.propTypes = propTypes;
 
 export default NativeQueryEditorSidebar;
