@@ -21,6 +21,8 @@
 
 (sql.tx/add-test-extensions! :bigquery)
 
+(def ^:private ns-load-time (System/currentTimeMillis))
+
 ;; Don't enable foreign keys when testing because BigQuery *doesn't* have a notion of foreign keys. Joins are still
 ;; allowed, which puts us in a weird position, however; people can manually specifiy "foreign key" relationships in
 ;; admin and everything should work correctly. Since we can't infer any "FK" relationships during sync our normal FK
@@ -39,21 +41,28 @@
 
 (def ^:private current-dataset-version-prefix "v3_")
 
-(defn- prefix-legacydriver-if-new
+(defn- make-dataset-name-unique
   "Adds a legacydriver_ prefix to the db-name, if the `existing-dataset` atom does not contain it. This is to ensure
   that transient datasets created and destroyed by these tests do not interfere with parallel test runs for the new
   BigQuery driver (which are also creating and destroying datasets that would have the same name, if not for this
   change). If the `db-name` is already an existing one, however, the assumption is it's not transient (i.e. not being
-  created and destroyed at test time), and hence, it can keep its name without modification."
+  created and destroyed at test time), and hence, it can keep its name without modification.
+
+  Also, for the checkins_interval datasets (which are always transitive, since they use timestamps relative to
+  \"now\", append a unique suffix."
   [db-name]
   (if (contains? @existing-datasets db-name)
     db-name
-    (str/replace-first db-name current-dataset-version-prefix (str current-dataset-version-prefix "legacydriver_"))))
+    (cond-> (str/replace-first db-name
+                               current-dataset-version-prefix
+                               (str current-dataset-version-prefix "legacydriver_"))
+      (str/includes? db-name "checkins_interval_")
+      (str "_" ns-load-time))))
 
 (defn- normalize-name ^String [db-or-table-or-field identifier]
   (let [s (str/replace (name identifier) "-" "_")]
     (case db-or-table-or-field
-      :db             (prefix-legacydriver-if-new (str current-dataset-version-prefix s))
+      :db             (make-dataset-name-unique (str current-dataset-version-prefix s))
       (:table :field) s)))
 
 (def ^:private details

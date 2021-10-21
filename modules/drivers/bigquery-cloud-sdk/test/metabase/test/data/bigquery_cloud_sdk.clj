@@ -21,6 +21,8 @@
 
 (sql.tx/add-test-extensions! :bigquery-cloud-sdk)
 
+(def ^:private ns-load-time (System/currentTimeMillis))
+
 ;; Don't enable foreign keys when testing because BigQuery *doesn't* have a notion of foreign keys. Joins are still
 ;; allowed, which puts us in a weird position, however; people can manually specifiy "foreign key" relationships in
 ;; admin and everything should work correctly. Since we can't infer any "FK" relationships during sync our normal FK
@@ -36,7 +38,9 @@
 (defn- normalize-name ^String [db-or-table identifier]
   (let [s (str/replace (name identifier) "-" "_")]
     (case db-or-table
-      :db    (str "v3_" s)
+      :db    (cond-> (str "v3_" s)
+               (str/includes? s "checkins_interval_")
+               (str "_" ns-load-time))
       :table s)))
 
 (defn- test-db-details []
