@@ -3,7 +3,7 @@ import * as Snowplow from "@snowplow/browser-tracker";
 import { isProduction } from "metabase/env";
 import { getUser } from "metabase/selectors/user";
 
-export const createTracker = (store) => {
+export const createTracker = store => {
   if (isTrackingEnabled()) {
     createGoogleAnalyticsTracker();
     createSnowplowTracker(store);
@@ -59,7 +59,7 @@ const trackGoogleAnalyticsStructEvent = (category, action, label, value) => {
   window.ga?.("send", "event", category, action, label, value);
 };
 
-const createSnowplowTracker = (store) => {
+const createSnowplowTracker = store => {
   Snowplow.newTracker("sp", "https://sp.metabase.com", {
     appId: "metabase",
     platform: "web",
@@ -70,20 +70,20 @@ const createSnowplowTracker = (store) => {
     },
   });
 
-  Snowplow.addGlobalContexts([() => createSessionContext(store)])
+  Snowplow.addGlobalContexts([() => createSnowplowContext(store)]);
 };
 
-const createSessionContext = (store) => {
+const createSnowplowContext = store => {
   const state = store.getState();
   const user = getUser(state);
 
   return {
-    schema: "iglu:com.metabase/session/jsonschema/1-0-0",
+    schema: "iglu:com.metabase/context/jsonschema/1-0-0",
     data: {
       user_id: user.id,
-    }
-  }
-}
+    },
+  };
+};
 
 const trackSnowplowPageView = url => {
   Snowplow.setCustomUrl(url);
