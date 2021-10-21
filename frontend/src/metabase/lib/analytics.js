@@ -1,5 +1,5 @@
-import Settings from "metabase/lib/settings";
 import * as Snowplow from "@snowplow/browser-tracker";
+import Settings from "metabase/lib/settings";
 import { isProduction } from "metabase/env";
 import { getUser } from "metabase/selectors/user";
 
