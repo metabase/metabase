@@ -82,7 +82,7 @@
 (defn- includes-encryption-warning? [log-messages]
   (some (fn [[level _ message]]
           (and (= level :warn)
-               (str/includes? message (str "Cannot decrypt encrypted string. Have you changed or forgot to set "
+               (str/includes? message (str "Cannot decrypt encrypted String. Have you changed or forgot to set "
                                            "MB_ENCRYPTION_SECRET_KEY? Message seems corrupt or manipulated."))))
         log-messages))
 

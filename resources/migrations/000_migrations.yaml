@@ -8497,6 +8497,89 @@ databaseChangeLog:
               WHERE dashboard_id IS NOT NULL;
 
   - changeSet:
+      id: 313
+      author: jeff303
+      comment: Added 0.42.0 - Secret domain object.
+      changes:
+        - createTable:
+            tableName: secret
+            remarks: Storage for managed secrets (passwords, binary data, etc.)
+            columns:
+              - column:
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                  name: id
+                  remarks: Part of composite primary key for secret; this is the uniquely generted ID column
+                  type: int
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                  name: version
+                  defaultValue: 1
+                  remarks: Part of composite primary key for secret; this is the version column
+                  type: int
+              - column:
+                  constraints:
+                    deferrable: false
+                    foreignKeyName: fk_secret_ref_user_id
+                    initiallyDeferred: false
+                    nullable: false
+                    references: core_user(id)
+                  name: creator_id
+                  remarks: User ID who created this secret instance
+                  type: int
+              - column:
+                  constraints:
+                    nullable: false
+                  name: created_at
+                  remarks: Timestamp for when this secret instance was created
+                  type: ${timestamp_type}
+              - column:
+                  constraints:
+                    nullable: true
+                  name: updated_at
+                  remarks: >-
+                    Timestamp for when this secret record was updated. Only relevant when non-value field changes
+                    since a value change will result in a new version being inserted.
+                  type: ${timestamp_type}
+              - column:
+                  constraints:
+                    nullable: false
+                  name: name
+                  remarks: The name of this secret record.
+                  type: varchar(254)
+              - column:
+                  constraints:
+                    # TODO: do we want to constrain this field or leave open for extension? or separate table with FK?
+                    nullable: false
+                  name: kind
+                  remarks: >-
+                    The kind of secret this record represents; the value is interpreted as a Clojure keyword with a
+                    hierarchy. Ex: 'bytes' means generic binary data, 'jks-keystore' extends 'bytes' but has a specific
+                    meaning.
+                  type: varchar(254)
+              - column:
+                  constraints:
+                    # TODO: similar question to above?
+                    nullable: true
+                  name: source
+                  remarks: >-
+                    The source of secret record, which controls how Metabase interprets the value (ex: 'file-path'
+                    means the 'simple_value' is not the real value, but a pointer to a file that contains the value).
+                  type: varchar(254)
+              - column:
+                  constraints:
+                    nullable: false
+                  name: value
+                  remarks: The base64 encoded binary value of this secret record. If encryption is enabled, this will
+                    be the output of the encryption procedure on the plaintext. If not, it will be the base64 encoded
+                    plaintext.
+                  type: ${blob.type}
+
+  - changeSet:
       id: 314
       author: howonlee
       comment: Added 0.41.0 Fine grained caching controls
