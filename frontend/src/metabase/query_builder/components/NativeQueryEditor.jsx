@@ -32,7 +32,6 @@ import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 
 import Icon from "metabase/components/Icon";
 import ExplicitSize from "metabase/components/ExplicitSize";
-import Popover from "metabase/components/Popover";
 
 import Snippets from "metabase/entities/snippets";
 import SnippetCollections from "metabase/entities/snippet-collections";
@@ -41,6 +40,7 @@ import Parameters from "metabase/parameters/components/Parameters/Parameters";
 import Question from "metabase-lib/lib/Question";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import NativeQueryEditorSidebar from "./NativeQueryEditor/NativeQueryEditorSidebar";
+import RightClickPopover from "./NativeQueryEditor/NativeQueryEditorRightClickPopover";
 
 import {
   DatabaseDataSelector,
@@ -479,6 +479,7 @@ export default class NativeQueryEditor extends Component {
       location,
       readOnly,
       isNativeEditorOpen,
+      openSnippetModalWithSelectedText,
     } = this.props;
 
     const database = query.database();
@@ -599,24 +600,14 @@ export default class NativeQueryEditor extends Component {
           resizeHandles={["s"]}
         >
           <div className="flex-full" id="id_sql" ref={this.editor} />
-          <Popover
+
+          <RightClickPopover
             isOpen={this.state.isSelectedTextPopoverOpen}
+            openSnippetModalWithSelectedText={openSnippetModalWithSelectedText}
+            runQuery={this.runQuery}
             target={() => this.editor.current.querySelector(".ace_selection")}
-          >
-            <div className="flex flex-column">
-              <a className="p2 bg-medium-hover flex" onClick={this.runQuery}>
-                <Icon name={"play"} size={16} className="mr1" />
-                <h4>{t`Run selection`}</h4>
-              </a>
-              <a
-                className="p2 bg-medium-hover flex"
-                onClick={this.props.openSnippetModalWithSelectedText}
-              >
-                <Icon name={"snippet"} size={16} className="mr1" />
-                <h4>{t`Save as snippet`}</h4>
-              </a>
-            </div>
-          </Popover>
+          />
+
           {this.props.modalSnippet && (
             <SnippetModal
               onSnippetUpdate={(newSnippet, oldSnippet) => {
