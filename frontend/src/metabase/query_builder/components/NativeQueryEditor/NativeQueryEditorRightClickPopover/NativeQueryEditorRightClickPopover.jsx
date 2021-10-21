@@ -2,6 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
+import { Anchor, Container } from "./NativeQueryEditorRightClickPopover.styled";
 import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
 
@@ -19,19 +20,16 @@ const NativeQueryEditorRightClickPopover = ({
   openSnippetModalWithSelectedText,
 }) => (
   <Popover isOpen={isOpen} target={target}>
-    <div className="flex flex-column">
-      <a className="p2 bg-medium-hover flex" onClick={runQuery}>
+    <Container>
+      <Anchor onClick={runQuery}>
         <Icon name={"play"} size={16} className="mr1" />
         <h4>{t`Run selection`}</h4>
-      </a>
-      <a
-        className="p2 bg-medium-hover flex"
-        onClick={openSnippetModalWithSelectedText}
-      >
+      </Anchor>
+      <Anchor onClick={openSnippetModalWithSelectedText}>
         <Icon name={"snippet"} size={16} className="mr1" />
         <h4>{t`Save as snippet`}</h4>
-      </a>
-    </div>
+      </Anchor>
+    </Container>
   </Popover>
 );
 
