@@ -2,6 +2,7 @@ import {
   browse,
   restore,
   popover,
+  visualize,
   openOrdersTable,
   openReviewsTable,
 } from "__support__/e2e/cypress";
@@ -71,7 +72,9 @@ describe("scenarios > question > new", () => {
         .click();
       cy.findByText("Rating").click();
     });
-    cy.button("Visualize").click();
+
+    visualize();
+
     cy.get(".Visualization .bar").should("have.length", 6);
   });
 
@@ -131,7 +134,8 @@ describe("scenarios > question > new", () => {
 
       it("should allow to search saved questions", () => {
         cy.findByText("Orders, Count").click();
-        cy.findByText("Visualize").click();
+
+        visualize();
         cy.findByText("18,760");
       });
 
@@ -140,7 +144,9 @@ describe("scenarios > question > new", () => {
           .closest("li")
           .findByText("Table in")
           .click();
-        cy.findByText("Visualize").click();
+
+        visualize();
+
         cy.url().should("include", "question#");
         cy.findByText("Sample Dataset");
         cy.findByText("Orders");
@@ -200,7 +206,9 @@ describe("scenarios > question > new", () => {
         cy.findByText("Orders, Count, Grouped by Created At (year)");
         cy.findByText("Orders");
         cy.findByText("Orders, Count").click();
-        cy.button("Visualize").click();
+
+        visualize();
+
         cy.findByText("18,760");
       });
 
@@ -214,7 +222,8 @@ describe("scenarios > question > new", () => {
         cy.findByText("Orders");
         cy.findByText("Orders, Count, Grouped by Created At (year)").click();
 
-        cy.button("Visualize").click();
+        visualize();
+
         cy.findByText("2016");
         cy.findByText("5,834");
       });
@@ -222,13 +231,17 @@ describe("scenarios > question > new", () => {
       it("should perform a search scoped to saved questions", () => {
         cy.findByPlaceholderText("Search for a question").type("Grouped");
         cy.findByText("Orders, Count, Grouped by Created At (year)").click();
-        cy.button("Visualize").click();
+
+        visualize();
+
         cy.findByText("2018");
       });
 
       it("should reopen saved question picker after returning back to editor mode", () => {
         cy.findByText("Orders, Count, Grouped by Created At (year)").click();
-        cy.button("Visualize").click();
+
+        visualize();
+
         cy.icon("notebook").click();
         cy.findByTestId("data-step-cell").click();
 
@@ -404,7 +417,9 @@ describe("scenarios > question > new", () => {
       cy.contains("Custom question").click();
       cy.contains("Sample Dataset").click();
       cy.contains("Orders").click();
-      cy.contains("Visualize").click();
+
+      visualize();
+
       cy.contains("37.65");
     });
 
@@ -419,7 +434,9 @@ describe("scenarios > question > new", () => {
         cy.findByPlaceholderText("Name (required)").type("twice max total");
         cy.findByText("Done").click();
       });
-      cy.button("Visualize").click();
+
+      visualize();
+
       cy.findByText("318.7");
     });
 

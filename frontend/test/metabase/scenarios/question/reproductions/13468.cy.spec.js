@@ -1,4 +1,4 @@
-import { restore, openOrdersTable } from "__support__/e2e/cypress";
+import { restore, openOrdersTable, visualize } from "__support__/e2e/cypress";
 
 describe("issue 13468", () => {
   beforeEach(() => {
@@ -13,7 +13,7 @@ describe("issue 13468", () => {
     cy.findByText("Join data").click();
     cy.findByText("Products").click();
 
-    visualizeResults();
+    visualize();
 
     saveQuestion();
 
@@ -22,11 +22,6 @@ describe("issue 13468", () => {
     cy.findByText("Filter by this value");
   });
 });
-
-function visualizeResults() {
-  cy.button("Visualize").click();
-  cy.wait("@dataset");
-}
 
 function saveQuestion() {
   cy.findByText("Save").click();

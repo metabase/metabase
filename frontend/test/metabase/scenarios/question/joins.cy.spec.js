@@ -1,4 +1,9 @@
-import { restore, openOrdersTable, popover } from "__support__/e2e/cypress";
+import {
+  restore,
+  openOrdersTable,
+  popover,
+  visualize,
+} from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATASET;
@@ -44,9 +49,8 @@ describe("scenarios > question > joined questions", () => {
       .findByText("Product ID")
       .click();
 
-    cy.button("Visualize").click();
-    cy.wait("@dataset").then(xhr => {
-      expect(xhr.response.body.error).not.to.exist;
+    visualize(response => {
+      expect(response.body.error).to.not.exist;
     });
   });
 
@@ -64,8 +68,7 @@ describe("scenarios > question > joined questions", () => {
     selectFromDropdown("Created At");
     selectFromDropdown("Created At");
 
-    cy.button("Visualize").click();
-    cy.wait("@dataset");
+    visualize();
 
     // 415 rows mean the join is done correctly,
     // (join on product's FK + join on the same "created_at" field)
@@ -73,7 +76,6 @@ describe("scenarios > question > joined questions", () => {
   });
 
   it("should allow joins on date-time fields", () => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
     openOrdersTable({ mode: "notebook" });
 
     joinTable("Products");
@@ -103,8 +105,7 @@ describe("scenarios > question > joined questions", () => {
     cy.findByText("Summarize").click();
     selectFromDropdown("Count of rows");
 
-    cy.button("Visualize").click();
-    cy.wait("@dataset");
+    visualize();
 
     // 2087 rows mean the join is done correctly,
     // (orders joined with products on the same day-month-year)
@@ -112,7 +113,6 @@ describe("scenarios > question > joined questions", () => {
   });
 
   it("should show 'Previous results' instead of a table name for non-field dimensions", () => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
     openOrdersTable({ mode: "notebook" });
 
     cy.findByText("Summarize").click();

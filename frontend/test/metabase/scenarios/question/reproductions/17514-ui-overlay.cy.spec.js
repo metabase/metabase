@@ -4,6 +4,7 @@ import {
   filterWidget,
   saveDashboard,
   editDashboard,
+  visualize,
 } from "__support__/e2e/cypress";
 
 import { setAdHocFilter } from "../../native-filters/helpers/e2e-date-filter-helpers";
@@ -112,7 +113,7 @@ describe("issue 17514", () => {
 
       removeJoinedTable();
 
-      visualizeResults();
+      visualize();
 
       cy.findByText("Save").click();
 
@@ -127,7 +128,7 @@ describe("issue 17514", () => {
       cy.findByText("Join data").click();
       cy.findByText("Products").click();
 
-      visualizeResults();
+      visualize();
 
       // Cypress cannot click elements that are blocked by an overlay so this will immediately fail if the issue is not fixed
       cy.findByText("110.93").click();
@@ -153,11 +154,6 @@ function closeModal() {
   cy.get(".Modal").within(() => {
     cy.button("Done").click();
   });
-}
-
-function visualizeResults() {
-  cy.button("Visualize").click();
-  cy.wait("@dataset");
 }
 
 function openNotebookMode() {

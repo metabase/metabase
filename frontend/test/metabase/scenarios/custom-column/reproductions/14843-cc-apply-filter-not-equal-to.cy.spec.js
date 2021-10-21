@@ -1,4 +1,4 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover, visualize } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
@@ -36,8 +36,7 @@ describe("issue 14843", () => {
     cy.findByPlaceholderText("Enter a number").type("3");
     cy.button("Add filter").click();
 
-    cy.button("Visualize").click();
-    cy.wait("@dataset");
+    visualize();
 
     cy.findByText(`${CC_NAME} is not equal to 3`);
     cy.findByText("Rye").should("not.exist");
