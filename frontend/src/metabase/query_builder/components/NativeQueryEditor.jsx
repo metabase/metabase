@@ -35,6 +35,8 @@ import SnippetCollections from "metabase/entities/snippet-collections";
 import Parameters from "metabase/parameters/components/Parameters/Parameters";
 import Question from "metabase-lib/lib/Question";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import NativeQueryEditorSidebar from "./NativeQueryEditor/NativeQueryEditorSidebar";
+
 import {
   DatabaseDataSelector,
   SchemaAndTableDataSelector,
