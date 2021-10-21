@@ -108,6 +108,6 @@
   .Modal-backdrop.Modal-appear .Modal,
   .Modal-backdrop.Modal-enter .Modal,
   .Modal-backdrop.Modal-leave .Modal {
-    transition: opacity 0ms, transform 0ms;
+    transition: none;
   }
 }
