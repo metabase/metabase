@@ -32,6 +32,16 @@ const NativeQueryEditorSidebar = props => {
     snippetCollections[0].can_write === false
   );
 
+  const getTooltip = function() {
+    const command = nativeEditorSelectedText
+      ? t`Run selected text`
+      : t`Run query`;
+
+    const shortcut = isMac() ? t`(⌘ + enter)` : t`(Ctrl + enter)`;
+
+    return command + " " + shortcut;
+  };
+
   return (
     <div className="flex flex-column align-center">
       <DataReferenceButton {...props} size={ICON_SIZE} className="mt3" />
@@ -49,11 +59,7 @@ const NativeQueryEditorSidebar = props => {
         compact
         className="mx2 mb2 mt-auto"
         style={{ width: 40, height: 40 }}
-        getTooltip={() =>
-          (nativeEditorSelectedText ? t`Run selected text` : t`Run query`) +
-          " " +
-          (isMac() ? t`(⌘ + enter)` : t`(Ctrl + enter)`)
-        }
+        getTooltip={getTooltip}
       />
     </div>
   );
