@@ -49,6 +49,7 @@
    :collection_id       nil
    :collection_position nil
    :dataset_query       {}
+   :dataset             false
    :description         nil
    :display             "scalar"
    :enable_embedding    false
