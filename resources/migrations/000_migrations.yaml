@@ -8554,9 +8554,65 @@ databaseChangeLog:
   - changeSet:
       id: 318
       author: camsaul
+      comment: Added 0.42.0 Attempt to add Card.database_id (by parsing query) to rows that are missing it
+      # If this migration fails for any reason continue with the next migration; do not fail the entire process if this one fails
+      failOnError: false
+      # The basic idea below is to parse the `database_id` from the JSON string query dictionary and use it to set the
+      # database_id column as needed. We do an INNER JOIN against the Database table to make sure that Database
+      # actually exists (so we don't attempt to set an invalid database_id)
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              WITH c2 AS (
+                SELECT *, (dataset_query::json->>'database')::integer AS query_database_id
+                FROM report_card
+              )
+              UPDATE report_card c
+              SET database_id = c2.query_database_id
+              FROM c2
+              INNER JOIN metabase_database db
+                ON db.id = c2.query_database_id
+              WHERE c.database_id IS NULL
+                AND c.id = c2.id
+                AND c2.query_database_id IS NOT NULL;
+        # MySQL and MariaDB are exactly the same other than different function names: json_value (for MariaDB) vs json_extract (for MySQL)
+        - sql:
+            dbms: mariadb
+            sql: >-
+              UPDATE report_card c
+              JOIN (
+                SELECT *, cast(json_value(dataset_query, '$.database_id') AS unsigned) AS query_database_id
+                FROM report_card
+                ) c2
+                ON c.id = c2.id
+              INNER JOIN metabase_database db ON c2.query_database_id = db.id
+              SET c.database_id = c2.query_database_id
+              WHERE c.database_id IS NULL
+                AND c2.query_database_id IS NOT NULL;
+        - sql:
+            dbms: mysql
+            sql: >-
+              UPDATE report_card c
+              JOIN (
+                SELECT *, cast(json_extract(dataset_query, '$.database_id') AS unsigned) AS query_database_id
+                FROM report_card
+                ) c2
+                ON c.id = c2.id
+              INNER JOIN metabase_database db ON c2.query_database_id = db.id
+              SET c.database_id = c2.query_database_id
+              WHERE c.database_id IS NULL
+                AND c2.query_database_id IS NOT NULL;
+
+  - changeSet:
+      id: 319
+      author: camsaul
       comment: Added 0.42.0 Added constraint we should have had all along (#5999)
       preConditions:
         - onFail: MARK_RAN
+        # If we're dumping the migration as a SQL file or trying to force-migrate we can't check the preconditions
+        # so just go ahead and skip the entire thing. This is a non-critical migration
+        - onUpdateSQL: IGNORE
         - sqlCheck:
             expectedResult: 0
             sql: SELECT count(*) FROM report_card WHERE database_id IS NULL
