@@ -136,20 +136,6 @@
                  (not= stored-site-url defaulted-site-url))
         (setting/set! "site-url" stored-site-url)))))
 
-;; There was a bug (#5998) preventing database_id from being persisted with native query type cards. This migration
-;; populates all of the Cards missing those database ids
-(defmigration ^{:author "senior", :added "0.27.0"} populate-card-database-id
-  (doseq [[db-id cards] (group-by #(get-in % [:dataset_query :database])
-                                  (db/select [Card :dataset_query :id :name] :database_id [:= nil]))
-          :when (not= db-id mbql.s/saved-questions-virtual-database-id)]
-    (if (and (seq cards)
-             (db/exists? Database :id db-id))
-      (db/update-where! Card {:id [:in (map :id cards)]}
-                        :database_id db-id)
-      (doseq [{id :id card-name :name} cards]
-        (log/warnf "Cleaning up orphaned Question '%s', associated to a now deleted database" card-name)
-        (db/delete! Card :id id)))))
-
 ;; Prior to version 0.28.0 humanization was configured using the boolean setting `enable-advanced-humanization`.
 ;; `true` meant "use advanced humanization", while `false` meant "use simple humanization". In 0.28.0, this Setting
 ;; was replaced by the `humanization-strategy` Setting, which (at the time of this writing) allows for a choice
