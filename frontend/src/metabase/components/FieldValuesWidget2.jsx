@@ -365,7 +365,7 @@ export function FieldValuesWidget({
   fields,
   multi,
   autoFocus,
-  color = "purple",
+  color = "accent2",
   className,
   style = {},
   parameter,
