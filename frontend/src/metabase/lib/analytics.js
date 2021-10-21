@@ -32,6 +32,10 @@ export const enableDataAttributesTracking = () => {
   document.body.addEventListener("click", handleStructEventClick, true);
 };
 
+const isTrackingEnabled = () => {
+  return isProduction && Settings.trackingEnabled();
+};
+
 const createGoogleAnalyticsTracker = () => {
   const code = Settings.get("ga-code");
   window.ga?.("create", code, "auto");
@@ -75,10 +79,6 @@ const trackSnowplowSchemaEvent = (schema, data) => {
   Snowplow.trackSelfDescribingEvent({
     event: { schema: `iglu:com.metabase/${schema}`, data },
   });
-};
-
-const isTrackingEnabled = () => {
-  return isProduction && Settings.trackingEnabled();
 };
 
 const handleStructEventClick = event => {
