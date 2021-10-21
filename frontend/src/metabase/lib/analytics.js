@@ -90,9 +90,9 @@ const trackSnowplowPageView = url => {
   Snowplow.trackPageView();
 };
 
-const trackSnowplowSchemaEvent = (schema, data) => {
+const trackSnowplowSchemaEvent = (schema, version, data) => {
   Snowplow.trackSelfDescribingEvent({
-    event: { schema: `iglu:com.metabase/${schema}`, data },
+    event: { schema: `iglu:com.metabase/${schema}/jsonschema/${version}`, data },
   });
 };
 
