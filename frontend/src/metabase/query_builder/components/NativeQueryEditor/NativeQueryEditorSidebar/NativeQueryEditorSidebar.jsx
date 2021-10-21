@@ -25,7 +25,8 @@ const NativeQueryEditorSidebar = props => {
     snippets,
   } = props;
 
-  // hide the snippet sidebar if there aren't any visible snippets/collections and the root collection isn't writable
+  // hide the snippet sidebar if there aren't any visible snippets/collections
+  // and the root collection isn't writable
   const showSnippetSidebarButton = !(
     snippets?.length === 0 &&
     snippetCollections?.length === 1 &&
@@ -55,7 +56,7 @@ const NativeQueryEditorSidebar = props => {
         isDirty={isResultDirty}
         isPreviewing={isPreviewing}
         onRun={runQuery}
-        onCancel={() => cancelQuery()}
+        onCancel={cancelQuery}
         compact
         className="mx2 mb2 mt-auto"
         style={{ width: 40, height: 40 }}
