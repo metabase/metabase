@@ -40,7 +40,7 @@
   (cond (string? value)
         value
         (bytes? value)
-        (String. value StandardCharsets/UTF_8)))
+        (String. ^bytes value StandardCharsets/UTF_8)))
 
 (defn value->file!
   "Returns the value of the given `secret` in the form of a file.  `secret` can be a Secret model object, or a

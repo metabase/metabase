@@ -19,6 +19,7 @@
             [metabase.query-processor-test.order-by-test :as qp-test.order-by-test] ; used for one SSL connectivity test
             [metabase.sync :as sync]
             [metabase.test :as mt]
+            [metabase.test.data.interface :as tx]
             [metabase.test.data.oracle :as oracle.tx]
             [metabase.test.data.sql :as sql.tx]
             [metabase.test.data.sql.ddl :as ddl]
@@ -27,8 +28,7 @@
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [toucan.util.test :as tt]
-            [toucan.db :as db]
-            [metabase.test.data.interface :as tx]))
+            [toucan.db :as db]))
 
 (deftest connection-details->spec-test
   (doseq [[^String message expected-spec details]
@@ -309,40 +309,31 @@
         ;; need to get a fresh instance of details to pick up env key changes
         (let [details      (->> (#'oracle.tx/connection-details)
                                 (driver.u/db-details-client->server :oracle))
-              orig-user-id api/*current-user-id*
-              ;; need to capture the schema associated with the current test-data :oracle instance for later
-              schema       (db/select-one-field :schema Table :db_id (mt/id))]
+              orig-user-id api/*current-user-id*]
           (testing "Oracle can-connect? with SSL connection"
             (is (driver/can-connect? :oracle details)))
           (testing "Sync works with SSL connection"
             (binding [metabase.sync.util/*log-exceptions-and-continue?* false
                       api/*current-user-id* (mt/user->id :crowberto)]
               (mt/with-temp Database [database {:engine :oracle,
-                                                :name "Oracle SSL Test DB",
+                                                :name (format "SSL connection version of %d" (mt/id)),
                                                 :details details}]
                 (mt/with-db database
-                  ;; we need to redefine the oracle.tx/session-schema in order for sync to work properly over the
-                  ;; new SSL-connected Database
-                  ;; the trouble is that by this point, we can only be certain that the test-data tables have been
-                  ;; created in whatever schema was the current session schema when :oracle test-data was originally
-                  ;; created, and that may be (but probably isn't) the same as the session-schema NOW
-                  ;; so, redefine the session schema to be the one that was originally tied to test-data
-                  (with-redefs [oracle.tx/session-schema schema]
-                    (sync/sync-database! database {:scan :schema})
-                    ;; should be four tables in test-data, as always
-                    (is (= 4 (db/count Table :db_id (u/the-id database))))
-                    (binding [api/*current-user-id* orig-user-id ; restore original user-id to avoid perm errors
-                              ;; we also need to rebind this dynamic var so that we can pretend "test-data" is
-                              ;; actually the name of the database, and not some variation on the :name specified
-                              ;; above, so that the table names resolve correctly in the generated query we can't
-                              ;; simply call this new temp database "test-data", because then it will no longer be
-                              ;; unique compared to the "real" "test-data" DB associated with the non-SSL (default)
-                              ;; database, and the logic within metabase.test.data.interface/metabase-instance would
-                              ;; be wrong (since we would end up with two :oracle Databases both named "test-data",
-                              ;; violating its assumptions, in case the app DB ends up in an inconsistent state)
-                              tx/*database-name-override* "test-data"]
-                      (testing "Execute query with SSL connection"
-                        (qp-test.order-by-test/order-by-test))))))))))
+                  (sync/sync-database! database {:scan :schema})
+                  ;; should be four tables in test-data, as always
+                  (is (= 4 (db/count Table :db_id (u/the-id database))))
+                  (binding [api/*current-user-id* orig-user-id ; restore original user-id to avoid perm errors
+                            ;; we also need to rebind this dynamic var so that we can pretend "test-data" is
+                            ;; actually the name of the database, and not some variation on the :name specified
+                            ;; above, so that the table names resolve correctly in the generated query we can't
+                            ;; simply call this new temp database "test-data", because then it will no longer be
+                            ;; unique compared to the "real" "test-data" DB associated with the non-SSL (default)
+                            ;; database, and the logic within metabase.test.data.interface/metabase-instance would
+                            ;; be wrong (since we would end up with two :oracle Databases both named "test-data",
+                            ;; violating its assumptions, in case the app DB ends up in an inconsistent state)
+                            tx/*database-name-override* "test-data"]
+                    (testing "Execute query with SSL connection"
+                      (qp-test.order-by-test/order-by-test)))))))))
       (println (u/format-color 'yellow
                                "Skipping %s because %s env var is not set"
                                "oracle-connect-with-ssl-test"

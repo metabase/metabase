@@ -5,13 +5,17 @@
             [honeysql.format :as hformat]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+            [metabase.models :refer [Database Table]]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.sql :as sql.tx]
             [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
             [metabase.test.data.sql-jdbc.execute :as execute]
             [metabase.test.data.sql-jdbc.load-data :as load-data]
             [metabase.test.data.sql.ddl :as ddl]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [metabase.test.data.impl :as data.impl]
+            [toucan.db :as db]
+            [metabase.db :as mdb]))
 
 (sql-jdbc.tx/add-test-extensions! :oracle)
 
@@ -84,6 +88,38 @@
            END⅋"
           session-schema
           (tx/db-qualified-table-name database-name table-name)))
+
+(defonce ^:private oracle-test-dbs-created-by-this-instance (atom #{}))
+
+(defn- destroy-test-database-if-created-in-different-session
+  "For Oracle, we have a randomly selected `session-schema`, in order to allow different test runs to proceed
+  independently. If we happen to have a test-database already in our app DB, that was created under a different session,
+  then we should just destroy it, since we won't be able to resync it anyway."
+  [database-name]
+  (when-not (contains? @oracle-test-dbs-created-by-this-instance database-name)
+    (locking oracle-test-dbs-created-by-this-instance
+      (when-not (contains? @oracle-test-dbs-created-by-this-instance database-name)
+        (mdb/setup-db!)                 ; if not already setup
+        (when-let [existing-db (db/select-one Database :engine "oracle", :name database-name)]
+          (let [existing-db-id (u/the-id existing-db)
+                all-schemas    (db/select-field :schema Table :db_id existing-db-id)]
+            (when-not (= all-schemas #{session-schema})
+              (println (u/format-color 'yellow
+                                       (str "[oracle] At least one table's schema for the existing '%s' Database"
+                                            " (id %d), which include all of [%s], does not match current session-schema"
+                                            " of %s; deleting this DB so it can be recreated")
+                                       database-name
+                                       existing-db-id
+                                       (str/join "," all-schemas)
+                                       session-schema))
+              (db/delete! Database :id existing-db-id))))
+        (swap! oracle-test-dbs-created-by-this-instance conj database-name)))))
+
+(defmethod data.impl/get-or-create-database! :oracle
+  [driver dbdef]
+  (let [{:keys [database-name], :as dbdef} (tx/get-dataset-definition dbdef)]
+    (destroy-test-database-if-created-in-different-session database-name)
+    ((get-method data.impl/get-or-create-database! :sql-jdbc) driver dbdef)))
 
 (defmethod sql.tx/create-db-sql :oracle [& _] nil)
 

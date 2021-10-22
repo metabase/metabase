@@ -1122,6 +1122,9 @@ workflows:
             - fetch-jdbc-driver:
                 source: ORACLE_JDBC_JAR
                 dest: ojdbc8.jar
+            - run:
+                name: Ensure truststore file
+                command: ls /home/circleci/metabase/metabase/resources/certificates/cacerts_with_RDS_root_ca.jks
           driver: oracle
           extra-env: >-
             MB_ORACLE_SSL_TEST_SSL=true
