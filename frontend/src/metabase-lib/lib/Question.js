@@ -21,7 +21,6 @@ import {
 import Mode from "metabase-lib/lib/Mode";
 import { isStandard } from "metabase/lib/query/filter";
 import { memoize, sortObject } from "metabase-lib/lib/utils";
-
 // TODO: remove these dependencies
 import * as Urls from "metabase/lib/urls";
 import {

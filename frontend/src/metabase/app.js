@@ -1,42 +1,28 @@
 import "core-js/stable";
 import "regenerator-runtime/runtime";
-
-// Use of classList.add and .remove in Background and FitViewPort Hocs requires
-// this polyfill so that those work in older browsers
-import "classlist-polyfill";
-
-import "number-to-locale-string";
-
-// If enabled this monkeypatches `t` and `jt` to return blacked out
-// strings/elements to assist in finding untranslated strings.
-import "metabase/lib/i18n-debug";
-
-// set the locale before loading anything else
-
-// NOTE: why do we need to load this here?
-import "metabase/lib/colors";
-
-// NOTE: this loads all builtin plugins
-import "metabase/plugins/builtin";
-
-// This is conditionally aliased in the webpack config.
-// If EE isn't enabled, it loads an empty file.
-import "ee-plugins"; // eslint-disable-line import/no-unresolved
-
 import React from "react";
 import ReactDOM from "react-dom";
 import { Provider } from "react-redux";
 import { ThemeProvider } from "styled-components";
-
-// router
 import { Router, useRouterHistory } from "react-router";
 import { createHistory } from "history";
 import { syncHistoryWithStore } from "react-router-redux";
-
-// drag and drop
 import HTML5Backend from "react-dnd-html5-backend";
 import { DragDropContextProvider } from "react-dnd";
+// Use of classList.add and .remove in Background and FitViewPort Hocs requires
+// this polyfill so that those work in older browsers
+import "classlist-polyfill";
+import "number-to-locale-string";
+// This is conditionally aliased in the webpack config.
+// If EE isn't enabled, it loads an empty file.
+import "ee-plugins"; // eslint-disable-line import/no-unresolved
 
+// If enabled this monkeypatches `t` and `jt` to return blacked out
+// strings/elements to assist in finding untranslated strings.
+import "metabase/lib/i18n-debug";
+// NOTE: why do we need to load this here?
+import "metabase/lib/colors";
+import "metabase/plugins/builtin";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { initializeEmbedding } from "metabase/lib/embed";
 import api from "metabase/lib/api";

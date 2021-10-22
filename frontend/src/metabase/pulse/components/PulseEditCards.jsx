@@ -5,8 +5,6 @@ import { t } from "ttag";
 import cx from "classnames";
 
 import QuestionSelect from "metabase/containers/QuestionSelect";
-
-// import Query from "metabase/lib/query";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
 

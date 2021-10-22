@@ -5,10 +5,8 @@ import { t } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
 
+import { normal } from "metabase/lib/colors";
 import { iconPropTypes } from "metabase/components/Icon";
-
-import "./LineAreaBarChart.css";
-
 import {
   isNumeric,
   isDate,
@@ -23,6 +21,16 @@ import {
   MinRowsError,
   ChartSettingsError,
 } from "metabase/visualizations/lib/errors";
+
+import CardRenderer from "./CardRenderer";
+import LegendLayout from "./legend/LegendLayout";
+import {
+  LineAreaBarChartRoot,
+  ChartLegendCaption,
+} from "./LineAreaBarChart.styled";
+import "./LineAreaBarChart.css";
+
+import type { VisualizationProps } from "metabase-types/types/Visualization";
 
 const MUTE_STYLE = "opacity: 0.25;";
 for (let i = 0; i < MAX_SERIES; i++) {
@@ -63,17 +71,6 @@ for (let i = 0; i < MAX_SERIES; i++) {
   // row charts don't support multiseries
   addCSSRule(`.LineAreaBarChart.mute-${i} svg:not(.stacked) .row`, MUTE_STYLE);
 }
-
-import { normal } from "metabase/lib/colors";
-
-import {
-  LineAreaBarChartRoot,
-  ChartLegendCaption,
-} from "./LineAreaBarChart.styled";
-import LegendLayout from "./legend/LegendLayout";
-import CardRenderer from "./CardRenderer";
-
-import type { VisualizationProps } from "metabase-types/types/Visualization";
 
 export default class LineAreaBarChart extends Component {
   props: VisualizationProps;

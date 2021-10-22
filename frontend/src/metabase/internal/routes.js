@@ -7,20 +7,6 @@ import {
   NotFound,
   Unauthorized,
 } from "metabase/containers/ErrorPages";
-
-// Import legacy apps - TODO - move this to a different style of documentation
-const req = require.context(
-  "metabase/internal/components",
-  true,
-  /(\w+)App.jsx$/,
-);
-
-const APPS = {};
-for (const key of req.keys()) {
-  const name = key.match(/(\w+)App.jsx$/)[1];
-  APPS[name] = req(key).default;
-}
-
 /* Pages - In order they appear in nav */
 import WelcomePage from "metabase/internal/pages/WelcomePage";
 import TypePage from "metabase/internal/pages/TypePage";
@@ -31,6 +17,19 @@ import ModalsPage from "metabase/internal/pages/ModalsPage";
 import StaticVizPage from "metabase/internal/pages/StaticVizPage";
 import { InternalLayout } from "metabase/internal/components/Layout";
 
+// Import legacy apps - TODO - move this to a different style of documentation
+const req = require.context(
+  "metabase/internal/components",
+  true,
+  /(\w+)App.jsx$/,
+);
+
+const APPS = {};
+
+for (const key of req.keys()) {
+  const name = key.match(/(\w+)App.jsx$/)[1];
+  APPS[name] = req(key).default;
+}
 const ErrorWithDetails = () => <GenericError details="Example error message" />;
 
 export default (

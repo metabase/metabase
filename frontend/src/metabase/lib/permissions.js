@@ -11,10 +11,6 @@ import {
 
 import type { SchemaName, TableId } from "metabase-types/types/Table";
 import type { DatabaseId } from "metabase-types/types/Database";
-
-export const isRestrictivePermission = value =>
-  PLUGIN_ADVANCED_PERMISSIONS.isBlockPermission(value) || value === "none";
-
 import type {
   Group,
   GroupId,
@@ -29,6 +25,9 @@ type TableEntityId = {
 type SchemaEntityId = { databaseId: DatabaseId, schemaName: SchemaName };
 type DatabaseEntityId = { databaseId: DatabaseId };
 type EntityId = TableEntityId | SchemaEntityId | DatabaseEntityId;
+
+export const isRestrictivePermission = value =>
+  PLUGIN_ADVANCED_PERMISSIONS.isBlockPermission(value) || value === "none";
 
 export function getPermission(
   permissions: GroupsPermissions,

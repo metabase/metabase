@@ -3,6 +3,7 @@ import styled from "styled-components";
 import * as systemExports from "styled-system";
 import * as gridExports from "grid-styled";
 
+import { capitalize } from "metabase/lib/formatting";
 import colors, * as colorsExports from "metabase/lib/colors";
 import * as entities from "metabase/entities";
 
@@ -23,7 +24,6 @@ for (const { component } of COMPONENTS) {
 }
 
 // Metabase's entities, capitalized
-import { capitalize } from "metabase/lib/formatting";
 for (const [name, entity] of Object.entries(entities)) {
   context[capitalize(name)] = entity;
 }

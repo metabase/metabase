@@ -6,6 +6,9 @@ import Link from "metabase/components/Link";
 import LogoIcon from "metabase/components/LogoIcon";
 import Label from "metabase/components/type/Label";
 import Subhead from "metabase/components/type/Subhead";
+import { slugify } from "metabase/lib/formatting";
+
+import COMPONENTS from "../lib/components-webpack";
 
 /*
     TODO - remove this in favor of explicit pages and imports until we can move to a static generator
@@ -23,10 +26,6 @@ export const CATEGORIES = {
   visualization: "Visualizations",
   search: "Search",
 };
-
-import { slugify } from "metabase/lib/formatting";
-
-import COMPONENTS from "../lib/components-webpack";
 
 const req = require.context(
   "metabase/internal/components",

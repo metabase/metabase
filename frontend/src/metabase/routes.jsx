@@ -10,18 +10,15 @@ import { loadCurrentUser } from "metabase/redux/user";
 import MetabaseSettings from "metabase/lib/settings";
 import App from "metabase/App.jsx";
 import HomepageApp from "metabase/home/containers/HomepageApp";
-
 // auth containers
 import AuthApp from "metabase/auth/AuthApp";
 import ForgotPasswordApp from "metabase/auth/containers/ForgotPasswordApp";
 import LoginApp from "metabase/auth/containers/LoginApp";
 import LogoutApp from "metabase/auth/containers/LogoutApp";
 import PasswordResetApp from "metabase/auth/containers/PasswordResetApp";
-
 /* Dashboards */
 import DashboardApp from "metabase/dashboard/containers/DashboardApp";
 import AutomaticDashboardApp from "metabase/dashboard/containers/AutomaticDashboardApp";
-
 /* Browse data */
 import BrowseApp from "metabase/browse/components/BrowseApp";
 import DatabaseBrowser from "metabase/browse/containers/DatabaseBrowser";
@@ -40,7 +37,6 @@ import PostSetupApp from "metabase/setup/containers/PostSetupApp";
 import NewQueryOptions from "metabase/new_query/containers/NewQueryOptions";
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 import { NotFound, Unauthorized } from "metabase/containers/ErrorPages";
-
 // Reference Metrics
 import MetricListContainer from "metabase/reference/metrics/MetricListContainer";
 import MetricDetailContainer from "metabase/reference/metrics/MetricDetailContainer";

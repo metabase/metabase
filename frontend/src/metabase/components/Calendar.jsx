@@ -1,14 +1,13 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
-import "./Calendar.css";
-
 import cx from "classnames";
 import moment from "moment";
 import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
+
+import "./Calendar.css";
 
 export default class Calendar extends Component {
   constructor(props) {

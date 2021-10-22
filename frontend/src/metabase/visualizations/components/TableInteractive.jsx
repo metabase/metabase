@@ -2,8 +2,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-import "./TableInteractive.css";
-
 import _ from "underscore";
 import cx from "classnames";
 import { Grid, ScrollSync } from "react-virtualized";
@@ -26,7 +24,15 @@ import Dimension from "metabase-lib/lib/Dimension";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Ellipsified from "metabase/components/Ellipsified";
 
+import "./TableInteractive.css";
 import MiniBar from "./MiniBar";
+
+import type {
+  VisualizationProps,
+  ClickObject,
+} from "metabase-types/types/Visualization";
+import type { VisualizationSettings } from "metabase-types/types/Card";
+import type { DatasetData, Value } from "metabase-types/types/Dataset";
 
 const HEADER_HEIGHT = 36;
 const ROW_HEIGHT = 36;
@@ -37,13 +43,6 @@ const HEADER_DRAG_THRESHOLD = 5;
 
 // HACK: used to get react-draggable to reset after a drag
 let DRAG_COUNTER = 0;
-
-import type {
-  VisualizationProps,
-  ClickObject,
-} from "metabase-types/types/Visualization";
-import type { VisualizationSettings } from "metabase-types/types/Card";
-import type { DatasetData, Value } from "metabase-types/types/Dataset";
 
 function pickRowsToMeasure(rows, columnIndex, count = 10) {
   const rowIndexes = [];

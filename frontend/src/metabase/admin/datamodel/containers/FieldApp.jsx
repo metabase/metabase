@@ -22,23 +22,17 @@ import AdminLayout from "metabase/components/AdminLayout";
 import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
 import { is_coerceable, coercions_for_type } from "cljs/metabase.types";
 import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
-
 // SELECTORS
 import { getMetadata } from "metabase/selectors/metadata";
-
-// ACTIONS
-
 // LIB
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import { has_field_values_options } from "metabase/lib/core";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import { isCurrency } from "metabase/lib/schema_metadata";
-
-import type { TableId } from "metabase-types/types/Table";
-import type { FieldId } from "metabase-types/types/Field";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import Fields from "metabase/entities/fields";
+
 import { rescanFieldValues, discardFieldValues } from "../field";
 import UpdateCachedFieldValues from "../components/UpdateCachedFieldValues";
 import FieldRemapping from "../components/FieldRemapping";
@@ -49,6 +43,9 @@ import {
 import SelectSeparator from "../components/SelectSeparator";
 import Section, { SectionHeader } from "../components/Section";
 import { humanizeCoercionStrategy } from "./humanizeCoercionStrategy";
+
+import type { FieldId } from "metabase-types/types/Field";
+import type { TableId } from "metabase-types/types/Table";
 import type { DatabaseId } from "metabase-types/types/Database";
 import type { ColumnSettings as ColumnSettingsType } from "metabase-types/types/Dataset";
 import { isFK } from "metabase/lib/types";

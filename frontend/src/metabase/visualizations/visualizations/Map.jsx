@@ -21,9 +21,6 @@ import {
 } from "metabase/visualizations/lib/settings/utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import MetabaseSettings from "metabase/lib/settings";
-
-const PIN_MAP_TYPES = new Set(["pin", "heat", "grid"]);
-
 import { desaturated } from "metabase/lib/colors";
 import ColorRangePicker from "metabase/components/ColorRangePicker";
 
@@ -32,6 +29,8 @@ import PinMap from "../components/PinMap";
 import ChoroplethMap, {
   getColorplethColorScale,
 } from "../components/ChoroplethMap";
+
+const PIN_MAP_TYPES = new Set(["pin", "heat", "grid"]);
 
 export default class Map extends Component {
   static uiName = t`Map`;

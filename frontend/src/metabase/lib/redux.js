@@ -1,14 +1,22 @@
 import moment from "moment";
 import _ from "underscore";
 import { getIn } from "icepick";
-
-// convienence
-export { combineReducers, compose } from "redux";
-export { handleActions, createAction } from "redux-actions";
-
 import { compose } from "redux";
 import { createSelectorCreator } from "reselect";
 import memoize from "lodash.memoize";
+import { normalize } from "normalizr";
+
+import {
+  setRequestLoading,
+  setRequestLoaded,
+  setRequestError,
+  setRequestUnloaded,
+} from "metabase/redux/requests";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
+
+// convenience
+export { combineReducers, compose } from "redux";
+export { handleActions, createAction } from "redux-actions";
 
 // similar to createAction but accepts a (redux-thunk style) thunk and dispatches based on whether
 // the promise returned from the thunk resolves or rejects, similar to redux-promise
@@ -293,8 +301,6 @@ function withCachedData(getExistingStatePath, getRequestStatePath) {
       };
 }
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
-
 export function withAnalytics(categoryOrFn, actionOrFn, labelOrFn, valueOrFn) {
   // thunk decorator:
   return thunkCreator =>
@@ -319,15 +325,6 @@ export function withAnalytics(categoryOrFn, actionOrFn, labelOrFn, valueOrFn) {
         return thunkCreator(...args)(dispatch, getState);
       };
 }
-
-import { normalize } from "normalizr";
-
-import {
-  setRequestLoading,
-  setRequestLoaded,
-  setRequestError,
-  setRequestUnloaded,
-} from "metabase/redux/requests";
 
 export function withNormalize(schema) {
   return thunkCreator => (...args) => async (dispatch, getState) =>

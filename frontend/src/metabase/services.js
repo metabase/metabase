@@ -5,10 +5,6 @@ import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Question from "metabase-lib/lib/Question";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
-
-// use different endpoints for embed previews
-const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
-
 import getGAMetadata from "promise-loader?global!metabase/lib/ga-metadata"; // eslint-disable-line import/default
 
 import type { Data, Options, APIMethod } from "metabase/lib/api";
@@ -16,6 +12,9 @@ import type { Card } from "metabase-types/types/Card";
 import type { DatabaseId } from "metabase-types/types/Database";
 import type { DatabaseCandidates } from "metabase-types/types/Auto";
 import type { DashboardWithCards } from "metabase-types/types/Dashboard";
+
+// use different endpoints for embed previews
+const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
 
 export const ActivityApi = {
   list: GET("/api/activity"),

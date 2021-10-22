@@ -9,11 +9,10 @@ import _ from "underscore";
 import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
 import Tooltip from "metabase/components/Tooltip";
-
-import "./ChartClickActions.css";
-
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { performAction } from "metabase/visualizations/lib/action";
+
+import "./ChartClickActions.css";
 
 import type {
   ClickObject,

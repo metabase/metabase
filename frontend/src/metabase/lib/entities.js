@@ -1,5 +1,4 @@
 import createCachedSelector from "re-reselect";
-
 // NOTE: need to use inflection directly here due to circular dependency
 import inflection from "inflection";
 import { createSelector } from "reselect";

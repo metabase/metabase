@@ -20,6 +20,7 @@ import {
 } from "metabase/components/sortable";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { isNumeric, isString } from "metabase/lib/schema_metadata";
+import { color, desaturated } from "metabase/lib/colors";
 
 const NUMBER_OPERATOR_NAMES = {
   "<": t`is less than`,
@@ -47,8 +48,6 @@ export const ALL_OPERATOR_NAMES = {
   ...NUMBER_OPERATOR_NAMES,
   ...STRING_OPERATOR_NAMES,
 };
-
-import { color, desaturated } from "metabase/lib/colors";
 
 // TODO
 const COLORS = Object.values(desaturated);

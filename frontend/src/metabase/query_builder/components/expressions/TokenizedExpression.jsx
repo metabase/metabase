@@ -1,12 +1,11 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-
-import "./TokenizedExpression.css";
-
 import cx from "classnames";
 
 import { tokenize, TOKEN, OPERATOR } from "metabase/lib/expressions/tokenizer";
 import { getMBQLName, FUNCTIONS } from "metabase/lib/expressions/config";
+
+import "./TokenizedExpression.css";
 
 function mapTokenType(token) {
   const { type, op } = token;

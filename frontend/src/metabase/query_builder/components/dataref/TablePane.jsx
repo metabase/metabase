@@ -5,15 +5,10 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import cx from "classnames";
 
-// components
 import Icon from "metabase/components/Icon";
 import Expandable from "metabase/components/Expandable";
-
-// lib
 import { foreignKeyCountsByOriginTable } from "metabase/lib/schema_metadata";
 import { inflect } from "metabase/lib/formatting";
-
-// entities
 import Table from "metabase/entities/tables";
 
 const mapStateToProps = (state, ownProps) => ({

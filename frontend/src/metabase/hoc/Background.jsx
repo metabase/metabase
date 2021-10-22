@@ -1,5 +1,8 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import { connect } from "react-redux";
+
+import { PLUGIN_SELECTORS } from "metabase/plugins";
 
 export const withBackground = className => ComposedComponent => {
   return class extends Component {
@@ -18,10 +21,6 @@ export const withBackground = className => ComposedComponent => {
     }
   };
 };
-
-import { connect } from "react-redux";
-
-import { PLUGIN_SELECTORS } from "metabase/plugins";
 
 export const withLogoBackground = ComposedComponent => {
   const mapStateToProps = (state, props) => ({

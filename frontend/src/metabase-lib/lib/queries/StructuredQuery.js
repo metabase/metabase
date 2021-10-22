@@ -28,8 +28,9 @@ import BreakoutWrapper from "./structured/Breakout";
 import FilterWrapper from "./structured/Filter";
 import JoinWrapper from "./structured/Join";
 import OrderByWrapper from "./structured/OrderBy";
-
 import Table from "../metadata/Table";
+import Field from "../metadata/Field";
+
 import type {
   StructuredQuery as StructuredQueryObject,
   Aggregation,
@@ -43,16 +44,12 @@ import type {
   StructuredDatasetQuery,
 } from "metabase-types/types/Card";
 import type { AggregationOperator } from "metabase-types/types/Metadata";
-
 import type Segment from "../metadata/Segment";
 import type { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
 import type Database from "../metadata/Database";
 import type Question from "../Question";
 import type { TableId } from "metabase-types/types/Table";
 import type { Column } from "metabase-types/types/Dataset";
-
-import Field from "../metadata/Field";
-
 import { TYPE } from "metabase/lib/types";
 
 type DimensionFilter = (dimension: Dimension) => boolean;

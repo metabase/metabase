@@ -1,5 +1,6 @@
 import React from "react";
 import _ from "underscore";
+import { Route as _Route } from "react-router";
 
 const componentStack = [];
 
@@ -64,8 +65,6 @@ const title = documentTitleOrGetter => ComposedComponent =>
   };
 
 export default title;
-
-import { Route as _Route } from "react-router";
 
 // react-router Route wrapper that adds a `title` property
 export class Route extends _Route {

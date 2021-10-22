@@ -1,16 +1,13 @@
-import { fetchAlertsForQuestion } from "metabase/alert/alert";
-
-declare var ace: any;
-
 import { createAction } from "redux-actions";
 import _ from "underscore";
 import { getIn, assocIn, updateIn } from "icepick";
+import { push, replace } from "react-router-redux";
+import { parse as urlParse } from "url";
+import querystring from "querystring";
 
+import { fetchAlertsForQuestion } from "metabase/alert/alert";
 import * as Urls from "metabase/lib/urls";
 import { createThunkAction } from "metabase/lib/redux";
-
-import { push, replace } from "react-router-redux";
-
 import { setErrorPage } from "metabase/redux/app";
 import { loadMetadataForQuery } from "metabase/redux/metadata";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
@@ -45,8 +42,9 @@ import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/
 import Databases from "metabase/entities/databases";
 import Questions from "metabase/entities/questions";
 import Snippets from "metabase/entities/snippets";
-
 import { getMetadata } from "metabase/selectors/metadata";
+import { setRequestUnloaded } from "metabase/redux/requests";
+
 import {
   getCard,
   getQuestion,
@@ -67,11 +65,6 @@ import {
   getQueryResults,
 } from "./selectors";
 
-import { parse as urlParse } from "url";
-import querystring from "querystring";
-
-import { setRequestUnloaded } from "metabase/redux/requests";
-
 import type { Card } from "metabase-types/types/Card";
 
 type UiControls = {
@@ -81,6 +74,8 @@ type UiControls = {
   queryBuilderMode?: "view" | "notebook",
   isShowingSummarySidebar?: boolean,
 };
+
+declare var ace: any;
 
 const PREVIEW_RESULT_LIMIT = 10;
 

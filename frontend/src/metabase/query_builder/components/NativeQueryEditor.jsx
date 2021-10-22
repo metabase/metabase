@@ -2,28 +2,22 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import cx from "classnames";
-
 import "ace/ace";
 import "ace/ext-language_tools";
-
 import "ace/mode-sql";
 import "ace/mode-mysql";
 import "ace/mode-pgsql";
 import "ace/mode-sqlserver";
 import "ace/mode-json";
-
 import "ace/snippets/text";
 import "ace/snippets/sql";
 import "ace/snippets/mysql";
 import "ace/snippets/pgsql";
 import "ace/snippets/sqlserver";
 import "ace/snippets/json";
-
 import { t } from "ttag";
 import _ from "underscore";
 import { ResizableBox } from "react-resizable";
-
-import "./NativeQueryEditor.css";
 
 import { isMac } from "metabase/lib/browser";
 import { isEventOverElement } from "metabase/lib/dom";
@@ -47,6 +41,8 @@ import RunButtonWithTooltip from "./RunButtonWithTooltip";
 import DataReferenceButton from "./view/DataReferenceButton";
 import NativeVariablesButton from "./view/NativeVariablesButton";
 import SnippetSidebarButton from "./view/SnippetSidebarButton";
+
+import "./NativeQueryEditor.css";
 
 import type { DatasetQuery } from "metabase-types/types/Card";
 import type { DatabaseId } from "metabase-types/types/Database";

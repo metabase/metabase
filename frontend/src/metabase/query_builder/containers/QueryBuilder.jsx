@@ -6,9 +6,6 @@ import _ from "underscore";
 import { push } from "react-router-redux";
 
 import fitViewport from "metabase/hoc/FitViewPort";
-
-// import Notebook from "../components/notebook/Notebook";
-
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 import { getMetadata } from "metabase/selectors/metadata";

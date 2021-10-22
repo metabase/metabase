@@ -14,14 +14,11 @@ import UserSuccessModal from "metabase/admin/people/containers/UserSuccessModal"
 import UserPasswordResetModal from "metabase/admin/people/containers/UserPasswordResetModal";
 import EditUserModal from "metabase/admin/people/containers/EditUserModal";
 import UserActivationModal from "metabase/admin/people/containers/UserActivationModal";
-
 // Settings
 import SettingsEditorApp from "metabase/admin/settings/containers/SettingsEditorApp";
-
 //  DB Add / list
 import DatabaseListApp from "metabase/admin/databases/containers/DatabaseListApp";
 import DatabaseEditApp from "metabase/admin/databases/containers/DatabaseEditApp";
-
 // Metadata / Data model
 import DataModelApp from "metabase/admin/datamodel/containers/DataModelApp";
 import MetadataEditorApp from "metabase/admin/datamodel/containers/MetadataEditorApp";
@@ -40,12 +37,10 @@ import JobInfoApp from "metabase/admin/tasks/containers/JobInfoApp";
 import JobTriggersModal from "metabase/admin/tasks/containers/JobTriggersModal";
 import Logs from "metabase/admin/tasks/containers/Logs";
 import Help from "metabase/admin/tasks/containers/Help";
-
 // People
 import PeopleListingApp from "metabase/admin/people/containers/PeopleListingApp";
 import GroupsListingApp from "metabase/admin/people/containers/GroupsListingApp";
 import GroupDetailApp from "metabase/admin/people/containers/GroupDetailApp";
-
 // Permissions
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes";
 

@@ -1,7 +1,9 @@
 import { assocIn, dissoc } from "icepick";
+import { parse } from "url";
 
 import * as Card from "metabase/meta/Card";
 import { getMetadata } from "metabase/selectors/metadata";
+import { deserializeCardFromUrl } from "metabase/lib/card";
 
 describe("metabase/meta/Card", () => {
   describe("questionUrlWithParameters", () => {
@@ -247,10 +249,6 @@ describe("metabase/meta/Card", () => {
     });
   });
 });
-
-import { parse } from "url";
-
-import { deserializeCardFromUrl } from "metabase/lib/card";
 
 function parseUrl(url) {
   const parsed = parse(url, true);

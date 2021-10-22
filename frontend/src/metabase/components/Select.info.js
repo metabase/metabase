@@ -1,7 +1,9 @@
 import React from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import Select from "metabase/components/Select";
+import { field_semantic_types } from "metabase/lib/core";
 
 export const component = Select;
 export const category = "input";
@@ -10,9 +12,6 @@ export const description = t`
     A component used to make a selection
 `;
 
-import _ from "underscore";
-
-import { field_semantic_types } from "metabase/lib/core";
 const EXAMPLE_SECTIONS = _.chain(field_semantic_types)
   .first(10)
   .groupBy("section")

@@ -6,12 +6,11 @@ import {
   PERSONAL_COLLECTIONS,
 } from "metabase/entities/collections";
 import { CollectionIcon } from "metabase/collections/components/CollectionIcon";
-
-const { isRegularCollection } = PLUGIN_COLLECTIONS;
-
 import { SIDEBAR_SPACER } from "metabase/collections/constants";
 import { color } from "metabase/lib/colors";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+
+const { isRegularCollection } = PLUGIN_COLLECTIONS;
 
 function getOpacity(collection) {
   if (

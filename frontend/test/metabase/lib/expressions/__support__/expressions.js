@@ -1,6 +1,8 @@
-import { TYPE } from "metabase/lib/types";
-
 import { makeMetadata } from "__support__/sample_dataset_fixture";
+
+import SHARED from "./shared";
+
+import { TYPE } from "metabase/lib/types";
 
 const metadata = makeMetadata({
   databases: {
@@ -48,5 +50,4 @@ export const expressionOpts = { query, startRule: "expression" };
 export const aggregationOpts = { query, startRule: "aggregation" };
 export const filterOpts = { query, startRule: "boolean" };
 
-import SHARED from "./shared";
 export const shared = SHARED;

@@ -19,15 +19,16 @@ import Modal from "metabase/components/Modal";
 import ProfileLink from "metabase/nav/components/ProfileLink";
 import SearchBar from "metabase/nav/components/SearchBar";
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
-
-import { getPath, getContext, getUser } from "../selectors";
-
 import {
   getHasDataAccess,
   getHasNativeWrite,
   getPlainNativeQuery,
 } from "metabase/new_query/selectors";
 import Database from "metabase/entities/databases";
+import { getDefaultSearchColor } from "metabase/nav/constants";
+import StoreLink from "metabase/nav/components/StoreLink";
+
+import { getPath, getContext, getUser } from "../selectors";
 
 const mapStateToProps = (state, props) => ({
   path: getPath(state, props),
@@ -37,9 +38,6 @@ const mapStateToProps = (state, props) => ({
   hasDataAccess: getHasDataAccess(state),
   hasNativeWrite: getHasNativeWrite(state),
 });
-
-import { getDefaultSearchColor } from "metabase/nav/constants";
-import StoreLink from "metabase/nav/components/StoreLink";
 
 const mapDispatchToProps = {
   onChangeLocation: push,
