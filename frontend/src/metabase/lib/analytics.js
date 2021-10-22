@@ -75,7 +75,7 @@ const createSnowplowPlugin = store => {
       const userId = getUserId(store.getState());
       userId && Snowplow.setUserId(String(userId));
     },
-    contexts() {
+    contexts: () => {
       const id = Settings.get("analytics-uuid");
       const version = Settings.get("version", {});
       const features = Settings.get("premium-features");
