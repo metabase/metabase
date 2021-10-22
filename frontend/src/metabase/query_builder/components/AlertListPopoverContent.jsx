@@ -98,7 +98,7 @@ export default class AlertListPopoverContent extends Component {
               className="link flex align-center text-bold text-small"
               onClick={this.onAdd}
             >
-              <Icon name="add" style={{ marginLeft: 9, marignRight: 17 }} />{" "}
+              <Icon name="add" style={{ marginLeft: 9, marginRight: 17 }} />{" "}
               {t`Set up your own alert`}
             </a>
           </div>
