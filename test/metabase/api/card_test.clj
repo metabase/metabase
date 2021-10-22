@@ -1833,8 +1833,9 @@
 
 (deftest dataset-card
   (testing "Setting a question to a dataset makes it viz type table"
-   (mt/with-temp Card [card {:display :bar
-                             :dataset_query (mbql-count-query)}]
-     (is (= "table"
-            (:display (mt/user-http-request :crowberto :put 202 (str "card/" (u/the-id card))
-                                            (assoc card :dataset true))))))))
+    (mt/with-temp Card [card {:display :bar
+                              :dataset_query (mbql-count-query)}]
+      (is (= {:display "table" :dataset true}
+             (-> (mt/user-http-request :crowberto :put 202 (str "card/" (u/the-id card))
+                                       (assoc card :dataset true))
+                 (select-keys [:display :dataset])))))))

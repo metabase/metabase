@@ -87,7 +87,7 @@
 (def ^:private valid-model-param-values
   "Valid values for the `?model=` param accepted by endpoints in this namespace.
   `no_models` is for nilling out the set because a nil model set is actually the total model set"
-  #{"card" "collection" "dashboard" "pulse" "snippet" "no_models"})
+  #{"card" "dataset" "collection" "dashboard" "pulse" "snippet" "no_models"})
 
 (def ^:private ModelString
   (apply s/enum valid-model-param-values))
