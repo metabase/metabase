@@ -38,6 +38,9 @@ describe("scenarios > alert", () => {
       beforeEach(setup);
 
       it("educational screen should show for the first alert, but not for the second", () => {
+        cy.intercept("POST", "/api/alert").as("savedAlert");
+        cy.intercept("POST", "/api/card/2/query").as("questionLoaded");
+
         // Open the first alert screen and create an alert
         cy.visit("/question/1");
         cy.icon("bell").click();
@@ -52,8 +55,12 @@ describe("scenarios > alert", () => {
         cy.findByText("Set up an alert").click();
         cy.findByText("Done").click();
 
+        cy.wait("@savedAlert");
+
         // Open the second alert screen
         cy.visit("/question/2");
+        cy.wait("@questionLoaded");
+
         cy.icon("bell").click();
 
         cy.findByText("Let's set up your alert");
