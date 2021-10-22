@@ -1,4 +1,4 @@
-import { restore, createBasicAlert, setupSMTP } from "__support__/e2e/cypress";
+import { restore, setupSMTP } from "__support__/e2e/cypress";
 
 describe("scenarios > alert > alert permissions", () => {
   // Intentional use of before (not beforeEach) hook because the setup is quite long.
@@ -95,3 +95,22 @@ describe("scenarios > alert > alert permissions", () => {
     });
   });
 });
+
+function createBasicAlert({ firstAlert, includeNormal } = {}) {
+  cy.get(".Icon-bell").click();
+
+  if (firstAlert) {
+    cy.findByText("Set up an alert").click();
+  }
+
+  if (includeNormal) {
+    cy.findByText("Email alerts to:")
+      .parent()
+      .children()
+      .last()
+      .click();
+    cy.findByText("Robert Tableton").click();
+  }
+  cy.findByText("Done").click();
+  cy.findByText("Let's set up your alert").should("not.exist");
+}
