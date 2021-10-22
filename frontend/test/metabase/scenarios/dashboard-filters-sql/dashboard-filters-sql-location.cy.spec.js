@@ -12,7 +12,6 @@ import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 import { DASHBOARD_SQL_LOCATION_FILTERS } from "./helpers/e2e-dashboard-filter-sql-data-objects";
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 
-
 const { PEOPLE } = SAMPLE_DATASET;
 
 Object.entries(DASHBOARD_SQL_LOCATION_FILTERS).forEach(

@@ -7,7 +7,6 @@ import cx from "classnames";
 
 import { iconPropTypes } from "metabase/components/Icon";
 
-
 import "./LineAreaBarChart.css";
 
 import {
@@ -24,7 +23,6 @@ import {
   MinRowsError,
   ChartSettingsError,
 } from "metabase/visualizations/lib/errors";
-
 
 const MUTE_STYLE = "opacity: 0.25;";
 for (let i = 0; i < MAX_SERIES; i++) {
@@ -65,7 +63,6 @@ for (let i = 0; i < MAX_SERIES; i++) {
   // row charts don't support multiseries
   addCSSRule(`.LineAreaBarChart.mute-${i} svg:not(.stacked) .row`, MUTE_STYLE);
 }
-
 
 import { normal } from "metabase/lib/colors";
 

@@ -2,7 +2,6 @@ import { titleize, humanize } from "metabase/lib/formatting";
 
 import Base from "./Base";
 
-
 /**
  * Wrapper class for a {@link Database} schema. Contains {@link Table}s.
  */

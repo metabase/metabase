@@ -10,7 +10,6 @@ import {
   getRevisionDescription,
 } from "metabase/lib/revisions";
 
-
 function formatDate(date) {
   const m = moment(date);
   if (m.isSame(moment(), "day")) {

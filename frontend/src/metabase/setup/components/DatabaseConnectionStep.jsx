@@ -5,7 +5,6 @@ import { t } from "ttag";
 import { updateIn } from "icepick";
 import { Box } from "grid-styled";
 
-
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { DEFAULT_SCHEDULES } from "metabase/admin/databases/database";
 import Databases from "metabase/entities/databases";

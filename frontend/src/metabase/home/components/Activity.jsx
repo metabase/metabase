@@ -11,7 +11,6 @@ import * as Urls from "metabase/lib/urls";
 import ActivityItem from "./ActivityItem";
 import ActivityStory from "./ActivityStory";
 
-
 export default class Activity extends Component {
   constructor(props, context) {
     super(props, context);

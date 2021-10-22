@@ -13,7 +13,6 @@ import ExternalLink from "metabase/components/ExternalLink";
 import { updateSlackSettings } from "../settings";
 import SettingsSetting from "./SettingsSetting";
 
-
 @connect(
   null,
   { updateSettings: updateSlackSettings },

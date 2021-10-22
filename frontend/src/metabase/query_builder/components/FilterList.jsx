@@ -7,7 +7,6 @@ import { getMetadata } from "metabase/selectors/metadata";
 import Filter from "./Filter";
 import { filterWidgetFilterRenderer } from "./filters/FilterWidget";
 
-
 import type { Filter as FilterType } from "metabase-types/types/Query";
 import type { FilterRenderer } from "./Filter";
 

@@ -8,7 +8,6 @@ import ListSearchField from "metabase/components/ListSearchField";
 import { capitalize } from "metabase/lib/formatting";
 import { createMultiwordSearchRegex } from "metabase/lib/string";
 
-
 type SelectOption = {
   name: string,
   key: string,

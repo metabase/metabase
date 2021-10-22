@@ -11,7 +11,6 @@ import ExpandingContent from "metabase/components/ExpandingContent";
 
 import HoursMinutesInput from "./HoursMinutesInput";
 
-
 const DATE_FORMAT = "YYYY-MM-DD";
 const DATE_TIME_FORMAT = "YYYY-MM-DDTHH:mm:ss";
 

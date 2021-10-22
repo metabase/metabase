@@ -24,7 +24,6 @@ import {
   getMetric,
 } from "../selectors";
 
-
 const emptyStateData = (table, metric) => {
   return {
     message: t`Questions about this metric will appear here as they're added`,

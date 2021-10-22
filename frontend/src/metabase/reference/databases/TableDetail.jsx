@@ -29,7 +29,6 @@ import {
   getForeignKeys,
 } from "../selectors";
 
-
 const interestingQuestions = table => {
   return [
     {

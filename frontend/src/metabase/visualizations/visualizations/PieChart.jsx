@@ -21,8 +21,6 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { formatValue } from "metabase/lib/formatting";
 import { color, getColorsForValues } from "metabase/lib/colors";
 
-
-
 import ChartWithLegend from "../components/ChartWithLegend";
 import ChartTooltip from "../components/ChartTooltip";
 import styles from "./PieChart.css";

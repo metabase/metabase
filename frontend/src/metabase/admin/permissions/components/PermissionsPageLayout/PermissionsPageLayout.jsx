@@ -26,7 +26,6 @@ import { PermissionsEditBar } from "./PermissionsEditBar";
 import { useLeaveConfirmation } from "../../hooks/use-leave-confirmation";
 import { clearSaveError } from "../../permissions";
 
-
 const mapDispatchToProps = {
   navigateToTab: tab => push(`/admin/permissions/${tab}`),
   navigateToLocation: location => push(location.pathname, location.state),

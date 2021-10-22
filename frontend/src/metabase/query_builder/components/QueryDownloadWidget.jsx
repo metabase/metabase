@@ -14,7 +14,6 @@ import DownloadButton from "metabase/components/DownloadButton";
 import Tooltip from "metabase/components/Tooltip";
 import * as Urls from "metabase/lib/urls";
 
-
 const EXPORT_FORMATS = Urls.exportFormats;
 
 const QueryDownloadWidget = ({

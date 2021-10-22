@@ -15,7 +15,6 @@ import F from "./Field.css";
 
 import { isFK } from "metabase/lib/types";
 
-
 const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
   <div className={cx(S.item, "pt1", "border-top")}>
     <div className={S.itemBody} style={{ maxWidth: "100%", borderTop: "none" }}>

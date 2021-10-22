@@ -6,7 +6,6 @@ import Badge, { MaybeLink } from "metabase/components/Badge";
 import { browseDatabase, browseSchema } from "metabase/lib/urls";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
-
 const QuestionDataSource = ({ question, subHead, noLink, ...props }) => {
   const parts = getDataSourceParts({ question, subHead, noLink });
   return subHead ? (

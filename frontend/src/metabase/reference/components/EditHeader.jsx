@@ -7,7 +7,6 @@ import RevisionMessageModal from "metabase/reference/components/RevisionMessageM
 
 import S from "./EditHeader.css";
 
-
 const EditHeader = ({
   hasRevisionHistory,
   endEditing,

@@ -2,7 +2,6 @@ import moment from "moment";
 import _ from "underscore";
 import { getIn } from "icepick";
 
-
 // convienence
 export { combineReducers, compose } from "redux";
 export { handleActions, createAction } from "redux-actions";

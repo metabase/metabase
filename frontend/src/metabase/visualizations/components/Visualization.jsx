@@ -28,7 +28,6 @@ import {
 } from "metabase/visualizations/lib/errors";
 import NoResults from "assets/img/no_results.svg";
 
-
 export const ERROR_MESSAGE_GENERIC = t`There was a problem displaying this chart.`;
 export const ERROR_MESSAGE_PERMISSION = t`Sorry, you don't have permission to see this card.`;
 

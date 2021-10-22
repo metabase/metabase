@@ -3,7 +3,6 @@ import styled from "styled-components";
 import Button from "metabase/components/Button";
 import { color, alpha } from "metabase/lib/colors";
 
-
 // NOTE: some of this is duplicated from NotebookCell.jsx
 const ViewButton = styled(Button)`
   background-color: ${({ active, color = getDefaultColor() }) =>

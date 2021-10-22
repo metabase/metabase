@@ -2,7 +2,6 @@ import _ from "underscore";
 
 import { open } from "metabase/lib/dom";
 
-
 import type { ClickAction } from "metabase-types/types/Visualization";
 
 type PerformActionProps = {

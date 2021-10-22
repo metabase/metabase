@@ -9,7 +9,6 @@ import { init } from "./app";
 import { getRoutes } from "./routes-embed";
 import reducers from "./reducers-public";
 
-
 init(reducers, getRoutes, () => {
   if (IFRAMED) {
     document.body.style.backgroundColor = "transparent";

@@ -67,7 +67,6 @@ import {
   getQueryResults,
 } from "./selectors";
 
-
 import { parse as urlParse } from "url";
 import querystring from "querystring";
 

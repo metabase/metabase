@@ -8,7 +8,6 @@ import SelectButton from "metabase/components/SelectButton";
 
 import ParameterTargetList from "../components/ParameterTargetList";
 
-
 import type {
   ParameterMappingUIOption,
   ParameterTarget,

@@ -3,7 +3,6 @@ import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 
-
 type Props = {
   className?: string,
   value: any,

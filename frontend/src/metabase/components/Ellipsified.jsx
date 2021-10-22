@@ -4,7 +4,6 @@ import ResizeObserver from "resize-observer-polyfill";
 
 import Tooltip from "metabase/components/Tooltip";
 
-
 export default class Ellipsified extends Component {
   constructor(props, context) {
     super(props, context);

@@ -26,7 +26,6 @@ import ChartSettingsTableFormatting, {
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
-
 import TableSimple from "../components/TableSimple";
 import TableInteractive from "../components/TableInteractive.jsx";
 

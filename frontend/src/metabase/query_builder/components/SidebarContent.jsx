@@ -6,7 +6,6 @@ import { t } from "ttag";
 import ViewButton from "./view/ViewButton";
 import SidebarHeader from "./SidebarHeader";
 
-
 export default function SidebarContent({
   className,
   icon,

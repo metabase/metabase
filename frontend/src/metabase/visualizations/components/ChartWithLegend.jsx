@@ -8,8 +8,6 @@ import styles from "./ChartWithLegend.css";
 import LegendVertical from "./LegendVertical";
 import LegendHorizontal from "./LegendHorizontal";
 
-
-
 const GRID_ASPECT_RATIO = 4 / 3;
 const PADDING = 14;
 

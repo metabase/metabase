@@ -19,7 +19,6 @@ import {
 } from "../selectors";
 import { setParameterMapping } from "../actions";
 
-
 import type { Card } from "metabase-types/types/Card";
 import type { DashCard } from "metabase-types/types/Dashboard";
 import type {
@@ -30,7 +29,6 @@ import type {
 } from "metabase-types/types/Parameter";
 import type { DatabaseId } from "metabase-types/types/Database";
 import type { MappingsByParameter } from "../selectors";
-
 
 const makeMapStateToProps = () => {
   const getParameterMappingOptions = makeGetParameterMappingOptions();

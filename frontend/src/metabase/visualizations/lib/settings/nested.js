@@ -6,7 +6,6 @@ import chartSettingNestedSettings from "metabase/visualizations/components/setti
 
 import { getComputedSettings, getSettingsWidgets } from "../settings";
 
-
 import type {
   SettingId,
   SettingDef,

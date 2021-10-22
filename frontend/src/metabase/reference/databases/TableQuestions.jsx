@@ -23,7 +23,6 @@ import {
   getTable,
 } from "../selectors";
 
-
 const emptyStateData = table => {
   return {
     message: t`Questions about this table will appear here as they're added`,

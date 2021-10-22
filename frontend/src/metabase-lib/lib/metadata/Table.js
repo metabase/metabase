@@ -1,6 +1,5 @@
 // NOTE: this needs to be imported first due to some cyclical dependency nonsense
 
-
 import { singularize } from "metabase/lib/formatting";
 import { getAggregationOperatorsWithFields } from "metabase/lib/schema_metadata";
 import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";

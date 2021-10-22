@@ -8,7 +8,6 @@ import {
 import LineAreaBarChart from "../components/LineAreaBarChart.jsx";
 import rowRenderer from "../lib/RowRenderer.js";
 
-
 export default class RowChart extends LineAreaBarChart {
   static uiName = t`Row`;
   static identifier = "row";

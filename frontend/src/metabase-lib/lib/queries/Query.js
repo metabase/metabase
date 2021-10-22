@@ -7,8 +7,6 @@ import type Question from "metabase-lib/lib/Question";
 import type Dimension from "metabase-lib/lib/Dimension";
 import type Variable from "metabase-lib/lib/Variable";
 
-
-
 type QueryUpdateFn = (datasetQuery: DatasetQuery) => void;
 
 /**

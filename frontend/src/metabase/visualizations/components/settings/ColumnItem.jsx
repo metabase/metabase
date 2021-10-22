@@ -4,7 +4,6 @@ import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 
-
 const ActionIcon = ({ icon, onClick }) => (
   <Icon
     name={icon}

@@ -10,7 +10,6 @@ import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import withTableMetadataLoaded from "metabase/admin/datamodel/hoc/withTableMetadataLoaded";
 
-
 import ColumnsList from "./ColumnsList";
 
 @Databases.load({ id: (state, { databaseId }) => databaseId, wrapped: true })

@@ -31,7 +31,6 @@ import TextWidget from "./widgets/TextWidget";
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
 import S from "./ParameterWidget.css";
 
-
 const DATE_WIDGETS = {
   "date/single": DateSingleWidget,
   "date/range": DateRangeWidget,

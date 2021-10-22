@@ -17,7 +17,6 @@ import type { VisualizationProps } from "metabase-types/types/Visualization";
 import type { Column } from "metabase-types/types/Dataset";
 import type { VisualizationSettings } from "metabase-types/types/Card";
 
-
 // convert legacy `scalar.*` visualization settings to format options
 function legacyScalarSettingsToFormatOptions(settings) {
   return _.chain(settings)

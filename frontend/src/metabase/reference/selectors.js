@@ -27,7 +27,6 @@ export {
   getShallowSegments as getSegments,
 } from "metabase/selectors/metadata";
 
-
 export const getUser = (state, props) => state.currentUser;
 
 export const getMetricId = (state, props) =>

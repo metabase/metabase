@@ -13,7 +13,6 @@ import DisclosureTriangle from "metabase/components/DisclosureTriangle";
 import Button from "metabase/components/Button";
 import ActionButton from "metabase/components/ActionButton";
 
-
 class CustomForm extends React.Component {
   static childContextTypes = {
     handleSubmit: PropTypes.func,

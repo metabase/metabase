@@ -22,7 +22,6 @@ import Field from "metabase-lib/lib/metadata/Field";
 
 import DASHBOARD_WITH_BOOLEAN_PARAMETER from "./dashboard-with-boolean-parameter.json";
 
-
 function structured(query) {
   return SAMPLE_DATASET.question(query).card();
 }

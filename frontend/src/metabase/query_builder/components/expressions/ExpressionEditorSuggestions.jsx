@@ -12,7 +12,6 @@ import {
   UlStyled,
 } from "./ExpressionEditorSuggestions.styled";
 
-
 const SUGGESTION_SECTION_NAMES = {
   fields: t`Fields`,
   aggregations: t`Aggregations`,

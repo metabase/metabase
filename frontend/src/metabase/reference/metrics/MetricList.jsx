@@ -15,8 +15,6 @@ import * as metadataActions from "metabase/redux/metadata";
 import ReferenceHeader from "../components/ReferenceHeader";
 import { getMetrics, getError, getLoading } from "../selectors";
 
-
-
 const emptyStateData = {
   title: t`Metrics are the official numbers that your team cares about`,
   adminMessage: t`Defining common metrics for your team makes it even easier to ask questions`,

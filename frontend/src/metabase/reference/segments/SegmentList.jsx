@@ -15,7 +15,6 @@ import * as metadataActions from "metabase/redux/metadata";
 import ReferenceHeader from "../components/ReferenceHeader";
 import { getSegments, getError, getLoading } from "../selectors";
 
-
 const emptyStateData = {
   title: t`Segments are interesting subsets of tables`,
   adminMessage: t`Defining common segments for your team makes it even easier to ask questions`,

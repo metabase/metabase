@@ -11,7 +11,6 @@ import Button from "metabase/components/Button";
 import StepTitle from "./StepTitle";
 import CollapsedStep from "./CollapsedStep";
 
-
 export default class LanguageStep extends React.Component {
   constructor(props) {
     super(props);

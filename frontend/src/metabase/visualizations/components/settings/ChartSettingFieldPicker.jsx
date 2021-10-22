@@ -9,7 +9,6 @@ import { keyForColumn } from "metabase/lib/dataset";
 
 import ChartSettingSelect from "./ChartSettingSelect";
 
-
 const ChartSettingFieldPicker = ({
   value,
   options,

@@ -17,7 +17,6 @@ import type {
   EmbeddingParams,
 } from "metabase/public/lib/types";
 
-
 type Props = {
   className?: string,
 

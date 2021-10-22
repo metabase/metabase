@@ -13,14 +13,10 @@ import VisualizationResult from "./VisualizationResult";
 import Warnings from "./Warnings";
 import RunButtonWithTooltip from "./RunButtonWithTooltip";
 
-
-
-
 import type Database from "metabase-lib/lib/metadata/Database";
 import type Table from "metabase-lib/lib/metadata/Table";
 import type { DatasetQuery } from "metabase-types/types/Card";
 import type { ParameterValues } from "metabase-types/types/Parameter";
-
 
 type Props = {
   question: Question,

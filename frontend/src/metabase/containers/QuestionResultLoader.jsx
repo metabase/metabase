@@ -7,7 +7,6 @@ import Question from "metabase-lib/lib/Question";
 import type { Dataset } from "metabase-types/types/Dataset";
 import type { RawSeries } from "metabase-types/types/Visualization";
 
-
 export type ChildProps = {
   loading: boolean,
   error: ?any,

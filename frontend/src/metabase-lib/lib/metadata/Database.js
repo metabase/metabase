@@ -4,8 +4,6 @@ import { generateSchemaId } from "metabase/schema";
 import Question from "../Question";
 import Base from "./Base";
 
-
-
 /**
  * @typedef { import("./metadata").SchemaName } SchemaName
  */

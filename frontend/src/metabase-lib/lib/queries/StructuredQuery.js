@@ -44,7 +44,6 @@ import type {
 } from "metabase-types/types/Card";
 import type { AggregationOperator } from "metabase-types/types/Metadata";
 
-
 import type Segment from "../metadata/Segment";
 import type { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
 import type Database from "../metadata/Database";
@@ -55,7 +54,6 @@ import type { Column } from "metabase-types/types/Dataset";
 import Field from "../metadata/Field";
 
 import { TYPE } from "metabase/lib/types";
-
 
 type DimensionFilter = (dimension: Dimension) => boolean;
 type FieldFilter = (filter: Field) => boolean;

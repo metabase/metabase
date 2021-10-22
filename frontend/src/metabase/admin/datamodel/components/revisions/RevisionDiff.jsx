@@ -6,7 +6,6 @@ import Icon from "metabase/components/Icon";
 import TextDiff from "./TextDiff";
 import QueryDiff from "./QueryDiff";
 
-
 export default class RevisionDiff extends Component {
   static propTypes = {
     property: PropTypes.string.isRequired,

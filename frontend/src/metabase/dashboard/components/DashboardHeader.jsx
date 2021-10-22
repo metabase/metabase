@@ -17,7 +17,6 @@ import { getDashboardActions } from "./DashboardActions";
 import { DashboardHeaderButton } from "./DashboardHeader.styled";
 import ParametersPopover from "./ParametersPopover";
 
-
 import type { LocationDescriptor, QueryParams } from "metabase-types/types";
 import type { CardId } from "metabase-types/types/Card";
 import type {
@@ -30,7 +29,6 @@ import type {
   DashboardId,
   DashCardId,
 } from "metabase-types/types/Dashboard";
-
 
 type Props = {
   location: LocationDescriptor,

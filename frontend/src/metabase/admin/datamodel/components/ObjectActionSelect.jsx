@@ -10,7 +10,6 @@ import { capitalize } from "metabase/lib/formatting";
 
 import ObjectRetireModal from "./ObjectRetireModal";
 
-
 export default class ObjectActionsSelect extends Component {
   constructor(props) {
     super(props);

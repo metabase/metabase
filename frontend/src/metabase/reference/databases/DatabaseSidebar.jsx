@@ -8,7 +8,6 @@ import S from "metabase/components/Sidebar.css";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import SidebarItem from "metabase/components/SidebarItem";
 
-
 const DatabaseSidebar = ({ database, style, className }) => (
   <div className={cx(S.sidebar, className)} style={style}>
     <ul>

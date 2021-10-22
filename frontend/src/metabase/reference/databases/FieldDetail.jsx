@@ -30,7 +30,6 @@ import {
   getForeignKeys,
 } from "../selectors";
 
-
 const interestingQuestions = (database, table, field, metadata) => {
   return [
     {

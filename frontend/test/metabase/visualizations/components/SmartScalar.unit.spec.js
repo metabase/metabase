@@ -1,7 +1,6 @@
 import React from "react";
 import { render } from "@testing-library/react";
 
-
 import Visualization from "metabase/visualizations/components/Visualization";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 

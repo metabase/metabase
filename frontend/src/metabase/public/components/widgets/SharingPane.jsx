@@ -12,7 +12,6 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 import type { EmbedType } from "./EmbedModalContent";
 import type { EmbeddableResource } from "metabase/public/lib/types";
 
-
 type Props = {
   resourceType: string,
   resource: EmbeddableResource,

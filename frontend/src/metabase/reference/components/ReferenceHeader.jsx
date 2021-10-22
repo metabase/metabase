@@ -10,7 +10,6 @@ import Ellipsified from "metabase/components/Ellipsified";
 
 import S from "./ReferenceHeader.css";
 
-
 const ReferenceHeader = ({
   name,
   type,

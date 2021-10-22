@@ -8,8 +8,6 @@ import Tables from "metabase/entities/tables";
 import MetadataTableList from "./MetadataTableList";
 import MetadataSchemaList from "./MetadataSchemaList";
 
-
-
 @Tables.loadList({
   query: (state, { databaseId }) => ({
     dbId: databaseId,

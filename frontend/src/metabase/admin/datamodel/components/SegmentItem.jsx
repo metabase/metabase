@@ -6,7 +6,6 @@ import { formatQueryDescription } from "metabase/lib/query/description";
 
 import ObjectActionSelect from "./ObjectActionSelect";
 
-
 export default class SegmentItem extends Component {
   static propTypes = {
     segment: PropTypes.object.isRequired,

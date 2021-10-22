@@ -10,7 +10,6 @@ import styles from "./Legend.css";
 import ExplicitSize from "../../components/ExplicitSize";
 import LegendItem from "./LegendItem";
 
-
 const DEFAULT_COLORS = Object.values(normal);
 const MIN_WIDTH_PER_SERIES = 100;
 

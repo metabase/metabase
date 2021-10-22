@@ -10,7 +10,6 @@ import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
-
 export const ScalarWrapper = ({ children }) => (
   <Flex
     align="center"

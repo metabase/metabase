@@ -1,6 +1,5 @@
 import React, { Component } from "react";
 
-
 import Dimension from "metabase-lib/lib/Dimension";
 import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 

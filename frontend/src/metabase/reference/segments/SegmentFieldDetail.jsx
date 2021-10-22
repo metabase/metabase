@@ -28,7 +28,6 @@ import {
   getIsFormulaExpanded,
 } from "../selectors";
 
-
 const interestingQuestions = (table, field) => {
   return [
     {

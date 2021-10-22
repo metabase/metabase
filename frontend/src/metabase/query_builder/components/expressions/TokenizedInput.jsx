@@ -11,7 +11,6 @@ import {
 
 import TokenizedExpression from "./TokenizedExpression";
 
-
 class TokenizedInput extends Component {
   constructor(props) {
     super(props);

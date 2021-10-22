@@ -1,6 +1,4 @@
-
 import { t } from "ttag";
-
 
 import * as AGGREGATION from "metabase/lib/query/aggregation";
 

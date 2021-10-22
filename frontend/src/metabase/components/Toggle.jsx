@@ -5,7 +5,6 @@ import cx from "classnames";
 
 import styles from "./Toggle.css";
 
-
 export default class Toggle extends Component {
   static propTypes = {
     value: PropTypes.bool.isRequired,

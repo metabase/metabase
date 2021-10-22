@@ -10,8 +10,6 @@ import { STRING, getOperatorByTypeAndName } from "metabase/lib/schema_metadata";
 import { op, args, noNullValues, add, update, remove, clear } from "./util";
 import { isValidField } from "./field_ref";
 
-
-
 import type {
   FilterClause,
   Filter,

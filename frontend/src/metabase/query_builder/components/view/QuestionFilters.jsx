@@ -10,7 +10,6 @@ import { color } from "metabase/lib/colors";
 import ViewPill from "./ViewPill";
 import ViewButton from "./ViewButton";
 
-
 const FilterPill = props => <ViewPill color={color("filter")} {...props} />;
 
 const FilterButton = props => (

@@ -14,8 +14,6 @@ import FormInput from "../components/FormInput";
 import FormTextArea from "../components/FormTextArea";
 import PartialQueryBuilder from "../components/PartialQueryBuilder";
 
-
-
 @reduxForm(
   {
     form: "metric",

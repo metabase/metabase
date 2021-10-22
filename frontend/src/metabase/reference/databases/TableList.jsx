@@ -21,7 +21,6 @@ import {
   getLoading,
 } from "../selectors";
 
-
 const emptyStateData = {
   message: t`Tables in this database will appear here as they're added`,
   icon: "table2",

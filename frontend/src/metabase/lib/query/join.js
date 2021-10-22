@@ -2,7 +2,6 @@ import { add, update, remove, clear } from "./util";
 
 import type { Join, JoinClause } from "metabase-types/types/Query";
 
-
 // returns canonical list of Joins, with nulls removed
 export function getJoins(joins: ?JoinClause): Join[] {
   return (joins || []).filter(b => b != null);

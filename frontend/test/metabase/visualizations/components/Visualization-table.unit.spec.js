@@ -5,7 +5,6 @@ import Visualization from "metabase/visualizations/components/Visualization";
 
 import { NumberColumn } from "../__support__/visualizations";
 
-
 const series = (rows, settings = {}) => {
   const cols = [NumberColumn({ name: "Foo" })];
   return [
