@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t, jt } from "ttag";
 import { Box } from "grid-styled";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 import Toggle from "metabase/components/Toggle";
 
@@ -42,7 +42,7 @@ export default class PreferencesStep extends Component {
       payload && payload.data ? getErrorMessage(payload.data) : null;
     this.setState({ errorMessage });
 
-    MetabaseAnalytics.trackEvent(
+    MetabaseAnalytics.trackStructEvent(
       "Setup",
       "Preferences Step",
       this.props.allowTracking,

@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import { recipientIsValid } from "metabase/lib/pulse";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 import MetabaseUtils from "metabase/lib/utils";
 import TokenField from "metabase/components/TokenField";
@@ -41,7 +41,7 @@ export default class RecipientPicker extends Component {
       [...next].filter(r => !previous.has(r))[0] ||
       [...previous].filter(r => !next.has(r))[0];
 
-    MetabaseAnalytics.trackEvent(
+    MetabaseAnalytics.trackStructEvent(
       isNewPulse ? "PulseCreate" : "PulseEdit",
       newRecipients.length > recipients.length
         ? "AddRecipient"

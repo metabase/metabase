@@ -5,7 +5,7 @@ import { t, jt } from "ttag";
 import { getFilterOptions, setFilterOptions } from "metabase/lib/query/filter";
 
 import CheckBox from "metabase/components/CheckBox";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import type { FieldFilter } from "metabase-types/types/Query";
 
@@ -79,7 +79,12 @@ export default class FilterOptions extends Component {
         [name]: !options[name],
       }),
     );
-    MetabaseAnalytics.trackEvent("QueryBuilder", "Filter", "SetOption", name);
+    MetabaseAnalytics.trackStructEvent(
+      "QueryBuilder",
+      "Filter",
+      "SetOption",
+      name,
+    );
   }
 
   toggleOptionValue(name) {

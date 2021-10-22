@@ -9,7 +9,7 @@ import MarginHostingCTA from "metabase/admin/settings/components/widgets/MarginH
 
 import SettingsBatchForm from "./SettingsBatchForm";
 
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
 import {
@@ -56,12 +56,20 @@ export default class SettingsEmailForm extends Component {
     try {
       await this.props.sendTestEmail();
       this.setState({ sendingEmail: "success" });
-      MetabaseAnalytics.trackEvent("Email Settings", "Test Email", "success");
+      MetabaseAnalytics.trackStructEvent(
+        "Email Settings",
+        "Test Email",
+        "success",
+      );
 
       // show a confirmation for 3 seconds, then return to normal
       setTimeout(() => this.setState({ sendingEmail: "default" }), 3000);
     } catch (error) {
-      MetabaseAnalytics.trackEvent("Email Settings", "Test Email", "error");
+      MetabaseAnalytics.trackStructEvent(
+        "Email Settings",
+        "Test Email",
+        "error",
+      );
       this.setState({ sendingEmail: "default" });
       // NOTE: reaching into form component is not ideal
       this._form.setFormErrors(this._form.handleFormErrors(error));

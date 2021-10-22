@@ -8,7 +8,7 @@ import { Box } from "grid-styled";
 import StepTitle from "./StepTitle";
 import CollapsedStep from "./CollapsedStep";
 
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import { DEFAULT_SCHEDULES } from "metabase/admin/databases/database";
 import Databases from "metabase/entities/databases";
@@ -27,7 +27,7 @@ export default class DatabaseConnectionStep extends Component {
 
   chooseDatabaseEngine = e => {
     // FIXME:
-    // MetabaseAnalytics.trackEvent("Setup", "Choose Database", engine);
+    // MetabaseAnalytics.trackStructEvent("Setup", "Choose Database", engine);
   };
 
   handleSubmit = async database => {
@@ -49,7 +49,7 @@ export default class DatabaseConnectionStep extends Component {
       }
 
       if (formError) {
-        MetabaseAnalytics.trackEvent(
+        MetabaseAnalytics.trackStructEvent(
           "Setup",
           "Error",
           "database validation: " + database.engine,
@@ -81,7 +81,11 @@ export default class DatabaseConnectionStep extends Component {
         details: database,
       });
 
-      MetabaseAnalytics.trackEvent("Setup", "Database Step", database.engine);
+      MetabaseAnalytics.trackStructEvent(
+        "Setup",
+        "Database Step",
+        database.engine,
+      );
     }
   };
 
@@ -91,7 +95,7 @@ export default class DatabaseConnectionStep extends Component {
       details: null,
     });
 
-    MetabaseAnalytics.trackEvent("Setup", "Database Step");
+    MetabaseAnalytics.trackStructEvent("Setup", "Database Step");
   };
 
   render() {

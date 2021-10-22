@@ -10,7 +10,7 @@ import Icon from "metabase/components/Icon";
 
 import Databases from "metabase/entities/databases";
 
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 export default class DatabaseSchedulingStep extends Component {
   static propTypes = {
@@ -28,7 +28,11 @@ export default class DatabaseSchedulingStep extends Component {
       details: database,
     });
 
-    MetabaseAnalytics.trackEvent("Setup", "Database Step", this.state.engine);
+    MetabaseAnalytics.trackStructEvent(
+      "Setup",
+      "Database Step",
+      this.state.engine,
+    );
   };
 
   render() {
