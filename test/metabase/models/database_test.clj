@@ -2,18 +2,23 @@
   (:require [cheshire.core :refer [decode encode]]
             [clojure.string :as str]
             [clojure.test :refer :all]
+            [metabase.api.common :as api]
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
             [metabase.models :refer [Database]]
             [metabase.models.database :as mdb]
             [metabase.models.permissions :as perms]
+            [metabase.models.secret :as secret]
             [metabase.models.user :as user]
             [metabase.server.middleware.session :as mw.session]
             [metabase.task :as task]
             [metabase.task.sync-databases :as task.sync-databases]
             [metabase.test :as mt]
+            [metabase.test.fixtures :as fixtures]
             [schema.core :as s]
             [toucan.db :as db]))
+
+(use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
 
 (defn- trigger-for-db [db-id]
   (some (fn [{trigger-key :key, :as trigger}]
@@ -155,3 +160,44 @@
            (mdb/sensitive-fields-for-db nil)))
     (is (= driver.u/default-sensitive-fields
            (mdb/sensitive-fields-for-db {})))))
+
+(deftest secret-resolution-test
+  (mt/with-driver :secret-test-driver
+    (binding [api/*current-user-id* (mt/user->id :crowberto)]
+      (letfn [(check-db-fn [{:keys [details] :as database} exp-secret]
+                (is (not (contains? details :password-value)) "password-value was removed from details")
+                (is (some? (:password-created-at details)) "password-created-at was populated in details")
+                (is (= (mt/user->id :crowberto) (:password-creator-id details))
+                    "password-creator-id was populated in details")
+                (is (= (if-let [src (:source exp-secret)]
+                         (name src)
+                         nil) (:password-source details)) "password-source matches the value from the secret")
+                (is (contains? details :password-id) "password-id was added to details")
+                (let [{:keys [created_at updated_at] :as secret} (secret/latest-for-id (:password-id details))]
+                  (is (some? secret) "Loaded Secret instance by ID")
+                  (is (some? created_at) "created_at populated for the secret instance")
+                  (is (some? updated_at) "updated_at populated for the secret instance")
+                  (doseq [[exp-key exp-val] exp-secret]
+                    (testing (format "%s=%s in secret" exp-key exp-val)
+                      (is (= exp-val (cond-> (exp-key secret)
+                                       (string? exp-val)
+                                       (String.)
+
+                                       :else
+                                       identity)))))))]
+        (testing "values for referenced secret IDs are resolved in a new DB"
+          (mt/with-temp Database [{:keys [id details] :as database} {:engine  :secret-test-driver
+                                                                     :name    "Test DB with secrets"
+                                                                     :details {:host           "localhost"
+                                                                               :password-value "new-password"}}]
+            (testing " and saved db-details looks correct"
+              (check-db-fn database {:kind    :password
+                                     :source  nil
+                                     :version 1
+                                     :value   "new-password"})
+              (testing " updating the value works as expected"
+                (db/update! Database id :details (assoc details :password-path  "/path/to/my/password-file"))
+                (check-db-fn (Database id) {:kind    :password
+                                            :source  :file-path
+                                            :version 2
+                                            :value   "/path/to/my/password-file"})))))))))
