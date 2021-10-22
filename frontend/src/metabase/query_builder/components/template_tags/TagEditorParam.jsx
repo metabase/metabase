@@ -10,7 +10,7 @@ import InputBlurChange from "metabase/components/InputBlurChange";
 import Select, { Option } from "metabase/components/Select";
 import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget";
 
-import { getParameterOptionsForField } from "metabase/parameters/utils/options";
+import { getParameterOptionsForField } from "metabase/parameters/utils/template-tag-options";
 import type { TemplateTag } from "metabase-types/types/Query";
 import type { Database } from "metabase-types/types/Database";
 

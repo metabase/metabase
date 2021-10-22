@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import { t } from "ttag";
-import { getDashboardParameterSections } from "metabase/parameters/utils/options";
+import { getDashboardParameterSections } from "metabase/parameters/utils/dashboard-options";
 import Icon from "metabase/components/Icon";
 import { getParameterIconName } from "metabase/meta/Parameter";
 import styled from "styled-components";

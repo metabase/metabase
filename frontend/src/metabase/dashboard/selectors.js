@@ -5,10 +5,10 @@ import { createSelector } from "reselect";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import {
-  getParameterMappingOptions as _getParameterMappingOptions,
   getMappingsByParameter as _getMappingsByParameter,
   getDashboardParametersWithFieldMetadata,
 } from "metabase/meta/Dashboard";
+import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 

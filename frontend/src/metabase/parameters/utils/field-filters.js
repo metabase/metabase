@@ -37,3 +37,8 @@ export function fieldFilterForParameter(parameter) {
 
   return () => false;
 }
+
+export function dimensionFilterForParameter(parameter) {
+  const fieldFilter = fieldFilterForParameter(parameter);
+  return dimension => fieldFilter(dimension.field());
+}

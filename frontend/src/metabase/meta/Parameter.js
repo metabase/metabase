@@ -7,7 +7,6 @@ import type {
 } from "metabase-types/types/Query";
 import type {
   Parameter,
-  ParameterOption,
   ParameterInstance,
   ParameterTarget,
   ParameterValue,
@@ -15,7 +14,6 @@ import type {
 } from "metabase-types/types/Parameter";
 import type { FieldId } from "metabase-types/types/Field";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
-import type Field from "metabase-lib/lib/metadata/Field";
 import Dimension, {
   FieldDimension,
   TemplateTagDimension,
@@ -32,84 +30,16 @@ import {
 
 import Variable, { TemplateTagVariable } from "metabase-lib/lib/Variable";
 
-type DimensionFilter = (dimension: Dimension) => boolean;
+import {
+  getParameterType,
+  getParameterSubType,
+} from "metabase/parameters/utils/internal";
+
 type TemplateTagFilter = (tag: TemplateTag) => boolean;
-type FieldPredicate = (field: Field) => boolean;
 type VariableFilter = (variable: Variable) => boolean;
 
 const areFieldFilterOperatorsEnabled = () =>
   MetabaseSettings.get("field-filter-operators-enabled?");
-
-// sectionId will match a type of field (category, location, number, date, id, etc.)
-// if sectionId is undefined, it is an old parameter that did have it set
-// OR it is a PARAMETER_OPTION entry. In those situations,
-// a `type` will exist like "category" or "location/city" or "string/="
-// we split on the `/` and take the first entry to get the field type
-function getParameterType(parameter) {
-  const { sectionId } = parameter;
-  return sectionId || splitType(parameter)[0];
-}
-
-function getParameterSubType(parameter) {
-  const [, subtype] = splitType(parameter);
-  return subtype;
-}
-
-function fieldFilterForParameter(parameter: Parameter): FieldPredicate {
-  const type = getParameterType(parameter);
-  const subtype = getParameterSubType(parameter);
-  switch (type) {
-    case "date":
-      return (field: Field) => field.isDate();
-    case "id":
-      return (field: Field) => field.isID();
-    case "category":
-      return (field: Field) => field.isCategory();
-    case "location":
-      return (field: Field) => {
-        switch (subtype) {
-          case "city":
-            return field.isCity();
-          case "state":
-            return field.isState();
-          case "zip_code":
-            return field.isZipCode();
-          case "country":
-            return field.isCountry();
-          default:
-            return field.isLocation();
-        }
-      };
-    case "number":
-      return (field: Field) => field.isNumber() && !field.isCoordinate();
-    case "string":
-      return (field: Field) => {
-        return subtype === "=" || subtype === "!="
-          ? field.isCategory() && !field.isLocation()
-          : field.isString() && !field.isLocation();
-      };
-  }
-
-  return (field: Field) => false;
-}
-
-export function parameterOptionsForField(field: Field): ParameterOption[] {
-  return getParameterOptions()
-    .filter(option => fieldFilterForParameter(option)(field))
-    .map(option => {
-      return {
-        ...option,
-        name: option.combinedName || option.name,
-      };
-    });
-}
-
-export function dimensionFilterForParameter(
-  parameter: Parameter,
-): DimensionFilter {
-  const fieldFilter = fieldFilterForParameter(parameter);
-  return dimension => fieldFilter(dimension.field());
-}
 
 export function getTagOperatorFilterForParameter(parameter) {
   const subtype = getParameterSubType(parameter);
@@ -388,7 +318,7 @@ export function getParameterIconName(parameter: ?Parameter) {
 }
 
 export function normalizeParameterValue(type, value) {
-  const [fieldType] = splitType(type);
+  const fieldType = getParameterType(type);
 
   if (["string", "number"].includes(fieldType)) {
     return value == null ? [] : [].concat(value);
@@ -424,13 +354,6 @@ function getParameterOperatorType(parameterType) {
     default:
       return undefined;
   }
-}
-
-function splitType(parameterOrType) {
-  const parameterType = _.isString(parameterOrType)
-    ? parameterOrType
-    : (parameterOrType || {}).type || "";
-  return parameterType.split("/");
 }
 
 export function getValuePopulatedParameters(parameters, parameterValues) {

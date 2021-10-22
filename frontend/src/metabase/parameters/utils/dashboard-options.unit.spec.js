@@ -1,10 +1,6 @@
 import _ from "underscore";
 import MetabaseSettings from "metabase/lib/settings";
-import { PARAMETER_OPERATOR_TYPES } from "../constants";
-import {
-  getDashboardParameterSections,
-  getParameterOptionsForField,
-} from "./options";
+import { getDashboardParameterSections } from "./dashboard-options";
 
 MetabaseSettings.get = jest.fn();
 
@@ -16,7 +12,7 @@ function mockFieldFilterOperatorsFlag(value) {
   });
 }
 
-describe("parameters/utils/options", () => {
+describe("parameters/utils/dashboard-options", () => {
   describe("getDashboardParameterSections", () => {
     beforeEach(() => {
       mockFieldFilterOperatorsFlag(false);
@@ -81,64 +77,6 @@ describe("parameters/utils/options", () => {
         expect(
           _.findWhere(getDashboardParameterSections(), { id: "string" }),
         ).toBeDefined();
-      });
-    });
-  });
-
-  describe("getParameterOptionsForField", () => {
-    describe("when `field-filter-operators-enabled?` is false", () => {
-      beforeEach(() => {
-        mockFieldFilterOperatorsFlag(false);
-      });
-
-      it("should return options without operator subtypes (except for date parameters)", () => {
-        const options = new Set(_.map(getParameterOptionsForField(), "type"));
-        const expectedOptionTypes = [
-          "id",
-          "category",
-          "location/city",
-          "location/state",
-          "location/zip_code",
-          "location/country",
-        ].concat(_.map(PARAMETER_OPERATOR_TYPES.date, "type"));
-
-        expect(expectedOptionTypes.length).toEqual(options.size);
-        expect(expectedOptionTypes.every(option => options.has(option))).toBe(
-          true,
-        );
-      });
-    });
-
-    describe("when `field-filter-operators-enabled?` is true", () => {
-      beforeEach(() => {
-        mockFieldFilterOperatorsFlag(true);
-      });
-
-      it("should return options with operator subtypes", () => {
-        const options = new Set(_.map(getParameterOptionsForField(), "type"));
-        const expectedOptionTypes = ["id"].concat(
-          _.map(PARAMETER_OPERATOR_TYPES.number, "type"),
-          _.map(PARAMETER_OPERATOR_TYPES.string, "type"),
-          _.map(PARAMETER_OPERATOR_TYPES.date, "type"),
-        );
-
-        expect(expectedOptionTypes.length).toEqual(options.size);
-        expect(expectedOptionTypes.every(option => options.has(option))).toBe(
-          true,
-        );
-      });
-
-      it("should add a `combinedName` property to options", () => {
-        const optionsByType = _.indexBy(getParameterOptionsForField(), "type");
-
-        expect(optionsByType["string/="].combinedName).toEqual("String");
-        expect(optionsByType["string/!="].combinedName).toEqual(
-          "String is not",
-        );
-        expect(optionsByType["number/!="].combinedName).toEqual("Not equal to");
-        expect(optionsByType["date/single"].combinedName).toEqual(
-          "Single Date",
-        );
       });
     });
   });
