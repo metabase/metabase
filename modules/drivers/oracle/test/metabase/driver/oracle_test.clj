@@ -4,17 +4,20 @@
             [clojure.string :as str]
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
+            [metabase.api.common :as api]
             [metabase.driver :as driver]
             [metabase.driver.oracle :as oracle]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.util :as driver.u]
+            [metabase.models.database :refer [Database]]
             [metabase.models.field :refer [Field]]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.test]
             [metabase.query-processor-test.order-by-test :as qp-test.order-by-test] ; used for one SSL connectivity test
+            [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.test.data.oracle :as oracle.tx]
             [metabase.test.data.sql :as sql.tx]
@@ -298,9 +301,23 @@
 (deftest oracle-connect-with-ssl-test
   (mt/test-driver :oracle
     (if (System/getenv "MB_ORACLE_SSL_TEST_SSL")
-      (testing "Oracle with SSL connectivity"
-        (mt/with-env-keys-renamed-by #(str/replace-first % "mb-oracle-ssl-test" "mb-oracle-test")
-          (qp-test.order-by-test/order-by-aggregate-fields-test)))
+      (mt/with-env-keys-renamed-by #(str/replace-first % "mb-oracle-ssl-test" "mb-oracle-test")
+        ;; need to get a fresh instance of details to pick up env key changes
+        (let [details (->> (#'oracle.tx/connection-details)
+                           (driver.u/db-details-client->server :oracle))]
+          (testing "Oracle can-connect? with SSL connectivity"
+            (is (driver/can-connect? :oracle details)))
+          (testing "Sync and query with SSL connectivity"
+            (binding [metabase.sync.util/*log-exceptions-and-continue?* false
+                      api/*current-user-id* (mt/user->id :crowberto)]
+              (mt/with-temp Database [database {:engine :oracle,
+                                                :name "Oracle SSL Test DB",
+                                                :details details}]
+                (mt/with-db database
+                  ;; TODO: figure out why this fails to find any tables, even though connection succeeded
+                  ;; some kind of state is involved
+                  (sync/sync-database! database {:scan :schema})
+                  (qp-test.order-by-test/order-by-aggregate-fields-test)))))))
       (println (u/format-color 'yellow
                                "Skipping %s because %s env var is not set"
                                "oracle-connect-with-ssl-test"

@@ -98,9 +98,9 @@
                                                  value)]
         ;; remove the -value keyword (since in the persisted details blob, we only ever want to store the -id)
         (-> details
-          (dissoc value-kw)
+          (dissoc value-kw (sub-prop "-path"))
           (assoc id-kw id)
-          (assoc (sub-prop "-source") source)
+          (assoc (sub-prop "-source") source) ; TODO: figure out why this is needed
           (assoc (sub-prop "-creator-id") creator_id)
           (assoc (sub-prop "-created-at") (t/format :iso-offset-date-time created_at)))))))
 

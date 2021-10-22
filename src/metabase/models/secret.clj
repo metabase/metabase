@@ -36,8 +36,11 @@
   "Returns the value of the given `secret` as a String.  `secret` can be a Secret model object, or a
   secret-map (i.e. return value from `db-details-prop->secret-map`)."
   {:added "0.42.0"}
-  ^String [{:keys [^bytes value] :as secret}]
-  (String. value StandardCharsets/UTF_8))
+  ^String [{:keys [value] :as secret}]
+  (cond (string? value)
+        value
+        (bytes? value)
+        (String. value StandardCharsets/UTF_8)))
 
 (defn value->file!
   "Returns the value of the given `secret` in the form of a file.  `secret` can be a Secret model object, or a
@@ -118,21 +121,26 @@
   [details conn-prop-nm]
   (let [sub-prop  (fn [suffix]
                     (keyword (str conn-prop-nm suffix)))
-        ;; in the future, when secret values can simply be changed by passing
-        ;; in a new ID (as opposed to a new value), this behavior will change,
-        ;; but for now, we should simply look for the value
         path-kw   (sub-prop "-path")
         value-kw  (sub-prop "-value")
+        id-kw     (sub-prop "-id")
         value     (if-let [v (value-kw details)]     ; the -value suffix was specified; use that
                     v
-                    (when-let [path (path-kw details)] ; the -path suffix was specified; this is actually a :file-path
-                      (when (premium-features/is-hosted?)
-                        (throw (ex-info
-                                 (tru "{0} (a local file path) cannot be used in Metabase hosted environment" path-kw)
-                                 {:invalid-db-details-entry (select-keys details [path-kw])})))
-                      path))
-        source    (when (path-kw details) ; set the :source due to the -path suffix (see above))
-                    :file-path)]
+                    (if-let [path (path-kw details)] ; the -path suffix was specified; this is actually a :file-path
+                      (do
+                        (when (premium-features/is-hosted?)
+                          (throw (ex-info
+                                   (tru "{0} (a local file path) cannot be used in Metabase hosted environment" path-kw)
+                                   {:invalid-db-details-entry (select-keys details [path-kw])})))
+                        path)
+                      (when-let [id (id-kw details)]
+                        (:value (Secret id)))))
+        source    (cond
+                    (path-kw details) ; set the :source due to the -path suffix (see above))
+                    :file-path
+
+                    (id-kw details)
+                    (:source (Secret (id-kw details))))]
     {:value value :source source}))
 
 ;;; -------------------------------------------------- JSON Encoder --------------------------------------------------

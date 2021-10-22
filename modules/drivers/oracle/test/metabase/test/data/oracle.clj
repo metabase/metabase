@@ -30,16 +30,24 @@
 (defonce ^:private session-password      (apply str (repeatedly 16 #(rand-nth (map char (range (int \a) (inc (int \z))))))))
 ;; Session password is only used when creating session user, not anywhere else
 
-(def ^:private connection-details
-  (delay
-   {:host     (tx/db-test-env-var-or-throw :oracle :host)
-    :port     (Integer/parseInt (tx/db-test-env-var-or-throw :oracle :port "1521"))
-    :user     (tx/db-test-env-var-or-throw :oracle :user)
-    :password (tx/db-test-env-var-or-throw :oracle :password)
-    :sid      (tx/db-test-env-var-or-throw :oracle :sid)
-    :ssl      (tx/db-test-env-var :oracle :ssl false)}))
+(defn- connection-details []
+  (let [details* {:host     (tx/db-test-env-var-or-throw :oracle :host)
+                  :port     (Integer/parseInt (tx/db-test-env-var-or-throw :oracle :port "1521"))
+                  :user     (tx/db-test-env-var-or-throw :oracle :user)
+                  :password (tx/db-test-env-var-or-throw :oracle :password)
+                  :sid      (tx/db-test-env-var-or-throw :oracle :sid)
+                  :ssl      (tx/db-test-env-var :oracle :ssl false)}]
+    (loop [details details*
+           props [:ssl-use-truststore :ssl-truststore-path :ssl-truststore-value :ssl-truststore-password-value
+                  :ssl-use-keystore :ssl-keystore-path :ssl-keystore-value :ssl-keystore-password-value]]
+      (if-let [prop (first props)]
+        (if-let [prop-val (tx/db-test-env-var :oracle prop nil)]
+          (recur (assoc details prop prop-val) (rest props))
+          (recur details (rest props)))
+        details))))
 
-(defmethod tx/dbdef->connection-details :oracle [& _] @connection-details)
+(defmethod tx/dbdef->connection-details :oracle [& _]
+  (connection-details))
 
 (defmethod tx/sorts-nil-first? :oracle [_ _] false)
 
@@ -123,7 +131,7 @@
            "INTO")))))))
 
 (defn- dbspec [& _]
-  (sql-jdbc.conn/connection-details->spec :oracle @connection-details))
+  (sql-jdbc.conn/connection-details->spec :oracle (connection-details)))
 
 (defn- non-session-schemas
   "Return a set of the names of schemas (users) that are not meant for use in this test session (i.e., ones that should

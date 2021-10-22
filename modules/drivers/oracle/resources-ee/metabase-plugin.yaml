@@ -27,6 +27,7 @@ driver:
       visible-if:
         ssl: true
     - name: ssl-keystore
+      display-name: Keystore
       type: secret
       secret-kind: keystore
       placeholder: /path/to/keystore.jks
@@ -39,12 +40,13 @@ driver:
       required: false
       visible-if:
         ssl-use-keystore: true
-    - name: ssl-use-keystore
-      display-name: Use SSL server certificate?
+    - name: ssl-use-truststore
+      display-name: Use SSL truststore?
       type: boolean
       visible-if:
         ssl: true
     - name: ssl-truststore
+      display-name: Truststore
       type: secret
       secret-kind: truststore
       placeholder: /path/to/truststore.jks

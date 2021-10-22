@@ -121,9 +121,9 @@
         prog-nm   (as-> (format "MB %s %s" (config/mb-version-info :tag) config/local-process-uuid) s
                     (subs s 0 (min 48 (count s))))]
     (-> (merge spec details)
-        (dissoc :host :port :sid :service-name :ssl)
         (assoc prog-name-property prog-nm)
         handle-ssl-options
+        (dissoc :host :port :sid :service-name :ssl)
         (finish-fn host port sid service-name))))
 
 (defmethod driver/can-connect? :oracle

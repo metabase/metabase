@@ -1127,9 +1127,8 @@ workflows:
             MB_ORACLE_SSL_TEST_SSL=true
             MB_ORACLE_SSL_TEST_PORT=2484
             MB_ORACLE_SSL_TEST_USE_SSL_TRUSTSTORE=true
-            MB_ORACLE_SSL_TEST_SSL_TRUSTSTORE_VALUE=/home/circleci/metabase/metabase/resources/certificates/cacerts_with_RDS_root_ca.jks
-            MB_ORACLE_SSL_TEST_SSL_TRUSTSTORE_SOURCE=file-path
-            MB_ORACLE_SSL_TEST_SSL_TRUSTSTORE_PASSWORD=metabase
+            MB_ORACLE_SSL_TEST_SSL_TRUSTSTORE_PATH=/home/circleci/metabase/metabase/resources/certificates/cacerts_with_RDS_root_ca.jks
+            MB_ORACLE_SSL_TEST_SSL_TRUSTSTORE_PASSWORD_VALUE=metabase
 
       - test-driver:
           name: be-tests-postgres-ee
