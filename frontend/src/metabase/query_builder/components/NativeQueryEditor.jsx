@@ -2,28 +2,21 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import cx from "classnames";
-
 import "ace/ace";
 import "ace/ext-language_tools";
-
 import "ace/mode-sql";
 import "ace/mode-mysql";
 import "ace/mode-pgsql";
 import "ace/mode-sqlserver";
 import "ace/mode-json";
-
 import "ace/snippets/text";
 import "ace/snippets/sql";
 import "ace/snippets/mysql";
 import "ace/snippets/pgsql";
 import "ace/snippets/sqlserver";
 import "ace/snippets/json";
-
 import _ from "underscore";
-
 import { ResizableBox } from "react-resizable";
-
-import "./NativeQueryEditor.css";
 
 import { isEventOverElement } from "metabase/lib/dom";
 import { delay } from "metabase/lib/promise";
@@ -32,22 +25,16 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 
 import Snippets from "metabase/entities/snippets";
 import SnippetCollections from "metabase/entities/snippet-collections";
+import SnippetModal from "metabase/query_builder/components/template_tags/SnippetModal";
 import Parameters from "metabase/parameters/components/Parameters/Parameters";
 import Question from "metabase-lib/lib/Question";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import NativeQueryEditorSidebar from "./NativeQueryEditor/NativeQueryEditorSidebar";
-import RightClickPopover from "./NativeQueryEditor/RightClickPopover";
-
-import {
-  DatabaseDataSelector,
-  SchemaAndTableDataSelector,
-} from "metabase/query_builder/components/DataSelector";
-import SnippetModal from "metabase/query_builder/components/template_tags/SnippetModal";
-
 import VisibilityToggler from "./NativeQueryEditor/VisibilityToggler";
-import NativeQueryEditorSidebar from "./NativeQueryEditor/NativeQueryEditorSidebar";
 import RightClickPopover from "./NativeQueryEditor/RightClickPopover";
 import { getDataSelectors } from "./NativeQueryEditor/getDataSelectors";
+
+import "./NativeQueryEditor.css";
 
 import type { DatasetQuery } from "metabase-types/types/Card";
 import type { DatabaseId } from "metabase-types/types/Database";
