@@ -19,7 +19,6 @@ import "ace/snippets/pgsql";
 import "ace/snippets/sqlserver";
 import "ace/snippets/json";
 
-import { t } from "ttag";
 import _ from "underscore";
 
 import { ResizableBox } from "react-resizable";
@@ -48,6 +47,7 @@ import SnippetModal from "metabase/query_builder/components/template_tags/Snippe
 import VisibilityToggler from "./NativeQueryEditor/VisibilityToggler";
 import NativeQueryEditorSidebar from "./NativeQueryEditor/NativeQueryEditorSidebar";
 import RightClickPopover from "./NativeQueryEditor/RightClickPopover";
+import { getDataSelectors } from "./NativeQueryEditor/getDataSelectors";
 
 import type { DatasetQuery } from "metabase-types/types/Card";
 import type { DatabaseId } from "metabase-types/types/Database";
@@ -483,61 +483,14 @@ export default class NativeQueryEditor extends Component {
       openSnippetModalWithSelectedText,
     } = this.props;
 
-    const database = query.database();
-    const databases = query.metadata().databasesList({ savedQuestions: false });
+    const dataSelectors = getDataSelectors({
+      isNativeEditorOpen,
+      query,
+      readOnly,
+      setDatabaseId: this.setDatabaseId,
+      setTableId: this.setTableId,
+    });
     const parameters = query.question().parameters();
-
-    let dataSelectors = [];
-    if (isNativeEditorOpen && databases.length > 0) {
-      // we only render a db selector if there are actually multiple to choose from
-      if (
-        database == null ||
-        (databases.length > 1 && databases.some(db => db.id === database.id))
-      ) {
-        dataSelectors.push(
-          <div
-            key="db_selector"
-            className="GuiBuilder-section GuiBuilder-data flex align-center ml2"
-          >
-            <DatabaseDataSelector
-              databases={databases}
-              selectedDatabaseId={database?.id}
-              setDatabaseFn={this.setDatabaseId}
-              isInitiallyOpen={database == null}
-              readOnly={this.props.readOnly}
-            />
-          </div>,
-        );
-      } else if (database) {
-        dataSelectors.push(
-          <span key="db" className="p2 text-bold text-grey">
-            {database.name}
-          </span>,
-        );
-      }
-      if (query.requiresTable()) {
-        const selectedTable = query.table();
-        dataSelectors.push(
-          <div
-            key="table_selector"
-            className="GuiBuilder-section GuiBuilder-data flex align-center ml2"
-          >
-            <SchemaAndTableDataSelector
-              selectedTableId={selectedTable?.id || null}
-              selectedDatabaseId={database?.id}
-              databases={[database]}
-              setSourceTableFn={this.setTableId}
-              isInitiallyOpen={false}
-              readOnly={this.props.readOnly}
-            />
-          </div>,
-        );
-      }
-    } else {
-      dataSelectors = (
-        <span className="ml2 p2 text-medium">{t`This question is written in ${query.nativeQueryLanguage()}.`}</span>
-      );
-    }
 
     const dragHandle = (
       <div className="NativeQueryEditorDragHandleWrapper">
