@@ -44,15 +44,15 @@ const createGoogleAnalyticsTracker = () => {
 };
 
 const trackGoogleAnalyticsPageView = url => {
-  const version = Settings.get("version");
-  window.ga?.("set", "dimension1", version?.tag);
+  const version = Settings.get("version", {});
+  window.ga?.("set", "dimension1", version.tag);
   window.ga?.("set", "page", url);
   window.ga?.("send", "pageview", url);
 };
 
 const trackGoogleAnalyticsStructEvent = (category, action, label, value) => {
-  const version = Settings.get("version");
-  window.ga?.("set", "dimension1", version?.tag);
+  const version = Settings.get("version", {});
+  window.ga?.("set", "dimension1", version.tag);
   window.ga?.("send", "event", category, action, label, value);
 };
 
@@ -74,6 +74,24 @@ const createSnowplowPlugin = store => {
     beforeTrack: () => {
       const userId = getUserId(store.getState());
       userId && Snowplow.setUserId(String(userId));
+    },
+    contexts() {
+      const id = Settings.get("analytics-uuid");
+      const version = Settings.get("version", {});
+      const features = Settings.get("premium-features");
+
+      return [
+        {
+          schema: "iglu:com.metabase/instance/jsonschema/1-0-0",
+          data: {
+            id,
+            version: {
+              tag: version.tag,
+            },
+            token_features: features,
+          },
+        },
+      ];
     },
   };
 };
