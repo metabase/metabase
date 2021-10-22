@@ -33,6 +33,7 @@ export function generateExpression(seed) {
     Unary: 3,
     Binary: 4,
     FunctionCall: 5,
+    Group: 6,
   };
 
   const zero = () => 0;
@@ -124,16 +125,24 @@ export function generateExpression(seed) {
     };
   };
 
+  const group = () => {
+    return {
+      type: NODE.Group,
+      child: primary(),
+    };
+  };
+
   const primary = () => {
     --depth;
-    const node = oneOf([field, literal, unary, binary, call])();
+    const node = oneOf([field, literal, unary, binary, call, group])();
     ++depth;
     return node;
   };
   const expression = () => (depth <= 0 ? literal() : primary());
 
   const format = node => {
-    const pre = ch => listOf(2, [space])().join("") + ch;
+    const spaces = () => listOf(1, [space])().join("");
+    const blank = ch => spaces() + ch + spaces();
     let str = null;
     const { type, value, op, left, right, child, params } = node;
     switch (type) {
@@ -142,13 +151,16 @@ export function generateExpression(seed) {
         str = value;
         break;
       case NODE.Unary:
-        str = op + " " + format(child);
+        str = blank(op) + " " + format(child);
         break;
       case NODE.Binary:
-        str = format(left) + " " + op + " " + format(right);
+        str = format(left) + " " + blank(op) + " " + format(right);
         break;
       case NODE.FunctionCall:
-        str = value + pre("(") + params.map(format).join(", ") + pre(")");
+        str = value + blank("(") + params.map(format).join(", ") + blank(")");
+        break;
+      case NODE.Group:
+        str = blank("(") + format(child) + blank(")");
         break;
     }
 
