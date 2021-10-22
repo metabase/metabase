@@ -4,14 +4,14 @@ import { t } from "ttag";
 
 import { isMac } from "metabase/lib/browser";
 
+import DataReferenceButton from "metabase/query_builder/components/view/DataReferenceButton";
+import NativeVariablesButton from "metabase/query_builder/components/view/NativeVariablesButton";
+import SnippetSidebarButton from "metabase/query_builder/components/view/SnippetSidebarButton";
+
 import {
   Container,
   RunButtonWithTooltipStyled,
 } from "./NativeQueryEditorSidebar.styled";
-
-import DataReferenceButton from "metabase/query_builder/components/view/DataReferenceButton";
-import NativeVariablesButton from "metabase/query_builder/components/view/NativeVariablesButton";
-import SnippetSidebarButton from "metabase/query_builder/components/view/SnippetSidebarButton";
 
 const propTypes = {
   cancelQuery: PropTypes.func.isRequired,
@@ -45,10 +45,10 @@ const NativeQueryEditorSidebar = props => {
   const showSnippetSidebarButton = !(
     snippets?.length === 0 &&
     snippetCollections?.length === 1 &&
-    snippetCollections[0].can_write === false
+    !snippetCollections[0].can_write
   );
 
-  const getTooltip = function() {
+  const getTooltip = () => {
     const command = nativeEditorSelectedText
       ? t`Run selected text`
       : t`Run query`;
