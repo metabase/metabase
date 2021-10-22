@@ -1,12 +1,33 @@
-/*eslint-disable react/prop-types*/
-
 import React from "react";
+import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import {
   DatabaseDataSelector,
   SchemaAndTableDataSelector,
 } from "metabase/query_builder/components/DataSelector";
+
+const DataSelectorPropTypes = {
+  database: PropTypes.object,
+  databases: PropTypes.array,
+  readOnly: PropTypes.bool,
+  setDatabaseId: PropTypes.func,
+};
+
+const SelectorWithDatabaseNamePropTypes = {
+  database: PropTypes.object,
+};
+
+const SelectorWithTablePropTypes = {
+  database: PropTypes.object,
+  readOnly: PropTypes.bool,
+  selectedTable: PropTypes.object,
+  setTableId: PropTypes.func,
+};
+
+const PlaceholderPropTypes = {
+  query: PropTypes.object,
+};
 
 export const getDataSelectors = ({
   isNativeEditorOpen,
@@ -53,7 +74,7 @@ export const getDataSelectors = ({
     return dataSelectors;
   }
 
-  return placeholder(query);
+  return <Placeholder query={query} />;
 };
 
 const checkIfThereAreMultipleDatabases = (database, databases) =>
@@ -75,11 +96,15 @@ const DataSelector = ({ database, databases, readOnly, setDatabaseId }) => (
   </div>
 );
 
+DataSelector.propTypes = DataSelectorPropTypes;
+
 const SelectorWithDatabaseName = ({ database }) => (
   <span key="db" className="p2 text-bold text-grey">
     {database.name}
   </span>
 );
+
+SelectorWithDatabaseName.propTypes = SelectorWithDatabaseNamePropTypes;
 
 const SelectorWithTable = ({
   database,
@@ -102,8 +127,12 @@ const SelectorWithTable = ({
   </div>
 );
 
-const placeholder = query => (
+SelectorWithTable.propTypes = SelectorWithTablePropTypes;
+
+const Placeholder = ({ query }) => (
   <span className="ml2 p2 text-medium">
     {t`This question is written in ${query.nativeQueryLanguage()}.`}
   </span>
 );
+
+Placeholder.propTypes = PlaceholderPropTypes;
