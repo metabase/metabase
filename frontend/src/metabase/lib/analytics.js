@@ -82,6 +82,7 @@ const createSnowplowPlugin = store => {
 };
 
 const trackSnowplowPageView = url => {
+  Snowplow.setReferrerUrl("#");
   Snowplow.setCustomUrl(url);
   Snowplow.trackPageView();
 };
