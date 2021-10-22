@@ -9,8 +9,10 @@ import Question from "metabase-lib/lib/Question";
 import { TemplateTagVariable } from "metabase-lib/lib/Variable";
 import { TemplateTagDimension } from "metabase-lib/lib/Dimension";
 import { isa, TYPE } from "metabase/lib/types";
-import { variableFilterForParameter } from "metabase/meta/Parameter";
-import { dimensionFilterForParameter } from "metabase/parameters/utils/field-filters";
+import {
+  variableFilterForParameter,
+  dimensionFilterForParameter,
+} from "metabase/parameters/utils/filters";
 
 export function getDataFromClicked({
   extraData: { dashboard, parameterValuesBySlug, userAttributes } = {},

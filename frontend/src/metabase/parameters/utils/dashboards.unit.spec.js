@@ -5,12 +5,12 @@ import {
   hasMapping,
   isDashboardParameterWithoutMapping,
   getMappingsByParameter,
-} from "metabase/meta/Dashboard";
-import DASHBOARD_WITH_BOOLEAN_PARAMETER from "./dashboard-with-boolean-parameter.json";
+} from "./dashboards";
+import DASHBOARD_WITH_BOOLEAN_PARAMETER from "./fixtures/dashboard-with-boolean-parameter-fixture.json";
 
 import Field from "metabase-lib/lib/metadata/Field";
 
-describe("meta/Dashboard", () => {
+describe("parameters/utils/dashboards", () => {
   describe("createParameter", () => {
     it("should create a new parameter using the given parameter option", () => {
       expect(

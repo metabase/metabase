@@ -1,8 +1,6 @@
 import { t } from "ttag";
-import {
-  areFieldFilterOperatorsEnabled,
-  getOperatorDisplayName,
-} from "./internal";
+import { areFieldFilterOperatorsEnabled } from "./parameter-type";
+import { getOperatorDisplayName } from "./operators";
 import {
   PARAMETER_OPERATOR_TYPES,
   LOCATION_OPTIONS,

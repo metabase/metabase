@@ -9,11 +9,11 @@ import type {
   ParameterMappingUIOption,
 } from "metabase-types/types/Parameter";
 
-import { dimensionFilterForParameter } from "./field-filters";
 import {
+  dimensionFilterForParameter,
   getTagOperatorFilterForParameter,
   variableFilterForParameter,
-} from "metabase/meta/Parameter";
+} from "./filters";
 
 export function getParameterMappingOptions(
   metadata: Metadata,

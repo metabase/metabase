@@ -9,10 +9,8 @@ import {
   SortableElement,
   SortableHandle,
 } from "metabase/components/sortable";
-import {
-  getValuePopulatedParameters,
-  getVisibleParameters,
-} from "metabase/meta/Parameter";
+import { getVisibleParameters } from "metabase/parameters/utils/ui";
+import { getValuePopulatedParameters } from "metabase/parameters/utils/parameter-values";
 
 import type {
   ParameterId,

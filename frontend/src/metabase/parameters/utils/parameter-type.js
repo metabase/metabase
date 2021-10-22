@@ -1,5 +1,6 @@
-import MetabaseSettings from "metabase/lib/settings";
 import _ from "underscore";
+
+import MetabaseSettings from "metabase/lib/settings";
 
 export function areFieldFilterOperatorsEnabled() {
   return MetabaseSettings.get("field-filter-operators-enabled?");
@@ -20,14 +21,4 @@ function splitType(parameterOrType) {
     ? parameterOrType
     : (parameterOrType || {}).type || "";
   return parameterType.split("/");
-}
-
-export function getOperatorDisplayName(option, operatorType, sectionName) {
-  if (operatorType === "date" || operatorType === "number") {
-    return option.name;
-  } else if (operatorType === "string" && option.operator === "=") {
-    return sectionName;
-  } else {
-    return `${sectionName} ${option.name.toLowerCase()}`;
-  }
 }
