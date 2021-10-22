@@ -6,7 +6,6 @@ import AggregationPopover from "metabase/query_builder/components/AggregationPop
 
 import ClauseStep from "./ClauseStep";
 
-
 const aggTetherOptions = {
   attachment: "top left",
   targetAttachment: "bottom left",

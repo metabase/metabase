@@ -1,6 +1,5 @@
 import "__support__/mocks"; // included explicitly whereas with e2e tests it comes with __support__/e2e
 
-
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import lineAreaBarRenderer, {
   getDimensionsAndGroupsAndUpdateSeriesDisplayNames,

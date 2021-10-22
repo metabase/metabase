@@ -24,7 +24,6 @@ import {
   getSegment,
 } from "../selectors";
 
-
 const emptyStateData = (table, segment) => {
   return {
     message: t`Questions about this segment will appear here as they're added`,

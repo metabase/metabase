@@ -13,7 +13,6 @@ import TagEditorParam from "./TagEditorParam";
 import CardTagEditor from "./CardTagEditor";
 import TagEditorHelp from "./TagEditorHelp";
 
-
 import type { DatasetQuery } from "metabase-types/types/Card";
 import type { TableId } from "metabase-types/types/Table";
 import type { Database } from "metabase-types/types/Database";

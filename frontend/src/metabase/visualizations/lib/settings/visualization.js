@@ -9,8 +9,6 @@ import {
   getPersistableDefaultSettings,
 } from "../settings";
 
-
-
 import type { Settings, SettingDefs, WidgetDef } from "../settings";
 import type { Series } from "metabase-types/types/Visualization";
 import type { VisualizationSettings } from "metabase-types/types/Card";

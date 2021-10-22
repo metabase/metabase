@@ -6,7 +6,6 @@ import screenfull from "screenfull";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
 
-
 import type { LocationDescriptor } from "metabase-types/types";
 
 type Props = {

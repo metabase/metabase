@@ -10,7 +10,6 @@ import Tooltip from "metabase/components/Tooltip";
 import styles from "./Legend.css";
 import LegendItem from "./LegendItem";
 
-
 export default class LegendVertical extends Component {
   constructor(props, context) {
     super(props, context);

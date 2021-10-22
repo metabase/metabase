@@ -9,7 +9,6 @@ import ViewPill from "./ViewPill";
 import ViewButton from "./ViewButton";
 import SummarizeSidebar from "./sidebars/SummarizeSidebar";
 
-
 const SummarizePill = props => (
   <ViewPill icon="insight" color={color("accent1")} {...props} />
 );

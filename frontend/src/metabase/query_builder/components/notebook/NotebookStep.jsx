@@ -11,7 +11,6 @@ import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
 import ExpandingContent from "metabase/components/ExpandingContent";
 
-
 import NotebookStepPreview from "./NotebookStepPreview";
 import DataStep from "./steps/DataStep";
 import JoinStep from "./steps/JoinStep";

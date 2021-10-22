@@ -27,7 +27,6 @@ import * as Q from "metabase/lib/query/query";
 import Dimension from "metabase-lib/lib/Dimension";
 import { color } from "metabase/lib/colors";
 
-
 const getDashboardId = (state, { params: { splat }, location: { hash } }) =>
   `/auto/dashboard/${splat}${hash.replace(/^#?/, "?")}`;
 

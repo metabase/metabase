@@ -11,7 +11,6 @@ import {
   GRAPH_DISPLAY_VALUES_SETTINGS,
 } from "../lib/settings/graph";
 
-
 export default class WaterfallChart extends LineAreaBarChart {
   static uiName = t`Waterfall`;
   static identifier = "waterfall";

@@ -4,7 +4,6 @@ import cx from "classnames";
 
 import Select, { Option } from "metabase/components/Select";
 
-
 const ChartSettingSelect = ({
   // Use null if value is undefined. If we pass undefined, Select will create an
   // uncontrolled component because it's wrapped with Uncontrollable.

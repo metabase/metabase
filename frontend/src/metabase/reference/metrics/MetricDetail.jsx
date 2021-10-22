@@ -29,7 +29,6 @@ import {
   getForeignKeys,
 } from "../selectors";
 
-
 const mapStateToProps = (state, props) => {
   const entity = getMetric(state, props) || {};
   const fields = getFields(state, props);

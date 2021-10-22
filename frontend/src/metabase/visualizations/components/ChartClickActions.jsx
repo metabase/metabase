@@ -20,7 +20,6 @@ import type {
   ClickAction,
 } from "metabase-types/types/Visualization";
 
-
 // These icons used to be displayed for each row section of actions.
 // We're now just using them as a way to select different sections of actions to style them uniquely.
 // They're not all used, but I've kept them here in case we need these hooks in the future.

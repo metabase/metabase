@@ -4,7 +4,6 @@ import { t, jt } from "ttag";
 import LogoIcon from "metabase/components/LogoIcon";
 import ExternalLink from "metabase/components/ExternalLink";
 
-
 type Props = {
   dark: boolean,
 };

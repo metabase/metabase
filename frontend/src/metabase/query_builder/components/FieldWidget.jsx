@@ -10,8 +10,6 @@ import * as FieldRef from "metabase/lib/query/field_ref";
 import FieldList from "./FieldList";
 import Clearable from "./Clearable";
 
-
-
 export default class FieldWidget extends React.Component {
   constructor(props, context) {
     super(props, context);

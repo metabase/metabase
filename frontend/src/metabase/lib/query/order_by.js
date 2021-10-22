@@ -2,7 +2,6 @@ import { add, update, remove, clear } from "./util";
 
 import type { OrderBy, OrderByClause } from "metabase-types/types/Query";
 
-
 // returns canonical list of OrderBys, with nulls removed
 export function getOrderBys(breakout: ?OrderByClause): OrderBy[] {
   return (breakout || []).filter(b => b != null);

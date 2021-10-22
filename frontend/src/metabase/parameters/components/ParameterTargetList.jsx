@@ -5,7 +5,6 @@ import _ from "underscore";
 import AccordionList from "metabase/components/AccordionList";
 import Icon from "metabase/components/Icon";
 
-
 import type {
   ParameterMappingUIOption,
   ParameterTarget,

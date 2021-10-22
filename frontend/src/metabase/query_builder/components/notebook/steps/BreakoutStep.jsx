@@ -6,7 +6,6 @@ import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";
 
 import ClauseStep from "./ClauseStep";
 
-
 const breakoutTetherOptions = {
   attachment: "top left",
   targetAttachment: "bottom left",

@@ -12,7 +12,6 @@ import ExternalLink from "metabase/components/ExternalLink";
 import StepTitle from "./StepTitle";
 import CollapsedStep from "./CollapsedStep";
 
-
 export default class PreferencesStep extends Component {
   state = { errorMessage: null };
 

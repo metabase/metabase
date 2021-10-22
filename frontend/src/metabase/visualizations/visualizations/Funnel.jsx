@@ -22,9 +22,7 @@ import FunnelNormal from "../components/FunnelNormal";
 import FunnelBar from "../components/FunnelBar";
 import LegendHeader from "../components/LegendHeader";
 
-
 import type { VisualizationProps } from "metabase-types/types/Visualization";
-
 
 const propTypes = {
   headerIcon: PropTypes.shape(iconPropTypes),

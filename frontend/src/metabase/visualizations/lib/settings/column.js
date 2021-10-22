@@ -25,13 +25,11 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import { nestedSettings } from "./nested";
 
-
 // HACK: cyclical dependency causing errors in unit tests
 // import { getVisualizationRaw } from "metabase/visualizations";
 function getVisualizationRaw(...args) {
   return require("metabase/visualizations").getVisualizationRaw(...args);
 }
-
 
 import type { Settings, SettingDef } from "../settings";
 import type { DateStyle, TimeStyle } from "metabase/lib/formatting/date";
@@ -70,7 +68,6 @@ export function columnSettings({
     ...def,
   });
 }
-
 
 export function getGlobalSettingsForColumn(column: Column) {
   const columnSettings = {};

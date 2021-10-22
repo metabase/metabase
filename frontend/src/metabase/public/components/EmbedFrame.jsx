@@ -11,7 +11,6 @@ import Parameters from "metabase/parameters/components/Parameters/Parameters";
 
 import LogoBadge from "./LogoBadge";
 
-
 import "./EmbedFrame.css";
 
 const DEFAULT_OPTIONS = {

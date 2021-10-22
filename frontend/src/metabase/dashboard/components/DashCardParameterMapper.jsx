@@ -6,7 +6,6 @@ import { color } from "metabase/lib/colors";
 
 import DashCardCardParameterMapper from "../containers/DashCardCardParameterMapper";
 
-
 const DashCardParameterMapper = ({ dashcard }) => (
   <div className="relative flex-full flex flex-column layout-centered">
     {dashcard.series && dashcard.series.length > 0 && (

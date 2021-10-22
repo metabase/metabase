@@ -12,7 +12,6 @@ import type {
   ClickActionProps,
 } from "metabase-types/types/Visualization";
 
-
 const AGGREGATIONS = {
   sum: {
     section: "sum",

@@ -19,7 +19,6 @@ import {
   MIN_ROW_HEIGHT,
 } from "metabase/lib/dashboard_grid";
 
-
 import GridLayout from "./grid/GridLayout";
 import { generateMobileLayout } from "./grid/utils";
 import AddSeriesModal from "./AddSeriesModal/AddSeriesModal";

@@ -12,8 +12,6 @@ import NumberPicker from "./NumberPicker";
 import SelectPicker from "./SelectPicker";
 import TextPicker from "./TextPicker";
 
-
-
 import type Filter from "metabase-lib/lib/queries/structured/Filter";
 
 type Props = {

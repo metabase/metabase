@@ -22,7 +22,6 @@ import {
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import MetabaseSettings from "metabase/lib/settings";
 
-
 const PIN_MAP_TYPES = new Set(["pin", "heat", "grid"]);
 
 import { desaturated } from "metabase/lib/colors";

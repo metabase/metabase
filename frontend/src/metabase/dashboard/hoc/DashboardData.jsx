@@ -17,7 +17,6 @@ import * as dashboardActions from "metabase/dashboard/actions";
 import type { Dashboard } from "metabase-types/types/Dashboard";
 import type { Parameter } from "metabase-types/types/Parameter";
 
-
 const mapStateToProps = (state, props) => {
   return {
     dashboard: getDashboardComplete(state, props),

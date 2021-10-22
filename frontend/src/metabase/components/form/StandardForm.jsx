@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import CustomForm from "./CustomForm";
 
-
 const StandardForm = ({ onClose, submitTitle, ...props }) => (
   <CustomForm {...props}>
     {({ values, formFields, Form, FormField, FormFooter }) => (

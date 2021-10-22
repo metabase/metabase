@@ -18,7 +18,6 @@ import ExtendedOptions from "./ExtendedOptions";
 import FilterWidgetList from "./filters/FilterWidgetList";
 import FilterPopover from "./filters/FilterPopover";
 
-
 import type { DatasetQuery } from "metabase-types/types/Card";
 import type { Aggregation, Breakout } from "metabase-types/types/Query";
 import type { Children } from "react";

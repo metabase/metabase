@@ -15,7 +15,6 @@ import {
 
 import GroupSummary from "./GroupSummary";
 
-
 export const GroupSelect = ({
   groups,
   selectedGroupIds = new Set(),

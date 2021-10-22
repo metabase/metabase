@@ -15,7 +15,6 @@ import {
   generateTimeFilterValuesDescriptions,
 } from "metabase/lib/query_time";
 
-
 import type {
   Card as CardObject,
   StructuredDatasetQuery,

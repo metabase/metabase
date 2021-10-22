@@ -14,7 +14,6 @@ import Utils from "metabase/lib/utils";
 import * as Urls from "metabase/lib/urls";
 import Question from "metabase-lib/lib/Question";
 
-
 import type { StructuredQuery, TemplateTag } from "metabase-types/types/Query";
 import type {
   Card,

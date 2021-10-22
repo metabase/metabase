@@ -20,8 +20,6 @@ import ChartWithLegend from "./ChartWithLegend";
 import LegacyChoropleth from "./LegacyChoropleth";
 import LeafletChoropleth from "./LeafletChoropleth";
 
-
-
 // TODO COLOR
 const HEAT_MAP_COLORS = ["#C4E4FF", "#81C5FF", "#51AEFF", "#1E96FF", "#0061B5"];
 const HEAT_MAP_ZERO_COLOR = "#CCC";

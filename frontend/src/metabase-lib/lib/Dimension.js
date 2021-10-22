@@ -24,8 +24,6 @@ import type {
 import type { IconName } from "metabase-types/types";
 import type Aggregation from "./queries/structured/Aggregation";
 
-
-
 /**
  * A dimension option returned by the query_metadata API
  */

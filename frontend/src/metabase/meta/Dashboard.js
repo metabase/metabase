@@ -24,8 +24,6 @@ import type {
   ParameterMappingUIOption,
 } from "metabase-types/types/Parameter";
 
-
-
 export type ParameterSection = {
   id: string,
   name: string,

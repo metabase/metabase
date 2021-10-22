@@ -257,7 +257,6 @@ export default class DimensionList extends Component {
   }
 }
 
-
 export const DimensionPicker = ({
   style,
   className,

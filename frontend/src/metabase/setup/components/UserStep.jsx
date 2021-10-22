@@ -11,7 +11,6 @@ import User from "metabase/entities/users";
 import StepTitle from "./StepTitle";
 import CollapsedStep from "./CollapsedStep";
 
-
 export default class UserStep extends Component {
   static propTypes = {
     stepNumber: PropTypes.number.isRequired,

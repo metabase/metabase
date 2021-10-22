@@ -4,7 +4,6 @@ import cx from "classnames";
 
 import Select, { Option } from "metabase/components/Select";
 
-
 import type {
   FilterOperator,
   FilterOperatorName,

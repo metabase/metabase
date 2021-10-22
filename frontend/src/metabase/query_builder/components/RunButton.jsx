@@ -6,7 +6,6 @@ import cx from "classnames";
 
 import Button from "metabase/components/Button";
 
-
 export default class RunButton extends Component {
   static propTypes = {
     className: PropTypes.string,

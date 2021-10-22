@@ -13,7 +13,6 @@ import routeless from "metabase/hoc/Routeless";
 import OnClickOutsideWrapper from "./OnClickOutsideWrapper";
 import ModalContent from "./ModalContent";
 
-
 function getModalContent(props) {
   if (
     React.Children.count(props.children) > 1 ||
@@ -108,7 +107,6 @@ export class WindowModal extends Component {
     );
   }
 }
-
 
 export class FullPageModal extends Component {
   constructor(props) {

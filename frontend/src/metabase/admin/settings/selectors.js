@@ -24,7 +24,6 @@ import SettingsEmailForm from "./components/SettingsEmailForm";
 import SettingsSetupList from "./components/SettingsSetupList";
 import SettingsSlackForm from "./components/SettingsSlackForm";
 
-
 // This allows plugins to update the settings sections
 function updateSectionsWithPlugins(sections) {
   if (PLUGIN_ADMIN_SETTINGS_UPDATES.length > 0) {

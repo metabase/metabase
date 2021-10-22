@@ -13,7 +13,6 @@ import FieldPane from "./FieldPane";
 import SegmentPane from "./SegmentPane";
 import MetricPane from "./MetricPane";
 
-
 const PANES = {
   database: DatabasePane, // displays either schemas or tables in a database
   schema: SchemaPane, // displays tables in a schema

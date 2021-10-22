@@ -12,7 +12,6 @@ import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { color } from "metabase/lib/colors";
 
-
 // NOTE: replacing these with Collections.ListLoader etc currently fails due to circular dependency
 import EntityListLoader, {
   entityListLoader,

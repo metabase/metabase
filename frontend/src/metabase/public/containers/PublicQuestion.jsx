@@ -35,7 +35,6 @@ import type { ParameterValues } from "metabase-types/types/Parameter";
 import type { Dataset } from "metabase-types/types/Dataset";
 import type { Card } from "metabase-types/types/Card";
 
-
 type Props = {
   params: { uuid?: string, token?: string },
   location: { query: { [key: string]: string } },

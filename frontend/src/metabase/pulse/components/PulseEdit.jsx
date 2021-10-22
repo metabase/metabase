@@ -27,7 +27,6 @@ import PulseEditCards from "./PulseEditCards";
 import PulseEditCollection from "./PulseEditCollection";
 import PulseEditName from "./PulseEditName";
 
-
 @Collections.load({
   id: (state, { pulse, initialCollectionId }) =>
     pulse.collection_id || initialCollectionId,

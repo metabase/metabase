@@ -5,7 +5,6 @@ import ExpressionWidget from "metabase/query_builder/components/expressions/Expr
 
 import ClauseStep from "./ClauseStep";
 
-
 export default function ExpressionStep({
   color,
   query,

@@ -6,7 +6,6 @@ import { isObscured } from "metabase/lib/dom";
 
 import Tooltip from "./Tooltip";
 
-
 // higher order component that takes a component which takes props "isOpen" and optionally "onClose"
 // and returns a component that renders a <a> element "trigger", and tracks whether that component is open or not
 export default ComposedComponent =>

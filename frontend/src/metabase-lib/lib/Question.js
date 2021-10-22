@@ -71,8 +71,6 @@ import type { TableId } from "metabase-types/types/Table";
 import type { DatabaseId } from "metabase-types/types/Database";
 import type { ClickObject } from "metabase-types/types/Visualization";
 
-
-
 type QuestionUpdateFn = (q: Question) => ?Promise<void>;
 
 /**

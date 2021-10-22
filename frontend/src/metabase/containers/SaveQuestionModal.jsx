@@ -11,7 +11,6 @@ import * as Q_DEPRECATED from "metabase/lib/query";
 import { generateQueryDescription } from "metabase/lib/query/description";
 import validate from "metabase/lib/validate";
 
-
 import "./SaveQuestionModal.css";
 
 export default class SaveQuestionModal extends Component {

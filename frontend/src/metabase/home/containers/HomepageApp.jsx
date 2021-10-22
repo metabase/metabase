@@ -14,7 +14,6 @@ import NextStep from "../components/NextStep";
 import * as homepageActions from "../actions";
 import { getActivity, getRecentViews, getUser } from "../selectors";
 
-
 const mapStateToProps = (state, props) => ({
   activity: getActivity(state),
   recentViews: getRecentViews(state),

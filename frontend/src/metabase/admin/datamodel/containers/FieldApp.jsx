@@ -10,7 +10,6 @@ import { connect } from "react-redux";
 import _ from "underscore";
 import { t } from "ttag";
 
-
 // COMPONENTS
 
 import Icon from "metabase/components/Icon";

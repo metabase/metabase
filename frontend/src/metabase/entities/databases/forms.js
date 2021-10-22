@@ -10,7 +10,6 @@ import CacheFieldValuesScheduleWidget from "metabase/admin/databases/components/
 import getFieldsForBigQuery from "./big-query-fields";
 import getFieldsForMongo from "./mongo-fields";
 
-
 const DATABASE_DETAIL_OVERRIDES = {
   "tunnel-enabled": () => ({
     title: t`Use an SSH-tunnel for database connections`,

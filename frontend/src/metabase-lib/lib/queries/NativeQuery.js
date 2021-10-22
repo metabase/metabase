@@ -25,8 +25,6 @@ import type {
 import type { TemplateTags, TemplateTag } from "metabase-types/types/Query";
 import type { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
 
-
-
 type DimensionFilter = (dimension: Dimension) => boolean;
 type VariableFilter = (variable: Variable) => boolean;
 

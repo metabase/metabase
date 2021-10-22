@@ -15,9 +15,6 @@ import FieldList from "./FieldList";
 import QueryDefinitionTooltip from "./QueryDefinitionTooltip";
 import ExpressionPopover from "./ExpressionPopover";
 
-
-
-
 const COMMON_SECTION_NAME = t`Common Metrics`;
 const BASIC_SECTION_NAME = t`Basic Metrics`;
 const CUSTOM_SECTION_NAME = t`Custom Expression`;

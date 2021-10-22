@@ -4,7 +4,6 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
 
-
 import QuestionSelect from "metabase/containers/QuestionSelect";
 
 // import Query from "metabase/lib/query";

@@ -9,7 +9,6 @@ import type {
 import type { Field, FieldValues } from "metabase-types/types/Field";
 import type { Value } from "metabase-types/types/Dataset";
 
-
 // returns canonical list of Fields, with nulls removed
 export function getFields(fields: ?FieldsClause): FieldReference[] {
   return (fields || []).filter(b => b != null);

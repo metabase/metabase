@@ -28,7 +28,6 @@ import Ellipsified from "metabase/components/Ellipsified";
 
 import MiniBar from "./MiniBar";
 
-
 const HEADER_HEIGHT = 36;
 const ROW_HEIGHT = 36;
 const MIN_COLUMN_WIDTH = ROW_HEIGHT;

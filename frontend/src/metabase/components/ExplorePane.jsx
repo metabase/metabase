@@ -11,7 +11,6 @@ import { Grid, GridItem } from "metabase/components/Grid";
 import Card from "metabase/components/Card";
 import { color } from "metabase/lib/colors";
 
-
 import type { DatabaseCandidates, Candidate } from "metabase-types/types/Auto";
 
 const DEFAULT_TITLE = t`Hi, Metabot here.`;

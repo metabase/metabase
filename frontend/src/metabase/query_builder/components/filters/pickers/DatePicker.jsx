@@ -13,7 +13,6 @@ import RelativeDatePicker, { DATE_PERIODS } from "./RelativeDatePicker";
 import DateOperatorSelector from "../DateOperatorSelector";
 import DateUnitSelector from "../DateUnitSelector";
 
-
 import type {
   FieldFilter,
   TimeIntervalFilter,

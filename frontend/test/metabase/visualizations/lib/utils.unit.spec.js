@@ -9,7 +9,6 @@ import {
   getDefaultDimensionsAndMetrics,
 } from "metabase/visualizations/lib/utils";
 
-
 // TODO Atte Keinänen 5/31/17 Rewrite tests using metabase-lib methods instead of a raw format
 
 const baseQuery = {

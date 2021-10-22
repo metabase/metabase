@@ -13,7 +13,6 @@ import DefaultMode from "../components/modes/DefaultMode";
 import type { QueryMode } from "metabase-types/types/Visualization";
 import type Question from "metabase-lib/lib/Question";
 
-
 const isPKFilter = (filters, query) => {
   const sourceTablePKFields =
     query?.table()?.fields.filter(field => field.isPK()) || [];

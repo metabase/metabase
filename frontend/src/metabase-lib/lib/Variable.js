@@ -4,7 +4,6 @@ import type Metadata from "./metadata/Metadata";
 import type Query from "./queries/Query";
 import type { TemplateTag } from "metabase-types/types/Query";
 
-
 export default class Variable {
   _args: any;
   _metadata: ?Metadata;

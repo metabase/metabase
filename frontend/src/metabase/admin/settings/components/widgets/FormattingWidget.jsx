@@ -6,7 +6,6 @@ import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
 
 import { TYPE } from "metabase/lib/types";
 
-
 const SETTING_TYPES = [
   {
     name: t`Dates and Times`,

@@ -6,7 +6,6 @@ import NumericInput from "metabase/components/NumericInput";
 
 import DateUnitSelector from "../DateUnitSelector";
 
-
 import type {
   TimeIntervalFilter,
   RelativeDatetimeUnit,

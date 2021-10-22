@@ -14,7 +14,6 @@ import NoDatabasesEmptyState from "metabase/reference/databases/NoDatabasesEmpty
 import ReferenceHeader from "../components/ReferenceHeader";
 import { getDatabases, getError, getLoading } from "../selectors";
 
-
 const mapStateToProps = (state, props) => ({
   entities: getDatabases(state, props),
   loading: getLoading(state, props),

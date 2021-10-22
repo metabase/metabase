@@ -5,7 +5,6 @@ import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 
-
 const SelectButton = ({ className, style, children, hasValue = true }) => (
   <div
     style={style}

@@ -10,7 +10,6 @@ import {
   StringColumn,
 } from "../__support__/visualizations";
 
-
 describe("RowChart", () => {
   let element;
 

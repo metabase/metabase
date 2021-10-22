@@ -11,7 +11,6 @@ import Modal from "metabase/components/Modal";
 import { PermissionsApi, SettingsApi } from "metabase/services";
 import { isSpecialGroup } from "metabase/lib/groups";
 
-
 import SettingToggle from "./SettingToggle";
 
 type Props = {

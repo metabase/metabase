@@ -13,7 +13,6 @@ import LeafletTilePinMap from "./LeafletTilePinMap";
 import LeafletHeatMap from "./LeafletHeatMap";
 import LeafletGridHeatMap from "./LeafletGridHeatMap";
 
-
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 
 const WORLD_BOUNDS = [[-90, -180], [90, 180]];

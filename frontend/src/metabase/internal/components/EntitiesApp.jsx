@@ -36,7 +36,6 @@ export default class EntitiesApp extends React.Component {
   }
 }
 
-
 const EntityListApp = ({ params: { entityType } }) => (
   <EntityListLoader entityType={entityType} wrapped>
     {({ list }) => (

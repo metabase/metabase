@@ -23,8 +23,6 @@ import type { FilterOperator } from "metabase-types/types/Metadata";
 import type StructuredQuery from "../StructuredQuery";
 import type Dimension from "../../Dimension";
 
-
-
 export default class Filter extends MBQLClause {
   /**
    * Replaces the filter in the parent query and returns the new StructuredQuery

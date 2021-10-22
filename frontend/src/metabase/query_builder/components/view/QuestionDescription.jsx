@@ -6,7 +6,6 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import QuestionDataSource from "./QuestionDataSource";
 
-
 const QuestionDescription = ({ question, isObjectDetail }) => {
   const query = question.query();
   if (query instanceof StructuredQuery) {

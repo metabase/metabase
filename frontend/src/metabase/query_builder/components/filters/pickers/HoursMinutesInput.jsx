@@ -7,7 +7,6 @@ import NumericInput from "metabase/components/NumericInput";
 import Icon from "metabase/components/Icon";
 import { isLocale24Hour } from "metabase/lib/i18n";
 
-
 const HoursMinutesInput = ({
   hours,
   minutes,

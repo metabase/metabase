@@ -2,7 +2,6 @@
 
 import { combineReducers } from "redux";
 
-
 /* admin */
 import admin from "metabase/admin/admin";
 

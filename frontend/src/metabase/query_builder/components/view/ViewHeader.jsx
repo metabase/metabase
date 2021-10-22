@@ -24,7 +24,6 @@ import NativeQueryButton from "./NativeQueryButton";
 import RunButtonWithTooltip from "../RunButtonWithTooltip";
 import { SavedQuestionHeaderButtonContainer } from "./ViewHeader.styled";
 
-
 const viewTitleHeaderPropTypes = {
   question: PropTypes.object.isRequired,
   originalQuestion: PropTypes.object,

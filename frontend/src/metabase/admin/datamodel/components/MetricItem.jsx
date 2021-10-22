@@ -6,7 +6,6 @@ import { formatQueryDescription } from "metabase/lib/query/description";
 
 import ObjectActionSelect from "./ObjectActionSelect";
 
-
 export default class MetricItem extends Component {
   static propTypes = {
     metric: PropTypes.object.isRequired,

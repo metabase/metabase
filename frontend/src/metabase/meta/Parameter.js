@@ -34,7 +34,6 @@ import type { FieldId } from "metabase-types/types/Field";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
 import type Field from "metabase-lib/lib/metadata/Field";
 
-
 type DimensionFilter = (dimension: Dimension) => boolean;
 type TemplateTagFilter = (tag: TemplateTag) => boolean;
 type FieldPredicate = (field: Field) => boolean;

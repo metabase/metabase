@@ -6,7 +6,6 @@ import FilterPopover from "metabase/query_builder/components/filters/FilterPopov
 
 import ClauseStep from "./ClauseStep";
 
-
 export default function FilterStep({
   color,
   query,

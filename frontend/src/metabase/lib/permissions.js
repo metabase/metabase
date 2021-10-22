@@ -1,7 +1,6 @@
 import { getIn, setIn } from "icepick";
 import _ from "underscore";
 
-
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Database from "metabase-lib/lib/metadata/Database";
 import Table from "metabase-lib/lib/metadata/Table";

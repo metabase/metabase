@@ -5,7 +5,6 @@ import cx from "classnames";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { getColorScale } from "metabase/lib/colors";
 
-
 import type { ColorString } from "metabase/lib/colors";
 
 type Props = {

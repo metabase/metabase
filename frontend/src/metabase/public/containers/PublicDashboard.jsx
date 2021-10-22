@@ -33,7 +33,6 @@ import EmbedFrame from "../components/EmbedFrame";
 import type { Dashboard } from "metabase-types/types/Dashboard";
 import type { Parameter } from "metabase-types/types/Parameter";
 
-
 const mapStateToProps = (state, props) => {
   return {
     metadata: getMetadata(state, props),

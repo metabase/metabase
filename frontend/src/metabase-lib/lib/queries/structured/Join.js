@@ -21,7 +21,6 @@ import type {
   ConcreteField,
 } from "metabase-types/types/Query";
 
-
 const JOIN_STRATEGY_OPTIONS = [
   { value: "left-join", name: t`Left outer join`, icon: "join_left_outer" }, // default
   { value: "right-join", name: t`Right outer join`, icon: "join_right_outer" },

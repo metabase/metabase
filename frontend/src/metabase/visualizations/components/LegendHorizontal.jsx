@@ -7,7 +7,6 @@ import cx from "classnames";
 import styles from "./Legend.css";
 import LegendItem from "./LegendItem";
 
-
 export default class LegendHorizontal extends Component {
   render() {
     const { className, titles, colors, hovered, onHoverChange } = this.props;

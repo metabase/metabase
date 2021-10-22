@@ -9,7 +9,6 @@ import type {
   ClickActionProps,
 } from "metabase-types/types/Visualization";
 
-
 export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
   // removes post-aggregation filter stage
   clicked = clicked && question.topLevelClicked(clicked);

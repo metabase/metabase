@@ -1,7 +1,6 @@
 import React, { Component } from "react";
 import cx from "classnames";
 
-
 import Ellipsified from "metabase/components/Ellipsified";
 import { formatValue } from "metabase/lib/formatting";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";

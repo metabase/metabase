@@ -15,7 +15,6 @@ import ExpressionWidget from "./expressions/ExpressionWidget";
 import LimitWidget from "./LimitWidget";
 import SortWidget from "./SortWidget";
 
-
 import type { DatasetQuery } from "metabase-types/types/Card";
 import type { GuiQueryEditorFeatures } from "./GuiQueryEditor";
 

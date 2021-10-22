@@ -21,7 +21,6 @@ import {
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { isNumeric, isString } from "metabase/lib/schema_metadata";
 
-
 const NUMBER_OPERATOR_NAMES = {
   "<": t`is less than`,
   ">": t`is greater than`,

@@ -25,7 +25,6 @@ import { QuestionSummarizeWidget } from "./QuestionSummaries";
 import QuestionRowCount from "./QuestionRowCount";
 import QuestionLastUpdated from "./QuestionLastUpdated";
 
-
 const ViewFooter = ({
   question,
   result,

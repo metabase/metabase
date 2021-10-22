@@ -1,7 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom";
 
-
 import { delay } from "metabase/lib/promise";
 import { color } from "metabase/lib/colors";
 import Visualization from "metabase/visualizations/components/Visualization";

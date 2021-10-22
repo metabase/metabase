@@ -10,7 +10,6 @@ import S from "./List.css";
 import Icon from "./Icon";
 import Ellipsified from "./Ellipsified";
 
-
 //TODO: extend this to support functionality required for questions
 const ListItem = ({ index, name, description, placeholder, url, icon }) => (
   <Link to={url} className="text-brand-hover">

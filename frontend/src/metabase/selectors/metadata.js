@@ -17,8 +17,6 @@ import { getFieldValues, getRemappings } from "metabase/lib/query/field";
 
 import shallowEqual from "./shallowEqual";
 
-
-
 // fully nomalized, raw "entities"
 export const getNormalizedDatabases = state => state.entities.databases;
 export const getNormalizedSchemas = state => state.entities.schemas;

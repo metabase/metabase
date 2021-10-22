@@ -8,8 +8,6 @@ import Ellipsified from "metabase/components/Ellipsified";
 
 import S from "./Breadcrumbs.css";
 
-
-
 // TODO: merge with BrowserCrumbs
 
 export default class Breadcrumbs extends Component {
