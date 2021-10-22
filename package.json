@@ -135,7 +135,7 @@
     "eslint-import-resolver-webpack": "^0.8.3",
     "eslint-loader": "4.0.2",
     "eslint-plugin-cypress": "^2.7.0",
-    "eslint-plugin-import": "^2.22.0",
+    "eslint-plugin-import": "^2.25.2",
     "eslint-plugin-react": "^7.22.0",
     "eslint-plugin-react-hooks": "^4.2.0",
     "fs-promise": "^2.0.2",
