@@ -7,6 +7,7 @@ export const createTracker = store => {
   if (isTrackingEnabled()) {
     createGoogleAnalyticsTracker();
     createSnowplowTracker(store);
+    document.body.addEventListener("click", handleStructEventClick, true);
   }
 };
 
@@ -27,10 +28,6 @@ export const trackSchemaEvent = (schema, data) => {
   if (isTrackingEnabled() && schema) {
     trackSnowplowSchemaEvent(schema, data);
   }
-};
-
-export const enableDataAttributesTracking = () => {
-  document.body.addEventListener("click", handleStructEventClick, true);
 };
 
 const isTrackingEnabled = () => {
