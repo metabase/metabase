@@ -8,6 +8,34 @@
     "curly": [1, "all"],
     "eqeqeq": [1, "smart"],
     "import/no-commonjs": 1,
+    "import/order": [
+      "error",
+      {
+        "newlines-between": "always",
+        "groups": [
+          "builtin",
+          "external",
+          "internal",
+          ["parent", "sibling", "index"],
+          "type"
+        ],
+        "pathGroups": [
+          {
+            "pattern": "~/types/**",
+            "group": "type"
+          },
+          {
+            "pattern": "**/types",
+            "group": "type"
+          },
+          {
+            "pattern": "~/**",
+            "group": "builtin"
+          }
+        ],
+        "pathGroupsExcludedImportTypes": ["type"]
+      }
+    ],
     "no-console": 0,
     "react/no-is-mounted": 2,
     "react/prefer-es6-class": 2,
