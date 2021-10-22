@@ -9,7 +9,7 @@ import Modal from "metabase/components/Modal";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 
 import { getVisualizationRaw } from "metabase/visualizations";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
 
 import {
@@ -112,7 +112,7 @@ export default class DashboardGrid extends Component {
 
     if (changes.length > 0) {
       setMultipleDashCardAttributes(changes);
-      MetabaseAnalytics.trackEvent("Dashboard", "Layout Changed");
+      MetabaseAnalytics.trackStructEvent("Dashboard", "Layout Changed");
     }
   };
 

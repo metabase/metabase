@@ -9,7 +9,7 @@ import Form from "metabase/containers/Form";
 import Icon from "metabase/components/Icon";
 
 import MetabaseSettings from "metabase/lib/settings";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import { SessionApi } from "metabase/services";
 
@@ -51,7 +51,7 @@ export default class PasswordResetApp extends Component {
       password: password,
     });
 
-    MetabaseAnalytics.trackEvent("Auth", "Password Reset");
+    MetabaseAnalytics.trackStructEvent("Auth", "Password Reset");
     this.setState({ resetSuccess: true });
   };
 

@@ -19,7 +19,7 @@ import {
   SortableElement,
 } from "metabase/components/sortable";
 
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { isNumeric, isString } from "metabase/lib/schema_metadata";
 
 import _ from "underscore";
@@ -144,7 +144,7 @@ export default class ChartSettingsTableFormatting extends React.Component {
           }}
           onRemove={index => {
             onChange([...value.slice(0, index), ...value.slice(index + 1)]);
-            MetabaseAnalytics.trackEvent(
+            MetabaseAnalytics.trackStructEvent(
               "Chart Settings",
               "Table Formatting",
               "Remove Rule",
@@ -154,7 +154,7 @@ export default class ChartSettingsTableFormatting extends React.Component {
             const newValue = [...value];
             newValue.splice(to, 0, newValue.splice(from, 1)[0]);
             onChange(newValue);
-            MetabaseAnalytics.trackEvent(
+            MetabaseAnalytics.trackStructEvent(
               "Chart Settings",
               "Table Formatting",
               "Move Rule",
@@ -396,7 +396,7 @@ const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => {
           <ColorRangePicker
             value={rule.colors}
             onChange={colors => {
-              MetabaseAnalytics.trackEvent(
+              MetabaseAnalytics.trackStructEvent(
                 "Chart Settings",
                 "Table Formatting",
                 "Select Range  Colors",

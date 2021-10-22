@@ -13,7 +13,7 @@ import { push, replace } from "react-router-redux";
 import { setErrorPage } from "metabase/redux/app";
 import { loadMetadataForQuery } from "metabase/redux/metadata";
 
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { startTimer } from "metabase/lib/performance";
 import {
   loadCard,
@@ -412,7 +412,7 @@ export const initializeQB = (location, params, queryParams) => {
           }
         }
 
-        MetabaseAnalytics.trackEvent(
+        MetabaseAnalytics.trackStructEvent(
           "QueryBuilder",
           "Query Loaded",
           card.dataset_query.type,
@@ -424,7 +424,7 @@ export const initializeQB = (location, params, queryParams) => {
         // if this is the users first time loading a saved card on the QB then show them the newb modal
         if (cardId && currentUser.is_qbnewb) {
           uiControls.isShowingNewbModal = true;
-          MetabaseAnalytics.trackEvent("QueryBuilder", "Show Newb Modal");
+          MetabaseAnalytics.trackStructEvent("QueryBuilder", "Show Newb Modal");
         }
 
         if (card.archived) {
@@ -483,7 +483,7 @@ export const initializeQB = (location, params, queryParams) => {
         }
       }
 
-      MetabaseAnalytics.trackEvent(
+      MetabaseAnalytics.trackStructEvent(
         "QueryBuilder",
         "Query Started",
         card.dataset_query.type,
@@ -564,7 +564,7 @@ export const initializeQB = (location, params, queryParams) => {
 
 export const TOGGLE_DATA_REFERENCE = "metabase/qb/TOGGLE_DATA_REFERENCE";
 export const toggleDataReference = createAction(TOGGLE_DATA_REFERENCE, () => {
-  MetabaseAnalytics.trackEvent("QueryBuilder", "Toggle Data Reference");
+  MetabaseAnalytics.trackStructEvent("QueryBuilder", "Toggle Data Reference");
 });
 
 export const TOGGLE_TEMPLATE_TAGS_EDITOR =
@@ -572,7 +572,10 @@ export const TOGGLE_TEMPLATE_TAGS_EDITOR =
 export const toggleTemplateTagsEditor = createAction(
   TOGGLE_TEMPLATE_TAGS_EDITOR,
   () => {
-    MetabaseAnalytics.trackEvent("QueryBuilder", "Toggle Template Tags Editor");
+    MetabaseAnalytics.trackStructEvent(
+      "QueryBuilder",
+      "Toggle Template Tags Editor",
+    );
   },
 );
 
@@ -585,7 +588,7 @@ export const setIsShowingTemplateTagsEditor = isShowingTemplateTagsEditor => ({
 
 export const TOGGLE_SNIPPET_SIDEBAR = "metabase/qb/TOGGLE_SNIPPET_SIDEBAR";
 export const toggleSnippetSidebar = createAction(TOGGLE_SNIPPET_SIDEBAR, () => {
-  MetabaseAnalytics.trackEvent("QueryBuilder", "Toggle Snippet Sidebar");
+  MetabaseAnalytics.trackStructEvent("QueryBuilder", "Toggle Snippet Sidebar");
 });
 
 export const SET_IS_SHOWING_SNIPPET_SIDEBAR =
@@ -654,7 +657,7 @@ export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {
     // persist the fact that this user has seen the NewbModal
     const { currentUser } = getState();
     await UserApi.update_qbnewb({ id: currentUser.id });
-    MetabaseAnalytics.trackEvent("QueryBuilder", "Close Newb Modal");
+    MetabaseAnalytics.trackStructEvent("QueryBuilder", "Close Newb Modal");
   };
 });
 
@@ -1018,7 +1021,7 @@ export const apiCreateQuestion = question => {
     dispatch(setRequestUnloaded(["entities", "databases"]));
 
     dispatch(updateUrl(createdQuestion.card(), { dirty: false }));
-    MetabaseAnalytics.trackEvent(
+    MetabaseAnalytics.trackStructEvent(
       "QueryBuilder",
       "Create Card",
       createdQuestion.query().datasetQuery().type,
@@ -1058,7 +1061,7 @@ export const apiUpdateQuestion = question => {
     // so we want the databases list to be re-fetched next time we hit "New Question" so it shows up
     dispatch(setRequestUnloaded(["entities", "databases"]));
 
-    MetabaseAnalytics.trackEvent(
+    MetabaseAnalytics.trackStructEvent(
       "QueryBuilder",
       "Update Card",
       updatedQuestion.query().datasetQuery().type,
@@ -1123,7 +1126,7 @@ export const runQuestionQuery = ({
       })
       .then(queryResults => {
         queryTimer(duration =>
-          MetabaseAnalytics.trackEvent(
+          MetabaseAnalytics.trackStructEvent(
             "QueryBuilder",
             "Run Query",
             question.query().datasetQuery().type,

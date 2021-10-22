@@ -11,7 +11,7 @@ import CardTagEditor from "./CardTagEditor";
 import TagEditorHelp from "./TagEditorHelp";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import type { DatasetQuery } from "metabase-types/types/Card";
@@ -53,7 +53,7 @@ export default class TagEditorSidebar extends React.Component {
 
   setSection(section) {
     this.setState({ section: section });
-    MetabaseAnalytics.trackEvent(
+    MetabaseAnalytics.trackStructEvent(
       "QueryBuilder",
       "Template Tag Editor Section Change",
       section,
