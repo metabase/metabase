@@ -3,12 +3,11 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
-import SegmentSidebar from "./SegmentSidebar";
 import SidebarLayout from "metabase/components/SidebarLayout";
 import SegmentQuestions from "metabase/reference/segments/SegmentQuestions";
-
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
+import Questions from "metabase/entities/questions";
 
 import {
   getUser,
@@ -17,8 +16,7 @@ import {
   getDatabaseId,
   getIsEditing,
 } from "../selectors";
-
-import Questions from "metabase/entities/questions";
+import SegmentSidebar from "./SegmentSidebar";
 
 const mapStateToProps = (state, props) => ({
   user: getUser(state, props),

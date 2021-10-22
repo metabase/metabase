@@ -10,6 +10,7 @@ import { StringColumn, NumberColumn } from "../__support__/visualizations";
 
 import { TYPE } from "metabase/lib/types";
 
+
 describe("visualization.lib.timeseries", () => {
   describe("dimensionIsTimeseries", () => {
     // examples from https://en.wikipedia.org/wiki/ISO_8601

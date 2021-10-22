@@ -1,13 +1,12 @@
 import React from "react";
-import { renderWithProviders, screen } from "__support__/ui";
 import userEvent from "@testing-library/user-event";
 import mock from "xhr-mock";
 
+import { renderWithProviders, screen } from "__support__/ui";
 import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
 import Question from "metabase-lib/lib/Question";
 import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_CACHING } from "metabase/plugins";
-
 import {
   SAMPLE_DATASET,
   ORDERS,

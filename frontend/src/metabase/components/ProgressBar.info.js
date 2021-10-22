@@ -1,4 +1,5 @@
 import React from "react";
+
 import ProgressBar from "metabase/components/ProgressBar";
 
 export const component = ProgressBar;

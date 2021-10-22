@@ -1,20 +1,17 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
-import Icon from "metabase/components/Icon";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import SelectButton from "./SelectButton";
-
 import _ from "underscore";
 import cx from "classnames";
-
-import AccordionList from "./AccordionList";
 import { createSelector } from "reselect";
 
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
-
 import Uncontrollable from "metabase/hoc/Uncontrollable";
+
+import AccordionList from "./AccordionList";
+import SelectButton from "./SelectButton";
 
 const MIN_ICON_WIDTH = 20;
 

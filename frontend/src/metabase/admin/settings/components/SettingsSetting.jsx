@@ -2,10 +2,9 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { assocIn } from "icepick";
-
-import SettingHeader from "./SettingHeader";
 import { t } from "ttag";
 
+import SettingHeader from "./SettingHeader";
 import SettingInput from "./widgets/SettingInput";
 import SettingNumber from "./widgets/SettingNumber";
 import SettingPassword from "./widgets/SettingPassword";

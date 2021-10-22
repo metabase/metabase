@@ -3,18 +3,18 @@ import React from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import { t } from "ttag";
-import * as MetabaseCore from "metabase/lib/core";
-import { isFK } from "metabase/lib/types";
-
 import { getIn } from "icepick";
+import cx from "classnames";
 
+import * as MetabaseCore from "metabase/lib/core";
 import S from "metabase/components/List.css";
-import F from "./Field.css";
-
 import Select from "metabase/components/Select";
 import Icon from "metabase/components/Icon";
 
-import cx from "classnames";
+import F from "./Field.css";
+
+import { isFK } from "metabase/lib/types";
+
 
 const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
   <div className={cx(S.item, "pt1", "border-top")}>

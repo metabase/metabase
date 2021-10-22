@@ -1,4 +1,5 @@
 import { assoc, dissoc, assocIn, updateIn, chain, merge } from "icepick";
+
 import { handleActions, combineReducers } from "metabase/lib/redux";
 
 import {
@@ -31,7 +32,6 @@ import {
   SET_SIDEBAR,
   CLOSE_SIDEBAR,
 } from "./actions";
-
 import { isVirtualDashCard, syncParametersAndEmbeddingParams } from "./utils";
 
 const dashboardId = handleActions(

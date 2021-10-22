@@ -1,3 +1,6 @@
+import _ from "underscore";
+import { createSelector } from "reselect";
+
 import { createEntity } from "metabase/lib/entities";
 import {
   createThunkAction,
@@ -6,27 +9,19 @@ import {
   withCachedDataAndRequestState,
   withNormalize,
 } from "metabase/lib/redux";
-import _ from "underscore";
-
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
-
-import { createSelector } from "reselect";
-
 import { MetabaseApi } from "metabase/services";
 import { TableSchema } from "metabase/schema";
-
 import Metrics from "metabase/entities/metrics";
 import Segments from "metabase/entities/segments";
 import Fields from "metabase/entities/fields";
 import Questions from "metabase/entities/questions";
-
 import { GET, PUT } from "metabase/lib/api";
 import {
   convertSavedQuestionToVirtualTable,
   getQuestionVirtualTableId,
 } from "metabase/lib/saved-questions";
-
 import { getMetadata } from "metabase/selectors/metadata";
 
 const listTables = GET("/api/table");

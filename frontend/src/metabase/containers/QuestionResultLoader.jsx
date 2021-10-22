@@ -1,11 +1,12 @@
 import React from "react";
 import PropTypes from "prop-types";
+
 import { defer } from "metabase/lib/promise";
+import Question from "metabase-lib/lib/Question";
 
 import type { Dataset } from "metabase-types/types/Dataset";
 import type { RawSeries } from "metabase-types/types/Visualization";
 
-import Question from "metabase-lib/lib/Question";
 
 export type ChildProps = {
   loading: boolean,

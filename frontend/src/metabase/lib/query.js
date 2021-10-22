@@ -1,4 +1,5 @@
 import _ from "underscore";
+
 import Utils from "metabase/lib/utils";
 
 import * as QUERY from "./query/query";

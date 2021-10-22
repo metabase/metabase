@@ -1,11 +1,9 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-
 import { t } from "ttag";
 import _ from "underscore";
 
 import { color, normal } from "metabase/lib/colors";
-
 import ColorPicker from "metabase/components/ColorPicker";
 import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";

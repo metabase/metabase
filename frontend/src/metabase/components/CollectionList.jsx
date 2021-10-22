@@ -4,7 +4,6 @@ import { connect } from "react-redux";
 
 import CollectionItem from "metabase/components/CollectionItem";
 import { Grid, GridItem } from "metabase/components/Grid";
-
 import { getUser } from "metabase/selectors/user";
 
 const propTypes = {

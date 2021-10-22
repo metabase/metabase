@@ -1,4 +1,5 @@
 import React from "react";
+
 import { Position, Absolute, Relative } from "metabase/components/Position";
 
 export const component = Position;

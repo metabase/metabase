@@ -1,6 +1,7 @@
+import _ from "underscore";
+
 import { open } from "metabase/lib/dom";
 
-import _ from "underscore";
 
 import type { ClickAction } from "metabase-types/types/Visualization";
 

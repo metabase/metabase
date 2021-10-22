@@ -1,13 +1,13 @@
-import MBQLClause from "./MBQLClause";
 
 import { t } from "ttag";
 
-import { TYPE } from "metabase/lib/types";
 
 import * as AGGREGATION from "metabase/lib/query/aggregation";
 
+import MBQLClause from "./MBQLClause";
 import { AggregationDimension } from "../../Dimension";
 
+import { TYPE } from "metabase/lib/types";
 import type { Aggregation as AggregationObject } from "metabase-types/types/Query";
 import type StructuredQuery from "../StructuredQuery";
 import type Dimension from "../../Dimension";

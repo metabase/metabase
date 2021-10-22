@@ -1,11 +1,10 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
-
 import ResizeObserver from "resize-observer-polyfill";
-
 import cx from "classnames";
 import _ from "underscore";
+
 import { isCypressActive } from "metabase/env";
 
 // After adding throttling for resize re-renders, our Cypress tests became flaky

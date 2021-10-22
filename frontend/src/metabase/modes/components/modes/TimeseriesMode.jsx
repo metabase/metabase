@@ -3,9 +3,9 @@ import React from "react";
 // import TimeseriesGroupingWidget
 //     from "metabase/modes/components/TimeseriesGroupingWidget";
 import TimeseriesFilterWidget from "metabase/modes/components/TimeseriesFilterWidget";
+import TimeseriesGroupingWidget from "metabase/modes/components/TimeseriesGroupingWidget";
 
 import { getDefaultDrills } from "../drill";
-
 import PivotByCategoryDrill from "../drill/PivotByCategoryDrill";
 import PivotByLocationDrill from "../drill/PivotByLocationDrill";
 
@@ -14,7 +14,6 @@ import type {
   Card as CardObject,
   DatasetQuery,
 } from "metabase-types/types/Card";
-import TimeseriesGroupingWidget from "metabase/modes/components/TimeseriesGroupingWidget";
 
 type Props = {
   lastRunCard: CardObject,

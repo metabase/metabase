@@ -1,8 +1,8 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import moment from "moment";
 
 import Calendar from "metabase/components/Calendar";
-import moment from "moment";
 
 const SEPARATOR = "~"; // URL-safe
 

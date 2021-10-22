@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import type {
   ClickAction,
   ClickActionProps,

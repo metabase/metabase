@@ -1,11 +1,7 @@
-import Base from "./Base";
 
 import moment from "moment";
 
 import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
-
-import Dimension from "../Dimension";
-
 import { formatField, stripId } from "metabase/lib/formatting";
 import { getFieldValues } from "metabase/lib/query/field";
 import {
@@ -33,6 +29,9 @@ import {
   getIconForField,
   getFilterOperators,
 } from "metabase/lib/schema_metadata";
+
+import Dimension from "../Dimension";
+import Base from "./Base";
 
 /**
  * @typedef { import("./metadata").FieldValues } FieldValues

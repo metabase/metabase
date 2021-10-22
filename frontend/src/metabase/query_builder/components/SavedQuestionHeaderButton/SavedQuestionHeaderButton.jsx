@@ -2,6 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 
 import { PLUGIN_MODERATION } from "metabase/plugins";
+
 import { HeaderButton } from "./SavedQuestionHeaderButton.styled";
 
 export default SavedQuestionHeaderButton;

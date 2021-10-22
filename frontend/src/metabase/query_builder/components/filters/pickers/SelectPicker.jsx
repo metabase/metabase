@@ -1,13 +1,13 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import cx from "classnames";
+
 import CheckBox from "metabase/components/CheckBox";
 import ListSearchField from "metabase/components/ListSearchField";
-
 import { capitalize } from "metabase/lib/formatting";
 import { createMultiwordSearchRegex } from "metabase/lib/string";
 
-import cx from "classnames";
 
 type SelectOption = {
   name: string,

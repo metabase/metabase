@@ -1,5 +1,8 @@
 /* eslint-disable react/prop-types */
 import React, { useState } from "react";
+import userEvent from "@testing-library/user-event";
+import xhrMock from "xhr-mock";
+
 import {
   renderWithProviders,
   screen,
@@ -7,14 +10,13 @@ import {
   within,
   waitForElementToBeRemoved,
 } from "__support__/ui";
-import userEvent from "@testing-library/user-event";
-import xhrMock from "xhr-mock";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import {
   ORDERS,
   PRODUCTS,
   SAMPLE_DATASET,
 } from "__support__/sample_dataset_fixture";
+
 import JoinStep from "./JoinStep";
 
 // Workaround for timeouts on CI

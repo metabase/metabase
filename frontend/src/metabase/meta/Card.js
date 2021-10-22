@@ -1,3 +1,6 @@
+import _ from "underscore";
+import { assoc, updateIn } from "icepick";
+
 import {
   getTemplateTagParameters,
   getParameterTargetField,
@@ -5,15 +8,12 @@ import {
   normalizeParameterValue,
   getValuePopulatedParameters,
 } from "metabase/meta/Parameter";
-
 import * as Query from "metabase/lib/query/query";
 import * as Q_DEPRECATED from "metabase/lib/query"; // legacy
 import Utils from "metabase/lib/utils";
 import * as Urls from "metabase/lib/urls";
 import Question from "metabase-lib/lib/Question";
 
-import _ from "underscore";
-import { assoc, updateIn } from "icepick";
 
 import type { StructuredQuery, TemplateTag } from "metabase-types/types/Query";
 import type {

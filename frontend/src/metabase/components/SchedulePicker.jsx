@@ -1,14 +1,13 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import { t } from "ttag";
+import _ from "underscore";
 
 import { SegmentedControl } from "metabase/components/SegmentedControl";
 import Select from "metabase/components/Select";
-
 import Settings from "metabase/lib/settings";
 import { capitalize } from "metabase/lib/formatting";
-import { t } from "ttag";
-import _ from "underscore";
 
 export const HOUR_OPTIONS = _.times(12, n => ({
   name: (n === 0 ? 12 : n) + ":00",

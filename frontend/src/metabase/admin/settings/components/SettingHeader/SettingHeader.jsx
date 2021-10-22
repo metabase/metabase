@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+
 import { SettingDescription, SettingTitle } from "./SettingHeader.styled";
 
 const SettingHeader = ({ id, setting }) => (

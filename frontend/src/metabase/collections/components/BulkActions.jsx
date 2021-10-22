@@ -9,10 +9,8 @@ import BulkActionBar from "metabase/components/BulkActionBar";
 import Button from "metabase/components/Button";
 import Modal from "metabase/components/Modal";
 import StackedCheckBox from "metabase/components/StackedCheckBox";
-
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 import CollectionCopyEntityModal from "metabase/collections/components/CollectionCopyEntityModal";
-
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 
 const BulkActionControls = ({ onArchive, onMove }) => (

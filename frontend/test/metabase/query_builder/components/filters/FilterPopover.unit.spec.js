@@ -1,11 +1,9 @@
 import "__support__/mocks";
 import React from "react";
-
 import { fireEvent, render, screen } from "@testing-library/react";
 
 import Question from "metabase-lib/lib/Question";
 import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
-
 import {
   SAMPLE_DATASET,
   ORDERS,

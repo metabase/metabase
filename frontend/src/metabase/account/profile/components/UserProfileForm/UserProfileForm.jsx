@@ -1,5 +1,6 @@
 import React, { useCallback } from "react";
 import PropTypes from "prop-types";
+
 import User from "metabase/entities/users";
 
 const propTypes = {

@@ -1,12 +1,13 @@
+import { memoize } from "metabase-lib/lib/utils";
+import DimensionOptions from "metabase-lib/lib/DimensionOptions";
+
 import type { DatasetQuery } from "metabase-types/types/Card";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
 import type Question from "metabase-lib/lib/Question";
 import type Dimension from "metabase-lib/lib/Dimension";
 import type Variable from "metabase-lib/lib/Variable";
 
-import { memoize } from "metabase-lib/lib/utils";
 
-import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 
 type QueryUpdateFn = (datasetQuery: DatasetQuery) => void;
 

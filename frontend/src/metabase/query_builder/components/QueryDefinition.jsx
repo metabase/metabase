@@ -2,8 +2,9 @@
 import React from "react";
 import { connect } from "react-redux";
 
-import FilterList from "./FilterList";
 import { getMetadata } from "metabase/selectors/metadata";
+
+import FilterList from "./FilterList";
 
 function QueryDefinition({ className, object, metadata }) {
   const query = metadata

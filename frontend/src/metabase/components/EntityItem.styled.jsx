@@ -2,7 +2,6 @@ import styled from "styled-components";
 import { Flex } from "grid-styled";
 
 import { color, lighten } from "metabase/lib/colors";
-
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 
 function getPinnedBackground(model) {

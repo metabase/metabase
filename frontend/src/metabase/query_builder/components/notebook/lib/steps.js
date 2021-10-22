@@ -1,9 +1,10 @@
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import type Question from "metabase-lib/lib/Question";
+import _ from "underscore";
 
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+
+import type Question from "metabase-lib/lib/Question";
 import type { StructuredDatasetQuery } from "metabase-types/types/Card";
 
-import _ from "underscore";
 
 // This converts an MBQL query into a sequence of notebook "steps", with special logic to determine which steps are
 // allowed to be added at every other step, generating a preview query at each step, how to delete a step,

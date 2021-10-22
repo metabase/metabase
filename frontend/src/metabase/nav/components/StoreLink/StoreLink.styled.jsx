@@ -1,4 +1,5 @@
 import styled from "styled-components";
+
 import { color, darken } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 import Icon, { IconWrapper } from "metabase/components/Icon";

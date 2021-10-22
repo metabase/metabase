@@ -1,23 +1,21 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
-
 import { t } from "ttag";
 import _ from "underscore";
+import cx from "classnames";
 
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
-import ParameterFieldWidgetValue from "./ParameterFieldWidgetValue/ParameterFieldWidgetValue";
 import Popover from "metabase/components/Popover";
 import Button from "metabase/components/Button";
-
-import { normalizeValue } from "./normalizeValue";
-
-import cx from "classnames";
 import {
   getFilterArgumentFormatOptions,
   isEqualsOperator,
   isFuzzyOperator,
 } from "metabase/lib/schema_metadata";
+
+import { normalizeValue } from "./normalizeValue";
+import ParameterFieldWidgetValue from "./ParameterFieldWidgetValue/ParameterFieldWidgetValue";
 
 const propTypes = {
   dashboard: PropTypes.object,

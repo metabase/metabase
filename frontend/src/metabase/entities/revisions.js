@@ -1,5 +1,4 @@
 import { createEntity } from "metabase/lib/entities";
-
 import { GET, POST } from "metabase/lib/api";
 
 const listRevisions = GET("/api/revision");

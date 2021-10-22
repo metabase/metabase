@@ -1,11 +1,11 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import cx from "classnames";
 
 import { isObscured } from "metabase/lib/dom";
 
 import Tooltip from "./Tooltip";
 
-import cx from "classnames";
 
 // higher order component that takes a component which takes props "isOpen" and optionally "onClose"
 // and returns a component that renders a <a> element "trigger", and tracks whether that component is open or not

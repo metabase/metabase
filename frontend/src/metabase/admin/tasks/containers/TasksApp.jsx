@@ -5,7 +5,6 @@ import { Box, Flex } from "grid-styled";
 
 import Database from "metabase/entities/databases";
 import Task from "metabase/entities/tasks";
-
 import PaginationControls from "metabase/components/PaginationControls";
 import AdminHeader from "metabase/components/AdminHeader";
 import Icon from "metabase/components/Icon";

@@ -1,7 +1,9 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { render, screen } from "@testing-library/react";
+
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+
 import SearchResult from "./SearchResult";
 
 function collection({

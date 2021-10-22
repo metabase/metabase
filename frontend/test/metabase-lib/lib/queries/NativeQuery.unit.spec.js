@@ -5,7 +5,6 @@ import {
   PRODUCTS,
   MONGO_DATABASE,
 } from "__support__/sample_dataset_fixture";
-
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
 function makeDatasetQuery(queryText, templateTags, databaseId) {

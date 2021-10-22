@@ -1,6 +1,6 @@
-import * as Card from "metabase/meta/Card";
-
 import { assocIn, dissoc } from "icepick";
+
+import * as Card from "metabase/meta/Card";
 import { getMetadata } from "metabase/selectors/metadata";
 
 describe("metabase/meta/Card", () => {
@@ -249,6 +249,7 @@ describe("metabase/meta/Card", () => {
 });
 
 import { parse } from "url";
+
 import { deserializeCardFromUrl } from "metabase/lib/card";
 
 function parseUrl(url) {

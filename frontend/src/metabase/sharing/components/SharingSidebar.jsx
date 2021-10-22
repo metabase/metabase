@@ -3,6 +3,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
+import { connect } from "react-redux";
 
 import NewPulseSidebar from "metabase/sharing/components/NewPulseSidebar";
 import PulsesListSidebar from "metabase/sharing/components/PulsesListSidebar";
@@ -14,20 +15,14 @@ import Sidebar from "metabase/dashboard/components/Sidebar";
 import Pulses from "metabase/entities/pulses";
 import User from "metabase/entities/users";
 import { normalizeParameterValue } from "metabase/meta/Parameter";
-
-import { connect } from "react-redux";
-
 import {
   cleanPulse,
   createChannel,
   getPulseParameters,
   NEW_PULSE_TEMPLATE,
 } from "metabase/lib/pulse";
-
 import { getEditingPulse, getPulseFormInput } from "metabase/pulse/selectors";
-
 import { getUser } from "metabase/selectors/user";
-
 import {
   updateEditingPulse,
   saveEditingPulse,

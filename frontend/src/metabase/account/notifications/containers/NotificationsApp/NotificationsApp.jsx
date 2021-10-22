@@ -1,8 +1,10 @@
 import { connect } from "react-redux";
 import _ from "underscore";
+
 import Alerts from "metabase/entities/alerts";
 import Pulses from "metabase/entities/pulses";
 import { getUser, getUserId } from "metabase/selectors/user";
+
 import {
   navigateToArchive,
   navigateToHelp,

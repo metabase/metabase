@@ -5,7 +5,6 @@ import cx from "classnames";
 import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
 import UserAvatar from "metabase/components/UserAvatar";
-
 import { color } from "metabase/lib/colors";
 import Typeahead from "metabase/hoc/Typeahead";
 

@@ -3,10 +3,9 @@ import React from "react";
 import { withRouter } from "react-router";
 import { connect } from "react-redux";
 import _ from "underscore";
-
-import * as Urls from "metabase/lib/urls";
 import { t } from "ttag";
 
+import * as Urls from "metabase/lib/urls";
 import Dashboard from "metabase/entities/dashboards";
 import CollapseSection from "metabase/components/CollapseSection";
 

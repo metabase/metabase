@@ -1,4 +1,5 @@
 import styled from "styled-components";
+
 import { color } from "metabase/lib/colors";
 import Label from "metabase/components/type/Label";
 import { TextButton } from "metabase/components/Button.styled";

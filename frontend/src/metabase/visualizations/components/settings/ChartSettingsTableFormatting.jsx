@@ -1,7 +1,8 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-
 import { t, jt } from "ttag";
+import _ from "underscore";
+import cx from "classnames";
 
 import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
@@ -9,7 +10,6 @@ import Select, { Option } from "metabase/components/Select";
 import Radio from "metabase/components/Radio";
 import Toggle from "metabase/components/Toggle";
 import ColorPicker from "metabase/components/ColorPicker";
-
 import ColorRangePicker, {
   ColorRangePreview,
 } from "metabase/components/ColorRangePicker";
@@ -18,12 +18,9 @@ import {
   SortableContainer,
   SortableElement,
 } from "metabase/components/sortable";
-
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { isNumeric, isString } from "metabase/lib/schema_metadata";
 
-import _ from "underscore";
-import cx from "classnames";
 
 const NUMBER_OPERATOR_NAMES = {
   "<": t`is less than`,

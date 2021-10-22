@@ -1,4 +1,5 @@
 import styled from "styled-components";
+
 import colors from "metabase/lib/colors";
 
 export const DashboardHeaderButton = styled.button`

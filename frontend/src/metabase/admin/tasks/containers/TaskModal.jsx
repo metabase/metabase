@@ -5,7 +5,6 @@ import { connect } from "react-redux";
 import { goBack } from "react-router-redux";
 
 import Task from "metabase/entities/tasks";
-
 import Code from "metabase/components/Code";
 import ModalContent from "metabase/components/ModalContent";
 

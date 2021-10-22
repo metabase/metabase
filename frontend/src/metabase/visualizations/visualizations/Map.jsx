@@ -1,11 +1,7 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { t } from "ttag";
-import ChoroplethMap, {
-  getColorplethColorScale,
-} from "../components/ChoroplethMap";
-import PinMap from "../components/PinMap";
-import LeafletGridHeatMap from "../components/LeafletGridHeatMap";
+import _ from "underscore";
 
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import {
@@ -24,16 +20,19 @@ import {
   fieldSetting,
 } from "metabase/visualizations/lib/settings/utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
-
 import MetabaseSettings from "metabase/lib/settings";
 
-import _ from "underscore";
 
 const PIN_MAP_TYPES = new Set(["pin", "heat", "grid"]);
 
 import { desaturated } from "metabase/lib/colors";
-
 import ColorRangePicker from "metabase/components/ColorRangePicker";
+
+import LeafletGridHeatMap from "../components/LeafletGridHeatMap";
+import PinMap from "../components/PinMap";
+import ChoroplethMap, {
+  getColorplethColorScale,
+} from "../components/ChoroplethMap";
 
 export default class Map extends Component {
   static uiName = t`Map`;

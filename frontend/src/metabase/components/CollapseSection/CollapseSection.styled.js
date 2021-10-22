@@ -1,4 +1,5 @@
 import styled, { css } from "styled-components";
+
 import Icon from "metabase/components/Icon";
 
 export const HeaderContainer = styled.div.attrs({

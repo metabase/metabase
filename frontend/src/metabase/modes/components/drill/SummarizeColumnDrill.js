@@ -1,14 +1,17 @@
+import { t } from "ttag";
+
 import { fieldRefForColumn } from "metabase/lib/dataset";
 import {
   getAggregationOperator,
   isCompatibleAggregationOperatorForField,
 } from "metabase/lib/schema_metadata";
-import { t } from "ttag";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+
 import type {
   ClickAction,
   ClickActionProps,
 } from "metabase-types/types/Visualization";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+
 
 const AGGREGATIONS = {
   sum: {

@@ -2,13 +2,12 @@
 import React, { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-
 import { Box } from "grid-styled";
+
 import AdminHeader from "metabase/components/AdminHeader";
 import Code from "metabase/components/Code";
 import CopyButton from "metabase/components/CopyButton";
 import ExternalLink from "metabase/components/ExternalLink";
-
 import { UtilApi } from "metabase/services";
 import MetabaseSettings from "metabase/lib/settings";
 

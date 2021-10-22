@@ -1,11 +1,13 @@
 import React from "react";
 import _ from "underscore";
-import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import userEvent from "@testing-library/user-event";
 import xhrMock from "xhr-mock";
+
+import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_CACHING, PLUGIN_FORM_WIDGETS } from "metabase/plugins";
 import NumericFormField from "metabase/components/form/widgets/FormNumericInputWidget";
+
 import DashboardDetailsModal from "./DashboardDetailsModal";
 
 const DASHBOARD = {

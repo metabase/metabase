@@ -1,5 +1,6 @@
-import LeafletMap from "./LeafletMap";
 import L from "leaflet";
+
+import LeafletMap from "./LeafletMap";
 
 export default class LeafletTilePinMap extends LeafletMap {
   componentDidMount() {

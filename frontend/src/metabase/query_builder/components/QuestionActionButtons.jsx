@@ -3,9 +3,9 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import { MODAL_TYPES } from "metabase/query_builder/constants";
-
 import Button from "metabase/components/Button";
 import Tooltip from "metabase/components/Tooltip";
+
 import { Container } from "./QuestionActionButtons.styled";
 
 export const EDIT_TESTID = "edit-details-button";

@@ -5,7 +5,6 @@ import _ from "underscore";
 import { assoc, assocIn } from "icepick";
 import { t } from "ttag";
 
-import RecipientPicker from "./RecipientPicker";
 
 import SchedulePicker from "metabase/components/SchedulePicker";
 import ActionButton from "metabase/components/ActionButton";
@@ -13,10 +12,10 @@ import Select, { Option } from "metabase/components/Select";
 import Toggle from "metabase/components/Toggle";
 import Icon from "metabase/components/Icon";
 import ChannelSetupMessage from "metabase/components/ChannelSetupMessage";
-
 import MetabaseAnalytics from "metabase/lib/analytics";
-
 import { channelIsValid, createChannel } from "metabase/lib/pulse";
+
+import RecipientPicker from "./RecipientPicker";
 
 export const CHANNEL_ICONS = {
   email: "mail",

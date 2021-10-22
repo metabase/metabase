@@ -1,16 +1,14 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Box } from "grid-styled";
-
 import { t } from "ttag";
 import _ from "underscore";
+
 import { capitalize } from "metabase/lib/formatting";
 import { color, darken } from "metabase/lib/colors";
-
 import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
 import Modal from "metabase/components/Modal";
-
 import LogoIcon from "metabase/components/LogoIcon";
 import EntityMenu from "metabase/components/EntityMenu";
 

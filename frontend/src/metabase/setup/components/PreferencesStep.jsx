@@ -3,14 +3,15 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t, jt } from "ttag";
 import { Box } from "grid-styled";
+
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 import Toggle from "metabase/components/Toggle";
+import ExternalLink from "metabase/components/ExternalLink";
 
 import StepTitle from "./StepTitle";
 import CollapsedStep from "./CollapsedStep";
 
-import ExternalLink from "metabase/components/ExternalLink";
 
 export default class PreferencesStep extends Component {
   state = { errorMessage: null };

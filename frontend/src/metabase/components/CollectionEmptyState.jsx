@@ -6,7 +6,6 @@ import { Box, Flex } from "grid-styled";
 
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
-
 import Icon from "metabase/components/Icon";
 import EmptyState from "metabase/components/EmptyState";
 import IconWrapper from "metabase/components/IconWrapper";

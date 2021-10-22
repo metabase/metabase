@@ -1,6 +1,8 @@
 import React from "react";
+
 import { Route } from "metabase/hoc/Title";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
+
 import NotificationsApp from "./containers/NotificationsApp";
 import HelpModal from "./components/HelpModal";
 import ArchiveAlertModal from "./containers/ArchiveAlertModal";

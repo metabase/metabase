@@ -1,6 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+
 import Button from "metabase/components/Button";
 
 const WIDTH = 384;

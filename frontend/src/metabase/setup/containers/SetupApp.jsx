@@ -1,10 +1,10 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import { connect } from "react-redux";
+
 import fitViewport from "metabase/hoc/FitViewPort";
 
 import Setup from "../components/Setup";
-
 import { DATABASE_FORM_NAME, setupSelectors } from "../selectors";
 import {
   setUserDetails,

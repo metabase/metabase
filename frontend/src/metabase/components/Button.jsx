@@ -1,12 +1,12 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import PropTypes from "prop-types";
-
-import Icon from "metabase/components/Icon";
 import cx from "classnames";
 import _ from "underscore";
 import styled from "styled-components";
 import { color, space } from "styled-system";
+
+import Icon from "metabase/components/Icon";
 
 const BUTTON_VARIANTS = [
   "small",

@@ -1,11 +1,9 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-
 import { Flex } from "grid-styled";
 import styled, { css } from "styled-components";
 
 import Icon from "metabase/components/Icon";
-
 import { alpha } from "metabase/lib/colors";
 
 export const NotebookCell = styled(Flex).attrs({

@@ -5,9 +5,11 @@ import { t } from "ttag";
 import { getIn } from "icepick";
 
 import S from "metabase/components/List.css";
-
 import * as metadataActions from "metabase/redux/metadata";
 import { assignUserColors } from "metabase/lib/formatting";
+import Revision from "metabase/admin/datamodel/components/revisions/Revision";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import EmptyState from "metabase/components/EmptyState";
 
 import {
   getSegmentRevisions,
@@ -18,10 +20,6 @@ import {
   getLoading,
   getError,
 } from "../selectors";
-
-import Revision from "metabase/admin/datamodel/components/revisions/Revision";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import EmptyState from "metabase/components/EmptyState";
 import ReferenceHeader from "../components/ReferenceHeader";
 
 const emptyStateData = {

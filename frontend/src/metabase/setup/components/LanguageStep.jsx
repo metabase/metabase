@@ -3,15 +3,14 @@ import React from "react";
 import cx from "classnames";
 import { t } from "ttag";
 import { Box } from "grid-styled";
+import _ from "underscore";
 
 import MetabaseSettings from "metabase/lib/settings";
-
 import Button from "metabase/components/Button";
 
 import StepTitle from "./StepTitle";
 import CollapsedStep from "./CollapsedStep";
 
-import _ from "underscore";
 
 export default class LanguageStep extends React.Component {
   constructor(props) {

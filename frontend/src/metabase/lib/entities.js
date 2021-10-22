@@ -1,3 +1,17 @@
+import createCachedSelector from "re-reselect";
+
+
+
+// NOTE: need to use inflection directly here due to circular dependency
+import inflection from "inflection";
+import { createSelector } from "reselect";
+import { normalize, denormalize, schema } from "normalizr";
+import { getIn, merge } from "icepick";
+import _ from "underscore";
+
+import { GET, PUT, POST, DELETE } from "metabase/lib/api";
+import requestsReducer, { setRequestUnloaded } from "metabase/redux/requests";
+import { addUndo } from "metabase/redux/undo";
 import {
   combineReducers,
   handleEntities,
@@ -7,20 +21,6 @@ import {
   withRequestState,
   withCachedDataAndRequestState,
 } from "metabase/lib/redux";
-import createCachedSelector from "re-reselect";
-
-import { addUndo } from "metabase/redux/undo";
-import requestsReducer, { setRequestUnloaded } from "metabase/redux/requests";
-
-import { GET, PUT, POST, DELETE } from "metabase/lib/api";
-
-// NOTE: need to use inflection directly here due to circular dependency
-import inflection from "inflection";
-
-import { createSelector } from "reselect";
-import { normalize, denormalize, schema } from "normalizr";
-import { getIn, merge } from "icepick";
-import _ from "underscore";
 
 // entity defintions export the following properties (`name`, and `api` or `path` are required)
 //

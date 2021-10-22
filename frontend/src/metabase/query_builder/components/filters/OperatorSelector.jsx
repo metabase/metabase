@@ -1,8 +1,9 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import cx from "classnames";
+
 import Select, { Option } from "metabase/components/Select";
 
-import cx from "classnames";
 
 import type {
   FilterOperator,

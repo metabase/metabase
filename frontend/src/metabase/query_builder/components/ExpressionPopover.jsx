@@ -1,11 +1,11 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import { t } from "ttag";
+
+import Button from "metabase/components/Button";
+import Icon from "metabase/components/Icon";
 
 import ExpressionEditorTextfield from "./expressions/ExpressionEditorTextfield";
-import Button from "metabase/components/Button";
-
-import { t } from "ttag";
-import Icon from "metabase/components/Icon";
 
 import "./ExpressionPopover.css";
 

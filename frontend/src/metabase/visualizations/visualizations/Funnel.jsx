@@ -1,31 +1,30 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import _ from "underscore";
+import cx from "classnames";
+
 import {
   MinRowsError,
   ChartSettingsError,
 } from "metabase/visualizations/lib/errors";
-
 import { iconPropTypes } from "metabase/components/Icon";
-
 import { formatValue } from "metabase/lib/formatting";
-
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import {
   metricSetting,
   dimensionSetting,
 } from "metabase/visualizations/lib/settings/utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import ChartCaption from "metabase/visualizations/components/ChartCaption";
 
 import FunnelNormal from "../components/FunnelNormal";
 import FunnelBar from "../components/FunnelBar";
 import LegendHeader from "../components/LegendHeader";
 
-import _ from "underscore";
-import cx from "classnames";
 
 import type { VisualizationProps } from "metabase-types/types/Visualization";
-import ChartCaption from "metabase/visualizations/components/ChartCaption";
+
 
 const propTypes = {
   headerIcon: PropTypes.shape(iconPropTypes),

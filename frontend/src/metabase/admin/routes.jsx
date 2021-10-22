@@ -1,16 +1,14 @@
 import React from "react";
-import { Route } from "metabase/hoc/Title";
 import { IndexRoute, IndexRedirect } from "react-router";
 import { t } from "ttag";
 
+import { Route } from "metabase/hoc/Title";
 import {
   PLUGIN_ADMIN_ROUTES,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
 } from "metabase/plugins";
-
 import { withBackground } from "metabase/hoc/Background";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-
 import NewUserModal from "metabase/admin/people/containers/NewUserModal";
 import UserSuccessModal from "metabase/admin/people/containers/UserSuccessModal";
 import UserPasswordResetModal from "metabase/admin/people/containers/UserPasswordResetModal";
@@ -35,7 +33,6 @@ import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHist
 import AdminPeopleApp from "metabase/admin/people/containers/AdminPeopleApp";
 import FieldApp from "metabase/admin/datamodel/containers/FieldApp";
 import TableSettingsApp from "metabase/admin/datamodel/containers/TableSettingsApp";
-
 import TroubleshootingApp from "metabase/admin/tasks/containers/TroubleshootingApp";
 import TasksApp from "metabase/admin/tasks/containers/TasksApp";
 import TaskModal from "metabase/admin/tasks/containers/TaskModal";

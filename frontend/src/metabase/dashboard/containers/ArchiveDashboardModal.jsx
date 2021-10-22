@@ -2,16 +2,13 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
 import { push } from "react-router-redux";
 
 import * as Urls from "metabase/lib/urls";
-
 import Collection from "metabase/entities/collections";
 import Dashboard from "metabase/entities/dashboards";
-
 import ArchiveModal from "metabase/components/ArchiveModal";
 
 const mapDispatchToProps = {

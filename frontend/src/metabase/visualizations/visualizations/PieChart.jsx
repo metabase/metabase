@@ -1,9 +1,9 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import styles from "./PieChart.css";
 import { t } from "ttag";
-import ChartTooltip from "../components/ChartTooltip";
-import ChartWithLegend from "../components/ChartWithLegend";
+import cx from "classnames";
+import d3 from "d3";
+import _ from "underscore";
 
 import {
   ChartSettingsError,
@@ -18,15 +18,14 @@ import {
   dimensionSetting,
 } from "metabase/visualizations/lib/settings/utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
-
 import { formatValue } from "metabase/lib/formatting";
-
 import { color, getColorsForValues } from "metabase/lib/colors";
 
-import cx from "classnames";
 
-import d3 from "d3";
-import _ from "underscore";
+
+import ChartWithLegend from "../components/ChartWithLegend";
+import ChartTooltip from "../components/ChartTooltip";
+import styles from "./PieChart.css";
 
 const MAX_PIE_SIZE = 550;
 

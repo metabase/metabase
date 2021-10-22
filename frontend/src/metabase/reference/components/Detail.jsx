@@ -2,9 +2,10 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
-import S from "./Detail.css";
 import { t } from "ttag";
 import cx from "classnames";
+
+import S from "./Detail.css";
 
 const Detail = ({
   name,

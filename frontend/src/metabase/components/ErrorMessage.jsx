@@ -2,7 +2,6 @@
 
 import React from "react";
 import PropTypes from "prop-types";
-
 import cx from "classnames";
 
 // NOTE: currently relies on .QueryError CSS selectors residing in query_builder.css

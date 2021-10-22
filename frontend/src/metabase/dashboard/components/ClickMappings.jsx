@@ -7,13 +7,11 @@ import { getIn, assocIn, dissocIn } from "icepick";
 
 import Icon from "metabase/components/Icon";
 import Select from "metabase/components/Select";
-
 import Question from "metabase-lib/lib/Question";
 import MetabaseSettings from "metabase/lib/settings";
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { getTargetsWithSourceFilters } from "metabase/lib/click-behavior";
 import { GTAPApi } from "metabase/services";
-
 import { loadMetadataForQuery } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getParameters } from "metabase/dashboard/selectors";

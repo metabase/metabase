@@ -1,6 +1,8 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import moment from "moment";
+
 import ActionButton from "metabase/components/ActionButton";
 import ModalContent from "metabase/components/ModalContent";
 import {
@@ -8,7 +10,6 @@ import {
   getRevisionDescription,
 } from "metabase/lib/revisions";
 
-import moment from "moment";
 
 function formatDate(date) {
   const m = moment(date);

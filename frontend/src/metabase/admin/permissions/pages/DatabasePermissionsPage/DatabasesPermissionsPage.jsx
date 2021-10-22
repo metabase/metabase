@@ -13,7 +13,6 @@ import {
   getLoadingDatabaseTablesError,
 } from "../../selectors/data-permissions";
 import { updateDataPermission } from "../../permissions";
-
 import {
   PermissionsSidebar,
   permissionSidebarPropTypes,

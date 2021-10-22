@@ -2,7 +2,6 @@
 import React from "react";
 import cx from "classnames";
 
-import StaticParameterWidget from "./ParameterWidget";
 import Icon from "metabase/components/Icon";
 import {
   SortableContainer,
@@ -13,6 +12,8 @@ import {
   getValuePopulatedParameters,
   getVisibleParameters,
 } from "metabase/meta/Parameter";
+
+import StaticParameterWidget from "./ParameterWidget";
 
 import type {
   ParameterId,

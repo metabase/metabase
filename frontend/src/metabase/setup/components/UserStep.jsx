@@ -3,14 +3,14 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Flex, Box } from "grid-styled";
 import { t } from "ttag";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import _ from "underscore";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
 import User from "metabase/entities/users";
 
 import StepTitle from "./StepTitle";
 import CollapsedStep from "./CollapsedStep";
 
-import _ from "underscore";
 
 export default class UserStep extends Component {
   static propTypes = {

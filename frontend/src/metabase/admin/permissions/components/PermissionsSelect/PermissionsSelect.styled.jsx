@@ -1,7 +1,9 @@
 import styled from "styled-components";
+
 import Label from "metabase/components/type/Label";
 import { color, lighten } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
+
 import { PermissionsSelectOption } from "./PermissionsSelectOption";
 
 export const PermissionsSelectRoot = styled.div`

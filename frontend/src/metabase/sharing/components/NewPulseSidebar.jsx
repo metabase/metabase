@@ -2,13 +2,14 @@
 
 import React from "react";
 import PropTypes from "prop-types";
+import cx from "classnames";
+import { t, jt } from "ttag";
+
 import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";
 import Text from "metabase/components/type/Text";
 import Link from "metabase/components/Link";
 import Sidebar from "metabase/dashboard/components/Sidebar";
-import cx from "classnames";
-import { t, jt } from "ttag";
 
 function NewPulseSidebar({
   onCancel,

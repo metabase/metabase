@@ -12,7 +12,6 @@ import "number-to-locale-string";
 import "metabase/lib/i18n-debug";
 
 // set the locale before loading anything else
-import { loadLocalization } from "metabase/lib/i18n";
 
 // NOTE: why do we need to load this here?
 import "metabase/lib/colors";
@@ -24,26 +23,16 @@ import "metabase/plugins/builtin";
 // If EE isn't enabled, it loads an empty file.
 import "ee-plugins"; // eslint-disable-line import/no-unresolved
 
-import { PLUGIN_APP_INIT_FUCTIONS } from "metabase/plugins";
 
-import registerVisualizations from "metabase/visualizations/register";
 
 import React from "react";
 import ReactDOM from "react-dom";
 import { Provider } from "react-redux";
 import { ThemeProvider } from "styled-components";
 
-import MetabaseAnalytics, {
-  registerAnalyticsClickListener,
-} from "metabase/lib/analytics";
-import MetabaseSettings from "metabase/lib/settings";
 
-import api from "metabase/lib/api";
-import { initializeEmbedding } from "metabase/lib/embed";
 
-import { getStore } from "./store";
 
-import { refreshSiteSettings } from "metabase/redux/settings";
 
 // router
 import { Router, useRouterHistory } from "react-router";
@@ -53,6 +42,19 @@ import { syncHistoryWithStore } from "react-router-redux";
 // drag and drop
 import HTML5Backend from "react-dnd-html5-backend";
 import { DragDropContextProvider } from "react-dnd";
+
+import { refreshSiteSettings } from "metabase/redux/settings";
+import { initializeEmbedding } from "metabase/lib/embed";
+import api from "metabase/lib/api";
+import MetabaseSettings from "metabase/lib/settings";
+import MetabaseAnalytics, {
+  registerAnalyticsClickListener,
+} from "metabase/lib/analytics";
+import registerVisualizations from "metabase/visualizations/register";
+import { PLUGIN_APP_INIT_FUCTIONS } from "metabase/plugins";
+import { loadLocalization } from "metabase/lib/i18n";
+
+import { getStore } from "./store";
 
 // remove trailing slash
 const BASENAME = window.MetabaseRoot.replace(/\/+$/, "");

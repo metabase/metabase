@@ -3,6 +3,7 @@ import React from "react";
 import { Box, Flex } from "grid-styled";
 import _ from "underscore";
 import moment from "moment";
+
 import Card from "metabase/components/Card";
 import Label from "metabase/components/type/Label";
 import Text from "metabase/components/type/Text";

@@ -1,9 +1,10 @@
 import React from "react";
 import { render } from "@testing-library/react";
 
+import Visualization from "metabase/visualizations/components/Visualization";
+
 import { NumberColumn } from "../__support__/visualizations";
 
-import Visualization from "metabase/visualizations/components/Visualization";
 
 const series = (rows, settings = {}) => {
   const cols = [NumberColumn({ name: "Foo" })];

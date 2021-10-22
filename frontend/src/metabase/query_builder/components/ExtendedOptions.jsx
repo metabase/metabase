@@ -4,16 +4,18 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 import cx from "classnames";
 import { t } from "ttag";
+
+import Popover from "metabase/components/Popover";
+import MetabaseAnalytics from "metabase/lib/analytics";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+
 import AddClauseButton from "./AddClauseButton";
 import Expressions from "./expressions/Expressions";
 import ExpressionWidget from "./expressions/ExpressionWidget";
 import LimitWidget from "./LimitWidget";
 import SortWidget from "./SortWidget";
-import Popover from "metabase/components/Popover";
 
-import MetabaseAnalytics from "metabase/lib/analytics";
 
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type { DatasetQuery } from "metabase-types/types/Card";
 import type { GuiQueryEditorFeatures } from "./GuiQueryEditor";
 

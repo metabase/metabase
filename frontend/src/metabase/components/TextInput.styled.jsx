@@ -1,4 +1,5 @@
 import styled, { css } from "styled-components";
+
 import { color } from "metabase/lib/colors";
 
 const PADDING = {

@@ -1,4 +1,5 @@
 import styled from "styled-components";
+
 import Card from "metabase/components/Card";
 
 export const FullscreenCard = styled(Card)`

@@ -1,8 +1,8 @@
 import React from "react";
-import Logs from "metabase/admin/tasks/containers/Logs";
 import { render, screen } from "@testing-library/react";
 import mock from "xhr-mock";
 
+import Logs from "metabase/admin/tasks/containers/Logs";
 import { UtilApi } from "metabase/services";
 
 describe("Logs", () => {

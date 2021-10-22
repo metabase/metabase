@@ -3,13 +3,7 @@ import React, { Component } from "react";
 import { Box, Flex } from "grid-styled";
 import PropTypes from "prop-types";
 import { t, jt, ngettext, msgid } from "ttag";
-
-import PulseEditName from "./PulseEditName";
-import PulseEditCollection from "./PulseEditCollection";
-import PulseEditCards from "./PulseEditCards";
-import PulseEditChannels from "./PulseEditChannels";
-import PulseEditSkip from "./PulseEditSkip";
-import WhatsAPulse from "./WhatsAPulse";
+import cx from "classnames";
 
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/components/Button";
@@ -20,15 +14,19 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import ModalContent from "metabase/components/ModalContent";
 import Subhead from "metabase/components/type/Subhead";
 import Text from "metabase/components/type/Text";
-
 import { color } from "metabase/lib/colors";
 import MetabaseSettings from "metabase/lib/settings";
 import { pulseIsValid, cleanPulse, emailIsEnabled } from "metabase/lib/pulse";
 import * as Urls from "metabase/lib/urls";
-
 import Collections from "metabase/entities/collections";
 
-import cx from "classnames";
+import WhatsAPulse from "./WhatsAPulse";
+import PulseEditSkip from "./PulseEditSkip";
+import PulseEditChannels from "./PulseEditChannels";
+import PulseEditCards from "./PulseEditCards";
+import PulseEditCollection from "./PulseEditCollection";
+import PulseEditName from "./PulseEditName";
+
 
 @Collections.load({
   id: (state, { pulse, initialCollectionId }) =>

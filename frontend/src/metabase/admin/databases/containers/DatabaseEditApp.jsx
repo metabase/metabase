@@ -3,28 +3,25 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { getValues } from "redux-form";
-
 import { t } from "ttag";
-
 import { Box, Flex } from "grid-styled";
+import { getIn } from "icepick";
 
 import title from "metabase/hoc/Title";
-
 import AddDatabaseHelpCard from "metabase/components/AddDatabaseHelpCard";
 import Button from "metabase/components/Button";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import DriverWarning from "metabase/components/DriverWarning";
 import Radio from "metabase/components/Radio";
 import Sidebar from "metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar";
-
 import Databases from "metabase/entities/databases";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import {
   getEditingDatabase,
   getDatabaseCreationStep,
   getInitializeError,
 } from "../selectors";
-
 import {
   reset,
   initializeDatabase,
@@ -36,8 +33,6 @@ import {
   deleteDatabase,
   selectEngine,
 } from "../database";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { getIn } from "icepick";
 
 const DATABASE_FORM_NAME = "database";
 

@@ -4,7 +4,6 @@ import { t } from "ttag";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { color } from "metabase/lib/colors";
 import { getUser } from "metabase/selectors/user";
-
 import {
   isPersonalCollection,
   isPersonalCollectionChild,

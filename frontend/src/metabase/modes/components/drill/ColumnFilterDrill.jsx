@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
-
 import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
 
 import type {

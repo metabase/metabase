@@ -4,14 +4,12 @@ import ReactDOM from "react-dom";
 import { t } from "ttag";
 import d3 from "d3";
 import cx from "classnames";
-
 import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
 import { isNumeric } from "metabase/lib/schema_metadata";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
-
 import ChartSettingGaugeSegments from "metabase/visualizations/components/settings/ChartSettingGaugeSegments";
 
 import type { VisualizationProps } from "metabase-types/types/Visualization";

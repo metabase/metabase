@@ -2,6 +2,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+
 import Icon from "metabase/components/Icon";
 
 const MainPane = ({ databases, show }) => (

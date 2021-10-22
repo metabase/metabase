@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import { UserApi, UtilApi } from "metabase/services";
 import { createThunkAction } from "metabase/lib/redux";
 

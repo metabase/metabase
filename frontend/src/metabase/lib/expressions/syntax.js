@@ -10,7 +10,6 @@ import {
   isTokenType,
   CLAUSE_TOKENS,
 } from "./lexer";
-
 import { MBQL_CLAUSES, getMBQLName } from ".";
 
 const TOKENIZED_NODES = new Set(["dimension", "metric", "aggregation"]);

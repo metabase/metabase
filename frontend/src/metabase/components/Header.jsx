@@ -4,7 +4,6 @@ import { Box, Flex } from "grid-styled";
 import { t } from "ttag";
 
 import { getScrollY } from "metabase/lib/dom";
-
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
 import EditBar from "metabase/components/EditBar";
 import EditWarning from "metabase/components/EditWarning";

@@ -1,12 +1,10 @@
-import { createThunkAction, fetchData } from "metabase/lib/redux";
 
 import { getIn } from "icepick";
 import _ from "underscore";
 
+import { createThunkAction, fetchData } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-
 import { MetabaseApi, RevisionsApi } from "metabase/services";
-
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import Fields from "metabase/entities/fields";

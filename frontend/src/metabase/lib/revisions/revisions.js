@@ -1,5 +1,6 @@
 import React from "react";
 import { t, jt, ngettext, msgid } from "ttag";
+
 import {
   EntityLink,
   RevisionTitle,

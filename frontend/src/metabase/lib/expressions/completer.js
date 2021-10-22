@@ -1,5 +1,6 @@
-import { tokenize, TOKEN, OPERATOR as OP } from "./tokenizer";
 import _ from "underscore";
+
+import { tokenize, TOKEN, OPERATOR as OP } from "./tokenizer";
 
 // Given an expression, get the last identifier as the prefix match.
 // Examples:

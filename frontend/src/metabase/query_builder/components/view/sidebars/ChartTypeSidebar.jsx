@@ -4,11 +4,10 @@ import _ from "underscore";
 import { t } from "ttag";
 import cx from "classnames";
 import { Box, Flex } from "grid-styled";
+
 import Icon from "metabase/components/Icon";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
-
 import { color, lighten } from "metabase/lib/colors";
-
 import visualizations from "metabase/visualizations";
 
 const FIXED_LAYOUT = [

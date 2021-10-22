@@ -1,5 +1,4 @@
 import { ORDERS } from "__support__/sample_dataset_fixture";
-
 import ZoomDrill from "metabase/modes/components/drill/ZoomDrill";
 
 describe("ZoomDrill", () => {

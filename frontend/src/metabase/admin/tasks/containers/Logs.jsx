@@ -2,7 +2,6 @@ import React, { Component } from "react";
 import ReactDOM from "react-dom";
 
 import { UtilApi } from "metabase/services";
-
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import reactAnsiStyle from "react-ansi-style";

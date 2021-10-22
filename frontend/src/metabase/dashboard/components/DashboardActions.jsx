@@ -3,7 +3,6 @@ import React from "react";
 import { t } from "ttag";
 import cx from "classnames";
 
-import DashboardSharingEmbeddingModal from "../containers/DashboardSharingEmbeddingModal.jsx";
 import FullscreenIcon from "metabase/components/icons/FullscreenIcon";
 import Icon from "metabase/components/Icon";
 import MetabaseSettings from "metabase/lib/settings";
@@ -12,6 +11,7 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import RefreshWidget from "metabase/dashboard/components/RefreshWidget";
 import Tooltip from "metabase/components/Tooltip";
 
+import DashboardSharingEmbeddingModal from "../containers/DashboardSharingEmbeddingModal.jsx";
 import { DashboardHeaderButton } from "./DashboardHeader.styled";
 
 export const getDashboardActions = (

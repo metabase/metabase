@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-
 import { DragSource } from "react-dnd";
 import { getEmptyImage } from "react-dnd-html5-backend";
 

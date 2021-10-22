@@ -2,7 +2,6 @@ import { createSelector } from "reselect";
 import _ from "underscore";
 
 import { isMetaBotGroup } from "metabase/lib/groups";
-
 import Group from "metabase/entities/groups";
 
 export const getMemberships = state => state.admin.people.memberships;

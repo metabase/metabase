@@ -19,7 +19,6 @@ import {
   minTimeseriesUnit,
 } from "./timeseries";
 import { computeNumericDataInverval, dimensionIsNumeric } from "./numeric";
-
 import { getAvailableCanvasWidth, getAvailableCanvasHeight } from "./utils";
 import { invalidDateWarning, nullDimensionWarning } from "./warnings";
 

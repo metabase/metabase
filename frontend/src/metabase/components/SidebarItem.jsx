@@ -2,8 +2,8 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
-import S from "./Sidebar.css";
 
+import S from "./Sidebar.css";
 import LabelIcon from "./LabelIcon";
 
 const SidebarItem = ({ name, sidebar, icon, href }) => (

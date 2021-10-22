@@ -1,11 +1,9 @@
 import React from "react";
-
 import { t } from "ttag";
 import _ from "underscore";
 import inflection from "inflection";
 
 import { stripId } from "metabase/lib/formatting";
-
 import { format as formatExpression } from "metabase/lib/expressions/format";
 
 import * as AGGREGATION from "./aggregation";

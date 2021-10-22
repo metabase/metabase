@@ -1,8 +1,8 @@
+import { combineReducers, applyMiddleware, createStore, compose } from "redux";
+import promise from "redux-promise";
+
 import { createEntity, combineEntities } from "metabase/lib/entities";
 import requestsReducer from "metabase/redux/requests";
-import { combineReducers, applyMiddleware, createStore, compose } from "redux";
-
-import promise from "redux-promise";
 import { thunkWithDispatchAction } from "metabase/store";
 
 const widgets = createEntity({

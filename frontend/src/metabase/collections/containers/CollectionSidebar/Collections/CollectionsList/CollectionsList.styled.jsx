@@ -1,4 +1,5 @@
 import styled from "styled-components";
+
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import {
   ROOT_COLLECTION,
@@ -10,7 +11,6 @@ const { isRegularCollection } = PLUGIN_COLLECTIONS;
 
 import { SIDEBAR_SPACER } from "metabase/collections/constants";
 import { color } from "metabase/lib/colors";
-
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 
 function getOpacity(collection) {

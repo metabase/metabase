@@ -5,6 +5,7 @@ import { GridRows } from "@visx/grid";
 import { scaleBand, scaleLinear } from "@visx/scale";
 import { Bar } from "@visx/shape";
 import { Text } from "@visx/text";
+
 import {
   getXTickWidth,
   getXTickLabelProps,

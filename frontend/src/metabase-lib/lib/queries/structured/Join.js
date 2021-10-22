@@ -1,14 +1,15 @@
-import { MBQLObjectClause } from "./MBQLClause";
 import { t } from "ttag";
+import _ from "underscore";
 
-import StructuredQuery from "../StructuredQuery";
 import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
 import DimensionOptions from "metabase-lib/lib/DimensionOptions";
-
 import { pluralize } from "metabase/lib/formatting";
 import { getDatetimeUnit, isDateTimeField } from "metabase/lib/query/field_ref";
-
 import { TableId } from "metabase-types/types/Table";
+
+import StructuredQuery from "../StructuredQuery";
+import { MBQLObjectClause } from "./MBQLClause";
+
 import type {
   Join as JoinObject,
   JoinStrategy,
@@ -20,7 +21,6 @@ import type {
   ConcreteField,
 } from "metabase-types/types/Query";
 
-import _ from "underscore";
 
 const JOIN_STRATEGY_OPTIONS = [
   { value: "left-join", name: t`Left outer join`, icon: "join_left_outer" }, // default

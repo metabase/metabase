@@ -1,14 +1,14 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
-import Revision from "./Revision";
 import { t } from "ttag";
+
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Tables from "metabase/entities/tables";
-
 import { assignUserColors } from "metabase/lib/formatting";
+
+import Revision from "./Revision";
 
 @Tables.load({ id: (state, { object: { table_id } }) => table_id })
 export default class RevisionHistory extends Component {

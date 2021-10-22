@@ -1,16 +1,13 @@
+import _ from "underscore";
+import { assoc, dissoc } from "icepick";
+
 import {
   createAction,
   handleActions,
   combineReducers,
 } from "metabase/lib/redux";
-
 import MetabaseAnalytics from "metabase/lib/analytics";
-
 import { PermissionsApi } from "metabase/services";
-
-import _ from "underscore";
-import { assoc, dissoc } from "icepick";
-
 import Users from "metabase/entities/users";
 
 export const LOAD_MEMBERSHIPS = "metabase/admin/people/LOAD_MEMBERSHIPS";

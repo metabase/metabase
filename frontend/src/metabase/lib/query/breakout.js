@@ -1,6 +1,7 @@
+import { add, update, remove, clear } from "./util";
+
 import type { Breakout, BreakoutClause } from "metabase-types/types/Query";
 
-import { add, update, remove, clear } from "./util";
 
 // returns canonical list of Breakouts, with nulls removed
 export function getBreakouts(breakouts: ?BreakoutClause): Breakout[] {

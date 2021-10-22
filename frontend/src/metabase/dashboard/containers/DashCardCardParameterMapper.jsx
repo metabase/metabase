@@ -2,15 +2,15 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
-import S from "./DashCardCardParameterMapper.css";
+import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
-
 import ParameterTargetWidget from "metabase/parameters/components/ParameterTargetWidget";
-
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
+import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 
+import S from "./DashCardCardParameterMapper.css";
 import {
   getEditingParameter,
   getParameterTarget,
@@ -19,7 +19,6 @@ import {
 } from "../selectors";
 import { setParameterMapping } from "../actions";
 
-import cx from "classnames";
 
 import type { Card } from "metabase-types/types/Card";
 import type { DashCard } from "metabase-types/types/Dashboard";
@@ -30,9 +29,8 @@ import type {
   ParameterTarget,
 } from "metabase-types/types/Parameter";
 import type { DatabaseId } from "metabase-types/types/Database";
-
 import type { MappingsByParameter } from "../selectors";
-import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
+
 
 const makeMapStateToProps = () => {
   const getParameterMappingOptions = makeGetParameterMappingOptions();

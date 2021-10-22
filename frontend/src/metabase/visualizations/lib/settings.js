@@ -1,5 +1,4 @@
 import { getIn } from "icepick";
-
 import * as React from "react";
 
 import ChartSettingInput from "metabase/visualizations/components/settings/ChartSettingInput";
@@ -14,7 +13,6 @@ import ChartSettingFieldsPicker from "metabase/visualizations/components/setting
 import ChartSettingFieldsPartition from "metabase/visualizations/components/settings/ChartSettingFieldsPartition";
 import ChartSettingColorPicker from "metabase/visualizations/components/settings/ChartSettingColorPicker";
 import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker";
-
 import MetabaseAnalytics from "metabase/lib/analytics";
 
 export type SettingId = string;

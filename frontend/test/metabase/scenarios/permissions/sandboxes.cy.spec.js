@@ -11,7 +11,6 @@ import {
   visualize,
 } from "__support__/e2e/cypress";
 import { USER_GROUPS } from "__support__/e2e/cypress_data";
-
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const {

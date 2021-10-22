@@ -1,26 +1,26 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { t } from "ttag";
+import cx from "classnames";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import Utils from "metabase/lib/utils";
+import Question from "metabase-lib/lib/Question";
+import { HARD_ROW_LIMIT } from "metabase/lib/query";
 
 import VisualizationError from "./VisualizationError";
 import VisualizationResult from "./VisualizationResult";
 import Warnings from "./Warnings";
 import RunButtonWithTooltip from "./RunButtonWithTooltip";
 
-import Utils from "metabase/lib/utils";
 
-import cx from "classnames";
 
-import Question from "metabase-lib/lib/Question";
+
 import type Database from "metabase-lib/lib/metadata/Database";
 import type Table from "metabase-lib/lib/metadata/Table";
 import type { DatasetQuery } from "metabase-types/types/Card";
-
 import type { ParameterValues } from "metabase-types/types/Parameter";
 
-import { HARD_ROW_LIMIT } from "metabase/lib/query";
 
 type Props = {
   question: Question,

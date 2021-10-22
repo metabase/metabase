@@ -2,20 +2,21 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import cx from "classnames";
+import { Link } from "react-router";
+
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/components/Button";
 import Header from "metabase/components/Header";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
-
-import { getDashboardActions } from "./DashboardActions";
-import { DashboardHeaderButton } from "./DashboardHeader.styled";
-
-import ParametersPopover from "./ParametersPopover";
 import Popover from "metabase/components/Popover";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
-import cx from "classnames";
+import { getDashboardActions } from "./DashboardActions";
+import { DashboardHeaderButton } from "./DashboardHeader.styled";
+import ParametersPopover from "./ParametersPopover";
+
 
 import type { LocationDescriptor, QueryParams } from "metabase-types/types";
 import type { CardId } from "metabase-types/types/Card";
@@ -29,7 +30,7 @@ import type {
   DashboardId,
   DashCardId,
 } from "metabase-types/types/Dashboard";
-import { Link } from "react-router";
+
 
 type Props = {
   location: LocationDescriptor,

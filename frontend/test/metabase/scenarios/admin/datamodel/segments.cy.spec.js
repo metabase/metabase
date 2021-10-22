@@ -1,6 +1,5 @@
 // Ported from `segments.e2e.spec.js`
 import { restore, popover, modal } from "__support__/e2e/cypress";
-
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;

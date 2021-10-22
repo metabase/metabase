@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import cx from "classnames";
 
 import InputBlurChange from "metabase/components/InputBlurChange";
-import cx from "classnames";
 
 const SettingInput = ({
   setting,

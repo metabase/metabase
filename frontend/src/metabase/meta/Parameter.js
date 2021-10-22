@@ -1,4 +1,21 @@
+import moment from "moment";
+import { t } from "ttag";
+import _ from "underscore";
+
 import MetabaseSettings from "metabase/lib/settings";
+import Dimension, {
+  FieldDimension,
+  TemplateTagDimension,
+} from "metabase-lib/lib/Dimension";
+import {
+  doesOperatorExist,
+  getOperatorByTypeAndName,
+  STRING,
+  NUMBER,
+  PRIMARY_KEY,
+} from "metabase/lib/schema_metadata";
+import Variable, { TemplateTagVariable } from "metabase-lib/lib/Variable";
+
 import type {
   TemplateTag,
   LocalFieldReference,
@@ -16,22 +33,7 @@ import type {
 import type { FieldId } from "metabase-types/types/Field";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
 import type Field from "metabase-lib/lib/metadata/Field";
-import Dimension, {
-  FieldDimension,
-  TemplateTagDimension,
-} from "metabase-lib/lib/Dimension";
-import moment from "moment";
-import { t } from "ttag";
-import _ from "underscore";
-import {
-  doesOperatorExist,
-  getOperatorByTypeAndName,
-  STRING,
-  NUMBER,
-  PRIMARY_KEY,
-} from "metabase/lib/schema_metadata";
 
-import Variable, { TemplateTagVariable } from "metabase-lib/lib/Variable";
 
 type DimensionFilter = (dimension: Dimension) => boolean;
 type TemplateTagFilter = (tag: TemplateTag) => boolean;

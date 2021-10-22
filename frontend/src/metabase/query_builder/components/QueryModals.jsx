@@ -1,22 +1,17 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-
 import { t } from "ttag";
 import _ from "underscore";
 
 import { MODAL_TYPES } from "metabase/query_builder/constants";
-
 import Modal from "metabase/components/Modal";
-
 import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
 import QuestionSavedModal from "metabase/components/QuestionSavedModal";
 import AddToDashSelectDashModal from "metabase/containers/AddToDashSelectDashModal";
 import EditQuestionInfoModal from "metabase/query_builder/components/view/EditQuestionInfoModal";
-
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 import ArchiveQuestionModal from "metabase/query_builder/containers/ArchiveQuestionModal";
 import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbedWidget";
-
 import QuestionHistoryModal from "metabase/query_builder/containers/QuestionHistoryModal";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";

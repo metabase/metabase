@@ -3,14 +3,12 @@ import React from "react";
 import { withRouter } from "react-router";
 import { connect } from "react-redux";
 import { t, jt } from "ttag";
-
 import { Flex } from "grid-styled";
+
 import Icon from "metabase/components/Icon";
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
-
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
-
 import Dashboards from "metabase/entities/dashboards";
 import Collection, { ROOT_COLLECTION } from "metabase/entities/collections";
 

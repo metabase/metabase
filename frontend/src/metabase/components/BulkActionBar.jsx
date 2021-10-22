@@ -2,8 +2,9 @@
 import React from "react";
 import styled from "styled-components";
 import { Box } from "grid-styled";
-import Card from "metabase/components/Card";
 import { Motion, spring } from "react-motion";
+
+import Card from "metabase/components/Card";
 
 const FixedBottomBar = styled(Box)`
   position: fixed;

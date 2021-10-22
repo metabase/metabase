@@ -1,5 +1,6 @@
 import React from "react";
 import { t } from "ttag";
+
 import Select from "metabase/components/Select";
 
 export const component = Select;
@@ -10,6 +11,7 @@ export const description = t`
 `;
 
 import _ from "underscore";
+
 import { field_semantic_types } from "metabase/lib/core";
 const EXAMPLE_SECTIONS = _.chain(field_semantic_types)
   .first(10)

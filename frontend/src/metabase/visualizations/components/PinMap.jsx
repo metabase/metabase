@@ -1,5 +1,10 @@
 import React, { Component } from "react";
 import { t } from "ttag";
+import _ from "underscore";
+import cx from "classnames";
+import d3 from "d3";
+import L from "leaflet";
+
 import { hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
 import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
 
@@ -8,11 +13,6 @@ import LeafletTilePinMap from "./LeafletTilePinMap";
 import LeafletHeatMap from "./LeafletHeatMap";
 import LeafletGridHeatMap from "./LeafletGridHeatMap";
 
-import _ from "underscore";
-import cx from "classnames";
-import d3 from "d3";
-
-import L from "leaflet";
 
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 

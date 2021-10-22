@@ -9,7 +9,6 @@ import Icon from "metabase/components/Icon";
 import IconWrapper from "metabase/components/IconWrapper";
 import Swapper from "metabase/components/Swapper";
 import Tooltip from "metabase/components/Tooltip";
-
 import { color as c } from "metabase/lib/colors";
 
 const ArchivedItem = ({

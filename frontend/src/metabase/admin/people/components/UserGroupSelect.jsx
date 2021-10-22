@@ -2,11 +2,10 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
-import { createMembership, deleteMembership } from "../people";
-import { getGroupsWithoutMetabot, getUserMemberships } from "../selectors";
-
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
+import { createMembership, deleteMembership } from "../people";
+import { getGroupsWithoutMetabot, getUserMemberships } from "../selectors";
 import GroupSelect from "./GroupSelect";
 
 @connect(

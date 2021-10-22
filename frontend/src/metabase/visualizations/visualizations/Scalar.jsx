@@ -1,25 +1,22 @@
 import React, { Component } from "react";
 import { t } from "ttag";
-
-import Ellipsified from "metabase/components/Ellipsified";
-
-import { formatValue } from "metabase/lib/formatting";
-import { TYPE } from "metabase/lib/types";
-
-import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-
 import cx from "classnames";
 import _ from "underscore";
 
-import type { VisualizationProps } from "metabase-types/types/Visualization";
-import type { Column } from "metabase-types/types/Dataset";
-import type { VisualizationSettings } from "metabase-types/types/Card";
-
+import Ellipsified from "metabase/components/Ellipsified";
+import { formatValue } from "metabase/lib/formatting";
+import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import ScalarValue, {
   ScalarWrapper,
   ScalarTitle,
 } from "metabase/visualizations/components/ScalarValue";
+
+import { TYPE } from "metabase/lib/types";
+import type { VisualizationProps } from "metabase-types/types/Visualization";
+import type { Column } from "metabase-types/types/Dataset";
+import type { VisualizationSettings } from "metabase-types/types/Card";
+
 
 // convert legacy `scalar.*` visualization settings to format options
 function legacyScalarSettingsToFormatOptions(settings) {

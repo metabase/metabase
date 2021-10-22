@@ -1,8 +1,10 @@
 import React from "react";
+import { t } from "ttag";
+
+import CheckBox from "metabase/components/CheckBox";
 
 import EmbedSelect from "./EmbedSelect";
-import CheckBox from "metabase/components/CheckBox";
-import { t } from "ttag";
+
 import type { DisplayOptions } from "./EmbedModalContent";
 
 type Props = {

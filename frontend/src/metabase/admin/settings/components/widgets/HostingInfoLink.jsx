@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+
 import ExternalLink from "metabase/components/ExternalLink";
 
 const HostingInfoLink = ({ text }) => (

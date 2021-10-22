@@ -3,7 +3,6 @@ import { Flex } from "grid-styled";
 
 import { color } from "metabase/lib/colors";
 import { breakpointMinSmall, space } from "metabase/styled-components/theme";
-
 import Icon from "metabase/components/Icon";
 
 export const Container = styled(Flex)`

@@ -1,16 +1,12 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
-import styles from "./Table.css";
-
-import ExplicitSize from "metabase/components/ExplicitSize";
-import Ellipsified from "metabase/components/Ellipsified";
-import Icon from "metabase/components/Icon";
-import MiniBar from "./MiniBar";
+import { t } from "ttag";
+import cx from "classnames";
+import _ from "underscore";
+import { getIn } from "icepick";
 
 import ExternalLink from "metabase/components/ExternalLink";
-
 import { formatValue } from "metabase/lib/formatting";
 import {
   getTableCellClickedObject,
@@ -19,13 +15,13 @@ import {
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import { HARD_ROW_LIMIT } from "metabase/lib/query";
-
-import { t } from "ttag";
-import cx from "classnames";
-import _ from "underscore";
-import { getIn } from "icepick";
-
+import Icon from "metabase/components/Icon";
+import Ellipsified from "metabase/components/Ellipsified";
+import ExplicitSize from "metabase/components/ExplicitSize";
 import { isID, isFK } from "metabase/lib/schema_metadata";
+
+import MiniBar from "./MiniBar";
+import styles from "./Table.css";
 
 import type {
   ClickObject,

@@ -1,5 +1,4 @@
 import { state } from "__support__/sample_dataset_fixture";
-
 import { getMetadata } from "metabase/selectors/metadata";
 
 describe("databasesList", () => {

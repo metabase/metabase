@@ -1,16 +1,13 @@
+import { push } from "react-router-redux";
+
 import {
   handleActions,
   combineReducers,
   createThunkAction,
 } from "metabase/lib/redux";
-
-import { push } from "react-router-redux";
-
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { clearGoogleAuthCredentials, deleteSession } from "metabase/lib/auth";
-
 import { refreshSiteSettings } from "metabase/redux/settings";
-
 import { SessionApi } from "metabase/services";
 
 // login

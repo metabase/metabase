@@ -4,17 +4,7 @@ import { t } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
 import Question from "metabase-lib/lib/Question";
-
 import { ExpressionDimension } from "metabase-lib/lib/Dimension";
-
-import type Metadata from "metabase-lib/lib/metadata/Metadata";
-import type { Card } from "metabase-types/types/Card";
-import type {
-  ParameterOption,
-  Parameter,
-  ParameterMappingUIOption,
-} from "metabase-types/types/Parameter";
-
 import {
   dimensionFilterForParameter,
   getTagOperatorFilterForParameter,
@@ -24,8 +14,17 @@ import {
   getOperatorDisplayName,
   getParameterTargetField,
 } from "metabase/meta/Parameter";
-
 import { slugify } from "metabase/lib/formatting";
+
+import type Metadata from "metabase-lib/lib/metadata/Metadata";
+import type { Card } from "metabase-types/types/Card";
+import type {
+  ParameterOption,
+  Parameter,
+  ParameterMappingUIOption,
+} from "metabase-types/types/Parameter";
+
+
 
 export type ParameterSection = {
   id: string,

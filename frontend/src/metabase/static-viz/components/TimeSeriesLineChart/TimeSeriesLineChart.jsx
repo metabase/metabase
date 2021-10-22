@@ -4,6 +4,7 @@ import { scaleLinear, scaleTime } from "@visx/scale";
 import { GridRows } from "@visx/grid";
 import { AxisBottom, AxisLeft } from "@visx/axis";
 import { LinePath } from "@visx/shape";
+
 import {
   getXTickLabelProps,
   getYTickWidth,

@@ -1,6 +1,7 @@
 import React, { useCallback } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+
 import Settings from "metabase/lib/settings";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import {
@@ -9,6 +10,7 @@ import {
   formatLink,
   formatTitle,
 } from "metabase/lib/notifications";
+
 import {
   NotificationContent,
   NotificationIcon,

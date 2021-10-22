@@ -1,10 +1,8 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
 import _ from "underscore";
 
 import { isStructured } from "metabase/lib/query";
-
 import TimeGroupingPopover from "metabase/query_builder/components/TimeGroupingPopover";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import SelectButton from "metabase/components/SelectButton";

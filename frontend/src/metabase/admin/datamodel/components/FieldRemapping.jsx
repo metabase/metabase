@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-
 import { t } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
@@ -12,13 +11,11 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import FieldList from "metabase/query_builder/components/FieldList";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
-
-import SelectSeparator from "../components/SelectSeparator";
-
 import MetabaseAnalytics from "metabase/lib/analytics";
-
 import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
 import Question from "metabase-lib/lib/Question";
+
+import SelectSeparator from "../components/SelectSeparator";
 
 const MAP_OPTIONS = {
   original: { type: "original", name: t`Use original value` },

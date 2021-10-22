@@ -1,8 +1,9 @@
 import "__support__/mocks"; // included explicitly whereas with integrated tests it comes with __support__/integrated_tests
-import testAcrossTimezones from "__support__/timezones";
 
 import _ from "underscore";
 import moment from "moment-timezone";
+
+import testAcrossTimezones from "__support__/timezones";
 
 import {
   NumberColumn,

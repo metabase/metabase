@@ -1,11 +1,12 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { t } from "ttag";
-import SettingsInput from "./SettingInput";
 import cx from "classnames";
 
 import ExternalLink from "metabase/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
+
+import SettingsInput from "./SettingInput";
 
 const PREMIUM_EMBEDDING_STORE_URL = MetabaseSettings.storeUrl(
   "product/embedding",

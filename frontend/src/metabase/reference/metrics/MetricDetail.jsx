@@ -9,15 +9,15 @@ import _ from "underscore";
 
 import List from "metabase/components/List";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-
 import EditHeader from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 import Detail from "metabase/reference/components/Detail";
 import FieldsToGroupBy from "metabase/reference/components/FieldsToGroupBy";
 import Formula from "metabase/reference/components/Formula";
+import * as metadataActions from "metabase/redux/metadata";
+import * as actions from "metabase/reference/reference";
 
 import { getQuestionUrl } from "../utils";
-
 import {
   getMetric,
   getTable,
@@ -29,8 +29,6 @@ import {
   getForeignKeys,
 } from "../selectors";
 
-import * as metadataActions from "metabase/redux/metadata";
-import * as actions from "metabase/reference/reference";
 
 const mapStateToProps = (state, props) => {
   const entity = getMetric(state, props) || {};

@@ -1,13 +1,14 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
-import Popover from "metabase/components/Popover";
-import Icon from "metabase/components/Icon";
-import SearchBar from "./SearchBar";
 import { t } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
+
+import Popover from "metabase/components/Popover";
+import Icon from "metabase/components/Icon";
+
+import SearchBar from "./SearchBar";
 
 export default class SelectionModule extends Component {
   constructor(props, context) {

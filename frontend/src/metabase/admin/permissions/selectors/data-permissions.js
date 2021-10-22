@@ -4,16 +4,13 @@ import _ from "underscore";
 import { push } from "react-router-redux";
 
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
-
 import Group from "metabase/entities/groups";
 import Tables from "metabase/entities/tables";
-
 import {
   isAdminGroup,
   isDefaultGroup,
   isMetaBotGroup,
 } from "metabase/lib/groups";
-import { DATA_PERMISSION_OPTIONS } from "../constants/data-permissions";
 import {
   getFieldsPermission,
   getNativePermission,
@@ -23,15 +20,17 @@ import {
   isRestrictivePermission,
 } from "metabase/lib/permissions";
 import {
-  DATA_ACCESS_IS_REQUIRED,
-  UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
-} from "../constants/messages";
-import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION,
   PLUGIN_ADVANCED_PERMISSIONS,
 } from "metabase/plugins";
+
+import { DATA_PERMISSION_OPTIONS } from "../constants/data-permissions";
+import {
+  DATA_ACCESS_IS_REQUIRED,
+  UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
+} from "../constants/messages";
 import {
   getPermissionWarning,
   getPermissionWarningModal,

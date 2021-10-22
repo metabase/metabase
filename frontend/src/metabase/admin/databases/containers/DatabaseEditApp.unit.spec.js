@@ -1,4 +1,5 @@
 import React from "react";
+
 import {
   renderWithProviders,
   screen,
@@ -7,6 +8,7 @@ import {
 import admin from "metabase/admin/admin";
 import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_CACHING } from "metabase/plugins";
+
 import DatabaseEditApp from "./DatabaseEditApp";
 
 const ENGINES_MOCK = {

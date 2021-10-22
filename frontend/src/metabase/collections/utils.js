@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import { canonicalCollectionId } from "metabase/entities/collections";
 
 export function nonPersonalOrArchivedCollection(collection) {

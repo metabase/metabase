@@ -2,10 +2,10 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import cx from "classnames";
 
 import Button from "metabase/components/Button";
 
-import cx from "classnames";
 
 export default class RunButton extends Component {
   static propTypes = {

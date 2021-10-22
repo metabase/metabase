@@ -9,12 +9,12 @@ import Schemas from "metabase/entities/schemas";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
 import EmptyState from "metabase/components/EmptyState";
 import { generateSchemaId } from "metabase/schema";
+import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 
 import {
   SavedQuestionListRoot,
   SavedQuestionListItem,
 } from "./SavedQuestionList.styled";
-import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 
 const propTypes = {
   databaseId: PropTypes.string,

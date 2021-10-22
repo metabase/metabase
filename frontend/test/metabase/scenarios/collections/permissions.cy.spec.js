@@ -11,14 +11,16 @@
  */
 
 import { onlyOn } from "@cypress/skip-test";
+
 import {
   restore,
   popover,
   sidebar,
   openNativeEditor,
 } from "__support__/e2e/cypress";
-import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 import { USERS } from "__support__/e2e/cypress_data";
+
+import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],

@@ -1,9 +1,9 @@
 import React, { Component } from "react";
+import { t } from "ttag";
+import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-import { t } from "ttag";
-import _ from "underscore";
 
 export default class SaveStatus extends Component {
   constructor(props, context) {

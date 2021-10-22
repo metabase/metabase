@@ -1,8 +1,8 @@
 import _ from "underscore";
+
 import * as Q_DEPRECATED from "metabase/lib/query";
 import Utils from "metabase/lib/utils";
 import * as Urls from "metabase/lib/urls";
-
 import { CardApi } from "metabase/services";
 import { b64hash_to_utf8, utf8_to_b64url } from "metabase/lib/encoding";
 

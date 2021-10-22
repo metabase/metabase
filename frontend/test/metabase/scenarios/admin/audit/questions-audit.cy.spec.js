@@ -1,4 +1,5 @@
 import _ from "underscore";
+
 import { restore, describeWithToken } from "__support__/e2e/cypress";
 
 const visitQuestion = id => {

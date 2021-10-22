@@ -1,9 +1,9 @@
 /* eslint-disable react/prop-types */
-import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
 
 import React from "react";
 import { t } from "ttag";
 
+import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
 import LdapAndEmailForm from "metabase/auth/components/LdapAndEmailForm";
 
 const EmailButton = ({ children }) => (

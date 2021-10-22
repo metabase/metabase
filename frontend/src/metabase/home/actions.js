@@ -2,7 +2,6 @@ import _ from "underscore";
 import moment from "moment";
 
 import { createThunkAction } from "metabase/lib/redux";
-
 import { ActivityApi } from "metabase/services";
 
 // action constants

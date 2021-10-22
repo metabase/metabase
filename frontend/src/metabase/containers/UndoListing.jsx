@@ -6,12 +6,11 @@ import styled from "styled-components";
 import { space } from "styled-system";
 import { Flex } from "grid-styled";
 import { t } from "ttag";
-import { capitalize, inflect } from "metabase/lib/formatting";
 
+import { capitalize, inflect } from "metabase/lib/formatting";
 import { color } from "metabase/lib/colors";
 import { dismissUndo, performUndo } from "metabase/redux/undo";
 import { getUndos } from "metabase/selectors/undo";
-
 import BodyComponent from "metabase/components/BodyComponent";
 import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";

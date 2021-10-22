@@ -4,13 +4,14 @@ import { t } from "ttag";
 import cx from "classnames";
 
 import Popover from "metabase/components/Popover";
+import { isObscured } from "metabase/lib/dom";
+
 import {
   ListItemStyled,
   SectionTitle,
   UlStyled,
 } from "./ExpressionEditorSuggestions.styled";
 
-import { isObscured } from "metabase/lib/dom";
 
 const SUGGESTION_SECTION_NAMES = {
   fields: t`Fields`,

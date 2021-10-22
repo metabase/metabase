@@ -1,11 +1,12 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import { t } from "ttag";
 
-import SettingInput from "./SettingInput";
 import Button from "metabase/components/Button";
 import Confirm from "metabase/components/Confirm";
-import { t } from "ttag";
 import { UtilApi } from "metabase/services";
+
+import SettingInput from "./SettingInput";
 
 type Props = {
   onChange: (value: any) => void,

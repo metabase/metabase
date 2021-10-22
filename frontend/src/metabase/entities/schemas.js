@@ -1,12 +1,11 @@
 import { updateIn } from "icepick";
-import { createEntity } from "metabase/lib/entities";
 
+import { createEntity } from "metabase/lib/entities";
 import { GET } from "metabase/lib/api";
 import {
   getCollectionVirtualSchemaId,
   getQuestionVirtualTableId,
 } from "metabase/lib/saved-questions";
-
 import { SchemaSchema, generateSchemaId, parseSchemaId } from "metabase/schema";
 import Questions from "metabase/entities/questions";
 

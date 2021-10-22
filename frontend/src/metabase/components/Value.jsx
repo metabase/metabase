@@ -1,7 +1,6 @@
 import React from "react";
 
 import RemappedValue from "metabase/containers/RemappedValue";
-
 import { formatValue } from "metabase/lib/formatting";
 
 import type { Value as ValueType } from "metabase-types/types/Dataset";

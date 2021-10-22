@@ -5,7 +5,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import User from "metabase/entities/users";
-
 import Button from "metabase/components/Button";
 import ModalContent from "metabase/components/ModalContent";
 import Text from "metabase/components/type/Text";

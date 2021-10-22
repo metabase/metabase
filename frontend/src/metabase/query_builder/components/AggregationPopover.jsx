@@ -3,20 +3,20 @@ import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import AccordionList from "metabase/components/AccordionList";
+import * as AGGREGATION from "metabase/lib/query/aggregation";
+import Aggregation from "metabase-lib/lib/queries/structured/Aggregation";
 
 import FieldList from "./FieldList";
 import QueryDefinitionTooltip from "./QueryDefinitionTooltip";
 import ExpressionPopover from "./ExpressionPopover";
 
-import * as AGGREGATION from "metabase/lib/query/aggregation";
 
-import Aggregation from "metabase-lib/lib/queries/structured/Aggregation";
 
-import _ from "underscore";
 
 const COMMON_SECTION_NAME = t`Common Metrics`;
 const BASIC_SECTION_NAME = t`Basic Metrics`;

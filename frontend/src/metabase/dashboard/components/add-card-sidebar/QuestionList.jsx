@@ -3,7 +3,6 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import { PLUGIN_MODERATION } from "metabase/plugins";
-
 import EmptyState from "metabase/components/EmptyState";
 import Search from "metabase/entities/search";
 import { SelectList } from "metabase/components/select-list";

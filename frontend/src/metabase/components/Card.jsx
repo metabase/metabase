@@ -1,5 +1,6 @@
 import styled from "styled-components";
 import { space, width } from "styled-system";
+
 import { color, alpha } from "metabase/lib/colors";
 
 const Card = styled.div`

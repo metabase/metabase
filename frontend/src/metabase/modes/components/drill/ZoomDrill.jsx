@@ -1,10 +1,11 @@
+import { t } from "ttag";
+
 import { drillDownForDimensions } from "metabase/modes/lib/actions";
 
 import type {
   ClickAction,
   ClickActionProps,
 } from "metabase-types/types/Visualization";
-import { t } from "ttag";
 
 export default ({
   question,

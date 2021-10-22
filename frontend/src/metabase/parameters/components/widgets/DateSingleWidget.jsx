@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import moment from "moment";
 
 import Calendar from "metabase/components/Calendar";
-import moment from "moment";
 
 const DateSingleWidget = ({ value, setValue, onClose }) => {
   value = value ? moment(value) : moment();

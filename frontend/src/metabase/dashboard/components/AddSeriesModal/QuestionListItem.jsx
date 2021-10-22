@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import Tooltip from "metabase/components/Tooltip";
 import CheckBox from "metabase/components/CheckBox";
+
 import {
   QuestionListItemRoot,
   CheckboxContainer,

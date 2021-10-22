@@ -1,9 +1,9 @@
-import LeafletMap from "./LeafletMap";
 import L from "leaflet";
+import _ from "underscore";
 
 import { isPK } from "metabase/lib/schema_metadata";
 
-import _ from "underscore";
+import LeafletMap from "./LeafletMap";
 
 const MARKER_ICON = L.icon({
   iconUrl: "app/assets/img/pin.png",

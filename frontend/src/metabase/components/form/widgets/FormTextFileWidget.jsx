@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import cx from "classnames";
+
 import { formDomOnlyProps } from "metabase/lib/redux";
 
 const FormTextFileWidget = ({ field }) => {

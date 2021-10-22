@@ -1,5 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
+
 import CategoricalAreaChart from "../../components/CategoricalAreaChart";
 import CategoricalBarChart from "../../components/CategoricalBarChart";
 import CategoricalDonutChart from "../../components/CategoricalDonutChart";

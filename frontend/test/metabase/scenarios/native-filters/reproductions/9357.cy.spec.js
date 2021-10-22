@@ -1,4 +1,5 @@
 import { restore, openNativeEditor } from "__support__/e2e/cypress";
+
 import * as SQLFilter from "../helpers/e2e-sql-filter-helpers";
 
 describe("issue 9357", () => {

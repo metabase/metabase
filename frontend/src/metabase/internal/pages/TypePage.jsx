@@ -5,7 +5,6 @@ import Heading from "metabase/components/type/Heading";
 import Subhead from "metabase/components/type/Subhead";
 import Label from "metabase/components/type/Label";
 import Text from "metabase/components/type/Text";
-
 import Example from "metabase/internal/components/Example";
 
 const TypePage = () => (

@@ -1,10 +1,9 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-
-import Toggle from "metabase/components/Toggle";
-
 import { t } from "ttag";
 import cx from "classnames";
+
+import Toggle from "metabase/components/Toggle";
 
 const QuestionPreviewToggle = ({
   isPreviewing,

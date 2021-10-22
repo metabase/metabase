@@ -5,14 +5,12 @@ import Table from "metabase-lib/lib/metadata/Table";
 import Field from "metabase-lib/lib/metadata/Field";
 import Metric from "metabase-lib/lib/metadata/Metric";
 import Segment from "metabase-lib/lib/metadata/Segment";
-
 import {
   metadata, // connected graph,
   state, // the original non connected metadata objects,
   SAMPLE_DATASET,
   ORDERS,
 } from "__support__/sample_dataset_fixture";
-
 import {
   copyObjects,
   instantiateDatabase,

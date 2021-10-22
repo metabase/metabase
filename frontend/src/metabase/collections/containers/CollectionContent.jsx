@@ -6,19 +6,15 @@ import { connect } from "react-redux";
 
 import Collection from "metabase/entities/collections";
 import Search from "metabase/entities/search";
-
 import { getUserIsAdmin } from "metabase/selectors/user";
-
 import BulkActions from "metabase/collections/components/BulkActions";
 import CollectionEmptyState from "metabase/components/CollectionEmptyState";
 import Header from "metabase/collections/components/CollectionHeader/CollectionHeader";
 import ItemsTable from "metabase/collections/components/ItemsTable";
 import PinnedItemsTable from "metabase/collections/components/PinnedItemsTable";
 import { isPersonalCollectionChild } from "metabase/collections/utils";
-
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 import PaginationControls from "metabase/components/PaginationControls";
-
 import { usePagination } from "metabase/hooks/use-pagination";
 import { useListSelect } from "metabase/hooks/use-list-select";
 

@@ -1,11 +1,12 @@
 // NOTE: this needs to be imported first due to some cyclical dependency nonsense
-import Question from "../Question";
 
-import Base from "./Base";
 
 import { singularize } from "metabase/lib/formatting";
 import { getAggregationOperatorsWithFields } from "metabase/lib/schema_metadata";
 import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
+
+import Base from "./Base";
+import Question from "../Question";
 
 /**
  * @typedef { import("./metadata").SchemaName } SchemaName

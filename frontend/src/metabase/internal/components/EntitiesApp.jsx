@@ -3,15 +3,13 @@ import React from "react";
 import { Route, IndexRoute } from "react-router";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
+import { List, WindowScroller } from "react-virtualized";
 
 import { capitalize } from "metabase/lib/formatting";
-
 import { entities as entityDefs } from "metabase/redux/entities";
-
 import Button from "metabase/components/Button";
 import Confirm from "metabase/components/Confirm";
 import Link from "metabase/components/Link";
-
 import EntityListLoader from "metabase/entities/containers/EntityListLoader";
 import EntityObjectLoader from "metabase/entities/containers/EntityObjectLoader";
 import EntityForm from "metabase/entities/containers/EntityForm";
@@ -38,7 +36,6 @@ export default class EntitiesApp extends React.Component {
   }
 }
 
-import { List, WindowScroller } from "react-virtualized";
 
 const EntityListApp = ({ params: { entityType } }) => (
   <EntityListLoader entityType={entityType} wrapped>

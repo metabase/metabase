@@ -1,6 +1,6 @@
 import { parseTimestamp } from "metabase/lib/time";
-import type { DateSeparator } from "metabase/lib/formatting";
 
+import type { DateSeparator } from "metabase/lib/formatting";
 import type { DatetimeUnit } from "metabase-types/types/Query";
 
 export type DateStyle =

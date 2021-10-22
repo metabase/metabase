@@ -7,13 +7,11 @@ import { color } from "metabase/lib/colors";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 import { b64hash_to_utf8 } from "metabase/lib/encoding";
-
 import AddDatabaseHelpCard from "metabase/components/AddDatabaseHelpCard";
 import DriverWarning from "metabase/components/DriverWarning";
 import ExternalLink from "metabase/components/ExternalLink";
 import LogoIcon from "metabase/components/LogoIcon";
 import NewsletterForm from "metabase/components/NewsletterForm";
-
 import DatabaseSchedulingStep from "metabase/setup/components/DatabaseSchedulingStep";
 
 import LanguageStep from "./LanguageStep";

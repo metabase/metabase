@@ -1,9 +1,8 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import cx from "classnames";
 
 import NotebookStep from "./NotebookStep";
-
-import cx from "classnames";
 import { getQuestionSteps } from "./lib/steps";
 
 export default class NotebookSteps extends React.Component {

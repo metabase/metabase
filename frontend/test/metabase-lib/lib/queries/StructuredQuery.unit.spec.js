@@ -5,7 +5,6 @@ import {
   PRODUCTS,
   MAIN_METRIC_ID,
 } from "__support__/sample_dataset_fixture";
-
 import Segment from "metabase-lib/lib/metadata/Segment";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 

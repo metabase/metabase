@@ -4,6 +4,7 @@
  */
 
 import { createSelector } from "reselect";
+
 import { getMetadata, getDatabases } from "metabase/selectors/metadata";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import Question from "metabase-lib/lib/Question";

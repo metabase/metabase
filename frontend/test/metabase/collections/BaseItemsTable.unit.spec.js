@@ -1,13 +1,12 @@
 import React from "react";
-import { renderWithProviders } from "__support__/ui";
 import userEvent from "@testing-library/user-event";
 import moment from "moment";
 
+import { renderWithProviders } from "__support__/ui";
 import {
   DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,
 } from "metabase/lib/formatting/date";
-
 import BaseItemsTable from "metabase/collections/components/BaseItemsTable";
 
 describe("Collections BaseItemsTable", () => {

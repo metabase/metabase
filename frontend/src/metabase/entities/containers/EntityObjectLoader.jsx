@@ -4,8 +4,9 @@ import { connect } from "react-redux";
 import { createSelector } from "reselect";
 import _ from "underscore";
 
-import entityType from "./EntityType";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+
+import entityType from "./EntityType";
 
 export type Props = {
   // Entity ID, such as a database ID

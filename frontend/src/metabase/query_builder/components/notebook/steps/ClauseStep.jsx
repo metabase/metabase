@@ -1,14 +1,15 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
+
+import Icon from "metabase/components/Icon";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+
 import {
   NotebookCell,
   NotebookCellItem,
   NotebookCellAdd,
 } from "../NotebookCell";
-
-import Icon from "metabase/components/Icon";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
 export default function ClauseStep({
   color,

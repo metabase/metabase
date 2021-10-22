@@ -1,6 +1,7 @@
-import Utils from "metabase/lib/utils";
 import { handleActions } from "redux-actions";
 import { assoc, dissoc } from "icepick";
+
+import Utils from "metabase/lib/utils";
 
 import {
   RESET_QB,

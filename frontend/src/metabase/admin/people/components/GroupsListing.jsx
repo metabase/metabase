@@ -1,9 +1,9 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { Link } from "react-router";
-
 import _ from "underscore";
 import cx from "classnames";
+import { t } from "ttag";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import {
@@ -12,8 +12,6 @@ import {
   getGroupNameLocalized,
 } from "metabase/lib/groups";
 import { KEYCODE_ENTER } from "metabase/lib/keyboard";
-
-import { t } from "ttag";
 import Icon from "metabase/components/Icon";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import ModalContent from "metabase/components/ModalContent";
@@ -21,7 +19,6 @@ import Alert from "metabase/components/Alert";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import UserAvatar from "metabase/components/UserAvatar";
-
 import AdminContentTable from "metabase/components/AdminContentTable";
 import AdminPaneLayout from "metabase/components/AdminPaneLayout";
 

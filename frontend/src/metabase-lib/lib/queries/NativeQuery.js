@@ -1,18 +1,21 @@
+import { chain, assoc, getIn, assocIn, updateIn } from "icepick";
+import _ from "underscore";
+
 import Database from "metabase-lib/lib/metadata/Database";
 import Table from "metabase-lib/lib/metadata/Table";
-
 import { countLines } from "metabase/lib/string";
 import { humanize } from "metabase/lib/formatting";
 import Utils from "metabase/lib/utils";
-
 import {
   getEngineNativeAceMode,
   getEngineNativeType,
   getEngineNativeRequiresTable,
 } from "metabase/lib/engine";
+import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 
-import { chain, assoc, getIn, assocIn, updateIn } from "icepick";
-import _ from "underscore";
+import Dimension, { TemplateTagDimension, FieldDimension } from "../Dimension";
+import Variable, { TemplateTagVariable } from "../Variable";
+import DimensionOptions from "../DimensionOptions";
 
 import type Question from "metabase-lib/lib/Question";
 import type {
@@ -22,11 +25,7 @@ import type {
 import type { TemplateTags, TemplateTag } from "metabase-types/types/Query";
 import type { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
 
-import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 
-import Dimension, { TemplateTagDimension, FieldDimension } from "../Dimension";
-import Variable, { TemplateTagVariable } from "../Variable";
-import DimensionOptions from "../DimensionOptions";
 
 type DimensionFilter = (dimension: Dimension) => boolean;
 type VariableFilter = (variable: Variable) => boolean;

@@ -1,4 +1,5 @@
 import React from "react";
+
 import AccordionList from "metabase/components/AccordionList";
 
 export const component = AccordionList;

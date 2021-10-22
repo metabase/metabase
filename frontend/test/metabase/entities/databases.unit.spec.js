@@ -1,7 +1,6 @@
 import mock from "xhr-mock";
 
 import { getStore } from "__support__/entities-store";
-
 import Databases from "metabase/entities/databases";
 
 describe("database entity", () => {

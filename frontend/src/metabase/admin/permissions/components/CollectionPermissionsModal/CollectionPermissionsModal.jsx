@@ -5,12 +5,9 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import * as Urls from "metabase/lib/urls";
-
 import Collections from "metabase/entities/collections";
 import SnippetCollections from "metabase/entities/snippet-collections";
-
 import { isPersonalCollectionChild } from "metabase/collections/utils";
-
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/components/Button";
 import Link from "metabase/components/Link";
@@ -27,7 +24,6 @@ import {
   updateCollectionPermission,
   saveCollectionPermissions,
 } from "../../permissions";
-
 import { PermissionTableContainer } from "./CollectionPermissionsModal.styled";
 
 const getDefaultTitle = namespace =>

@@ -1,5 +1,7 @@
 import _ from "underscore";
 
+import { add, update, remove, clear } from "./util";
+
 import type {
   Field as FieldReference,
   FieldsClause,
@@ -7,7 +9,6 @@ import type {
 import type { Field, FieldValues } from "metabase-types/types/Field";
 import type { Value } from "metabase-types/types/Dataset";
 
-import { add, update, remove, clear } from "./util";
 
 // returns canonical list of Fields, with nulls removed
 export function getFields(fields: ?FieldsClause): FieldReference[] {

@@ -1,8 +1,9 @@
 import _ from "underscore";
 import { t, ngettext, msgid } from "ttag";
+import moment from "moment";
+
 import { parseTimestamp } from "metabase/lib/time";
 import MetabaseUtils from "metabase/lib/utils";
-import moment from "moment";
 
 // TODO: dump this from backend settings definitions
 export type SettingName =

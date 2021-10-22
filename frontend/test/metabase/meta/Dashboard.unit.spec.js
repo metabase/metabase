@@ -1,4 +1,5 @@
 import _ from "underscore";
+
 import {
   metadata,
   SAMPLE_DATASET,
@@ -17,9 +18,10 @@ import {
   isDashboardParameterWithoutMapping,
   getMappingsByParameter,
 } from "metabase/meta/Dashboard";
+import Field from "metabase-lib/lib/metadata/Field";
+
 import DASHBOARD_WITH_BOOLEAN_PARAMETER from "./dashboard-with-boolean-parameter.json";
 
-import Field from "metabase-lib/lib/metadata/Field";
 
 function structured(query) {
   return SAMPLE_DATASET.question(query).card();

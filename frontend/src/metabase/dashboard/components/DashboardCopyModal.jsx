@@ -3,13 +3,11 @@ import React from "react";
 import { withRouter } from "react-router";
 import { connect } from "react-redux";
 import { dissoc } from "icepick";
-
 import { replace } from "react-router-redux";
-import * as Urls from "metabase/lib/urls";
 
+import * as Urls from "metabase/lib/urls";
 import Dashboards from "metabase/entities/dashboards";
 import Collections from "metabase/entities/collections";
-
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 
 import { getDashboardComplete } from "../selectors";

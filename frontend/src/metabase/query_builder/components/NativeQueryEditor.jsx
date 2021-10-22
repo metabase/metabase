@@ -21,7 +21,6 @@ import "ace/snippets/json";
 
 import { t } from "ttag";
 import _ from "underscore";
-
 import { ResizableBox } from "react-resizable";
 
 import "./NativeQueryEditor.css";
@@ -30,18 +29,14 @@ import { isMac } from "metabase/lib/browser";
 import { isEventOverElement } from "metabase/lib/dom";
 import { delay } from "metabase/lib/promise";
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
-
 import Icon from "metabase/components/Icon";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Popover from "metabase/components/Popover";
-
 import Snippets from "metabase/entities/snippets";
 import SnippetCollections from "metabase/entities/snippet-collections";
-
 import Parameters from "metabase/parameters/components/Parameters/Parameters";
 import Question from "metabase-lib/lib/Question";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-
 import {
   DatabaseDataSelector,
   SchemaAndTableDataSelector,

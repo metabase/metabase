@@ -1,18 +1,15 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-
 import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
-
 import EmbedModalContent from "metabase/public/components/widgets/EmbedModalContent";
-
 import * as Urls from "metabase/lib/urls";
 import MetabaseSettings from "metabase/lib/settings";
 import MetabaseAnalytics from "metabase/lib/analytics";
-
 import { getParametersFromCard } from "metabase/meta/Card";
+
 import {
   createPublicLink,
   deletePublicLink,

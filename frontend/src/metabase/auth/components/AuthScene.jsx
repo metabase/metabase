@@ -1,8 +1,8 @@
 /* eslint-disable no-color-literals */
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
-
 import { connect } from "react-redux";
+
 import { PLUGIN_SELECTORS } from "metabase/plugins";
 
 const mapStateToProps = (state, props) => ({

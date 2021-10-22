@@ -3,7 +3,6 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
-
 import Button from "metabase/components/Button";
 import ModalContent from "metabase/components/ModalContent";
 

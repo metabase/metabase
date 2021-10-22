@@ -2,10 +2,11 @@
 import React from "react";
 import { t } from "ttag";
 
+import { parseTime } from "metabase/lib/time";
+
 import DatePicker, { getDateTimeFieldTarget } from "./DatePicker";
 import HoursMinutesInput from "./HoursMinutesInput";
 
-import { parseTime } from "metabase/lib/time";
 
 import type { Operator } from "./DatePicker";
 

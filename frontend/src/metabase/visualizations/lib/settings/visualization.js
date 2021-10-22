@@ -1,12 +1,15 @@
+import { t } from "ttag";
+
+import { getVisualizationRaw } from "metabase/visualizations";
+import { normalizeFieldRef } from "metabase/lib/dataset";
+
 import {
   getComputedSettings,
   getSettingsWidgets,
   getPersistableDefaultSettings,
 } from "../settings";
 
-import { getVisualizationRaw } from "metabase/visualizations";
-import { normalizeFieldRef } from "metabase/lib/dataset";
-import { t } from "ttag";
+
 
 import type { Settings, SettingDefs, WidgetDef } from "../settings";
 import type { Series } from "metabase-types/types/Visualization";

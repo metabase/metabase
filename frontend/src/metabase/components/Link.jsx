@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 import { Link as ReactRouterLink } from "react-router";
 import styled from "styled-components";
 import { display, color, hover, space } from "styled-system";
+
 import { stripLayoutProps } from "metabase/lib/utils";
 
 BaseLink.propTypes = {

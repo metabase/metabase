@@ -2,10 +2,10 @@
 import React, { useState } from "react";
 
 import * as Urls from "metabase/lib/urls";
-
 import { PageWrapper } from "metabase/collections/components/Layout";
 import CollectionContent from "metabase/collections/containers/CollectionContent";
 import CollectionSidebar from "metabase/collections/containers/CollectionSidebar/CollectionSidebar";
+
 import { ContentBox } from "./CollectionLanding.styled";
 
 const CollectionLanding = ({ params: { slug }, children }) => {

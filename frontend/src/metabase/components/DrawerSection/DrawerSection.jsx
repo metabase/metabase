@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
+
 import {
   Container,
   Transformer,

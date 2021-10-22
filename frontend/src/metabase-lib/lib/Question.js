@@ -9,22 +9,17 @@ import NativeQuery, {
   NATIVE_QUERY_TEMPLATE,
 } from "metabase-lib/lib/queries/NativeQuery";
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
-import InternalQuery from "./queries/InternalQuery";
-
 import Query from "metabase-lib/lib/queries/Query";
-
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Database from "metabase-lib/lib/metadata/Database";
 import Table from "metabase-lib/lib/metadata/Table";
 import Field from "metabase-lib/lib/metadata/Field";
-
 import {
   AggregationDimension,
   FieldDimension,
 } from "metabase-lib/lib/Dimension";
 import Mode from "metabase-lib/lib/Mode";
 import { isStandard } from "metabase/lib/query/filter";
-
 import { memoize, sortObject } from "metabase-lib/lib/utils";
 
 // TODO: remove these dependencies
@@ -53,6 +48,14 @@ import {
 } from "metabase/modes/lib/actions";
 import { CardApi, maybeUsePivotEndpoint, MetabaseApi } from "metabase/services";
 import Questions from "metabase/entities/questions";
+import {
+  ALERT_TYPE_PROGRESS_BAR_GOAL,
+  ALERT_TYPE_ROWS,
+  ALERT_TYPE_TIMESERIES_GOAL,
+} from "metabase-lib/lib/Alert";
+import { utf8_to_b64url } from "metabase/lib/encoding";
+
+import InternalQuery from "./queries/InternalQuery";
 
 import type {
   Parameter as ParameterObject,
@@ -68,12 +71,7 @@ import type { TableId } from "metabase-types/types/Table";
 import type { DatabaseId } from "metabase-types/types/Database";
 import type { ClickObject } from "metabase-types/types/Visualization";
 
-import {
-  ALERT_TYPE_PROGRESS_BAR_GOAL,
-  ALERT_TYPE_ROWS,
-  ALERT_TYPE_TIMESERIES_GOAL,
-} from "metabase-lib/lib/Alert";
-import { utf8_to_b64url } from "metabase/lib/encoding";
+
 
 type QuestionUpdateFn = (q: Question) => ?Promise<void>;
 

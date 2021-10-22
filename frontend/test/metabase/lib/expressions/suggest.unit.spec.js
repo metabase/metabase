@@ -1,16 +1,16 @@
+import _ from "underscore";
+
 import {
   suggest as suggest_,
   getContext as getContext_,
 } from "metabase/lib/expressions/suggest";
-
-import _ from "underscore";
+import { ORDERS, REVIEWS } from "__support__/sample_dataset_fixture";
 
 import {
   aggregationOpts,
   expressionOpts,
   filterOpts,
 } from "./__support__/expressions";
-import { ORDERS, REVIEWS } from "__support__/sample_dataset_fixture";
 
 const AGGREGATION_FUNCTIONS = [
   { type: "aggregations", text: "Average(" },

@@ -6,6 +6,8 @@ import _ from "underscore";
 
 import Collection from "metabase/entities/collections";
 import { getUser } from "metabase/selectors/user";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
+import { getParentPath } from "metabase/collections/utils";
 
 import {
   LoadingContainer,
@@ -13,13 +15,9 @@ import {
   Sidebar,
   ToggleMobileSidebarIcon,
 } from "./CollectionSidebar.styled";
-
 import RootCollectionLink from "./RootCollectionLink/RootCollectionLink";
 import Footer from "./CollectionSidebarFooter/CollectionSidebarFooter";
 import Collections from "./Collections/Collections";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
-
-import { getParentPath } from "metabase/collections/utils";
 import { updateOpenCollectionList } from "./updateOpenCollectionList";
 
 const collectionEntityQuery = {

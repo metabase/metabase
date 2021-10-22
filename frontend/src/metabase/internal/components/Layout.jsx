@@ -1,10 +1,9 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+
 import fitViewport from "metabase/hoc/FitViewPort";
 import Link from "metabase/components/Link";
-
 import LogoIcon from "metabase/components/LogoIcon";
-
 import Label from "metabase/components/type/Label";
 import Subhead from "metabase/components/type/Subhead";
 
@@ -25,8 +24,9 @@ export const CATEGORIES = {
   search: "Search",
 };
 
-import COMPONENTS from "../lib/components-webpack";
 import { slugify } from "metabase/lib/formatting";
+
+import COMPONENTS from "../lib/components-webpack";
 
 const req = require.context(
   "metabase/internal/components",

@@ -7,7 +7,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Question from "metabase-lib/lib/Question";
-
 import { getMetadata } from "metabase/selectors/metadata";
 import Tables from "metabase/entities/tables";
 import GuiQueryEditor from "metabase/query_builder/components/GuiQueryEditor";

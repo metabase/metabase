@@ -1,4 +1,5 @@
 import styled, { css } from "styled-components";
+
 import Link from "metabase/components/Link";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";

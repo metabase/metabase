@@ -1,18 +1,16 @@
+import { assocIn } from "icepick";
+import { t } from "ttag";
+
 import {
   compose,
   withAction,
   withAnalytics,
   withRequestState,
 } from "metabase/lib/redux";
-
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
-import { assocIn } from "icepick";
-import { t } from "ttag";
-
 import { addUndo } from "metabase/redux/undo";
-
 import { POST, DELETE } from "metabase/lib/api";
 import {
   canonicalCollectionId,

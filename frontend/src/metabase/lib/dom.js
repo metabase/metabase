@@ -1,4 +1,5 @@
 import _ from "underscore";
+
 import { isCypressActive } from "metabase/env";
 
 // IE doesn't support scrollX/scrollY:

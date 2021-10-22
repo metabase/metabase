@@ -10,6 +10,7 @@ import {
   PRODUCTS,
   metadata,
 } from "__support__/sample_dataset_fixture";
+
 import { normalizeQuery } from "./selectors";
 
 function toFieldRef(field) {

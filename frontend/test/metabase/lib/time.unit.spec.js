@@ -1,3 +1,5 @@
+import moment from "moment";
+
 import {
   parseTime,
   parseTimestamp,
@@ -7,7 +9,6 @@ import {
   msToHours,
   hoursToSeconds,
 } from "metabase/lib/time";
-import moment from "moment";
 
 describe("time", () => {
   describe("parseTimestamp", () => {

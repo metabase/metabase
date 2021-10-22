@@ -8,7 +8,6 @@ import {
   ORDERS,
   metadata,
 } from "__support__/sample_dataset_fixture";
-
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 const getGuiQueryEditor = query => (

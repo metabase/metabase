@@ -1,3 +1,14 @@
+
+import * as A from "./aggregation";
+import * as B from "./breakout";
+import * as F from "./filter";
+import * as J from "./join";
+import * as L from "./limit";
+import * as O from "./order_by";
+import * as E from "./expression";
+import * as FIELD from "./field";
+import * as FIELD_REF from "./field_ref";
+
 import type {
   StructuredQuery as SQ,
   Aggregation,
@@ -17,16 +28,6 @@ import type {
   Field,
   FieldsClause,
 } from "metabase-types/types/Query";
-
-import * as A from "./aggregation";
-import * as B from "./breakout";
-import * as F from "./filter";
-import * as J from "./join";
-import * as L from "./limit";
-import * as O from "./order_by";
-import * as E from "./expression";
-import * as FIELD from "./field";
-import * as FIELD_REF from "./field_ref";
 
 // AGGREGATION
 

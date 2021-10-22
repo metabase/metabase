@@ -3,9 +3,9 @@ import { connect } from "react-redux";
 
 import User from "metabase/entities/users";
 import Group from "metabase/entities/groups";
-import { getUsersWithMemberships } from "../selectors";
 import { getUser } from "metabase/selectors/user";
 
+import { getUsersWithMemberships } from "../selectors";
 import GroupDetail from "../components/GroupDetail";
 
 @User.loadList()

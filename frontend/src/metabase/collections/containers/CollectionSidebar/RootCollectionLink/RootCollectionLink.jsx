@@ -4,11 +4,10 @@ import { t } from "ttag";
 
 import Collection, { ROOT_COLLECTION } from "metabase/entities/collections";
 import * as Urls from "metabase/lib/urls";
-
 import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
-import CollectionsList from "../Collections/CollectionsList/CollectionsList";
 import CollectionLink from "metabase/collections/components/CollectionLink";
 
+import CollectionsList from "../Collections/CollectionsList/CollectionsList";
 import { Container } from "./RootCollectionLink.styled";
 
 const propTypes = {

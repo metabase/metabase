@@ -6,14 +6,13 @@ import {
   fieldRefWithOption,
 } from "metabase/lib/dataset";
 import { isDate, isNumber } from "metabase/lib/schema_metadata";
-
-import type { Breakout } from "metabase-types/types/Query";
-import type { DimensionValue } from "metabase-types/types/Visualization";
 import { parseTimestamp } from "metabase/lib/time";
-
 import Question from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
+
+import type { DimensionValue } from "metabase-types/types/Visualization";
+import type { Breakout } from "metabase-types/types/Query";
 
 export { drillDownForDimensions } from "./drilldown";
 

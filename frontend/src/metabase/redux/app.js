@@ -1,6 +1,7 @@
+import { LOCATION_CHANGE } from "react-router-redux";
+
 import { combineReducers, handleActions } from "metabase/lib/redux";
 
-import { LOCATION_CHANGE } from "react-router-redux";
 
 export const SET_ERROR_PAGE = "metabase/app/SET_ERROR_PAGE";
 export function setErrorPage(error) {

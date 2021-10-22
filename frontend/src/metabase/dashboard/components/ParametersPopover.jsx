@@ -1,17 +1,16 @@
 import React, { Component } from "react";
 import { t } from "ttag";
+import styled from "styled-components";
+import _ from "underscore";
+
 import { getParameterSections } from "metabase/meta/Dashboard";
 import Icon from "metabase/components/Icon";
 import { getParameterIconName } from "metabase/meta/Parameter";
-import styled from "styled-components";
 
 import type {
   Parameter,
   ParameterOption,
 } from "metabase-types/types/Parameter";
-
-import _ from "underscore";
-
 import type { ParameterSection } from "metabase/meta/Dashboard";
 
 const PopoverBody = styled.div`

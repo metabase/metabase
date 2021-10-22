@@ -1,4 +1,5 @@
 import styled from "styled-components";
+
 import { color } from "metabase/lib/colors";
 import { breakpointMaxSmall } from "metabase/styled-components/theme/media-queries";
 

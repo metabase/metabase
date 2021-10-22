@@ -4,9 +4,7 @@ import { t } from "ttag";
 import cx from "classnames";
 
 import PinDropTarget from "metabase/containers/dnd/PinDropTarget";
-
 import Icon from "metabase/components/Icon";
-
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 
 import BaseItemsTable from "./BaseItemsTable";

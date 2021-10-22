@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { Group } from "@visx/group";
 import { Pie } from "@visx/shape";
 import { Text } from "@visx/text";
+
 import { formatNumber } from "../../lib/numbers";
 
 const propTypes = {

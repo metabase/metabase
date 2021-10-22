@@ -1,9 +1,7 @@
 import { createEntity } from "metabase/lib/entities";
-
 import { SegmentSchema } from "metabase/schema";
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
-
 import { getMetadata } from "metabase/selectors/metadata";
 
 const Segments = createEntity({

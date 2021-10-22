@@ -4,7 +4,6 @@ import PropTypes from "prop-types";
 
 import Icon from "metabase/components/Icon";
 import Text from "metabase/components/type/Text";
-
 import { color, lighten } from "metabase/lib/colors";
 
 import { ItemLocation } from "./ItemLocation";

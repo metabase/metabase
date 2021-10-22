@@ -1,8 +1,8 @@
 import { t } from "ttag";
-import LineAreaBarChart from "../components/LineAreaBarChart.jsx";
-import { areaRenderer } from "../lib/LineAreaBarRenderer";
 import { assocIn } from "icepick";
 
+import LineAreaBarChart from "../components/LineAreaBarChart.jsx";
+import { areaRenderer } from "../lib/LineAreaBarRenderer";
 import {
   GRAPH_DATA_SETTINGS,
   LINE_SETTINGS,

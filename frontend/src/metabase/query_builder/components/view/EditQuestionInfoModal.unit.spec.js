@@ -1,10 +1,12 @@
 import React from "react";
-import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import userEvent from "@testing-library/user-event";
 import xhrMock from "xhr-mock";
+
+import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import { PLUGIN_CACHING, PLUGIN_FORM_WIDGETS } from "metabase/plugins";
 import NumericFormField from "metabase/components/form/widgets/FormNumericInputWidget";
 import MetabaseSettings from "metabase/lib/settings";
+
 import EditQuestionInfoModal from "./EditQuestionInfoModal";
 
 const QUESTION = {

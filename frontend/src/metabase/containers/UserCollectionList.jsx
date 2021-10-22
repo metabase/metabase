@@ -5,13 +5,11 @@ import { connect } from "react-redux";
 
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
-
 import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";
 import { Grid, GridItem } from "metabase/components/Grid";
 import Link from "metabase/components/Link";
 import BrowserCrumbs from "metabase/components/BrowserCrumbs";
-
 import User from "metabase/entities/users";
 import Collection, {
   ROOT_COLLECTION,

@@ -1,4 +1,5 @@
 import { createSelector } from "reselect";
+
 import { parseTimestamp } from "metabase/lib/time";
 
 export const getAlertId = ({ params: { alertId } }) => {

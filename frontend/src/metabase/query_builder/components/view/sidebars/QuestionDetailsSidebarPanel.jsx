@@ -3,13 +3,13 @@ import PropTypes from "prop-types";
 
 import QuestionActionButtons from "metabase/query_builder/components/QuestionActionButtons";
 import { ClampedDescription } from "metabase/query_builder/components/ClampedDescription";
+import QuestionActivityTimeline from "metabase/query_builder/components/QuestionActivityTimeline";
+import { PLUGIN_MODERATION } from "metabase/plugins";
+
 import {
   Container,
   SidebarPaddedContent,
 } from "./QuestionDetailsSidebarPanel.styled";
-import QuestionActivityTimeline from "metabase/query_builder/components/QuestionActivityTimeline";
-
-import { PLUGIN_MODERATION } from "metabase/plugins";
 
 export default QuestionDetailsSidebarPanel;
 

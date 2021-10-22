@@ -1,10 +1,11 @@
 import React from "react";
+import { fireEvent, render, screen } from "@testing-library/react";
+
 import {
   AdminPinMessage,
   PIN_MESSAGE_STORAGE_KEY,
 } from "metabase/containers/Overworld";
 
-import { fireEvent, render, screen } from "@testing-library/react";
 import "mutationobserver-shim";
 
 const PIN_MESSAGE_DESCRIPTION = "Your team's most important dashboards go here";

@@ -5,7 +5,6 @@ import { space } from "metabase/styled-components/theme";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import { breakpointMinSmall } from "metabase/styled-components/theme/media-queries";
-
 import { SIDEBAR_WIDTH } from "metabase/collections/constants";
 
 export const LoadingContainer = styled.div`

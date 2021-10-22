@@ -1,4 +1,5 @@
 import React from "react";
+
 import ColorPicker from "./ColorPicker";
 
 export const component = ColorPicker;

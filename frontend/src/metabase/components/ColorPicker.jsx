@@ -1,12 +1,10 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import { SketchPicker } from "react-color";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Button from "metabase/components/Button";
-
-import { SketchPicker } from "react-color";
-
 import { normal } from "metabase/lib/colors";
 
 const DEFAULT_COLOR_SQUARE_SIZE = 32;

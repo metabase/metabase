@@ -1,4 +1,5 @@
 import slugg from "slugg";
+
 import { serializeCardForUrl } from "metabase/lib/card";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
 import MetabaseSettings from "metabase/lib/settings";

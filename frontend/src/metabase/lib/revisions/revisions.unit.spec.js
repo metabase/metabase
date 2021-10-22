@@ -1,4 +1,5 @@
 import React from "react";
+
 import {
   REVISION_EVENT_ICON,
   getRevisionEventsForTimeline,

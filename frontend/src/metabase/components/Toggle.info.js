@@ -1,4 +1,5 @@
 import React from "react";
+
 import Toggle from "metabase/components/Toggle";
 
 export const component = Toggle;

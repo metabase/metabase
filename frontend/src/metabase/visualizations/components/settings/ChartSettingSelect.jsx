@@ -1,9 +1,9 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import cx from "classnames";
 
 import Select, { Option } from "metabase/components/Select";
 
-import cx from "classnames";
 
 const ChartSettingSelect = ({
   // Use null if value is undefined. If we pass undefined, Select will create an

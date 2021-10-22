@@ -3,12 +3,11 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
-import MetricSidebar from "./MetricSidebar";
 import SidebarLayout from "metabase/components/SidebarLayout";
 import MetricQuestions from "metabase/reference/metrics/MetricQuestions";
-
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
+import Questions from "metabase/entities/questions";
 
 import {
   getUser,
@@ -17,8 +16,7 @@ import {
   getDatabaseId,
   getIsEditing,
 } from "../selectors";
-
-import Questions from "metabase/entities/questions";
+import MetricSidebar from "./MetricSidebar";
 
 const mapStateToProps = (state, props) => ({
   user: getUser(state, props),
