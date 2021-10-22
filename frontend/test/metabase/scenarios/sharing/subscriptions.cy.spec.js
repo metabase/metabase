@@ -5,6 +5,7 @@ import {
   popover,
   mockSessionProperty,
   sidebar,
+  mockSlackConfigured,
 } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 const { admin } = USERS;
@@ -434,37 +435,4 @@ function addParametersToDashboard() {
   cy.findByText("Save").click();
   // wait for dashboard to save
   cy.contains("You're editing this dashboard.").should("not.exist");
-}
-
-function mockSlackConfigured() {
-  // Stubbing the response in advance (Cypress will intercept it when we navigate to "Dashboard subscriptions")
-  cy.server();
-  cy.route("GET", "/api/pulse/form_input", {
-    channels: {
-      email: {
-        type: "email",
-        name: "Email",
-        allows_recipients: false,
-        recipients: ["user", "email"],
-        schedules: ["hourly", "daily", "weekly", "monthly"],
-        configured: false,
-      },
-      slack: {
-        type: "slack",
-        name: "Slack",
-        allows_recipients: true,
-        schedules: ["hourly", "daily", "weekly", "monthly"],
-        fields: [
-          {
-            name: "channel",
-            type: "select",
-            displayName: "Post to",
-            options: ["#work", "#play"],
-            required: true,
-          },
-        ],
-        configured: true,
-      },
-    },
-  });
 }
