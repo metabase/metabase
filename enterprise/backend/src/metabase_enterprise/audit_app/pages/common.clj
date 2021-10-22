@@ -24,15 +24,17 @@
             [schema.core :as s]
             [toucan.db :as db]))
 
+(def ^:private ^:const default-limit Integer/MAX_VALUE)
+
 (defn- add-default-params [honeysql-query]
   (let [{:keys [limit offset]} qp.middleware.audit/*additional-query-params*]
     (if (and (nil? limit) (nil? offset))
       honeysql-query
-      (cond-> honeysql-query
-        limit (update :limit (fn [query-limit]
-                               (or limit query-limit)))
-        true  (update :offset (fn [query-offset]
-                                (or offset query-offset 0)))))))
+      (-> honeysql-query
+          (update :limit (fn [query-limit]
+                           (or limit query-limit default-limit)))
+          (update :offset (fn [query-offset]
+                            (or offset query-offset 0)))))))
 
 (defn- inject-cte-body-into-from
   [from ctes]
