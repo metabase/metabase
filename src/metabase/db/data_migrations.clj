@@ -12,7 +12,6 @@
             [clojure.walk :as walk]
             [medley.core :as m]
             [metabase.db.util :as mdb.u]
-            [metabase.mbql.schema :as mbql.s]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.dashboard :refer [Dashboard]]
