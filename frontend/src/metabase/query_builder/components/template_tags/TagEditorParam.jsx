@@ -10,7 +10,7 @@ import InputBlurChange from "metabase/components/InputBlurChange";
 import Select, { Option } from "metabase/components/Select";
 import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget";
 
-import { parameterOptionsForField } from "metabase/meta/Parameter";
+import { getParameterOptionsForField } from "metabase/parameters/utils/options";
 import type { TemplateTag } from "metabase-types/types/Query";
 import type { Database } from "metabase-types/types/Database";
 
@@ -97,7 +97,7 @@ export default class TagEditorParam extends Component {
       if (!field) {
         return;
       }
-      const options = parameterOptionsForField(field);
+      const options = getParameterOptionsForField(field);
       let widgetType;
       if (
         tag["widget-type"] &&
@@ -124,7 +124,7 @@ export default class TagEditorParam extends Component {
       const field = metadata.field(tag.dimension[1]);
 
       if (field) {
-        widgetOptions = parameterOptionsForField(field);
+        widgetOptions = getParameterOptionsForField(field);
         table = field.table;
         fieldMetadataLoaded = true;
       }

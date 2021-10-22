@@ -2,9 +2,6 @@ import _ from "underscore";
 
 import MetabaseSettings from "metabase/lib/settings";
 import {
-  PARAMETER_OPERATOR_TYPES,
-  getParameterOptions,
-  getOperatorDisplayName,
   dimensionFilterForParameter,
   getTagOperatorFilterForParameter,
   getParameterTargetField,
@@ -43,87 +40,6 @@ describe("metabase/meta/Parameter", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     MetabaseSettings.get.mockReturnValue(false);
-  });
-
-  describe("getParameterOptions", () => {
-    describe("when `field-filter-operators-enabled?` is false", () => {
-      beforeEach(() => {
-        mockFieldFilterOperatorsFlag(false);
-      });
-
-      it("should return options without operator subtypes (except for date parameters)", () => {
-        const options = new Set(_.map(getParameterOptions(), "type"));
-        const expectedOptionTypes = [
-          "id",
-          "category",
-          "location/city",
-          "location/state",
-          "location/zip_code",
-          "location/country",
-        ].concat(_.map(PARAMETER_OPERATOR_TYPES.date, "type"));
-
-        expect(expectedOptionTypes.length).toEqual(options.size);
-        expect(expectedOptionTypes.every(option => options.has(option))).toBe(
-          true,
-        );
-      });
-    });
-
-    describe("when `field-filter-operators-enabled?` is true", () => {
-      beforeEach(() => {
-        mockFieldFilterOperatorsFlag(true);
-      });
-
-      it("should return options with operator subtypes", () => {
-        const options = new Set(_.map(getParameterOptions(), "type"));
-        const expectedOptionTypes = ["id"].concat(
-          _.map(PARAMETER_OPERATOR_TYPES.number, "type"),
-          _.map(PARAMETER_OPERATOR_TYPES.string, "type"),
-          _.map(PARAMETER_OPERATOR_TYPES.date, "type"),
-        );
-
-        expect(expectedOptionTypes.length).toEqual(options.size);
-        expect(expectedOptionTypes.every(option => options.has(option))).toBe(
-          true,
-        );
-      });
-
-      it("should add a `combinedName` property to options", () => {
-        const optionsByType = _.indexBy(getParameterOptions(), "type");
-
-        expect(optionsByType["string/="].combinedName).toEqual("String");
-        expect(optionsByType["string/!="].combinedName).toEqual(
-          "String is not",
-        );
-        expect(optionsByType["number/!="].combinedName).toEqual("Not equal to");
-        expect(optionsByType["date/single"].combinedName).toEqual(
-          "Single Date",
-        );
-      });
-    });
-  });
-
-  describe("getOperatorDisplayName", () => {
-    it("should return an option's name when the operator is a date or a number", () => {
-      expect(getOperatorDisplayName({ name: "foo" }, "date")).toEqual("foo");
-      expect(getOperatorDisplayName({ name: "foo" }, "number")).toEqual("foo");
-    });
-
-    it("should return an option's section name for the string/= option", () => {
-      expect(
-        getOperatorDisplayName({ name: "foo", operator: "=" }, "string", "bar"),
-      ).toEqual("bar");
-    });
-
-    it("should otherwise return a combined sectionName + option name", () => {
-      expect(
-        getOperatorDisplayName(
-          { name: "Foo", operator: "!=" },
-          "string",
-          "Bar",
-        ),
-      ).toEqual("Bar foo");
-    });
   });
 
   describe("dateParameterValueToMBQL", () => {
