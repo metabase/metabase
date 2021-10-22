@@ -38,7 +38,8 @@ export function generateExpression(seed) {
   const zero = () => 0;
   const one = () => 1;
   const integer = () => randomInt(1e6);
-  const number = () => oneOf([zero, one, integer])();
+  const float1 = () => String(integer()) + ".";
+  const float2 = () => float1() + String(integer());
 
   const uppercase = () => String.fromCharCode(65 + randomInt(26)); // A..Z
   const lowercase = () => String.fromCharCode(97 + randomInt(26)); // a..z
@@ -57,11 +58,13 @@ export function generateExpression(seed) {
   };
 
   const literal = () => {
-    --depth;
+    const exp = () => randomItem(["", "-", "+"]) + randomInt(1e2);
+    const number = () => oneOf([zero, one, integer, float1, float2])();
+    const sci = () => number() + randomItem(["e", "E"]) + exp();
     const string = () => '"' + characters() + '"';
     return {
       type: NODE.Literal,
-      value: oneOf([number, string])(),
+      value: oneOf([number, sci, string])(),
     };
   };
 
@@ -116,7 +119,7 @@ export function generateExpression(seed) {
     const count = randomInt(5);
     return {
       type: NODE.FunctionCall,
-      name: identifier(),
+      value: identifier(),
       params: listOf(count, [expression])(),
     };
   };
@@ -130,21 +133,22 @@ export function generateExpression(seed) {
   const expression = () => (depth <= 0 ? literal() : primary());
 
   const format = node => {
+    const pre = ch => listOf(2, [space])().join("") + ch;
     let str = null;
-    const { type } = node;
+    const { type, value, op, left, right, child, params } = node;
     switch (type) {
       case NODE.Field:
       case NODE.Literal:
-        str = node.value;
+        str = value;
         break;
       case NODE.Unary:
-        str = node.op + " " + format(node.child);
+        str = op + " " + format(child);
         break;
       case NODE.Binary:
-        str = format(node.left) + " " + node.op + " " + format(node.right);
+        str = format(left) + " " + op + " " + format(right);
         break;
       case NODE.FunctionCall:
-        str = node.name + "(" + node.params.map(format).join(",") + ")";
+        str = value + pre("(") + params.map(format).join(", ") + pre(")");
         break;
     }
 
@@ -154,7 +158,7 @@ export function generateExpression(seed) {
     return str;
   };
 
-  let depth = 131; // Iodine isotope
+  let depth = 17;
 
   const tree = expression();
   return { tree, expression: format(tree) };
