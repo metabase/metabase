@@ -1,7 +1,7 @@
 import * as Snowplow from "@snowplow/browser-tracker";
 import Settings from "metabase/lib/settings";
 import { isProduction } from "metabase/env";
-import { getUser } from "metabase/selectors/user";
+import { getUserId } from "metabase/selectors/user";
 
 export const createTracker = store => {
   if (isTrackingEnabled()) {
@@ -68,19 +68,15 @@ const createSnowplowTracker = store => {
     contexts: {
       webPage: true,
     },
+    plugins: [createSnowplowPlugin(store)],
   });
-
-  Snowplow.addGlobalContexts([() => createSnowplowContext(store)]);
 };
 
-const createSnowplowContext = store => {
-  const state = store.getState();
-  const user = getUser(state);
-
+const createSnowplowPlugin = store => {
   return {
-    schema: "iglu:com.metabase/context/jsonschema/1-0-0",
-    data: {
-      user_id: user.id,
+    beforeTrack: () => {
+      const userId = getUserId(store.getState());
+      userId && Snowplow.setUserId(String(userId));
     },
   };
 };
@@ -92,7 +88,10 @@ const trackSnowplowPageView = url => {
 
 const trackSnowplowSchemaEvent = (schema, version, data) => {
   Snowplow.trackSelfDescribingEvent({
-    event: { schema: `iglu:com.metabase/${schema}/jsonschema/${version}`, data },
+    event: {
+      schema: `iglu:com.metabase/${schema}/jsonschema/${version}`,
+      data,
+    },
   });
 };
 
