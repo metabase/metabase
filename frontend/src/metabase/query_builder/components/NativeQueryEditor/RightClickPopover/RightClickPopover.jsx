@@ -6,7 +6,7 @@ import {
   Anchor,
   Container,
   IconStyled as Icon,
-} from "./NativeQueryEditorRightClickPopover.styled";
+} from "./RightClickPopover.styled";
 import Popover from "metabase/components/Popover";
 
 const propTypes = {
