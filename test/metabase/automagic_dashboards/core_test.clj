@@ -302,22 +302,36 @@
                                   :database (mt/id)})]
         (test-automagic-analysis q [:= [:field (mt/id :venues :category_id) nil] 2] 7)))))
 
-(deftest join-splicing-test
+(deftest splicing-test
   (mt/with-test-user :rasta
-    (automagic-dashboards.test/with-dashboard-cleanup
-      (let [join-vec    [{:source-table (mt/id :categories)
-                          :condition    [:= [:field (mt/id :categories :id) nil] 1]
-                          :strategy     :left-join
-                          :alias        "Dealios" }]
-            q           (query/adhoc-query {:query {:source-table (mt/id :venues)
-                                                    :joins join-vec
-                                                    :aggregation [[:sum [:field (mt/id :categories :id) {:join-alias "Dealios"}]]]}
-                                            :type :query
-                                            :database (mt/id)})
-            res         (magic/automagic-analysis q {})
-            cards       (vec (:ordered_cards res))
-            join-member (get-in cards [2 :card :dataset_query :query :joins])]
-        (is (= join-vec join-member))))))
+    (testing "splice in joins"
+      (automagic-dashboards.test/with-dashboard-cleanup
+        (let [join-vec    [{:source-table (mt/id :categories)
+                            :condition    [:= [:field (mt/id :categories :id) nil] 1]
+                            :strategy     :left-join
+                            :alias        "Dealios" }]
+              q           (query/adhoc-query {:query {:source-table (mt/id :venues)
+                                                      :joins join-vec
+                                                      :aggregation [[:sum [:field (mt/id :categories :id) {:join-alias "Dealios"}]]]}
+                                              :type :query
+                                              :database (mt/id)})
+              res         (magic/automagic-analysis q {})
+              cards       (vec (:ordered_cards res))
+              join-member (get-in cards [3 :card :dataset_query :query :joins])]
+          (is (= join-vec join-member)))))
+    (testing "splice in custexps"
+      (automagic-dashboards.test/with-dashboard-cleanup
+        (let [custexp     {:dealio [:+ 1 1]}
+              q           (query/adhoc-query {:query {:source-table (mt/id :venues)
+                                                      :aggregation [[:sum [:expression :dealio] 2]]
+                                                      :expressions custexp
+                                                      }
+                                              :type :query
+                                              :database (mt/id)})
+              res         (magic/automagic-analysis q {})
+              cards       (vec (:ordered_cards res))
+              ce-member   (get-in cards [3 :card :dataset_query :query :expressions])]
+          (is (= custexp ce-member)))))))
 
 
 ;;; ------------------- /candidates -------------------
