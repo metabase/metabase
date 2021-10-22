@@ -1,5 +1,4 @@
 import { restore, openOrdersTable, popover } from "__support__/e2e/cypress";
-
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;

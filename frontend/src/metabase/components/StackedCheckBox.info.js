@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React, { useState } from "react";
+
 import StackedCheckBox from "metabase/components/StackedCheckBox";
 
 export const component = StackedCheckBox;

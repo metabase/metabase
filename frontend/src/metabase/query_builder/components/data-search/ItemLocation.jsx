@@ -6,11 +6,9 @@ import { jt } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
-
 import Database from "metabase/entities/databases";
 import Collection from "metabase/entities/collections";
 import Schema from "metabase/entities/schemas";
-
 import { color } from "metabase/lib/colors";
 
 export const ItemLocation = ({ item }) => {

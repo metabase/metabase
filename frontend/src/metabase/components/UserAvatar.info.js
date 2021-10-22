@@ -1,4 +1,5 @@
 import React from "react";
+
 import UserAvatar from "metabase/components/UserAvatar";
 
 export const component = UserAvatar;

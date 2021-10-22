@@ -1,7 +1,9 @@
 import React from "react";
-import { renderWithProviders, screen } from "__support__/ui";
 import userEvent from "@testing-library/user-event";
+
+import { renderWithProviders, screen } from "__support__/ui";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+
 import CollectionsList from "./CollectionsList";
 
 describe("CollectionsList", () => {

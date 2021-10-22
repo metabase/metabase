@@ -2,16 +2,12 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-
-import Tables from "metabase/entities/tables";
-
-import Icon from "metabase/components/Icon";
-
 import { t, ngettext, msgid } from "ttag";
-
 import _ from "underscore";
 import cx from "classnames";
 
+import Icon from "metabase/components/Icon";
+import Tables from "metabase/entities/tables";
 import { regexpEscape } from "metabase/lib/string";
 import { color } from "metabase/lib/colors";
 

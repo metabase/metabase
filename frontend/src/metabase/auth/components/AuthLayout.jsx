@@ -1,11 +1,11 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-
 import { Flex } from "grid-styled";
+
 import Card from "metabase/components/Card";
+import LogoIcon from "metabase/components/LogoIcon";
 
 import AuthScene from "../components/AuthScene";
-import LogoIcon from "metabase/components/LogoIcon";
 
 const AuthLayout = ({ children }) => (
   <Flex

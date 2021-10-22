@@ -3,6 +3,7 @@ import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
 import { clipPathReference, moveToFront } from "metabase/lib/dom";
+
 import { adjustYAxisTicksIfNeeded } from "./apply_axis";
 import { onRenderValueLabels } from "./chart_values";
 

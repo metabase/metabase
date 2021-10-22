@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
+
 import CollectionsList from "../Collections/CollectionsList/CollectionsList";
 import { Container, Icon, Link } from "./CollectionSidebarFooter.styled";
 

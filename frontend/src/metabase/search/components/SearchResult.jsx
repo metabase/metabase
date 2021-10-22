@@ -3,10 +3,8 @@ import React from "react";
 import { Box, Flex } from "grid-styled";
 
 import { color } from "metabase/lib/colors";
-
 import Icon from "metabase/components/Icon";
 import Text from "metabase/components/type/Text";
-
 import { PLUGIN_COLLECTIONS, PLUGIN_MODERATION } from "metabase/plugins";
 
 import {

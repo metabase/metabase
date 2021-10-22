@@ -5,7 +5,6 @@ import { Link, withRouter } from "react-router";
 import { t } from "ttag";
 
 import Databases from "metabase/entities/databases";
-
 import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
 import SaveStatus from "metabase/components/SaveStatus";
 import Toggle from "metabase/components/Toggle";

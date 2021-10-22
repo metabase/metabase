@@ -7,7 +7,6 @@ import Icon from "metabase/components/Icon";
 import AdminEmptyText from "metabase/components/AdminEmptyText";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import PaginationControls from "metabase/components/PaginationControls";
-
 import User from "metabase/entities/users";
 
 import AddMemberRow from "./AddMemberRow";

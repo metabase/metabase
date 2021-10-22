@@ -4,14 +4,11 @@ import cx from "classnames";
 import { assocIn } from "icepick";
 import _ from "underscore";
 import { t } from "ttag";
-import Warnings from "metabase/query_builder/components/Warnings";
 
+import Warnings from "metabase/query_builder/components/Warnings";
 import Button from "metabase/components/Button";
 import Radio from "metabase/components/Radio";
-
 import Visualization from "metabase/visualizations/components/Visualization";
-import ChartSettingsWidget from "./ChartSettingsWidget";
-
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
@@ -22,6 +19,8 @@ import {
   updateSettings,
   getClickBehaviorSettings,
 } from "metabase/visualizations/lib/settings";
+
+import ChartSettingsWidget from "./ChartSettingsWidget";
 
 // section names are localized
 const DEFAULT_TAB_PRIORITY = [t`Display`];

@@ -1,7 +1,6 @@
 import _ from "underscore";
 
 import Base from "./Base";
-
 import Question from "../Question";
 
 /**

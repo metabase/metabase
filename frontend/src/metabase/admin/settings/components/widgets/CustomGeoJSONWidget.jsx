@@ -2,6 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import cx from "classnames";
 
 import Utils from "metabase/lib/utils";
 import Select, { Option } from "metabase/components/Select";
@@ -9,14 +10,10 @@ import Confirm from "metabase/components/Confirm";
 import Ellipsified from "metabase/components/Ellipsified";
 import Modal from "metabase/components/Modal";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { SettingsApi, GeoJSONApi } from "metabase/services";
+import LeafletChoropleth from "metabase/visualizations/components/LeafletChoropleth";
 
 import SettingHeader from "../SettingHeader";
-
-import { SettingsApi, GeoJSONApi } from "metabase/services";
-
-import cx from "classnames";
-
-import LeafletChoropleth from "metabase/visualizations/components/LeafletChoropleth";
 
 export default class CustomGeoJSONWidget extends Component {
   constructor(props, context) {

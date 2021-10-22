@@ -5,9 +5,7 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 
 import AuthProviderButton from "metabase/auth/components/AuthProviderButton";
-
 import Settings from "metabase/lib/settings";
-
 import { loginGoogle } from "metabase/auth/auth";
 
 const GOOGLE_AUTH_ERRORS = {

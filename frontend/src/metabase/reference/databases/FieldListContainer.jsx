@@ -3,13 +3,12 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
-import TableSidebar from "./TableSidebar";
 import SidebarLayout from "metabase/components/SidebarLayout";
 import FieldList from "metabase/reference/databases/FieldList";
-
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
 
+import TableSidebar from "./TableSidebar";
 import {
   getDatabase,
   getTable,

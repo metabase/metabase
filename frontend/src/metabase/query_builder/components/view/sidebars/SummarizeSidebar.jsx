@@ -4,16 +4,12 @@ import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 import styled from "styled-components";
-
 import { Flex } from "grid-styled";
 
 import { color, alpha } from "metabase/lib/colors";
-
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import AggregationPopover from "metabase/query_builder/components/AggregationPopover";
-
 import DimensionList from "metabase/query_builder/components/DimensionList";
-
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Icon from "metabase/components/Icon";
 

@@ -1,5 +1,4 @@
 import { restore } from "__support__/e2e/cypress";
-
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;

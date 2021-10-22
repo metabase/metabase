@@ -1,6 +1,7 @@
+import styled from "styled-components";
+
 import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
-import styled from "styled-components";
 
 export const PermissionPageRoot = styled.div`
   display: flex;

@@ -2,15 +2,20 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
+
 import fitViewport from "metabase/hoc/FitViewPort";
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
-
 import Dashboard from "metabase/dashboard/components/Dashboard/Dashboard";
-
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { setErrorPage } from "metabase/redux/app";
+import { getDatabases, getMetadata } from "metabase/selectors/metadata";
+import { getUserIsAdmin } from "metabase/selectors/user";
+import { parseHashOptions } from "metabase/lib/browser";
+import * as Urls from "metabase/lib/urls";
+import Dashboards from "metabase/entities/dashboards";
 
+import * as dashboardActions from "../actions";
 import {
   getIsEditing,
   getIsSharing,
@@ -29,14 +34,6 @@ import {
   getSidebar,
   getShowAddQuestionSidebar,
 } from "../selectors";
-import { getDatabases, getMetadata } from "metabase/selectors/metadata";
-import { getUserIsAdmin } from "metabase/selectors/user";
-
-import * as dashboardActions from "../actions";
-import { parseHashOptions } from "metabase/lib/browser";
-import * as Urls from "metabase/lib/urls";
-
-import Dashboards from "metabase/entities/dashboards";
 
 const mapStateToProps = (state, props) => {
   return {

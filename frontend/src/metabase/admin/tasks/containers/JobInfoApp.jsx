@@ -2,7 +2,6 @@
 import React from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
-
 import { Box, Flex } from "grid-styled";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";

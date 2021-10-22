@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
-
 import _ from "underscore";
+import { t, ngettext, msgid } from "ttag";
 
 import {
   isAdminGroup,
@@ -10,9 +10,7 @@ import {
   canEditMembership,
   getGroupNameLocalized,
 } from "metabase/lib/groups";
-
 import { PermissionsApi } from "metabase/services";
-import { t, ngettext, msgid } from "ttag";
 import Alert from "metabase/components/Alert";
 import AdminPaneLayout from "metabase/components/AdminPaneLayout";
 

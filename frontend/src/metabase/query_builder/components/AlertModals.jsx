@@ -15,8 +15,6 @@ import Icon from "metabase/components/Icon";
 import ChannelSetupModal from "metabase/components/ChannelSetupModal";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import PulseEditChannels from "metabase/pulse/components/PulseEditChannels";
-import { AlertModalFooter } from "./AlertModals.styled";
-
 import User from "metabase/entities/users";
 
 // actions
@@ -48,8 +46,11 @@ import MetabaseCookies from "metabase/lib/cookies";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 // types
-import type { AlertType } from "metabase-lib/lib/Alert";
 import { alertIsValid } from "metabase/lib/alert";
+
+import { AlertModalFooter } from "./AlertModals.styled";
+
+import type { AlertType } from "metabase-lib/lib/Alert";
 
 const getScheduleFromChannel = channel =>
   _.pick(

@@ -4,10 +4,10 @@ import {
   filterWidget,
   visitQuestionAdhoc,
 } from "__support__/e2e/cypress";
+import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 import * as SQLFilter from "../helpers/e2e-sql-filter-helpers";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { PRODUCTS } = SAMPLE_DATASET;
 

@@ -4,7 +4,6 @@ import {
   findColumnForColumnSetting,
   keyForColumn,
 } from "metabase/lib/dataset";
-
 import { ORDERS, PRODUCTS } from "__support__/sample_dataset_fixture";
 
 describe("metabase/util/dataset", () => {

@@ -1,7 +1,9 @@
 import { connect } from "react-redux";
 import _ from "underscore";
+
 import Pulses from "metabase/entities/pulses";
 import { getUser } from "metabase/selectors/user";
+
 import { navigateToArchive } from "../../actions";
 import { getPulseId } from "../../selectors";
 import UnsubscribeModal from "../../components/UnsubscribeModal";

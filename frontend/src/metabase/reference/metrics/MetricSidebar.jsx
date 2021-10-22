@@ -5,10 +5,8 @@ import { t } from "ttag";
 import cx from "classnames";
 
 import MetabaseSettings from "metabase/lib/settings";
-
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import SidebarItem from "metabase/components/SidebarItem";
-
 import S from "metabase/components/Sidebar.css";
 
 const MetricSidebar = ({ metric, user, style, className }) => (

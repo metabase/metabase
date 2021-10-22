@@ -1,13 +1,11 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import cx from "classnames";
 
 import Badge, { MaybeLink } from "metabase/components/Badge";
-
 import { browseDatabase, browseSchema } from "metabase/lib/urls";
-
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
-import cx from "classnames";
 
 const QuestionDataSource = ({ question, subHead, noLink, ...props }) => {
   const parts = getDataSourceParts({ question, subHead, noLink });

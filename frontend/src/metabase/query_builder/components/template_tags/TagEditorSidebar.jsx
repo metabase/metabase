@@ -1,19 +1,19 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import PropTypes from "prop-types";
-
 import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 
+import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+
 import TagEditorParam from "./TagEditorParam";
 import CardTagEditor from "./CardTagEditor";
 import TagEditorHelp from "./TagEditorHelp";
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import type { DatasetQuery } from "metabase-types/types/Card";
 import type { TableId } from "metabase-types/types/Table";
 import type { Database } from "metabase-types/types/Database";

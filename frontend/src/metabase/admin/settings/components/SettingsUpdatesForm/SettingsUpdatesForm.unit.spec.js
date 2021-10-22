@@ -2,6 +2,7 @@ import React from "react";
 import { render as renderRTL, screen } from "@testing-library/react";
 
 import MetabaseSettings from "metabase/lib/settings";
+
 import SettingsUpdatesForm from "./SettingsUpdatesForm";
 
 const elements = [

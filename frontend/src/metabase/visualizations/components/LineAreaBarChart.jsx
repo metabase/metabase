@@ -2,17 +2,13 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import _ from "underscore";
+import cx from "classnames";
 
 import { iconPropTypes } from "metabase/components/Icon";
 
-import CardRenderer from "./CardRenderer";
-import LegendLayout from "./legend/LegendLayout";
 
 import "./LineAreaBarChart.css";
-import {
-  LineAreaBarChartRoot,
-  ChartLegendCaption,
-} from "./LineAreaBarChart.styled";
 
 import {
   isNumeric,
@@ -23,16 +19,12 @@ import {
 import { getFriendlyName, MAX_SERIES } from "metabase/visualizations/lib/utils";
 import { addCSSRule } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
-
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-
 import {
   MinRowsError,
   ChartSettingsError,
 } from "metabase/visualizations/lib/errors";
 
-import _ from "underscore";
-import cx from "classnames";
 
 const MUTE_STYLE = "opacity: 0.25;";
 for (let i = 0; i < MAX_SERIES; i++) {
@@ -74,8 +66,17 @@ for (let i = 0; i < MAX_SERIES; i++) {
   addCSSRule(`.LineAreaBarChart.mute-${i} svg:not(.stacked) .row`, MUTE_STYLE);
 }
 
-import type { VisualizationProps } from "metabase-types/types/Visualization";
+
 import { normal } from "metabase/lib/colors";
+
+import {
+  LineAreaBarChartRoot,
+  ChartLegendCaption,
+} from "./LineAreaBarChart.styled";
+import LegendLayout from "./legend/LegendLayout";
+import CardRenderer from "./CardRenderer";
+
+import type { VisualizationProps } from "metabase-types/types/Visualization";
 
 export default class LineAreaBarChart extends Component {
   props: VisualizationProps;

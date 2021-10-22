@@ -11,7 +11,6 @@ import {
   PermissionsSelectOption,
   optionShape,
 } from "./PermissionsSelectOption";
-
 import {
   PermissionsSelectRoot,
   OptionsList,

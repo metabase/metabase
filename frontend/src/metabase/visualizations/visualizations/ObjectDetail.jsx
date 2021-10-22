@@ -1,21 +1,21 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { t, jt } from "ttag";
+import { inflect } from "inflection";
+import cx from "classnames";
+import _ from "underscore";
+
 import DirectionalButton from "metabase/components/DirectionalButton";
 import ExpandableString from "metabase/query_builder/components/ExpandableString";
 import Icon from "metabase/components/Icon";
 import IconBorder from "metabase/components/IconBorder";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-
 import {
   isID,
   isPK,
   foreignKeyCountsByOriginTable,
 } from "metabase/lib/schema_metadata";
-import { TYPE, isa } from "metabase/lib/types";
-import { inflect } from "inflection";
 import { formatValue, formatColumn } from "metabase/lib/formatting";
-
 import Tables from "metabase/entities/tables";
 import {
   loadObjectDetailFKReferences,
@@ -28,12 +28,9 @@ import {
   getTableForeignKeys,
   getTableForeignKeyReferences,
 } from "metabase/query_builder/selectors";
-
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
-import cx from "classnames";
-import _ from "underscore";
-
+import { TYPE, isa } from "metabase/lib/types";
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 import type { FieldId, Field } from "metabase-types/types/Field";
 import type Table from "metabase-lib/lib/metadata/Table";

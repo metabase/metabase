@@ -5,7 +5,6 @@ import {
   PLUGIN_ADMIN_SETTINGS_UPDATES,
   PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS,
 } from "metabase/plugins";
-
 import SettingsLdapForm from "metabase/admin/settings/components/SettingsLdapForm";
 import AuthenticationOption from "metabase/admin/settings/components/widgets/AuthenticationOption";
 import GroupMappingsWidget from "metabase/admin/settings/components/widgets/GroupMappingsWidget";

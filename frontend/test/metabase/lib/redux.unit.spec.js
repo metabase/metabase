@@ -1,5 +1,4 @@
 import { fetchData, updateData, mergeEntities } from "metabase/lib/redux";
-
 import { delay } from "metabase/lib/promise";
 
 describe("Metadata", () => {

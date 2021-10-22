@@ -1,14 +1,14 @@
 import { createAction } from "redux-actions";
+import { push } from "react-router-redux";
+import { t } from "ttag";
+
 import {
   handleActions,
   combineReducers,
   createThunkAction,
 } from "metabase/lib/redux";
-import { push } from "react-router-redux";
-import { t } from "ttag";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
-
 import { MetabaseApi } from "metabase/services";
 import Databases from "metabase/entities/databases";
 

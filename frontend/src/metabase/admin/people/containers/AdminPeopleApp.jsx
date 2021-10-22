@@ -4,7 +4,6 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
-
 import AdminLayout from "metabase/components/AdminLayout";
 
 export default class AdminPeopleApp extends Component {

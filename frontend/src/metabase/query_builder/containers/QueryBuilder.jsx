@@ -3,15 +3,20 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
+import { push } from "react-router-redux";
 
 import fitViewport from "metabase/hoc/FitViewPort";
 
-import View from "../components/view/View";
 // import Notebook from "../components/notebook/Notebook";
 
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
+import { getMetadata } from "metabase/selectors/metadata";
+import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import Collections from "metabase/entities/collections";
+import { MetabaseApi } from "metabase/services";
 
+import * as actions from "../actions";
 import {
   getCard,
   getDatabasesList,
@@ -53,15 +58,7 @@ import {
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
 } from "../selectors";
-
-import { getMetadata } from "metabase/selectors/metadata";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-
-import * as actions from "../actions";
-import { push } from "react-router-redux";
-
-import Collections from "metabase/entities/collections";
-import { MetabaseApi } from "metabase/services";
+import View from "../components/view/View";
 
 function autocompleteResults(card, prefix) {
   const databaseId = card && card.dataset_query && card.dataset_query.database;

@@ -1,6 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+
 import Icon from "metabase/components/Icon";
 import Schemas from "metabase/entities/schemas";
 

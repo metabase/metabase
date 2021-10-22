@@ -5,11 +5,11 @@ import cx from "classnames";
 import _ from "underscore";
 import { getIn, updateIn } from "icepick";
 import { Grid, Collection, ScrollSync, AutoSizer } from "react-virtualized";
+import { findDOMNode } from "react-dom";
 
 import { color, lighten } from "metabase/lib/colors";
 import "metabase/visualizations/components/TableInteractive.css";
 import { getScrollBarSize } from "metabase/lib/dom";
-
 import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 import { isDimension } from "metabase/lib/schema_metadata";
@@ -25,7 +25,6 @@ import { formatColumn } from "metabase/lib/formatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import type { VisualizationProps } from "metabase-types/types/Visualization";
-import { findDOMNode } from "react-dom";
 
 const getBgLightColor = () => lighten(color("brand"), 0.65);
 const getBgDarkColor = () => lighten(color("brand"), 0.6);

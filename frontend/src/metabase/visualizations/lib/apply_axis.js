@@ -4,7 +4,6 @@ import _ from "underscore";
 import d3 from "d3";
 import dc from "dc";
 import moment from "moment-timezone";
-
 import { t } from "ttag";
 
 import { datasetContainsNoResults } from "metabase/lib/dataset";

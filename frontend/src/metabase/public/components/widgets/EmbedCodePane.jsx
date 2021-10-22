@@ -1,8 +1,9 @@
 import React, { Component } from "react";
+import { t, jt } from "ttag";
 
 import ExternalLink from "metabase/components/ExternalLink";
+
 import CodeSample from "./CodeSample";
-import { t, jt } from "ttag";
 import {
   getPublicEmbedOptions,
   getSignedEmbedOptions,

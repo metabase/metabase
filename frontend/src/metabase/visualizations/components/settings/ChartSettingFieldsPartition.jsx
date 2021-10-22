@@ -6,15 +6,14 @@ import { Flex } from "grid-styled";
 import { DragSource, DropTarget } from "react-dnd";
 import _ from "underscore";
 import { assocIn } from "icepick";
-
 import styled from "styled-components";
+
 import colors, { lighten } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import Label from "metabase/components/type/Label";
 import Grabber from "metabase/components/Grabber";
 import Text from "metabase/components/type/Text";
 import Toggle from "metabase/components/Toggle";
-
 import {
   COLUMN_SHOW_TOTALS,
   COLUMN_SORT_ORDER,

@@ -7,7 +7,6 @@ import {
   DEFAULT_TIME_STYLE,
 } from "metabase/lib/formatting/date";
 import MetabaseSettings from "metabase/lib/settings";
-
 import DateTime from "metabase/components/DateTime";
 
 describe("DateTime", () => {

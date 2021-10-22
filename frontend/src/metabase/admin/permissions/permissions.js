@@ -21,6 +21,7 @@ import {
 } from "metabase/lib/permissions";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
+
 import { isDatabaseEntityId } from "./utils/data-entity-id";
 
 const INITIALIZE_DATA_PERMISSIONS =

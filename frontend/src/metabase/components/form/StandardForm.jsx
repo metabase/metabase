@@ -1,9 +1,9 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import { t } from "ttag";
 
 import CustomForm from "./CustomForm";
 
-import { t } from "ttag";
 
 const StandardForm = ({ onClose, submitTitle, ...props }) => (
   <CustomForm {...props}>

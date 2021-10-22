@@ -2,6 +2,10 @@
  * Represents a structured MBQL query.
  */
 
+import _ from "underscore";
+import { chain, updateIn } from "icepick";
+import { t } from "ttag";
+
 import * as Q from "metabase/lib/query/query";
 import { getUniqueExpressionName } from "metabase/lib/query/expression";
 import {
@@ -9,13 +13,23 @@ import {
   DISPLAY_QUOTES,
 } from "metabase/lib/expressions/format";
 import { isCompatibleAggregationOperatorForField } from "metabase/lib/schema_metadata";
-
-import _ from "underscore";
-import { chain, updateIn } from "icepick";
-import { t } from "ttag";
-
 import { memoize } from "metabase-lib/lib/utils";
+import Dimension, {
+  FieldDimension,
+  ExpressionDimension,
+  AggregationDimension,
+} from "metabase-lib/lib/Dimension";
+import DimensionOptions from "metabase-lib/lib/DimensionOptions";
+import { fieldRefForColumn } from "metabase/lib/dataset";
 
+import AtomicQuery from "./AtomicQuery";
+import AggregationWrapper from "./structured/Aggregation";
+import BreakoutWrapper from "./structured/Breakout";
+import FilterWrapper from "./structured/Filter";
+import JoinWrapper from "./structured/Join";
+import OrderByWrapper from "./structured/OrderBy";
+
+import Table from "../metadata/Table";
 import type {
   StructuredQuery as StructuredQueryObject,
   Aggregation,
@@ -30,12 +44,6 @@ import type {
 } from "metabase-types/types/Card";
 import type { AggregationOperator } from "metabase-types/types/Metadata";
 
-import Dimension, {
-  FieldDimension,
-  ExpressionDimension,
-  AggregationDimension,
-} from "metabase-lib/lib/Dimension";
-import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 
 import type Segment from "../metadata/Segment";
 import type { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
@@ -44,20 +52,10 @@ import type Question from "../Question";
 import type { TableId } from "metabase-types/types/Table";
 import type { Column } from "metabase-types/types/Dataset";
 
-import AtomicQuery from "./AtomicQuery";
-
-import AggregationWrapper from "./structured/Aggregation";
-import BreakoutWrapper from "./structured/Breakout";
-import FilterWrapper from "./structured/Filter";
-import JoinWrapper from "./structured/Join";
-import OrderByWrapper from "./structured/OrderBy";
-
-import Table from "../metadata/Table";
 import Field from "../metadata/Field";
 
 import { TYPE } from "metabase/lib/types";
 
-import { fieldRefForColumn } from "metabase/lib/dataset";
 
 type DimensionFilter = (dimension: Dimension) => boolean;
 type FieldFilter = (filter: Field) => boolean;

@@ -2,12 +2,6 @@ import moment from "moment";
 import _ from "underscore";
 import { getIn } from "icepick";
 
-import {
-  setRequestLoading,
-  setRequestLoaded,
-  setRequestError,
-  setRequestUnloaded,
-} from "metabase/redux/requests";
 
 // convienence
 export { combineReducers, compose } from "redux";
@@ -328,6 +322,13 @@ export function withAnalytics(categoryOrFn, actionOrFn, labelOrFn, valueOrFn) {
 }
 
 import { normalize } from "normalizr";
+
+import {
+  setRequestLoading,
+  setRequestLoaded,
+  setRequestError,
+  setRequestUnloaded,
+} from "metabase/redux/requests";
 
 export function withNormalize(schema) {
   return thunkCreator => (...args) => async (dispatch, getState) =>

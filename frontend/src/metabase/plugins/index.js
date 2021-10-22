@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 
 // Plugin integration points. All exports must be objects or arrays so they can be mutated by plugins.

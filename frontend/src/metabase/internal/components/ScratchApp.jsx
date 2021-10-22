@@ -1,8 +1,8 @@
 import React from "react";
 import ReactDOM from "react-dom";
-import CheckBox from "metabase/components/CheckBox";
 import cx from "classnames";
 
+import CheckBox from "metabase/components/CheckBox";
 import AceEditor from "metabase/components/TextEditor";
 
 import context from "../lib/scratch-context";

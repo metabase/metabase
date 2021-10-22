@@ -7,9 +7,7 @@ import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import withToast from "metabase/hoc/Toast";
 import { entityTypeForObject } from "metabase/schema";
-
 import Link from "metabase/components/Link";
-
 import Collections from "metabase/entities/collections";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 

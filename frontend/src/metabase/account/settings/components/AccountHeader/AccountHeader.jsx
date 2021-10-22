@@ -1,8 +1,10 @@
 import React, { useMemo } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+
 import Radio from "metabase/components/Radio";
 import { PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS } from "metabase/plugins";
+
 import {
   AccountHeaderRoot,
   HeaderAvatar,

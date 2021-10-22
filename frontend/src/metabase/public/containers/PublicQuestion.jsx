@@ -1,18 +1,13 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
+import { updateIn } from "icepick";
 
 import Visualization from "metabase/visualizations/components/Visualization";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ExplicitSize from "metabase/components/ExplicitSize";
-import EmbedFrame from "../components/EmbedFrame";
 import title from "metabase/hoc/Title";
-
-import type { Card } from "metabase-types/types/Card";
-import type { Dataset } from "metabase-types/types/Dataset";
-import type { ParameterValues } from "metabase-types/types/Parameter";
-
 import {
   getParameterValuesBySlug,
   getParameterValuesByIdFromQueryParams,
@@ -22,7 +17,6 @@ import {
   getValueAndFieldIdPopulatedParametersFromCard,
   applyParameters,
 } from "metabase/meta/Card";
-
 import {
   PublicApi,
   EmbedApi,
@@ -30,14 +24,17 @@ import {
   setEmbedQuestionEndpoints,
   maybeUsePivotEndpoint,
 } from "metabase/services";
-
 import { setErrorPage } from "metabase/redux/app";
 import { addParamValues, addFields } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
-
 import PublicMode from "metabase/modes/components/modes/PublicMode";
 
-import { updateIn } from "icepick";
+import EmbedFrame from "../components/EmbedFrame";
+
+import type { ParameterValues } from "metabase-types/types/Parameter";
+import type { Dataset } from "metabase-types/types/Dataset";
+import type { Card } from "metabase-types/types/Card";
+
 
 type Props = {
   params: { uuid?: string, token?: string },

@@ -1,7 +1,7 @@
 import { t } from "ttag";
+
 import LineAreaBarChart from "../components/LineAreaBarChart.jsx";
 import { comboRenderer } from "../lib/LineAreaBarRenderer";
-
 import {
   GRAPH_DATA_SETTINGS,
   LINE_SETTINGS,

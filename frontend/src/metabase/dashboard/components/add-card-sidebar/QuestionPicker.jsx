@@ -10,14 +10,12 @@ import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
-
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-
-import { QuestionList } from "./QuestionList";
-
-import { BreadcrumbsWrapper, SearchInput } from "./QuestionPicker.styled";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { SelectList } from "metabase/components/select-list";
+
+import { QuestionList } from "./QuestionList";
+import { BreadcrumbsWrapper, SearchInput } from "./QuestionPicker.styled";
 
 const { isRegularCollection } = PLUGIN_COLLECTIONS;
 

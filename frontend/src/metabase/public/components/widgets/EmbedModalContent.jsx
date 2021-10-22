@@ -4,17 +4,12 @@ import { titleize } from "inflection";
 import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
-
-import SharingPane from "./SharingPane";
-import AdvancedEmbedPane from "./AdvancedEmbedPane";
-
 import {
   getSignedPreviewUrl,
   getUnsignedPreviewUrl,
   getSignedToken,
 } from "metabase/public/lib/embed";
 import { color } from "metabase/lib/colors";
-
 import {
   getSiteUrl,
   getEmbeddingSecretKey,
@@ -22,8 +17,10 @@ import {
   getIsApplicationEmbeddingEnabled,
 } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
-
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+
+import AdvancedEmbedPane from "./AdvancedEmbedPane";
+import SharingPane from "./SharingPane";
 
 import type { Parameter, ParameterId } from "metabase-types/types/Parameter";
 import type {

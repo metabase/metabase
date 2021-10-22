@@ -4,9 +4,7 @@ import _ from "underscore";
 import { init } from "metabase/app";
 import { getRoutes } from "metabase/routes";
 import reducers from "metabase/reducers-main";
-
 import api from "metabase/lib/api";
-
 import { setErrorPage } from "metabase/redux/app";
 import { clearCurrentUser } from "metabase/redux/user";
 

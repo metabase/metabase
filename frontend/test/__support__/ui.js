@@ -8,7 +8,9 @@ import { reducer as form } from "redux-form";
 import { ThemeProvider } from "styled-components";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
+
 import { state as sampleDatasetReduxState } from "__support__/sample_dataset_fixture";
+
 import { getStore } from "./entities-store";
 
 function getUser(user = {}) {

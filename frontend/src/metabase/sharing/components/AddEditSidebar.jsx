@@ -19,13 +19,10 @@ import SendTestPulse from "metabase/components/SendTestPulse";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import Toggle from "metabase/components/Toggle";
 import Select, { Option } from "metabase/components/Select";
-
 import { dashboardPulseIsValid } from "metabase/lib/pulse";
 import MetabaseSettings from "metabase/lib/settings";
 import { conjunct } from "metabase/lib/formatting";
-
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
-
 import {
   getDefaultParametersById,
   getParameters,

@@ -1,17 +1,17 @@
 import { getIn, setIn } from "icepick";
 import _ from "underscore";
 
-import type { DatabaseId } from "metabase-types/types/Database";
-import type { SchemaName, TableId } from "metabase-types/types/Table";
 
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Database from "metabase-lib/lib/metadata/Database";
 import Table from "metabase-lib/lib/metadata/Table";
-
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_PERMISSION_VALUE,
   PLUGIN_ADVANCED_PERMISSIONS,
 } from "metabase/plugins";
+
+import type { SchemaName, TableId } from "metabase-types/types/Table";
+import type { DatabaseId } from "metabase-types/types/Database";
 
 export const isRestrictivePermission = value =>
   PLUGIN_ADVANCED_PERMISSIONS.isBlockPermission(value) || value === "none";

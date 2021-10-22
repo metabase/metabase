@@ -2,7 +2,6 @@
 
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
 import { diffWords } from "diff";
 
 export default class TextDiff extends Component {

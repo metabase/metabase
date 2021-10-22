@@ -1,18 +1,14 @@
 import React from "react";
-
-import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
-
-import { Route } from "metabase/hoc/Title";
 import { Redirect, IndexRedirect, IndexRoute } from "react-router";
 import { routerActions } from "react-router-redux";
 import { UserAuthWrapper } from "redux-auth-wrapper";
 import { t } from "ttag";
 
+import { Route } from "metabase/hoc/Title";
+import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
 import { loadCurrentUser } from "metabase/redux/user";
 import MetabaseSettings from "metabase/lib/settings";
-
 import App from "metabase/App.jsx";
-
 import HomepageApp from "metabase/home/containers/HomepageApp";
 
 // auth containers
@@ -31,23 +27,18 @@ import BrowseApp from "metabase/browse/components/BrowseApp";
 import DatabaseBrowser from "metabase/browse/containers/DatabaseBrowser";
 import SchemaBrowser from "metabase/browse/containers/SchemaBrowser";
 import TableBrowser from "metabase/browse/containers/TableBrowser";
-
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
-
 import CollectionEdit from "metabase/collections/containers/CollectionEdit";
 import CollectionCreate from "metabase/collections/containers/CollectionCreate";
 import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
 import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
 import UserCollectionList from "metabase/containers/UserCollectionList";
-
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp";
 import SetupApp from "metabase/setup/containers/SetupApp";
 import PostSetupApp from "metabase/setup/containers/PostSetupApp";
 // new question
 import NewQueryOptions from "metabase/new_query/containers/NewQueryOptions";
-
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
-
 import { NotFound, Unauthorized } from "metabase/containers/ErrorPages";
 
 // Reference Metrics
@@ -70,10 +61,8 @@ import TableDetailContainer from "metabase/reference/databases/TableDetailContai
 import TableQuestionsContainer from "metabase/reference/databases/TableQuestionsContainer";
 import FieldListContainer from "metabase/reference/databases/FieldListContainer";
 import FieldDetailContainer from "metabase/reference/databases/FieldDetailContainer";
-
 import getAccountRoutes from "metabase/account/routes";
 import getAdminRoutes from "metabase/admin/routes";
-
 import PublicQuestion from "metabase/public/containers/PublicQuestion";
 import PublicDashboard from "metabase/public/containers/PublicDashboard";
 import ArchiveDashboardModal from "metabase/dashboard/containers/ArchiveDashboardModal";
@@ -82,10 +71,8 @@ import DashboardMoveModal from "metabase/dashboard/components/DashboardMoveModal
 import DashboardCopyModal from "metabase/dashboard/components/DashboardCopyModal";
 import DashboardDetailsModal from "metabase/dashboard/components/DashboardDetailsModal";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-
 import CollectionLanding from "metabase/components/CollectionLanding/CollectionLanding";
 import Overworld from "metabase/containers/Overworld";
-
 import ArchiveApp from "metabase/home/containers/ArchiveApp";
 import SearchApp from "metabase/home/containers/SearchApp";
 

@@ -6,12 +6,10 @@ import cx from "classnames";
 import { DashboardApi } from "metabase/services";
 import Fields from "metabase/entities/fields";
 import Tables from "metabase/entities/tables";
-
 import Radio from "metabase/components/Radio";
 import Toggle from "metabase/components/Toggle";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-
 import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 

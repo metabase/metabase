@@ -2,7 +2,6 @@ import React from "react";
 import { render } from "@testing-library/react";
 
 import MetabaseSettings from "metabase/lib/settings";
-
 import AddDatabaseHelpCard, {
   CLOUD_HELP_URL,
   ENGINE_DOCS,

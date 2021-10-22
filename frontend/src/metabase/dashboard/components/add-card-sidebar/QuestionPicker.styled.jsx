@@ -1,4 +1,5 @@
 import styled from "styled-components";
+
 import TextInput from "metabase/components/TextInput";
 
 export const BreadcrumbsWrapper = styled.div`

@@ -1,5 +1,6 @@
-import { TYPE } from "metabase/lib/types";
 import { t } from "ttag";
+
+import { TYPE } from "metabase/lib/types";
 
 export const field_semantic_types = [
   /* Overall Row */

@@ -1,5 +1,4 @@
 import { metadata, ORDERS, PEOPLE } from "__support__/sample_dataset_fixture";
-
 import { drillDownForDimensions } from "metabase/modes/lib/drilldown";
 
 describe("drilldown", () => {

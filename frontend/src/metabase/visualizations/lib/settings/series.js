@@ -3,8 +3,9 @@ import _ from "underscore";
 import { getIn } from "icepick";
 
 import ChartNestedSettingSeries from "metabase/visualizations/components/settings/ChartNestedSettingSeries";
-import { nestedSettings } from "./nested";
 import { getColorsForValues } from "metabase/lib/colors";
+
+import { nestedSettings } from "./nested";
 
 import type { SettingDef } from "../settings";
 import type { SingleSeries } from "metabase-types/types/Visualization";

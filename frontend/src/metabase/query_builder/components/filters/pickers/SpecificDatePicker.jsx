@@ -1,15 +1,16 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import moment from "moment";
+import cx from "classnames";
 
 import Calendar from "metabase/components/Calendar";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Icon from "metabase/components/Icon";
 import ExpandingContent from "metabase/components/ExpandingContent";
+
 import HoursMinutesInput from "./HoursMinutesInput";
 
-import moment from "moment";
-import cx from "classnames";
 
 const DATE_FORMAT = "YYYY-MM-DD";
 const DATE_TIME_FORMAT = "YYYY-MM-DDTHH:mm:ss";

@@ -1,10 +1,10 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { Provider } from "react-redux";
-import { getStore } from "metabase/store";
-
-import { getMetadata } from "metabase/selectors/metadata";
 import { chain } from "icepick";
+
+import { getStore } from "metabase/store";
+import { getMetadata } from "metabase/selectors/metadata";
 
 import state from "./sample_dataset_fixture.json";
 export { default as state } from "./sample_dataset_fixture.json";

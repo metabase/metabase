@@ -3,7 +3,6 @@ import React from "react";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
-
 import EntityMenu from "metabase/components/EntityMenu";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 

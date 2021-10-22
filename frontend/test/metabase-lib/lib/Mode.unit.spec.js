@@ -5,7 +5,6 @@ import {
   PRODUCTS,
   PEOPLE,
 } from "__support__/sample_dataset_fixture";
-
 import Question from "metabase-lib/lib/Question";
 
 describe("Mode", () => {

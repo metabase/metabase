@@ -1,11 +1,11 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-
 import { t, ngettext, msgid } from "ttag";
+
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import QuestionDataSource from "./QuestionDataSource";
 
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 const QuestionDescription = ({ question, isObjectDetail }) => {
   const query = question.query();

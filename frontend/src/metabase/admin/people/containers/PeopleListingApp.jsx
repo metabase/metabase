@@ -3,7 +3,6 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
-
 import AdminPaneLayout from "metabase/components/AdminPaneLayout";
 import Radio from "metabase/components/Radio";
 

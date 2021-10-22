@@ -1,4 +1,5 @@
 import styled from "styled-components";
+
 import { color } from "metabase/lib/colors";
 import { space, breakpointMaxMedium } from "metabase/styled-components/theme";
 import Icon from "metabase/components/Icon";

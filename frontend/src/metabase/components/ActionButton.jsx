@@ -1,12 +1,11 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import { t } from "ttag";
+import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
-
 import { cancelable } from "metabase/lib/promise";
-import { t } from "ttag";
-import cx from "classnames";
 
 type Props = {
   actionFn: (...args: any[]) => Promise<any>,

@@ -6,7 +6,6 @@ import Field from "metabase-lib/lib/metadata/Field";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import Question from "metabase-lib/lib/Question";
-
 import {
   metadata,
   ORDERS,

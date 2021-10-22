@@ -1,16 +1,14 @@
 import { assoc, assocIn, dissocIn, getIn } from "icepick";
 import _ from "underscore";
+import { normalize, schema } from "normalizr";
+import { push } from "react-router-redux";
 
 import { createAction, createThunkAction } from "metabase/lib/redux";
 import { open } from "metabase/lib/dom";
 import { defer } from "metabase/lib/promise";
-import { normalize, schema } from "normalizr";
-
 import Question from "metabase-lib/lib/Question";
-
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
-
 import {
   createParameter,
   setParameterName as setParamName,
@@ -25,26 +23,15 @@ import {
 } from "metabase/meta/Parameter";
 import * as Urls from "metabase/lib/urls";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
-
-import type {
-  DashboardWithCards,
-  DashCard,
-  DashCardId,
-} from "metabase-types/types/Dashboard";
-import type { CardId } from "metabase-types/types/Card";
-
 import Utils from "metabase/lib/utils";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
 import { clickBehaviorIsValid } from "metabase/lib/click-behavior";
 import { createCard } from "metabase/lib/card";
-
 import {
   addParamValues,
   addFields,
   loadMetadataForQueries,
 } from "metabase/redux/metadata";
-import { push } from "react-router-redux";
-
 import {
   DashboardApi,
   CardApi,
@@ -54,6 +41,8 @@ import {
   MetabaseApi,
   maybeUsePivotEndpoint,
 } from "metabase/services";
+import { getMetadata } from "metabase/selectors/metadata";
+import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 
 import {
   getDashboard,
@@ -61,9 +50,6 @@ import {
   getDashboardComplete,
   getParameterValues,
 } from "./selectors";
-import { getMetadata } from "metabase/selectors/metadata";
-import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
-
 import {
   expandInlineDashboard,
   isVirtualDashCard,
@@ -71,6 +57,13 @@ import {
   getDashboardType,
   fetchDataOrError,
 } from "./utils";
+
+import type { CardId } from "metabase-types/types/Card";
+import type {
+  DashboardWithCards,
+  DashCard,
+  DashCardId,
+} from "metabase-types/types/Dashboard";
 
 const DATASET_SLOW_TIMEOUT = 15 * 1000;
 

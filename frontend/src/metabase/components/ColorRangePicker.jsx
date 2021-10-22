@@ -1,11 +1,10 @@
 import React from "react";
-
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-
-import { getColorScale } from "metabase/lib/colors";
-
 import d3 from "d3";
 import cx from "classnames";
+
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import { getColorScale } from "metabase/lib/colors";
+
 
 import type { ColorString } from "metabase/lib/colors";
 

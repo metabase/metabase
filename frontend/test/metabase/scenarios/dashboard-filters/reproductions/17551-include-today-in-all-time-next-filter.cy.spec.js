@@ -1,4 +1,5 @@
 import { restore, filterWidget } from "__support__/e2e/cypress";
+
 import { setAdHocFilter } from "../../native-filters/helpers/e2e-date-filter-helpers";
 
 describe("issue 17551", () => {

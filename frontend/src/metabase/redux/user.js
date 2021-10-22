@@ -3,10 +3,8 @@ import {
   handleActions,
   createThunkAction,
 } from "metabase/lib/redux";
-
 import { CLOSE_QB_NEWB_MODAL } from "metabase/query_builder/actions";
 import { LOGOUT } from "metabase/auth/auth";
-
 import { UserApi } from "metabase/services";
 
 export const REFRESH_CURRENT_USER = "metabase/user/REFRESH_CURRENT_USER";

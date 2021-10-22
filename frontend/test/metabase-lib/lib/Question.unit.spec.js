@@ -1,3 +1,5 @@
+import { assoc, dissoc } from "icepick";
+
 import {
   metadata,
   SAMPLE_DATASET,
@@ -5,9 +7,6 @@ import {
   PRODUCTS,
   createMetadata,
 } from "__support__/sample_dataset_fixture";
-
-import { assoc, dissoc } from "icepick";
-
 import Question from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";

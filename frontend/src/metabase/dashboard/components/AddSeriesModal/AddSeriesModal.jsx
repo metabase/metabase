@@ -7,16 +7,12 @@ import { connect } from "react-redux";
 import { createSelector } from "reselect";
 
 import Visualization from "metabase/visualizations/components/Visualization";
-
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
-
 import Questions from "metabase/entities/questions";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { loadMetadataForQueries } from "metabase/redux/metadata";
-
 import Question from "metabase-lib/lib/Question";
-
 import { getVisualizationRaw } from "metabase/visualizations";
 
 import { QuestionList } from "./QuestionList";

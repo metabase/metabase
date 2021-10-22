@@ -1,19 +1,15 @@
-import { createEntity, undo } from "metabase/lib/entities";
-
-import { color } from "metabase/lib/colors";
-import * as Urls from "metabase/lib/urls";
-
-import { CollectionSchema } from "metabase/schema";
 import { createSelector } from "reselect";
-
-import { GET } from "metabase/lib/api";
-
-import { getUser, getUserPersonalCollectionId } from "metabase/selectors/user";
-import { isPersonalCollection } from "metabase/collections/utils";
-
 import { t } from "ttag";
 
+import { createEntity, undo } from "metabase/lib/entities";
+import { color } from "metabase/lib/colors";
+import * as Urls from "metabase/lib/urls";
+import { CollectionSchema } from "metabase/schema";
+import { GET } from "metabase/lib/api";
+import { getUser, getUserPersonalCollectionId } from "metabase/selectors/user";
+import { isPersonalCollection } from "metabase/collections/utils";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+
 import { getFormSelector } from "./collections/forms";
 
 const listCollectionsTree = GET("/api/collection/tree");

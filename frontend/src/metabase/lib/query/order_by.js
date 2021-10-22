@@ -1,6 +1,7 @@
+import { add, update, remove, clear } from "./util";
+
 import type { OrderBy, OrderByClause } from "metabase-types/types/Query";
 
-import { add, update, remove, clear } from "./util";
 
 // returns canonical list of OrderBys, with nulls removed
 export function getOrderBys(breakout: ?OrderByClause): OrderBy[] {

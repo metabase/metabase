@@ -7,6 +7,7 @@ import "./Calendar.css";
 import cx from "classnames";
 import moment from "moment";
 import { t } from "ttag";
+
 import Icon from "metabase/components/Icon";
 
 export default class Calendar extends Component {

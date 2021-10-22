@@ -1,4 +1,5 @@
 import React from "react";
+
 import PageHeading from "metabase/components/type/PageHeading";
 
 export const component = PageHeading;

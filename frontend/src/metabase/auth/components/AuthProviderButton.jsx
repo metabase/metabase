@@ -1,9 +1,10 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import Icon from "metabase/components/Icon";
 import { capitalize } from "humanize-plus";
 import { t } from "ttag";
+
+import Icon from "metabase/components/Icon";
 
 const propTypes = {
   provider: PropTypes.string,

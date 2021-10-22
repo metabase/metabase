@@ -1,17 +1,17 @@
 import React from "react";
 import ReactDOM from "react-dom";
 
+
+import { delay } from "metabase/lib/promise";
+import { color } from "metabase/lib/colors";
+import Visualization from "metabase/visualizations/components/Visualization";
+
 import {
   NumberColumn,
   StringColumn,
   createFixture,
   cleanupFixture,
 } from "../__support__/visualizations";
-
-import { delay } from "metabase/lib/promise";
-
-import { color } from "metabase/lib/colors";
-import Visualization from "metabase/visualizations/components/Visualization";
 
 describe("Visualization", () => {
   // eslint-disable-next-line no-unused-vars

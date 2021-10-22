@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
-
 import cx from "classnames";
+
 import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
 import Snippets from "metabase/entities/snippets";

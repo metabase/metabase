@@ -6,15 +6,13 @@ import { t } from "ttag";
 
 import S from "metabase/components/List.css";
 import R from "metabase/reference/Reference.css";
-
 import List from "metabase/components/List";
 import ListItem from "metabase/components/ListItem";
 import EmptyState from "metabase/components/EmptyState";
-
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import * as metadataActions from "metabase/redux/metadata";
 
 import ReferenceHeader from "../components/ReferenceHeader";
-
 import {
   getDatabase,
   getTablesByDatabase,
@@ -23,7 +21,6 @@ import {
   getLoading,
 } from "../selectors";
 
-import * as metadataActions from "metabase/redux/metadata";
 
 const emptyStateData = {
   message: t`Tables in this database will appear here as they're added`,

@@ -2,7 +2,6 @@
 
 import { combineReducers } from "redux";
 
-import commonReducers from "./reducers-common";
 
 /* admin */
 import admin from "metabase/admin/admin";
@@ -28,6 +27,8 @@ import alert from "metabase/alert/alert";
 
 /* pulses */
 import * as pulse from "metabase/pulse/reducers";
+
+import commonReducers from "./reducers-common";
 
 export default {
   ...commonReducers,

@@ -29,7 +29,6 @@ import ColorsPage from "metabase/internal/pages/ColorsPage";
 import ComponentsPage from "metabase/internal/pages/ComponentsPage";
 import ModalsPage from "metabase/internal/pages/ModalsPage";
 import StaticVizPage from "metabase/internal/pages/StaticVizPage";
-
 import { InternalLayout } from "metabase/internal/components/Layout";
 
 const ErrorWithDetails = () => <GenericError details="Example error message" />;

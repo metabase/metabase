@@ -1,7 +1,9 @@
 import React from "react";
 import { t } from "ttag";
 import { IndexRedirect } from "react-router";
+
 import { Route } from "metabase/hoc/Title";
+
 import AccountSettingsApp from "./settings/containers/AccountSettingsApp";
 import UserProfileApp from "./profile/containers/UserProfileApp";
 import UserPasswordApp from "./password/containers/UserPasswordApp";

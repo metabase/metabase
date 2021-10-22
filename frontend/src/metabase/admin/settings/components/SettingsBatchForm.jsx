@@ -3,15 +3,15 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import _ from "underscore";
-
 import Collapse from "react-collapse";
 import { t } from "ttag";
+
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import Button from "metabase/components/Button";
 import DisclosureTriangle from "metabase/components/DisclosureTriangle";
 import MetabaseUtils from "metabase/lib/utils";
-import SettingsSetting from "./SettingsSetting";
 
+import SettingsSetting from "./SettingsSetting";
 import { updateSettings as defaultUpdateSettings } from "../settings";
 
 const VALIDATIONS = {

@@ -3,13 +3,13 @@ import PropTypes from "prop-types";
 import cx from "classnames";
 import { getIn } from "icepick";
 import { t } from "ttag";
+
 import * as MetabaseCore from "metabase/lib/core";
 import { isNumericBaseType } from "metabase/lib/schema_metadata";
-import { isFK } from "metabase/lib/types";
-
 import Select from "metabase/components/Select";
-
 import D from "metabase/reference/components/Detail.css";
+
+import { isFK } from "metabase/lib/types";
 
 const FieldTypeDetail = ({
   field,

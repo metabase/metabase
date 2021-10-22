@@ -1,12 +1,13 @@
 import React from "react";
 import PropTypes from "prop-types";
 
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+
 import {
   PermissionsSidebarContent,
   permissionSidebarContentPropTypes,
 } from "./PermissionsSidebarContent";
 import { SidebarRoot } from "./PermissionsSidebar.styled";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 export const permissionSidebarPropTypes = {
   isLoading: PropTypes.bool,

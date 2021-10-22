@@ -2,9 +2,7 @@ import styled, { css } from "styled-components";
 
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
-
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
-
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 // Class names are added here because we still use traditional css,

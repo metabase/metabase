@@ -9,7 +9,6 @@ import Form, {
   FormSubmit,
   FormMessage,
 } from "metabase/containers/Form";
-
 import { updateSettings } from "metabase/admin/settings/settings";
 import { settingToFormField } from "metabase/admin/settings/utils";
 import Breadcrumbs from "metabase/components/Breadcrumbs";

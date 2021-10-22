@@ -3,22 +3,18 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import cx from "classnames";
+import _ from "underscore";
 
 import { IFRAMED } from "metabase/lib/dom";
-
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import DashboardGrid from "metabase/dashboard/components/DashboardGrid";
 import DashboardControls from "metabase/dashboard/hoc/DashboardControls";
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
-import EmbedFrame from "../components/EmbedFrame";
 import title from "metabase/hoc/Title";
-
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { setErrorPage } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
-
 import PublicMode from "metabase/modes/components/modes/PublicMode";
-
 import {
   getDashboardComplete,
   getCardData,
@@ -26,18 +22,17 @@ import {
   getParameters,
   getParameterValues,
 } from "metabase/dashboard/selectors";
-
 import * as dashboardActions from "metabase/dashboard/actions";
-
 import {
   setPublicDashboardEndpoints,
   setEmbedDashboardEndpoints,
 } from "metabase/services";
 
+import EmbedFrame from "../components/EmbedFrame";
+
 import type { Dashboard } from "metabase-types/types/Dashboard";
 import type { Parameter } from "metabase-types/types/Parameter";
 
-import _ from "underscore";
 
 const mapStateToProps = (state, props) => {
   return {

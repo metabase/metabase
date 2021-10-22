@@ -1,4 +1,5 @@
 import styled from "styled-components";
+
 import colors, { color } from "metabase/lib/colors";
 
 export const PermissionsSelectOptionRoot = styled.div`

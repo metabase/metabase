@@ -4,9 +4,23 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
+import cx from "classnames";
+import _ from "underscore";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Icon from "metabase/components/Icon";
+import Tooltip from "metabase/components/Tooltip";
+import { fetchField, fetchFieldValues } from "metabase/redux/metadata";
+import {
+  getMetadata,
+  makeGetMergedParameterFieldValues,
+} from "metabase/selectors/metadata";
+import {
+  getParameterIconName,
+  deriveFieldOperatorFromParameter,
+} from "metabase/meta/Parameter";
+import { isDashboardParameterWithoutMapping } from "metabase/meta/Dashboard";
+
 import DateSingleWidget from "./widgets/DateSingleWidget";
 import DateRangeWidget from "./widgets/DateRangeWidget";
 import DateRelativeWidget from "./widgets/DateRelativeWidget";
@@ -15,24 +29,8 @@ import DateQuarterYearWidget from "./widgets/DateQuarterYearWidget";
 import DateAllOptionsWidget from "./widgets/DateAllOptionsWidget";
 import TextWidget from "./widgets/TextWidget";
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
-import Tooltip from "metabase/components/Tooltip";
-
-import { fetchField, fetchFieldValues } from "metabase/redux/metadata";
-import {
-  getMetadata,
-  makeGetMergedParameterFieldValues,
-} from "metabase/selectors/metadata";
-
-import {
-  getParameterIconName,
-  deriveFieldOperatorFromParameter,
-} from "metabase/meta/Parameter";
-import { isDashboardParameterWithoutMapping } from "metabase/meta/Dashboard";
-
 import S from "./ParameterWidget.css";
 
-import cx from "classnames";
-import _ from "underscore";
 
 const DATE_WIDGETS = {
   "date/single": DateSingleWidget,

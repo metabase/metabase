@@ -1,5 +1,7 @@
 import "__support__/mocks";
 
+import rowRenderer from "metabase/visualizations/lib/RowRenderer";
+
 import {
   createFixture,
   cleanupFixture,
@@ -8,7 +10,6 @@ import {
   StringColumn,
 } from "../__support__/visualizations";
 
-import rowRenderer from "metabase/visualizations/lib/RowRenderer";
 
 describe("RowChart", () => {
   let element;

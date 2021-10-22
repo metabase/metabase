@@ -2,10 +2,10 @@
 import React, { Component } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import styles from "./Text.css";
-
 import cx from "classnames";
 import { t } from "ttag";
+
+import styles from "./Text.css";
 
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 

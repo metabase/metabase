@@ -2,11 +2,11 @@
 import React, { Component } from "react";
 import { Link } from "react-router";
 import { Flex } from "grid-styled";
-import { SetupApi } from "metabase/services";
 import { t } from "ttag";
+
+import { SetupApi } from "metabase/services";
 import { color } from "metabase/lib/colors";
 import MetabaseSettings from "metabase/lib/settings";
-
 import Icon from "metabase/components/Icon";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import MarginHostingCTA from "metabase/admin/settings/components/widgets/MarginHostingCTA";

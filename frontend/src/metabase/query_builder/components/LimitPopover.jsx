@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-
 import { t } from "ttag";
 import cx from "classnames";
+
 import Input from "metabase/components/Input";
 import Radio from "metabase/components/Radio";
 import { HARD_ROW_LIMIT } from "metabase/lib/query";

@@ -1,18 +1,14 @@
 import React, { useState } from "react";
 import PropTypes from "prop-types";
-
 import { t, jt } from "ttag";
-import Link from "metabase/components/Link";
-
 import { Box, Flex } from "grid-styled";
 
+import Link from "metabase/components/Link";
 import Search from "metabase/entities/search";
-
 import Card from "metabase/components/Card";
 import EmptyState from "metabase/components/EmptyState";
 import SearchResult from "metabase/search/components/SearchResult";
 import Subhead from "metabase/components/type/Subhead";
-
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import NoResults from "assets/img/no_results.svg";

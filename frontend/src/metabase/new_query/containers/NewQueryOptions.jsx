@@ -1,26 +1,19 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
-
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-
 import { t } from "ttag";
+import { Box } from "grid-styled";
 
 import fitViewport from "metabase/hoc/FitViewPort";
-
-import { Box } from "grid-styled";
 import { Grid, GridItem } from "metabase/components/Grid";
-
 import NewQueryOption from "metabase/new_query/components/NewQueryOption";
 import NoDatabasesEmptyState from "metabase/reference/databases/NoDatabasesEmptyState";
-
 import * as Urls from "metabase/lib/urls";
-
 import {
   getHasDataAccess,
   getHasNativeWrite,
 } from "metabase/new_query/selectors";
-
 import Database from "metabase/entities/databases";
 
 import type { NestedObjectKey } from "metabase/visualizations/lib/settings/nested";

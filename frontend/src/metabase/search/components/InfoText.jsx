@@ -3,15 +3,14 @@ import PropTypes from "prop-types";
 import { t, jt } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
-
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
-
 import Schema from "metabase/entities/schemas";
 import Database from "metabase/entities/databases";
 import Table from "metabase/entities/tables";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { getTranslatedEntityName } from "metabase/nav/components/utils";
+
 import { CollectionBadge } from "./CollectionBadge";
 
 const searchResultPropTypes = {

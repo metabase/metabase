@@ -1,6 +1,7 @@
+import { t } from "ttag";
+
 import { getFriendlyName } from "./utils";
 
-import { t } from "ttag";
 
 export const NULL_DIMENSION_WARNING = "NULL_DIMENSION_WARNING";
 export function nullDimensionWarning() {

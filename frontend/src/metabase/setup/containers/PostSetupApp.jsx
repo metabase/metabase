@@ -4,9 +4,7 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import fitViewport from "metabase/hoc/FitViewPort";
-
 import CandidateListLoader from "metabase/containers/CandidateListLoader";
-
 import Card from "metabase/components/Card";
 import ExplorePane from "metabase/components/ExplorePane";
 import MetabotLogo from "metabase/components/MetabotLogo";

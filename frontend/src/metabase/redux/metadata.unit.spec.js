@@ -1,5 +1,6 @@
 import Fields from "metabase/entities/fields";
 import Tables from "metabase/entities/tables";
+
 import { fetchField, loadMetadataForQuery } from "./metadata";
 
 describe("deprecated metadata actions", () => {

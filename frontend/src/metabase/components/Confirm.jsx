@@ -3,6 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+
 import ConfirmContent from "./ConfirmContent";
 
 export default class Confirm extends Component {

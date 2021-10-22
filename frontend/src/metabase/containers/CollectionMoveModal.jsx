@@ -1,12 +1,10 @@
 import React from "react";
 import PropTypes from "prop-types";
-
 import { t } from "ttag";
-
 import { Flex } from "grid-styled";
+
 import Button from "metabase/components/Button";
 import ModalContent from "metabase/components/ModalContent";
-
 import CollectionPicker from "metabase/containers/CollectionPicker";
 
 class CollectionMoveModal extends React.Component {

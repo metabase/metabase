@@ -1,13 +1,13 @@
 import React, { Component } from "react";
-
 import cx from "classnames";
-import styles from "./FunnelNormal.css";
+
 
 import Ellipsified from "metabase/components/Ellipsified";
 import { formatValue } from "metabase/lib/formatting";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
-
 import { normal } from "metabase/lib/colors";
+
+import styles from "./FunnelNormal.css";
 
 const DEFAULT_COLORS = Object.values(normal);
 

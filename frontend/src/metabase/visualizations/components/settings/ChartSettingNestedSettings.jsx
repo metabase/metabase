@@ -1,10 +1,9 @@
 import React from "react";
-
-import ChartSettingsWidget from "../ChartSettingsWidget";
-
 import _ from "underscore";
 
 import { updateSettings } from "metabase/visualizations/lib/settings";
+
+import ChartSettingsWidget from "../ChartSettingsWidget";
 
 import type {
   Settings,

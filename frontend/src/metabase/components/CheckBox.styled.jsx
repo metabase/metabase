@@ -1,6 +1,7 @@
 import React from "react";
 import styled, { css } from "styled-components";
 import _ from "underscore";
+
 import Icon from "metabase/components/Icon";
 import { color, darken } from "metabase/lib/colors";
 

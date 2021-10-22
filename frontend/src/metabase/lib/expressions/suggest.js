@@ -1,5 +1,7 @@
 import _ from "underscore";
 
+import { ExpressionDimension } from "metabase-lib/lib/Dimension";
+
 import {
   getExpressionName,
   // dimensions:
@@ -10,13 +12,11 @@ import {
   // segments
   formatSegmentName,
 } from "../expressions";
-
 import {
   parserWithRecovery,
   ExpressionCstVisitor,
   ExpressionParser,
 } from "./parser";
-
 import {
   AggregationFunctionName,
   CLAUSE_TOKENS,
@@ -31,12 +31,8 @@ import {
   isTokenType,
   lexerWithRecovery,
 } from "./lexer";
-
 import { partialMatch, enclosingFunction } from "./completer";
-
 import getHelpText from "./helper_text_strings";
-
-import { ExpressionDimension } from "metabase-lib/lib/Dimension";
 import {
   FUNCTIONS,
   OPERATORS,

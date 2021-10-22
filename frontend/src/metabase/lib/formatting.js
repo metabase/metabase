@@ -5,12 +5,10 @@ import moment from "moment-timezone";
 import Humanize from "humanize-plus";
 import React from "react";
 import { msgid, ngettext } from "ttag";
-
 import Mustache from "mustache";
 import ReactMarkdown from "react-markdown";
 
 import ExternalLink from "metabase/components/ExternalLink";
-
 import {
   isCoordinate,
   isDate,
@@ -26,17 +24,10 @@ import { parseTime, parseTimestamp } from "metabase/lib/time";
 import { rangeForValue } from "metabase/lib/dataset";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import { decimalCount } from "metabase/visualizations/lib/numeric";
-
 import {
   clickBehaviorIsValid,
   getDataFromClicked,
 } from "metabase/lib/click-behavior";
-
-import type {
-  DateStyle,
-  TimeEnabled,
-  TimeStyle,
-} from "metabase/lib/formatting/date";
 import {
   DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,
@@ -50,6 +41,11 @@ import {
 } from "metabase/lib/formatting/link";
 import { NULL_DISPLAY_VALUE, NULL_NUMERIC_VALUE } from "metabase/lib/constants";
 
+import type {
+  DateStyle,
+  TimeEnabled,
+  TimeStyle,
+} from "metabase/lib/formatting/date";
 import type Field from "metabase-lib/lib/metadata/Field";
 import type { Column, Value } from "metabase-types/types/Dataset";
 import type { DatetimeUnit } from "metabase-types/types/Query";

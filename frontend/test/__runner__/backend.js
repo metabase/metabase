@@ -1,8 +1,8 @@
+import { spawn } from "child_process";
+
 import fs from "fs-promise";
 import os from "os";
 import path from "path";
-import { spawn } from "child_process";
-
 import fetch from "isomorphic-fetch";
 
 export const DEFAULT_DB_KEY = "/test_db_fixture.db";

@@ -2,10 +2,11 @@ import React, { useState, useRef, useLayoutEffect } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import { t } from "ttag";
-
 import styled from "styled-components";
-import { ClampedDiv } from "./ClampedText.styled";
+
 import { TextButton } from "metabase/components/Button.styled";
+
+import { ClampedDiv } from "./ClampedText.styled";
 
 const PaddedTextButton = styled(TextButton)`
   margin: 0.5rem 0;

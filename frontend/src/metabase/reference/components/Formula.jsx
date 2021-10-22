@@ -4,12 +4,12 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import { CSSTransitionGroup } from "react-transition-group";
 
-import S from "./Formula.css";
 
 import Icon from "metabase/components/Icon";
-
 import QueryDefinition from "metabase/query_builder/components/QueryDefinition";
 import { fetchTableMetadata } from "metabase/redux/metadata";
+
+import S from "./Formula.css";
 
 const mapDispatchToProps = {
   fetchTableMetadata,

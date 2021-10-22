@@ -2,9 +2,7 @@ import { t } from "ttag";
 import moment from "moment";
 import _ from "underscore";
 
-import { nestedSettings } from "./nested";
 import ChartNestedSettingColumns from "metabase/visualizations/components/settings/ChartNestedSettingColumns";
-
 import { keyForColumn } from "metabase/lib/dataset";
 import {
   isDate,
@@ -13,6 +11,20 @@ import {
   isCurrency,
   isDateWithoutTime,
 } from "metabase/lib/schema_metadata";
+import { currency } from "cljs/metabase.shared.util.currency";
+import {
+  getDateFormatFromStyle,
+  hasDay,
+  hasHour,
+} from "metabase/lib/formatting/date";
+import {
+  formatColumn,
+  numberFormatterForOptions,
+} from "metabase/lib/formatting";
+import MetabaseSettings from "metabase/lib/settings";
+
+import { nestedSettings } from "./nested";
+
 
 // HACK: cyclical dependency causing errors in unit tests
 // import { getVisualizationRaw } from "metabase/visualizations";
@@ -20,17 +32,6 @@ function getVisualizationRaw(...args) {
   return require("metabase/visualizations").getVisualizationRaw(...args);
 }
 
-import {
-  formatColumn,
-  numberFormatterForOptions,
-} from "metabase/lib/formatting";
-import {
-  getDateFormatFromStyle,
-  hasDay,
-  hasHour,
-} from "metabase/lib/formatting/date";
-
-import { currency } from "cljs/metabase.shared.util.currency";
 
 import type { Settings, SettingDef } from "../settings";
 import type { DateStyle, TimeStyle } from "metabase/lib/formatting/date";
@@ -70,7 +71,6 @@ export function columnSettings({
   });
 }
 
-import MetabaseSettings from "metabase/lib/settings";
 
 export function getGlobalSettingsForColumn(column: Column) {
   const columnSettings = {};

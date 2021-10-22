@@ -1,11 +1,11 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import YearPicker from "./YearPicker";
 import { Flex } from "grid-styled";
-
 import moment from "moment";
 import _ from "underscore";
 import cx from "classnames";
+
+import YearPicker from "./YearPicker";
 
 export default class DateMonthYearWidget extends React.Component {
   constructor(props, context) {

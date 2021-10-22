@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Dimension from "metabase-lib/lib/Dimension";
 

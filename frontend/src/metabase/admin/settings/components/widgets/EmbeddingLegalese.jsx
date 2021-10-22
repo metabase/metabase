@@ -1,7 +1,8 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { t } from "ttag";
+
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import ExternalLink from "metabase/components/ExternalLink";
 
 const EmbeddingLegalese = ({ onChange }) => (

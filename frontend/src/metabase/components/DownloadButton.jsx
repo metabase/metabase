@@ -5,7 +5,6 @@ import { Box, Flex } from "grid-styled";
 
 import { color } from "metabase/lib/colors";
 import { extractQueryParams } from "metabase/lib/urls";
-
 import Icon from "metabase/components/Icon";
 import Label from "metabase/components/type/Label";
 

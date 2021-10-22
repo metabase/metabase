@@ -1,4 +1,5 @@
 import React from "react";
+
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 
 export const component = Breadcrumbs;

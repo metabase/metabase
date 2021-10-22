@@ -6,7 +6,6 @@ import { withRouter } from "react-router";
 import { push } from "react-router-redux";
 
 import * as Urls from "metabase/lib/urls";
-
 import Collection from "metabase/entities/collections";
 import Dashboard from "metabase/entities/dashboards";
 

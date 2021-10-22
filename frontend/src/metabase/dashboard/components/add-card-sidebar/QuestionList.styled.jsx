@@ -1,4 +1,5 @@
 import styled from "styled-components";
+
 import { SelectList } from "metabase/components/select-list";
 
 export const EmptyStateContainer = styled.div`

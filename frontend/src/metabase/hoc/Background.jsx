@@ -20,6 +20,7 @@ export const withBackground = className => ComposedComponent => {
 };
 
 import { connect } from "react-redux";
+
 import { PLUGIN_SELECTORS } from "metabase/plugins";
 
 export const withLogoBackground = ComposedComponent => {

@@ -8,14 +8,11 @@ import _ from "underscore";
 import TokenField from "metabase/components/TokenField";
 import ValueComponent from "metabase/components/Value";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-
 import AutoExpanding from "metabase/hoc/AutoExpanding";
-
 import { DashboardApi, MetabaseApi } from "metabase/services";
 import { addRemappings, fetchFieldValues } from "metabase/redux/metadata";
 import { defer } from "metabase/lib/promise";
 import { stripId } from "metabase/lib/formatting";
-
 import Fields from "metabase/entities/fields";
 
 import type Field from "metabase-lib/lib/metadata/Field";

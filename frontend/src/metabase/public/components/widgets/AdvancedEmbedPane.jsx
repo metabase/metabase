@@ -1,9 +1,11 @@
 import React from "react";
+import { t } from "ttag";
+import _ from "underscore";
 
 import ToggleLarge from "metabase/components/ToggleLarge";
 import Button from "metabase/components/Button";
 import ActionButton from "metabase/components/ActionButton";
-import { t } from "ttag";
+
 import AdvancedSettingsPane from "./AdvancedSettingsPane";
 import PreviewPane from "./PreviewPane";
 import EmbedCodePane from "./EmbedCodePane";
@@ -15,7 +17,6 @@ import type {
   EmbeddingParams,
 } from "metabase/public/lib/types";
 
-import _ from "underscore";
 
 type Props = {
   className?: string,

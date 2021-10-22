@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
+
 import Toggle from "metabase/components/Toggle";
 
 const SettingToggle = ({ setting, onChange, disabled }) => {

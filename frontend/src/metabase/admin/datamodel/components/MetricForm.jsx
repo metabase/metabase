@@ -3,16 +3,18 @@ import React, { Component } from "react";
 import { Link } from "react-router";
 import { reduxForm } from "redux-form";
 import cx from "classnames";
+import { t } from "ttag";
+
+import FieldSet from "metabase/components/FieldSet";
+import { formatValue } from "metabase/lib/formatting";
+import * as Q from "metabase/lib/query/query";
 
 import FormLabel from "../components/FormLabel";
 import FormInput from "../components/FormInput";
 import FormTextArea from "../components/FormTextArea";
-import FieldSet from "metabase/components/FieldSet";
 import PartialQueryBuilder from "../components/PartialQueryBuilder";
-import { t } from "ttag";
-import { formatValue } from "metabase/lib/formatting";
 
-import * as Q from "metabase/lib/query/query";
+
 
 @reduxForm(
   {

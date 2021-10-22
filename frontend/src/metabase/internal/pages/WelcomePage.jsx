@@ -4,7 +4,6 @@ import { Box, Flex } from "grid-styled";
 import Heading from "metabase/components/type/Heading";
 import Subhead from "metabase/components/type/Subhead";
 import Text from "metabase/components/type/Text";
-
 import ProgressBar from "metabase/components/ProgressBar";
 
 import { stats } from "../lib/components-webpack";

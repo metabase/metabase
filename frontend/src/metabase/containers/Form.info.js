@@ -1,4 +1,5 @@
 import React from "react";
+
 import Form, { FormField, FormFooter } from "metabase/containers/Form";
 import validate from "metabase/lib/validate";
 

@@ -2,12 +2,12 @@
 import React, { Component } from "react";
 import _ from "underscore";
 import { t } from "ttag";
+import cx from "classnames";
 
 import AccordionList from "metabase/components/AccordionList";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Tooltip from "metabase/components/Tooltip";
-
 import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
 
 // import type { Section } from "metabase/components/AccordionList";
@@ -257,7 +257,6 @@ export default class DimensionList extends Component {
   }
 }
 
-import cx from "classnames";
 
 export const DimensionPicker = ({
   style,

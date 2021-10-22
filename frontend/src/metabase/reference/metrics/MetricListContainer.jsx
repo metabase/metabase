@@ -6,7 +6,6 @@ import { connect } from "react-redux";
 import BaseSidebar from "metabase/reference/guide/BaseSidebar";
 import SidebarLayout from "metabase/components/SidebarLayout";
 import MetricList from "metabase/reference/metrics/MetricList";
-
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
 

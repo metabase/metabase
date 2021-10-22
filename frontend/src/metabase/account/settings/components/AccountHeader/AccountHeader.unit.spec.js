@@ -1,7 +1,9 @@
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
-import AccountHeader from "./AccountHeader";
+
 import { PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS } from "metabase/plugins";
+
+import AccountHeader from "./AccountHeader";
 
 const getUser = () => ({
   id: 1,

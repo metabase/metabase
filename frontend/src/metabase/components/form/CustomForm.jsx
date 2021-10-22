@@ -1,21 +1,18 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import PropTypes from "prop-types";
+import _ from "underscore";
+import cx from "classnames";
+import { t } from "ttag";
+import { getIn } from "icepick";
 
 import FormField from "metabase/components/form/FormField";
 import FormWidget from "metabase/components/form/FormWidget";
 import FormMessage from "metabase/components/form/FormMessage";
-
 import DisclosureTriangle from "metabase/components/DisclosureTriangle";
-
 import Button from "metabase/components/Button";
 import ActionButton from "metabase/components/ActionButton";
 
-import _ from "underscore";
-import cx from "classnames";
-
-import { t } from "ttag";
-import { getIn } from "icepick";
 
 class CustomForm extends React.Component {
   static childContextTypes = {

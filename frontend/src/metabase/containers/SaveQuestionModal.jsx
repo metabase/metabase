@@ -1,19 +1,16 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
 import { CSSTransitionGroup } from "react-transition-group";
+import { t } from "ttag";
 
 import Form, { FormField, FormFooter } from "metabase/containers/Form";
 import ModalContent from "metabase/components/ModalContent";
 import Radio from "metabase/components/Radio";
-
 import * as Q_DEPRECATED from "metabase/lib/query";
 import { generateQueryDescription } from "metabase/lib/query/description";
-
 import validate from "metabase/lib/validate";
 
-import { t } from "ttag";
 
 import "./SaveQuestionModal.css";
 

@@ -1,12 +1,14 @@
 import React, { useCallback, useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+
 import Settings from "metabase/lib/settings";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { formatChannelRecipients } from "metabase/lib/notifications";
 import Button from "metabase/components/Button";
 import ModalContent from "metabase/components/ModalContent";
 import FormMessage from "metabase/components/form/FormMessage";
+
 import { ModalMessage } from "./ArchiveModal.styled";
 
 const propTypes = {

@@ -3,13 +3,12 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
-import MetricSidebar from "./MetricSidebar";
 import SidebarLayout from "metabase/components/SidebarLayout";
 import MetricRevisions from "metabase/reference/metrics/MetricRevisions";
-
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
 
+import MetricSidebar from "./MetricSidebar";
 import {
   getUser,
   getMetric,

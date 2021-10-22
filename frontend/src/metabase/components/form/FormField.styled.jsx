@@ -1,6 +1,6 @@
 import styled, { css } from "styled-components";
-import Icon from "metabase/components/Icon";
 
+import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
 
 export const FieldRow = styled.div`

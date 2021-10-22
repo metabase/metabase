@@ -8,8 +8,6 @@ import cx from "classnames";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
-import { TokenFieldAddon, TokenFieldItem } from "./TokenField.styled";
-
 import {
   KEYCODE_ESCAPE,
   KEYCODE_ENTER,
@@ -20,6 +18,8 @@ import {
   KEY_COMMA,
 } from "metabase/lib/keyboard";
 import { isObscured } from "metabase/lib/dom";
+
+import { TokenFieldAddon, TokenFieldItem } from "./TokenField.styled";
 
 const defaultStyleValue = {
   fontSize: 14,

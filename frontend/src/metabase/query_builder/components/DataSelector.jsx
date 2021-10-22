@@ -7,19 +7,19 @@ import cx from "classnames";
 import _ from "underscore";
 
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
-
 import ListSearchField from "metabase/components/ListSearchField";
 import ExternalLink from "metabase/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import AccordionList from "metabase/components/AccordionList";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-
 import MetabaseSettings from "metabase/lib/settings";
-
 import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
 import Tables from "metabase/entities/tables";
+import { getMetadata } from "metabase/selectors/metadata";
+import { getSchemaName } from "metabase/schema";
+
 import {
   SearchResults,
   convertSearchResultToTableLikeItem,
@@ -27,8 +27,6 @@ import {
 } from "./data-search";
 import SavedQuestionPicker from "./saved-question-picker/SavedQuestionPicker";
 
-import { getMetadata } from "metabase/selectors/metadata";
-import { getSchemaName } from "metabase/schema";
 
 import "./DataSelector.css";
 

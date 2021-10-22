@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+
 import Text from "metabase/components/type/Text";
 
 const Label = ({ children, ...props }) => (

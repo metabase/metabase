@@ -6,7 +6,6 @@ import _ from "underscore";
 import cx from "classnames";
 
 import { color, darken } from "metabase/lib/colors";
-
 import AccordionList from "metabase/components/AccordionList";
 import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
@@ -14,7 +13,6 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import ModalContent from "metabase/components/ModalContent";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-
 import Dashboards from "metabase/entities/dashboards";
 import DashboardPicker from "metabase/containers/DashboardPicker";
 import Questions from "metabase/entities/questions";
@@ -25,7 +23,6 @@ import ClickMappings, {
   clickTargetObjectType,
   isMappableColumn,
 } from "metabase/dashboard/components/ClickMappings";
-
 import {
   hasActionsMenu,
   isTableDisplay,

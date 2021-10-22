@@ -1,14 +1,11 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-
-import GroupSelect from "metabase/admin/people/components/GroupSelect";
-import Toggle from "metabase/components/Toggle";
-
-import Group from "metabase/entities/groups";
-
 import { t } from "ttag";
 import _ from "underscore";
 
+import GroupSelect from "metabase/admin/people/components/GroupSelect";
+import Toggle from "metabase/components/Toggle";
+import Group from "metabase/entities/groups";
 import {
   isDefaultGroup,
   isAdminGroup,

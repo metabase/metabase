@@ -13,13 +13,13 @@ import {
 } from "metabase/query_builder/actions";
 import { getUser } from "metabase/selectors/user";
 import { getQuestionDetailsTimelineDrawerState } from "metabase/query_builder/selectors";
-
 import Revision from "metabase/entities/revisions";
 import User from "metabase/entities/users";
 import Timeline from "metabase/components/Timeline";
 import DrawerSection, {
   STATES as DRAWER_STATES,
 } from "metabase/components/DrawerSection/DrawerSection";
+
 import { RevertButton } from "./QuestionActivityTimeline.styled";
 
 const { getModerationTimelineEvents } = PLUGIN_MODERATION;

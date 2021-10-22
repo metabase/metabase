@@ -5,7 +5,6 @@ import cx from "classnames";
 
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
-
 import { color } from "metabase/lib/colors";
 
 /** FilterSidebar operates on filters from topLevelFilters */

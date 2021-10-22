@@ -1,6 +1,8 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+
 import Link from "metabase/components/Link";
+
 import EntityObjectLoader from "./EntityObjectLoader";
 
 const EntityLink = ({

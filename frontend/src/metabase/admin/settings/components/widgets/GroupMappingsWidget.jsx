@@ -1,4 +1,6 @@
 import React from "react";
+import { t } from "ttag";
+import _ from "underscore";
 
 import { ModalFooter } from "metabase/components/ModalContent";
 import AdminContentTable from "metabase/components/AdminContentTable";
@@ -6,11 +8,9 @@ import Button from "metabase/components/Button";
 import GroupSelect from "metabase/admin/people/components/GroupSelect";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Modal from "metabase/components/Modal";
-import { t } from "ttag";
 import { PermissionsApi, SettingsApi } from "metabase/services";
 import { isSpecialGroup } from "metabase/lib/groups";
 
-import _ from "underscore";
 
 import SettingToggle from "./SettingToggle";
 

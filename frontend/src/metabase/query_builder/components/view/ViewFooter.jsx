@@ -1,35 +1,30 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-
 import { t } from "ttag";
 import cx from "classnames";
 import styled from "styled-components";
 import { Flex } from "grid-styled";
+
 import { color, darken } from "metabase/lib/colors";
-
 import Icon from "metabase/components/Icon";
-
 import ButtonBar from "metabase/components/ButtonBar";
-
-import ViewSection from "./ViewSection";
-import ViewButton from "./ViewButton";
-
-import QuestionAlertWidget from "./QuestionAlertWidget";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 import QuestionEmbedWidget, {
   QuestionEmbedWidgetTrigger,
 } from "metabase/query_builder/containers/QuestionEmbedWidget";
-
-import { QuestionFilterWidget } from "./QuestionFilters";
-import { QuestionSummarizeWidget } from "./QuestionSummaries";
-
-import QuestionRowCount from "./QuestionRowCount";
-import QuestionLastUpdated from "./QuestionLastUpdated";
-
 import {
   getVisualizationRaw,
   getIconForVisualizationType,
 } from "metabase/visualizations";
+
+import ViewSection from "./ViewSection";
+import ViewButton from "./ViewButton";
+import QuestionAlertWidget from "./QuestionAlertWidget";
+import { QuestionFilterWidget } from "./QuestionFilters";
+import { QuestionSummarizeWidget } from "./QuestionSummaries";
+import QuestionRowCount from "./QuestionRowCount";
+import QuestionLastUpdated from "./QuestionLastUpdated";
+
 
 const ViewFooter = ({
   question,

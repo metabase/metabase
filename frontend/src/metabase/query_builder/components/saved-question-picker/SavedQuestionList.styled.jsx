@@ -1,4 +1,5 @@
 import styled from "styled-components";
+
 import { SelectList } from "metabase/components/select-list";
 import { breakpointMaxSmall } from "metabase/styled-components/theme/media-queries";
 

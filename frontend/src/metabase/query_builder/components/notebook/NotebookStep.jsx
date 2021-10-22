@@ -1,22 +1,18 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-
 import { t } from "ttag";
 import _ from "underscore";
-
 import styled from "styled-components";
+import { Box, Flex } from "grid-styled";
 
 import { color as c, lighten, darken } from "metabase/lib/colors";
-
 import Tooltip from "metabase/components/Tooltip";
 import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
 import ExpandingContent from "metabase/components/ExpandingContent";
 
-import { Box, Flex } from "grid-styled";
 
 import NotebookStepPreview from "./NotebookStepPreview";
-
 import DataStep from "./steps/DataStep";
 import JoinStep from "./steps/JoinStep";
 import ExpressionStep from "./steps/ExpressionStep";

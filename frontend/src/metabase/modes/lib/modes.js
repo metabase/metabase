@@ -1,3 +1,6 @@
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+
 import ObjectMode from "../components/modes/ObjectMode";
 import SegmentMode from "../components/modes/SegmentMode";
 import MetricMode from "../components/modes/MetricMode";
@@ -8,11 +11,8 @@ import NativeMode from "../components/modes/NativeMode";
 import DefaultMode from "../components/modes/DefaultMode";
 
 import type { QueryMode } from "metabase-types/types/Visualization";
-
 import type Question from "metabase-lib/lib/Question";
 
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
 const isPKFilter = (filters, query) => {
   const sourceTablePKFields =

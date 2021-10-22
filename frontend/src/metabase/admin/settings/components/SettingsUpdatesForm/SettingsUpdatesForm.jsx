@@ -3,8 +3,8 @@ import PropTypes from "prop-types";
 import cx from "classnames";
 
 import MetabaseSettings from "metabase/lib/settings";
-import SettingsSetting from "../SettingsSetting";
 
+import SettingsSetting from "../SettingsSetting";
 import VersionUpdateNotice from "./VersionUpdateNotice/VersionUpdateNotice";
 
 export default function SettingsUpdatesForm({ elements, updateSetting }) {

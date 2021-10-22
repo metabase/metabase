@@ -3,6 +3,7 @@ import {
   getTableClickedObjectRowData,
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
+
 import { TYPE } from "metabase/lib/types";
 
 const RAW_COLUMN = {

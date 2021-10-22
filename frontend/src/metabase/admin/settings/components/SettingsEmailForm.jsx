@@ -6,12 +6,10 @@ import { Flex } from "grid-styled";
 
 import Button from "metabase/components/Button";
 import MarginHostingCTA from "metabase/admin/settings/components/widgets/MarginHostingCTA";
-
-import SettingsBatchForm from "./SettingsBatchForm";
-
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
+import SettingsBatchForm from "./SettingsBatchForm";
 import {
   sendTestEmail,
   updateEmailSettings,

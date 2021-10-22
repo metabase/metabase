@@ -1,4 +1,5 @@
 import React from "react";
+
 import Visualization from "metabase/visualizations/components/Visualization";
 
 export const component = Visualization;

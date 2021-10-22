@@ -6,8 +6,8 @@ import {
   saveDashboard,
   mockSessionProperty,
 } from "__support__/e2e/cypress";
-
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+
 import { setQuarterAndYear } from "../../native-filters/helpers/e2e-date-filter-helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;

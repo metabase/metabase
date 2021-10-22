@@ -1,5 +1,8 @@
 import React, { memo } from "react";
 import PropTypes from "prop-types";
+
+import Ellipsified from "metabase/components/Ellipsified";
+
 import {
   LegendItemDot,
   LegendItemLabel,
@@ -7,7 +10,6 @@ import {
   LegendItemRoot,
   LegendItemTitle,
 } from "./LegendItem.styled";
-import Ellipsified from "metabase/components/Ellipsified";
 
 const propTypes = {
   label: PropTypes.string,

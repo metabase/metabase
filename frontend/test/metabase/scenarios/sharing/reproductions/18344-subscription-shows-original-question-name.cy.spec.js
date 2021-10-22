@@ -4,7 +4,6 @@ import {
   saveDashboard,
   setupSMTP,
 } from "__support__/e2e/cypress";
-
 import { USERS } from "__support__/e2e/cypress_data";
 
 const {

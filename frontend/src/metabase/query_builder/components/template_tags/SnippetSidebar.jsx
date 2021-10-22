@@ -16,13 +16,13 @@ import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
-import SnippetRow from "./snippet-sidebar/SnippetRow";
 import { color } from "metabase/lib/colors";
-
 import Snippets from "metabase/entities/snippets";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import { canonicalCollectionId } from "metabase/entities/collections";
 import Search from "metabase/entities/search";
+
+import SnippetRow from "./snippet-sidebar/SnippetRow";
 
 import type { Snippet } from "metabase-types/types/Snippet";
 

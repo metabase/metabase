@@ -3,7 +3,6 @@ import { Box } from "grid-styled";
 
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
-
 import GenericIcon from "metabase/components/Icon";
 import GenericLink from "metabase/components/Link";
 import { SIDEBAR_SPACER } from "metabase/collections/constants";

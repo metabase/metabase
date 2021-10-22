@@ -4,9 +4,7 @@ import { connect } from "react-redux";
 import cx from "classnames";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-
 import EmbedModalContent from "metabase/public/components/widgets/EmbedModalContent";
-
 import * as Urls from "metabase/lib/urls";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 

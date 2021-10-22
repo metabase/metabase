@@ -2,12 +2,14 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+
 import { recipientIsValid } from "metabase/lib/pulse";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 import MetabaseUtils from "metabase/lib/utils";
 import TokenField from "metabase/components/TokenField";
 import UserAvatar from "metabase/components/UserAvatar";
+
 import { ErrorMessage } from "./RecipientPicker.styled";
 
 export default class RecipientPicker extends Component {

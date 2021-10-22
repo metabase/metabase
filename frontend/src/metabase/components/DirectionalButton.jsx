@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import Icon from "metabase/components/Icon";
 
+import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
 
 const DirectionalButton = ({ direction = "left", onClick }) => (

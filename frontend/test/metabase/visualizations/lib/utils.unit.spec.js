@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import {
   cardHasBecomeDirty,
   computeMaxDecimalsForValues,
@@ -7,7 +9,6 @@ import {
   getDefaultDimensionsAndMetrics,
 } from "metabase/visualizations/lib/utils";
 
-import _ from "underscore";
 
 // TODO Atte Keinänen 5/31/17 Rewrite tests using metabase-lib methods instead of a raw format
 

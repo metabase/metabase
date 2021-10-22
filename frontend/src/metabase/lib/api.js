@@ -1,5 +1,4 @@
 import querystring from "querystring";
-
 import EventEmitter from "events";
 
 import { delay } from "metabase/lib/promise";

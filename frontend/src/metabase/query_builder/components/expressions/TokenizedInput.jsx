@@ -3,13 +3,14 @@ import ReactDOM from "react-dom";
 import ReactDOMServer from "react-dom/server";
 import PropTypes from "prop-types";
 
-import TokenizedExpression from "./TokenizedExpression";
-
 import {
   getCaretPosition,
   saveSelection,
   getSelectionPosition,
 } from "metabase/lib/dom";
+
+import TokenizedExpression from "./TokenizedExpression";
+
 
 class TokenizedInput extends Component {
   constructor(props) {

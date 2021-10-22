@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+
 import { SegmentedControl } from "metabase/components/SegmentedControl";
 
 export const component = SegmentedControl;

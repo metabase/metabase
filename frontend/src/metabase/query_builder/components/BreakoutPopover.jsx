@@ -2,10 +2,10 @@ import React from "react";
 import cx from "classnames";
 
 import FieldList from "metabase/query_builder/components/FieldList";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import type { Breakout } from "metabase-types/types/Query";
 import type { FieldOptions } from "metabase-types/types/Metadata";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 type Props = {
   className?: string,

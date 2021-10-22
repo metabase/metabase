@@ -6,7 +6,6 @@ import _ from "underscore";
 import Form from "metabase/containers/Form";
 import ModalContent from "metabase/components/ModalContent";
 import CollapseSection from "metabase/components/CollapseSection";
-
 import { PLUGIN_CACHING } from "metabase/plugins";
 import Questions from "metabase/entities/questions";
 

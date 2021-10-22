@@ -4,14 +4,14 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
 
-import PulseCardPreview from "./PulseCardPreview";
 
 import QuestionSelect from "metabase/containers/QuestionSelect";
 
 // import Query from "metabase/lib/query";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-
 import { color } from "metabase/lib/colors";
+
+import PulseCardPreview from "./PulseCardPreview";
 
 const SOFT_LIMIT = 10;
 const HARD_LIMIT = 25;

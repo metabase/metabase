@@ -1,5 +1,6 @@
 import React from "react";
 import { Box } from "grid-styled";
+
 import Heading from "metabase/components/type/Heading";
 import Subhead from "metabase/components/type/Subhead";
 import Text from "metabase/components/type/Text";

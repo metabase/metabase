@@ -1,16 +1,16 @@
 import React from "react";
 import { Link } from "react-router";
+import { Flex } from "grid-styled";
+import { t } from "ttag";
+import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
 import MetabotLogo from "metabase/components/MetabotLogo";
 import Select, { Option } from "metabase/components/Select";
 import { Grid, GridItem } from "metabase/components/Grid";
 import Card from "metabase/components/Card";
-import { Flex } from "grid-styled";
 import { color } from "metabase/lib/colors";
 
-import { t } from "ttag";
-import _ from "underscore";
 
 import type { DatabaseCandidates, Candidate } from "metabase-types/types/Auto";
 

@@ -5,18 +5,15 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 
 import S from "metabase/components/List.css";
-
 import List from "metabase/components/List";
 import ListItem from "metabase/components/ListItem";
-
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-
-import ReferenceHeader from "../components/ReferenceHeader";
-
-import { getDatabases, getError, getLoading } from "../selectors";
-
 import * as metadataActions from "metabase/redux/metadata";
 import NoDatabasesEmptyState from "metabase/reference/databases/NoDatabasesEmptyState";
+
+import ReferenceHeader from "../components/ReferenceHeader";
+import { getDatabases, getError, getLoading } from "../selectors";
+
 
 const mapStateToProps = (state, props) => ({
   entities: getDatabases(state, props),

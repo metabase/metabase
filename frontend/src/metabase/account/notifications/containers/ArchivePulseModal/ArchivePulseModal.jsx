@@ -1,7 +1,9 @@
 import { connect } from "react-redux";
 import _ from "underscore";
+
 import Pulses from "metabase/entities/pulses";
 import { getUser } from "metabase/selectors/user";
+
 import { getPulseId } from "../../selectors";
 import ArchiveModal from "../../components/ArchiveModal";
 

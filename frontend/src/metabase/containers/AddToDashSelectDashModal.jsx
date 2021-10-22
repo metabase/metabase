@@ -9,7 +9,6 @@ import Link from "metabase/components/Link";
 import ModalContent from "metabase/components/ModalContent";
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 import DashboardPicker from "metabase/containers/DashboardPicker";
-
 import * as Urls from "metabase/lib/urls";
 
 import type { Dashboard as DashboardType } from "metabase-types/types/Dashboard";

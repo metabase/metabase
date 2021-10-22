@@ -1,9 +1,8 @@
 import React, { Component } from "react";
+import { assocIn } from "icepick";
 
 import BarChart from "metabase/visualizations/visualizations/BarChart";
-
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import { assocIn } from "icepick";
 
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 

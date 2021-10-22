@@ -1,8 +1,8 @@
 import { getIn } from "icepick";
 import { ngettext, msgid, t } from "ttag";
+
 import { ExpressionVisitor } from "./visitor";
 import { CLAUSE_TOKENS } from "./lexer";
-
 import { MBQL_CLAUSES, getMBQLName } from "./config";
 
 export function typeCheck(cst, rootType) {

@@ -1,9 +1,8 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
 import { t, jt } from "ttag";
-import { getFilterOptions, setFilterOptions } from "metabase/lib/query/filter";
 
+import { getFilterOptions, setFilterOptions } from "metabase/lib/query/filter";
 import CheckBox from "metabase/components/CheckBox";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 

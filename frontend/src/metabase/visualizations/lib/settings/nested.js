@@ -1,11 +1,11 @@
 import _ from "underscore";
 import { t } from "ttag";
-
 import * as React from "react";
+
+import chartSettingNestedSettings from "metabase/visualizations/components/settings/ChartSettingNestedSettings";
 
 import { getComputedSettings, getSettingsWidgets } from "../settings";
 
-import chartSettingNestedSettings from "metabase/visualizations/components/settings/ChartSettingNestedSettings";
 
 import type {
   SettingId,
@@ -15,7 +15,6 @@ import type {
   WidgetDef,
   ExtraProps,
 } from "metabase/visualizations/lib/settings";
-
 import type { Series } from "metabase-types/types/Visualization";
 
 export type NestedObject = any;

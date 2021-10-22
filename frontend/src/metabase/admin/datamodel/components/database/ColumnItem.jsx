@@ -3,22 +3,20 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link, withRouter } from "react-router";
 import { t } from "ttag";
+import _ from "underscore";
+import cx from "classnames";
 
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Select, { Option } from "metabase/components/Select";
 import Button from "metabase/components/Button";
 import * as MetabaseCore from "metabase/lib/core";
 import { isCurrency } from "metabase/lib/schema_metadata";
-import { isFK } from "metabase/lib/types";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
-
 import { currency } from "cljs/metabase.shared.util.currency";
-
-import _ from "underscore";
-import cx from "classnames";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import type { Field } from "metabase-types/types/Field";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { isFK } from "metabase/lib/types";
 
 @withRouter
 export default class Column extends Component {

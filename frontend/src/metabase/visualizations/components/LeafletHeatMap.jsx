@@ -1,6 +1,7 @@
+import L from "leaflet";
+
 import LeafletMap from "./LeafletMap";
 
-import L from "leaflet";
 import "leaflet.heat";
 
 export default class LeafletHeatMap extends LeafletMap {

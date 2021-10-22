@@ -1,14 +1,14 @@
 import { ngettext, msgid } from "ttag";
-import { inflect } from "metabase/lib/formatting";
 
+import { inflect } from "metabase/lib/formatting";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import { AggregationDimension } from "metabase-lib/lib/Dimension";
 
 import type {
   ClickAction,
   ClickActionProps,
 } from "metabase-types/types/Visualization";
 
-import { AggregationDimension } from "metabase-lib/lib/Dimension";
 
 export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
   // removes post-aggregation filter stage

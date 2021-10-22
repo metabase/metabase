@@ -1,6 +1,5 @@
 import React from "react";
 import PropTypes from "prop-types";
-import CollectionsList from "./CollectionsList/CollectionsList";
 import { Box } from "grid-styled";
 
 import {
@@ -8,6 +7,7 @@ import {
   currentUserPersonalCollections as getCurrentUserPersonalCollections,
 } from "metabase/collections/utils";
 
+import CollectionsList from "./CollectionsList/CollectionsList";
 import { Container } from "./Collections.styled";
 
 const propTypes = {

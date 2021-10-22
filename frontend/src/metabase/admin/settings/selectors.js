@@ -1,7 +1,11 @@
 import _ from "underscore";
 import { createSelector } from "reselect";
-import MetabaseSettings from "metabase/lib/settings";
 import { t } from "ttag";
+
+import MetabaseSettings from "metabase/lib/settings";
+import { UtilApi } from "metabase/services";
+import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
+
 import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
 import SiteUrlWidget from "./components/widgets/SiteUrlWidget";
 import HttpsOnlyWidget from "./components/widgets/HttpsOnlyWidget";
@@ -20,8 +24,6 @@ import SettingsEmailForm from "./components/SettingsEmailForm";
 import SettingsSetupList from "./components/SettingsSetupList";
 import SettingsSlackForm from "./components/SettingsSlackForm";
 
-import { UtilApi } from "metabase/services";
-import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
 
 // This allows plugins to update the settings sections
 function updateSectionsWithPlugins(sections) {

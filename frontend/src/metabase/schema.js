@@ -1,6 +1,7 @@
 // normalizr schema for use in actions/reducers
 
 import { schema } from "normalizr";
+
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
 
 export const QuestionSchema = new schema.Entity("questions");

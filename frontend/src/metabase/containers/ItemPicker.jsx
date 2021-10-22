@@ -2,23 +2,21 @@
 import React from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
-
 import { t } from "ttag";
 import _ from "underscore";
 import { Flex, Box } from "grid-styled";
+import { connect } from "react-redux";
+
 import Icon from "metabase/components/Icon";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-
 import { color } from "metabase/lib/colors";
 
-import { connect } from "react-redux";
 
 // NOTE: replacing these with Collections.ListLoader etc currently fails due to circular dependency
 import EntityListLoader, {
   entityListLoader,
 } from "metabase/entities/containers/EntityListLoader";
-
 import Collections from "metabase/entities/collections";
 
 const getCollectionIconColor = () => color("text-light");

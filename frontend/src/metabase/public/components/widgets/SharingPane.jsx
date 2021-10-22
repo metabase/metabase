@@ -1,18 +1,17 @@
 import React, { Component } from "react";
 import { t } from "ttag";
+import cx from "classnames";
+
 import Icon from "metabase/components/Icon";
 import Toggle from "metabase/components/Toggle";
 import CopyWidget from "metabase/components/CopyWidget";
 import Confirm from "metabase/components/Confirm";
-
 import { getPublicEmbedHTML } from "metabase/public/lib/code";
-
-import cx from "classnames";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import type { EmbedType } from "./EmbedModalContent";
 import type { EmbeddableResource } from "metabase/public/lib/types";
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 type Props = {
   resourceType: string,

@@ -4,11 +4,12 @@ import { t, jt } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import ExternalLink from "metabase/components/ExternalLink";
 import { PLUGIN_CACHING } from "metabase/plugins";
+import MetadataSyncScheduleWidget from "metabase/admin/databases/components/widgets/MetadataSyncScheduleWidget";
+import CacheFieldValuesScheduleWidget from "metabase/admin/databases/components/widgets/CacheFieldValuesScheduleWidget";
+
 import getFieldsForBigQuery from "./big-query-fields";
 import getFieldsForMongo from "./mongo-fields";
 
-import MetadataSyncScheduleWidget from "metabase/admin/databases/components/widgets/MetadataSyncScheduleWidget";
-import CacheFieldValuesScheduleWidget from "metabase/admin/databases/components/widgets/CacheFieldValuesScheduleWidget";
 
 const DATABASE_DETAIL_OVERRIDES = {
   "tunnel-enabled": () => ({

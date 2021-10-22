@@ -1,32 +1,27 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
-import { PLUGIN_ADMIN_NAV_ITEMS } from "metabase/plugins";
-
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-
 import cx from "classnames";
 import { t } from "ttag";
 import { Flex, Box } from "grid-styled";
 
+import { PLUGIN_ADMIN_NAV_ITEMS } from "metabase/plugins";
 import * as Urls from "metabase/lib/urls";
 import { color, darken } from "metabase/lib/colors";
 import MetabaseSettings from "metabase/lib/settings";
-
 import Icon, { IconWrapper } from "metabase/components/Icon";
 import EntityMenu from "metabase/components/EntityMenu";
 import Link from "metabase/components/Link";
 import LogoIcon from "metabase/components/LogoIcon";
 import Modal from "metabase/components/Modal";
-
 import ProfileLink from "metabase/nav/components/ProfileLink";
 import SearchBar from "metabase/nav/components/SearchBar";
-
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 
 import { getPath, getContext, getUser } from "../selectors";
+
 import {
   getHasDataAccess,
   getHasNativeWrite,

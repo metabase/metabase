@@ -2,7 +2,6 @@
 import React from "react";
 
 import { formatValue } from "metabase/lib/formatting";
-
 import AutoLoadRemapped from "metabase/hoc/Remapped";
 
 const defaultRenderNormal = ({ value, column }) => (

@@ -1,4 +1,5 @@
 import { msgid, ngettext, t } from "ttag";
+
 import Settings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
 import {

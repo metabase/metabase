@@ -7,12 +7,12 @@ import _ from "underscore";
 import { getIn, assocIn, updateIn } from "icepick";
 
 import * as Urls from "metabase/lib/urls";
-
 import { createThunkAction } from "metabase/lib/redux";
+
 import { push, replace } from "react-router-redux";
+
 import { setErrorPage } from "metabase/redux/app";
 import { loadMetadataForQuery } from "metabase/redux/metadata";
-
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { startTimer } from "metabase/lib/performance";
 import {
@@ -36,7 +36,17 @@ import {
 } from "metabase/meta/Card";
 import { getParameterValuesByIdFromQueryParams } from "metabase/meta/Parameter";
 import { normalize } from "cljs/metabase.mbql.js";
+import { MetabaseApi, CardApi, UserApi } from "metabase/services";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import { getSensibleDisplays } from "metabase/visualizations";
+import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
+import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import Databases from "metabase/entities/databases";
+import Questions from "metabase/entities/questions";
+import Snippets from "metabase/entities/snippets";
 
+import { getMetadata } from "metabase/selectors/metadata";
 import {
   getCard,
   getQuestion,
@@ -57,22 +67,10 @@ import {
   getQueryResults,
 } from "./selectors";
 
-import { MetabaseApi, CardApi, UserApi } from "metabase/services";
 
 import { parse as urlParse } from "url";
 import querystring from "querystring";
 
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import { getSensibleDisplays } from "metabase/visualizations";
-import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
-import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-
-import Databases from "metabase/entities/databases";
-import Questions from "metabase/entities/questions";
-import Snippets from "metabase/entities/snippets";
-
-import { getMetadata } from "metabase/selectors/metadata";
 import { setRequestUnloaded } from "metabase/redux/requests";
 
 import type { Card } from "metabase-types/types/Card";

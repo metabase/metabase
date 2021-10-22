@@ -1,3 +1,6 @@
+import { normalize } from "normalizr";
+import { assocIn, updateIn } from "icepick";
+
 import { createEntity } from "metabase/lib/entities";
 import {
   compose,
@@ -9,20 +12,16 @@ import {
   createThunkAction,
   updateData,
 } from "metabase/lib/redux";
-import { normalize } from "normalizr";
-import { assocIn, updateIn } from "icepick";
-
 import { FieldSchema } from "metabase/schema";
 import { MetabaseApi } from "metabase/services";
-
 import { getMetadata } from "metabase/selectors/metadata";
-
 import {
   field_visibility_types,
   field_semantic_types,
   has_field_values_options,
 } from "metabase/lib/core";
 import { getFieldValues, getRemappings } from "metabase/lib/query/field";
+
 import { TYPE } from "metabase/lib/types";
 
 // ADDITIONAL OBJECT ACTIONS

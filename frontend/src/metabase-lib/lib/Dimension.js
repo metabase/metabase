@@ -2,30 +2,29 @@ import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
 
 import { stripId, FK_SYMBOL } from "metabase/lib/formatting";
-import { TYPE } from "metabase/lib/types";
+import { DATETIME_UNITS, formatBucketing } from "metabase/lib/query_time";
+import { infer, MONOTYPE } from "metabase/lib/expressions/typeinferencer";
 
 import Field from "./metadata/Field";
+import StructuredQuery from "./queries/StructuredQuery";
+
+import { TYPE } from "metabase/lib/types";
 import type {
   AggregationOperator,
   FilterOperator,
   Metadata,
   Query,
 } from "./metadata/Metadata";
-
 import type {
   ConcreteField,
   LocalFieldReference,
   ExpressionReference,
   DatetimeUnit,
 } from "metabase-types/types/Query";
-
 import type { IconName } from "metabase-types/types";
-
-import { DATETIME_UNITS, formatBucketing } from "metabase/lib/query_time";
 import type Aggregation from "./queries/structured/Aggregation";
-import StructuredQuery from "./queries/StructuredQuery";
 
-import { infer, MONOTYPE } from "metabase/lib/expressions/typeinferencer";
+
 
 /**
  * A dimension option returned by the query_metadata API

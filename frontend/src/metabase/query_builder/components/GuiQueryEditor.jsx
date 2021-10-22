@@ -4,24 +4,25 @@ import React from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
+import cx from "classnames";
+
+import Icon from "metabase/components/Icon";
+import IconBorder from "metabase/components/IconBorder";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import AggregationWidget from "./AggregationWidget";
 import BreakoutWidget from "./BreakoutWidget";
 import ExtendedOptions from "./ExtendedOptions";
 import FilterWidgetList from "./filters/FilterWidgetList";
 import FilterPopover from "./filters/FilterPopover";
-import Icon from "metabase/components/Icon";
-import IconBorder from "metabase/components/IconBorder";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 
-import cx from "classnames";
 
 import type { DatasetQuery } from "metabase-types/types/Card";
 import type { Aggregation, Breakout } from "metabase-types/types/Query";
 import type { Children } from "react";
 
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 export type GuiQueryEditorFeatures = {
   filter?: boolean,
   aggregation?: boolean,

@@ -9,23 +9,21 @@ import ButtonBar from "metabase/components/ButtonBar";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQuestionHeaderButton/SavedQuestionHeaderButton";
-import ViewSection, { ViewHeading, ViewSubHeading } from "./ViewSection";
 import ViewButton from "metabase/query_builder/components/view/ViewButton";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
+import ViewSection, { ViewHeading, ViewSubHeading } from "./ViewSection";
 import QuestionDataSource from "./QuestionDataSource";
 import QuestionDescription from "./QuestionDescription";
 import QuestionLineage from "./QuestionLineage";
 import QuestionPreviewToggle from "./QuestionPreviewToggle";
 import QuestionNotebookButton from "./QuestionNotebookButton";
-
 import QuestionFilters, { QuestionFilterWidget } from "./QuestionFilters";
 import { QuestionSummarizeWidget } from "./QuestionSummaries";
-
 import NativeQueryButton from "./NativeQueryButton";
 import RunButtonWithTooltip from "../RunButtonWithTooltip";
 import { SavedQuestionHeaderButtonContainer } from "./ViewHeader.styled";
 
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 const viewTitleHeaderPropTypes = {
   question: PropTypes.object.isRequired,

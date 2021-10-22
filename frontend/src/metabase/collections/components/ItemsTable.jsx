@@ -4,9 +4,7 @@ import { t } from "ttag";
 import { Flex } from "grid-styled";
 
 import { color } from "metabase/lib/colors";
-
 import PinDropTarget from "metabase/containers/dnd/PinDropTarget";
-
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 
 import BaseItemsTable from "./BaseItemsTable";

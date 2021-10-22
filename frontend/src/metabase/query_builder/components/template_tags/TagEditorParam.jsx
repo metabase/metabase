@@ -9,17 +9,16 @@ import Toggle from "metabase/components/Toggle";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Select, { Option } from "metabase/components/Select";
 import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget";
-
 import { parameterOptionsForField } from "metabase/meta/Parameter";
-import type { TemplateTag } from "metabase-types/types/Query";
-import type { Database } from "metabase-types/types/Database";
-
 import Field from "metabase-lib/lib/metadata/Field";
 import { fetchField } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import MetabaseSettings from "metabase/lib/settings";
+
+import type { Database } from "metabase-types/types/Database";
+import type { TemplateTag } from "metabase-types/types/Query";
 import type { FieldId } from "metabase-types/types/Field";
 
 type Props = {

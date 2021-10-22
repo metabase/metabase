@@ -1,9 +1,10 @@
 import React, { Component } from "react";
 
-import DimensionList from "./DimensionList";
 
 import Dimension from "metabase-lib/lib/Dimension";
 import DimensionOptions from "metabase-lib/lib/DimensionOptions";
+
+import DimensionList from "./DimensionList";
 
 import type { ConcreteField } from "metabase-types/types/Query";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";

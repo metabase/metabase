@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";

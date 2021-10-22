@@ -1,13 +1,14 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import _ from "underscore";
+
+import Tables from "metabase/entities/tables";
 
 import MetadataTableList from "./MetadataTableList";
 import MetadataSchemaList from "./MetadataSchemaList";
 
-import Tables from "metabase/entities/tables";
 
-import _ from "underscore";
 
 @Tables.loadList({
   query: (state, { databaseId }) => ({

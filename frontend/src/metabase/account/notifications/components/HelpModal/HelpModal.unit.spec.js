@@ -1,6 +1,8 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
+
 import Settings from "metabase/lib/settings";
+
 import HelpModal from "./HelpModal";
 
 describe("HelpModal", () => {

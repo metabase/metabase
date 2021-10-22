@@ -1,6 +1,5 @@
 import Metadata from "./Metadata";
 import Base from "./Base";
-
 import Database from "./Database";
 import Table from "./Table";
 import Schema from "./Schema";

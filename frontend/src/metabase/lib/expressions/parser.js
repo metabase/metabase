@@ -24,7 +24,6 @@ import {
   isTokenType,
   RecoveryToken,
 } from "./lexer";
-
 import { isExpressionType, getFunctionArgType } from ".";
 import { typeCheck } from "./typechecker";
 

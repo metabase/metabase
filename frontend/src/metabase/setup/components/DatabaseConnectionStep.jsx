@@ -3,15 +3,15 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import { updateIn } from "icepick";
-
 import { Box } from "grid-styled";
-import StepTitle from "./StepTitle";
-import CollapsedStep from "./CollapsedStep";
+
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-
 import { DEFAULT_SCHEDULES } from "metabase/admin/databases/database";
 import Databases from "metabase/entities/databases";
+
+import CollapsedStep from "./CollapsedStep";
+import StepTitle from "./StepTitle";
 
 export default class DatabaseConnectionStep extends Component {
   static propTypes = {

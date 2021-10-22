@@ -1,4 +1,5 @@
 import styled from "styled-components";
+
 import colors, { darken } from "metabase/lib/colors";
 
 export const LegendRoot = styled.div`

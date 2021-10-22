@@ -8,11 +8,12 @@ import { formatDateTimeForParameter } from "metabase/lib/formatting/date";
 import Question from "metabase-lib/lib/Question";
 import { TemplateTagVariable } from "metabase-lib/lib/Variable";
 import { TemplateTagDimension } from "metabase-lib/lib/Dimension";
-import { isa, TYPE } from "metabase/lib/types";
 import {
   dimensionFilterForParameter,
   variableFilterForParameter,
 } from "metabase/meta/Parameter";
+
+import { isa, TYPE } from "metabase/lib/types";
 
 export function getDataFromClicked({
   extraData: { dashboard, parameterValuesBySlug, userAttributes } = {},

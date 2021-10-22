@@ -1,9 +1,9 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import ResizeObserver from "resize-observer-polyfill";
 
 import Tooltip from "metabase/components/Tooltip";
 
-import ResizeObserver from "resize-observer-polyfill";
 
 export default class Ellipsified extends Component {
   constructor(props, context) {

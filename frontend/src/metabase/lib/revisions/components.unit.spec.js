@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
+
 import { RevisionTitle, RevisionBatchedDescription } from "./components";
 
 describe("RevisionTitle", () => {

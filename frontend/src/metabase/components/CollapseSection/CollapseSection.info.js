@@ -1,4 +1,5 @@
 import React from "react";
+
 import CollapseSection from "metabase/components/CollapseSection";
 import Icon from "metabase/components/Icon";
 

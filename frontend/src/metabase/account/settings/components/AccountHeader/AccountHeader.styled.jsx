@@ -1,6 +1,6 @@
 import styled from "styled-components";
-import colors from "metabase/lib/colors";
 
+import colors from "metabase/lib/colors";
 import {
   breakpointMinMedium,
   breakpointMinSmall,

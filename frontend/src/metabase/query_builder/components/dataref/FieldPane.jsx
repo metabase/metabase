@@ -2,21 +2,21 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import DetailPane from "./DetailPane";
-import QueryButton from "metabase/components/QueryButton";
-import UseForButton from "./UseForButton";
+import inflection from "inflection";
+import _ from "underscore";
+import { connect } from "react-redux";
 
 import { fetchTableMetadata, fetchFieldValues } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { createCard } from "metabase/lib/card";
 import * as Q_DEPRECATED from "metabase/lib/query";
 import { isDimension, isSummable } from "metabase/lib/schema_metadata";
-import inflection from "inflection";
-
-import _ from "underscore";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import { connect } from "react-redux";
+import QueryButton from "metabase/components/QueryButton";
 import Dimension from "metabase-lib/lib/Dimension";
+
+import UseForButton from "./UseForButton";
+import DetailPane from "./DetailPane";
 
 const mapDispatchToProps = {
   fetchTableMetadata,

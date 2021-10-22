@@ -1,11 +1,11 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import cx from "classnames";
+import { t } from "ttag";
 
 import ViewButton from "./view/ViewButton";
 import SidebarHeader from "./SidebarHeader";
 
-import cx from "classnames";
-import { t } from "ttag";
 
 export default function SidebarContent({
   className,

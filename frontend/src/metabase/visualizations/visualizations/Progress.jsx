@@ -2,18 +2,17 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
+import _ from "underscore";
+import Color from "color";
+import cx from "classnames";
+
 import { formatValue } from "metabase/lib/formatting";
 import { isNumeric } from "metabase/lib/schema_metadata";
 import Icon from "metabase/components/Icon";
 import IconBorder from "metabase/components/IconBorder";
 import { color } from "metabase/lib/colors";
-
-import _ from "underscore";
-
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
-import Color from "color";
-import cx from "classnames";
 
 const BORDER_RADIUS = 5;
 const MAX_BAR_HEIGHT = 65;

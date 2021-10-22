@@ -6,7 +6,6 @@ import { Flex, Box } from "grid-styled";
 import HostingInfoLink from "metabase/admin/settings/components/widgets/HostingInfoLink";
 import Icon from "metabase/components/Icon";
 import Text from "metabase/components/type/Text";
-
 import ExternalLink from "metabase/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
 

@@ -1,4 +1,5 @@
 import styled from "styled-components";
+
 import CheckBox from "metabase/components/CheckBox";
 import { color } from "metabase/lib/colors";
 

@@ -14,10 +14,8 @@ import Label from "metabase/components/type/Label";
 import Subhead from "metabase/components/type/Subhead";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import Tooltip from "metabase/components/Tooltip";
-
 import { formatHourAMPM, formatDay, formatFrame } from "metabase/lib/time";
 import { getActivePulseParameters } from "metabase/lib/pulse";
-
 import { getParameters } from "metabase/dashboard/selectors";
 
 const mapStateToProps = (state, props) => {

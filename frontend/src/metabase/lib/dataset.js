@@ -1,5 +1,11 @@
 import _ from "underscore";
 
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import Dimension, {
+  AggregationDimension,
+  FieldDimension,
+} from "metabase-lib/lib/Dimension";
+
 import type {
   Value,
   Column,
@@ -7,12 +13,6 @@ import type {
   DatasetData,
 } from "metabase-types/types/Dataset";
 import type { Field as FieldReference } from "metabase-types/types/Query";
-
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import Dimension, {
-  AggregationDimension,
-  FieldDimension,
-} from "metabase-lib/lib/Dimension";
 import type Question from "metabase-lib/lib/Question";
 
 type ColumnSetting = {

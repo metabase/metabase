@@ -1,4 +1,5 @@
 import React from "react";
+
 import ButtonBar from "metabase/components/ButtonBar";
 import Button from "metabase/components/Button";
 

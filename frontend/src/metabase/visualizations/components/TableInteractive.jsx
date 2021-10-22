@@ -4,10 +4,13 @@ import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import "./TableInteractive.css";
 
+import _ from "underscore";
+import cx from "classnames";
+import { Grid, ScrollSync } from "react-virtualized";
+import Draggable from "react-draggable";
+
 import Icon from "metabase/components/Icon";
-
 import ExternalLink from "metabase/components/ExternalLink";
-
 import { formatValue } from "metabase/lib/formatting";
 import { isID, isFK } from "metabase/lib/schema_metadata";
 import { memoize } from "metabase-lib/lib/utils";
@@ -20,16 +23,11 @@ import {
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import { fieldRefForColumn } from "metabase/lib/dataset";
 import Dimension from "metabase-lib/lib/Dimension";
-
-import _ from "underscore";
-import cx from "classnames";
-
 import ExplicitSize from "metabase/components/ExplicitSize";
+import Ellipsified from "metabase/components/Ellipsified";
+
 import MiniBar from "./MiniBar";
 
-import { Grid, ScrollSync } from "react-virtualized";
-import Draggable from "react-draggable";
-import Ellipsified from "metabase/components/Ellipsified";
 
 const HEADER_HEIGHT = 36;
 const ROW_HEIGHT = 36;

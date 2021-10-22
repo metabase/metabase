@@ -6,7 +6,6 @@ import { render, screen, fireEvent, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import TokenField from "metabase/components/TokenField";
-
 import {
   KEYCODE_DOWN,
   KEYCODE_TAB,

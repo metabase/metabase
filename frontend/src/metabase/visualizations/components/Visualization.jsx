@@ -1,4 +1,8 @@
 import React from "react";
+import { t, jt } from "ttag";
+import { assoc } from "icepick";
+import _ from "underscore";
+import cx from "classnames";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
@@ -7,10 +11,8 @@ import ChartClickActions from "metabase/visualizations/components/ChartClickActi
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
-import { t, jt } from "ttag";
 import { duration, formatNumber } from "metabase/lib/formatting";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-
 import {
   getVisualizationTransformed,
   extractRemappings,
@@ -18,20 +20,14 @@ import {
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 import { performDefaultAction } from "metabase/visualizations/lib/action";
-
 import Utils from "metabase/lib/utils";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
-
 import {
   MinRowsError,
   ChartSettingsError,
 } from "metabase/visualizations/lib/errors";
-
 import NoResults from "assets/img/no_results.svg";
 
-import { assoc } from "icepick";
-import _ from "underscore";
-import cx from "classnames";
 
 export const ERROR_MESSAGE_GENERIC = t`There was a problem displaying this chart.`;
 export const ERROR_MESSAGE_PERMISSION = t`Sorry, you don't have permission to see this card.`;
@@ -39,6 +35,9 @@ export const ERROR_MESSAGE_PERMISSION = t`Sorry, you don't have permission to se
 import Question from "metabase-lib/lib/Question";
 import Query from "metabase-lib/lib/queries/Query";
 import Mode from "metabase-lib/lib/Mode";
+import Metadata from "metabase-lib/lib/metadata/Metadata";
+import { memoize } from "metabase-lib/lib/utils";
+
 import type {
   Card as CardObject,
   VisualizationSettings,
@@ -50,8 +49,6 @@ import type {
   RawSeries,
   OnChangeCardAndRun,
 } from "metabase-types/types/Visualization";
-import Metadata from "metabase-lib/lib/metadata/Metadata";
-import { memoize } from "metabase-lib/lib/utils";
 
 type Props = {
   rawSeries: RawSeries,

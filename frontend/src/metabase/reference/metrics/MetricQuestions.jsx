@@ -4,21 +4,18 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import moment from "moment";
 import { t } from "ttag";
+
 import visualizations from "metabase/visualizations";
 import * as Urls from "metabase/lib/urls";
-
 import S from "metabase/components/List.css";
-
 import List from "metabase/components/List";
 import ListItem from "metabase/components/ListItem";
 import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
-
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import * as metadataActions from "metabase/redux/metadata";
 
 import ReferenceHeader from "../components/ReferenceHeader";
-
 import { getQuestionUrl } from "../utils";
-
 import {
   getMetricQuestions,
   getError,
@@ -27,7 +24,6 @@ import {
   getMetric,
 } from "../selectors";
 
-import * as metadataActions from "metabase/redux/metadata";
 
 const emptyStateData = (table, metric) => {
   return {

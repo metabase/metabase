@@ -1,17 +1,15 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import _ from "underscore";
+import cx from "classnames";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
-
 import Modal from "metabase/components/Modal";
-
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-
 import { getVisualizationRaw } from "metabase/visualizations";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
-
 import {
   GRID_WIDTH,
   GRID_ASPECT_RATIO,
@@ -21,8 +19,6 @@ import {
   MIN_ROW_HEIGHT,
 } from "metabase/lib/dashboard_grid";
 
-import _ from "underscore";
-import cx from "classnames";
 
 import GridLayout from "./grid/GridLayout";
 import { generateMobileLayout } from "./grid/utils";

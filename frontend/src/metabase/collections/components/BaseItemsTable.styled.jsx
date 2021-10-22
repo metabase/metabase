@@ -2,7 +2,6 @@ import styled from "styled-components";
 
 import { color } from "metabase/lib/colors";
 import { breakpointMaxMedium } from "metabase/styled-components/theme/media-queries";
-
 import EntityItem from "metabase/components/EntityItem";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";

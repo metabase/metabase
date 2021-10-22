@@ -4,11 +4,13 @@ import _ from "underscore";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
+import { withRouter } from "react-router";
 
 import Button from "metabase/components/Button";
 import fitViewport from "metabase/hoc/FitViewPort";
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
+import Icon from "metabase/components/Icon";
 
 import { PermissionsTabs } from "./PermissionsTabs";
 import {
@@ -22,9 +24,8 @@ import {
 } from "./PermissionsPageLayout.styled";
 import { PermissionsEditBar } from "./PermissionsEditBar";
 import { useLeaveConfirmation } from "../../hooks/use-leave-confirmation";
-import { withRouter } from "react-router";
 import { clearSaveError } from "../../permissions";
-import Icon from "metabase/components/Icon";
+
 
 const mapDispatchToProps = {
   navigateToTab: tab => push(`/admin/permissions/${tab}`),

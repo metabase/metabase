@@ -1,6 +1,7 @@
+import { isNumber, isCoordinate } from "metabase/lib/schema_metadata";
+
 import type { DatasetData, Column } from "metabase-types/types/Dataset";
 import type { ClickObject } from "metabase-types/types/Visualization";
-import { isNumber, isCoordinate } from "metabase/lib/schema_metadata";
 
 export function getTableClickedObjectRowData(
   [series],

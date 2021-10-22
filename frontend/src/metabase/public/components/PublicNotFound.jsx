@@ -1,5 +1,6 @@
 import React from "react";
 import { t } from "ttag";
+
 import EmbedFrame from "./EmbedFrame";
 
 const PublicNotFound = () => (

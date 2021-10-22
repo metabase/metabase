@@ -3,6 +3,7 @@ import React, { Component } from "react";
 import { Route } from "react-router";
 import { push } from "react-router-redux";
 import { connect } from "react-redux";
+
 import Modal from "metabase/components/Modal";
 
 export const getParentPath = (route, location) => {

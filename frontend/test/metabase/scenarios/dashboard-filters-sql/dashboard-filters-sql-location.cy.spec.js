@@ -7,11 +7,11 @@ import {
   saveDashboard,
   setFilter,
 } from "__support__/e2e/cypress";
+import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 import { DASHBOARD_SQL_LOCATION_FILTERS } from "./helpers/e2e-dashboard-filter-sql-data-objects";
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { PEOPLE } = SAMPLE_DATASET;
 

@@ -13,23 +13,18 @@ import MetabotLogo from "metabase/components/MetabotLogo";
 import CollectionList from "metabase/components/CollectionList";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Button from "metabase/components/Button";
-
 import Card from "metabase/components/Card";
 import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import Subhead from "metabase/components/type/Subhead";
-
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 import Greeting from "metabase/lib/greeting";
-
 import Database from "metabase/entities/databases";
 import Search from "metabase/entities/search";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-
 import { updateSetting } from "metabase/admin/settings/settings";
-
 import { getUser } from "metabase/home/selectors";
 import {
   getShowHomepageData,

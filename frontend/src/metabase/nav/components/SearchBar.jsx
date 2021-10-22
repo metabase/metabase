@@ -6,7 +6,6 @@ import { t } from "ttag";
 import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
-
 import MetabaseSettings from "metabase/lib/settings";
 
 import { SearchInput, SearchWrapper } from "./SearchBar.styled";

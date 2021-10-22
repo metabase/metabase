@@ -2,15 +2,14 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-
 import { Box } from "grid-styled";
-import StepTitle from "./StepTitle";
-import CollapsedStep from "./CollapsedStep";
+
 import Icon from "metabase/components/Icon";
-
 import Databases from "metabase/entities/databases";
-
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+
+import CollapsedStep from "./CollapsedStep";
+import StepTitle from "./StepTitle";
 
 export default class DatabaseSchedulingStep extends Component {
   static propTypes = {

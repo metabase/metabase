@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-
 import { t } from "ttag";
 
 import Link from "metabase/components/Link";

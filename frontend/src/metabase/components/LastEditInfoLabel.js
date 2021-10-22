@@ -5,7 +5,6 @@ import { t } from "ttag";
 import moment from "moment";
 
 import { getUser } from "metabase/selectors/user";
-
 import { TextButton } from "metabase/components/Button.styled";
 
 function mapStateToProps(state) {

@@ -1,7 +1,8 @@
+import styled from "styled-components";
+
 import Button from "metabase/components/Button";
 import { color, alpha } from "metabase/lib/colors";
 
-import styled from "styled-components";
 
 // NOTE: some of this is duplicated from NotebookCell.jsx
 const ViewButton = styled(Button)`

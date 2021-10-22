@@ -4,19 +4,16 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { Link } from "react-router";
 import { t } from "ttag";
-
 import cx from "classnames";
-import MetabaseSettings from "metabase/lib/settings";
 
+import MetabaseSettings from "metabase/lib/settings";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import FormMessage from "metabase/components/form/FormMessage";
+import Database from "metabase/entities/databases";
 
 import CreatedDatabaseModal from "../components/CreatedDatabaseModal";
 import DeleteDatabaseModal from "../components/DeleteDatabaseModal";
-
-import Database from "metabase/entities/databases";
-
 import {
   getDeletes,
   getDeletionError,

@@ -1,8 +1,9 @@
+import NativeQuery from "./queries/NativeQuery";
+
 import type Metadata from "./metadata/Metadata";
 import type Query from "./queries/Query";
 import type { TemplateTag } from "metabase-types/types/Query";
 
-import NativeQuery from "./queries/NativeQuery";
 
 export default class Variable {
   _args: any;

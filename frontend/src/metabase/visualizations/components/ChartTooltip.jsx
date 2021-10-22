@@ -3,7 +3,6 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import TooltipPopover from "metabase/components/TooltipPopover";
-
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import { formatValue } from "metabase/lib/formatting";
 

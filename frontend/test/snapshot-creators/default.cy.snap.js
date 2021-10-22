@@ -1,4 +1,5 @@
 import _ from "underscore";
+
 import { snapshot, restore, withSampleDataset } from "__support__/e2e/cypress";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
 

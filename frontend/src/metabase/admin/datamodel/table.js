@@ -1,5 +1,4 @@
 import { createThunkAction } from "metabase/lib/redux";
-
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { MetabaseApi } from "metabase/services";
 

@@ -11,6 +11,7 @@ import {
   slugify,
 } from "metabase/lib/formatting";
 import ExternalLink from "metabase/components/ExternalLink";
+
 import { TYPE } from "metabase/lib/types";
 
 describe("formatting", () => {

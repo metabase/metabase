@@ -7,7 +7,6 @@ import {
   parseIdentifierString,
   OPERATOR_PRECEDENCE,
 } from "../expressions";
-
 import { MBQL_CLAUSES } from "./config";
 import { ExpressionCstVisitor, parse } from "./parser";
 

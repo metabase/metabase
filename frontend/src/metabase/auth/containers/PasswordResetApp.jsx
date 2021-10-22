@@ -7,12 +7,9 @@ import { t, jt } from "ttag";
 import AuthLayout from "metabase/auth/components/AuthLayout";
 import Form from "metabase/containers/Form";
 import Icon from "metabase/components/Icon";
-
 import MetabaseSettings from "metabase/lib/settings";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-
 import { SessionApi } from "metabase/services";
-
 import Users from "metabase/entities/users";
 
 const mapStateToProps = (state, props) => {

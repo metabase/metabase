@@ -7,7 +7,6 @@ import { getIn, assocIn, updateIn } from "icepick";
 // Needed due to wrong dependency resolution order
 // eslint-disable-next-line no-unused-vars
 import Visualization from "metabase/visualizations/components/Visualization";
-
 import {
   extractRemappings,
   getVisualizationTransformed,
@@ -15,14 +14,10 @@ import {
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { getValueAndFieldIdPopulatedParametersFromCard } from "metabase/meta/Card";
 import { normalizeParameterValue } from "metabase/meta/Parameter";
-
 import Utils from "metabase/lib/utils";
-
 import Question from "metabase-lib/lib/Question";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-
 import Databases from "metabase/entities/databases";
-
 import { getMetadata } from "metabase/selectors/metadata";
 import { getAlerts } from "metabase/alert/selectors";
 

@@ -1,5 +1,4 @@
 import type { ISO8601Time } from ".";
-
 import type { Field } from "./Field";
 import type { Segment } from "./Segment";
 import type { Metric } from "./Metric";

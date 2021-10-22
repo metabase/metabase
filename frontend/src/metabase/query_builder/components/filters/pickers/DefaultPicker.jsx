@@ -2,16 +2,17 @@ import React from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 
-import NumberPicker from "./NumberPicker";
-import SelectPicker from "./SelectPicker";
-import TextPicker from "./TextPicker";
-
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
-
 import {
   getFilterArgumentFormatOptions,
   isFuzzyOperator,
 } from "metabase/lib/schema_metadata";
+
+import NumberPicker from "./NumberPicker";
+import SelectPicker from "./SelectPicker";
+import TextPicker from "./TextPicker";
+
+
 
 import type Filter from "metabase-lib/lib/queries/structured/Filter";
 

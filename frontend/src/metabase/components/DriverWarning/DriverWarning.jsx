@@ -1,12 +1,13 @@
 import React from "react";
 import PropTypes from "prop-types";
-
 import { t } from "ttag";
 
 import {
   allEngines,
   engineSupersedesMap,
 } from "metabase/entities/databases/forms";
+import Icon from "metabase/components/Icon";
+import MetabaseSettings from "metabase/lib/settings";
 
 import {
   CardContent,
@@ -16,9 +17,6 @@ import {
   WarningIcon,
   WarningParagraph,
 } from "./DriverWarning.styled";
-
-import Icon from "metabase/components/Icon";
-import MetabaseSettings from "metabase/lib/settings";
 
 const propTypes = {
   engine: PropTypes.string.isRequired,

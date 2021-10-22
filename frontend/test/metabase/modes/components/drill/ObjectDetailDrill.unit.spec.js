@@ -1,5 +1,4 @@
 import ObjectDetailDrill from "metabase/modes/components/drill/ObjectDetailDrill";
-
 import { ORDERS, PRODUCTS } from "__support__/sample_dataset_fixture";
 
 describe("ObjectDetailDrill", () => {

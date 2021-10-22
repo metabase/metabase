@@ -4,9 +4,15 @@ import dc from "dc";
 import _ from "underscore";
 import { assocIn, updateIn } from "icepick";
 import { t } from "ttag";
-import { lighten } from "metabase/lib/colors";
 
+import { lighten } from "metabase/lib/colors";
 import Question from "metabase-lib/lib/Question";
+import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
+import { isStructured } from "metabase/meta/Card";
+import {
+  updateDateTimeFilter,
+  updateNumericFilter,
+} from "metabase/modes/lib/actions";
 
 import {
   computeSplit,
@@ -14,7 +20,6 @@ import {
   getFriendlyName,
   colorShades,
 } from "./utils";
-
 import {
   applyChartTimeseriesXAxis,
   applyChartQuantitativeXAxis,
@@ -22,15 +27,10 @@ import {
   applyChartYAxis,
   getYValueFormatter,
 } from "./apply_axis";
-
 import { setupTooltips } from "./apply_tooltips";
 import { getTrendDataPointsFromInsight } from "./trends";
-
 import fillMissingValuesInDatas from "./fill_data";
 import { NULL_DIMENSION_WARNING, unaggregatedDataWarning } from "./warnings";
-
-import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
-
 import {
   forceSortedGroupsOfGroups,
   initChart, // TODO - probably better named something like `initChartParent`
@@ -55,16 +55,7 @@ import {
   hasClickBehavior,
   replaceNullValuesForOrdinal,
 } from "./renderer_utils";
-
 import lineAndBarOnRender from "./LineAreaBarPostRender";
-
-import { isStructured } from "metabase/meta/Card";
-
-import {
-  updateDateTimeFilter,
-  updateNumericFilter,
-} from "metabase/modes/lib/actions";
-
 import { lineAddons } from "./graph/addons";
 import { initBrush } from "./graph/brush";
 import { stack, stackOffsetDiverging } from "./graph/stack";

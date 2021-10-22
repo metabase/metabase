@@ -3,19 +3,17 @@ import React from "react";
 import { Box } from "grid-styled";
 
 import * as Urls from "metabase/lib/urls";
-
 import Icon from "metabase/components/Icon";
+import CollectionLink from "metabase/collections/components/CollectionLink";
+import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+
 import {
   CollectionListIcon,
   ChildrenContainer,
   ExpandCollectionButton,
   LabelContainer,
 } from "./CollectionsList.styled";
-
-import CollectionLink from "metabase/collections/components/CollectionLink";
-import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
-
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 
 const IRREGULAR_COLLECTION_ICON_SIZE = 14;
 

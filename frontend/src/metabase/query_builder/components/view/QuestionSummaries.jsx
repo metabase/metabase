@@ -3,13 +3,12 @@ import React from "react";
 import { t } from "ttag";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import { color } from "metabase/lib/colors";
 
 import ViewPill from "./ViewPill";
 import ViewButton from "./ViewButton";
-
 import SummarizeSidebar from "./sidebars/SummarizeSidebar";
 
-import { color } from "metabase/lib/colors";
 
 const SummarizePill = props => (
   <ViewPill icon="insight" color={color("accent1")} {...props} />

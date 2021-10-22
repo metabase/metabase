@@ -3,10 +3,10 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import { isCypressActive, isProduction } from "metabase/env";
-
 import BodyComponent from "metabase/components/BodyComponent";
 import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
+
 import { FullscreenCard, FixedCard } from "./AppErrorCard.styled";
 
 const CardComponent = isCypressActive ? FullscreenCard : FixedCard;

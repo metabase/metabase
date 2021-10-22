@@ -1,9 +1,8 @@
 import { createAction } from "redux-actions";
-import { createThunkAction } from "metabase/lib/redux";
 
+import { createThunkAction } from "metabase/lib/redux";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
-
 import { SetupApi, UtilApi } from "metabase/services";
 
 // action constants

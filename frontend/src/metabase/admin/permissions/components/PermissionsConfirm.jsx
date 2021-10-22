@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-
 import { t, ngettext, msgid } from "ttag";
+
 import Tooltip from "metabase/components/Tooltip";
 
 const GroupName = ({ group }) => (

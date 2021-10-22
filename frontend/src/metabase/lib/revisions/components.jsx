@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import PropTypes from "prop-types";
 import styled from "styled-components";
 import { t } from "ttag";
+
 import { color } from "metabase/lib/colors";
 import { capitalize } from "metabase/lib/formatting";
 import RawEntityLink from "metabase/entities/containers/EntityLink";

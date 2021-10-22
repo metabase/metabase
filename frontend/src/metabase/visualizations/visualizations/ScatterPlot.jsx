@@ -1,7 +1,7 @@
 import { t } from "ttag";
+
 import LineAreaBarChart from "../components/LineAreaBarChart.jsx";
 import { scatterRenderer } from "../lib/LineAreaBarRenderer";
-
 import {
   GRAPH_DATA_SETTINGS,
   GRAPH_BUBBLE_SETTINGS,
