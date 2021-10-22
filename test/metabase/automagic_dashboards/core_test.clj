@@ -317,7 +317,7 @@
                                               :database (mt/id)})
               res         (magic/automagic-analysis q {})
               cards       (vec (:ordered_cards res))
-              join-member (get-in cards [3 :card :dataset_query :query :joins])]
+              join-member (get-in cards [2 :card :dataset_query :query :joins])]
           (is (= join-vec join-member)))))
     (testing "splice in custexps"
       (automagic-dashboards.test/with-dashboard-cleanup
