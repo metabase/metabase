@@ -24,16 +24,13 @@ import moment from "moment";
 import { t } from "ttag";
 import _ from "underscore";
 import {
-  doesOperatorExist,
-  getOperatorByTypeAndName,
-  STRING,
-  NUMBER,
-  PRIMARY_KEY,
-} from "metabase/lib/schema_metadata";
-import {
   getParameterType,
   getParameterSubType,
 } from "metabase/parameters/utils/parameter-type";
+import {
+  getOperatorDisplayName,
+  getParameterOperatorName,
+} from "metabase/parameters/utils/operators";
 
 import Variable, { TemplateTagVariable } from "metabase-lib/lib/Variable";
 
@@ -205,16 +202,6 @@ function buildOperatorSubtypeOptions({ type, typeName }) {
     ...option,
     combinedName: getOperatorDisplayName(option, type, typeName),
   }));
-}
-
-export function getOperatorDisplayName(option, operatorType, sectionName) {
-  if (operatorType === "date" || operatorType === "number") {
-    return option.name;
-  } else if (operatorType === "string" && option.operator === "=") {
-    return sectionName;
-  } else {
-    return `${sectionName} ${option.name.toLowerCase()}`;
-  }
 }
 
 function fieldFilterForParameter(parameter: Parameter): FieldPredicate {
@@ -556,35 +543,6 @@ export function normalizeParameterValue(type, value) {
     return value == null ? [] : [].concat(value);
   } else {
     return value;
-  }
-}
-
-function getParameterOperatorName(maybeOperatorName) {
-  return doesOperatorExist(maybeOperatorName) ? maybeOperatorName : "=";
-}
-
-export function deriveFieldOperatorFromParameter(parameter) {
-  const type = getParameterType(parameter);
-  const subtype = getParameterSubType(parameter);
-  const operatorType = getParameterOperatorType(type);
-  const operatorName = getParameterOperatorName(subtype);
-
-  return getOperatorByTypeAndName(operatorType, operatorName);
-}
-
-function getParameterOperatorType(parameterType) {
-  switch (parameterType) {
-    case "number":
-      return NUMBER;
-    case "string":
-    case "category":
-    case "location":
-      return STRING;
-    case "id":
-      // id can technically be a FK but doesn't matter as both use default filter operators
-      return PRIMARY_KEY;
-    default:
-      return undefined;
   }
 }
 
