@@ -34,7 +34,7 @@ import {
   cardQueryIsEquivalent,
   getValueAndFieldIdPopulatedParametersFromCard,
 } from "metabase/meta/Card";
-import { getParameterValuesByIdFromQueryParams } from "metabase/meta/Parameter";
+import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import { normalize } from "cljs/metabase.mbql.js";
 
 import {

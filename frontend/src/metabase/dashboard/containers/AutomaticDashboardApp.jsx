@@ -8,7 +8,7 @@ import cx from "classnames";
 import title from "metabase/hoc/Title";
 import withToast from "metabase/hoc/Toast";
 import DashboardData from "metabase/dashboard/hoc/DashboardData";
-import { getValuePopulatedParameters } from "metabase/meta/Parameter";
+import { getValuePopulatedParameters } from "metabase/parameters/utils/parameter-values";
 
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/components/Button";
