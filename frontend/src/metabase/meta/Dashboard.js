@@ -16,15 +16,16 @@ import type {
 } from "metabase-types/types/Parameter";
 
 import {
-  dimensionFilterForParameter,
-  getTagOperatorFilterForParameter,
-  variableFilterForParameter,
   getParameterOptions,
   PARAMETER_OPERATOR_TYPES,
   getParameterTargetField,
 } from "metabase/meta/Parameter";
 import { getOperatorDisplayName } from "metabase/parameters/utils/operators";
-
+import {
+  dimensionFilterForParameter,
+  getTagOperatorFilterForParameter,
+  variableFilterForParameter,
+} from "metabase/parameters/utils/filters";
 import { slugify } from "metabase/lib/formatting";
 
 export type ParameterSection = {
