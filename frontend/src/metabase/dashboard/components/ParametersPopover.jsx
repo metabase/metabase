@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import { t } from "ttag";
-import { getParameterSections } from "metabase/meta/Dashboard";
+import { getDashboardParameterSections } from "metabase/parameters/utils/dashboard-options";
 import Icon from "metabase/components/Icon";
 import { getParameterIconName } from "metabase/meta/Parameter";
 import styled from "styled-components";
@@ -32,7 +32,7 @@ export default class ParametersPopover extends Component {
     this.state = {};
   }
 
-  PARAMETER_SECTIONS = getParameterSections();
+  PARAMETER_SECTIONS = getDashboardParameterSections();
 
   render() {
     const { section } = this.state;
