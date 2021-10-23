@@ -21,9 +21,9 @@ import {
   variableFilterForParameter,
   getParameterOptions,
   PARAMETER_OPERATOR_TYPES,
-  getOperatorDisplayName,
   getParameterTargetField,
 } from "metabase/meta/Parameter";
+import { getOperatorDisplayName } from "metabase/parameters/utils/operators";
 
 import { slugify } from "metabase/lib/formatting";
 
