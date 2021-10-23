@@ -30,6 +30,10 @@ import {
   NUMBER,
   PRIMARY_KEY,
 } from "metabase/lib/schema_metadata";
+import {
+  getParameterType,
+  getParameterSubType,
+} from "metabase/parameters/utils/parameter-type";
 
 import Variable, { TemplateTagVariable } from "metabase-lib/lib/Variable";
 
@@ -211,21 +215,6 @@ export function getOperatorDisplayName(option, operatorType, sectionName) {
   } else {
     return `${sectionName} ${option.name.toLowerCase()}`;
   }
-}
-
-// sectionId will match a type of field (category, location, number, date, id, etc.)
-// if sectionId is undefined, it is an old parameter that did have it set
-// OR it is a PARAMETER_OPTION entry. In those situations,
-// a `type` will exist like "category" or "location/city" or "string/="
-// we split on the `/` and take the first entry to get the field type
-function getParameterType(parameter) {
-  const { sectionId } = parameter;
-  return sectionId || splitType(parameter)[0];
-}
-
-function getParameterSubType(parameter) {
-  const [, subtype] = splitType(parameter);
-  return subtype;
 }
 
 function fieldFilterForParameter(parameter: Parameter): FieldPredicate {
@@ -561,7 +550,7 @@ export function getParameterIconName(parameter: ?Parameter) {
 }
 
 export function normalizeParameterValue(type, value) {
-  const [fieldType] = splitType(type);
+  const fieldType = getParameterType(type);
 
   if (["string", "number"].includes(fieldType)) {
     return value == null ? [] : [].concat(value);
@@ -597,13 +586,6 @@ function getParameterOperatorType(parameterType) {
     default:
       return undefined;
   }
-}
-
-function splitType(parameterOrType) {
-  const parameterType = _.isString(parameterOrType)
-    ? parameterOrType
-    : (parameterOrType || {}).type || "";
-  return parameterType.split("/");
 }
 
 export function getValuePopulatedParameters(parameters, parameterValues) {
