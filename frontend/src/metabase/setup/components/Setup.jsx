@@ -28,6 +28,17 @@ const USER_STEP_NUMBER = 2;
 const DATABASE_CONNECTION_STEP_NUMBER = 3;
 const DATABASE_SCHEDULING_STEP_NUMBER = 4;
 const PREFERENCES_STEP_NUMBER = 5;
+const COMPLETED_STEP_NUMBER = 5;
+
+const STEP_NAMES = {
+  [WELCOME_STEP_NUMBER]: "welcome",
+  [LANGUAGE_STEP_NUMBER]: "language",
+  [USER_STEP_NUMBER]: "user_info",
+  [DATABASE_CONNECTION_STEP_NUMBER]: "db_connection",
+  [DATABASE_SCHEDULING_STEP_NUMBER]: "db_scheduling",
+  [PREFERENCES_STEP_NUMBER]: "data_usage",
+  [COMPLETED_STEP_NUMBER]: "completed",
+};
 
 export default class Setup extends Component {
   static propTypes = {
@@ -103,20 +114,35 @@ export default class Setup extends Component {
   }
 
   componentDidUpdate(prevProps) {
-    // If we are entering the scheduling step, we need to scroll to the top of scheduling step container
-    if (
-      prevProps.activeStep !== this.props.activeStep &&
-      this.props.activeStep === DATABASE_CONNECTION_STEP_NUMBER
-    ) {
-      setTimeout(() => {
-        if (this.databaseSchedulingStepContainer.current) {
-          const node = this.databaseSchedulingStepContainer.current;
-          node && node.scrollIntoView && node.scrollIntoView();
-        }
-      }, 10);
+    const { activeStep, setupComplete } = this.props;
+
+    if (activeStep !== prevProps.activeStep) {
+      trackSchemaEvent("setup", "1-0-0", {
+        event: "step_seen",
+        version: "1.0.0",
+        step: STEP_NAMES[activeStep],
+        step_number: activeStep,
+      });
+
+      // If we are entering the scheduling step, we need to scroll to the top of scheduling step container
+      if (activeStep === DATABASE_CONNECTION_STEP_NUMBER) {
+        setTimeout(() => {
+          if (this.databaseSchedulingStepContainer.current) {
+            const node = this.databaseSchedulingStepContainer.current;
+            node && node.scrollIntoView && node.scrollIntoView();
+          }
+        }, 10);
+      }
     }
 
-    if (!prevProps.setupComplete && this.props.setupComplete) {
+    if (setupComplete && !prevProps.setupComplete) {
+      trackStructEvent("setup", "1-0-0", {
+        event: "step_seen",
+        version: "1.0.0",
+        step: STEP_NAMES[COMPLETED_STEP_NUMBER],
+        step_number: COMPLETED_STEP_NUMBER,
+      });
+
       trackStructEvent("Setup", "Complete");
     }
   }
