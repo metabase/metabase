@@ -8,39 +8,36 @@ import {
   CATEGORY_OPTION,
 } from "../constants";
 
+function buildTypedOperatorOptions(operatorType, sectionId, sectionName) {
+  return PARAMETER_OPERATOR_TYPES[operatorType].map(operatorOption => {
+    return {
+      ...operatorOption,
+      sectionId,
+      combinedName: getOperatorDisplayName(
+        operatorOption,
+        operatorType,
+        sectionName,
+      ),
+    };
+  });
+}
+
 export function getDashboardParameterSections() {
   return [
     {
       id: "date",
       name: t`Time`,
       description: t`Date range, relative date, time of day, etc.`,
-      options: PARAMETER_OPERATOR_TYPES["date"].map(option => {
-        return {
-          ...option,
-          sectionId: "date",
-          combinedName: getOperatorDisplayName(option, "date", t`Date`),
-        };
-      }),
+      options: buildTypedOperatorOptions("date", "date", t`Date`),
     },
     {
       id: "location",
       name: t`Location`,
       description: t`City, State, Country, ZIP code.`,
       options: areFieldFilterOperatorsEnabled()
-        ? PARAMETER_OPERATOR_TYPES["string"].map(option => {
-            return {
-              ...option,
-              sectionId: "location",
-              combinedName: getOperatorDisplayName(
-                option,
-                "string",
-                t`Location`,
-              ),
-            };
-          })
+        ? buildTypedOperatorOptions("string", "location", t`Location`)
         : LOCATION_OPTIONS,
     },
-
     {
       id: "id",
       name: t`ID`,
@@ -56,26 +53,14 @@ export function getDashboardParameterSections() {
       id: "number",
       name: t`Number`,
       description: t`Subtotal, Age, Price, Quantity, etc.`,
-      options: PARAMETER_OPERATOR_TYPES["number"].map(option => {
-        return {
-          ...option,
-          sectionId: "number",
-          combinedName: getOperatorDisplayName(option, "number", t`Number`),
-        };
-      }),
+      options: buildTypedOperatorOptions("number", "number", t`Number`),
     },
     areFieldFilterOperatorsEnabled()
       ? {
           id: "string",
           name: t`Text or Category`,
           description: t`Name, Rating, Description, etc.`,
-          options: PARAMETER_OPERATOR_TYPES["string"].map(option => {
-            return {
-              ...option,
-              sectionId: "string",
-              combinedName: getOperatorDisplayName(option, "string", t`Text`),
-            };
-          }),
+          options: buildTypedOperatorOptions("string", "string", t`Text`),
         }
       : {
           id: "category",
