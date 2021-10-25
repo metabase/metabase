@@ -26,7 +26,6 @@ import { ResizableBox } from "react-resizable";
 
 import "./NativeQueryEditor.css";
 
-import { isMac } from "metabase/lib/browser";
 import { isEventOverElement } from "metabase/lib/dom";
 import { delay } from "metabase/lib/promise";
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
@@ -41,17 +40,13 @@ import SnippetCollections from "metabase/entities/snippet-collections";
 import Parameters from "metabase/parameters/components/Parameters/Parameters";
 import Question from "metabase-lib/lib/Question";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import NativeQueryEditorSidebar from "./NativeQueryEditor/NativeQueryEditorSidebar";
 
 import {
   DatabaseDataSelector,
   SchemaAndTableDataSelector,
 } from "metabase/query_builder/components/DataSelector";
 import SnippetModal from "metabase/query_builder/components/template_tags/SnippetModal";
-
-import RunButtonWithTooltip from "./RunButtonWithTooltip";
-import DataReferenceButton from "./view/DataReferenceButton";
-import NativeVariablesButton from "./view/NativeVariablesButton";
-import SnippetSidebarButton from "./view/SnippetSidebarButton";
 
 import type { DatasetQuery } from "metabase-types/types/Card";
 import type { DatabaseId } from "metabase-types/types/Database";
@@ -111,8 +106,6 @@ const SCROLL_MARGIN = 8;
 const LINE_HEIGHT = 16;
 
 const MIN_HEIGHT_LINES = 13;
-
-const ICON_SIZE = 18;
 
 const getEditorLineHeight = lines => lines * LINE_HEIGHT + 2 * SCROLL_MARGIN;
 const getLinesForHeight = height => (height - 2 * SCROLL_MARGIN) / LINE_HEIGHT;
@@ -482,29 +475,15 @@ export default class NativeQueryEditor extends Component {
   render() {
     const {
       query,
-      cancelQuery,
       setParameterValue,
       location,
       readOnly,
       isNativeEditorOpen,
-      isRunnable,
-      isRunning,
-      isResultDirty,
-      isPreviewing,
-      snippetCollections,
-      snippets,
     } = this.props;
 
     const database = query.database();
     const databases = query.metadata().databasesList({ savedQuestions: false });
     const parameters = query.question().parameters();
-
-    // hide the snippet sidebar if there aren't any visible snippets/collections and the root collection isn't writable
-    const showSnippetSidebarButton = !(
-      snippets?.length === 0 &&
-      snippetCollections?.length === 1 &&
-      snippetCollections[0].can_write === false
-    );
 
     let dataSelectors = [];
     if (isNativeEditorOpen && databases.length > 0) {
@@ -627,14 +606,14 @@ export default class NativeQueryEditor extends Component {
             <div className="flex flex-column">
               <a className="p2 bg-medium-hover flex" onClick={this.runQuery}>
                 <Icon name={"play"} size={16} className="mr1" />
-                <h4>Run selection</h4>
+                <h4>{t`Run selection`}</h4>
               </a>
               <a
                 className="p2 bg-medium-hover flex"
                 onClick={this.props.openSnippetModalWithSelectedText}
               >
                 <Icon name={"snippet"} size={16} className="mr1" />
-                <h4>Save as snippet</h4>
+                <h4>{t`Save as snippet`}</h4>
               </a>
             </div>
           </Popover>
@@ -653,43 +632,10 @@ export default class NativeQueryEditor extends Component {
             />
           )}
           {!readOnly && (
-            <div className="flex flex-column align-center">
-              <DataReferenceButton
-                {...this.props}
-                size={ICON_SIZE}
-                className="mt3"
-              />
-              <NativeVariablesButton
-                {...this.props}
-                size={ICON_SIZE}
-                className="mt3"
-              />
-              {showSnippetSidebarButton && (
-                <SnippetSidebarButton
-                  {...this.props}
-                  size={ICON_SIZE}
-                  className="mt3"
-                />
-              )}
-              <RunButtonWithTooltip
-                disabled={!isRunnable}
-                isRunning={isRunning}
-                isDirty={isResultDirty}
-                isPreviewing={isPreviewing}
-                onRun={this.runQuery}
-                onCancel={() => cancelQuery()}
-                compact
-                className="mx2 mb2 mt-auto"
-                style={{ width: 40, height: 40 }}
-                getTooltip={() =>
-                  (this.props.nativeEditorSelectedText
-                    ? t`Run selected text`
-                    : t`Run query`) +
-                  " " +
-                  (isMac() ? t`(⌘ + enter)` : t`(Ctrl + enter)`)
-                }
-              />
-            </div>
+            <NativeQueryEditorSidebar
+              runQuery={this.runQuery}
+              {...this.props}
+            />
           )}
         </ResizableBox>
       </div>
