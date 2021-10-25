@@ -14,6 +14,7 @@ export const AddAggregationButtonRoot = styled.button`
   font-weight: 700;
   min-height: 34px;
   min-width: 34px;
+  cursor: pointer;
 
   &:hover {
     background-color: ${color("bg-medium")};
