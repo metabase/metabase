@@ -27,8 +27,8 @@
             [metabase.test.util.log :as tu.log]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
-            [toucan.util.test :as tt]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [toucan.util.test :as tt]))
 
 (deftest connection-details->spec-test
   (doseq [[^String message expected-spec details]

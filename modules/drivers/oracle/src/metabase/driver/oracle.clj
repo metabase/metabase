@@ -94,19 +94,26 @@
     (cond-> details
 
       ssl-use-keystore
-      (assoc :javax.net.ssl.keyStoreType "JKS"
-             :javax.net.ssl.keyStore (-> (secret/db-details-prop->secret-map details "ssl-keystore")
-                                         secret/value->file!)
-             :javax.net.ssl.keyStorePassword (-> (secret/db-details-prop->secret-map details "ssl-keystore-password")
-                                                 secret/value->string))
+      (-> ; from outer cond->
+        (assoc :javax.net.ssl.keyStoreType "JKS"
+               :javax.net.ssl.keyStore (-> (secret/db-details-prop->secret-map details "ssl-keystore")
+                                           secret/value->file!)
+               :javax.net.ssl.keyStorePassword (-> (secret/db-details-prop->secret-map details "ssl-keystore-password")
+                                                   secret/value->string))
+        (dissoc :ssl-use-keystore :ssl-keystore-value :ssl-keystore-path :ssl-keystore-password-value))
 
       ssl-use-truststore
-      (assoc :javax.net.ssl.trustStoreType "JKS"
-             :javax.net.ssl.trustStore (-> (secret/db-details-prop->secret-map details "ssl-truststore")
-                                           secret/value->file!)
-             :javax.net.ssl.trustStorePassword (-> (secret/db-details-prop->secret-map details
-                                                                                       "ssl-truststore-password")
-                                                   secret/value->string)))
+      (-> ; from outer cond->
+        (assoc :javax.net.ssl.trustStoreType "JKS"
+               :javax.net.ssl.trustStore (-> (secret/db-details-prop->secret-map details "ssl-truststore")
+                                             secret/value->file!)
+               :javax.net.ssl.trustStorePassword (-> (secret/db-details-prop->secret-map details
+                                                                                         "ssl-truststore-password")
+                                                     secret/value->string))
+        (dissoc :ssl-use-truststore :ssl-truststore-value :ssl-truststore-path :ssl-truststore-password-value))
+
+      true
+      (dissoc :ssl))
     details))
 
 (defmethod sql-jdbc.conn/connection-details->spec :oracle
