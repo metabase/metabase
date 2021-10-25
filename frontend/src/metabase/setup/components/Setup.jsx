@@ -67,6 +67,7 @@ export default class Setup extends Component {
   componentDidMount() {
     this.setDefaultLanguage();
     this.setDefaultDetails();
+    this.trackStepSeen();
   }
 
   setDefaultLanguage() {
@@ -99,6 +100,18 @@ export default class Setup extends Component {
     }
   }
 
+  trackStepSeen() {
+    const { activeStep, setupComplete } = this.props.activeStep;
+    const stepNumber = setupComplete ? COMPLETED_STEP_NUMBER : activeStep;
+
+    trackSchemaEvent("setup", "1-0-0", {
+      event: "step_seen",
+      version: "1.0.0",
+      step: STEP_NAMES[stepNumber],
+      step_number: stepNumber,
+    });
+  }
+
   renderFooter() {
     return (
       <div className="SetupHelp bordered border-dashed p2 rounded mb4">
@@ -117,12 +130,7 @@ export default class Setup extends Component {
     const { activeStep, setupComplete } = this.props;
 
     if (activeStep !== prevProps.activeStep) {
-      trackSchemaEvent("setup", "1-0-0", {
-        event: "step_seen",
-        version: "1.0.0",
-        step: STEP_NAMES[activeStep],
-        step_number: activeStep,
-      });
+      this.trackStepSeen();
 
       // If we are entering the scheduling step, we need to scroll to the top of scheduling step container
       if (activeStep === DATABASE_CONNECTION_STEP_NUMBER) {
@@ -136,13 +144,7 @@ export default class Setup extends Component {
     }
 
     if (setupComplete && !prevProps.setupComplete) {
-      trackSchemaEvent("setup", "1-0-0", {
-        event: "step_seen",
-        version: "1.0.0",
-        step: STEP_NAMES[COMPLETED_STEP_NUMBER],
-        step_number: COMPLETED_STEP_NUMBER,
-      });
-
+      this.trackStepSeen();
       trackStructEvent("Setup", "Complete");
     }
   }
