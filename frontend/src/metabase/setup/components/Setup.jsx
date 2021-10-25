@@ -136,7 +136,7 @@ export default class Setup extends Component {
     }
 
     if (setupComplete && !prevProps.setupComplete) {
-      trackStructEvent("setup", "1-0-0", {
+      trackSchemaEvent("setup", "1-0-0", {
         event: "step_seen",
         version: "1.0.0",
         step: STEP_NAMES[COMPLETED_STEP_NUMBER],
