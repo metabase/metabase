@@ -8,6 +8,37 @@ import {
   variableFilterForParameter,
 } from "./filters";
 
+function buildStructuredQuerySectionOptions(section) {
+  return section.items.map(({ dimension }) => ({
+    sectionName: section.name,
+    name: dimension.displayName(),
+    icon: dimension.icon(),
+    target: ["dimension", dimension.mbql()],
+    // these methods don't exist on instances of ExpressionDimension
+    isForeign: !!(dimension instanceof ExpressionDimension
+      ? false
+      : dimension.fk() || dimension.joinAlias()),
+  }));
+}
+
+function buildNativeQuerySectionOptions(section) {
+  return section.items.map(({ dimension }) => ({
+    name: dimension.displayName(),
+    icon: dimension.icon(),
+    isForeign: false,
+    target: ["dimension", dimension.mbql()],
+  }));
+}
+
+function buildVariableOption(variable) {
+  return {
+    name: variable.displayName(),
+    icon: variable.icon(),
+    isForeign: false,
+    target: ["variable", variable.mbql()],
+  };
+}
+
 export function getParameterMappingOptions(metadata, parameter = null, card) {
   const options = [];
   if (card.display === "text") {
@@ -25,18 +56,7 @@ export function getParameterMappingOptions(metadata, parameter = null, card) {
           parameter ? dimensionFilterForParameter(parameter) : undefined,
         )
         .sections()
-        .flatMap(section =>
-          section.items.map(({ dimension }) => ({
-            sectionName: section.name,
-            name: dimension.displayName(),
-            icon: dimension.icon(),
-            target: ["dimension", dimension.mbql()],
-            // these methods don't exist on instances of ExpressionDimension
-            isForeign: !!(dimension instanceof ExpressionDimension
-              ? false
-              : dimension.fk() || dimension.joinAlias()),
-          })),
-        ),
+        .flatMap(section => buildStructuredQuerySectionOptions(section)),
     );
   } else {
     options.push(
@@ -44,12 +64,7 @@ export function getParameterMappingOptions(metadata, parameter = null, card) {
         .variables(
           parameter ? variableFilterForParameter(parameter) : undefined,
         )
-        .map(variable => ({
-          name: variable.displayName(),
-          icon: variable.icon(),
-          isForeign: false,
-          target: ["variable", variable.mbql()],
-        })),
+        .map(buildVariableOption),
     );
     options.push(
       ...query
@@ -58,14 +73,7 @@ export function getParameterMappingOptions(metadata, parameter = null, card) {
           parameter ? getTagOperatorFilterForParameter(parameter) : undefined,
         )
         .sections()
-        .flatMap(section =>
-          section.items.map(({ dimension }) => ({
-            name: dimension.displayName(),
-            icon: dimension.icon(),
-            isForeign: false,
-            target: ["dimension", dimension.mbql()],
-          })),
-        ),
+        .flatMap(section => buildNativeQuerySectionOptions(section)),
     );
   }
 
