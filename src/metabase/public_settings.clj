@@ -399,8 +399,8 @@
   :setter     :none
   :getter     (constantly config/mb-version-info))
 
-(defsetting premium-features
-  "Premium  features enabled for this instance."
+(defsetting token-features
+  "Features registered for this instance's token"
   :visibility :public
   :setter     :none
   :getter     (fn [] {:embedding            (premium-features/hide-embed-branding?)
@@ -410,7 +410,8 @@
                       :sso                  (premium-features/enable-sso?)
                       :advanced_config      (premium-features/enable-advanced-config?)
                       :advanced_permissions (premium-features/enable-advanced-permissions?)
-                      :content_management   (premium-features/enable-content-management?)}))
+                      :content_management   (premium-features/enable-content-management?)
+                      :hosting              (premium-features/is-hosted?)}))
 
 (defsetting redirect-all-requests-to-https
   (deferred-tru "Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS")
