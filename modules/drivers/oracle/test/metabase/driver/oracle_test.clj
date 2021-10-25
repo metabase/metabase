@@ -321,7 +321,9 @@
                 (mt/with-db database
                   (sync/sync-database! database {:scan :schema})
                   ;; should be four tables in test-data, as always
-                  (is (= 4 (db/count Table :db_id (u/the-id database))))
+                  (let [all-tables (db/select Table :db_id (u/the-id database))]
+                    (println (map (fn [tbl] (str (:schema tbl) "." (:name tbl))) all-tables))
+                    (is (= 4 (count all-tables))))
                   (binding [api/*current-user-id* orig-user-id ; restore original user-id to avoid perm errors
                             ;; we also need to rebind this dynamic var so that we can pretend "test-data" is
                             ;; actually the name of the database, and not some variation on the :name specified
