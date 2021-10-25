@@ -8,7 +8,7 @@ import { Box } from "grid-styled";
 import StepTitle from "./StepTitle";
 import CollapsedStep from "./CollapsedStep";
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { trackStructEvent, trackSchemaEvent } from "metabase/lib/analytics";
 
 import { DEFAULT_SCHEDULES } from "metabase/admin/databases/database";
 import Databases from "metabase/entities/databases";
@@ -21,13 +21,9 @@ export default class DatabaseConnectionStep extends Component {
 
     formName: PropTypes.string.isRequired,
     databaseDetails: PropTypes.object,
+    selectedDatabaseEngine: PropTypes.string,
     validateDatabase: PropTypes.func.isRequired,
     setDatabaseDetails: PropTypes.func.isRequired,
-  };
-
-  chooseDatabaseEngine = e => {
-    // FIXME:
-    // MetabaseAnalytics.trackStructEvent("Setup", "Choose Database", engine);
   };
 
   handleSubmit = async database => {
@@ -49,7 +45,7 @@ export default class DatabaseConnectionStep extends Component {
       }
 
       if (formError) {
-        MetabaseAnalytics.trackStructEvent(
+        trackStructEvent(
           "Setup",
           "Error",
           "database validation: " + database.engine,
@@ -81,21 +77,31 @@ export default class DatabaseConnectionStep extends Component {
         details: database,
       });
 
-      MetabaseAnalytics.trackStructEvent(
-        "Setup",
-        "Database Step",
-        database.engine,
-      );
+      trackStructEvent("Setup", "Database Step", database.engine);
     }
   };
 
   skipDatabase = () => {
-    this.props.setDatabaseDetails({
-      nextStep: this.props.stepNumber + 2,
+    const {
+      stepNumber,
+      selectedDatabaseEngine,
+      setDatabaseDetails,
+    } = this.props;
+
+    setDatabaseDetails({
+      nextStep: stepNumber + 2,
       details: null,
     });
 
-    MetabaseAnalytics.trackStructEvent("Setup", "Database Step");
+    trackSchemaEvent("setup", "1-0-0", {
+      event: "add_data_later_clicked",
+      version: "1.0.0",
+      step: "db_configuration",
+      step_number: stepNumber,
+      source: selectedDatabaseEngine ? "post_selection" : "pre_selection",
+    });
+
+    trackStructEvent("Setup", "Database Step");
   };
 
   render() {
