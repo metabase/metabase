@@ -3,10 +3,6 @@
 import React, { Component } from "react";
 import cx from "classnames";
 
-import "./NativeQueryEditor.css";
-
-import { ResizableBox } from "react-resizable";
-
 import "ace/ace";
 import "ace/ext-language_tools";
 
@@ -22,14 +18,18 @@ import "ace/snippets/mysql";
 import "ace/snippets/pgsql";
 import "ace/snippets/sqlserver";
 import "ace/snippets/json";
+
 import { t } from "ttag";
+import _ from "underscore";
+
+import { ResizableBox } from "react-resizable";
+
+import "./NativeQueryEditor.css";
 
 import { isMac } from "metabase/lib/browser";
 import { isEventOverElement } from "metabase/lib/dom";
 import { delay } from "metabase/lib/promise";
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
-
-import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
 import ExplicitSize from "metabase/components/ExplicitSize";
@@ -39,26 +39,9 @@ import Snippets from "metabase/entities/snippets";
 import SnippetCollections from "metabase/entities/snippet-collections";
 
 import Parameters from "metabase/parameters/components/Parameters/Parameters";
-
-const SCROLL_MARGIN = 8;
-const LINE_HEIGHT = 16;
-
-const MIN_HEIGHT_LINES = 13;
-
-const ICON_SIZE = 18;
-
-const getEditorLineHeight = lines => lines * LINE_HEIGHT + 2 * SCROLL_MARGIN;
-const getLinesForHeight = height => (height - 2 * SCROLL_MARGIN) / LINE_HEIGHT;
-
 import Question from "metabase-lib/lib/Question";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
-import type { DatasetQuery } from "metabase-types/types/Card";
-import type { DatabaseId } from "metabase-types/types/Database";
-import type { TableId } from "metabase-types/types/Table";
-import type { ParameterId } from "metabase-types/types/Parameter";
-import type { LocationDescriptor } from "metabase-types/types";
-import type { RunQueryParams } from "metabase/query_builder/actions";
 import {
   DatabaseDataSelector,
   SchemaAndTableDataSelector,
@@ -69,6 +52,13 @@ import RunButtonWithTooltip from "./RunButtonWithTooltip";
 import DataReferenceButton from "./view/DataReferenceButton";
 import NativeVariablesButton from "./view/NativeVariablesButton";
 import SnippetSidebarButton from "./view/SnippetSidebarButton";
+
+import type { DatasetQuery } from "metabase-types/types/Card";
+import type { DatabaseId } from "metabase-types/types/Database";
+import type { TableId } from "metabase-types/types/Table";
+import type { ParameterId } from "metabase-types/types/Parameter";
+import type { LocationDescriptor } from "metabase-types/types";
+import type { RunQueryParams } from "metabase/query_builder/actions";
 
 type AutoCompleteResult = [string, string, string];
 type AceEditor = any; // TODO;
@@ -111,10 +101,21 @@ type Props = {
   snippets: { name: string }[],
   snippetCollections: { can_write: boolean }[],
 };
+
 type State = {
   initialHeight: number,
   isSelectedTextPopoverOpen: boolean,
 };
+
+const SCROLL_MARGIN = 8;
+const LINE_HEIGHT = 16;
+
+const MIN_HEIGHT_LINES = 13;
+
+const ICON_SIZE = 18;
+
+const getEditorLineHeight = lines => lines * LINE_HEIGHT + 2 * SCROLL_MARGIN;
+const getLinesForHeight = height => (height - 2 * SCROLL_MARGIN) / LINE_HEIGHT;
 
 @ExplicitSize()
 @Snippets.loadList({ loadingAndErrorWrapper: false })
@@ -132,7 +133,7 @@ export default class NativeQueryEditor extends Component {
     const lines = Math.max(
       Math.min(
         this.maxAutoSizeLines(),
-        (props.query && props.query.lineCount()) || this.maxAutoSizeLines(),
+        props.query?.lineCount() || this.maxAutoSizeLines(),
       ),
       MIN_HEIGHT_LINES,
     );
@@ -142,7 +143,7 @@ export default class NativeQueryEditor extends Component {
       isSelectedTextPopoverOpen: false,
     };
 
-    // Ace sometimes fires mutliple "change" events in rapid succession
+    // Ace sometimes fires multiple "change" events in rapid succession
     // e.x. https://github.com/metabase/metabase/issues/2801
     this.onChange = _.debounce(this.onChange.bind(this), 1);
 
@@ -219,6 +220,7 @@ export default class NativeQueryEditor extends Component {
     }
 
     const editorElement = this.editor.current;
+
     if (query.hasWritePermission()) {
       this._editor.setReadOnly(false);
       editorElement.classList.remove("read-only");
@@ -226,8 +228,10 @@ export default class NativeQueryEditor extends Component {
       this._editor.setReadOnly(true);
       editorElement.classList.add("read-only");
     }
+
     const aceMode = query.aceMode();
     const session = this._editor.getSession();
+
     if (session.$modeId !== aceMode) {
       session.setMode(aceMode);
       if (aceMode.indexOf("sql") >= 0) {
@@ -277,12 +281,14 @@ export default class NativeQueryEditor extends Component {
     const { query, runQuestionQuery } = this.props;
 
     // if any text is selected, just run that
-    const selectedText = this._editor && this._editor.getSelectedText();
+    const selectedText = this._editor?.getSelectedText();
+
     if (selectedText) {
       const temporaryCard = query
         .setQueryText(selectedText)
         .question()
         .card();
+
       runQuestionQuery({
         overrideWithCard: temporaryCard,
         shouldUpdateUrl: false,
@@ -333,7 +339,7 @@ export default class NativeQueryEditor extends Component {
     };
 
     // initialize the content
-    this._editor.setValue(query ? query.queryText() : "");
+    this._editor.setValue(query?.queryText() ?? "");
 
     this._editor.renderer.setScrollMargin(SCROLL_MARGIN, SCROLL_MARGIN);
 
@@ -461,7 +467,7 @@ export default class NativeQueryEditor extends Component {
     // TODO: push more of this into metabase-lib?
     const { query } = this.props;
     const table = query.metadata().table(tableId);
-    if (table && table.name !== query.collection()) {
+    if (table?.name !== query.collection()) {
       query.setCollectionName(table.name).update(this.props.setDatasetQuery);
     }
   };
@@ -495,10 +501,8 @@ export default class NativeQueryEditor extends Component {
 
     // hide the snippet sidebar if there aren't any visible snippets/collections and the root collection isn't writable
     const showSnippetSidebarButton = !(
-      snippets &&
-      snippets.length === 0 &&
-      snippetCollections &&
-      snippetCollections.length === 1 &&
+      snippets?.length === 0 &&
+      snippetCollections?.length === 1 &&
       snippetCollections[0].can_write === false
     );
 
@@ -516,7 +520,7 @@ export default class NativeQueryEditor extends Component {
           >
             <DatabaseDataSelector
               databases={databases}
-              selectedDatabaseId={database && database.id}
+              selectedDatabaseId={database?.id}
               setDatabaseFn={this.setDatabaseId}
               isInitiallyOpen={database == null}
               readOnly={this.props.readOnly}
@@ -538,8 +542,8 @@ export default class NativeQueryEditor extends Component {
             className="GuiBuilder-section GuiBuilder-data flex align-center ml2"
           >
             <SchemaAndTableDataSelector
-              selectedTableId={selectedTable ? selectedTable.id : null}
-              selectedDatabaseId={database && database.id}
+              selectedTableId={selectedTable?.id || null}
+              selectedDatabaseId={database?.id}
               databases={[database]}
               setSourceTableFn={this.setTableId}
               isInitiallyOpen={false}

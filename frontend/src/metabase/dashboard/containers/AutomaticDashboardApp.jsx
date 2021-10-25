@@ -25,7 +25,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 
 import Dashboards from "metabase/entities/dashboards";
 import * as Urls from "metabase/lib/urls";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import * as Q from "metabase/lib/query/query";
 import Dimension from "metabase-lib/lib/Dimension";
 import { color } from "metabase/lib/colors";
@@ -80,7 +80,7 @@ class AutomaticDashboardApp extends React.Component {
     );
 
     this.setState({ savedDashboardId: newDashboard.id });
-    MetabaseAnalytics.trackEvent("AutoDashboard", "Save");
+    MetabaseAnalytics.trackStructEvent("AutoDashboard", "Save");
   };
 
   UNSAFE_componentWillReceiveProps(nextProps) {
@@ -164,7 +164,10 @@ class AutomaticDashboardApp extends React.Component {
                 to={more}
                 className="ml2"
                 onClick={() =>
-                  MetabaseAnalytics.trackEvent("AutoDashboard", "ClickMore")
+                  MetabaseAnalytics.trackStructEvent(
+                    "AutoDashboard",
+                    "ClickMore",
+                  )
                 }
               >
                 <Button iconRight="chevronright">{t`Show more about this`}</Button>

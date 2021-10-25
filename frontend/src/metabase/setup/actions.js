@@ -1,7 +1,7 @@
 import { createAction } from "redux-actions";
 import { createThunkAction } from "metabase/lib/redux";
 
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
 import { SetupApi, UtilApi } from "metabase/services";
@@ -70,7 +70,7 @@ export const submitSetup = createThunkAction(SUBMIT_SETUP, function() {
 
       return null;
     } catch (error) {
-      MetabaseAnalytics.trackEvent("Setup", "Error", "save");
+      MetabaseAnalytics.trackStructEvent("Setup", "Error", "save");
 
       return error;
     }

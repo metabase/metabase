@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import Button from "metabase/components/Button";
 import ModalContent from "metabase/components/ModalContent";
@@ -21,7 +21,7 @@ export default class RemoveFromDashboardModal extends Component {
     });
     this.props.onClose();
 
-    MetabaseAnalytics.trackEvent("Dashboard", "Remove Card");
+    MetabaseAnalytics.trackStructEvent("Dashboard", "Remove Card");
   }
 
   render() {

@@ -33,13 +33,13 @@
 
 (defn value->string
   "Returns the value of the given `secret` instance as a String."
-  {:added "0.41.0"}
+  {:added "0.42.0"}
   ^String [{:keys [^bytes value] :as secret}]
   (String. value StandardCharsets/UTF_8))
 
 (defn value->file!
   "Returns the value of the given `secret` instance in the form of a file."
-  {:added "0.41.0"}
+  {:added "0.42.0"}
   [{:keys [id ^bytes value] :as secret}]
   (if (= :file-path (:source secret))
     (let [secret-val          (value->string secret)
@@ -66,7 +66,7 @@
 
 (defn latest-for-id
   "Returns the latest Secret instance for the given `id` (meaning the one with the highest `version`)."
-  {:added "0.41.0"}
+  {:added "0.42.0"}
   [id]
   (db/select-one Secret :id id {:order-by [[:version :desc]]}))
 
@@ -76,7 +76,7 @@
    * if there is an existing latest Secret instance, and the value (or any of the supporting fields, like kind or
        source) has changed, then inserts a new version with the given parameters.
    * if there is an existing latest Secret instance, but none of the aforementioned fields changed, then update it"
-  {:added "0.41.0"}
+  {:added "0.42.0"}
   [existing-id nm kind source value]
   (let [insert-new     (fn [id v]
                          (let [inserted (db/insert! Secret (cond-> {:version    v

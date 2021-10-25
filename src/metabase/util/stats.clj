@@ -106,7 +106,7 @@
     :default                                 :unknown))
 
 (defn- instance-settings
-  "Figure out global info about his instance"
+  "Figure out global info about this instance"
   []
   {:version              (config/mb-version-info :tag)
    :running_on           (environment-type)
