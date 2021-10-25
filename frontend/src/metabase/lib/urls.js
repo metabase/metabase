@@ -28,24 +28,47 @@ export function question(card, hash = "", query = "") {
   if (hash && typeof hash === "object") {
     hash = serializeCardForUrl(hash);
   }
+
   if (query && typeof query === "object") {
     query = extractQueryParams(query)
       .map(kv => kv.map(encodeURIComponent).join("="))
       .join("&");
   }
+
   if (hash && hash.charAt(0) !== "#") {
     hash = "#" + hash;
   }
+
   if (query && query.charAt(0) !== "?") {
     query = "?" + query;
   }
+
   if (!card || !card.id) {
     return `/question${query}${hash}`;
   }
-  if (!card.name) {
-    return `/question/${card.id}${query}${hash}`;
+
+  const { card_id, id, name } = card;
+
+  /**
+   * If the question has been added to the dashboard we're reading the dashCard's properties.
+   * In that case `card_id` is the actual question's id, while `id` corresponds with the dashCard itself.
+   *
+   * There can be multiple instances of the same question in a dashboard, hence this distinction.
+   */
+  const questionId = card_id || id;
+
+  /**
+   * Although it's not possible to intentionally save a question without a name,
+   * it is possible that the `name` is not recognized if it contains symbols.
+   *
+   * Please see: https://github.com/metabase/metabase/pull/15989#pullrequestreview-656646149
+   */
+  if (!name) {
+    return `/question/${questionId}${query}${hash}`;
   }
-  const path = appendSlug(`/question/${card.id}`, slugg(card.name));
+
+  const path = appendSlug(`/question/${questionId}`, slugg(name));
+
   return `${path}${query}${hash}`;
 }
 

@@ -100,3 +100,14 @@
   opacity: 0.01;
   transform: translate(0, -40px);
 }
+
+@media (prefers-reduced-motion) {
+  .Modal-backdrop.Modal-appear,
+  .Modal-backdrop.Modal-enter,
+  .Modal-backdrop.Modal-leave,
+  .Modal-backdrop.Modal-appear .Modal,
+  .Modal-backdrop.Modal-enter .Modal,
+  .Modal-backdrop.Modal-leave .Modal {
+    transition: none;
+  }
+}

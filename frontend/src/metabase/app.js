@@ -33,9 +33,7 @@ import ReactDOM from "react-dom";
 import { Provider } from "react-redux";
 import { ThemeProvider } from "styled-components";
 
-import MetabaseAnalytics, {
-  registerAnalyticsClickListener,
-} from "metabase/lib/analytics";
+import { trackPageView, createTracker } from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
 import api from "metabase/lib/api";
@@ -85,25 +83,15 @@ function _init(reducers, getRoutes, callback) {
     document.getElementById("root"),
   );
 
-  // listen for location changes and use that as a trigger for page view tracking
-  history.listen(location => {
-    MetabaseAnalytics.trackPageView(location.pathname);
-  });
+  createTracker(store);
+  trackPageView(location.pathname);
+  history.listen(location => trackPageView(location.pathname));
 
   registerVisualizations();
 
   initializeEmbedding(store);
 
-  registerAnalyticsClickListener();
-
   store.dispatch(refreshSiteSettings());
-
-  // enable / disable GA based on opt-out of anonymous tracking
-  MetabaseSettings.on("anon-tracking-enabled", () => {
-    window[
-      "ga-disable-" + MetabaseSettings.get("ga-code")
-    ] = MetabaseSettings.trackingEnabled() ? null : true;
-  });
 
   MetabaseSettings.on("user-locale", async locale => {
     // reload locale definition and site settings with the new locale

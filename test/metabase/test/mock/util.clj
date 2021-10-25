@@ -10,7 +10,6 @@
    :fields                  []
    :rows                    nil
    :updated_at              true
-   :entity_name             nil
    :active                  true
    :id                      true
    :db_id                   true

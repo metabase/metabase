@@ -23,7 +23,7 @@ import {
 } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import type { Parameter, ParameterId } from "metabase-types/types/Parameter";
 import type {
@@ -202,7 +202,10 @@ export default class EmbedModalContent extends Component {
             name="close"
             size={24}
             onClick={() => {
-              MetabaseAnalytics.trackEvent("Sharing Modal", "Modal Closed");
+              MetabaseAnalytics.trackStructEvent(
+                "Sharing Modal",
+                "Modal Closed",
+              );
               onClose();
             }}
           />

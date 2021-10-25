@@ -15,7 +15,7 @@ import ChartSettingFieldsPartition from "metabase/visualizations/components/sett
 import ChartSettingColorPicker from "metabase/visualizations/components/settings/ChartSettingColorPicker";
 import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker";
 
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 export type SettingId = string;
 
@@ -251,7 +251,7 @@ export function updateSettings(
   changedSettings: Settings,
 ): Settings {
   for (const key of Object.keys(changedSettings)) {
-    MetabaseAnalytics.trackEvent("Chart Settings", "Change Setting", key);
+    MetabaseAnalytics.trackStructEvent("Chart Settings", "Change Setting", key);
   }
   const newSettings = {
     ...storedSettings,
