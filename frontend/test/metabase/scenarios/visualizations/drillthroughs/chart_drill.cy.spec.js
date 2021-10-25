@@ -71,6 +71,36 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
   });
 
+  it("brush filter should work post-aggregation (metabase#18011)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
+    const questionDetails = {
+      name: "18011",
+      database: 1,
+      query: {
+        "source-table": PRODUCTS_ID,
+        aggregation: [["count"]],
+        breakout: [
+          ["field", PRODUCTS.CREATED_AT, { "temporal-unit": "month" }],
+          ["field", PRODUCTS.CATEGORY, null],
+        ],
+      },
+      display: "line",
+    };
+
+    cy.createQuestion(questionDetails, { visitQuestion: true });
+
+    cy.get(".Visualization")
+      .trigger("mousedown", 240, 200)
+      .trigger("mousemove", 420, 200)
+      .trigger("mouseup", 420, 200);
+
+    cy.wait("@dataset");
+
+    cy.findByText("Created At between September, 2016 February, 2017");
+    cy.get("circle");
+  });
+
   it("should correctly drill through on a card with multiple series (metabase#11442)", () => {
     cy.createQuestion({
       name: "11442_Q1",
