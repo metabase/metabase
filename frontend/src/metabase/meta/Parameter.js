@@ -8,11 +8,9 @@ import type {
 import type {
   Parameter,
   ParameterInstance,
-  ParameterTarget,
   ParameterValue,
   ParameterValueOrArray,
 } from "metabase-types/types/Parameter";
-import type { FieldId } from "metabase-types/types/Field";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
 import Dimension, {
   FieldDimension,
@@ -25,6 +23,7 @@ import {
   getParameterSubType,
 } from "metabase/parameters/utils/parameter-type";
 import { getParameterOperatorName } from "metabase/parameters/utils/operators";
+import { isDimensionTarget } from "metabase/parameters/utils/targets";
 
 const areFieldFilterOperatorsEnabled = () =>
   MetabaseSettings.get("field-filter-operators-enabled?");
@@ -62,28 +61,6 @@ export function getTemplateTagParameters(tags: TemplateTag[]): Parameter[] {
         default: tag.default,
       };
     });
-}
-
-function isDimensionTarget(target) {
-  return target?.[0] === "dimension";
-}
-
-export function getParameterTargetField(
-  target: ?ParameterTarget,
-  metadata,
-  question,
-): ?FieldId {
-  if (isDimensionTarget(target)) {
-    const dimension = Dimension.parseMBQL(
-      target[1],
-      metadata,
-      question.query(),
-    );
-
-    return dimension?.field();
-  }
-
-  return null;
 }
 
 type Deserializer = { testRegex: RegExp, deserialize: DeserializeFn };
