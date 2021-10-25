@@ -7,7 +7,7 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import ViewPill from "./ViewPill";
 import ViewButton from "./ViewButton";
 
-import SummarizeSidebar from "./sidebars/SummarizeSidebar";
+import SummarizeSidebar from "./sidebars/SummarizeSidebar/SummarizeSidebar";
 
 import { color } from "metabase/lib/colors";
 
