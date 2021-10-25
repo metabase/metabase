@@ -56,7 +56,12 @@
     (cond-> (str/replace-first db-name
                                current-dataset-version-prefix
                                (str current-dataset-version-prefix "legacydriver_"))
+      ;; for transient datasets (i.e. those that are created and torn down with each test run), we should add
+      ;; some unique name portion to prevent independent parallel test runs from interfering with each other
+      ;; for now, the only transient datasets that the BigQuery driver(s) make use of are checkins_interval_*
       (str/includes? db-name "checkins_interval_")
+      ;; for transient datasets, we will make them unique by appending a suffix that represents the millisecond
+      ;; timestamp from when this namespace was loaded (i.e. test initialized on this particular JVM/instance)
       (str "_" ns-load-time))))
 
 (defn- normalize-name ^String [db-or-table-or-field identifier]

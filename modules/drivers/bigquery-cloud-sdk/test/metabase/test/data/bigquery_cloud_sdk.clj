@@ -39,7 +39,12 @@
   (let [s (str/replace (name identifier) "-" "_")]
     (case db-or-table
       :db    (cond-> (str "v3_" s)
+               ;; for transient datasets (i.e. those that are created and torn down with each test run), we should add
+               ;; some unique name portion to prevent independent parallel test runs from interfering with each other
+               ;; for now, the only transient datasets that the BigQuery driver(s) make use of are checkins_interval_*
                (str/includes? s "checkins_interval_")
+               ;; for transient datasets, we will make them unique by appending a suffix that represents the millisecond
+               ;; timestamp from when this namespace was loaded (i.e. test initialized on this particular JVM/instance)
                (str "_" ns-load-time))
       :table s)))
 
