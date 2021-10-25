@@ -41,6 +41,12 @@
 
 (def ^:private current-dataset-version-prefix "v3_")
 
+(defn- transient-dataset?
+  "Returns a boolean indicating whether the given `dataset-name` is transient (i.e. created and destroyed with every
+  test run, for instance to check time intervals relative to \"now\")"
+  [dataset-name]
+  (str/includes? dataset-name "checkins_interval_"))
+
 (defn- make-dataset-name-unique
   "Adds a legacydriver_ prefix to the db-name, if the `existing-dataset` atom does not contain it. This is to ensure
   that transient datasets created and destroyed by these tests do not interfere with parallel test runs for the new
@@ -48,7 +54,7 @@
   change). If the `db-name` is already an existing one, however, the assumption is it's not transient (i.e. not being
   created and destroyed at test time), and hence, it can keep its name without modification.
 
-  Also, for the checkins_interval datasets (which are always transitive, since they use timestamps relative to
+  Also, for the checkins_interval datasets (which are always transient, since they use timestamps relative to
   \"now\", append a unique suffix."
   [db-name]
   (if (contains? @existing-datasets db-name)
@@ -59,7 +65,7 @@
       ;; for transient datasets (i.e. those that are created and torn down with each test run), we should add
       ;; some unique name portion to prevent independent parallel test runs from interfering with each other
       ;; for now, the only transient datasets that the BigQuery driver(s) make use of are checkins_interval_*
-      (str/includes? db-name "checkins_interval_")
+      (transient-dataset? db-name)
       ;; for transient datasets, we will make them unique by appending a suffix that represents the millisecond
       ;; timestamp from when this namespace was loaded (i.e. test initialized on this particular JVM/instance)
       (str "_" ns-load-time))))
@@ -356,7 +362,7 @@
         ;; don't consider that checkins_interval_ datasets created in
         ;; `metabase.query-processor-test.date-bucketing-test` to be already created, since those test things relative
         ;; to the current moment in time and thus need to be recreated before running the tests.
-        :when   (not (str/includes? dataset-name "checkins_interval_"))]
+        :when   (not (transient-dataset? dataset-name))]
     dataset-name))
 
 (defmethod tx/create-db! :bigquery [_ {:keys [database-name table-definitions]} & _]

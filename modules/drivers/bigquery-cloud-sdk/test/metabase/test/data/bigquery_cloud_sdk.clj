@@ -35,6 +35,12 @@
 
 ;;; ----------------------------------------------- Connection Details -----------------------------------------------
 
+(defn- transient-dataset?
+  "Returns a boolean indicating whether the given `dataset-name` is transient (i.e. created and destroyed with every
+  test run, for instance to check time intervals relative to \"now\")"
+  [dataset-name]
+  (str/includes? dataset-name "checkins_interval_"))
+
 (defn- normalize-name ^String [db-or-table identifier]
   (let [s (str/replace (name identifier) "-" "_")]
     (case db-or-table
@@ -42,7 +48,7 @@
                ;; for transient datasets (i.e. those that are created and torn down with each test run), we should add
                ;; some unique name portion to prevent independent parallel test runs from interfering with each other
                ;; for now, the only transient datasets that the BigQuery driver(s) make use of are checkins_interval_*
-               (str/includes? s "checkins_interval_")
+               (transient-dataset? s)
                ;; for transient datasets, we will make them unique by appending a suffix that represents the millisecond
                ;; timestamp from when this namespace was loaded (i.e. test initialized on this particular JVM/instance)
                (str "_" ns-load-time))
@@ -294,7 +300,7 @@
         ;; don't consider that checkins_interval_ datasets created in
         ;; `metabase.query-processor-test.date-bucketing-test` to be already created, since those test things relative
         ;; to the current moment in time and thus need to be recreated before running the tests.
-        :when   (not (str/includes? dataset-name "checkins_interval_"))]
+        :when   (not (transient-dataset? dataset-name))]
     dataset-name))
 
 ;; keep track of databases we haven't created yet
