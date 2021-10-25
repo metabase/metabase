@@ -71,34 +71,43 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
   });
 
-  it("brush filter should work post-aggregation (metabase#18011)", () => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
+  ["month", "month-of-year"].forEach(granularity => {
+    it(`brush filter should work post-aggregation for ${granularity} granularity (metabase#18011)`, () => {
+      // TODO: Remove this line when the issue is fixed!
+      cy.skipOn(granularity === "month-of-year");
 
-    const questionDetails = {
-      name: "18011",
-      database: 1,
-      query: {
-        "source-table": PRODUCTS_ID,
-        aggregation: [["count"]],
-        breakout: [
-          ["field", PRODUCTS.CREATED_AT, { "temporal-unit": "month" }],
-          ["field", PRODUCTS.CATEGORY, null],
-        ],
-      },
-      display: "line",
-    };
+      cy.intercept("POST", "/api/dataset").as("dataset");
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+      const questionDetails = {
+        name: "18011",
+        database: 1,
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", PRODUCTS.CREATED_AT, { "temporal-unit": granularity }],
+            ["field", PRODUCTS.CATEGORY, null],
+          ],
+        },
+        display: "line",
+      };
 
-    cy.get(".Visualization")
-      .trigger("mousedown", 240, 200)
-      .trigger("mousemove", 420, 200)
-      .trigger("mouseup", 420, 200);
+      cy.createQuestion(questionDetails, { visitQuestion: true });
 
-    cy.wait("@dataset");
+      cy.get(".Visualization")
+        .trigger("mousedown", 240, 200)
+        .trigger("mousemove", 420, 200)
+        .trigger("mouseup", 420, 200);
 
-    cy.findByText("Created At between September, 2016 February, 2017");
-    cy.get("circle");
+      cy.wait("@dataset");
+
+      granularity === "month"
+        ? cy.findByText("Created At between September, 2016 February, 2017")
+        : // Once the issue gets fixed, figure out the positive assertion for the "month-of-year" granularity
+          null;
+
+      cy.get("circle");
+    });
   });
 
   it("should correctly drill through on a card with multiple series (metabase#11442)", () => {
