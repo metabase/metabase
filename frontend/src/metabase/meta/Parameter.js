@@ -31,13 +31,7 @@ import {
   getOperatorDisplayName,
   getParameterOperatorName,
 } from "metabase/parameters/utils/operators";
-
-import Variable, { TemplateTagVariable } from "metabase-lib/lib/Variable";
-
-type DimensionFilter = (dimension: Dimension) => boolean;
-type TemplateTagFilter = (tag: TemplateTag) => boolean;
-type FieldPredicate = (field: Field) => boolean;
-type VariableFilter = (variable: Variable) => boolean;
+import { fieldFilterForParameter } from "metabase/parameters/utils/filters";
 
 const areFieldFilterOperatorsEnabled = () =>
   MetabaseSettings.get("field-filter-operators-enabled?");
@@ -204,44 +198,6 @@ function buildOperatorSubtypeOptions({ type, typeName }) {
   }));
 }
 
-function fieldFilterForParameter(parameter: Parameter): FieldPredicate {
-  const type = getParameterType(parameter);
-  const subtype = getParameterSubType(parameter);
-  switch (type) {
-    case "date":
-      return (field: Field) => field.isDate();
-    case "id":
-      return (field: Field) => field.isID();
-    case "category":
-      return (field: Field) => field.isCategory();
-    case "location":
-      return (field: Field) => {
-        switch (subtype) {
-          case "city":
-            return field.isCity();
-          case "state":
-            return field.isState();
-          case "zip_code":
-            return field.isZipCode();
-          case "country":
-            return field.isCountry();
-          default:
-            return field.isLocation();
-        }
-      };
-    case "number":
-      return (field: Field) => field.isNumber() && !field.isCoordinate();
-    case "string":
-      return (field: Field) => {
-        return subtype === "=" || subtype === "!="
-          ? field.isCategory() && !field.isLocation()
-          : field.isString() && !field.isLocation();
-      };
-  }
-
-  return (field: Field) => false;
-}
-
 export function parameterOptionsForField(field: Field): ParameterOption[] {
   return getParameterOptions()
     .filter(option => fieldFilterForParameter(option)(field))
@@ -251,64 +207,6 @@ export function parameterOptionsForField(field: Field): ParameterOption[] {
         name: option.combinedName || option.name,
       };
     });
-}
-
-export function dimensionFilterForParameter(
-  parameter: Parameter,
-): DimensionFilter {
-  const fieldFilter = fieldFilterForParameter(parameter);
-  return dimension => fieldFilter(dimension.field());
-}
-
-export function getTagOperatorFilterForParameter(parameter) {
-  const subtype = getParameterSubType(parameter);
-  const parameterOperatorName = getParameterOperatorName(subtype);
-
-  return tag => {
-    const { "widget-type": widgetType } = tag;
-    const subtype = getParameterSubType(widgetType);
-    const tagOperatorName = getParameterOperatorName(subtype);
-
-    return parameterOperatorName === tagOperatorName;
-  };
-}
-
-export function variableFilterForParameter(
-  parameter: Parameter,
-): VariableFilter {
-  const tagFilter = tagFilterForParameter(parameter);
-  return variable => {
-    if (variable instanceof TemplateTagVariable) {
-      const tag = variable.tag();
-      return tag ? tagFilter(tag) : false;
-    }
-    return false;
-  };
-}
-
-function tagFilterForParameter(parameter: Parameter): TemplateTagFilter {
-  const type = getParameterType(parameter);
-  const subtype = getParameterSubType(parameter);
-  const operator = getParameterOperatorName(subtype);
-  if (operator !== "=") {
-    return (tag: TemplateTag) => false;
-  }
-
-  switch (type) {
-    case "date":
-      return (tag: TemplateTag) => subtype === "single" && tag.type === "date";
-    case "location":
-      return (tag: TemplateTag) => tag.type === "number" || tag.type === "text";
-    case "id":
-      return (tag: TemplateTag) => tag.type === "number" || tag.type === "text";
-    case "category":
-      return (tag: TemplateTag) => tag.type === "number" || tag.type === "text";
-    case "number":
-      return (tag: TemplateTag) => tag.type === "number";
-    case "string":
-      return (tag: TemplateTag) => tag.type === "text";
-  }
-  return (tag: TemplateTag) => false;
 }
 
 // NOTE: this should mirror `template-tag-parameters` in src/metabase/api/embed.clj
