@@ -1,8 +1,6 @@
 import _ from "underscore";
 import { setIn } from "icepick";
-import { t } from "ttag";
 
-import MetabaseSettings from "metabase/lib/settings";
 import Question from "metabase-lib/lib/Question";
 
 import { ExpressionDimension } from "metabase-lib/lib/Dimension";
@@ -15,17 +13,13 @@ import type {
   ParameterMappingUIOption,
 } from "metabase-types/types/Parameter";
 
-import {
-  getParameterOptions,
-  PARAMETER_OPERATOR_TYPES,
-  getParameterTargetField,
-} from "metabase/meta/Parameter";
-import { getOperatorDisplayName } from "metabase/parameters/utils/operators";
+import { getParameterTargetField } from "metabase/meta/Parameter";
 import {
   dimensionFilterForParameter,
   getTagOperatorFilterForParameter,
   variableFilterForParameter,
 } from "metabase/parameters/utils/filters";
+
 import { slugify } from "metabase/lib/formatting";
 
 export type ParameterSection = {
@@ -34,109 +28,6 @@ export type ParameterSection = {
   description: string,
   options: ParameterOption[],
 };
-
-const areFieldFilterOperatorsEnabled = () =>
-  MetabaseSettings.get("field-filter-operators-enabled?");
-
-const LOCATION_OPTIONS = [
-  {
-    type: "location/city",
-    name: t`City`,
-  },
-  {
-    type: "location/state",
-    name: t`State`,
-  },
-  {
-    type: "location/zip_code",
-    name: t`ZIP or Postal Code`,
-  },
-  {
-    type: "location/country",
-    name: t`Country`,
-  },
-];
-const CATEGORY_OPTIONS = [{ type: "category", name: t`Category` }];
-
-export function getParameterSections(): ParameterSection[] {
-  const parameterOptions = getParameterOptions();
-
-  return [
-    {
-      id: "date",
-      name: t`Time`,
-      description: t`Date range, relative date, time of day, etc.`,
-      options: PARAMETER_OPERATOR_TYPES["date"].map(option => {
-        return {
-          ...option,
-          sectionId: "date",
-          combinedName: getOperatorDisplayName(option, "date", t`Date`),
-        };
-      }),
-    },
-    {
-      id: "location",
-      name: t`Location`,
-      description: t`City, State, Country, ZIP code.`,
-      options: areFieldFilterOperatorsEnabled()
-        ? PARAMETER_OPERATOR_TYPES["string"].map(option => {
-            return {
-              ...option,
-              sectionId: "location",
-              combinedName: getOperatorDisplayName(
-                option,
-                "string",
-                t`Location`,
-              ),
-            };
-          })
-        : LOCATION_OPTIONS,
-    },
-
-    {
-      id: "id",
-      name: t`ID`,
-      description: t`User ID, Product ID, Event ID, etc.`,
-      options: [
-        {
-          ..._.findWhere(parameterOptions, { type: "id" }),
-          sectionId: "id",
-        },
-      ],
-    },
-    areFieldFilterOperatorsEnabled() && {
-      id: "number",
-      name: t`Number`,
-      description: t`Subtotal, Age, Price, Quantity, etc.`,
-      options: PARAMETER_OPERATOR_TYPES["number"].map(option => {
-        return {
-          ...option,
-          sectionId: "number",
-          combinedName: getOperatorDisplayName(option, "number", t`Number`),
-        };
-      }),
-    },
-    areFieldFilterOperatorsEnabled()
-      ? {
-          id: "string",
-          name: t`Text or Category`,
-          description: t`Name, Rating, Description, etc.`,
-          options: PARAMETER_OPERATOR_TYPES["string"].map(option => {
-            return {
-              ...option,
-              sectionId: "string",
-              combinedName: getOperatorDisplayName(option, "string", t`Text`),
-            };
-          }),
-        }
-      : {
-          id: "category",
-          name: t`Other Categories`,
-          description: t`Category, Type, Model, Rating, etc.`,
-          options: CATEGORY_OPTIONS,
-        },
-  ].filter(Boolean);
-}
 
 export function getParameterMappingOptions(
   metadata: Metadata,
