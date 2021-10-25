@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { trackStructEvent, trackSchemaEvent } from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 import { b64hash_to_utf8 } from "metabase/lib/encoding";
 
@@ -50,7 +50,7 @@ export default class Setup extends Component {
 
   completeWelcome() {
     this.props.setActiveStep(LANGUAGE_STEP_NUMBER);
-    MetabaseAnalytics.trackStructEvent("Setup", "Welcome");
+    trackStructEvent("Setup", "Welcome");
   }
 
   componentDidMount() {
@@ -117,7 +117,7 @@ export default class Setup extends Component {
     }
 
     if (!prevProps.setupComplete && this.props.setupComplete) {
-      MetabaseAnalytics.trackStructEvent("Setup", "Complete");
+      trackStructEvent("Setup", "Complete");
     }
   }
 
