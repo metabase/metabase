@@ -2,7 +2,6 @@ import {
   browse,
   popover,
   restore,
-  setupLocalHostEmail,
   modal,
   visualize,
 } from "__support__/e2e/cypress";
@@ -62,25 +61,27 @@ describe("smoketest > admin_setup", () => {
       // cy.findByText("Save").click();
     });
 
-    it.skip("should setup email", () => {
+    it("should set up email", () => {
       cy.findByText("Settings").click();
       cy.findByText("Email").click();
 
       cy.findByText("Email address you want to use as the sender of Metabase.");
       cy.findByText("Sample Database").should("not.exist");
 
-      setupLocalHostEmail();
+      // Email info
+      cy.findByLabelText("SMTP Host").type("localhost");
+      cy.findByLabelText("SMTP Port").type("25");
 
-      // *** Will fail if test works correctly:
-      cy.wait(2000)
-        .findByText("Sent!")
-        .should("not.exist");
+      cy.findByLabelText("SMTP Username").type("admin");
+      cy.findByLabelText("SMTP Password").type("admin");
 
-      // *** Uncomment when test works correctly:
-      // cy.findByText("Sent!");
-      // cy.findByText("Sorry, something went wrong.  Please try again").should(
-      //   "not.exist",
-      // );
+      cy.findByLabelText("From Address").type("mailer@metabase.test");
+
+      cy.button("Save changes").click();
+      cy.findByText("Changes saved!");
+
+      cy.findByText("Send test email").click();
+      cy.findByText("Sent!");
     });
 
     it.skip("should setup Slack", () => {
