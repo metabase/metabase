@@ -4,9 +4,6 @@ import MetabaseSettings from "metabase/lib/settings";
 import {
   PARAMETER_OPERATOR_TYPES,
   getParameterOptions,
-  getOperatorDisplayName,
-  dimensionFilterForParameter,
-  getTagOperatorFilterForParameter,
   getParameterTargetField,
   dateParameterValueToMBQL,
   stringParameterValueToMBQL,
@@ -14,7 +11,6 @@ import {
   parameterToMBQLFilter,
   parameterOptionsForField,
   normalizeParameterValue,
-  deriveFieldOperatorFromParameter,
   getTemplateTagParameters,
   getValuePopulatedParameters,
   getParameterValueFromQueryParams,
@@ -100,29 +96,6 @@ describe("metabase/meta/Parameter", () => {
           "Single Date",
         );
       });
-    });
-  });
-
-  describe("getOperatorDisplayName", () => {
-    it("should return an option's name when the operator is a date or a number", () => {
-      expect(getOperatorDisplayName({ name: "foo" }, "date")).toEqual("foo");
-      expect(getOperatorDisplayName({ name: "foo" }, "number")).toEqual("foo");
-    });
-
-    it("should return an option's section name for the string/= option", () => {
-      expect(
-        getOperatorDisplayName({ name: "foo", operator: "=" }, "string", "bar"),
-      ).toEqual("bar");
-    });
-
-    it("should otherwise return a combined sectionName + option name", () => {
-      expect(
-        getOperatorDisplayName(
-          { name: "Foo", operator: "!=" },
-          "string",
-          "Bar",
-        ),
-      ).toEqual("Bar foo");
     });
   });
 
@@ -447,147 +420,6 @@ describe("metabase/meta/Parameter", () => {
     });
   });
 
-  describe("dimensionFilterForParameter", () => {
-    const field = {
-      isDate: () => false,
-      isID: () => false,
-      isCategory: () => false,
-      isCity: () => false,
-      isState: () => false,
-      isZipCode: () => false,
-      isCountry: () => false,
-      isNumber: () => false,
-      isString: () => false,
-      isLocation: () => false,
-    };
-    const typelessDimension = {
-      field: () => field,
-    };
-
-    [
-      [
-        { type: "date/single" },
-        {
-          type: "date",
-          field: () => ({ ...field, isDate: () => true }),
-        },
-      ],
-      [
-        { type: "id" },
-        {
-          type: "id",
-          field: () => ({ ...field, isID: () => true }),
-        },
-      ],
-      [
-        { type: "category" },
-        {
-          type: "category",
-          field: () => ({ ...field, isCategory: () => true }),
-        },
-      ],
-      [
-        { type: "location/city" },
-        {
-          type: "city",
-          field: () => ({ ...field, isCity: () => true }),
-        },
-      ],
-      [
-        { type: "number/!=" },
-        {
-          type: "number",
-          field: () => ({
-            ...field,
-            isNumber: () => true,
-            isCoordinate: () => false,
-          }),
-        },
-      ],
-      [
-        { type: "string/=" },
-        {
-          type: "category",
-          field: () => ({
-            ...field,
-            isCategory: () => true,
-          }),
-        },
-      ],
-      [
-        { type: "string/!=" },
-        {
-          type: "category",
-          field: () => ({
-            ...field,
-            isCategory: () => true,
-          }),
-        },
-      ],
-      [
-        { type: "string/starts-with" },
-        {
-          type: "string",
-          field: () => ({
-            ...field,
-            isString: () => true,
-          }),
-        },
-      ],
-    ].forEach(([parameter, dimension]) => {
-      it(`should return a predicate that evaluates to true for a ${dimension.type} dimension when given a ${parameter.type} parameter`, () => {
-        const predicate = dimensionFilterForParameter(parameter);
-        expect(predicate(typelessDimension)).toBe(false);
-        expect(predicate(dimension)).toBe(true);
-      });
-    });
-
-    it("should return a predicate that evaluates to false for a coordinate dimension when given a number parameter", () => {
-      const coordinateDimension = {
-        field: () => ({
-          ...field,
-          isNumber: () => true,
-          isCoordinate: () => true,
-        }),
-      };
-
-      const predicate = dimensionFilterForParameter({ type: "number/between" });
-      expect(predicate(coordinateDimension)).toBe(false);
-    });
-
-    it("should return a predicate that evaluates to false for a location dimension when given a category parameter", () => {
-      const locationDimension = {
-        field: () => ({
-          ...field,
-          isLocation: () => true,
-        }),
-      };
-
-      const predicate = dimensionFilterForParameter({ type: "category" });
-      expect(predicate(locationDimension)).toBe(false);
-    });
-  });
-
-  describe("getTagOperatorFilterForParameter", () => {
-    it("should return a predicate that evaluates to true for a template tag that has the same subtype operator as the given parameter", () => {
-      const predicate = getTagOperatorFilterForParameter({
-        type: "string/starts-with",
-      });
-      const templateTag1 = {
-        "widget-type": "string/starts-with",
-      };
-      const templateTag2 = {
-        "widget-type": "foo/starts-with",
-      };
-      const templateTag3 = {
-        "widget-type": "string/ends-with",
-      };
-      expect(predicate(templateTag1)).toBe(true);
-      expect(predicate(templateTag2)).toBe(true);
-      expect(predicate(templateTag3)).toBe(false);
-    });
-  });
-
   describe("getParameterTargetField", () => {
     it("should return null when the target is not a dimension", () => {
       expect(getParameterTargetField(["variable", "foo"], metadata)).toBe(null);
@@ -641,45 +473,6 @@ describe("metabase/meta/Parameter", () => {
     it("should return normalized value for number parameters", () => {
       expect(normalizeParameterValue("number/=", 0)).toEqual([0]);
       expect(normalizeParameterValue("number/=", null)).toEqual([]);
-    });
-  });
-
-  describe("deriveFieldOperatorFromParameter", () => {
-    describe("when parameter is associated with an operator", () => {
-      it("should return relevant operator object", () => {
-        const operator2 = deriveFieldOperatorFromParameter({
-          type: "string/contains",
-        });
-        const operator3 = deriveFieldOperatorFromParameter({
-          type: "number/between",
-        });
-        expect(operator2.name).toEqual("contains");
-        expect(operator3.name).toEqual("between");
-      });
-    });
-
-    describe("when parameter is location/category", () => {
-      it("should map to an = operator", () => {
-        expect(
-          deriveFieldOperatorFromParameter({
-            type: "location/city",
-          }).name,
-        ).toBe("=");
-
-        expect(
-          deriveFieldOperatorFromParameter({
-            type: "category",
-          }).name,
-        ).toBe("=");
-      });
-    });
-
-    describe("when parameter is NOT associated with an operator", () => {
-      it("should return undefined", () => {
-        expect(deriveFieldOperatorFromParameter({ type: "date/single" })).toBe(
-          undefined,
-        );
-      });
     });
   });
 
