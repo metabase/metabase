@@ -70,6 +70,7 @@ function _init(reducers, getRoutes, callback) {
   const store = getStore(reducers, browserHistory);
   const routes = getRoutes(store);
   const history = syncHistoryWithStore(browserHistory, store);
+  createTracker(store);
 
   let root;
   ReactDOM.render(
@@ -82,8 +83,6 @@ function _init(reducers, getRoutes, callback) {
     </Provider>,
     document.getElementById("root"),
   );
-
-  createTracker(store);
 
   registerVisualizations();
 

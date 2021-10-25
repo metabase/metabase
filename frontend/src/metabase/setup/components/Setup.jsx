@@ -101,7 +101,7 @@ export default class Setup extends Component {
   }
 
   trackStepSeen() {
-    const { activeStep, setupComplete } = this.props.activeStep;
+    const { activeStep, setupComplete } = this.props;
     const stepNumber = setupComplete ? COMPLETED_STEP_NUMBER : activeStep;
 
     trackSchemaEvent("setup", "1-0-0", {
