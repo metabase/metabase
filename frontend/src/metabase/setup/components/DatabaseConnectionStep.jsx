@@ -104,6 +104,20 @@ export default class DatabaseConnectionStep extends Component {
     trackStructEvent("Setup", "Database Step");
   };
 
+  componentDidUpdate(prevProps) {
+    const { stepNumber, selectedDatabaseEngine } = this.props;
+
+    if (selectedDatabaseEngine !== prevProps.selectedDatabaseEngine) {
+      trackSchemaEvent("setup", "1-0-0", {
+        event: "database_selected",
+        version: "1.0.0",
+        step: "db_configuration",
+        step_number: stepNumber,
+        database: selectedDatabaseEngine,
+      });
+    }
+  }
+
   render() {
     const {
       activeStep,
