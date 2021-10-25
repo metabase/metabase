@@ -1,22 +1,11 @@
-import { restore } from "__support__/e2e/cypress";
-
-const MOCK_PULSE_FORM_INPUT = {
-  channels: {
-    email: {
-      type: "email",
-      name: "Email",
-      allows_recipients: true,
-      configured: true,
-      recipients: ["user", "email"],
-      schedules: ["daily", "weekly", "monthly"],
-    },
-  },
-};
+import { restore, setupSMTP } from "__support__/e2e/cypress";
 
 describe("scenarios > pulse", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+
+    setupSMTP();
   });
   it("should be able get to the new pulse page from the nav bar", () => {
     cy.visit("/");
@@ -28,9 +17,6 @@ describe("scenarios > pulse", () => {
   });
 
   it("should create a new pulse", () => {
-    cy.server();
-    cy.route("GET", "/api/pulse/form_input", MOCK_PULSE_FORM_INPUT);
-
     cy.visit("/pulse/create");
 
     cy.findByPlaceholderText("Important metrics")
@@ -39,6 +25,7 @@ describe("scenarios > pulse", () => {
 
     cy.contains("Select a question").click();
     cy.contains("Orders, Count").click();
+
     cy.findByPlaceholderText("Enter user names or email addresses")
       .type("bobby@example.test")
       .blur();
@@ -46,9 +33,10 @@ describe("scenarios > pulse", () => {
     // pulse card preview
     cy.contains("18,760");
 
-    cy.contains("Create pulse").click();
+    cy.button("Create pulse").click();
 
     cy.url().should("match", /\/collection\/root$/);
+
     cy.contains("pulse title");
   });
 

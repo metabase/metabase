@@ -11,7 +11,7 @@ import LimitWidget from "./LimitWidget";
 import SortWidget from "./SortWidget";
 import Popover from "metabase/components/Popover";
 
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type { DatasetQuery } from "metabase-types/types/Card";
@@ -58,7 +58,7 @@ export class ExtendedOptionsPopover extends Component {
       .updateExpression(name, expression, previousName)
       .update(setDatasetQuery);
     this.setState({ editExpression: null });
-    MetabaseAnalytics.trackEvent(
+    MetabaseAnalytics.trackStructEvent(
       "QueryBuilder",
       "Set Expression",
       !_.isEmpty(previousName),
@@ -70,13 +70,13 @@ export class ExtendedOptionsPopover extends Component {
     query.removeExpression(name).update(setDatasetQuery);
     this.setState({ editExpression: null });
 
-    MetabaseAnalytics.trackEvent("QueryBuilder", "Remove Expression");
+    MetabaseAnalytics.trackStructEvent("QueryBuilder", "Remove Expression");
   }
 
   setLimit = limit => {
     const { query, setDatasetQuery } = this.props;
     query.updateLimit(limit).update(setDatasetQuery);
-    MetabaseAnalytics.trackEvent("QueryBuilder", "Set Limit", limit);
+    MetabaseAnalytics.trackStructEvent("QueryBuilder", "Set Limit", limit);
     if (this.props.onClose) {
       this.props.onClose();
     }
@@ -146,7 +146,7 @@ export class ExtendedOptionsPopover extends Component {
         onAddExpression={() => this.setState({ editExpression: true })}
         onEditExpression={name => {
           this.setState({ editExpression: name });
-          MetabaseAnalytics.trackEvent(
+          MetabaseAnalytics.trackStructEvent(
             "QueryBuilder",
             "Show Edit Custom Field",
           );

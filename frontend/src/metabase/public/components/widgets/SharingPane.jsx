@@ -12,7 +12,7 @@ import cx from "classnames";
 import type { EmbedType } from "./EmbedModalContent";
 import type { EmbeddableResource } from "metabase/public/lib/types";
 
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 type Props = {
   resourceType: string,
@@ -72,7 +72,7 @@ export default class SharingPane extends Component {
                   title={t`Disable this public link?`}
                   content={t`This will cause the existing link to stop working. You can re-enable it, but when you do it will be a different link.`}
                   action={() => {
-                    MetabaseAnalytics.trackEvent(
+                    MetabaseAnalytics.trackStructEvent(
                       "Sharing Modal",
                       "Public Link Disabled",
                       resourceType,
@@ -86,7 +86,7 @@ export default class SharingPane extends Component {
                 <Toggle
                   value={false}
                   onChange={() => {
-                    MetabaseAnalytics.trackEvent(
+                    MetabaseAnalytics.trackStructEvent(
                       "Sharing Modal",
                       "Public Link Enabled",
                       resourceType,

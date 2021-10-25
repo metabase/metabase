@@ -45,7 +45,7 @@ import {
   getDefaultAlert,
 } from "metabase-lib/lib/Alert";
 import MetabaseCookies from "metabase/lib/cookies";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 // types
 import type { AlertType } from "metabase-lib/lib/Alert";
@@ -129,7 +129,11 @@ export class CreateAlertModalContent extends Component {
     await updateUrl(question.card(), { dirty: false });
 
     onAlertCreated();
-    MetabaseAnalytics.trackEvent("Alert", "Create", alert.alert_condition);
+    MetabaseAnalytics.trackStructEvent(
+      "Alert",
+      "Create",
+      alert.alert_condition,
+    );
   };
 
   proceedFromEducationalScreen = () => {
@@ -329,7 +333,7 @@ export class UpdateAlertModalContent extends Component {
     await updateUrl(question.card(), { dirty: false });
     onAlertUpdated();
 
-    MetabaseAnalytics.trackEvent(
+    MetabaseAnalytics.trackStructEvent(
       "Alert",
       "Update",
       modifiedAlert.alert_condition,
