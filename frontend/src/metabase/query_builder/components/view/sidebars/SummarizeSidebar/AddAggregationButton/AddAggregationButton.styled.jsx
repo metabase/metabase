@@ -5,7 +5,6 @@ export const AddAggregationButtonRoot = styled.button`
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-family: Lato, "Helvetica Neue", Helvetica, sans-serif;
   padding: 0.625rem;
   transition: all 0.2s linear;
   color: ${color("accent1")};

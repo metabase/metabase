@@ -4,7 +4,6 @@ import { color, alpha } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 
 export const SubDimensionButton = styled.button`
-  font-family: Lato, "Helvetica Neue", Helvetica, sans-serif;
   text-align: left;
   display: flex;
   align-items: center;

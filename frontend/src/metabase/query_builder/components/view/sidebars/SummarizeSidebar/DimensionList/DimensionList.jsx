@@ -51,8 +51,7 @@ export const DimensionList = ({
 
   const [pinnedItems, setPinnedItems] = useState(() => {
     return sections
-      .map(section => section.items)
-      .flatMap(item => item)
+      .flatMap(section => section.items)
       .filter(item => isDimensionSelected(item.dimension, dimensions));
   });
 
@@ -100,7 +99,7 @@ export const DimensionList = ({
         <ul data-testid="pinned-dimensions">
           {pinnedItems.map(item => {
             const shouldIncludeTable =
-              item.dimension.field().table.id !== queryTableId;
+              item.dimension?.tableId?.() !== queryTableId;
 
             return (
               <DimensionListItem
