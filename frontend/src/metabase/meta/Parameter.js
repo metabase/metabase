@@ -1,8 +1,6 @@
 import MetabaseSettings from "metabase/lib/settings";
 import type { TemplateTag } from "metabase-types/types/Query";
 import type { Parameter } from "metabase-types/types/Parameter";
-import _ from "underscore";
-import { getParameterType } from "metabase/parameters/utils/parameter-type";
 
 const areFieldFilterOperatorsEnabled = () =>
   MetabaseSettings.get("field-filter-operators-enabled?");
@@ -40,35 +38,4 @@ export function getTemplateTagParameters(tags: TemplateTag[]): Parameter[] {
         default: tag.default,
       };
     });
-}
-
-export function getParameterIconName(parameter: ?Parameter) {
-  const type = getParameterType(parameter);
-  switch (type) {
-    case "date":
-      return "calendar";
-    case "location":
-      return "location";
-    case "category":
-      return "string";
-    case "number":
-      return "number";
-    case "id":
-    default:
-      return "label";
-  }
-}
-
-export function buildHiddenParametersSlugSet(hiddenParameterSlugs) {
-  return _.isString(hiddenParameterSlugs)
-    ? new Set(hiddenParameterSlugs.split(","))
-    : new Set();
-}
-
-export function getVisibleParameters(parameters, hiddenParameterSlugs) {
-  const hiddenParametersSlugSet = buildHiddenParametersSlugSet(
-    hiddenParameterSlugs,
-  );
-
-  return parameters.filter(p => !hiddenParametersSlugSet.has(p.slug));
 }
