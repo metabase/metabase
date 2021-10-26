@@ -570,9 +570,6 @@ export default class Join extends MBQLObjectClause {
   }
 
   hasGaps() {
-    if (!this.joinedTable()) {
-      return true;
-    }
     const parentDimensions = this.parentDimensions();
     const joinDimensions = this.joinDimensions();
     return (
@@ -585,7 +582,7 @@ export default class Join extends MBQLObjectClause {
   }
 
   isValid() {
-    if (this.hasGaps()) {
+    if (!this.condition || !this.joinedTable() || this.hasGaps()) {
       return false;
     }
     const dimensionOptions = this.parent().dimensionOptions();
@@ -604,8 +601,7 @@ export default class Join extends MBQLObjectClause {
   }
 
   clean() {
-    const invalidAndCantFix = !this.condition || !this.joinedTable();
-    if (invalidAndCantFix || this.isValid()) {
+    if (!this.condition || !this.hasGaps()) {
       return this;
     }
     let join = this;
