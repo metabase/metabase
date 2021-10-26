@@ -42,21 +42,19 @@
   list will be ranked higher."
   [Dashboard Metric Segment Card Collection Table Pulse Database])
 
-(defn model-name->class
-  "Given a model name as a string, return its Class."
-  [model-name]
-  (Class/forName (format "metabase.models.%s.%sInstance" model-name (str/capitalize model-name))))
+(def model-to-db-model
+  "Mapping from string model to the Toucan model backing it."
+  {"dashboard"  Dashboard
+   "metric"     Metric
+   "segment"    Segment
+   "card"       Card
+   "collection" Collection
+   "table"      Table
+   "pulse"      Pulse
+   "database"   Database})
 
-(defn model-name->instance
-  "Given a model name as a string, return the specific instance"
-  [model-name]
-  (first (filter (fn [x] (= (str/capitalize model-name) (:name x))) searchable-models)))
-
-(defn- ->class
-  [class-or-instance]
-  (if (class? class-or-instance)
-    class-or-instance
-    (class class-or-instance)))
+(def all-models
+  #{"dashboard" "metric" "segment" "card" "collection" "table" "pulse" "database"})
 
 (def ^:const displayed-columns
   "All of the result components that by default are displayed by the frontend."
@@ -65,29 +63,29 @@
 (defmulti searchable-columns-for-model
   "The columns that will be searched for the query."
   {:arglists '([model])}
-  ->class)
+  (fn [model] model))
 
 (defmethod searchable-columns-for-model :default
   [_]
   [:name])
 
-(defmethod searchable-columns-for-model (class Card)
+(defmethod searchable-columns-for-model "card"
   [_]
   [:name
    :dataset_query
    :description])
 
-(defmethod searchable-columns-for-model (class Dashboard)
+(defmethod searchable-columns-for-model "dashboard"
   [_]
   [:name
    :description])
 
-(defmethod searchable-columns-for-model (class Database)
+(defmethod searchable-columns-for-model "database"
   [_]
   [:name
    :description])
 
-(defmethod searchable-columns-for-model (class Table)
+(defmethod searchable-columns-for-model "table"
   [_]
   [:name
    :display_name])
@@ -118,9 +116,9 @@
 (defmulti columns-for-model
   "The columns that will be returned by the query for `model`, excluding `:model`, which is added automatically."
   {:arglists '([model])}
-  ->class)
+  (fn [model] model))
 
-(defmethod columns-for-model (class Card)
+(defmethod columns-for-model "card"
   [_]
   (conj default-columns :collection_id :collection_position :dataset_query
         [:collection.name :collection_name]
@@ -138,34 +136,34 @@
          :moderated_status]
         favorite-col dashboardcard-count-col))
 
-(defmethod columns-for-model (class Dashboard)
+(defmethod columns-for-model "dashboard"
   [_]
   (conj default-columns :collection_id :collection_position favorite-col
         [:collection.name :collection_name]
         [:collection.authority_level :collection_authority_level]))
 
-(defmethod columns-for-model (class Database)
+(defmethod columns-for-model "database"
   [_]
   [:id :name :description :updated_at])
 
-(defmethod columns-for-model (class Pulse)
+(defmethod columns-for-model "pulse"
   [_]
   [:id :name :collection_id [:collection.name :collection_name]])
 
-(defmethod columns-for-model (class Collection)
+(defmethod columns-for-model "collection"
   [_]
   (conj (remove #{:updated_at} default-columns) [:id :collection_id] [:name :collection_name]
         [:authority_level :collection_authority_level]))
 
-(defmethod columns-for-model (class Segment)
+(defmethod columns-for-model "segment"
   [_]
   (into default-columns table-columns))
 
-(defmethod columns-for-model (class Metric)
+(defmethod columns-for-model "metric"
   [_]
   (into default-columns table-columns))
 
-(defmethod columns-for-model (class Table)
+(defmethod columns-for-model "table"
   [_]
   [:id
    :name

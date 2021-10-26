@@ -86,7 +86,7 @@
 (defn- text-score-with
   [weighted-scorers query-tokens search-result]
   (let [total-weight (reduce + (map :weight weighted-scorers))
-        scores       (for [column (search-config/searchable-columns-for-model (search-config/model-name->class (:model search-result)))
+        scores       (for [column (search-config/searchable-columns-for-model (:model search-result))
                            :let   [matched-text (-> search-result
                                                     (get column)
                                                     (search-config/column->string (:model search-result) column))

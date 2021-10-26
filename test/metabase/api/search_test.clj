@@ -151,7 +151,7 @@
         (dissoc :scores))))
 
 (defn- make-search-request [user-kwd params]
-  (apply (partial mt/user-http-request user-kwd) :get 200 "search" params))
+  (apply mt/user-http-request user-kwd :get 200 "search" params))
 
 (defn- search-request-data-with [xf user-kwd & params]
   (let [raw-results-data (:data (make-search-request user-kwd params))
