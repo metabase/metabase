@@ -1,7 +1,6 @@
 import MetabaseSettings from "metabase/lib/settings";
 import type { TemplateTag } from "metabase-types/types/Query";
 import type { Parameter } from "metabase-types/types/Parameter";
-import Dimension from "metabase-lib/lib/Dimension";
 import _ from "underscore";
 import { getParameterType } from "metabase/parameters/utils/parameter-type";
 
