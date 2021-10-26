@@ -187,7 +187,8 @@
                                 ;; the hash didn't match, but it's possible that a stale instance of `DatabaseInstance`
                                 ;; was passed in (ex: from a long-running sync operation); fetch the latest one from
                                 ;; our app DB, and see if it STILL doesn't match
-                                (not= curr-hash (db-details-hash (db/select-one [Database :id :engine :details])))))
+                                (not= curr-hash (-> (db/select-one [Database :id :engine :details] :id database-id)
+                                                    db-details-hash))))
                             (if log-invalidation?
                               (log-db-details-hash-change-msg! db-id)
                               nil)
