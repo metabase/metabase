@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 import querystring from "querystring";
 
 import ParametersList from "metabase/parameters/components/ParametersList";
-import { getParameterValuesBySlug } from "metabase/meta/Parameter";
+import { getParameterValuesBySlug } from "metabase/parameters/utils/parameter-values";
 import { getMetadata } from "metabase/selectors/metadata";
 
 @connect(state => ({ metadata: getMetadata(state) }))

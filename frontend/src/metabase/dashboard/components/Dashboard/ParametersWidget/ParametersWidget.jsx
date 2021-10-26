@@ -1,7 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 
-import { getValuePopulatedParameters } from "metabase/meta/Parameter";
+import { getValuePopulatedParameters } from "metabase/parameters/utils/parameter-values";
 import Parameters from "metabase/parameters/components/Parameters/Parameters";
 
 const propTypes = {
