@@ -4,7 +4,8 @@
             [metabase.public-settings :as public-settings]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
-            [metabase.util.i18n :as i18n :refer [tru]]))
+            [metabase.util.i18n :as i18n :refer [tru]]
+            [toucan.db :as db]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -178,3 +179,22 @@
                  (public-settings/redirect-all-requests-to-https v)))
             (is (= false
                    (public-settings/redirect-all-requests-to-https)))))))))
+
+(deftest instance-creation-test
+  (testing "Instance creation timestamp is set only once when setting is first fetched"
+    (with-redefs [public-settings/first-user-creation (constantly nil)]
+      (binding [setting/*enforce-read-only-settings* false]
+        (mt/with-temporary-setting-values [instance-creation nil]
+          (let [first-value (public-settings/instance-creation)]
+            (Thread/sleep 10) ;; short sleep since java.time.Instant is not necessarily monotonic
+            (is (= first-value
+                   (public-settings/instance-creation))))))))
+
+  (testing "If a user already exists, we should use the first user's creation timestamp"
+    (binding [setting/*enforce-read-only-settings* false]
+      (mt/with-temporary-setting-values [instance-creation nil]
+        (mt/with-test-user :crowberto
+          (let [first-user-creation (:min (db/select-one ['User [:%min.date_joined :min]]))
+                instance-creation   (public-settings/instance-creation)]
+            (is (= (java-time/zoned-date-time first-user-creation "UTC")
+                   (public-settings/instance-creation)))))))))

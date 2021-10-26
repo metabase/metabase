@@ -356,7 +356,7 @@
                            :value   value}
                           e)))
         (finally
-          (setting/set! setting-k original-db-or-cache-value))))))
+          (setting/set-string! setting-k original-db-or-cache-value))))))
 
 (defmacro with-temporary-setting-values
   "Temporarily bind the values of one or more `Settings`, execute body, and re-establish the original values. This
