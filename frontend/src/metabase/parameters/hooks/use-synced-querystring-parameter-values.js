@@ -4,30 +4,27 @@ import querystring from "querystring";
 import { getParameterValuesBySlug } from "metabase/parameters/utils/parameter-values";
 
 export function useSyncedQuerystringParameterValues({
-  syncQueryString,
   parameters,
   parameterValues,
   dashboard,
 }) {
   useEffect(() => {
-    if (syncQueryString) {
-      const parameterValuesBySlug = getParameterValuesBySlug(
-        parameters,
-        parameterValues,
-        dashboard && { preserveDefaultedParameters: true },
+    const parameterValuesBySlug = getParameterValuesBySlug(
+      parameters,
+      parameterValues,
+      dashboard && { preserveDefaultedParameters: true },
+    );
+
+    const searchString = buildSearchString(parameterValuesBySlug);
+
+    if (searchString !== window.location.search) {
+      history.replaceState(
+        null,
+        document.title,
+        window.location.pathname + searchString + window.location.hash,
       );
-
-      const searchString = buildSearchString(parameterValuesBySlug);
-
-      if (searchString !== window.location.search) {
-        history.replaceState(
-          null,
-          document.title,
-          window.location.pathname + searchString + window.location.hash,
-        );
-      }
     }
-  }, [syncQueryString, parameters, parameterValues, dashboard]);
+  }, [parameters, parameterValues, dashboard]);
 }
 
 function buildSearchString(parameterValuesBySlug) {

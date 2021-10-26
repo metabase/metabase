@@ -8,7 +8,6 @@ const MockNativeQueryEditor = ({ location, query, setParameterValue }) => (
     parameters={query.question().parameters()}
     query={location.query}
     setParameterValue={setParameterValue}
-    syncQueryString
     isQB
     commitImmediately
   />

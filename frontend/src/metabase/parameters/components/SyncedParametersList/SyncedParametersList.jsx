@@ -19,7 +19,6 @@ const propTypes = {
   isQB: PropTypes.bool,
   vertical: PropTypes.bool,
   commitImmediately: PropTypes.bool,
-  syncQueryString: PropTypes.bool,
 
   setParameterValue: PropTypes.func.isRequired,
   setParameterIndex: PropTypes.func,
@@ -41,14 +40,12 @@ export function Parameters({
   isQB,
   vertical,
   commitImmediately,
-  syncQueryString,
 
   setParameterValue,
   setParameterIndex,
   setEditingParameter,
 }) {
   useSyncedQuerystringParameterValues({
-    syncQueryString,
     parameters,
     parameterValues,
     dashboard,

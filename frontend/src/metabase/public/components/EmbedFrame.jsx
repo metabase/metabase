@@ -101,7 +101,6 @@ export default class EmbedFrame extends Component {
                     )}
                     query={location.query}
                     setParameterValue={setParameterValue}
-                    syncQueryString
                     hideParameters={hide_parameters}
                     isQB
                   />

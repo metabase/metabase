@@ -151,7 +151,6 @@ class AutomaticDashboardApp extends React.Component {
                   )}
                   query={location.query}
                   setParameterValue={setParameterValue}
-                  syncQueryString
                   isQB
                 />
               </div>

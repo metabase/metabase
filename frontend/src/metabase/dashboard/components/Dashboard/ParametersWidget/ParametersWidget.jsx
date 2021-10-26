@@ -35,7 +35,6 @@ const ParametersWidget = ({
 }) => {
   return parameters?.length > 0 ? (
     <SyncedParametersList
-      syncQueryString
       dashboard={dashboard}
       isEditing={isEditing}
       isFullscreen={isFullscreen}
