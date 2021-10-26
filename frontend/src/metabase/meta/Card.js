@@ -1,9 +1,9 @@
 import {
   getTemplateTagParameters,
-  parameterToMBQLFilter,
   normalizeParameterValue,
   getValuePopulatedParameters,
 } from "metabase/meta/Parameter";
+import { parameterToMBQLFilter } from "metabase/parameters/utils/mbql";
 import { getParameterTargetField } from "metabase/parameters/utils/targets";
 
 import * as Query from "metabase/lib/query/query";

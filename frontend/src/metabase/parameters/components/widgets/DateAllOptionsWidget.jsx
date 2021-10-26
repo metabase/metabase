@@ -8,7 +8,7 @@ import DatePicker, {
 } from "metabase/query_builder/components/filters/pickers/DatePicker";
 import FilterOptions from "metabase/query_builder/components/filters/FilterOptions";
 import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
-import { dateParameterValueToMBQL } from "metabase/meta/Parameter";
+import { dateParameterValueToMBQL } from "metabase/parameters/utils/mbql";
 
 import type { OperatorName } from "metabase/query_builder/components/filters/pickers/DatePicker";
 import type {
