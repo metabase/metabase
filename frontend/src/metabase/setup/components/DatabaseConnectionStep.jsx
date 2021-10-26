@@ -8,10 +8,13 @@ import { Box } from "grid-styled";
 import StepTitle from "./StepTitle";
 import CollapsedStep from "./CollapsedStep";
 
-import { trackStructEvent, trackSchemaEvent } from "metabase/lib/analytics";
-
+import { trackStructEvent } from "metabase/lib/analytics";
 import { DEFAULT_SCHEDULES } from "metabase/admin/databases/database";
 import Databases from "metabase/entities/databases";
+import {
+  trackAddDataLaterClicked,
+  trackDatabaseSelected,
+} from "metabase/setup/tracking";
 
 export default class DatabaseConnectionStep extends Component {
   static propTypes = {
@@ -93,28 +96,15 @@ export default class DatabaseConnectionStep extends Component {
       details: null,
     });
 
-    trackSchemaEvent("setup", "1-0-0", {
-      event: "add_data_later_clicked",
-      version: "1.0.0",
-      step: "db_configuration",
-      step_number: stepNumber,
-      source: selectedDatabaseEngine ? "post_selection" : "pre_selection",
-    });
-
     trackStructEvent("Setup", "Database Step");
+    trackAddDataLaterClicked(stepNumber, selectedDatabaseEngine);
   };
 
   componentDidUpdate(prevProps) {
     const { stepNumber, selectedDatabaseEngine } = this.props;
 
     if (selectedDatabaseEngine !== prevProps.selectedDatabaseEngine) {
-      trackSchemaEvent("setup", "1-0-0", {
-        event: "database_selected",
-        version: "1.0.0",
-        step: "db_configuration",
-        step_number: stepNumber,
-        database: selectedDatabaseEngine,
-      });
+      trackDatabaseSelected(stepNumber, selectedDatabaseEngine);
     }
   }
 

@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
-import { trackStructEvent, trackSchemaEvent } from "metabase/lib/analytics";
+import { trackStructEvent } from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 import { b64hash_to_utf8 } from "metabase/lib/encoding";
 
@@ -21,24 +21,16 @@ import UserStep from "./UserStep";
 import DatabaseConnectionStep from "./DatabaseConnectionStep";
 import PreferencesStep from "./PreferencesStep";
 import { AddDatabaseHelpCardHolder } from "./Setup.styled";
-
-const WELCOME_STEP_NUMBER = 0;
-const LANGUAGE_STEP_NUMBER = 1;
-const USER_STEP_NUMBER = 2;
-const DATABASE_CONNECTION_STEP_NUMBER = 3;
-const DATABASE_SCHEDULING_STEP_NUMBER = 4;
-const PREFERENCES_STEP_NUMBER = 5;
-const COMPLETED_STEP_NUMBER = 5;
-
-const STEP_NAMES = {
-  [WELCOME_STEP_NUMBER]: "welcome",
-  [LANGUAGE_STEP_NUMBER]: "language",
-  [USER_STEP_NUMBER]: "user_info",
-  [DATABASE_CONNECTION_STEP_NUMBER]: "db_connection",
-  [DATABASE_SCHEDULING_STEP_NUMBER]: "db_scheduling",
-  [PREFERENCES_STEP_NUMBER]: "data_usage",
-  [COMPLETED_STEP_NUMBER]: "completed",
-};
+import {
+  COMPLETED_STEP_NUMBER,
+  DATABASE_CONNECTION_STEP_NUMBER,
+  DATABASE_SCHEDULING_STEP_NUMBER,
+  LANGUAGE_STEP_NUMBER,
+  PREFERENCES_STEP_NUMBER,
+  USER_STEP_NUMBER,
+  WELCOME_STEP_NUMBER,
+} from "../constants";
+import { trackStepSeen } from "../tracking";
 
 export default class Setup extends Component {
   static propTypes = {
@@ -104,12 +96,7 @@ export default class Setup extends Component {
     const { activeStep, setupComplete } = this.props;
     const stepNumber = setupComplete ? COMPLETED_STEP_NUMBER : activeStep;
 
-    trackSchemaEvent("setup", "1-0-0", {
-      event: "step_seen",
-      version: "1.0.0",
-      step: STEP_NAMES[stepNumber],
-      step_number: stepNumber,
-    });
+    trackStepSeen(stepNumber);
   }
 
   renderFooter() {
