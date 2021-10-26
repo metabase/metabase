@@ -6,7 +6,6 @@ import { aggregationOpts, expressionOpts } from "./__support__/expressions";
 import { ORDERS, REVIEWS } from "__support__/sample_dataset_fixture";
 
 // custom metadata defined in __support__/sample_dataset_fixture
-const METRICS_ORDERS = [{ type: "metrics", text: "[Total Order Value]" }];
 const SEGMENTS_ORDERS = [{ text: "[Expensive Things]", type: "segments" }];
 const FIELDS_ORDERS = [
   { text: "[Created At] ", type: "fields" },
@@ -37,6 +36,25 @@ const FIELDS_ORDERS = [
   { text: "[User → Source] ", type: "fields" },
   { text: "[User → State] ", type: "fields" },
   { text: "[User → Zip] ", type: "fields" },
+];
+
+// custom metadata defined in __support__/expressions
+const METRICS_CUSTOM = [{ type: "metrics", text: "[metric]" }];
+const FIELDS_CUSTOM = [
+  { type: "fields", text: "[A] " },
+  { type: "fields", text: "[B] " },
+  { type: "fields", text: "[C] " },
+  // quoted because conflicts with aggregation
+  { type: "fields", text: "[Sum] " },
+  // quoted because has a space
+  { type: "fields", text: "[Toucan Sam] " },
+  // quoted because conflicts with aggregation
+  { type: "fields", text: "[count] " },
+];
+
+const FIELDS_CUSTOM_NON_NUMERIC = [
+  { type: "fields", text: "[date] " },
+  { type: "fields", text: "[text] " },
 ];
 
 describe("metabase/lib/expression/suggest", () => {
@@ -165,6 +183,17 @@ describe("metabase/lib/expression/suggest", () => {
     });
 
     describe("aggregation", () => {
+      it("should suggest aggregations and metrics", () => {
+        expect(suggest({ source: "case([", ...aggregationOpts })).toEqual(
+          [
+            ...FIELDS_CUSTOM,
+            ...METRICS_CUSTOM,
+            ...FIELDS_CUSTOM_NON_NUMERIC,
+            { type: "segments", text: "[segment]" },
+          ].sort(suggestionSort),
+        );
+      });
+
       it("should suggest partial matches after an aggregation", () => {
         expect(suggest({ source: "average(c", ...aggregationOpts })).toEqual([
           // FIXME: the next four should not appear
@@ -224,7 +253,7 @@ describe("metabase/lib/expression/suggest", () => {
         ]);
       });
 
-      it("should show help text in an aggregation functiom", () => {
+      it("should show help text in an aggregation function", () => {
         const { name, example } = helpText({
           source: "Sum(",
           query: ORDERS.query(),
@@ -269,11 +298,7 @@ describe("metabase/lib/expression/suggest", () => {
       it("should show all fields when '[' appears", () => {
         expect(
           suggest({ source: "[", query: ORDERS.query(), startRule: "boolean" }),
-        ).toEqual(
-          [...FIELDS_ORDERS, ...METRICS_ORDERS, ...SEGMENTS_ORDERS].sort(
-            suggestionSort,
-          ),
-        );
+        ).toEqual([...FIELDS_ORDERS, ...SEGMENTS_ORDERS].sort(suggestionSort));
       });
 
       it("should show help text in a filter function", () => {

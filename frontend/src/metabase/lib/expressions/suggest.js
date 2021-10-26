@@ -96,14 +96,16 @@ export function suggest({
         index: targetOffset,
       })),
     );
-    suggestions.push(
-      ...query.table().metrics.map(metric => ({
-        type: "metrics",
-        name: metric.name,
-        text: formatMetricName(metric),
-        index: targetOffset,
-      })),
-    );
+    if (startRule === "aggregation") {
+      suggestions.push(
+        ...query.table().metrics.map(metric => ({
+          type: "metrics",
+          name: metric.name,
+          text: formatMetricName(metric),
+          index: targetOffset,
+        })),
+      );
+    }
   }
 
   // throw away any suggestion that is not a suffix of the last partialToken.
