@@ -47,6 +47,7 @@ export default class Dashboard extends Component {
     dashboardId: PropTypes.number,
     parameters: PropTypes.array,
     parameterValues: PropTypes.object,
+    editingParameter: PropTypes.object,
 
     addCardOnLoad: PropTypes.func,
     addCardToDashboard: PropTypes.func.isRequired,
@@ -62,6 +63,9 @@ export default class Dashboard extends Component {
     setEditingDashboard: PropTypes.func.isRequired,
     setErrorPage: PropTypes.func,
     setSharing: PropTypes.func.isRequired,
+    setParameterValue: PropTypes.func.isRequired,
+    setEditingParameter: PropTypes.func.isRequired,
+    setParameterIndex: PropTypes.func.isRequired,
 
     onUpdateDashCardVisualizationSettings: PropTypes.func.isRequired,
     onUpdateDashCardColumnSettings: PropTypes.func.isRequired,
@@ -198,6 +202,10 @@ export default class Dashboard extends Component {
       parameters,
       showAddQuestionSidebar,
       parameterValues,
+      editingParameter,
+      setParameterValue,
+      setParameterIndex,
+      setEditingParameter,
     } = this.props;
 
     const { error, isParametersWidgetSticky } = this.state;
@@ -207,9 +215,15 @@ export default class Dashboard extends Component {
 
     const parametersWidget = (
       <SyncedParametersList
-        {...this.props}
-        shouldRenderAsNightMode={shouldRenderAsNightMode}
         parameters={getValuePopulatedParameters(parameters, parameterValues)}
+        editingParameter={editingParameter}
+        dashboard={dashboard}
+        isFullscreen={isFullscreen}
+        isNightMode={shouldRenderAsNightMode}
+        isEditing={isEditing}
+        setParameterValue={setParameterValue}
+        setParameterIndex={setParameterIndex}
+        setEditingParameter={setEditingParameter}
       />
     );
 
