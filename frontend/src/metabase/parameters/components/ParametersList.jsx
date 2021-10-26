@@ -31,7 +31,6 @@ type Props = {
   isNightMode?: boolean,
   hideParameters?: ?string, // comma separated list of slugs
   isEditing?: boolean,
-  isQB?: boolean,
   vertical?: boolean,
   commitImmediately?: boolean,
 
@@ -71,7 +70,6 @@ function ParametersList({
   isNightMode,
   hideParameters,
   isEditing,
-  isQB,
   vertical,
   commitImmediately,
 
@@ -123,7 +121,6 @@ function ParametersList({
         className,
         "flex align-end flex-wrap",
         vertical ? "flex-column" : "flex-row",
-        { mt1: isQB },
       )}
       axis="x"
       distance={9}

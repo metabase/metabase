@@ -16,7 +16,6 @@ const propTypes = {
   isFullscreen: PropTypes.bool,
   isNightMode: PropTypes.bool,
   isEditing: PropTypes.bool,
-  isQB: PropTypes.bool,
   vertical: PropTypes.bool,
   commitImmediately: PropTypes.bool,
 
@@ -37,7 +36,6 @@ export function Parameters({
   isFullscreen,
   isNightMode,
   isEditing,
-  isQB,
   vertical,
   commitImmediately,
 
@@ -62,7 +60,6 @@ export function Parameters({
       isNightMode={isNightMode}
       hideParameters={hideParameters}
       isEditing={isEditing}
-      isQB={isQB}
       vertical={vertical}
       commitImmediately={commitImmediately}
       setParameterValue={setParameterValue}

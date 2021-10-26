@@ -94,6 +94,7 @@ export default class EmbedFrame extends Component {
               {parameters && parameters.length > 0 ? (
                 <div className="flex ml-auto">
                   <SyncedParametersList
+                    className="mt1"
                     dashboard={this.props.dashboard}
                     parameters={getValuePopulatedParameters(
                       parameters,
@@ -101,7 +102,6 @@ export default class EmbedFrame extends Component {
                     )}
                     setParameterValue={setParameterValue}
                     hideParameters={hide_parameters}
-                    isQB
                   />
                 </div>
               ) : null}

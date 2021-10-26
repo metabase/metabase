@@ -5,9 +5,9 @@ import SyncedParametersList from "metabase/parameters/components/SyncedParameter
 
 const MockNativeQueryEditor = ({ location, query, setParameterValue }) => (
   <SyncedParametersList
+    className="mt1"
     parameters={query.question().parameters()}
     setParameterValue={setParameterValue}
-    isQB
     commitImmediately
   />
 );

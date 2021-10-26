@@ -144,12 +144,12 @@ class AutomaticDashboardApp extends React.Component {
             {parameters && parameters.length > 0 && (
               <div className="px1 pt1">
                 <SyncedParametersList
+                  className="mt1"
                   parameters={getValuePopulatedParameters(
                     parameters,
                     parameterValues,
                   )}
                   setParameterValue={setParameterValue}
-                  isQB
                 />
               </div>
             )}

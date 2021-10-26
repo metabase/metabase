@@ -488,11 +488,11 @@ export default class NativeQueryEditor extends Component {
             setTableId={this.setTableId}
           />
           <SyncedParametersList
+            className="mt1"
             parameters={parameters}
             setParameterValue={setParameterValue}
             setParameterIndex={this.setParameterIndex}
             isEditing
-            isQB
             commitImmediately
           />
           {query.hasWritePermission() && (
