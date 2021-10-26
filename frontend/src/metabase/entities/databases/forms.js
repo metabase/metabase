@@ -377,6 +377,13 @@ const forms = {
             t`When should Metabase automatically scan and cache field values?`,
           hidden: !engine || !details["let-user-control-scheduling"],
         },
+        {
+          name: "cloud.firewall_connection",
+          type: "empty",
+          title: t`Connecting from behind a firewall`,
+          description: t`In order to make sure Metabase can access your database, configure your firewall to allow connections from these IP addresses: 12.34.567.891, 12.34.567.891, 12.34.567.891.`,
+          hidden: !engine || MetabaseSettings.isHosted(),
+        },
       ].filter(Boolean),
     normalize: function(database) {
       if (!database.details["let-user-control-scheduling"]) {
