@@ -16,9 +16,10 @@ import {
   ParametersWidgetContainer,
 } from "./Dashboard.styled";
 import DashboardGrid from "../DashboardGrid";
-import ParametersWidget from "./ParametersWidget/ParametersWidget";
+import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import DashboardEmptyState from "./DashboardEmptyState/DashboardEmptyState";
 import { updateParametersWidgetStickiness } from "./stickyParameters";
+import { getValuePopulatedParameters } from "metabase/parameters/utils/parameter-values";
 
 const SCROLL_THROTTLE_INTERVAL = 1000 / 24;
 
@@ -196,6 +197,7 @@ export default class Dashboard extends Component {
       isSharing,
       parameters,
       showAddQuestionSidebar,
+      parameterValues,
     } = this.props;
 
     const { error, isParametersWidgetSticky } = this.state;
@@ -204,9 +206,10 @@ export default class Dashboard extends Component {
     const dashboardHasCards = dashboard => dashboard.ordered_cards.length > 0;
 
     const parametersWidget = (
-      <ParametersWidget
-        shouldRenderAsNightMode={shouldRenderAsNightMode}
+      <SyncedParametersList
         {...this.props}
+        shouldRenderAsNightMode={shouldRenderAsNightMode}
+        parameters={getValuePopulatedParameters(parameters, parameterValues)}
       />
     );
 

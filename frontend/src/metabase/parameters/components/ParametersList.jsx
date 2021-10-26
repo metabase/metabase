@@ -115,7 +115,7 @@ function ParametersList({
     ParameterWidgetList = StaticParameterWidgetList;
   }
 
-  return (
+  return visibleValuePopulatedParameters.length > 0 ? (
     <ParameterWidgetList
       className={cx(
         className,
@@ -151,7 +151,7 @@ function ParametersList({
         />
       ))}
     </ParameterWidgetList>
-  );
+  ) : null;
 }
 
 ParametersList.defaultProps = {
