@@ -78,7 +78,7 @@ const createSnowplowPlugin = store => {
     contexts: () => {
       const id = Settings.get("analytics-uuid");
       const version = Settings.get("version", {});
-      const features = Settings.get("premium-features");
+      const features = Settings.get("token-features");
 
       return [
         {
