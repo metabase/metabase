@@ -122,7 +122,8 @@
 
 (defn- source-query-cards
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
-  [& {:keys [additional-constraints xform], :or {xform identity}}]
+  [question-type & {:keys [additional-constraints xform], :or {xform identity}}]
+  {:pre [(#{:card :dataset} question-type)]}
   (when-let [ids-of-dbs-that-support-source-queries (not-empty (ids-of-dbs-that-support-source-queries))]
     (transduce
      (comp (map (partial models/do-post-select Card))
@@ -144,6 +145,7 @@
                           :where    (into [:and
                                            [:not= :result_metadata nil]
                                            [:= :archived false]
+                                           [:= :dataset (= question-type :dataset)]
                                            [:in :database_id ids-of-dbs-that-support-source-queries]
                                            (collection/visible-collection-ids->honeysql-filter-clause
                                             (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
@@ -152,31 +154,32 @@
 
 (defn- source-query-cards-exist?
   "Truthy if a single Card that can be used as a source query exists."
-  []
-  (seq (source-query-cards :xform (take 1))))
+  [question-type]
+  (seq (source-query-cards question-type :xform (take 1))))
 
 (defn- cards-virtual-tables
   "Return a sequence of 'virtual' Table metadata for eligible Cards.
    (This takes the Cards from `source-query-cards` and returns them in a format suitable for consumption by the Query
    Builder.)"
-  [& {:keys [include-fields?]}]
-  (for [card (source-query-cards)]
+  [question-type & {:keys [include-fields?]}]
+  (for [card (source-query-cards question-type)]
     (table-api/card->virtual-table card :include-fields? include-fields?)))
 
-(defn- saved-cards-virtual-db-metadata [& {:keys [include-tables? include-fields?]}]
+(defn- saved-cards-virtual-db-metadata [question-type & {:keys [include-tables? include-fields?]}]
   (when (public-settings/enable-nested-queries)
     (cond-> {:name               (trs "Saved Questions")
              :id                 mbql.s/saved-questions-virtual-database-id
              :features           #{:basic-aggregations}
              :is_saved_questions true}
-      include-tables? (assoc :tables (cards-virtual-tables :include-fields? include-fields?)))))
+      include-tables? (assoc :tables (cards-virtual-tables question-type
+                                                           :include-fields? include-fields?)))))
 
 ;; "Virtual" tables for saved cards simulate the db->schema->table hierarchy by doing fake-db->collection->card
 (defn- add-saved-questions-virtual-database [dbs & options]
-  (let [virtual-db-metadata (apply saved-cards-virtual-db-metadata options)]
+  (let [virtual-db-metadata (apply saved-cards-virtual-db-metadata :card options)]
     ;; only add the 'Saved Questions' DB if there are Cards that can be used
     (cond-> dbs
-      (and (source-query-cards-exist?) virtual-db-metadata) (concat [virtual-db-metadata]))))
+      (and (source-query-cards-exist? :card) virtual-db-metadata) (concat [virtual-db-metadata]))))
 
 (defn- dbs-list [& {:keys [include-tables?
                            include-saved-questions-db?
@@ -285,7 +288,7 @@
   "Endpoint that provides metadata for the Saved Questions 'virtual' database. Used for fooling the frontend
    and allowing it to treat the Saved Questions virtual DB just like any other database."
   []
-  (saved-cards-virtual-db-metadata :include-tables? true, :include-fields? true))
+  (saved-cards-virtual-db-metadata :card :include-tables? true, :include-fields? true))
 
 (defn- db-metadata [id include-hidden?]
   (-> (api/read-check Database id)
@@ -712,7 +715,17 @@
   "Returns a list of all the schemas found for the saved questions virtual database."
   []
   (when (public-settings/enable-nested-queries)
-    (->> (cards-virtual-tables)
+    (->> (cards-virtual-tables :card)
+         (map :schema)
+         distinct
+         (sort-by str/lower-case))))
+
+(api/defendpoint GET ["/:virtual-db/datasets"
+                      :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
+  "Returns a list of all the datasets found for the saved questions virtual database."
+  []
+  (when (public-settings/enable-nested-queries)
+    (->> (cards-virtual-tables :dataset)
          (map :schema)
          distinct
          (sort-by str/lower-case))))
@@ -748,9 +761,24 @@
   [schema]
   (when (public-settings/enable-nested-queries)
     (->> (source-query-cards
+          :card
           :additional-constraints [(if (= schema (table-api/root-collection-schema-name))
                                       [:= :collection_id nil]
-                                      [:in :collection_id (api/check-404 (seq (db/select-ids Collection :name schema)))])])
+                                      [:in :collection_id (api/check-404 (seq (db/select-ids Collection :name schema)))])
+                                   [:= :dataset false]])
+         (map table-api/card->virtual-table))))
+
+(api/defendpoint GET ["/:virtual-db/datasets/:schema"
+                      :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
+  "Returns a list of Tables for the datasets virtual database."
+  [schema]
+  (when (public-settings/enable-nested-queries)
+    (->> (source-query-cards
+          :dataset
+          :additional-constraints [(if (= schema (table-api/root-collection-schema-name))
+                                      [:= :collection_id nil]
+                                      [:in :collection_id (api/check-404 (seq (db/select-ids Collection :name schema)))])
+                                   [:= :dataset true]])
          (map table-api/card->virtual-table))))
 
 (api/defendpoint GET "/db-ids-with-deprecated-drivers"
