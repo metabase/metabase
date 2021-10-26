@@ -1,78 +1,80 @@
-/* eslint-disable react/prop-types */
-import React, { Component } from "react";
-import { connect } from "react-redux";
-import querystring from "querystring";
+import React from "react";
+import PropTypes from "prop-types";
 
 import ParametersList from "metabase/parameters/components/ParametersList";
-import { getParameterValuesBySlug } from "metabase/parameters/utils/parameter-values";
-import { getMetadata } from "metabase/selectors/metadata";
+import { useSyncedQuerystringParameterValues } from "metabase/parameters/hooks/use-synced-querystring-parameter-values";
 
-@connect(state => ({ metadata: getMetadata(state) }))
-export default class Parameters extends Component {
-  componentDidUpdate() {
-    const { parameters, parameterValues, dashboard } = this.props;
+const propTypes = {
+  parameters: PropTypes.array.isRequired,
+  parameterValues: PropTypes.object,
+  editingParameter: PropTypes.object,
+  dashboard: PropTypes.object,
 
-    if (this.props.syncQueryString) {
-      // sync parameters to URL query string
-      const parameterValuesBySlug = getParameterValuesBySlug(
-        parameters,
-        parameterValues,
-        dashboard && { preserveDefaultedParameters: true },
-      );
+  className: PropTypes.string,
+  hideParameters: PropTypes.string,
 
-      let search = querystring.stringify(parameterValuesBySlug);
-      search = search ? "?" + search : "";
+  isFullscreen: PropTypes.bool,
+  isNightMode: PropTypes.bool,
+  isEditing: PropTypes.bool,
+  isQB: PropTypes.bool,
+  vertical: PropTypes.bool,
+  commitImmediately: PropTypes.bool,
+  syncQueryString: PropTypes.bool,
 
-      if (search !== window.location.search) {
-        history.replaceState(
-          null,
-          document.title,
-          window.location.pathname + search + window.location.hash,
-        );
-      }
-    }
-  }
+  setParameterValue: PropTypes.func.isRequired,
+  setParameterIndex: PropTypes.func,
+  setEditingParameter: PropTypes.func,
+};
 
-  render() {
-    const {
-      className,
+export function Parameters({
+  parameters,
+  parameterValues,
+  editingParameter,
+  dashboard,
 
-      parameters,
-      dashboard,
-      editingParameter,
-      parameterValues,
+  className,
+  hideParameters,
 
-      isFullscreen,
-      isNightMode,
-      hideParameters,
-      isEditing,
-      isQB,
-      vertical,
-      commitImmediately,
+  isFullscreen,
+  isNightMode,
+  isEditing,
+  isQB,
+  vertical,
+  commitImmediately,
+  syncQueryString,
 
-      setParameterValue,
-      setParameterIndex,
-      setEditingParameter,
-    } = this.props;
+  setParameterValue,
+  setParameterIndex,
+  setEditingParameter,
+}) {
+  useSyncedQuerystringParameterValues({
+    syncQueryString,
+    parameters,
+    parameterValues,
+    dashboard,
+  });
 
-    return (
-      <ParametersList
-        className={className}
-        parameters={parameters}
-        dashboard={dashboard}
-        editingParameter={editingParameter}
-        parameterValues={parameterValues}
-        isFullscreen={isFullscreen}
-        isNightMode={isNightMode}
-        hideParameters={hideParameters}
-        isEditing={isEditing}
-        isQB={isQB}
-        vertical={vertical}
-        commitImmediately={commitImmediately}
-        setParameterValue={setParameterValue}
-        setParameterIndex={setParameterIndex}
-        setEditingParameter={setEditingParameter}
-      />
-    );
-  }
+  return (
+    <ParametersList
+      className={className}
+      parameters={parameters}
+      dashboard={dashboard}
+      editingParameter={editingParameter}
+      parameterValues={parameterValues}
+      isFullscreen={isFullscreen}
+      isNightMode={isNightMode}
+      hideParameters={hideParameters}
+      isEditing={isEditing}
+      isQB={isQB}
+      vertical={vertical}
+      commitImmediately={commitImmediately}
+      setParameterValue={setParameterValue}
+      setParameterIndex={setParameterIndex}
+      setEditingParameter={setEditingParameter}
+    />
+  );
 }
+
+Parameters.propTypes = propTypes;
+
+export default Parameters;
