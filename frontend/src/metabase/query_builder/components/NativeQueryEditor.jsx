@@ -29,24 +29,21 @@ import "./NativeQueryEditor.css";
 import { isEventOverElement } from "metabase/lib/dom";
 import { delay } from "metabase/lib/promise";
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
-
-import Icon from "metabase/components/Icon";
 import ExplicitSize from "metabase/components/ExplicitSize";
-import Popover from "metabase/components/Popover";
-
 import Snippets from "metabase/entities/snippets";
 import SnippetCollections from "metabase/entities/snippet-collections";
-
 import Parameters from "metabase/parameters/components/Parameters/Parameters";
 import Question from "metabase-lib/lib/Question";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import NativeQueryEditorSidebar from "./NativeQueryEditor/NativeQueryEditorSidebar";
-
 import {
   DatabaseDataSelector,
   SchemaAndTableDataSelector,
 } from "metabase/query_builder/components/DataSelector";
 import SnippetModal from "metabase/query_builder/components/template_tags/SnippetModal";
+
+import VisibilityToggler from "./NativeQueryEditor/VisibilityToggler";
+import NativeQueryEditorSidebar from "./NativeQueryEditor/NativeQueryEditorSidebar";
+import RightClickPopover from "./NativeQueryEditor/RightClickPopover";
 
 import type { DatasetQuery } from "metabase-types/types/Card";
 import type { DatabaseId } from "metabase-types/types/Database";
@@ -479,6 +476,7 @@ export default class NativeQueryEditor extends Component {
       location,
       readOnly,
       isNativeEditorOpen,
+      openSnippetModalWithSelectedText,
     } = this.props;
 
     const database = query.database();
@@ -537,14 +535,6 @@ export default class NativeQueryEditor extends Component {
       );
     }
 
-    let toggleEditorText, toggleEditorIcon;
-    if (isNativeEditorOpen) {
-      toggleEditorText = null;
-      toggleEditorIcon = "contract";
-    } else {
-      toggleEditorText = t`Open Editor`;
-      toggleEditorIcon = "expand";
-    }
     const dragHandle = (
       <div className="NativeQueryEditorDragHandleWrapper">
         <div className="NativeQueryEditorDragHandle" />
@@ -566,23 +556,11 @@ export default class NativeQueryEditor extends Component {
             commitImmediately
           />
           {query.hasWritePermission() && (
-            <div
-              className="flex-align-right flex align-center text-medium"
-              style={{ paddingRight: 4 }}
-            >
-              <a
-                className={cx(
-                  "Query-label no-decoration flex align-center mx3 text-brand-hover transition-all",
-                  { hide: readOnly },
-                )}
-                onClick={this.toggleEditor}
-              >
-                <span className="mr1" style={{ minWidth: 70 }}>
-                  {toggleEditorText}
-                </span>
-                <Icon name={toggleEditorIcon} size={18} />
-              </a>
-            </div>
+            <VisibilityToggler
+              isOpen={isNativeEditorOpen}
+              readOnly={readOnly}
+              toggleEditor={this.toggleEditor}
+            />
           )}
         </div>
         <ResizableBox
@@ -599,24 +577,14 @@ export default class NativeQueryEditor extends Component {
           resizeHandles={["s"]}
         >
           <div className="flex-full" id="id_sql" ref={this.editor} />
-          <Popover
+
+          <RightClickPopover
             isOpen={this.state.isSelectedTextPopoverOpen}
+            openSnippetModalWithSelectedText={openSnippetModalWithSelectedText}
+            runQuery={this.runQuery}
             target={() => this.editor.current.querySelector(".ace_selection")}
-          >
-            <div className="flex flex-column">
-              <a className="p2 bg-medium-hover flex" onClick={this.runQuery}>
-                <Icon name={"play"} size={16} className="mr1" />
-                <h4>{t`Run selection`}</h4>
-              </a>
-              <a
-                className="p2 bg-medium-hover flex"
-                onClick={this.props.openSnippetModalWithSelectedText}
-              >
-                <Icon name={"snippet"} size={16} className="mr1" />
-                <h4>{t`Save as snippet`}</h4>
-              </a>
-            </div>
-          </Popover>
+          />
+
           {this.props.modalSnippet && (
             <SnippetModal
               onSnippetUpdate={(newSnippet, oldSnippet) => {

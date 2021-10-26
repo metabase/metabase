@@ -1,4 +1,3 @@
-import _ from "underscore";
 import {
   metadata,
   SAMPLE_DATASET,
@@ -6,9 +5,7 @@ import {
   ORDERS,
   PRODUCTS,
 } from "__support__/sample_dataset_fixture";
-import MetabaseSettings from "metabase/lib/settings";
 import {
-  getParameterSections,
   createParameter,
   setParameterName,
   setParameterDefaultValue,
@@ -29,85 +26,7 @@ function native(native) {
   return SAMPLE_DATASET.nativeQuestion(native).card();
 }
 
-MetabaseSettings.get = jest.fn();
-
-function mockFieldFilterOperatorsFlag(value) {
-  MetabaseSettings.get.mockImplementation(flag => {
-    if (flag === "field-filter-operators-enabled?") {
-      return value;
-    }
-  });
-}
-
 describe("meta/Dashboard", () => {
-  describe("getParameterSections", () => {
-    beforeEach(() => {
-      mockFieldFilterOperatorsFlag(false);
-    });
-
-    describe("when `field-filter-operators-enabled?` is false", () => {
-      it("should not have a number section", () => {
-        expect(
-          _.findWhere(getParameterSections(), { id: "number" }),
-        ).not.toBeDefined();
-      });
-
-      it("should have location options that map to location/* parameters", () => {
-        const locationSection = _.findWhere(getParameterSections(), {
-          id: "location",
-        });
-        expect(
-          locationSection.options.every(option =>
-            option.type.startsWith("location"),
-          ),
-        ).toBe(true);
-      });
-
-      it("should have a category section", () => {
-        expect(
-          _.findWhere(getParameterSections(), { id: "category" }),
-        ).toBeDefined();
-
-        expect(
-          _.findWhere(getParameterSections(), { id: "string" }),
-        ).not.toBeDefined();
-      });
-    });
-
-    describe("when `field-filter-operators-enabled?` is true", () => {
-      beforeEach(() => {
-        mockFieldFilterOperatorsFlag(true);
-      });
-
-      it("should have a number section", () => {
-        expect(
-          _.findWhere(getParameterSections(), { id: "number" }),
-        ).toBeDefined();
-      });
-
-      it("should have location options that map to string/* parameters", () => {
-        const locationSection = _.findWhere(getParameterSections(), {
-          id: "location",
-        });
-        expect(
-          locationSection.options.every(option =>
-            option.type.startsWith("string"),
-          ),
-        ).toBe(true);
-      });
-
-      it("should have a string section", () => {
-        expect(
-          _.findWhere(getParameterSections(), { id: "category" }),
-        ).not.toBeDefined();
-
-        expect(
-          _.findWhere(getParameterSections(), { id: "string" }),
-        ).toBeDefined();
-      });
-    });
-  });
-
   describe("createParameter", () => {
     it("should create a new parameter using the given parameter option", () => {
       expect(

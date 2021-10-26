@@ -31,7 +31,9 @@ export type SettingName =
   | "types"
   | "version"
   | "version-info"
-  | "version-info-last-checked";
+  | "version-info-last-checked"
+  | "premium-features"
+  | "analytics-uuid";
 
 type SettingsMap = { [key: SettingName]: any };
 
