@@ -34,10 +34,8 @@ import {
   findColumnSettingIndexForColumn,
   syncTableColumnsToQuery,
 } from "metabase/lib/dataset";
-import {
-  getValueAndFieldIdPopulatedParametersFromCard,
-  isTransientId,
-} from "metabase/meta/Card";
+import { isTransientId } from "metabase/meta/Card";
+import { getValueAndFieldIdPopulatedParametersFromCard } from "metabase/parameters/utils/cards";
 import { parameterToMBQLFilter } from "metabase/parameters/utils/mbql";
 import { normalizeParameterValue } from "metabase/parameters/utils/parameter-values";
 import {
