@@ -169,6 +169,52 @@ describe("binning related reproductions", () => {
     cy.findByText("CREATED_AT");
   });
 
+  it.skip("should render binning options when joining on the saved native question (metabase#18646)", () => {
+    cy.createNativeQuestion(
+      {
+        name: "18646",
+        native: { query: "select * from products" },
+      },
+      { loadMetadata: true },
+    );
+
+    cy.visit("/question/new");
+    cy.findByText("Custom question").click();
+    cy.findByText("Sample Dataset").click();
+    cy.findByText("Orders").click();
+
+    cy.icon("join_left_outer").click();
+
+    popover().within(() => {
+      cy.findByText("Sample Dataset").click();
+      cy.findByText("Saved Questions").click();
+      cy.findByText("18646").click();
+    });
+
+    popover()
+      .findByText("Product ID")
+      .click();
+
+    popover().within(() => {
+      cy.findByText("CREATED_AT")
+        .closest(".List-item")
+        .findByText("by month")
+        .click();
+    });
+
+    cy.findByText("Pick the metric you want to see").click();
+    cy.findByText("Count of rows").click();
+
+    cy.findByText("Pick a column to group by").click();
+    cy.findByText(/Question \d/).click();
+
+    popover().within(() => {
+      cy.findByText("CREATED_AT")
+        .closest(".List-item")
+        .findByText("by month");
+    });
+  });
+
   describe("binning should work on nested question based on question that has aggregation (metabase#16379)", () => {
     beforeEach(() => {
       cy.createQuestion({
