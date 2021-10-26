@@ -71,9 +71,11 @@
   suffix, so we can just look for that here."
   [dataset-name]
   (let [[_ ds-timestamp-str] (re-matches #".*__transient_(\d+)$" dataset-name)
-        ds-timestamp         (Long. ds-timestamp-str)]
+        ds-timestamp         (when ds-timestamp-str
+                               (Long. ds-timestamp-str))]
     ;; millis to hours
-    (< (* 1000 60 60 2) (- ns-load-time ds-timestamp))))
+    (when ds-timestamp
+      (< (* 1000 60 60 2) (- ns-load-time ds-timestamp)))))
 
 (def ^:private current-dataset-version-prefix "v3_")
 

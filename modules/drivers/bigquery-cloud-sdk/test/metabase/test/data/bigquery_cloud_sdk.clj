@@ -54,7 +54,7 @@
                ;; note that this particular dataset will not be deleted after this test run finishes, since there is no
                ;; reasonable hook to do so (from this test extension namespace), so instead we will rely on each run
                ;; cleaning up outdated, transient datasets via the `transient-dataset-outdated?` mechanism above
-               (str "_" ns-load-time))
+               (str "__transient_" ns-load-time))
       :table s)))
 
 (defn- test-db-details []
@@ -313,9 +313,11 @@
   suffix, so we can just look for that here."
   [dataset-name]
   (let [[_ ds-timestamp-str] (re-matches #".*__transient_(\d+)$" dataset-name)
-        ds-timestamp         (Long. ds-timestamp-str)]
+        ds-timestamp         (when ds-timestamp-str
+                               (Long. ds-timestamp-str))]
     ;; millis to hours
-    (< (* 1000 60 60 2) (- ns-load-time ds-timestamp))))
+    (when ds-timestamp
+      (< (* 1000 60 60 2) (- ns-load-time ds-timestamp)))))
 
 (defmethod tx/create-db! :bigquery-cloud-sdk [_ {:keys [database-name table-definitions]} & _]
   {:pre [(seq database-name) (sequential? table-definitions)]}
