@@ -1408,3 +1408,9 @@ export const revertToRevision = createThunkAction(
     };
   },
 );
+
+export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
+  const question = getQuestion(getState());
+  const dataset = question.setDataset(true);
+  dispatch(apiUpdateQuestion(dataset));
+};

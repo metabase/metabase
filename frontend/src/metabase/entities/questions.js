@@ -89,6 +89,7 @@ const Questions = createEntity({
   writableProperties: [
     "name",
     "cache_ttl",
+    "dataset",
     "dataset_query",
     "display",
     "description",
