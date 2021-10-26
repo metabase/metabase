@@ -141,7 +141,7 @@ export function generateExpression(seed) {
   const expression = () => (depth <= 0 ? literal() : primary());
 
   const format = node => {
-    const spaces = () => listOf(1, [space])().join("");
+    const spaces = () => listOf(1, [space, () => ""])().join("");
     const blank = ch => spaces() + ch + spaces();
     let str = null;
     const { type, value, op, left, right, child, params } = node;
@@ -154,7 +154,7 @@ export function generateExpression(seed) {
         str = blank(op) + " " + format(child);
         break;
       case NODE.Binary:
-        str = format(left) + " " + blank(op) + " " + format(right);
+        str = format(left) + blank(op) + format(right);
         break;
       case NODE.FunctionCall:
         str = value + blank("(") + params.map(format).join(", ") + blank(")");
