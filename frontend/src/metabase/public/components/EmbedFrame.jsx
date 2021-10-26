@@ -8,7 +8,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import { getValuePopulatedParameters } from "metabase/parameters/utils/parameter-values";
 
 import TitleAndDescription from "metabase/components/TitleAndDescription";
-import Parameters from "metabase/parameters/components/Parameters/Parameters";
+import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import LogoBadge from "./LogoBadge";
 
 import cx from "classnames";
@@ -93,7 +93,7 @@ export default class EmbedFrame extends Component {
               )}
               {parameters && parameters.length > 0 ? (
                 <div className="flex ml-auto">
-                  <Parameters
+                  <SyncedParametersList
                     dashboard={this.props.dashboard}
                     parameters={getValuePopulatedParameters(
                       parameters,

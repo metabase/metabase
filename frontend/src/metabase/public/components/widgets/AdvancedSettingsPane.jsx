@@ -5,7 +5,7 @@ import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
-import Parameters from "metabase/parameters/components/Parameters/Parameters";
+import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import Select, { Option } from "metabase/components/Select";
 
 import { color } from "metabase/lib/colors";
@@ -111,7 +111,7 @@ const AdvancedSettingsPane = ({
     {embedType === "application" && previewParameters.length > 0 && (
       <Section title={t`Preview Locked Parameters`}>
         <p>{t`Try passing some values to your locked parameters here. Your server will have to provide the actual values in the signed token when using this for real.`}</p>
-        <Parameters
+        <SyncedParametersList
           className="mt2"
           vertical
           parameters={previewParameters}

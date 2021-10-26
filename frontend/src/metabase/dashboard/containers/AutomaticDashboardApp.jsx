@@ -19,7 +19,7 @@ import Link from "metabase/components/Link";
 import Tooltip from "metabase/components/Tooltip";
 
 import { Dashboard } from "metabase/dashboard/containers/Dashboard";
-import Parameters from "metabase/parameters/components/Parameters/Parameters";
+import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 
 import { getMetadata } from "metabase/selectors/metadata";
 
@@ -144,7 +144,7 @@ class AutomaticDashboardApp extends React.Component {
           <div className="wrapper pb4">
             {parameters && parameters.length > 0 && (
               <div className="px1 pt1">
-                <Parameters
+                <SyncedParametersList
                   parameters={getValuePopulatedParameters(
                     parameters,
                     parameterValues,

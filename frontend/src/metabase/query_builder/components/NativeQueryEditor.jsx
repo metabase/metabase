@@ -26,7 +26,7 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 import Snippets from "metabase/entities/snippets";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import SnippetModal from "metabase/query_builder/components/template_tags/SnippetModal";
-import Parameters from "metabase/parameters/components/Parameters/Parameters";
+import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import Question from "metabase-lib/lib/Question";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import NativeQueryEditorSidebar from "./NativeQueryEditor/NativeQueryEditorSidebar";
@@ -488,7 +488,7 @@ export default class NativeQueryEditor extends Component {
             setDatabaseId={this.setDatabaseId}
             setTableId={this.setTableId}
           />
-          <Parameters
+          <SyncedParametersList
             parameters={parameters}
             query={location.query}
             setParameterValue={setParameterValue}

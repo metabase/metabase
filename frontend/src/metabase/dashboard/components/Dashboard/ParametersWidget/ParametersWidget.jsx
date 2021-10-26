@@ -2,7 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 
 import { getValuePopulatedParameters } from "metabase/parameters/utils/parameter-values";
-import Parameters from "metabase/parameters/components/Parameters/Parameters";
+import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 
 const propTypes = {
   dashboard: PropTypes.object,
@@ -34,7 +34,7 @@ const ParametersWidget = ({
   shouldRenderAsNightMode,
 }) => {
   return parameters?.length > 0 ? (
-    <Parameters
+    <SyncedParametersList
       syncQueryString
       dashboard={dashboard}
       isEditing={isEditing}
