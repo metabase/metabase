@@ -22,7 +22,7 @@ const propTypes = {
   setEditingParameter: PropTypes.func,
 };
 
-export function Parameters({
+export function SyncedParametersList({
   parameters,
   editingParameter,
   dashboard,
@@ -62,6 +62,6 @@ export function Parameters({
   );
 }
 
-Parameters.propTypes = propTypes;
+SyncedParametersList.propTypes = propTypes;
 
-export default Parameters;
+export default SyncedParametersList;
