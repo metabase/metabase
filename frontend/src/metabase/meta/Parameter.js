@@ -7,7 +7,6 @@ import type {
 } from "metabase-types/types/Query";
 import type {
   Parameter,
-  ParameterOption,
   ParameterInstance,
   ParameterTarget,
   ParameterValue,
@@ -15,325 +14,20 @@ import type {
 } from "metabase-types/types/Parameter";
 import type { FieldId } from "metabase-types/types/Field";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
-import type Field from "metabase-lib/lib/metadata/Field";
 import Dimension, {
   FieldDimension,
   TemplateTagDimension,
 } from "metabase-lib/lib/Dimension";
 import moment from "moment";
-import { t } from "ttag";
 import _ from "underscore";
 import {
-  doesOperatorExist,
-  getOperatorByTypeAndName,
-  STRING,
-  NUMBER,
-  PRIMARY_KEY,
-} from "metabase/lib/schema_metadata";
-
-import Variable, { TemplateTagVariable } from "metabase-lib/lib/Variable";
-
-type DimensionFilter = (dimension: Dimension) => boolean;
-type TemplateTagFilter = (tag: TemplateTag) => boolean;
-type FieldPredicate = (field: Field) => boolean;
-type VariableFilter = (variable: Variable) => boolean;
+  getParameterType,
+  getParameterSubType,
+} from "metabase/parameters/utils/parameter-type";
+import { getParameterOperatorName } from "metabase/parameters/utils/operators";
 
 const areFieldFilterOperatorsEnabled = () =>
   MetabaseSettings.get("field-filter-operators-enabled?");
-
-export const PARAMETER_OPERATOR_TYPES = {
-  number: [
-    {
-      type: "number/=",
-      operator: "=",
-      name: t`Equal to`,
-    },
-    {
-      type: "number/!=",
-      operator: "!=",
-      name: t`Not equal to`,
-    },
-    {
-      type: "number/between",
-      operator: "between",
-      name: t`Between`,
-    },
-    {
-      type: "number/>=",
-      operator: ">=",
-      name: t`Greater than or equal to`,
-    },
-    {
-      type: "number/<=",
-      operator: "<=",
-      name: t`Less than or equal to`,
-    },
-  ],
-  string: [
-    {
-      type: "string/=",
-      operator: "=",
-      name: t`Dropdown`,
-      description: t`Select one or more values from a list or search box.`,
-    },
-    {
-      type: "string/!=",
-      operator: "!=",
-      name: t`Is not`,
-      description: t`Exclude one or more specific values.`,
-    },
-    {
-      type: "string/contains",
-      operator: "contains",
-      name: t`Contains`,
-      description: t`Match values that contain the entered text.`,
-    },
-    {
-      type: "string/does-not-contain",
-      operator: "does-not-contain",
-      name: t`Does not contain`,
-      description: t`Filter out values that contain the entered text.`,
-    },
-    {
-      type: "string/starts-with",
-      operator: "starts-with",
-      name: t`Starts with`,
-      description: t`Match values that begin with the entered text.`,
-    },
-    {
-      type: "string/ends-with",
-      operator: "ends-with",
-      name: t`Ends with`,
-      description: t`Match values that end with the entered text.`,
-    },
-  ],
-  date: [
-    {
-      type: "date/month-year",
-      operator: "month-year",
-      name: t`Month and Year`,
-      description: t`Like January, 2016`,
-    },
-    {
-      type: "date/quarter-year",
-      operator: "quarter-year",
-      name: t`Quarter and Year`,
-      description: t`Like Q1, 2016`,
-    },
-    {
-      type: "date/single",
-      operator: "single",
-      name: t`Single Date`,
-      description: t`Like January 31, 2016`,
-    },
-    {
-      type: "date/range",
-      operator: "range",
-      name: t`Date Range`,
-      description: t`Like December 25, 2015 - February 14, 2016`,
-    },
-    {
-      type: "date/relative",
-      operator: "relative",
-      name: t`Relative Date`,
-      description: t`Like "the last 7 days" or "this month"`,
-    },
-    {
-      type: "date/all-options",
-      operator: "all-options",
-      name: t`Date Filter`,
-      menuName: t`All Options`,
-      description: t`Contains all of the above`,
-    },
-  ],
-};
-
-const OPTIONS_WITH_OPERATOR_SUBTYPES = [
-  {
-    type: "date",
-    typeName: t`Date`,
-  },
-  {
-    type: "string",
-    typeName: t`String`,
-  },
-  {
-    type: "number",
-    typeName: t`Number`,
-  },
-];
-
-export function getParameterOptions(): ParameterOption[] {
-  return [
-    {
-      type: "id",
-      name: t`ID`,
-    },
-    ...(areFieldFilterOperatorsEnabled()
-      ? OPTIONS_WITH_OPERATOR_SUBTYPES.map(option =>
-          buildOperatorSubtypeOptions(option),
-        )
-      : [
-          { type: "category", name: t`Category` },
-          {
-            type: "location/city",
-            name: t`City`,
-          },
-          {
-            type: "location/state",
-            name: t`State`,
-          },
-          {
-            type: "location/zip_code",
-            name: t`ZIP or Postal Code`,
-          },
-          {
-            type: "location/country",
-            name: t`Country`,
-          },
-          ...PARAMETER_OPERATOR_TYPES["date"],
-        ]),
-  ].flat();
-}
-
-function buildOperatorSubtypeOptions({ type, typeName }) {
-  return PARAMETER_OPERATOR_TYPES[type].map(option => ({
-    ...option,
-    combinedName: getOperatorDisplayName(option, type, typeName),
-  }));
-}
-
-export function getOperatorDisplayName(option, operatorType, sectionName) {
-  if (operatorType === "date" || operatorType === "number") {
-    return option.name;
-  } else if (operatorType === "string" && option.operator === "=") {
-    return sectionName;
-  } else {
-    return `${sectionName} ${option.name.toLowerCase()}`;
-  }
-}
-
-// sectionId will match a type of field (category, location, number, date, id, etc.)
-// if sectionId is undefined, it is an old parameter that did have it set
-// OR it is a PARAMETER_OPTION entry. In those situations,
-// a `type` will exist like "category" or "location/city" or "string/="
-// we split on the `/` and take the first entry to get the field type
-function getParameterType(parameter) {
-  const { sectionId } = parameter;
-  return sectionId || splitType(parameter)[0];
-}
-
-function getParameterSubType(parameter) {
-  const [, subtype] = splitType(parameter);
-  return subtype;
-}
-
-function fieldFilterForParameter(parameter: Parameter): FieldPredicate {
-  const type = getParameterType(parameter);
-  const subtype = getParameterSubType(parameter);
-  switch (type) {
-    case "date":
-      return (field: Field) => field.isDate();
-    case "id":
-      return (field: Field) => field.isID();
-    case "category":
-      return (field: Field) => field.isCategory();
-    case "location":
-      return (field: Field) => {
-        switch (subtype) {
-          case "city":
-            return field.isCity();
-          case "state":
-            return field.isState();
-          case "zip_code":
-            return field.isZipCode();
-          case "country":
-            return field.isCountry();
-          default:
-            return field.isLocation();
-        }
-      };
-    case "number":
-      return (field: Field) => field.isNumber() && !field.isCoordinate();
-    case "string":
-      return (field: Field) => {
-        return subtype === "=" || subtype === "!="
-          ? field.isCategory() && !field.isLocation()
-          : field.isString() && !field.isLocation();
-      };
-  }
-
-  return (field: Field) => false;
-}
-
-export function parameterOptionsForField(field: Field): ParameterOption[] {
-  return getParameterOptions()
-    .filter(option => fieldFilterForParameter(option)(field))
-    .map(option => {
-      return {
-        ...option,
-        name: option.combinedName || option.name,
-      };
-    });
-}
-
-export function dimensionFilterForParameter(
-  parameter: Parameter,
-): DimensionFilter {
-  const fieldFilter = fieldFilterForParameter(parameter);
-  return dimension => fieldFilter(dimension.field());
-}
-
-export function getTagOperatorFilterForParameter(parameter) {
-  const subtype = getParameterSubType(parameter);
-  const parameterOperatorName = getParameterOperatorName(subtype);
-
-  return tag => {
-    const { "widget-type": widgetType } = tag;
-    const subtype = getParameterSubType(widgetType);
-    const tagOperatorName = getParameterOperatorName(subtype);
-
-    return parameterOperatorName === tagOperatorName;
-  };
-}
-
-export function variableFilterForParameter(
-  parameter: Parameter,
-): VariableFilter {
-  const tagFilter = tagFilterForParameter(parameter);
-  return variable => {
-    if (variable instanceof TemplateTagVariable) {
-      const tag = variable.tag();
-      return tag ? tagFilter(tag) : false;
-    }
-    return false;
-  };
-}
-
-function tagFilterForParameter(parameter: Parameter): TemplateTagFilter {
-  const type = getParameterType(parameter);
-  const subtype = getParameterSubType(parameter);
-  const operator = getParameterOperatorName(subtype);
-  if (operator !== "=") {
-    return (tag: TemplateTag) => false;
-  }
-
-  switch (type) {
-    case "date":
-      return (tag: TemplateTag) => subtype === "single" && tag.type === "date";
-    case "location":
-      return (tag: TemplateTag) => tag.type === "number" || tag.type === "text";
-    case "id":
-      return (tag: TemplateTag) => tag.type === "number" || tag.type === "text";
-    case "category":
-      return (tag: TemplateTag) => tag.type === "number" || tag.type === "text";
-    case "number":
-      return (tag: TemplateTag) => tag.type === "number";
-    case "string":
-      return (tag: TemplateTag) => tag.type === "text";
-  }
-  return (tag: TemplateTag) => false;
-}
 
 // NOTE: this should mirror `template-tag-parameters` in src/metabase/api/embed.clj
 export function getTemplateTagParameters(tags: TemplateTag[]): Parameter[] {
@@ -561,49 +255,13 @@ export function getParameterIconName(parameter: ?Parameter) {
 }
 
 export function normalizeParameterValue(type, value) {
-  const [fieldType] = splitType(type);
+  const fieldType = getParameterType(type);
 
   if (["string", "number"].includes(fieldType)) {
     return value == null ? [] : [].concat(value);
   } else {
     return value;
   }
-}
-
-function getParameterOperatorName(maybeOperatorName) {
-  return doesOperatorExist(maybeOperatorName) ? maybeOperatorName : "=";
-}
-
-export function deriveFieldOperatorFromParameter(parameter) {
-  const type = getParameterType(parameter);
-  const subtype = getParameterSubType(parameter);
-  const operatorType = getParameterOperatorType(type);
-  const operatorName = getParameterOperatorName(subtype);
-
-  return getOperatorByTypeAndName(operatorType, operatorName);
-}
-
-function getParameterOperatorType(parameterType) {
-  switch (parameterType) {
-    case "number":
-      return NUMBER;
-    case "string":
-    case "category":
-    case "location":
-      return STRING;
-    case "id":
-      // id can technically be a FK but doesn't matter as both use default filter operators
-      return PRIMARY_KEY;
-    default:
-      return undefined;
-  }
-}
-
-function splitType(parameterOrType) {
-  const parameterType = _.isString(parameterOrType)
-    ? parameterOrType
-    : (parameterOrType || {}).type || "";
-  return parameterType.split("/");
 }
 
 export function getValuePopulatedParameters(parameters, parameterValues) {
