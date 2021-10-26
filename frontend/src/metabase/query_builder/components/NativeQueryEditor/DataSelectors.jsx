@@ -29,7 +29,7 @@ const PlaceholderPropTypes = {
   query: PropTypes.object,
 };
 
-export const getDataSelectors = ({
+const DataSelectors = ({
   isNativeEditorOpen,
   query,
   readOnly,
@@ -44,37 +44,37 @@ export const getDataSelectors = ({
     databases,
   );
 
-  if (isNativeEditorOpen && databases.length > 0) {
-    const dataSelectors = [];
-
-    if (areThereMultipleDatabases) {
-      dataSelectors.push(
-        <DataSelector
-          database={database}
-          databases={databases}
-          readOnly={readOnly}
-          setDatabaseId={setDatabaseId}
-        />,
-      );
-    } else if (database) {
-      dataSelectors.push(<SelectorWithDatabaseName database={database} />);
-    }
-
-    if (query.requiresTable()) {
-      dataSelectors.push(
-        <SelectorWithTable
-          database={database}
-          readOnly={readOnly}
-          selectedTable={query.table()}
-          setTableId={setTableId}
-        />,
-      );
-    }
-
-    return dataSelectors;
+  if (!isNativeEditorOpen || databases.length === 0) {
+    return <Placeholder query={query} />;
   }
 
-  return <Placeholder query={query} />;
+  const dataSelectors = [];
+
+  if (areThereMultipleDatabases) {
+    dataSelectors.push(
+      <DataSelector
+        database={database}
+        databases={databases}
+        readOnly={readOnly}
+        setDatabaseId={setDatabaseId}
+      />,
+    );
+  } else if (database) {
+    dataSelectors.push(<SelectorWithDatabaseName database={database} />);
+  }
+
+  if (query.requiresTable()) {
+    dataSelectors.push(
+      <SelectorWithTable
+        database={database}
+        readOnly={readOnly}
+        selectedTable={query.table()}
+        setTableId={setTableId}
+      />,
+    );
+  }
+
+  return dataSelectors;
 };
 
 const checkIfThereAreMultipleDatabases = (database, databases) =>
@@ -136,3 +136,5 @@ const Placeholder = ({ query }) => (
 );
 
 Placeholder.propTypes = PlaceholderPropTypes;
+
+export default DataSelectors;

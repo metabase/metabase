@@ -32,7 +32,7 @@ import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import NativeQueryEditorSidebar from "./NativeQueryEditor/NativeQueryEditorSidebar";
 import VisibilityToggler from "./NativeQueryEditor/VisibilityToggler";
 import RightClickPopover from "./NativeQueryEditor/RightClickPopover";
-import { getDataSelectors } from "./NativeQueryEditor/getDataSelectors";
+import DataSelectors from "./NativeQueryEditor/DataSelectors";
 
 import "./NativeQueryEditor.css";
 
@@ -470,13 +470,16 @@ export default class NativeQueryEditor extends Component {
       openSnippetModalWithSelectedText,
     } = this.props;
 
-    const dataSelectors = getDataSelectors({
-      isNativeEditorOpen,
-      query,
-      readOnly,
-      setDatabaseId: this.setDatabaseId,
-      setTableId: this.setTableId,
-    });
+    const dataSelectors = (
+      <DataSelectors
+        isNativeEditorOpen={isNativeEditorOpen}
+        query={query}
+        readOnly={readOnly}
+        setDatabaseId={this.setDatabaseId}
+        setTableId={this.setTableId}
+      />
+    );
+
     const parameters = query.question().parameters();
 
     const dragHandle = (
