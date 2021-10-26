@@ -511,6 +511,11 @@
    :double    set-double!
    :csv       set-csv!})
 
+(def ^:dynamic *enforce-read-only-settings*
+  "If false, disregards :none setters when calling `set!` for a setting. Should only be changed in tests that need to
+  set read-only settings to specific values. Defaults to true."
+  true)
+
 (defn set!
   "Set the value of `setting-definition-or-name`. What this means depends on the Setting's `:setter`; by default, this just updates
    the Settings cache and writes its value to the DB.
@@ -521,12 +526,14 @@
 
      (mandrill-api-key \"xyz123\")"
   [setting-definition-or-name new-value]
-  (let [{:keys [setter cache?], :as setting} (resolve-setting setting-definition-or-name)
+  (let [{:keys [setter type cache?], :as setting} (resolve-setting setting-definition-or-name)
         name                                 (setting-name setting)]
-    (when (= setter :none)
+    (when (and (= setter :none) *enforce-read-only-settings*)
       (throw (UnsupportedOperationException. (tru "You cannot set {0}; it is a read-only setting." name))))
     (binding [*disable-cache* (not cache?)]
-      (setter new-value))))
+      (if (= setter :none)
+        ((default-setter-for-type type) name new-value)
+        (setter new-value)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

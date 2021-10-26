@@ -85,53 +85,6 @@
   :setter     :none
   :getter     #(uuid-nonce :analytics-uuid))
 
-(defn- first-user-creation
-  "Returns the timestamp at which the first user was created."
-  []
-  (:min (db/select-one ['User [:%min.date_joined :min]])))
-
-(defsetting instance-creation)
-<<<<<<< HEAD
-  (deferred-tru "The approximate timestamp at which this instance of Metabase was created, for inclusion in analytics.")
-  :visibility :public
-  :type       :timestamp
-  :setter     :none
-  :getter     (fn []
-                (if-let [value (setting/get-timestamp :instance-creation)]
-                  value
-                  ;; For instances that were started before this setting was added (in 0.41.3), use the creation
-                  ;; timestamp of the first user. For all new instances, use the timestamp at which this setting
-                  ;; is first read.
-                  (do (setting/set-timestamp! :instance-creation (or (first-user-creation)
-                                                                     (java-time/offset-date-time)))
-                      (setting/get-timestamp :instance-creation))))
-=======
-  (deferred-tru "The approximate timestamp at which this instance of Metabase was created, for inclusion in analyticss.")
-  :visibility :public
-  :setter     :none
-  :type       :timestamp
-  :getter     (fn []
-                (if-let [value (setting/get-timestamp :instance-creation)]
-                  value
-                  ;; For instances that were started before this setting was added (in 0.41.2), use the creation
-                  ;; timestamp of the first user. For all new instances, use the timestamp at which this setting
-                  ;; is first read.
-                  (setting/set-timestamp! :instance-creation (or (first-user-creation)
-                                                                 (java-time/instant)))))
->>>>>>> 95f07658ab (add instance-creation setting)
-
-(defn- normalize-site-url [^String s]
-  (let [ ;; remove trailing slashes
-        s (str/replace s #"/$" "")
-        ;; add protocol if missing
-        s (if (str/starts-with? s "http")
-            s
-            (str "http://" s))]
-    ;; check that the URL is valid
-    (when-not (u/url? s)
-      (throw (ex-info (tru "Invalid site URL: {0}" (pr-str s)) {:url (pr-str s)})))
-    s))
-
 (declare redirect-all-requests-to-https)
 
 ;; This value is *guaranteed* to never have a trailing slash :D
