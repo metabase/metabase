@@ -7,11 +7,11 @@
             [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
             [metabase.driver.util :as driver.u]
             [metabase.models.database :refer [Database]]
+            [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.test.data :as data]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
-            [metabase.sync :as sync]
             [toucan.db :as db]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -85,21 +85,23 @@
                                        (swap! hash-change-called-times inc)
                                        nil)
             perturb-db-details       (fn [db]
-                                       (update db :details (fn [details]
-                                                             (case driver/*driver*
-                                                               :redshift
-                                                               (assoc details :additional-options "defaultRowFetchSize=1000")
+                                       (update db
+                                               :details
+                                               (fn [details]
+                                                 (case driver/*driver*
+                                                   :redshift
+                                                   (assoc details :additional-options "defaultRowFetchSize=1000")
 
-                                                               (cond-> details
-                                                                 ;; swap localhost and 127.0.0.1
-                                                                 (= "localhost" (:host details))
-                                                                 (assoc :host "127.0.0.1")
+                                                   (cond-> details
+                                                     ;; swap localhost and 127.0.0.1
+                                                     (= "localhost" (:host details))
+                                                     (assoc :host "127.0.0.1")
 
-                                                                 (= "127.0.0.1" (:host details))
-                                                                 (assoc :host "localhost")
+                                                     (= "127.0.0.1" (:host details))
+                                                     (assoc :host "localhost")
 
-                                                                 :else
-                                                                 (assoc :new-config "something"))))))]
+                                                     :else
+                                                     (assoc :new-config "something"))))))]
         (try
           (sql-jdbc.conn/invalidate-pool-for-db! db)
           ;; a little bit hacky to redefine the log fn, but it's the most direct way to test
