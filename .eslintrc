@@ -22,6 +22,10 @@
     "react/jsx-no-target-blank": 2,
     "react/jsx-key": 2,
     "react/forbid-component-props": [2, { "forbid": ["w", "h"] }],
+    "react-hooks/exhaustive-deps": [
+      "warn",
+      { "additionalHooks": "useSyncedQueryString" }
+    ],
     "prefer-const": [1, { "destructuring": "all" }],
     "no-useless-escape": 0,
     "no-only-tests/no-only-tests": "error",

@@ -2,7 +2,8 @@ import React from "react";
 import PropTypes from "prop-types";
 
 import ParametersList from "metabase/parameters/components/ParametersList";
-import { useSyncedQuerystringParameterValues } from "metabase/parameters/hooks/use-synced-querystring-parameter-values";
+import { getParameterValuesBySlug } from "metabase/parameters/utils/parameter-values";
+import { useSyncedQueryString } from "metabase/hooks/use-synced-query-string";
 
 const propTypes = {
   parameters: PropTypes.array.isRequired,
@@ -39,10 +40,15 @@ export function SyncedParametersList({
   setParameterIndex,
   setEditingParameter,
 }) {
-  useSyncedQuerystringParameterValues({
-    parameters,
-    dashboard,
-  });
+  useSyncedQueryString(
+    () =>
+      getParameterValuesBySlug(
+        parameters,
+        undefined,
+        dashboard && { preserveDefaultedParameters: true },
+      ),
+    [parameters, dashboard],
+  );
 
   return (
     <ParametersList
