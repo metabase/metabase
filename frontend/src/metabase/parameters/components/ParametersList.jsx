@@ -10,13 +10,8 @@ import {
   SortableHandle,
 } from "metabase/components/sortable";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
-import { getValuePopulatedParameters } from "metabase/parameters/utils/parameter-values";
 
-import type {
-  ParameterId,
-  Parameter,
-  ParameterValues,
-} from "metabase-types/types/Parameter";
+import type { ParameterId, Parameter } from "metabase-types/types/Parameter";
 import type { DashboardWithCards } from "metabase-types/types/Dashboard";
 
 type Props = {
@@ -25,7 +20,6 @@ type Props = {
   parameters: Parameter[],
   dashboard?: DashboardWithCards,
   editingParameter?: ?Parameter,
-  parameterValues?: ParameterValues,
 
   isFullscreen?: boolean,
   isNightMode?: boolean,
@@ -64,7 +58,6 @@ function ParametersList({
   parameters,
   dashboard,
   editingParameter,
-  parameterValues,
 
   isFullscreen,
   isNightMode,
@@ -95,13 +88,8 @@ function ParametersList({
     }
   };
 
-  const valuePopulatedParameters = getValuePopulatedParameters(
-    parameters,
-    parameterValues,
-  );
-
   const visibleValuePopulatedParameters = getVisibleParameters(
-    valuePopulatedParameters,
+    parameters,
     hideParameters,
   );
 
@@ -135,7 +123,7 @@ function ParametersList({
           isFullscreen={isFullscreen}
           isNightMode={isNightMode}
           parameter={valuePopulatedParameter}
-          parameters={valuePopulatedParameters}
+          parameters={parameters}
           dashboard={dashboard}
           editingParameter={editingParameter}
           setEditingParameter={setEditingParameter}

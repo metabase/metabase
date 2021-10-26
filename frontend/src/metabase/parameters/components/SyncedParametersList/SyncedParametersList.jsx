@@ -6,7 +6,6 @@ import { useSyncedQuerystringParameterValues } from "metabase/parameters/hooks/u
 
 const propTypes = {
   parameters: PropTypes.array.isRequired,
-  parameterValues: PropTypes.object,
   editingParameter: PropTypes.object,
   dashboard: PropTypes.object,
 
@@ -26,7 +25,6 @@ const propTypes = {
 
 export function Parameters({
   parameters,
-  parameterValues,
   editingParameter,
   dashboard,
 
@@ -45,7 +43,6 @@ export function Parameters({
 }) {
   useSyncedQuerystringParameterValues({
     parameters,
-    parameterValues,
     dashboard,
   });
 
@@ -55,7 +52,6 @@ export function Parameters({
       parameters={parameters}
       dashboard={dashboard}
       editingParameter={editingParameter}
-      parameterValues={parameterValues}
       isFullscreen={isFullscreen}
       isNightMode={isNightMode}
       hideParameters={hideParameters}
