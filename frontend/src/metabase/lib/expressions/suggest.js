@@ -136,6 +136,7 @@ export function suggest({
     suggestions: _.chain(suggestions)
       .uniq(suggestion => suggestion.text)
       .sortBy("text")
+      .sortBy("type")
       .value(),
   };
 }
