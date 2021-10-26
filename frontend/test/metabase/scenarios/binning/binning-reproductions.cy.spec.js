@@ -4,6 +4,8 @@ import {
   visualize,
   openOrdersTable,
   visitQuestionAdhoc,
+  changeBinningForDimension,
+  getBinningButtonForDimension,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
@@ -20,12 +22,12 @@ describe("binning related reproductions", () => {
     openOrdersTable({ mode: "notebook" });
     cy.findByText("Summarize").click();
     cy.findByText("Pick a column to group by").click();
-    popover()
-      .findByText("Created At")
-      .closest(".List-item")
-      .findByText("by month")
-      .click({ force: true });
-    cy.findByText("Minute");
+
+    changeBinningForDimension({
+      name: "Created At",
+      fromBinning: "by month",
+      toBinning: "Minute",
+    });
   });
 
   it("binning for a date column on a joined table should offer only a single set of values (metabase#15446)", () => {
@@ -61,19 +63,14 @@ describe("binning related reproductions", () => {
     popover().within(() => {
       cy.findByText("User").click();
       cy.findByPlaceholderText("Find...").type("cr");
-      cy.findByText("Created At")
-        .closest(".List-item")
-        .findByText("by month")
-        .click({ force: true });
     });
-    // The second popover shows up and offers binning options
-    popover()
-      .last()
-      .within(() => {
-        cy.findByText("Hour of day").scrollIntoView();
-        // This is an implicit assertion - test fails when there is more than one string when using `findByText` instead of `findAllByText`
-        cy.findByText("Minute").click();
-      });
+
+    changeBinningForDimension({
+      name: "Created At",
+      fromBinning: "by month",
+      toBinning: "Minute",
+    });
+
     // Given that the previous step passes, we should now see this in the UI
     cy.findByText("User → Created At: Minute");
   });
@@ -124,12 +121,12 @@ describe("binning related reproductions", () => {
     cy.wait("@dataset");
 
     cy.contains("Summarize").click();
-    cy.get(".List-item--selected")
-      .contains("by month")
-      .click();
 
-    popover().within(() => {
-      cy.findByText("Year").click();
+    changeBinningForDimension({
+      name: "Created At",
+      fromBinning: "by month",
+      toBinning: "Year",
+      isSelected: true,
     });
 
     cy.wait("@dataset").then(xhr => {
@@ -192,15 +189,10 @@ describe("binning related reproductions", () => {
 
     it("should work for simple question", () => {
       openSummarizeOptions("Simple question");
-      cy.findByTestId("sidebar-right").within(() => {
-        cy.findByText("Average of Subtotal")
-          .closest(".List-item")
-          .findByText("Auto binned")
-          .click({ force: true });
-      });
-
-      popover().within(() => {
-        cy.findByText("10 bins").click();
+      changeBinningForDimension({
+        name: "Average of Subtotal",
+        fromBinning: "Auto binned",
+        toBinning: "10 bins",
       });
 
       cy.get(".bar");
@@ -213,20 +205,14 @@ describe("binning related reproductions", () => {
       cy.findByText("Count of rows").click();
       cy.findByText("Pick a column to group by").click();
 
-      popover().within(() => {
-        cy.findByText("Average of Subtotal")
-          .closest(".List-item")
-          .findByText("Auto binned")
-          .click({ force: true });
+      changeBinningForDimension({
+        name: "Average of Subtotal",
+        fromBinning: "Auto binned",
+        toBinning: "10 bins",
       });
 
-      popover()
-        .last()
-        .within(() => {
-          cy.findByText("10 bins").click();
-        });
-
       visualize();
+
       cy.get(".bar");
     });
   });
@@ -274,11 +260,10 @@ describe("binning related reproductions", () => {
     });
 
     it("should render time series auto binning default bucket correctly (metabase#16671)", () => {
-      cy.findByTestId("sidebar-right").within(() => {
-        cy.findByText("CREATED_AT")
-          .closest(".List-item")
-          .should("contain", "by month");
-      });
+      getBinningButtonForDimension({ name: "CREATED_AT" }).should(
+        "have.text",
+        "by month",
+      );
     });
 
     it("should work for longitude (metabase#16672)", () => {
