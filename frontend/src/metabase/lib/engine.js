@@ -32,6 +32,10 @@ export function getEngineNativeRequiresTable(engine) {
   return engine === "mongo";
 }
 
+export function getEngineSupportsFirewall(engine) {
+  return engine !== "googleanalytics";
+}
+
 export function formatJsonQuery(query, engine) {
   if (engine === "googleanalytics") {
     return formatGAQuery(query);

@@ -2,11 +2,12 @@ import React from "react";
 import { t, jt } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
+import { getEngineSupportsFirewall } from "metabase/lib/engine";
 import ExternalLink from "metabase/components/ExternalLink";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import getFieldsForBigQuery from "./big-query-fields";
-import getFieldsForMongo from "./mongo-fields";
 
+import getFieldsForMongo from "./mongo-fields";
 import MetadataSyncScheduleWidget from "metabase/admin/databases/components/widgets/MetadataSyncScheduleWidget";
 import CacheFieldValuesScheduleWidget from "metabase/admin/databases/components/widgets/CacheFieldValuesScheduleWidget";
 
@@ -382,7 +383,10 @@ const forms = {
           type: "empty",
           title: t`Connecting from behind a firewall`,
           description: t`In order to make sure Metabase can access your database, configure your firewall to allow connections from these IP addresses: 12.34.567.891, 12.34.567.891, 12.34.567.891.`,
-          hidden: !engine || MetabaseSettings.isHosted(),
+          hidden:
+            !engine ||
+            !getEngineSupportsFirewall(engine) ||
+            !MetabaseSettings.isHosted(),
         },
       ].filter(Boolean),
     normalize: function(database) {
