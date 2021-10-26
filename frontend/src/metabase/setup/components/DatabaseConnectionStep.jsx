@@ -101,9 +101,12 @@ export default class DatabaseConnectionStep extends Component {
   };
 
   componentDidUpdate(prevProps) {
-    const { stepNumber, selectedDatabaseEngine } = this.props;
+    const { activeStep, stepNumber, selectedDatabaseEngine } = this.props;
 
-    if (selectedDatabaseEngine !== prevProps.selectedDatabaseEngine) {
+    if (
+      activeStep === stepNumber &&
+      selectedDatabaseEngine !== prevProps.selectedDatabaseEngine
+    ) {
       trackDatabaseSelected(stepNumber, selectedDatabaseEngine);
     }
   }
