@@ -366,7 +366,9 @@
        (google-auth-auto-create-accounts-domain)) -> \"metabase.com\"
 
   If an env var value is set for the setting, this will change the env var rather than the setting stored in the DB.
-  To temporarily override the value of *read-only* env vars, use `with-temp-env-var-value`."
+  To temporarily override the value of *read-only* env vars, use `with-temp-env-var-value`.
+
+  WARNING: if a setting's custom setter has side effects, they will not be executed when restoring the original value."
   [[setting-k value & more :as bindings] & body]
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
   (if (empty? bindings)
