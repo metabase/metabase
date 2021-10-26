@@ -7,6 +7,24 @@ import {
   SchemaAndTableDataSelector,
 } from "metabase/query_builder/components/DataSelector";
 
+const DataSelectorsPropTypes = {
+  isNativeEditorOpen: PropTypes.bool.isRequired,
+  query: PropTypes.object,
+  readOnly: PropTypes.bool,
+  setDatabaseId: PropTypes.func,
+  setTableId: PropTypes.func,
+};
+
+const PopulatedDataSelectorsPropTypes = {
+  database: PropTypes.object,
+  databases: PropTypes.array,
+  isNativeEditorOpen: PropTypes.bool.isRequired,
+  query: PropTypes.object,
+  readOnly: PropTypes.bool,
+  setDatabaseId: PropTypes.func,
+  setTableId: PropTypes.func,
+};
+
 const DatabaseSelectorPropTypes = {
   database: PropTypes.object,
   databases: PropTypes.array,
@@ -39,16 +57,38 @@ const DataSelectors = ({
   const database = query.database();
   const databases = query.metadata().databasesList({ savedQuestions: false });
 
-  const areThereMultipleDatabases = checkIfThereAreMultipleDatabases(
-    database,
-    databases,
-  );
-
   if (!isNativeEditorOpen || databases.length === 0) {
     return <Placeholder query={query} />;
   }
 
+  return (
+    <PopulatedDataSelectors
+      database={database}
+      databases={databases}
+      query={query}
+      readOnly={readOnly}
+      setDatabaseId={setDatabaseId}
+      setTableId={setTableId}
+    />
+  );
+};
+
+DataSelectors.propTypes = DataSelectorsPropTypes;
+
+const PopulatedDataSelectors = ({
+  database,
+  databases,
+  query,
+  readOnly,
+  setDatabaseId,
+  setTableId,
+}) => {
   const dataSelectors = [];
+
+  const areThereMultipleDatabases = checkIfThereAreMultipleDatabases(
+    database,
+    databases,
+  );
 
   if (areThereMultipleDatabases) {
     dataSelectors.push(
@@ -78,6 +118,8 @@ const DataSelectors = ({
 
   return dataSelectors;
 };
+
+PopulatedDataSelectors.propTypes = PopulatedDataSelectorsPropTypes;
 
 const checkIfThereAreMultipleDatabases = (database, databases) =>
   database == null ||
