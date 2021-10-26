@@ -16,3 +16,8 @@ function splitType(parameterOrType) {
 
   return parameterType.split("/");
 }
+
+export function isDateParameter(parameter) {
+  const type = getParameterType(parameter);
+  return type === "date";
+}
