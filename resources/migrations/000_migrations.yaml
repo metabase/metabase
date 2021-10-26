@@ -8633,6 +8633,22 @@ databaseChangeLog:
             tableName: metabase_table
             columnName: entity_name
 
+  - changeSet:
+      id: 320
+      author: dpsutton
+      comment: Added 0.42.0 Initial support for datasets based on questions
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: dataset
+                  type: boolean
+                  remarks: "Indicate whether question is a dataset"
+                  constraints:
+                    nullable: false
+                  defaultValue: false
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
