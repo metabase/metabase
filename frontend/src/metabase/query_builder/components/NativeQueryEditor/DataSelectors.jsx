@@ -7,18 +7,18 @@ import {
   SchemaAndTableDataSelector,
 } from "metabase/query_builder/components/DataSelector";
 
-const DataSelectorPropTypes = {
+const DatabaseSelectorPropTypes = {
   database: PropTypes.object,
   databases: PropTypes.array,
   readOnly: PropTypes.bool,
   setDatabaseId: PropTypes.func,
 };
 
-const SelectorWithDatabaseNamePropTypes = {
+const DatabaseNameSpanPropTypes = {
   database: PropTypes.object,
 };
 
-const SelectorWithTablePropTypes = {
+const TableSelectorPropTypes = {
   database: PropTypes.object,
   readOnly: PropTypes.bool,
   selectedTable: PropTypes.object,
@@ -52,21 +52,23 @@ const DataSelectors = ({
 
   if (areThereMultipleDatabases) {
     dataSelectors.push(
-      <DataSelector
+      <DatabaseSelector
         database={database}
         databases={databases}
+        key="db_selector"
         readOnly={readOnly}
         setDatabaseId={setDatabaseId}
       />,
     );
   } else if (database) {
-    dataSelectors.push(<SelectorWithDatabaseName database={database} />);
+    dataSelectors.push(<DatabaseNameSpan key="db" database={database} />);
   }
 
   if (query.requiresTable()) {
     dataSelectors.push(
-      <SelectorWithTable
+      <TableSelector
         database={database}
+        key="table_selector"
         readOnly={readOnly}
         selectedTable={query.table()}
         setTableId={setTableId}
@@ -81,11 +83,8 @@ const checkIfThereAreMultipleDatabases = (database, databases) =>
   database == null ||
   (databases.length > 1 && databases.some(db => db.id === database.id));
 
-const DataSelector = ({ database, databases, readOnly, setDatabaseId }) => (
-  <div
-    key="db_selector"
-    className="GuiBuilder-section GuiBuilder-data flex align-center ml2"
-  >
+const DatabaseSelector = ({ database, databases, readOnly, setDatabaseId }) => (
+  <div className="GuiBuilder-section GuiBuilder-data flex align-center ml2">
     <DatabaseDataSelector
       databases={databases}
       selectedDatabaseId={database?.id}
@@ -96,26 +95,16 @@ const DataSelector = ({ database, databases, readOnly, setDatabaseId }) => (
   </div>
 );
 
-DataSelector.propTypes = DataSelectorPropTypes;
+DatabaseSelector.propTypes = DatabaseSelectorPropTypes;
 
-const SelectorWithDatabaseName = ({ database }) => (
-  <span key="db" className="p2 text-bold text-grey">
-    {database.name}
-  </span>
+const DatabaseNameSpan = ({ database }) => (
+  <span className="p2 text-bold text-grey">{database.name}</span>
 );
 
-SelectorWithDatabaseName.propTypes = SelectorWithDatabaseNamePropTypes;
+DatabaseNameSpan.propTypes = DatabaseNameSpanPropTypes;
 
-const SelectorWithTable = ({
-  database,
-  readOnly,
-  selectedTable,
-  setTableId,
-}) => (
-  <div
-    key="table_selector"
-    className="GuiBuilder-section GuiBuilder-data flex align-center ml2"
-  >
+const TableSelector = ({ database, readOnly, selectedTable, setTableId }) => (
+  <div className="GuiBuilder-section GuiBuilder-data flex align-center ml2">
     <SchemaAndTableDataSelector
       selectedTableId={selectedTable?.id || null}
       selectedDatabaseId={database?.id}
@@ -127,7 +116,7 @@ const SelectorWithTable = ({
   </div>
 );
 
-SelectorWithTable.propTypes = SelectorWithTablePropTypes;
+TableSelector.propTypes = TableSelectorPropTypes;
 
 const Placeholder = ({ query }) => (
   <span className="ml2 p2 text-medium">
