@@ -99,7 +99,6 @@ export default class EmbedFrame extends Component {
                       parameters,
                       parameterValues,
                     )}
-                    query={location.query}
                     setParameterValue={setParameterValue}
                     hideParameters={hide_parameters}
                     isQB

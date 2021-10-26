@@ -96,7 +96,6 @@ class AutomaticDashboardApp extends React.Component {
       parameters,
       parameterValues,
       setParameterValue,
-      location,
     } = this.props;
     const { savedDashboardId } = this.state;
     // pull out "more" related items for displaying as a button at the bottom of the dashboard
@@ -149,7 +148,6 @@ class AutomaticDashboardApp extends React.Component {
                     parameters,
                     parameterValues,
                   )}
-                  query={location.query}
                   setParameterValue={setParameterValue}
                   isQB
                 />

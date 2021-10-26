@@ -464,7 +464,6 @@ export default class NativeQueryEditor extends Component {
     const {
       query,
       setParameterValue,
-      location,
       readOnly,
       isNativeEditorOpen,
       openSnippetModalWithSelectedText,
@@ -490,7 +489,6 @@ export default class NativeQueryEditor extends Component {
           />
           <SyncedParametersList
             parameters={parameters}
-            query={location.query}
             setParameterValue={setParameterValue}
             setParameterIndex={this.setParameterIndex}
             isEditing

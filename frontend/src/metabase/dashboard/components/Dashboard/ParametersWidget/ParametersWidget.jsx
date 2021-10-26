@@ -41,7 +41,6 @@ const ParametersWidget = ({
       isNightMode={shouldRenderAsNightMode}
       hideParameters={hideParameters}
       parameters={getValuePopulatedParameters(parameters, parameterValues)}
-      query={location.query}
       editingParameter={editingParameter}
       setEditingParameter={setEditingParameter}
       setParameterIndex={setParameterIndex}
