@@ -470,16 +470,6 @@ export default class NativeQueryEditor extends Component {
       openSnippetModalWithSelectedText,
     } = this.props;
 
-    const dataSourceSelectors = (
-      <DataSourceSelectors
-        isNativeEditorOpen={isNativeEditorOpen}
-        query={query}
-        readOnly={readOnly}
-        setDatabaseId={this.setDatabaseId}
-        setTableId={this.setTableId}
-      />
-    );
-
     const parameters = query.question().parameters();
 
     const dragHandle = (
@@ -491,7 +481,13 @@ export default class NativeQueryEditor extends Component {
     return (
       <div className="NativeQueryEditor bg-light full">
         <div className="flex align-center" style={{ minHeight: 55 }}>
-          {dataSourceSelectors}
+          <DataSourceSelectors
+            isNativeEditorOpen={isNativeEditorOpen}
+            query={query}
+            readOnly={readOnly}
+            setDatabaseId={this.setDatabaseId}
+            setTableId={this.setTableId}
+          />
           <Parameters
             parameters={parameters}
             query={location.query}
