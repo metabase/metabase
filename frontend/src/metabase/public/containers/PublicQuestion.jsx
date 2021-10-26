@@ -16,7 +16,7 @@ import type { ParameterValues } from "metabase-types/types/Parameter";
 import {
   getParameterValuesBySlug,
   getParameterValuesByIdFromQueryParams,
-} from "metabase/meta/Parameter";
+} from "metabase/parameters/utils/parameter-values";
 import {
   getParametersFromCard,
   getValueAndFieldIdPopulatedParametersFromCard,

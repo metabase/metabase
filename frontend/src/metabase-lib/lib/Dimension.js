@@ -1225,6 +1225,10 @@ export class TemplateTagDimension extends FieldDimension {
     return dimension ? dimension.field() : super.field();
   }
 
+  tableId() {
+    return this.field()?.table?.id;
+  }
+
   name() {
     return this.field().name;
   }
