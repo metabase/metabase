@@ -460,7 +460,7 @@ describe("scenarios > question > new", () => {
       });
     });
 
-    it.skip("distinct inside custom expression should suggest non-numeric types (metabase#13469)", () => {
+    it("distinct inside custom expression should suggest non-numeric types (metabase#13469)", () => {
       openReviewsTable({ mode: "notebook" });
       cy.findByText("Summarize").click();
       popover()
