@@ -12,9 +12,9 @@
   (:import java.io.ByteArrayInputStream
            [java.security.cert CertificateFactory X509Certificate]
            java.security.KeyStore
+           java.util.Base64
            javax.net.SocketFactory
-           [javax.net.ssl SSLContext TrustManagerFactory X509TrustManager]
-           (java.util Base64)))
+           [javax.net.ssl SSLContext TrustManagerFactory X509TrustManager]))
 
 ;; This is normally set via the env var `MB_DB_CONNECTION_TIMEOUT_MS`
 (defsetting db-connection-timeout-ms
