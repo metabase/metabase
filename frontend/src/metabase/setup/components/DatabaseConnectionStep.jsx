@@ -97,7 +97,7 @@ export default class DatabaseConnectionStep extends Component {
     });
 
     trackStructEvent("Setup", "Database Step");
-    trackAddDataLaterClicked(stepNumber, selectedDatabaseEngine);
+    trackAddDataLaterClicked(selectedDatabaseEngine);
   };
 
   componentDidUpdate(prevProps) {
@@ -107,7 +107,7 @@ export default class DatabaseConnectionStep extends Component {
       activeStep === stepNumber &&
       selectedDatabaseEngine !== prevProps.selectedDatabaseEngine
     ) {
-      trackDatabaseSelected(stepNumber, selectedDatabaseEngine);
+      trackDatabaseSelected(selectedDatabaseEngine);
     }
   }
 
