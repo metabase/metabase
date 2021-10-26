@@ -82,6 +82,25 @@
   :setter     :none
   :getter     #(uuid-nonce :analytics-uuid))
 
+(defn- first-user-creation
+  "Returns the timestamp at which the first user was created."
+  []
+  (:min (db/select-one ['User [:%min.date_joined :min]])))
+
+(defsetting instance-creation
+  (deferred-tru "The approximate timestamp at which this instance of Metabase was created, for inclusion in analyticss.")
+  :visibility :public
+  :setter     :none
+  :type       :timestamp
+  :getter     (fn []
+                (if-let [value (setting/get-timestamp :instance-creation)]
+                  value
+                  ;; For instances that were started before this setting was added (in 0.41.2), use the creation
+                  ;; timestamp of the first user. For all new instances, use the timestamp at which this setting
+                  ;; is first read.
+                  (setting/set-timestamp! :instance-creation (or (first-user-creation)
+                                                                 (java-time/instant))))))
+
 (defn- normalize-site-url [^String s]
   (let [ ;; remove trailing slashes
         s (str/replace s #"/$" "")
