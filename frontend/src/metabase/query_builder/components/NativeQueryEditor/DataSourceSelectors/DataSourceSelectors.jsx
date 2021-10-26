@@ -7,7 +7,7 @@ import {
   SchemaAndTableDataSelector,
 } from "metabase/query_builder/components/DataSelector";
 
-const DataSelectorsPropTypes = {
+const DataSourceSelectorsPropTypes = {
   isNativeEditorOpen: PropTypes.bool.isRequired,
   query: PropTypes.object,
   readOnly: PropTypes.bool,
@@ -15,7 +15,7 @@ const DataSelectorsPropTypes = {
   setTableId: PropTypes.func,
 };
 
-const PopulatedDataSelectorsPropTypes = {
+const PopulatedDataSourceSelectorsPropTypes = {
   database: PropTypes.object,
   databases: PropTypes.array,
   isNativeEditorOpen: PropTypes.bool.isRequired,
@@ -47,7 +47,7 @@ const PlaceholderPropTypes = {
   query: PropTypes.object,
 };
 
-const DataSelectors = ({
+const DataSourceSelectors = ({
   isNativeEditorOpen,
   query,
   readOnly,
@@ -62,7 +62,7 @@ const DataSelectors = ({
   }
 
   return (
-    <PopulatedDataSelectors
+    <PopulatedDataSourceSelectors
       database={database}
       databases={databases}
       query={query}
@@ -73,9 +73,9 @@ const DataSelectors = ({
   );
 };
 
-DataSelectors.propTypes = DataSelectorsPropTypes;
+DataSourceSelectors.propTypes = DataSourceSelectorsPropTypes;
 
-const PopulatedDataSelectors = ({
+const PopulatedDataSourceSelectors = ({
   database,
   databases,
   query,
@@ -119,7 +119,7 @@ const PopulatedDataSelectors = ({
   return dataSelectors;
 };
 
-PopulatedDataSelectors.propTypes = PopulatedDataSelectorsPropTypes;
+PopulatedDataSourceSelectors.propTypes = PopulatedDataSourceSelectorsPropTypes;
 
 const checkIfThereAreMultipleDatabases = (database, databases) =>
   database == null ||
@@ -168,4 +168,4 @@ const Placeholder = ({ query }) => (
 
 Placeholder.propTypes = PlaceholderPropTypes;
 
-export default DataSelectors;
+export default DataSourceSelectors;

@@ -32,7 +32,7 @@ import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import NativeQueryEditorSidebar from "./NativeQueryEditor/NativeQueryEditorSidebar";
 import VisibilityToggler from "./NativeQueryEditor/VisibilityToggler";
 import RightClickPopover from "./NativeQueryEditor/RightClickPopover";
-import DataSelectors from "./NativeQueryEditor/DataSelectors";
+import DataSourceSelectors from "./NativeQueryEditor/DataSourceSelectors";
 
 import "./NativeQueryEditor.css";
 
@@ -471,7 +471,7 @@ export default class NativeQueryEditor extends Component {
     } = this.props;
 
     const dataSelectors = (
-      <DataSelectors
+      <DataSourceSelectors
         isNativeEditorOpen={isNativeEditorOpen}
         query={query}
         readOnly={readOnly}
