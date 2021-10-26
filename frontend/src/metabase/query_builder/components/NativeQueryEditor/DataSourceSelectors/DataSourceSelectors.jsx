@@ -83,7 +83,7 @@ const PopulatedDataSourceSelectors = ({
   setDatabaseId,
   setTableId,
 }) => {
-  const dataSelectors = [];
+  const dataSourceSelectors = [];
 
   const areThereMultipleDatabases = checkIfThereAreMultipleDatabases(
     database,
@@ -91,7 +91,7 @@ const PopulatedDataSourceSelectors = ({
   );
 
   if (areThereMultipleDatabases) {
-    dataSelectors.push(
+    dataSourceSelectors.push(
       <DatabaseSelector
         database={database}
         databases={databases}
@@ -101,11 +101,11 @@ const PopulatedDataSourceSelectors = ({
       />,
     );
   } else if (database) {
-    dataSelectors.push(<DatabaseNameSpan key="db" database={database} />);
+    dataSourceSelectors.push(<DatabaseNameSpan key="db" database={database} />);
   }
 
   if (query.requiresTable()) {
-    dataSelectors.push(
+    dataSourceSelectors.push(
       <TableSelector
         database={database}
         key="table_selector"
@@ -116,7 +116,7 @@ const PopulatedDataSourceSelectors = ({
     );
   }
 
-  return dataSelectors;
+  return dataSourceSelectors;
 };
 
 PopulatedDataSourceSelectors.propTypes = PopulatedDataSourceSelectorsPropTypes;
