@@ -36,8 +36,9 @@
 ;;; ----------------------------------------------- Connection Details -----------------------------------------------
 
 (defn- transient-dataset?
-  "Returns a boolean indicating whether the given `dataset-name` is transient (i.e. created and destroyed with every
-  test run, for instance to check time intervals relative to \"now\")"
+  "Returns a boolean indicating whether the given `dataset-name` (as per its definition, NOT the physical schema name
+  that is to be created on the cluster) should be made transient (i.e. created and destroyed with every test run, for
+  instance to check time intervals relative to \"now\")."
   [dataset-name]
   (str/includes? dataset-name "checkins_interval_"))
 
@@ -47,10 +48,12 @@
       :db    (cond-> (str "v3_" s)
                ;; for transient datasets (i.e. those that are created and torn down with each test run), we should add
                ;; some unique name portion to prevent independent parallel test runs from interfering with each other
-               ;; for now, the only transient datasets that the BigQuery driver(s) make use of are checkins_interval_*
                (transient-dataset? s)
                ;; for transient datasets, we will make them unique by appending a suffix that represents the millisecond
                ;; timestamp from when this namespace was loaded (i.e. test initialized on this particular JVM/instance)
+               ;; note that this particular dataset will not be deleted after this test run finishes, since there is no
+               ;; reasonable hook to do so (from this test extension namespace), so instead we will rely on each run
+               ;; cleaning up outdated, transient datasets via the `transient-dataset-outdated?` mechanism above
                (str "_" ns-load-time))
       :table s)))
 
@@ -296,23 +299,39 @@
   "Fetch a list of *all* dataset names that currently exist in the BQ test project."
   []
   (for [^Dataset dataset (.iterateAll (.listDatasets (bigquery) (into-array BigQuery$DatasetListOption [])))
-        :let    [dataset-name (.. dataset getDatasetId getDataset)]
-        ;; don't consider that checkins_interval_ datasets created in
-        ;; `metabase.query-processor-test.date-bucketing-test` to be already created, since those test things relative
-        ;; to the current moment in time and thus need to be recreated before running the tests.
-        :when   (not (transient-dataset? dataset-name))]
+        :let    [dataset-name (.. dataset getDatasetId getDataset)]]
     dataset-name))
 
 ;; keep track of databases we haven't created yet
 (def ^:private existing-datasets
   (atom #{}))
 
+(defn- transient-dataset-outdated?
+  "Checks whether the given `dataset-name` is a transient dataset that is outdated, and should be deleted.  Note that
+  unlike `transient-dataset?`, this doesn't need any domain specific knowledge about which transient datasets are
+  outdated. The fact that a *created* dataset (i.e. created on BigQuery) is transient has already been encoded by a
+  suffix, so we can just look for that here."
+  [dataset-name]
+  (let [[_ ds-timestamp-str] (re-matches #".*__transient_(\d+)$" dataset-name)
+        ds-timestamp         (Long. ds-timestamp-str)]
+    ;; millis to hours
+    (< (* 1000 60 60 2) (- ns-load-time ds-timestamp))))
+
 (defmethod tx/create-db! :bigquery-cloud-sdk [_ {:keys [database-name table-definitions]} & _]
   {:pre [(seq database-name) (sequential? table-definitions)]}
   ;; fetch existing datasets if we haven't done so yet
   (when-not (seq @existing-datasets)
-    (reset! existing-datasets (set (existing-dataset-names)))
-    (println "These BigQuery datasets have already been loaded:\n" (u/pprint-to-str (sort @existing-datasets))))
+    (let [{transient-datasets true non-transient-datasets false} (group-by transient-dataset?
+                                                                   (existing-dataset-names))]
+      (reset! existing-datasets (set non-transient-datasets))
+      (println "These BigQuery datasets have already been loaded:\n" (u/pprint-to-str (sort @existing-datasets)))
+      (when-let [outdated-transient-datasets (seq (filter transient-dataset-outdated? transient-datasets))]
+        (println (u/format-color
+                   'blue
+                   "These BigQuery datasets are transient, and more than two hours old; deleting them: %s`."
+                   (u/pprint-to-str (sort outdated-transient-datasets))))
+        (doseq [delete-ds outdated-transient-datasets]
+          (destroy-dataset! delete-ds)))))
   ;; now check and see if we need to create the requested one
   (let [database-name (normalize-name :db database-name)]
     (when-not (contains? @existing-datasets database-name)
