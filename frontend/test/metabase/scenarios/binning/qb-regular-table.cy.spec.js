@@ -1,4 +1,9 @@
-import { restore, openTable, visualize } from "__support__/e2e/cypress";
+import {
+  restore,
+  openTable,
+  visualize,
+  changeBinningForDimension,
+} from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { ORDERS_ID, PEOPLE_ID } = SAMPLE_DATASET;
@@ -149,34 +154,20 @@ function chooseInitialBinningOption({
   if (mode === "notebook") {
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
-    cy.findByText(column)
-      .first()
-      .closest(".List-item")
-      .as("targetListItem");
 
-    cy.get("@targetListItem")
-      .find(".Field-extra")
-      .as("listItemSelectedBinning")
-      .should("contain", defaultBucket)
-      .click();
-
-    cy.findByText(bucketSize).click();
+    changeBinningForDimension({
+      name: column,
+      fromBinning: defaultBucket,
+      toBinning: bucketSize,
+    });
 
     visualize();
   } else {
-    cy.findByTestId("sidebar-right")
-      .contains(column)
-      .first()
-      .closest(".List-item")
-      .as("targetListItem");
-
-    cy.get("@targetListItem")
-      .find(".Field-extra")
-      .as("listItemSelectedBinning")
-      .should("contain", defaultBucket)
-      .click();
-
-    cy.findByText(bucketSize).click();
+    changeBinningForDimension({
+      name: column,
+      fromBinning: defaultBucket,
+      toBinning: bucketSize,
+    });
   }
 }
 

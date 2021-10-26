@@ -29,7 +29,7 @@ import QuestionDataSelector from "./QuestionDataSelector";
 
 import ChartSettingsSidebar from "./sidebars/ChartSettingsSidebar";
 import ChartTypeSidebar from "./sidebars/ChartTypeSidebar";
-import SummarizeSidebar from "./sidebars/SummarizeSidebar";
+import SummarizeSidebar from "./sidebars/SummarizeSidebar/SummarizeSidebar";
 import FilterSidebar from "./sidebars/FilterSidebar";
 import QuestionDetailsSidebar from "./sidebars/QuestionDetailsSidebar";
 

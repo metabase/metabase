@@ -84,6 +84,8 @@ export default class AccordionList extends Component {
     searchCaseInsensitive: PropTypes.bool,
     searchFuzzy: PropTypes.bool,
     searchPlaceholder: PropTypes.string,
+
+    itemTestId: PropTypes.string,
   };
 
   static defaultProps = {
@@ -473,6 +475,7 @@ const AccordionListCell = ({
   onChangeSearchText,
   searchPlaceholder,
   showItemArrows,
+  itemTestId,
   getItemClassName,
 }) => {
   const { type, section, sectionIndex, item, itemIndex, isLastItem } = row;
@@ -550,6 +553,8 @@ const AccordionListCell = ({
     const description = renderItemDescription(item, itemIndex, isSelected);
     content = (
       <div
+        data-testid={itemTestId}
+        aria-selected={isSelected}
         className={cx(
           "List-item flex mx1",
           {

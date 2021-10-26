@@ -88,6 +88,7 @@ import Overworld from "metabase/containers/Overworld";
 
 import ArchiveApp from "metabase/home/containers/ArchiveApp";
 import SearchApp from "metabase/home/containers/SearchApp";
+import { trackPageView } from "metabase/lib/analytics";
 
 const MetabaseIsSetup = UserAuthWrapper({
   predicate: authData => !authData.hasSetupToken,
@@ -144,6 +145,10 @@ export const getRoutes = store => (
         if (!MetabaseSettings.hasSetupToken()) {
           replace("/");
         }
+        trackPageView(location.pathname);
+      }}
+      onChange={(prevState, nextState) => {
+        trackPageView(nextState.location.pathname);
       }}
     />
 
@@ -157,7 +162,11 @@ export const getRoutes = store => (
     <Route
       onEnter={async (nextState, replace, done) => {
         await store.dispatch(loadCurrentUser());
+        trackPageView(nextState.location.pathname);
         done();
+      }}
+      onChange={(prevState, nextState) => {
+        trackPageView(nextState.location.pathname);
       }}
     >
       {/* AUTH */}
