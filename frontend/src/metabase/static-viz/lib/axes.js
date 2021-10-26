@@ -36,3 +36,11 @@ export const getYTickLabelProps = layout => ({
   fill: layout.colors.textMedium,
   textAnchor: "end",
 });
+
+export const getLabelProps = layout => ({
+  fontWeight: layout.labelFontWeight,
+  fontSize: layout.font.size,
+  fontFamily: layout.font.family,
+  fill: layout.colors.textMedium,
+  textAnchor: "middle",
+});
