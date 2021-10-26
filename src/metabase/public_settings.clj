@@ -102,8 +102,6 @@
                                                                      (java-time/offset-date-time)))
                       (setting/get-timestamp :instance-creation)))))
 
-
-(setting/set-timestamp! :instance-creation (first-user-creation))
 (defn- normalize-site-url [^String s]
   (let [ ;; remove trailing slashes
         s (str/replace s #"/$" "")
