@@ -161,6 +161,12 @@
   border-radius: 8px;
 }
 
+@media (prefers-reduced-motion) {
+  .DashCard {
+    transition-duration: 0.001ms !important;
+  }
+}
+
 .Dash--editing .DashCard.react-draggable-dragging .Card {
   box-shadow: 3px 3px 8px var(--color-shadow);
 }
