@@ -24,9 +24,9 @@ export const trackStructEvent = (category, action, label, value) => {
   }
 };
 
-export const trackSchemaEvent = (schema, data) => {
+export const trackSchemaEvent = (schema, version, data) => {
   if (isTrackingEnabled() && schema) {
-    trackSnowplowSchemaEvent(schema, data);
+    trackSnowplowSchemaEvent(schema, version, data);
   }
 };
 
