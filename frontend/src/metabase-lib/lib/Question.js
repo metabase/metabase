@@ -38,8 +38,8 @@ import {
   getValueAndFieldIdPopulatedParametersFromCard,
   isTransientId,
 } from "metabase/meta/Card";
-import { normalizeParameterValue } from "metabase/meta/Parameter";
 import { parameterToMBQLFilter } from "metabase/parameters/utils/mbql";
+import { normalizeParameterValue } from "metabase/parameters/utils/parameter-values";
 import {
   aggregate,
   breakout,
