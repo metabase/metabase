@@ -507,7 +507,7 @@ export default class TableInteractive extends Component {
           transition: dragColIndex != null ? "left 200ms" : null,
           backgroundColor,
         }}
-        className={cx("TableInteractive-cellWrapper text-dark", {
+        className={cx("TableInteractive-cellWrapper text-dark table-cell", {
           "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
           "TableInteractive-cellWrapper--lastColumn":
             columnIndex === cols.length - 1,
@@ -534,6 +534,8 @@ export default class TableInteractive extends Component {
             : undefined
         }
         tabIndex="0"
+        data-rowindex={rowIndex}
+        data-columnindex={columnIndex}
       >
         {this.props.renderTableCellWrapper(cellData)}
       </div>
