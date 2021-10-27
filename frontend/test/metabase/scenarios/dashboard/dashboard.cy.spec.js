@@ -425,7 +425,7 @@ describe("scenarios > dashboard", () => {
       cy.findByText("Orders, Count").click();
     });
 
-    cy.get(".LoadingSpinner").should("not.exist");
+    cy.findByTestId("loading-spinner").should("not.exist");
     cy.findAllByText("18,760").should("have.length", 2);
   });
 });

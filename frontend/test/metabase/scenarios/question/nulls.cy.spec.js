@@ -99,7 +99,7 @@ describe("scenarios > question > null", () => {
 
           cy.log("Reported failing in v0.37.0.2");
           cy.get(".DashCard").within(() => {
-            cy.get(".LoadingSpinner").should("not.exist");
+            cy.findByTestId("loading-spinner").should("not.exist");
             cy.findByText("13626");
             // [quarantine]: flaking in CircleCI, passing locally
             // TODO: figure out the cause of the failed test in CI after #13721 is merged
@@ -150,7 +150,7 @@ describe("scenarios > question > null", () => {
 
           cy.visit(`/dashboard/${DASHBOARD_ID}`);
           cy.log("P0 regression in v0.37.1!");
-          cy.get(".LoadingSpinner").should("not.exist");
+          cy.findByTestId("loading-spinner").should("not.exist");
           cy.findByText("13801_Q1");
           cy.get(".ScalarValue").contains("0");
           cy.findByText("13801_Q2");

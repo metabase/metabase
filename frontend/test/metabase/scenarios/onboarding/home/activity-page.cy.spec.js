@@ -68,7 +68,7 @@ describe("metabase > scenarios > home > activity-page", () => {
       .click();
 
     sidebar().within(() => {
-      cy.get(".LoadingSpinner").should("not.exist");
+      cy.findByTestId("loading-spinner").should("not.exist");
       cy.findByText("Orders").click();
     });
 

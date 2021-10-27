@@ -11,7 +11,7 @@ const propTypes = {
 };
 
 const LoadingSpinner = ({ className, size }) => (
-  <LoadingSpinnerRoot className={className}>
+  <LoadingSpinnerRoot className={className} data-testid="loading-spinner">
     <LoadingSpinnerIcon style={{ width: size, height: size }} />
   </LoadingSpinnerRoot>
 );
