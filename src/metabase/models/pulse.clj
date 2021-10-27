@@ -20,6 +20,7 @@
             [metabase.events :as events]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection]
+            [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
             [metabase.models.interface :as i]
             [metabase.models.permissions :as perms]
@@ -309,12 +310,17 @@
   (let [query {:select    [:p.* [:%lower.p.name :lower-name]]
                :modifiers [:distinct]
                :from      [[Pulse :p]]
-               :left-join (when user-id
-                            [[PulseChannel :pchan] [:= :p.id :pchan.pulse_id]
-                             [PulseChannelRecipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]])
+               :left-join (concat
+                           [[Dashboard :d] [:= :p.dashboard_id :d.id]]
+                           (when user-id
+                             [[PulseChannel :pchan] [:= :p.id :pchan.pulse_id]
+                              [PulseChannelRecipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]))
                :where     [:and
                            [:= :p.alert_condition nil]
                            [:= :p.archived archived?]
+                           [:or
+                            [:= :p.dashboard_id nil]
+                            [:= :d.archived false]]
                            (when dashboard-id
                              [:= :p.dashboard_id dashboard-id])
                            (when user-id
