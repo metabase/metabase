@@ -6,15 +6,11 @@ import { t } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
 
-import { getMBQLName, isExpression } from "metabase/lib/expressions";
+import { getTokenizerErrors } from "./tokenizerErrors";
+import { isExpression } from "metabase/lib/expressions";
 import { format } from "metabase/lib/expressions/format";
 import { processSource } from "metabase/lib/expressions/process";
-import {
-  tokenize,
-  countMatchingParentheses,
-  TOKEN,
-  OPERATOR as OP,
-} from "metabase/lib/expressions/tokenizer";
+import { tokenize } from "metabase/lib/expressions/tokenizer";
 import MetabaseSettings from "metabase/lib/settings";
 import colors from "metabase/lib/colors";
 
@@ -304,41 +300,6 @@ export default class ExpressionEditorTextfield extends React.Component {
     }
   };
 
-  treatTokenizerErrors = (source, tokens, tokenizerErrors) => {
-    const mismatchedParentheses = countMatchingParentheses(tokens);
-    const mismatchedError =
-      mismatchedParentheses === 1
-        ? t`Expecting a closing parenthesis`
-        : mismatchedParentheses > 1
-        ? t`Expecting ${mismatchedParentheses} closing parentheses`
-        : mismatchedParentheses === -1
-        ? t`Expecting an opening parenthesis`
-        : mismatchedParentheses < -1
-        ? t`Expecting ${-mismatchedParentheses} opening parentheses`
-        : null;
-
-    if (mismatchedError) {
-      tokenizerErrors.push({
-        message: mismatchedError,
-      });
-    }
-
-    for (let i = 0; i < tokens.length - 1; ++i) {
-      const token = tokens[i];
-      if (token.type === TOKEN.Identifier && source[token.start] !== "[") {
-        const functionName = source.slice(token.start, token.end);
-        if (getMBQLName(functionName)) {
-          const next = tokens[i + 1];
-          if (next.op !== OP.OpenParenthesis) {
-            tokenizerErrors.unshift({
-              message: t`Expecting an opening parenthesis after function ${functionName}`,
-            });
-          }
-        }
-      }
-    }
-  };
-
   onExpressionChange(source) {
     const inputElement = this.input.current;
     if (!inputElement) {
@@ -375,7 +336,7 @@ export default class ExpressionEditorTextfield extends React.Component {
       !hasSelection && !(isValid && isAtEnd && !endsWithWhitespace);
 
     const { tokens, errors: tokenizerErrors } = tokenize(source);
-    this.treatTokenizerErrors(source, tokens, tokenizerErrors);
+    getTokenizerErrors(source, tokens, tokenizerErrors);
 
     this.setState({
       source,
