@@ -1,10 +1,6 @@
 import styled, { keyframes } from "styled-components";
 
-export const LoadingSpinnerRoot = styled.div`
-  display: block;
-`;
-
-export const LoadingSpinnerAnimation = keyframes`
+const spinnerAnimation = keyframes`
   from {
     transform: rotate(0deg);
   }
@@ -13,7 +9,7 @@ export const LoadingSpinnerAnimation = keyframes`
   }
 `;
 
-export const LoadingSpinnerIcon = styled.div`
+export const SpinnerIcon = styled.div`
   display: inline-block;
   box-sizing: border-box;
   width: 32px;
@@ -22,7 +18,7 @@ export const LoadingSpinnerIcon = styled.div`
   border-top-color: currentColor;
   border-radius: 99px;
 
-  animation: ${LoadingSpinnerAnimation} 1.3s infinite
+  animation: ${spinnerAnimation} 1.3s infinite
     cubic-bezier(0.785, 0.135, 0.15, 0.86);
 
   &::after {
