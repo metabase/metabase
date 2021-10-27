@@ -1,23 +1,16 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import PropTypes from "prop-types";
-
+import memoize from "lodash.memoize";
 import { t } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
 
-import { getTokenizerErrors } from "./tokenizerErrors";
 import { isExpression } from "metabase/lib/expressions";
 import { format } from "metabase/lib/expressions/format";
 import { processSource } from "metabase/lib/expressions/process";
 import { tokenize } from "metabase/lib/expressions/tokenizer";
-import MetabaseSettings from "metabase/lib/settings";
-import colors from "metabase/lib/colors";
-
-import memoize from "lodash.memoize";
-
 import { setCaretPosition, getSelectionPosition } from "metabase/lib/dom";
-
 import {
   KEYCODE_ENTER,
   KEYCODE_ESCAPE,
@@ -26,57 +19,12 @@ import {
   KEYCODE_RIGHT,
   KEYCODE_DOWN,
 } from "metabase/lib/keyboard";
-
-import ExternalLink from "metabase/components/ExternalLink";
-import Icon from "metabase/components/Icon";
-import Popover from "metabase/components/Popover";
 import ExplicitSize from "metabase/components/ExplicitSize";
 
+import { getTokenizerErrors } from "./tokenizerErrors";
+import HelpText from "./HelpText";
 import TokenizedInput from "./TokenizedInput";
-
 import ExpressionEditorSuggestions from "./ExpressionEditorSuggestions";
-
-const HelpText = ({ helpText, width }) =>
-  helpText ? (
-    <Popover
-      tetherOptions={{
-        attachment: "top left",
-        targetAttachment: "bottom left",
-      }}
-      style={{ width: width }}
-      isOpen
-    >
-      {/* Prevent stealing focus from input box causing the help text to be closed (metabase#17548) */}
-      <div onMouseDown={e => e.preventDefault()}>
-        <p
-          className="p2 m0 text-monospace text-bold"
-          style={{ background: colors["bg-yellow"] }}
-        >
-          {helpText.structure}
-        </p>
-        <div className="p2 border-top">
-          <p className="mt0 text-bold">{helpText.description}</p>
-          <p className="text-code m0 text-body">{helpText.example}</p>
-        </div>
-        <div className="p2 border-top">
-          {helpText.args.map(({ name, description }, index) => (
-            <div key={index}>
-              <h4 className="text-medium">{name}</h4>
-              <p className="mt1 text-bold">{description}</p>
-            </div>
-          ))}
-          <ExternalLink
-            className="link text-bold block my1"
-            target="_blank"
-            href={MetabaseSettings.docsUrl("users-guide/expressions")}
-          >
-            <Icon name="reference" size={12} className="mr1" />
-            {t`Learn more`}
-          </ExternalLink>
-        </div>
-      </div>
-    </Popover>
-  ) : null;
 
 const ErrorMessage = ({ error }) => {
   return (
@@ -360,7 +308,7 @@ export default class ExpressionEditor extends React.Component {
   }
 
   render() {
-    const { placeholder } = this.props;
+    const { placeholder, startRule, width } = this.props;
     const { displayError, source, suggestions } = this.state;
 
     const inputClassName = cx("input text-bold text-monospace", {
@@ -391,7 +339,7 @@ export default class ExpressionEditor extends React.Component {
           style={{ ...inputStyle, paddingLeft: 26, whiteSpace: "pre-wrap" }}
           placeholder={placeholder}
           value={source}
-          startRule={this.props.startRule}
+          startRule={startRule}
           parserOptions={this._getParserOptions()}
           onChange={e => this.onExpressionChange(e.target.value)}
           onKeyDown={this.onInputKeyDown}
@@ -401,7 +349,7 @@ export default class ExpressionEditor extends React.Component {
           autoFocus
         />
         <ErrorMessage error={priorityError} />
-        <HelpText helpText={this.state.helpText} width={this.props.width} />
+        <HelpText helpText={this.state.helpText} width={width} />
         <ExpressionEditorSuggestions
           suggestions={suggestions}
           onSuggestionMouseDown={this.onSuggestionSelected}
