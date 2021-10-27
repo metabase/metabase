@@ -31,6 +31,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { getSchemaName } from "metabase/schema";
 
 import "./DataSelector.css";
+import { AccordionSpinner } from "./DataSelector.styled";
 
 const MIN_SEARCH_LENGTH = 2;
 
@@ -951,6 +952,9 @@ const DatabaseSchemaPicker = ({
       itemIsSelected={schema => schema === selectedSchema}
       renderSectionIcon={item => (
         <Icon className="Icon text-default" name={item.icon} size={18} />
+      )}
+      renderSectionExtra={item => (
+        <AccordionSpinner size={14} borderWidth={2} />
       )}
       renderItemIcon={() => <Icon name="folder" size={16} />}
       initiallyOpenSection={openSection}
