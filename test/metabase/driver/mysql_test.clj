@@ -4,6 +4,7 @@
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
             [java-time :as t]
+            [metabase.config :as config]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
             [metabase.driver.mysql :as mysql]
@@ -192,7 +193,8 @@
    :subprotocol          "mysql"
    :zeroDateTimeBehavior "convertToNull"
    :user                 "cam"
-   :subname              "//localhost:3306/my_db"
+   :subname              (str "//localhost:3306/my_db?connectionAttributes=program_name:"
+                              config/mb-version-and-process-identifier)
    :useCompression       true
    :useUnicode           true})
 
@@ -207,7 +209,10 @@
            (sql-jdbc.conn/connection-details->spec :mysql sample-connection-details))))
 
   (testing "Connections that are `:ssl false` but with `useSSL` in the additional options should be treated as SSL (see #9629)"
-    (is (= (assoc sample-jdbc-spec :useSSL true, :subname "//localhost:3306/my_db?useSSL=true&trustServerCertificate=true")
+    (is (= (assoc sample-jdbc-spec :useSSL  true
+                                   :subname (str "//localhost:3306/my_db?useSSL=true&trustServerCertificate=true"
+                                                 "&connectionAttributes=program_name:"
+                                                 config/mb-version-and-process-identifier))
            (sql-jdbc.conn/connection-details->spec :mysql
              (assoc sample-connection-details
                     :ssl false

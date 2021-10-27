@@ -6,6 +6,7 @@
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [java-time :as t]
+            [metabase.config :as config]
             [metabase.db.spec :as dbspec]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
@@ -80,8 +81,8 @@
   {:name         "ssl-cert"
    :display-name (deferred-tru "Server SSL certificate chain")
    :placeholder  ""
-   :visible-if   {"ssl" true}}
-)
+   :visible-if   {"ssl" true}})
+
 
 (defmethod driver/connection-properties :mysql
   [_]
@@ -313,6 +314,15 @@
    ;; GZIP compress packets sent between Metabase server and MySQL/MariaDB database
    :useCompression       true})
 
+(defn- add-program-name-option [details]
+  ;; connectionAttributes (if multiple) are separated by commas, so values that contain spaces are OK, so long as they
+  ;; don't contain a comma; our mb-version-and-process-identifier shouldn't contain one, but just to be on the safe side
+  (let [prog-name    (str/replace config/mb-version-and-process-identifier "," "_")
+        prog-nm-opts {:connectionAttributes (str "program_name:" prog-name)}]
+    (update details :additional-options (fn [addl-opts]
+                                          (str (when addl-opts (str addl-opts "&")) ; already have some (append this)
+                                               (sql-jdbc.common/additional-opts->string :url prog-nm-opts))))))
+
 (defmethod sql-jdbc.conn/connection-details->spec :mysql
   [_ {ssl? :ssl, :keys [additional-options ssl-cert], :as details}]
   ;; In versions older than 0.32.0 the MySQL driver did not correctly save `ssl?` connection status. Users worked
@@ -332,7 +342,7 @@
                        (set/rename-keys {:dbname :db})
                        (dissoc :ssl))]
        (-> (dbspec/mysql details)
-           (sql-jdbc.common/handle-additional-options details))))))
+           (sql-jdbc.common/handle-additional-options (add-program-name-option details)))))))
 
 (defmethod sql-jdbc.sync/active-tables :mysql
   [& args]
