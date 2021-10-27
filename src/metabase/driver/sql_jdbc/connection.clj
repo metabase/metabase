@@ -172,18 +172,23 @@
     (let [database-id (u/the-id db-or-id-or-spec)
           ;; we need the Database instance no matter what (in order to compare details hash with cached value)
           db          (or (and (instance? (type Database) db-or-id-or-spec) db-or-id-or-spec) ; passed in
-                        (db/select-one [Database :id :engine :details] :id database-id)       ; look up by ID
-                        (throw (ex-info (tru "Database {0} does not exist." database-id)
-                                 {:status-code 404
-                                  :type        qp.error-type/invalid-query
-                                  :database-id database-id})))
+                          (db/select-one [Database :id :engine :details] :id database-id)     ; look up by ID
+                          (throw (ex-info (tru "Database {0} does not exist." database-id)
+                                   {:status-code 404
+                                    :type        qp.error-type/invalid-query
+                                    :database-id database-id})))
           get-fn      (fn [db-id log-invalidation?]
                         (when-let [details (get @database-id->connection-pool db-id)]
                           (cond
                             ;; details hash changed from what is cached; invalid
                             (let [curr-hash (get @database-id->db-details-hashes db-id)
                                   new-hash  (db-details-hash db)]
-                              (and (some? curr-hash) (not= curr-hash new-hash)))
+                              (when (and (some? curr-hash) (not= curr-hash new-hash))
+                                ;; the hash didn't match, but it's possible that a stale instance of `DatabaseInstance`
+                                ;; was passed in (ex: from a long-running sync operation); fetch the latest one from
+                                ;; our app DB, and see if it STILL doesn't match
+                                (not= curr-hash (-> (db/select-one [Database :id :engine :details] :id database-id)
+                                                    db-details-hash))))
                             (if log-invalidation?
                               (log-db-details-hash-change-msg! db-id)
                               nil)
