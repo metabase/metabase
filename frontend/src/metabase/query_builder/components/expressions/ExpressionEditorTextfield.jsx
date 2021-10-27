@@ -305,6 +305,41 @@ export default class ExpressionEditorTextfield extends React.Component {
     }
   };
 
+  treatTokenizerErrors = (source, tokens, tokenizerErrors) => {
+    const mismatchedParentheses = countMatchingParentheses(tokens);
+    const mismatchedError =
+      mismatchedParentheses === 1
+        ? t`Expecting a closing parenthesis`
+        : mismatchedParentheses > 1
+        ? t`Expecting ${mismatchedParentheses} closing parentheses`
+        : mismatchedParentheses === -1
+        ? t`Expecting an opening parenthesis`
+        : mismatchedParentheses < -1
+        ? t`Expecting ${-mismatchedParentheses} opening parentheses`
+        : null;
+
+    if (mismatchedError) {
+      tokenizerErrors.push({
+        message: mismatchedError,
+      });
+    }
+
+    for (let i = 0; i < tokens.length - 1; ++i) {
+      const token = tokens[i];
+      if (token.type === TOKEN.Identifier && source[token.start] !== "[") {
+        const functionName = source.slice(token.start, token.end);
+        if (getMBQLName(functionName)) {
+          const next = tokens[i + 1];
+          if (next.op !== OP.OpenParenthesis) {
+            tokenizerErrors.unshift({
+              message: t`Expecting an opening parenthesis after function ${functionName}`,
+            });
+          }
+        }
+      }
+    }
+  };
+
   onExpressionChange(source) {
     const inputElement = this.input.current;
     if (!inputElement) {
@@ -340,43 +375,13 @@ export default class ExpressionEditorTextfield extends React.Component {
     const showSuggestions =
       !hasSelection && !(isValid && isAtEnd && !endsWithWhitespace);
 
-    const { tokens, errors: tokenizerError } = tokenize(source);
-    const mismatchedParentheses = countMatchingParentheses(tokens);
-    const mismatchedError =
-      mismatchedParentheses === 1
-        ? t`Expecting a closing parenthesis`
-        : mismatchedParentheses > 1
-        ? t`Expecting ${mismatchedParentheses} closing parentheses`
-        : mismatchedParentheses === -1
-        ? t`Expecting an opening parenthesis`
-        : mismatchedParentheses < -1
-        ? t`Expecting ${-mismatchedParentheses} opening parentheses`
-        : null;
-    if (mismatchedError) {
-      tokenizerError.push({
-        message: mismatchedError,
-      });
-    }
-
-    for (let i = 0; i < tokens.length - 1; ++i) {
-      const token = tokens[i];
-      if (token.type === TOKEN.Identifier && source[token.start] !== "[") {
-        const functionName = source.slice(token.start, token.end);
-        if (getMBQLName(functionName)) {
-          const next = tokens[i + 1];
-          if (next.op !== OP.OpenParenthesis) {
-            tokenizerError.unshift({
-              message: t`Expecting an opening parenthesis after function ${functionName}`,
-            });
-          }
-        }
-      }
-    }
+    const { tokens, errors: tokenizerErrors } = tokenize(source);
+    this.treatTokenizerErrors(source, tokens, tokenizerErrors);
 
     this.setState({
       source,
       expression,
-      tokenizerError,
+      tokenizerError: tokenizerErrors,
       compileError,
       displayError: null,
       suggestions: showSuggestions ? suggestions : [],
