@@ -87,22 +87,21 @@
   (str/includes? dataset-name "checkins_interval_"))
 
 (defn- make-dataset-name-unique
-  "Ensure a dataset name is unique. If it appears in the `@existing-datasets` atom, it is assumed to be a non-transient
-  dataset that is shared across runs with no problems. If not, and it is transient, then we append a unique suffix to
-  ensure multiple independent parallel runs do not interfere with each other."
+  "Ensure a dataset name is unique. If it is considered transient, then we append a unique suffix (to ensure multiple
+  independent parallel runs do not interfere with each other).  Otherwise, we return it unmodified, since as a
+  non-transient dataset, each parallel run does not need to drop and recreate it, and hence parallel runs won't
+  interfere with each other."
   [db-name]
-  (if (contains? @existing-datasets db-name)
-    db-name
-    (cond-> db-name
-      ;; for transient datasets (i.e. those that are created and torn down with each test run), we should add
-      ;; some unique name portion to prevent independent parallel test runs from interfering with each other
-      (transient-dataset? db-name)
-      ;; for transient datasets, we will make them unique by appending a suffix that represents the millisecond
-      ;; timestamp from when this namespace was loaded (i.e. test initialized on this particular JVM/instance)
-      ;; note that this particular dataset will not be deleted after this test run finishes, since there is no
-      ;; reasonable hook to do so (from this test extension namespace), so instead we will rely on each run cleaning
-      ;; up outdated, transient datasets via the `transient-dataset-outdated?` mechanism above
-      (str "__transient_" ns-load-time))))
+  (cond-> db-name
+    ;; for transient datasets (i.e. those that are created and torn down with each test run), we should add
+    ;; some unique name portion to prevent independent parallel test runs from interfering with each other
+    (transient-dataset? db-name)
+    ;; for transient datasets, we will make them unique by appending a suffix that represents the millisecond
+    ;; timestamp from when this namespace was loaded (i.e. test initialized on this particular JVM/instance)
+    ;; note that this particular dataset will not be deleted after this test run finishes, since there is no
+    ;; reasonable hook to do so (from this test extension namespace), so instead we will rely on each run cleaning
+    ;; up outdated, transient datasets via the `transient-dataset-outdated?` mechanism above
+    (str "__transient_" ns-load-time)))
 
 (defn- normalize-name ^String [db-or-table-or-field identifier]
   (let [s (str/replace (name identifier) "-" "_")]
