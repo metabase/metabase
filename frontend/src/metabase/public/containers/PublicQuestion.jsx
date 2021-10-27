@@ -17,11 +17,11 @@ import {
   getParameterValuesBySlug,
   getParameterValuesByIdFromQueryParams,
 } from "metabase/parameters/utils/parameter-values";
+import { applyParameters } from "metabase/meta/Card";
 import {
   getParametersFromCard,
   getValueAndFieldIdPopulatedParametersFromCard,
-  applyParameters,
-} from "metabase/meta/Card";
+} from "metabase/parameters/utils/cards";
 
 import {
   PublicApi,

@@ -29,11 +29,9 @@ import Utils from "metabase/lib/utils";
 import { defer } from "metabase/lib/promise";
 import Question from "metabase-lib/lib/Question";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
-import {
-  cardIsEquivalent,
-  cardQueryIsEquivalent,
-  getValueAndFieldIdPopulatedParametersFromCard,
-} from "metabase/meta/Card";
+import { cardIsEquivalent, cardQueryIsEquivalent } from "metabase/meta/Card";
+import { getValueAndFieldIdPopulatedParametersFromCard } from "metabase/parameters/utils/cards";
+
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import { normalize } from "cljs/metabase.mbql.js";
 

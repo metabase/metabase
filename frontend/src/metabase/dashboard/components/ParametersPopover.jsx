@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import { t } from "ttag";
 import { getDashboardParameterSections } from "metabase/parameters/utils/dashboard-options";
 import Icon from "metabase/components/Icon";
-import { getParameterIconName } from "metabase/meta/Parameter";
+import { getParameterIconName } from "metabase/parameters/utils/ui";
 import styled from "styled-components";
 
 import type {
