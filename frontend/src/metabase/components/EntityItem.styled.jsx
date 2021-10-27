@@ -4,6 +4,7 @@ import { Flex } from "grid-styled";
 import { color, darken, lighten } from "metabase/lib/colors";
 
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 function getPinnedBackground(model, disabled) {
   return disabled
@@ -60,4 +61,11 @@ export const EntityItemWrapper = styled(Flex)`
   &:hover {
     color: ${props => (props.disabled ? color("text-medium") : color("brand"))};
   }
+`;
+
+export const EntityItemSpinner = styled(LoadingSpinner)`
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  color: ${color("brand")};
 `;

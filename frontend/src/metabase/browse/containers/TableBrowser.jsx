@@ -67,6 +67,7 @@ const TableBrowser = ({
                     name={table.display_name || table.name}
                     iconName="table"
                     iconColor={color("accent2")}
+                    loading
                     disabled
                     buttons={
                       <React.Fragment>

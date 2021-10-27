@@ -10,7 +10,11 @@ import CheckBox from "metabase/components/CheckBox";
 import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 
-import { EntityIconWrapper, EntityItemWrapper } from "./EntityItem.styled";
+import {
+  EntityIconWrapper,
+  EntityItemSpinner,
+  EntityItemWrapper,
+} from "./EntityItem.styled";
 
 function EntityIconCheckBox({
   item,
@@ -142,6 +146,7 @@ const EntityItem = ({
   buttons,
   extraInfo,
   pinned,
+  loading,
   disabled,
 }) => {
   const spacing = ENTITY_ITEM_SPACING[variant] || { py: 2 };
@@ -175,13 +180,14 @@ const EntityItem = ({
 
       <Flex ml="auto" pr={1} align="center" onClick={e => e.preventDefault()}>
         {buttons}
-        {item.description && (
+        {!loading && item.description && (
           <Icon
             tooltip={item.description}
             name="info"
             className="ml1 text-medium"
           />
         )}
+        {loading && <EntityItemSpinner size={24} />}
         <EntityItemMenu
           item={item}
           onPin={onPin}
