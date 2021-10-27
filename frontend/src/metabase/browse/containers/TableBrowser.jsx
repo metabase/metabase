@@ -52,13 +52,17 @@ const TableBrowser = ({
             metadataTable &&
             // NOTE: don't clean since we might not have all the metadata loaded?
             metadataTable.newQuestion().getUrl({ clean: false });
+
           return (
             <GridItem width={ITEM_WIDTHS} key={table.id}>
-              <Card hoverable px={1} className="hover-parent hover--visibility">
+              <Card
+                hoverable={table.active}
+                px={1}
+                className="hover-parent hover--visibility"
+              >
                 <Link
                   to={link}
                   ml={1}
-                  hover={{ color: color("accent2") }}
                   data-metabase-event={`${ANALYTICS_CONTEXT};Table Click`}
                   className="block overflow-hidden"
                 >
@@ -67,40 +71,42 @@ const TableBrowser = ({
                     name={table.display_name || table.name}
                     iconName="table"
                     iconColor={color("accent2")}
-                    loading
-                    disabled
+                    loading={!table.active}
+                    disabled={!table.active}
                     buttons={
-                      <React.Fragment>
-                        {xraysEnabled && (
+                      table.active && (
+                        <React.Fragment>
+                          {xraysEnabled && (
+                            <Link
+                              to={`auto/dashboard/table/${table.id}`}
+                              data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;X-ray Click`}
+                              className="link--icon ml1"
+                            >
+                              <Icon
+                                key="xray"
+                                tooltip={t`X-ray this table`}
+                                name="bolt"
+                                color={color("warning")}
+                                size={20}
+                                className="hover-child"
+                              />
+                            </Link>
+                          )}
                           <Link
-                            to={`auto/dashboard/table/${table.id}`}
-                            data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;X-ray Click`}
+                            to={`reference/databases/${dbId}/tables/${table.id}`}
+                            data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;Reference Click`}
                             className="link--icon ml1"
                           >
                             <Icon
-                              key="xray"
-                              tooltip={t`X-ray this table`}
-                              name="bolt"
-                              color={color("warning")}
-                              size={20}
+                              key="reference"
+                              tooltip={t`Learn about this table`}
+                              name="reference"
+                              color={color("text-medium")}
                               className="hover-child"
                             />
                           </Link>
-                        )}
-                        <Link
-                          to={`reference/databases/${dbId}/tables/${table.id}`}
-                          data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;Reference Click`}
-                          className="link--icon ml1"
-                        >
-                          <Icon
-                            key="reference"
-                            tooltip={t`Learn about this table`}
-                            name="reference"
-                            color={color("text-medium")}
-                            className="hover-child"
-                          />
-                        </Link>
-                      </React.Fragment>
+                        </React.Fragment>
+                      )
                     }
                   />
                 </Link>
