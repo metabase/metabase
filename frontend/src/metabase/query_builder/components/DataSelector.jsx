@@ -1032,7 +1032,7 @@ const TablePicker = ({
               ? item.table.id === selectedTable.id
               : false
           }
-          itemIsClickable={item => item.table}
+          itemIsClickable={item => item.table && item.table.active}
           renderItemIcon={item =>
             item.table ? <Icon name="table2" size={18} /> : null
           }
