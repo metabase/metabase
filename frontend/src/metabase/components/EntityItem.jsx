@@ -19,6 +19,7 @@ function EntityIconCheckBox({
   pinned,
   selectable,
   selected,
+  disabled,
   onToggleSelected,
   ...props
 }) {
@@ -34,6 +35,7 @@ function EntityIconCheckBox({
       model={item.model}
       onClick={selectable ? handleClick : null}
       circle
+      disabled={disabled}
       {...props}
     >
       {selectable ? (
@@ -140,6 +142,7 @@ const EntityItem = ({
   buttons,
   extraInfo,
   pinned,
+  disabled,
 }) => {
   const spacing = ENTITY_ITEM_SPACING[variant] || { py: 2 };
 
@@ -157,6 +160,7 @@ const EntityItem = ({
         pinned={pinned}
         selectable={selectable}
         selected={selected}
+        disabled={disabled}
         onToggleSelected={onToggleSelected}
         style={{
           marginRight: "16px",

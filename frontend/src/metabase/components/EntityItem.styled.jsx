@@ -5,8 +5,10 @@ import { color, lighten } from "metabase/lib/colors";
 
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 
-function getPinnedBackground(model) {
-  return model === "dashboard"
+function getPinnedBackground(model, disabled) {
+  return disabled
+    ? color("border")
+    : model === "dashboard"
     ? color("accent4")
     : lighten(color("accent4"), 0.28);
 }
@@ -15,8 +17,12 @@ function getPinnedForeground(model) {
   return model === "dashboard" ? color("white") : color("accent4");
 }
 
-function getBackground(model) {
-  return model === "dashboard" ? color("brand") : color("brand-light");
+function getBackground(model, disabled) {
+  return disabled
+    ? color("border")
+    : model === "dashboard"
+    ? color("brand")
+    : color("brand-light");
 }
 
 function getForeground(model) {
@@ -34,8 +40,8 @@ export const EntityIconWrapper = styled(IconButtonWrapper)`
 
   background-color: ${props =>
     props.isPinned
-      ? getPinnedBackground(props.model)
-      : getBackground(props.model)};
+      ? getPinnedBackground(props.model, props.disabled)
+      : getBackground(props.model, props.disabled)};
 `;
 
 export const EntityItemWrapper = styled(Flex)`
