@@ -12,9 +12,9 @@ const spinnerAnimation = keyframes`
 export const SpinnerIcon = styled.div`
   display: inline-block;
   box-sizing: border-box;
-  width: 32px;
-  height: 32px;
-  border: 4px solid transparent;
+  width: ${props => `${props.iconSize}px`};
+  height: ${props => `${props.iconSize}px`};
+  border: ${props => `${props.borderWidth}px`} solid transparent;
   border-top-color: currentColor;
   border-radius: 99px;
 
@@ -28,14 +28,13 @@ export const SpinnerIcon = styled.div`
     box-sizing: inherit;
     width: inherit;
     height: inherit;
-    border: inherit;
-    border-color: currentColor;
+    border: ${props => `${props.borderWidth}px`} solid currentColor;
     border-radius: inherit;
 
     opacity: 0.25;
     position: relative;
-    top: -4px;
-    left: -4px;
+    top: ${`-${props => props.borderWidth}px`};
+    left: ${`-${props => props.borderWidth}px`};
   }
 
   @media (prefers-reduced-motion) {

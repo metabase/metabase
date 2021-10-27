@@ -5,12 +5,12 @@ import { SpinnerIcon } from "./LoadingSpinner.styled";
 const propTypes = {
   className: PropTypes.string,
   size: PropTypes.number,
-  compact: PropTypes.bool,
+  borderWidth: PropTypes.number,
 };
 
-const LoadingSpinner = ({ className, size, compact }) => (
+const LoadingSpinner = ({ className, size = 32, borderWidth = 4 }) => (
   <div className={className} data-testid="loading-spinner">
-    <SpinnerIcon style={{ width: size, height: size }} />
+    <SpinnerIcon iconSize={size} borderWidth={borderWidth} />
   </div>
 );
 
