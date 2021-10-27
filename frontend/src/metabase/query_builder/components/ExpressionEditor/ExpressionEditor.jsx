@@ -248,17 +248,53 @@ export default class ExpressionEditor extends React.Component {
     }
   };
 
+  getSuggestions = (source, suggestions, expression) => {
+    const {
+      selectionStart,
+      selectionEnd,
+      targetOffset,
+    } = this.getSelectionBounds();
+
+    const hasSelection = selectionStart !== selectionEnd;
+
+    if (!source || source.length <= 0) {
+      const { suggestions } = this._processSource({
+        source,
+        targetOffset,
+        ...this._getParserOptions(),
+      });
+      return suggestions;
+    }
+
+    const isAtEnd = selectionEnd === source.length;
+    const endsWithWhitespace = /\s$/.test(source);
+    const isValid = expression !== undefined;
+
+    // don't show suggestions if
+    // * there's a selection
+    // * we're at the end of a valid expression, unless the user has typed another space
+    const showSuggestions =
+      !hasSelection && !(isValid && isAtEnd && !endsWithWhitespace);
+
+    return showSuggestions ? suggestions : [];
+  };
+
+  getSelectionBounds() {
+    const editor = this.input.current;
+    const [selectionStart, selectionEnd] = getSelectionPosition(editor);
+    const hasSelection = selectionStart !== selectionEnd;
+    const targetOffset = hasSelection ? null : selectionEnd;
+
+    return { selectionStart, selectionEnd, targetOffset };
+  }
+
   onExpressionChange(source) {
     const inputElement = this.input.current;
     if (!inputElement) {
       return;
     }
 
-    const [selectionStart, selectionEnd] = getSelectionPosition(inputElement);
-    const hasSelection = selectionStart !== selectionEnd;
-    const isAtEnd = selectionEnd === source.length;
-    const endsWithWhitespace = /\s$/.test(source);
-    const targetOffset = !hasSelection ? selectionEnd : null;
+    const { targetOffset } = this.getSelectionBounds();
 
     const { expression, compileError, suggestions, helpText } = source
       ? this._processSource({
@@ -273,18 +309,18 @@ export default class ExpressionEditor extends React.Component {
           helpText: null,
         };
 
-    const isValid = expression !== undefined;
     if (this.props.onBlankChange) {
       this.props.onBlankChange(source.length === 0);
     }
-    // don't show suggestions if
-    // * there's a selection
-    // * we're at the end of a valid expression, unless the user has typed another space
-    const showSuggestions =
-      !hasSelection && !(isValid && isAtEnd && !endsWithWhitespace);
 
     const { tokens, errors: tokenizerErrors } = tokenize(source);
     getTokenizerErrors(source, tokens, tokenizerErrors);
+
+    const treatedSuggestions = this.getSuggestions(
+      source,
+      suggestions,
+      expression,
+    );
 
     this.setState({
       source,
@@ -292,19 +328,10 @@ export default class ExpressionEditor extends React.Component {
       tokenizerError: tokenizerErrors,
       compileError,
       displayError: null,
-      suggestions: showSuggestions ? suggestions : [],
+      suggestions: treatedSuggestions,
       helpText,
       highlightedSuggestionIndex: 0,
     });
-
-    if (!source || source.length <= 0) {
-      const { suggestions } = this._processSource({
-        source,
-        targetOffset,
-        ...this._getParserOptions(),
-      });
-      this.setState({ suggestions });
-    }
   }
 
   render() {
