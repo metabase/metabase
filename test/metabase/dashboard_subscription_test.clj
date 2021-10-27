@@ -337,3 +337,17 @@
       (fn [{:keys [card-id]} [pulse-results]]
         (is (= {:blocks [{:type "section" :text {:type "mrkdwn" :text "abcdefghi…"}}]}
                (nth (:attachments (thunk->boolean pulse-results)) 2))))}}))
+
+(deftest archived-dashboard-test
+  (tests {:dashboard {:archived true}}
+    "Dashboard subscriptions are not sent if dashboard is archived"
+    {:card (checkins-query-card {})
+
+     :assert
+     {:slack
+      (fn [_ [pulse-results]]
+        (is (= {:attachments []} (thunk->boolean pulse-results))))
+
+      :email
+      (fn [_ _]
+        (is (= {} (mt/summarize-multipart-email))))}}))
