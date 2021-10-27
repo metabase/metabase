@@ -386,7 +386,8 @@
                   "These BigQuery datasets are transient, and more than two hours old; deleting them: %s`."
                    (u/pprint-to-str (sort outdated-transient-datasets))))
         (doseq [delete-ds outdated-transient-datasets]
-          (destroy-dataset! delete-ds)))))
+          (u/ignore-exceptions
+            (destroy-dataset! delete-ds))))))
   ;; now check and see if we need to create the requested one
   (let [database-name (normalize-name :db database-name)]
     (when-not (contains? @existing-datasets database-name)
