@@ -1,5 +1,5 @@
 import MetabaseSettings from "metabase/lib/settings";
-import { getTemplateTagParameters } from "metabase/meta/Parameter";
+import { getTemplateTagParameters } from "./cards";
 
 MetabaseSettings.get = jest.fn();
 
@@ -11,7 +11,7 @@ function mockFieldFilterOperatorsFlag(value) {
   });
 }
 
-describe("metabase/meta/Parameter", () => {
+describe("parameters/utils/cards", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     MetabaseSettings.get.mockReturnValue(false);
