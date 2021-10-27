@@ -2,25 +2,10 @@ import _ from "underscore";
 import { setIn } from "icepick";
 
 import Question from "metabase-lib/lib/Question";
-
-import type {
-  ParameterOption,
-  Parameter,
-} from "metabase-types/types/Parameter";
 import { getParameterTargetField } from "metabase/parameters/utils/targets";
 import { slugify } from "metabase/lib/formatting";
 
-export type ParameterSection = {
-  id: string,
-  name: string,
-  description: string,
-  options: ParameterOption[],
-};
-
-export function createParameter(
-  option: ParameterOption,
-  parameters: Parameter[] = [],
-): Parameter {
+export function createParameter(option, parameters = []) {
   let name = option.combinedName || option.name;
   let nameIndex = 0;
   // get a unique name
@@ -38,10 +23,7 @@ export function createParameter(
   return setParameterName(parameter, name);
 }
 
-export function setParameterName(
-  parameter: Parameter,
-  name: string,
-): Parameter {
+export function setParameterName(parameter, name: string) {
   if (!name) {
     name = "unnamed";
   }
@@ -53,10 +35,7 @@ export function setParameterName(
   };
 }
 
-export function setParameterDefaultValue(
-  parameter: Parameter,
-  value: string,
-): Parameter {
+export function setParameterDefaultValue(parameter, value: string) {
   return {
     ...parameter,
     default: value,

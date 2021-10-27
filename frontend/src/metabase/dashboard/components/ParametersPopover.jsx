@@ -12,7 +12,12 @@ import type {
 
 import _ from "underscore";
 
-import type { ParameterSection } from "metabase/meta/Dashboard";
+type ParameterSection = {
+  id: string,
+  name: string,
+  description: string,
+  options: ParameterOption[],
+};
 
 const PopoverBody = styled.div`
   max-width: 300px;

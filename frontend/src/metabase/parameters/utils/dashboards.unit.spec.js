@@ -5,8 +5,8 @@ import {
   hasMapping,
   isDashboardParameterWithoutMapping,
   getMappingsByParameter,
-} from "metabase/meta/Dashboard";
-import DASHBOARD_WITH_BOOLEAN_PARAMETER from "./dashboard-with-boolean-parameter.json";
+} from "metabase/parameters/utils/dashboards";
+import DASHBOARD_WITH_BOOLEAN_PARAMETER from "./fixtures/dashboard-with-boolean-parameter.json";
 
 import Field from "metabase-lib/lib/metadata/Field";
 
