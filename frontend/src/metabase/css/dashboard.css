@@ -162,6 +162,7 @@
 }
 
 @media (prefers-reduced-motion) {
+  /* short duration (instead of none) to still trigger transition events */
   .DashCard {
     transition-duration: 0.001ms !important;
   }
