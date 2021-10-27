@@ -1,75 +1,46 @@
-/* eslint-disable react/prop-types */
 import React from "react";
+import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import { Box } from "grid-styled";
-
 import { getXraysEnabled } from "metabase/selectors/settings";
 import { getMetadata } from "metabase/selectors/metadata";
-
 import Table from "metabase/entities/tables";
-
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
-
 import Card from "metabase/components/Card";
 import Database from "metabase/entities/databases";
 import EntityItem from "metabase/components/EntityItem";
 import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
-
 import BrowseHeader from "metabase/browse/components/BrowseHeader";
 import { ANALYTICS_CONTEXT, ITEM_WIDTHS } from "metabase/browse/constants";
 
-function getDatabaseId(props) {
-  const { params } = props;
-  const dbId =
-    parseInt(props.dbId) ||
-    parseInt(params.dbId) ||
-    Urls.extractEntityId(params.slug);
-  return Number.isSafeInteger(dbId) ? dbId : undefined;
-}
+const propTypes = {
+  tables: PropTypes.array,
+  metadata: PropTypes.object,
+  dbId: PropTypes.any,
+  schemaName: PropTypes.string,
+  xraysEnabled: PropTypes.bool,
+  showSchemaInHeader: PropTypes.bool,
+};
 
-function getSchemaName(props) {
-  return props.schemaName || props.params.schemaName;
-}
-
-function mapStateToProps(state, props) {
-  return {
-    dbId: getDatabaseId(props),
-    schemaName: getSchemaName(props),
-    metadata: getMetadata(state),
-    xraysEnabled: getXraysEnabled(state),
-  };
-}
-
-function TableBrowser(props) {
-  const {
-    tables,
-    metadata,
-    dbId,
-    schemaName,
-    showSchemaInHeader = true,
-  } = props;
-
-  const databaseCrumb =
-    dbId === SAVED_QUESTIONS_VIRTUAL_DB_ID
-      ? {
-          title: t`Saved Questions`,
-          to: Urls.browseDatabase({ id: SAVED_QUESTIONS_VIRTUAL_DB_ID }),
-        }
-      : {
-          title: <Database.Link id={dbId} />,
-        };
-
+const TableBrowser = ({
+  tables,
+  metadata,
+  dbId,
+  schemaName,
+  xraysEnabled,
+  showSchemaInHeader = true,
+}) => {
   return (
     <Box>
       <BrowseHeader
         crumbs={[
           { title: t`Our data`, to: "browse" },
-          databaseCrumb,
+          getDatabaseCrumbs(dbId),
           showSchemaInHeader && { title: schemaName },
         ]}
       />
@@ -98,7 +69,7 @@ function TableBrowser(props) {
                     iconColor={color("accent2")}
                     buttons={
                       <React.Fragment>
-                        {props.xraysEnabled && (
+                        {xraysEnabled && (
                           <Link
                             to={`auto/dashboard/table/${table.id}`}
                             data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;X-ray Click`}
@@ -138,7 +109,44 @@ function TableBrowser(props) {
       </Grid>
     </Box>
   );
-}
+};
+
+TableBrowser.propTypes = propTypes;
+
+const getDatabaseId = props => {
+  const { params } = props;
+  const dbId =
+    parseInt(props.dbId) ||
+    parseInt(params.dbId) ||
+    Urls.extractEntityId(params.slug);
+  return Number.isSafeInteger(dbId) ? dbId : undefined;
+};
+
+const getDatabaseCrumbs = dbId => {
+  if (dbId === SAVED_QUESTIONS_VIRTUAL_DB_ID) {
+    return {
+      title: t`Saved Questions`,
+      to: Urls.browseDatabase({ id: SAVED_QUESTIONS_VIRTUAL_DB_ID }),
+    };
+  } else {
+    return {
+      title: <Database.Link id={dbId} />,
+    };
+  }
+};
+
+const getSchemaName = props => {
+  return props.schemaName || props.params.schemaName;
+};
+
+const mapStateToProps = (state, props) => {
+  return {
+    dbId: getDatabaseId(props),
+    schemaName: getSchemaName(props),
+    metadata: getMetadata(state),
+    xraysEnabled: getXraysEnabled(state),
+  };
+};
 
 export default Table.loadList({
   query: (state, props) => ({
