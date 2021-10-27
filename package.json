@@ -171,7 +171,7 @@
     "@types/redux-promise": "^0.5.29",
     "@types/redux-router": "^1.0.45",
     "@types/styled-components": "^3.0.4",
-    "@types/styled-system": "5.1.13",
+    "@types/styled-system": "2.3.2",
     "@types/testing-library__cypress": "^5.0.9",
     "@types/testing-library__jest-dom": "^5.14.1",
     "@types/tether": "^1.4.6",

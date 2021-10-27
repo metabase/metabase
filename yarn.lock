@@ -3059,12 +3059,12 @@
     "@types/node" "*"
     "@types/react" "*"
 
-"@types/styled-system@5.1.13":
-  version "5.1.13"
-  resolved "https://registry.yarnpkg.com/@types/styled-system/-/styled-system-5.1.13.tgz#9ad667534d3bd75720dd7778c94c783449cb5c14"
-  integrity sha512-RtpV6zXnnMQNcxKjC06BUM4MUER5o9uZ6b7xAc2OzhWxSsmQ3jXyW8ohuXdEJRKypEe0EqAzbSGx2Im0NXfdKA==
+"@types/styled-system@2.3.2":
+  version "2.3.2"
+  resolved "https://registry.yarnpkg.com/@types/styled-system/-/styled-system-2.3.2.tgz#d279ae1fab1f724f3fafe63a997f81aa590167ea"
+  integrity sha512-KrzVA59wZ9nPLzCKLjw6ylKZaYEmTX6ZvhnFK7pQv9QBs7iQ9QP1ITxLeNvhBlEDinfFnpSW7vBbxZrLZwU7pA==
   dependencies:
-    csstype "^3.0.2"
+    styled-components "^3.3.2"
 
 "@types/tapable@^1":
   version "1.0.8"
@@ -15554,6 +15554,21 @@ styled-components@3.2.6:
     fbjs "^0.8.16"
     hoist-non-react-statics "^2.5.0"
     is-plain-object "^2.0.1"
+    prop-types "^15.5.4"
+    react-is "^16.3.1"
+    stylis "^3.5.0"
+    stylis-rule-sheet "^0.0.10"
+    supports-color "^3.2.3"
+
+styled-components@^3.3.2:
+  version "3.4.10"
+  resolved "https://registry.yarnpkg.com/styled-components/-/styled-components-3.4.10.tgz#9a654c50ea2b516c36ade57ddcfa296bf85c96e1"
+  integrity sha512-TA8ip8LoILgmSAFd3r326pKtXytUUGu5YWuqZcOQVwVVwB6XqUMn4MHW2IuYJ/HAD81jLrdQed8YWfLSG1LX4Q==
+  dependencies:
+    buffer "^5.0.3"
+    css-to-react-native "^2.0.3"
+    fbjs "^0.8.16"
+    hoist-non-react-statics "^2.5.0"
     prop-types "^15.5.4"
     react-is "^16.3.1"
     stylis "^3.5.0"
