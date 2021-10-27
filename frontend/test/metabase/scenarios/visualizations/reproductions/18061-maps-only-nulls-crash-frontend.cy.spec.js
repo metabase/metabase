@@ -83,6 +83,9 @@ describe("issue 18061", () => {
 
         // Enable sharing
         cy.request("POST", `/api/dashboard/${dashboard_id}/public_link`);
+        cy.request("PUT", "/api/setting/enable-public-sharing", {
+          value: true,
+        });
       },
     );
   });
