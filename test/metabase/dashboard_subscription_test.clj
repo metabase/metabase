@@ -133,11 +133,11 @@
   (testing "it runs for each non-virtual card"
     (mt/with-temp* [Card          [{card-id-1 :id}]
                     Card          [{card-id-2 :id}]
-                    Dashboard     [{dashboard-id :id} {:name "Birdfeed Usage"}]
+                    Dashboard     [{dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}]
                     DashboardCard [dashcard-1 {:dashboard_id dashboard-id :card_id card-id-1}]
                     DashboardCard [dashcard-2 {:dashboard_id dashboard-id :card_id card-id-2}]
                     User [{user-id :id}]]
-      (let [result (pulse/execute-dashboard {:creator_id user-id} dashboard-id)]
+      (let [result (@#'pulse/execute-dashboard {:creator_id user-id} dashboard)]
         (is (= (count result) 2))
         (is (schema= [{:card     (s/pred map?)
                        :dashcard (s/pred map?)
@@ -147,22 +147,22 @@
     (mt/with-temp* [Card          [{card-id-1 :id}]
                     Card          [{card-id-2 :id}]
                     Card          [{card-id-3 :id}]
-                    Dashboard     [{dashboard-id :id} {:name "Birdfeed Usage"}]
+                    Dashboard     [{dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}]
                     DashboardCard [dashcard-1 {:dashboard_id dashboard-id :card_id card-id-1 :row 1 :col 0}]
                     DashboardCard [dashcard-2 {:dashboard_id dashboard-id :card_id card-id-2 :row 0 :col 1}]
                     DashboardCard [dashcard-3 {:dashboard_id dashboard-id :card_id card-id-3 :row 0 :col 0}]
                     User [{user-id :id}]]
-      (let [result (pulse/execute-dashboard {:creator_id user-id} dashboard-id)]
+      (let [result (@#'pulse/execute-dashboard {:creator_id user-id} dashboard)]
         (is (= [card-id-3 card-id-2 card-id-1]
                (map #(-> % :card :id) result))))))
   (testing "virtual (text) cards are returned as a viz settings map"
     (mt/with-temp* [Card          [{card-id-1 :id}]
                     Card          [{card-id-2 :id}]
-                    Dashboard     [{dashboard-id :id} {:name "Birdfeed Usage"}]
+                    Dashboard     [{dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}]
                     DashboardCard [dashcard-1 {:dashboard_id dashboard-id
                                                :visualization_settings {:virtual_card {}, :text "test"}}]
                     User [{user-id :id}]]
-      (is (= [{:virtual_card {}, :text "test"}] (pulse/execute-dashboard {:creator_id user-id} dashboard-id))))))
+      (is (= [{:virtual_card {}, :text "test"}] (@#'pulse/execute-dashboard {:creator_id user-id} dashboard))))))
 
 (deftest basic-table-test
   (tests {:pulse {:skip_if_empty false}}
