@@ -101,7 +101,7 @@
       search-item)))
 
 (defn- default-results-with-collection []
-  (on-search-types #{"dashboard" "pulse" "card"}
+  (on-search-types #{"dashboard" "pulse" "card" "dataset"}
                    #(assoc % :collection {:id true, :name true :authority_level nil})
                    (default-search-results)))
 
@@ -433,6 +433,7 @@
   (testing "Should return unarchived results by default"
     (with-search-items-in-root-collection "test"
       (mt/with-temp* [Card       [_ (archived {:name "card test card 2"})]
+                      Card       [_ (archived {:name "dataset test dataset" :dataset true})]
                       Dashboard  [_ (archived {:name "dashboard test dashboard 2"})]
                       Collection [_ (archived {:name "collection test collection 2"})]
                       Metric     [_ (archived {:name "metric test metric 2"})]
@@ -444,6 +445,7 @@
     (with-search-items-in-root-collection "test2"
       (mt/with-temp* [Card       [_ (archived {:name "card test card"})]
                       Card       [_ (archived {:name "card that will not appear in results"})]
+                      Card       [_ (archived {:name "dataset test dataset" :dataset true})]
                       Dashboard  [_ (archived {:name "dashboard test dashboard"})]
                       Collection [_ (archived {:name "collection test collection"})]
                       Metric     [_ (archived {:name "metric test metric"})]
@@ -453,6 +455,7 @@
   (testing "Should return archived results when specified without a search query"
     (with-search-items-in-root-collection "test2"
       (mt/with-temp* [Card       [_ (archived {:name "card test card"})]
+                      Card       [_ (archived {:name "dataset test dataset" :dataset true})]
                       Dashboard  [_ (archived {:name "dashboard test dashboard"})]
                       Collection [_ (archived {:name "collection test collection"})]
                       Metric     [_ (archived {:name "metric test metric"})]
