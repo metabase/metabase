@@ -54,7 +54,10 @@ export const EntityIconWrapper = styled(IconButtonWrapper)`
 
 export const EntityItemWrapper = styled(Flex)`
   align-items: center;
+  color: ${props =>
+    props.disabled ? color("text-medium") : color("text-dark")};
+
   &:hover {
-    color: ${color("brand")};
+    color: ${props => (props.disabled ? color("text-medium") : color("brand"))};
   }
 `;

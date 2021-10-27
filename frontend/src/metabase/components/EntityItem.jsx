@@ -152,6 +152,7 @@ const EntityItem = ({
       className={cx("hover-parent hover--visibility", {
         "bg-light-hover": variant === "list",
       })}
+      disabled={disabled}
     >
       <EntityIconCheckBox
         item={item}
