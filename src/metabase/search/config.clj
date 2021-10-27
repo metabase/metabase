@@ -1,6 +1,5 @@
 (ns metabase.search.config
   (:require [cheshire.core :as json]
-            [clojure.string :as str]
             [honeysql.core :as hsql]
             [metabase.models :refer [Card Collection Dashboard Database Metric Pulse Segment Table]]
             [metabase.models.setting :refer [defsetting]]
