@@ -791,7 +791,12 @@
         (is (= #{"LuckyRecipient" "Other"}
                (set (map :name (mt/user-http-request :rasta :get 200 (str "pulse?user_id=" (mt/user->id :rasta)))))))
         (is (= #{}
-               (set (map :name (mt/user-http-request :rasta :get 200 (str "pulse?user_id=" (mt/user->id :trashbird)))))))))))
+               (set (map :name (mt/user-http-request :rasta :get 200 (str "pulse?user_id=" (mt/user->id :trashbird)))))))))
+
+    (testing "excludes dashboard subscriptions associated with archived dashboards"
+      (mt/with-temp* [Dashboard [{dashboard-id :id} {:archived true}]
+                      Pulse     [_ {:dashboard_id dashboard-id}]]
+        (is (= [] (mt/user-http-request :rasta :get 200 "pulse")))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

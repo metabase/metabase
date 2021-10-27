@@ -310,7 +310,7 @@
                :modifiers [:distinct]
                :from      [[Pulse :p]]
                :left-join (concat
-                           [['Dashboard :d] [:= :p.dashboard_id :d.id]]
+                           [[:report_dashboard :d] [:= :p.dashboard_id :d.id]]
                            (when user-id
                              [[PulseChannel :pchan] [:= :p.id :pchan.pulse_id]
                               [PulseChannelRecipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]))
