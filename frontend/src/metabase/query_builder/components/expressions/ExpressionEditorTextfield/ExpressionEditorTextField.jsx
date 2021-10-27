@@ -6,6 +6,7 @@ import { t } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
 
+import { getMBQLName, isExpression } from "metabase/lib/expressions";
 import { format } from "metabase/lib/expressions/format";
 import { processSource } from "metabase/lib/expressions/process";
 import {
@@ -35,11 +36,9 @@ import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
 import ExplicitSize from "metabase/components/ExplicitSize";
 
-import TokenizedInput from "./TokenizedInput";
+import TokenizedInput from "../TokenizedInput";
 
-import { getMBQLName, isExpression } from "metabase/lib/expressions";
-
-import ExpressionEditorSuggestions from "./ExpressionEditorSuggestions";
+import ExpressionEditorSuggestions from "../ExpressionEditorSuggestions";
 
 const HelpText = ({ helpText, width }) =>
   helpText ? (
