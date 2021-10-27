@@ -304,6 +304,8 @@
 
 ;; keep track of databases we haven't created yet
 (def ^:private existing-datasets
+  "All datasets that already exist in the BigQuery cluster, so that we can possibly avoid recreating/repopulating them
+  on every run."
   (atom #{}))
 
 (defn- transient-dataset-outdated?
@@ -312,12 +314,9 @@
   outdated. The fact that a *created* dataset (i.e. created on BigQuery) is transient has already been encoded by a
   suffix, so we can just look for that here."
   [dataset-name]
-  (let [[_ ds-timestamp-str] (re-matches #".*__transient_(\d+)$" dataset-name)
-        ds-timestamp         (when ds-timestamp-str
-                               (Long. ds-timestamp-str))]
+  (when-let [[_ ds-timestamp-str] (re-matches #".*__transient_(\d+)$" dataset-name)]
     ;; millis to hours
-    (when ds-timestamp
-      (< (* 1000 60 60 2) (- ns-load-time ds-timestamp)))))
+    (< (* 1000 60 60 2) (- ns-load-time (Long. ds-timestamp-str)))))
 
 (defmethod tx/create-db! :bigquery-cloud-sdk [_ {:keys [database-name table-definitions]} & _]
   {:pre [(seq database-name) (sequential? table-definitions)]}

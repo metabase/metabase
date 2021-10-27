@@ -70,12 +70,9 @@
   outdated. The fact that a *created* dataset (i.e. created on BigQuery) is transient has already been encoded by a
   suffix, so we can just look for that here."
   [dataset-name]
-  (let [[_ ds-timestamp-str] (re-matches #".*__transient_(\d+)$" dataset-name)
-        ds-timestamp         (when ds-timestamp-str
-                               (Long. ds-timestamp-str))]
+  (when-let [[_ ds-timestamp-str] (re-matches #".*__transient_(\d+)$" dataset-name)]
     ;; millis to hours
-    (when ds-timestamp
-      (< (* 1000 60 60 2) (- ns-load-time ds-timestamp)))))
+    (< (* 1000 60 60 2) (- ns-load-time (Long. ds-timestamp-str)))))
 
 (def ^:private current-dataset-version-prefix "v3_")
 
