@@ -922,6 +922,7 @@ const DatabaseSchemaPicker = ({
       selectedDatabase.id === database.id &&
       database.schemas.length === 0 &&
       isLoading,
+    syncing: false,
   }));
 
   let openSection = selectedSchema
@@ -953,9 +954,9 @@ const DatabaseSchemaPicker = ({
       renderSectionIcon={item => (
         <Icon className="Icon text-default" name={item.icon} size={18} />
       )}
-      renderSectionExtra={item => (
-        <AccordionSpinner size={14} borderWidth={2} />
-      )}
+      renderSectionExtra={item =>
+        item.syncing && <AccordionSpinner size={14} borderWidth={2} />
+      }
       renderItemIcon={() => <Icon name="folder" size={16} />}
       initiallyOpenSection={openSection}
       alwaysTogglable={true}
