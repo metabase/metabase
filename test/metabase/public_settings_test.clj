@@ -196,5 +196,5 @@
         (mt/with-test-user :crowberto
           (let [first-user-creation (:min (db/select-one ['User [:%min.date_joined :min]]))
                 instance-creation   (public-settings/instance-creation)]
-            (is (= (java-time/zoned-date-time first-user-creation "UTC")
-                   (public-settings/instance-creation)))))))))
+            (is (= (java-time/instant first-user-creation)
+                   (java-time/instant instance-creation)))))))))
