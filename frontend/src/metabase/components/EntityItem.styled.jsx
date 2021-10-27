@@ -41,6 +41,7 @@ function getForeground(model, disabled) {
 export const EntityIconWrapper = styled(IconButtonWrapper)`
   background-color: ${color("bg-medium")};
   padding: 12px;
+  cursor: ${props => (props.disabled ? "default" : "pointer")};
 
   color: ${props =>
     props.isPinned

@@ -42,18 +42,28 @@ const TableBrowser = ({
             px={1}
             className="hover-parent hover--visibility"
           >
-            <Link
-              to={getTableLink(table, metadata)}
-              ml={1}
-              data-metabase-event={`${ANALYTICS_CONTEXT};Table Click`}
-              className="block overflow-hidden"
-            >
-              <TableBrowserItem
-                dbId={dbId}
-                table={table}
-                xraysEnabled={xraysEnabled}
-              />
-            </Link>
+            {table.active ? (
+              <Link
+                to={getTableLink(table, metadata)}
+                ml={1}
+                data-metabase-event={`${ANALYTICS_CONTEXT};Table Click`}
+                className="block overflow-hidden"
+              >
+                <TableBrowserItem
+                  dbId={dbId}
+                  table={table}
+                  xraysEnabled={xraysEnabled}
+                />
+              </Link>
+            ) : (
+              <Box ml={1} className="block overflow-hidden">
+                <TableBrowserItem
+                  dbId={dbId}
+                  table={table}
+                  xraysEnabled={xraysEnabled}
+                />
+              </Box>
+            )}
           </Card>
         </GridItem>
       ))}
