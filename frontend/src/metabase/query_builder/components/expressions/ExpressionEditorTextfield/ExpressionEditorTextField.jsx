@@ -36,9 +36,9 @@ import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
 import ExplicitSize from "metabase/components/ExplicitSize";
 
-import TokenizedInput from "../TokenizedInput";
+import TokenizedInput from "./TokenizedInput";
 
-import ExpressionEditorSuggestions from "../ExpressionEditorSuggestions";
+import ExpressionEditorSuggestions from "./ExpressionEditorSuggestions";
 
 const HelpText = ({ helpText, width }) =>
   helpText ? (
