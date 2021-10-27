@@ -1,7 +1,7 @@
 import styled from "styled-components";
 import { Flex } from "grid-styled";
 
-import { color, lighten } from "metabase/lib/colors";
+import { color, darken, lighten } from "metabase/lib/colors";
 
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 
@@ -13,8 +13,12 @@ function getPinnedBackground(model, disabled) {
     : lighten(color("accent4"), 0.28);
 }
 
-function getPinnedForeground(model) {
-  return model === "dashboard" ? color("white") : color("accent4");
+function getPinnedForeground(model, disabled) {
+  return disabled
+    ? darken(color("border"), 0.38)
+    : model === "dashboard"
+    ? color("white")
+    : color("accent4");
 }
 
 function getBackground(model, disabled) {
@@ -25,8 +29,12 @@ function getBackground(model, disabled) {
     : color("brand-light");
 }
 
-function getForeground(model) {
-  return model === "dashboard" ? color("white") : color("brand");
+function getForeground(model, disabled) {
+  return disabled
+    ? darken(color("border"), 0.38)
+    : model === "dashboard"
+    ? color("white")
+    : color("brand");
 }
 
 export const EntityIconWrapper = styled(IconButtonWrapper)`
@@ -35,8 +43,8 @@ export const EntityIconWrapper = styled(IconButtonWrapper)`
 
   color: ${props =>
     props.isPinned
-      ? getPinnedForeground(props.model)
-      : getForeground(props.model)};
+      ? getPinnedForeground(props.model, props.disabled)
+      : getForeground(props.model, props.disabled)};
 
   background-color: ${props =>
     props.isPinned
