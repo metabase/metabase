@@ -89,7 +89,7 @@ export function generateExpression(seed) {
   const unary = () => {
     return {
       type: NODE.Unary,
-      op: randomItem(["-", "NOT"]),
+      op: randomItem(["-", "NOT "]),
       child: expression(),
     };
   };
@@ -108,8 +108,8 @@ export function generateExpression(seed) {
         ">",
         "<=",
         ">=",
-        "AND",
-        "OR",
+        " AND ",
+        " OR ",
       ]),
       left: expression(),
       right: expression(),
