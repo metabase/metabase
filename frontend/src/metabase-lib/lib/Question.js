@@ -289,6 +289,14 @@ export default class Question {
     return this.setCard(assoc(this.card(), "display", display));
   }
 
+  isDataset() {
+    return this._card && this._card.dataset;
+  }
+
+  setDataset(dataset) {
+    return this.setCard(assoc(this.card(), "dataset", dataset));
+  }
+
   // locking the display prevents auto-selection
   lockDisplay(): Question {
     return this.setDisplayIsLocked(true);

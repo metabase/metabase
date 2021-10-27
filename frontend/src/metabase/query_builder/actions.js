@@ -1406,3 +1406,17 @@ export const revertToRevision = createThunkAction(
     };
   },
 );
+
+export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
+  const question = getQuestion(getState());
+  const dataset = question.setDataset(true);
+  await dispatch(apiUpdateQuestion(dataset));
+
+  // When a question is turned into a dataset,
+  // its visualization is changed to a table
+  // In order for that transition not to look like something just broke,
+  // we rerun the query
+  if (question.display() !== "table") {
+    dispatch(runQuestionQuery());
+  }
+};
