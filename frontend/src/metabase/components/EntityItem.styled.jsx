@@ -16,10 +16,16 @@ function getPinnedForeground(model) {
 }
 
 function getBackground(model) {
+  if (model === "dataset") {
+    return "#F9F5FD";
+  }
   return model === "dashboard" ? color("brand") : color("brand-light");
 }
 
 function getForeground(model) {
+  if (model === "dataset") {
+    return color("accent2");
+  }
   return model === "dashboard" ? color("white") : color("brand");
 }
 
