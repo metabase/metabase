@@ -19,12 +19,13 @@ const ICON_SIZE = 18;
 
 QuestionActionButtons.propTypes = {
   canWrite: PropTypes.bool.isRequired,
+  isDataset: PropTypes.bool.isRequired,
   onOpenModal: PropTypes.func.isRequired,
 };
 
 export default QuestionActionButtons;
 
-function QuestionActionButtons({ canWrite, onOpenModal }) {
+function QuestionActionButtons({ canWrite, isDataset, onOpenModal }) {
   return (
     <Container>
       {canWrite && (
@@ -58,7 +59,7 @@ function QuestionActionButtons({ canWrite, onOpenModal }) {
           />
         </Tooltip>
       )}
-      {canWrite && (
+      {canWrite && !isDataset && (
         <Tooltip tooltip={t`Turn this into a dataset`}>
           <Button
             onlyIcon
