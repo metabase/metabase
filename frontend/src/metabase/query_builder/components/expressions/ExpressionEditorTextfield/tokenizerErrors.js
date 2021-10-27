@@ -9,7 +9,7 @@ import {
 
 export const getTokenizerErrors = (source, tokens, tokenizerErrors) => {
   getParenthesesErrors(tokens, tokenizerErrors);
-  getMBQLErrors(source, tokens, tokenizerErrors);
+  getFunctionErrors(source, tokens, tokenizerErrors);
 };
 
 const getParenthesesErrors = (tokens, tokenizerErrors) => {
@@ -33,7 +33,7 @@ const getParenthesesErrors = (tokens, tokenizerErrors) => {
   }
 };
 
-const getMBQLErrors = (source, tokens, tokenizerErrors) => {
+const getFunctionErrors = (source, tokens, tokenizerErrors) => {
   for (let i = 0; i < tokens.length - 1; ++i) {
     const token = tokens[i];
 
