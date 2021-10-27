@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-import ExpressionEditorTextfield from "./ExpressionEditorTextfield";
+import ExpressionEditor from "./ExpressionEditor";
 import Button from "metabase/components/Button";
 
 import { t } from "ttag";
@@ -42,7 +42,7 @@ export default class ExpressionPopover extends React.Component {
           </a>
         </div>
         <div className="p1">
-          <ExpressionEditorTextfield
+          <ExpressionEditor
             startRule={startRule}
             expression={expression}
             query={query}

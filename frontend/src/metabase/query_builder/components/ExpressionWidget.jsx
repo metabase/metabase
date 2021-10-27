@@ -4,7 +4,7 @@ import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
 
-import ExpressionEditorTextfield from "./ExpressionEditorTextfield";
+import ExpressionEditor from "./ExpressionEditor";
 import { isExpression } from "metabase/lib/expressions";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -58,7 +58,7 @@ export default class ExpressionWidget extends Component {
         <div className="p2">
           <div className="h5 text-uppercase text-medium text-bold">{t`Field formula`}</div>
           <div>
-            <ExpressionEditorTextfield
+            <ExpressionEditor
               expression={expression}
               query={query}
               onChange={parsedExpression =>

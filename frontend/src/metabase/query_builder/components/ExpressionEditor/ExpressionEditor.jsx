@@ -91,7 +91,7 @@ const ErrorMessage = ({ error }) => {
 };
 
 @ExplicitSize()
-export default class ExpressionEditorTextfield extends React.Component {
+export default class ExpressionEditor extends React.Component {
   constructor() {
     super();
     // memoize processSource for performance when editing previously seen source/targetOffset
