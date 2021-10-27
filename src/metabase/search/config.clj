@@ -55,6 +55,7 @@
    "database"   Database})
 
 (def all-models
+  "All valid models to search for"
   ["dashboard" "metric" "segment" "card" "dataset" "collection" "table" "pulse" "database"])
 
 (def ^:const displayed-columns
