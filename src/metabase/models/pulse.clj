@@ -20,7 +20,6 @@
             [metabase.events :as events]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection]
-            [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
             [metabase.models.interface :as i]
             [metabase.models.permissions :as perms]
@@ -311,7 +310,7 @@
                :modifiers [:distinct]
                :from      [[Pulse :p]]
                :left-join (concat
-                           [[Dashboard :d] [:= :p.dashboard_id :d.id]]
+                           [['Dashboard :d] [:= :p.dashboard_id :d.id]]
                            (when user-id
                              [[PulseChannel :pchan] [:= :p.id :pchan.pulse_id]
                               [PulseChannelRecipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]))
