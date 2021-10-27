@@ -77,6 +77,7 @@
    [(make-result "dashboard test dashboard", :model "dashboard", :favorite false)
     test-collection
     (make-result "card test card", :model "card", :favorite false, :dataset_query nil, :dashboardcard_count 0)
+    (make-result "dataset test dataset", :model "dataset", :favorite false, :dataset_query nil, :dashboardcard_count 0)
     (make-result "pulse test pulse", :model "pulse", :archived nil, :updated_at false)
     (merge
      (make-result "metric test metric", :model "metric", :description "Lookin' for a blueberry")
@@ -113,12 +114,15 @@
                                  {:collection_id (u/the-id collection)})))]
     (mt/with-temp* [Collection [coll      (data-map "collection %s collection")]
                     Card       [card      (coll-data-map "card %s card" coll)]
+                    Card       [dataset   (assoc (coll-data-map "dataset %s dataset" coll)
+                                                 :dataset true)]
                     Dashboard  [dashboard (coll-data-map "dashboard %s dashboard" coll)]
                     Pulse      [pulse     (coll-data-map "pulse %s pulse" coll)]
                     Metric     [metric    (data-map "metric %s metric")]
                     Segment    [segment   (data-map "segment %s segment")]]
       (f {:collection coll
           :card       card
+          :dataset    dataset
           :dashboard  dashboard
           :pulse      pulse
           :metric     metric
@@ -225,7 +229,7 @@
       (is (<= 4 (count (search-request-data :crowberto :q "test" :limit "100" :offset "2"))))))
   (testing "It offsets without limit properly"
     (with-search-items-in-root-collection "test"
-      (is (= 4 (count (search-request-data :crowberto :q "test" :offset "2"))))))
+      (is (= 5 (count (search-request-data :crowberto :q "test" :offset "2"))))))
   (testing "It limits without offset properly"
     (with-search-items-in-root-collection "test"
       (is (= 2 (count (search-request-data :crowberto :q "test" :limit "2"))))))
@@ -233,6 +237,14 @@
     (with-search-items-in-root-collection "test"
       (is (= 0 (count (search-request-data :crowberto :q "test" :models "database"))))
       (is (= 1 (count (search-request-data :crowberto :q "test" :models "database" :models "card"))))))
+  (testing "It distinguishes datasets from cards"
+    (with-search-items-in-root-collection "test"
+      (let [results (search-request-data :crowberto :q "test" :models "dataset")]
+        (is (= 1 (count results)))
+        (is (= "dataset" (-> results first :model))))
+      (let [results (search-request-data :crowberto :q "test" :models "card")]
+        (is (= 1 (count results)))
+        (is (= "card" (-> results first :model))))))
   (testing "It returns limit and offset params in return result"
     (with-search-items-in-root-collection "test"
       (is (= 2 (:limit (search-request :crowberto :q "test" :limit "2" :offset "3"))))
@@ -241,8 +253,10 @@
 (deftest query-model-set
   (testing "It returns some stuff when you get results"
     (with-search-items-in-root-collection "test"
-      (is (contains? (apply hash-set (:available_models
-                       (mt/user-http-request :crowberto :get 200 "search?q=test"))) "dashboard"))))
+      (is (= #{"dashboard" "dataset" "segment" "collection" "pulse" "database" "metric" "card"}
+             (-> (mt/user-http-request :crowberto :get 200 "search?q=test")
+                 :available_models
+                 set)))))
   (testing "It returns nothing if there are no results"
     (with-search-items-in-root-collection "test"
       (is (= [] (:available_models (mt/user-http-request :crowberto :get 200 "search?q=noresults")))))))

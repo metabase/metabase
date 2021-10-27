@@ -68,7 +68,7 @@
   are cast to the appropriate type because Postgres will assume `SELECT NULL` is `TEXT` by default and will refuse to
   `UNION` two columns of two different types.)"
   (ordered-map/ordered-map
-   ;; returned for all models
+   ;; returned for all models. Important to be first for changing model for dataset
    :model               :text
    :id                  :integer
    :name                :text
@@ -252,15 +252,25 @@
   {:arglists '([model search-context])}
   (fn [model _] model))
 
-(s/defmethod search-query-for-model "card"
-  [model search-ctx :- SearchContext]
-  (-> (base-query-for-model model search-ctx)
+(s/defn ^:private shared-card-impl [dataset? :- s/Bool search-ctx :- SearchContext]
+  (-> (base-query-for-model "card" search-ctx)
+      (update :where (fn [where] [:and [:= :card.dataset dataset?] where]))
       (h/left-join [CardFavorite :fave]
                    [:and
                     [:= :card.id :fave.card_id]
                     [:= :fave.owner_id api/*current-user-id*]])
       (add-collection-join-and-where-clauses :card.collection_id search-ctx)
       (add-card-db-id-clause (:table-db-id search-ctx))))
+
+(s/defmethod search-query-for-model "card"
+  [_model search-ctx :- SearchContext]
+  (shared-card-impl false search-ctx))
+
+(s/defmethod search-query-for-model "dataset"
+  [_model search-ctx :- SearchContext]
+  (-> (shared-card-impl true search-ctx)
+      (update :select (fn [columns]
+                        (cons [(hx/literal "dataset") :model] (rest columns))))))
 
 (s/defmethod search-query-for-model "collection"
   [model search-ctx :- SearchContext]

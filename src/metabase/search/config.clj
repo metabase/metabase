@@ -48,13 +48,14 @@
    "metric"     Metric
    "segment"    Segment
    "card"       Card
+   "dataset"    Card
    "collection" Collection
    "table"      Table
    "pulse"      Pulse
    "database"   Database})
 
 (def all-models
-  #{"dashboard" "metric" "segment" "card" "collection" "table" "pulse" "database"})
+  ["dashboard" "metric" "segment" "card" "dataset" "collection" "table" "pulse" "database"])
 
 (def ^:const displayed-columns
   "All of the result components that by default are displayed by the frontend."

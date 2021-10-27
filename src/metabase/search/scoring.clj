@@ -157,10 +157,7 @@
     :weight 2}])
 
 (def ^:private model->sort-position
-  (into {} (map-indexed (fn [i model]
-                          [(str/lower-case (name model)) i])
-                        ;; Reverse so that they're in descending order
-                        (reverse search-config/searchable-models))))
+  (zipmap (reverse search-config/all-models) (range)))
 
 (defn- model-score
   [{:keys [model]}]
