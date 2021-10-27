@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-import ExpressionEditorTextfield from "./expressions/ExpressionEditorTextfield";
+import ExpressionEditorTextfield from "./ExpressionEditorTextfield";
 import Button from "metabase/components/Button";
 
 import { t } from "ttag";
