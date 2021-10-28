@@ -56,29 +56,45 @@ function RecentsList({ list, loading }) {
         <React.Fragment>
           {hasRecents && (
             <ul>
-              {list.map(item => (
-                <li key={getItemKey(item)}>
-                  <ResultLink to={Urls.modelToUrl(item)} compact={true}>
-                    <RecentListItemContent
-                      align="start"
-                      data-testid="recently-viewed-item"
-                    >
-                      <ItemIcon item={item} type={item.model} />
-                      <div>
-                        <Title data-testid="recently-viewed-item-title">
-                          {getItemName(item.model_object)}
-                        </Title>
-                        <Text data-testid="recently-viewed-item-type">
-                          {getTranslatedEntityName(item.model)}
-                        </Text>
-                      </div>
-                      {isItemLoading(item) && (
-                        <RecentListItemSpinner size={24} borderWidth={3} />
-                      )}
-                    </RecentListItemContent>
-                  </ResultLink>
-                </li>
-              ))}
+              {list.map(item => {
+                const key = getItemKey(item);
+                const url = Urls.modelToUrl(item);
+                const title = getItemName(item);
+                const type = getTranslatedEntityName(item.model);
+                const loading = isItemLoading(item);
+                const disabled = isItemDisabled(item);
+
+                return (
+                  <li key={key}>
+                    <ResultLink to={url} compact={true} active={!disabled}>
+                      <RecentListItemContent
+                        align="start"
+                        data-testid="recently-viewed-item"
+                      >
+                        <ItemIcon
+                          item={item}
+                          type={item.model}
+                          disabled={disabled}
+                        />
+                        <div>
+                          <Title
+                            disabled={disabled}
+                            data-testid="recently-viewed-item-title"
+                          >
+                            {title}
+                          </Title>
+                          <Text data-testid="recently-viewed-item-type">
+                            {type}
+                          </Text>
+                        </div>
+                        {loading && (
+                          <RecentListItemSpinner size={24} borderWidth={3} />
+                        )}
+                      </RecentListItemContent>
+                    </ResultLink>
+                  </li>
+                );
+              })}
             </ul>
           )}
 
@@ -99,14 +115,23 @@ const getItemKey = ({ model, model_id }) => {
   return `${model}:${model_id}`;
 };
 
-const getItemName = model_object => {
+const getItemName = ({ model_object }) => {
   return model_object.display_name || model_object.name;
 };
 
 const isItemLoading = ({ model, model_object }) => {
   switch (model) {
-    case "table":
     case "database":
+    case "table":
+      return !model_object.active;
+    default:
+      return false;
+  }
+};
+
+const isItemDisabled = ({ model, model_object }) => {
+  switch (model) {
+    case "table":
       return !model_object.active;
     default:
       return false;

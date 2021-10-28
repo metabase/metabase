@@ -7,10 +7,13 @@ import Text from "metabase/components/type/Text";
 import { space } from "metabase/styled-components/theme";
 
 function getColorForIconWrapper(props) {
-  if (props.item.collection_position) {
-    return color("saturated-yellow");
-  }
-  return props.type === "collection" ? lighten("brand", 0.35) : color("brand");
+  return props.disabled
+    ? color("text-medium")
+    : props.item.collection_position
+    ? color("saturated-yellow")
+    : props.type === "collection"
+    ? lighten("brand", 0.35)
+    : color("brand");
 }
 
 export const IconWrapper = styled.div`
@@ -24,6 +27,23 @@ export const IconWrapper = styled.div`
   flex-shrink: 0;
 `;
 
+export const TitleWrapper = styled.div`
+  display: flex;
+  grid-gap: 0.25rem;
+  align-items: center;
+`;
+
+export const ContextText = styled("p")`
+  line-height: 1.4em;
+  color: ${color("text-medium")};
+  margin-top: 0;
+`;
+
+export const Title = styled("h3")`
+  margin-bottom: 4px;
+  color: ${props => color(props.disabled ? "text-medium" : "text-dark")};
+`;
+
 export const ResultLink = styled(Link)`
   display: block;
   background-color: transparent;
@@ -32,6 +52,7 @@ export const ResultLink = styled(Link)`
   padding-bottom: ${space(1)};
   padding-left: 14px;
   padding-right: ${props => (props.compact ? "20px" : space(3))};
+  pointer-events: ${props => (props.active ? "" : "none")};
 
   &:hover {
     background-color: ${lighten("brand", 0.63)};
@@ -45,6 +66,7 @@ export const ResultLink = styled(Link)`
     text-underline-position: under;
     text-decoration: underline ${color("text-light")};
     text-decoration-style: dashed;
+
     &:hover {
       color: ${color("brand")};
       text-decoration-color: ${color("brand")};
@@ -68,22 +90,6 @@ export const ResultLink = styled(Link)`
   .Icon-info {
     color: ${color("text-light")};
   }
-`;
-
-export const TitleWrapper = styled.div`
-  display: flex;
-  grid-gap: 0.25rem;
-  align-items: center;
-`;
-
-export const ContextText = styled("p")`
-  line-height: 1.4em;
-  color: ${color("text-medium")};
-  margin-top: 0;
-`;
-
-export const Title = styled("h3")`
-  margin-bottom: 4px;
 `;
 
 export const Description = styled(Text)`
