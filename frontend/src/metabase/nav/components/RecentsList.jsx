@@ -20,13 +20,10 @@ import {
   EmptyStateContainer,
   Header,
   RecentListItemContent,
+  RecentListItemSpinner,
 } from "./RecentsList.styled";
 
 const LOADER_THRESHOLD = 100;
-
-const getItemKey = ({ model, model_id }) => `${model}:${model_id}`;
-const getItemName = model_object =>
-  model_object.display_name || model_object.name;
 
 const propTypes = {
   list: PropTypes.arrayOf(
@@ -75,6 +72,9 @@ function RecentsList({ list, loading }) {
                           {getTranslatedEntityName(item.model)}
                         </Text>
                       </div>
+                      {isItemLoading(item) && (
+                        <RecentListItemSpinner size={24} borderWidth={3} />
+                      )}
                     </RecentListItemContent>
                   </ResultLink>
                 </li>
@@ -94,6 +94,24 @@ function RecentsList({ list, loading }) {
 }
 
 RecentsList.propTypes = propTypes;
+
+const getItemKey = ({ model, model_id }) => {
+  return `${model}:${model_id}`;
+};
+
+const getItemName = model_object => {
+  return model_object.display_name || model_object.name;
+};
+
+const isItemLoading = ({ model, model_object }) => {
+  switch (model) {
+    case "table":
+    case "database":
+      return !model_object.active;
+    default:
+      return false;
+  }
+};
 
 export default _.compose(
   Recents.loadList({
