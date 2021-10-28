@@ -284,8 +284,8 @@ export default class ExpressionEditor extends React.Component {
   }
 
   checkIfShouldShowSuggestions(expression, source) {
-    const editor = this.input.current;
-    const [selectionStart, selectionEnd] = getSelectionPosition(editor);
+    const inputElement = this.input.current;
+    const [selectionStart, selectionEnd] = getSelectionPosition(inputElement);
 
     const hasSelection = selectionStart !== selectionEnd;
     const isAtEnd = selectionEnd === source.length;
@@ -298,8 +298,8 @@ export default class ExpressionEditor extends React.Component {
   }
 
   getTargetOffset() {
-    const editor = this.input.current;
-    const [selectionStart, selectionEnd] = getSelectionPosition(editor);
+    const inputElement = this.input.current;
+    const [selectionStart, selectionEnd] = getSelectionPosition(inputElement);
     const hasSelection = selectionStart !== selectionEnd;
     const targetOffset = hasSelection ? null : selectionEnd;
 
@@ -307,8 +307,7 @@ export default class ExpressionEditor extends React.Component {
   }
 
   onExpressionChange(source) {
-    const inputElement = this.input.current;
-    if (!inputElement) {
+    if (!this.input.current) {
       return;
     }
 
