@@ -1528,7 +1528,7 @@
             (#'card-api/changed? card-api/card-compare-keys before after))]
    (testing "Ignores keyword/string"
      (is (false? (changed? {:dataset_query {:type :query}} {:dataset_query {:type "query"}}))))
-   (testing "Ignores properties passed in `card-api/card-compare-ignores"
+   (testing "Ignores properties not in `card-api/card-compare-keys"
      (is (false? (changed? {:collection_id 1
                             :collection_position 0}
                            {:collection_id 2
