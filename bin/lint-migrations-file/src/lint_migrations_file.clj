@@ -3,6 +3,8 @@
             [clojure.java.io :as io]
             [clojure.pprint :as pprint]
             [clojure.spec.alpha :as s]
+            [clojure.string :as str]
+            [clojure.walk :as walk]
             [yaml.core :as yaml]))
 
 (comment change-set.strict/keep-me
@@ -33,10 +35,59 @@
   (let [ids (change-set-ids change-log)]
     (= ids (sort ids))))
 
+(defn- assert-no-types-in-change-set
+  "Walks over x (a changeset map) to ensure it doesn't add any columns of `target-type`.  A partial
+  application will be passed to postwalk below.
+
+  TODO: add and conform to a spec instead?"
+  [target-type found-cols x]
+  (if
+    (map? x)
+    (cond
+      ;; a createTable or addColumn change; see if it adds a target-type col
+      (or (:createTable x) (:addColumn x))
+      (let [op     (cond (:createTable x) :createTable (:addColumn x) :addColumn)
+            cols   (filter (fn [col-def]
+                             (= target-type
+                               (str/lower-case (or (get-in col-def [:column :type]) ""))))
+                     (get-in x [op :columns]))]
+        (doseq [col cols]
+          (swap! found-cols conj col))
+        x)
+
+      ;; a modifyDataType change; see if it changes a column to target-type
+      (:modifyDataType x)
+      (if (= target-type (str/lower-case (or (get-in x [:modifyDataType :newDataType]) "")))
+        (do (swap! found-cols conj x)
+            x)
+        x)
+
+      true ; some other kind of change; continue walking
+      x)
+    x))
+
+(defn no-bare-text-types?
+  "Ensures that no \"text\" type columns are added in changesets with id later than 320 (i.e. version 0.42.0).  From
+  that point on, \"${text.type}\" should be used instead, so that MySQL can handle it correctly (by using `LONGTEXT`)."
+  [change-log]
+  (let [target-type "text"
+        text-cols   (atom [])
+        walk-fn     (partial assert-no-types-in-change-set target-type text-cols)]
+    (doseq [[id change-set] (for [{{id :id} :changeSet :as change-set} change-log
+                                  :when                                id]
+                              [(if (string? id)
+                                 (Integer/parseInt id)
+                                 id)
+                               change-set])]
+      (when (> id 320) ; only enforced after changeset ID 320
+        (walk/postwalk walk-fn change-set)))
+    (empty? @text-cols)))
+
 ;; TODO -- change sets must be distinct by ID.
 (s/def ::databaseChangeLog
   (s/and distinct-change-set-ids?
          change-set-ids-in-order?
+         no-bare-text-types?
          (s/+ (s/alt :property  (s/keys :req-un [::property])
                      :changeSet (s/keys :req-un [::changeSet])))))
 

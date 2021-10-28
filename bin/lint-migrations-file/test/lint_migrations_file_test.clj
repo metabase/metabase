@@ -179,3 +179,19 @@
                clojure.lang.ExceptionInfo
                #"not-too-many-zeroes\?"
                (validate-id 42010001))))))))
+
+(deftest prevent-text-types-test
+  (testing "should prevent \"text\" columns from being added after ID 320"
+    (is (= :ok
+          (validate
+           (mock-change-set
+             :id 321
+             :changes [(mock-add-column-changes :columns [(mock-column :type "${text.type")])]))))
+    (is (thrown-with-msg?
+          clojure.lang.ExceptionInfo
+          #"(?s)^.*no-bare-text-types\\?.*$"
+          (validate
+            (mock-change-set
+              :id 321
+              :changes [(mock-add-column-changes :columns [(mock-column :type    "text"
+                                                                        :remarks "New text column")])]))))))
