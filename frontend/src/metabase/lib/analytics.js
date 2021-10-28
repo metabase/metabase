@@ -60,11 +60,11 @@ const createSnowplowTracker = store => {
   Snowplow.newTracker("sp", "https://sp.metabase.com", {
     appId: "metabase",
     platform: "web",
-    cookieSameSite: "Lax",
+    eventMethod: "post",
     discoverRootDomain: true,
-    contexts: {
-      webPage: true,
-    },
+    contexts: { webPage: true },
+    anonymousTracking: { withServerAnonymisation: true },
+    stateStorageStrategy: "none",
     plugins: [createSnowplowPlugin(store)],
   });
 };
