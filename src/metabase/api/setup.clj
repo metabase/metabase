@@ -2,6 +2,7 @@
   (:require [compojure.core :refer [GET POST]]
             [metabase.api.common :as api]
             [metabase.api.database :as database-api :refer [DBEngineString]]
+            [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.email :as email]
             [metabase.events :as events]
@@ -256,5 +257,13 @@
   (api/check-superuser)
   (admin-checklist))
 
+;; User defaults endpoint
+
+(api/defendpoint GET "/user_defaults"
+  "Returns default user details for initial setup."
+  [token]
+  (when-let [defaults config/mb-user-defaults]
+    (check-403 (= token (:token defaults)))
+    (dissoc defaults :token)))
 
 (api/define-routes)
