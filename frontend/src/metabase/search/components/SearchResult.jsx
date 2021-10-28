@@ -17,6 +17,7 @@ import {
   Description,
   ContextText,
   ContextContainer,
+  ResultSpinner,
 } from "./SearchResult.styled";
 import { InfoText } from "./InfoText";
 
@@ -47,10 +48,10 @@ function DefaultIcon({ item }) {
   return <Icon {...item.getIcon()} size={DEFAULT_ICON_SIZE} />;
 }
 
-export function ItemIcon({ item, type, disabled }) {
+export function ItemIcon({ item, type, active }) {
   const IconComponent = ModelIconComponentMap[type] || DefaultIcon;
   return (
-    <IconWrapper item={item} type={type} disabled={disabled}>
+    <IconWrapper item={item} type={type} active={active}>
       <IconComponent item={item} />
     </IconWrapper>
   );
@@ -88,17 +89,22 @@ function Context({ context }) {
 }
 
 export default function SearchResult({ result, compact }) {
+  const active = isItemActive(result);
+  const loading = isItemLoading(result);
+  const url = active ? result.getUrl() : "";
+
   return (
     <ResultLink
-      to={result.getUrl()}
+      to={url}
+      active={active}
       compact={compact}
       data-testid="search-result-item"
     >
       <Flex align="start">
-        <ItemIcon item={result} type={result.model} />
+        <ItemIcon item={result} type={result.model} active={active} />
         <Box>
           <TitleWrapper>
-            <Title>{result.name}</Title>
+            <Title active={active}>{result.name}</Title>
             <PLUGIN_MODERATION.ModerationStatusIcon
               status={result.moderated_status}
               size={12}
@@ -112,8 +118,28 @@ export default function SearchResult({ result, compact }) {
           )}
           <Score scores={result.scores} />
         </Box>
+        {loading && <ResultSpinner size={24} borderWidth={3} />}
       </Flex>
       {compact || <Context context={result.context} />}
     </ResultLink>
   );
 }
+
+const isItemActive = result => {
+  switch (result.model) {
+    case "table":
+      return result.active;
+    default:
+      return true;
+  }
+};
+
+const isItemLoading = result => {
+  switch (result.model) {
+    case "database":
+    case "table":
+      return !result.active;
+    default:
+      return false;
+  }
+};

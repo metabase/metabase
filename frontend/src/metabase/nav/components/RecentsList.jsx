@@ -9,6 +9,7 @@ import Text from "metabase/components/type/Text";
 import * as Urls from "metabase/lib/urls";
 import {
   ResultLink,
+  ResultSpinner,
   Title,
 } from "metabase/search/components/SearchResult.styled";
 import { ItemIcon } from "metabase/search/components/SearchResult";
@@ -20,7 +21,6 @@ import {
   EmptyStateContainer,
   Header,
   RecentListItemContent,
-  RecentListItemSpinner,
 } from "./RecentsList.styled";
 
 const LOADER_THRESHOLD = 100;
@@ -58,15 +58,15 @@ function RecentsList({ list, loading }) {
             <ul>
               {list.map(item => {
                 const key = getItemKey(item);
-                const url = Urls.modelToUrl(item);
                 const title = getItemName(item);
                 const type = getTranslatedEntityName(item.model);
+                const active = isItemActive(item);
                 const loading = isItemLoading(item);
-                const disabled = isItemDisabled(item);
+                const url = active ? Urls.modelToUrl(item) : "";
 
                 return (
                   <li key={key}>
-                    <ResultLink to={url} compact={true} active={!disabled}>
+                    <ResultLink to={url} compact={true} active={active}>
                       <RecentListItemContent
                         align="start"
                         data-testid="recently-viewed-item"
@@ -74,11 +74,11 @@ function RecentsList({ list, loading }) {
                         <ItemIcon
                           item={item}
                           type={item.model}
-                          disabled={disabled}
+                          active={active}
                         />
                         <div>
                           <Title
-                            disabled={disabled}
+                            active={active}
                             data-testid="recently-viewed-item-title"
                           >
                             {title}
@@ -87,9 +87,7 @@ function RecentsList({ list, loading }) {
                             {type}
                           </Text>
                         </div>
-                        {loading && (
-                          <RecentListItemSpinner size={24} borderWidth={3} />
-                        )}
+                        {loading && <ResultSpinner size={24} borderWidth={3} />}
                       </RecentListItemContent>
                     </ResultLink>
                   </li>
@@ -119,18 +117,18 @@ const getItemName = ({ model_object }) => {
   return model_object.display_name || model_object.name;
 };
 
-const isItemLoading = ({ model, model_object }) => {
+const isItemActive = ({ model, model_object }) => {
   switch (model) {
-    case "database":
     case "table":
-      return !model_object.active;
+      return model_object.active;
     default:
       return false;
   }
 };
 
-const isItemDisabled = ({ model, model_object }) => {
+const isItemLoading = ({ model, model_object }) => {
   switch (model) {
+    case "database":
     case "table":
       return !model_object.active;
     default:
