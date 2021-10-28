@@ -14,6 +14,7 @@ import FormMessage from "metabase/components/form/FormMessage";
 
 import CreatedDatabaseModal from "../components/CreatedDatabaseModal";
 import DeleteDatabaseModal from "../components/DeleteDatabaseModal";
+import { TableCellContent, TableCellSpinner } from "./DatabaseListApp.styled";
 
 import Database from "metabase/entities/databases";
 
@@ -121,12 +122,17 @@ export default class DatabaseList extends Component {
                         className={cx({ disabled: isDeleting })}
                       >
                         <td>
-                          <Link
-                            to={"/admin/databases/" + database.id}
-                            className="text-bold link"
-                          >
-                            {database.name}
-                          </Link>
+                          <TableCellContent>
+                            {!database.active && (
+                              <TableCellSpinner size={16} borderWidth={2} />
+                            )}
+                            <Link
+                              to={"/admin/databases/" + database.id}
+                              className="text-bold link"
+                            >
+                              {database.name}
+                            </Link>
+                          </TableCellContent>
                         </td>
                         <td>
                           {engines && engines[database.engine]
