@@ -1,8 +1,4 @@
-import {
-  createSelector,
-  createSelectorCreator,
-  defaultMemoize,
-} from "reselect";
+import { createSelector } from "reselect";
 
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Database from "metabase-lib/lib/metadata/Database";
@@ -13,10 +9,7 @@ import Metric from "metabase-lib/lib/metadata/Metric";
 import Segment from "metabase-lib/lib/metadata/Segment";
 
 import _ from "underscore";
-import shallowEqual from "./shallowEqual";
 import { getFieldValues, getRemappings } from "metabase/lib/query/field";
-
-import { getIn } from "icepick";
 
 // fully nomalized, raw "entities"
 export const getNormalizedDatabases = state => state.entities.databases;
