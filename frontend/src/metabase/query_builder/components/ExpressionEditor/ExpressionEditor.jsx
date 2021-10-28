@@ -249,14 +249,40 @@ export default class ExpressionEditor extends React.Component {
   };
 
   getSuggestions = (source, suggestions, expression) => {
-    const {
-      selectionStart,
-      selectionEnd,
+    const { targetOffset } = this.getSelectionBounds();
+
+    const suggestionsForNoSource = this.getSuggestionsForNoSource(
+      source,
       targetOffset,
-    } = this.getSelectionBounds();
+    );
+
+    if (suggestionsForNoSource) {
+      return suggestionsForNoSource;
+    }
+
+    const showSuggestions = this.checkIfShouldShowSuggestions(
+      expression,
+      source,
+    );
+
+    return showSuggestions ? suggestions : [];
+  };
+
+  checkIfShouldShowSuggestions(expression, source) {
+    const { selectionStart, selectionEnd } = this.getSelectionBounds();
 
     const hasSelection = selectionStart !== selectionEnd;
+    const isAtEnd = selectionEnd === source.length;
+    const endsWithWhitespace = /\s$/.test(source);
+    const isValid = expression !== undefined;
 
+    // don't show suggestions if
+    // * there's a selection
+    // * we're at the end of a valid expression, unless the user has typed another space
+    return !hasSelection && !(isValid && isAtEnd && !endsWithWhitespace);
+  }
+
+  getSuggestionsForNoSource(source, targetOffset) {
     if (!source || source.length <= 0) {
       const { suggestions } = this._processSource({
         source,
@@ -266,18 +292,8 @@ export default class ExpressionEditor extends React.Component {
       return suggestions;
     }
 
-    const isAtEnd = selectionEnd === source.length;
-    const endsWithWhitespace = /\s$/.test(source);
-    const isValid = expression !== undefined;
-
-    // don't show suggestions if
-    // * there's a selection
-    // * we're at the end of a valid expression, unless the user has typed another space
-    const showSuggestions =
-      !hasSelection && !(isValid && isAtEnd && !endsWithWhitespace);
-
-    return showSuggestions ? suggestions : [];
-  };
+    return false;
+  }
 
   getSelectionBounds() {
     const editor = this.input.current;
