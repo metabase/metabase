@@ -9,7 +9,7 @@ import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
 
 const propTypes = {
-  helpText: PropTypes.string,
+  helpText: PropTypes.object,
   width: PropTypes.number,
 };
 
