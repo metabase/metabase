@@ -175,18 +175,20 @@ function TableRow({
       <a
         className={cx(
           "AdminList-item flex align-center no-decoration text-wrap justify-between",
-          { selected },
+          { selected, disabled: !table.active },
         )}
         onClick={() => selectTable(table)}
       >
         {table.display_name}
-        <div className="hover-child float-right">
-          <ToggleHiddenButton
-            tables={[table]}
-            isHidden={table.visibility_type != null}
-            setVisibilityForTables={setVisibilityForTables}
-          />
-        </div>
+        {table.active && (
+          <div className="hover-child float-right">
+            <ToggleHiddenButton
+              tables={[table]}
+              isHidden={table.visibility_type != null}
+              setVisibilityForTables={setVisibilityForTables}
+            />
+          </div>
+        )}
       </a>
     </li>
   );
