@@ -249,38 +249,17 @@ export default class ExpressionEditor extends React.Component {
   };
 
   getSuggestions = (source, suggestions, expression) => {
-    const { targetOffset } = this.getSelectionBounds();
+    const targetOffset = this.getTargetOffset();
 
     const suggestionsForNoSource = this.getSuggestionsForNoSource(
       source,
       targetOffset,
     );
 
-    if (suggestionsForNoSource) {
-      return suggestionsForNoSource;
-    }
-
-    const showSuggestions = this.checkIfShouldShowSuggestions(
-      expression,
-      source,
-    );
-
-    return showSuggestions ? suggestions : [];
+    return suggestionsForNoSource
+      ? suggestionsForNoSource
+      : this.getSuggestionsFromSource(expression, source, suggestions);
   };
-
-  checkIfShouldShowSuggestions(expression, source) {
-    const { selectionStart, selectionEnd } = this.getSelectionBounds();
-
-    const hasSelection = selectionStart !== selectionEnd;
-    const isAtEnd = selectionEnd === source.length;
-    const endsWithWhitespace = /\s$/.test(source);
-    const isValid = expression !== undefined;
-
-    // don't show suggestions if
-    // * there's a selection
-    // * we're at the end of a valid expression, unless the user has typed another space
-    return !hasSelection && !(isValid && isAtEnd && !endsWithWhitespace);
-  }
 
   getSuggestionsForNoSource(source, targetOffset) {
     if (!source || source.length <= 0) {
@@ -295,13 +274,36 @@ export default class ExpressionEditor extends React.Component {
     return false;
   }
 
-  getSelectionBounds() {
+  getSuggestionsFromSource(expression, source, suggestions) {
+    const showSuggestions = this.checkIfShouldShowSuggestions(
+      expression,
+      source,
+    );
+
+    return showSuggestions ? suggestions : [];
+  }
+
+  checkIfShouldShowSuggestions(expression, source) {
+    const editor = this.input.current;
+    const [selectionStart, selectionEnd] = getSelectionPosition(editor);
+
+    const hasSelection = selectionStart !== selectionEnd;
+    const isAtEnd = selectionEnd === source.length;
+    const endsWithWhitespace = /\s$/.test(source);
+    const isValid = expression !== undefined;
+
+    // don't show suggestions if there's a selection
+    // we're at the end of a valid expression, unless the user has typed another space
+    return !hasSelection && !(isValid && isAtEnd && !endsWithWhitespace);
+  }
+
+  getTargetOffset() {
     const editor = this.input.current;
     const [selectionStart, selectionEnd] = getSelectionPosition(editor);
     const hasSelection = selectionStart !== selectionEnd;
     const targetOffset = hasSelection ? null : selectionEnd;
 
-    return { selectionStart, selectionEnd, targetOffset };
+    return targetOffset;
   }
 
   onExpressionChange(source) {
@@ -310,7 +312,7 @@ export default class ExpressionEditor extends React.Component {
       return;
     }
 
-    const { targetOffset } = this.getSelectionBounds();
+    const targetOffset = this.getTargetOffset();
 
     const { expression, compileError, suggestions, helpText } = source
       ? this._processSource({
