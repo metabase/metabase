@@ -4,18 +4,19 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 import cx from "classnames";
 import { t } from "ttag";
-import AddClauseButton from "./AddClauseButton";
-import Expressions from "./expressions/Expressions";
-import ExpressionWidget from "./expressions/ExpressionWidget";
-import LimitWidget from "./LimitWidget";
-import SortWidget from "./SortWidget";
+
 import Popover from "metabase/components/Popover";
-
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+
+import AddClauseButton from "../AddClauseButton";
+import Expressions from "./Expressions";
+import ExpressionWidget from "../ExpressionWidget";
+import LimitWidget from "../LimitWidget";
+import SortWidget from "../SortWidget";
+
 import type { DatasetQuery } from "metabase-types/types/Card";
-import type { GuiQueryEditorFeatures } from "./GuiQueryEditor";
+import type { GuiQueryEditorFeatures } from "../GuiQueryEditor";
 
 type Props = {
   query: StructuredQuery,

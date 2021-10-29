@@ -3,7 +3,7 @@ import React from "react";
 
 import ClauseStep from "./ClauseStep";
 
-import ExpressionWidget from "metabase/query_builder/components/expressions/ExpressionWidget";
+import ExpressionWidget from "metabase/query_builder/components/ExpressionWidget";
 
 export default function ExpressionStep({
   color,
