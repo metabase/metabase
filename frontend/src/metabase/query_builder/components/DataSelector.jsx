@@ -752,10 +752,13 @@ export class UnconnectedDataSelector extends Component {
       : "flex align-center";
   }
 
-  handleSavedQuestionPickerClose = () =>
-    this.setState({
-      isSavedQuestionPickerShown: false,
-    });
+  handleSavedQuestionPickerClose = () => {
+    const { selectedDataBucketId } = this.state;
+    if (selectedDataBucketId === DATA_BUCKET.DATASETS || this.hasDatasets()) {
+      this.previousStep();
+    }
+    this.setState({ isSavedQuestionPickerShown: false });
+  };
 
   renderActiveStep() {
     const { combineDatabaseSchemaSteps } = this.props;
@@ -884,6 +887,7 @@ export class UnconnectedDataSelector extends Component {
     const {
       searchText,
       isSavedQuestionPickerShown,
+      selectedDataBucketId,
       selectedTable,
     } = this.state;
     const { canChangeDatabase, selectedDatabaseId } = this.props;
@@ -891,6 +895,9 @@ export class UnconnectedDataSelector extends Component {
 
     const isSearchActive = searchText.trim().length >= MIN_SEARCH_LENGTH;
 
+    const isPickerOpen =
+      isSavedQuestionPickerShown ||
+      selectedDataBucketId === DATA_BUCKET.DATASETS;
 
     return (
       <PopoverWithTrigger
@@ -931,13 +938,14 @@ export class UnconnectedDataSelector extends Component {
               />
             )}
             {!isSearchActive &&
-              (isSavedQuestionPickerShown ? (
+              (isPickerOpen ? (
                 <SavedQuestionPicker
                   collectionName={
                     selectedTable &&
                     selectedTable.schema &&
                     getSchemaName(selectedTable.schema.id)
                   }
+                  isDatasets={selectedDataBucketId === DATA_BUCKET.DATASETS}
                   tableId={selectedTable && selectedTable.id}
                   databaseId={currentDatabaseId}
                   onSelect={this.handleSavedQuestionSelect}
