@@ -17,6 +17,7 @@ import {
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 
 const propTypes = {
+  isDatasets: PropTypes.bool,
   databaseId: PropTypes.string,
   schema: PropTypes.object.isRequired,
   onSelect: PropTypes.func.isRequired,
@@ -30,7 +31,8 @@ const propTypes = {
   }).isRequired,
 };
 
-export default function SavedQuestionList({
+function SavedQuestionList({
+  isDatasets,
   onSelect,
   databaseId,
   selectedId,
@@ -51,6 +53,7 @@ export default function SavedQuestionList({
           id={generateSchemaId(
             SAVED_QUESTIONS_VIRTUAL_DB_ID,
             collection.schemaName,
+            { isDatasets },
           )}
         >
           {({ schema }) => {
@@ -67,7 +70,7 @@ export default function SavedQuestionList({
                     key={t.id}
                     size="small"
                     name={t.display_name}
-                    icon="table2"
+                    icon={isDatasets ? "dataset" : "table2"}
                     onSelect={() => onSelect(t)}
                     rightIcon={PLUGIN_MODERATION.getStatusIcon(
                       t.moderated_status,
@@ -87,3 +90,5 @@ export default function SavedQuestionList({
 }
 
 SavedQuestionList.propTypes = propTypes;
+
+export default SavedQuestionList;
