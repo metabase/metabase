@@ -1,17 +1,12 @@
 import d3 from "d3";
 import Color from "color";
 import { Harmonizer } from "color-harmony";
-
 import { deterministicAssign } from "./deterministic";
-
-export type ColorName = string;
-export type ColorString = string;
-export type ColorFamily = { [name: ColorName]: ColorString };
 
 // NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
 // NOTE: KEEP SYNCRONIZED WITH COLORS.CSS
 /* eslint-disable no-color-literals */
-const colors = {
+const colors: Record<string, string> = {
   brand: "#509EE3",
   "brand-light": "#DDECFA",
   accent1: "#88BF4D",
@@ -40,6 +35,7 @@ const colors = {
   "bg-yellow": "#FFFCF2",
   shadow: "rgba(0,0,0,0.08)",
   border: "#F0F0F0",
+
   /* Saturated colors for the SQL editor. Shouldn't be used elsewhere since they're not white-labelable. */
   "saturated-blue": "#2D86D4",
   "saturated-green": "#70A63A",
@@ -48,9 +44,13 @@ const colors = {
   "saturated-yellow": "#F9CF48",
 };
 /* eslint-enable no-color-literals */
-export default colors;
 
-export const aliases = {
+export type ColorFamily = typeof colors;
+export type ColorName = string;
+export type ColorString = string;
+
+export default colors;
+export const aliases: Record<string, string> = {
   summarize: "accent1",
   filter: "accent7",
   database: "accent2",
@@ -58,23 +58,18 @@ export const aliases = {
   pulse: "accent4",
   nav: "brand",
 };
-
-export const harmony = [];
-
+export const harmony: string[] = [];
 // DEPRECATED: we should remove these and use `colors` directly
 // compute satured/desaturated variants using "color" lib if absolutely required
-export const normal = {};
-export const saturated = {};
-export const desaturated = {};
-
+export const normal: Record<string, string> = {};
+export const saturated: Record<string, string> = {};
+export const desaturated: Record<string, string> = {};
 // make sure to do the initial "sync"
 syncColors();
-
 export function syncColors() {
   syncHarmony();
   syncDeprecatedColorFamilies();
 }
-
 export const HARMONY_GROUP_SIZE = 8; // match initialColors length below
 
 function syncHarmony() {
@@ -97,6 +92,7 @@ function syncHarmony() {
   const initialColorHarmonies = initialColors
     .slice(0, 5)
     .map(color => harmonizer.harmonize(color, "fiveToneD"));
+
   for (let roundIndex = 1; roundIndex < 5; roundIndex++) {
     for (
       let colorIndex = 0;
@@ -130,9 +126,7 @@ export const getRandomColor = (family: ColorFamily): ColorString => {
   const colors: ColorString[] = Object.values(family);
   return colors[Math.floor(Math.random() * colors.length)];
 };
-
 type ColorScale = (input: number) => ColorString;
-
 export const getColorScale = (
   extent: [number, number],
   colors: string[],
@@ -140,13 +134,13 @@ export const getColorScale = (
 ): ColorScale => {
   if (quantile) {
     return d3.scale
-      .quantile()
+      .quantile<any>()
       .domain(extent)
       .range(colors);
   } else {
     const [start, end] = extent;
     return d3.scale
-      .linear()
+      .linear<any>()
       .domain(
         colors.length === 3
           ? [start, start + (end - start) / 2, end]
@@ -155,7 +149,6 @@ export const getColorScale = (
       .range(colors);
   }
 };
-
 // HACK: d3 may return rgb values with decimals but certain rendering engines
 // don't support that (e.x. Safari and CSSBox)
 export function roundColor(color: ColorString): ColorString {
@@ -168,11 +161,13 @@ export function roundColor(color: ColorString): ColorString {
 
 export function color(color: ColorString | ColorName): ColorString {
   if (color in colors) {
-    return colors[color];
+    return colors[color as ColorName];
   }
+
   if (color in aliases) {
     return colors[aliases[color]];
   }
+
   // TODO: validate this is a ColorString
   return color;
 }
@@ -197,8 +192,7 @@ export function lighten(
     .lighten(f)
     .string();
 }
-
-const PREFERRED_COLORS = {
+const PREFERRED_COLORS: Record<string, string[]> = {
   success: [
     "success",
     "succeeded",
@@ -230,11 +224,12 @@ const PREFERRED_COLORS = {
   accent1: ["sum"],
   accent2: ["average"],
 };
+const PREFERRED_COLORS_MAP: Record<string, string> = {};
 
-const PREFERRED_COLORS_MAP = {};
 for (const color in PREFERRED_COLORS) {
   if (Object.prototype.hasOwnProperty.call(PREFERRED_COLORS, color)) {
     const keys = PREFERRED_COLORS[color];
+
     for (let i = 0; i < keys.length; i++) {
       PREFERRED_COLORS_MAP[keys[i]] = color;
     }
@@ -250,7 +245,7 @@ function getPreferredColor(key: Key) {
 // returns a mapping of deterministically assigned colors to keys, optionally with a fixed value mapping
 export function getColorsForValues(
   keys: string[],
-  existingAssignments: ?{ [key: Key]: ColorString } = {},
+  existingAssignments: Record<Key, ColorString> | null | undefined = {},
 ) {
   const all = Object.values(harmony);
   const primaryTier = all.slice(0, 8);
@@ -258,12 +253,11 @@ export function getColorsForValues(
   return deterministicAssign(
     keys,
     primaryTier,
-    existingAssignments,
+    existingAssignments as any,
     getPreferredColor,
     [secondaryTier],
-  );
+  ) as any;
 }
-
 // conviennce for a single color (only use for visualizations with a single color)
 export function getColorForValue(key: Key) {
   return getColorsForValues([key])[key];

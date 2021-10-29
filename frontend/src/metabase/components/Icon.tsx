@@ -1,4 +1,3 @@
-/*eslint-disable react/no-danger */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import styled from "styled-components";
@@ -11,7 +10,14 @@ import { stripLayoutProps } from "metabase/lib/utils";
 
 import Tooltipify from "metabase/hoc/Tooltipify";
 
-export const IconWrapper = styled("div")`
+const MISSING_ICON_NAME = "unknown";
+
+type IconWrapperProps = {
+  open: boolean;
+  hover: React.CSSProperties;
+};
+
+export const IconWrapper = styled.div<IconWrapperProps>`
   ${space};
   display: flex;
   align-items: center;
@@ -50,19 +56,18 @@ export const iconPropTypes = {
   height: stringOrNumberPropType,
   scale: stringOrNumberPropType,
   tooltip: PropTypes.string,
-  defaultName: PropTypes.string,
   className: PropTypes.string,
 };
 
-const defaultProps = {
-  defaultName: "unknown",
-};
+type IconProps = PropTypes.InferProps<typeof iconPropTypes>;
 
-class BaseIcon extends Component {
+class BaseIcon extends Component<IconProps> {
+  static propTypes = iconPropTypes;
+
   render() {
-    const { name, defaultName, className, ...rest } = this.props;
+    const { name, className, ...rest } = this.props;
 
-    const icon = loadIcon(name) || loadIcon(defaultName);
+    const icon = loadIcon(name) || loadIcon(MISSING_ICON_NAME);
     if (!icon) {
       console.warn(`Icon "${name}" does not exist.`);
       return <span />;
@@ -117,9 +122,6 @@ class BaseIcon extends Component {
     }
   }
 }
-
-BaseIcon.propTypes = iconPropTypes;
-BaseIcon.defaultProps = defaultProps;
 
 const Icon = styled(BaseIcon)`
   ${space}
