@@ -74,9 +74,9 @@ export const BackendResource = createSharedResource("BackendResource", {
                 first_name: "Testy",
                 last_name: "McTestface",
                 email: "testy@metabase.test",
-                site_name: "Epic Team"
-              }
-            })
+                site_name: "Epic Team",
+              },
+            }),
           },
           stdio:
             process.env["DISABLE_LOGGING"] ||
