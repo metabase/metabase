@@ -33,6 +33,7 @@ import { getSchemaName } from "metabase/schema";
 import {
   DataBucketIcon,
   DataBucketDescription,
+  RawDataBackButton,
 } from "./DataSelector.styled";
 import "./DataSelector.css";
 
@@ -910,6 +911,7 @@ const DatabasePicker = ({
   selectedDatabase,
   onChangeDatabase,
   hasNextStep,
+  onBack,
 }) => {
   if (databases.length === 0) {
     return <DataSelectorLoading />;
@@ -917,6 +919,7 @@ const DatabasePicker = ({
 
   const sections = [
     {
+      name: onBack ? <RawDataBackButton onBack={onBack} /> : null,
       items: databases.map((database, index) => ({
         name: database.name,
         index,
@@ -983,10 +986,13 @@ const DatabaseSchemaPicker = ({
   onChangeDatabase,
   hasNextStep,
   isLoading,
+  onBack,
 }) => {
   if (databases.length === 0) {
     return <DataSelectorLoading />;
   }
+
+  const hasPreviousStep = typeof onBack === "function";
 
   const sections = databases.map(database => ({
     name: database.is_saved_questions ? t`Saved Questions` : database.name,
@@ -1005,6 +1011,12 @@ const DatabaseSchemaPicker = ({
       database.schemas.length === 0 &&
       isLoading,
   }));
+
+  if (hasPreviousStep) {
+    sections.unshift({
+      name: <RawDataBackButton onBack={onBack} />,
+    });
+  }
 
   let openSection = selectedSchema
     ? databases.findIndex(db => db.id === selectedSchema.database.id)
@@ -1032,9 +1044,11 @@ const DatabaseSchemaPicker = ({
         return true;
       }}
       itemIsSelected={schema => schema === selectedSchema}
-      renderSectionIcon={item => (
-        <Icon className="Icon text-default" name={item.icon} size={18} />
-      )}
+      renderSectionIcon={item =>
+        item.icon && (
+          <Icon className="Icon text-default" name={item.icon} size={18} />
+        )
+      }
       renderItemIcon={() => <Icon name="folder" size={16} />}
       initiallyOpenSection={openSection}
       alwaysTogglable={true}
