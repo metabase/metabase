@@ -29,12 +29,10 @@ import Utils from "metabase/lib/utils";
 import { defer } from "metabase/lib/promise";
 import Question from "metabase-lib/lib/Question";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
-import {
-  cardIsEquivalent,
-  cardQueryIsEquivalent,
-  getValueAndFieldIdPopulatedParametersFromCard,
-} from "metabase/meta/Card";
-import { getParameterValuesByIdFromQueryParams } from "metabase/meta/Parameter";
+import { cardIsEquivalent, cardQueryIsEquivalent } from "metabase/meta/Card";
+import { getValueAndFieldIdPopulatedParametersFromCard } from "metabase/parameters/utils/cards";
+
+import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import { normalize } from "cljs/metabase.mbql.js";
 
 import {
@@ -1408,3 +1406,17 @@ export const revertToRevision = createThunkAction(
     };
   },
 );
+
+export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
+  const question = getQuestion(getState());
+  const dataset = question.setDataset(true);
+  await dispatch(apiUpdateQuestion(dataset));
+
+  // When a question is turned into a dataset,
+  // its visualization is changed to a table
+  // In order for that transition not to look like something just broke,
+  // we rerun the query
+  if (question.display() !== "table") {
+    dispatch(runQuestionQuery());
+  }
+};

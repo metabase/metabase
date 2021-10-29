@@ -5,6 +5,7 @@ import {
   visualize,
   openOrdersTable,
   openReviewsTable,
+  getBinningButtonForDimension,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
@@ -378,9 +379,10 @@ describe("scenarios > question > new", () => {
           cy.log(
             "**Marked as regression of [#10441](https://github.com/metabase/metabase/issues/10441)**",
           );
-          cy.findByText("Created At")
-            .closest(".List-item")
-            .contains("by month")
+          getBinningButtonForDimension({
+            name: "Created At",
+          })
+            .should("have.text", "by month")
             .click();
         });
       // this step is maybe redundant since it fails to even find "by month"
@@ -460,7 +462,7 @@ describe("scenarios > question > new", () => {
       });
     });
 
-    it.skip("distinct inside custom expression should suggest non-numeric types (metabase#13469)", () => {
+    it("distinct inside custom expression should suggest non-numeric types (metabase#13469)", () => {
       openReviewsTable({ mode: "notebook" });
       cy.findByText("Summarize").click();
       popover()

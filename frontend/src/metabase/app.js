@@ -33,7 +33,7 @@ import ReactDOM from "react-dom";
 import { Provider } from "react-redux";
 import { ThemeProvider } from "styled-components";
 
-import { trackPageView, createTracker } from "metabase/lib/analytics";
+import { createTracker } from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
 import api from "metabase/lib/api";
@@ -70,6 +70,7 @@ function _init(reducers, getRoutes, callback) {
   const store = getStore(reducers, browserHistory);
   const routes = getRoutes(store);
   const history = syncHistoryWithStore(browserHistory, store);
+  createTracker(store);
 
   let root;
   ReactDOM.render(
@@ -82,10 +83,6 @@ function _init(reducers, getRoutes, callback) {
     </Provider>,
     document.getElementById("root"),
   );
-
-  createTracker(store);
-  trackPageView(location.pathname);
-  history.listen(location => trackPageView(location.pathname));
 
   registerVisualizations();
 

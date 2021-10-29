@@ -23,9 +23,9 @@ import {
   makeGetMergedParameterFieldValues,
 } from "metabase/selectors/metadata";
 
-import { getParameterIconName } from "metabase/meta/Parameter";
+import { getParameterIconName } from "metabase/parameters/utils/ui";
 import { deriveFieldOperatorFromParameter } from "metabase/parameters/utils/operators";
-import { isDashboardParameterWithoutMapping } from "metabase/meta/Dashboard";
+import { isDashboardParameterWithoutMapping } from "metabase/parameters/utils/dashboards";
 
 import S from "./ParameterWidget.css";
 

@@ -894,8 +894,11 @@ function joinTwoSavedQuestions() {
 }
 
 function addSimpleCustomColumn(name) {
+  cy.get("[contenteditable='true']")
+    .click()
+    .type("C");
   popover()
-    .findByText("Category")
+    .findByText("ategory")
     .click();
   cy.findByPlaceholderText("Something nice and descriptive")
     .click()

@@ -24,7 +24,7 @@ import { useListSelect } from "metabase/hooks/use-list-select";
 
 const PAGE_SIZE = 25;
 
-const ALL_MODELS = ["dashboard", "card", "snippet", "pulse"];
+const ALL_MODELS = ["dashboard", "dataset", "card", "snippet", "pulse"];
 
 const itemKeyFn = item => `${item.id}:${item.model}`;
 

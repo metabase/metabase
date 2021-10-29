@@ -34,14 +34,10 @@ import {
   findColumnSettingIndexForColumn,
   syncTableColumnsToQuery,
 } from "metabase/lib/dataset";
-import {
-  getValueAndFieldIdPopulatedParametersFromCard,
-  isTransientId,
-} from "metabase/meta/Card";
-import {
-  normalizeParameterValue,
-  parameterToMBQLFilter,
-} from "metabase/meta/Parameter";
+import { isTransientId } from "metabase/meta/Card";
+import { getValueAndFieldIdPopulatedParametersFromCard } from "metabase/parameters/utils/cards";
+import { parameterToMBQLFilter } from "metabase/parameters/utils/mbql";
+import { normalizeParameterValue } from "metabase/parameters/utils/parameter-values";
 import {
   aggregate,
   breakout,
@@ -291,6 +287,14 @@ export default class Question {
   }
   setDisplay(display) {
     return this.setCard(assoc(this.card(), "display", display));
+  }
+
+  isDataset() {
+    return this._card && this._card.dataset;
+  }
+
+  setDataset(dataset) {
+    return this.setCard(assoc(this.card(), "dataset", dataset));
   }
 
   // locking the display prevents auto-selection
