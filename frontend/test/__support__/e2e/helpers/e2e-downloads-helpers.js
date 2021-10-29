@@ -2,13 +2,16 @@ const xlsx = require("xlsx");
 
 /**
  * Trigger the download of CSV or XLSX files and assert on the results in the related sheet.
+ * It applies to both unsaved questions (queries) and the saved ones.
  *
- * @param {("csv"|"xlsx")} fileType
+ * @param {Object} params
+ * @param {("csv"|"xlsx")} params.fileType
+ * @param {number} [params.questionId]
  * @param {function} callback
  */
-export function downloadAndAssert(fileType, callback) {
+export function downloadAndAssert({ fileType, questionId } = {}, callback) {
   const downloadClassName = `.Icon-${fileType}`;
-  const endpoint = `/api/dataset/${fileType}`;
+  const endpoint = getEndpoint(fileType, questionId);
 
   /**
    * Please see the official Cypress example for more details:
@@ -45,4 +48,11 @@ export function downloadAndAssert(fileType, callback) {
         callback(sheet);
       });
     });
+}
+
+function getEndpoint(fileType, questionId) {
+  const questionEndpoint = `/api/card/${questionId}/query/${fileType}`;
+  const queryEndpoint = `/api/dataset/${fileType}`;
+
+  return questionId ? questionEndpoint : queryEndpoint;
 }

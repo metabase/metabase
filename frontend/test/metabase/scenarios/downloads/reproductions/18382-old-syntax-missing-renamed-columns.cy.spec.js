@@ -84,11 +84,11 @@ const questionDetails = {
 
 const testCases = ["csv", "xlsx"];
 
-testCases.forEach(type => {
+testCases.forEach(fileType => {
   describe("issue 18382", () => {
     beforeEach(() => {
       // TODO: Please remove this line when issue gets fixed
-      cy.skipOn(type === "csv");
+      cy.skipOn(fileType === "csv");
 
       cy.intercept("POST", "/api/dataset").as("dataset");
 
@@ -99,8 +99,8 @@ testCases.forEach(type => {
       cy.wait("@dataset");
     });
 
-    it(`should handle the old syntax in downloads for ${type} (metabase#18382)`, () => {
-      downloadAndAssert(type, assertion);
+    it(`should handle the old syntax in downloads for ${fileType} (metabase#18382)`, () => {
+      downloadAndAssert({ fileType }, assertion);
     });
   });
 });
