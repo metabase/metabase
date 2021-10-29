@@ -1,7 +1,6 @@
 (ns metabase.api.setup-test
   "Tests for /api/setup endpoints."
-  (:require [cheshire.core :as json]
-            [clojure.core.async :as a]
+  (:require [clojure.core.async :as a]
             [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.api.setup :as setup-api]
