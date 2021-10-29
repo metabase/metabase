@@ -1040,7 +1040,16 @@ const DatabaseSchemaPicker = ({
       sections={sections}
       onChange={item => onChangeSchema(item.schema)}
       onChangeSection={(_section, sectionIndex) => {
-        onChangeDatabase(databases[sectionIndex]);
+        const isNavigationSection = hasPreviousStep && sectionIndex === 0;
+        if (isNavigationSection) {
+          return false;
+        }
+        // the "go back" button is also a section,
+        // so need to take its index in mind
+        const database = hasPreviousStep
+          ? databases[sectionIndex - 1]
+          : databases[sectionIndex];
+        onChangeDatabase(database);
         return true;
       }}
       itemIsSelected={schema => schema === selectedSchema}
