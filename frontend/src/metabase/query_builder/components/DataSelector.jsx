@@ -858,6 +858,20 @@ export class UnconnectedDataSelector extends Component {
       : t`Search for a table...`;
   };
 
+  getSearchModels = () => {
+    const { selectedDataBucketId, isSavedQuestionPickerShown } = this.state;
+    if (!selectedDataBucketId) {
+      return ["card", "dataset", "table"];
+    }
+    if (selectedDataBucketId === DATA_BUCKET.DATASETS) {
+      return ["dataset"];
+    }
+    if (isSavedQuestionPickerShown) {
+      return ["card"];
+    }
+    return this.hasDatasets() ? ["table", "card"] : ["table"];
+  };
+
   render() {
     const {
       searchText,
@@ -869,9 +883,6 @@ export class UnconnectedDataSelector extends Component {
 
     const isSearchActive = searchText.trim().length >= MIN_SEARCH_LENGTH;
 
-    const searchModels = isSavedQuestionPickerShown
-      ? ["card"]
-      : ["card", "table"];
 
     return (
       <PopoverWithTrigger
@@ -905,7 +916,7 @@ export class UnconnectedDataSelector extends Component {
             )}
             {isSearchActive && (
               <SearchResults
-                searchModels={searchModels}
+                searchModels={this.getSearchModels()}
                 searchQuery={searchText.trim()}
                 databaseId={currentDatabaseId}
                 onSelect={this.handleSearchItemSelect}
