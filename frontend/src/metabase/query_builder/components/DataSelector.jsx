@@ -759,8 +759,16 @@ export class UnconnectedDataSelector extends Component {
 
   renderActiveStep() {
     const { combineDatabaseSchemaSteps } = this.props;
+    const { databases } = this.state;
+
+    const showSavedQuestionsInDatabasePicker = !this.hasDatasets();
+    const filteredDatabases = showSavedQuestionsInDatabasePicker
+      ? databases
+      : databases?.filter(db => !db.is_saved_questions);
+
     const props = {
       ...this.state,
+      databases: filteredDatabases,
 
       onChangeDataBucket: this.onChangeDataBucket,
       onChangeDatabase: this.onChangeDatabase,
