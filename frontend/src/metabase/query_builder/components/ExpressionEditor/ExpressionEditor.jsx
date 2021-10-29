@@ -1,3 +1,4 @@
+/* eslint-disable */
 /* eslint-disable react/prop-types */
 import React from "react";
 import PropTypes from "prop-types";
@@ -5,6 +6,10 @@ import memoize from "lodash.memoize";
 import { t } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
+import AceEditor from "react-ace";
+
+import "ace-builds/src-noconflict/mode-java";
+import "ace-builds/src-noconflict/theme-github";
 
 import { isExpression } from "metabase/lib/expressions";
 import { format } from "metabase/lib/expressions/format";
@@ -49,6 +54,7 @@ export default class ExpressionEditor extends React.Component {
       [source, targetOffset].join(","),
     );
     this.input = React.createRef();
+    this.reactAceEditor = React.createRef();
   }
 
   static propTypes = {
@@ -133,14 +139,14 @@ export default class ExpressionEditor extends React.Component {
         const replacement = suggested.slice(0, suggested.length - extraTrim);
 
         const updatedExpression = prefix + replacement.trim() + postfix;
-        this.onExpressionChange(updatedExpression);
+        this.handleCursorChange(updatedExpression);
         const caretPos = updatedExpression.length - postfix.length;
         setTimeout(() => {
           this._setCaretPosition(caretPos, true);
         });
       } else {
         const newExpression = source + suggestion.text;
-        this.onExpressionChange(newExpression);
+        this.handleCursorChange(newExpression);
         setTimeout(() => this._setCaretPosition(newExpression.length, true));
       }
     }
@@ -199,6 +205,7 @@ export default class ExpressionEditor extends React.Component {
   }
 
   onInputBlur = e => {
+    return;
     // Switching to another window also triggers the blur event.
     // When our window gets focus again, the input will automatically
     // get focus, so ignore the blue event to avoid showing an
@@ -238,7 +245,7 @@ export default class ExpressionEditor extends React.Component {
   };
 
   _triggerAutosuggest = () => {
-    this.onExpressionChange(this.state.source);
+    this.handleCursorChange(this.state.source);
   };
 
   _setCaretPosition = (position, autosuggest) => {
@@ -297,19 +304,25 @@ export default class ExpressionEditor extends React.Component {
     return !hasSelection && !(isValid && isAtEnd && !endsWithWhitespace);
   }
 
-  getTargetOffset() {
-    const inputElement = this.input.current;
+  getTargetOffset(selection) {
+    if (selection.isEmpty) return;
+    const inputElement = this.reactAceEditor.current;
     const [selectionStart, selectionEnd] = getSelectionPosition(inputElement);
     const hasSelection = selectionStart !== selectionEnd;
     const targetOffset = hasSelection ? null : selectionEnd;
 
+    console.log("🚀", selectionStart, selectionEnd, hasSelection, targetOffset);
+
     return targetOffset;
   }
 
-  onExpressionChange(source) {
-    if (!this.input.current) {
-      return;
-    }
+  handleCursorChange(selection) {
+    // const source = selection?.doc?.$lines.join("\n");
+    // console.log("🚀", selection);
+    // console.log("🚀", this.reactAceEditor);
+    // const cursorPosition = selection.getCursor();
+    // console.log("🚀", selection);
+    return;
 
     const targetOffset = this.getTargetOffset();
 
@@ -351,6 +364,10 @@ export default class ExpressionEditor extends React.Component {
     });
   }
 
+  handleSelectionChange(selection) {
+    console.log("🚀", "selectionChange", selection);
+  }
+
   render() {
     const { placeholder, startRule, width } = this.props;
     const { displayError, source, suggestions } = this.state;
@@ -385,12 +402,21 @@ export default class ExpressionEditor extends React.Component {
           value={source}
           startRule={startRule}
           parserOptions={this._getParserOptions()}
-          onChange={e => this.onExpressionChange(e.target.value)}
+          onChange={() => {}}
           onKeyDown={this.onInputKeyDown}
           onBlur={this.onInputBlur}
           onFocus={e => this._triggerAutosuggest()}
           onClick={this.onInputClick}
           autoFocus
+        />
+        <AceEditor
+          ref={this.reactAceEditor}
+          mode="java"
+          theme="github"
+          onCursorChange={this.handleCursorChange}
+          onSelectionChange={this.handleSelectionChange}
+          name="UNIQUE_ID_OF_DIV"
+          editorProps={{ $blockScrolling: true }}
         />
         <ErrorMessage error={priorityError} />
         <HelpText helpText={this.state.helpText} width={width} />
