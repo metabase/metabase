@@ -7,6 +7,7 @@ import CategoricalLineChart from "../../components/CategoricalLineChart";
 import TimeSeriesAreaChart from "../../components/TimeSeriesAreaChart";
 import TimeSeriesBarChart from "../../components/TimeSeriesBarChart";
 import TimeSeriesLineChart from "../../components/TimeSeriesLineChart";
+import ComboChart from "../../components/ComboChart/ComboChart";
 
 const propTypes = {
   type: PropTypes.oneOf([
@@ -23,6 +24,8 @@ const propTypes = {
 
 const StaticChart = ({ type, options }) => {
   switch (type) {
+    case "combo":
+      return <ComboChart />;
     case "categorical/area":
       return <CategoricalAreaChart {...options} />;
     case "categorical/bar":

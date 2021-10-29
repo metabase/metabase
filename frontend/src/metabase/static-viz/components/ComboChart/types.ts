@@ -1,4 +1,5 @@
 export type Datum<X = unknown, Y = unknown> = [X, Y];
+export type Data<X = unknown, Y = unknown> = Datum<X, Y>[];
 
 export type VisualizationType = "line" | "area" | "bar";
 
@@ -9,7 +10,7 @@ export interface SeriesSettings {
 
 export interface Series<X = unknown, Y = unknown> {
   label: string;
-  data: Datum<X, Y>[];
+  data: Data<X, Y>;
   settings: SeriesSettings;
 }
 

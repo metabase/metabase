@@ -18,6 +18,10 @@ export default function StaticVizPage() {
           see updates.
         </Text>
         <Box py={3}>
+          <Subhead>Combo</Subhead>
+          <StaticChart type="combo" />
+        </Box>
+        <Box py={3}>
           <Subhead>Line chart with timeseries data</Subhead>
           <StaticChart
             type="timeseries/line"
