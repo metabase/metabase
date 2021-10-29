@@ -20,6 +20,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
 import Tables from "metabase/entities/tables";
+import Search from "metabase/entities/search";
 import {
   SearchResults,
   convertSearchResultToTableLikeItem,
@@ -130,6 +131,16 @@ const FieldTriggerContent = ({ selectedDatabase, selectedField }) => {
   }
 };
 
+@Search.loadList({
+  // If there is at least one dataset,
+  // we want to display a slightly different data picker view
+  // (see DATA_BUCKET step)
+  query: {
+    models: "dataset",
+    limit: 1,
+  },
+  loadingAndErrorWrapper: false,
+})
 @connect(
   (state, ownProps) => ({
     metadata: getMetadata(state),
@@ -206,6 +217,22 @@ export class UnconnectedDataSelector extends Component {
     hasTableSearch: PropTypes.bool,
     canChangeDatabase: PropTypes.bool,
     containerClassName: PropTypes.string,
+
+    // from search entity list loader
+    allError: PropTypes.bool,
+    allFetched: PropTypes.bool,
+    allLoaded: PropTypes.bool,
+    allLoading: PropTypes.bool,
+    loaded: PropTypes.bool,
+    loading: PropTypes.bool,
+    fetched: PropTypes.bool,
+    fetch: PropTypes.func,
+    create: PropTypes.func,
+    update: PropTypes.func,
+    delete: PropTypes.func,
+    reload: PropTypes.func,
+    list: PropTypes.arrayOf(PropTypes.object),
+    search: PropTypes.arrayOf(PropTypes.object),
   };
 
   static defaultProps = {
@@ -328,10 +355,6 @@ export class UnconnectedDataSelector extends Component {
     });
   }
 
-  UNSAFE_componentWillMount() {
-    this.hydrateActiveStep();
-  }
-
   UNSAFE_componentWillReceiveProps(nextProps) {
     const newState = {};
     for (const propName of [
@@ -363,7 +386,23 @@ export class UnconnectedDataSelector extends Component {
     }
   }
 
-  async componentDidUpdate() {
+  async componentDidUpdate(prevProps) {
+    const { steps, loading } = this.props;
+    const loadedDatasets = prevProps.loading && !loading;
+
+    // Once datasets are queried with the search endpoint,
+    // this would hide the initial loading and view.
+    // If there is at least one dataset, DATA_BUCKER_STEP will be shown,
+    // otherwise, the picker will jump to the next step and present the regular picker
+    if (loadedDatasets) {
+      const [firstStep] = steps;
+      if (firstStep === DATA_BUCKET_STEP && !this.hasDatasets()) {
+        this.switchToStep(steps[1]);
+      } else {
+        this.hydrateActiveStep();
+      }
+    }
+
     // this logic cleans up invalid states, e.x. if a selectedSchema's database
     // doesn't match selectedDatabase we clear it and go to the SCHEMA_STEP
     const {
@@ -403,6 +442,13 @@ export class UnconnectedDataSelector extends Component {
       await this.switchToStep(FIELD_STEP, { selectedFieldId: null });
     }
   }
+
+  isLoadingDatasets = () => this.props.loading;
+
+  hasDatasets = () => {
+    const { search, loaded } = this.props;
+    return loaded && search?.length > 0;
+  };
 
   async hydrateActiveStep() {
     const { steps } = this.props;
@@ -824,40 +870,46 @@ export class UnconnectedDataSelector extends Component {
         isOpen={this.props.isOpen}
         onClose={this.handleClose}
       >
-        {this.showTableSearch() && (
-          <ListSearchField
-            hasClearButton
-            className="bg-white m1"
-            onChange={this.handleSearchTextChange}
-            value={searchText}
-            placeholder={searchPlaceholder}
-            autoFocus
-          />
+        {this.isLoadingDatasets() ? (
+          <LoadingAndErrorWrapper loading />
+        ) : (
+          <React.Fragment>
+            {this.showTableSearch() && (
+              <ListSearchField
+                hasClearButton
+                className="bg-white m1"
+                onChange={this.handleSearchTextChange}
+                value={searchText}
+                placeholder={searchPlaceholder}
+                autoFocus
+              />
+            )}
+            {isSearchActive && (
+              <SearchResults
+                searchModels={searchModels}
+                searchQuery={searchText.trim()}
+                databaseId={currentDatabaseId}
+                onSelect={this.handleSearchItemSelect}
+              />
+            )}
+            {!isSearchActive &&
+              (isSavedQuestionPickerShown ? (
+                <SavedQuestionPicker
+                  collectionName={
+                    selectedTable &&
+                    selectedTable.schema &&
+                    getSchemaName(selectedTable.schema.id)
+                  }
+                  tableId={selectedTable && selectedTable.id}
+                  databaseId={currentDatabaseId}
+                  onSelect={this.handleSavedQuestionSelect}
+                  onBack={this.handleSavedQuestionPickerClose}
+                />
+              ) : (
+                this.renderActiveStep()
+              ))}
+          </React.Fragment>
         )}
-        {isSearchActive && (
-          <SearchResults
-            searchModels={searchModels}
-            searchQuery={searchText.trim()}
-            databaseId={currentDatabaseId}
-            onSelect={this.handleSearchItemSelect}
-          />
-        )}
-        {!isSearchActive &&
-          (isSavedQuestionPickerShown ? (
-            <SavedQuestionPicker
-              collectionName={
-                selectedTable &&
-                selectedTable.schema &&
-                getSchemaName(selectedTable.schema.id)
-              }
-              tableId={selectedTable && selectedTable.id}
-              databaseId={currentDatabaseId}
-              onSelect={this.handleSavedQuestionSelect}
-              onBack={this.handleSavedQuestionPickerClose}
-            />
-          ) : (
-            this.renderActiveStep()
-          ))}
       </PopoverWithTrigger>
     );
   }
