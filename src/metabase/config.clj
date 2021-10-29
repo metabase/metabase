@@ -145,7 +145,8 @@
         "You should delete it; it will be recreated as needed when switching to a branch still using Leiningen.\n"
         "See https://github.com/metabase/metabase/wiki/Migrating-from-Leiningen-to-tools.deps#custom-env-var-values for more details.")))
 
-(def mb-user-defaults
+(defn mb-user-defaults
   "Default user details provided as a JSON string at launch time for first-user setup flow."
+  []
   (when-let [user-json (environ/env :mb-user-defaults)]
-    (json/parse-string user-json)))
+    (json/parse-string user-json true)))

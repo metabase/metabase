@@ -6,7 +6,6 @@ import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
-import { b64hash_to_utf8 } from "metabase/lib/encoding";
 
 import AddDatabaseHelpCard from "metabase/components/AddDatabaseHelpCard";
 import DriverWarning from "metabase/components/DriverWarning";
@@ -21,6 +20,8 @@ import UserStep from "./UserStep";
 import DatabaseConnectionStep from "./DatabaseConnectionStep";
 import PreferencesStep from "./PreferencesStep";
 import { AddDatabaseHelpCardHolder } from "./Setup.styled";
+
+import { SetupApi } from "metabase/services";
 
 const WELCOME_STEP_NUMBER = 0;
 const LANGUAGE_STEP_NUMBER = 1;
@@ -53,9 +54,9 @@ export default class Setup extends Component {
     MetabaseAnalytics.trackStructEvent("Setup", "Welcome");
   }
 
-  componentDidMount() {
+  async componentDidMount() {
     this.setDefaultLanguage();
-    this.setDefaultDetails();
+    await this.setDefaultDetails();
   }
 
   setDefaultLanguage() {
@@ -77,14 +78,11 @@ export default class Setup extends Component {
     }
   }
 
-  setDefaultDetails() {
-    const { hash } = this.props.location;
-
-    try {
-      const userDetails = hash && JSON.parse(b64hash_to_utf8(hash));
+  async setDefaultDetails() {
+    const token = this.props.location.hash.replace(/^#/, "");
+    if (0 < token.length) {
+      const userDetails = await SetupApi.user_defaults({ token });
       this.setState({ defaultDetails: userDetails });
-    } catch (e) {
-      this.setState({ defaultDetails: undefined });
     }
   }
 

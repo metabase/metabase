@@ -260,10 +260,12 @@
 ;; User defaults endpoint
 
 (api/defendpoint GET "/user_defaults"
-  "Returns default user details for initial setup."
+  "Returns object containing default user details for initial setup, if configured,
+   and if the provided token value matches the token in the configuration value."
   [token]
-  (when-let [defaults config/mb-user-defaults]
-    (check-403 (= token (:token defaults)))
+  (let [{config-token :token :as defaults} (config/mb-user-defaults)]
+    (api/check-404 config-token)
+    (api/check-403 (= token config-token))
     (dissoc defaults :token)))
 
 (api/define-routes)
