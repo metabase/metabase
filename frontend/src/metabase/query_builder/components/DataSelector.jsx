@@ -517,6 +517,11 @@ export class UnconnectedDataSelector extends Component {
       index -= 1;
     }
 
+    // data bucket step doesn't make a lot of sense when there're no datasets
+    if (steps[index] === DATA_BUCKET_STEP && !this.hasDatasets()) {
+      return null;
+    }
+
     // can't go back to a previous step
     if (index < 0) {
       return null;
