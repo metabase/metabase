@@ -762,9 +762,11 @@ export class UnconnectedDataSelector extends Component {
     const { hasTableSearch, steps } = this.props;
     const { activeStep } = this.state;
     const hasTableStep = steps.includes(TABLE_STEP);
-    const isAllowedToShowOnActiveStep = [SCHEMA_STEP, DATABASE_STEP].includes(
-      activeStep,
-    );
+    const isAllowedToShowOnActiveStep = [
+      DATA_BUCKET_STEP,
+      SCHEMA_STEP,
+      DATABASE_STEP,
+    ].includes(activeStep);
 
     return hasTableSearch && hasTableStep && isAllowedToShowOnActiveStep;
   };
