@@ -166,6 +166,7 @@ export class UnconnectedDataSelector extends Component {
     super();
 
     const state = {
+      selectedDataBucketId: props.selectedDataBucketId,
       selectedDatabaseId: props.selectedDatabaseId,
       selectedSchemaId: props.selectedSchemaId,
       selectedTableId: props.selectedTableId,
@@ -185,6 +186,7 @@ export class UnconnectedDataSelector extends Component {
   }
 
   static propTypes = {
+    selectedDataBucketId: PropTypes.number,
     selectedDatabaseId: PropTypes.number,
     selectedSchemaId: PropTypes.string,
     selectedTableId: PropTypes.number,
@@ -494,7 +496,15 @@ export class UnconnectedDataSelector extends Component {
   };
 
   getClearedStateForStep(step) {
-    if (step === DATABASE_STEP) {
+    if (step === DATA_BUCKET_STEP) {
+      return {
+        selectedDataBucketId: null,
+        selectedDatabaseId: null,
+        selectedSchemaId: null,
+        selectedTableId: null,
+        selectedFieldId: null,
+      };
+    } else if (step === DATABASE_STEP) {
       return {
         selectedDatabaseId: null,
         selectedSchemaId: null,
@@ -596,6 +606,19 @@ export class UnconnectedDataSelector extends Component {
   showSavedQuestionPicker = () =>
     this.setState({ isSavedQuestionPickerShown: true });
 
+  onChangeDataBucket = selectedDataBucketId => {
+    const { databases } = this.props;
+    if (selectedDataBucketId === DATA_BUCKET.RAW_DATA) {
+      this.switchToStep(DATABASE_STEP, { selectedDataBucketId });
+      return;
+    }
+    this.switchToStep(DATABASE_STEP, { selectedDataBucketId });
+    const database = databases.find(db => db.is_saved_questions);
+    if (database) {
+      this.onChangeDatabase(database);
+    }
+  };
+
   onChangeDatabase = async database => {
     if (database.is_saved_questions) {
       this.showSavedQuestionPicker();
@@ -687,6 +710,7 @@ export class UnconnectedDataSelector extends Component {
     const props = {
       ...this.state,
 
+      onChangeDataBucket: this.onChangeDataBucket,
       onChangeDatabase: this.onChangeDatabase,
       onChangeSchema: this.onChangeSchema,
       onChangeTable: this.onChangeTable,
@@ -836,7 +860,7 @@ export class UnconnectedDataSelector extends Component {
   }
 }
 
-const DataBucketPicker = () => {
+const DataBucketPicker = ({ selectedDataBucketId, onChangeDataBucket }) => {
   const sections = [
     {
       items: [
@@ -870,6 +894,8 @@ const DataBucketPicker = () => {
       id="DataBucketPicker"
       className="text-brand"
       sections={sections}
+      onChange={item => onChangeDataBucket(item.id)}
+      itemIsSelected={item => item.id === selectedDataBucketId}
       renderItemIcon={item => <DataBucketIcon name={item.icon} size={18} />}
       getItemIconPosition={() => "near-name"}
       renderItemDescription={item => (
