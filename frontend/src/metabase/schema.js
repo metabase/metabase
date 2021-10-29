@@ -111,13 +111,28 @@ export const getSchemaName = id => parseSchemaId(id)[1];
 export const parseSchemaId = id => {
   const schemaId = String(id || "");
   const firstColonIndex = schemaId.indexOf(":");
+  const secondColonIndex = schemaId.indexOf(":", firstColonIndex + 1);
   const dbId = schemaId.substring(0, firstColonIndex);
-  const schemaName = schemaId.substring(firstColonIndex + 1);
-
-  return [dbId, schemaName];
+  const schemaName =
+    secondColonIndex === -1
+      ? schemaId.substring(firstColonIndex + 1)
+      : schemaId.substring(firstColonIndex + 1, secondColonIndex);
+  const payload =
+    secondColonIndex > 0 && schemaId.substring(secondColonIndex + 1);
+  const parsed = [dbId, schemaName];
+  if (payload) {
+    parsed.push(JSON.parse(payload));
+  }
+  return parsed;
 };
-export const generateSchemaId = (dbId, schemaName) =>
-  `${dbId}:${schemaName || ""}`;
+
+export const generateSchemaId = (dbId, schemaName, payload) => {
+  let id = `${dbId}:${schemaName || ""}`;
+  if (payload) {
+    id += `:${JSON.stringify(payload)}`;
+  }
+  return id;
+};
 
 export const RecentsSchema = new schema.Entity("recents", undefined, {
   idAttribute: ({ model, model_id }) => `${model}:${model_id}`,

@@ -59,6 +59,12 @@ describe("schemas", () => {
         expect(generateSchemaId(dbId, schemaName)).toBe(schema);
       });
     });
+
+    it("encodes extra payload", () => {
+      const payload = { isDataset: true };
+      const schema = generateSchemaId(1, 2, payload);
+      expect(schema).toBe(`1:2:${JSON.stringify(payload)}`);
+    });
   });
 
   describe("parseSchemaId", () => {
@@ -77,6 +83,18 @@ describe("schemas", () => {
           dbId: expectedDatabaseId,
           schemaName: expectedSchemaName,
         });
+      });
+    });
+
+    it("decodes extra payload", () => {
+      const payload = { isDataset: true };
+      const [dbId, schemaName, decodedPayload] = parseSchemaId(
+        `1:2:${JSON.stringify(payload)}`,
+      );
+      expect({ dbId, schemaName, payload: decodedPayload }).toEqual({
+        dbId: "1",
+        schemaName: "2",
+        payload,
       });
     });
   });
