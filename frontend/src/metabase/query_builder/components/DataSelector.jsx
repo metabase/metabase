@@ -30,10 +30,22 @@ import SavedQuestionPicker from "./saved-question-picker/SavedQuestionPicker";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSchemaName } from "metabase/schema";
 
+import {
+  DataBucketIcon,
+  DataBucketDescription,
+} from "./DataSelector.styled";
 import "./DataSelector.css";
 
 const MIN_SEARCH_LENGTH = 2;
 
+export const DATA_BUCKET = {
+  DATASETS: "datasets",
+  RAW_DATA: "raw-data",
+  SAVED_QUESTIONS: "saved-questions",
+};
+
+// chooses a data source bucket (datasets / raw data (tables) / saved questions)
+const DATA_BUCKET_STEP = "BUCKET";
 // chooses a database
 const DATABASE_STEP = "DATABASE";
 // chooses a schema (given that a database has already been selected)
@@ -53,7 +65,7 @@ export const DatabaseDataSelector = props => (
 
 export const DatabaseSchemaAndTableDataSelector = props => (
   <DataSelector
-    steps={[DATABASE_STEP, SCHEMA_STEP, TABLE_STEP]}
+    steps={[DATA_BUCKET_STEP, DATABASE_STEP, SCHEMA_STEP, TABLE_STEP]}
     combineDatabaseSchemaSteps
     getTriggerElementContent={TableTriggerContent}
     {...props}
@@ -688,6 +700,8 @@ export class UnconnectedDataSelector extends Component {
     };
 
     switch (this.state.activeStep) {
+      case DATA_BUCKET_STEP:
+        return <DataBucketPicker {...props} />;
       case DATABASE_STEP:
         return combineDatabaseSchemaSteps ? (
           <DatabaseSchemaPicker {...props} />
@@ -821,6 +835,49 @@ export class UnconnectedDataSelector extends Component {
     );
   }
 }
+
+const DataBucketPicker = () => {
+  const sections = [
+    {
+      items: [
+        {
+          id: DATA_BUCKET.DATASETS,
+          index: 0,
+          icon: "dataset",
+          name: t`Datasets`,
+          description: t`The best starting place for new questions.`,
+        },
+        {
+          id: DATA_BUCKET.RAW_DATA,
+          index: 1,
+          icon: "database",
+          name: t`Raw Data`,
+          description: t`Unaltered tables in connected databases.`,
+        },
+        {
+          id: DATA_BUCKET.SAVED_QUESTIONS,
+          index: 2,
+          name: t`Saved Questions`,
+          icon: "folder",
+          description: t`Use any question’s results to start a new question.`,
+        },
+      ],
+    },
+  ];
+
+  return (
+    <AccordionList
+      id="DataBucketPicker"
+      className="text-brand"
+      sections={sections}
+      renderItemIcon={item => <DataBucketIcon name={item.icon} size={18} />}
+      getItemIconPosition={() => "near-name"}
+      renderItemDescription={item => (
+        <DataBucketDescription>{item.description}</DataBucketDescription>
+      )}
+    />
+  );
+};
 
 const DatabasePicker = ({
   databases,
