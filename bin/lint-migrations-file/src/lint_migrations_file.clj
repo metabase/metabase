@@ -36,11 +36,14 @@
     (= ids (sort ids))))
 
 (defn- assert-no-types-in-change-set
-  "Walks over x (a changeset map) to ensure it doesn't add any columns of `target-type`.  A partial
-  application will be passed to postwalk below.
+  "Walks over x (a changeset map) to ensure it doesn't add any columns of `target-types` (a set of strings).
+  `found-cols` is an atom of vector, in which any problematic changes to the `target-types` will be stored.
+
+  A partial application of this function will be passed to postwalk below.
 
   TODO: add and conform to a spec instead?"
-  [target-type found-cols x]
+  [target-types found-cols x]
+  {:pre [(set? target-types) (instance? clojure.lang.Atom found-cols)]}
   (if
     (map? x)
     (cond
@@ -48,8 +51,8 @@
       (or (:createTable x) (:addColumn x))
       (let [op     (cond (:createTable x) :createTable (:addColumn x) :addColumn)
             cols   (filter (fn [col-def]
-                             (= target-type
-                               (str/lower-case (or (get-in col-def [:column :type]) ""))))
+                             (contains? target-types
+                                        (str/lower-case (or (get-in col-def [:column :type]) ""))))
                      (get-in x [op :columns]))]
         (doseq [col cols]
           (swap! found-cols conj col))
@@ -57,7 +60,7 @@
 
       ;; a modifyDataType change; see if it changes a column to target-type
       (:modifyDataType x)
-      (if (= target-type (str/lower-case (or (get-in x [:modifyDataType :newDataType]) "")))
+      (if (= target-types (str/lower-case (or (get-in x [:modifyDataType :newDataType]) "")))
         (do (swap! found-cols conj x)
             x)
         x)
@@ -66,13 +69,13 @@
       x)
     x))
 
-(defn no-bare-text-types?
-  "Ensures that no \"text\" type columns are added in changesets with id later than 320 (i.e. version 0.42.0).  From
-  that point on, \"${text.type}\" should be used instead, so that MySQL can handle it correctly (by using `LONGTEXT`)."
+(defn no-bare-blob-or-text-types?
+  "Ensures that no \"text\" or \"blob\" type columns are added in changesets with id later than 320 (i.e. version
+  0.42.0).  From that point on, \"${text.type}\" should be used instead, so that MySQL can handle it correctly (by using
+  `LONGTEXT`).  And similarly, from an earlier point, \"${blob.type\" should be used instead of \"blob\"."
   [change-log]
-  (let [target-type "text"
-        text-cols   (atom [])
-        walk-fn     (partial assert-no-types-in-change-set target-type text-cols)]
+  (let [problem-cols (atom [])
+        walk-fn      (partial assert-no-types-in-change-set #{"blob" "text"} problem-cols)]
     (doseq [[id change-set] (for [{{id :id} :changeSet :as change-set} change-log
                                   :when                                id]
                               [(if (string? id)
@@ -81,13 +84,13 @@
                                change-set])]
       (when (> id 320) ; only enforced after changeset ID 320
         (walk/postwalk walk-fn change-set)))
-    (empty? @text-cols)))
+    (empty? @problem-cols)))
 
 ;; TODO -- change sets must be distinct by ID.
 (s/def ::databaseChangeLog
   (s/and distinct-change-set-ids?
          change-set-ids-in-order?
-         no-bare-text-types?
+         no-bare-blob-or-text-types?
          (s/+ (s/alt :property  (s/keys :req-un [::property])
                      :changeSet (s/keys :req-un [::changeSet])))))
 
