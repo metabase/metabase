@@ -179,16 +179,7 @@ describe("scenarios > setup", () => {
   });
 
   it("should allow pre-filling user details", () => {
-    const details = {
-      user: {
-        first_name: "Testy",
-        last_name: "McTestface",
-        email: "testy@metabase.test",
-        site_name: "Epic Team",
-      },
-    };
-
-    cy.visit(`/setup#${btoa(JSON.stringify(details))}`);
+    cy.visit(`/setup#123456`);
 
     cy.findByText("Welcome to Metabase");
     cy.findByText("Let's get started").click();
