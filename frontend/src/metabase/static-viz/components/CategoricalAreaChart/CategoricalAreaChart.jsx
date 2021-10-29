@@ -11,6 +11,7 @@ import {
   getYTickLabelProps,
   getYTickWidth,
   getXTickHeight,
+  getLabelProps,
 } from "../../lib/axes";
 import { formatNumber } from "../../lib/numbers";
 import { truncateText } from "../../lib/text";
@@ -51,6 +52,7 @@ const layout = {
     textMedium: "#949aab",
   },
   barPadding: 0.2,
+  labelFontWeight: 700,
   labelPadding: 12,
   maxTickWidth: 100,
   areaOpacity: 0.2,
@@ -121,6 +123,7 @@ const CategoricalAreaChart = ({ data, accessors, settings, labels }) => {
         labelOffset={yLabelOffset}
         hideTicks
         hideAxisLine
+        labelProps={getLabelProps(layout)}
         tickFormat={value => formatNumber(value, settings?.y)}
         tickLabelProps={() => getYTickLabelProps(layout)}
       />
@@ -138,6 +141,7 @@ const CategoricalAreaChart = ({ data, accessors, settings, labels }) => {
         numTicks={data.length}
         stroke={palette.textLight}
         tickStroke={palette.textLight}
+        labelProps={getLabelProps(layout)}
         tickComponent={props => <Text {...getXTickProps(props)} />}
         tickLabelProps={() => getXTickLabelProps(layout, isVertical)}
       />

@@ -4,9 +4,56 @@ import { parseTimestamp } from "metabase/lib/time";
 import MetabaseUtils from "metabase/lib/utils";
 import moment from "moment";
 
+const n2w = (n: number) => MetabaseUtils.numberToWord(n);
+
+const PASSWORD_COMPLEXITY_CLAUSES = {
+  total: {
+    test: ({ total = 0 }, password = "") => password.length >= total,
+    description: ({ total = 0 }) =>
+      ngettext(
+        msgid`at least ${n2w(total)} character long`,
+        `at least ${n2w(total)} characters long`,
+        total,
+      ),
+  },
+  lower: {
+    test: makeRegexTest("lower", /[a-z]/g),
+    description: ({ lower = 0 }) =>
+      ngettext(
+        msgid`${n2w(lower)} lower case letter`,
+        `${n2w(lower)} lower case letters`,
+        lower,
+      ),
+  },
+  upper: {
+    test: makeRegexTest("upper", /[A-Z]/g),
+    description: ({ upper = 0 }) =>
+      ngettext(
+        msgid`${n2w(upper)} upper case letter`,
+        `${n2w(upper)} upper case letters`,
+        upper,
+      ),
+  },
+  digit: {
+    test: makeRegexTest("digit", /[0-9]/g),
+    description: ({ digit = 0 }) =>
+      ngettext(msgid`${n2w(digit)} number`, `${n2w(digit)} numbers`, digit),
+  },
+  special: {
+    test: makeRegexTest("special", /[^a-zA-Z0-9]/g),
+    description: ({ special = 0 }) =>
+      ngettext(
+        msgid`${n2w(special)} special character`,
+        `${n2w(special)} special characters`,
+        special,
+      ),
+  },
+};
+
 // TODO: dump this from backend settings definitions
 export type SettingName =
   | "admin-email"
+  | "analytics-uuid"
   | "anon-tracking-enabled"
   | "available-locales"
   | "available-timezones"
@@ -22,29 +69,30 @@ export type SettingName =
   | "google-auth-client-id"
   | "has-sample-dataset?"
   | "hide-embed-branding?"
+  | "is-hosted?"
   | "ldap-configured?"
   | "map-tile-server-url"
   | "password-complexity"
+  | "premium-features"
   | "search-typeahead-enabled"
   | "setup-token"
   | "site-url"
   | "types"
-  | "version"
-  | "version-info"
   | "version-info-last-checked"
-  | "premium-features"
-  | "analytics-uuid";
+  | "version-info"
+  | "version"
+  | "subscription-allowed-domains";
 
-type SettingsMap = { [key: SettingName]: any };
+type SettingsMap = Record<SettingName, any>; // provides access to Metabase application settings
 
-// provides access to Metabase application settings
+type SettingListener = (value: any) => void;
+
 class Settings {
   _settings: SettingsMap;
-  _listeners: { [key: SettingName]: Function[] };
+  _listeners: Partial<Record<SettingName, SettingListener[]>> = {};
 
   constructor(settings: SettingsMap) {
     this._settings = settings;
-    this._listeners = {};
   }
 
   get(key: SettingName, defaultValue: any = null) {
@@ -56,23 +104,29 @@ class Settings {
   set(key: SettingName, value: any) {
     if (this._settings[key] !== value) {
       this._settings[key] = value;
-      if (this._listeners[key]) {
-        for (const listener of this._listeners[key]) {
-          setTimeout(() => listener(value));
-        }
+      const listeners = this._listeners[key];
+
+      if (!listeners) {
+        return;
+      }
+
+      for (const listener of listeners) {
+        setTimeout(() => listener(value));
       }
     }
   }
 
   setAll(settings: SettingsMap) {
-    for (const [key, value] of Object.entries(settings)) {
-      this.set(key, value);
-    }
+    const keys = Object.keys(settings) as SettingName[];
+
+    keys.forEach(key => {
+      this.set(key, settings[key]);
+    });
   }
 
-  on(key, callback) {
+  on(key: SettingName, callback: SettingListener) {
     this._listeners[key] = this._listeners[key] || [];
-    this._listeners[key].push(callback);
+    this._listeners[key]!.push(callback);
   }
 
   // these are all special accessors which provide a lookup of a property plus some additional help
@@ -123,6 +177,7 @@ class Settings {
 
   versionInfoLastChecked() {
     const ts = this.get("version-info-last-checked");
+
     if (ts) {
       // app DB stores this timestamp in UTC, so convert it to the local zone to render
       return moment
@@ -137,6 +192,7 @@ class Settings {
   docsUrl(page = "", anchor = "") {
     let { tag } = this.get("version", {});
     const matches = tag.match(/v[01]\.(\d+)(?:\.\d+)?(-.*)?/);
+
     if (matches) {
       if (
         matches.length > 2 &&
@@ -153,12 +209,15 @@ class Settings {
       // otherwise, just link to the latest tag
       tag = "latest";
     }
+
     if (page) {
       page = `${page}.html`;
     }
+
     if (anchor) {
       anchor = `#${anchor}`;
     }
+
     return `https://www.metabase.com/docs/${tag}/${page}${anchor}`;
   }
 
@@ -186,7 +245,6 @@ class Settings {
     We expect the versionInfo to take on the JSON structure detailed below.
     The 'older' section should contain only the last 5 previous versions, we don't need to go on forever.
     The highlights for a version should just be text and should be limited to 5 items tops.
-
     type VersionInfo = {
       latest: Version,
       older: Version[]
@@ -230,8 +288,8 @@ class Settings {
    */
   passwordComplexityDescription(password = "") {
     const requirements = this.passwordComplexityRequirements();
+    const descriptions: Record<string, string> = {};
 
-    const descriptions = {};
     for (const [name, clause] of Object.entries(PASSWORD_COMPLEXITY_CLAUSES)) {
       if (!clause.test(requirements, password)) {
         descriptions[name] = clause.description(requirements);
@@ -240,6 +298,7 @@ class Settings {
 
     const { total, ...rest } = descriptions;
     const includes = Object.values(rest).join(", ");
+
     if (total && includes) {
       return t`must be ${total} and include ${includes}.`;
     } else if (total) {
@@ -252,59 +311,13 @@ class Settings {
   }
 
   subscriptionAllowedDomains() {
-    const setting = this.get("subscription-allowed-domains") ?? "";
+    const setting = this.get("subscription-allowed-domains") || "";
     return setting ? setting.split(",") : [];
   }
 }
 
-const n2w = n => MetabaseUtils.numberToWord(n);
-
-const PASSWORD_COMPLEXITY_CLAUSES = {
-  total: {
-    test: ({ total = 0 }, password = "") => password.length >= total,
-    description: ({ total = 0 }) =>
-      ngettext(
-        msgid`at least ${n2w(total)} character long`,
-        `at least ${n2w(total)} characters long`,
-        total,
-      ),
-  },
-  lower: {
-    test: makeRegexTest("lower", /[a-z]/g),
-    description: ({ lower = 0 }) =>
-      ngettext(
-        msgid`${n2w(lower)} lower case letter`,
-        `${n2w(lower)} lower case letters`,
-        lower,
-      ),
-  },
-  upper: {
-    test: makeRegexTest("upper", /[A-Z]/g),
-    description: ({ upper = 0 }) =>
-      ngettext(
-        msgid`${n2w(upper)} upper case letter`,
-        `${n2w(upper)} upper case letters`,
-        upper,
-      ),
-  },
-  digit: {
-    test: makeRegexTest("digit", /[0-9]/g),
-    description: ({ digit = 0 }) =>
-      ngettext(msgid`${n2w(digit)} number`, `${n2w(digit)} numbers`, digit),
-  },
-  special: {
-    test: makeRegexTest("special", /[^a-zA-Z0-9]/g),
-    description: ({ special = 0 }) =>
-      ngettext(
-        msgid`${n2w(special)} special character`,
-        `${n2w(special)} special characters`,
-        special,
-      ),
-  },
-};
-
-function makeRegexTest(property, regex) {
-  return (requirements, password = "") =>
+function makeRegexTest(property: string, regex: RegExp) {
+  return (requirements: Record<string, any>, password = "") =>
     (password.match(regex) || []).length >= (requirements[property] || 0);
 }
 

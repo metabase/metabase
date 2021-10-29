@@ -11,8 +11,8 @@ import EmbedModalContent from "metabase/public/components/widgets/EmbedModalCont
 import * as Urls from "metabase/lib/urls";
 import MetabaseSettings from "metabase/lib/settings";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { getParametersFromCard } from "metabase/parameters/utils/cards";
 
-import { getParametersFromCard } from "metabase/meta/Card";
 import {
   createPublicLink,
   deletePublicLink,

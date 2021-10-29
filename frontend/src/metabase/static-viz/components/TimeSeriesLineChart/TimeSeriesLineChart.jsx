@@ -8,6 +8,7 @@ import {
   getXTickLabelProps,
   getYTickWidth,
   getYTickLabelProps,
+  getLabelProps,
 } from "../../lib/axes";
 import { formatDate } from "../../lib/dates";
 import { formatNumber } from "../../lib/numbers";
@@ -48,6 +49,7 @@ const layout = {
     textMedium: "#949aab",
   },
   numTicks: 5,
+  labelFontWeight: 700,
   labelPadding: 12,
   strokeWidth: 2,
   strokeDasharray: "4",
@@ -101,6 +103,7 @@ const TimeSeriesLineChart = ({ data, accessors, settings, labels }) => {
         labelOffset={yLabelOffset}
         hideTicks
         hideAxisLine
+        labelProps={getLabelProps(layout)}
         tickFormat={value => formatNumber(value, settings?.y)}
         tickLabelProps={() => getYTickLabelProps(layout)}
       />
@@ -111,6 +114,7 @@ const TimeSeriesLineChart = ({ data, accessors, settings, labels }) => {
         numTicks={layout.numTicks}
         stroke={palette.textLight}
         tickStroke={palette.textLight}
+        labelProps={getLabelProps(layout)}
         tickFormat={value => formatDate(value, settings?.x)}
         tickLabelProps={() => getXTickLabelProps(layout)}
       />

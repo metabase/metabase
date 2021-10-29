@@ -1,7 +1,7 @@
 import styled from "styled-components";
 import { Flex } from "grid-styled";
 
-import { color, darken, lighten } from "metabase/lib/colors";
+import { alpha, color, darken, lighten } from "metabase/lib/colors";
 
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
@@ -25,6 +25,8 @@ function getPinnedForeground(model, disabled) {
 function getBackground(model, disabled) {
   return disabled
     ? color("border")
+    : model === "dataset"
+    ? alpha(color("accent2"), 0.08)
     : model === "dashboard"
     ? color("brand")
     : color("brand-light");
@@ -33,6 +35,8 @@ function getBackground(model, disabled) {
 function getForeground(model, disabled) {
   return disabled
     ? darken(color("border"), 0.38)
+    : model === "dataset"
+    ? color("accent2")
     : model === "dashboard"
     ? color("white")
     : color("brand");

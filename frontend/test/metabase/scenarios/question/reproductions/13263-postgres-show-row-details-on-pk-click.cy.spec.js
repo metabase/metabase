@@ -22,7 +22,7 @@ describe("postgres > user > query", () => {
 
     // Wait until "doing science" spinner disappears (DOM is ready for assertions)
     // TODO: if this proves to be reliable, extract it as a helper function for waiting on DOM to render
-    cy.get(".LoadingSpinner").should("not.exist");
+    cy.findByTestId("loading-spinner").should("not.exist");
 
     // Assertions
     cy.log("Fails in v0.36.6");

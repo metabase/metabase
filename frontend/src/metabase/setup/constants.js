@@ -4,7 +4,7 @@ export const USER_STEP_NUMBER = 2;
 export const DATABASE_CONNECTION_STEP_NUMBER = 3;
 export const DATABASE_SCHEDULING_STEP_NUMBER = 4;
 export const PREFERENCES_STEP_NUMBER = 5;
-export const COMPLETED_STEP_NUMBER = 5;
+export const COMPLETED_STEP_NUMBER = 6;
 
 export const STEPS = {
   [WELCOME_STEP_NUMBER]: "welcome",
