@@ -841,6 +841,23 @@ export class UnconnectedDataSelector extends Component {
     this.setState({ searchText: "" });
   };
 
+  getSearchInputPlaceholder = () => {
+    const {
+      activeStep,
+      selectedDataBucketId,
+      isSavedQuestionPickerShown,
+    } = this.state;
+    if (activeStep === DATA_BUCKET_STEP) {
+      return t`Search for some data...`;
+    }
+    if (selectedDataBucketId === DATA_BUCKET.DATASETS) {
+      return t`Search for a model...`;
+    }
+    return isSavedQuestionPickerShown
+      ? t`Search for a question...`
+      : t`Search for a table...`;
+  };
+
   render() {
     const {
       searchText,
@@ -852,9 +869,6 @@ export class UnconnectedDataSelector extends Component {
 
     const isSearchActive = searchText.trim().length >= MIN_SEARCH_LENGTH;
 
-    const searchPlaceholder = isSavedQuestionPickerShown
-      ? t`Search for a question`
-      : t`Search for a table...`;
     const searchModels = isSavedQuestionPickerShown
       ? ["card"]
       : ["card", "table"];
@@ -885,7 +899,7 @@ export class UnconnectedDataSelector extends Component {
                 className="bg-white m1"
                 onChange={this.handleSearchTextChange}
                 value={searchText}
-                placeholder={searchPlaceholder}
+                placeholder={this.getSearchInputPlaceholder()}
                 autoFocus
               />
             )}
