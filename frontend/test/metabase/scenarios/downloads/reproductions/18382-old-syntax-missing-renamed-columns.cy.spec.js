@@ -5,6 +5,12 @@ const xlsx = require("xlsx");
 
 const { REVIEWS, REVIEWS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
 
+/**
+ * This question might seem a bit overwhelming at the first sight.
+ * The whole point of this repro was to try to cover as much of the old syntax as possible.
+ * We want to make sure it still works when loaded into a new(er) Metabase version.
+ */
+
 const questionDetails = {
   dataset_query: {
     database: 1,
@@ -33,75 +39,95 @@ const questionDetails = {
   },
   display: "table",
   visualization_settings: {
-    column_settings: renameColumns(),
+    // Rename columns
+    column_settings: {
+      [`["ref",["field",${REVIEWS.ID},null]]`]: {
+        column_title: "MOD:ID",
+      },
+      [`["ref",["field",${REVIEWS.REVIEWER},null]]`]: {
+        column_title: "MOD:Reviewer",
+      },
+      [`["ref",["field",${PRODUCTS.TITLE},null]]`]: {
+        column_title: "MOD:Title",
+      },
+    },
+    // Reorder columns
+    "table.columns": [
+      {
+        name: "TITLE",
+        fieldRef: ["joined-field", "Products", ["field-id", PRODUCTS.TITLE]],
+        enabled: true,
+      },
+      {
+        name: "ID",
+        fieldRef: ["field-id", REVIEWS.ID],
+        enabled: true,
+      },
+      {
+        name: "REVIEWER",
+        fieldRef: ["field-id", REVIEWS.REVIEWER],
+        enabled: true,
+      },
+    ],
   },
 };
 
-const testCases = [
-  { type: "csv", sheetName: "Sheet1" },
-  { type: "xlsx", sheetName: "Query result" },
-];
+const testCases = ["csv", "xlsx"];
 
-describe.skip("issue 18382", () => {
-  beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
+testCases.forEach(type => {
+  const downloadClassName = `.Icon-${type}`;
+  const endpoint = `/api/dataset/${type}`;
 
-    restore();
-    cy.signInAsAdmin();
-  });
+  describe("issue 18382", () => {
+    beforeEach(() => {
+      // TODO: Please remove this line when issue gets fixed
+      cy.skipOn(type === "csv");
 
-  it("should handle the old syntax in downloads (metabase#18382)", () => {
-    visitQuestionAdhoc(questionDetails);
-    cy.wait("@dataset");
+      cy.intercept("POST", "/api/dataset").as("dataset");
 
-    cy.icon("download").click();
+      restore();
+      cy.signInAsAdmin();
 
-    cy.wrap(testCases).each(({ type, sheetName }) => {
-      const downloadClassName = `.Icon-${type}`;
-      const endpoint = `/api/dataset/${type}`;
+      visitQuestionAdhoc(questionDetails);
+      cy.wait("@dataset");
+    });
 
-      cy.log(`downloading a ${type} file`);
+    it(`should handle the old syntax in downloads for ${type} (metabase#18382)`, () => {
+      cy.url().then(currentPage => {
+        cy.intercept("POST", endpoint, req => {
+          // We must redirect in order to avoid Cypress being stuck on waiting for the new page to load.
+          // But let's stay on the same page, instead of redirecting to `/` or something else.
+          req.redirect(currentPage);
+        }).as("fileDownload");
+      });
 
-      cy.get(downloadClassName)
-        .parent()
-        .parent()
-        .get('input[name="query"]')
-        .invoke("val")
-        .then(download_query_params => {
-          cy.request({
-            url: endpoint,
-            method: "POST",
-            form: true,
-            body: { query: download_query_params },
-            encoding: "binary",
-          }).then(resp => {
-            const workbook = xlsx.read(resp.body, {
+      cy.log(`Downloading ${type} file`);
+
+      cy.icon("download").click();
+      // Initiate the file download
+      cy.get(downloadClassName).click();
+
+      cy.wait("@fileDownload")
+        .its("request")
+        .then(req => {
+          // The payload for the xlsx is in the binary form
+          type === "xlsx" && Object.assign(req, { encoding: "binary" });
+
+          cy.request(req).then(({ body }) => {
+            const { SheetNames, Sheets } = xlsx.read(body, {
               type: "binary",
             });
 
-            expect(workbook.Sheets[sheetName]["A1"].v).to.eq("MOD:ID");
-            expect(workbook.Sheets[sheetName]["B1"].v).to.eq("MOD:Reviewer");
-            expect(workbook.Sheets[sheetName]["C1"].v).to.eq("MOD:Title");
+            const sheetName = SheetNames[0];
+            const sheet = Sheets[sheetName];
 
-            expect(workbook.Sheets[sheetName]["C2"].v).to.eq(
-              "Aerodynamic Concrete Bench",
-            );
+            expect(sheet["A1"].v).to.eq("MOD:Title");
+            expect(sheet["B1"].v).to.eq("MOD:ID");
+            expect(sheet["C1"].v).to.eq("MOD:Reviewer");
+
+            expect(sheet["A2"].v).to.eq("Aerodynamic Concrete Bench");
           });
         });
     });
   });
 });
-
-function renameColumns() {
-  return {
-    [`["ref",["field",${REVIEWS.ID},null]]`]: {
-      column_title: "MOD:ID",
-    },
-    [`["ref",["field",${REVIEWS.REVIEWER},null]]`]: {
-      column_title: "MOD:Reviewer",
-    },
-    [`["ref",["field",${PRODUCTS.TITLE},null]]`]: {
-      column_title: "MOD:Title",
-    },
-  };
-}
