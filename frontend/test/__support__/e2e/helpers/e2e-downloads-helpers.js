@@ -9,7 +9,10 @@ const xlsx = require("xlsx");
  * @param {number} [params.questionId]
  * @param {function} callback
  */
-export function downloadAndAssert({ fileType, questionId } = {}, callback) {
+export function downloadAndAssert(
+  { fileType, questionId, raw, logResults } = {},
+  callback,
+) {
   const downloadClassName = `.Icon-${fileType}`;
   const endpoint = getEndpoint(fileType, questionId);
 
@@ -40,10 +43,13 @@ export function downloadAndAssert({ fileType, questionId } = {}, callback) {
       cy.request(req).then(({ body }) => {
         const { SheetNames, Sheets } = xlsx.read(body, {
           type: "binary",
+          raw,
         });
 
         const sheetName = SheetNames[0];
         const sheet = Sheets[sheetName];
+
+        logResults && console.log(sheet);
 
         callback(sheet);
       });
