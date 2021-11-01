@@ -20,13 +20,23 @@ export function downloadAndAssert(
    * Please see the official Cypress example for more details:
    * https://github.com/cypress-io/cypress-example-recipes/blob/master/examples/testing-dom__download/cypress/integration/form-submission-spec.js
    */
-  cy.url().then(currentPage => {
-    cy.intercept("POST", endpoint, req => {
-      // We must redirect in order to avoid Cypress being stuck on waiting for the new page to load.
-      // But we want to stay on the same page, instead of redirecting to `/` or something else.
-      req.redirect(currentPage);
-    }).as("fileDownload");
-  });
+
+  cy.intercept("POST", endpoint, req => {
+    /**
+     * We must redirect in order to avoid Cypress being stuck on waiting for the new page to load.
+     * Intetionally redirecting to a non-existing page.
+     *
+     * Explanation:
+     * If we redirect to ANY of the existing pages, there's a lot of requests that need to complete for that page.
+     *  - This helper function is usually the last piece of code to execute in any given test.
+     *  - As soon as the assertions are complete, the new test starts
+     *  - Assertions are usually faster than all of the previously mentioned requests from the redirect
+     *  - This results in the next test being poluted with the requests that didn't finish from the last one.
+     *  - Those "spill-over" requests end up in the beforeEach hook of the next test and can have unexpected results.
+     */
+
+    req.redirect("/foo");
+  }).as("fileDownload");
 
   cy.log(`Downloading ${fileType} file`);
 
