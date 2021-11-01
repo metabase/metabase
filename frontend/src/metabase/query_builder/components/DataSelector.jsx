@@ -378,6 +378,11 @@ export class UnconnectedDataSelector extends Component {
   }
 
   async componentDidMount() {
+    const { activeStep } = this.state;
+    if (!this.isLoadingDatasets() && !activeStep) {
+      await this.hydrateActiveStep();
+    }
+
     if (this.props.selectedTableId) {
       await this.props.fetchFields(this.props.selectedTableId);
       if (this.isSavedQuestionSelected()) {
@@ -387,7 +392,7 @@ export class UnconnectedDataSelector extends Component {
   }
 
   async componentDidUpdate(prevProps) {
-    const { steps, loading } = this.props;
+    const { loading } = this.props;
     const loadedDatasets = prevProps.loading && !loading;
 
     // Once datasets are queried with the search endpoint,
@@ -395,12 +400,7 @@ export class UnconnectedDataSelector extends Component {
     // If there is at least one dataset, DATA_BUCKER_STEP will be shown,
     // otherwise, the picker will jump to the next step and present the regular picker
     if (loadedDatasets) {
-      const [firstStep] = steps;
-      if (firstStep === DATA_BUCKET_STEP && !this.hasDatasets()) {
-        this.switchToStep(steps[1]);
-      } else {
-        this.hydrateActiveStep();
-      }
+      await this.hydrateActiveStep();
     }
 
     // this logic cleans up invalid states, e.x. if a selectedSchema's database
@@ -460,6 +460,8 @@ export class UnconnectedDataSelector extends Component {
       await this.switchToStep(TABLE_STEP);
     } else if (this.state.selectedDatabaseId && steps.includes(SCHEMA_STEP)) {
       await this.switchToStep(SCHEMA_STEP);
+    } else if (steps[0] === DATA_BUCKET_STEP && !this.hasDatasets()) {
+      await this.switchToStep(steps[1]);
     } else {
       await this.switchToStep(steps[0]);
     }
