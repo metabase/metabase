@@ -4,6 +4,7 @@ import _ from "underscore";
 import { stripId, FK_SYMBOL } from "metabase/lib/formatting";
 import { TYPE } from "metabase/lib/types";
 
+import { TemplateTagVariable } from "./Variable";
 import Field from "./metadata/Field";
 import type {
   AggregationOperator,
@@ -1206,23 +1207,45 @@ export class TemplateTagDimension extends FieldDimension {
     return Array.isArray(clause) && clause[0] === "template-tag";
   }
 
+  isDimensionType() {
+    const maybeTag = this.tag();
+    return maybeTag?.type === "dimension";
+  }
+
+  isVariableType() {
+    const maybeTag = this.tag();
+    return ["text", "number", "date"].includes(maybeTag?.type);
+  }
+
   dimension() {
-    if (this._query) {
+    if (this.isDimensionType()) {
       const tag = this.tag();
-      if (tag && tag.type === "dimension") {
-        return Dimension.parseMBQL(tag.dimension, this._metadata, this._query);
-      }
+      return Dimension.parseMBQL(tag.dimension, this._metadata, this._query);
     }
+
+    return null;
+  }
+
+  variable() {
+    if (this.isVariableType()) {
+      const tag = this.tag();
+      return new TemplateTagVariable([tag.name], this._metadata, this._query);
+    }
+
     return null;
   }
 
   tag() {
-    return this._query.templateTagsMap()[this.tagName()];
+    const templateTagMap = this._query?.templateTagsMap() ?? {};
+    return templateTagMap[this.tagName()];
   }
 
   field() {
-    const dimension = this.dimension();
-    return dimension ? dimension.field() : super.field();
+    if (this.isDimensionType()) {
+      return this.dimension().field();
+    }
+
+    return null;
   }
 
   tableId() {
@@ -1230,7 +1253,7 @@ export class TemplateTagDimension extends FieldDimension {
   }
 
   name() {
-    return this.field().name;
+    return this.isDimensionType() ? this.field().name : this.tagName();
   }
 
   tagName() {
@@ -1244,6 +1267,16 @@ export class TemplateTagDimension extends FieldDimension {
 
   mbql() {
     return ["template-tag", this.tagName()];
+  }
+
+  icon() {
+    if (this.isDimensionType()) {
+      return this.dimension().icon();
+    } else if (this.isVariableType()) {
+      return this.variable().icon();
+    }
+
+    return "label";
   }
 }
 
