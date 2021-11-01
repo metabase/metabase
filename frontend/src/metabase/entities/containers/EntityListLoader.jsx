@@ -51,6 +51,7 @@ const CONSUMED_PROPS = [
   "entityType",
   "entityQuery",
   // "reload", // Masked by `reload` function. Should we rename that?
+  "reloadInterval",
   "wrapped",
   "debounced",
   "loadingAndErrorWrapper",
@@ -200,6 +201,10 @@ class EntityListLoader extends React.Component {
       clearTimeout(this.reloadTimeout);
       this.reloadTimeout = setTimeout(this.reload, reloadInterval);
     }
+  }
+
+  componentWillUnmount() {
+    clearTimeout(this.reloadTimeout);
   }
 
   renderChildren = () => {
