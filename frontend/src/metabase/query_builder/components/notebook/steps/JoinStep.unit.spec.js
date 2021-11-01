@@ -155,7 +155,6 @@ describe("Notebook Editor > Join Step", () => {
 
   async function selectTable(tableName) {
     await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
-    fireEvent.click(screen.queryByText(/Sample Dataset/i));
     const dataSelector = await screen.findByTestId("data-selector");
     fireEvent.click(within(dataSelector).queryByText(tableName));
 
@@ -211,7 +210,6 @@ describe("Notebook Editor > Join Step", () => {
     await setup();
     await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
 
-    fireEvent.click(screen.queryByText(/Sample Dataset/i));
     const dataSelector = await screen.findByTestId("data-selector");
 
     SAMPLE_DATASET.tables.forEach(table => {
@@ -425,6 +423,7 @@ describe("Notebook Editor > Join Step", () => {
       expect(screen.queryAllByText("Pick a column...")).toHaveLength(2);
     });
 
+    // ###
     it("automatically opens a parent dimension picker for new fields pair", async () => {
       await setup({ joinTable: "Products" });
 
