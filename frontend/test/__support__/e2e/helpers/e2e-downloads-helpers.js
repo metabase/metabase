@@ -5,8 +5,10 @@ const xlsx = require("xlsx");
  * It applies to both unsaved questions (queries) and the saved ones.
  *
  * @param {Object} params
- * @param {("csv"|"xlsx")} params.fileType
- * @param {number} [params.questionId]
+ * @param {("csv"|"xlsx")} params.fileType - file type we're downloading
+ * @param {number} [params.questionId] - needed only for saved questions
+ * @param {boolean} [params.raw] - tell SheetJs not to parse values
+ * @param {boolean} [params.logResults] - preview the results in the console log
  * @param {function} callback
  */
 export function downloadAndAssert(
@@ -52,6 +54,7 @@ export function downloadAndAssert(
 
       cy.request(req).then(({ body }) => {
         const { SheetNames, Sheets } = xlsx.read(body, {
+          // See the full list of Parsing options: https://github.com/SheetJS/sheetjs#parsing-options
           type: "binary",
           raw,
         });
