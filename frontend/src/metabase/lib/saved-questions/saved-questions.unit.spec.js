@@ -7,6 +7,11 @@ import {
 } from "./saved-questions";
 
 describe("saved question helpers", () => {
+  function getEncodedPayload(object) {
+    const json = JSON.stringify(object);
+    return encodeURIComponent(json);
+  }
+
   describe("getCollectionVirtualSchemaName", () => {
     it("should return 'Everything else' for root collection", () => {
       expect(getCollectionVirtualSchemaName({ id: null })).toBe(
@@ -53,9 +58,7 @@ describe("saved question helpers", () => {
 
     it("should return correct schema for collection datasets", () => {
       const collection = { id: 1, name: "Marketing" };
-      const payload = JSON.stringify({
-        isDatasets: true,
-      });
+      const payload = getEncodedPayload({ isDatasets: true });
       const expectedId = `${SAVED_QUESTIONS_VIRTUAL_DB_ID}:Marketing:${payload}`;
 
       expect(

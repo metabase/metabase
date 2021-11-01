@@ -30,11 +30,16 @@ describe("schemas", () => {
     },
   ];
 
+  function getEncodedPayload(object) {
+    const json = JSON.stringify(object);
+    return encodeURIComponent(json);
+  }
+
   describe("entityTypeForModel", () => {
     MODEL_ENTITY_TYPE.forEach(testCase => {
       const { model, entityType } = testCase;
       it(`returns "${entityType}" for "${model}" model`, () => {
-        expect(entityTypeForModel(model)).toBe(entityType);
+        expect(entityTypeForModel(model)).tpoBe(entityType);
       });
     });
   });
@@ -62,8 +67,11 @@ describe("schemas", () => {
 
     it("encodes extra payload", () => {
       const payload = { isDataset: true };
+      const expectedPayload = getEncodedPayload(payload);
+
       const schema = generateSchemaId(1, 2, payload);
-      expect(schema).toBe(`1:2:${JSON.stringify(payload)}`);
+
+      expect(schema).toBe(`1:2:${expectedPayload}`);
     });
   });
 
@@ -89,7 +97,7 @@ describe("schemas", () => {
     it("decodes extra payload", () => {
       const payload = { isDataset: true };
       const [dbId, schemaName, decodedPayload] = parseSchemaId(
-        `1:2:${JSON.stringify(payload)}`,
+        `1:2:${getEncodedPayload(payload)}`,
       );
       expect({ dbId, schemaName, payload: decodedPayload }).toEqual({
         dbId: "1",

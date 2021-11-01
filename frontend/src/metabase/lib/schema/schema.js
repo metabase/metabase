@@ -9,20 +9,12 @@ export const getSchemaName = id => parseSchemaId(id)[1];
 
 export const parseSchemaId = id => {
   const schemaId = String(id || "");
-  const firstColonIndex = schemaId.indexOf(":");
-  const secondColonIndex = schemaId.indexOf(":", firstColonIndex + 1);
-  const dbId = schemaId.substring(0, firstColonIndex);
-  const schemaName =
-    secondColonIndex === -1
-      ? schemaId.substring(firstColonIndex + 1)
-      : schemaId.substring(firstColonIndex + 1, secondColonIndex);
-  const payload =
-    secondColonIndex > 0 && schemaId.substring(secondColonIndex + 1);
-  const parsed = [dbId, decodeURIComponent(schemaName)];
-  if (payload) {
-    parsed.push(JSON.parse(payload));
+  const [databaseId, schemaName, encodedPayload] = schemaId.split(":");
+  const result = [databaseId, decodeURIComponent(schemaName)];
+  if (encodedPayload) {
+    result.push(JSON.parse(decodeURIComponent(encodedPayload)));
   }
-  return parsed;
+  return result;
 };
 
 export const generateSchemaId = (dbId, schemaName, payload) => {
@@ -32,7 +24,9 @@ export const generateSchemaId = (dbId, schemaName, payload) => {
   const name = schemaName ? encodeURIComponent(schemaName) : "";
   let id = `${dbId}:${name}`;
   if (payload) {
-    id += `:${JSON.stringify(payload)}`;
+    const json = JSON.stringify(payload);
+    const encodedPayload = encodeURIComponent(json);
+    id += `:${encodedPayload}`;
   }
   return id;
 };
