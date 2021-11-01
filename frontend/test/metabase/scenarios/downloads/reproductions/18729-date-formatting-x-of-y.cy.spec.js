@@ -40,7 +40,7 @@ describe("issue 18729", () => {
       visitQuestionAdhoc(questionDetails);
       cy.wait("@dataset");
 
-      downloadAndAssert({ fileType, logResults: true }, assertion);
+      downloadAndAssert({ fileType }, assertion);
     });
   });
 });
