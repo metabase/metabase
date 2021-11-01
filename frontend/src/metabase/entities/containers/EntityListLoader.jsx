@@ -197,9 +197,12 @@ class EntityListLoader extends React.Component {
       this.setState({ previousList: prevProps.list });
     }
 
-    if (loaded && !prevProps.loaded && reloadInterval) {
+    if (loaded && !prevProps.loaded) {
       clearTimeout(this.reloadTimeout);
-      this.reloadTimeout = setTimeout(this.reload, reloadInterval);
+
+      if (reloadInterval) {
+        this.reloadTimeout = setTimeout(this.reload, reloadInterval);
+      }
     }
   }
 
