@@ -884,16 +884,17 @@ export class UnconnectedDataSelector extends Component {
 
   getSearchModels = () => {
     const { selectedDataBucketId, isSavedQuestionPickerShown } = this.state;
+    if (!this.hasDatasets()) {
+      return isSavedQuestionPickerShown ? ["card"] : ["card", "table"];
+    }
     if (!selectedDataBucketId) {
       return ["card", "dataset", "table"];
     }
-    if (selectedDataBucketId === DATA_BUCKET.DATASETS) {
-      return ["dataset"];
-    }
-    if (isSavedQuestionPickerShown) {
-      return ["card"];
-    }
-    return this.hasDatasets() ? ["table", "card"] : ["table"];
+    return {
+      [DATA_BUCKET.DATASETS]: ["dataset"],
+      [DATA_BUCKET.RAW_DATA]: ["table"],
+      [DATA_BUCKET.SAVED_QUESTIONS]: ["card"],
+    }[selectedDataBucketId];
   };
 
   render() {
