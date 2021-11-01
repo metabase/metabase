@@ -793,13 +793,19 @@ export class UnconnectedDataSelector extends Component {
         return <DataBucketPicker {...props} />;
       case DATABASE_STEP:
         return combineDatabaseSchemaSteps ? (
-          <DatabaseSchemaPicker {...props} />
+          <DatabaseSchemaPicker
+            {...props}
+            hasBackButton={this.hasDatasets() && props.onBack}
+          />
         ) : (
           <DatabasePicker {...props} />
         );
       case SCHEMA_STEP:
         return combineDatabaseSchemaSteps ? (
-          <DatabaseSchemaPicker {...props} />
+          <DatabaseSchemaPicker
+            {...props}
+            hasBackButton={this.hasDatasets() && props.onBack}
+          />
         ) : (
           <SchemaPicker {...props} />
         );
@@ -1088,13 +1094,12 @@ const DatabaseSchemaPicker = ({
   onChangeDatabase,
   hasNextStep,
   isLoading,
+  hasBackButton,
   onBack,
 }) => {
   if (databases.length === 0) {
     return <DataSelectorLoading />;
   }
-
-  const hasPreviousStep = typeof onBack === "function";
 
   const sections = databases.map(database => ({
     name: database.is_saved_questions ? t`Saved Questions` : database.name,
@@ -1114,7 +1119,7 @@ const DatabaseSchemaPicker = ({
       isLoading,
   }));
 
-  if (hasPreviousStep) {
+  if (hasBackButton) {
     sections.unshift({
       name: <RawDataBackButton onBack={onBack} />,
     });
@@ -1142,13 +1147,13 @@ const DatabaseSchemaPicker = ({
       sections={sections}
       onChange={item => onChangeSchema(item.schema)}
       onChangeSection={(_section, sectionIndex) => {
-        const isNavigationSection = hasPreviousStep && sectionIndex === 0;
+        const isNavigationSection = hasBackButton && sectionIndex === 0;
         if (isNavigationSection) {
           return false;
         }
         // the "go back" button is also a section,
         // so need to take its index in mind
-        const database = hasPreviousStep
+        const database = hasBackButton
           ? databases[sectionIndex - 1]
           : databases[sectionIndex];
         onChangeDatabase(database);
