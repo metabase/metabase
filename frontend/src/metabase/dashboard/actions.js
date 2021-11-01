@@ -17,12 +17,12 @@ import {
   setParameterDefaultValue as setParamDefaultValue,
   getMappingsByParameter,
   getDashboardParametersWithFieldMetadata,
-} from "metabase/meta/Dashboard";
+} from "metabase/parameters/utils/dashboards";
 import { applyParameters, questionUrlWithParameters } from "metabase/meta/Card";
 import {
   getParameterValuesBySlug,
   getParameterValuesByIdFromQueryParams,
-} from "metabase/meta/Parameter";
+} from "metabase/parameters/utils/parameter-values";
 import * as Urls from "metabase/lib/urls";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 

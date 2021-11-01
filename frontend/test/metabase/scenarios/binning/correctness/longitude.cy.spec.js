@@ -39,7 +39,7 @@ describe("scenarios > binning > correctness > longitude", () => {
           cy.findByText(bucketSize).click();
         });
 
-        cy.get(".List-item--selected")
+        cy.get("li[aria-selected='true']")
           .should("contain", "Longitude")
           .and("contain", selected);
 
@@ -60,7 +60,7 @@ describe("scenarios > binning > correctness > longitude", () => {
       cy.findByText("Don't bin").click();
     });
 
-    cy.get(".List-item--selected")
+    cy.get("li[aria-selected='true']")
       .should("contain", "Longitude")
       .and("contain", "Unbinned");
 
@@ -77,18 +77,16 @@ describe("scenarios > binning > correctness > longitude", () => {
 });
 
 function openPopoverFromDefaultBucketSize(column, bucket) {
-  cy.findByTestId("sidebar-right")
-    .contains(column)
-    .first()
-    .closest(".List-item")
-    .should("be.visible")
-    .as("targetListItem");
-
-  cy.get("@targetListItem")
-    .find(".Field-extra")
-    .as("listItemSelectedBinning")
-    .should("contain", bucket)
-    .click();
+  cy.findAllByTestId("dimension-list-item")
+    .filter(`:contains("${column}")`)
+    .as("targetListItem")
+    .realHover()
+    .within(() => {
+      cy.findByTestId("dimension-list-item-binning")
+        .as("listItemSelectedBinning")
+        .should("contain", bucket)
+        .click();
+    });
 }
 
 function getTitle(title) {

@@ -703,6 +703,20 @@ describe("Join", () => {
       expect(join.isValid()).toBe(false);
     });
 
+    it("should ignore field literals not present in dimension options for backward compatibility", () => {
+      const join = getJoin({
+        query: getOrdersJoinQuery({
+          condition: [
+            "=",
+            ORDERS_PRODUCT_ID_FIELD_REF,
+            ["field", "USER_ID", { "base-type": "type/Integer" }],
+          ],
+        }),
+      });
+
+      expect(join.isValid()).toBe(true);
+    });
+
     invalidTestCases.forEach(([invalidReason, queryOpts]) => {
       it(`should return 'false' when ${invalidReason}`, () => {
         const join = getJoin({

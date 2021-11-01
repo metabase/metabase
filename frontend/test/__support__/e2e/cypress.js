@@ -22,8 +22,9 @@ export * from "./helpers/e2e-assertion-helpers";
 export * from "./helpers/e2e-cloud-helpers";
 export * from "./helpers/e2e-data-model-helpers";
 export * from "./helpers/e2e-misc-helpers";
-export * from "./helpers/e2e-deprecated-helpers";
 export * from "./helpers/e2e-email-helpers";
+export * from "./helpers/e2e-slack-helpers";
 export * from "./helpers/e2e-custom-column-helpers";
+export * from "./helpers/e2e-dimension-list-helpers";
 
 Cypress.on("uncaught:exception", (err, runnable) => false);

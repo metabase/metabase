@@ -1,17 +1,12 @@
 import React from "react";
-import { Provider } from "react-redux";
-import { reducer as form } from "redux-form";
-import { Router, Route } from "react-router";
-import { createMemoryHistory } from "history";
 import {
-  render,
+  renderWithProviders,
   screen,
   waitForElementToBeRemoved,
-} from "@testing-library/react";
+} from "__support__/ui";
 import admin from "metabase/admin/admin";
 import MetabaseSettings from "metabase/lib/settings";
-import { PLUGIN_CACHING } from "metabase/plugins";
-import { getStore } from "__support__/entities-store";
+import { setupEnterpriseTest } from "__support__/enterprise";
 import DatabaseEditApp from "./DatabaseEditApp";
 
 const ENGINES_MOCK = {
@@ -32,6 +27,7 @@ const ENGINES_MOCK = {
 };
 
 function mockSettings({ cachingEnabled = false }) {
+  const original = MetabaseSettings.get.bind(MetabaseSettings);
   const spy = jest.spyOn(MetabaseSettings, "get");
   spy.mockImplementation(key => {
     if (key === "engines") {
@@ -43,20 +39,22 @@ function mockSettings({ cachingEnabled = false }) {
     if (key === "site-url") {
       return "http://localhost:3333";
     }
+    if (key === "application-name") {
+      return "Metabase Test";
+    }
+    if (key === "is-hosted?") {
+      return false;
+    }
+    return original(key);
   });
 }
 
 async function setup({ cachingEnabled = false } = {}) {
   mockSettings({ cachingEnabled });
-
-  render(
-    <Provider store={getStore({ admin, form })}>
-      <Router history={createMemoryHistory()}>
-        <Route path="/" component={DatabaseEditApp} />
-      </Router>
-    </Provider>,
-  );
-
+  renderWithProviders(<DatabaseEditApp />, {
+    withRouter: true,
+    reducers: { admin },
+  });
   await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
 }
 
@@ -74,15 +72,7 @@ describe("DatabaseEditApp", () => {
 
     describe("EE", () => {
       beforeEach(() => {
-        PLUGIN_CACHING.databaseCacheTTLFormField = {
-          name: "cache_ttl",
-          type: "integer",
-          title: "Default result cache duration",
-        };
-      });
-
-      afterEach(() => {
-        PLUGIN_CACHING.databaseCacheTTLFormField = null;
+        setupEnterpriseTest();
       });
 
       it("is visible", async () => {

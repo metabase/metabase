@@ -535,8 +535,15 @@ jobs:
           name: Save last git commit message to .COMMIT
           command: git log -1 > .COMMIT
       - run:
-          name: Remove .git directory (not needed for tests)
-          command: rm -rf /home/circleci/metabase/metabase/.git
+          name: Determine what to do to .git directory
+          command: |
+            if [[ $CIRCLE_BRANCH == release* ]]; then
+              echo 'This is a release branch; preserving .git directory to determine version'
+            else
+              echo 'This is not a release branch; removing .git directory (not needed for tests)'
+              rm -rf /home/circleci/metabase/metabase/.git
+            fi
+
       - run:
           name: Remove ./OSX directory (not needed for tests)
           command: rm -rf /home/circleci/metabase/metabase/OSX
@@ -863,6 +870,7 @@ jobs:
     parameters:
       <<: *Params
     executor: clojure-and-node-and-browsers
+    resource_class: large
     steps:
       - attach-workspace
       - run-on-change:
@@ -890,7 +898,13 @@ jobs:
                   # INTERACTIVE=false will tell the clojure build scripts not to do interactive retries etc.
                   INTERACTIVE: "false"
                   MB_EDITION: << parameters.edition >>
-                command: ./bin/build version uberjar
+                command: |
+                  if [[ $CIRCLE_BRANCH == release* || $CIRCLE_BRANCH == master  ]]; then
+                    echo 'This is a release or master branch; building a complete Uberjar'
+                    ./bin/build
+                  else
+                    ./bin/build version uberjar
+                  fi
                 no_output_timeout: 15m
             - store_artifacts:
                 path: /home/circleci/metabase/metabase/target/uberjar/metabase.jar

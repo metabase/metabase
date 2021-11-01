@@ -1,5 +1,5 @@
 import _ from "underscore";
-import { chain, assoc, dissoc, assocIn, getIn } from "icepick";
+import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
 
 // NOTE: the order of these matters due to circular dependency issues
 import StructuredQuery, {
@@ -28,31 +28,26 @@ import { isStandard } from "metabase/lib/query/filter";
 import { memoize, sortObject } from "metabase-lib/lib/utils";
 
 // TODO: remove these dependencies
-import * as Card_DEPRECATED from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
 import {
-  findColumnSettingIndexForColumn,
   findColumnIndexForColumnSetting,
+  findColumnSettingIndexForColumn,
   syncTableColumnsToQuery,
 } from "metabase/lib/dataset";
-import {
-  getValueAndFieldIdPopulatedParametersFromCard,
-  isTransientId,
-} from "metabase/meta/Card";
-import {
-  parameterToMBQLFilter,
-  normalizeParameterValue,
-} from "metabase/meta/Parameter";
+import { isTransientId } from "metabase/meta/Card";
+import { getValueAndFieldIdPopulatedParametersFromCard } from "metabase/parameters/utils/cards";
+import { parameterToMBQLFilter } from "metabase/parameters/utils/mbql";
+import { normalizeParameterValue } from "metabase/parameters/utils/parameter-values";
 import {
   aggregate,
   breakout,
+  distribution,
+  drillUnderlyingRecords,
   filter,
   pivot,
-  distribution,
   toUnderlyingRecords,
-  drillUnderlyingRecords,
 } from "metabase/modes/lib/actions";
-import { MetabaseApi, CardApi, maybeUsePivotEndpoint } from "metabase/services";
+import { CardApi, maybeUsePivotEndpoint, MetabaseApi } from "metabase/services";
 import Questions from "metabase/entities/questions";
 
 import type {
@@ -60,8 +55,8 @@ import type {
   ParameterValues,
 } from "metabase-types/types/Parameter";
 import type {
-  DatasetQuery,
   Card as CardObject,
+  DatasetQuery,
   VisualizationSettings,
 } from "metabase-types/types/Card";
 import type { Dataset, Value } from "metabase-types/types/Dataset";
@@ -74,6 +69,7 @@ import {
   ALERT_TYPE_ROWS,
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/lib/Alert";
+import { utf8_to_b64url } from "metabase/lib/encoding";
 
 type QuestionUpdateFn = (q: Question) => ?Promise<void>;
 
@@ -291,6 +287,14 @@ export default class Question {
   }
   setDisplay(display) {
     return this.setCard(assoc(this.card(), "display", display));
+  }
+
+  isDataset() {
+    return this._card && this._card.dataset;
+  }
+
+  setDataset(dataset) {
+    return this.setCard(assoc(this.card(), "dataset", dataset));
   }
 
   // locking the display prevents auto-selection
@@ -849,15 +853,13 @@ export default class Question {
     let cellQuery = "";
     if (filters.length > 0) {
       const mbqlFilter = filters.length > 1 ? ["and", ...filters] : filters[0];
-      cellQuery = `/cell/${Card_DEPRECATED.utf8_to_b64url(
-        JSON.stringify(mbqlFilter),
-      )}`;
+      cellQuery = `/cell/${utf8_to_b64url(JSON.stringify(mbqlFilter))}`;
     }
     const questionId = this.id();
     if (questionId != null && !isTransientId(questionId)) {
       return `/auto/dashboard/question/${questionId}${cellQuery}`;
     } else {
-      const adHocQuery = Card_DEPRECATED.utf8_to_b64url(
+      const adHocQuery = utf8_to_b64url(
         JSON.stringify(this.card().dataset_query),
       );
       return `/auto/dashboard/adhoc/${adHocQuery}${cellQuery}`;
@@ -868,9 +870,7 @@ export default class Question {
     let cellQuery = "";
     if (filters.length > 0) {
       const mbqlFilter = filters.length > 1 ? ["and", ...filters] : filters[0];
-      cellQuery = `/cell/${Card_DEPRECATED.utf8_to_b64url(
-        JSON.stringify(mbqlFilter),
-      )}`;
+      cellQuery = `/cell/${utf8_to_b64url(JSON.stringify(mbqlFilter))}`;
     }
     const questionId = this.id();
     const query = this.query();
@@ -880,7 +880,7 @@ export default class Question {
         if (questionId != null && !isTransientId(questionId)) {
           return `/auto/dashboard/question/${questionId}${cellQuery}/compare/table/${tableId}`;
         } else {
-          const adHocQuery = Card_DEPRECATED.utf8_to_b64url(
+          const adHocQuery = utf8_to_b64url(
             JSON.stringify(this.card().dataset_query),
           );
           return `/auto/dashboard/adhoc/${adHocQuery}${cellQuery}/compare/table/${tableId}`;
@@ -898,6 +898,10 @@ export default class Question {
       result_metadata: metadataColumns,
       metadata_checksum: metadataChecksum,
     });
+  }
+
+  getResultMetadata() {
+    return this.card().result_metadata ?? [];
   }
 
   /**
@@ -1016,6 +1020,7 @@ export default class Question {
   parameters(): ParameterObject[] {
     return getValueAndFieldIdPopulatedParametersFromCard(
       this.card(),
+      this.metadata(),
       this._parameterValues,
     );
   }
@@ -1078,7 +1083,7 @@ export default class Question {
         : {}),
     };
 
-    return Card_DEPRECATED.utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
+    return utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
   }
 
   convertParametersToFilters() {

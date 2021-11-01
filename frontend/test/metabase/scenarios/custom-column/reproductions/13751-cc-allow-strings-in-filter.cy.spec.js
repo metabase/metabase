@@ -1,4 +1,4 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover, visualize } from "__support__/e2e/cypress";
 
 const CC_NAME = "C-States";
 const PG_DB_NAME = "QA Postgres12";
@@ -45,7 +45,8 @@ describe("issue 13751", () => {
         .click();
     });
 
-    cy.button("Visualize").click();
+    visualize();
+
     cy.findByText("Arnold Adams");
   });
 });

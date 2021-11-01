@@ -4,7 +4,7 @@ import React from "react";
 import ParameterTargetWidget from "metabase/parameters/components/ParameterTargetWidget";
 import { QuestionLoaderHOC } from "metabase/containers/QuestionLoader";
 
-import * as Dashboard from "metabase/meta/Dashboard";
+import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 
 import type { ParameterTarget } from "metabase-types/types/Parameter";
 
@@ -23,11 +23,7 @@ export default class QuestionParameterTargetWidget extends React.Component {
   render() {
     const { question, ...props } = this.props;
     const mappingOptions = question
-      ? Dashboard.getParameterMappingOptions(
-          question.metadata(),
-          null,
-          question.card(),
-        )
+      ? getParameterMappingOptions(question.metadata(), null, question.card())
       : [];
     return <ParameterTargetWidget {...props} mappingOptions={mappingOptions} />;
   }

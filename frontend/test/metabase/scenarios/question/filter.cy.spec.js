@@ -7,6 +7,7 @@ import {
   popover,
   filterWidget,
   visitQuestionAdhoc,
+  visualize,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
@@ -214,9 +215,8 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Add filter").click();
     cy.contains("Category is not Gizmo");
 
-    cy.button("Visualize").click();
-    // wait for results to load
-    cy.get(".LoadingSpinner").should("not.exist");
+    visualize();
+
     cy.log("The point of failure in 0.37.0-rc3");
     cy.contains("37.65");
     cy.findByText("There was a problem with your question").should("not.exist");
@@ -291,7 +291,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Add filter").click();
 
     cy.log("Reported failing on v0.36.4 and v0.36.5.1");
-    cy.get(".LoadingSpinner").should("not.exist");
+    cy.findByTestId("loading-spinner").should("not.exist");
     cy.findAllByText("148.23"); // one of the subtotals for this product
     cy.findAllByText("Fantastic Wool Shirt").should("not.exist");
   });
@@ -369,6 +369,7 @@ describe("scenarios > question > filter", () => {
     openProductsTable();
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
+    typeInExpressionEditor("c");
 
     // This issue has two problematic parts. We're testing for both:
     cy.log("Popover should display all custom expression options");
@@ -380,7 +381,7 @@ describe("scenarios > question > filter", () => {
     cy.log("Should not display error prematurely");
     cy.get("[contenteditable='true']")
       .click()
-      .type("contains(");
+      .type("ontains(");
     cy.findByText(/Checks to see if string1 contains string2 within it./i);
     cy.button("Done").should("not.be.disabled");
     cy.get(".text-error").should("not.exist");
@@ -473,9 +474,10 @@ describe("scenarios > question > filter", () => {
   it("should offer case expression in the auto-complete suggestions", () => {
     openExpressionEditorFromFreshlyLoadedPage();
 
+    typeInExpressionEditor("c");
     popover().contains(/case/i);
 
-    typeInExpressionEditor("c");
+    typeInExpressionEditor("a");
 
     // "case" is still there after typing a bit
     popover().contains(/case/i);
@@ -506,7 +508,7 @@ describe("scenarios > question > filter", () => {
       .and("not.eq", transparent);
   });
 
-  it.skip("should provide accurate auto-complete custom-expression suggestions based on the aggregated column name (metabase#14776)", () => {
+  it("should provide accurate auto-complete custom-expression suggestions based on the aggregated column name (metabase#14776)", () => {
     cy.viewport(1400, 1000); // We need a bit taller window for this repro to see all custom filter options in the popover
     cy.createQuestion({
       name: "14776",
@@ -556,7 +558,8 @@ describe("scenarios > question > filter", () => {
       .click();
 
     // check that filter is applied and rows displayed
-    cy.button("Visualize").click();
+    visualize();
+
     cy.contains("Showing 1,112 rows");
   });
 
@@ -935,7 +938,8 @@ describe("scenarios > question > filter", () => {
         .parent()
         .find(".Icon-close")
         .click();
-      cy.button("Visualize");
+
+      visualize();
     });
   });
 
@@ -946,20 +950,25 @@ describe("scenarios > question > filter", () => {
 
     describe(`should be able to filter on the boolean column ${condition.toUpperCase()} (metabase#16386)`, () => {
       beforeEach(() => {
-        cy.createNativeQuestion({
-          name: "16386",
-          native: {
-            query:
-              'select 0::integer as "integer", true::boolean AS "boolean" union all \nselect 1::integer as "integer", false::boolean AS "boolean" union all \nselect null as "integer", true::boolean AS "boolean" union all \nselect -1::integer as "integer", null AS "boolean"',
+        cy.intercept("POST", "/api/dataset").as("dataset");
+
+        cy.createNativeQuestion(
+          {
+            name: "16386",
+            native: {
+              query:
+                'select 0::integer as "integer", true::boolean AS "boolean" union all \nselect 1::integer as "integer", false::boolean AS "boolean" union all \nselect null as "integer", true::boolean AS "boolean" union all \nselect -1::integer as "integer", null AS "boolean"',
+            },
+            visualization_settings: {
+              "table.pivot_column": "boolean",
+              "table.cell_column": "integer",
+            },
           },
-          visualization_settings: {
-            "table.pivot_column": "boolean",
-            "table.cell_column": "integer",
-          },
-        }).then(({ body: { id: QUESTION_ID } }) => {
-          cy.visit(`/question/${QUESTION_ID}`);
-          cy.findByText("Explore results").click();
-        });
+          { visitQuestion: true },
+        );
+
+        cy.findByText("Explore results").click();
+        cy.wait("@dataset");
       });
 
       it("from the column popover (metabase#16386-1)", () => {
@@ -999,6 +1008,7 @@ describe("scenarios > question > filter", () => {
 
       it("from the custom question (metabase#16386-3)", () => {
         cy.icon("notebook").click();
+
         cy.findByText("Filter").click();
 
         popover().within(() => {
@@ -1006,7 +1016,7 @@ describe("scenarios > question > filter", () => {
           addBooleanFilter();
         });
 
-        cy.button("Visualize").click();
+        visualize();
 
         assertOnTheResult();
       });

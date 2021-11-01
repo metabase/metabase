@@ -8,6 +8,7 @@ import {
   restore,
   remapDisplayValueToFK,
   setupSMTP,
+  visualize,
 } from "__support__/e2e/cypress";
 import { USER_GROUPS } from "__support__/e2e/cypress_data";
 
@@ -146,7 +147,8 @@ describeWithToken("formatting > sandboxes", () => {
         cy.findByText("Greater than").click();
         cy.findByPlaceholderText("Enter a number").type("100");
         cy.findByText("Add filter").click();
-        cy.button("Visualize").click();
+
+        visualize();
 
         cy.log("Make sure user is still sandboxed");
         cy.get(".TableInteractive-cellWrapper--firstColumn").should(
@@ -219,7 +221,8 @@ describeWithToken("formatting > sandboxes", () => {
           .click();
       });
 
-      cy.button("Visualize").click();
+      visualize();
+
       cy.findByText("Count by User → ID");
       cy.findByText("11"); // Sum of orders for user with ID #1
     });
@@ -776,10 +779,9 @@ describeWithToken("formatting > sandboxes", () => {
       cy.findByText("Count of rows").click();
       cy.findByText("Pick a column to group by").click();
       cy.findByText(/Products? → ID/).click();
-      cy.button("Visualize").click();
 
-      cy.wait("@dataset").then(xhr => {
-        expect(xhr.response.body.error).not.to.exist;
+      visualize(response => {
+        expect(response.body.error).to.not.exist;
       });
 
       // Number of products with ID = 1 (and ID = 19)

@@ -4,6 +4,7 @@ import {
   openProductsTable,
   popover,
   modal,
+  visualize,
   visitQuestionAdhoc,
   interceptPromise,
   getNotebookStep,
@@ -38,6 +39,7 @@ describe("scenarios > question > notebook", () => {
     cy.findByText("Not now").click();
     // enter "notebook" and visualize without changing anything
     cy.icon("notebook").click();
+
     cy.button("Visualize").click();
 
     // there were no changes to the question, so we shouldn't have the option to "Save"
@@ -66,7 +68,9 @@ describe("scenarios > question > notebook", () => {
       cy.get("input").type("46");
       cy.contains("Add filter").click();
     });
-    cy.contains("Visualize").click();
+
+    visualize();
+
     cy.contains("2372"); // user's id in the table
     cy.contains("Showing 1 row"); // ensure only one user was returned
   });
@@ -130,8 +134,7 @@ describe("scenarios > question > notebook", () => {
       cy.findByText("EXPR (2)");
     });
 
-    cy.button("Visualize").click();
-    cy.wait("@dataset");
+    visualize();
 
     cy.findByText("EXPR");
     cy.findByText("EXPR (1)");
@@ -176,7 +179,8 @@ describe("scenarios > question > notebook", () => {
     cy.button("Done")
       .should("not.be.disabled")
       .click();
-    cy.contains("Visualize").click();
+
+    visualize();
 
     cy.contains("Showing 99 rows");
 
@@ -225,7 +229,9 @@ describe("scenarios > question > notebook", () => {
       popover()
         .contains("Rating")
         .click();
-      cy.contains("Visualize").click();
+
+      visualize();
+
       cy.contains("Orders + Reviews");
       cy.contains("3");
     });
@@ -241,7 +247,9 @@ describe("scenarios > question > notebook", () => {
       cy.icon("join_left_outer ").click();
       cy.contains("People").click();
       cy.contains("Orders + People");
-      cy.contains("Visualize").click();
+
+      visualize();
+
       cy.contains("Showing first 2,000");
 
       cy.log("Attempt to filter on the joined table");
@@ -294,8 +302,7 @@ describe("scenarios > question > notebook", () => {
       popover().within(() => cy.findByText("A_COLUMN").click());
       popover().within(() => cy.findByText("B_COLUMN").click());
 
-      cy.button("Visualize").click();
-      cy.queryByText("Visualize").then($el => cy.wrap($el).should("not.exist")); // wait for that screen to disappear to avoid "multiple elements" errors
+      visualize();
 
       // check that query worked
       cy.findByText("question a + question b");
@@ -331,18 +338,16 @@ describe("scenarios > question > notebook", () => {
           .should("not.be.disabled")
           .click();
       });
-      cy.button("Visualize").click();
 
-      cy.wait("@cardQuery").then(xhr => {
-        expect(xhr.response.body.error).not.to.exist;
-      });
+      visualize();
+
       cy.findByText("Sum Divide");
     });
 
     it("should show correct column title with foreign keys (metabase#11452)", () => {
       // (Orders join Reviews on Product ID)
-      openOrdersTable();
-      cy.icon("notebook").click();
+      openOrdersTable({ mode: "notebook" });
+
       cy.findByText("Join data").click();
       cy.findByText("Reviews").click();
       cy.findByText("Product ID").click();
@@ -431,33 +436,34 @@ describe("scenarios > question > notebook", () => {
         },
       });
 
-      cy.server();
-      cy.route("POST", "/api/dataset").as("dataset");
-
       // Join two previously saved questions
       cy.visit("/");
       cy.findByText("Ask a question").click();
       cy.findByText("Custom question").click();
       cy.findByText("Saved Questions").click();
+
       cy.findByText("12928_Q1").click();
+
       cy.icon("join_left_outer").click();
+
       popover().within(() => {
         cy.findByText("Sample Dataset").click();
         cy.findByText("Saved Questions").click();
       });
       cy.findByText("12928_Q2").click();
+
       cy.contains(/Products? → Category/).click();
+
       popover()
         .contains(/Products? → Category/)
         .click();
-      cy.button("Visualize").click();
+
+      visualize();
+
+      cy.log("Reported failing in v1.35.4.1 and `master` on July, 16 2020");
 
       cy.findByText("12928_Q1 + 12928_Q2");
-      cy.log("Reported failing in v1.35.4.1 and `master` on July, 16 2020");
-      // TODO: Add a positive assertion once this issue is fixed
-      cy.wait("@dataset").then(xhr => {
-        expect(xhr.response.body.error).not.to.exist;
-      });
+      cy.findAllByText(/Products? → Category/).should("have.length", 2);
     });
 
     it.skip("should join saved question with sorted metric (metabase#13744)", () => {
@@ -734,7 +740,8 @@ describe("scenarios > question > notebook", () => {
         cy.findByText("Add filter").click();
       });
 
-      cy.button("Visualize").click();
+      visualize();
+
       cy.findByText("Gadget").should("exist");
       cy.findByText("Gizmo").should("not.exist");
 
@@ -775,7 +782,8 @@ describe("scenarios > question > notebook", () => {
         .should("not.be.disabled")
         .click();
 
-      cy.button("Visualize").click();
+      visualize();
+
       cy.contains("Example");
       cy.contains("Big");
       cy.contains("Small");
@@ -796,7 +804,8 @@ describe("scenarios > question > notebook", () => {
         .should("not.be.disabled")
         .click();
 
-      cy.button("Visualize").click();
+      visualize();
+
       cy.contains("Showing 97 rows");
     });
 
@@ -827,7 +836,8 @@ describe("scenarios > question > notebook", () => {
           .should("not.be.disabled")
           .click();
 
-        cy.button("Visualize").click();
+        visualize();
+
         cy.contains(filter);
         cy.contains(result);
       });
@@ -853,7 +863,6 @@ function joinTwoSavedQuestions() {
         "source-table": PRODUCTS_ID,
       },
     }).then(() => {
-      cy.intercept("POST", "/api/dataset").as("cardQuery");
       cy.visit(`/question/new`);
       cy.findByText("Custom question").click();
 
@@ -876,8 +885,7 @@ function joinTwoSavedQuestions() {
         .findByText("ID")
         .click();
 
-      cy.button("Visualize").click();
-      cy.wait("@cardQuery");
+      visualize();
 
       cy.icon("notebook").click();
       cy.url().should("contain", "/notebook");
@@ -886,8 +894,11 @@ function joinTwoSavedQuestions() {
 }
 
 function addSimpleCustomColumn(name) {
+  cy.get("[contenteditable='true']")
+    .click()
+    .type("C");
   popover()
-    .findByText("Category")
+    .findByText("ategory")
     .click();
   cy.findByPlaceholderText("Something nice and descriptive")
     .click()

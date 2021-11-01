@@ -215,7 +215,21 @@
                (qp/query->native
                  (mt/mbql-query venues
                                 {:expressions {:bob [:coalesce [:field $latitude nil] [:field $price nil]]}
-                                 :limit       5}))))))))
+                                 :limit       5}))))))
+
+    (testing "Should be able to deal with group by expressions"
+      (is (= {:collection "venues",
+              :mbql? true,
+              :projections ["asdf" "count"],
+              :query [{"$group" {"_id" {"asdf" "$price"}, "count" {"$sum" 1}}}
+                      {"$sort" {"_id" 1}}
+                      {"$project" {"_id" false, "asdf" "$_id.asdf", "count" true}}
+                      {"$sort" {"asdf" 1}}]}
+             (qp/query->native
+               (mt/mbql-query venues
+                              {:expressions {:asdf ["field" $price nil]},
+                               :aggregation [["count"]],
+                               :breakout [["expression" "asdf"]]})))))))
 
 (deftest compile-time-interval-test
   (mt/test-driver :mongo

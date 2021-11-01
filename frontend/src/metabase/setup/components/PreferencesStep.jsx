@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t, jt } from "ttag";
 import { Box } from "grid-styled";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 import Toggle from "metabase/components/Toggle";
 
@@ -42,7 +42,7 @@ export default class PreferencesStep extends Component {
       payload && payload.data ? getErrorMessage(payload.data) : null;
     this.setState({ errorMessage });
 
-    MetabaseAnalytics.trackEvent(
+    MetabaseAnalytics.trackStructEvent(
       "Setup",
       "Preferences Step",
       this.props.allowTracking,
@@ -87,12 +87,12 @@ export default class PreferencesStep extends Component {
           <StepTitle title={stepText} circleText={String(stepNumber - 1)} />
           <form onSubmit={this.formSubmitted.bind(this)} noValidate>
             <div className="Form-field">
-              {t`In order to help us improve Metabase, we'd like to collect certain data about usage through Google Analytics.`}{" "}
+              {t`In order to help us improve Metabase, we'd like to collect certain data about product usage.`}{" "}
               <ExternalLink
                 className="link"
                 href={MetabaseSettings.docsUrl("information-collection")}
                 target="_blank"
-              >{t`Here's a full list of everything we track and why.`}</ExternalLink>
+              >{t`Here's a full list of what we track and why.`}</ExternalLink>
             </div>
 
             <div className="Form-field mr4">

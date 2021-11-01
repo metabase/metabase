@@ -3,6 +3,7 @@ import {
   popover,
   modal,
   openOrdersTable,
+  visualize,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
@@ -49,9 +50,8 @@ describe("scenarios > admin > datamodel > metrics", () => {
       .parent()
       .contains("Revenue");
 
-    // Visualize results:
-    // It will render line chart by default. Switch to the table.
-    cy.button("Visualize").click();
+    visualize();
+    // Visualization will render line chart by default. Switch to the table.
     cy.icon("table2").click();
 
     cy.findAllByRole("grid").as("table");

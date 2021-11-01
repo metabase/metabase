@@ -1,20 +1,16 @@
-import {
-  getTemplateTagParameters,
-  getParameterTargetFieldId,
-  parameterToMBQLFilter,
-  normalizeParameterValue,
-  getValuePopulatedParameters,
-} from "metabase/meta/Parameter";
+import _ from "underscore";
+import { assoc, updateIn } from "icepick";
+
+import { getParametersFromCard } from "metabase/parameters/utils/cards";
+import { parameterToMBQLFilter } from "metabase/parameters/utils/mbql";
+import { normalizeParameterValue } from "metabase/parameters/utils/parameter-values";
 
 import * as Query from "metabase/lib/query/query";
 import * as Q_DEPRECATED from "metabase/lib/query"; // legacy
 import Utils from "metabase/lib/utils";
 import * as Urls from "metabase/lib/urls";
 
-import _ from "underscore";
-import { assoc, updateIn } from "icepick";
-
-import type { StructuredQuery, TemplateTag } from "metabase-types/types/Query";
+import type { StructuredQuery } from "metabase-types/types/Query";
 import type {
   Card,
   DatasetQuery,
@@ -28,10 +24,6 @@ import type {
 } from "metabase-types/types/Parameter";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
 import type Table from "metabase-lib/lib/metadata/Table";
-
-declare class Object {
-  static values<T>(object: { [key: string]: T }): Array<T>;
-}
 
 // TODO Atte Keinänen 6/5/17 Should these be moved to corresponding metabase-lib classes?
 // Is there any reason behind keeping them in a central place?
@@ -110,53 +102,6 @@ export function getTableMetadata(card: Card, metadata: Metadata): ?Table {
     return metadata.table(query["source-table"]) || null;
   }
   return null;
-}
-
-export function getTemplateTagsForParameters(card: ?Card): Array<TemplateTag> {
-  const templateTags =
-    card &&
-    card.dataset_query &&
-    card.dataset_query.type === "native" &&
-    card.dataset_query.native["template-tags"]
-      ? Object.values(card.dataset_query.native["template-tags"])
-      : [];
-  return templateTags.filter(
-    // this should only return template tags that define a parameter of the card
-    tag => tag.type !== "card" && tag.type !== "snippet",
-  );
-}
-
-export function getParametersFromCard(card: ?Card): Parameter[] {
-  if (card && card.parameters) {
-    return card.parameters;
-  }
-
-  const tags: TemplateTag[] = getTemplateTagsForParameters(card);
-  return getTemplateTagParameters(tags);
-}
-
-export function getValueAndFieldIdPopulatedParametersFromCard(
-  card: Card,
-  parameterValues?: ParameterValues,
-): Parameter[] {
-  const parameters = getParametersFromCard(card);
-  const valuePopulatedParameters = getValuePopulatedParameters(
-    parameters,
-    parameterValues,
-  );
-
-  return valuePopulatedParameters.map(parameter => {
-    // if we have a field id for this parameter, set "field_id"
-    const fieldId = getParameterTargetFieldId(
-      parameter.target,
-      card.dataset_query,
-    );
-    if (fieldId != null) {
-      parameter = assoc(parameter, "field_id", fieldId);
-    }
-    parameter = assoc(parameter, "hasOnlyFieldTargets", fieldId != null);
-    return parameter;
-  });
 }
 
 // NOTE Atte Keinänen 7/5/17: Still used in dashboards and public questions.

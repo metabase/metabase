@@ -16,12 +16,12 @@ import type { ParameterValues } from "metabase-types/types/Parameter";
 import {
   getParameterValuesBySlug,
   getParameterValuesByIdFromQueryParams,
-} from "metabase/meta/Parameter";
+} from "metabase/parameters/utils/parameter-values";
+import { applyParameters } from "metabase/meta/Card";
 import {
   getParametersFromCard,
   getValueAndFieldIdPopulatedParametersFromCard,
-  applyParameters,
-} from "metabase/meta/Card";
+} from "metabase/parameters/utils/cards";
 
 import {
   PublicApi,
@@ -90,6 +90,7 @@ export default class PublicQuestion extends Component {
       setErrorPage,
       params: { uuid, token },
       location: { query },
+      metadata,
     } = this.props;
 
     if (uuid) {
@@ -115,7 +116,10 @@ export default class PublicQuestion extends Component {
         this.props.addFields(card.param_fields);
       }
 
-      const parameters = getValueAndFieldIdPopulatedParametersFromCard(card);
+      const parameters = getValueAndFieldIdPopulatedParametersFromCard(
+        card,
+        metadata,
+      );
       const parameterValuesById = getParameterValuesByIdFromQueryParams(
         parameters,
         query,
@@ -191,6 +195,7 @@ export default class PublicQuestion extends Component {
   render() {
     const {
       params: { uuid, token },
+      metadata,
     } = this.props;
     const { card, result, initialized, parameterValues } = this.state;
 
@@ -204,7 +209,7 @@ export default class PublicQuestion extends Component {
     );
 
     const parameters =
-      card && getValueAndFieldIdPopulatedParametersFromCard(card);
+      card && getValueAndFieldIdPopulatedParametersFromCard(card, metadata);
 
     return (
       <EmbedFrame

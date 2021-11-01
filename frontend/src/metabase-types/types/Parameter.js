@@ -50,6 +50,13 @@ export type ParameterOption = {
   type: ParameterType,
 };
 
+export type ParameterSection = {
+  id: string,
+  name: string,
+  description: string,
+  options: ParameterOption[],
+};
+
 export type ParameterInstance = {
   type: ParameterType,
   target: ParameterTarget,

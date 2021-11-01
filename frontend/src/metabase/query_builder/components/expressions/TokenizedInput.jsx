@@ -12,26 +12,55 @@ import {
 } from "metabase/lib/dom";
 
 class TokenizedInput extends Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      value: "",
-    };
-  }
+  state = {
+    value: "",
+  };
 
   static defaultProps = {
     style: {},
     tokenizedEditing: false,
   };
 
-  _getValue() {
+  componentDidMount() {
+    ReactDOM.findDOMNode(this).focus();
+    this.componentDidUpdate();
+
+    document.addEventListener("selectionchange", this.onSelectionChange, false);
+  }
+
+  componentDidUpdate() {
+    const inputNode = ReactDOM.findDOMNode(this);
+    const restore = saveSelection(inputNode);
+
+    inputNode.innerHTML = ReactDOMServer.renderToStaticMarkup(
+      <TokenizedExpression
+        source={this.getValue()}
+        startRule={this.props.startRule}
+      />,
+    );
+
+    if (document.activeElement === inputNode) {
+      restore();
+    }
+  }
+
+  componentWillUnmount() {
+    document.removeEventListener(
+      "selectionchange",
+      this.onSelectionChange,
+      false,
+    );
+  }
+
+  getValue() {
     if (this.props.value != null) {
       return this.props.value;
     } else {
       return this.state.value;
     }
   }
-  _setValue(value) {
+
+  setValue(value) {
     ReactDOM.findDOMNode(this).value = value;
     if (typeof this.props.onChange === "function") {
       this.props.onChange({ target: { value } });
@@ -40,35 +69,25 @@ class TokenizedInput extends Component {
     }
   }
 
-  componentDidMount() {
-    ReactDOM.findDOMNode(this).focus();
-    this.componentDidUpdate();
-
-    document.addEventListener("selectionchange", this.onSelectionChange, false);
-  }
-  componentWillUnmount() {
-    document.removeEventListener(
-      "selectionchange",
-      this.onSelectionChange,
-      false,
-    );
-  }
   onSelectionChange = e => {
     ReactDOM.findDOMNode(this).selectionStart = getCaretPosition(
       ReactDOM.findDOMNode(this),
     );
   };
+
   onClick = e => {
     this._isTyping = false;
     return this.props.onClick(e);
   };
+
   onInput = e => {
-    this._setValue(e.target.textContent);
+    this.setValue(e.target.textContent);
   };
 
   onKeyDownNormal = e => {
     this.props.onKeyDown(e);
   };
+
   onKeyDownTokenized = e => {
     // isTyping signals whether the user is typing characters (keyCode >= 65) vs. deleting / navigating with arrows / clicking to select
     const isTyping = this._isTyping;
@@ -110,7 +129,7 @@ class TokenizedInput extends Component {
         ) {
           // selected and hit backspace, so delete it
           element.parentNode.removeChild(element);
-          this._setValue(input.textContent);
+          this.setValue(input.textContent);
           e.stopPropagation();
           e.preventDefault();
           return;
@@ -134,23 +153,6 @@ class TokenizedInput extends Component {
     // if we haven't handled the event yet, pass it on to our parent
     this.props.onKeyDown(e);
   };
-
-  componentDidUpdate() {
-    const inputNode = ReactDOM.findDOMNode(this);
-    const restore = saveSelection(inputNode);
-
-    inputNode.innerHTML = ReactDOMServer.renderToStaticMarkup(
-      <TokenizedExpression
-        source={this._getValue()}
-        syntaxTree={this.props.syntaxTree}
-        parserOptions={this.props.parserOptions}
-      />,
-    );
-
-    if (document.activeElement === inputNode) {
-      restore();
-    }
-  }
 
   render() {
     const { className, onFocus, onBlur, style, forwardedRef } = this.props;
@@ -192,7 +194,7 @@ TokenizedInput.propTypes = {
   onKeyDown: PropTypes.func,
   parserOptions: PropTypes.object,
   style: PropTypes.object,
-  syntaxTree: PropTypes.object,
   tokenizedEditing: PropTypes.bool,
   value: PropTypes.string,
+  startRule: PropTypes.string,
 };

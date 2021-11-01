@@ -119,11 +119,11 @@ describe("scenarios > question > saved", () => {
     cy.button("Save").click();
     cy.wait("@updateQuestion");
 
-    cy.findByText(/changed description/i);
+    cy.findByText(/added a description/i);
 
     cy.findByRole("button", { name: "Revert" }).click();
 
-    cy.findByText(/^Reverted to an earlier revision/i);
+    cy.findByText(/Reverted to an earlier revision/i);
   });
 
   it("should be able to use integer filter on a saved native query (metabase#15808)", () => {
