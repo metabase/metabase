@@ -70,7 +70,10 @@ function SavedQuestionList({
                     key={t.id}
                     size="small"
                     name={t.display_name}
-                    icon={isDatasets ? "dataset" : "table2"}
+                    icon={{
+                      name: isDatasets ? "dataset" : "table2",
+                      size: 16,
+                    }}
                     onSelect={() => onSelect(t)}
                     rightIcon={PLUGIN_MODERATION.getStatusIcon(
                       t.moderated_status,
