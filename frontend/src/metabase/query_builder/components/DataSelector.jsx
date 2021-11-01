@@ -16,6 +16,7 @@ import AccordionList from "metabase/components/AccordionList";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import MetabaseSettings from "metabase/lib/settings";
+import { getSchemaName } from "metabase/lib/schema";
 
 import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
@@ -29,7 +30,6 @@ import {
 import SavedQuestionPicker from "./saved-question-picker/SavedQuestionPicker";
 
 import { getMetadata } from "metabase/selectors/metadata";
-import { getSchemaName } from "metabase/schema";
 
 import {
   DataBucketIcon,

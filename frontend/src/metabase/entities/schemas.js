@@ -6,8 +6,9 @@ import {
   getCollectionVirtualSchemaId,
   getQuestionVirtualTableId,
 } from "metabase/lib/saved-questions";
+import { generateSchemaId, parseSchemaId } from "metabase/lib/schema";
 
-import { SchemaSchema, generateSchemaId, parseSchemaId } from "metabase/schema";
+import { SchemaSchema } from "metabase/schema";
 import Questions from "metabase/entities/questions";
 
 // This is a weird entity because we don't have actual schema objects

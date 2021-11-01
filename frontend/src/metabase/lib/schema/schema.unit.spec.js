@@ -97,6 +97,25 @@ describe("schemas", () => {
         payload,
       });
     });
+
+    it("handles colons inside schema name", () => {
+      const databaseId = "-1337";
+      const collectionName = "test:collection";
+      const payload = { foo: "bar" };
+
+      const schemaId = generateSchemaId(databaseId, collectionName, payload);
+      const [
+        decodedDatabaseId,
+        decodedCollectionName,
+        decodedPayload,
+      ] = parseSchemaId(schemaId);
+
+      expect({
+        databaseId: decodedDatabaseId,
+        collectionName: decodedCollectionName,
+        payload: decodedPayload,
+      }).toEqual({ databaseId, collectionName, payload });
+    });
   });
 
   describe("getSchemaName", () => {

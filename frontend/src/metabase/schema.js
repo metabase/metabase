@@ -1,6 +1,7 @@
 // normalizr schema for use in actions/reducers
 
 import { schema } from "normalizr";
+import { generateSchemaId, entityTypeForObject } from "metabase/lib/schema";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
 
 export const QuestionSchema = new schema.Entity("questions");
@@ -80,13 +81,6 @@ MetricSchema.define({
   table: TableSchema,
 });
 
-// backend returns model = "card" instead of "question"
-export const entityTypeForModel = model =>
-  model === "card" || model === "dataset" ? "questions" : `${model}s`;
-
-export const entityTypeForObject = object =>
-  object && entityTypeForModel(object.model);
-
 export const ENTITIES_SCHEMA_MAP = {
   questions: QuestionSchema,
   dashboards: DashboardSchema,
@@ -106,33 +100,6 @@ export const ObjectUnionSchema = new schema.Union(
 CollectionSchema.define({
   items: [ObjectUnionSchema],
 });
-
-export const getSchemaName = id => parseSchemaId(id)[1];
-export const parseSchemaId = id => {
-  const schemaId = String(id || "");
-  const firstColonIndex = schemaId.indexOf(":");
-  const secondColonIndex = schemaId.indexOf(":", firstColonIndex + 1);
-  const dbId = schemaId.substring(0, firstColonIndex);
-  const schemaName =
-    secondColonIndex === -1
-      ? schemaId.substring(firstColonIndex + 1)
-      : schemaId.substring(firstColonIndex + 1, secondColonIndex);
-  const payload =
-    secondColonIndex > 0 && schemaId.substring(secondColonIndex + 1);
-  const parsed = [dbId, schemaName];
-  if (payload) {
-    parsed.push(JSON.parse(payload));
-  }
-  return parsed;
-};
-
-export const generateSchemaId = (dbId, schemaName, payload) => {
-  let id = `${dbId}:${schemaName || ""}`;
-  if (payload) {
-    id += `:${JSON.stringify(payload)}`;
-  }
-  return id;
-};
 
 export const RecentsSchema = new schema.Entity("recents", undefined, {
   idAttribute: ({ model, model_id }) => `${model}:${model_id}`,
