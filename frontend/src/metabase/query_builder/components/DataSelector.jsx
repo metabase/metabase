@@ -501,9 +501,14 @@ export class UnconnectedDataSelector extends Component {
 
   getPreviousStep() {
     const { steps } = this.props;
-    let index = steps.indexOf(this.state.activeStep);
+    const { activeStep } = this.state;
+    if (this.isLoadingDatasets() || activeStep === null) {
+      return null;
+    }
+
+    let index = steps.indexOf(activeStep);
     if (index === -1) {
-      console.error(`Step ${this.state.activeStep} not found in ${steps}.`);
+      console.error(`Step ${activeStep} not found in ${steps}.`);
       return null;
     }
 
