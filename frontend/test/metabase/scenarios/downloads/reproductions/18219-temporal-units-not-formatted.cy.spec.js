@@ -40,7 +40,7 @@ describe.skip("issue 18219", () => {
     });
 
     function assertion(sheet) {
-      // expect(sheet["A1"].v).to.eq("Created At: Year");
+      expect(sheet["A1"].v).to.eq("Created At: Year");
 
       if (fileType === "csv") {
         expect(sheet["A2"].v).to.eq("2016");
