@@ -1,8 +1,9 @@
-import _ from "underscore";
+import moment from "moment";
 import { t, ngettext, msgid } from "ttag";
+import _ from "underscore";
+
 import { parseTimestamp } from "metabase/lib/time";
 import MetabaseUtils from "metabase/lib/utils";
-import moment from "moment";
 
 const n2w = (n: number) => MetabaseUtils.numberToWord(n);
 
@@ -191,7 +192,7 @@ class Settings {
 
   docsUrl(page = "", anchor = "") {
     let { tag } = this.get("version", {});
-    const matches = tag.match(/v[01]\.(\d+)(?:\.\d+)?(-.*)?/);
+    const matches = tag && tag.match(/v[01]\.(\d+)(?:\.\d+)?(-.*)?/);
 
     if (matches) {
       if (
