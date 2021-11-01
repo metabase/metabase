@@ -36,10 +36,9 @@
   "Show this many words of context before/after matches in long search results"
   2)
 
-(def searchable-models
-  "Models that can be searched. The order of this list also influences the order of the results: items earlier in the
-  list will be ranked higher."
-  [Dashboard Metric Segment Card Collection Table Pulse Database])
+(def searchable-db-models
+  "Models that can be searched."
+  #{Dashboard Metric Segment Card Collection Table Pulse Database})
 
 (def model-to-db-model
   "Mapping from string model to the Toucan model backing it."
@@ -54,7 +53,8 @@
    "database"   Database})
 
 (def all-models
-  "All valid models to search for"
+  "All valid models to search for. The order of this list also influences the order of the results: items earlier in the
+  list will be ranked higher."
   ["dashboard" "metric" "segment" "card" "dataset" "collection" "table" "pulse" "database"])
 
 (def ^:const displayed-columns

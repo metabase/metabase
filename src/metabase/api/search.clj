@@ -38,7 +38,7 @@
   (apply s/enum search-config/all-models))
 
 (def ^:private DBModel
-  (apply s/enum search-config/searchable-models))
+  (apply s/enum search-config/searchable-db-models))
 
 (def ^:private HoneySQLColumn
   (s/cond-pre
