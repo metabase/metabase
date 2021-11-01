@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import { generateSchemaId } from "metabase/lib/schema";
 
 export const SAVED_QUESTIONS_VIRTUAL_DB_ID = -1337;
 export const ROOT_COLLECTION_VIRTUAL_SCHEMA_NAME = t`Everything else`;
@@ -8,14 +9,18 @@ export const ROOT_COLLECTION_VIRTUAL_SCHEMA = getCollectionVirtualSchemaId({
 });
 
 export function getCollectionVirtualSchemaName(collection) {
-  return !collection || collection.id === null
+  return !collection || collection.id === null || collection.id === "root"
     ? ROOT_COLLECTION_VIRTUAL_SCHEMA_NAME
     : collection.name;
 }
 
-export function getCollectionVirtualSchemaId(collection) {
+export function getCollectionVirtualSchemaId(collection, { isDatasets } = {}) {
   const collectionName = getCollectionVirtualSchemaName(collection);
-  return `${SAVED_QUESTIONS_VIRTUAL_DB_ID}:${collectionName}`;
+  return generateSchemaId(
+    SAVED_QUESTIONS_VIRTUAL_DB_ID,
+    collectionName,
+    isDatasets ? { isDatasets } : undefined,
+  );
 }
 
 export function getQuestionVirtualTableId(card) {

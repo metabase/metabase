@@ -12,6 +12,9 @@ describe("saved question helpers", () => {
       expect(getCollectionVirtualSchemaName({ id: null })).toBe(
         "Everything else",
       );
+      expect(getCollectionVirtualSchemaName({ id: "root" })).toBe(
+        "Everything else",
+      );
     });
 
     it("should return 'Everything else' if collection is not passed", () => {
@@ -27,8 +30,18 @@ describe("saved question helpers", () => {
 
   describe("getCollectionVirtualSchemaId", () => {
     [
-      { collection: undefined, expectedName: "Everything else" },
-      { collection: { id: null }, expectedName: "Everything else" },
+      {
+        collection: undefined,
+        expectedName: encodeURIComponent("Everything else"),
+      },
+      {
+        collection: { id: null },
+        expectedName: encodeURIComponent("Everything else"),
+      },
+      {
+        collection: { id: "root" },
+        expectedName: encodeURIComponent("Everything else"),
+      },
       { collection: { id: 3, name: "Marketing" }, expectedName: "Marketing" },
     ].forEach(({ collection, expectedName }) => {
       it("returns name prefixed with virtual saved question DB ID", () => {
@@ -36,6 +49,18 @@ describe("saved question helpers", () => {
           `${SAVED_QUESTIONS_VIRTUAL_DB_ID}:${expectedName}`,
         );
       });
+    });
+
+    it("should return correct schema for collection datasets", () => {
+      const collection = { id: 1, name: "Marketing" };
+      const payload = JSON.stringify({
+        isDatasets: true,
+      });
+      const expectedId = `${SAVED_QUESTIONS_VIRTUAL_DB_ID}:Marketing:${payload}`;
+
+      expect(
+        getCollectionVirtualSchemaId(collection, { isDatasets: true }),
+      ).toBe(expectedId);
     });
   });
 
@@ -88,7 +113,9 @@ describe("saved question helpers", () => {
         description: question.description,
         moderated_status: question.moderated_status,
         db_id: question.dataset_query.database,
-        schema: `${SAVED_QUESTIONS_VIRTUAL_DB_ID}:Everything else`,
+        schema: `${SAVED_QUESTIONS_VIRTUAL_DB_ID}:${encodeURIComponent(
+          "Everything else",
+        )}`,
         schema_name: "Everything else",
       });
     });

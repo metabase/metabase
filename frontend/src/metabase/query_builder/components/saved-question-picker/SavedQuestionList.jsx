@@ -6,9 +6,8 @@ import { Box } from "grid-styled";
 
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import Schemas from "metabase/entities/schemas";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
+import { getCollectionVirtualSchemaId } from "metabase/lib/saved-questions";
 import EmptyState from "metabase/components/EmptyState";
-import { generateSchemaId } from "metabase/schema";
 
 import {
   SavedQuestionListRoot,
@@ -45,17 +44,12 @@ function SavedQuestionList({
   );
 
   const isVirtualCollection = collection.id === PERSONAL_COLLECTIONS.id;
+  const schemaId = getCollectionVirtualSchemaId(collection, { isDatasets });
 
   return (
     <SavedQuestionListRoot>
       {!isVirtualCollection && (
-        <Schemas.Loader
-          id={generateSchemaId(
-            SAVED_QUESTIONS_VIRTUAL_DB_ID,
-            collection.schemaName,
-            { isDatasets },
-          )}
-        >
+        <Schemas.Loader id={schemaId}>
           {({ schema }) => {
             const tables =
               databaseId != null
