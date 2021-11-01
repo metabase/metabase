@@ -187,7 +187,7 @@ describe("scenarios > question > new", () => {
       });
 
       it("should perform a search scoped to saved questions", () => {
-        cy.findByPlaceholderText("Search for a question").type("Grouped");
+        cy.findByPlaceholderText("Search for a question...").type("Grouped");
         cy.findByText("Orders, Count, Grouped by Created At (year)").click();
         cy.findByText("1,994");
       });
@@ -230,7 +230,7 @@ describe("scenarios > question > new", () => {
       });
 
       it("should perform a search scoped to saved questions", () => {
-        cy.findByPlaceholderText("Search for a question").type("Grouped");
+        cy.findByPlaceholderText("Search for a question...").type("Grouped");
         cy.findByText("Orders, Count, Grouped by Created At (year)").click();
 
         visualize();
