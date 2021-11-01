@@ -562,7 +562,6 @@ const AccordionListCell = ({
     const descriptionClassNames = cx("List-item-description text-wrap", {
       ml1: isLeftBlockIcon,
     });
-    const Icon = icon && <span className={iconClassNames}>{icon}</span>;
     content = (
       <div
         data-testid={itemTestId}
@@ -584,11 +583,15 @@ const AccordionListCell = ({
           )}
           onClick={isClickable ? () => onChange(item) : null}
         >
-          {iconPosition === "left-block" && Icon}
+          {icon && iconPosition === "left-block" && (
+            <span className={iconClassNames}>{icon}</span>
+          )}
           <div>
             {name && (
               <div className="flex align-center">
-                {iconPosition === "near-name" && Icon}
+                {icon && iconPosition === "near-name" && (
+                  <span className={iconClassNames}>{icon}</span>
+                )}
                 <h4 className="List-item-title ml1 text-wrap inline">{name}</h4>
               </div>
             )}
