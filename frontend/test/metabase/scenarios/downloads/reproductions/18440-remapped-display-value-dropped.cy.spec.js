@@ -5,14 +5,14 @@ import {
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
-const xlsx = require("xlsx");
-
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATASET;
+
+const query = { "source-table": ORDERS_ID, limit: 5 };
 
 const questionDetails = {
   dataset_query: {
     type: "query",
-    query: { "source-table": ORDERS_ID, limit: 5 },
+    query,
     database: 1,
   },
 };
@@ -35,41 +35,28 @@ describe("issue 18440", () => {
     });
   });
 
-  testCases.forEach(type => {
-    it(`export should include a column with remapped values for ${type} (metabase#18440)`, () => {
+  testCases.forEach(fileType => {
+    it(`export should include a column with remapped values for ${fileType} (metabase#18440-1)`, () => {
       visitQuestionAdhoc(questionDetails);
       cy.wait("@dataset");
 
       cy.findByText("Product ID");
       cy.findByText("Awesome Concrete Shoes");
 
-      downloadAndAssert(type, assertion);
+      downloadAndAssert({ fileType }, assertion);
+    });
 
-      // Save the question using UI
-      cy.findByText("Save").click();
-      cy.get(".Modal")
-        .button("Save")
-        .click();
+    it(`export should include a column with remapped values for ${fileType} for a saved question (metabase#18440-2)`, () => {
+      cy.createQuestion({ query }).then(({ body: { id } }) => {
+        cy.intercept("POST", `/api/card/${id}/query`).as("cardQuery");
 
-      cy.wait("@saveQuestion").then(({ response: { body: { id } } }) => {
-        cy.log(`downloading a ${type} file for a saved question`);
+        cy.visit(`/question/${id}`);
+        cy.wait("@cardQuery");
 
-        const endpoint = `/api/card/${id}/query/${type}`;
+        cy.findByText("Product ID");
+        cy.findByText("Awesome Concrete Shoes");
 
-        cy.request({
-          url: endpoint,
-          method: "POST",
-          encoding: "binary",
-        }).then(resp => {
-          const { SheetNames, Sheets } = xlsx.read(resp.body, {
-            type: "binary",
-          });
-
-          const sheetName = SheetNames[0];
-          const sheet = Sheets[sheetName];
-
-          assertion(sheet);
-        });
+        downloadAndAssert({ fileType, questionId: id }, assertion);
       });
     });
   });
