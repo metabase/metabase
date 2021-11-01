@@ -9,7 +9,7 @@ import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import { t, jt } from "ttag";
 import { duration, formatNumber } from "metabase/lib/formatting";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import {
   getVisualizationTransformed,
@@ -317,7 +317,7 @@ export default class Visualization extends React.PureComponent {
 
   handleVisualizationClick = (clicked: ClickObject) => {
     if (clicked) {
-      MetabaseAnalytics.trackEvent(
+      MetabaseAnalytics.trackStructEvent(
         "Actions",
         "Clicked",
         `${clicked.column ? "column" : ""} ${clicked.value ? "value" : ""} ${

@@ -5,6 +5,7 @@ import {
   popover,
   sidebar,
   visitQuestionAdhoc,
+  visualize,
 } from "__support__/e2e/cypress";
 import { USER_GROUPS } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
@@ -67,6 +68,45 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       cy.contains("Doohickey");
       cy.contains("Gizmo");
       cy.contains("Widget");
+    });
+  });
+
+  ["month", "month-of-year"].forEach(granularity => {
+    it(`brush filter should work post-aggregation for ${granularity} granularity (metabase#18011)`, () => {
+      // TODO: Remove this line when the issue is fixed!
+      cy.skipOn(granularity === "month-of-year");
+
+      cy.intercept("POST", "/api/dataset").as("dataset");
+
+      const questionDetails = {
+        name: "18011",
+        database: 1,
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", PRODUCTS.CREATED_AT, { "temporal-unit": granularity }],
+            ["field", PRODUCTS.CATEGORY, null],
+          ],
+        },
+        display: "line",
+      };
+
+      cy.createQuestion(questionDetails, { visitQuestion: true });
+
+      cy.get(".Visualization")
+        .trigger("mousedown", 240, 200)
+        .trigger("mousemove", 420, 200)
+        .trigger("mouseup", 420, 200);
+
+      cy.wait("@dataset");
+
+      granularity === "month"
+        ? cy.findByText("Created At between September, 2016 February, 2017")
+        : // Once the issue gets fixed, figure out the positive assertion for the "month-of-year" granularity
+          null;
+
+      cy.get("circle");
     });
   });
 
@@ -322,8 +362,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       .type("1");
     cy.findByText("Add filter").click();
 
-    // Visualize: line
-    cy.button("Visualize").click();
+    visualize();
+
     cy.findByText("Visualization").click();
     cy.icon("line").click();
     cy.findByText("Done").click();

@@ -426,3 +426,8 @@ export function isEventOverElement(event, element) {
 
   return y >= top && y <= bottom && x >= left && x <= right;
 }
+
+export function isReducedMotionPreferred() {
+  const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+  return mediaQuery && mediaQuery.matches;
+}

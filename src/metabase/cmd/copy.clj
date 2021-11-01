@@ -13,8 +13,8 @@
                                      DashboardCard DashboardCardSeries DashboardFavorite Database Dependency Dimension Field
                                      FieldValues LoginHistory Metric MetricImportantField ModerationReview NativeQuerySnippet
                                      Permissions PermissionsGroup PermissionsGroupMembership PermissionsRevision Pulse PulseCard
-                                     PulseChannel PulseChannelRecipient Revision Segment Session Setting Table User
-                                     ViewLog]]
+                                     PulseChannel PulseChannelRecipient Revision Secret Segment Session Setting Table
+                                     User ViewLog]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [metabase.util.schema :as su]
@@ -78,6 +78,7 @@
    Dimension
    NativeQuerySnippet
    LoginHistory
+   Secret
    ;; migrate the list of finished DataMigrations as the very last thing (all models to copy over should be listed
    ;; above this line)
    DataMigrations])

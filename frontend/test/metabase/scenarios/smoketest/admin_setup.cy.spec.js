@@ -2,8 +2,9 @@ import {
   browse,
   popover,
   restore,
-  setupLocalHostEmail,
   modal,
+  openPeopleTable,
+  visualize,
 } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 
@@ -61,25 +62,27 @@ describe("smoketest > admin_setup", () => {
       // cy.findByText("Save").click();
     });
 
-    it.skip("should setup email", () => {
+    it("should set up email", () => {
       cy.findByText("Settings").click();
       cy.findByText("Email").click();
 
       cy.findByText("Email address you want to use as the sender of Metabase.");
       cy.findByText("Sample Database").should("not.exist");
 
-      setupLocalHostEmail();
+      // Email info
+      cy.findByLabelText("SMTP Host").type("localhost");
+      cy.findByLabelText("SMTP Port").type("25");
 
-      // *** Will fail if test works correctly:
-      cy.wait(2000)
-        .findByText("Sent!")
-        .should("not.exist");
+      cy.findByLabelText("SMTP Username").type("admin");
+      cy.findByLabelText("SMTP Password").type("admin");
 
-      // *** Uncomment when test works correctly:
-      // cy.findByText("Sent!");
-      // cy.findByText("Sorry, something went wrong.  Please try again").should(
-      //   "not.exist",
-      // );
+      cy.findByLabelText("From Address").type("mailer@metabase.test");
+
+      cy.button("Save changes").click();
+      cy.findByText("Changes saved!");
+
+      cy.findByText("Send test email").click();
+      cy.findByText("Sent!");
     });
 
     it.skip("should setup Slack", () => {
@@ -476,7 +479,8 @@ describe("smoketest > admin_setup", () => {
         .last()
         .click();
       cy.findByText("Add filter").click();
-      cy.button("Visualize").click();
+
+      visualize();
 
       cy.findAllByText("Awesome Concrete Shoes");
       cy.findByText("Mediocre Wooden Bench").should("not.exist");
@@ -486,16 +490,15 @@ describe("smoketest > admin_setup", () => {
       cy.visit("/admin/datamodel/database/1/");
 
       // Hide table
-
       cy.findByText("Reviews")
         .find(".Icon-eye_crossed_out")
         .click({ force: true });
 
-      // Check table hidden on home page
+      cy.findByText("1 Hidden Table");
 
+      // Check table hidden on home page
       cy.visit("/");
 
-      cy.contains(", " + admin.first_name);
       cy.contains("A look at your People table");
       cy.contains("A look at your Reviews table").should("not.exist");
 
@@ -504,20 +507,18 @@ describe("smoketest > admin_setup", () => {
       cy.visit("/browse/1");
 
       cy.findByText("Learn about our data");
-      cy.findByText("Test Table");
+      cy.findByText("People");
       cy.findByText("Reviews").should("not.exist");
 
       // Check table hidden in notebook editor
 
-      cy.findByText("Test Table").click();
-      cy.icon("notebook").click({ force: true });
+      openPeopleTable({ mode: "notebook" });
 
-      cy.wait(3000)
-        .findByText("Join data")
-        .click();
+      cy.findByText("Join data").click();
 
-      cy.findAllByText("Test Table");
-      cy.findByText("Reviews").should("not.exist");
+      popover()
+        .should("contain", "People")
+        .and("not.contain", "Reviews");
     });
 
     it("should see changes to visibility, formatting, and foreign key mapping as user", () => {

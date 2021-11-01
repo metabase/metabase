@@ -71,6 +71,7 @@
   metabase/saml20-clj                       {:mvn/version "2.0.0"}              ; EE SAML integration
   metabase/throttle                         {:mvn/version "1.0.2"}              ; Tools for throttling access to API endpoints and other code pathways
   net.cgrand/macrovich                      {:mvn/version "0.2.1"}              ; utils for writing macros for both Clojure & ClojureScript
+  net.i2p.crypto/eddsa                      {:mvn/version "0.3.0"}              ; ED25519 key support (optional dependency for org.apache.sshd/sshd-core)
   net.redhogs.cronparser/cron-parser-core   {:mvn/version "3.5"                 ; describe Cron schedule in human-readable language
                                              :exclusions  [joda-time/joda-time  ; exclude joda time 2.3 which has outdated timezone information
                                                            org.slf4j/slf4j-api]}
@@ -88,7 +89,7 @@
   org.apache.poi/poi-ooxml                  {:mvn/version "5.0.0"
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
                                                            org.bouncycastle/bcprov-jdk15on]}
-  org.apache.sshd/sshd-core                 {:mvn/version "2.7.0"}              ; ssh tunneling and test server
+  org.apache.sshd/sshd-core                 {:mvn/version "2.4.0"}              ; ssh tunneling and test server -- do not use 2.6.0 to 2.7.0, see metabase#18316
   org.apache.xmlgraphics/batik-all          {:mvn/version "1.14"}               ; SVG -> image
   org.clojars.pntblnk/clj-ldap              {:mvn/version "0.0.17"}             ; LDAP client
   org.bouncycastle/bcpkix-jdk15on           {:mvn/version "1.69"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors

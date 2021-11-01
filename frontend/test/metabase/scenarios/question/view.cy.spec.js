@@ -1,4 +1,9 @@
-import { restore, openOrdersTable, popover } from "__support__/e2e/cypress";
+import {
+  restore,
+  openOrdersTable,
+  popover,
+  getAddDimensionButton,
+} from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { PRODUCTS } = SAMPLE_DATASET;
@@ -56,12 +61,7 @@ describe("scenarios > question > view", () => {
 
       cy.contains("Count by Created At: Year");
 
-      cy.get("@sidebar")
-        .contains("Category")
-        .parent()
-        .parent()
-        .find(".Field-extra .Icon")
-        .click({ force: true }); // we need to force this because it only displays on hover
+      getAddDimensionButton({ name: "Category" }).click();
 
       cy.contains("Done").click();
 

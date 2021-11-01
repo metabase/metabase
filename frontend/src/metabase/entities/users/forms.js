@@ -81,13 +81,13 @@ export default {
   setup: () => ({
     fields: [
       ...DETAILS_FORM_FIELDS(),
-      ...PASSWORD_FORM_FIELDS(),
       {
         name: "site_name",
-        title: t`Your company or team name`,
+        title: t`Company or team name`,
         placeholder: t`Department of Awesome`,
         validate: validate.required(),
       },
+      ...PASSWORD_FORM_FIELDS(),
     ],
   }),
   password: {

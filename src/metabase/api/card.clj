@@ -425,38 +425,37 @@
   (-> card :moderation_reviews first :status #{"verified"} boolean))
 
 (defn- changed?
-  "Return whether there were any changes other than ignored values.
+  "Return whether there were any changes in the objects at the keys for `consider`.
 
   returns false because changes to collection_id are ignored:
-  (changed? {:collection_id 1 :description \"foo\"}
-            {:collection_id 2}
-            {:ignore #{:collection_id}})
+  (changed? #{:description}
+            {:collection_id 1 :description \"foo\"}
+            {:collection_id 2 :description \"foo\"})
 
   returns true:
-  (changed? {:collection_id 1 :description \"foo\"}
-            {:collection_id 2 :description \"diff\"}
-            {:ignore #{:collection_id}})"
-  [card-before updates {:keys [ignore]}]
+  (changed? #{:description}
+            {:collection_id 1 :description \"foo\"}
+            {:collection_id 2 :description \"diff\"})"
+  [consider card-before updates]
   ;; have to ignore keyword vs strings over api. `{:type :query}` vs `{:type "query"}`
   (let [prepare              (fn prepare [card] (walk/prewalk (fn [x] (if (keyword? x)
                                                                         (name x)
                                                                         x))
                                                               card))
-        before               (apply dissoc card-before ignore)
-        after                (apply dissoc updates ignore)
-        [_ changes-in-after] (data/diff (prepare before) (prepare after))]
+        before               (prepare (select-keys card-before consider))
+        after                (prepare (select-keys updates consider))
+        [_ changes-in-after] (data/diff before after)]
     (boolean (seq changes-in-after))))
 
 
 
-(def card-compare-ignores
-  "Keys to ignore when comparing card changes to the existing card."
-  #{:result_metadata ;; not interested in changes here
-    ;; ignore collection changes, pinning, and public changes
-    :collection_id :collection_position
-    :public_uuid :made_public_by_id
-    ;; compares java.time objects vs strings over api
-    :created_at :updated_at})
+(def card-compare-keys
+  "When comparing a card to possibly unverify, only consider these keys as changing something 'important' about the
+  query."
+  #{:table_id
+    :database_id
+    :query_type ;; these first three may not even be changeable
+    :dataset_query})
 
 (defn- update-card-async!
   "Update a Card asynchronously. Returns a `core.async` promise channel that will return updated Card."
@@ -468,8 +467,7 @@
       (api/maybe-reconcile-collection-position! card-before-update card-updates)
 
       (when (and (card-is-verified? card-before-update)
-                 (changed? card-before-update card-updates
-                           {:ignore card-compare-ignores}))
+                 (changed? card-compare-keys card-before-update card-updates))
         ;; this is an enterprise feature but we don't care if enterprise is enabled here. If there is a review we need
         ;; to remove it regardless if enterprise edition is present at the moment.
         (moderation-review/create-review! {:moderated_item_id   id
@@ -482,7 +480,7 @@
         ;; `collection_id` and `description` can be `nil` (in order to unset them). Other values should only be
         ;; modified if they're passed in as non-nil
         (u/select-keys-when card-updates
-          :present #{:collection_id :collection_position :description :cache_ttl}
+          :present #{:collection_id :collection_position :description :cache_ttl :dataset}
           :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding
                      :embedding_params :result_metadata})))
     ;; Fetch the updated Card from the DB
@@ -503,10 +501,12 @@
 (api/defendpoint ^:returns-chan PUT "/:id"
   "Update a `Card`."
   [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id
-                   collection_position enable_embedding embedding_params result_metadata metadata_checksum cache_ttl]
+                   collection_position enable_embedding embedding_params result_metadata metadata_checksum
+                   cache_ttl dataset]
             :as   card-updates} :body}]
   {name                   (s/maybe su/NonBlankString)
    dataset_query          (s/maybe su/Map)
+   dataset                (s/maybe s/Bool)
    display                (s/maybe su/NonBlankString)
    description            (s/maybe s/Str)
    visualization_settings (s/maybe su/Map)
@@ -530,7 +530,10 @@
                                 dataset_query
                                 result_metadata
                                 metadata_checksum)
-          out-chan             (a/promise-chan)]
+          out-chan             (a/promise-chan)
+          card-updates         (merge card-updates
+                                      (when dataset
+                                        {:display :table}))]
       ;; asynchronously wait for our updated result metadata, then after that call `update-card-async!`, which is done
       ;; on a non-core.async thread. Pipe the results of that into `out-chan`.
       (a/go
@@ -668,11 +671,15 @@
         ttl-seconds))))
 
 (defn- ttl-hierarchy
+  "Returns the cache ttl (in seconds), by first checking whether there is a stored value for the database,
+  dashboard, or card (in that order of increasing preference), and if all of those don't exist, then the
+  `query-magic-ttl`, which is based on average execution time."
   [card dashboard database query]
   (when (public-settings/enable-query-caching)
     (let [ttls (map :cache_ttl [card dashboard database])
           most-granular-ttl (first (filter some? ttls))]
-      (or most-granular-ttl
+      (or (when most-granular-ttl ; stored TTLs are in hours; convert to seconds
+            (* most-granular-ttl 3600))
           (query-magic-ttl query)))))
 
 (defn query-for-card
@@ -687,9 +694,7 @@
                              :middleware  middleware))
         dashboard (db/select-one [Dashboard :cache_ttl] :id (:dashboard-id ids))
         database  (db/select-one [Database :cache_ttl] :id (:database_id card))
-        ttl       (ttl-hierarchy card dashboard database query)
-        ;; Stored TTL's are in hours: query wants seconds
-        ttl-secs  (if (nil? ttl) nil (* 3600 ttl))]
+        ttl-secs  (ttl-hierarchy card dashboard database query)]
     (assoc query :cache-ttl ttl-secs)))
 
 (defn run-query-for-card-async

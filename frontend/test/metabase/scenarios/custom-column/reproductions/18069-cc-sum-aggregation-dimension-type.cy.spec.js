@@ -1,4 +1,4 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover, visualize } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
@@ -20,8 +20,6 @@ const questionDetails = {
 
 describe("issue 18069", () => {
   beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
     restore();
     cy.signInAsAdmin();
 
@@ -49,8 +47,8 @@ describe("issue 18069", () => {
       cy.findByText("CC_ScaledRating").click();
     });
 
-    cy.button("Visualize").click();
-    cy.wait("@dataset");
+    visualize();
+
     cy.findByText("1,041.45");
   });
 });

@@ -1,0 +1,19 @@
+info:
+  name: Secret Test Driver
+  version: 0.0.0-SNAPSHOT
+  description: Test driver for secrets
+driver:
+  name: secret-test-driver
+  display-name: Secret Test Driver
+  lazy-load: true
+  parent: sql
+  connection-properties:
+    - name: host
+      display-name: Host
+      placeholder: localhost
+    - name: password
+      display-name: Password
+      type: secret
+      secret-kind: password
+      placeholder: foo
+      required: true

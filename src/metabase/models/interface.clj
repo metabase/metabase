@@ -1,5 +1,6 @@
 (ns metabase.models.interface
-  (:require [cheshire.core :as json]
+  (:require [buddy.core.codecs :as codecs]
+            [cheshire.core :as json]
             [clojure.core.memoize :as memoize]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
@@ -165,11 +166,23 @@
   :in  encryption/maybe-encrypt
   :out encryption/maybe-decrypt)
 
+(defn- blob->bytes [^Blob b]
+  (.getBytes ^Blob b 0 (.length ^Blob b)))
+
+(defn- maybe-blob->bytes [v]
+  (if (instance? Blob v)
+    (blob->bytes v)
+    v))
+
+(models/add-type! :secret-value
+  :in  (comp encryption/maybe-encrypt-bytes codecs/to-bytes)
+  :out (comp encryption/maybe-decrypt maybe-blob->bytes))
+
 (defn decompress
   "Decompress `compressed-bytes`."
   [compressed-bytes]
   (if (instance? Blob compressed-bytes)
-    (recur (.getBytes ^Blob compressed-bytes 0 (.length ^Blob compressed-bytes)))
+    (recur (blob->bytes compressed-bytes))
     (with-open [bis     (ByteArrayInputStream. compressed-bytes)
                 bif     (BufferedInputStream. bis)
                 gz-in   (GZIPInputStream. bif)

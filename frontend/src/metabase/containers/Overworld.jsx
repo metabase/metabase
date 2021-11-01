@@ -110,7 +110,7 @@ class Overworld extends React.Component {
                                       <Icon
                                         ml="2"
                                         name="close"
-                                        className="hover-child text-brand-hover"
+                                        className="block hover-child text-brand-hover"
                                       />
                                     </Tooltip>
                                   }

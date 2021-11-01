@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import Segments from "metabase/entities/segments";
 
 import { updatePreviewSummary } from "../datamodel";
@@ -25,7 +25,7 @@ const mapStateToProps = (state, props) => ({
 class UpdateSegmentForm extends Component {
   onSubmit = async segment => {
     await this.props.updateSegment(segment);
-    MetabaseAnalytics.trackEvent("Data Model", "Segment Updated");
+    MetabaseAnalytics.trackStructEvent("Data Model", "Segment Updated");
     this.props.onChangeLocation(`/admin/datamodel/segments`);
   };
 
@@ -47,7 +47,7 @@ class CreateSegmentForm extends Component {
       ...segment,
       table_id: segment.definition["source-table"],
     });
-    MetabaseAnalytics.trackEvent("Data Model", "Segment Updated");
+    MetabaseAnalytics.trackStructEvent("Data Model", "Segment Updated");
     this.props.onChangeLocation(`/admin/datamodel/segments`);
   };
 

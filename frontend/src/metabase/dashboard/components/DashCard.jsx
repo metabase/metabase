@@ -29,7 +29,7 @@ import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
 import cx from "classnames";
 import _ from "underscore";
 import { getIn } from "icepick";
-import { getParameterValuesBySlug } from "metabase/meta/Parameter";
+import { getParameterValuesBySlug } from "metabase/parameters/utils/parameter-values";
 import Utils from "metabase/lib/utils";
 
 const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;

@@ -1,18 +1,17 @@
 import React, { Component } from "react";
 import { t } from "ttag";
-import { getParameterSections } from "metabase/meta/Dashboard";
+import { getDashboardParameterSections } from "metabase/parameters/utils/dashboard-options";
 import Icon from "metabase/components/Icon";
-import { getParameterIconName } from "metabase/meta/Parameter";
+import { getParameterIconName } from "metabase/parameters/utils/ui";
 import styled from "styled-components";
 
 import type {
   Parameter,
   ParameterOption,
+  ParameterSection,
 } from "metabase-types/types/Parameter";
 
 import _ from "underscore";
-
-import type { ParameterSection } from "metabase/meta/Dashboard";
 
 const PopoverBody = styled.div`
   max-width: 300px;
@@ -32,7 +31,7 @@ export default class ParametersPopover extends Component {
     this.state = {};
   }
 
-  PARAMETER_SECTIONS = getParameterSections();
+  PARAMETER_SECTIONS = getDashboardParameterSections();
 
   render() {
     const { section } = this.state;

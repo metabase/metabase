@@ -225,10 +225,26 @@
 ;;; |                                               XLSX export tests                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- parse-cell-content
+;; These are tests that generate an XLSX binary and then parse and assert on its contents, to test logic and value
+;; formatting that is specific to the XLSX format. These do NOT test any of the column ordering logic in
+;; `metabase.query-processor.streaming`, or anything that happens in the API handlers for generating exports.
+
+(defn parse-cell-content
+  "Parses an XLSX sheet and returns the raw data in each row"
   [sheet]
   (for [row (spreadsheet/into-seq sheet)]
     (map spreadsheet/read-cell row)))
+
+(defn parse-xlsx-results
+  "Given a byte array representing an XLSX document, parses the query result sheet using the provided `parse-fn`"
+  ([bytea]
+   (parse-xlsx-results bytea parse-cell-content))
+
+  ([bytea parse-fn]
+   (with-open [is (BufferedInputStream. (ByteArrayInputStream. bytea))]
+     (let [workbook (spreadsheet/load-workbook-from-stream is)
+           sheet    (spreadsheet/select-sheet "Query result" workbook)]
+       (parse-fn sheet)))))
 
 (defn- xlsx-export
   ([ordered-cols viz-settings rows]
@@ -244,10 +260,7 @@
                rows))
        (i/finish! results-writer {:row_count (count rows)}))
      (let [bytea (.toByteArray bos)]
-       (with-open [is (BufferedInputStream. (ByteArrayInputStream. bytea))]
-         (let [workbook (spreadsheet/load-workbook-from-stream is)
-               sheet    (spreadsheet/select-sheet "Query result" workbook)]
-           (parse-fn sheet)))))))
+       (parse-xlsx-results bytea parse-fn)))))
 
 (defn- parse-format-strings
   [sheet]

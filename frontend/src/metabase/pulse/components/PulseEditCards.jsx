@@ -9,7 +9,7 @@ import PulseCardPreview from "./PulseCardPreview";
 import QuestionSelect from "metabase/containers/QuestionSelect";
 
 // import Query from "metabase/lib/query";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import { color } from "metabase/lib/colors";
 
@@ -56,7 +56,7 @@ export default class PulseEditCards extends Component {
   }
 
   trackPulseEvent = (eventName: string, eventValue: string) => {
-    MetabaseAnalytics.trackEvent(
+    MetabaseAnalytics.trackStructEvent(
       this.props.pulseId ? "PulseEdit" : "PulseCreate",
       eventName,
       eventValue,

@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { replace } from "react-router-redux";
 
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
 
 import screenfull from "screenfull";
@@ -140,7 +140,7 @@ export default (ComposedComponent: React.Class) =>
           );
           this.setState({ refreshPeriod });
           this.setRefreshElapsed(0);
-          MetabaseAnalytics.trackEvent(
+          MetabaseAnalytics.trackStructEvent(
             "Dashboard",
             "Set Refresh",
             refreshPeriod,

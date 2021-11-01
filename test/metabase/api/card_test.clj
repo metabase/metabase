@@ -16,6 +16,7 @@
             [metabase.models.moderation-review :as moderation-review]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
+            [metabase.models.query :as query]
             [metabase.models.revision :as revision :refer [Revision]]
             [metabase.models.user :refer [User]]
             [metabase.public-settings :as public-settings]
@@ -48,6 +49,7 @@
    :collection_id       nil
    :collection_position nil
    :dataset_query       {}
+   :dataset             false
    :description         nil
    :display             "scalar"
    :enable_embedding    false
@@ -417,9 +419,9 @@
       (mt/with-temp Card [card]
         (is (= nil
                (do
-               (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:cache_ttl 1234})
-               (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:cache_ttl nil})
-               (:cache_ttl (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card)))))))))))
+                (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:cache_ttl 1234})
+                (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:cache_ttl nil})
+                (:cache_ttl (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card)))))))))))
 
 (defn- fingerprint-integers->doubles
   "Converts the min/max fingerprint values to doubles so simulate how the FE will change the metadata when POSTing a
@@ -1367,6 +1369,13 @@
 (deftest query-cache-ttl-hierarchy-test
   (mt/discard-setting-changes [enable-query-caching]
     (public-settings/enable-query-caching true)
+    (testing "query-magic-ttl converts to seconds correctly"
+      (mt/with-temporary-setting-values [query-caching-ttl-ratio 2]
+        ;; fake average execution time (in millis)
+        (with-redefs [query/average-execution-time-ms (constantly 4000)]
+          (mt/with-temp Card [card]
+            ;; the magic multiplier should be ttl-ratio times avg execution time
+            (is (= (* 2 4) (:cache-ttl (card-api/query-for-card card {} {} {}))))))))
     (testing "card ttl only"
       (mt/with-temp* [Card [card {:cache_ttl 1337}]]
         (is (= (* 3600 1337) (:cache-ttl (card-api/query-for-card card {} {} {}))))))
@@ -1516,21 +1525,23 @@
 
 (deftest changed?-test
   (letfn [(changed? [before after]
-            (#'card-api/changed? before after {:ignore card-api/card-compare-ignores}))]
+            (#'card-api/changed? card-api/card-compare-keys before after))]
    (testing "Ignores keyword/string"
      (is (false? (changed? {:dataset_query {:type :query}} {:dataset_query {:type "query"}}))))
-   (testing "Ignores properties passed in `card-api/card-compare-ignores"
+   (testing "Ignores properties not in `card-api/card-compare-keys"
      (is (false? (changed? {:collection_id 1
                             :collection_position 0}
                            {:collection_id 2
                             :collection_position 1}))))
    (testing "Sees changes"
-     (is (true? (changed? {:description "foo"} {:description "diff"})))
-     (testing "But only when they are different in the after"
-       (is (false? (changed? {:description "foo" :title "something" :collection_id 1}
+     (is (true? (changed? {:dataset_query {:type :query}}
+                          {:dataset_query {:type :query
+                                           :query {}}})))
+     (testing "But only when they are different in the after, not just omitted"
+       (is (false? (changed? {:dataset_query {} :collection_id 1}
                              {:collection_id 1})))
-       (is (true? (changed? {:description "foo" :title "something" :collection_id 1}
-                            {:description nil :title nil :collection_id 1})))))))
+       (is (true? (changed? {:dataset_query {} :collection_id 1}
+                            {:dataset_query nil :collection_id 1})))))))
 
 (deftest update-verified-card-test
   (tools.macro/macrolet
@@ -1562,7 +1573,7 @@
         (testing "Changing core attributes un-verifies the card"
           (with-card :verified
             (is (verified? card))
-            (update-card card {:description "a new description"})
+            (update-card card (update-in card [:dataset_query :query :source-table] inc))
             (is (not (verified? card)))
             (testing "The unverification edit has explanatory text"
               (is (= "Unverified due to edit"
@@ -1582,7 +1593,22 @@
             (testing "making public"
               (remains-verified
                (update-card card {:made_public_by_id (mt/user->id :rasta)
-                                  :public_uuid (UUID/randomUUID)})))))
+                                  :public_uuid (UUID/randomUUID)})))
+            (testing "Changing description"
+              (remains-verified
+               (update-card card {:description "foo"})))
+            (testing "Changing name"
+              (remains-verified
+               (update-card card {:name "foo"})))
+            (testing "Changing archived"
+              (remains-verified
+               (update-card card {:archived true})))
+            (testing "Changing display"
+              (remains-verified
+               (update-card card {:display :line})))
+            (testing "Changing visualization settings"
+              (remains-verified
+               (update-card card {:visualization_settings {:table.cell_column "FOO"}})))))
         (testing "Does not add a new nil moderation review when not verified"
           (with-card :not-verified
             (is (empty? (reviews card)))
@@ -1821,3 +1847,12 @@
             (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
             (is (= ["MS" "Organic" "Gizmo" 0 16 42] (nth rows 445)))
             (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
+
+(deftest dataset-card
+  (testing "Setting a question to a dataset makes it viz type table"
+    (mt/with-temp Card [card {:display :bar
+                              :dataset_query (mbql-count-query)}]
+      (is (= {:display "table" :dataset true}
+             (-> (mt/user-http-request :crowberto :put 202 (str "card/" (u/the-id card))
+                                       (assoc card :dataset true))
+                 (select-keys [:display :dataset])))))))

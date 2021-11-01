@@ -1,4 +1,4 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover, visualize } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATASET;
@@ -41,9 +41,8 @@ describe.skip("issue 17767", () => {
       .contains(/Products? ID/)
       .click();
 
-    cy.button("Visualize").click();
-    cy.wait("@dataset").then(({ response }) => {
-      expect(response.body.error).not.to.exist;
+    visualize(response => {
+      expect(response.body.error).to.not.exist;
     });
 
     cy.findByText("xavier");

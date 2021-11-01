@@ -1,7 +1,7 @@
 import React from "react";
 import { renderWithProviders, screen } from "__support__/ui";
 import userEvent from "@testing-library/user-event";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { setupEnterpriseTest } from "__support__/enterprise";
 import CollectionsList from "./CollectionsList";
 
 describe("CollectionsList", () => {
@@ -90,25 +90,8 @@ describe("CollectionsList", () => {
     });
 
     describe("EE", () => {
-      const ORIGINAL_COLLECTIONS_PLUGIN = {
-        ...PLUGIN_COLLECTIONS,
-      };
-
       beforeAll(() => {
-        PLUGIN_COLLECTIONS.isRegularCollection = c => !c.authority_level;
-        PLUGIN_COLLECTIONS.AUTHORITY_LEVEL = {
-          ...ORIGINAL_COLLECTIONS_PLUGIN,
-          official: {
-            icon: "badge",
-          },
-        };
-      });
-
-      afterAll(() => {
-        PLUGIN_COLLECTIONS.isRegularCollection =
-          ORIGINAL_COLLECTIONS_PLUGIN.isRegularCollection;
-        PLUGIN_COLLECTIONS.AUTHORITY_LEVEL =
-          ORIGINAL_COLLECTIONS_PLUGIN.AUTHORITY_LEVEL;
+        setupEnterpriseTest();
       });
 
       it("displays folder icon for regular collections", () => {

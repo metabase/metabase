@@ -36,7 +36,11 @@ function QuestionDetailsSidebarPanel({
   return (
     <Container>
       <SidebarPaddedContent>
-        <QuestionActionButtons canWrite={canWrite} onOpenModal={onOpenModal} />
+        <QuestionActionButtons
+          canWrite={canWrite}
+          isDataset={question.isDataset()}
+          onOpenModal={onOpenModal}
+        />
         <ClampedDescription
           className="pl1 pb2"
           visibleLines={8}

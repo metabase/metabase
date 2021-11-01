@@ -23,7 +23,6 @@ export type Table = {
   active: boolean,
   visibility_type: TableVisibilityType,
 
-  // entity_name:          null // unused?
   // entity_type:          null // unused?
 
   fields: Field[],

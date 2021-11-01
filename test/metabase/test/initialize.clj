@@ -90,7 +90,7 @@
 (define-initialization :test-drivers
   (classloader/require 'metabase.test.initialize.plugins)
   ((resolve 'metabase.test.initialize.plugins/init-test-drivers!)
-   [:driver-deprecation-test-legacy :driver-deprecation-test-new]))
+   [:driver-deprecation-test-legacy :driver-deprecation-test-new :secret-test-driver]))
 
 ;; initializing the DB also does setup needed so the scheduler will work correctly. (Remember that the scheduler uses
 ;; a JDBC backend!)
