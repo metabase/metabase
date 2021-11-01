@@ -1,11 +1,10 @@
-import { scaleBand, scaleLinear, scaleTime } from "@visx/scale";
-import { ChartSize, Series } from "./types";
+import { scaleBand, scaleLinear } from "@visx/scale";
+import { ChartSize, Series } from "../blocks/types";
 import {
   getDateXDomainForMultipleSeries,
   getNumericYDomainForMultipleSeries,
-} from "./utils/domain";
-import { getXRangeMax, getYRangeMax } from "./utils/scale";
-import { getXTicksCount, getYTicksCount } from "./utils/ticks";
+} from "../blocks/utils/domain";
+import { getX, getXRangeMax, getYRangeMax } from "../blocks/utils/scale";
 
 export const useTimeseriesChart = (
   series: Series<Date, number>[],
@@ -14,20 +13,15 @@ export const useTimeseriesChart = (
   // X-axis
   const xDomain = getDateXDomainForMultipleSeries(series);
   const xRangeMax = getXRangeMax(size);
-  const xScale = scaleTime({
-    domain: xDomain,
-    range: [0, xRangeMax],
-    nice: true,
-  });
-  const xTicks = getXTicksCount(size.dimensions.width);
 
-  const xScaleBand = scaleBand({
+  const xScale = scaleBand({
     domain: series
       .flatMap(series => series.data)
-      .map(datum => datum[0].valueOf()),
+      .map(datum => getX(datum).valueOf()),
+
     range: [0, xRangeMax],
     round: true,
-    padding: 0.2,
+    padding: 0.1,
   });
 
   // Y-axis
@@ -39,16 +33,11 @@ export const useTimeseriesChart = (
     nice: true,
   });
 
-  const yTicks = getYTicksCount(size.dimensions.height);
-
   return {
     xDomain,
     xScale,
-    xScaleBand,
-    xTicks,
     xRangeMax,
     yScale,
-    yTicks,
     yRangeMax,
   } as const;
 };

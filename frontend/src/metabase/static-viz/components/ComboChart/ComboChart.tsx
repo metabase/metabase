@@ -1,9 +1,12 @@
 import React from "react";
 import { AxisBottom, AxisLeft } from "@visx/axis";
-import { AreaClosed, Bar, LinePath } from "@visx/shape";
+import { GridRows } from "@visx/grid";
+import { Group } from "@visx/group";
 import { useTimeseriesChart } from "./use-timeseries-chart";
-import { ChartSize, Data, Series } from "./types";
-import { getX, getY } from "./utils/scale";
+import { Series } from "../blocks/types";
+import { BarSeries } from "../blocks/BarSeries";
+import { AreaSeries } from "../blocks/AreaSeries";
+import { LineSeries } from "../blocks/LineSeries";
 
 const margins = {
   top: 10,
@@ -19,45 +22,96 @@ const testProps: ChartProps = {
     {
       label: "Line series",
       data: [
+        [new Date(2019, 9, 1), 4],
         [new Date(2020, 0, 1), 1],
-        [new Date(2020, 1, 1), 4],
-        [new Date(2020, 3, 1), 2],
-        [new Date(2020, 4, 1), 5],
-        [new Date(2020, 8, 1), 9],
+        [new Date(2020, 1, 1), 3],
+        [new Date(2020, 2, 1), 1],
+        [new Date(2020, 3, 1), 3],
+        [new Date(2020, 4, 1), 1],
+        [new Date(2020, 6, 1), 9],
       ],
       settings: {
         type: "line",
-        color: "black",
+        color: "#88BF4D",
       },
     },
     {
       label: "Area series",
       data: [
-        [new Date(2020, 3, 1), 4],
-        [new Date(2020, 6, 1), 3],
-        [new Date(2020, 7, 1), 2],
+        [new Date(2020, 0, 1), 3],
+        [new Date(2020, 1, 1), 1],
+        [new Date(2020, 2, 1), 3],
+        [new Date(2020, 3, 1), 1],
+        [new Date(2020, 4, 1), 3],
       ],
       settings: {
         type: "area",
-        color: "black",
+        color: "#EF8C8C",
+      },
+    },
+    {
+      label: "Area series 2",
+      data: [
+        [new Date(2020, 0, 1), 2],
+        [new Date(2020, 1, 1), 14],
+        [new Date(2020, 2, 1), 18],
+        [new Date(2020, 3, 1), 15],
+        [new Date(2020, 9, 1), 8],
+      ],
+      settings: {
+        type: "area",
+        color: "#A989C5",
       },
     },
 
     {
       label: "Bar series",
       data: [
-        [new Date(2020, 0, 1), 3],
-        [new Date(2020, 1, 1), 7],
+        [new Date(2019, 9, 1), 4],
+        [new Date(2020, 0, 1), 2],
+        [new Date(2020, 1, 1), 4],
+        [new Date(2020, 2, 1), 2],
         [new Date(2020, 3, 1), 4],
-        [new Date(2020, 5, 1), 8],
-        [new Date(2020, 11, 1), 4],
+        [new Date(2020, 4, 1), 2],
       ],
       settings: {
         type: "bar",
-        color: "black",
+        color: "#A989C5",
+      },
+    },
+    {
+      label: "Bar series 2",
+      data: [
+        [new Date(2020, 0, 1), 2],
+        [new Date(2020, 1, 1), 4],
+        [new Date(2020, 2, 1), 2],
+        [new Date(2020, 3, 1), 4],
+        [new Date(2020, 4, 1), 2],
+      ],
+      settings: {
+        type: "bar",
+        color: "#f2a86f",
+      },
+    },
+    {
+      label: "Bar series 3",
+      data: [
+        [new Date(2020, 0, 1), 2],
+        [new Date(2020, 1, 1), 4],
+        [new Date(2020, 2, 1), 2],
+        [new Date(2020, 3, 1), 4],
+        [new Date(2020, 4, 1), 2],
+      ],
+      settings: {
+        type: "bar",
+        color: "#98D9D9",
       },
     },
   ],
+};
+
+const palette = {
+  axes: "#949aab",
 };
 
 interface ChartProps {
@@ -66,52 +120,18 @@ interface ChartProps {
   series: Series<Date, number>[];
 }
 
-interface BarsProps {
-  data: Data<Date, number>;
-  yScale: any;
-  xScale: any;
-  innerHeight: number;
-  size: ChartSize;
-}
-
-const Bars = ({ data, yScale, xScale, innerHeight }: BarsProps) => {
-  return (
-    <>
-      {data.map((datum, index) => {
-        const x = xScale(getX(datum).valueOf());
-        const y = yScale(getY(datum));
-        const width = xScale.bandwidth();
-        const height = innerHeight - yScale(getY(datum));
-
-        return (
-          <Bar
-            key={index}
-            fill="red"
-            width={width}
-            height={height}
-            x={x}
-            y={y}
-          />
-        );
-      })}
-    </>
-  );
-};
-
 const Chart = () => {
   const { width, height, series }: ChartProps = testProps;
 
   const dimensions = { width, height };
 
   const innerHeight = height - margins.top - margins.bottom;
+  const innerWidth = width - margins.left - margins.right;
 
-  const { xScale, xTicks, xScaleBand, yScale, yTicks } = useTimeseriesChart(
-    series,
-    {
-      dimensions,
-      margins,
-    },
-  );
+  const { xScale, yScale } = useTimeseriesChart(series, {
+    dimensions,
+    margins,
+  });
 
   const lines = series.filter(series => series.settings.type === "line");
   const areas = series.filter(series => series.settings.type === "area");
@@ -119,77 +139,56 @@ const Chart = () => {
 
   return (
     <svg width={width} height={height}>
+      <GridRows
+        scale={yScale}
+        top={margins.top}
+        left={margins.left}
+        width={innerWidth}
+        strokeDasharray="4"
+      />
+
       <AxisLeft
+        hideTicks
+        hideAxisLine
         top={margins.top}
         left={margins.left}
         scale={yScale}
-        stroke={"black"}
-        numTicks={yTicks}
+        stroke={palette.axes}
         tickLength={4}
-        tickStroke={"black"}
+        tickStroke={palette.axes}
         tickLabelProps={() => ({
           fontSize: 10,
           fontFamily: "Lato",
           textAnchor: "end",
-          fill: "black",
-          dy: "0.35em",
-          dx: "-0.25em",
+          fill: palette.axes,
         })}
       />
       <AxisBottom
         top={height - margins.bottom}
         left={margins.left}
         scale={xScale}
-        stroke={"black"}
-        numTicks={xTicks}
+        stroke={palette.axes}
+        numTicks={3}
         tickLength={4}
-        tickStroke={"black"}
+        tickStroke={palette.axes}
         tickLabelProps={() => ({
-          fontSize: 10,
+          fontSize: 11,
           fontFamily: "Lato",
           textAnchor: "middle",
-          fill: "black",
+          fill: palette.axes,
         })}
       />
-      <g transform={`translate(${margins.left} ${margins.top})`}>
-        {lines.map(s => (
-          <LinePath
-            key={s.label}
-            data={s.data}
-            x={d => xScale(getX(d))}
-            y={d => yScale(getY(d))}
-            stroke="black"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        ))}
 
-        {areas.map(s => (
-          <AreaClosed
-            yScale={yScale}
-            key={s.label}
-            data={s.data}
-            x={d => xScale(getX(d))}
-            y={d => yScale(getY(d))}
-            stroke="red"
-            fill="black"
-            opacity={0.1}
-            strokeWidth={2}
-          />
-        ))}
-
-        {bars.map(s => (
-          <Bars
-            key={s.label}
-            innerHeight={innerHeight}
-            data={s.data}
-            xScale={xScaleBand}
-            yScale={yScale}
-            size={{ dimensions, margins }}
-          />
-        ))}
-      </g>
+      <Group top={margins.top} left={margins.left}>
+        <BarSeries
+          series={bars}
+          yScale={yScale}
+          xScale={xScale}
+          innerHeight={innerHeight}
+        />
+        <AreaSeries series={areas} yScale={yScale} xScale={xScale} />
+        <LineSeries series={lines} yScale={yScale} xScale={xScale} />
+      </Group>
     </svg>
   );
 };

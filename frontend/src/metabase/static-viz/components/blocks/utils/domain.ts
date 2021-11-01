@@ -1,9 +1,10 @@
 import { Datum, Series } from "../types";
+import { getX, getY } from "./scale";
 
 export const getDateXDomain = (data: Datum<Date, unknown>[]) => {
   return [
-    Math.min(...data.map(datum => datum[0].valueOf())),
-    Math.max(...data.map(datum => datum[0].valueOf())),
+    Math.min(...data.map(datum => getX(datum).valueOf())),
+    Math.max(...data.map(datum => getX(datum).valueOf())),
   ];
 };
 
@@ -15,8 +16,8 @@ export const getDateXDomainForMultipleSeries = (
 
 export const getNumericYDomain = (data: Datum<unknown, number>[]) => {
   return [
-    Math.min(...data.map(datum => datum[1].valueOf())),
-    Math.max(...data.map(datum => datum[1].valueOf())),
+    Math.min(...data.map(datum => getY(datum).valueOf())),
+    Math.max(...data.map(datum => getY(datum).valueOf())),
   ];
 };
 
