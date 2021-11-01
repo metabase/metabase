@@ -39,7 +39,7 @@ describe("schemas", () => {
     MODEL_ENTITY_TYPE.forEach(testCase => {
       const { model, entityType } = testCase;
       it(`returns "${entityType}" for "${model}" model`, () => {
-        expect(entityTypeForModel(model)).tpoBe(entityType);
+        expect(entityTypeForModel(model)).toBe(entityType);
       });
     });
   });
