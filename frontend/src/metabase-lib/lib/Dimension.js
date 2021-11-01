@@ -598,6 +598,10 @@ export class FieldDimension extends Dimension {
     });
   }
 
+  tableId() {
+    return this.field()?.table?.id;
+  }
+
   /**
    * Return a copy of this FieldDimension that excludes `options`.
    */
@@ -1223,10 +1227,6 @@ export class TemplateTagDimension extends FieldDimension {
   field() {
     const dimension = this.dimension();
     return dimension ? dimension.field() : super.field();
-  }
-
-  tableId() {
-    return this.field()?.table?.id;
   }
 
   name() {
