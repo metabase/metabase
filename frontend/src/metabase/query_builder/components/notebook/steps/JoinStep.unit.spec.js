@@ -154,6 +154,7 @@ describe("Notebook Editor > Join Step", () => {
   }
 
   async function selectTable(tableName) {
+    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
     fireEvent.click(screen.queryByText(/Sample Dataset/i));
     const dataSelector = await screen.findByTestId("data-selector");
     fireEvent.click(within(dataSelector).queryByText(tableName));
@@ -185,6 +186,15 @@ describe("Notebook Editor > Join Step", () => {
         SAMPLE_DATASET.tables.filter(table => table.schema === "PUBLIC"),
       ),
     });
+    xhrMock.get("/api/search?models=dataset&limit=1", {
+      body: JSON.stringify({
+        data: [],
+        limit: 1,
+        models: ["dataset"],
+        offset: 0,
+        total: 0,
+      }),
+    });
   });
 
   afterEach(() => {
@@ -199,6 +209,7 @@ describe("Notebook Editor > Join Step", () => {
 
   it("opens a schema browser by default", async () => {
     await setup();
+    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
 
     fireEvent.click(screen.queryByText(/Sample Dataset/i));
     const dataSelector = await screen.findByTestId("data-selector");
