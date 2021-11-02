@@ -50,9 +50,7 @@ const SyncStatus = ({ databases }) => {
               </DatabaseIcon>
               <DatabaseContent>
                 <DatabaseTitle>
-                  <Ellipsified>
-                    {database.display_name || database.name}
-                  </Ellipsified>
+                  <Ellipsified>{database.name}</Ellipsified>
                 </DatabaseTitle>
                 <DatabaseDescription>
                   {getDescriptionMessage(database)}
