@@ -3,7 +3,7 @@ import { color } from "metabase/lib/colors";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 
-export const Popup = styled.div`
+export const Snackbar = styled.div`
   position: fixed;
   right: 1.5rem;
   bottom: 1.5rem;
@@ -14,14 +14,14 @@ export const Popup = styled.div`
   overflow: hidden;
 `;
 
-export const PopupHeader = styled.div`
+export const SnackbarHeader = styled.div`
   display: flex;
   align-items: center;
   padding: 0.625rem 1rem;
   background-color: ${color("brand")};
 `;
 
-export const PopupTitle = styled.div`
+export const SnackbarTitle = styled.div`
   flex: 1 1 auto;
   color: ${color("bg-light")};
   font-size: 0.875rem;
@@ -29,12 +29,12 @@ export const PopupTitle = styled.div`
   line-height: 1rem;
 `;
 
-export const PopupToggle = styled(IconButtonWrapper)`
+export const SnackbarToggle = styled(IconButtonWrapper)`
   flex: 0 0 auto;
   color: ${color("white")};
 `;
 
-export const PopupContent = styled.div`
+export const SnackbarContent = styled.div`
   background-color: ${color("white")};
 `;
 

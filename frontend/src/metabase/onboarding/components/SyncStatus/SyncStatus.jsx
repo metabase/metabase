@@ -11,11 +11,11 @@ import {
   DatabaseIconContainer,
   DatabaseSpinner,
   DatabaseTitle,
-  Popup,
-  PopupContent,
-  PopupHeader,
-  PopupTitle,
-  PopupToggle,
+  Snackbar,
+  SnackbarContent,
+  SnackbarHeader,
+  SnackbarTitle,
+  SnackbarToggle,
 } from "./SyncStatus.styled";
 
 const propTypes = {
@@ -27,15 +27,15 @@ const SyncStatus = ({ databases }) => {
   const handleToggle = useCallback(() => setIsOpened(state => !state), []);
 
   return (
-    <Popup>
-      <PopupHeader>
-        <PopupTitle>{getTitleMessage(databases, isOpened)}</PopupTitle>
-        <PopupToggle onClick={handleToggle}>
+    <Snackbar>
+      <SnackbarHeader>
+        <SnackbarTitle>{getTitleMessage(databases, isOpened)}</SnackbarTitle>
+        <SnackbarToggle onClick={handleToggle}>
           {isOpened ? <Icon name="chevrondown" /> : <Icon name="chevronup" />}
-        </PopupToggle>
-      </PopupHeader>
+        </SnackbarToggle>
+      </SnackbarHeader>
       {isOpened && (
-        <PopupContent>
+        <SnackbarContent>
           {databases.map(database => (
             <DatabaseCard key={database.id}>
               <DatabaseIcon>
@@ -58,9 +58,9 @@ const SyncStatus = ({ databases }) => {
               )}
             </DatabaseCard>
           ))}
-        </PopupContent>
+        </SnackbarContent>
       )}
-    </Popup>
+    </Snackbar>
   );
 };
 
