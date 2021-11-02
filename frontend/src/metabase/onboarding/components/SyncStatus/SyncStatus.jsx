@@ -1,7 +1,6 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import _ from "underscore";
 import Icon from "metabase/components/Icon";
 import Ellipsified from "metabase/components/Ellipsified";
 import {
@@ -19,8 +18,6 @@ import {
   PopupToggle,
 } from "./SyncStatus.styled";
 
-const DONE_DELAY = 6000;
-
 const propTypes = {
   databases: PropTypes.array,
 };
@@ -29,21 +26,17 @@ const SyncStatus = ({ databases }) => {
   const [isOpened, setIsOpened] = useState(true);
   const handleToggle = useCallback(() => setIsOpened(state => !state), []);
 
-  const syncingDatabases = getSyncingDatabases(databases);
-  const delayedDatabases = useDelayedValue(syncingDatabases, DONE_DELAY);
-  const visibleDatabases = _.union(delayedDatabases, syncingDatabases);
-
   return (
     <Popup>
       <PopupHeader>
-        <PopupTitle>{getTitleMessage(syncingDatabases, isOpened)}</PopupTitle>
+        <PopupTitle>{getTitleMessage(databases, isOpened)}</PopupTitle>
         <PopupToggle onClick={handleToggle}>
           {isOpened ? <Icon name="chevrondown" /> : <Icon name="chevronup" />}
         </PopupToggle>
       </PopupHeader>
       {isOpened && (
         <PopupContent>
-          {visibleDatabases.map(database => (
+          {databases.map(database => (
             <DatabaseCard key={database.id}>
               <DatabaseIcon>
                 <Icon name="database" />
@@ -73,15 +66,17 @@ const SyncStatus = ({ databases }) => {
 
 SyncStatus.propTypes = propTypes;
 
-const getTitleMessage = (syncingDatabases, isOpened) => {
-  const tables = syncingDatabases.flatMap(d => d.tables);
-  const doneCount = tables.filter(t => t.initial_sync).length;
+const getTitleMessage = (databases, isOpened) => {
+  const tables = databases.filter(d => !d.initial_sync).flatMap(d => d.tables);
   const totalCount = tables.length;
+
+  const done = databases.every(d => d.initial_sync);
+  const doneCount = tables.filter(t => t.initial_sync).length;
   const donePercentage = Math.floor((doneCount / totalCount) * 100);
 
-  return syncingDatabases.length === 0
+  return done
     ? t`Done!`
-    : isOpened && totalCount > 0
+    : isOpened && totalCount
     ? t`Syncing... (${donePercentage}%`
     : t`Syncing...`;
 };
@@ -91,21 +86,6 @@ const getDescriptionMessage = database => {
   const totalCount = database.tables.length;
 
   return t`${doneCount} of ${totalCount} done`;
-};
-
-const getSyncingDatabases = databases => {
-  return databases.filter(d => !d.initial_sync);
-};
-
-const useDelayedValue = (value, delay) => {
-  const [delayedValue, setDelayedValue] = useState(value);
-
-  useEffect(() => {
-    const timeoutId = setTimeout(() => setDelayedValue(value), delay);
-    return () => clearTimeout(timeoutId);
-  }, [value, delay]);
-
-  return delayedValue;
 };
 
 export default SyncStatus;
