@@ -8705,20 +8705,15 @@ databaseChangeLog:
                   constraints:
                     nullable: false
                   defaultValue: false
-  - changeSet:
-      id: 321
+  - changeSet: # this one is run unconditionally so unify the type to ${text.type} across ALL dbs
+      id: 321  # this differentiation was first done under changeSet 13 above
       author: jeff303
       comment: Added 0.42.0 - modify type of activity.details from text to ${text.type}
-        on mysql,mariadb
       changes:
         - modifyDataType:
             tableName: activity
             columnName: details
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
   - changeSet:
       id: 322
       author: jeff303
@@ -9433,20 +9428,15 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
-  - changeSet:
-      id: 373
+  - changeSet: # this one is run unconditionally so unify the type to ${text.type} across ALL dbs
+      id: 373  # this differentiation was first done under changeSet 10 above
       author: jeff303
       comment: Added 0.42.0 - modify type of revision.object from text to ${text.type}
-        on mysql,mariadb
       changes:
         - modifyDataType:
             tableName: revision
             columnName: object
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
   - changeSet:
       id: 374
       author: jeff303
