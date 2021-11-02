@@ -96,8 +96,7 @@ class BaseIcon extends Component<IconProps> {
 
     if (icon.img) {
       // avoid passing `role="img"` to an actual image file
-      // eslint-disable-next-line no-unused-vars
-      const { role, ...rest } = props;
+      const { _role, ...rest } = props;
       return (
         <img
           src={icon.img}
