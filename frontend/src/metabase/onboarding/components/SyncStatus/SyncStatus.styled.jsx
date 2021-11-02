@@ -6,10 +6,33 @@ export const SyncStatusRoot = styled.div`
   position: fixed;
   right: 1.5rem;
   bottom: 1.5rem;
+`;
+
+export const Popup = styled.div`
   min-width: 16rem;
+  max-width: 32rem;
   border-radius: 6px;
   background-color: ${color("white")};
   box-shadow: 0 1px 12px ${color("shadow")};
+  overflow: hidden;
+`;
+
+export const PopupHeader = styled.div`
+  display: flex;
+  align-items: center;
+  padding: 0.625rem 1rem;
+  background-color: ${color("brand")};
+`;
+
+export const PopupTitle = styled.div`
+  color: ${color("bg-light")};
+  font-size: 0.875rem;
+  font-weight: bold;
+  line-height: 1rem;
+`;
+
+export const PopupContent = styled.div`
+  background-color: ${color("white")};
 `;
 
 export const DatabaseCard = styled.div`

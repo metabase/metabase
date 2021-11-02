@@ -9,6 +9,10 @@ import {
   DatabaseIcon,
   DatabaseSpinner,
   DatabaseTitle,
+  Popup,
+  PopupContent,
+  PopupHeader,
+  PopupTitle,
   SyncStatusRoot,
 } from "./SyncStatus.styled";
 
@@ -19,22 +23,29 @@ const propTypes = {
 const SyncStatus = ({ databases }) => {
   return (
     <SyncStatusRoot>
-      {databases.map(database => (
-        <DatabaseCard key={database.id}>
-          <DatabaseIcon>
-            <Icon name="database" />
-          </DatabaseIcon>
-          <DatabaseContent>
-            <DatabaseTitle>
-              {database.display_name || database.name}
-            </DatabaseTitle>
-            <DatabaseDescription>
-              {getDatabaseDescription(database)}
-            </DatabaseDescription>
-          </DatabaseContent>
-          <DatabaseSpinner size={24} borderWidth={3} />
-        </DatabaseCard>
-      ))}
+      <Popup>
+        <PopupHeader>
+          <PopupTitle>{t`Syncing...`}</PopupTitle>
+        </PopupHeader>
+        <PopupContent>
+          {databases.map(database => (
+            <DatabaseCard key={database.id}>
+              <DatabaseIcon>
+                <Icon name="database" />
+              </DatabaseIcon>
+              <DatabaseContent>
+                <DatabaseTitle>
+                  {database.display_name || database.name}
+                </DatabaseTitle>
+                <DatabaseDescription>
+                  {getDatabaseDescription(database)}
+                </DatabaseDescription>
+              </DatabaseContent>
+              <DatabaseSpinner size={24} borderWidth={3} />
+            </DatabaseCard>
+          ))}
+        </PopupContent>
+      </Popup>
     </SyncStatusRoot>
   );
 };
