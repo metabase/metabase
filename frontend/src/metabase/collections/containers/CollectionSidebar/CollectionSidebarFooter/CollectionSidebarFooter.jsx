@@ -36,7 +36,7 @@ export default function CollectionSidebarFooter({
           onOpen={onOpen}
           collections={otherCollections}
           initialIcon="group"
-          filter={(member) => true}
+          filter={member => true}
           currentCollection={collectionId}
         />
       )}
