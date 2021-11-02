@@ -8664,7 +8664,7 @@ databaseChangeLog:
   - changeSet:
       id: 382
       author: camsaul
-      comment: Added 0.42.0 Add index to ModerationReview moderated_item_type + moderated_item_id to fix performance issues (#18759)
+      comment: Added 0.41.2 Add index to ModerationReview moderated_item_type + moderated_item_id to fix performance issues (#18759)
       changes:
         createIndex:
           tableName: moderation_review
