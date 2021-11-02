@@ -19,7 +19,7 @@ import {
   PopupToggle,
 } from "./SyncStatus.styled";
 
-const DELAY = 6000;
+const DONE_DELAY = 6000;
 
 const propTypes = {
   databases: PropTypes.array,
@@ -30,7 +30,7 @@ const SyncStatus = ({ databases }) => {
   const handleToggle = useCallback(() => setIsOpened(state => !state), []);
 
   const syncingDatabases = getSyncingDatabases(databases);
-  const delayedDatabases = useDelayedValue(syncingDatabases, DELAY);
+  const delayedDatabases = useDelayedValue(syncingDatabases, DONE_DELAY);
   const visibleDatabases = _.union(delayedDatabases, syncingDatabases);
 
   return (
