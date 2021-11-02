@@ -16,7 +16,11 @@ import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import BrowseHeader from "metabase/browse/components/BrowseHeader";
-import { ANALYTICS_CONTEXT, ITEM_WIDTHS } from "metabase/browse/constants";
+import {
+  ANALYTICS_CONTEXT,
+  ITEM_WIDTHS,
+  RELOAD_INTERVAL,
+} from "metabase/browse/constants";
 
 const TableBrowser = ({
   tables,
@@ -38,11 +42,11 @@ const TableBrowser = ({
       {tables.map(table => (
         <GridItem width={ITEM_WIDTHS} key={table.id}>
           <Card
-            hoverable={table.active}
+            hoverable={table.initial_sync}
             px={1}
             className="hover-parent hover--visibility"
           >
-            {table.active ? (
+            {table.initial_sync ? (
               <Link
                 to={getTableLink(table, metadata)}
                 ml={1}
@@ -86,10 +90,10 @@ const TableBrowserItem = ({ dbId, table, xraysEnabled }) => (
     name={table.display_name || table.name}
     iconName="table"
     iconColor={color("accent2")}
-    loading={!table.active}
-    disabled={!table.active}
+    loading={!table.initial_sync}
+    disabled={!table.initial_sync}
     buttons={
-      table.active && (
+      table.initial_sync && (
         <TableBrowserItemButtons
           dbId={dbId}
           table={table}
@@ -177,6 +181,10 @@ const getSchemaName = props => {
   return props.schemaName || props.params.schemaName;
 };
 
+const getReloadInterval = ({ list = [] }) => {
+  return list.some(t => !t.initial_sync) ? RELOAD_INTERVAL : 0;
+};
+
 const mapStateToProps = (state, props) => {
   return {
     dbId: getDatabaseId(props),
@@ -191,4 +199,5 @@ export default Table.loadList({
     dbId: getDatabaseId(props),
     schemaName: getSchemaName(props),
   }),
+  reloadInterval: getReloadInterval,
 })(connect(mapStateToProps)(TableBrowser));

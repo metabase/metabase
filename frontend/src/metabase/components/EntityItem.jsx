@@ -187,7 +187,7 @@ const EntityItem = ({
             className="ml1 text-medium"
           />
         )}
-        {loading && <EntityItemSpinner size={24} />}
+        {loading && <EntityItemSpinner size={24} borderWidth={3} />}
         <EntityItemMenu
           item={item}
           onPin={onPin}
