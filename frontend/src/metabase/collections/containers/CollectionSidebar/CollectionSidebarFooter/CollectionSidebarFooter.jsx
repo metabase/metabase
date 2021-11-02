@@ -18,7 +18,8 @@ const propTypes = {
   openCollections: PropTypes.arrayOf(PropTypes.object),
 };
 
-export default function CollectionSidebarFooter({ isAdmin,
+export default function CollectionSidebarFooter({
+  isAdmin,
   isAnotherUserCollectionOpened,
   openCollections,
   onClose,
