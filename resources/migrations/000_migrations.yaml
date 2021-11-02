@@ -8708,7 +8708,8 @@ databaseChangeLog:
   - changeSet: # this one is run unconditionally so unify the type to ${text.type} across ALL dbs
       id: 321  # this differentiation was first done under changeSet 13 above
       author: jeff303
-      comment: Added 0.42.0 - modify type of activity.details from text to ${text.type}
+      comment: >-
+        Added 0.42.0 - modify type of activity.details from text to ${text.type}
       changes:
         - modifyDataType:
             tableName: activity
@@ -8717,7 +8718,8 @@ databaseChangeLog:
   - changeSet:
       id: 322
       author: jeff303
-      comment: Added 0.42.0 - modify type of collection.description from text to ${text.type}
+      comment: >-
+        Added 0.42.0 - modify type of collection.description from text to ${text.type}
         on mysql,mariadb
       changes:
         - modifyDataType:
@@ -8731,7 +8733,8 @@ databaseChangeLog:
   - changeSet:
       id: 323
       author: jeff303
-      comment: Added 0.42.0 - modify type of collection.name from text to ${text.type}
+      comment: >-
+        Added 0.42.0 - modify type of collection.name from text to ${text.type}
         on mysql,mariadb
       changes:
         - modifyDataType:
@@ -8745,7 +8748,8 @@ databaseChangeLog:
   - changeSet:
       id: 324
       author: jeff303
-      comment: Added 0.42.0 - modify type of computation_job.context from text to ${text.type}
+      comment: >-
+        Added 0.42.0 - modify type of computation_job.context from text to ${text.type}
         on mysql,mariadb
       changes:
         - modifyDataType:
@@ -8759,7 +8763,8 @@ databaseChangeLog:
   - changeSet:
       id: 325
       author: jeff303
-      comment: Added 0.42.0 - modify type of computation_job_result.payload from text
+      comment: >-
+        Added 0.42.0 - modify type of computation_job_result.payload from text
         to ${text.type} on mysql,mariadb
       changes:
         - modifyDataType:
@@ -8773,7 +8778,8 @@ databaseChangeLog:
   - changeSet:
       id: 326
       author: jeff303
-      comment: Added 0.42.0 - modify type of core_session.anti_csrf_token from text
+      comment: >-
+        Added 0.42.0 - modify type of core_session.anti_csrf_token from text
         to ${text.type} on mysql,mariadb
       changes:
         - modifyDataType:
@@ -8787,7 +8793,8 @@ databaseChangeLog:
   - changeSet:
       id: 327
       author: jeff303
-      comment: Added 0.42.0 - modify type of core_user.login_attributes from text to
+      comment: >-
+        Added 0.42.0 - modify type of core_user.login_attributes from text to
         ${text.type} on mysql,mariadb
       changes:
         - modifyDataType:
@@ -8801,7 +8808,8 @@ databaseChangeLog:
   - changeSet:
       id: 328
       author: jeff303
-      comment: Added 0.42.0 - modify type of group_table_access_policy.attribute_remappings
+      comment: >-
+        Added 0.42.0 - modify type of group_table_access_policy.attribute_remappings
         from text to ${text.type} on mysql,mariadb
       changes:
         - modifyDataType:
@@ -8815,7 +8823,8 @@ databaseChangeLog:
   - changeSet:
       id: 329
       author: jeff303
-      comment: Added 0.42.0 - modify type of login_history.device_description from text
+      comment: >-
+        Added 0.42.0 - modify type of login_history.device_description from text
         to ${text.type} on mysql,mariadb
       changes:
         - modifyDataType:
@@ -8829,7 +8838,8 @@ databaseChangeLog:
   - changeSet:
       id: 330
       author: jeff303
-      comment: Added 0.42.0 - modify type of login_history.ip_address from text to ${text.type}
+      comment: >-
+        Added 0.42.0 - modify type of login_history.ip_address from text to ${text.type}
         on mysql,mariadb
       changes:
         - modifyDataType:
@@ -8843,7 +8853,8 @@ databaseChangeLog:
   - changeSet:
       id: 331
       author: jeff303
-      comment: Added 0.42.0 - modify type of metabase_database.caveats from text to
+      comment: >-
+        Added 0.42.0 - modify type of metabase_database.caveats from text to
         ${text.type} on mysql,mariadb
       changes:
         - modifyDataType:
@@ -8857,7 +8868,8 @@ databaseChangeLog:
   - changeSet:
       id: 332
       author: jeff303
-      comment: Added 0.42.0 - modify type of metabase_database.description from text
+      comment: >-
+        Added 0.42.0 - modify type of metabase_database.description from text
         to ${text.type} on mysql,mariadb
       changes:
         - modifyDataType:
@@ -8871,7 +8883,8 @@ databaseChangeLog:
   - changeSet:
       id: 333
       author: jeff303
-      comment: Added 0.42.0 - modify type of metabase_database.details from text to
+      comment: >-
+        Added 0.42.0 - modify type of metabase_database.details from text to
         ${text.type} on mysql,mariadb
       changes:
         - modifyDataType:
@@ -8885,7 +8898,8 @@ databaseChangeLog:
   - changeSet:
       id: 334
       author: jeff303
-      comment: Added 0.42.0 - modify type of metabase_database.options from text to
+      comment: >-
+        Added 0.42.0 - modify type of metabase_database.options from text to
         ${text.type} on mysql,mariadb
       changes:
         - modifyDataType:
@@ -8899,7 +8913,8 @@ databaseChangeLog:
   - changeSet:
       id: 335
       author: jeff303
-      comment: Added 0.42.0 - modify type of metabase_database.points_of_interest from
+      comment: >-
+        Added 0.42.0 - modify type of metabase_database.points_of_interest from
         text to ${text.type} on mysql,mariadb
       changes:
         - modifyDataType:
@@ -8913,7 +8928,8 @@ databaseChangeLog:
   - changeSet:
       id: 336
       author: jeff303
-      comment: Added 0.42.0 - modify type of metabase_field.caveats from text to ${text.type}
+      comment: >-
+        Added 0.42.0 - modify type of metabase_field.caveats from text to ${text.type}
         on mysql,mariadb
       changes:
         - modifyDataType:
@@ -8927,7 +8943,8 @@ databaseChangeLog:
   - changeSet:
       id: 337
       author: jeff303
-      comment: Added 0.42.0 - modify type of metabase_field.database_type from text
+      comment: >-
+        Added 0.42.0 - modify type of metabase_field.database_type from text
         to ${text.type} on mysql,mariadb
       changes:
         - modifyDataType:
@@ -8941,7 +8958,8 @@ databaseChangeLog:
   - changeSet:
       id: 338
       author: jeff303
-      comment: Added 0.42.0 - modify type of metabase_field.description from text to
+      comment: >-
+        Added 0.42.0 - modify type of metabase_field.description from text to
         ${text.type} on mysql,mariadb
       changes:
         - modifyDataType:
@@ -8955,7 +8973,8 @@ databaseChangeLog:
   - changeSet:
       id: 339
       author: jeff303
-      comment: Added 0.42.0 - modify type of metabase_field.fingerprint from text to
+      comment: >-
+        Added 0.42.0 - modify type of metabase_field.fingerprint from text to
         ${text.type} on mysql,mariadb
       changes:
         - modifyDataType:
@@ -8969,7 +8988,8 @@ databaseChangeLog:
   - changeSet:
       id: 340
       author: jeff303
-      comment: Added 0.42.0 - modify type of metabase_field.has_field_values from text
+      comment: >-
+        Added 0.42.0 - modify type of metabase_field.has_field_values from text
         to ${text.type} on mysql,mariadb
       changes:
         - modifyDataType:
@@ -8983,7 +9003,8 @@ databaseChangeLog:
   - changeSet:
       id: 341
       author: jeff303
-      comment: Added 0.42.0 - modify type of metabase_field.points_of_interest from
+      comment: >-
+        Added 0.42.0 - modify type of metabase_field.points_of_interest from
         text to ${text.type} on mysql,mariadb
       changes:
         - modifyDataType:
@@ -8997,7 +9018,8 @@ databaseChangeLog:
   - changeSet:
       id: 342
       author: jeff303
-      comment: Added 0.42.0 - modify type of metabase_field.settings from text to ${text.type}
+      comment: >-
+        Added 0.42.0 - modify type of metabase_field.settings from text to ${text.type}
         on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9011,7 +9033,8 @@ databaseChangeLog:
   - changeSet:
       id: 343
       author: jeff303
-      comment: Added 0.42.0 - modify type of metabase_fieldvalues.human_readable_values
+      comment: >-
+        Added 0.42.0 - modify type of metabase_fieldvalues.human_readable_values
         from text to ${text.type} on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9025,7 +9048,8 @@ databaseChangeLog:
   - changeSet:
       id: 344
       author: jeff303
-      comment: Added 0.42.0 - modify type of metabase_fieldvalues.values from text to
+      comment: >-
+        Added 0.42.0 - modify type of metabase_fieldvalues.values from text to
         ${text.type} on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9039,7 +9063,8 @@ databaseChangeLog:
   - changeSet:
       id: 345
       author: jeff303
-      comment: Added 0.42.0 - modify type of metabase_table.caveats from text to ${text.type}
+      comment: >-
+        Added 0.42.0 - modify type of metabase_table.caveats from text to ${text.type}
         on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9053,7 +9078,8 @@ databaseChangeLog:
   - changeSet:
       id: 346
       author: jeff303
-      comment: Added 0.42.0 - modify type of metabase_table.description from text to
+      comment: >-
+        Added 0.42.0 - modify type of metabase_table.description from text to
         ${text.type} on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9067,7 +9093,8 @@ databaseChangeLog:
   - changeSet:
       id: 347
       author: jeff303
-      comment: Added 0.42.0 - modify type of metabase_table.points_of_interest from
+      comment: >-
+        Added 0.42.0 - modify type of metabase_table.points_of_interest from
         text to ${text.type} on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9081,7 +9108,8 @@ databaseChangeLog:
   - changeSet:
       id: 348
       author: jeff303
-      comment: Added 0.42.0 - modify type of metric.caveats from text to ${text.type}
+      comment: >-
+        Added 0.42.0 - modify type of metric.caveats from text to ${text.type}
         on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9095,7 +9123,8 @@ databaseChangeLog:
   - changeSet:
       id: 349
       author: jeff303
-      comment: Added 0.42.0 - modify type of metric.definition from text to ${text.type}
+      comment: >-
+        Added 0.42.0 - modify type of metric.definition from text to ${text.type}
         on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9109,7 +9138,8 @@ databaseChangeLog:
   - changeSet:
       id: 350
       author: jeff303
-      comment: Added 0.42.0 - modify type of metric.description from text to ${text.type}
+      comment: >-
+        Added 0.42.0 - modify type of metric.description from text to ${text.type}
         on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9123,7 +9153,8 @@ databaseChangeLog:
   - changeSet:
       id: 351
       author: jeff303
-      comment: Added 0.42.0 - modify type of metric.how_is_this_calculated from text
+      comment: >-
+        Added 0.42.0 - modify type of metric.how_is_this_calculated from text
         to ${text.type} on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9137,7 +9168,8 @@ databaseChangeLog:
   - changeSet:
       id: 352
       author: jeff303
-      comment: Added 0.42.0 - modify type of metric.points_of_interest from text to
+      comment: >-
+        Added 0.42.0 - modify type of metric.points_of_interest from text to
         ${text.type} on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9151,7 +9183,8 @@ databaseChangeLog:
   - changeSet:
       id: 353
       author: jeff303
-      comment: Added 0.42.0 - modify type of moderation_review.text from text to ${text.type}
+      comment: >-
+        Added 0.42.0 - modify type of moderation_review.text from text to ${text.type}
         on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9165,7 +9198,8 @@ databaseChangeLog:
   - changeSet:
       id: 354
       author: jeff303
-      comment: Added 0.42.0 - modify type of native_query_snippet.content from text
+      comment: >-
+        Added 0.42.0 - modify type of native_query_snippet.content from text
         to ${text.type} on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9179,7 +9213,8 @@ databaseChangeLog:
   - changeSet:
       id: 355
       author: jeff303
-      comment: Added 0.42.0 - modify type of native_query_snippet.description from text
+      comment: >-
+        Added 0.42.0 - modify type of native_query_snippet.description from text
         to ${text.type} on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9193,7 +9228,8 @@ databaseChangeLog:
   - changeSet:
       id: 356
       author: jeff303
-      comment: Added 0.42.0 - modify type of pulse.parameters from text to ${text.type}
+      comment: >-
+        Added 0.42.0 - modify type of pulse.parameters from text to ${text.type}
         on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9207,7 +9243,8 @@ databaseChangeLog:
   - changeSet:
       id: 357
       author: jeff303
-      comment: Added 0.42.0 - modify type of pulse_channel.details from text to ${text.type}
+      comment: >-
+        Added 0.42.0 - modify type of pulse_channel.details from text to ${text.type}
         on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9221,7 +9258,8 @@ databaseChangeLog:
   - changeSet:
       id: 358
       author: jeff303
-      comment: Added 0.42.0 - modify type of query.query from text to ${text.type} on
+      comment: >-
+        Added 0.42.0 - modify type of query.query from text to ${text.type} on
         mysql,mariadb
       changes:
         - modifyDataType:
@@ -9235,7 +9273,8 @@ databaseChangeLog:
   - changeSet:
       id: 359
       author: jeff303
-      comment: Added 0.42.0 - modify type of query_execution.error from text to ${text.type}
+      comment: >-
+        Added 0.42.0 - modify type of query_execution.error from text to ${text.type}
         on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9249,7 +9288,8 @@ databaseChangeLog:
   - changeSet:
       id: 360
       author: jeff303
-      comment: Added 0.42.0 - modify type of report_card.dataset_query from text to
+      comment: >-
+        Added 0.42.0 - modify type of report_card.dataset_query from text to
         ${text.type} on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9263,7 +9303,8 @@ databaseChangeLog:
   - changeSet:
       id: 361
       author: jeff303
-      comment: Added 0.42.0 - modify type of report_card.description from text to ${text.type}
+      comment: >-
+        Added 0.42.0 - modify type of report_card.description from text to ${text.type}
         on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9277,7 +9318,8 @@ databaseChangeLog:
   - changeSet:
       id: 362
       author: jeff303
-      comment: Added 0.42.0 - modify type of report_card.embedding_params from text
+      comment: >-
+        Added 0.42.0 - modify type of report_card.embedding_params from text
         to ${text.type} on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9291,7 +9333,8 @@ databaseChangeLog:
   - changeSet:
       id: 363
       author: jeff303
-      comment: Added 0.42.0 - modify type of report_card.result_metadata from text to
+      comment: >-
+        Added 0.42.0 - modify type of report_card.result_metadata from text to
         ${text.type} on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9305,7 +9348,8 @@ databaseChangeLog:
   - changeSet:
       id: 364
       author: jeff303
-      comment: Added 0.42.0 - modify type of report_card.visualization_settings from
+      comment: >-
+        Added 0.42.0 - modify type of report_card.visualization_settings from
         text to ${text.type} on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9319,7 +9363,8 @@ databaseChangeLog:
   - changeSet:
       id: 365
       author: jeff303
-      comment: Added 0.42.0 - modify type of report_dashboard.caveats from text to ${text.type}
+      comment: >-
+        Added 0.42.0 - modify type of report_dashboard.caveats from text to ${text.type}
         on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9333,7 +9378,8 @@ databaseChangeLog:
   - changeSet:
       id: 366
       author: jeff303
-      comment: Added 0.42.0 - modify type of report_dashboard.description from text
+      comment: >-
+        Added 0.42.0 - modify type of report_dashboard.description from text
         to ${text.type} on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9347,7 +9393,8 @@ databaseChangeLog:
   - changeSet:
       id: 367
       author: jeff303
-      comment: Added 0.42.0 - modify type of report_dashboard.embedding_params from
+      comment: >-
+        Added 0.42.0 - modify type of report_dashboard.embedding_params from
         text to ${text.type} on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9361,7 +9408,8 @@ databaseChangeLog:
   - changeSet:
       id: 368
       author: jeff303
-      comment: Added 0.42.0 - modify type of report_dashboard.parameters from text to
+      comment: >-
+        Added 0.42.0 - modify type of report_dashboard.parameters from text to
         ${text.type} on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9375,7 +9423,8 @@ databaseChangeLog:
   - changeSet:
       id: 369
       author: jeff303
-      comment: Added 0.42.0 - modify type of report_dashboard.points_of_interest from
+      comment: >-
+        Added 0.42.0 - modify type of report_dashboard.points_of_interest from
         text to ${text.type} on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9389,7 +9438,8 @@ databaseChangeLog:
   - changeSet:
       id: 370
       author: jeff303
-      comment: Added 0.42.0 - modify type of report_dashboardcard.parameter_mappings
+      comment: >-
+        Added 0.42.0 - modify type of report_dashboardcard.parameter_mappings
         from text to ${text.type} on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9403,7 +9453,8 @@ databaseChangeLog:
   - changeSet:
       id: 371
       author: jeff303
-      comment: Added 0.42.0 - modify type of report_dashboardcard.visualization_settings
+      comment: >-
+        Added 0.42.0 - modify type of report_dashboardcard.visualization_settings
         from text to ${text.type} on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9417,7 +9468,8 @@ databaseChangeLog:
   - changeSet:
       id: 372
       author: jeff303
-      comment: Added 0.42.0 - modify type of revision.message from text to ${text.type}
+      comment: >-
+        Added 0.42.0 - modify type of revision.message from text to ${text.type}
         on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9431,7 +9483,8 @@ databaseChangeLog:
   - changeSet: # this one is run unconditionally so unify the type to ${text.type} across ALL dbs
       id: 373  # this differentiation was first done under changeSet 10 above
       author: jeff303
-      comment: Added 0.42.0 - modify type of revision.object from text to ${text.type}
+      comment: >-
+        Added 0.42.0 - modify type of revision.object from text to ${text.type}
       changes:
         - modifyDataType:
             tableName: revision
@@ -9440,7 +9493,8 @@ databaseChangeLog:
   - changeSet:
       id: 374
       author: jeff303
-      comment: Added 0.42.0 - modify type of segment.caveats from text to ${text.type}
+      comment: >-
+        Added 0.42.0 - modify type of segment.caveats from text to ${text.type}
         on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9454,7 +9508,8 @@ databaseChangeLog:
   - changeSet:
       id: 375
       author: jeff303
-      comment: Added 0.42.0 - modify type of segment.definition from text to ${text.type}
+      comment: >-
+        Added 0.42.0 - modify type of segment.definition from text to ${text.type}
         on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9468,7 +9523,8 @@ databaseChangeLog:
   - changeSet:
       id: 376
       author: jeff303
-      comment: Added 0.42.0 - modify type of segment.description from text to ${text.type}
+      comment: >-
+        Added 0.42.0 - modify type of segment.description from text to ${text.type}
         on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9482,7 +9538,8 @@ databaseChangeLog:
   - changeSet:
       id: 377
       author: jeff303
-      comment: Added 0.42.0 - modify type of segment.points_of_interest from text to
+      comment: >-
+        Added 0.42.0 - modify type of segment.points_of_interest from text to
         ${text.type} on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9496,7 +9553,8 @@ databaseChangeLog:
   - changeSet:
       id: 378
       author: jeff303
-      comment: Added 0.42.0 - modify type of setting.value from text to ${text.type}
+      comment: >-
+        Added 0.42.0 - modify type of setting.value from text to ${text.type}
         on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9510,7 +9568,8 @@ databaseChangeLog:
   - changeSet:
       id: 379
       author: jeff303
-      comment: Added 0.42.0 - modify type of task_history.task_details from text to
+      comment: >-
+        Added 0.42.0 - modify type of task_history.task_details from text to
         ${text.type} on mysql,mariadb
       changes:
         - modifyDataType:
@@ -9524,7 +9583,8 @@ databaseChangeLog:
   - changeSet:
       id: 380
       author: jeff303
-      comment: Added 0.42.0 - modify type of view_log.metadata from text to ${text.type}
+      comment: >-
+        Added 0.42.0 - modify type of view_log.metadata from text to ${text.type}
         on mysql,mariadb
       changes:
         - modifyDataType:
