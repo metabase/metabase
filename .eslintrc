@@ -3,7 +3,10 @@
     "strict": [2, "never"],
     "no-undef": 2,
     "no-var": 1,
-    "no-unused-vars": [1, { "vars": "all", "args": "none" }],
+    "no-unused-vars": [
+      1,
+      { "vars": "all", "args": "none", "varsIgnorePattern": "^_" }
+    ],
     "no-empty": [1, { "allowEmptyCatch": true }],
     "curly": [1, "all"],
     "eqeqeq": [1, "smart"],
