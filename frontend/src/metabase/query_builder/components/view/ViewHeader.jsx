@@ -1,31 +1,31 @@
-import React, { useEffect, useCallback, useState } from "react";
+import React, { useEffect } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
 import { Box } from "grid-styled";
 
-import Link from "metabase/components/Link";
 import ButtonBar from "metabase/components/ButtonBar";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
-import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQuestionHeaderButton/SavedQuestionHeaderButton";
-import ViewSection, { ViewHeading, ViewSubHeading } from "./ViewSection";
+import Link from "metabase/components/Link";
 import ViewButton from "metabase/query_builder/components/view/ViewButton";
 
 import { usePrevious } from "metabase/hooks/use-previous";
 import { useToggle } from "metabase/hooks/use-toggle";
+
+import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQuestionHeaderButton/SavedQuestionHeaderButton";
+
+import RunButtonWithTooltip from "../RunButtonWithTooltip";
 
 import QuestionDataSource from "./QuestionDataSource";
 import QuestionDescription from "./QuestionDescription";
 import QuestionLineage from "./QuestionLineage";
 import QuestionPreviewToggle from "./QuestionPreviewToggle";
 import QuestionNotebookButton from "./QuestionNotebookButton";
-
 import QuestionFilters, { QuestionFilterWidget } from "./QuestionFilters";
 import { QuestionSummarizeWidget } from "./QuestionSummaries";
-
 import NativeQueryButton from "./NativeQueryButton";
-import RunButtonWithTooltip from "../RunButtonWithTooltip";
+import ViewSection, { ViewHeading, ViewSubHeading } from "./ViewSection";
 import { SavedQuestionHeaderButtonContainer } from "./ViewHeader.styled";
 
 const viewTitleHeaderPropTypes = {
