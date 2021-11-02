@@ -8661,6 +8661,16 @@ databaseChangeLog:
                   name: moderated_item_id
 
   - changeSet:
+      id: 383
+      author: jeff303
+      comment: Added 0.42.0 - fix type of query_cache.results on upgrade
+      changes:
+        - modifyDataType:
+            tableName: query_cache
+            columnName: results
+            newDataType: ${blob.type}
+
+  - changeSet:
       id: v42.00-000
       author: camsaul
       comment: Added 0.42.0 Remove unused column (#5240)
