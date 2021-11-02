@@ -7,6 +7,7 @@ import {
   DatabaseContent,
   DatabaseDescription,
   DatabaseIcon,
+  DatabaseIconContainer,
   DatabaseSpinner,
   DatabaseTitle,
   Popup,
@@ -39,7 +40,13 @@ const SyncStatus = ({ databases }) => {
                 {getDescriptionMessage(database)}
               </DatabaseDescription>
             </DatabaseContent>
-            <DatabaseSpinner size={24} borderWidth={3} />
+            {database.initial_sync ? (
+              <DatabaseIconContainer>
+                <Icon name="check" size={12} />
+              </DatabaseIconContainer>
+            ) : (
+              <DatabaseSpinner size={24} borderWidth={3} />
+            )}
           </DatabaseCard>
         ))}
       </PopupContent>

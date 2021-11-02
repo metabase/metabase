@@ -75,3 +75,14 @@ export const DatabaseSpinner = styled(LoadingSpinner)`
   justify-content: center;
   color: ${color("brand")};
 `;
+
+export const DatabaseIconContainer = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 1rem;
+  color: ${color("white")};
+  background-color: ${color("accent1")};
+`;
