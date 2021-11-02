@@ -39,7 +39,7 @@ describe("scenarios > datasets", () => {
 
       popover().within(() => {
         testDataPickerSearch({
-          inputPlaceholderText: "Search for some data...",
+          inputPlaceholderText: "Search for some data…",
           query: "Ord",
           datasets: true,
           cards: true,
@@ -52,7 +52,7 @@ describe("scenarios > datasets", () => {
           cy.findByText("Orders, Count").should("not.exist");
         });
         testDataPickerSearch({
-          inputPlaceholderText: "Search for a model...",
+          inputPlaceholderText: "Search for a model…",
           query: "Ord",
           datasets: true,
         });
@@ -64,7 +64,7 @@ describe("scenarios > datasets", () => {
           cy.findByText("Orders").should("not.exist");
         });
         testDataPickerSearch({
-          inputPlaceholderText: "Search for a question...",
+          inputPlaceholderText: "Search for a question…",
           query: "Ord",
           cards: true,
         });
@@ -74,7 +74,7 @@ describe("scenarios > datasets", () => {
         cy.findByText("Sample Dataset");
         cy.findByText("Saved Questions").should("not.exist");
         testDataPickerSearch({
-          inputPlaceholderText: "Search for a table...",
+          inputPlaceholderText: "Search for a table…",
           query: "Ord",
           tables: true,
         });

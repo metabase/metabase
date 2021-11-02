@@ -872,14 +872,14 @@ export class UnconnectedDataSelector extends Component {
       isSavedQuestionPickerShown,
     } = this.state;
     if (activeStep === DATA_BUCKET_STEP) {
-      return t`Search for some data...`;
+      return t`Search for some data…`;
     }
     if (selectedDataBucketId === DATA_BUCKET.DATASETS) {
-      return t`Search for a model...`;
+      return t`Search for a model…`;
     }
     return isSavedQuestionPickerShown
-      ? t`Search for a question...`
-      : t`Search for a table...`;
+      ? t`Search for a question…`
+      : t`Search for a table…`;
   };
 
   getSearchModels = () => {

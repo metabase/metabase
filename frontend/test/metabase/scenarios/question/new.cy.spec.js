@@ -108,7 +108,7 @@ describe("scenarios > question > new", () => {
     describe("on a (simple) question page", () => {
       beforeEach(() => {
         cy.findByText("Simple question").click();
-        cy.findByPlaceholderText("Search for a table...").type("Ord");
+        cy.findByPlaceholderText("Search for a table…").type("Ord");
       });
 
       it("should allow to search saved questions", () => {
@@ -130,7 +130,7 @@ describe("scenarios > question > new", () => {
     describe("on a (custom) question page", () => {
       beforeEach(() => {
         cy.findByText("Custom question").click();
-        cy.findByPlaceholderText("Search for a table...").type("Ord");
+        cy.findByPlaceholderText("Search for a table…").type("Ord");
       });
 
       it("should allow to search saved questions", () => {
@@ -159,7 +159,7 @@ describe("scenarios > question > new", () => {
         expect("Unexpected call to /api/search").to.be.false;
       });
       cy.findByText("Custom question").click();
-      cy.findByPlaceholderText("Search for a table...").type("  ");
+      cy.findByPlaceholderText("Search for a table…").type("  ");
     });
   });
 
@@ -187,7 +187,7 @@ describe("scenarios > question > new", () => {
       });
 
       it("should perform a search scoped to saved questions", () => {
-        cy.findByPlaceholderText("Search for a question...").type("Grouped");
+        cy.findByPlaceholderText("Search for a question…").type("Grouped");
         cy.findByText("Orders, Count, Grouped by Created At (year)").click();
         cy.findByText("1,994");
       });
@@ -230,7 +230,7 @@ describe("scenarios > question > new", () => {
       });
 
       it("should perform a search scoped to saved questions", () => {
-        cy.findByPlaceholderText("Search for a question...").type("Grouped");
+        cy.findByPlaceholderText("Search for a question…").type("Grouped");
         cy.findByText("Orders, Count, Grouped by Created At (year)").click();
 
         visualize();
