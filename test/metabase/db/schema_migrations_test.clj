@@ -8,18 +8,16 @@
   5. verify that data looks like what we'd expect after running migration(s)
 
   See `metabase.db.schema-migrations-test.impl` for the implementation of this functionality."
-  (:require [clojure.test :refer :all]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
+            [clojure.test :refer :all]
             [metabase.db.schema-migrations-test.impl :as impl]
+            [metabase.driver :as driver]
             [metabase.models :refer [Database Field Table]]
             [metabase.models.user :refer [User]]
             [metabase.test.util :as tu]
             [metabase.util :as u]
-            [toucan.db :as db]
-            [metabase.test :as mt]
-            [metabase.driver :as driver]
-            [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [metabase.test.data.interface :as tx])
+            [toucan.db :as db])
   (:import java.util.UUID))
 
 (deftest database-position-test
