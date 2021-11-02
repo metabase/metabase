@@ -29,7 +29,7 @@ export function currentUserPersonalCollections(collectionList, userID) {
 
 export function getParentPersonalCollection(collectionId, collectionById) {
   const targetCollection = collectionById[collectionId];
-  if (targetCollection.personal_owner_id) {
+  if (targetCollection?.personal_owner_id) {
     return [targetCollection];
   }
   const ancestors = targetCollection?.effective_ancestors;
@@ -38,10 +38,11 @@ export function getParentPersonalCollection(collectionId, collectionById) {
       const collection = collectionById[ancestor.id];
       return collection && collection.personal_owner_id;
     });
-    return [collectionById[parent.id]];
-  } else {
-    return [];
+    if (parent) {
+      return [collectionById[parent.id]];
+    }
   }
+  return [];
 }
 
 export function isAnotherUsersPersonalCollection(
