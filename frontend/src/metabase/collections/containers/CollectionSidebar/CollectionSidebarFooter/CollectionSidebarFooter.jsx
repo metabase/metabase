@@ -15,9 +15,17 @@ const propTypes = {
   onClose: PropTypes.func,
   onOpen: PropTypes.func,
   otherCollections: PropTypes.arrayOf(PropTypes.object),
+  openCollections: PropTypes.arrayOf(PropTypes.object),
 };
 
-export default function CollectionSidebarFooter({ isAdmin }) {
+export default function CollectionSidebarFooter({ isAdmin,
+  isAnotherUserCollectionOpened,
+  openCollections,
+  onClose,
+  onOpen,
+  otherCollections,
+  collectionId,
+}) {
   return (
     <Container>
       {isAdmin && isAnotherUserCollectionOpened && (

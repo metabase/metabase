@@ -28,6 +28,8 @@ export function currentUserPersonalCollections(collectionList, userID) {
 }
 
 export function getParentPersonalCollection(collectionId, collectionById) {
+  console.log(collectionId);
+  console.log(collectionById);
   const targetCollection = collectionById[collectionId];
   if (targetCollection.personal_owner_id) {
     return [targetCollection];

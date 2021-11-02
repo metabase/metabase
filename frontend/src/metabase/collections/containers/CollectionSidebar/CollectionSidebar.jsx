@@ -47,6 +47,7 @@ CollectionSidebar.propTypes = {
   currentUser: PropTypes.object.isRequired,
   collectionId: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   collections: PropTypes.arrayOf(PropTypes.object).isRequired,
+  collectionsById: PropTypes.object,
   isRoot: PropTypes.bool,
   allFetched: PropTypes.bool,
   loading: PropTypes.bool,
@@ -58,8 +59,8 @@ CollectionSidebar.propTypes = {
 function CollectionSidebar({
   currentUser,
   collectionId,
-  collectionsById,
   collections,
+  collectionsById,
   isRoot,
   allFetched,
   loading,
@@ -89,7 +90,7 @@ function CollectionSidebar({
   );
 
   const isAnotherUserCollectionOpened = isAnotherUsersPersonalCollection(
-    parsetInt(collectionId),
+    parseInt(collectionId),
     collectionsById,
     currentUser.id,
   );
@@ -127,12 +128,13 @@ function CollectionSidebar({
           />
           <Footer
             isAdmin={currentUser.is_superuser}
+            isAnotherUserCollectionOpened={isAnotherUserCollectionOpened}
             openCollections={openCollections}
             collectionId={collectionId}
             onOpen={onOpen}
             onClose={onClose}
             otherCollections={getParentPersonalCollection(
-              parseInt(collectionId),
+              collectionId,
               collectionsById,
             )}
           />
