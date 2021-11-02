@@ -148,7 +148,7 @@ describe("ViewHeader", () => {
     },
     SAVED_NATIVE_QUESTION: {
       question: getSavedNativeQuestion(),
-      questionType: "native question",
+      questionType: "saved native question",
     },
   };
 
@@ -160,6 +160,10 @@ describe("ViewHeader", () => {
   const NATIVE_TEST_CASES = [
     TEST_CASE.SAVED_NATIVE_QUESTION,
     TEST_CASE.NATIVE_QUESTION,
+  ];
+  const SAVED_QUESTIONS_TEST_CASES = [
+    TEST_CASE.SAVED_GUI_QUESTION,
+    TEST_CASE.SAVED_NATIVE_QUESTION,
   ];
 
   describe("Common", () => {
@@ -271,6 +275,40 @@ describe("ViewHeader", () => {
       });
     });
   });
+
+  describe("Saved", () => {
+    SAVED_QUESTIONS_TEST_CASES.forEach(testCase => {
+      const { question, questionType } = testCase;
+
+      describe(questionType, () => {
+        beforeEach(() => {
+          xhrMock.setup();
+          xhrMock.get("/api/collection/root", {
+            body: JSON.stringify({
+              id: "root",
+              name: "Our analytics",
+            }),
+          });
+        });
+
+        afterEach(() => {
+          xhrMock.teardown();
+        });
+
+        it("displays collection where a question is saved to", async () => {
+          setup({ question });
+          await waitFor(() => screen.queryByText("Our analytics"));
+          expect(screen.queryByText("Our analytics")).toBeInTheDocument();
+        });
+
+        it("opens details sidebar on question name click", () => {
+          const { onOpenQuestionDetails } = setup({ question });
+          fireEvent.click(screen.getByText(question.displayName()));
+          expect(onOpenQuestionDetails).toHaveBeenCalled();
+        });
+      });
+    });
+  });
 });
 
 describe("ViewHeader | Ad-hoc GUI question", () => {
@@ -281,28 +319,6 @@ describe("ViewHeader | Ad-hoc GUI question", () => {
     fireEvent.click(screen.getByText(tableName));
 
     expect(onOpenQuestionDetails).not.toHaveBeenCalled();
-  });
-});
-
-describe("ViewHeader | Saved GUI question", () => {
-  beforeEach(() => {
-    xhrMock.setup();
-  });
-
-  afterEach(() => {
-    xhrMock.teardown();
-  });
-
-  it("displays collection where a question is saved to", async () => {
-    const { collection } = setupSavedGUI();
-    await waitFor(() => screen.queryByText(collection.name));
-    expect(screen.queryByText(collection.name)).toBeInTheDocument();
-  });
-
-  it("opens details sidebar on question name click", () => {
-    const { question, onOpenQuestionDetails } = setupSavedGUI();
-    fireEvent.click(screen.getByText(question.displayName()));
-    expect(onOpenQuestionDetails).toHaveBeenCalled();
   });
 });
 
@@ -332,18 +348,6 @@ describe("View Header | Saved native question", () => {
     const { question } = setupSavedNative();
     const databaseName = question.database().displayName();
     expect(screen.queryByText(databaseName)).toBeInTheDocument();
-  });
-
-  it("displays collection where a question is saved to", async () => {
-    const { collection } = setupSavedNative();
-    await waitFor(() => screen.queryByText(collection.name));
-    expect(screen.queryByText(collection.name)).toBeInTheDocument();
-  });
-
-  it("opens details sidebar on question name click", () => {
-    const { question, onOpenQuestionDetails } = setupSavedNative();
-    fireEvent.click(screen.getByText(question.displayName()));
-    expect(onOpenQuestionDetails).toHaveBeenCalled();
   });
 
   it("offers to explore query results", () => {
