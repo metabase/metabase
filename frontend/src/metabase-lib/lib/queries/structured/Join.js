@@ -379,7 +379,9 @@ export default class Join extends MBQLObjectClause {
       count: dimensions.length,
       dimensions: dimensions,
       fks: [],
+      overrideDefaultAutobin: true,
     };
+
     // add all previous joined fields
     const joins = query.joins();
     for (let i = 0; i < this.index(); i++) {
@@ -466,6 +468,7 @@ export default class Join extends MBQLObjectClause {
       count: dimensions.length,
       dimensions: dimensions,
       fks: [],
+      overrideDefaultAutobin: true,
     });
   }
 
