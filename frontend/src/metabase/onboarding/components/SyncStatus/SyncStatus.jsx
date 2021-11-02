@@ -7,6 +7,7 @@ import {
   DatabaseContent,
   DatabaseDescription,
   DatabaseIcon,
+  DatabaseSpinner,
   DatabaseTitle,
   SyncStatusRoot,
 } from "./SyncStatus.styled";
@@ -31,6 +32,7 @@ const SyncStatus = ({ databases }) => {
               {getDatabaseDescription(database)}
             </DatabaseDescription>
           </DatabaseContent>
+          <DatabaseSpinner size={24} borderWidth={3} />
         </DatabaseCard>
       ))}
     </SyncStatusRoot>

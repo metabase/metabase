@@ -1,10 +1,12 @@
 import styled from "styled-components";
 import { color } from "metabase/lib/colors";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 export const SyncStatusRoot = styled.div`
   position: fixed;
   right: 1.5rem;
   bottom: 1.5rem;
+  min-width: 16rem;
   border-radius: 6px;
   background-color: ${color("white")};
   box-shadow: 0 1px 12px ${color("shadow")};
@@ -45,4 +47,11 @@ export const DatabaseDescription = styled.div`
   font-weight: bold;
   line-height: 0.8125rem;
   margin-top: 0.25rem;
+`;
+
+export const DatabaseSpinner = styled(LoadingSpinner)`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: ${color("brand")};
 `;
