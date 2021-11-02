@@ -84,8 +84,9 @@ function getSavedNativeQuestion(overrides) {
   });
 }
 
-function setup({ question, ...props } = {}) {
+function setup({ question, isRunnable = true, ...props } = {}) {
   const callbacks = {
+    runQuestionQuery: jest.fn(),
     setQueryBuilderMode: jest.fn(),
     onOpenQuestionDetails: jest.fn(),
     onCloseQuestionDetails: jest.fn(),
@@ -97,7 +98,12 @@ function setup({ question, ...props } = {}) {
   };
 
   renderWithProviders(
-    <ViewTitleHeader {...callbacks} {...props} question={question} />,
+    <ViewTitleHeader
+      {...callbacks}
+      {...props}
+      isRunnable={isRunnable}
+      question={question}
+    />,
     {
       withRouter: true,
       withSampleDataset: true,
@@ -181,6 +187,19 @@ describe("ViewHeader", () => {
         it(`does not offer to save if it's not dirty`, () => {
           setup({ question, isDirty: false });
           expect(screen.queryByText("Save")).not.toBeInTheDocument();
+        });
+
+        it("offers to refresh query results", () => {
+          const { runQuestionQuery } = setup({ question });
+          fireEvent.click(screen.getByLabelText("refresh icon"));
+          expect(runQuestionQuery).toHaveBeenCalledWith({ ignoreCache: true });
+        });
+
+        it("does not offer to refresh query results if question is not runnable", () => {
+          setup({ question, isRunnable: false });
+          expect(
+            screen.queryByLabelText("refresh icon"),
+          ).not.toBeInTheDocument();
         });
       });
     });
@@ -272,6 +291,13 @@ describe("ViewHeader", () => {
         it(`does not offer to summarize query results`, () => {
           setup({ question });
           expect(screen.queryByText("Summarize")).not.toBeInTheDocument();
+        });
+
+        it("does not offer to refresh query results if native editor is open", () => {
+          setup({ question, isNativeEditorOpen: true });
+          expect(
+            screen.queryByLabelText("refresh icon"),
+          ).not.toBeInTheDocument();
         });
       });
     });
