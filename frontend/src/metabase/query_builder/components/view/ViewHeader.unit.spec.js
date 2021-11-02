@@ -91,15 +91,15 @@ function setupSavedGUI(props = {}) {
   };
 }
 
-describe("ViewHeader | Common", () => {
+describe("ViewHeader", () => {
   const TEST_CASE = {
     SAVED_GUI_QUESTION: {
       question: getSavedGUIQuestion(),
-      questionType: "a saved GUI question",
+      questionType: "saved GUI question",
     },
     AD_HOC_QUESTION: {
       question: getAdHocQuestion(),
-      questionType: "an ad-hoc question",
+      questionType: "ad-hoc GUI question",
     },
   };
 
@@ -109,101 +109,100 @@ describe("ViewHeader | Common", () => {
     TEST_CASE.AD_HOC_QUESTION,
   ];
 
-  ALL_TEST_CASES.forEach(testCase => {
-    const { question, questionType } = testCase;
+  describe("Common", () => {
+    ALL_TEST_CASES.forEach(testCase => {
+      const { question, questionType } = testCase;
 
-    it(`offers to save ${questionType}`, () => {
-      const { onOpenModal } = setup({ question, isDirty: true });
-      fireEvent.click(screen.getByText("Save"));
-      expect(onOpenModal).toHaveBeenCalledWith("save");
-    });
+      describe(questionType, () => {
+        it(`offers to save`, () => {
+          const { onOpenModal } = setup({ question, isDirty: true });
+          fireEvent.click(screen.getByText("Save"));
+          expect(onOpenModal).toHaveBeenCalledWith("save");
+        });
 
-    it(`does not offer to save ${questionType} if it's not dirty`, () => {
-      setup({ question, isDirty: false });
-      expect(screen.queryByText("Save")).not.toBeInTheDocument();
+        it(`does not offer to save if it's not dirty`, () => {
+          setup({ question, isDirty: false });
+          expect(screen.queryByText("Save")).not.toBeInTheDocument();
+        });
+      });
     });
   });
 
-  GUI_TEST_CASES.forEach(testCase => {
-    const { question, questionType } = testCase;
+  describe("GUI", () => {
+    GUI_TEST_CASES.forEach(testCase => {
+      const { question, questionType } = testCase;
 
-    it(`displays database and table names for ${questionType}`, () => {
-      setup({ question });
-      const databaseName = question.database().displayName();
-      const tableName = question.table().displayName();
+      describe(questionType, () => {
+        it(`displays database and table names`, () => {
+          setup({ question });
+          const databaseName = question.database().displayName();
+          const tableName = question.table().displayName();
 
-      expect(screen.queryByText(databaseName)).toBeInTheDocument();
-      expect(screen.queryByText(tableName)).toBeInTheDocument();
-    });
+          expect(screen.queryByText(databaseName)).toBeInTheDocument();
+          expect(screen.queryByText(tableName)).toBeInTheDocument();
+        });
 
-    it(`offers to filter ${questionType} results`, () => {
-      const { onAddFilter } = setup({
-        question,
-        queryBuilderMode: "view",
+        it(`offers to filter query results`, () => {
+          const { onAddFilter } = setup({
+            question,
+            queryBuilderMode: "view",
+          });
+          fireEvent.click(screen.getByText("Filter"));
+          expect(onAddFilter).toHaveBeenCalled();
+        });
+
+        it(`offers to summarize query results`, () => {
+          const { onEditSummary } = setup({
+            question,
+            queryBuilderMode: "view",
+          });
+          fireEvent.click(screen.getByText("Summarize"));
+          expect(onEditSummary).toHaveBeenCalled();
+        });
+
+        it(`allows to open notebook editor`, () => {
+          const { setQueryBuilderMode } = setup({
+            question,
+            queryBuilderMode: "view",
+          });
+          fireEvent.click(screen.getByLabelText("notebook icon"));
+          expect(setQueryBuilderMode).toHaveBeenCalledWith("notebook");
+        });
+
+        it(`allows to close notebook editor`, () => {
+          const { setQueryBuilderMode } = setup({
+            question,
+            queryBuilderMode: "notebook",
+          });
+          fireEvent.click(screen.getByLabelText("notebook icon"));
+          expect(setQueryBuilderMode).toHaveBeenCalledWith("view");
+        });
+
+        it(`does not offer to filter query results in notebook mode`, () => {
+          setup({ question, queryBuilderMode: "notebook" });
+          expect(screen.queryByText("Filter")).not.toBeInTheDocument();
+        });
+
+        it(`does not offer to filter query in detail view`, () => {
+          setup({ question, isObjectDetail: true });
+          expect(screen.queryByText("Filter")).not.toBeInTheDocument();
+        });
+
+        it(`does not offer to summarize query results in notebook mode`, () => {
+          setup({ question, queryBuilderMode: "notebook" });
+          expect(screen.queryByText("Summarize")).not.toBeInTheDocument();
+        });
+
+        it(`does not offer to summarize query in detail view`, () => {
+          setup({ question, isObjectDetail: true });
+          expect(screen.queryByText("Summarize")).not.toBeInTheDocument();
+        });
       });
-      fireEvent.click(screen.getByText("Filter"));
-      expect(onAddFilter).toHaveBeenCalled();
-    });
-
-    it(`offers to summarize ${questionType} results`, () => {
-      const { onEditSummary } = setup({
-        question,
-        queryBuilderMode: "view",
-      });
-      fireEvent.click(screen.getByText("Summarize"));
-      expect(onEditSummary).toHaveBeenCalled();
-    });
-
-    it(`allows to open notebook editor for ${questionType}`, () => {
-      const { setQueryBuilderMode } = setup({
-        question,
-        queryBuilderMode: "view",
-      });
-      fireEvent.click(screen.getByLabelText("notebook icon"));
-      expect(setQueryBuilderMode).toHaveBeenCalledWith("notebook");
-    });
-
-    it(`allows to close notebook editor for ${questionType}`, () => {
-      const { setQueryBuilderMode } = setup({
-        question,
-        queryBuilderMode: "notebook",
-      });
-      fireEvent.click(screen.getByLabelText("notebook icon"));
-      expect(setQueryBuilderMode).toHaveBeenCalledWith("view");
-    });
-
-    it(`does not offer to filter ${questionType} results in notebook mode`, () => {
-      setup({ question, queryBuilderMode: "notebook" });
-      expect(screen.queryByText("Filter")).not.toBeInTheDocument();
-    });
-
-    it(`does not offer to filter ${questionType} in detail view`, () => {
-      setup({ question, isObjectDetail: true });
-      expect(screen.queryByText("Filter")).not.toBeInTheDocument();
-    });
-
-    it(`does not offer to summarize ${questionType} results in notebook mode`, () => {
-      setup({ question, queryBuilderMode: "notebook" });
-      expect(screen.queryByText("Summarize")).not.toBeInTheDocument();
-    });
-
-    it(`does not offer to summarize ${questionType} in detail view`, () => {
-      setup({ question, isObjectDetail: true });
-      expect(screen.queryByText("Summarize")).not.toBeInTheDocument();
     });
   });
 });
 
 describe("ViewHeader | Ad-hoc GUI question", () => {
-  it("displays database and table names", () => {
-    const { question } = setupAdHoc();
-    const databaseName = question.database().displayName();
-    const tableName = question.table().displayName();
-
-    expect(screen.queryByText(databaseName)).toBeInTheDocument();
-    expect(screen.queryByText(tableName)).toBeInTheDocument();
-  });
-
   it("does not open details sidebar on table name click", () => {
     const { question, onOpenQuestionDetails } = setupAdHoc();
     const tableName = question.table().displayName();
