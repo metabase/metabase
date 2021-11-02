@@ -191,7 +191,7 @@ class Settings {
 
   docsUrl(page = "", anchor = "") {
     let { tag } = this.get("version", {});
-    const matches = tag.match(/v[01]\.(\d+)(?:\.\d+)?(-.*)?/);
+    const matches = tag && tag.match(/v[01]\.(\d+)(?:\.\d+)?(-.*)?/);
 
     if (matches) {
       if (

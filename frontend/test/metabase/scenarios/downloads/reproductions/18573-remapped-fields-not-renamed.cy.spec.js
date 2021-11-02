@@ -7,21 +7,23 @@ import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATASET;
 
-const query = { "source-table": ORDERS_ID, limit: 5 };
-
 const questionDetails = {
   dataset_query: {
     type: "query",
-    query,
+    query: { "source-table": ORDERS_ID, limit: 2 },
     database: 1,
+  },
+  visualization_settings: {
+    column_settings: {
+      [`["ref",["field",${ORDERS.PRODUCT_ID},null]]`]: {
+        column_title: "Foo",
+      },
+    },
   },
 };
 
-const testCases = ["csv", "xlsx"];
-
-describe("issue 18440", () => {
+describe.skip("issue 18573", () => {
   beforeEach(() => {
-    cy.intercept("POST", "/api/card").as("saveQuestion");
     cy.intercept("POST", "/api/dataset").as("dataset");
 
     restore();
@@ -35,34 +37,20 @@ describe("issue 18440", () => {
     });
   });
 
-  testCases.forEach(fileType => {
-    it(`export should include a column with remapped values for ${fileType} (metabase#18440-1)`, () => {
+  ["csv", "xlsx"].forEach(fileType => {
+    it(`for the remapped columns, it should preserve renamed column name in exports for ${fileType} (metabase#18573)`, () => {
       visitQuestionAdhoc(questionDetails);
       cy.wait("@dataset");
 
-      cy.findByText("Product ID");
+      cy.findByText("Foo");
       cy.findByText("Awesome Concrete Shoes");
 
       downloadAndAssert({ fileType }, assertion);
-    });
-
-    it(`export should include a column with remapped values for ${fileType} for a saved question (metabase#18440-2)`, () => {
-      cy.createQuestion({ query }).then(({ body: { id } }) => {
-        cy.intercept("POST", `/api/card/${id}/query`).as("cardQuery");
-
-        cy.visit(`/question/${id}`);
-        cy.wait("@cardQuery");
-
-        cy.findByText("Product ID");
-        cy.findByText("Awesome Concrete Shoes");
-
-        downloadAndAssert({ fileType, questionId: id }, assertion);
-      });
     });
   });
 });
 
 function assertion(sheet) {
-  expect(sheet["C1"].v).to.eq("Product ID");
+  expect(sheet["C1"].v).to.eq("Foo");
   expect(sheet["C2"].v).to.eq("Awesome Concrete Shoes");
 }
