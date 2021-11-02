@@ -48,9 +48,9 @@ export default class LeafletTilePinMap extends LeafletMap {
       "/" +
       coord.y +
       "/" +
-      latitudeField.id +
+      (latitudeField.id || latitudeField.name) +
       "/" +
-      longitudeField.id +
+      (longitudeField.id || longitudeField.name) +
       "/" +
       latitudeIndex +
       "/" +
