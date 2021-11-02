@@ -250,6 +250,34 @@ describe("Dimension", () => {
           expect(dimension.field().metadata).toEqual(metadata);
           expect(dimension.field().displayName()).toEqual("Total");
         });
+
+        it("should return the correct Field from a query's result_metadata when the metadata object is missing the Field", () => {
+          const emptyMetadata = {
+            field: () => {},
+            table: () => {},
+          };
+
+          const question = ORDERS.question().setResultsMetadata({
+            columns: [ORDERS.TOTAL],
+          });
+          const query = new StructuredQuery(question, {
+            type: "query",
+            database: SAMPLE_DATASET.id,
+            query: {
+              "source-table": ORDERS.id,
+            },
+          });
+          const dimension = Dimension.parseMBQL(
+            ["field", ORDERS.TOTAL.id, null],
+            emptyMetadata,
+            query,
+          );
+
+          const field = dimension.field();
+
+          expect(field.id).toEqual(ORDERS.TOTAL.id);
+          expect(field.base_type).toEqual("type/Float");
+        });
       });
     });
   });

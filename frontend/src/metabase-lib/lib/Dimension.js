@@ -545,14 +545,33 @@ export class FieldDimension extends Dimension {
 
   field(): {} {
     if (this.isIntegerFieldId()) {
-      return (
-        (this._metadata && this._metadata.field(this.fieldIdOrName())) ||
-        new Field({
-          id: this._fieldIdOrName,
-          metadata: this._metadata,
-          query: this._query,
-        })
-      );
+      const field = this._metadata?.field(this.fieldIdOrName());
+      if (field) {
+        return field;
+      }
+
+      // if the field isn't in metadata, there _might_ be a card tied to this Dimension
+      // if so, check the card's result_metadata
+      const question = this.query()?.question();
+      if (question != null) {
+        const field = _.findWhere(question.getResultMetadata(), {
+          id: this.fieldIdOrName(),
+        });
+
+        if (field) {
+          return new Field({
+            ...field,
+            metadata: this._metadata,
+            query: this._query,
+          });
+        }
+      }
+
+      return new Field({
+        id: this._fieldIdOrName,
+        metadata: this._metadata,
+        query: this._query,
+      });
     }
 
     // look for a "virtual" field on the query's table or question
