@@ -8,10 +8,13 @@ import { Box } from "grid-styled";
 import StepTitle from "./StepTitle";
 import CollapsedStep from "./CollapsedStep";
 
-import MetabaseAnalytics from "metabase/lib/analytics";
-
+import { trackStructEvent } from "metabase/lib/analytics";
 import { DEFAULT_SCHEDULES } from "metabase/admin/databases/database";
 import Databases from "metabase/entities/databases";
+import {
+  trackAddDataLaterClicked,
+  trackDatabaseSelected,
+} from "metabase/setup/tracking";
 
 export default class DatabaseConnectionStep extends Component {
   static propTypes = {
@@ -21,13 +24,9 @@ export default class DatabaseConnectionStep extends Component {
 
     formName: PropTypes.string.isRequired,
     databaseDetails: PropTypes.object,
+    selectedDatabaseEngine: PropTypes.string,
     validateDatabase: PropTypes.func.isRequired,
     setDatabaseDetails: PropTypes.func.isRequired,
-  };
-
-  chooseDatabaseEngine = e => {
-    // FIXME:
-    // MetabaseAnalytics.trackEvent("Setup", "Choose Database", engine);
   };
 
   handleSubmit = async database => {
@@ -49,7 +48,7 @@ export default class DatabaseConnectionStep extends Component {
       }
 
       if (formError) {
-        MetabaseAnalytics.trackEvent(
+        trackStructEvent(
           "Setup",
           "Error",
           "database validation: " + database.engine,
@@ -81,18 +80,36 @@ export default class DatabaseConnectionStep extends Component {
         details: database,
       });
 
-      MetabaseAnalytics.trackEvent("Setup", "Database Step", database.engine);
+      trackStructEvent("Setup", "Database Step", database.engine);
     }
   };
 
   skipDatabase = () => {
-    this.props.setDatabaseDetails({
-      nextStep: this.props.stepNumber + 2,
+    const {
+      stepNumber,
+      selectedDatabaseEngine,
+      setDatabaseDetails,
+    } = this.props;
+
+    setDatabaseDetails({
+      nextStep: stepNumber + 2,
       details: null,
     });
 
-    MetabaseAnalytics.trackEvent("Setup", "Database Step");
+    trackStructEvent("Setup", "Database Step");
+    trackAddDataLaterClicked(selectedDatabaseEngine);
   };
+
+  componentDidUpdate(prevProps) {
+    const { activeStep, stepNumber, selectedDatabaseEngine } = this.props;
+
+    if (
+      activeStep === stepNumber &&
+      selectedDatabaseEngine !== prevProps.selectedDatabaseEngine
+    ) {
+      trackDatabaseSelected(selectedDatabaseEngine);
+    }
+  }
 
   render() {
     const {

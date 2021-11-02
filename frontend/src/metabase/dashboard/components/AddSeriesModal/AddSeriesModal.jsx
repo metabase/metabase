@@ -8,7 +8,7 @@ import { createSelector } from "reselect";
 
 import Visualization from "metabase/visualizations/components/Visualization";
 
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
 
 import Questions from "metabase/entities/questions";
@@ -90,7 +90,7 @@ export default class AddSeriesModal extends Component {
             series: this.state.series.concat(card),
           });
 
-          MetabaseAnalytics.trackEvent(
+          MetabaseAnalytics.trackStructEvent(
             "Dashboard",
             "Add Series",
             card.display + ", success",
@@ -102,7 +102,7 @@ export default class AddSeriesModal extends Component {
           });
           setTimeout(() => this.setState({ state: null }), 2000);
 
-          MetabaseAnalytics.trackEvent(
+          MetabaseAnalytics.trackStructEvent(
             "Dashboard",
             "Add Series",
             card.dataset_query.type + ", " + card.display + ", fail",
@@ -113,7 +113,7 @@ export default class AddSeriesModal extends Component {
           series: this.state.series.filter(c => c.id !== card.id),
         });
 
-        MetabaseAnalytics.trackEvent("Dashboard", "Remove Series");
+        MetabaseAnalytics.trackStructEvent("Dashboard", "Remove Series");
       }
     } catch (e) {
       console.error("AddSeriesModal handleQuestionChange", e);
@@ -127,7 +127,7 @@ export default class AddSeriesModal extends Component {
 
   handleRemoveSeries(card) {
     this.setState({ series: this.state.series.filter(c => c.id !== card.id) });
-    MetabaseAnalytics.trackEvent("Dashboard", "Remove Series");
+    MetabaseAnalytics.trackStructEvent("Dashboard", "Remove Series");
   }
 
   handleDone = () => {
@@ -136,7 +136,11 @@ export default class AddSeriesModal extends Component {
       attributes: { series: this.state.series },
     });
     this.props.onClose();
-    MetabaseAnalytics.trackEvent("Dashboard", "Edit Series Modal", "done");
+    MetabaseAnalytics.trackStructEvent(
+      "Dashboard",
+      "Edit Series Modal",
+      "done",
+    );
   };
 
   handleLoadMetadata = async queries => {

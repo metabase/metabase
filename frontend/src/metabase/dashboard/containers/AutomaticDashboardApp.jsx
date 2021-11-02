@@ -8,7 +8,7 @@ import cx from "classnames";
 import title from "metabase/hoc/Title";
 import withToast from "metabase/hoc/Toast";
 import DashboardData from "metabase/dashboard/hoc/DashboardData";
-import { getValuePopulatedParameters } from "metabase/meta/Parameter";
+import { getValuePopulatedParameters } from "metabase/parameters/utils/parameter-values";
 
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/components/Button";
@@ -19,13 +19,13 @@ import Link from "metabase/components/Link";
 import Tooltip from "metabase/components/Tooltip";
 
 import { Dashboard } from "metabase/dashboard/containers/Dashboard";
-import Parameters from "metabase/parameters/components/Parameters/Parameters";
+import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 
 import { getMetadata } from "metabase/selectors/metadata";
 
 import Dashboards from "metabase/entities/dashboards";
 import * as Urls from "metabase/lib/urls";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import * as Q from "metabase/lib/query/query";
 import Dimension from "metabase-lib/lib/Dimension";
 import { color } from "metabase/lib/colors";
@@ -80,7 +80,7 @@ class AutomaticDashboardApp extends React.Component {
     );
 
     this.setState({ savedDashboardId: newDashboard.id });
-    MetabaseAnalytics.trackEvent("AutoDashboard", "Save");
+    MetabaseAnalytics.trackStructEvent("AutoDashboard", "Save");
   };
 
   UNSAFE_componentWillReceiveProps(nextProps) {
@@ -96,7 +96,6 @@ class AutomaticDashboardApp extends React.Component {
       parameters,
       parameterValues,
       setParameterValue,
-      location,
     } = this.props;
     const { savedDashboardId } = this.state;
     // pull out "more" related items for displaying as a button at the bottom of the dashboard
@@ -144,15 +143,13 @@ class AutomaticDashboardApp extends React.Component {
           <div className="wrapper pb4">
             {parameters && parameters.length > 0 && (
               <div className="px1 pt1">
-                <Parameters
+                <SyncedParametersList
+                  className="mt1"
                   parameters={getValuePopulatedParameters(
                     parameters,
                     parameterValues,
                   )}
-                  query={location.query}
                   setParameterValue={setParameterValue}
-                  syncQueryString
-                  isQB
                 />
               </div>
             )}
@@ -164,7 +161,10 @@ class AutomaticDashboardApp extends React.Component {
                 to={more}
                 className="ml2"
                 onClick={() =>
-                  MetabaseAnalytics.trackEvent("AutoDashboard", "ClickMore")
+                  MetabaseAnalytics.trackStructEvent(
+                    "AutoDashboard",
+                    "ClickMore",
+                  )
                 }
               >
                 <Button iconRight="chevronright">{t`Show more about this`}</Button>

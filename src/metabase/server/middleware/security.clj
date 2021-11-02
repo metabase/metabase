@@ -80,6 +80,9 @@
                                  ;; Google analytics
                                  (when (public-settings/anon-tracking-enabled)
                                    "www.google-analytics.com")
+                                 ;; Snowplow analytics
+                                 (when (public-settings/anon-tracking-enabled)
+                                   "sp.metabase.com")
                                  ;; Webpack dev server
                                  (when config/is-dev?
                                    "localhost:8080 ws://localhost:8080")]

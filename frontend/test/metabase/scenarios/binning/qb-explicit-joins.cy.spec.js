@@ -1,4 +1,8 @@
-import { restore, popover, visualize } from "__support__/e2e/cypress";
+import {
+  restore,
+  visualize,
+  changeBinningForDimension,
+} from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const {
@@ -65,12 +69,13 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
     });
 
     it("should work for time series", () => {
-      cy.findByTestId("sidebar-right").within(() => {
-        openPopoverFromDefaultBucketSize("People → Birth Date", "by month");
+      changeBinningForDimension({
+        name: "People → Birth Date",
+        fromBinning: "by month",
+        toBinning: "Year",
       });
 
-      chooseBucketAndAssert({
-        bucketSize: "Year",
+      assertQueryBuilderState({
         columnType: "time",
         title: "Count by People → Birth Date: Year",
         values: ["1960", "1965", "2000"],
@@ -91,24 +96,26 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
     });
 
     it("should work for number", () => {
-      cy.findByTestId("sidebar-right").within(() => {
-        openPopoverFromDefaultBucketSize("Products → Price", "Auto bin");
+      changeBinningForDimension({
+        name: "Products → Price",
+        fromBinning: "Auto bin",
+        toBinning: "50 bins",
       });
 
-      chooseBucketAndAssert({
-        bucketSize: "50 bins",
+      assertQueryBuilderState({
         title: "Count by Products → Price: 50 bins",
         values: ["14", "18", "20", "100"],
       });
     });
 
     it("should work for longitude", () => {
-      cy.findByTestId("sidebar-right").within(() => {
-        openPopoverFromDefaultBucketSize("People → Longitude", "Auto bin");
+      changeBinningForDimension({
+        name: "People → Longitude",
+        fromBinning: "Auto bin",
+        toBinning: "Bin every 20 degrees",
       });
 
-      chooseBucketAndAssert({
-        bucketSize: "Bin every 20 degrees",
+      assertQueryBuilderState({
         title: "Count by People → Longitude: 20°",
         values: ["180° W", "160° W", "60° W"],
       });
@@ -129,12 +136,13 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
     });
 
     it("should work for time series", () => {
-      popover().within(() => {
-        openPopoverFromDefaultBucketSize("People → Birth Date", "by month");
+      changeBinningForDimension({
+        name: "People → Birth Date",
+        fromBinning: "by month",
+        toBinning: "Year",
       });
 
-      chooseBucketAndAssert({
-        bucketSize: "Year",
+      assertQueryBuilderState({
         columnType: "time",
         mode: "notebook",
         title: "Count by People → Birth Date: Year",
@@ -156,12 +164,13 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
     });
 
     it("should work for number", () => {
-      popover().within(() => {
-        openPopoverFromDefaultBucketSize("Products → Price", "Auto bin");
+      changeBinningForDimension({
+        name: "Products → Price",
+        fromBinning: "Auto bin",
+        toBinning: "50 bins",
       });
 
-      chooseBucketAndAssert({
-        bucketSize: "50 bins",
+      assertQueryBuilderState({
         mode: "notebook",
         title: "Count by Products → Price: 50 bins",
         values: ["14", "18", "20", "100"],
@@ -169,12 +178,13 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
     });
 
     it("should work for longitude", () => {
-      popover().within(() => {
-        openPopoverFromDefaultBucketSize("People → Longitude", "Auto bin");
+      changeBinningForDimension({
+        name: "People → Longitude",
+        fromBinning: "Auto bin",
+        toBinning: "Bin every 20 degrees",
       });
 
-      chooseBucketAndAssert({
-        bucketSize: "Bin every 20 degrees",
+      assertQueryBuilderState({
         mode: "notebook",
         title: "Count by People → Longitude: 20°",
         values: ["180° W", "160° W", "60° W"],
@@ -252,19 +262,6 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
   });
 });
 
-function openPopoverFromDefaultBucketSize(column, bucket) {
-  cy.findByText(column)
-    .closest(".List-item")
-    .should("be.visible")
-    .as("targetListItem");
-
-  cy.get("@targetListItem")
-    .find(".Field-extra")
-    .as("listItemSelectedBinning")
-    .should("contain", bucket)
-    .click();
-}
-
 function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {
   cy.get(".x-axis-label")
     .invoke("text")
@@ -281,19 +278,12 @@ function waitAndAssertOnRequest(requestAlias) {
   });
 }
 
-function chooseBucketAndAssert({
-  bucketSize,
+function assertQueryBuilderState({
   columnType,
   title,
   mode = null,
   values,
 } = {}) {
-  popover()
-    .last()
-    .within(() => {
-      cy.findByText(bucketSize).click();
-    });
-
   mode === "notebook" ? visualize() : waitAndAssertOnRequest("@dataset");
 
   const visualizaitonSelector = columnType === "time" ? "circle" : ".bar";

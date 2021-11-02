@@ -55,7 +55,7 @@ describe("metabase > scenarios > home > activity-page", () => {
     cy.findByText("Products, Filtered by Rating");
   });
 
-  it.skip("should respect the (added to dashboard) card id in the link (metabase#18547)", () => {
+  it("should respect the (added to dashboard) card id in the link (metabase#18547)", () => {
     cy.intercept("GET", `/api/dashboard/1`).as("dashboard");
 
     cy.visit("/dashboard/1");
@@ -68,7 +68,7 @@ describe("metabase > scenarios > home > activity-page", () => {
       .click();
 
     sidebar().within(() => {
-      cy.get(".LoadingSpinner").should("not.exist");
+      cy.findByTestId("loading-spinner").should("not.exist");
       cy.findByText("Orders").click();
     });
 

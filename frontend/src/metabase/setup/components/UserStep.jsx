@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Flex, Box } from "grid-styled";
 import { t } from "ttag";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import User from "metabase/entities/users";
 
@@ -29,7 +29,11 @@ export default class UserStep extends Component {
       await this.props.validatePassword(values.password);
       return {};
     } catch (error) {
-      MetabaseAnalytics.trackEvent("Setup", "Error", "password validation");
+      MetabaseAnalytics.trackStructEvent(
+        "Setup",
+        "Error",
+        "password validation",
+      );
       return error.data.errors;
     }
   };
@@ -40,7 +44,7 @@ export default class UserStep extends Component {
       details: _.omit(values, "password_confirm"),
     });
 
-    MetabaseAnalytics.trackEvent("Setup", "User Details Step");
+    MetabaseAnalytics.trackStructEvent("Setup", "User Details Step");
   };
 
   render() {

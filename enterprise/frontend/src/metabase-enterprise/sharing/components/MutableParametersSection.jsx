@@ -10,7 +10,7 @@ import { t } from "ttag";
 import CollapseSection from "metabase/components/CollapseSection";
 import ParametersList from "metabase/parameters/components/ParametersList";
 
-import { getValuePopulatedParameters } from "metabase/meta/Parameter";
+import { getValuePopulatedParameters } from "metabase/parameters/utils/parameter-values";
 import {
   getPulseParameters,
   getActivePulseParameters,

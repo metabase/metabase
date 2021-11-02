@@ -57,6 +57,14 @@
   (deferred-tru "The name used for this instance of Metabase.")
   :default "Metabase")
 
+(defn- uuid-nonce
+  "Getter for settings that should be set to a UUID the first time they are fetched."
+  [setting]
+  (or (setting/get-string setting)
+      (let [value (str (UUID/randomUUID))]
+        (setting/set-string! setting value)
+        value)))
+
 (defsetting site-uuid
   ;; Don't i18n this docstring because it's not user-facing! :)
   "Unique identifier used for this instance of Metabase. This is set once and only once the first time it is fetched via
@@ -64,11 +72,15 @@
   :visibility :internal
   :setter     :none
   ;; magic getter will either fetch value from DB, or if no value exists, set the value to a random UUID.
-  :getter     (fn []
-                (or (setting/get-string :site-uuid)
-                    (let [value (str (UUID/randomUUID))]
-                      (setting/set-string! :site-uuid value)
-                      value))))
+  :getter     #(uuid-nonce :site-uuid))
+
+(defsetting analytics-uuid
+  (str (deferred-tru "Unique identifier to be used in Snowplow analytics, to identify this instance of Metabase.")
+       " "
+       (deferred-tru "This is a public setting since some analytics events are sent prior to initial setup."))
+  :visibility :public
+  :setter     :none
+  :getter     #(uuid-nonce :analytics-uuid))
 
 (defn- normalize-site-url [^String s]
   (let [ ;; remove trailing slashes
@@ -367,8 +379,8 @@
   :setter     :none
   :getter     (constantly config/mb-version-info))
 
-(defsetting premium-features
-  "Premium  features enabled for this instance."
+(defsetting token-features
+  "Features registered for this instance's token"
   :visibility :public
   :setter     :none
   :getter     (fn [] {:embedding            (premium-features/hide-embed-branding?)
@@ -378,7 +390,8 @@
                       :sso                  (premium-features/enable-sso?)
                       :advanced_config      (premium-features/enable-advanced-config?)
                       :advanced_permissions (premium-features/enable-advanced-permissions?)
-                      :content_management   (premium-features/enable-content-management?)}))
+                      :content_management   (premium-features/enable-content-management?)
+                      :hosting              (premium-features/is-hosted?)}))
 
 (defsetting redirect-all-requests-to-https
   (deferred-tru "Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS")

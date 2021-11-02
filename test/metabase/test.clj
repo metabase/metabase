@@ -182,6 +182,7 @@
   random-name
   round-all-decimals
   scheduler-current-tasks
+  secret-value-equals?
   throw-if-called
   with-column-remappings
   with-discarded-collections-perms-changes

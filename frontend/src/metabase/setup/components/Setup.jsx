@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import { trackStructEvent } from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 import { b64hash_to_utf8 } from "metabase/lib/encoding";
 
@@ -21,13 +21,16 @@ import UserStep from "./UserStep";
 import DatabaseConnectionStep from "./DatabaseConnectionStep";
 import PreferencesStep from "./PreferencesStep";
 import { AddDatabaseHelpCardHolder } from "./Setup.styled";
-
-const WELCOME_STEP_NUMBER = 0;
-const LANGUAGE_STEP_NUMBER = 1;
-const USER_STEP_NUMBER = 2;
-const DATABASE_CONNECTION_STEP_NUMBER = 3;
-const DATABASE_SCHEDULING_STEP_NUMBER = 4;
-const PREFERENCES_STEP_NUMBER = 5;
+import {
+  COMPLETED_STEP_NUMBER,
+  DATABASE_CONNECTION_STEP_NUMBER,
+  DATABASE_SCHEDULING_STEP_NUMBER,
+  LANGUAGE_STEP_NUMBER,
+  PREFERENCES_STEP_NUMBER,
+  USER_STEP_NUMBER,
+  WELCOME_STEP_NUMBER,
+} from "../constants";
+import { trackStepSeen } from "../tracking";
 
 export default class Setup extends Component {
   static propTypes = {
@@ -50,12 +53,13 @@ export default class Setup extends Component {
 
   completeWelcome() {
     this.props.setActiveStep(LANGUAGE_STEP_NUMBER);
-    MetabaseAnalytics.trackEvent("Setup", "Welcome");
+    trackStructEvent("Setup", "Welcome");
   }
 
   componentDidMount() {
     this.setDefaultLanguage();
     this.setDefaultDetails();
+    this.trackStepSeen();
   }
 
   setDefaultLanguage() {
@@ -88,6 +92,13 @@ export default class Setup extends Component {
     }
   }
 
+  trackStepSeen() {
+    const { activeStep, setupComplete } = this.props;
+    const stepNumber = setupComplete ? COMPLETED_STEP_NUMBER : activeStep;
+
+    trackStepSeen(stepNumber);
+  }
+
   renderFooter() {
     return (
       <div className="SetupHelp bordered border-dashed p2 rounded mb4">
@@ -103,21 +114,25 @@ export default class Setup extends Component {
   }
 
   componentDidUpdate(prevProps) {
-    // If we are entering the scheduling step, we need to scroll to the top of scheduling step container
-    if (
-      prevProps.activeStep !== this.props.activeStep &&
-      this.props.activeStep === DATABASE_CONNECTION_STEP_NUMBER
-    ) {
-      setTimeout(() => {
-        if (this.databaseSchedulingStepContainer.current) {
-          const node = this.databaseSchedulingStepContainer.current;
-          node && node.scrollIntoView && node.scrollIntoView();
-        }
-      }, 10);
+    const { activeStep, setupComplete } = this.props;
+
+    if (activeStep !== prevProps.activeStep) {
+      this.trackStepSeen();
+
+      // If we are entering the scheduling step, we need to scroll to the top of scheduling step container
+      if (activeStep === DATABASE_CONNECTION_STEP_NUMBER) {
+        setTimeout(() => {
+          if (this.databaseSchedulingStepContainer.current) {
+            const node = this.databaseSchedulingStepContainer.current;
+            node && node.scrollIntoView && node.scrollIntoView();
+          }
+        }, 10);
+      }
     }
 
-    if (!prevProps.setupComplete && this.props.setupComplete) {
-      MetabaseAnalytics.trackEvent("Setup", "Complete");
+    if (setupComplete && !prevProps.setupComplete) {
+      this.trackStepSeen();
+      trackStructEvent("Setup", "Complete");
     }
   }
 
