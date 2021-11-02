@@ -15,6 +15,7 @@ import {
   GenericError,
   Unauthorized,
 } from "metabase/containers/ErrorPages";
+import SyncStatusApp from "metabase/onboarding/containers/SyncStatusApp";
 
 const mapStateToProps = (state, props) => ({
   errorPage: state.app.errorPage,
@@ -68,6 +69,7 @@ export default class App extends Component {
           {currentUser && !IFRAMED && <Navbar location={location} />}
           {errorPage ? getErrorComponent(errorPage) : children}
           <UndoListing />
+          <SyncStatusApp />
         </div>
         <AppErrorCard errorInfo={errorInfo} />
       </ScrollToTop>
