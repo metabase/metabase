@@ -2,7 +2,6 @@ import React, { useEffect } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
-import { Box } from "grid-styled";
 
 import ButtonBar from "metabase/components/ButtonBar";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
@@ -26,7 +25,12 @@ import QuestionFilters, { QuestionFilterWidget } from "./QuestionFilters";
 import { QuestionSummarizeWidget } from "./QuestionSummaries";
 import NativeQueryButton from "./NativeQueryButton";
 import ViewSection, { ViewHeading, ViewSubHeading } from "./ViewSection";
-import { SavedQuestionHeaderButtonContainer } from "./ViewHeader.styled";
+import {
+  SaveButton,
+  SavedQuestionHeaderButtonContainer,
+  ViewHeaderContainer,
+  ViewSQLButtonContainer,
+} from "./ViewHeader.styled";
 
 const viewTitleHeaderPropTypes = {
   question: PropTypes.object.isRequired,
@@ -135,11 +139,7 @@ export function ViewTitleHeader(props) {
   const showFiltersInHeading = !isSummarized && !areFiltersExpanded;
 
   return (
-    <ViewSection
-      className={cx("border-bottom", className)}
-      style={style}
-      py={[1]}
-    >
+    <ViewHeaderContainer className={className} style={style}>
       {isSaved ? (
         <div>
           <div className="flex align-center">
@@ -241,10 +241,9 @@ export function ViewTitleHeader(props) {
         </div>
       )}
       <div className="ml-auto flex align-center">
-        {isDirty ? (
-          <Link
+        {!!isDirty && (
+          <SaveButton
             disabled={!question.canRun()}
-            className="text-brand text-bold py1 px2 rounded bg-white bg-light-hover"
             data-metabase-event={
               isShowingNotebook
                 ? `Notebook Mode; Click Save`
@@ -253,8 +252,8 @@ export function ViewTitleHeader(props) {
             onClick={() => onOpenModal("save")}
           >
             {t`Save`}
-          </Link>
-        ) : null}
+          </SaveButton>
+        )}
         {QuestionFilterWidget.shouldRender(props) && (
           <QuestionFilterWidget
             className="hide sm-show"
@@ -290,36 +289,20 @@ export function ViewTitleHeader(props) {
           />
         )}
         {NativeQueryButton.shouldRender(props) && (
-          <Box
-            ml={2}
-            p={1}
-            className="text-medium text-brand-hover cursor-pointer"
-          >
+          <ViewSQLButtonContainer>
             <NativeQueryButton
               size={16}
               question={question}
               data-metabase-event={`Notebook Mode; Convert to SQL Click`}
             />
-          </Box>
+          </ViewSQLButtonContainer>
         )}
-        {question.query().database() && isNative && isSaved && (
-          <Link
-            to={question
-              .composeThisQuery()
-              .setDisplay("table")
-              .setSettings({})
-              .getUrl()}
-          >
-            <ViewButton medium p={[2, 1]} icon="insight" labelBreakpoint="sm">
-              {t`Explore results`}
-            </ViewButton>
-          </Link>
-        )}
+        {isNative && isSaved && <ExploreResultsLink question={question} />}
         {isRunnable && !isNativeEditorOpen && (
           <RunButtonWithTooltip
             className={cx("text-brand-hover hide", {
               "sm-show": !isShowingNotebook || isNative,
-              "text-white-hover": isResultDirty && isRunnable,
+              "text-white-hover": isResultDirty,
             })}
             medium
             borderless
@@ -330,11 +313,31 @@ export function ViewTitleHeader(props) {
             isDirty={isResultDirty}
             isPreviewing={isPreviewing}
             onRun={() => runQuestionQuery({ ignoreCache: true })}
-            onCancel={() => cancelQuery()}
+            onCancel={cancelQuery}
           />
         )}
       </div>
-    </ViewSection>
+    </ViewHeaderContainer>
+  );
+}
+
+ExploreResultsLink.propTypes = {
+  question: PropTypes.object.isRequired,
+};
+
+function ExploreResultsLink({ question }) {
+  const url = question
+    .composeThisQuery()
+    .setDisplay("table")
+    .setSettings({})
+    .getUrl();
+
+  return (
+    <Link to={url}>
+      <ViewButton medium p={[2, 1]} icon="insight" labelBreakpoint="sm">
+        {t`Explore results`}
+      </ViewButton>
+    </Link>
   );
 }
 
