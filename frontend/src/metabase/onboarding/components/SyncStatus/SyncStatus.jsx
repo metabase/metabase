@@ -13,7 +13,6 @@ import {
   PopupContent,
   PopupHeader,
   PopupTitle,
-  SyncStatusRoot,
 } from "./SyncStatus.styled";
 
 const propTypes = {
@@ -22,39 +21,41 @@ const propTypes = {
 
 const SyncStatus = ({ databases }) => {
   return (
-    <SyncStatusRoot>
-      <Popup>
-        <PopupHeader>
-          <PopupTitle>{t`Syncing...`}</PopupTitle>
-        </PopupHeader>
-        <PopupContent>
-          {databases.map(database => (
-            <DatabaseCard key={database.id}>
-              <DatabaseIcon>
-                <Icon name="database" />
-              </DatabaseIcon>
-              <DatabaseContent>
-                <DatabaseTitle>
-                  {database.display_name || database.name}
-                </DatabaseTitle>
-                <DatabaseDescription>
-                  {getDatabaseDescription(database)}
-                </DatabaseDescription>
-              </DatabaseContent>
-              <DatabaseSpinner size={24} borderWidth={3} />
-            </DatabaseCard>
-          ))}
-        </PopupContent>
-      </Popup>
-    </SyncStatusRoot>
+    <Popup>
+      <PopupHeader>
+        <PopupTitle>{getTitleMessage(databases)}</PopupTitle>
+      </PopupHeader>
+      <PopupContent>
+        {databases.map(database => (
+          <DatabaseCard key={database.id}>
+            <DatabaseIcon>
+              <Icon name="database" />
+            </DatabaseIcon>
+            <DatabaseContent>
+              <DatabaseTitle>
+                {database.display_name || database.name}
+              </DatabaseTitle>
+              <DatabaseDescription>
+                {getDescriptionMessage(database)}
+              </DatabaseDescription>
+            </DatabaseContent>
+            <DatabaseSpinner size={24} borderWidth={3} />
+          </DatabaseCard>
+        ))}
+      </PopupContent>
+    </Popup>
   );
 };
 
 SyncStatus.propTypes = propTypes;
 
-const getDatabaseDescription = ({ tables }) => {
-  const doneCount = tables.filter(t => t.initial_sync).length;
-  const totalCount = tables.length;
+const getTitleMessage = databases => {
+  return databases.every(d => d.initial_sync) ? t`Done!` : t`Syncing...`;
+};
+
+const getDescriptionMessage = database => {
+  const doneCount = database.tables.filter(t => t.initial_sync).length;
+  const totalCount = database.tables.length;
 
   return t`${doneCount} of ${totalCount} done`;
 };

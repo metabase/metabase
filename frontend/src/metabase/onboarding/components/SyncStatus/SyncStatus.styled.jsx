@@ -2,13 +2,10 @@ import styled from "styled-components";
 import { color } from "metabase/lib/colors";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
-export const SyncStatusRoot = styled.div`
+export const Popup = styled.div`
   position: fixed;
   right: 1.5rem;
   bottom: 1.5rem;
-`;
-
-export const Popup = styled.div`
   min-width: 16rem;
   max-width: 32rem;
   border-radius: 6px;
