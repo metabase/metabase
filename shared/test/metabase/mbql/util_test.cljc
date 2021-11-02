@@ -413,6 +413,12 @@
               [:field 1 {:temporal-unit :week}]
               [:relative-datetime 0 :week]]
              (mbql.u/negate-filter-clause [:time-interval [:field 1 nil] :current :week]))))
+  (t/testing :time-interval
+    (t/is (= [:!=
+              [:expression "CC"]
+              [:relative-datetime 0 :week]]
+             (mbql.u/negate-filter-clause [:time-interval [:expression "CC"] :current :week]))))
+
   (t/testing :is-null
     (t/is (= [:!= [:field 1 nil] nil]
              (mbql.u/negate-filter-clause [:is-null [:field 1 nil]]))))
