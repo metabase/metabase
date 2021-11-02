@@ -1,13 +1,13 @@
 import styled from "styled-components";
 import { color } from "metabase/lib/colors";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 
 export const Popup = styled.div`
   position: fixed;
   right: 1.5rem;
   bottom: 1.5rem;
-  min-width: 16rem;
-  max-width: 32rem;
+  width: 16rem;
   border-radius: 6px;
   background-color: ${color("white")};
   box-shadow: 0 1px 12px ${color("shadow")};
@@ -22,10 +22,16 @@ export const PopupHeader = styled.div`
 `;
 
 export const PopupTitle = styled.div`
+  flex: 1 1 auto;
   color: ${color("bg-light")};
   font-size: 0.875rem;
   font-weight: bold;
   line-height: 1rem;
+`;
+
+export const PopupToggle = styled(IconButtonWrapper)`
+  flex: 0 0 auto;
+  color: ${color("white")};
 `;
 
 export const PopupContent = styled.div`
@@ -41,10 +47,12 @@ export const DatabaseCard = styled.div`
 export const DatabaseContent = styled.div`
   flex: 1 1 auto;
   margin: 0 0.75rem;
+  overflow: hidden;
 `;
 
 export const DatabaseIcon = styled.div`
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   width: 2rem;
@@ -59,6 +67,7 @@ export const DatabaseTitle = styled.div`
   font-size: 0.875rem;
   font-weight: bold;
   line-height: 1rem;
+  overflow: hidden;
 `;
 
 export const DatabaseDescription = styled.div`

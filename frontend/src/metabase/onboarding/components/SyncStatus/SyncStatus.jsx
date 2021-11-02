@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 import Icon from "metabase/components/Icon";
+import Ellipsified from "metabase/components/Ellipsified";
 import {
   DatabaseCard,
   DatabaseContent,
@@ -15,6 +16,7 @@ import {
   PopupContent,
   PopupHeader,
   PopupTitle,
+  PopupToggle,
 } from "./SyncStatus.styled";
 
 const DELAY = 6000;
@@ -24,6 +26,9 @@ const propTypes = {
 };
 
 const SyncStatus = ({ databases }) => {
+  const [isOpened, setIsOpened] = useState(true);
+  const handleToggle = useCallback(() => setIsOpened(state => !state), []);
+
   const syncingDatabases = getSyncingDatabases(databases);
   const delayedDatabases = useDelayedValue(syncingDatabases, DELAY);
   const visibleDatabases = _.union(delayedDatabases, syncingDatabases);
@@ -31,40 +36,56 @@ const SyncStatus = ({ databases }) => {
   return (
     <Popup>
       <PopupHeader>
-        <PopupTitle>{getTitleMessage(visibleDatabases)}</PopupTitle>
+        <PopupTitle>{getTitleMessage(syncingDatabases, isOpened)}</PopupTitle>
+        <PopupToggle onClick={handleToggle}>
+          {isOpened ? <Icon name="chevrondown" /> : <Icon name="chevronup" />}
+        </PopupToggle>
       </PopupHeader>
-      <PopupContent>
-        {visibleDatabases.map(database => (
-          <DatabaseCard key={database.id}>
-            <DatabaseIcon>
-              <Icon name="database" />
-            </DatabaseIcon>
-            <DatabaseContent>
-              <DatabaseTitle>
-                {database.display_name || database.name}
-              </DatabaseTitle>
-              <DatabaseDescription>
-                {getDescriptionMessage(database)}
-              </DatabaseDescription>
-            </DatabaseContent>
-            {database.initial_sync ? (
-              <DatabaseIconContainer>
-                <Icon name="check" size={12} />
-              </DatabaseIconContainer>
-            ) : (
-              <DatabaseSpinner size={24} borderWidth={3} />
-            )}
-          </DatabaseCard>
-        ))}
-      </PopupContent>
+      {isOpened && (
+        <PopupContent>
+          {visibleDatabases.map(database => (
+            <DatabaseCard key={database.id}>
+              <DatabaseIcon>
+                <Icon name="database" />
+              </DatabaseIcon>
+              <DatabaseContent>
+                <DatabaseTitle>
+                  <Ellipsified>
+                    {database.display_name || database.name}
+                  </Ellipsified>
+                </DatabaseTitle>
+                <DatabaseDescription>
+                  {getDescriptionMessage(database)}
+                </DatabaseDescription>
+              </DatabaseContent>
+              {database.initial_sync ? (
+                <DatabaseIconContainer>
+                  <Icon name="check" size={12} />
+                </DatabaseIconContainer>
+              ) : (
+                <DatabaseSpinner size={24} borderWidth={3} />
+              )}
+            </DatabaseCard>
+          ))}
+        </PopupContent>
+      )}
     </Popup>
   );
 };
 
 SyncStatus.propTypes = propTypes;
 
-const getTitleMessage = databases => {
-  return databases.every(d => d.initial_sync) ? t`Done!` : t`Syncing...`;
+const getTitleMessage = (syncingDatabases, isOpened) => {
+  const tables = syncingDatabases.flatMap(d => d.tables);
+  const doneCount = tables.filter(t => t.initial_sync).length;
+  const totalCount = tables.length;
+  const donePercentage = Math.floor((doneCount / totalCount) * 100);
+
+  return syncingDatabases.length === 0
+    ? t`Done!`
+    : isOpened && totalCount > 0
+    ? t`Syncing... (${donePercentage}%`
+    : t`Syncing...`;
 };
 
 const getDescriptionMessage = database => {
