@@ -19,9 +19,11 @@ import Footer from "./CollectionSidebarFooter/CollectionSidebarFooter";
 import Collections from "./Collections/Collections";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
-import { isAnotherUsersPersonalCollection,
+import {
+  isAnotherUsersPersonalCollection,
   getParentPath,
-  getParentPersonalCollection } from "metabase/collections/utils";
+  getParentPersonalCollection,
+} from "metabase/collections/utils";
 import { updateOpenCollectionList } from "./updateOpenCollectionList";
 
 const collectionEntityQuery = {
@@ -86,11 +88,11 @@ function CollectionSidebar({
     [collections, openCollections],
   );
 
-    const isAnotherUserCollectionOpened = isAnotherUsersPersonalCollection(
-      parsetInt(collectionId),
-      collectionsById,
-      currentUser.id,
-    );
+  const isAnotherUserCollectionOpened = isAnotherUsersPersonalCollection(
+    parsetInt(collectionId),
+    collectionsById,
+    currentUser.id,
+  );
 
   useEffect(() => {
     if (!loading && collectionId) {
@@ -124,16 +126,16 @@ function CollectionSidebar({
             onClose={onClose}
           />
           <Footer
-        isAdmin={currentUser.is_superuser}
-        openCollections={openCollections}
-        collectionId={collectionId}
-        onOpen={onOpen}
-        onClose={onClose}
-        otherCollections={getParentPersonalCollection(
-          parseInt(collectionId),
-          collectionsById
-        )}
-        />
+            isAdmin={currentUser.is_superuser}
+            openCollections={openCollections}
+            collectionId={collectionId}
+            onOpen={onOpen}
+            onClose={onClose}
+            otherCollections={getParentPersonalCollection(
+              parseInt(collectionId),
+              collectionsById,
+            )}
+          />
         </React.Fragment>
       ) : (
         <LoadingView />

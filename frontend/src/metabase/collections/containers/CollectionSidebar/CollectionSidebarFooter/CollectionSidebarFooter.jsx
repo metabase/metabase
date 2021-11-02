@@ -22,12 +22,12 @@ export default function CollectionSidebarFooter({ isAdmin }) {
     <Container>
       {isAdmin && isAnotherUserCollectionOpened && (
         <CollectionsList
-        openCollections={openCollections}
-        onClose={onClose}
-        onOpen={onOpen}
-        collections={otherCollections}
-        initialIcon="group"
-        currentCollection={collectionId}
+          openCollections={openCollections}
+          onClose={onClose}
+          onOpen={onOpen}
+          collections={otherCollections}
+          initialIcon="group"
+          currentCollection={collectionId}
         />
       )}
 
