@@ -18,7 +18,8 @@
             [metabase.test :as mt]
             [metabase.test.data.impl :as data.impl]
             [metabase.util :as u]
-            [potemkin :as p]))
+            [potemkin :as p]
+            [ring.middleware.reload :refer [wrap-reload]]))
 
 (comment debug-qp/keep-me)
 
@@ -40,7 +41,7 @@
   []
   (when-not @initialized?
     (init!))
-  (server/start-web-server! #'handler/app)
+  (server/start-web-server! (wrap-reload #'handler/app))
   (mdb/setup-db!)
   (plugins/load-plugins!)
   (init-status/set-complete!))
