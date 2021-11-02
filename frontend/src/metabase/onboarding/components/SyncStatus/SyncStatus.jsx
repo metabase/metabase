@@ -23,7 +23,7 @@ const propTypes = {
 };
 
 const SyncStatus = ({ databases }) => {
-  const visibleDatabases = useVisibleDatabases(databases);
+  const visibleDatabases = useDatabases(databases);
 
   return (
     <Popup>
@@ -75,7 +75,7 @@ const getDatabaseIds = databases => {
   return databases.filter(d => !d.initial_sync).map(d => d.id);
 };
 
-const useVisibleDatabases = databases => {
+const useDatabases = databases => {
   const [databaseIds, setDatabaseIds] = useState(getDatabaseIds(databases));
   const databaseById = Object.fromEntries(databases.map(d => [d.id, d]));
 
