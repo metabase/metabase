@@ -19,7 +19,9 @@ import Footer from "./CollectionSidebarFooter/CollectionSidebarFooter";
 import Collections from "./Collections/Collections";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
-import { getParentPath } from "metabase/collections/utils";
+import { isAnotherUsersPersonalCollection,
+  getParentPath,
+  getParentPersonalCollection } from "metabase/collections/utils";
 import { updateOpenCollectionList } from "./updateOpenCollectionList";
 
 const collectionEntityQuery = {
@@ -35,6 +37,7 @@ const collectionEntityQuery = {
 function mapStateToProps(state) {
   return {
     currentUser: getUser(state),
+    collectionsById: state.entities.collections,
   };
 }
 
@@ -53,6 +56,7 @@ CollectionSidebar.propTypes = {
 function CollectionSidebar({
   currentUser,
   collectionId,
+  collectionsById,
   collections,
   isRoot,
   allFetched,
@@ -81,6 +85,12 @@ function CollectionSidebar({
     },
     [collections, openCollections],
   );
+
+    const isAnotherUserCollectionOpened = isAnotherUsersPersonalCollection(
+      parsetInt(collectionId),
+      collectionsById,
+      currentUser.id,
+    );
 
   useEffect(() => {
     if (!loading && collectionId) {
@@ -113,7 +123,17 @@ function CollectionSidebar({
             onOpen={onOpen}
             onClose={onClose}
           />
-          <Footer isAdmin={currentUser.is_superuser} />
+          <Footer
+        isAdmin={currentUser.is_superuser}
+        openCollections={openCollections}
+        collectionId={collectionId}
+        onOpen={onOpen}
+        onClose={onClose}
+        otherCollections={getParentPersonalCollection(
+          parseInt(collectionId),
+          collectionsById
+        )}
+        />
         </React.Fragment>
       ) : (
         <LoadingView />
