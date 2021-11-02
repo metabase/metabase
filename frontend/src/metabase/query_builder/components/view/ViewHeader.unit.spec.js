@@ -26,8 +26,19 @@ const BASE_GUI_QUESTION = {
   },
 };
 
-const SAVED_GUI_QUESTION = {
-  ...BASE_GUI_QUESTION,
+const BASE_NATIVE_QUESTION = {
+  display: "table",
+  visualization_settings: {},
+  dataset_query: {
+    type: "native",
+    database: SAMPLE_DATASET.id,
+    native: {
+      query: "select * from orders",
+    },
+  },
+};
+
+const SAVED_QUESTION = {
   id: 1,
   name: "Q1",
   description: null,
@@ -42,8 +53,16 @@ function getAdHocQuestion() {
   return getQuestion(BASE_GUI_QUESTION);
 }
 
+function getNativeQuestion() {
+  return getQuestion(BASE_NATIVE_QUESTION);
+}
+
 function getSavedGUIQuestion() {
-  return getQuestion(SAVED_GUI_QUESTION);
+  return getQuestion({ ...BASE_GUI_QUESTION, ...SAVED_QUESTION });
+}
+
+function getSavedNativeQuestion() {
+  return getQuestion({ ...BASE_NATIVE_QUESTION, ...SAVED_QUESTION });
 }
 
 function setup({ question, ...props } = {}) {
@@ -91,6 +110,28 @@ function setupSavedGUI(props = {}) {
   };
 }
 
+function setupNative(props) {
+  return setup({ question: getNativeQuestion(), ...props });
+}
+
+function setupSavedNative(props = {}) {
+  const collection = {
+    id: "root",
+    name: "Our analytics",
+  };
+
+  xhrMock.get("/api/collection/root", {
+    body: JSON.stringify(collection),
+  });
+
+  const utils = setup({ question: getSavedNativeQuestion(), ...props });
+
+  return {
+    ...utils,
+    collection,
+  };
+}
+
 describe("ViewHeader", () => {
   const TEST_CASE = {
     SAVED_GUI_QUESTION: {
@@ -101,12 +142,24 @@ describe("ViewHeader", () => {
       question: getAdHocQuestion(),
       questionType: "ad-hoc GUI question",
     },
+    NATIVE_QUESTION: {
+      question: getNativeQuestion(),
+      questionType: "not saved native question",
+    },
+    SAVED_NATIVE_QUESTION: {
+      question: getSavedNativeQuestion(),
+      questionType: "native question",
+    },
   };
 
   const ALL_TEST_CASES = Object.values(TEST_CASE);
   const GUI_TEST_CASES = [
     TEST_CASE.SAVED_GUI_QUESTION,
     TEST_CASE.AD_HOC_QUESTION,
+  ];
+  const NATIVE_TEST_CASES = [
+    TEST_CASE.SAVED_NATIVE_QUESTION,
+    TEST_CASE.NATIVE_QUESTION,
   ];
 
   describe("Common", () => {
@@ -200,6 +253,24 @@ describe("ViewHeader", () => {
       });
     });
   });
+
+  describe("Native", () => {
+    NATIVE_TEST_CASES.forEach(testCase => {
+      const { question, questionType } = testCase;
+
+      describe(questionType, () => {
+        it(`does not offer to filter query results`, () => {
+          setup({ question });
+          expect(screen.queryByText("Filter")).not.toBeInTheDocument();
+        });
+
+        it(`does not offer to summarize query results`, () => {
+          setup({ question });
+          expect(screen.queryByText("Summarize")).not.toBeInTheDocument();
+        });
+      });
+    });
+  });
 });
 
 describe("ViewHeader | Ad-hoc GUI question", () => {
@@ -232,5 +303,51 @@ describe("ViewHeader | Saved GUI question", () => {
     const { question, onOpenQuestionDetails } = setupSavedGUI();
     fireEvent.click(screen.getByText(question.displayName()));
     expect(onOpenQuestionDetails).toHaveBeenCalled();
+  });
+});
+
+describe("View Header | Not saved native question", () => {
+  it("does not display question database", () => {
+    const { question } = setupNative();
+    const databaseName = question.database().displayName();
+    expect(screen.queryByText(databaseName)).not.toBeInTheDocument();
+  });
+
+  it("does not offer to explore query results", () => {
+    setupNative();
+    expect(screen.queryByText("Explore results")).not.toBeInTheDocument();
+  });
+});
+
+describe("View Header | Saved native question", () => {
+  beforeEach(() => {
+    xhrMock.setup();
+  });
+
+  afterEach(() => {
+    xhrMock.teardown();
+  });
+
+  it("displays database a question is using", () => {
+    const { question } = setupSavedNative();
+    const databaseName = question.database().displayName();
+    expect(screen.queryByText(databaseName)).toBeInTheDocument();
+  });
+
+  it("displays collection where a question is saved to", async () => {
+    const { collection } = setupSavedNative();
+    await waitFor(() => screen.queryByText(collection.name));
+    expect(screen.queryByText(collection.name)).toBeInTheDocument();
+  });
+
+  it("opens details sidebar on question name click", () => {
+    const { question, onOpenQuestionDetails } = setupSavedNative();
+    fireEvent.click(screen.getByText(question.displayName()));
+    expect(onOpenQuestionDetails).toHaveBeenCalled();
+  });
+
+  it("offers to explore query results", () => {
+    setupSavedNative();
+    expect(screen.queryByText("Explore results")).toBeInTheDocument();
   });
 });
