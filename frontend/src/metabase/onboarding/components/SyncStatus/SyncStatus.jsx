@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import Icon from "metabase/components/Icon";
@@ -16,18 +16,22 @@ import {
   PopupTitle,
 } from "./SyncStatus.styled";
 
+const DELAY = 6000;
+
 const propTypes = {
   databases: PropTypes.array,
 };
 
 const SyncStatus = ({ databases }) => {
+  const visibleDatabases = useVisibleDatabases(databases);
+
   return (
     <Popup>
       <PopupHeader>
-        <PopupTitle>{getTitleMessage(databases)}</PopupTitle>
+        <PopupTitle>{getTitleMessage(visibleDatabases)}</PopupTitle>
       </PopupHeader>
       <PopupContent>
-        {databases.map(database => (
+        {visibleDatabases.map(database => (
           <DatabaseCard key={database.id}>
             <DatabaseIcon>
               <Icon name="database" />
@@ -65,6 +69,27 @@ const getDescriptionMessage = database => {
   const totalCount = database.tables.length;
 
   return t`${doneCount} of ${totalCount} done`;
+};
+
+const getDatabaseIds = databases => {
+  return databases.filter(d => !d.initial_sync).map(d => d.id);
+};
+
+const useVisibleDatabases = databases => {
+  const [databaseIds, setDatabaseIds] = useState(getDatabaseIds(databases));
+  const databaseById = Object.fromEntries(databases.map(d => [d.id, d]));
+
+  const onTimeout = useCallback(() => {
+    const databaseIds = getDatabaseIds(databases);
+    setDatabaseIds(ids => ids.filter(item => databaseIds.include(item)));
+  }, [databases]);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(onTimeout, DELAY);
+    return () => clearTimeout(timeoutId);
+  }, [onTimeout]);
+
+  return databaseIds.map(id => databaseById[id]);
 };
 
 export default SyncStatus;
