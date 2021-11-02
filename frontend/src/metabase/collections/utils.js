@@ -32,11 +32,12 @@ export function getParentPersonalCollection(collectionId, collectionById) {
   if (targetCollection.personal_owner_id) {
     return [targetCollection];
   }
-  const parent = targetCollection.effective_ancestors.find(ancestor => {
-    const collection = collectionById[ancestor.id];
-    return collection && collection.personal_owner_id;
-  });
-  if (parent) {
+  const ancestors = targetCollection?.effective_ancestors;
+  if (ancestors) {
+    const parent = ancestors.find(ancestor => {
+      const collection = collectionById[ancestor.id];
+      return collection && collection.personal_owner_id;
+    });
     return [collectionById[parent.id]];
   } else {
     return [];
