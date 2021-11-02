@@ -7,6 +7,7 @@ export const SyncStatusRoot = styled.div`
   bottom: 1.5rem;
   border-radius: 6px;
   background-color: ${color("white")};
+  box-shadow: 0 1px 12px ${color("shadow")};
 `;
 
 export const DatabaseCard = styled.div`
@@ -20,11 +21,6 @@ export const DatabaseContent = styled.div`
   margin: 0 0.75rem;
 `;
 
-export const DatabaseTitle = styled.div`
-  color: ${color("text-dark")};
-  font-weight: 700;
-`;
-
 export const DatabaseIcon = styled.div`
   display: flex;
   align-items: center;
@@ -34,4 +30,19 @@ export const DatabaseIcon = styled.div`
   border-radius: 1rem;
   color: ${color("brand")};
   background-color: ${color("brand-light")};
+`;
+
+export const DatabaseTitle = styled.div`
+  color: ${color("text-dark")};
+  font-size: 0.875rem;
+  font-weight: bold;
+  line-height: 1rem;
+`;
+
+export const DatabaseDescription = styled.div`
+  color: ${color("bg-dark")};
+  font-size: 0.6875rem;
+  font-weight: bold;
+  line-height: 0.8125rem;
+  margin-top: 0.25rem;
 `;
