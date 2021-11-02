@@ -38,7 +38,7 @@ type Props = {
   // DimensionList props:
   enableSubDimensions?: boolean,
   useOriginalDimension?: boolean,
-  overrideDefaultAutobin?: boolean,
+  preventNumberSubDimensions?: boolean,
 };
 
 type State = {
@@ -104,7 +104,9 @@ export default class FieldList extends Component {
         // forward DimensionList props
         useOriginalDimension={this.props.useOriginalDimension}
         enableSubDimensions={this.props.enableSubDimensions}
-        overrideDefaultAutobin={this.props.fieldOptions.overrideDefaultAutobin}
+        preventNumberSubDimensions={
+          this.props.fieldOptions.preventNumberSubDimensions
+        }
       />
     );
   }

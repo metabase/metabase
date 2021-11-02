@@ -379,7 +379,7 @@ export default class Join extends MBQLObjectClause {
       count: dimensions.length,
       dimensions: dimensions,
       fks: [],
-      overrideDefaultAutobin: true,
+      preventNumberSubDimensions: true,
     };
 
     // add all previous joined fields
@@ -468,7 +468,7 @@ export default class Join extends MBQLObjectClause {
       count: dimensions.length,
       dimensions: dimensions,
       fks: [],
-      overrideDefaultAutobin: true,
+      preventNumberSubDimensions: true,
     });
   }
 

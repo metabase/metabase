@@ -37,7 +37,7 @@ type Props = {
   alwaysExpanded?: boolean,
   enableSubDimensions?: boolean,
   useOriginalDimension?: boolean,
-  overrideDefaultAutobin?: boolean,
+  preventNumberSubDimensions?: boolean,
 };
 
 type State = {
@@ -106,20 +106,20 @@ export default class DimensionList extends Component {
     const {
       dimension,
       enableSubDimensions,
-      overrideDefaultAutobin,
+      preventNumberSubDimensions,
       onAddDimension,
       onRemoveDimension,
     } = this.props;
 
-    const surpressAutoBin =
-      overrideDefaultAutobin && item.dimension.field().isSummable();
+    const surpressSubDimensions =
+      preventNumberSubDimensions && item.dimension.field().isSummable();
 
     const subDimensions =
       enableSubDimensions &&
       item.dimension &&
       // Do not display sub dimension if this is an FK (metabase#16787)
       !item.dimension.field().isFK() &&
-      !surpressAutoBin &&
+      !surpressSubDimensions &&
       item.dimension.dimensions();
 
     const multiSelect = !!(onAddDimension || onRemoveDimension);
@@ -144,7 +144,7 @@ export default class DimensionList extends Component {
             triggerElement={this.renderSubDimensionTrigger(
               item.dimension,
               multiSelect,
-              overrideDefaultAutobin,
+              preventNumberSubDimensions,
             )}
             tetherOptions={multiSelect ? null : SUBMENU_TETHER_OPTIONS}
             sizeToFit
@@ -213,7 +213,7 @@ export default class DimensionList extends Component {
     const {
       enableSubDimensions,
       useOriginalDimension,
-      overrideDefaultAutobin,
+      preventNumberSubDimensions,
     } = this.props;
     const dimension = useOriginalDimension
       ? item.dimension
@@ -226,7 +226,7 @@ export default class DimensionList extends Component {
 
     if (
       shouldExcludeBinning ||
-      (overrideDefaultAutobin && dimension.field().isSummable())
+      (preventNumberSubDimensions && dimension.field().isSummable())
     ) {
       // If we don't let user choose the sub-dimension, we don't want to treat the field
       // as a binned field (which would use the default binning)

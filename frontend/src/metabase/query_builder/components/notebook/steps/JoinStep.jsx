@@ -629,7 +629,7 @@ class JoinDimensionPicker extends React.Component {
               onClose();
             }}
             enableSubDimensions
-            overrideDefaultAutobin
+            preventNumberSubDimensions
             data-testid={`${testID}-picker`}
           />
         )}
