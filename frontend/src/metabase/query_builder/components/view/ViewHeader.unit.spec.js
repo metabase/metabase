@@ -26,6 +26,21 @@ const BASE_GUI_QUESTION = {
   },
 };
 
+const FILTERED_GUI_QUESTION = {
+  ...BASE_GUI_QUESTION,
+  dataset_query: {
+    ...BASE_GUI_QUESTION.dataset_query,
+    query: {
+      ...BASE_GUI_QUESTION.dataset_query.query,
+      filter: [
+        "and",
+        ["<", ["field", ORDERS.TOTAL.id, null], 50],
+        ["not-null", ["field", ORDERS.TAX.id, null]],
+      ],
+    },
+  },
+};
+
 const BASE_NATIVE_QUESTION = {
   display: "table",
   visualization_settings: {},
@@ -49,20 +64,24 @@ function getQuestion(card) {
   return new Question(card, metadata);
 }
 
-function getAdHocQuestion() {
-  return getQuestion(BASE_GUI_QUESTION);
+function getAdHocQuestion(overrides) {
+  return getQuestion({ ...BASE_GUI_QUESTION, ...overrides });
 }
 
 function getNativeQuestion() {
   return getQuestion(BASE_NATIVE_QUESTION);
 }
 
-function getSavedGUIQuestion() {
-  return getQuestion({ ...BASE_GUI_QUESTION, ...SAVED_QUESTION });
+function getSavedGUIQuestion(overrides) {
+  return getQuestion({ ...BASE_GUI_QUESTION, ...SAVED_QUESTION, ...overrides });
 }
 
-function getSavedNativeQuestion() {
-  return getQuestion({ ...BASE_NATIVE_QUESTION, ...SAVED_QUESTION });
+function getSavedNativeQuestion(overrides) {
+  return getQuestion({
+    ...BASE_NATIVE_QUESTION,
+    ...SAVED_QUESTION,
+    ...overrides,
+  });
 }
 
 function setup({ question, ...props } = {}) {
@@ -90,24 +109,6 @@ function setup({ question, ...props } = {}) {
 
 function setupAdHoc(props = {}) {
   return setup({ question: getAdHocQuestion(), ...props });
-}
-
-function setupSavedGUI(props = {}) {
-  const collection = {
-    id: "root",
-    name: "Our analytics",
-  };
-
-  xhrMock.get("/api/collection/root", {
-    body: JSON.stringify(collection),
-  });
-
-  const utils = setup({ question: getSavedGUIQuestion(), ...props });
-
-  return {
-    ...utils,
-    collection,
-  };
 }
 
 function setupNative(props) {
@@ -319,6 +320,90 @@ describe("ViewHeader | Ad-hoc GUI question", () => {
     fireEvent.click(screen.getByText(tableName));
 
     expect(onOpenQuestionDetails).not.toHaveBeenCalled();
+  });
+
+  describe("filters", () => {
+    const question = getAdHocQuestion(FILTERED_GUI_QUESTION);
+
+    it("shows all filters by default", () => {
+      setup({ question, queryBuilderMode: "view" });
+      expect(screen.queryByText("Total is less than 50")).toBeInTheDocument();
+      expect(screen.queryByText("Tax is not empty")).toBeInTheDocument();
+    });
+
+    it("can collapse and expand filters", () => {
+      setup({ question, queryBuilderMode: "view" });
+
+      fireEvent.click(screen.getByTestId("filters-visibility-control"));
+
+      expect(
+        screen.queryByText("Total is less than 50"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Tax is not empty")).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId("filters-visibility-control"));
+
+      expect(screen.queryByText("Total is less than 50")).toBeInTheDocument();
+      expect(screen.queryByText("Tax is not empty")).toBeInTheDocument();
+    });
+
+    it("does not show filters in notebook mode", () => {
+      setup({ question, queryBuilderMode: "notebook" });
+
+      expect(
+        screen.queryByTestId("filters-visibility-control"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Total is less than 50"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Tax is not empty")).not.toBeInTheDocument();
+    });
+  });
+});
+
+describe("View Header | Saved GUI question", () => {
+  describe("filters", () => {
+    const question = getSavedGUIQuestion(FILTERED_GUI_QUESTION);
+
+    it("shows filters collapsed by default", () => {
+      setup({ question, queryBuilderMode: "view" });
+
+      expect(
+        screen.queryByTestId("filters-visibility-control"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Total is less than 50"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Tax is not empty")).not.toBeInTheDocument();
+    });
+
+    it("can collapse and expand filters", () => {
+      setup({ question, queryBuilderMode: "view" });
+
+      fireEvent.click(screen.getByTestId("filters-visibility-control"));
+
+      expect(screen.queryByText("Total is less than 50")).toBeInTheDocument();
+      expect(screen.queryByText("Tax is not empty")).toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId("filters-visibility-control"));
+
+      expect(
+        screen.queryByText("Total is less than 50"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Tax is not empty")).not.toBeInTheDocument();
+    });
+
+    it("does not show filters in notebook mode", () => {
+      setup({ question, queryBuilderMode: "notebook" });
+
+      expect(
+        screen.queryByTestId("filters-visibility-control"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Total is less than 50"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Tax is not empty")).not.toBeInTheDocument();
+    });
   });
 });
 
