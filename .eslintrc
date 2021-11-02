@@ -3,7 +3,10 @@
     "strict": [2, "never"],
     "no-undef": 2,
     "no-var": 1,
-    "no-unused-vars": [1, { "vars": "all", "args": "none" }],
+    "no-unused-vars": [
+      1,
+      { "vars": "all", "args": "none", "varsIgnorePattern": "^_" }
+    ],
     "no-empty": [1, { "allowEmptyCatch": true }],
     "curly": [1, "all"],
     "eqeqeq": [1, "smart"],
@@ -72,6 +75,10 @@
         "@typescript-eslint/explicit-module-boundary-types": "off",
         "@typescript-eslint/no-inferrable-types": "off",
         "@typescript-eslint/no-explicit-any": "off",
+        "@typescript-eslint/no-unused-vars": [
+          "warn",
+          { "varsIgnorePattern": "^_" }
+        ],
         "@typescript-eslint/no-use-before-define": [
           "error",
           { "functions": false }
