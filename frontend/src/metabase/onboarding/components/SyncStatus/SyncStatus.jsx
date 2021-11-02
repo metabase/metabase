@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import _ from "underscore";
 import Icon from "metabase/components/Icon";
 import {
   DatabaseCard,
@@ -23,7 +24,9 @@ const propTypes = {
 };
 
 const SyncStatus = ({ databases }) => {
-  const visibleDatabases = useDatabases(databases);
+  const syncingDatabases = getSyncingDatabases(databases);
+  const delayedDatabases = useDelayedValue(syncingDatabases, DELAY);
+  const visibleDatabases = _.union(delayedDatabases, syncingDatabases);
 
   return (
     <Popup>
@@ -71,25 +74,19 @@ const getDescriptionMessage = database => {
   return t`${doneCount} of ${totalCount} done`;
 };
 
-const getDatabaseIds = databases => {
-  return databases.filter(d => !d.initial_sync).map(d => d.id);
+const getSyncingDatabases = databases => {
+  return databases.filter(d => !d.initial_sync);
 };
 
-const useDatabases = databases => {
-  const [databaseIds, setDatabaseIds] = useState(getDatabaseIds(databases));
-  const databaseById = Object.fromEntries(databases.map(d => [d.id, d]));
-
-  const onTimeout = useCallback(() => {
-    const databaseIds = getDatabaseIds(databases);
-    setDatabaseIds(ids => ids.filter(item => databaseIds.include(item)));
-  }, [databases]);
+const useDelayedValue = (value, delay) => {
+  const [delayedValue, setDelayedValue] = useState(value);
 
   useEffect(() => {
-    const timeoutId = setTimeout(onTimeout, DELAY);
+    const timeoutId = setTimeout(() => setDelayedValue(value), delay);
     return () => clearTimeout(timeoutId);
-  }, [onTimeout]);
+  }, [value, delay]);
 
-  return databaseIds.map(id => databaseById[id]);
+  return delayedValue;
 };
 
 export default SyncStatus;
