@@ -8637,7 +8637,7 @@ databaseChangeLog:
                   name: card_id
 
   - changeSet:
-      id: 4200000
+      id: v42.00-000
       author: camsaul
       comment: Added 0.42.0 Remove unused column
       # this migration was previously numbered 317 and merged into master before we adopted the 0.42.0+ migration ID
@@ -8665,7 +8665,7 @@ databaseChangeLog:
             columnName: entity_name
 
   - changeSet:
-      id: 4200003
+      id: v42.00-003
       author: dpsutton
       comment: Added 0.42.0 Initial support for datasets based on questions
       # this migration was previously numbered 320 and merged into master before we adopted the 0.42.0+ migration ID
@@ -8713,7 +8713,7 @@ databaseChangeLog:
 #
 # 3) Migrations IDs should follow the format
 #
-#    MMmmNNNN
+#    vMM.mm-NNN
 #
 #    where
 #
@@ -8721,8 +8721,8 @@ databaseChangeLog:
 #    m = minor version
 #    N = migration number relative to that major+minor version
 #
-#   e.g. the first migration added to 0.42.0 should be numbered 4200000 and the second migration should be numbered
-#   4200001. The first migration for 0.42.1 should be numbered 4201000, and so forth.
+#   e.g. the first migration added to 0.42.0 should be numbered v42.00-000 and the second migration should be numbered
+#   v42.00-001. The first migration for 0.42.1 should be numbered v42.01-000, and so forth.
 #
 #   This numbering scheme was adopted beginning with version 0.42.0 so that we could go back and add migrations to patch
 #   releases without the ID sequence getting wildly out of order. See PR #18821 for more information.
