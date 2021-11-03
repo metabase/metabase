@@ -23,12 +23,23 @@ const expressionDimension = Dimension.parseMBQL(
   metadata,
 );
 
+const longDescriptionDimension = {
+  displayName: () => "Foo",
+  icon: () => "string",
+  field: () => ({
+    description: Array(50)
+      .fill("Long description Long description")
+      .join("\n "),
+  }),
+};
+
 export const component = DimensionInfo;
 export const description =
   "A selection of information from a given Dimension instance, for use in some containing component";
 export const examples = {
   "with description": <DimensionInfo dimension={fieldDimension} />,
   "without description": <DimensionInfo dimension={expressionDimension} />,
+  "long description": <DimensionInfo dimension={longDescriptionDimension} />,
   "in a card": (
     <Card>
       <DimensionInfo dimension={fieldDimension} />
@@ -36,7 +47,7 @@ export const examples = {
   ),
   "in a popoover": (
     <PopoverWithTrigger triggerElement={<Button>click me</Button>}>
-      <DimensionInfo dimension={fieldDimension} />
+      <DimensionInfo dimension={longDescriptionDimension} />
     </PopoverWithTrigger>
   ),
 };

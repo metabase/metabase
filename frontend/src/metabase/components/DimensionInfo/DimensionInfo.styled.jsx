@@ -13,6 +13,9 @@ export const Container = styled.div`
 
 export const Description = styled.div`
   font-size: 14px;
+  white-space: pre-line;
+  max-height: 200px;
+  overflow: auto;
 `;
 
 export const EmptyDescription = styled(Description)`
