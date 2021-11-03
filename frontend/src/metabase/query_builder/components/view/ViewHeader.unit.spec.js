@@ -178,13 +178,13 @@ describe("ViewHeader", () => {
       const { question, questionType } = testCase;
 
       describe(questionType, () => {
-        it(`offers to save`, () => {
+        it("offers to save", () => {
           const { onOpenModal } = setup({ question, isDirty: true });
           fireEvent.click(screen.getByText("Save"));
           expect(onOpenModal).toHaveBeenCalledWith("save");
         });
 
-        it(`does not offer to save if it's not dirty`, () => {
+        it("does not offer to save if it's not dirty", () => {
           setup({ question, isDirty: false });
           expect(screen.queryByText("Save")).not.toBeInTheDocument();
         });
@@ -210,7 +210,7 @@ describe("ViewHeader", () => {
       const { question, questionType } = testCase;
 
       describe(questionType, () => {
-        it(`displays database and table names`, () => {
+        it("displays database and table names", () => {
           setup({ question });
           const databaseName = question.database().displayName();
           const tableName = question.table().displayName();
@@ -219,7 +219,7 @@ describe("ViewHeader", () => {
           expect(screen.queryByText(tableName)).toBeInTheDocument();
         });
 
-        it(`offers to filter query results`, () => {
+        it("offers to filter query results", () => {
           const { onAddFilter } = setup({
             question,
             queryBuilderMode: "view",
@@ -228,7 +228,7 @@ describe("ViewHeader", () => {
           expect(onAddFilter).toHaveBeenCalled();
         });
 
-        it(`offers to summarize query results`, () => {
+        it("offers to summarize query results", () => {
           const { onEditSummary } = setup({
             question,
             queryBuilderMode: "view",
@@ -237,7 +237,7 @@ describe("ViewHeader", () => {
           expect(onEditSummary).toHaveBeenCalled();
         });
 
-        it(`allows to open notebook editor`, () => {
+        it("allows to open notebook editor", () => {
           const { setQueryBuilderMode } = setup({
             question,
             queryBuilderMode: "view",
@@ -246,7 +246,7 @@ describe("ViewHeader", () => {
           expect(setQueryBuilderMode).toHaveBeenCalledWith("notebook");
         });
 
-        it(`allows to close notebook editor`, () => {
+        it("allows to close notebook editor", () => {
           const { setQueryBuilderMode } = setup({
             question,
             queryBuilderMode: "notebook",
@@ -255,22 +255,22 @@ describe("ViewHeader", () => {
           expect(setQueryBuilderMode).toHaveBeenCalledWith("view");
         });
 
-        it(`does not offer to filter query results in notebook mode`, () => {
+        it("does not offer to filter query results in notebook mode", () => {
           setup({ question, queryBuilderMode: "notebook" });
           expect(screen.queryByText("Filter")).not.toBeInTheDocument();
         });
 
-        it(`does not offer to filter query in detail view`, () => {
+        it("does not offer to filter query in detail view", () => {
           setup({ question, isObjectDetail: true });
           expect(screen.queryByText("Filter")).not.toBeInTheDocument();
         });
 
-        it(`does not offer to summarize query results in notebook mode`, () => {
+        it("does not offer to summarize query results in notebook mode", () => {
           setup({ question, queryBuilderMode: "notebook" });
           expect(screen.queryByText("Summarize")).not.toBeInTheDocument();
         });
 
-        it(`does not offer to summarize query in detail view`, () => {
+        it("does not offer to summarize query in detail view", () => {
           setup({ question, isObjectDetail: true });
           expect(screen.queryByText("Summarize")).not.toBeInTheDocument();
         });
@@ -283,12 +283,12 @@ describe("ViewHeader", () => {
       const { question, questionType } = testCase;
 
       describe(questionType, () => {
-        it(`does not offer to filter query results`, () => {
+        it("does not offer to filter query results", () => {
           setup({ question });
           expect(screen.queryByText("Filter")).not.toBeInTheDocument();
         });
 
-        it(`does not offer to summarize query results`, () => {
+        it("does not offer to summarize query results", () => {
           setup({ question });
           expect(screen.queryByText("Summarize")).not.toBeInTheDocument();
         });
