@@ -3,8 +3,8 @@ import { Bar} from "@visx/shape";
 import { Group } from "@visx/group";
 import { scaleBand } from "@visx/scale";
 import type { ScaleBand, ScaleLinear } from "d3-scale";
-import { Series } from "./types";
-import { getX, getY } from "./utils/scale";
+import { Series } from "../types";
+import { getX, getY } from "metabase/static-viz/lib/series";
 
 interface BarSeriesProps {
   series: Series<Date, number>[];

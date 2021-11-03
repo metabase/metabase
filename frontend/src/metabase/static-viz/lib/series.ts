@@ -1,5 +1,7 @@
-import { Datum, Series } from "../types";
-import { getX, getY } from "./scale";
+import { Datum, Series } from "../components/types";
+
+export const getX = <X, Y>(d: Datum<X, Y>) => d[0];
+export const getY = <X, Y>(d: Datum<X, Y>) => d[1];
 
 export const getDateXDomain = (data: Datum<Date, unknown>[]) => {
   return [

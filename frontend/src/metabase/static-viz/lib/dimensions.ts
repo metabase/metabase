@@ -1,6 +1,6 @@
-import { Dimensions, Margins } from "../types";
+import { Dimensions, Margin } from "../components/types";
 
-export const getChartBounds = (dimensions: Dimensions, margins: Margins) => {
+export const getChartBounds = (dimensions: Dimensions, margins: Margin) => {
   const width = dimensions.width - margins.left - margins.right;
   const height = dimensions.height - margins.top - margins.bottom;
 

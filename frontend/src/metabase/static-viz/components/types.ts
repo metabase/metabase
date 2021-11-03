@@ -19,7 +19,7 @@ export interface Dimensions {
   height: number;
 }
 
-export interface Margins {
+export interface Margin {
   top: number;
   right: number;
   bottom: number;
@@ -28,5 +28,25 @@ export interface Margins {
 
 export interface ChartSize {
   dimensions: Dimensions;
-  margins: Margins;
+  margin: Margin;
+}
+
+export interface DateFormatSettings {
+  date_style: string;
+}
+
+export interface NumberFormatSettings {
+  number_style: string;
+  decimals: number;
+  currency?: string;
+  currency_style?: string;
+}
+
+export interface Labels {
+  left: string;
+  bottom: string;
+}
+
+export interface Colors {
+  brand?: string;
 }

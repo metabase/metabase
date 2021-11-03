@@ -18,8 +18,86 @@ export default function StaticVizPage() {
           see updates.
         </Text>
         <Box py={3}>
-          <Subhead>Combo</Subhead>
-          <StaticChart type="combo" />
+          <Subhead>Combo chart with timeseries data</Subhead>
+          <StaticChart
+            type="timeseries/combo"
+            options={{
+              settings: {
+                x: {
+                  date_style: "MM/DD/YYYY",
+                },
+                y: {
+                  number_style: "currency",
+                  currency: "USD",
+                  currency_style: "symbol",
+                  decimals: 1,
+                },
+              },
+              labels: {
+                bottom: "Created at",
+                left: "Price",
+              },
+              series: [
+                {
+                  label: "Line series",
+                  data: [
+                    [new Date(2020, 0, 1), 1],
+                    [new Date(2020, 1, 1), 3],
+                    [new Date(2020, 2, 1), 1],
+                    [new Date(2020, 3, 1), 3],
+                    [new Date(2020, 4, 1), 1],
+                  ],
+                  settings: {
+                    type: "line",
+                    color: "#88BF4D",
+                  },
+                },
+                {
+                  label: "Area series",
+                  data: [
+                    [new Date(2020, 0, 1), 3],
+                    [new Date(2020, 1, 1), 1],
+                    [new Date(2020, 2, 1), 3],
+                    [new Date(2020, 3, 1), 1],
+                    [new Date(2020, 4, 1), 3],
+                  ],
+                  settings: {
+                    type: "area",
+                    color: "#EF8C8C",
+                  },
+                },
+
+                {
+                  label: "Bar series",
+                  data: [
+                    [new Date(2020, 0, 1), 2],
+                    [new Date(2020, 1, 1), 4],
+                    [new Date(2020, 2, 1), 2],
+                    [new Date(2020, 3, 1), 4],
+                    [new Date(2020, 4, 1), 2],
+                  ],
+                  settings: {
+                    type: "bar",
+                    color: "#A989C5",
+                  },
+                },
+                {
+                  label: "Bar series 2",
+                  data: [
+                    [new Date(2020, 0, 1), 2],
+                    [new Date(2020, 1, 1), 4],
+                    [new Date(2020, 2, 1), 2],
+                    [new Date(2020, 3, 1), 4],
+                    [new Date(2020, 4, 1), 2],
+                  ],
+                  settings: {
+                    type: "bar",
+                    color: "#f2a86f",
+                  },
+                },
+              ],
+            }}
+          />
         </Box>
         <Box py={3}>
           <Subhead>Line chart with timeseries data</Subhead>
