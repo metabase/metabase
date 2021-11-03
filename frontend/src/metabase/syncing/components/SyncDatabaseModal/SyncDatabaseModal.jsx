@@ -21,10 +21,12 @@ const SyncDatabaseModal = ({ xraysEnabled, onClose }) => {
       }
       onClose={onClose}
     >
-      {t`You’ll be able to use individual tables as they finish syncing. `}
-      {jt`You can also explore our ${(
-        <strong>{t`Sample Dataset`}</strong>
-      )} in the meantime if you want to get a head start.`}
+      <div>
+        {t`You’ll be able to use individual tables as they finish syncing. `}
+        {jt`You can also explore our ${(
+          <strong>{t`Sample Dataset`}</strong>
+        )} in the meantime if you want to get a head start.`}
+      </div>
     </ModalContent>
   );
 };
