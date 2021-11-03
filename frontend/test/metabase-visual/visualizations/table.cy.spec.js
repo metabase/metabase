@@ -2,20 +2,20 @@ import { restore, openOrdersTable, modal } from "__support__/e2e/cypress";
 
 describe("visual tests > visualizations > table", () => {
   beforeEach(() => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
     restore();
     cy.signInAsNormalUser();
-    cy.intercept("POST", "/api/dataset").as("dataset");
+
+    openOrdersTable();
+    cy.wait("@dataset");
+    cy.findByTestId("loading-spinner").should("not.exist");
   });
 
   it("ad-hoc", () => {
-    openOrdersTable();
-    cy.wait("@dataset");
     cy.percySnapshot();
   });
 
   it("saved", () => {
-    openOrdersTable();
-    cy.wait("@dataset");
     saveQuestion();
     cy.percySnapshot();
   });
