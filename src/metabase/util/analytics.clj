@@ -1,16 +1,16 @@
 (ns metabase.util.analytics
   "Functions for sending Snowplow analytics events"
-  (:require [metabase.models.setting :refer [defsetting]]
-            [metabase.util.i18n :as i18n :refer [available-locales-with-names deferred-tru trs tru]]
+  (:require [clojure.tools.logging :as log]
+            [metabase.models.setting :refer [defsetting]]
             [metabase.public-settings :as public-settings]
-            [metabase.api.common :as api])
+            [metabase.util.i18n :as i18n :refer [deferred-tru trs]])
   (:import [com.snowplowanalytics.snowplow.tracker Subject$SubjectBuilder Tracker Tracker$TrackerBuilder]
            [com.snowplowanalytics.snowplow.tracker.emitter BatchEmitter Emitter]
+           com.snowplowanalytics.snowplow.tracker.events.Unstructured
            com.snowplowanalytics.snowplow.tracker.http.ApacheHttpClientAdapter
-           org.apache.http.impl.client.HttpClients
-           org.apache.http.impl.conn.PoolingHttpClientConnectionManager
            com.snowplowanalytics.snowplow.tracker.payload.SelfDescribingJson
-           com.snowplowanalytics.snowplow.tracker.events.Unstructured))
+           org.apache.http.impl.client.HttpClients
+           org.apache.http.impl.conn.PoolingHttpClientConnectionManager))
 
 (defsetting snowplow-url
   (deferred-tru "The URL of the Snowplow collector to send analytics events to")
@@ -46,15 +46,6 @@
       (.userId (str user-id))
       (.build)))
 
-(defn- payload
-  [event-data]
-  ; (let [event-data {"event" "tracking_permission_enabled",
-  ;                   "source" "setup"}]
-  (new SelfDescribingJson
-       "iglu:com.metabase/settings/jsonschema/1-0-0"
-       ;; Make sure keys are strings
-       (into {} (for [[k v] event-data] [(name k) v]))))
-
 (defn- context
   "Common context included in every analytics event"
   []
@@ -65,8 +56,36 @@
         "token-features" (into {} (for [[token enabled?] (public-settings/token-features)]
                                     [(name token) enabled?]))}))
 
-(comment (.track @tracker (-> (. Unstructured builder)
-                              (.subject (subject 1))
-                              (.eventData (payload))
-                              (.customContext [(context)])
-                              (.build))))
+(defn- payload
+  [schema version event-data]
+  (new SelfDescribingJson
+       (format "iglu:com.metabase/%s/jsonschema/%s" (name schema) version)
+       ;; Make sure keywords are converted to strings
+       (into {} (for [[k v] event-data] [(name k) (if (keyword? v) (name v) v)]))))
+
+(defn- track-schema-event
+  [schema version user-id event-data]
+  (when (public-settings/anon-tracking-enabled)
+    (try
+     (let [builder (-> (. Unstructured builder)
+                       (.eventData (payload schema version event-data))
+                       (.customContext [(context)]))
+           builder' (if user-id
+                      (.subject builder (subject user-id))
+                      builder)
+           event    (.build builder')]
+       (.track @tracker event))
+     (catch Throwable e
+       (log/debug e (trs "Error sending Snowplow analytics event {0}" (name (:event event-data))))))))
+
+;; Snowplow analytics interface
+
+(defmulti track-event (fn [event & _] event))
+
+(defmethod track-event :new_instance_created
+  [_]
+  (track-schema-event :account "1-0-0" nil {:event :new_instance_created}))
+
+(defmethod track-event :invite_sent
+  [_ event-data user-id]
+  (track-schema-event :invite "1-0-0" user-id (assoc event-data :event :invite_sent)))
