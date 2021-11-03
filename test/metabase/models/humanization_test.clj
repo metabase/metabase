@@ -1,37 +1,9 @@
 (ns metabase.models.humanization-test
   (:require [clojure.test :refer :all]
-            [colorize.core :as colorize]
             [metabase.models.humanization :as humanization]
             [metabase.models.table :refer [Table]]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
-
-(defn- do-with-temporary-humanization-strategy
-  "Implementation for the `with-temporary-humanization-strategy` macro."
-  [value thunk]
-  (let [original-value (humanization/humanization-strategy)]
-    (try
-      (humanization/humanization-strategy value)
-      (testing (colorize/blue (format "\nSetting :humanization-strategy = %s\n" (pr-str value)))
-        (thunk))
-      (catch Throwable e
-        (throw (ex-info (str "Error in with-temporary-humanization-strategy: " (ex-message e))
-                        {:setting :humanization-strategy
-                         :value   value}
-                        e)))
-      (finally
-        (humanization/humanization-strategy original-value)))))
-
-(defmacro with-temporary-humanization-strategy
-  "Temporarily set the `humanization-strategy` setting to the provided value, execute body, and re-establish the
-  original setting. This should be used instead of `metabase.test.util/with-temporary-setting-values`
-  to ensure that table names in the database are updated properly when restoring the setting.
-
-     (with-temporary-humanization-strategy :simple
-       ...)"
-  [value & body]
-  `(do-with-temporary-humanization-strategy ~value (fn [] ~@body)))
-
 
 (deftest simple-humanization-test
   (doseq [[input expected] {nil                         nil
@@ -140,7 +112,7 @@
                                     "fussybird_sightings" {:initial  "Fussybird Sightings"
                                                            :simple   "Fussybird Sightings"
                                                            :none     "fussybird_sightings"}}]
-      (with-temporary-humanization-strategy :simple
+      (tu/with-temporary-setting-values [humanization-strategy "simple"]
         (tt/with-temp Table [{table-id :id} {:name actual-name}]
           (letfn [(display-name [] (db/select-one-field :display_name Table, :id table-id))]
             (testing "initial display name"
@@ -158,7 +130,7 @@
 (deftest do-not-overwrite-custom-names-test
   (testing "check that if we give a field a custom display_name that changing strategy doesn't overwrite it"
     (doseq [initial-strategy ["simple" "none"]]
-      (with-temporary-humanization-strategy (keyword initial-strategy)
+      (tu/with-temporary-setting-values [humanization-strategy initial-strategy]
         (tt/with-temp Table [{table-id :id} {:name "toucansare_cool", :display_name "My Favorite Table"}]
           (doseq [new-strategy ["simple" "none"]]
             (testing (format "switch from %s -> %s" initial-strategy new-strategy)
