@@ -9,13 +9,17 @@ import { color, lighten } from "metabase/lib/colors";
 
 import { ItemLocation } from "./ItemLocation";
 
+function getSearchResultItemIcon(item) {
+  return item.model === "dataset" ? "dataset" : "table2";
+}
+
 export function SearchResultItem({ item, onSelect }) {
   const handleClick = () => onSelect(item);
 
   return (
     <SearchResultItemRoot onClick={handleClick}>
       <IconWrapper>
-        <Icon name="table2" size={22} />
+        <Icon name={getSearchResultItemIcon(item)} size={22} />
       </IconWrapper>
       <Details>
         <Title>{item.name}</Title>

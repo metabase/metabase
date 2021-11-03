@@ -188,7 +188,7 @@
     (is (= :ok
           (validate
            (mock-change-set
-             :id 321
+             :id "v42.00-001"
              :changes [(mock-add-column-changes :columns [(mock-column :type "${text.type")])]))))
     (doseq [problem-type ["blob" "text"]]
       (testing (format "should prevent \"%s\" columns from being added after ID 320" problem-type)
@@ -197,5 +197,5 @@
               #"(?s)^.*no-bare-blob-or-text-types\\?.*$"
               (validate
                 (mock-change-set
-                  :id 321
+                  :id "v42.00-001"
                   :changes [(mock-add-column-changes :columns [(mock-column :type problem-type)])]))))))))

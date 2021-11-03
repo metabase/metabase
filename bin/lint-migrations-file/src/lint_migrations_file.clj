@@ -94,14 +94,16 @@
   [change-log]
   (let [problem-cols (atom [])
         walk-fn      (partial assert-no-types-in-change-set #{"blob" "text"} problem-cols)]
-    (doseq [[id change-set] (for [{{id :id} :changeSet :as change-set} change-log
-                                  :when                                id]
-                              [(if (string? id)
-                                 (Integer/parseInt id)
-                                 id)
-                               change-set])]
-      (when (> id 320) ; only enforced after changeset ID 320
-        (walk/postwalk walk-fn change-set)))
+    (doseq [{{id :id} :changeSet, :as change-set} change-log
+            :when                                 (and id
+                                                       (string? id))]
+      [id change-set])
+    (doseq [{{id :id} :changeSet :as change-set} change-log
+            :when                                (and id
+                                                      ;; only enforced in 42+ with new-style migration IDs.
+                                                      (string? id)
+                                                      (str/starts-with? id "v"))]
+      (walk/postwalk walk-fn change-set))
     (empty? @problem-cols)))
 
 ;; TODO -- change sets must be distinct by ID.

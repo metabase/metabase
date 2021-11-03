@@ -9687,6 +9687,22 @@ databaseChangeLog:
 #   This numbering scheme was adopted beginning with version 0.42.0 so that we could go back and add migrations to patch
 #   releases without the ID sequence getting wildly out of order. See PR #18821 for more information.
 #
+# 3) Migrations IDs should follow the format
+#
+#    vMM.mm-NNN
+#
+#    where
+#
+#    M = major version
+#    m = minor version
+#    N = migration number relative to that major+minor version
+#
+#   e.g. the first migration added to 0.42.0 should be numbered v42.00-000 and the second migration should be numbered
+#   v42.00-001. The first migration for 0.42.1 should be numbered v42.01-000, and so forth.
+#
+#   This numbering scheme was adopted beginning with version 0.42.0 so that we could go back and add migrations to patch
+#   releases without the ID sequence getting wildly out of order. See PR #18821 for more information.
+#
 # PLEASE KEEP THIS MESSAGE AT THE BOTTOM OF THIS FILE!!!!! Add new migrations above the message.
 #
 ########################################################################################################################
