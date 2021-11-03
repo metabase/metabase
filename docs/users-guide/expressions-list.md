@@ -1,6 +1,6 @@
 # List of expressions
 
-For an intro to expressions, check out [Writing expressions in the notebook editor][expressions].
+For an introduction to expressions, check out [Writing expressions in the notebook editor][expressions].
 
 - [Aggregations](#aggregations)
   - [Average](#average)
@@ -229,7 +229,7 @@ Example: `ceil([Price])`. `ceil(2.99)` would return 3.
 
 Databases that don't support `ceil`: BigQuery.
 
-Related: [floor](#floor), [round](round).
+Related: [floor](#floor), [round](#round).
 
 ### coalesce
 
@@ -455,19 +455,19 @@ Example: `upper([Status])`. If status were "hyper", `upper("hyper")` would retur
 
 Limitations are noted for each aggregation and function above, and here there are in summary:
 
-**BigQuery**: `abs`, `ceil`, `floor`, `median`, `percentile` and `round`
+**BigQuery**: `abs`, `ceil`, `floor`, `Median`, `Percentile` and `round`
 
-**H2**: `median`, `percentile` and `regexextract`
+**H2**: `Median`, `Percentile` and `regexextract`
 
-**MySQL**: `median`, `percentile` and `regexextract`
+**MySQL**: `Median`, `Percentile` and `regexextract`
 
-**SQL Server**: `median`, `percentile` and `regexextract`
+**SQL Server**: `Median`, `Percentile` and `regexextract`
 
-**SQLite**: `log`, `median`, `percentile`, `power`, `regexextract`, `standarddeviation`, `sqrt` and `variance`
+**SQLite**: `log`, `Median`, `Percentile`, `power`, `regexextract`, `StandardDeviation`, `sqrt` and `Variance`
 
-**Vertica**: `median` and `percentile`
+**Vertica**: `Median` and `Percentile`
 
-Additionally, **Presto** only provides _approximate_ results for `median` and `percentile`.
+Additionally, **Presto** only provides _approximate_ results for `Median` and `Percentile`.
 
 If you're using or maintaining a third-party database driver, please [refer to the wiki](https://github.com/metabase/metabase/wiki/What's-new-in-0.35.0-for-Metabase-driver-authors) to see how your driver might be impacted.
 

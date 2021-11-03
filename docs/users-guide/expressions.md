@@ -1,32 +1,14 @@
 # Writing expressions in the notebook editor
 
-[Custom expressions][custom-expressions] are like formulas in spreadsheet software like Excel, Google Sheets, and LibreOffice Calc. You can use them in the notebook editor of the query builder to ask more complicated questions.
+[Custom expressions][expression-list] are like formulas in spreadsheet software like Excel, Google Sheets, and LibreOffice Calc. They are the power tools in the notebook editor of the query builder that allow you to ask more complicated questions.
 
 When using the query builder, you can use expressions to create new:
 
 - **Filters**. The expression `= contains([comment], "Metabase")` would filter for rows where the `comment` field contained the word "Metabase".
-- **Metrics**. `= share([Total] > 50)` would return the percentage of orders with totals greater than 50 dollars.
+- **Metrics**. Also known as summaries. `= share([Total] > 50)` would return the percentage of orders with totals greater than 50 dollars.
 - **Custom columns**. You could use `= [Subtotal] / [Quantity]` to create a new column, which you could name "Item price".
 
-This page covers the basics of expressions. You can also check out a [full list of expressions][expression-list].
-
-## Basic mathematical operators
-
-Use `+`, `-`, `*` (multiply), `/` (divide) on numeric columns with numeric values, like integers, floats, and double. You can use parentheses, `(` ad `)`, to group parts of your expression.
-
-You can't currently do math on timestamp columns (we're working on adding new date functions soon, so stay tuned).
-
-## Conditional operators
-
-`AND`, `OR`, `NOT`, `>`, `>=` (greater than or equal to), `<`, `<=` (less than or equal to), `=`, `!=` (not equal to).
-
-## Referencing other columns
-
-You can refer to columns in the current table, or columns that are linked via a foreign key relationship. Column names should be included inside of square brackets, like this: `[Name of Column]`. Columns in connected tables can be referred to like this: `[ConnectedTableName.Column]`.
-
-## Referencing Segments and metrics
-
-You can refer to saved [Segments or Metrics](../administration-guide/07-segments-and-metrics.md) that are present in the currently selected table. You write these out the same as with columns, like this: `[Valid User Sessions]`.
+This page covers the basics of expressions. You can check out a [full list of expressions][expression-list] in Metabase, or walk through a tutorial that shows you how you can use [custom expressions in the notebook editor][custom-expressions].
 
 ## Types of expressions 
 
@@ -40,11 +22,33 @@ There are two basic types of expressions, **Aggregations** and **Functions**. Ch
 
 [Functions][functions], by contrast, do something to each value in a column, like searching for a word in each value (`contains`), rounding each value up to the nearest integer (the `ceil` function), and so on.
 
+## Basic mathematical operators
+
+Use `+`, `-`, `*` (multiply), `/` (divide) on numeric columns with numeric values, like integers, floats, and double. You can use parentheses, `(` ad `)`, to group parts of your expression.
+
+For example, you could create a new column that calculates the difference between the total and subtotal of a order: `= [Total] - [Subtotal]`.
+
+You can't currently do math on timestamp columns (we're working on adding new date functions soon, so stay tuned).
+
+## Conditional operators
+
+`AND`, `OR`, `NOT`, `>`, `>=` (greater than or equal to), `<`, `<=` (less than or equal to), `=`, `!=` (not equal to).
+
+For example, you could create a filter for customers from California or Vermont: `= [State] = "CA" OR [State] = "VT"`.
+
+## Referencing other columns
+
+You can refer to columns in the current table, or columns that are linked via a foreign key relationship. Column names should be included inside of square brackets, like this: `[Name of Column]`. Columns in connected tables can be referred to like this: `[ConnectedTableName.Column]`.
+
+## Referencing Segments and metrics
+
+You can refer to saved [Segments or Metrics](../administration-guide/07-segments-and-metrics.md) that are present in the currently selected table. You write these out the same as with columns, like this: `[Valid User Sessions]`.
+
 ## Filter expressions and conditionals
 
 Some things to keep in mind about filter expressions and conditionals:
 
-- Filter expressions are different in that they must return a Boolean value (something that's either true or false). For example, you could write `[Subtotal] + [Tax] < 100`, but not just `[Subtotal] + [Tax]`.
+- Filter expressions are different in that they must return a Boolean value (something that's either true or false). For example, you could write `[Subtotal] + [Tax] < 100`. Metabase would look at each row, add its subtotal and tax, the check if that sum is greater than 100. If it is, the statement evaluates as true, and Metabase will include the row in the result. If instead you were to (incorrectly) write `[Subtotal] + [Tax]`, Metabase wouldn't know what to do, as that expression doesn't evaluate to true or false.
 - You can use functions inside of the conditional portion of the `Countif` and `Sumif` aggregations, like so: `countif( round([Subtotal]) > 100 OR floor([Tax]) < 10 )`.
 
 ## Working with dates in filter expressions
