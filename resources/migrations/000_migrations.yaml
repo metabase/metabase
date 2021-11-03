@@ -8707,7 +8707,7 @@ databaseChangeLog:
                     nullable: false
                   defaultValue: false
 
-  - changeSet: # this one is run unconditionally so unify the type to ${text.type} across ALL dbs
+  - changeSet:    # this one is run unconditionally so unify the type to ${text.type} across ALL dbs
       id: 4200004 # this differentiation was first done under changeSet 13 above
       author: jeff303
       comment: >-
@@ -9534,8 +9534,8 @@ databaseChangeLog:
         - dbms:
             type: mysql,mariadb
 
-  - changeSet: # this one is run unconditionally so unify the type to ${text.type} across ALL dbs
-      id: 4200056
+  - changeSet:    # this one is run unconditionally so unify the type to ${text.type} across ALL dbs
+      id: 4200056 # this differentiation was first done under changeSet 10 above
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of revision.object from text to ${text.type}

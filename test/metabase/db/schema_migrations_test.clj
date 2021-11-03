@@ -18,7 +18,8 @@
             [metabase.test.util :as tu]
             [metabase.util :as u]
             [toucan.db :as db])
-  (:import java.util.UUID))
+  (:import java.sql.Connection
+           java.util.UUID))
 
 (deftest database-position-test
   (testing "Migration 165: add `database_position` to Field"
@@ -162,101 +163,98 @@
                                             :semantic_type :name]))
                       (db/select Field :table_id table-id)))))))))
 
+(defn app-db-column-types
+  "Returns a map of all column names to their respective type names, for the given `table-name`, from the currently
+  bound app DB connection."
+  [^Connection conn table-name]
+  (with-open [rset (.getColumns (.getMetaData conn) nil nil table-name nil)]
+    (into {} (take-while some?)
+             (repeatedly
+               (fn []
+                 (when (.next rset)
+                   [(.getString rset "COLUMN_NAME") (.getString rset "TYPE_NAME")]))))))
+
 (deftest convert-text-to-longtext-migration-test
   (testing "all columns that were TEXT type in MySQL were changed to"
-    (impl/test-migrations [321 380] [migrate!]
+    (impl/test-migrations [4200004 4200063] [migrate!]
       (migrate!) ; just run migrations immediately, then check the new types
-      (doseq [[tbl-nm col-nm] [["activity" "details"]
-                               ["collection" "description"]
-                               ["collection" "name"]
-                               ["computation_job" "context"]
-                               ["computation_job_result" "payload"]
-                               ["core_session" "anti_csrf_token"]
-                               ["core_user" "login_attributes"]
-                               ["group_table_access_policy" "attribute_remappings"]
-                               ["login_history" "device_description"]
-                               ["login_history" "ip_address"]
-                               ["metabase_database" "caveats"]
-                               ["metabase_database" "description"]
-                               ["metabase_database" "details"]
-                               ["metabase_database" "options"]
-                               ["metabase_database" "points_of_interest"]
-                               ["metabase_field" "caveats"]
-                               ["metabase_field" "database_type"]
-                               ["metabase_field" "description"]
-                               ["metabase_field" "fingerprint"]
-                               ["metabase_field" "has_field_values"]
-                               ["metabase_field" "points_of_interest"]
-                               ["metabase_field" "settings"]
-                               ["metabase_fieldvalues" "human_readable_values"]
-                               ["metabase_fieldvalues" "values"]
-                               ["metabase_table" "caveats"]
-                               ["metabase_table" "description"]
-                               ["metabase_table" "points_of_interest"]
-                               ["metric" "caveats"]
-                               ["metric" "definition"]
-                               ["metric" "description"]
-                               ["metric" "how_is_this_calculated"]
-                               ["metric" "points_of_interest"]
-                               ["moderation_review" "text"]
-                               ["native_query_snippet" "content"]
-                               ["native_query_snippet" "description"]
-                               ["pulse" "parameters"]
-                               ["pulse_channel" "details"]
-                               ["query" "query"]
-                               ["query_execution" "error"]
-                               ["report_card" "dataset_query"]
-                               ["report_card" "description"]
-                               ["report_card" "embedding_params"]
-                               ["report_card" "result_metadata"]
-                               ["report_card" "visualization_settings"]
-                               ["report_dashboard" "caveats"]
-                               ["report_dashboard" "description"]
-                               ["report_dashboard" "embedding_params"]
-                               ["report_dashboard" "parameters"]
-                               ["report_dashboard" "points_of_interest"]
-                               ["report_dashboardcard" "parameter_mappings"]
-                               ["report_dashboardcard" "visualization_settings"]
-                               ["revision" "message"]
-                               ["revision" "object"]
-                               ["segment" "caveats"]
-                               ["segment" "definition"]
-                               ["segment" "description"]
-                               ["segment" "points_of_interest"]
-                               ["setting" "value"]
-                               ["task_history" "task_details"]
-                               ["view_log" "metadata"]]]
-        (let [^String exp-type (case driver/*driver*
-                                 :mysql "longtext"
-                                 :h2    "clob"
-                                 "text")
-              schema-name      (case driver/*driver*
-                                 :mysql "schema-migrations-test-db"
-                                 "public")
-              type-col         (case driver/*driver*
-                                 :h2 "TYPE_NAME"
-                                 "DATA_TYPE")
-              ;; can't quite use tx/format-name to do this, unfortunately, since that inserts literal double quotes
-              ;; around the string vals for :h2
-              [schm tbl col]   (mapv (case driver/*driver*
-                                       :h2 str/upper-case
-                                       identity)
-                                     [schema-name tbl-nm col-nm])
-              raw-res          (jdbc/query (db/connection)
-                                 [(str "SELECT " type-col " FROM INFORMATION_SCHEMA.COLUMNS"
-                                       " WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?;")
-                                  schm
-                                  tbl
-                                  col])]
-          (testing (format " %s in %s" exp-type driver/*driver*)
-            ;; just get the first/only scalar value from the results (which is a vec of maps)
-            (is (.equalsIgnoreCase exp-type (-> raw-res
-                                                first
-                                                vals
-                                                first))
-                (format "Using %s, type for %s.%s was supposed to be %s, but was %s"
-                        driver/*driver*
-                        tbl-nm
-                        col-nm
-                        exp-type
-                        raw-res))))))))
+      (let [all-text-cols [["activity" "details"]
+                           ["collection" "description"]
+                           ["collection" "name"]
+                           ["computation_job" "context"]
+                           ["computation_job_result" "payload"]
+                           ["core_session" "anti_csrf_token"]
+                           ["core_user" "login_attributes"]
+                           ["group_table_access_policy" "attribute_remappings"]
+                           ["login_history" "device_description"]
+                           ["login_history" "ip_address"]
+                           ["metabase_database" "caveats"]
+                           ["metabase_database" "description"]
+                           ["metabase_database" "details"]
+                           ["metabase_database" "options"]
+                           ["metabase_database" "points_of_interest"]
+                           ["metabase_field" "caveats"]
+                           ["metabase_field" "database_type"]
+                           ["metabase_field" "description"]
+                           ["metabase_field" "fingerprint"]
+                           ["metabase_field" "has_field_values"]
+                           ["metabase_field" "points_of_interest"]
+                           ["metabase_field" "settings"]
+                           ["metabase_fieldvalues" "human_readable_values"]
+                           ["metabase_fieldvalues" "values"]
+                           ["metabase_table" "caveats"]
+                           ["metabase_table" "description"]
+                           ["metabase_table" "points_of_interest"]
+                           ["metric" "caveats"]
+                           ["metric" "definition"]
+                           ["metric" "description"]
+                           ["metric" "how_is_this_calculated"]
+                           ["metric" "points_of_interest"]
+                           ["moderation_review" "text"]
+                           ["native_query_snippet" "content"]
+                           ["native_query_snippet" "description"]
+                           ["pulse" "parameters"]
+                           ["pulse_channel" "details"]
+                           ["query" "query"]
+                           ["query_execution" "error"]
+                           ["report_card" "dataset_query"]
+                           ["report_card" "description"]
+                           ["report_card" "embedding_params"]
+                           ["report_card" "result_metadata"]
+                           ["report_card" "visualization_settings"]
+                           ["report_dashboard" "caveats"]
+                           ["report_dashboard" "description"]
+                           ["report_dashboard" "embedding_params"]
+                           ["report_dashboard" "parameters"]
+                           ["report_dashboard" "points_of_interest"]
+                           ["report_dashboardcard" "parameter_mappings"]
+                           ["report_dashboardcard" "visualization_settings"]
+                           ["revision" "message"]
+                           ["revision" "object"]
+                           ["segment" "caveats"]
+                           ["segment" "definition"]
+                           ["segment" "description"]
+                           ["segment" "points_of_interest"]
+                           ["setting" "value"]
+                           ["task_history" "task_details"]
+                           ["view_log" "metadata"]]]
+        (with-open [conn (jdbc/get-connection (db/connection))]
+          (doseq [[tbl-nm col-nms] (group-by first all-text-cols)]
+            (let [^String exp-type (case driver/*driver*
+                                     :mysql "longtext"
+                                     :h2    "CLOB"
+                                     "text")
+                  name-fn          (case driver/*driver*
+                                     :h2 str/upper-case
+                                     identity)
+                  tbl-cols         (app-db-column-types conn (name-fn tbl-nm))]
+              (doseq [col-nm (map last col-nms)]
+                (testing (format " %s in %s" exp-type driver/*driver*)
+                  ;; just get the first/only scalar value from the results (which is a vec of maps)
+                  (is (.equalsIgnoreCase exp-type (get tbl-cols (name-fn col-nm)))
+                      (format "Using %s, type for %s.%s was supposed to be %s, but was %s"
+                              driver/*driver*
+                              tbl-nm
+                              col-nm
+                              exp-type
+                              (get tbl-cols col-nm))))))))))))
