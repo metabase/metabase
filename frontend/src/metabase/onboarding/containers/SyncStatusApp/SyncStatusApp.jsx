@@ -6,12 +6,12 @@ import SyncStatus from "../../components/SyncStatus";
 const DONE_DELAY = 6000;
 
 const SyncStatusApp = ({ databases }) => {
-  const syncingDatabases = databases.filter(d => !d.initial_sync);
-  const delayedDatabases = useDelayedValue(syncingDatabases, DONE_DELAY);
-  const visibleDatabases = _.union(delayedDatabases, syncingDatabases);
+  const syncing = databases.filter(d => !d.initial_sync);
+  const delayed = useDelayedValue(syncing, DONE_DELAY);
+  const visible = _.uniq([syncing, delayed], false, d => d.id);
 
-  if (visibleDatabases.length) {
-    return <SyncStatus databases={visibleDatabases} />;
+  if (visible.length) {
+    return <SyncStatus databases={visible} />;
   } else {
     return null;
   }
