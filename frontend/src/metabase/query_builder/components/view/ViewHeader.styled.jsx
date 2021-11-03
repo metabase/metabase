@@ -40,7 +40,7 @@ export const SavedQuestionHeaderButtonContainer = styled.div`
 `;
 
 export const ViewSQLButtonContainer = styled.div`
-  margin-left: ${space(3)};
+  margin-left: ${space(2)};
   padding: ${space(1)};
 
   cursor: pointer;
