@@ -8637,7 +8637,7 @@ databaseChangeLog:
                   name: card_id
 
   - changeSet:
-      id: 42000000
+      id: 4200000
       author: camsaul
       comment: Added 0.42.0 Remove unused column
       # this migration was previously numbered 317 and merged into master before we adopted the 0.42.0+ migration ID
@@ -8665,7 +8665,7 @@ databaseChangeLog:
             columnName: entity_name
 
   - changeSet:
-      id: 42000003
+      id: 4200003
       author: dpsutton
       comment: Added 0.42.0 Initial support for datasets based on questions
       # this migration was previously numbered 320 and merged into master before we adopted the 0.42.0+ migration ID
