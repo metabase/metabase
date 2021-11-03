@@ -423,7 +423,6 @@ describe("Notebook Editor > Join Step", () => {
       expect(screen.queryAllByText("Pick a column...")).toHaveLength(2);
     });
 
-    // ###
     it("automatically opens a parent dimension picker for new fields pair", async () => {
       await setup({ joinTable: "Products" });
 
