@@ -8637,6 +8637,20 @@ databaseChangeLog:
                   name: card_id
 
   - changeSet:
+      id: 382
+      author: camsaul
+      comment: Added 0.41.2 Add index to ModerationReview moderated_item_type + moderated_item_id to fix performance issues (#18759)
+      changes:
+        - createIndex:
+            tableName: moderation_review
+            indexName: idx_moderation_review_item_type_item_id
+            columns:
+              - column:
+                  name: moderated_item_type
+              - column:
+                  name: moderated_item_id
+
+  - changeSet:
       id: v42.00-000
       author: camsaul
       comment: Added 0.42.0 Remove unused column

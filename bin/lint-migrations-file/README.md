@@ -9,12 +9,12 @@ namespaces while equivalent stricter ones are in `x.strict` namespaces.
 Run the linter with
 
 ```sh
-./bin/lint-migrations-yaml.sh
+./bin/lint-migrations-file.sh
 ```
 
 Add some tests for the checks you add here the `test/` directory; run them with
 
 ```sh
-cd bin/lint-migrations-yaml
+cd bin/lint-migrations-file
 clojure -M:test
 ```
