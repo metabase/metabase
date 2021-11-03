@@ -152,7 +152,6 @@ Syntax: `Share(condition)`
 
 Example: `Share([Color] = "Blue")` would return the number of rows with the `Color` field set to `Blue`, divided by the total number of rows.
 
-
 ### StandardDeviation
 
 Calculates the standard deviation of the column, which is a measure of the variation in a set of values. Low standard deviation indicates values cluster around the mean, whereas a high standard deviation means the values are spread out over a wide range.
