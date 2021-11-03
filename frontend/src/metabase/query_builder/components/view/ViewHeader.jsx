@@ -24,10 +24,12 @@ import QuestionNotebookButton from "./QuestionNotebookButton";
 import QuestionFilters, { QuestionFilterWidget } from "./QuestionFilters";
 import { QuestionSummarizeWidget } from "./QuestionSummaries";
 import NativeQueryButton from "./NativeQueryButton";
-import ViewSection, { ViewHeading, ViewSubHeading } from "./ViewSection";
+import ViewSection, { ViewHeading } from "./ViewSection";
 import {
   SaveButton,
   SavedQuestionHeaderButtonContainer,
+  ViewHeaderMainLeftContentContainer,
+  ViewHeaderLeftSubHeading,
   ViewHeaderContainer,
   ViewSQLButtonContainer,
 } from "./ViewHeader.styled";
@@ -168,7 +170,7 @@ function SavedQuestionLeftSide(props) {
   } = props;
   return (
     <div>
-      <div className="flex align-center">
+      <ViewHeaderMainLeftContentContainer>
         <SavedQuestionHeaderButtonContainer>
           <SavedQuestionHeaderButton
             question={question}
@@ -187,8 +189,8 @@ function SavedQuestionLeftSide(props) {
             onClick={onOpenQuestionHistory}
           />
         )}
-      </div>
-      <ViewSubHeading className="flex align-center flex-wrap pt1">
+      </ViewHeaderMainLeftContentContainer>
+      <ViewHeaderLeftSubHeading className="pt1">
         <CollectionBadge
           className="mb1"
           collectionId={question.collectionId()}
@@ -210,7 +212,7 @@ function SavedQuestionLeftSide(props) {
             onCollapse={onCollapseFilters}
           />
         )}
-      </ViewSubHeading>
+      </ViewHeaderLeftSubHeading>
     </div>
   );
 }
@@ -241,7 +243,7 @@ function AhHocQuestionLeftSide(props) {
   } = props;
   return (
     <div>
-      <div className="flex align-baseline flex-wrap">
+      <ViewHeaderMainLeftContentContainer>
         <ViewHeading className="mt1 mr2 mb1">
           {isNative ? (
             t`New question`
@@ -268,8 +270,8 @@ function AhHocQuestionLeftSide(props) {
             originalQuestion={originalQuestion}
           />
         )}
-      </div>
-      <div className="flex align-center flex-wrap">
+      </ViewHeaderMainLeftContentContainer>
+      <ViewHeaderLeftSubHeading>
         {isSummarized && (
           <QuestionDataSource
             className="mb1"
@@ -288,7 +290,7 @@ function AhHocQuestionLeftSide(props) {
             onCollapse={onCollapseFilters}
           />
         )}
-      </div>
+      </ViewHeaderLeftSubHeading>
     </div>
   );
 }

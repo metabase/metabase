@@ -2,12 +2,24 @@ import styled from "styled-components";
 import Link from "metabase/components/Link";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
-import ViewSection from "./ViewSection";
+import ViewSection, { ViewSubHeading } from "./ViewSection";
 
 export const ViewHeaderContainer = styled(ViewSection)`
   border-bottom: 1px solid ${color("border")};
   padding-top: ${space(1)};
   padding-bottom: ${space(1)};
+`;
+
+export const ViewHeaderMainLeftContentContainer = styled.div`
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+`;
+
+export const ViewHeaderLeftSubHeading = styled(ViewSubHeading)`
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
 `;
 
 export const SaveButton = styled(Link)`
