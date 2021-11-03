@@ -243,7 +243,7 @@ function AhHocQuestionLeftSide(props) {
   } = props;
   return (
     <div>
-      <ViewHeaderMainLeftContentContainer>
+      <ViewHeaderMainLeftContentContainer align="baseline">
         <ViewHeading className="mt1 mr2 mb1">
           {isNative ? (
             t`New question`
