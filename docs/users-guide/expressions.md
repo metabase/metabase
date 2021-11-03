@@ -63,4 +63,4 @@ For a tutorial on expressions, see [Custom expressions in the notebook editor][c
 
 
 [custom-expressions]: https://www.metabase.com/learn/questions/custom-expressions.html
-[expression-list]: expression-list.md
+[expression-list]: expression-list.html

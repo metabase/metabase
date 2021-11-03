@@ -10,7 +10,7 @@ There are two basic types of expressions, Aggregations and Functions. Aggregatio
 
 Aggregation expressions take into account all values in a field, therefore they cannot be used to filter data.
 
-### Average
+### Avg
 
 Returns the average of the values in the column.
 
@@ -270,7 +270,7 @@ Syntax: `ltrim(text)`
 
 Example: `ltrim([Comment])`. If the comment were " I'd prefer not to", `ltrim` would return "I'd prefer not to".
 
-See also [Trim](#trim) and [Right trim](#right-trim).
+See also [trim](#trim) and [righttrim](#righttrim).
 
 ### length
 
@@ -306,7 +306,7 @@ Example: `power([Length], 2)`. If the length were `3`, the expression would retu
 
 Databases that don't support `power`: SQLite.
 
-### RegexExtract
+### regexextract
 
 Extracts matching substrings according to a regular expression.
 
@@ -316,7 +316,7 @@ Example: `regexextract([Address], "[0-9]+")`.
 
 Databases that don't support `regexextract`: H2, MySQL, SQL Server, SQLite.
 
-### Replace
+### replace
 
 Replaces a part of the input text with new text.
 
@@ -324,7 +324,7 @@ Syntax: `replace(text, find, replace)`.
 
 Example: `replace([Title], "Enormous", "Gigantic")`.
 
-### Right Trim
+### righttrim
 
 Removes trailing whitespace from a string of text.
 
@@ -332,9 +332,9 @@ Syntax: `rtrim(text)`
 
 Example: `rtrim([Comment])`. If the comment were "Fear is the mindkiller. ", the expression would return "Fear is the mindkiller."
 
-See also [Trim](#trim) and [Left trim](#left-trim).
+See also [trim](#trim) and [lefttrim](#lefttrim).
 
-### Round
+### round
 
 Rounds a decimal number either up or down to the nearest integer value.
 
@@ -344,7 +344,7 @@ Example: `round([Temperature])`. If the temp were `13.5` degrees centigrade, the
 
 Databases that don't support `round`: BigQuery.
 
-### Sqrt
+### sqrt
 
 Returns the square root of a value.
 
@@ -356,7 +356,7 @@ Databases that don't support `sqrt`: SQLite.
 
 See also [Power](#power).
 
-### Starts with
+### startswith
 
 Returns true if the beginning of the text matches the comparison text.
 
@@ -364,7 +364,7 @@ Syntax: `startsWith(text, comparison)`.
 
 Example: `startsWith([Course Name], "Computer Science")` would return true for course names that began with "Computer Science", like "Computer Science 101: An introduction".
 
-### Substring
+### substring
 
 Returns a portion of the supplied text, specified by a starting position and a length.
 
@@ -372,7 +372,7 @@ Syntax: `substring(text, position, length)`
 
 Example: `substring([Title], 0, 10)` returns the first 11 letters of a string (the string index starts at position 0).
 
-### Trim
+### trim
 
 Removes leading and trailing whitespace from a string of text.
 
@@ -380,7 +380,7 @@ Syntax: `trim(text)`
 
 Example: `trim([Comment])` will remove any whitespace characters on either side of a comment.
 
-### Upper
+### upper
 
 Returns the text in all upper case.
 
@@ -388,7 +388,7 @@ Syntax: `upper(text)`.
 
 Example: `upper([Status])`. If status were "hyper", `upper("hyper")` would return "HYPER".
 
-### Database limitations
+## Database limitations
 
 Limitations are noted for each aggregation and function above, and here there are in summary:
 
@@ -410,5 +410,4 @@ If you're using or maintaining a third-party database driver, please [refer to t
 
 See [Custom expressions in the notebook editor](https://www.metabase.com/blog/custom-expressions/index.html) to learn more.
 
-
-[expressions]: expressions.md
+[expressions]: expressions.html
