@@ -2,10 +2,11 @@ import React from "react";
 
 import { PRODUCTS, metadata } from "__support__/sample_dataset_fixture";
 import Dimension from "metabase-lib/lib/Dimension";
-
-import DimensionInfo from "./DimensionInfo";
 import Card from "metabase/components/Card";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import Button from "metabase/components/Button";
+
+import DimensionInfo from "./DimensionInfo";
 
 const fieldDimension = Dimension.parseMBQL(
   ["field", PRODUCTS.CATEGORY.id, null],
@@ -34,7 +35,7 @@ export const examples = {
     </Card>
   ),
   "in a popoover": (
-    <PopoverWithTrigger triggerElement={<button>click me</button>}>
+    <PopoverWithTrigger triggerElement={<Button>click me</Button>}>
       <DimensionInfo dimension={fieldDimension} />
     </PopoverWithTrigger>
   ),

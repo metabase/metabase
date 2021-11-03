@@ -2,8 +2,9 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 
 import { PRODUCTS, metadata } from "__support__/sample_dataset_fixture";
-import DimensionInfo from "./DimensionInfo";
 import Dimension from "metabase-lib/lib/Dimension";
+
+import DimensionInfo from "./DimensionInfo";
 
 const fieldDimension = Dimension.parseMBQL(
   ["field", PRODUCTS.CREATED_AT.id, null],
