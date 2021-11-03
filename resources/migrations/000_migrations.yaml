@@ -8674,13 +8674,8 @@ databaseChangeLog:
       # Don't run for H2 -- the version of H2 we're using doesn't support JSON stuff.
       preConditions:
         - onFail: MARK_RAN
-        - or:
-            - dbms:
-                type: postgresql
-            - dbms:
-                type: mysql
-            - dbms:
-                type: mariadb
+        - dbms:
+            type: postgresql,mysql,mariadb
       # The basic idea below is to parse the `database_id` from the JSON string query dictionary and use it to set the
       # database_id column as needed. We do an INNER JOIN against the Database table to make sure that Database
       # actually exists (so we don't attempt to set an invalid database_id)
