@@ -6,8 +6,8 @@ import ViewSection from "./ViewSection";
 
 export const ViewHeaderContainer = styled(ViewSection)`
   border-bottom: 1px solid ${color("border")};
-  padding-top: ${space(2)};
-  padding-bottom: ${space(2)};
+  padding-top: ${space(1)};
+  padding-bottom: ${space(1)};
 `;
 
 export const SaveButton = styled(Link)`
