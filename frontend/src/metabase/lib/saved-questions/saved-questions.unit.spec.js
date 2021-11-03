@@ -31,6 +31,17 @@ describe("saved question helpers", () => {
         getCollectionVirtualSchemaName({ id: 23, name: "Important questions" }),
       ).toBe("Important questions");
     });
+
+    it("should prefer collection's schema name over just name", () => {
+      const collection = {
+        id: 5,
+        name: "Your personal collection",
+        schemaName: "John Doe's Personal collection",
+      };
+      expect(getCollectionVirtualSchemaName(collection)).toBe(
+        collection.schemaName,
+      );
+    });
   });
 
   describe("getCollectionVirtualSchemaId", () => {

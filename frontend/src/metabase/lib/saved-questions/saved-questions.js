@@ -9,9 +9,11 @@ export const ROOT_COLLECTION_VIRTUAL_SCHEMA = getCollectionVirtualSchemaId({
 });
 
 export function getCollectionVirtualSchemaName(collection) {
-  return !collection || collection.id === null || collection.id === "root"
+  const isRoot =
+    !collection || collection.id === null || collection.id === "root";
+  return isRoot
     ? ROOT_COLLECTION_VIRTUAL_SCHEMA_NAME
-    : collection.name;
+    : collection.schemaName || collection.name;
 }
 
 export function getCollectionVirtualSchemaId(collection, { isDatasets } = {}) {
