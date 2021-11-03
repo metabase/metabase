@@ -3,7 +3,7 @@ import { color } from "metabase/lib/colors";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 
-export const Snackbar = styled.div`
+export const SnackbarRoot = styled.div`
   position: fixed;
   right: 1.5rem;
   bottom: 1.5rem;

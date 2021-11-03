@@ -11,23 +11,23 @@ import {
   DatabaseIconContainer,
   DatabaseSpinner,
   DatabaseTitle,
-  Snackbar,
+  SnackbarRoot,
   SnackbarContent,
   SnackbarHeader,
   SnackbarTitle,
   SnackbarToggle,
-} from "./SyncStatus.styled";
+} from "./SyncSnackbar.styled";
 
 const propTypes = {
-  databases: PropTypes.array,
+  databases: PropTypes.array.isRequired,
 };
 
-const SyncStatus = ({ databases }) => {
+const SyncSnackbar = ({ databases }) => {
   const [isOpened, setIsOpened] = useState(true);
   const handleToggle = useCallback(() => setIsOpened(state => !state), []);
 
   return (
-    <Snackbar>
+    <SnackbarRoot>
       <SnackbarHeader>
         <SnackbarTitle>{getTitleMessage(databases, isOpened)}</SnackbarTitle>
         <SnackbarToggle onClick={handleToggle}>
@@ -60,11 +60,11 @@ const SyncStatus = ({ databases }) => {
           ))}
         </SnackbarContent>
       )}
-    </Snackbar>
+    </SnackbarRoot>
   );
 };
 
-SyncStatus.propTypes = propTypes;
+SyncSnackbar.propTypes = propTypes;
 
 const getTitleMessage = (databases, isOpened) => {
   const tables = databases.filter(d => !d.initial_sync).flatMap(d => d.tables);
@@ -76,9 +76,9 @@ const getTitleMessage = (databases, isOpened) => {
 
   return done
     ? t`Done!`
-    : isOpened && totalCount
-    ? t`Syncing... (${donePercentage}%`
-    : t`Syncing...`;
+    : !isOpened && totalCount
+    ? t`Syncing… (${donePercentage}%)`
+    : t`Syncing…`;
 };
 
 const getDescriptionMessage = database => {
@@ -88,4 +88,4 @@ const getDescriptionMessage = database => {
   return t`${doneCount} of ${totalCount} done`;
 };
 
-export default SyncStatus;
+export default SyncSnackbar;

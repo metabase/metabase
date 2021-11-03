@@ -3,6 +3,7 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import ScrollToTop from "metabase/hoc/ScrollToTop";
 import Navbar from "metabase/nav/containers/Navbar";
+import SyncSnackbarApp from "metabase/syncing/containers/SyncSnackbarApp";
 
 import { IFRAMED, initializeIframeResizer } from "metabase/lib/dom";
 
@@ -15,7 +16,6 @@ import {
   GenericError,
   Unauthorized,
 } from "metabase/containers/ErrorPages";
-import SyncStatusApp from "metabase/syncing/containers/SyncStatusApp";
 
 const mapStateToProps = (state, props) => ({
   errorPage: state.app.errorPage,
@@ -69,7 +69,7 @@ export default class App extends Component {
           {currentUser && !IFRAMED && <Navbar location={location} />}
           {errorPage ? getErrorComponent(errorPage) : children}
           <UndoListing />
-          <SyncStatusApp />
+          {currentUser && <SyncSnackbarApp />}
         </div>
         <AppErrorCard errorInfo={errorInfo} />
       </ScrollToTop>
