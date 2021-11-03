@@ -12,7 +12,7 @@ describe("issue 18589", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
-  it.skip("should not bin numeric fields in join condition by default (metabase#18589)", () => {
+  it("should not bin numeric fields in join condition by default (metabase#18589)", () => {
     openOrdersTable({ mode: "notebook" });
 
     joinTable("Reviews");
@@ -25,7 +25,7 @@ describe("issue 18589", () => {
     getNotebookStep("summarize").within(() => {
       cy.icon("play").click();
       cy.wait("@dataset");
-      cy.findByText("2.860.368");
+      cy.findByText("2,860,368");
     });
   });
 });
