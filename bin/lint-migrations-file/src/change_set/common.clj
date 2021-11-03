@@ -15,7 +15,7 @@
 
 (s/def ::new-style-id
   (s/and string?
-         #(re-matches #"^v\d{2}\.\d{2}-\d{3}$" %)))
+         #(re-matches #"^v\d{2,}\.\d{2}-\d{3}$" %)))
 
 (s/def ::id
   (s/or
