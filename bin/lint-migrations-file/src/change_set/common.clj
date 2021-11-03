@@ -26,6 +26,14 @@
                           enough-zeroes?
                           not-too-many-zeroes?)))
 
+(defn id-in-range?
+  "Migration should be 1-381 (inclusive; legacy pre-42 migration numbering scheme) or >= 4200000 (42+ major-minor-id
+  scheme). See PR #18821 for more info."
+  [id]
+  (or (<= 1 id 381)
+      ;; check that the id is less than 9900000 to make sure someone didn't accidentally put an extra zero in there.
+      (<= 4200000 id 9900000)))
+
 (s/def ::id
   (s/or
    :int        (s/and int? pos? ::id-in-range)
