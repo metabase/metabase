@@ -2,25 +2,25 @@
   (:require [clojure.spec.alpha :as s]
             [clojure.string :as str]))
 
-(defn id-in-range?
-  "Migration should be 1-382 (inclusive; legacy pre-42 migration numbering scheme) or >= 4200000 (42+ major-minor-id
-  scheme). See PR #18821 for more info."
-  [id]
-  (or (<= 1 id 382)
-      ;; check that the id is less than 9900000 to make sure someone didn't accidentally put an extra zero in there.
-      (<= 4200000 id 9900000)))
+;; See PR #18821 for more info on the new migration ID format adopted in 0.42.0+
+
+(s/def ::legacy-id
+  ;; some legacy IDs are integers and some are strings. so handle either case.
+  (s/or
+   :int    (s/and int?
+                  #(<= 1 % 382))
+   :string (s/and string?
+                  #(re-matches #"^\d+$" %)
+                  #(<= 1 (Integer/parseUnsignedInt %) 382))))
+
+(s/def ::new-style-id
+  (s/and string?
+         #(re-matches #"^v\d{2}\.\d{2}-\d{3}$" %)))
 
 (s/def ::id
   (s/or
-   :int (s/and int? id-in-range?)
-   :int-string (s/and
-                string?
-                (fn [^String s]
-                  (try
-                    (let [id (Integer/parseInt s)]
-                      (id-in-range? id))
-                    (catch Throwable _
-                      false))))))
+   :legacy-id    ::legacy-id
+   :new-style-id ::new-style-id))
 
 (s/def ::author string?)
 
