@@ -2372,6 +2372,7 @@ databaseChangeLog:
             columnName: visibility_type
             defaultNullValue: unset
             tableName: metabase_field
+
   - changeSet:
       id: 31
       author: agilliland
@@ -8653,7 +8654,7 @@ databaseChangeLog:
   - changeSet:
       id: v42.00-000
       author: camsaul
-      comment: Added 0.42.0 Remove unused column
+      comment: Added 0.42.0 Remove unused column (#5240)
       # this migration was previously numbered 317 and merged into master before we adopted the 0.42.0+ migration ID
       # numbering scheme. See #18821 for more info.
       preConditions:
@@ -8677,6 +8678,83 @@ databaseChangeLog:
         - dropColumn:
             tableName: metabase_table
             columnName: entity_name
+
+  - changeSet:
+      id: v42.00-001
+      author: camsaul
+      comment: Added 0.42.0 Attempt to add Card.database_id (by parsing query) to rows that are missing it (#5999)
+      # If this migration fails for any reason continue with the next migration; do not fail the entire process if this one fails
+      failOnError: false
+      # Don't run for H2 -- the version of H2 we're using doesn't support JSON stuff.
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: postgresql,mysql,mariadb
+      # The basic idea below is to parse the `database_id` from the JSON string query dictionary and use it to set the
+      # database_id column as needed. We do an INNER JOIN against the Database table to make sure that Database
+      # actually exists (so we don't attempt to set an invalid database_id)
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              WITH c2 AS (
+                SELECT *, (dataset_query::json->>'database')::integer AS query_database_id
+                FROM report_card
+              )
+              UPDATE report_card c
+              SET database_id = c2.query_database_id
+              FROM c2
+              INNER JOIN metabase_database db
+                ON db.id = c2.query_database_id
+              WHERE c.database_id IS NULL
+                AND c.id = c2.id
+                AND c2.query_database_id IS NOT NULL;
+        # MySQL and MariaDB are exactly the same other than different function names: json_value (for MariaDB) vs
+        # json_extract (for MySQL)
+        - sql:
+            dbms: mariadb
+            sql: >-
+              UPDATE report_card c
+              JOIN (
+                SELECT *, cast(json_value(dataset_query, '$.database') AS signed) AS query_database_id
+                FROM report_card
+                ) c2
+                ON c.id = c2.id
+              INNER JOIN metabase_database db ON c2.query_database_id = db.id
+              SET c.database_id = c2.query_database_id
+              WHERE c.database_id IS NULL
+                AND c2.query_database_id IS NOT NULL;
+        - sql:
+            dbms: mysql
+            sql: >-
+              UPDATE report_card c
+              JOIN (
+                SELECT *, cast(json_extract(dataset_query, '$.database') AS signed) AS query_database_id
+                FROM report_card
+                ) c2
+                ON c.id = c2.id
+              INNER JOIN metabase_database db ON c2.query_database_id = db.id
+              SET c.database_id = c2.query_database_id
+              WHERE c.database_id IS NULL
+                AND c2.query_database_id IS NOT NULL;
+
+  - changeSet:
+      id: v42.00-002
+      author: camsaul
+      comment: Added 0.42.0 Added constraint we should have had all along (#5999)
+      preConditions:
+        - onFail: MARK_RAN
+        # If we're dumping the migration as a SQL file or trying to force-migrate we can't check the preconditions
+        # so just go ahead and skip the entire thing. This is a non-critical migration
+        - onUpdateSQL: IGNORE
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT count(*) FROM report_card WHERE database_id IS NULL
+      changes:
+        - addNotNullConstraint:
+            columnDataType: int
+            tableName: report_card
+            columnName: database_id
 
   - changeSet:
       id: v42.00-003
