@@ -1,14 +1,57 @@
+
 # List of expressions
 
 For an intro to expressions, check out [Writing expressions in the notebook editor][expressions].
 
-## Types of expressions
-
-There are two basic types of expressions, Aggregations and Functions. Aggregations take values from multiple rows to perform a calculation, such as finding the average value from all values in a column. Functions, by contrast, do something to each value in a column, like searching for a word in each value, rounding each value up (the `ceil` function), and so on.
+    - [Aggregations](#aggregations)
+        - [Avg](#avg)
+        - [Count](#count)
+        - [CountIf](#countif)
+        - [CumulativeCount](#cumulativecount)
+        - [CumulativeSum](#cumulativesum)
+        - [Distinct](#distinct)
+        - [Max](#max)
+        - [Median](#median)
+        - [Min](#min)
+        - [Percentile](#percentile)
+        - [Share](#share)
+        - [StandardDeviation](#standarddeviation)
+        - [Sum](#sum)
+        - [SumIf](#sumif)
+        - [Variance](#variance)
+    - [Functions](#functions)
+        - [abs](#abs)
+        - [between](#between)
+        - [case](#case)
+        - [ceil](#ceil)
+        - [coalesce](#coalesce)
+        - [concat](#concat)
+        - [contains](#contains)
+        - [endswith](#endswith)
+        - [exp](#exp)
+        - [floor](#floor)
+        - [interval](#interval)
+        - [isempty](#isempty)
+        - [isnull](#isnull)
+        - [lefttrim](#lefttrim)
+        - [length](#length)
+        - [log](#log)
+        - [lower](#lower)
+        - [power](#power)
+        - [regexextract](#regexextract)
+        - [replace](#replace)
+        - [righttrim](#righttrim)
+        - [round](#round)
+        - [sqrt](#sqrt)
+        - [startswith](#startswith)
+        - [substring](#substring)
+        - [trim](#trim)
+        - [upper](#upper)
+    - [Database limitations](#database-limitations)
 
 ## Aggregations
 
-Aggregation expressions take into account all values in a field, therefore they cannot be used to filter data.
+Aggregation expressions take into account all values in a field. They can only be used in the **Summarize** section of the notebook editor.
 
 ### Avg
 
@@ -172,7 +215,7 @@ Syntax: `case(condition, output, …)`
 
 Example: `case([Weight] > 200, "Large", [Weight] > 150, "Medium", "Small")` If a `Weight` is 250, the expression would return "Large". In this case, the default value is "Small", so any `Weight` 150 or less would return "Small".
 
-## ceil
+### ceil
 
 Rounds a decimal up (ciel as in ceiling).
 
@@ -216,11 +259,11 @@ Syntax: `endsWith(text, comparison)`
 
 `endsWith([Appetite], "hungry")`
 
-See also [Contains](#contains) and [Starts with](#starts-with).
+See also [contains](#contains) and [startswith](#startswith).
 
 ### exp
 
-Returns [Euler's number](https://en.wikipedia.org/wiki/E_(mathematical_constant), e, raised to the power of the supplied number. (Euler sounds like "Oiler").
+Returns [Euler's number](https://en.wikipedia.org/wiki/E_(mathematical_constant), e, raised to the power of the supplied number. (Euler sounds like "Oy-ler").
 
 Syntax: `exp(column)`.
 
@@ -410,4 +453,4 @@ If you're using or maintaining a third-party database driver, please [refer to t
 
 See [Custom expressions in the notebook editor](https://www.metabase.com/blog/custom-expressions/index.html) to learn more.
 
-[expressions]: expressions.html
+[expressions]: ./expressions.html

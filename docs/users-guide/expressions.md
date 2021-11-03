@@ -1,59 +1,61 @@
 # Writing expressions in the notebook editor
 
-[Custom expressions][custom-expressions] are like formulas in spreadsheet software like Excel, Google Sheets, and LibreOffice Calc.
-When using the query builder, you can use expressions to create a new:
+[Custom expressions][custom-expressions] are like formulas in spreadsheet software like Excel, Google Sheets, and LibreOffice Calc. You can use them in the notebook editor of the query builder to ask more complicated questions.
 
-- **Filter**. The expression `= contains([comment], "Metabase")` would filter for rows where the `comment` field contained the word "Metabase".
-- **Metric**. `= share([Total] > 50)` would return the percentage of orders with totals greater than 50 dollars.
-- **Custom column** You could use `= [Subtotal] / [Quantity]` to create a new column, which you could name "Item price".
+When using the query builder, you can use expressions to create new:
 
-See a full list of [expressions][expression-list].
+- **Filters**. The expression `= contains([comment], "Metabase")` would filter for rows where the `comment` field contained the word "Metabase".
+- **Metrics**. `= share([Total] > 50)` would return the percentage of orders with totals greater than 50 dollars.
+- **Custom columns** You could use `= [Subtotal] / [Quantity]` to create a new column, which you could name "Item price".
 
-## How to write expressions
+This page covers the basics of expressions. You can also check out a [full list of expressions][expression-list].
 
-In each of these three places, you can:
+## Basic mathematical operators
 
-- Use parentheses to group parts of your expression.
-- Use basic mathematical operators: `+`, `-`, `*` (multiply), `/` (divide) on numeric column with numeric values, like integers, floats, and doubles. You can't currently do math on timestamp columns. - Use conditional operators: `AND`, `OR`, `NOT`, `>`, `>=` (greater than or equal to), `<`, `<=` (less than or equal to), `=`, `!=` (not equal to).
-- Refer to columns in the current table, or columns that are linked via a foreign key relationship. Column names should be included inside of square brackets, like this: `[Name of Column]`. Columns in connected tables can be referred to like this: `[ConnectedTableName.Column]`.
-- Refer to saved [Segments or Metrics](../administration-guide/07-segments-and-metrics.md) that are present in the currently selected table. You write these out the same as with columns, like this: `[Valid User Sessions]`.
-- Use most of the different functions listed below.
+Use `+`, `-`, `*` (multiply), `/` (divide) on numeric column with numeric values, like integers, floats, and doubles. You can use parentheses `(` ad `)` to group parts of your expression.
 
-For a tutorial on working with custom expressions, check out [Custom expressions in the notebook editor][custom-expressions].
+You can't currently do math on timestamp columns (we're working on adding new date functions soon, so stay tuned).
 
-## Aggregation functions
+## Conditional operators
 
-Some of the functions listed below can only be used inside of a metric expression in the Summarize area, because they aggregate an entire column. So while you could create a custom column with the formula `[Subtotal] + [Tax]`, you could _not_ write `Sum([Subtotal] + [Tax])` unless you were creating a custom metric expression. Here are the functions that can only be used when writing a metric expression:
+`AND`, `OR`, `NOT`, `>`, `>=` (greater than or equal to), `<`, `<=` (less than or equal to), `=`, `!=` (not equal to).
 
-- Average
-- Count
-- CumulativeCount
-- CumulativeSum
-- Distinct
-- Max
-- Median
-- Min
-- Percentile
-- StandardDeviation
-- Sum
-- Variance
+## Reference other columns
+
+You can refer to columns in the current table, or columns that are linked via a foreign key relationship. Column names should be included inside of square brackets, like this: `[Name of Column]`. Columns in connected tables can be referred to like this: `[ConnectedTableName.Column]`.
+
+## Referencing Segments and metrics
+
+You can refer to saved [Segments or Metrics](../administration-guide/07-segments-and-metrics.md) that are present in the currently selected table. You write these out the same as with columns, like this: `[Valid User Sessions]`.
+
+## Types of expressions 
+
+There are two basic types of expressions, **Aggregations** and **Functions**. Check out a [full list of expressions][expression-list].
+
+### Aggregations
+
+[Aggregations][aggregations] take values from multiple rows to perform a calculation, such as finding the average value from all values in a column. Aggregations functions can only be used to the **Summarize** section of the notebook editor, because aggregations use values from all rows for that column. So while you could create a custom column with the formula `[Subtotal] + [Tax]`, you could _not_ write `Sum([Subtotal] + [Tax])` unless you were creating a custom metric expression (that would add up all the subtotals and taxes together).
+
+### Functions
+
+[Functions][functions], by contrast, do something to each value in a column, like searching for a word in each value (`contains`), rounding each value up to the nearest integer (the `ceil` function), and so on.
 
 ## Filter expressions and conditionals
 
-Some other things to keep in mind about filter expressions and conditionals:
+Some things to keep in mind about filter expressions and conditionals:
 
-- Filter expressions are different in that they must return something that's true or false. E.g., you could write `[Subtotal] + [Tax] < 100`, but not just `[Subtotal] + [Tax]`.
-- You can use functions inside of the conditional portion of the `countif` and `sumif` aggregations, like so: `countif( round([Subtotal]) > 100 OR floor([Tax]) < 10 )`
+- Filter expressions are different in that they must return a Boolean value (something that's true or false). E.g., you could write `[Subtotal] + [Tax] < 100`, but not just `[Subtotal] + [Tax]`.
+- You can use functions inside of the conditional portion of the `Countif` and `Sumif` aggregations, like so: `countif( round([Subtotal]) > 100 OR floor([Tax]) < 10 )`.
 
 ## Working with dates in filter expressions
 
-If you want to work with dates in your filter expressions, they'll need to follow the format, `"YYYY-MM-DD"` — i.e., four characters for the year, two for the month, and two for the day, enclosed in quotes and separated by dashes.
+If you want to work with dates in your filter expressions, the dates need to follow the format, `"YYYY-MM-DD"` — i.e., four characters for the year, two for the month, and two for the day, enclosed in quotes `"` and separated by dashes `-`.
 
 Example:
 
 `between([Created At], "2020-01-01", "2020-03-31") OR [Received At] > "2019-12-25"`
 
-This would return rows where `Created At` is between January 1, 2020 and March 31, 2020, or where `Received At` is after December 25, 2019.
+This expression would return rows where `Created At` is between January 1, 2020 and March 31, 2020, or where `Received At` is after December 25, 2019.
 
 ## All expressions
 
@@ -61,6 +63,7 @@ See a full list of [expressions][expression-list].
 
 For a tutorial on expressions, see [Custom expressions in the notebook editor][custom-expressions].
 
-
+[aggregations]: aggregations.html#aggregations
 [custom-expressions]: https://www.metabase.com/learn/questions/custom-expressions.html
-[expression-list]: expression-list.html
+[expression-list]: expressions-list.html
+[functions]: expression-list.html#functions
