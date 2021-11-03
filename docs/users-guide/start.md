@@ -12,7 +12,7 @@
 - [Asking questions in Metabase](04-asking-questions.md)
 - [Using the notebook editor to ask custom questions](custom-questions.md)
 - [Writing custom expressions in the notebook editor](expressions.md)
-  - [Full list of expressions: aggregations and functions](expressions-list.md)
+- [Full list of expressions: aggregations and functions](expressions-list.md)
 - [How to visualize the answers to questions](05-visualizing-results.md)
 - [Referencing saved question in queries](referencing-saved-questions-in-queries.md)
 

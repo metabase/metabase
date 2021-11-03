@@ -1,59 +1,58 @@
-
 # List of expressions
 
 For an intro to expressions, check out [Writing expressions in the notebook editor][expressions].
 
-    - [Aggregations](#aggregations)
-        - [Avg](#avg)
-        - [Count](#count)
-        - [CountIf](#countif)
-        - [CumulativeCount](#cumulativecount)
-        - [CumulativeSum](#cumulativesum)
-        - [Distinct](#distinct)
-        - [Max](#max)
-        - [Median](#median)
-        - [Min](#min)
-        - [Percentile](#percentile)
-        - [Share](#share)
-        - [StandardDeviation](#standarddeviation)
-        - [Sum](#sum)
-        - [SumIf](#sumif)
-        - [Variance](#variance)
-    - [Functions](#functions)
-        - [abs](#abs)
-        - [between](#between)
-        - [case](#case)
-        - [ceil](#ceil)
-        - [coalesce](#coalesce)
-        - [concat](#concat)
-        - [contains](#contains)
-        - [endswith](#endswith)
-        - [exp](#exp)
-        - [floor](#floor)
-        - [interval](#interval)
-        - [isempty](#isempty)
-        - [isnull](#isnull)
-        - [lefttrim](#lefttrim)
-        - [length](#length)
-        - [log](#log)
-        - [lower](#lower)
-        - [power](#power)
-        - [regexextract](#regexextract)
-        - [replace](#replace)
-        - [righttrim](#righttrim)
-        - [round](#round)
-        - [sqrt](#sqrt)
-        - [startswith](#startswith)
-        - [substring](#substring)
-        - [trim](#trim)
-        - [upper](#upper)
-    - [Database limitations](#database-limitations)
+- [Aggregations](#aggregations)
+  - [Average](#average)
+  - [Count](#count)
+  - [CountIf](#countif)
+  - [CumulativeCount](#cumulativecount)
+  - [CumulativeSum](#cumulativesum)
+  - [Distinct](#distinct)
+  - [Max](#max)
+  - [Median](#median)
+  - [Min](#min)
+  - [Percentile](#percentile)
+  - [Share](#share)
+  - [StandardDeviation](#standarddeviation)
+  - [Sum](#sum)
+  - [SumIf](#sumif)
+  - [Variance](#variance)
+- [Functions](#functions)
+  - [abs](#abs)
+  - [between](#between)
+  - [case](#case)
+  - [ceil](#ceil)
+  - [coalesce](#coalesce)
+  - [concat](#concat)
+  - [contains](#contains)
+  - [endswith](#endswith)
+  - [exp](#exp)
+  - [floor](#floor)
+  - [interval](#interval)
+  - [isempty](#isempty)
+  - [isnull](#isnull)
+  - [lefttrim](#lefttrim)
+  - [length](#length)
+  - [log](#log)
+  - [lower](#lower)
+  - [power](#power)
+  - [regexextract](#regexextract)
+  - [replace](#replace)
+  - [righttrim](#righttrim)
+  - [round](#round)
+  - [sqrt](#sqrt)
+  - [startswith](#startswith)
+  - [substring](#substring)
+  - [trim](#trim)
+  - [upper](#upper)
+- [Database limitations](#database-limitations)
 
 ## Aggregations
 
 Aggregation expressions take into account all values in a field. They can only be used in the **Summarize** section of the notebook editor.
 
-### Avg
+### Average
 
 Returns the average of the values in the column.
 
@@ -93,7 +92,7 @@ Syntax: `CumulativeSum(column)`.
 
 Example: `CumulativeSum([Subtotal])`.
 
-See also [Sum](#sum) and [SumIf](#sumif).
+Related: [Sum](#sum) and [SumIf](#sumif).
 
 ### Distinct
 
@@ -111,7 +110,7 @@ Syntax: `Max(column)`.
 
 Example: `Max([Age])` would return the oldest age found across all values in the `Age` column.
 
-See also [Min](#min), [Avg](#avg), [Median](#median).
+Related: [Min](#min), [Average](#average), [Median](#median).
 
 ### Median
 
@@ -123,7 +122,7 @@ Example: `Median([Age])` would find the midpoint age where half of the ages are 
 
 Databases that don't support `median`: BigQuery, SQLite, Vertica, SQL server, MySQL. Presto only provides approximate results.
 
-See also [Min](#min), [Max](#max), [Avg](#avg).
+Related: [Min](#min), [Max](#max), [Average](#average).
 
 ### Min
 
@@ -132,6 +131,8 @@ Returns the smallest value found in the column.
 Syntax: `Min(column)`.
 
 Example: `Min([Salary])` would find the lowest salary among all salaries in the `Salary` column.
+
+Related: [Max](#max), [Median](#median), [Average](#average).
 
 ### Percentile
 
@@ -145,11 +146,12 @@ Databases that don't support `percentile`: BigQuery, H2, MySQL, SQL Server, SQLi
 
 ### Share
 
+Returns the percent of rows in the data that match the condition, as a decimal.
+
 Syntax: `Share(condition)`
 
 Example: `Share([Color] = "Blue")` would return the number of rows with the `Color` field set to `Blue`, divided by the total number of rows.
 
-Returns the percent of rows in the data that match the condition, as a decimal.
 
 ### StandardDeviation
 
@@ -183,7 +185,7 @@ Syntax: `Variance(column)`
 
 Example: `Variance([Temperature])` will return a measure of the dispersion from the mean temperature for all temps in that column.
 
-See also [StandardDeviation](#standarddeviation), [Avg](#avg).
+Related: [StandardDeviation](#standarddeviation), [Average](#average).
 
 ## Functions
 
@@ -191,7 +193,7 @@ Function expressions apply to each individual value. They can be used to alter o
 
 ### abs
 
-Returns the absolute (positive) value of the specified column. |
+Returns the absolute (positive) value of the specified column.
 
 Syntax: `abs(column)`
 
@@ -206,6 +208,8 @@ Checks a date or number column's values to see if they're within the specified r
 Syntax: `between(column, start, end)`
 
 Example: `between([Created At], "2019-01-01", "2020-12-31")` would return rows where `Created At` date fell within the range of January 1, 2019 and December 31, 2020.
+
+Related: [interval](#interval).
 
 ### case
 
@@ -225,7 +229,7 @@ Example: `ceil([Price])`. `ceil(2.99)` would return 3.
 
 Databases that don't support `ceil`: BigQuery.
 
-See also [Floor](#floor).
+Related: [floor](#floor), [round](round).
 
 ### coalesce
 
@@ -251,6 +255,8 @@ Syntax: `contains(string1, string2)`
 
 Example: `contains([Status], "Class")`. If `Status` were "Classified", the expression would return `true`.
 
+Related: [regexextract](#regexextract).
+
 ### endswith
 
 Returns true if the end of the text matches the comparison text.
@@ -259,15 +265,17 @@ Syntax: `endsWith(text, comparison)`
 
 `endsWith([Appetite], "hungry")`
 
-See also [contains](#contains) and [startswith](#startswith).
+Related: [contains](#contains) and [startswith](#startswith).
 
 ### exp
 
-Returns [Euler's number](https://en.wikipedia.org/wiki/E_(mathematical_constant), e, raised to the power of the supplied number. (Euler sounds like "Oy-ler").
+Returns [Euler's number](https://en.wikipedia.org/wiki/E_(mathematical_constant)), e, raised to the power of the supplied number. (Euler sounds like "Oy-ler").
 
 Syntax: `exp(column)`.
 
 Example: `exp([Interest Months])`
+
+Related: [power](#power).
 
 ### floor
 
@@ -279,7 +287,7 @@ Example: `floor([Price])`. If the `Price` were 1.99, the expression would return
 
 Databases that don't support `floor`: BigQuery.
 
-See also [ceil](#ceil).
+Related: [ceil](#ceil), [round](#round).
 
 ### interval
 
@@ -288,6 +296,8 @@ Checks a date column's values to see if they're within the relative range.
 Syntax: `interval(column, number, text)`.
 
 Example: `interval([Created At], -1, "month")`.
+
+Related: [between](#between).
 
 ### isempty
 
@@ -313,7 +323,7 @@ Syntax: `ltrim(text)`
 
 Example: `ltrim([Comment])`. If the comment were " I'd prefer not to", `ltrim` would return "I'd prefer not to".
 
-See also [trim](#trim) and [righttrim](#righttrim).
+Related: [trim](#trim) and [righttrim](#righttrim).
 
 ### length
 
@@ -321,7 +331,7 @@ Returns the number of characters in text.
 
 Syntax: `length(text)`
 
-Example: `length([Comment])` If the `comment` were "wizard", `length` would return 6 ("wizard" has six characters). |
+Example: `length([Comment])` If the `comment` were "wizard", `length` would return 6 ("wizard" has six characters).
 
 ### log
 
@@ -337,7 +347,9 @@ Returns the string of text in all lower case.
 
 Syntax: `lower(text)`.
 
-Example: `lower([Status])`. If the `Status` were "Chillin''", the expression would return "chillin'".
+Example: `lower([Status])`. If the `Status` were "QUIET", the expression would return "quiet".
+
+Related: [upper](#upper).
 
 ### power
 
@@ -349,6 +361,8 @@ Example: `power([Length], 2)`. If the length were `3`, the expression would retu
 
 Databases that don't support `power`: SQLite.
 
+Related: [exp](#exp).
+
 ### regexextract
 
 Extracts matching substrings according to a regular expression.
@@ -358,6 +372,8 @@ Syntax: `regexextract(text, regular_expression)`.
 Example: `regexextract([Address], "[0-9]+")`.
 
 Databases that don't support `regexextract`: H2, MySQL, SQL Server, SQLite.
+
+Related: [contains](#contains).
 
 ### replace
 
@@ -375,7 +391,7 @@ Syntax: `rtrim(text)`
 
 Example: `rtrim([Comment])`. If the comment were "Fear is the mindkiller. ", the expression would return "Fear is the mindkiller."
 
-See also [trim](#trim) and [lefttrim](#lefttrim).
+Related: [trim](#trim) and [lefttrim](#lefttrim).
 
 ### round
 
@@ -397,7 +413,7 @@ Example: `sqrt([Hypotenuse])`.
 
 Databases that don't support `sqrt`: SQLite.
 
-See also [Power](#power).
+Related: [Power](#power).
 
 ### startswith
 
@@ -407,6 +423,8 @@ Syntax: `startsWith(text, comparison)`.
 
 Example: `startsWith([Course Name], "Computer Science")` would return true for course names that began with "Computer Science", like "Computer Science 101: An introduction".
 
+Related: [endswith](#endswith), [contains](#contains).
+
 ### substring
 
 Returns a portion of the supplied text, specified by a starting position and a length.
@@ -414,6 +432,8 @@ Returns a portion of the supplied text, specified by a starting position and a l
 Syntax: `substring(text, position, length)`
 
 Example: `substring([Title], 0, 10)` returns the first 11 letters of a string (the string index starts at position 0).
+
+Related: [replace](#replace).
 
 ### trim
 

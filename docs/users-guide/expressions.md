@@ -6,13 +6,13 @@ When using the query builder, you can use expressions to create new:
 
 - **Filters**. The expression `= contains([comment], "Metabase")` would filter for rows where the `comment` field contained the word "Metabase".
 - **Metrics**. `= share([Total] > 50)` would return the percentage of orders with totals greater than 50 dollars.
-- **Custom columns** You could use `= [Subtotal] / [Quantity]` to create a new column, which you could name "Item price".
+- **Custom columns**. You could use `= [Subtotal] / [Quantity]` to create a new column, which you could name "Item price".
 
 This page covers the basics of expressions. You can also check out a [full list of expressions][expression-list].
 
 ## Basic mathematical operators
 
-Use `+`, `-`, `*` (multiply), `/` (divide) on numeric column with numeric values, like integers, floats, and doubles. You can use parentheses `(` ad `)` to group parts of your expression.
+Use `+`, `-`, `*` (multiply), `/` (divide) on numeric columns with numeric values, like integers, floats, and double. You can use parentheses, `(` ad `)`, to group parts of your expression.
 
 You can't currently do math on timestamp columns (we're working on adding new date functions soon, so stay tuned).
 
@@ -20,7 +20,7 @@ You can't currently do math on timestamp columns (we're working on adding new da
 
 `AND`, `OR`, `NOT`, `>`, `>=` (greater than or equal to), `<`, `<=` (less than or equal to), `=`, `!=` (not equal to).
 
-## Reference other columns
+## Referencing other columns
 
 You can refer to columns in the current table, or columns that are linked via a foreign key relationship. Column names should be included inside of square brackets, like this: `[Name of Column]`. Columns in connected tables can be referred to like this: `[ConnectedTableName.Column]`.
 
@@ -34,7 +34,7 @@ There are two basic types of expressions, **Aggregations** and **Functions**. Ch
 
 ### Aggregations
 
-[Aggregations][aggregations] take values from multiple rows to perform a calculation, such as finding the average value from all values in a column. Aggregations functions can only be used to the **Summarize** section of the notebook editor, because aggregations use values from all rows for that column. So while you could create a custom column with the formula `[Subtotal] + [Tax]`, you could _not_ write `Sum([Subtotal] + [Tax])` unless you were creating a custom metric expression (that would add up all the subtotals and taxes together).
+[Aggregations][aggregations] take values from multiple rows to perform a calculation, such as finding the average value from all values in a column. Aggregations functions can only be used in the **Summarize** section of the notebook editor, because aggregations use values from all rows for that column. So while you could create a custom column with the formula `[Subtotal] + [Tax]`, you could _not_ write `Sum([Subtotal] + [Tax])`, unless you were creating a custom metric expression (that would add up all the subtotals and taxes together).
 
 ### Functions
 
@@ -44,12 +44,12 @@ There are two basic types of expressions, **Aggregations** and **Functions**. Ch
 
 Some things to keep in mind about filter expressions and conditionals:
 
-- Filter expressions are different in that they must return a Boolean value (something that's true or false). E.g., you could write `[Subtotal] + [Tax] < 100`, but not just `[Subtotal] + [Tax]`.
+- Filter expressions are different in that they must return a Boolean value (something that's either true or false). For example, you could write `[Subtotal] + [Tax] < 100`, but not just `[Subtotal] + [Tax]`.
 - You can use functions inside of the conditional portion of the `Countif` and `Sumif` aggregations, like so: `countif( round([Subtotal]) > 100 OR floor([Tax]) < 10 )`.
 
 ## Working with dates in filter expressions
 
-If you want to work with dates in your filter expressions, the dates need to follow the format, `"YYYY-MM-DD"` — i.e., four characters for the year, two for the month, and two for the day, enclosed in quotes `"` and separated by dashes `-`.
+If you want to work with dates in your filter expressions, the dates need to follow the format, `"YYYY-MM-DD"` — i.e., four characters for the year, two for the month, and two for the day, enclosed in quotes `"` and separated by dashes `-`.
 
 Example:
 
@@ -57,13 +57,13 @@ Example:
 
 This expression would return rows where `Created At` is between January 1, 2020 and March 31, 2020, or where `Received At` is after December 25, 2019.
 
-## All expressions
+## List of expressions
 
 See a full list of [expressions][expression-list].
 
 For a tutorial on expressions, see [Custom expressions in the notebook editor][custom-expressions].
 
-[aggregations]: aggregations.html#aggregations
+[aggregations]: expressions-list.html#aggregations
 [custom-expressions]: https://www.metabase.com/learn/questions/custom-expressions.html
 [expression-list]: expressions-list.html
-[functions]: expression-list.html#functions
+[functions]: expressions-list.html#functions
