@@ -8646,7 +8646,7 @@ databaseChangeLog:
                   name: card_id
 
   - changeSet:
-      id: 4200000
+      id: v42.00-000
       author: camsaul
       comment: Added 0.42.0 Remove unused column
       # this migration was previously numbered 317 and merged into master before we adopted the 0.42.0+ migration ID
@@ -8675,7 +8675,7 @@ databaseChangeLog:
 
 
   - changeSet:
-      id: 4200003
+      id: v42.00-003
       author: dpsutton
       comment: Added 0.42.0 Initial support for datasets based on questions
       # this migration was previously numbered 320 and merged into master before we adopted the 0.42.0+ migration ID
@@ -8708,7 +8708,7 @@ databaseChangeLog:
                   defaultValue: false
 
   - changeSet:    # this one is run unconditionally so unify the type to ${text.type} across ALL dbs
-      id: 4200004 # this differentiation was first done under changeSet 13 above
+      id: v42.00-004 # this differentiation was first done under changeSet 13 above
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of activity.details from text to ${text.type}
@@ -8719,7 +8719,7 @@ databaseChangeLog:
             newDataType: ${text.type}
 
   - changeSet:
-      id: 4200005
+      id: v42.00-005
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of collection.description from text to ${text.type}
@@ -8735,7 +8735,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200006
+      id: v42.00-006
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of collection.name from text to ${text.type}
@@ -8751,7 +8751,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200007
+      id: v42.00-007
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of computation_job.context from text to ${text.type}
@@ -8767,7 +8767,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200008
+      id: v42.00-008
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of computation_job_result.payload from text
@@ -8783,7 +8783,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200009
+      id: v42.00-009
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of core_session.anti_csrf_token from text
@@ -8799,7 +8799,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200010
+      id: v42.00-010
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of core_user.login_attributes from text to
@@ -8815,7 +8815,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200011
+      id: v42.00-011
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of group_table_access_policy.attribute_remappings
@@ -8831,7 +8831,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200012
+      id: v42.00-012
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of login_history.device_description from text
@@ -8847,7 +8847,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200013
+      id: v42.00-013
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of login_history.ip_address from text to ${text.type}
@@ -8863,7 +8863,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200014
+      id: v42.00-014
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metabase_database.caveats from text to
@@ -8879,7 +8879,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200015
+      id: v42.00-015
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metabase_database.description from text
@@ -8895,7 +8895,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200016
+      id: v42.00-016
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metabase_database.details from text to
@@ -8911,7 +8911,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200017
+      id: v42.00-017
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metabase_database.options from text to
@@ -8927,7 +8927,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200018
+      id: v42.00-018
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metabase_database.points_of_interest from
@@ -8943,7 +8943,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200019
+      id: v42.00-019
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metabase_field.caveats from text to ${text.type}
@@ -8959,7 +8959,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200020
+      id: v42.00-020
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metabase_field.database_type from text
@@ -8975,7 +8975,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200021
+      id: v42.00-021
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metabase_field.description from text to
@@ -8991,7 +8991,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200022
+      id: v42.00-022
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metabase_field.fingerprint from text to
@@ -9007,7 +9007,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200023
+      id: v42.00-023
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metabase_field.has_field_values from text
@@ -9023,7 +9023,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200024
+      id: v42.00-024
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metabase_field.points_of_interest from
@@ -9039,7 +9039,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200025
+      id: v42.00-025
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metabase_field.settings from text to ${text.type}
@@ -9055,7 +9055,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200026
+      id: v42.00-026
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metabase_fieldvalues.human_readable_values
@@ -9071,7 +9071,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200027
+      id: v42.00-027
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metabase_fieldvalues.values from text to
@@ -9087,7 +9087,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200028
+      id: v42.00-028
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metabase_table.caveats from text to ${text.type}
@@ -9103,7 +9103,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200029
+      id: v42.00-029
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metabase_table.description from text to
@@ -9119,7 +9119,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200030
+      id: v42.00-030
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metabase_table.points_of_interest from
@@ -9135,7 +9135,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200031
+      id: v42.00-031
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metric.caveats from text to ${text.type}
@@ -9151,7 +9151,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200032
+      id: v42.00-032
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metric.definition from text to ${text.type}
@@ -9167,7 +9167,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200033
+      id: v42.00-033
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metric.description from text to ${text.type}
@@ -9183,7 +9183,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200034
+      id: v42.00-034
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metric.how_is_this_calculated from text
@@ -9199,7 +9199,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200035
+      id: v42.00-035
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metric.points_of_interest from text to
@@ -9215,7 +9215,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200036
+      id: v42.00-036
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of moderation_review.text from text to ${text.type}
@@ -9231,7 +9231,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200037
+      id: v42.00-037
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of native_query_snippet.content from text
@@ -9247,7 +9247,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200038
+      id: v42.00-038
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of native_query_snippet.description from text
@@ -9263,7 +9263,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200039
+      id: v42.00-039
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of pulse.parameters from text to ${text.type}
@@ -9279,7 +9279,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200040
+      id: v42.00-040
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of pulse_channel.details from text to ${text.type}
@@ -9295,7 +9295,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200041
+      id: v42.00-041
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of query.query from text to ${text.type} on
@@ -9311,7 +9311,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200042
+      id: v42.00-042
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of query_execution.error from text to ${text.type}
@@ -9327,7 +9327,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200043
+      id: v42.00-043
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of report_card.dataset_query from text to
@@ -9343,7 +9343,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200044
+      id: v42.00-044
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of report_card.description from text to ${text.type}
@@ -9359,7 +9359,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200045
+      id: v42.00-045
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of report_card.embedding_params from text
@@ -9375,7 +9375,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200046
+      id: v42.00-046
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of report_card.result_metadata from text to
@@ -9391,7 +9391,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200047
+      id: v42.00-047
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of report_card.visualization_settings from
@@ -9407,7 +9407,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200048
+      id: v42.00-048
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of report_dashboard.caveats from text to ${text.type}
@@ -9423,7 +9423,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200049
+      id: v42.00-049
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of report_dashboard.description from text
@@ -9439,7 +9439,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200050
+      id: v42.00-050
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of report_dashboard.embedding_params from
@@ -9455,7 +9455,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200051
+      id: v42.00-051
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of report_dashboard.parameters from text to
@@ -9471,7 +9471,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200052
+      id: v42.00-052
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of report_dashboard.points_of_interest from
@@ -9487,7 +9487,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200053
+      id: v42.00-053
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of report_dashboardcard.parameter_mappings
@@ -9503,7 +9503,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200054
+      id: v42.00-054
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of report_dashboardcard.visualization_settings
@@ -9519,7 +9519,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200055
+      id: v42.00-055
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of revision.message from text to ${text.type}
@@ -9535,7 +9535,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:    # this one is run unconditionally so unify the type to ${text.type} across ALL dbs
-      id: 4200056 # this differentiation was first done under changeSet 10 above
+      id: v42.00-056 # this differentiation was first done under changeSet 10 above
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of revision.object from text to ${text.type}
@@ -9546,7 +9546,7 @@ databaseChangeLog:
             newDataType: ${text.type}
 
   - changeSet:
-      id: 4200057
+      id: v42.00-057
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of segment.caveats from text to ${text.type}
@@ -9562,7 +9562,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200058
+      id: v42.00-058
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of segment.definition from text to ${text.type}
@@ -9578,7 +9578,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200059
+      id: v42.00-059
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of segment.description from text to ${text.type}
@@ -9594,7 +9594,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200060
+      id: v42.00-060
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of segment.points_of_interest from text to
@@ -9610,7 +9610,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200061
+      id: v42.00-061
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of setting.value from text to ${text.type}
@@ -9626,7 +9626,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200062
+      id: v42.00-062
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of task_history.task_details from text to
@@ -9642,7 +9642,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 4200063
+      id: v42.00-063
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of view_log.metadata from text to ${text.type}
@@ -9673,7 +9673,7 @@ databaseChangeLog:
 #
 # 3) Migrations IDs should follow the format
 #
-#    MMmmNNNN
+#    vMM.mm-NNN
 #
 #    where
 #
@@ -9681,8 +9681,8 @@ databaseChangeLog:
 #    m = minor version
 #    N = migration number relative to that major+minor version
 #
-#   e.g. the first migration added to 0.42.0 should be numbered 4200000 and the second migration should be numbered
-#   4200001. The first migration for 0.42.1 should be numbered 4201000, and so forth.
+#   e.g. the first migration added to 0.42.0 should be numbered v42.00-000 and the second migration should be numbered
+#   v42.00-001. The first migration for 0.42.1 should be numbered v42.01-000, and so forth.
 #
 #   This numbering scheme was adopted beginning with version 0.42.0 so that we could go back and add migrations to patch
 #   releases without the ID sequence getting wildly out of order. See PR #18821 for more information.

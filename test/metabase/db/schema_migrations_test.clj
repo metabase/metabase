@@ -176,7 +176,7 @@
 
 (deftest convert-text-to-longtext-migration-test
   (testing "all columns that were TEXT type in MySQL were changed to"
-    (impl/test-migrations [4200004 4200063] [migrate!]
+    (impl/test-migrations ["v42.00-004" "v42.00-063"] [migrate!]
       (migrate!) ; just run migrations immediately, then check the new types
       (let [all-text-cols [["activity" "details"]
                            ["collection" "description"]

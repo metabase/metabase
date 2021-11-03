@@ -4,27 +4,18 @@
 
 ;; See PR #18821 for more info on the new migration ID format adopted in 0.42.0+
 
-(defn- ->int [id]
-  (if (string? id)
-    (Integer/parseUnsignedInt id)
-    id))
+(s/def ::legacy-id
+  ;; some legacy IDs are integers and some are strings. so handle either case.
+  (s/or
+   :int    (s/and int?
+                  #(<= 1 % 382))
+   :string (s/and string?
+                  #(re-matches #"^\d+$" %)
+                  #(<= 1 (Integer/parseUnsignedInt %) 382))))
 
-(defn legacy-id? [id]
-  (<= 1 (->int id) 382))
-
-(defn enough-zeroes? [id]
-  (>= (->int id) 4200000))
-
-(defn not-too-many-zeroes?
-  "Check that the id is less than 9900000 to make sure someone didn't accidentally put an extra zero in there."
-  [id]
-  (< (->int id) 9900000))
-
-(s/def ::id-in-range
-  (s/or :legacy    legacy-id?
-        :new-style (s/and (complement legacy-id?)
-                          enough-zeroes?
-                          not-too-many-zeroes?)))
+(s/def ::new-style-id
+  (s/and string?
+         #(re-matches #"^v\d{2}\.\d{2}-\d{3}$" %)))
 
 (defn id-in-range?
   "Migration should be 1-381 (inclusive; legacy pre-42 migration numbering scheme) or >= 4200000 (42+ major-minor-id
@@ -36,8 +27,8 @@
 
 (s/def ::id
   (s/or
-   :int        (s/and int? pos? ::id-in-range)
-   :int-string (s/and string? ::id-in-range)))
+   :legacy-id    ::legacy-id
+   :new-style-id ::new-style-id))
 
 (s/def ::author string?)
 
