@@ -8640,12 +8640,25 @@ databaseChangeLog:
       id: 42000000
       author: camsaul
       comment: Added 0.42.0 Remove unused column
-      # this migration was previously numbered 317 before we adopted the 0.42.0+ migration ID numbering scheme.
+      # this migration was previously numbered 317 and merged into master before we adopted the 0.42.0+ migration ID
+      # numbering scheme. See #18821 for more info.
       preConditions:
         - onFail: MARK_RAN
-        - sqlCheck:
-            expectedResult: 0
-            sql: SELECT count(*) FROM databasechangelog WHERE id = '317';
+        - or:
+            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = '317';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = '317';
+
       changes:
         - dropColumn:
             tableName: metabase_table
@@ -8655,12 +8668,23 @@ databaseChangeLog:
       id: 42000003
       author: dpsutton
       comment: Added 0.42.0 Initial support for datasets based on questions
-      # this migration was previously numbered 320 before we adopted the 0.42.0+ migration ID numbering scheme.
+      # this migration was previously numbered 320 and merged into master before we adopted the 0.42.0+ migration ID
+      # numbering scheme. See #18821 for more info.
       preConditions:
         - onFail: MARK_RAN
-        - sqlCheck:
-            expectedResult: 0
-            sql: SELECT count(*) FROM databasechangelog WHERE id = '320';
+        - or:
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = '320';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = '320';
       changes:
         - addColumn:
             tableName: report_card
