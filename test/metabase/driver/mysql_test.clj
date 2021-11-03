@@ -193,8 +193,8 @@
    :subprotocol          "mysql"
    :zeroDateTimeBehavior "convertToNull"
    :user                 "cam"
-   :subname              (str "//localhost:3306/my_db?connectionAttributes=program_name:"
-                              config/mb-version-and-process-identifier)
+   :subname              "//localhost:3306/my_db"
+   :connectionAttributes (str "program_name:" config/mb-version-and-process-identifier)
    :useCompression       true
    :useUnicode           true})
 
@@ -210,9 +210,7 @@
 
   (testing "Connections that are `:ssl false` but with `useSSL` in the additional options should be treated as SSL (see #9629)"
     (is (= (assoc sample-jdbc-spec :useSSL  true
-                                   :subname (str "//localhost:3306/my_db?useSSL=true&trustServerCertificate=true"
-                                                 "&connectionAttributes=program_name:"
-                                                 config/mb-version-and-process-identifier))
+                                   :subname "//localhost:3306/my_db?useSSL=true&trustServerCertificate=true")
            (sql-jdbc.conn/connection-details->spec :mysql
              (assoc sample-connection-details
                     :ssl false

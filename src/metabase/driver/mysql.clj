@@ -314,14 +314,11 @@
    ;; GZIP compress packets sent between Metabase server and MySQL/MariaDB database
    :useCompression       true})
 
-(defn- add-program-name-option [details]
+(defn- add-program-name-option [jdbc-spec]
   ;; connectionAttributes (if multiple) are separated by commas, so values that contain spaces are OK, so long as they
   ;; don't contain a comma; our mb-version-and-process-identifier shouldn't contain one, but just to be on the safe side
-  (let [prog-name    (str/replace config/mb-version-and-process-identifier "," "_")
-        prog-nm-opts {:connectionAttributes (str "program_name:" prog-name)}]
-    (update details :additional-options (fn [addl-opts]
-                                          (str (when addl-opts (str addl-opts "&")) ; already have some (append this)
-                                               (sql-jdbc.common/additional-opts->string :url prog-nm-opts))))))
+  (let [prog-name (str/replace config/mb-version-and-process-identifier "," "_")]
+    (assoc jdbc-spec :connectionAttributes (str "program_name:" prog-name))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :mysql
   [_ {ssl? :ssl, :keys [additional-options ssl-cert], :as details}]
@@ -342,7 +339,8 @@
                        (set/rename-keys {:dbname :db})
                        (dissoc :ssl))]
        (-> (dbspec/mysql details)
-           (sql-jdbc.common/handle-additional-options (add-program-name-option details)))))))
+           add-program-name-option
+           (sql-jdbc.common/handle-additional-options details))))))
 
 (defmethod sql-jdbc.sync/active-tables :mysql
   [& args]
