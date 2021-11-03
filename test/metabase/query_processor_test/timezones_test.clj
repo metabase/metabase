@@ -1,7 +1,6 @@
 (ns metabase.query-processor-test.timezones-test
   (:require [clojure.set :as set]
             [clojure.test :refer :all]
-            [colorize.core :as colorize]
             [honeysql.core :as hsql]
             [java-time :as t]
             [metabase.driver :as driver]
@@ -12,32 +11,6 @@
             [metabase.test.data.sql :as sql.tx]
             [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db]))
-
-(defn- do-with-temporary-report-timezone
-  "Implementation for the `with-temporary-humanization-strategy` macro."
-  [value thunk]
-  (let [original-value (driver/report-timezone)]
-    (try
-      (driver/report-timezone value)
-      (testing (colorize/blue (format "\nSetting :report-timezone = %s\n" (pr-str value)))
-        (thunk))
-      (catch Throwable e
-        (throw (ex-info (str "Error in with-temporary-report-timezone: " (ex-message e))
-                        {:setting :report-timezone
-                         :value   value}
-                        e)))
-      (finally
-        (driver/report-timezone original-value)))))
-
-(defmacro with-temporary-report-timezone
-  "Temporarily set the `report-timezone` setting to the provided value, execute body, and re-establish the original
-  setting. This should be used instead of `metabase.test.util/with-temporary-setting-values` to ensure that cached
-  database resources are released when restoring the setting (see `driver/notify-all-databases-updated`).
-
-     (with-temporary-report-timezone :simple
-       ...)"
-  [value & body]
-  `(do-with-temporary-report-timezone ~value (fn [] ~@body)))
 
 ;; TIMEZONE FIXME
 (def broken-drivers
@@ -79,7 +52,7 @@
       (doseq [[timezone expected-rows] {"UTC"        [[12 "2014-07-03T01:30:00Z"]
                                                       [10 "2014-07-03T19:30:00Z"]]
                                         "US/Pacific" [[10 "2014-07-03T12:30:00-07:00"]]}]
-        (with-temporary-report-timezone timezone
+        (mt/with-temporary-setting-values [report-timezone timezone]
           (is (= expected-rows
                  (mt/formatted-rows [int identity]
                    (mt/run-mbql-query users
@@ -91,7 +64,7 @@
 (deftest filter-test
   (mt/dataset test-data-with-timezones
     (mt/test-drivers (set-timezone-drivers)
-      (with-temporary-report-timezone "America/Los_Angeles"
+      (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
         (is (= [[6 "Shad Ferdynand" "2014-08-02T05:30:00-07:00"]]
                (mt/formatted-rows [int identity identity]
                  (mt/run-mbql-query users
@@ -111,7 +84,7 @@
             utc-results [[6 "Shad Ferdynand" "2014-08-02T12:30:00Z"]]]
         (mt/test-drivers (set-timezone-drivers)
           (is (= utc-results
-                 (with-temporary-report-timezone "UTC"
+                 (mt/with-temporary-setting-values [report-timezone "UTC"]
                    (run-query)))
               "Checking UTC report timezone filtering and responses"))
         (mt/test-drivers (timezone-aware-column-drivers)
@@ -191,7 +164,7 @@
   (mt/test-drivers (set-timezone-drivers)
     (when (driver/supports? driver/*driver* :native-parameters)
       (mt/dataset test-data-with-timezones
-        (with-temporary-report-timezone "America/Los_Angeles"
+        (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
           (testing "Native dates should be parsed with the report timezone"
             (doseq [[params-description query] (native-params-queries)]
               (testing (format "Query with %s" params-description)
@@ -250,7 +223,7 @@
   (mt/test-drivers (set-timezone-drivers)
     (mt/dataset attempted-murders
       (doseq [timezone [nil "US/Pacific" "US/Eastern" "Asia/Hong_Kong"]]
-        (with-temporary-report-timezone timezone
+        (mt/with-temporary-setting-values [report-timezone timezone]
           (let [expected (expected-attempts)
                 actual   (select-keys (attempts) (keys expected))]
             (is (= expected actual))))))))
