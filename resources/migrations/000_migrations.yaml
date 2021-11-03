@@ -8625,18 +8625,42 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: 317
+      id: 381
+      author: camsaul
+      comment: Added 0.41.2 Add index to QueryExecution card_id to fix performance issues (#18759)
+      changes:
+        - createIndex:
+            tableName: query_execution
+            indexName: idx_query_execution_card_id
+            columns:
+              - column:
+                  name: card_id
+
+  - changeSet:
+      id: 42000000
       author: camsaul
       comment: Added 0.42.0 Remove unused column
+      # this migration was previously numbered 317 before we adopted the 0.42.0+ migration ID numbering scheme.
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT count(*) FROM databasechangelog WHERE id = '317';
       changes:
         - dropColumn:
             tableName: metabase_table
             columnName: entity_name
 
   - changeSet:
-      id: 320
+      id: 42000003
       author: dpsutton
       comment: Added 0.42.0 Initial support for datasets based on questions
+      # this migration was previously numbered 317 before we adopted the 0.42.0+ migration ID numbering scheme.
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT count(*) FROM databasechangelog WHERE id = '320';
       changes:
         - addColumn:
             tableName: report_card
@@ -8649,17 +8673,6 @@ databaseChangeLog:
                     nullable: false
                   defaultValue: false
 
-  - changeSet:
-      id: 381
-      author: camsaul
-      comment: Added 0.41.2 Add index to QueryExecution card_id to fix performance issues (#18759)
-      changes:
-        - createIndex:
-            tableName: query_execution
-            indexName: idx_query_execution_card_id
-            columns:
-              - column:
-                  name: card_id
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
@@ -8673,6 +8686,22 @@ databaseChangeLog:
 #
 # 2) Please post a message in the Metabase Slack #migrations channel to let others know you are creating a new
 #    migration so someone else doesn't steal your ID number
+#
+# 3) Migrations IDs should follow the format
+#
+#    MMmmNNNN
+#
+#    where
+#
+#    M = major version
+#    m = minor version
+#    N = migration number relative to that major+minor version
+#
+#   e.g. the first migration added to 0.42.0 should be numbered 4200000 and the second migration should be numbered
+#   4200001. The first migration for 0.42.1 should be numbered 4201000, and so forth.
+#
+#   This numbering scheme was adopted beginning with version 0.42.0 so that we could go back and add migrations to patch
+#   releases without the ID sequence getting wildly out of order.
 #
 # PLEASE KEEP THIS MESSAGE AT THE BOTTOM OF THIS FILE!!!!! Add new migrations above the message.
 #
