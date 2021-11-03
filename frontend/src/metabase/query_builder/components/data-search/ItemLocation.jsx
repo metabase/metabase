@@ -15,6 +15,8 @@ import { color } from "metabase/lib/colors";
 
 export const ItemLocation = ({ item }) => {
   switch (item.model) {
+    case "dataset":
+      return <DatasetLocation item={item} />;
     case "card":
       return <QuestionLocation item={item} />;
     case "table":
@@ -22,6 +24,17 @@ export const ItemLocation = ({ item }) => {
     default:
       return null;
   }
+};
+
+function DatasetLocation({ item }) {
+  const collection = item.getCollection();
+  return jt`Dataset in ${(
+    <Collection.Link id={collection.id} LinkComponent={LocationLink} />
+  )}`;
+}
+
+DatasetLocation.propTypes = {
+  item: PropTypes.object.isRequired,
 };
 
 ItemLocation.propTypes = {
