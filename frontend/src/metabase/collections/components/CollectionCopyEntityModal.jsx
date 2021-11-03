@@ -6,7 +6,7 @@ import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
 import withToast from "metabase/hoc/Toast";
-import { entityTypeForObject } from "metabase/schema";
+import { entityTypeForObject } from "metabase/lib/schema";
 
 import Link from "metabase/components/Link";
 
