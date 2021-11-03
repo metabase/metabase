@@ -3,10 +3,10 @@
             [clojure.string :as str]))
 
 (defn id-in-range?
-  "Migration should be 1-381 (inclusive; legacy pre-42 migration numbering scheme) or >= 4200000 (42+ major-minor-id
+  "Migration should be 1-382 (inclusive; legacy pre-42 migration numbering scheme) or >= 4200000 (42+ major-minor-id
   scheme). See PR #18821 for more info."
   [id]
-  (or (<= 1 id 381)
+  (or (<= 1 id 382)
       ;; check that the id is less than 9900000 to make sure someone didn't accidentally put an extra zero in there.
       (<= 4200000 id 9900000)))
 
