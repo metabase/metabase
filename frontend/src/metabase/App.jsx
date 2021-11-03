@@ -15,7 +15,7 @@ import {
   GenericError,
   Unauthorized,
 } from "metabase/containers/ErrorPages";
-import SyncStatusApp from "metabase/onboarding/containers/SyncStatusApp";
+import SyncStatusApp from "metabase/syncing/containers/SyncStatusApp";
 
 const mapStateToProps = (state, props) => ({
   errorPage: state.app.errorPage,
