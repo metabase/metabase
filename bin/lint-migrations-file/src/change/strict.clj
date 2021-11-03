@@ -37,8 +37,12 @@
 (s/def ::createIndex
   (s/keys :req-un [::indexName]))
 
+;; migration should be <= 381 (legacy pre-42 migration numbering scheme) or >= 4200000 (42+ major-minor-id scheme)
+(s/def ::id
+  #(<= 381 % 420000))
+
 (s/def ::change
-  (s/keys :opt-un [::addColumn ::createTable ::createIndex]))
+  (s/keys :opt-un [::addColumn ::createTable ::createIndex ::id]))
 
 (s/def :change.strict.dbms-qualified-sql-change.sql/dbms
   string?)
