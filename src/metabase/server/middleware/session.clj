@@ -107,7 +107,12 @@
                         {:http-only true
                          :path      "/"}
                         (when (request.u/https? request)
-                          {:secure true}))]
+                          ;; SameSite=None is required for cross-domain full-app embedding. This is safe because
+                          ;; security is provided via anti-CSRF token. Note that most browsers will only accept
+                          ;; SameSite=None with secure cookies, thus we are setting it only over HTTPS to prevent
+                          ;; the cookie from being rejected in case of same-domain embedding.
+                          {:same-site :none
+                           :secure    true}))]
     (-> response
         (resp/set-cookie metabase-embedded-session-cookie (str session-uuid) cookie-options)
         (assoc-in [:headers anti-csrf-token-header] anti-csrf-token))))
