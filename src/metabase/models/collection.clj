@@ -1040,6 +1040,8 @@
                                :collection-namespace collection-namespace})))))))
 
 (defn annotate-collections
+  "Annotate collections with `:below` and `:here` keys to indicate which types are in their subtree and which types are
+  in the collection at that level."
   [{:keys [dataset card] :as _coll-type-ids} collections]
   (let [parent-info (reduce (fn [m {:keys [location id] :as _collection}]
                               (let [parent-ids (set (location-path->ids location))]
