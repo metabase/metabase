@@ -141,7 +141,7 @@ describe("scenarios > x-rays", () => {
     cy.contains("A look at your Orders table").click();
 
     // There are a lot of spinners in this dashboard. Give them some time to disappear.
-    cy.get(".LoadingSpinner", { timeout: 10000 }).should("not.exist");
+    cy.findByTestId("loading-spinner", { timeout: 10000 }).should("not.exist");
 
     cy.button("Save this").click();
 

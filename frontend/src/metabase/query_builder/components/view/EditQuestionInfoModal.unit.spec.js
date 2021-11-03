@@ -2,8 +2,7 @@ import React from "react";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import userEvent from "@testing-library/user-event";
 import xhrMock from "xhr-mock";
-import { PLUGIN_CACHING, PLUGIN_FORM_WIDGETS } from "metabase/plugins";
-import NumericFormField from "metabase/components/form/widgets/FormNumericInputWidget";
+import { setupEnterpriseTest } from "__support__/enterprise";
 import MetabaseSettings from "metabase/lib/settings";
 import EditQuestionInfoModal from "./EditQuestionInfoModal";
 
@@ -17,11 +16,28 @@ const QUESTION = {
 };
 
 function mockCachingSettings({ enabled = true } = {}) {
+  const original = MetabaseSettings.get.bind(MetabaseSettings);
   const spy = jest.spyOn(MetabaseSettings, "get");
   spy.mockImplementation(key => {
     if (key === "enable-query-caching") {
       return enabled;
     }
+    if (key === "query-caching-min-ttl") {
+      return 10000;
+    }
+    if (key === "application-name") {
+      return "Metabase Test";
+    }
+    if (key === "version") {
+      return { tag: "" };
+    }
+    if (key === "is-hosted?") {
+      return false;
+    }
+    if (key === "enable-enhancements?") {
+      return false;
+    }
+    return original(key);
   });
 }
 
@@ -35,6 +51,9 @@ function setup({ cachingEnabled = true } = {}) {
 
   const question = {
     card: () => QUESTION,
+    database: () => ({
+      cache_ttl: null,
+    }),
   };
 
   renderWithProviders(
@@ -154,15 +173,7 @@ describe("EditQuestionInfoModal", () => {
 
     describe("EE", () => {
       beforeEach(() => {
-        PLUGIN_CACHING.cacheTTLFormField = {
-          name: "cache_ttl",
-        };
-        PLUGIN_FORM_WIDGETS.questionCacheTTL = NumericFormField;
-      });
-
-      afterEach(() => {
-        PLUGIN_CACHING.cacheTTLFormField = null;
-        PLUGIN_FORM_WIDGETS.questionCacheTTL = null;
+        setupEnterpriseTest();
       });
 
       describe("caching enabled", () => {
