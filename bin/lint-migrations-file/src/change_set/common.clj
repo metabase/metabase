@@ -2,25 +2,34 @@
   (:require [clojure.spec.alpha :as s]
             [clojure.string :as str]))
 
-(defn id-in-range?
-  "Migration should be 1-382 (inclusive; legacy pre-42 migration numbering scheme) or >= 4200000 (42+ major-minor-id
-  scheme). See PR #18821 for more info."
+;; See PR #18821 for more info on the new migration ID format adopted in 0.42.0+
+
+(defn- ->int [id]
+  (if (string? id)
+    (Integer/parseUnsignedInt id)
+    id))
+
+(defn legacy-id? [id]
+  (<= 1 (->int id) 382))
+
+(defn enough-zeroes? [id]
+  (>= (->int id) 4200000))
+
+(defn not-too-many-zeroes?
+  "Check that the id is less than 9900000 to make sure someone didn't accidentally put an extra zero in there."
   [id]
-  (or (<= 1 id 382)
-      ;; check that the id is less than 9900000 to make sure someone didn't accidentally put an extra zero in there.
-      (<= 4200000 id 9900000)))
+  (< (->int id) 9900000))
+
+(s/def ::id-in-range
+  (s/or :legacy    legacy-id?
+        :new-style (s/and (complement legacy-id?)
+                          enough-zeroes?
+                          not-too-many-zeroes?)))
 
 (s/def ::id
   (s/or
-   :int (s/and int? id-in-range?)
-   :int-string (s/and
-                string?
-                (fn [^String s]
-                  (try
-                    (let [id (Integer/parseInt s)]
-                      (id-in-range? id))
-                    (catch Throwable _
-                      false))))))
+   :int        (s/and int? pos? ::id-in-range)
+   :int-string (s/and string? ::id-in-range)))
 
 (s/def ::author string?)
 

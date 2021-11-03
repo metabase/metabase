@@ -152,3 +152,30 @@
            :changes
            [{:sql {:dbms "h2", :sql "1"}}
             {:sql {:dbms "postgresql,h2", :sql "2"}}]))))))
+
+(deftest validate-id-test
+  (doseq [[message id-fn] {"number IDs" identity
+                           "string IDs" str}]
+    (testing message
+      (letfn [(validate-id [id]
+                (validate
+                 (mock-change-set
+                  :id (id-fn id))))]
+        (testing "Valid new-style ID"
+          (is (= :ok
+                 (validate-id 4201001))))
+        (testing "Disallow another legacy ID"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"legacy-id\?"
+               (validate-id 383))))
+        (testing "ID that's missing a zero should fail"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"enough-zeroes\?"
+               (validate-id 420101))))
+        (testing "ID with an extra zero should fail"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"not-too-many-zeroes\?"
+               (validate-id 42010001))))))))
