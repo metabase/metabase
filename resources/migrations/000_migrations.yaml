@@ -8626,6 +8626,19 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
+      id: 381
+      author: camsaul
+      comment: Added 0.41.2 Add index to QueryExecution card_id to fix performance issues (#18759)
+      changes:
+        - createIndex:
+            tableName: query_execution
+            indexName: idx_query_execution_card_id
+            columns:
+              - column:
+                  name: card_id
+
+  # TODO -- this is now migration 4200000
+  - changeSet:
       id: 317
       author: camsaul
       comment: Added 0.42.0 Remove unused column (#5240)
@@ -8634,6 +8647,7 @@ databaseChangeLog:
             tableName: metabase_table
             columnName: entity_name
 
+  # TODO -- this is now migration 4200001
   - changeSet:
       id: 318
       author: camsaul
@@ -8669,7 +8683,8 @@ databaseChangeLog:
               WHERE c.database_id IS NULL
                 AND c.id = c2.id
                 AND c2.query_database_id IS NOT NULL;
-        # MySQL and MariaDB are exactly the same other than different function names: json_value (for MariaDB) vs json_extract (for MySQL)
+        # MySQL and MariaDB are exactly the same other than different function names: json_value (for MariaDB) vs
+        # json_extract (for MySQL)
         - sql:
             dbms: mariadb
             sql: >-
@@ -8697,6 +8712,7 @@ databaseChangeLog:
               WHERE c.database_id IS NULL
                 AND c2.query_database_id IS NOT NULL;
 
+  # TODO -- this is now migration 4200002
   - changeSet:
       id: 319
       author: camsaul
@@ -8715,7 +8731,8 @@ databaseChangeLog:
             tableName: report_card
             columnName: database_id
 
-
+  # TODO -- this is now migration 4200003
+  - changeSet:
       id: 320
       author: dpsutton
       comment: Added 0.42.0 Initial support for datasets based on questions
@@ -8731,18 +8748,6 @@ databaseChangeLog:
                     nullable: false
                   defaultValue: false
 
-  - changeSet:
-      id: 381
-      author: camsaul
-      comment: Added 0.41.2 Add index to QueryExecution card_id to fix performance issues (#18759)
-      changes:
-        - createIndex:
-            tableName: query_execution
-            indexName: idx_query_execution_card_id
-            columns:
-              - column:
-                  name: card_id
-
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
@@ -8755,6 +8760,22 @@ databaseChangeLog:
 #
 # 2) Please post a message in the Metabase Slack #migrations channel to let others know you are creating a new
 #    migration so someone else doesn't steal your ID number
+#
+# 3) Migrations IDs should follow the format
+#
+#    MMmmNNNN
+#
+#    where
+#
+#    M = major version
+#    m = minor version
+#    N = migration number relative to that major+minor version
+#
+#   e.g. the first migration added to 0.42.0 should be numbered 4200000 and the second migration should be numbered
+#   4200001. The first migration for 0.42.1 should be numbered 4201000, and so forth.
+#
+#   This numbering scheme was adopted beginning with version 0.42.0 so that we could go back and add migrations to patch
+#   releases without the ID sequence getting wildly out of order.
 #
 # PLEASE KEEP THIS MESSAGE AT THE BOTTOM OF THIS FILE!!!!! Add new migrations above the message.
 #
