@@ -1033,7 +1033,6 @@ const DatabasePicker = ({
 
   const sections = [
     {
-      name: onBack ? <RawDataBackButton onBack={onBack} /> : null,
       items: databases.map((database, index) => ({
         name: database.name,
         index,
@@ -1042,6 +1041,10 @@ const DatabasePicker = ({
     },
   ];
 
+  if (onBack) {
+    sections.unshift({ name: <RawDataBackButton /> });
+  }
+
   return (
     <AccordionList
       id="DatabasePicker"
@@ -1049,6 +1052,13 @@ const DatabasePicker = ({
       className="text-brand"
       sections={sections}
       onChange={item => onChangeDatabase(item.database)}
+      onChangeSection={(_section, sectionIndex) => {
+        const isNavigationSection = onBack && sectionIndex === 0;
+        if (isNavigationSection) {
+          onBack();
+        }
+        return false;
+      }}
       itemIsSelected={item =>
         selectedDatabase && item.database.id === selectedDatabase.id
       }
@@ -1127,7 +1137,7 @@ const DatabaseSchemaPicker = ({
 
   if (hasBackButton) {
     sections.unshift({
-      name: <RawDataBackButton onBack={onBack} />,
+      name: <RawDataBackButton />,
     });
   }
 
@@ -1155,6 +1165,7 @@ const DatabaseSchemaPicker = ({
       onChangeSection={(_section, sectionIndex) => {
         const isNavigationSection = hasBackButton && sectionIndex === 0;
         if (isNavigationSection) {
+          onBack();
           return false;
         }
         // the "go back" button is also a section,

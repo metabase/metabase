@@ -41,9 +41,9 @@ const BackButtonLabel = styled.span`
   }
 `;
 
-export function RawDataBackButton({ onBack }) {
+export function RawDataBackButton() {
   return (
-    <BackButtonContainer onClick={onBack}>
+    <BackButtonContainer>
       <Icon name="chevronleft" size={16} />
       <BackButtonLabel>{t`Raw Data`}</BackButtonLabel>
     </BackButtonContainer>
