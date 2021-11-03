@@ -8673,6 +8673,7 @@ databaseChangeLog:
             tableName: metabase_table
             columnName: entity_name
 
+
   - changeSet:
       id: 4200003
       author: dpsutton
@@ -8705,8 +8706,9 @@ databaseChangeLog:
                   constraints:
                     nullable: false
                   defaultValue: false
+
   - changeSet: # this one is run unconditionally so unify the type to ${text.type} across ALL dbs
-      id: 321  # this differentiation was first done under changeSet 13 above
+      id: 4200004 # this differentiation was first done under changeSet 13 above
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of activity.details from text to ${text.type}
@@ -8715,8 +8717,9 @@ databaseChangeLog:
             tableName: activity
             columnName: details
             newDataType: ${text.type}
+
   - changeSet:
-      id: 322
+      id: 4200005
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of collection.description from text to ${text.type}
@@ -8730,8 +8733,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 323
+      id: 4200006
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of collection.name from text to ${text.type}
@@ -8745,8 +8749,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 324
+      id: 4200007
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of computation_job.context from text to ${text.type}
@@ -8760,8 +8765,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 325
+      id: 4200008
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of computation_job_result.payload from text
@@ -8775,8 +8781,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 326
+      id: 4200009
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of core_session.anti_csrf_token from text
@@ -8790,8 +8797,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 327
+      id: 4200010
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of core_user.login_attributes from text to
@@ -8805,8 +8813,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 328
+      id: 4200011
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of group_table_access_policy.attribute_remappings
@@ -8820,8 +8829,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 329
+      id: 4200012
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of login_history.device_description from text
@@ -8835,8 +8845,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 330
+      id: 4200013
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of login_history.ip_address from text to ${text.type}
@@ -8850,8 +8861,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 331
+      id: 4200014
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metabase_database.caveats from text to
@@ -8865,8 +8877,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 332
+      id: 4200015
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metabase_database.description from text
@@ -8880,8 +8893,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 333
+      id: 4200016
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metabase_database.details from text to
@@ -8895,8 +8909,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 334
+      id: 4200017
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metabase_database.options from text to
@@ -8910,8 +8925,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 335
+      id: 4200018
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metabase_database.points_of_interest from
@@ -8925,8 +8941,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 336
+      id: 4200019
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metabase_field.caveats from text to ${text.type}
@@ -8940,8 +8957,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 337
+      id: 4200020
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metabase_field.database_type from text
@@ -8955,8 +8973,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 338
+      id: 4200021
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metabase_field.description from text to
@@ -8970,8 +8989,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 339
+      id: 4200022
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metabase_field.fingerprint from text to
@@ -8985,8 +9005,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 340
+      id: 4200023
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metabase_field.has_field_values from text
@@ -9000,8 +9021,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 341
+      id: 4200024
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metabase_field.points_of_interest from
@@ -9015,8 +9037,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 342
+      id: 4200025
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metabase_field.settings from text to ${text.type}
@@ -9030,8 +9053,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 343
+      id: 4200026
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metabase_fieldvalues.human_readable_values
@@ -9045,8 +9069,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 344
+      id: 4200027
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metabase_fieldvalues.values from text to
@@ -9060,8 +9085,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 345
+      id: 4200028
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metabase_table.caveats from text to ${text.type}
@@ -9075,8 +9101,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 346
+      id: 4200029
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metabase_table.description from text to
@@ -9090,8 +9117,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 347
+      id: 4200030
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metabase_table.points_of_interest from
@@ -9105,8 +9133,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 348
+      id: 4200031
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metric.caveats from text to ${text.type}
@@ -9120,8 +9149,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 349
+      id: 4200032
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metric.definition from text to ${text.type}
@@ -9135,8 +9165,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 350
+      id: 4200033
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metric.description from text to ${text.type}
@@ -9150,8 +9181,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 351
+      id: 4200034
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metric.how_is_this_calculated from text
@@ -9165,8 +9197,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 352
+      id: 4200035
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of metric.points_of_interest from text to
@@ -9180,8 +9213,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 353
+      id: 4200036
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of moderation_review.text from text to ${text.type}
@@ -9195,8 +9229,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 354
+      id: 4200037
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of native_query_snippet.content from text
@@ -9210,8 +9245,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 355
+      id: 4200038
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of native_query_snippet.description from text
@@ -9225,8 +9261,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 356
+      id: 4200039
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of pulse.parameters from text to ${text.type}
@@ -9240,8 +9277,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 357
+      id: 4200040
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of pulse_channel.details from text to ${text.type}
@@ -9255,8 +9293,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 358
+      id: 4200041
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of query.query from text to ${text.type} on
@@ -9270,8 +9309,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 359
+      id: 4200042
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of query_execution.error from text to ${text.type}
@@ -9285,8 +9325,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 360
+      id: 4200043
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of report_card.dataset_query from text to
@@ -9300,8 +9341,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 361
+      id: 4200044
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of report_card.description from text to ${text.type}
@@ -9315,8 +9357,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 362
+      id: 4200045
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of report_card.embedding_params from text
@@ -9330,8 +9373,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 363
+      id: 4200046
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of report_card.result_metadata from text to
@@ -9345,8 +9389,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 364
+      id: 4200047
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of report_card.visualization_settings from
@@ -9360,8 +9405,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 365
+      id: 4200048
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of report_dashboard.caveats from text to ${text.type}
@@ -9375,8 +9421,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 366
+      id: 4200049
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of report_dashboard.description from text
@@ -9390,8 +9437,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 367
+      id: 4200050
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of report_dashboard.embedding_params from
@@ -9405,8 +9453,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 368
+      id: 4200051
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of report_dashboard.parameters from text to
@@ -9420,8 +9469,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 369
+      id: 4200052
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of report_dashboard.points_of_interest from
@@ -9435,8 +9485,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 370
+      id: 4200053
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of report_dashboardcard.parameter_mappings
@@ -9450,8 +9501,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 371
+      id: 4200054
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of report_dashboardcard.visualization_settings
@@ -9465,8 +9517,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 372
+      id: 4200055
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of revision.message from text to ${text.type}
@@ -9480,8 +9533,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet: # this one is run unconditionally so unify the type to ${text.type} across ALL dbs
-      id: 373  # this differentiation was first done under changeSet 10 above
+      id: 4200056
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of revision.object from text to ${text.type}
@@ -9490,8 +9544,9 @@ databaseChangeLog:
             tableName: revision
             columnName: object
             newDataType: ${text.type}
+
   - changeSet:
-      id: 374
+      id: 4200057
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of segment.caveats from text to ${text.type}
@@ -9505,8 +9560,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 375
+      id: 4200058
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of segment.definition from text to ${text.type}
@@ -9520,8 +9576,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 376
+      id: 4200059
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of segment.description from text to ${text.type}
@@ -9535,8 +9592,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 377
+      id: 4200060
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of segment.points_of_interest from text to
@@ -9550,8 +9608,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 378
+      id: 4200061
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of setting.value from text to ${text.type}
@@ -9565,8 +9624,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 379
+      id: 4200062
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of task_history.task_details from text to
@@ -9580,8 +9640,9 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
   - changeSet:
-      id: 380
+      id: 4200063
       author: jeff303
       comment: >-
         Added 0.42.0 - modify type of view_log.metadata from text to ${text.type}
