@@ -4,6 +4,7 @@
             [clojure.test :refer :all]
             [metabase.models.setting :as setting :refer [Setting]]
             [metabase.models.user :refer [User]]
+            [metabase.models.setting :refer [Setting]]
             [metabase.public-settings :as public-settings]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.test :as mt]
