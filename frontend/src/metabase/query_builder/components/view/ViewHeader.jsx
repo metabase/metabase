@@ -72,35 +72,7 @@ const viewTitleHeaderPropTypes = {
 };
 
 export function ViewTitleHeader(props) {
-  const {
-    className,
-    style,
-    question,
-    onOpenModal,
-    originalQuestion,
-    isDirty,
-    queryBuilderMode,
-    setQueryBuilderMode,
-    result,
-    isRunnable,
-    isRunning,
-    isResultDirty,
-    isPreviewing,
-    isNativeEditorOpen,
-    runQuestionQuery,
-    cancelQuery,
-    isShowingSummarySidebar,
-    onEditSummary,
-    onCloseSummary,
-    isShowingFilterSidebar,
-    onAddFilter,
-    onCloseFilter,
-    isShowingQuestionDetailsSidebar,
-    onOpenQuestionDetails,
-    onCloseQuestionDetails,
-    onOpenQuestionHistory,
-    isObjectDetail,
-  } = props;
+  const { question, className, style } = props;
 
   const [
     areFiltersExpanded,
@@ -122,7 +94,6 @@ export function ViewTitleHeader(props) {
     }
   }, [previousQuestion, question, expandFilters]);
 
-  const isShowingNotebook = queryBuilderMode === "notebook";
   const lastEditInfo = question.lastEditInfo();
 
   const isStructured = question.isStructured();
@@ -141,183 +112,315 @@ export function ViewTitleHeader(props) {
   return (
     <ViewHeaderContainer className={className} style={style}>
       {isSaved ? (
-        <div>
-          <div className="flex align-center">
-            <SavedQuestionHeaderButtonContainer>
-              <SavedQuestionHeaderButton
-                question={question}
-                isActive={isShowingQuestionDetailsSidebar}
-                onClick={
-                  isShowingQuestionDetailsSidebar
-                    ? onCloseQuestionDetails
-                    : onOpenQuestionDetails
-                }
-              />
-            </SavedQuestionHeaderButtonContainer>
-            {lastEditInfo && (
-              <LastEditInfoLabel
-                className="ml1 text-light"
-                item={question.card()}
-                onClick={onOpenQuestionHistory}
-              />
-            )}
-          </div>
-          <ViewSubHeading className="flex align-center flex-wrap pt1">
-            <CollectionBadge
-              className="mb1"
-              collectionId={question.collectionId()}
-            />
-
-            {QuestionDataSource.shouldRender(props) && (
-              <QuestionDataSource
-                className="ml3 mb1"
-                question={question}
-                isObjectDetail={isObjectDetail}
-                subHead
-              />
-            )}
-
-            {QuestionFilters.shouldRender(props) && (
-              <QuestionFilters
-                className="mb1"
-                question={question}
-                expanded={areFiltersExpanded}
-                onExpand={expandFilters}
-                onCollapse={collapseFilters}
-              />
-            )}
-          </ViewSubHeading>
-        </div>
+        <SavedQuestionLeftSide
+          {...props}
+          lastEditInfo={lastEditInfo}
+          areFiltersExpanded={areFiltersExpanded}
+          onExpandFilters={expandFilters}
+          onCollapseFilters={collapseFilters}
+        />
       ) : (
-        <div>
-          <div className="flex align-baseline flex-wrap">
-            <ViewHeading className="mt1 mr2 mb1">
-              {isNative ? (
-                t`New question`
-              ) : (
-                <QuestionDescription
-                  question={question}
-                  isObjectDetail={isObjectDetail}
-                />
-              )}
-            </ViewHeading>
-            {showFiltersInHeading && QuestionFilters.shouldRender(props) && (
-              <QuestionFilters
-                className="mr2 mb1"
-                question={question}
-                expanded={areFiltersExpanded}
-                onExpand={expandFilters}
-                onCollapse={collapseFilters}
-              />
-            )}
-            {QuestionLineage.shouldRender(props) && (
-              <QuestionLineage
-                className="mr2 mb1"
-                question={question}
-                originalQuestion={originalQuestion}
-              />
-            )}
-          </div>
-          <div className="flex align-center flex-wrap">
-            {isSummarized && (
-              <QuestionDataSource
-                className="mb1"
-                question={question}
-                isObjectDetail={isObjectDetail}
-                subHead
-                data-metabase-event={`Question Data Source Click`}
-              />
-            )}
-            {!showFiltersInHeading && QuestionFilters.shouldRender(props) && (
-              <QuestionFilters
-                className="mb1"
-                question={question}
-                expanded={areFiltersExpanded}
-                onExpand={expandFilters}
-                onCollapse={collapseFilters}
-              />
-            )}
-          </div>
-        </div>
+        <AhHocQuestionLeftSide
+          {...props}
+          isNative={isNative}
+          isSummarized={isSummarized}
+          areFiltersExpanded={areFiltersExpanded}
+          showFiltersInHeading={showFiltersInHeading}
+          onExpandFilters={expandFilters}
+          onCollapseFilters={collapseFilters}
+        />
       )}
-      <div className="ml-auto flex align-center">
-        {!!isDirty && (
-          <SaveButton
-            disabled={!question.canRun()}
-            data-metabase-event={
-              isShowingNotebook
-                ? `Notebook Mode; Click Save`
-                : `View Mode; Click Save`
-            }
-            onClick={() => onOpenModal("save")}
-          >
-            {t`Save`}
-          </SaveButton>
-        )}
-        {QuestionFilterWidget.shouldRender(props) && (
-          <QuestionFilterWidget
-            className="hide sm-show"
-            ml={1}
-            isShowingFilterSidebar={isShowingFilterSidebar}
-            onAddFilter={onAddFilter}
-            onCloseFilter={onCloseFilter}
-            data-metabase-event={`View Mode; Open Filter Widget`}
-          />
-        )}
-        {QuestionSummarizeWidget.shouldRender(props) && (
-          <QuestionSummarizeWidget
-            className="hide sm-show"
-            ml={1}
-            isShowingSummarySidebar={isShowingSummarySidebar}
-            onEditSummary={onEditSummary}
-            onCloseSummary={onCloseSummary}
-            data-metabase-event={`View Mode; Open Summary Widget`}
-          />
-        )}
-        {QuestionNotebookButton.shouldRender({ question }) && (
-          <QuestionNotebookButton
-            className="hide sm-show"
-            ml={2}
+      <ViewTitleHeaderRightSide
+        {...props}
+        isSaved={isSaved}
+        isNative={isNative}
+        isSummarized={isSummarized}
+      />
+    </ViewHeaderContainer>
+  );
+}
+
+SavedQuestionLeftSide.propTypes = {
+  question: PropTypes.object.isRequired,
+  lastEditInfo: PropTypes.object,
+  areFiltersExpanded: PropTypes.bool.isRequired,
+  isShowingQuestionDetailsSidebar: PropTypes.bool,
+  isObjectDetail: PropTypes.bool,
+  onExpandFilters: PropTypes.func.isRequired,
+  onCollapseFilters: PropTypes.func.isRequired,
+  onOpenQuestionDetails: PropTypes.func.isRequired,
+  onCloseQuestionDetails: PropTypes.func.isRequired,
+  onOpenQuestionHistory: PropTypes.func.isRequired,
+};
+
+function SavedQuestionLeftSide(props) {
+  const {
+    question,
+    areFiltersExpanded,
+    isObjectDetail,
+    isShowingQuestionDetailsSidebar,
+    onExpandFilters,
+    onCollapseFilters,
+    onOpenQuestionDetails,
+    onCloseQuestionDetails,
+    lastEditInfo,
+    onOpenQuestionHistory,
+  } = props;
+  return (
+    <div>
+      <div className="flex align-center">
+        <SavedQuestionHeaderButtonContainer>
+          <SavedQuestionHeaderButton
             question={question}
-            isShowingNotebook={isShowingNotebook}
-            setQueryBuilderMode={setQueryBuilderMode}
-            data-metabase-event={
-              isShowingNotebook
-                ? `Notebook Mode;Go to View Mode`
-                : `View Mode; Go to Notebook Mode`
+            isActive={isShowingQuestionDetailsSidebar}
+            onClick={
+              isShowingQuestionDetailsSidebar
+                ? onCloseQuestionDetails
+                : onOpenQuestionDetails
             }
           />
-        )}
-        {NativeQueryButton.shouldRender(props) && (
-          <ViewSQLButtonContainer>
-            <NativeQueryButton
-              size={16}
-              question={question}
-              data-metabase-event={`Notebook Mode; Convert to SQL Click`}
-            />
-          </ViewSQLButtonContainer>
-        )}
-        {isNative && isSaved && <ExploreResultsLink question={question} />}
-        {isRunnable && !isNativeEditorOpen && (
-          <RunButtonWithTooltip
-            className={cx("text-brand-hover hide", {
-              "sm-show": !isShowingNotebook || isNative,
-              "text-white-hover": isResultDirty,
-            })}
-            medium
-            borderless
-            ml={1}
-            compact
-            result={result}
-            isRunning={isRunning}
-            isDirty={isResultDirty}
-            isPreviewing={isPreviewing}
-            onRun={() => runQuestionQuery({ ignoreCache: true })}
-            onCancel={cancelQuery}
+        </SavedQuestionHeaderButtonContainer>
+        {lastEditInfo && (
+          <LastEditInfoLabel
+            className="ml1 text-light"
+            item={question.card()}
+            onClick={onOpenQuestionHistory}
           />
         )}
       </div>
-    </ViewHeaderContainer>
+      <ViewSubHeading className="flex align-center flex-wrap pt1">
+        <CollectionBadge
+          className="mb1"
+          collectionId={question.collectionId()}
+        />
+        {QuestionDataSource.shouldRender(props) && (
+          <QuestionDataSource
+            className="ml3 mb1"
+            question={question}
+            isObjectDetail={isObjectDetail}
+            subHead
+          />
+        )}
+        {QuestionFilters.shouldRender(props) && (
+          <QuestionFilters
+            className="mb1"
+            question={question}
+            expanded={areFiltersExpanded}
+            onExpand={onExpandFilters}
+            onCollapse={onCollapseFilters}
+          />
+        )}
+      </ViewSubHeading>
+    </div>
+  );
+}
+
+AhHocQuestionLeftSide.propTypes = {
+  question: PropTypes.object.isRequired,
+  originalQuestion: PropTypes.object,
+  isNative: PropTypes.bool,
+  isObjectDetail: PropTypes.bool,
+  isSummarized: PropTypes.bool,
+  areFiltersExpanded: PropTypes.bool,
+  showFiltersInHeading: PropTypes.bool,
+  onExpandFilters: PropTypes.func.isRequired,
+  onCollapseFilters: PropTypes.func.isRequired,
+};
+
+function AhHocQuestionLeftSide(props) {
+  const {
+    question,
+    originalQuestion,
+    isNative,
+    isObjectDetail,
+    isSummarized,
+    areFiltersExpanded,
+    showFiltersInHeading,
+    onExpandFilters,
+    onCollapseFilters,
+  } = props;
+  return (
+    <div>
+      <div className="flex align-baseline flex-wrap">
+        <ViewHeading className="mt1 mr2 mb1">
+          {isNative ? (
+            t`New question`
+          ) : (
+            <QuestionDescription
+              question={question}
+              isObjectDetail={isObjectDetail}
+            />
+          )}
+        </ViewHeading>
+        {showFiltersInHeading && QuestionFilters.shouldRender(props) && (
+          <QuestionFilters
+            className="mr2 mb1"
+            question={question}
+            expanded={areFiltersExpanded}
+            onExpand={onExpandFilters}
+            onCollapse={onCollapseFilters}
+          />
+        )}
+        {QuestionLineage.shouldRender(props) && (
+          <QuestionLineage
+            className="mr2 mb1"
+            question={question}
+            originalQuestion={originalQuestion}
+          />
+        )}
+      </div>
+      <div className="flex align-center flex-wrap">
+        {isSummarized && (
+          <QuestionDataSource
+            className="mb1"
+            question={question}
+            isObjectDetail={isObjectDetail}
+            subHead
+            data-metabase-event={`Question Data Source Click`}
+          />
+        )}
+        {!showFiltersInHeading && QuestionFilters.shouldRender(props) && (
+          <QuestionFilters
+            className="mb1"
+            question={question}
+            expanded={areFiltersExpanded}
+            onExpand={onExpandFilters}
+            onCollapse={onCollapseFilters}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+ViewTitleHeaderRightSide.propTypes = {
+  question: PropTypes.object.isRequired,
+  result: PropTypes.object,
+  queryBuilderMode: PropTypes.oneOf(["view", "notebook"]),
+  isSaved: PropTypes.bool,
+  isNative: PropTypes.bool,
+  isRunnable: PropTypes.bool,
+  isRunning: PropTypes.bool,
+  isPreviewing: PropTypes.bool,
+  isNativeEditorOpen: PropTypes.bool,
+  isShowingFilterSidebar: PropTypes.bool,
+  isShowingSummarySidebar: PropTypes.bool,
+  isDirty: PropTypes.bool,
+  isResultDirty: PropTypes.bool,
+  runQuestionQuery: PropTypes.func,
+  cancelQuery: PropTypes.func,
+  onOpenModal: PropTypes.func,
+  onAddFilter: PropTypes.func,
+  onCloseFilter: PropTypes.func,
+  onEditSummary: PropTypes.func,
+  onCloseSummary: PropTypes.func,
+  setQueryBuilderMode: PropTypes.func,
+};
+
+function ViewTitleHeaderRightSide(props) {
+  const {
+    question,
+    result,
+    queryBuilderMode,
+    isSaved,
+    isNative,
+    isRunnable,
+    isRunning,
+    isPreviewing,
+    isNativeEditorOpen,
+    isShowingFilterSidebar,
+    isShowingSummarySidebar,
+    isDirty,
+    isResultDirty,
+    runQuestionQuery,
+    cancelQuery,
+    onOpenModal,
+    onAddFilter,
+    onCloseFilter,
+    onEditSummary,
+    onCloseSummary,
+    setQueryBuilderMode,
+  } = props;
+  const isShowingNotebook = queryBuilderMode === "notebook";
+
+  return (
+    <div className="ml-auto flex align-center">
+      {!!isDirty && (
+        <SaveButton
+          disabled={!question.canRun()}
+          data-metabase-event={
+            isShowingNotebook
+              ? `Notebook Mode; Click Save`
+              : `View Mode; Click Save`
+          }
+          onClick={() => onOpenModal("save")}
+        >
+          {t`Save`}
+        </SaveButton>
+      )}
+      {QuestionFilterWidget.shouldRender(props) && (
+        <QuestionFilterWidget
+          className="hide sm-show"
+          ml={1}
+          isShowingFilterSidebar={isShowingFilterSidebar}
+          onAddFilter={onAddFilter}
+          onCloseFilter={onCloseFilter}
+          data-metabase-event={`View Mode; Open Filter Widget`}
+        />
+      )}
+      {QuestionSummarizeWidget.shouldRender(props) && (
+        <QuestionSummarizeWidget
+          className="hide sm-show"
+          ml={1}
+          isShowingSummarySidebar={isShowingSummarySidebar}
+          onEditSummary={onEditSummary}
+          onCloseSummary={onCloseSummary}
+          data-metabase-event={`View Mode; Open Summary Widget`}
+        />
+      )}
+      {QuestionNotebookButton.shouldRender({ question }) && (
+        <QuestionNotebookButton
+          className="hide sm-show"
+          ml={2}
+          question={question}
+          isShowingNotebook={isShowingNotebook}
+          setQueryBuilderMode={setQueryBuilderMode}
+          data-metabase-event={
+            isShowingNotebook
+              ? `Notebook Mode;Go to View Mode`
+              : `View Mode; Go to Notebook Mode`
+          }
+        />
+      )}
+      {NativeQueryButton.shouldRender(props) && (
+        <ViewSQLButtonContainer>
+          <NativeQueryButton
+            size={16}
+            question={question}
+            data-metabase-event={`Notebook Mode; Convert to SQL Click`}
+          />
+        </ViewSQLButtonContainer>
+      )}
+      {isNative && isSaved && <ExploreResultsLink question={question} />}
+      {isRunnable && !isNativeEditorOpen && (
+        <RunButtonWithTooltip
+          className={cx("text-brand-hover hide", {
+            "sm-show": !isShowingNotebook || isNative,
+            "text-white-hover": isResultDirty,
+          })}
+          medium
+          borderless
+          ml={1}
+          compact
+          result={result}
+          isRunning={isRunning}
+          isDirty={isResultDirty}
+          isPreviewing={isPreviewing}
+          onRun={() => runQuestionQuery({ ignoreCache: true })}
+          onCancel={cancelQuery}
+        />
+      )}
+    </div>
   );
 }
 
