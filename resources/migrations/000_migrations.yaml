@@ -8625,31 +8625,6 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: 317
-      author: camsaul
-      comment: Added 0.42.0 Remove unused column
-      changes:
-        - dropColumn:
-            tableName: metabase_table
-            columnName: entity_name
-
-  - changeSet:
-      id: 320
-      author: dpsutton
-      comment: Added 0.42.0 Initial support for datasets based on questions
-      changes:
-        - addColumn:
-            tableName: report_card
-            columns:
-              - column:
-                  name: dataset
-                  type: boolean
-                  remarks: "Indicate whether question is a dataset"
-                  constraints:
-                    nullable: false
-                  defaultValue: false
-
-  - changeSet:
       id: 381
       author: camsaul
       comment: Added 0.41.2 Add index to QueryExecution card_id to fix performance issues (#18759)
@@ -8674,6 +8649,31 @@ databaseChangeLog:
                   name: moderated_item_type
               - column:
                   name: moderated_item_id
+
+  - changeSet:
+      id: 317
+      author: camsaul
+      comment: Added 0.42.0 Remove unused column
+      changes:
+        - dropColumn:
+            tableName: metabase_table
+            columnName: entity_name
+
+  - changeSet:
+      id: 320
+      author: dpsutton
+      comment: Added 0.42.0 Initial support for datasets based on questions
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: dataset
+                  type: boolean
+                  remarks: "Indicate whether question is a dataset"
+                  constraints:
+                    nullable: false
+                  defaultValue: false
 
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
