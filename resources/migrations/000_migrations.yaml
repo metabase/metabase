@@ -8647,9 +8647,8 @@ databaseChangeLog:
             tableName: metabase_table
             columnName: entity_name
 
-  # TODO -- this is now migration 4200001
   - changeSet:
-      id: 318
+      id: 4200001
       author: camsaul
       comment: Added 0.42.0 Attempt to add Card.database_id (by parsing query) to rows that are missing it (#5999)
       # If this migration fails for any reason continue with the next migration; do not fail the entire process if this one fails
@@ -8712,9 +8711,8 @@ databaseChangeLog:
               WHERE c.database_id IS NULL
                 AND c2.query_database_id IS NOT NULL;
 
-  # TODO -- this is now migration 4200002
   - changeSet:
-      id: 319
+      id: 4200002
       author: camsaul
       comment: Added 0.42.0 Added constraint we should have had all along (#5999)
       preConditions:
