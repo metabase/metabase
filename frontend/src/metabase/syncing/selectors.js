@@ -1,6 +1,6 @@
 import { createSelector } from "reselect";
 
-export const REFRESH_INTERVAL = 5000;
+export const REFRESH_INTERVAL = 2000;
 
 export const getAllDatabases = createSelector(
   state => state.entities.databases,
