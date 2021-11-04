@@ -10,7 +10,9 @@
     "yarn": ">=1.12.3"
   },
   "dependencies": {
+    "@popperjs/core": "^2.10.2",
     "@snowplow/browser-tracker": "^3.1.6",
+    "@tippyjs/react": "^4.2.6",
     "@visx/axis": "1.8.0",
     "@visx/grid": "1.16.0",
     "@visx/group": "1.7.0",
@@ -67,6 +69,7 @@
     "react-hot-loader": "^4.13.0",
     "react-markdown": "^6.0.2",
     "react-motion": "^0.4.5",
+    "react-popper": "^2.2.5",
     "react-redux": "^5.0.4",
     "react-resizable": "^1.9.0",
     "react-router": "3",
@@ -93,6 +96,7 @@
     "styled-components": "3.2.6",
     "styled-system": "2.2.5",
     "tether": "^1.2.0",
+    "tippy.js": "^6.3.4",
     "ttag": "1.7.15",
     "underscore": "^1.8.3",
     "yarn.lock": "^0.0.1-security",
