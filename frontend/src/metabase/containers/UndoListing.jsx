@@ -25,15 +25,17 @@ const mapDispatchToProps = {
   performUndo,
 };
 
-const DefaultMessage = ({
+function DefaultMessage({
   undo: { verb = t`modified`, count = 1, subject = t`item` },
-}) => (
-  <div>
-    {count > 1 // TODO: figure out how to i18n this?
-      ? `${capitalize(verb)} ${count} ${inflect(subject, count)}`
-      : `${capitalize(verb)} ${subject}`}
-  </div>
-);
+}) {
+  return (
+    <div>
+      {count > 1
+        ? `${capitalize(verb)} ${count} ${inflect(subject, count)}`
+        : `${capitalize(verb)} ${subject}`}
+    </div>
+  );
+}
 
 DefaultMessage.propTypes = {
   undo: PropTypes.object.isRequired,
