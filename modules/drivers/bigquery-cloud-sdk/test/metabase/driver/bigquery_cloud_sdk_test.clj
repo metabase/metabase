@@ -388,15 +388,19 @@
                                                 (mt/formatted-rows [str]
                                                   (data/run-mbql-query* (:dataset_query card))))))]
               (check-card-query-res temp-card)
-              (let [db-id   (u/the-id temp-db)
-                    updates (update temp-db :details (fn [details]
-                                                       (assoc details :engine :bigquery-cloud-sdk)))]
-                ;; have to update via the API in order to trigger the driver/notify-database-updated flow
+              (let [db-id          (u/the-id temp-db)
+                    updates        (assoc temp-db :engine :bigquery-cloud-sdk)]
                 (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates)
                 (mt/with-db (Database db-id)
                   ;; having only changed the driver old->new, the existing card query should produce the same results
                   (check-card-query-res temp-card)
-                  ;; the :project-id-from-credentials is set in a background thread, since it's based on the
-                  ;; `metabase.events` functionality, but by the time the check above is finished, it should be set
+                  ;; TODO: figure out how to make this pass!  the driver/notify-database-updated :bigquery-cloud-sdk
+                  ;; method always runs AFTER everything I try to do here!
+                  ;; things I have tried:
+                  ;; opening a separate core.async channel, and using events/subscribe-to-topics! to decide when to
+                  ;; check this assertion
+                  ;; creating a delay, future, or promise, with this function, and derefing it after the mt/with-db
+                  ;; in all cases, the driver/notify-database-updated :bigquery-cloud-sdk method always runs later!
                   (is (= "metabase-bigquery-driver" (get-in (Database db-id)
                                                             [:details :project-id-from-credentials]))))))))))))
+

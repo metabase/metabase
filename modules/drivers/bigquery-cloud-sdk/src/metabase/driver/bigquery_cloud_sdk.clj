@@ -302,8 +302,8 @@
   [_]
   :sunday)
 
-(defmethod driver/notify-database-updated :bigquery-cloud-sdk
-  [_ {:keys [details] :as database}]
+(defn- populate-project-id-from-credentials
+  [{:keys [details] :as database}]
   ;; update the details blob to include the credentials' project-id as a separate entry
   ;; this is basically an inferred/calculated key (not something the user will ever set directly), since it's simply
   ;; part of the service account JSON, which is a field they provide
@@ -312,8 +312,13 @@
   ;; still require recomputing it on every query execution
   ;; since this will only ever change if/when the details change (i.e. the service account), just calculate it once
   ;; when the DB is updated and store it back to the app DB
+  (println "populate-project-id-from-credentials")
   (db/update! Database
-              (u/the-id database)
-              :details
-              (assoc details :project-id-from-credentials (-> (database-details->service-account-credential details)
-                                                              (.getProjectId)))))
+    (u/the-id database)
+    :details
+    (assoc details :project-id-from-credentials (-> (database-details->service-account-credential details)
+                                                    (.getProjectId)))))
+
+(defmethod driver/notify-database-updated :bigquery-cloud-sdk
+  [_ database]
+  (populate-project-id-from-credentials database))
