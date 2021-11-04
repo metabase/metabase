@@ -22,7 +22,7 @@ const propTypes = {
   databases: PropTypes.array.isRequired,
 };
 
-const SyncSnackbar = ({ databases }) => {
+export const SyncSnackbar = ({ databases }) => {
   const [isOpened, setIsOpened] = useState(true);
   const handleToggle = useCallback(() => setIsOpened(state => !state), []);
 

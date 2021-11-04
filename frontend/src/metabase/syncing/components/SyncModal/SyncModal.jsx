@@ -7,21 +7,21 @@ import Databases from "metabase/entities/databases";
 import Button from "metabase/components/Button";
 import Link from "metabase/components/Link";
 import ModalContent from "metabase/components/ModalContent";
-import { getSampleDatabase, hasXraysEnabled } from "../../selectors";
+import { getSampleDatabase, xraysEnabled } from "../../selectors";
 
 const propTypes = {
   sampleDatabase: PropTypes.object,
-  hasXraysEnabled: PropTypes.bool,
+  xraysEnabled: PropTypes.bool,
   onClose: PropTypes.func,
 };
 
-export const SyncModal = ({ sampleDatabase, hasXraysEnabled, onClose }) => {
+export const SyncModal = ({ sampleDatabase, xraysEnabled, onClose }) => {
   return (
     <ModalContent
       title={t`Great, we're taking a look at your database!`}
       footer={
         sampleDatabase ? (
-          <Link to={hasXraysEnabled ? `/explore/${sampleDatabase.id}` : "/"}>
+          <Link to={xraysEnabled ? `/explore/${sampleDatabase.id}` : "/"}>
             <Button primary>{t`Explore sample data`}</Button>
           </Link>
         ) : (
@@ -60,6 +60,6 @@ export default _.compose(
   }),
   connect(state => ({
     sampleDatabase: getSampleDatabase(state),
-    hasXraysEnabled: hasXraysEnabled(state),
+    xraysEnabled: xraysEnabled(state),
   })),
 )(SyncModal);

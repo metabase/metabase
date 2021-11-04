@@ -6,17 +6,17 @@ import Modal from "metabase/components/Modal";
 import Databases from "metabase/entities/databases";
 import SyncModal from "../SyncModal";
 import { disableSyncingModal } from "../../actions";
-import { hasSyncingDatabases, hasSyncingModalEnabled } from "../../selectors";
+import { hasSyncingDatabases, isSyncingModalEnabled } from "../../selectors";
 
 const propTypes = {
   isSyncing: PropTypes.bool,
-  hasSyncingModalEnabled: PropTypes.bool,
+  isSyncingModalEnabled: PropTypes.bool,
   onOpen: PropTypes.func,
 };
 
 export const SyncModalSwitch = ({
   isSyncing,
-  hasSyncingModalEnabled,
+  isSyncingModalEnabled,
   onOpen,
 }) => {
   const [isOpened, setIsOpened] = useState(false);
@@ -26,11 +26,11 @@ export const SyncModalSwitch = ({
   }, []);
 
   useEffect(() => {
-    if (isSyncing && hasSyncingModalEnabled) {
+    if (isSyncing && isSyncingModalEnabled) {
       setIsOpened(true);
       onOpen && onOpen();
     }
-  }, [isSyncing, hasSyncingModalEnabled, onOpen]);
+  }, [isSyncing, isSyncingModalEnabled, onOpen]);
 
   return (
     <Modal isOpen={isOpened} onClose={handleClose}>
@@ -48,7 +48,7 @@ export default _.compose(
   connect(
     state => ({
       isSyncing: hasSyncingDatabases(state),
-      hasSyncingModalEnabled: hasSyncingModalEnabled(state),
+      isSyncingModalEnabled: isSyncingModalEnabled(state),
     }),
     {
       onOpen: disableSyncingModal,

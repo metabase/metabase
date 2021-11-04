@@ -1,6 +1,6 @@
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
-import SyncSnackbar from "./SyncSnackbar";
+import { SyncSnackbar } from "./SyncSnackbar";
 
 describe("SyncSnackbar", () => {
   it("should render a syncing database", () => {

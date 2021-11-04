@@ -37,12 +37,12 @@ export const getSettings = createSelector(
   settings => settings.values,
 );
 
-export const hasXraysEnabled = createSelector(
+export const xraysEnabled = createSelector(
   [getSettings],
   settings => settings["enable-xrays"],
 );
 
-export const hasSyncingModalEnabled = createSelector(
+export const isSyncingModalEnabled = createSelector(
   [getSettings],
   settings => settings["enable-database-syncing-modal"],
 );
