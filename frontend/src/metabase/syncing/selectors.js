@@ -32,7 +32,17 @@ export const getRefreshInterval = createSelector(
   databases => (databases.length > 0 ? REFRESH_INTERVAL : 0),
 );
 
-export const isSyncingModalEnabled = createSelector(
-  state => state.settings.values,
+export const getSettings = createSelector(
+  state => state.settings,
+  settings => settings.values,
+);
+
+export const hasXraysEnabled = createSelector(
+  [getSettings],
+  settings => settings["enable-xrays"],
+);
+
+export const hasSyncingModalEnabled = createSelector(
+  [getSettings],
   settings => settings["enable-database-syncing-modal"],
 );

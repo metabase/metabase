@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from "react";
+import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import _ from "underscore";
-import SyncSnackbar from "metabase/syncing/components/SyncSnackbar";
+import Databases from "metabase/entities/databases";
+import SyncSnackbar from "../SyncSnackbar";
+import { getRefreshInterval, getUserDatabases } from "../../selectors";
 
 const REMOVE_DELAY = 6000;
 
@@ -9,7 +12,7 @@ const propTypes = {
   databases: PropTypes.array,
 };
 
-const SyncSnackbarSwitch = ({ databases }) => {
+export const SyncSnackbarSwitch = ({ databases }) => {
   const visibleDatabases = useVisibleDatabases(databases);
 
   if (visibleDatabases.length) {
@@ -41,4 +44,12 @@ const useDelayedValue = (value, delay) => {
   return delayedValue;
 };
 
-export default SyncSnackbarSwitch;
+export default _.compose(
+  Databases.loadList({
+    query: { include: "tables" },
+    reloadInterval: getRefreshInterval,
+  }),
+  connect(state => ({
+    databases: getUserDatabases(state),
+  })),
+)(SyncSnackbarSwitch);

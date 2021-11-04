@@ -1,23 +1,27 @@
 import React from "react";
+import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import { jt, t } from "ttag";
+import _ from "underscore";
+import Databases from "metabase/entities/databases";
 import Button from "metabase/components/Button";
 import Link from "metabase/components/Link";
 import ModalContent from "metabase/components/ModalContent";
+import { getSampleDatabase, hasXraysEnabled } from "../../selectors";
 
 const propTypes = {
   sampleDatabase: PropTypes.object,
-  xraysEnabled: PropTypes.bool,
+  hasXraysEnabled: PropTypes.bool,
   onClose: PropTypes.func,
 };
 
-const SyncModal = ({ sampleDatabase, xraysEnabled, onClose }) => {
+export const SyncModal = ({ sampleDatabase, hasXraysEnabled, onClose }) => {
   return (
     <ModalContent
       title={t`Great, we're taking a look at your database!`}
       footer={
         sampleDatabase ? (
-          <Link to={xraysEnabled ? `/explore/${sampleDatabase.id}` : "/"}>
+          <Link to={hasXraysEnabled ? `/explore/${sampleDatabase.id}` : "/"}>
             <Button primary>{t`Explore sample data`}</Button>
           </Link>
         ) : (
@@ -50,4 +54,12 @@ const SyncModal = ({ sampleDatabase, xraysEnabled, onClose }) => {
 
 SyncModal.propTypes = propTypes;
 
-export default SyncModal;
+export default _.compose(
+  Databases.loadList({
+    query: { include: "tables" },
+  }),
+  connect(state => ({
+    sampleDatabase: getSampleDatabase(state),
+    hasXraysEnabled: hasXraysEnabled(state),
+  })),
+)(SyncModal);

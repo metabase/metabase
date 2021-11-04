@@ -1,12 +1,12 @@
 import React, { Fragment } from "react";
-import SyncModalApp from "../SyncModalApp";
-import SyncSnackbarApp from "../SyncSnackbarApp";
+import SyncModalSwitch from "../../components/SyncModalSwitch";
+import SyncSnackbarSwitch from "../../components/SyncSnackbarSwitch";
 
 const SyncDatabaseApp = () => {
   return (
     <Fragment>
-      <SyncModalApp />
-      <SyncSnackbarApp />
+      <SyncModalSwitch />
+      <SyncSnackbarSwitch />
     </Fragment>
   );
 };
