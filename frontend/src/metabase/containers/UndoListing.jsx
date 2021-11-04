@@ -12,7 +12,9 @@ import BodyComponent from "metabase/components/BodyComponent";
 
 import {
   CardContent,
+  CardContentSide,
   CardIcon,
+  DefaultText,
   DismissIcon,
   ToastCard,
   UndoButton,
@@ -36,11 +38,11 @@ function DefaultMessage({
   undo: { verb = t`modified`, count = 1, subject = t`item` },
 }) {
   return (
-    <div>
+    <DefaultText>
       {count > 1
         ? `${capitalize(verb)} ${count} ${inflect(subject, count)}`
         : `${capitalize(verb)} ${subject}`}
-    </div>
+    </DefaultText>
   );
 }
 
@@ -62,12 +64,16 @@ function UndoToast({ undo, onUndo, onDismiss }) {
   return (
     <ToastCard dark>
       <CardContent>
-        <CardIcon name={undo.icon || "check"} color="white" />
-        {renderMessage(undo)}
-        {undo.actions?.length > 0 && (
-          <UndoButton onClick={onUndo}>{t`Undo`}</UndoButton>
-        )}
-        <DismissIcon name="close" onClick={onDismiss} />
+        <CardContentSide>
+          <CardIcon name={undo.icon || "check"} color="white" />
+          {renderMessage(undo)}
+        </CardContentSide>
+        <CardContentSide>
+          {undo.actions?.length > 0 && (
+            <UndoButton onClick={onUndo}>{t`Undo`}</UndoButton>
+          )}
+          <DismissIcon name="close" onClick={onDismiss} />
+        </CardContentSide>
       </CardContent>
     </ToastCard>
   );
