@@ -5,8 +5,8 @@
             [metabase.public-settings :as public-settings]
             [metabase.util.i18n :as i18n :refer [deferred-tru trs]])
   (:import [com.snowplowanalytics.snowplow.tracker Subject$SubjectBuilder Tracker Tracker$TrackerBuilder]
-           [com.snowplowanalytics.snowplow.tracker.emitter BatchEmitter BatchEmitter$Builder2 Emitter]
-           [com.snowplowanalytics.snowplow.tracker.events Unstructured Unstructured$Builder2]
+           [com.snowplowanalytics.snowplow.tracker.emitter BatchEmitter BatchEmitter$Builder Emitter]
+           [com.snowplowanalytics.snowplow.tracker.events Unstructured Unstructured$Builder]
            [com.snowplowanalytics.snowplow.tracker.http ApacheHttpClientAdapter ApacheHttpClientAdapter$Builder]
            com.snowplowanalytics.snowplow.tracker.payload.SelfDescribingJson
            org.apache.http.client.HttpClient
@@ -30,9 +30,9 @@
                                                               (.httpClient ^CloseableHttpClient client)
                                                               (.url (snowplow-url)))
          ^ApacheHttpClientAdapter adapter (.build adapter-builder)
-         ^BatchEmitter$Builder2 batch-emitter-builder (-> (. ^BatchEmitter BatchEmitter builder)
-                                                          (.bufferSize 1)
-                                                          (.httpClientAdapter adapter))]
+         ^BatchEmitter$Builder batch-emitter-builder (-> (. ^BatchEmitter BatchEmitter builder)
+                                                         (.bufferSize 1)
+                                                         (.httpClientAdapter adapter))]
      (.build batch-emitter-builder))))
 
 (def ^:private ^Tracker tracker
@@ -59,6 +59,8 @@
                                     [(name token) enabled?]))}))
 
 (defn- payload
+  "A SelfDescribingJson object containing the provided event data, which can be included as the payload for an
+  analytics event"
   [schema version event-data]
   (new SelfDescribingJson
        (format "iglu:com.metabase/%s/jsonschema/%s" (name schema) version)
@@ -66,15 +68,16 @@
        (into {} (for [[k v] event-data] [(name k) (if (keyword? v) (name v) v)]))))
 
 (defn- track-schema-event
+  "Send a single analytics event to the Snowplow collector"
   [schema version user-id event-data]
   (when (public-settings/anon-tracking-enabled)
     (try
-      (let [^Unstructured$Builder2 builder (-> (. Unstructured builder)
-                                               (.eventData (payload schema version event-data))
-                                               (.customContext [(context)]))
-            ^Unstructured$Builder2 builder' (if user-id
-                                              (.subject builder (subject user-id))
-                                              builder)
+      (let [^Unstructured$Builder builder (-> (. Unstructured builder)
+                                              (.eventData (payload schema version event-data))
+                                              (.customContext [(context)]))
+            ^Unstructured$Builder builder' (if user-id
+                                             (.subject builder (subject user-id))
+                                             builder)
             ^Unstructured event (.build builder')]
         (.track ^Tracker @tracker event))
       (catch Throwable e
@@ -86,10 +89,18 @@
   "Send a single analytics event to Snowplow"
   (fn [event & _] event))
 
+(defmethod track-event :new_user_created
+  [event user-id]
+  (track-schema-event :account "1-0-0" user-id {:event event}))
+
 (defmethod track-event :new_instance_created
-  [_]
-  (track-schema-event :account "1-0-0" nil {:event :new_instance_created}))
+  [event]
+  (track-schema-event :account "1-0-0" nil {:event event}))
 
 (defmethod track-event :invite_sent
-  [_ user-id event-data]
-  (track-schema-event :invite "1-0-0" user-id (assoc event-data :event :invite_sent)))
+  [event user-id event-data]
+  (track-schema-event :invite "1-0-0" user-id (assoc event-data :event event)))
+
+(defmethod track-event :dashboard_created
+  [event user-id event-data]
+  (track-schema-event :dashboard "1-0-0" user-id (assoc event-data :event event)))

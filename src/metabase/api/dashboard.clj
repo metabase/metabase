@@ -24,6 +24,7 @@
             [metabase.query-processor.util :as qp-util]
             [metabase.related :as related]
             [metabase.util :as u]
+            [metabase.util.analytics :as analytics]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -96,6 +97,7 @@
                 (db/insert! Dashboard dashboard-data))]
       ;; publish event after the txn so that lookup can succeed
       (events/publish-event! :dashboard-create dash)
+      (analytics/track-event :dashboard_created api/*current-user-id* {:dashboard_id (u/the-id dash)})
       (assoc dash :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
 
 

@@ -13,6 +13,7 @@
             [metabase.plugins.classloader :as classloader]
             [metabase.server.middleware.offset-paging :as offset-paging]
             [metabase.util :as u]
+            [metabase.util.analytics :as analytics]
             [metabase.util.i18n :as i18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -182,6 +183,7 @@
                                    :non-nil [:first_name :last_name :email :password :login_attributes])
                                  @api/*current-user*))]
       (maybe-set-user-permissions-groups! new-user-id group_ids)
+      (analytics/track-event :invite_sent api/*current-user-id* {:invited_user_id new-user-id})
       (-> (fetch-user :id new-user-id)
           (hydrate :group_ids)))))
 
