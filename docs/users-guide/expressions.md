@@ -1,118 +1,77 @@
-## Writing expressions in the notebook editor
+# Writing expressions in the notebook editor
 
-[Custom expressions](https://www.metabase.com/blog/custom-expressions/index.html) are a way to create more advanced filters and aggregations, or to add custom columns to your custom question. These expressions are accessible in the notebook editor of custom questions when clicking the button to add a new filter, a new metric in the Summarize area, or when creating a new custom column.
+[Custom expressions][expression-list] are like formulas in spreadsheet software like Excel, Google Sheets, and LibreOffice Calc. They are the power tools in the notebook editor of the query builder that allow you to ask more complicated questions.
 
-### How to write expressions
+## Custom expressions to create filters, metrics, and custom columns
 
-In each of these three places, you can:
+To use custom expression, create a __Custom Column__ (where the custom expression is used as a Field Formula to calculate values for the new column), or click on __Filter__ or __Summarize__ and select __Custom Expression__.
 
-- Use parentheses to group parts of your expression.
-- Use basic mathematical operators: `+`, `-`, `*` (multiply), `/` (divide) on numeric column with numeric values, like integers, floats, and doubles. You can't currently do math on timestamp columns.
-- Use conditional operators: `AND`, `OR`, `NOT`, `>`, `>=` (greater than or equal to), `<`, `<=` (less than or equal to), `=`, `!=` (not equal to).
-- Refer to columns in the current table, or columns that are linked via a foreign key relationship. Column names should be included inside of square brackets, like this: `[Name of Column]`. Columns in connected tables can be referred to like this: `[ConnectedTableName.Column]`.
-- Refer to saved [Segments or Metrics](../administration-guide/07-segments-and-metrics.md) that are present in the currently selected table. You write these out the same as with columns, like this: `[Valid User Sessions]`.
-- Use most of the different functions listed below.
+When using the query builder, you can use expressions to create new:
 
-### Aggregation functions
+- **Filters**. The expression `= contains([comment], "Metabase")` would filter for rows where the `comment` field contained the word "Metabase".
+- **Metrics**. Also known as summaries or aggregations. `= share([Total] > 50)` would return the percentage of orders with totals greater than 50 dollars.
+- **Custom columns**. You could use `= [Subtotal] / [Quantity]` to create a new column, which you could name "Item price".
 
-Some of the functions listed below can only be used inside of a metric expression in the Summarize area, because they aggregate an entire column. So while you could create a custom column with the formula `[Subtotal] + [Tax]`, you could _not_ write `Sum([Subtotal] + [Tax])` unless you were creating a custom metric expression. Here are the functions that can only be used when writing a metric expression:
+This page covers the basics of expressions. You can check out a [full list of expressions][expression-list] in Metabase, or walk through a tutorial that shows you how you can use [custom expressions in the notebook editor][custom-expressions].
 
-- Average
-- Count
-- CumulativeCount
-- CumulativeSum
-- Distinct
-- Max
-- Median
-- Min
-- Percentile
-- StandardDeviation
-- Sum
-- Variance
+## Types of expressions 
 
-### Filter expressions and conditionals
+There are two basic types of expressions, **Aggregations** and **Functions**. Check out a [full list of expressions][expression-list].
 
-Some other things to keep in mind about filter expressions and conditionals:
+### Aggregations
 
-- Filter expressions are different in that they must return something that's true or false. E.g., you could write `[Subtotal] + [Tax] < 100`, but not just `[Subtotal] + [Tax]`.
-- You can use functions inside of the conditional portion of the `countif` and `sumif` aggregations, like so: `countif( round([Subtotal]) > 100 OR floor([Tax]) < 10 )`
+[Aggregations][aggregations] take values from multiple rows to perform a calculation, such as finding the average value from all values in a column. Aggregations functions can only be used in the **Summarize** section of the notebook editor, because aggregations use values from all rows for that column. So while you could create a custom column with the formula `[Subtotal] + [Tax]`, you could _not_ write `Sum([Subtotal] + [Tax])`, unless you were creating a custom metric expression (that would add up all the subtotals and taxes together).
 
-### Working with dates in filter expressions
+### Functions
 
-If you want to work with dates in your filter expressions, they'll need to follow the format, `"YYYY-MM-DD"` — i.e., four characters for the year, two for the month, and two for the day, enclosed in quotes and separated by dashes.
+[Functions][functions], by contrast, do something to each value in a column, like searching for a word in each value (`contains`), rounding each value up to the nearest integer (the `ceil` function), and so on.
+
+## Basic mathematical operators
+
+Use `+`, `-`, `*` (multiply), `/` (divide) on numeric columns with numeric values, like integers, floats, and double. You can use parentheses, `(` ad `)`, to group parts of your expression.
+
+For example, you could create a new column that calculates the difference between the total and subtotal of a order: `= [Total] - [Subtotal]`.
+
+You can't currently do math on timestamp columns (we're working on adding new date functions soon, so stay tuned).
+
+## Conditional operators
+
+`AND`, `OR`, `NOT`, `>`, `>=` (greater than or equal to), `<`, `<=` (less than or equal to), `=`, `!=` (not equal to).
+
+For example, you could create a filter for customers from California or Vermont: `= [State] = "CA" OR [State] = "VT"`.
+
+## Referencing other columns
+
+You can refer to columns in the current table, or to columns that are linked via a foreign key relationship. Column names should be included inside of square brackets, like this: `[Name of Column]`. Columns in connected tables can be referred to like this: `[ConnectedTableName.Column]`.
+
+## Referencing Segments and metrics
+
+You can refer to saved [Segments or Metrics](../administration-guide/07-segments-and-metrics.md) that are present in the currently selected table. You write these out the same as with columns, like this: `[Valid User Sessions]`.
+
+## Filter expressions and conditionals
+
+Some things to keep in mind about filter expressions and conditionals:
+
+- Filter expressions are different in that they must return a Boolean value (something that's either true or false). For example, you could write `[Subtotal] + [Tax] < 100`. Metabase would look at each row, add its subtotal and tax, the check if that sum is greater than 100. If it is, the statement evaluates as true, and Metabase will include the row in the result. If instead you were to (incorrectly) write `[Subtotal] + [Tax]`, Metabase wouldn't know what to do, as that expression doesn't evaluate to true or false.
+- You can use functions inside of the conditional portion of the `Countif` and `Sumif` aggregations, like so: `countif( round([Subtotal]) > 100 OR floor([Tax]) < 10 )`.
+
+## Working with dates in filter expressions
+
+If you want to work with dates in your filter expressions, the dates need to follow the format, `"YYYY-MM-DD"` — i.e., four characters for the year, two for the month, and two for the day, enclosed in quotes `"` and separated by dashes `-`.
 
 Example:
 
 `between([Created At], "2020-01-01", "2020-03-31") OR [Received At] > "2019-12-25"`
 
-This would return rows where `Created At` is between January 1, 2020 and March 31, 2020, or where `Received At` is after December 25, 2019.
+This expression would return rows where `Created At` is between January 1, 2020 and March 31, 2020, or where `Received At` is after December 25, 2019.
 
-### List of all available functions for expressions
+## List of expressions
 
-| Name               | Syntax                                   | Description                                                                                                                                                        | Example                                                            |
-| ------------------ | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
-| Absolute           | `abs(column)`                            | Returns the absolute (positive) value of the specified column.                                                                                                     | `abs([Debt])`                                                      |
-| Average            | `Average(column)`                        | Returns the average of the values in the column.                                                                                                                   | `Average([Quantity])`                                              |
-| Between            | `between(column, start, end)`            | Checks a date or number column's values to see if they're within the specified range.                                                                              | `between([Created At], "2019-01-01", "2020-12-31")`                |
-| Case               | `case(condition, output, …)`             | Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met. | `case([Weight] > 200, "Large", [Weight] > 150, "Medium", "Small")` |
-| Ceiling            | `ceil(column)`                           | Rounds a decimal number up.                                                                                                                                        | `ceil([Price])`                                                    |
-| Coalesce           | `coalesce(value1, value2, …)`            | Looks at the values in each argument in order and returns the first non-null value for each row.                                                                   | `coalesce([Comments], [Notes], "No comments")`                     |
-| Concatenate        | `concat(value1, value2, …)`              | Combine two or more strings of text together.                                                                                                                      | `concat([Last Name], ", ", [First Name])`                          |
-| Contains           | `contains(string1, string2)`             | Checks to see if string1 contains string2 within it.                                                                                                               | `contains([Status], "Pass")`                                       |
-| Count              | `Count`                                  | Returns the count of rows in the selected data.                                                                                                                    | `Count`                                                            |
-| Count if           | `CountIf(condition)`                     | Only counts rows where the condition is true.                                                                                                                      | `CountIf([Subtotal] > 100)`                                        |
-| Cumulative count   | `CumulativeCount`                        | The additive total of rows across a breakout.                                                                                                                      | `CumulativeCount`                                                  |
-| Cumulative sum     | `CumulativeSum(column)`                  | The rolling sum of a column across a breakout.                                                                                                                     | `CumulativeSum([Subtotal])`                                        |
-| Distinct           | `Distinct(column)`                       | The number of distinct values in this column.                                                                                                                      | `Distinct([Last Name])`                                            |
-| Ends with          | `endsWith(text, comparison)`             | Returns true if the end of the text matches the comparison text.                                                                                                   | `endsWith([Appetite], "hungry")`                                   |
-| Exp                | `exp(column)`                            | Returns Euler's number, e, raised to the power of the supplied number.                                                                                             | `exp([Interest Months])`                                           |
-| Floor              | `floor(column)`                          | Rounds a decimal number down.                                                                                                                                      | `floor([Price])`                                                   |
-| Interval           | `interval(column, number, text)`         | Checks a date column's values to see if they're within the relative range.                                                                                         | `interval([Created At], -1, "month")`                              |
-| IsEmpty            | `isempty(column)`                        | Returns true if the column is empty.                                                                                                                               | `isempty([Discount])`                                              |
-| IsNull             | `isnull(column)`                         | Returns true if the column is null.                                                                                                                                | `isnull([Tax])`                                                    |
-| Left trim          | `ltrim(text)`                            | Removes leading whitespace from a string of text.                                                                                                                  | `ltrim([Comment])`                                                 |
-| Length             | `length(text)`                           | Returns the number of characters in text.                                                                                                                          | `length([Comment])`                                                |
-| Log                | `log(column)`                            | Returns the base 10 log of the number.                                                                                                                             | `log([Value])`                                                     |
-| Lower              | `lower(text)`                            | Returns the string of text in all lower case.                                                                                                                      | `lower([Status])`                                                  |
-| Max                | `Max(column)`                            | Returns the largest value found in the column.                                                                                                                     | `Max([Age])`                                                       |
-| Median             | `Median(column)`                         | Returns the median value of the specified column.                                                                                                                  | `Median([Age])`                                                    |
-| Minimum            | `Min(column)`                            | Returns the smallest value found in the column                                                                                                                     | `Min([Salary])`                                                    |
-| Percentile         | `Percentile(column, percentile-value)`   | Returns the value of the column at the percentile value.                                                                                                           | `Percentile([Score], 0.9)`                                         |
-| Power              | `power(column, exponent)`                | Raises a number to the power of the exponent value.                                                                                                                | `power([Length], 2)`                                               |
-| Regex extract      | `regexextract(text, regular_expression)` | Extracts matching substrings according to a regular expression.                                                                                                    | `regexextract([Address], "[0-9]+")`                                |
-| Replace            | `replace(text, find, replace)`           | Replaces a part of the input text with new text.                                                                                                                   | `replace([Title], "Enormous", "Gigantic")`                         |
-| Right trim         | `rtrim(text)`                            | Removes trailing whitespace from a string of text.                                                                                                                 | `rtrim([Comment])`                                                 |
-| Round              | `round(column)`                          | Rounds a decimal number either up or down to the nearest integer value.                                                                                            | `round([Temperature])`                                             |
-| Share              | `Share(condition)`                       | Returns the percent of rows in the data that match the condition, as a decimal.                                                                                    | `Share([Source] = "Google")`                                       |
-| Square root        | `sqrt(column)`                           | Returns the square root.                                                                                                                                           | `sqrt([Hypotenuse])`                                               |
-| Standard deviation | `StandardDeviation(column)`              | Calculates the standard deviation of the column.                                                                                                                   | `StandardDeviation([Population])`                                  |
-| Starts with        | `startsWith(text, comparison)`           | Returns true if the beginning of the text matches the comparison text.                                                                                             | `startsWith([Course Name], "Computer Science")`                    |
-| Substring          | `substring(text, position, length)`      | Returns a portion of the supplied text.                                                                                                                            | `substring([Title], 0, 10)`                                        |
-| Sum                | `Sum(column)`                            | Adds up all the values of the column.                                                                                                                              | `Sum([Subtotal])`                                                  |
-| Sum if             | `SumIf(column, condition)`               | Sums up the specified column only for rows where the condition is true.                                                                                            | `SumIf([Subtotal], [Order Status] = "Valid")`                      |
-| Trim               | `trim(text)`                             | Removes leading and trailing whitespace from a string of text.                                                                                                     | `trim([Comment])`                                                  |
-| Upper              | `upper(text)`                            | Returns the text in all upper case.                                                                                                                                | `upper([Status])`                                                  |
-| Variance           | `Variance(column)`                       | Returns the numeric variance for a given column.                                                                                                                   | `Variance([Temperature])`                                          |
+See a full list of [expressions][expression-list].
 
-### Database limitations
+For a tutorial on expressions, see [Custom expressions in the notebook editor][custom-expressions].
 
-Certain database types don't support some of the above functions:
-
-**BigQuery**: `abs`, `ceil`, `floor`, `median`, `percentile` and `round`
-
-**H2**: `median`, `percentile` and `regexextract`
-
-**MySQL**: `median`, `percentile` and `regexextract`
-
-**SQL Server**: `median`, `percentile` and `regexextract`
-
-**SQLite**: `log`, `median`, `percentile`, `power`, `regexextract`, `standardDeviation`, `sqrt` and `variance`
-
-**Vertica**: `median` and `percentile`
-
-Additionally, **Presto** only provides _approximate_ results for `median` and `percentile`.
-
-If you're using or maintaining a third-party database driver, please [refer to the wiki](https://github.com/metabase/metabase/wiki/What's-new-in-0.35.0-for-Metabase-driver-authors) to see how your driver might be impacted.
-
-
-See [Custom expressions in the notebook editor](https://www.metabase.com/blog/custom-expressions/index.html) to learn more.
+[aggregations]: expressions-list.html#aggregations
+[custom-expressions]: https://www.metabase.com/learn/questions/custom-expressions.html
+[expression-list]: expressions-list.html
+[functions]: expressions-list.html#functions
