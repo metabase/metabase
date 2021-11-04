@@ -202,7 +202,7 @@
                         {:name "category_name", :database-type "STRING", :base-type :type/Text, :database-position 2}}}
              (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name view-name}))
           "`describe-tables` should see the fields in the view")
-      (sync/sync-database! (mt/db))
+      (sync/sync-database! (mt/db) {:scan :schema})
       (testing "We should be able to run queries against the view (#3414)"
         (is (= [[1 "Red Medicine" "Asian"]
                 [2 "Stout Burgers & Beers" "Burger"]
@@ -238,10 +238,7 @@
                                                                            :dataset-id "chicago_taxi_trips"))}]
         (mt/with-db temp-db
           (testing " for sync"
-            (sync/sync-database! temp-db)
-            ;; the :project-id-from-credentials is set in a background thread, since it's based on the
-            ;; `metabase.events` functionality, but by the time the sync above is finished, it should be set
-            (is (= "metabase-bigquery-driver" (get-in (Database db-id) [:details :project-id-from-credentials])))
+            (sync/sync-database! temp-db {:scan :schema})
             (let [[tbl & more-tbl] (db/select Table :db_id db-id)]
               (is (some? tbl))
               (is (nil? more-tbl))
@@ -297,7 +294,7 @@
                          :database-position 3}}}
             (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm}))
           "`describe-table` should see the fields in the table")
-      (sync/sync-database! (mt/db))
+      (sync/sync-database! (mt/db) {:scan :schema})
       (testing "We should be able to run queries against the table"
         (doseq [[col-nm param-v] [[:numeric_col (bigdec numeric-val)]
                                   [:decimal_col (bigdec decimal-val)]
@@ -382,7 +379,7 @@
                                        ;; same db-details for new driver as old, so we can luckily just reuse them
                                        :details (:details (mt/db))}]
         (mt/with-db temp-db
-          (sync/sync-database! temp-db)
+          (sync/sync-database! temp-db {:scan :schema})
           (mt/with-temp Card [temp-card {:database_id   (mt/id)
                                          :dataset_query (mt/mbql-query :venues {:fields [$name]
                                                                                 :filter [:= $id 21]})}]
@@ -398,4 +395,7 @@
                 (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates)
                 (mt/with-db (Database db-id)
                   ;; having only changed the driver old->new, the existing card query should produce the same results
-                  (check-card-query-res temp-card))))))))))
+                  (check-card-query-res temp-card)
+                  ;; the :project-id-from-credentials is set in a background thread, since it's based on the
+                  ;; `metabase.events` functionality, but by the time the check above is finished, it should be set
+                  (is (= "metabase-bigquery-driver" (get-in (mt/db) [:details :project-id-from-credentials]))))))))))))
