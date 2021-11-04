@@ -1,21 +1,23 @@
-import React, { Component } from "react";
+import React from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { Flex } from "grid-styled";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { color } from "metabase/lib/colors";
 import { capitalize, inflect } from "metabase/lib/formatting";
 import { dismissUndo, performUndo } from "metabase/redux/undo";
 import { getUndos } from "metabase/selectors/undo";
 
 import BodyComponent from "metabase/components/BodyComponent";
-import Card from "metabase/components/Card";
-import Icon from "metabase/components/Icon";
-import Link from "metabase/components/Link";
 
-import { UndoList } from "./UndoListing.styled";
+import {
+  CardContent,
+  CardIcon,
+  DismissIcon,
+  ToastCard,
+  UndoButton,
+  UndoList,
+} from "./UndoListing.styled";
 
 const mapStateToProps = (state, props) => ({
   undos: getUndos(state, props),
@@ -42,6 +44,35 @@ function DefaultMessage({
   );
 }
 
+function renderMessage(undo) {
+  const { message } = undo;
+  if (!message) {
+    return <DefaultMessage undo={undo || {}} />;
+  }
+  return typeof message === "function" ? message(undo) : message;
+}
+
+UndoToast.propTypes = {
+  undo: PropTypes.object.isRequired,
+  onUndo: PropTypes.func.isRequired,
+  onDismiss: PropTypes.func.isRequired,
+};
+
+function UndoToast({ undo, onUndo, onDismiss }) {
+  return (
+    <ToastCard dark>
+      <CardContent>
+        <CardIcon name={undo.icon || "check"} color="white" />
+        {renderMessage(undo)}
+        {undo.actions?.length > 0 && (
+          <UndoButton onClick={onUndo}>{t`Undo`}</UndoButton>
+        )}
+        <DismissIcon name="close" onClick={onDismiss} />
+      </CardContent>
+    </ToastCard>
+  );
+}
+
 UndoListing.propTypes = {
   undos: PropTypes.array.isRequired,
   performUndo: PropTypes.func.isRequired,
@@ -50,39 +81,14 @@ UndoListing.propTypes = {
 
 function UndoListing({ undos, performUndo, dismissUndo }) {
   return (
-    <UndoList m={2} className="fixed left bottom zF">
+    <UndoList>
       {undos.map(undo => (
-        <Card key={undo._domId} dark p={2} mt={1}>
-          <Flex align="center">
-            <Icon
-              name={(undo.icon && undo.icon) || "check"}
-              color="white"
-              mr={1}
-            />
-            {typeof undo.message === "function" ? (
-              undo.message(undo)
-            ) : undo.message ? (
-              undo.message
-            ) : (
-              <DefaultMessage undo={undo || {}} />
-            )}
-
-            {undo.actions && undo.actions.length > 0 && (
-              <Link
-                ml={1}
-                onClick={() => performUndo(undo.id)}
-                className="link text-bold"
-              >{t`Undo`}</Link>
-            )}
-            <Icon
-              ml={1}
-              color={color("text-light")}
-              hover={{ color: color("text-medium") }}
-              name="close"
-              onClick={() => dismissUndo(undo.id)}
-            />
-          </Flex>
-        </Card>
+        <UndoToast
+          key={undo._domId}
+          undo={undo}
+          onUndo={() => performUndo(undo)}
+          onDismiss={() => dismissUndo(undo)}
+        />
       ))}
     </UndoList>
   );
