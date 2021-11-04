@@ -12,7 +12,7 @@ export default _.compose(
   connect(
     state => ({
       isSyncing: hasSyncingDatabases(state),
-      isOnboarding: isSyncingModalEnabled(state),
+      isSyncingModalEnabled: isSyncingModalEnabled(state),
     }),
     {
       onOpen: disableSyncingModal,
