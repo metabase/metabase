@@ -1,8 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import styled from "styled-components";
-import { space } from "styled-system";
 import { Flex } from "grid-styled";
 import { t } from "ttag";
 
@@ -16,6 +14,8 @@ import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 
+import { UndoList } from "./UndoListing.styled";
+
 const mapStateToProps = (state, props) => ({
   undos: getUndos(state, props),
 });
@@ -24,10 +24,6 @@ const mapDispatchToProps = {
   dismissUndo,
   performUndo,
 };
-
-const UndoList = styled.ul`
-  ${space};
-`;
 
 const DefaultMessage = ({
   undo: { verb = t`modified`, count = 1, subject = t`item` },
@@ -38,6 +34,7 @@ const DefaultMessage = ({
       : `${capitalize(verb)} ${subject}`}
   </div>
 );
+
 DefaultMessage.propTypes = {
   undo: PropTypes.object.isRequired,
 };
