@@ -150,7 +150,6 @@
    lat-col-idx su/IntString
    lon-col-idx su/IntString
    query       su/JSONString}
-
   (let [zoom        (Integer/parseInt zoom)
         x           (Integer/parseInt x)
         y           (Integer/parseInt y)
