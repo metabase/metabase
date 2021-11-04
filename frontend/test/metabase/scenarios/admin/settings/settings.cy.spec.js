@@ -43,7 +43,7 @@ describe("scenarios > admin > settings", () => {
       .blur();
 
     cy.wait("@url").should(xhr => {
-      expect(xhr.status).to.eq(500);
+      expect(xhr.response.statusCode).to.eq(500);
       // Switching to regex match for assertions - the test was flaky because of the "typing" issue
       // i.e. it sometimes doesn't type the whole string "foo", but only "oo".
       // We only care that the `cause` is starting with "Invalid site URL"
