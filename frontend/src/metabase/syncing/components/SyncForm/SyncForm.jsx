@@ -11,7 +11,7 @@ const propTypes = {
   onClose: PropTypes.func,
 };
 
-const SyncModal = ({ sampleDatabase, xraysEnabled, onClose }) => {
+const SyncForm = ({ sampleDatabase, xraysEnabled, onClose }) => {
   return (
     <ModalContent
       title={t`Great, we're taking a look at your database!`}
@@ -48,6 +48,6 @@ const SyncModal = ({ sampleDatabase, xraysEnabled, onClose }) => {
   );
 };
 
-SyncModal.propTypes = propTypes;
+SyncForm.propTypes = propTypes;
 
-export default SyncModal;
+export default SyncForm;
