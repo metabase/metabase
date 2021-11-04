@@ -1,13 +1,11 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import cx from "classnames";
 
 import Badge, { MaybeLink } from "metabase/components/Badge";
 
-import { browseDatabase, browseSchema } from "metabase/lib/urls";
-
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-
-import cx from "classnames";
+import { browseDatabase, browseSchema } from "metabase/lib/urls";
 
 const QuestionDataSource = ({ question, subHead, noLink, ...props }) => {
   const parts = getDataSourceParts({ question, subHead, noLink });
@@ -29,7 +27,9 @@ function getDataSourceParts({ question, noLink, subHead, isObjectDetail }) {
   const parts = [];
 
   let query = question.query();
-  if (query instanceof StructuredQuery) {
+  const isStructuredQuery = query instanceof StructuredQuery;
+
+  if (isStructuredQuery) {
     query = query.rootQuery();
   }
 
@@ -53,7 +53,7 @@ function getDataSourceParts({ question, noLink, subHead, isObjectDetail }) {
 
   if (table) {
     let name = table.displayName();
-    if (query instanceof StructuredQuery) {
+    if (isStructuredQuery) {
       name = query.joins().reduce((name, join) => {
         const joinedTable = join.joinedTable();
         if (joinedTable) {
