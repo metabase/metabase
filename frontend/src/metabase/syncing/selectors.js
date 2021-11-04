@@ -2,9 +2,14 @@ import { createSelector } from "reselect";
 
 export const REFRESH_INTERVAL = 5000;
 
+export const getAllDatabases = createSelector(
+  state => state.entities.databases,
+  databases => Object.values(databases),
+);
+
 export const getUserDatabases = createSelector(
-  props => props.databases,
-  databases => databases.filter(d => !d.is_sample),
+  [getAllDatabases],
+  databases => databases.filter(d => !d.is_sample && d.tables != null),
 );
 
 export const getSyncingDatabases = createSelector(
