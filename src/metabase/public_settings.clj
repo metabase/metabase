@@ -14,8 +14,7 @@
             [metabase.util :as u]
             [metabase.util.i18n :as i18n :refer [available-locales-with-names deferred-tru trs tru]]
             [metabase.util.password :as password]
-            [toucan.db :as db]
-            [metabase.util.analytics :as analytics])
+            [toucan.db :as db])
   (:import java.util.UUID))
 
 ;; These modules register settings but are otherwise unused. They still must be imported.
@@ -104,7 +103,9 @@
                   ;; is first read.
                   (do (setting/set-timestamp! :instance-creation (or (first-user-creation)
                                                                      (java-time/offset-date-time)))
-                      (analytics/track-event :new_instance_created)
+                      ;; Resolve analytics ns here to avoid circular dependency
+                      (classloader/require 'metabase.util.analytics)
+                      ((resolve 'metabase.util.analytics/track-event) :new_instance_created)
                       (setting/get-timestamp :instance-creation)))))
 
 (defn- normalize-site-url [^String s]

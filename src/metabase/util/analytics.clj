@@ -67,9 +67,9 @@
   [schema version user-id event-data]
   (when (public-settings/anon-tracking-enabled)
     (try
-     (let [builder (-> (. Unstructured builder)
-                       (.eventData (payload schema version event-data))
-                       (.customContext [(context)]))
+     (let [builder  (-> (. Unstructured builder)
+                        (.eventData (payload schema version event-data))
+                        (.customContext [(context)]))
            builder' (if user-id
                       (.subject builder (subject user-id))
                       builder)
@@ -80,12 +80,14 @@
 
 ;; Snowplow analytics interface
 
-(defmulti track-event (fn [event & _] event))
+(defmulti track-event
+  "Send a single analytics event to Snowplow"
+  (fn [event & _] event))
 
 (defmethod track-event :new_instance_created
   [_]
   (track-schema-event :account "1-0-0" nil {:event :new_instance_created}))
 
 (defmethod track-event :invite_sent
-  [_ event-data user-id]
+  [_ user-id event-data]
   (track-schema-event :invite "1-0-0" user-id (assoc event-data :event :invite_sent)))
