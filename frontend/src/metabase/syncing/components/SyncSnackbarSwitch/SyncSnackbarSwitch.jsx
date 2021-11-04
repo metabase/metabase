@@ -10,18 +10,25 @@ const propTypes = {
 };
 
 const SyncSnackbarSwitch = ({ databases }) => {
-  const syncing = databases.filter(d => !d.is_sample && !d.initial_sync);
-  const delayed = useDelayedValue(syncing, REMOVE_DELAY);
-  const visible = _.uniq([syncing, delayed], false, d => d.id);
+  const visibleDatabases = useVisibleDatabases(databases);
 
-  if (visible.length) {
-    return <SyncSnackbar databases={visible} />;
+  if (visibleDatabases.length) {
+    return <SyncSnackbar databases={visibleDatabases} />;
   } else {
     return null;
   }
 };
 
 SyncSnackbarSwitch.propTypes = propTypes;
+
+const useVisibleDatabases = databases => {
+  const syncingIds = databases.filter(d => !d.initial_sync).map(d => d.id);
+  const delayedIds = useDelayedValue(syncingIds, REMOVE_DELAY);
+  const visibleIds = _.uniq([syncingIds, delayedIds]);
+  const databaseById = Object.fromEntries(databases.map(d => [d.id, d]));
+
+  return visibleIds.map(id => databaseById[id]);
+};
 
 const useDelayedValue = (value, delay) => {
   const [delayedValue, setDelayedValue] = useState(value);
