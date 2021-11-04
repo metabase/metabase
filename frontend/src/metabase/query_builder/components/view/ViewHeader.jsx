@@ -24,8 +24,9 @@ import QuestionNotebookButton from "./QuestionNotebookButton";
 import QuestionFilters, { QuestionFilterWidget } from "./QuestionFilters";
 import { QuestionSummarizeWidget } from "./QuestionSummaries";
 import NativeQueryButton from "./NativeQueryButton";
-import ViewSection, { ViewHeading } from "./ViewSection";
+import ViewSection from "./ViewSection";
 import {
+  AdHocViewHeading,
   SaveButton,
   SavedQuestionHeaderButtonContainer,
   ViewHeaderMainLeftContentContainer,
@@ -244,7 +245,7 @@ function AhHocQuestionLeftSide(props) {
   return (
     <div>
       <ViewHeaderMainLeftContentContainer align="baseline">
-        <ViewHeading className="mt1 mr2 mb1">
+        <AdHocViewHeading>
           {isNative ? (
             t`New question`
           ) : (
@@ -253,7 +254,7 @@ function AhHocQuestionLeftSide(props) {
               isObjectDetail={isObjectDetail}
             />
           )}
-        </ViewHeading>
+        </AdHocViewHeading>
         {showFiltersInHeading && QuestionFilters.shouldRender(props) && (
           <QuestionFilters
             className="mr2 mb1"
