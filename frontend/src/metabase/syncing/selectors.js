@@ -22,6 +22,11 @@ export const getSyncingDatabases = createSelector(
   databases => databases.filter(d => !d.initial_sync),
 );
 
+export const hasSyncingDatabases = createSelector(
+  [getSyncingDatabases],
+  databases => databases.length > 0,
+);
+
 export const getRefreshInterval = createSelector(
   [getSyncingDatabases],
   databases => (databases.length > 0 ? REFRESH_INTERVAL : 0),
