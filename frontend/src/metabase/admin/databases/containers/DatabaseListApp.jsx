@@ -11,8 +11,8 @@ import MetabaseSettings from "metabase/lib/settings";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import FormMessage from "metabase/components/form/FormMessage";
+import SyncDatabaseModal from "metabase/syncing/containers/SyncDatabaseModal";
 
-import CreatedDatabaseModal from "../components/CreatedDatabaseModal";
 import DeleteDatabaseModal from "../components/DeleteDatabaseModal";
 
 import Database from "metabase/entities/databases";
@@ -197,9 +197,7 @@ export default class DatabaseList extends Component {
           ref={this.createdDatabaseModal}
           isInitiallyOpen={created}
         >
-          <CreatedDatabaseModal
-            databaseId={parseInt(created)}
-            onDone={() => this.createdDatabaseModal.current.toggle()}
+          <SyncDatabaseModal
             onClose={() => this.createdDatabaseModal.current.toggle()}
           />
         </ModalWithTrigger>
