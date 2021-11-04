@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { Flex } from "grid-styled";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
 import { capitalize, inflect } from "metabase/lib/formatting";
@@ -41,12 +42,7 @@ DefaultMessage.propTypes = {
   undo: PropTypes.object.isRequired,
 };
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
-@BodyComponent
-export default class UndoListing extends Component {
+class UndoListing extends Component {
   static propTypes = {
     undos: PropTypes.array.isRequired,
     performUndo: PropTypes.func.isRequired,
@@ -94,3 +90,11 @@ export default class UndoListing extends Component {
     );
   }
 }
+
+export default _.compose(
+  connect(
+    mapStateToProps,
+    mapDispatchToProps,
+  ),
+  BodyComponent,
+)(UndoListing);
