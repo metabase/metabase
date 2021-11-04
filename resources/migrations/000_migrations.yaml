@@ -2372,6 +2372,7 @@ databaseChangeLog:
             columnName: visibility_type
             defaultNullValue: unset
             tableName: metabase_field
+
   - changeSet:
       id: 31
       author: agilliland
@@ -8625,18 +8626,157 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: 317
+      id: 381
       author: camsaul
-      comment: Added 0.42.0 Remove unused column
+      comment: Added 0.41.2 Add index to QueryExecution card_id to fix performance issues (#18759)
+      changes:
+        - createIndex:
+            tableName: query_execution
+            indexName: idx_query_execution_card_id
+            columns:
+              - column:
+                  name: card_id
+
+  - changeSet:
+      id: 382
+      author: camsaul
+      comment: Added 0.41.2 Add index to ModerationReview moderated_item_type + moderated_item_id to fix performance issues (#18759)
+      changes:
+        - createIndex:
+            tableName: moderation_review
+            indexName: idx_moderation_review_item_type_item_id
+            columns:
+              - column:
+                  name: moderated_item_type
+              - column:
+                  name: moderated_item_id
+
+  - changeSet:
+      id: v42.00-000
+      author: camsaul
+      comment: Added 0.42.0 Remove unused column (#5240)
+      # this migration was previously numbered 317 and merged into master before we adopted the 0.42.0+ migration ID
+      # numbering scheme. See #18821 for more info.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = '317';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = '317';
+
       changes:
         - dropColumn:
             tableName: metabase_table
             columnName: entity_name
 
   - changeSet:
-      id: 320
+      id: v42.00-001
+      author: camsaul
+      comment: Added 0.42.0 Attempt to add Card.database_id (by parsing query) to rows that are missing it (#5999)
+      # If this migration fails for any reason continue with the next migration; do not fail the entire process if this one fails
+      failOnError: false
+      # Don't run for H2 -- the version of H2 we're using doesn't support JSON stuff.
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: postgresql,mysql,mariadb
+      # The basic idea below is to parse the `database_id` from the JSON string query dictionary and use it to set the
+      # database_id column as needed. We do an INNER JOIN against the Database table to make sure that Database
+      # actually exists (so we don't attempt to set an invalid database_id)
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              WITH c2 AS (
+                SELECT *, (dataset_query::json->>'database')::integer AS query_database_id
+                FROM report_card
+              )
+              UPDATE report_card c
+              SET database_id = c2.query_database_id
+              FROM c2
+              INNER JOIN metabase_database db
+                ON db.id = c2.query_database_id
+              WHERE c.database_id IS NULL
+                AND c.id = c2.id
+                AND c2.query_database_id IS NOT NULL;
+        # MySQL and MariaDB are exactly the same other than different function names: json_value (for MariaDB) vs
+        # json_extract (for MySQL)
+        - sql:
+            dbms: mariadb
+            sql: >-
+              UPDATE report_card c
+              JOIN (
+                SELECT *, cast(json_value(dataset_query, '$.database') AS signed) AS query_database_id
+                FROM report_card
+                ) c2
+                ON c.id = c2.id
+              INNER JOIN metabase_database db ON c2.query_database_id = db.id
+              SET c.database_id = c2.query_database_id
+              WHERE c.database_id IS NULL
+                AND c2.query_database_id IS NOT NULL;
+        - sql:
+            dbms: mysql
+            sql: >-
+              UPDATE report_card c
+              JOIN (
+                SELECT *, cast(json_extract(dataset_query, '$.database') AS signed) AS query_database_id
+                FROM report_card
+                ) c2
+                ON c.id = c2.id
+              INNER JOIN metabase_database db ON c2.query_database_id = db.id
+              SET c.database_id = c2.query_database_id
+              WHERE c.database_id IS NULL
+                AND c2.query_database_id IS NOT NULL;
+
+  - changeSet:
+      id: v42.00-002
+      author: camsaul
+      comment: Added 0.42.0 Added constraint we should have had all along (#5999)
+      preConditions:
+        - onFail: MARK_RAN
+        # If we're dumping the migration as a SQL file or trying to force-migrate we can't check the preconditions
+        # so just go ahead and skip the entire thing. This is a non-critical migration
+        - onUpdateSQL: IGNORE
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT count(*) FROM report_card WHERE database_id IS NULL
+      changes:
+        - addNotNullConstraint:
+            columnDataType: int
+            tableName: report_card
+            columnName: database_id
+
+  - changeSet:
+      id: v42.00-003
       author: dpsutton
       comment: Added 0.42.0 Initial support for datasets based on questions
+      # this migration was previously numbered 320 and merged into master before we adopted the 0.42.0+ migration ID
+      # numbering scheme. See #18821 for more info.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = '320';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = '320';
       changes:
         - addColumn:
             tableName: report_card
@@ -8649,17 +8789,6 @@ databaseChangeLog:
                     nullable: false
                   defaultValue: false
 
-  - changeSet:
-      id: 381
-      author: camsaul
-      comment: Added 0.41.2 Add index to QueryExecution card_id to fix performance issues (#18759)
-      changes:
-        - createIndex:
-            tableName: query_execution
-            indexName: idx_query_execution_card_id
-            columns:
-              - column:
-                  name: card_id
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
@@ -8673,6 +8802,22 @@ databaseChangeLog:
 #
 # 2) Please post a message in the Metabase Slack #migrations channel to let others know you are creating a new
 #    migration so someone else doesn't steal your ID number
+#
+# 3) Migrations IDs should follow the format
+#
+#    vMM.mm-NNN
+#
+#    where
+#
+#    M = major version
+#    m = minor version
+#    N = migration number relative to that major+minor version
+#
+#   e.g. the first migration added to 0.42.0 should be numbered v42.00-000 and the second migration should be numbered
+#   v42.00-001. The first migration for 0.42.1 should be numbered v42.01-000, and so forth.
+#
+#   This numbering scheme was adopted beginning with version 0.42.0 so that we could go back and add migrations to patch
+#   releases without the ID sequence getting wildly out of order. See PR #18821 for more information.
 #
 # PLEASE KEEP THIS MESSAGE AT THE BOTTOM OF THIS FILE!!!!! Add new migrations above the message.
 #
