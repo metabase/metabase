@@ -13,14 +13,10 @@
            [org.apache.http.impl.client CloseableHttpClient HttpClientBuilder HttpClients]
            org.apache.http.impl.conn.PoolingHttpClientConnectionManager))
 
-(set! *warn-on-reflection* true)
-
 (defsetting snowplow-url
   (deferred-tru "The URL of the Snowplow collector to send analytics events to")
   :default "http://localhost:9095";"https://sp.metabase.com"
   :visibility :public)
-
-(def ^:private ^PoolingHttpClientConnectionManager manager)
 
 (def ^:private ^Emitter emitter
   "An instance of a Snowplow emitter"
