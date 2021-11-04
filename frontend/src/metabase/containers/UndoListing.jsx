@@ -5,9 +5,9 @@ import styled from "styled-components";
 import { space } from "styled-system";
 import { Flex } from "grid-styled";
 import { t } from "ttag";
-import { capitalize, inflect } from "metabase/lib/formatting";
 
 import { color } from "metabase/lib/colors";
+import { capitalize, inflect } from "metabase/lib/formatting";
 import { dismissUndo, performUndo } from "metabase/redux/undo";
 import { getUndos } from "metabase/selectors/undo";
 
