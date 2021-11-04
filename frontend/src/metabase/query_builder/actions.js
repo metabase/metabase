@@ -5,6 +5,7 @@ declare var ace: any;
 import { createAction } from "redux-actions";
 import _ from "underscore";
 import { getIn, assocIn, updateIn } from "icepick";
+import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
 
@@ -12,6 +13,7 @@ import { createThunkAction } from "metabase/lib/redux";
 import { push, replace } from "react-router-redux";
 import { setErrorPage } from "metabase/redux/app";
 import { loadMetadataForQuery } from "metabase/redux/metadata";
+import { addUndo } from "metabase/redux/undo";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { startTimer } from "metabase/lib/performance";
@@ -1419,4 +1421,11 @@ export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
   if (question.display() !== "table") {
     dispatch(runQuestionQuery());
   }
+
+  dispatch(
+    addUndo({
+      message: t`This is a dataset now.`,
+      actions: [apiUpdateQuestion(question)],
+    }),
+  );
 };
