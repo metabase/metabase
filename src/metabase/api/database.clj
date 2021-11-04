@@ -764,8 +764,7 @@
           :card
           :additional-constraints [(if (= schema (table-api/root-collection-schema-name))
                                       [:= :collection_id nil]
-                                      [:in :collection_id (api/check-404 (seq (db/select-ids Collection :name schema)))])
-                                   [:= :dataset false]])
+                                      [:in :collection_id (api/check-404 (seq (db/select-ids Collection :name schema)))])])
          (map table-api/card->virtual-table))))
 
 (api/defendpoint GET ["/:virtual-db/datasets/:schema"
@@ -777,8 +776,7 @@
           :dataset
           :additional-constraints [(if (= schema (table-api/root-collection-schema-name))
                                       [:= :collection_id nil]
-                                      [:in :collection_id (api/check-404 (seq (db/select-ids Collection :name schema)))])
-                                   [:= :dataset true]])
+                                      [:in :collection_id (api/check-404 (seq (db/select-ids Collection :name schema)))])])
          (map table-api/card->virtual-table))))
 
 (api/defendpoint GET "/db-ids-with-deprecated-drivers"
