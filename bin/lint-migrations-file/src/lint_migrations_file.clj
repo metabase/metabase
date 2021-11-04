@@ -4,6 +4,8 @@
             [clojure.java.io :as io]
             [clojure.pprint :as pprint]
             [clojure.spec.alpha :as s]
+            [clojure.string :as str]
+            [clojure.walk :as walk]
             [yaml.core :as yaml]))
 
 (comment change-set.strict/keep-me
@@ -51,10 +53,64 @@
   (let [ids (change-set-ids change-log)]
     (= ids (sort-by identity compare-ids ids))))
 
+(defn- assert-no-types-in-change-set
+  "Walks over x (a changeset map) to ensure it doesn't add any columns of `target-types` (a set of strings).
+  `found-cols` is an atom of vector, in which any problematic changes to the `target-types` will be stored.
+
+  A partial application of this function will be passed to postwalk below.
+
+  TODO: add and conform to a spec instead?"
+  [target-types found-cols x]
+  {:pre [(set? target-types) (instance? clojure.lang.Atom found-cols)]}
+  (if
+    (map? x)
+    (cond
+      ;; a createTable or addColumn change; see if it adds a target-type col
+      (or (:createTable x) (:addColumn x))
+      (let [op     (cond (:createTable x) :createTable (:addColumn x) :addColumn)
+            cols   (filter (fn [col-def]
+                             (contains? target-types
+                                        (str/lower-case (or (get-in col-def [:column :type]) ""))))
+                     (get-in x [op :columns]))]
+        (doseq [col cols]
+          (swap! found-cols conj col))
+        x)
+
+      ;; a modifyDataType change; see if it changes a column to target-type
+      (:modifyDataType x)
+      (if (= target-types (str/lower-case (or (get-in x [:modifyDataType :newDataType]) "")))
+        (do (swap! found-cols conj x)
+            x)
+        x)
+
+      true ; some other kind of change; continue walking
+      x)
+    x))
+
+(defn no-bare-blob-or-text-types?
+  "Ensures that no \"text\" or \"blob\" type columns are added in changesets with id later than 320 (i.e. version
+  0.42.0).  From that point on, \"${text.type}\" should be used instead, so that MySQL can handle it correctly (by using
+  `LONGTEXT`).  And similarly, from an earlier point, \"${blob.type\" should be used instead of \"blob\"."
+  [change-log]
+  (let [problem-cols (atom [])
+        walk-fn      (partial assert-no-types-in-change-set #{"blob" "text"} problem-cols)]
+    (doseq [{{id :id} :changeSet, :as change-set} change-log
+            :when                                 (and id
+                                                       (string? id))]
+      [id change-set])
+    (doseq [{{id :id} :changeSet :as change-set} change-log
+            :when                                (and id
+                                                      ;; only enforced in 42+ with new-style migration IDs.
+                                                      (string? id)
+                                                      (str/starts-with? id "v"))]
+      (walk/postwalk walk-fn change-set))
+    (empty? @problem-cols)))
+
 ;; TODO -- change sets must be distinct by ID.
 (s/def ::databaseChangeLog
   (s/and distinct-change-set-ids?
          change-set-ids-in-order?
+         no-bare-blob-or-text-types?
          (s/+ (s/alt :property  (s/keys :req-un [::property])
                      :changeSet (s/keys :req-un [::changeSet])))))
 
