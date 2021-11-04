@@ -246,7 +246,7 @@
     "test-timezones": "yarn && ./frontend/test/__runner__/run_timezone_tests",
     "build:js": "yarn && webpack --bail",
     "build-watch:js": "yarn && webpack --watch",
-    "build-hot:js": "yarn && WEBPACK_BUNDLE=hot webpack serve --progress --host 0.0.0.0",
+    "build-hot:js": "yarn && NODE_OPTIONS=--max-old-space-size=8096 WEBPACK_BUNDLE=hot webpack serve --progress --host 0.0.0.0",
     "build:cljs": "yarn && rm -rf frontend/src/cljs/* && shadow-cljs release app",
     "build-quick:cljs": "yarn build:cljs",
     "build-watch:cljs": "yarn cljs-server-restart && shadow-cljs watch app",
