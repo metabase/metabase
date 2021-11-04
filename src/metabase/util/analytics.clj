@@ -5,38 +5,44 @@
             [metabase.public-settings :as public-settings]
             [metabase.util.i18n :as i18n :refer [deferred-tru trs]])
   (:import [com.snowplowanalytics.snowplow.tracker Subject$SubjectBuilder Tracker Tracker$TrackerBuilder]
-           [com.snowplowanalytics.snowplow.tracker.emitter BatchEmitter Emitter]
-           com.snowplowanalytics.snowplow.tracker.events.Unstructured
-           com.snowplowanalytics.snowplow.tracker.http.ApacheHttpClientAdapter
+           [com.snowplowanalytics.snowplow.tracker.emitter BatchEmitter BatchEmitter$Builder2 Emitter]
+           [com.snowplowanalytics.snowplow.tracker.events Unstructured Unstructured$Builder2]
+           [com.snowplowanalytics.snowplow.tracker.http ApacheHttpClientAdapter ApacheHttpClientAdapter$Builder]
            com.snowplowanalytics.snowplow.tracker.payload.SelfDescribingJson
-           org.apache.http.impl.client.HttpClients
+           org.apache.http.client.HttpClient
+           [org.apache.http.impl.client CloseableHttpClient HttpClientBuilder HttpClients]
            org.apache.http.impl.conn.PoolingHttpClientConnectionManager))
+
+(set! *warn-on-reflection* true)
 
 (defsetting snowplow-url
   (deferred-tru "The URL of the Snowplow collector to send analytics events to")
   :default "http://localhost:9095";"https://sp.metabase.com"
   :visibility :public)
 
+(def ^:private ^PoolingHttpClientConnectionManager manager)
+
 (def ^:private ^Emitter emitter
   "An instance of a Snowplow emitter"
   (delay
-   (let [manager (new PoolingHttpClientConnectionManager)
-         client  (-> (. HttpClients custom)
-                     (.setConnectionManager manager)
-                     (.build))
-         adapter (-> (. ApacheHttpClientAdapter builder)
-                     (.url (snowplow-url))
-                     (.httpClient client)
-                     (.build))]
-     (-> (. BatchEmitter builder)
-         (.httpClientAdapter adapter)
-         (.bufferSize 1) ;; TODO bump buffer size back to 5?
-         (.build)))))
+   (let [^PoolingHttpClientConnectionManager manager (new PoolingHttpClientConnectionManager)
+         ^HttpClientBuilder client-builder (. ^HttpClients HttpClients custom)
+         ^HttpClient client (-> client-builder
+                                (.setConnectionManager manager)
+                                (.build))
+         ^ApacheHttpClientAdapter$Builder adapter-builder (-> (. ^ApacheHttpClientAdapter ApacheHttpClientAdapter builder)
+                                                              (.httpClient ^CloseableHttpClient client)
+                                                              (.url (snowplow-url)))
+         ^ApacheHttpClientAdapter adapter (.build adapter-builder)
+         ^BatchEmitter$Builder2 batch-emitter-builder (-> (. ^BatchEmitter BatchEmitter builder)
+                                                          (.bufferSize 1)
+                                                          (.httpClientAdapter adapter))]
+     (.build batch-emitter-builder))))
 
 (def ^:private ^Tracker tracker
   "An instance of a Snowplow tracker"
   (delay
-   (-> (Tracker$TrackerBuilder. @emitter "sp" "metabase")
+   (-> (Tracker$TrackerBuilder. ^Emitter @emitter "sp" "metabase")
        (.build))))
 
 (defn- subject
@@ -67,16 +73,16 @@
   [schema version user-id event-data]
   (when (public-settings/anon-tracking-enabled)
     (try
-     (let [builder  (-> (. Unstructured builder)
-                        (.eventData (payload schema version event-data))
-                        (.customContext [(context)]))
-           builder' (if user-id
-                      (.subject builder (subject user-id))
-                      builder)
-           event    (.build builder')]
-       (.track @tracker event))
-     (catch Throwable e
-       (log/debug e (trs "Error sending Snowplow analytics event {0}" (name (:event event-data))))))))
+      (let [^Unstructured$Builder2 builder (-> (. Unstructured builder)
+                                               (.eventData (payload schema version event-data))
+                                               (.customContext [(context)]))
+            ^Unstructured$Builder2 builder' (if user-id
+                                              (.subject builder (subject user-id))
+                                              builder)
+            ^Unstructured event (.build builder')]
+        (.track ^Tracker @tracker event))
+      (catch Throwable e
+        (log/debug e (trs "Error sending Snowplow analytics event {0}" (name (:event event-data))))))))
 
 ;; Snowplow analytics interface
 
