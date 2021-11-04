@@ -398,4 +398,5 @@
                   (check-card-query-res temp-card)
                   ;; the :project-id-from-credentials is set in a background thread, since it's based on the
                   ;; `metabase.events` functionality, but by the time the check above is finished, it should be set
-                  (is (= "metabase-bigquery-driver" (get-in (mt/db) [:details :project-id-from-credentials]))))))))))))
+                  (is (= "metabase-bigquery-driver" (get-in (Database db-id)
+                                                            [:details :project-id-from-credentials]))))))))))))
