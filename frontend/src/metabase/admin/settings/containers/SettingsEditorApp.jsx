@@ -162,10 +162,18 @@ export default class SettingsEditorApp extends Component {
   }
 
   renderSettingsSections() {
-    const { sections, activeSectionName, newVersionAvailable } = this.props;
+    const {
+      sections,
+      activeSectionName,
+      newVersionAvailable,
+      settingValues,
+    } = this.props;
 
-    const renderedSections = Object.entries(sections).map(
-      ([slug, section], idx) => {
+    const renderedSections = Object.entries(sections)
+      .filter(([slug, section]) =>
+        section.getHidden ? !section.getHidden(settingValues) : true,
+      )
+      .map(([slug, section], idx) => {
         // HACK - This is used to hide specific items in the sidebar and is currently
         // only used as a way to fake the multi page auth settings pages without
         // requiring a larger refactor.
@@ -209,8 +217,7 @@ export default class SettingsEditorApp extends Component {
             </Link>
           </li>
         );
-      },
-    );
+      });
 
     return (
       <div className="MetadataEditor-table-list AdminList flex-no-shrink">

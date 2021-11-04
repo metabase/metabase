@@ -1,5 +1,18 @@
 export const setupMetabaseCloud = () => {
-  cy.request("PUT", "/api/setting/site-url", {
-    value: "https://CYPRESSTESTENVIRONMENT.metabaseapp.com",
-  });
+  cy.intercept(
+    {
+      method: "GET",
+      url: "/api/setting",
+    },
+    [
+      {
+        key: "is-hosted?",
+        value: true,
+        is_env_setting: false,
+        env_name: "MB_IS_HOSTED",
+        description: "Is the Metabase instance running in the cloud?",
+        default: null,
+      },
+    ],
+  ).as("getSettings");
 };

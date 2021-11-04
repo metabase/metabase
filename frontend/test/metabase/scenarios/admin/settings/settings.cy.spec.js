@@ -32,7 +32,7 @@ describe("scenarios > admin > settings", () => {
     const DOMAIN_AND_PORT = BASE_URL.replace("http://", "");
 
     cy.server();
-    cy.route("PUT", "/api/setting/site-url").as("url");
+    cy.intercept("PUT", "/api/setting/site-url").as("url");
 
     cy.visit("/admin/settings/general");
 
@@ -81,7 +81,7 @@ describe("scenarios > admin > settings", () => {
 
   it("should save a setting", () => {
     cy.server();
-    cy.route("PUT", "**/admin-email").as("saveSettings");
+    cy.intercept("PUT", "/api/setting/admin-email").as("saveSettings");
 
     cy.visit("/admin/settings/general");
 
@@ -114,7 +114,7 @@ describe("scenarios > admin > settings", () => {
   it("should check for working https before enabling a redirect", () => {
     cy.visit("/admin/settings/general");
     cy.server();
-    cy.route("GET", "**/api/health", "ok").as("httpsCheck");
+    cy.intercept("GET", "/api/health", "ok").as("httpsCheck");
 
     // settings have loaded, but there's no redirect setting visible
     cy.contains("Site URL");
@@ -143,7 +143,7 @@ describe("scenarios > admin > settings", () => {
     cy.visit("/admin/settings/general");
     cy.server();
     // return 500 on https check
-    cy.route({ method: "GET", url: "**/api/health", status: 500 }).as(
+    cy.intercept({ method: "GET", url: "/api/health", status: 500 }).as(
       "httpsCheck",
     );
 
@@ -164,7 +164,7 @@ describe("scenarios > admin > settings", () => {
 
   it("should update the formatting", () => {
     cy.server();
-    cy.route("PUT", "**/custom-formatting").as("saveFormatting");
+    cy.intercept("PUT", "/api/setting/custom-formatting").as("saveFormatting");
 
     // update the formatting
     cy.visit("/admin/settings/localization");
@@ -187,7 +187,7 @@ describe("scenarios > admin > settings", () => {
 
   it("should correctly apply the globalized date formats (metabase#11394)", () => {
     cy.server();
-    cy.route("PUT", "**/custom-formatting").as("saveFormatting");
+    cy.intercept("PUT", "/api/setting/custom-formatting").as("saveFormatting");
 
     cy.request("PUT", `/api/field/${ORDERS.CREATED_AT}`, {
       semantic_type: null,
@@ -210,7 +210,7 @@ describe("scenarios > admin > settings", () => {
 
   it("should search for and select a new timezone", () => {
     cy.server();
-    cy.route("PUT", "**/report-timezone").as("reportTimezone");
+    cy.intercept("PUT", "/api/setting/report-timezone").as("reportTimezone");
 
     cy.visit("/admin/settings/localization");
     cy.contains("Report Timezone")
@@ -229,7 +229,7 @@ describe("scenarios > admin > settings", () => {
     describe(" > embedding settings", () => {
       it("should validate a premium embedding token has a valid format", () => {
         cy.server();
-        cy.route("PUT", "/api/setting/premium-embedding-token").as(
+        cy.intercept("PUT", "/api/setting/premium-embedding-token").as(
           "saveEmbeddingToken",
         );
 
@@ -252,7 +252,7 @@ describe("scenarios > admin > settings", () => {
 
       it("should validate a premium embedding token exists", () => {
         cy.server();
-        cy.route("PUT", "/api/setting/premium-embedding-token").as(
+        cy.intercept("PUT", "/api/setting/premium-embedding-token").as(
           "saveEmbeddingToken",
         );
 
@@ -281,7 +281,7 @@ describe("scenarios > admin > settings", () => {
           "11397b1e60cfb1372f2f33ac8af234a15faee492bbf5c04d0edbad76da3e614a";
 
         cy.server();
-        cy.route({
+        cy.intercept({
           method: "PUT",
           url: "/api/setting/premium-embedding-token",
           response: embeddingToken,
@@ -291,8 +291,10 @@ describe("scenarios > admin > settings", () => {
         cy.contains("Premium embedding");
         cy.contains("Enter a token").click();
 
-        cy.route("GET", "/api/session/properties").as("getSessionProperties");
-        cy.route({
+        cy.intercept("GET", "/api/session/properties").as(
+          "getSessionProperties",
+        );
+        cy.intercept({
           method: "GET",
           url: "/api/setting",
           response: [
@@ -334,7 +336,7 @@ describe("scenarios > admin > settings", () => {
       });
 
       // 3. Stub the whole response
-      cy.route("GET", "/api/setting", STUBBED_BODY).as("appSettings");
+      cy.intercept("GET", "/api/setting", STUBBED_BODY).as("appSettings");
     });
     cy.visit("/admin/settings/general");
 
@@ -360,9 +362,11 @@ describe("scenarios > admin > settings", () => {
   });
 
   // Unskip when mocking Cloud in Cypress is fixed (#18289)
-  it.skip("should hide self-hosted settings when running Metabase Cloud", () => {
+  it("should hide self-hosted settings when running Metabase Cloud", () => {
     setupMetabaseCloud();
     cy.visit("/admin/settings/general");
+
+    cy.wait(["@getSettings"]);
 
     cy.findByText("Site Name");
     cy.findByText("Site URL").should("not.exist");
@@ -414,7 +418,7 @@ describeWithToken("scenarios > admin > settings (EE)", () => {
   });
 
   // Unskip when mocking Cloud in Cypress is fixed (#18289)
-  it.skip("should hide Enterprise page when running Metabase Cloud", () => {
+  it("should hide Enterprise page when running Metabase Cloud", () => {
     setupMetabaseCloud();
     cy.visit("/admin/settings/general");
 
