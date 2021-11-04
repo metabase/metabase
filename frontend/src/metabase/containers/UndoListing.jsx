@@ -86,8 +86,8 @@ function UndoListing({ undos, performUndo, dismissUndo }) {
         <UndoToast
           key={undo._domId}
           undo={undo}
-          onUndo={() => performUndo(undo)}
-          onDismiss={() => dismissUndo(undo)}
+          onUndo={() => performUndo(undo.id)}
+          onDismiss={() => dismissUndo(undo.id)}
         />
       ))}
     </UndoList>
