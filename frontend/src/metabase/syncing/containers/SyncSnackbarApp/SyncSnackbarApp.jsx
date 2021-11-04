@@ -4,13 +4,14 @@ import Databases from "metabase/entities/databases";
 import SyncSnackbarSwitch from "../../components/SyncSnackbarSwitch";
 import { getRefreshInterval, getUserDatabases } from "../../selectors";
 
-const mapStateToProps = state => ({
-  databases: getUserDatabases(state),
+const mapStateToProps = (state, props) => ({
+  databases: getUserDatabases(props),
 });
 
 export default _.compose(
   Databases.loadList({
-    refreshInterval: getRefreshInterval,
+    query: { include: "tables" },
+    refreshInterval: (state, props) => getRefreshInterval(props),
   }),
   connect(mapStateToProps),
 )(SyncSnackbarSwitch);

@@ -27,7 +27,7 @@ const useVisibleDatabases = databases => {
   const visibleIds = _.uniq([...syncingIds, ...delayedIds]);
   const databaseById = Object.fromEntries(databases.map(d => [d.id, d]));
 
-  return visibleIds.map(id => databaseById[id]);
+  return visibleIds.map(id => databaseById[id]).filter(d => d != null);
 };
 
 const useDelayedValue = (value, delay) => {
