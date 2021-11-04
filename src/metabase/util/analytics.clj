@@ -1,6 +1,7 @@
 (ns metabase.util.analytics
   "Functions for sending Snowplow analytics events"
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.core.async :as a]
+            [clojure.tools.logging :as log]
             [metabase.models.setting :refer [defsetting]]
             [metabase.public-settings :as public-settings]
             [metabase.util.i18n :as i18n :refer [deferred-tru trs]])
@@ -67,21 +68,22 @@
        ;; Make sure keywords are converted to strings
        (into {} (for [[k v] event-data] [(name k) (if (keyword? v) (name v) v)]))))
 
-(defn- track-schema-event
-  "Send a single analytics event to the Snowplow collector"
+(defn- track-schema-event-async
+  "Asynchronously send a single analytics event to the Snowplow collector, if tracking is enabled for this MB instance"
   [schema version user-id event-data]
   (when (public-settings/anon-tracking-enabled)
-    (try
-      (let [^Unstructured$Builder builder (-> (. Unstructured builder)
-                                              (.eventData (payload schema version event-data))
-                                              (.customContext [(context)]))
-            ^Unstructured$Builder builder' (if user-id
-                                             (.subject builder (subject user-id))
-                                             builder)
-            ^Unstructured event (.build builder')]
-        (.track ^Tracker @tracker event))
-      (catch Throwable e
-        (log/debug e (trs "Error sending Snowplow analytics event {0}" (name (:event event-data))))))))
+    (a/go
+      (try
+        (let [^Unstructured$Builder builder (-> (. Unstructured builder)
+                                                (.eventData (payload schema version event-data))
+                                                (.customContext [(context)]))
+              ^Unstructured$Builder builder' (if user-id
+                                               (.subject builder (subject user-id))
+                                               builder)
+              ^Unstructured event (.build builder')]
+          (.track ^Tracker @tracker event))
+        (catch Throwable e
+          (log/debug e (trs "Error sending Snowplow analytics event {0}" (name (:event event-data)))))))))
 
 ;; Snowplow analytics interface
 
@@ -91,16 +93,16 @@
 
 (defmethod track-event :new_user_created
   [event user-id]
-  (track-schema-event :account "1-0-0" user-id {:event event}))
+  (track-schema-event-async :account "1-0-0" user-id {:event event}))
 
 (defmethod track-event :new_instance_created
   [event]
-  (track-schema-event :account "1-0-0" nil {:event event}))
+  (track-schema-event-async :account "1-0-0" nil {:event event}))
 
 (defmethod track-event :invite_sent
   [event user-id event-data]
-  (track-schema-event :invite "1-0-0" user-id (assoc event-data :event event)))
+  (track-schema-event-async :invite "1-0-0" user-id (assoc event-data :event event)))
 
 (defmethod track-event :dashboard_created
   [event user-id event-data]
-  (track-schema-event :dashboard "1-0-0" user-id (assoc event-data :event event)))
+  (track-schema-event-async :dashboard "1-0-0" user-id (assoc event-data :event event)))
