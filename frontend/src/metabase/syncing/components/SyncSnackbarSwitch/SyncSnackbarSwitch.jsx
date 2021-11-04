@@ -10,7 +10,7 @@ const propTypes = {
 };
 
 const SyncSnackbarSwitch = ({ databases }) => {
-  const syncing = databases.filter(d => !d.initial_sync);
+  const syncing = databases.filter(d => !d.is_sample && !d.initial_sync);
   const delayed = useDelayedValue(syncing, REMOVE_DELAY);
   const visible = _.uniq([syncing, delayed], false, d => d.id);
 
