@@ -120,7 +120,7 @@ Syntax: `Median(column)`.
 
 Example: `Median([Age])` would find the midpoint age where half of the ages are older, and half of the ages are younger.
 
-Databases that don't support `median`: BigQuery, SQLite, Vertica, SQL server, MySQL. Presto only provides approximate results.
+Databases that don't support `median`: SQLite, Vertica, SQL server, MySQL. Presto only provides approximate results.
 
 Related: [Min](#min), [Max](#max), [Average](#average).
 
@@ -142,7 +142,7 @@ Syntax: `Percentile(column, percentile-value)`
 
 Example: `Percentile([Score], 0.9)` would return the value at the 90th percentile for all values in that column.
 
-Databases that don't support `percentile`: BigQuery, H2, MySQL, SQL Server, SQLite, Vertica. Presto only provides approximate results.
+Databases that don't support `percentile`: H2, MySQL, SQL Server, SQLite, Vertica. Presto only provides approximate results.
 
 ### Share
 
@@ -198,8 +198,6 @@ Syntax: `abs(column)`
 
 Example: `abs([Debt])`. If `Debt` were -100, `abs(-100)` would return `100`.
 
-Databases that don't support `abs`: BigQuery.
-
 ### between
 
 Checks a date or number column's values to see if they're within the specified range.
@@ -225,8 +223,6 @@ Rounds a decimal up (ciel as in ceiling).
 Syntax: `ceil(column)`.
 
 Example: `ceil([Price])`. `ceil(2.99)` would return 3.
-
-Databases that don't support `ceil`: BigQuery.
 
 Related: [floor](#floor), [round](#round).
 
@@ -283,8 +279,6 @@ Rounds a decimal number down.
 Syntax: `floor(column)`
 
 Example: `floor([Price])`. If the `Price` were 1.99, the expression would return 1.
-
-Databases that don't support `floor`: BigQuery.
 
 Related: [ceil](#ceil), [round](#round).
 
@@ -400,8 +394,6 @@ Syntax: `round(column)`.
 
 Example: `round([Temperature])`. If the temp were `13.5` degrees centigrade, the expression would return `14`.
 
-Databases that don't support `round`: BigQuery.
-
 ### sqrt
 
 Returns the square root of a value.
@@ -453,8 +445,6 @@ Example: `upper([Status])`. If status were "hyper", `upper("hyper")` would retur
 ## Database limitations
 
 Limitations are noted for each aggregation and function above, and here there are in summary:
-
-**BigQuery**: `abs`, `ceil`, `floor`, `Median`, `Percentile` and `round`
 
 **H2**: `Median`, `Percentile` and `regexextract`
 
