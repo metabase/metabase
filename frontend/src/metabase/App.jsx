@@ -69,7 +69,7 @@ export default class App extends Component {
           {currentUser && !IFRAMED && <Navbar location={location} />}
           {errorPage ? getErrorComponent(errorPage) : children}
           <UndoListing />
-          {currentUser && currentUser.is_superuser && <SyncDatabaseApp />}
+          <SyncDatabaseApp />
         </div>
         <AppErrorCard errorInfo={errorInfo} />
       </ScrollToTop>

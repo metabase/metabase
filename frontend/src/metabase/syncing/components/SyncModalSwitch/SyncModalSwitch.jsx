@@ -4,12 +4,9 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 import Modal from "metabase/components/Modal";
 import Databases from "metabase/entities/databases";
-import SyncModal from "metabase/syncing/components/SyncModal";
-import { disableSyncingModal } from "metabase/syncing/actions";
-import {
-  hasSyncingDatabases,
-  hasSyncingModalEnabled,
-} from "metabase/syncing/selectors";
+import SyncModal from "../SyncModal";
+import { disableSyncingModal } from "../../actions";
+import { hasSyncingDatabases, hasSyncingModalEnabled } from "../../selectors";
 
 const propTypes = {
   isSyncing: PropTypes.bool,

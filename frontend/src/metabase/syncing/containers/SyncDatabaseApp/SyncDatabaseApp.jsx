@@ -1,14 +1,28 @@
 import React, { Fragment } from "react";
+import { connect } from "react-redux";
+import PropTypes from "prop-types";
+import _ from "underscore";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import SyncModalSwitch from "../../components/SyncModalSwitch";
 import SyncSnackbarSwitch from "../../components/SyncSnackbarSwitch";
 
-const SyncDatabaseApp = () => {
+const propTypes = {
+  isAdmin: PropTypes.bool,
+};
+
+export const SyncDatabaseApp = ({ isAdmin }) => {
   return (
-    <Fragment>
-      <SyncModalSwitch />
-      <SyncSnackbarSwitch />
-    </Fragment>
+    isAdmin && (
+      <Fragment>
+        <SyncModalSwitch />
+        <SyncSnackbarSwitch />
+      </Fragment>
+    )
   );
 };
 
-export default SyncDatabaseApp;
+SyncDatabaseApp.propTypes = propTypes;
+
+export default _.compose(
+  connect(state => ({ isAdmin: getUserIsAdmin(state) })),
+)(SyncDatabaseApp);
