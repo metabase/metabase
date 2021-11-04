@@ -232,15 +232,17 @@
 (deftest project-id-override-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Querying a different project-id works"
-      (mt/with-temp Database [temp-db {:engine  :bigquery-cloud-sdk
-                                       :details (-> (:details (mt/db))
-                                                    (assoc :project-id "bigquery-public-data"
-                                                           :dataset-id "chicago_taxi_trips"))}]
-        (is (= "metabase-bigquery-driver" (get-in temp-db [:details :project-id-from-credentials])))
+      (mt/with-temp Database [{db-id :id :as temp-db} {:engine  :bigquery-cloud-sdk
+                                                       :details (-> (:details (mt/db))
+                                                                    (assoc :project-id "bigquery-public-data"
+                                                                           :dataset-id "chicago_taxi_trips"))}]
         (mt/with-db temp-db
           (testing " for sync"
             (sync/sync-database! temp-db)
-            (let [[tbl & more-tbl] (db/select Table :db_id (u/the-id temp-db))]
+            ;; the :project-id-from-credentials is set in a background thread, since it's based on the
+            ;; `metabase.events` functionality, but by the time the sync above is finished, it should be set
+            (is (= "metabase-bigquery-driver" (get-in (Database db-id) [:details :project-id-from-credentials])))
+            (let [[tbl & more-tbl] (db/select Table :db_id db-id)]
               (is (some? tbl))
               (is (nil? more-tbl))
               (is (= "taxi_trips" (:name tbl)))
