@@ -261,13 +261,13 @@
 
 (deftest convert-query-cache-result-to-blob-test
   (testing "the query_cache.results column was changed to"
-    (impl/test-migrations [383] [migrate!]
+    (impl/test-migrations ["v42.00-064"] [migrate!]
       (migrate!) ; just run migrations immediately, then check the new type
       (with-open [conn (jdbc/get-connection (db/connection))]
         (let [^String exp-type (case driver/*driver*
-                                   :mysql "longblob"
-                                   :h2    "BLOB"
-                                   :postgres "bytea")
+                                 :mysql    "longblob"
+                                 :h2       "BLOB"
+                                 :postgres "bytea")
               name-fn          (case driver/*driver*
                                  :h2 str/upper-case
                                  identity)
