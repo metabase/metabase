@@ -47,10 +47,16 @@ export function initializeEmbedding(store) {
 }
 
 function sendMessage(message) {
-  window.parent.postMessage(
-    { metabase: message },
-    MetabaseSettings.get("embedding-app-origin"),
-  );
+  // Since postMessage does not support multiple origins and sending message to "*"
+  // is discouraged, what we can do is send a message to each origin and messages
+  // where the origin does not match will be dropped by the browser.
+  const origins = MetabaseSettings.get("embedding-app-origin").split(" ");
+  for (const origin of origins) {
+    // Skip empty origin (e.g. if there are multiple spaces between each origin in the setting)
+    if (origin) {
+      window.parent.postMessage({ metabase: message }, origin);
+    }
+  }
 }
 
 function getFrameSpec() {
