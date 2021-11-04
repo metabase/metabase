@@ -364,7 +364,7 @@ Syntax: `regexextract(text, regular_expression)`.
 
 Example: `regexextract([Address], "[0-9]+")`.
 
-Databases that don't support `regexextract`: H2, MySQL, SQL Server, SQLite.
+Databases that don't support `regexextract`: H2, SQL Server, SQLite.
 
 Related: [contains](#contains).
 
@@ -448,7 +448,7 @@ Limitations are noted for each aggregation and function above, and here there ar
 
 **H2**: `Median`, `Percentile` and `regexextract`
 
-**MySQL**: `Median`, `Percentile` and `regexextract`
+**MySQL/MariaDB**: `Median`, `Percentile`.
 
 **SQL Server**: `Median`, `Percentile` and `regexextract`
 
