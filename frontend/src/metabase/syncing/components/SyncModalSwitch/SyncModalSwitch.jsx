@@ -5,11 +5,11 @@ import SyncFormApp from "../../containers/SyncModal";
 
 const propTypes = {
   isSyncing: PropTypes.bool,
-  isInitialSync: PropTypes.bool,
-  onInitialSyncChange: PropTypes.func,
+  isSyncingModalEnabled: PropTypes.bool,
+  onOpen: PropTypes.func,
 };
 
-const SyncModalSwitch = ({ isSyncing, isInitialSync, onInitialSyncChange }) => {
+const SyncModalSwitch = ({ isSyncing, isSyncingModalEnabled, onOpen }) => {
   const [isOpened, setIsOpened] = useState(false);
 
   const handleClose = useCallback(() => {
@@ -17,11 +17,11 @@ const SyncModalSwitch = ({ isSyncing, isInitialSync, onInitialSyncChange }) => {
   }, []);
 
   useEffect(() => {
-    if (isSyncing && isInitialSync) {
+    if (isSyncing && isSyncingModalEnabled) {
       setIsOpened(true);
-      onInitialSyncChange && onInitialSyncChange(false);
+      onOpen && onOpen();
     }
-  }, [isSyncing, isInitialSync, onInitialSyncChange]);
+  }, [isSyncing, isSyncingModalEnabled, onOpen]);
 
   return (
     <Modal isOpen={isOpened} onClose={handleClose}>

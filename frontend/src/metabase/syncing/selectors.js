@@ -31,3 +31,8 @@ export const getRefreshInterval = createSelector(
   [getSyncingDatabases],
   databases => (databases.length > 0 ? REFRESH_INTERVAL : 0),
 );
+
+export const isSyncingModalEnabled = createSelector(
+  state => state.settings.values,
+  settings => settings["enable-database-syncing-modal"],
+);
