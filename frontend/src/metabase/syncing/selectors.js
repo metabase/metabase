@@ -1,6 +1,6 @@
 import { createSelector } from "reselect";
 
-export const REFRESH_INTERVAL = 2000;
+export const RELOAD_INTERVAL = 2000;
 
 export const getAllDatabases = createSelector(
   state => state.entities.databases,
@@ -27,9 +27,9 @@ export const hasSyncingDatabases = createSelector(
   databases => databases.length > 0,
 );
 
-export const getRefreshInterval = createSelector(
+export const getReloadInterval = createSelector(
   [getSyncingDatabases],
-  databases => (databases.length > 0 ? REFRESH_INTERVAL : 0),
+  databases => (databases.length > 0 ? RELOAD_INTERVAL : 0),
 );
 
 export const getSettings = createSelector(

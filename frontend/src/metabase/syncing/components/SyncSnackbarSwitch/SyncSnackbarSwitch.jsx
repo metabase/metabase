@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 import Databases from "metabase/entities/databases";
 import SyncSnackbar from "../SyncSnackbar";
-import { getRefreshInterval, getUserDatabases } from "../../selectors";
+import { getReloadInterval, getUserDatabases } from "../../selectors";
 
 const REMOVE_DELAY = 6000;
 
@@ -47,7 +47,7 @@ const useDelayedValue = (value, delay) => {
 export default _.compose(
   Databases.loadList({
     query: { include: "tables" },
-    reloadInterval: getRefreshInterval,
+    reloadInterval: getReloadInterval,
   }),
   connect(state => ({
     databases: getUserDatabases(state),
