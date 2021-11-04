@@ -1,11 +1,10 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import cx from "classnames";
-
-import Badge, { MaybeLink } from "metabase/components/Badge";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { browseDatabase, browseSchema } from "metabase/lib/urls";
+
+import { HeadBreadcrumbs, SubHeadBreadcrumbs } from "./HeaderBreadcrumbs";
 
 const QuestionDataSource = ({ question, subHead, noLink, ...props }) => {
   const parts = getDataSourceParts({ question, subHead, noLink });
@@ -81,34 +80,3 @@ function getDataSourceParts({ question, noLink, subHead, isObjectDetail }) {
 }
 
 export default QuestionDataSource;
-
-const SubHeadBreadcrumbs = ({ parts, className, ...props }) => (
-  <span {...props} className={className}>
-    <span className="flex align-center flex-wrap mbn1">
-      {parts.map(({ name, icon, href }, index) => (
-        <Badge key={index} className="mr2 mb1" icon={{ name: icon }} to={href}>
-          {name}
-        </Badge>
-      ))}
-    </span>
-  </span>
-);
-
-const HeadBreadcrumbs = ({ parts, ...props }) => (
-  <span {...props} className="flex align-center flex-wrap">
-    {parts.map(({ name, icon, href }, index) => [
-      <MaybeLink
-        key={index}
-        to={href}
-        className={cx("flex align-center", href ? "text-medium" : "text-dark")}
-      >
-        {name}
-      </MaybeLink>,
-      index < parts.length - 1 ? (
-        <span key={index + "-divider"} className="mx1 text-light text-smaller">
-          •
-        </span>
-      ) : null,
-    ])}
-  </span>
-);
