@@ -95,12 +95,15 @@ class CandidateListLoader extends React.Component {
     try {
       const { databaseId } = this.state;
       if (databaseId != null) {
+        const database = await MetabaseApi.db_get({
+          dbId: databaseId,
+        });
         const candidates = await AutoApi.db_candidates({
           id: databaseId,
         });
         if (candidates && candidates.length > 0) {
           this._clearTimers();
-          this.setState({ candidates });
+          this.setState({ candidates, isSample: database.is_sample });
         }
       }
     } catch (e) {
