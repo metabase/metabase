@@ -1584,18 +1584,19 @@
                            (not (seq (:children x))) (dissoc :children))
                          x))
                      %)]
-    (is (= [{:id 1 :name "a" :location "/" :here #{:card} :below #{:card :dataset}}
-            {:id 2, :name "b", :location "/1/" :below #{:dataset}}
-            {:id 3, :name "c", :location "/1/2/" :here #{:dataset} :below #{:dataset}}
-            {:id 4, :name "d", :location "/1/2/3/" :here #{:dataset}}
-            {:id 5, :name "e", :location "/1/" :here #{:card}}]
+    (is (= [{:id 1 :name "a" :location "/"       :here #{:card}    :below #{:card :dataset}}
+            {:id 2 :name "b" :location "/1/"                       :below #{:dataset}}
+            {:id 3 :name "c" :location "/1/2/"   :here #{:dataset} :below #{:dataset}}
+            {:id 4 :name "d" :location "/1/2/3/" :here #{:dataset}}
+            {:id 5 :name "e" :location "/1/"     :here #{:card}}]
            (collection/annotate-collections {:card #{1 5} :dataset #{3 4}} collections)))
     (is (= [{:id 1 :here #{:card} :below #{:card :dataset}
-             :children [{:id 2 :below #{:dataset}
-                         :children
-                         [{:id 3 :here #{:dataset} :below #{:dataset}
-                           :children
-                           [{:id 4 :here #{:dataset}}]}]}
-                        {:id 5 :here #{:card}}]}]
+             :children
+             [{:id 2 :below #{:dataset}
+               :children
+               [{:id 3 :here #{:dataset} :below #{:dataset}
+                 :children
+                 [{:id 4 :here #{:dataset}}]}]}
+              {:id 5 :here #{:card}}]}]
            (clean (collection/collections->tree {:card #{1 5} :dataset #{3 4}}
                                                 collections))))))
