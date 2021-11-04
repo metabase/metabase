@@ -54,10 +54,15 @@
   (s/pred valid-dataset-identifier? "Valid BigQuery dataset-id"))
 
 (s/defn ^:private project-id-for-current-query :- ProjectIdentifierString
-  "Fetch the project-id for the current database associated with this query, if defined.."
+  "Fetch the project-id for the current database associated with this query, if defined AND different from the
+  project ID associated with the service account credentials."
   []
   (when (qp.store/initialized?)
-    (some-> (qp.store/database) :details :project-id)))
+    (when-let [{:keys [details]} (qp.store/database)]
+      (let [project-id-override (:project-id details)
+            project-id-creds    (:project-id-from-credentials details)]
+        (when (and (some? project-id-override) (not= project-id-override project-id-creds))
+          project-id-override)))))
 
 (s/defn ^:private dataset-id-for-current-query :- DatasetIdentifierString
   "Fetch the dataset-id for the database associated with this query, needed because BigQuery requires you to qualify

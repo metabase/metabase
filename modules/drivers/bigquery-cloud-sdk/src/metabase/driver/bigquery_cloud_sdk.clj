@@ -8,6 +8,7 @@
             [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
             [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
             [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
+            [metabase.models :refer [Database]]
             [metabase.query-processor.context :as context]
             [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.store :as qp.store]
@@ -16,7 +17,8 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
-            [schema.core :as s])
+            [schema.core :as s]
+            [toucan.db :as db])
   (:import com.google.auth.oauth2.ServiceAccountCredentials
            [com.google.cloud.bigquery BigQuery BigQuery$DatasetOption BigQuery$JobOption BigQuery$TableListOption
                                       BigQuery$TableOption BigQueryException BigQueryOptions DatasetId Field Field$Mode FieldValue
@@ -37,15 +39,15 @@
   Unclear if this can be sourced from the `com.google.cloud.bigquery` package directly."
   "https://www.googleapis.com/auth/bigquery")
 
-(defn- database->service-account-credential
-  "Returns a `ServiceAccountCredentials` (not scoped) for the given DB, from its service account JSON."
-  ^ServiceAccountCredentials [{{:keys [^String service-account-json]} :details, :as db}]
-  {:pre [(map? db) (seq service-account-json)]}
+(defn- database-details->service-account-credential
+  "Returns a `ServiceAccountCredentials` (not scoped) for the given database details, from its service account JSON."
+  ^ServiceAccountCredentials [{:keys [^String service-account-json] :as db-details}]
+  {:pre [(map? db-details) (seq service-account-json)]}
   (ServiceAccountCredentials/fromStream (ByteArrayInputStream. (.getBytes service-account-json))))
 
 (defn- ^BigQuery database->client
   [database]
-  (let [creds   (database->service-account-credential database)
+  (let [creds   (database-details->service-account-credential (:details database))
         bq-bldr (doto (BigQueryOptions/newBuilder)
                   (.setCredentials (.createScoped creds (Collections/singletonList bigquery-scope))))]
     (.. bq-bldr build getService)))
@@ -299,3 +301,19 @@
 (defmethod driver/db-start-of-week :bigquery-cloud-sdk
   [_]
   :sunday)
+
+(defmethod driver/notify-database-updated :bigquery-cloud-sdk
+  [_ {:keys [details] :as database}]
+  ;; update the details blob to include the credentials' project-id as a separate entry
+  ;; this is basically an inferred/calculated key (not something the user will ever set directly), since it's simply
+  ;; part of the service account JSON, which is a field they provide
+  ;; it would be a lot of extra computation/invocation of the Google SDK to recalculate this on every query (since
+  ;; it will involve parsing this JSON repeatedly), and even using something like qp.store/cached functionality would
+  ;; still require recomputing it on every query execution
+  ;; since this will only ever change if/when the details change (i.e. the service account), just calculate it once
+  ;; when the DB is updated and store it back to the app DB
+  (db/update! Database
+              (u/the-id database)
+              :details
+              (assoc details :project-id-from-credentials (-> (database-details->service-account-credential details)
+                                                              (.getProjectId)))))
