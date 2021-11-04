@@ -24,7 +24,7 @@ SyncSnackbarSwitch.propTypes = propTypes;
 const useVisibleDatabases = databases => {
   const syncingIds = databases.filter(d => !d.initial_sync).map(d => d.id);
   const delayedIds = useDelayedValue(syncingIds, REMOVE_DELAY);
-  const visibleIds = _.uniq([syncingIds, delayedIds]);
+  const visibleIds = _.uniq([...syncingIds, ...delayedIds]);
   const databaseById = Object.fromEntries(databases.map(d => [d.id, d]));
 
   return visibleIds.map(id => databaseById[id]);
