@@ -74,6 +74,7 @@
 (s/defmethod set-session-cookie :normal
   [request response {session-uuid :id} :- {:id (s/cond-pre UUID u/uuid-regex), s/Keyword s/Any}]
   (let [response       (wrap-body-if-needed response)
+        is-https       (request.u/https? request)
         cookie-options (merge
                         {:same-site config/mb-session-cookie-samesite
                          :http-only true
@@ -89,14 +90,14 @@
                           {:max-age (* 60 (config/config-int :max-session-age))})
                         ;; If the authentication request request was made over HTTPS (hopefully always except for
                         ;; local dev instances) add `Secure` attribute so the cookie is only sent over HTTPS.
-                        (when (request.u/https? request)
-                          {:secure true})
-                        (when (= config/mb-session-cookie-samesite :none)
-                          (log/warn
-                           (str (deferred-trs "Session cookie's SameSite is configured to \"None\", but site is")
-                                (deferred-trs "served over an insecure connection. Some browsers will reject ")
-                                (deferred-trs "cookies under these conditions. ")
-                                (deferred-trs "https://www.chromestatus.com/feature/5633521622188032")))))]
+                        (when is-https
+                          {:secure true}))]
+    (when (and (= config/mb-session-cookie-samesite :none) (not is-https))
+      (log/warn
+       (str (deferred-trs "Session cookie's SameSite is configured to \"None\", but site is")
+            (deferred-trs "served over an insecure connection. Some browsers will reject ")
+            (deferred-trs "cookies under these conditions. ")
+            (deferred-trs "https://www.chromestatus.com/feature/5633521622188032"))))
     (resp/set-cookie response metabase-session-cookie (str session-uuid) cookie-options)))
 
 (s/defmethod set-session-cookie :full-app-embed
