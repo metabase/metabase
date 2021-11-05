@@ -18,6 +18,9 @@ export const SidebarPaddedContent = styled.div`
 `;
 
 export const BorderedSectionContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  row-gap: ${SECTION_ROW_GAP};
   border-top: 1px solid ${color("border")};
   padding-top: ${SECTION_ROW_GAP};
 `;

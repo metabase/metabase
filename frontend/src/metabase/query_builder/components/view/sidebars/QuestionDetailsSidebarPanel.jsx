@@ -50,11 +50,7 @@ function QuestionDetailsSidebarPanel({ question, onOpenModal }) {
             {isDataset && canWrite && (
               <DatasetManagementSection dataset={question} />
             )}
-            {!isDataset && (
-              <PLUGIN_MODERATION.QuestionModerationSection
-                question={question}
-              />
-            )}
+            <PLUGIN_MODERATION.QuestionModerationSection question={question} />
           </BorderedSectionContainer>
         )}
       </SidebarPaddedContent>

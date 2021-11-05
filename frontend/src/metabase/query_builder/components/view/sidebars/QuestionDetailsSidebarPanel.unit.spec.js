@@ -97,19 +97,6 @@ describe("QuestionDetailsSidebarPanel", () => {
         screen.queryByText("Turn back into a saved question"),
       ).not.toBeInTheDocument();
     });
-
-    describe("content moderation", () => {
-      beforeEach(() => {
-        setupEnterpriseTest();
-      });
-
-      it("does not offer to verify a question", () => {
-        setup({ question: getDataset() });
-        expect(
-          screen.queryByText("Verify this question"),
-        ).not.toBeInTheDocument();
-      });
-    });
   });
 
   describe("saved questions", () => {
