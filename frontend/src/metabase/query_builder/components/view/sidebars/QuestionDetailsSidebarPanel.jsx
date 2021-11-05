@@ -3,15 +3,14 @@ import PropTypes from "prop-types";
 
 import QuestionActionButtons from "metabase/query_builder/components/QuestionActionButtons";
 import { ClampedDescription } from "metabase/query_builder/components/ClampedDescription";
-import {
-  Container,
-  SidebarPaddedContent,
-} from "./QuestionDetailsSidebarPanel.styled";
 import QuestionActivityTimeline from "metabase/query_builder/components/QuestionActivityTimeline";
 
 import { PLUGIN_MODERATION } from "metabase/plugins";
 
-export default QuestionDetailsSidebarPanel;
+import {
+  Container,
+  SidebarPaddedContent,
+} from "./QuestionDetailsSidebarPanel.styled";
 
 QuestionDetailsSidebarPanel.propTypes = {
   question: PropTypes.object.isRequired,
@@ -52,3 +51,5 @@ function QuestionDetailsSidebarPanel({
     </Container>
   );
 }
+
+export default QuestionDetailsSidebarPanel;
