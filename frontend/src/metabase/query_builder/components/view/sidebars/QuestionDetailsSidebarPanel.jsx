@@ -15,14 +15,9 @@ import {
 QuestionDetailsSidebarPanel.propTypes = {
   question: PropTypes.object.isRequired,
   onOpenModal: PropTypes.func.isRequired,
-  removeModerationReview: PropTypes.func.isRequired,
 };
 
-function QuestionDetailsSidebarPanel({
-  question,
-  onOpenModal,
-  removeModerationReview,
-}) {
+function QuestionDetailsSidebarPanel({ question, onOpenModal }) {
   const canWrite = question.canWrite();
   const description = question.description();
 
