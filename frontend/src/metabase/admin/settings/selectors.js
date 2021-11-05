@@ -174,6 +174,12 @@ const SECTIONS = updateSectionsWithPlugins({
         required: true,
         validations: [["email", t`That's not a valid email address`]],
       },
+      {
+        key: "email-pulse-url",
+        display_name: t`Pulse URL`,
+        placeholder: "my-app-url",
+        type: "string",
+      },
     ],
   },
   slack: {

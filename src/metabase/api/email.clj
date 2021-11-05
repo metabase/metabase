@@ -18,7 +18,8 @@
    :email-smtp-password :pass
    :email-smtp-port     :port
    :email-smtp-security :security
-   :email-from-address  :sender})
+   :email-from-address  :sender
+   :email-pulse-url     :pulse-url})
 
 (defn- humanize-error-messages
   "Convert raw error message responses from our email functions into our normal api error response structure."
