@@ -1,10 +1,10 @@
 /* eslint-disable react/prop-types */
-import React, { useRef } from "react";
+import React from "react";
 
 import TetherPopover from "./TetherPopover";
 
 export const component = TetherPopover;
-export const description = "Simple React wrapper around Tether";
+export const description = "Unopinionated wrapper around Tether";
 
 const style = {
   border: "1px solid black",
@@ -30,12 +30,12 @@ function Demo({ variant }) {
         }
       : {
           constraints,
-          attachment: "center right",
-          targetAttachment: "center left",
+          attachment: "center left",
+          targetAttachment: "center right",
         };
 
   return (
-    <div style={{ ...style, width: 1000 }}>
+    <div>
       <TetherPopover
         variant={variant}
         tetherOptions={tetherOptions}

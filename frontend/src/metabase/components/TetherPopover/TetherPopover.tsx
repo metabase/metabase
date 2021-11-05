@@ -1,10 +1,10 @@
-import React, { useRef } from "react";
+import React from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
+import Tether from "tether";
 
 import SandboxedPortal from "metabase/components/SandboxedPortal";
-import { useTether } from "./use-tether";
-import { PaddedPopoverBody } from "./TetherPopover.styled";
+import { useTether, TetherInstance } from "./use-tether";
 
 TetherPopover.propTypes = {
   tetherOptions: PropTypes.object,
@@ -13,14 +13,19 @@ TetherPopover.propTypes = {
   onRepositioned: PropTypes.func,
 };
 
+type Props = {
+  renderTarget: (runTether: (targetEl: HTMLElement) => void) => React.ReactNode;
+  renderContent: () => React.ReactNode;
+  tetherOptions: Tether.ITetherOptions;
+  onRepositioned?: (tether: TetherInstance) => void;
+};
+
 function TetherPopover({
   renderTarget,
   renderContent,
   tetherOptions,
   onRepositioned,
-}) {
-  const contentRef = useRef();
-
+}: Props) {
   const { runTether, containerEl } = useTether({
     tetherOptions,
     onRepositioned,
@@ -31,7 +36,7 @@ function TetherPopover({
       {renderTarget(runTether)}
       {containerEl ? (
         <SandboxedPortal container={containerEl}>
-          <PaddedPopoverBody>{renderContent(contentRef)}</PaddedPopoverBody>
+          {renderContent()}
         </SandboxedPortal>
       ) : null}
     </React.Fragment>

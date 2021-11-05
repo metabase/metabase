@@ -1,9 +1,14 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Tether from "tether";
 import _ from "underscore";
 
-import { useForceUpdate } from "metabase/hooks/use-force-update";
+// for whatever reasion these properties aren't defined on `Tether`, but they do in fact exist
+export interface TetherInstance extends Tether {
+  on(event: string, callback: (...args: any[]) => void): void;
+  off(event: string, callback: (...args: any[]) => void): void;
+}
 
+// appending elements directly to the body can be unperformant
 function getTetherContainer() {
   let tetherContainerEl = document.body.querySelector(".tether");
   if (!tetherContainerEl) {
@@ -20,46 +25,46 @@ export function useTether({
   onRepositioned,
 }: {
   tetherOptions: Tether.ITetherOptions;
-  onRepositioned?: () => void;
+  onRepositioned?: (tether: TetherInstance) => void;
 }) {
-  const popoverElRef = useRef<HTMLDivElement>();
-  const tetherRef = useRef<Tether>();
+  // const popoverElRef = useRef<HTMLDivElement>();
+  const tetherRef = useRef<TetherInstance>();
+  const [popoverEl, setPopoverEl] = useState<HTMLDivElement>();
 
-  const forceUpdate = useForceUpdate();
-
-  const doTether = useCallback(
-    targetEl => {
+  const runTether = useCallback(
+    (targetEl: HTMLElement) => {
       if (!targetEl) {
-        return null;
+        return;
       }
 
-      if (!popoverElRef.current) {
-        const popoverEl = document.createElement("div");
+      let element = popoverEl;
+      if (!element) {
+        element = document.createElement("div");
         const containerEl = getTetherContainer();
-        containerEl.appendChild(popoverEl);
-        popoverElRef.current = popoverEl;
-        forceUpdate();
+        containerEl.appendChild(element);
+        setPopoverEl(element);
       }
 
       if (tetherRef.current) {
         tetherRef.current.setOptions({
-          element: popoverElRef.current,
+          element,
           target: targetEl,
           ...tetherOptions,
         });
       } else {
         const tether = new Tether({
-          element: popoverElRef.current,
+          element,
           target: targetEl,
           ...tetherOptions,
-        });
+        }) as TetherInstance;
 
         tetherRef.current = tether;
       }
 
+      // immediately force tether to position itself, because it doesn't always seem to do it
       tetherRef.current.position();
     },
-    [forceUpdate, tetherOptions],
+    [popoverEl, tetherOptions],
   );
 
   useEffect(() => {
@@ -67,8 +72,8 @@ export function useTether({
       return;
     }
 
-    const throttledOnRepositioned = _.throttle(e => {
-      onRepositioned(e);
+    const throttledOnRepositioned = _.throttle(() => {
+      tetherRef.current && onRepositioned(tetherRef.current);
     }, 500);
 
     if (tetherRef.current) {
@@ -84,19 +89,19 @@ export function useTether({
 
   useEffect(() => {
     return () => {
-      console.log("destroying");
-      if (popoverElRef.current) {
-        popoverElRef.current.remove();
+      if (popoverEl) {
+        popoverEl.remove();
       }
 
       if (tetherRef.current) {
         tetherRef.current.destroy();
       }
     };
-  }, []);
+  }, [popoverEl]);
 
   return {
-    runTether: doTether,
-    containerEl: popoverElRef.current,
+    // this function needs to run as soon as the target element is rendered, so apply it as a ref on the target element
+    runTether,
+    containerEl: popoverEl,
   };
 }
