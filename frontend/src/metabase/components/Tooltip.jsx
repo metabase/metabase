@@ -1,134 +1,72 @@
-import React, { Component } from "react";
+import React from "react";
 import PropTypes from "prop-types";
-import ReactDOM from "react-dom";
+import Tippy from "@tippyjs/react";
+import * as ReactIs from "react-is";
 
-import TooltipPopover from "./TooltipPopover";
+Tooltip.propTypes = {
+  tooltip: PropTypes.node,
+  children: PropTypes.node,
+  reference: PropTypes.element,
+  isEnabled: PropTypes.bool,
+  isOpen: PropTypes.bool,
+  maxWidth: PropTypes.number,
+};
 
-// TOOLTIP_STACK and related functions are to ensure only the most recent tooltip is visible
-
-let TOOLTIP_STACK = [];
-
-function pushTooltip(component) {
-  // if for some reason the tooltip is already in the stack (it shouldn't be) remove it and we'll add it again as if it wasn't
-  TOOLTIP_STACK = TOOLTIP_STACK.filter(t => t !== component);
-  // close all other tooltips
-  TOOLTIP_STACK.filter(t => t.state.isOpen).forEach(t =>
-    t.setState({ isOpen: false }),
-  );
-  // add this tooltip
-  TOOLTIP_STACK.push(component);
+function isReactDOMTypeElement(element) {
+  return ReactIs.isElement(element) && typeof element.type === "string";
 }
 
-function popTooltip(component) {
-  // remove the tooltip from the stack
-  TOOLTIP_STACK = TOOLTIP_STACK.filter(t => t !== component);
-  // reopen the top tooltip, if any
-  const top = TOOLTIP_STACK[TOOLTIP_STACK.length - 1];
-  if (top && !top.state.isOpen) {
-    top.setState({ isOpen: true });
-  }
-}
+function Tooltip({
+  tooltip,
+  children,
+  reference,
+  isEnabled,
 
-export default class Tooltip extends Component {
-  constructor(props, context) {
-    super(props, context);
-
-    this.state = {
-      isOpen: false,
-      isHovered: false,
-    };
+  isOpen,
+  maxWidth = 200,
+}) {
+  let visible;
+  if (isEnabled === false) {
+    visible = false;
+  } else if (isOpen != null) {
+    visible = isOpen;
   }
 
-  static propTypes = {
-    // the tooltip to show
-    tooltip: PropTypes.node,
-    // the element to be tooltipped
-    children: PropTypes.element.isRequired,
-    // Can be used to show / hide the tooltip based on outside conditions
-    // like a menu being open
-    isEnabled: PropTypes.bool,
-    verticalAttachments: PropTypes.array,
-    // Whether the tooltip should be shown
-    isOpen: PropTypes.bool,
-  };
-
-  static defaultProps = {
-    isEnabled: true,
-    verticalAttachments: ["top", "bottom"],
-    horizontalAttachments: ["center", "left", "right"],
-  };
-
-  componentDidMount() {
-    const elem = ReactDOM.findDOMNode(this);
-
-    if (elem) {
-      elem.addEventListener("mouseenter", this._onMouseEnter, false);
-      elem.addEventListener("mouseleave", this._onMouseLeave, false);
-
-      // HACK: These two event listeners ensure that if a click on the child causes the tooltip to
-      // unmount (e.x. navigating away) then the popover is removed by the time this component
-      // unmounts. Previously we were seeing difficult to debug error messages like
-      // "Cannot read property 'componentDidUpdate' of null"
-      elem.addEventListener("mousedown", this._onMouseDown, true);
-      elem.addEventListener("mouseup", this._onMouseUp, true);
-    } else {
-      console.warn(
-        `Tooltip::componentDidMount: no DOM node for tooltip ${this.props.tooltip}`,
-      );
-    }
+  // Tippy relies on child nodes forwarding refs, so when `children` is neither
+  // a DOM element or a forwardRef, we need to wrap it in a span.
+  let safeChildren;
+  if (isReactDOMTypeElement(children) || ReactIs.isForwardRef(children)) {
+    safeChildren = children;
+  } else {
+    safeChildren = <span>{children}</span>;
   }
 
-  componentWillUnmount() {
-    popTooltip(this);
-    const elem = ReactDOM.findDOMNode(this);
-    if (elem) {
-      elem.removeEventListener("mouseenter", this._onMouseEnter, false);
-      elem.removeEventListener("mouseleave", this._onMouseLeave, false);
-      elem.removeEventListener("mousedown", this._onMouseDown, true);
-      elem.removeEventListener("mouseup", this._onMouseUp, true);
-    } else {
-      console.warn(
-        `Tooltip::componentWillUnmount: no DOM node for tooltip ${this.props.tooltip}`,
-      );
-    }
-    clearTimeout(this.timer);
-  }
-
-  _onMouseEnter = e => {
-    pushTooltip(this);
-    this.setState({ isOpen: true, isHovered: true });
-  };
-
-  _onMouseLeave = e => {
-    popTooltip(this);
-    this.setState({ isOpen: false, isHovered: false });
-  };
-
-  _onMouseDown = e => {
-    this.setState({ isOpen: false });
-  };
-
-  _onMouseUp = e => {
-    // This is in a timeout to ensure the component has a chance to fully unmount
-    this.timer = setTimeout(
-      () => this.setState({ isOpen: this.state.isHovered }),
-      0,
-    );
-  };
-
-  render() {
-    const { isEnabled, tooltip } = this.props;
-    const isOpen =
-      this.props.isOpen != null ? this.props.isOpen : this.state.isOpen;
+  if (tooltip && reference) {
     return (
-      <React.Fragment>
-        {React.Children.only(this.props.children)}
-        {tooltip && isEnabled && isOpen && (
-          <TooltipPopover isOpen={true} target={this} hasArrow {...this.props}>
-            {this.props.tooltip}
-          </TooltipPopover>
-        )}
-      </React.Fragment>
+      <Tippy
+        theme="tooltip"
+        appendTo={() => document.body}
+        content={tooltip}
+        visible={visible}
+        maxWidth={maxWidth}
+        reference={reference}
+      />
     );
+  } else if (tooltip && safeChildren) {
+    return (
+      <Tippy
+        theme="tooltip"
+        appendTo={() => document.body}
+        content={tooltip}
+        visible={visible}
+        maxWidth={maxWidth}
+      >
+        {safeChildren}
+      </Tippy>
+    );
+  } else {
+    return children ?? null;
   }
 }
+
+export default Tooltip;
