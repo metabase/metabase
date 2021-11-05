@@ -2,6 +2,7 @@
   "Functions for sending Snowplow analytics events"
   (:require [clojure.core.async :as a]
             [clojure.tools.logging :as log]
+            [metabase.config :as config]
             [metabase.models.setting :refer [defsetting]]
             [metabase.public-settings :as public-settings]
             [metabase.util.i18n :as i18n :refer [deferred-tru trs]])
@@ -16,7 +17,10 @@
 
 (defsetting snowplow-url
   (deferred-tru "The URL of the Snowplow collector to send analytics events to")
-  :default "http://localhost:9095";"https://sp.metabase.com"
+  :default (if config/is-prod?
+             "https://sp.metabase.com"
+             ;; See the iglu-schema-registry repo for instructions on how to run Snowplow Micro locally for development
+             "http://localhost:9095")
   :visibility :public)
 
 (def ^:private ^Emitter emitter
