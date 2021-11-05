@@ -109,3 +109,7 @@
 (defmethod track-event :dashboard_created
   [event user-id event-data]
   (track-schema-event :dashboard "1-0-0" user-id (assoc event-data :event event)))
+
+(defmethod track-event :question_added_to_dashboard
+  [event user-id event-data]
+  (track-schema-event :dashboard "1-0-0" user-id (assoc event-data :event event)))

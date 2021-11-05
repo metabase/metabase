@@ -244,6 +244,7 @@
                            ;; Get cards from existing dashboard and associate to copied dashboard
                            (doseq [card (:ordered_cards existing-dashboard)]
                              (api/check-500 (dashboard/add-dashcard! <> (:card_id card) card)))))]
+    (analytics/track-event :dashboard_created api/*current-user-id* {:dashboard_id (u/the-id dashboard)})
     (events/publish-event! :dashboard-create dashboard)))
 
 
@@ -335,7 +336,8 @@
   (u/prog1 (api/check-500 (dashboard/add-dashcard! id cardId (-> dashboard-card
                                                                  (assoc :creator_id api/*current-user*)
                                                                  (dissoc :cardId))))
-    (events/publish-event! :dashboard-add-cards {:id id, :actor_id api/*current-user-id*, :dashcards [<>]})))
+    (events/publish-event! :dashboard-add-cards {:id id, :actor_id api/*current-user-id*, :dashcards [<>]})
+    (analytics/track-event :question_added_to_dashboard api/*current-user-id* {:dashboard_id id, :question_id cardId})))
 
 ;; TODO - we should use schema to validate the format of the Cards :D
 (api/defendpoint PUT "/:id/cards"
