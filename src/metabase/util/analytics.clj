@@ -1,7 +1,6 @@
 (ns metabase.util.analytics
   "Functions for sending Snowplow analytics events"
-  (:require [clojure.core.async :as a]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
             [metabase.config :as config]
             [metabase.models.setting :refer [defsetting]]
             [metabase.public-settings :as public-settings]

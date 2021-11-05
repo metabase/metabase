@@ -1,7 +1,6 @@
 (ns metabase.util.analytics-test
   (:require [clojure.test :refer :all]
-            [metabase.util.analytics :as analytics]
-            [clojure.core.async :as a]))
+            [metabase.util.analytics :as analytics]))
 
 (deftest track-event-test
   (testing "all track-event methods return nil and do not throw exceptions, even if event-data doesn't
