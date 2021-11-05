@@ -32,7 +32,7 @@ export function DatasetManagementSection() {
   return (
     <div>
       <SectionTitle>{t`Dataset management`}</SectionTitle>
-      <ActionItem icon="dataset">{t`Turn back into a saved question`}</ActionItem>
+      <ActionItem icon="dataset_framed">{t`Turn back into a saved question`}</ActionItem>
     </div>
   );
 }
