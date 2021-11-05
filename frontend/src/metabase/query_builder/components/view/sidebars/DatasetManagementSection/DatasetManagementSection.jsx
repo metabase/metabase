@@ -1,9 +1,12 @@
 import React from "react";
 import PropTypes from "prop-types";
+import { connect } from "react-redux";
 import { t } from "ttag";
 
 import Question from "metabase-lib/lib/Question";
 import Icon from "metabase/components/Icon";
+
+import { turnDatasetIntoQuestion } from "metabase/query_builder/actions";
 
 import {
   SectionTitle,
@@ -15,24 +18,37 @@ ActionItem.propTypes = {
   children: PropTypes.node.isRequired,
 };
 
-function ActionItem({ icon, children }) {
+function ActionItem({ icon, children, ...props }) {
   return (
-    <ActionItemContainer>
+    <ActionItemContainer {...props}>
       <Icon name={icon} size={16} />
       {children}
     </ActionItemContainer>
   );
 }
 
-DatasetManagementSection.propTypes = {
-  dataset: PropTypes.instanceOf(Question).isRequired,
+const mapDispatchToProps = {
+  turnDatasetIntoQuestion,
 };
 
-export function DatasetManagementSection() {
+DatasetManagementSection.propTypes = {
+  dataset: PropTypes.instanceOf(Question).isRequired,
+  turnDatasetIntoQuestion: PropTypes.func.isRequired,
+};
+
+function DatasetManagementSection({ turnDatasetIntoQuestion }) {
   return (
     <div>
       <SectionTitle>{t`Dataset management`}</SectionTitle>
-      <ActionItem icon="dataset_framed">{t`Turn back into a saved question`}</ActionItem>
+      <ActionItem
+        icon="dataset_framed"
+        onClick={turnDatasetIntoQuestion}
+      >{t`Turn back into a saved question`}</ActionItem>
     </div>
   );
 }
+
+export default connect(
+  null,
+  mapDispatchToProps,
+)(DatasetManagementSection);

@@ -1,1 +1,1 @@
-export * from "./DatasetManagementSection";
+export { default } from "./DatasetManagementSection";

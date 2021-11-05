@@ -12,7 +12,7 @@ import {
   BorderedSectionContainer,
   SidebarPaddedContent,
 } from "./QuestionDetailsSidebarPanel.styled";
-import { DatasetManagementSection } from "./DatasetManagementSection";
+import DatasetManagementSection from "./DatasetManagementSection";
 
 QuestionDetailsSidebarPanel.propTypes = {
   question: PropTypes.object.isRequired,
