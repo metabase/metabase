@@ -76,7 +76,8 @@
    :warn  Level/WARN
    :info  Level/INFO
    :debug Level/DEBUG
-   :trace Level/TRACE})
+   :trace Level/TRACE
+   :off   Level/OFF})
 
 (def ^:private LogLevelKeyword
   (apply s/enum (keys keyword->Level)))
