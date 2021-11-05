@@ -17,6 +17,7 @@ export const DatabaseSchema = new schema.Entity(
       // TODO Alexander Polyankin 11/05/21
       // Until BE returns databases before the initial sync, set it to true to unblock FE changes
       database.initial_sync = true;
+      return database;
     },
   },
 );
