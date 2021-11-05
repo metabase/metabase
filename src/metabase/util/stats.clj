@@ -91,11 +91,6 @@
   "Return a histogram for medium numbers."
   (partial histogram bin-medium-number))
 
-(defn- instance-start-date
-  "Return the data at which the very first User account was created."
-  []
-  (:min (db/select-one [User [:%min.date_joined :min]])))
-
 (defn environment-type
   "Figure out what we're running under"
   []
@@ -119,7 +114,7 @@
    :email_configured     (email/email-configured?)
    :slack_configured     (slack/slack-configured?)
    :sso_configured       (boolean (google/google-auth-client-id))
-   :instance_started     (instance-start-date)
+   :instance_started     (public-settings/instance-creation)
    :has_sample_data      (db/exists? Database, :is_sample true)})
 
 (defn- user-metrics
