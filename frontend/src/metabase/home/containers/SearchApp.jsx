@@ -40,7 +40,7 @@ const SEARCH_FILTERS = [
     icon: "database",
   },
   {
-    name: t`Tables`,
+    name: t`Raw Tables`,
     filter: "table",
     icon: "table",
   },
