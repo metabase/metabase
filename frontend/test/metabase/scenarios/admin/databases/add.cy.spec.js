@@ -53,6 +53,7 @@ describe("scenarios > admin > databases > add", () => {
       .should("not.be.disabled")
       .click();
 
+    cy.wait("@createDatabase");
     cy.url().should("match", /\/admin\/databases$/);
   });
 
@@ -129,7 +130,6 @@ describe("scenarios > admin > databases > add", () => {
       expect(request.body.details.user).to.equal("uberadmin");
     });
 
-    cy.wait("@createDatabase");
     cy.url().should("match", /admin\/databases$/);
   });
 
