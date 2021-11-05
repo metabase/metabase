@@ -42,7 +42,6 @@ function QuestionDetailsSidebarPanel({
           onOpenModal={onOpenModal}
         />
         <ClampedDescription
-          className="pl1 pb2"
           visibleLines={8}
           description={description}
           onEdit={onDescriptionEdit}
