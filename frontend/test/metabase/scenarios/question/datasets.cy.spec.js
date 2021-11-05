@@ -179,7 +179,7 @@ function assertIsQuestion() {
 
 function turnIntoDataset() {
   openDetailsSidebar();
-  getDetailsSidebarActions.within(() => {
+  getDetailsSidebarActions().within(() => {
     cy.icon("dataset").click();
   });
   modal().within(() => {
