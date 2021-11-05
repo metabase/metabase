@@ -180,6 +180,7 @@ const config = (module.exports = {
         "/*\n* This file is subject to the terms and conditions defined in\n * file 'LICENSE.txt', which is part of this source code package.\n */\n",
     }),
     new NodePolyfillPlugin(), // for crypto, among others
+    new webpack.EnvironmentPlugin(["WEBPACK_BUNDLE"]),
   ],
 });
 
