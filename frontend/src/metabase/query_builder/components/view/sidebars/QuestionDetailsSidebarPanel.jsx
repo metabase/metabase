@@ -12,6 +12,7 @@ import {
   BorderedSectionContainer,
   SidebarPaddedContent,
 } from "./QuestionDetailsSidebarPanel.styled";
+import { DatasetManagementSection } from "./DatasetManagementSection";
 
 QuestionDetailsSidebarPanel.propTypes = {
   question: PropTypes.object.isRequired,
@@ -19,6 +20,7 @@ QuestionDetailsSidebarPanel.propTypes = {
 };
 
 function QuestionDetailsSidebarPanel({ question, onOpenModal }) {
+  const isDataset = question.isDataset();
   const canWrite = question.canWrite();
   const description = question.description();
 
@@ -27,6 +29,8 @@ function QuestionDetailsSidebarPanel({ question, onOpenModal }) {
         onOpenModal("edit");
       }
     : undefined;
+
+  const hasSections = isDataset || PLUGIN_MODERATION.hasPlugin();
 
   return (
     <Container>
@@ -41,9 +45,16 @@ function QuestionDetailsSidebarPanel({ question, onOpenModal }) {
           description={description}
           onEdit={onDescriptionEdit}
         />
-        {PLUGIN_MODERATION.hasPlugin() && (
+        {hasSections && (
           <BorderedSectionContainer>
-            <PLUGIN_MODERATION.QuestionModerationSection question={question} />
+            {isDataset && canWrite && (
+              <DatasetManagementSection dataset={question} />
+            )}
+            {!isDataset && (
+              <PLUGIN_MODERATION.QuestionModerationSection
+                question={question}
+              />
+            )}
           </BorderedSectionContainer>
         )}
       </SidebarPaddedContent>
