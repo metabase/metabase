@@ -1,95 +1,11 @@
-import {
-  suggest as suggest_,
-  getContext as getContext_,
-} from "metabase/lib/expressions/suggest";
+import { suggest as suggest_ } from "metabase/lib/expressions/suggest";
 
 import _ from "underscore";
 
-import {
-  aggregationOpts,
-  expressionOpts,
-  filterOpts,
-} from "./__support__/expressions";
+import { aggregationOpts, expressionOpts } from "./__support__/expressions";
 import { ORDERS, REVIEWS } from "__support__/sample_dataset_fixture";
 
-const AGGREGATION_FUNCTIONS = [
-  { type: "aggregations", text: "Average(" },
-  { type: "aggregations", text: "Count " },
-  { type: "aggregations", text: "CountIf(" },
-  { type: "aggregations", text: "CumulativeCount " },
-  { type: "aggregations", text: "CumulativeSum(" },
-  { type: "aggregations", text: "Distinct(" },
-  { type: "aggregations", text: "Max(" },
-  { type: "aggregations", text: "Median(" },
-  { type: "aggregations", text: "Min(" },
-  { type: "aggregations", text: "Percentile(" },
-  { type: "aggregations", text: "Share(" },
-  { type: "aggregations", text: "StandardDeviation(" },
-  { type: "aggregations", text: "Sum(" },
-  { type: "aggregations", text: "SumIf(" },
-  { type: "aggregations", text: "Variance(" },
-];
-const STRING_FUNCTIONS = [
-  { text: "concat(", type: "functions" },
-  { text: "lower(", type: "functions" },
-  { text: "ltrim(", type: "functions" },
-  { text: "regexextract(", type: "functions" },
-  { text: "rtrim(", type: "functions" },
-  { text: "replace(", type: "functions" },
-  { text: "substring(", type: "functions" },
-  { text: "trim(", type: "functions" },
-  { text: "upper(", type: "functions" },
-];
-const NUMERIC_FUNCTIONS = [
-  { text: "abs(", type: "functions" },
-  { text: "ceil(", type: "functions" },
-  { text: "exp(", type: "functions" },
-  { text: "floor(", type: "functions" },
-  { text: "length(", type: "functions" },
-  { text: "log(", type: "functions" },
-  { text: "power(", type: "functions" },
-  { text: "round(", type: "functions" },
-  { text: "sqrt(", type: "functions" },
-];
-
-const STRING_FUNCTIONS_EXCLUDING_REGEX = STRING_FUNCTIONS.filter(
-  ({ text }) => text !== "regexextract(",
-);
-// const EXPRESSION_FUNCTIONS = [
-//   { text: "case(", type: "functions" },
-//   { text: "coalesce(", type: "functions" },
-// ];
-const FILTER_FUNCTIONS = [
-  { text: "between(", type: "functions" },
-  { text: "contains(", type: "functions" },
-  { text: "endsWith(", type: "functions" },
-  { text: "interval(", type: "functions" },
-  { text: "isempty(", type: "functions" },
-  { text: "isnull(", type: "functions" },
-  { text: "startsWith(", type: "functions" },
-];
-
-// custom metadata defined in __support__/expressions
-const METRICS_CUSTOM = [{ type: "metrics", text: "[metric]" }];
-const FIELDS_CUSTOM = [
-  { type: "fields", text: "[A] " },
-  { type: "fields", text: "[B] " },
-  { type: "fields", text: "[C] " },
-  // quoted because conflicts with aggregation
-  { type: "fields", text: "[Sum] " },
-  // quoted because has a space
-  { type: "fields", text: "[Toucan Sam] " },
-  // quoted because conflicts with aggregation
-  { type: "fields", text: "[count] " },
-];
-
-const FIELDS_CUSTOM_NON_NUMERIC = [
-  { type: "fields", text: "[date] " },
-  { type: "fields", text: "[text] " },
-];
-
 // custom metadata defined in __support__/sample_dataset_fixture
-const METRICS_ORDERS = [{ type: "metrics", text: "[Total Order Value]" }];
 const SEGMENTS_ORDERS = [{ text: "[Expensive Things]", type: "segments" }];
 const FIELDS_ORDERS = [
   { text: "[Created At] ", type: "fields" },
@@ -122,6 +38,25 @@ const FIELDS_ORDERS = [
   { text: "[User → Zip] ", type: "fields" },
 ];
 
+// custom metadata defined in __support__/expressions
+const METRICS_CUSTOM = [{ type: "metrics", text: "[metric]" }];
+const FIELDS_CUSTOM = [
+  { type: "fields", text: "[A] " },
+  { type: "fields", text: "[B] " },
+  { type: "fields", text: "[C] " },
+  // quoted because conflicts with aggregation
+  { type: "fields", text: "[Sum] " },
+  // quoted because has a space
+  { type: "fields", text: "[Toucan Sam] " },
+  // quoted because conflicts with aggregation
+  { type: "fields", text: "[count] " },
+];
+
+const FIELDS_CUSTOM_NON_NUMERIC = [
+  { type: "fields", text: "[date] " },
+  { type: "fields", text: "[text] " },
+];
+
 describe("metabase/lib/expression/suggest", () => {
   describe("suggest()", () => {
     function suggest(...args) {
@@ -133,41 +68,26 @@ describe("metabase/lib/expression/suggest", () => {
     }
 
     describe("expression", () => {
-      it("should suggest expression functions, and fields in an expression", () => {
-        expect(suggest({ source: "", ...expressionOpts })).toEqual([
-          ...FIELDS_CUSTOM,
-          ...FIELDS_CUSTOM_NON_NUMERIC,
-          ...[
-            { type: "functions", text: "case(" },
-            { type: "functions", text: "coalesce(" },
-            ...NUMERIC_FUNCTIONS,
-            ...STRING_FUNCTIONS_EXCLUDING_REGEX,
-          ].sort(suggestionSort),
-        ]);
-      });
-
-      it("should suggest numeric fields after an aritmetic", () => {
-        expect(suggest({ source: "1 + ", ...expressionOpts })).toEqual([
-          ...FIELDS_CUSTOM,
-          ...[{ type: "functions", text: "case(" }, ...NUMERIC_FUNCTIONS].sort(
-            suggestionSort,
-          ),
-        ]);
-      });
       it("should suggest partial matches in expression", () => {
         expect(suggest({ source: "1 + C", ...expressionOpts })).toEqual([
           { type: "fields", text: "[C] " },
           { type: "fields", text: "[count] " },
           { type: "functions", text: "case(" },
           { type: "functions", text: "ceil(" },
+          // FIXME: the last three should not appear
+          { type: "functions", text: "coalesce(" },
+          { type: "functions", text: "concat(" },
+          { type: "functions", text: "contains(" },
         ]);
       });
+
       it("should suggest partial matches in unterminated quoted string", () => {
         expect(suggest({ source: "1 + [C", ...expressionOpts })).toEqual([
           { type: "fields", text: "[C] " },
           { type: "fields", text: "[count] " },
         ]);
       });
+
       it("should suggest foreign fields", () => {
         expect(
           suggest({
@@ -192,6 +112,7 @@ describe("metabase/lib/expression/suggest", () => {
           { text: "[User → Zip] ", type: "fields" },
         ]);
       });
+
       it("should suggest joined fields", () => {
         expect(
           suggest({
@@ -211,10 +132,11 @@ describe("metabase/lib/expression/suggest", () => {
           { text: "[Foo → Reviewer] ", type: "fields" },
         ]);
       });
+
       it("should suggest nested query fields", () => {
         expect(
           suggest({
-            source: "",
+            source: "T",
             query: ORDERS.query()
               .aggregate(["count"])
               .breakout(ORDERS.TOTAL)
@@ -223,12 +145,8 @@ describe("metabase/lib/expression/suggest", () => {
           }),
         ).toEqual(
           [
-            { text: "[Count] ", type: "fields" },
             { text: "[Total] ", type: "fields" },
-            { type: "functions", text: "case(" },
-            { text: "coalesce(", type: "functions" },
-            ...STRING_FUNCTIONS,
-            ...NUMERIC_FUNCTIONS,
+            { text: "trim(", type: "functions" },
           ].sort(suggestionSort),
         );
       });
@@ -262,67 +180,80 @@ describe("metabase/lib/expression/suggest", () => {
           }).name,
         ).toEqual("coalesce");
       });
-
-      xit("should suggest boolean options after case(", () => {
-        expect(
-          suggest({
-            source: "case(",
-            query: ORDERS.query(),
-            startRule: "expression",
-          }),
-        ).toEqual([...SEGMENTS_ORDERS]);
-      });
     });
 
     describe("aggregation", () => {
+      it("should suggest aggregations and metrics", () => {
+        expect(suggest({ source: "case([", ...aggregationOpts })).toEqual(
+          [
+            ...FIELDS_CUSTOM,
+            ...METRICS_CUSTOM,
+            ...FIELDS_CUSTOM_NON_NUMERIC,
+            { type: "segments", text: "[segment]" },
+          ].sort(suggestionSort),
+        );
+      });
+
       it("should suggest partial matches after an aggregation", () => {
         expect(suggest({ source: "average(c", ...aggregationOpts })).toEqual([
+          // FIXME: the next four should not appear
+          { type: "aggregations", text: "Count(" },
+          { type: "aggregations", text: "CountIf(" },
+          { type: "aggregations", text: "CumulativeCount(" },
+          { type: "aggregations", text: "CumulativeSum(" },
           { type: "fields", text: "[C] " },
           { type: "fields", text: "[count] " },
-          { text: "case(", type: "functions" },
-          // { text: "coalesce(", type: "functions" },
-          { text: "ceil(", type: "functions" },
-        ]);
-      });
-      it("should suggest aggregations and metrics after an operator", () => {
-        expect(suggest({ source: "1 + ", ...aggregationOpts })).toEqual([
-          ...[
-            { type: "functions", text: "case(" },
-            ...AGGREGATION_FUNCTIONS,
-            ...NUMERIC_FUNCTIONS,
-          ].sort(suggestionSort),
-          ...METRICS_CUSTOM,
-        ]);
-      });
-      it("should suggest partial matches in aggregation", () => {
-        expect(suggest({ source: "1 + C", ...aggregationOpts })).toEqual([
-          { type: "aggregations", text: "Count " },
-          { type: "aggregations", text: "CountIf(" },
-          { type: "aggregations", text: "CumulativeCount " },
-          { type: "aggregations", text: "CumulativeSum(" },
           { type: "functions", text: "case(" },
           { type: "functions", text: "ceil(" },
+          { type: "functions", text: "coalesce(" },
+          { type: "functions", text: "concat(" },
+          { type: "functions", text: "contains(" },
         ]);
       });
 
-      it("should suggest aggregations and metrics in an aggregation", () => {
+      it("should suggest partial matches in aggregation", () => {
+        expect(suggest({ source: "1 + C", ...aggregationOpts })).toEqual([
+          { type: "aggregations", text: "Count(" },
+          { type: "aggregations", text: "CountIf(" },
+          { type: "aggregations", text: "CumulativeCount(" },
+          { type: "aggregations", text: "CumulativeSum(" },
+          { type: "fields", text: "[C] " },
+          { type: "fields", text: "[count] " },
+          { type: "functions", text: "case(" },
+          { type: "functions", text: "ceil(" },
+          { type: "functions", text: "coalesce(" },
+          { type: "functions", text: "concat(" },
+          { type: "functions", text: "contains(" },
+        ]);
+      });
+
+      it("should show suggestions with matched 2-char prefix", () => {
         expect(
           suggest({
-            source: "",
+            source: "to",
             query: ORDERS.query(),
             startRule: "aggregation",
           }),
         ).toEqual([
-          ...[
-            { type: "functions", text: "case(" },
-            ...AGGREGATION_FUNCTIONS,
-            ...NUMERIC_FUNCTIONS,
-          ].sort(suggestionSort),
-          ...METRICS_ORDERS,
+          { type: "metrics", text: "[Total Order Value]" },
+          { type: "fields", text: "[Total] " },
         ]);
       });
 
-      it("should show help text in an aggregation functiom", () => {
+      it("should show suggestions with matched 3-char prefix", () => {
+        expect(
+          suggest({
+            source: "cou",
+            query: ORDERS.query(),
+            startRule: "aggregation",
+          }),
+        ).toEqual([
+          { type: "aggregations", text: "Count(" },
+          { type: "aggregations", text: "CountIf(" },
+        ]);
+      });
+
+      it("should show help text in an aggregation function", () => {
         const { name, example } = helpText({
           source: "Sum(",
           query: ORDERS.query(),
@@ -334,16 +265,40 @@ describe("metabase/lib/expression/suggest", () => {
     });
 
     describe("filter", () => {
-      it("should suggest filter functions, fields, and segments in a filter", () => {
+      it("should show suggestions with matched 1-char prefix", () => {
         expect(
-          suggest({ source: "", query: ORDERS.query(), startRule: "boolean" }),
+          suggest({ source: "c", query: ORDERS.query(), startRule: "boolean" }),
         ).toEqual([
-          ...FIELDS_ORDERS,
-          ...[{ type: "functions", text: "case(" }, ...FILTER_FUNCTIONS].sort(
-            suggestionSort,
-          ),
-          ...SEGMENTS_ORDERS,
+          { type: "fields", text: "[Created At] " },
+          { type: "fields", text: "[Product → Category] " },
+          { type: "fields", text: "[Product → Created At] " },
+          { type: "fields", text: "[User → City] " },
+          { type: "fields", text: "[User → Created At] " },
+          { type: "functions", text: "case(" },
+          { type: "functions", text: "ceil(" },
+          { type: "functions", text: "coalesce(" },
+          { type: "functions", text: "concat(" },
+          { type: "functions", text: "contains(" },
         ]);
+      });
+
+      it("should show suggestions with matched 2-char prefix", () => {
+        expect(
+          suggest({
+            source: "ca",
+            query: ORDERS.query(),
+            startRule: "boolean",
+          }),
+        ).toEqual([
+          { type: "fields", text: "[Product → Category] " },
+          { type: "functions", text: "case(" },
+        ]);
+      });
+
+      it("should show all fields when '[' appears", () => {
+        expect(
+          suggest({ source: "[", query: ORDERS.query(), startRule: "boolean" }),
+        ).toEqual([...FIELDS_ORDERS, ...SEGMENTS_ORDERS].sort(suggestionSort));
       });
 
       it("should show help text in a filter function", () => {
@@ -357,134 +312,14 @@ describe("metabase/lib/expression/suggest", () => {
       });
     });
   });
-
-  describe("getContext", () => {
-    function getContext(...args) {
-      return cleanContext(getContext_(...args));
-    }
-
-    describe("aggregation", () => {
-      it("should get operator context", () => {
-        expect(getContext({ source: "1 +", ...aggregationOpts })).toEqual({
-          clause: "+",
-          expectedType: "aggregation",
-          index: 0,
-        });
-      });
-      it("should get operator context with trailing whitespace", () => {
-        expect(getContext({ source: "1 + ", ...aggregationOpts })).toEqual({
-          clause: "+",
-          expectedType: "aggregation",
-          index: 0,
-        });
-      });
-      it("should get aggregation context", () => {
-        expect(getContext({ source: "Average(", ...aggregationOpts })).toEqual({
-          clause: "avg",
-          expectedType: "number",
-          index: 0,
-        });
-      });
-      it("should get aggregation context with closing paren", () => {
-        expect(
-          getContext({
-            source: "Average()",
-            ...aggregationOpts,
-            targetOffset: 8,
-          }),
-        ).toEqual({
-          clause: "avg",
-          expectedType: "number",
-          index: 0,
-        });
-      });
-      it("should get sum-where first argument", () => {
-        expect(
-          getContext({ source: "1 + SumIf(", ...aggregationOpts }),
-        ).toEqual({
-          clause: "sum-where",
-          expectedType: "number",
-          index: 0,
-        });
-      });
-      it("should get sum-where second argument", () => {
-        expect(
-          getContext({ source: "1 + SumIf(Total = 10,", ...aggregationOpts }),
-        ).toEqual({
-          clause: "sum-where",
-          expectedType: "boolean",
-          index: 1,
-        });
-      });
-      it("should get operator context inside aggregation", () => {
-        expect(
-          getContext({ source: "1 + Sum(2 /", ...aggregationOpts }),
-        ).toEqual({
-          clause: "/",
-          expectedType: "number",
-          index: 0,
-        });
-      });
-    });
-    describe("expression", () => {
-      it("should get operator context", () => {
-        expect(getContext({ source: "1 +", ...expressionOpts })).toEqual({
-          clause: "+",
-          expectedType: "number",
-          index: 0,
-        });
-      });
-      it("should get function context", () => {
-        expect(getContext({ source: "trim(", ...expressionOpts })).toEqual({
-          clause: "trim",
-          expectedType: "string",
-          index: 0,
-        });
-      });
-      xit("should get boolean for first argument of case", () => {
-        // it's difficult to type "case" correctly using the current system because the form is:
-        //    case([PREDICATE, EXPRESSION]+ [, ELSE-EXPRESSION]?)
-        expect(getContext({ source: "case(", ...expressionOpts })).toEqual({
-          clause: "case",
-          expectedType: "boolean",
-          index: 0,
-        });
-      });
-      it("should get expression for second argument of case", () => {
-        expect(getContext({ source: "case(Foo,", ...expressionOpts })).toEqual({
-          clause: "case",
-          expectedType: "expression",
-          index: 1,
-        });
-      });
-    });
-    describe("filter", () => {
-      it("should get function context", () => {
-        expect(getContext({ source: "between(", ...filterOpts })).toEqual({
-          clause: "between",
-          expectedType: "expression",
-          index: 0,
-        });
-      });
-    });
-  });
 });
-
-function cleanContext(context) {
-  delete context.clauseToken;
-  if (context.clause) {
-    context.clause = context.clause.name;
-  }
-  return context;
-}
 
 function cleanSuggestions(suggestions) {
   return _.chain(suggestions)
     .map(s => _.pick(s, "type", "text"))
     .sortBy("text")
-    .sortBy("type")
     .value();
 }
 
 const suggestionSort = (a, b) =>
-  a.type.localeCompare(b.type) || a.text.localeCompare(b.text);
+  a.text < b.text ? -1 : a.text > b.text ? 1 : 0;

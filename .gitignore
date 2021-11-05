@@ -40,7 +40,6 @@
 /modules/drivers/*/resources/namespaces.edn
 /modules/drivers/*/target
 /node_modules/
-/osx-artifacts
 /plugins
 /process.yml
 /reset-password-artifacts
@@ -60,11 +59,6 @@
 /stats.json
 /target
 /test-report-*
-OSX/.cpcache
-OSX/Metabase/jre
-OSX/Resources/metabase.jar
-OSX/build
-OSX/dsa_priv.pem
 \#*\#
 bin/node_modules/
 bin/release/aws-eb/metabase-aws-eb.zip

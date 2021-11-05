@@ -6,7 +6,11 @@ import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
 import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 
 import { pluralize } from "metabase/lib/formatting";
-import { getDatetimeUnit, isDateTimeField } from "metabase/lib/query/field_ref";
+import {
+  getDatetimeUnit,
+  isDateTimeField,
+  isFieldLiteral,
+} from "metabase/lib/query/field_ref";
 
 import { TableId } from "metabase-types/types/Table";
 import type {
@@ -375,7 +379,9 @@ export default class Join extends MBQLObjectClause {
       count: dimensions.length,
       dimensions: dimensions,
       fks: [],
+      preventNumberSubDimensions: true,
     };
+
     // add all previous joined fields
     const joins = query.joins();
     for (let i = 0; i < this.index(); i++) {
@@ -462,6 +468,7 @@ export default class Join extends MBQLObjectClause {
       count: dimensions.length,
       dimensions: dimensions,
       fks: [],
+      preventNumberSubDimensions: true,
     });
   }
 
@@ -566,9 +573,6 @@ export default class Join extends MBQLObjectClause {
   }
 
   hasGaps() {
-    if (!this.joinedTable()) {
-      return true;
-    }
     const parentDimensions = this.parentDimensions();
     const joinDimensions = this.joinDimensions();
     return (
@@ -581,19 +585,26 @@ export default class Join extends MBQLObjectClause {
   }
 
   isValid() {
-    if (this.hasGaps()) {
+    if (!this.condition || !this.joinedTable() || this.hasGaps()) {
       return false;
     }
     const dimensionOptions = this.parent().dimensionOptions();
     const dimensions = [...this.parentDimensions(), ...this.joinDimensions()];
-    return dimensions.every(dimension =>
-      dimensionOptions.hasDimension(dimension),
+    return dimensions.every(
+      dimension =>
+        dimensionOptions.hasDimension(dimension) ||
+        // For some GUI queries created in earlier versions of Metabase,
+        // some dimensions are described as field literals
+        // Usually it's [ "field", field_numeric_id, null|object ]
+        // And field literals look like [ "field", "PRODUCT_ID", {'base-type': 'type/Integer' } ]
+        // These literals are not present in dimension options, but still work
+        // As a workaround, we just skip field literals if they're not present in dimension options
+        isFieldLiteral(dimension.mbql()),
     );
   }
 
   clean() {
-    const invalidAndCantFix = !this.condition || !this.joinedTable();
-    if (invalidAndCantFix || this.isValid()) {
+    if (!this.condition || !this.hasGaps()) {
       return this;
     }
     let join = this;

@@ -45,6 +45,7 @@ describe("scenarios > question > summarize sidebar", () => {
 
     // Displayed in the pinned list
     cy.findByTestId("pinned-dimensions").within(() => {
+      cy.findByText("Orders → Total").should("not.exist");
       getDimensionByName({ name: "Total" }).should(
         "have.attr",
         "aria-selected",
@@ -58,6 +59,27 @@ describe("scenarios > question > summarize sidebar", () => {
     cy.findByTestId("unpinned-dimensions").within(() => {
       cy.findByText("Total");
     });
+  });
+
+  it("selected dimensions from another table includes the table name when becomes pinned to the top", () => {
+    getDimensionByName({ name: "State" }).click();
+
+    cy.button("Done").click();
+    cy.findAllByText("Summarize")
+      .first()
+      .click();
+
+    cy.findByTestId("pinned-dimensions").within(() => {
+      getDimensionByName({ name: "People → State" }).should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
+    });
+
+    getRemoveDimensionButton({ name: "People → State" }).click();
+
+    cy.findByText("People → State").should("not.exist");
   });
 
   it("selecting a binning adds a dimension", () => {

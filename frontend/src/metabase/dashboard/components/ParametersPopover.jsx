@@ -8,11 +8,10 @@ import styled from "styled-components";
 import type {
   Parameter,
   ParameterOption,
+  ParameterSection,
 } from "metabase-types/types/Parameter";
 
 import _ from "underscore";
-
-import type { ParameterSection } from "metabase/meta/Dashboard";
 
 const PopoverBody = styled.div`
   max-width: 300px;
