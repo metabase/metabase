@@ -9,6 +9,7 @@ import { PLUGIN_MODERATION } from "metabase/plugins";
 
 import {
   Container,
+  BorderedSectionContainer,
   SidebarPaddedContent,
 } from "./QuestionDetailsSidebarPanel.styled";
 
@@ -40,7 +41,11 @@ function QuestionDetailsSidebarPanel({ question, onOpenModal }) {
           description={description}
           onEdit={onDescriptionEdit}
         />
-        <PLUGIN_MODERATION.QuestionModerationSection question={question} />
+        {PLUGIN_MODERATION.hasPlugin() && (
+          <BorderedSectionContainer>
+            <PLUGIN_MODERATION.QuestionModerationSection question={question} />
+          </BorderedSectionContainer>
+        )}
       </SidebarPaddedContent>
       <QuestionActivityTimeline question={question} />
     </Container>
