@@ -46,3 +46,8 @@ export const isSyncingModalEnabled = createSelector(
   [getSettings],
   settings => settings["enable-database-syncing-modal"],
 );
+
+export const isSyncingModalRequired = createSelector(
+  [hasSyncingDatabases, isSyncingModalEnabled],
+  (isSyncing, isSyncingModalEnabled) => isSyncing && isSyncingModalEnabled,
+);
