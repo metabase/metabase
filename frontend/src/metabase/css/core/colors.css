@@ -38,7 +38,7 @@
   --color-saturated-yellow: #f9cf48;
 
   /* night mode colors */
-  --night-mode-color: color(var(--color-text-white) alpha(-14%));
+  --night-mode-color: color-mod(var(--color-text-white) alpha(-14%));
   --night-mode-card: #42484e;
 }
 
@@ -120,17 +120,17 @@
 
 .bg-brand-dark,
 .bg-brand-dark-hover:hover {
-  background-color: color(var(--color-brand) blackness(+12%));
+  background-color: color-mod(var(--color-brand) blackness(12%));
 }
 
 .bg-brand-dark,
 .bg-brand-dark-hover:hover {
-  background-color: color(var(--color-brand) blackness(+12%));
+  background-color: color-mod(var(--color-brand) blackness(12%));
 }
 
 .bg-brand-dark,
 .bg-brand-dark-hover:hover {
-  background-color: color(var(--color-brand) blackness(+12%));
+  background-color: color-mod(var(--color-brand) blackness(12%));
 }
 
 .bg-brand,
@@ -216,7 +216,7 @@
 }
 
 .bg-purple-light {
-  background-color: color(var(--color-accent7) alpha(-85%));
+  background-color: color-mod(var(--color-accent7) alpha(-85%));
 }
 
 .bg-green,
