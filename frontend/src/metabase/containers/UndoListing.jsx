@@ -62,7 +62,7 @@ UndoToast.propTypes = {
 
 function UndoToast({ undo, onUndo, onDismiss }) {
   return (
-    <ToastCard dark>
+    <ToastCard dark data-testid="toast-undo">
       <CardContent>
         <CardContentSide>
           <CardIcon name={undo.icon || "check"} color="white" />
