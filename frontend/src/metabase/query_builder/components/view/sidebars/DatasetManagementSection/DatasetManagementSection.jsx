@@ -8,10 +8,7 @@ import Icon from "metabase/components/Icon";
 
 import { turnDatasetIntoQuestion } from "metabase/query_builder/actions";
 
-import {
-  SectionTitle,
-  ActionItemContainer,
-} from "./DatasetManagementSection.styled";
+import { Button, SectionTitle } from "./DatasetManagementSection.styled";
 
 ActionItem.propTypes = {
   icon: PropTypes.string.isRequired,
@@ -20,10 +17,10 @@ ActionItem.propTypes = {
 
 function ActionItem({ icon, children, ...props }) {
   return (
-    <ActionItemContainer {...props}>
+    <Button {...props}>
       <Icon name={icon} size={16} />
       {children}
-    </ActionItemContainer>
+    </Button>
   );
 }
 
