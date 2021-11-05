@@ -72,12 +72,13 @@
   `(do-with-log-messages (fn [] ~@body)))
 
 (def ^:private keyword->Level
-  {:error Level/ERROR
+  {:off   Level/OFF
+   :fatal Level/FATAL
+   :error Level/ERROR
    :warn  Level/WARN
    :info  Level/INFO
    :debug Level/DEBUG
-   :trace Level/TRACE
-   :off   Level/OFF})
+   :trace Level/TRACE})
 
 (def ^:private LogLevelKeyword
   (apply s/enum (keys keyword->Level)))
@@ -93,6 +94,7 @@
 
 (s/defn ^:private log-level->keyword :- LogLevelKeyword
   [level :- Level]
+  (println "level:" level) ; NOCOMMIT
   (some (fn [[k a-level]]
           (when (= a-level level)
             k))
