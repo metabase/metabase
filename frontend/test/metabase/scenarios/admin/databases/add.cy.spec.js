@@ -129,6 +129,7 @@ describe("scenarios > admin > databases > add", () => {
       expect(request.body.details.user).to.equal("uberadmin");
     });
 
+    cy.wait("@createDatabase");
     cy.url().should("match", /admin\/databases$/);
   });
 
