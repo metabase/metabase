@@ -16,10 +16,6 @@ export const DataBucketDescription = styled.span`
   font-size: 12px;
 `;
 
-RawDataBackButton.propTypes = {
-  onBack: PropTypes.func.isRequired,
-};
-
 const BackButtonContainer = styled.div`
   display: flex;
   align-items: center;
