@@ -29,6 +29,7 @@ const VERTICAL_PADDING_BY_SIZE = {
 };
 
 export const BaseItemRoot = styled.li`
+  display: grid;
   align-items: center;
   cursor: pointer;
   padding: ${props => VERTICAL_PADDING_BY_SIZE[props.size]} 0.5rem;

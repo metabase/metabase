@@ -5,7 +5,7 @@ import _ from "underscore";
 import { iconPropTypes } from "metabase/components/Icon";
 
 import { BaseSelectListItem } from "./BaseSelectListItem";
-import { ItemIcon, ItemTitle } from "./SelectListItem.styled";
+import { ItemRoot, ItemIcon, ItemTitle } from "./SelectListItem.styled";
 
 const iconPropType = PropTypes.oneOfType([
   PropTypes.string,
@@ -28,7 +28,7 @@ export function SelectListItem(props) {
     : { name: rightIcon };
 
   return (
-    <BaseSelectListItem {...props}>
+    <BaseSelectListItem as={ItemRoot} {...props}>
       <ItemIcon color="brand" {...iconProps} />
       <ItemTitle>{name}</ItemTitle>
       {rightIconProps.name && <ItemIcon {...rightIconProps} />}
