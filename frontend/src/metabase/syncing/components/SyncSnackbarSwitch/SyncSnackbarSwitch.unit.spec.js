@@ -19,9 +19,9 @@ describe("SyncSnackbarSwitch", () => {
 
     render(<SyncSnackbarSwitch databases={databases} />);
 
-    expect(screen.queryByText("DB1")).toBeInTheDocument();
+    expect(screen.getByText("DB1")).toBeInTheDocument();
     expect(screen.queryByText("DB2")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("loading-spinner")).toBeInTheDocument();
+    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
   });
 
   it("should display synced databases for a short time", () => {
@@ -38,16 +38,17 @@ describe("SyncSnackbarSwitch", () => {
     render(<SyncSnackbarSwitch databases={databases1} />);
     render(<SyncSnackbarSwitch databases={databases2} />);
 
-    expect(screen.queryByText("DB1")).toBeInTheDocument();
-    expect(screen.queryByLabelText("check icon")).toBeInTheDocument();
+    expect(screen.getByText("DB1")).toBeInTheDocument();
+    expect(screen.getByLabelText("check icon")).toBeInTheDocument();
 
     act(() => jest.advanceTimersByTime(6000));
     expect(screen.queryByText("DB1")).not.toBeInTheDocument();
   });
 });
 
-const getDatabase = ({ id, name, initial_sync }) => ({
+const getDatabase = ({ id, name, initial_sync, tables = [] }) => ({
   id,
   name,
   initial_sync,
+  tables,
 });

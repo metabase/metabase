@@ -70,7 +70,7 @@ describe("SyncSnackbar", () => {
     render(<SyncSnackbar databases={databases} />);
 
     fireEvent.click(screen.getByLabelText("chevrondown icon"));
-    expect(screen.getByText("Syncing… (75%)"));
+    expect(screen.getByText("Syncing… (25%)"));
 
     fireEvent.click(screen.getByLabelText("chevronup icon"));
     expect(screen.getByText("Syncing…"));
