@@ -27,6 +27,18 @@ describe("scenarios > datasets", () => {
     cy.get(".LineAreaBarChart").should("not.exist");
   });
 
+  it("allows to undo turning a question into a dataset", () => {
+    cy.visit("/question/3");
+    cy.get(".LineAreaBarChart");
+
+    turnIntoDataset();
+    cy.findByText("This is a dataset now.");
+    cy.findByText("Undo").click();
+
+    cy.get(".LineAreaBarChart");
+    cy.icon("dataset");
+  });
+
   describe("data picker", () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/search").as("search");
