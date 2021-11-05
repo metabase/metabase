@@ -95,7 +95,7 @@
   :getter     (fn []
                 (if-let [value (setting/get-timestamp :instance-creation)]
                   value
-                  ;; For instances that were started before this setting was added (in 0.41.2), use the creation
+                  ;; For instances that were started before this setting was added (in 0.41.3), use the creation
                   ;; timestamp of the first user. For all new instances, use the timestamp at which this setting
                   ;; is first read.
                   (do (setting/set-timestamp! :instance-creation (or (first-user-creation)

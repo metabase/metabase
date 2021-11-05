@@ -1,6 +1,7 @@
 (ns metabase.public-settings-test
   (:require [clojure.test :refer :all]
             [metabase.models.setting :as setting :refer [Setting]]
+            [metabase.models.user :refer [User]]
             [metabase.public-settings :as public-settings]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
@@ -194,7 +195,7 @@
       (testing "If a user already exists, we should use the first user's creation timestamp"
         (db/delete! Setting {:key "instance-creation"})
         (mt/with-test-user :crowberto
-          (let [first-user-creation (:min (db/select-one ['User [:%min.date_joined :min]]))
+          (let [first-user-creation (:min (db/select-one [User [:%min.date_joined :min]]))
                 instance-creation   (public-settings/instance-creation)]
             (is (= (java-time/local-date-time first-user-creation)
                    (java-time/local-date-time instance-creation))))))
