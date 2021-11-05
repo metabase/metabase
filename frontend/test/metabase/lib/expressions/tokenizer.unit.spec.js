@@ -4,8 +4,6 @@ import {
   OPERATOR as OP,
 } from "metabase/lib/expressions/tokenizer";
 
-import { generateExpression } from "./generator";
-
 describe("metabase/lib/expressions/tokenizer", () => {
   const types = expr => tokenize(expr).tokens.map(t => t.type);
   const ops = expr => tokenize(expr).tokens.map(t => t.op);
@@ -142,20 +140,3 @@ describe("metabase/lib/expressions/tokenizer", () => {
     expect(errors("    #")[0].pos).toEqual(4);
   });
 });
-
-if (process.env.MB_FUZZ) {
-  describe("FUZZING metabase/lib/expressions/tokenizer", () => {
-    const MAX_SEED = 5e4;
-
-    for (let seed = 0; seed < MAX_SEED; ++seed) {
-      it("should handle generated expression from seed " + seed, () => {
-        const { expression } = generateExpression(seed);
-        expect(() => tokenize(expression)).not.toThrow();
-      });
-      it("should not error on generated expression from seed " + seed, () => {
-        const { expression } = generateExpression(seed);
-        expect(tokenize(expression).errors).toEqual([]);
-      });
-    }
-  });
-}

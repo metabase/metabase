@@ -97,18 +97,23 @@
 (defn- migration-id-in-range?
   "Whether `id` should be considered to be between `start-id` and `end-id`, inclusive. Handles both legacy plain-integer
   and new-style `vMM.mm-NNN` style IDs."
-  [start-id id end-id]
+  [start-id id end-id & [{:keys [inclusive-end?]
+                          :or   {inclusive-end? true}}]]
   (let [start-id (migration-id->str start-id)
         end-id   (migration-id->str end-id)
         id       (migration-id->str id)]
-    (= (sort [start-id id end-id])
-       [start-id id end-id])))
+    (and (= (sort [start-id id end-id])
+            [start-id id end-id])
+         (or inclusive-end?
+             (not= id end-id)))))
 
 (deftest migration-id-in-range?-test
   (testing "legacy IDs"
     (is (migration-id-in-range? 1 2 3))
+    (is (migration-id-in-range? 1 2 3 {:inclusive-end? false}))
     (is (migration-id-in-range? 1 1 3))
     (is (migration-id-in-range? 1 3 3))
+    (is (not (migration-id-in-range? 1 3 3 {:inclusive-end? false})))
     (is (not (migration-id-in-range? 2 1 3)))
     (is (not (migration-id-in-range? 2 4 3)))
     (testing "strings"
@@ -116,20 +121,24 @@
       (is (not (migration-id-in-range? 1 "13" 3)))))
   (testing "new-style IDs"
     (is (migration-id-in-range? "v42.00-001" "v42.00-002" "v42.00-003"))
+    (is (migration-id-in-range? "v42.00-001" "v42.00-002" "v42.00-002"))
+    (is (not (migration-id-in-range? "v42.00-001" "v42.00-002" "v42.00-002" {:inclusive-end? false})))
     (is (not (migration-id-in-range? "v42.00-001" "v42.00-004" "v42.00-003")))
     (is (not (migration-id-in-range? "v42.00-002" "v42.00-001" "v42.00-003"))))
   (testing "mixed"
     (is (migration-id-in-range? 1 3 "v42.00-001"))
     (is (migration-id-in-range? 1 "v42.00-001" "v42.00-002"))
     (is (not (migration-id-in-range? "v42.00-002" 1000 "v42.00-003")))
+    (is (not (migration-id-in-range? "v42.00-002" 1000 "v42.00-003" {:inclusive-end? false})))
     (is (not (migration-id-in-range? 1 "v42.00-001" 1000)))
     (is (not (migration-id-in-range? 1 "v42.00-001" 1000)))))
 
 (defn run-migrations-in-range!
   "Run Liquibase migrations from our migrations YAML file in the range of `start-id` -> `end-id` (inclusive) against a
   DB with `jdbc-spec`."
-  {:added "0.41.0"}
-  [^java.sql.Connection conn [start-id end-id]]
+  {:added "0.41.0", :arglists '([conn [start-id end-id]]
+                                [conn [start-id end-id] {:keys [inclusive-end?], :or {inclusive-end? true}}])}
+  [^java.sql.Connection conn [start-id end-id] & [range-options]]
   (liquibase/with-liquibase [liquibase conn]
     (let [change-log        (.getDatabaseChangeLog liquibase)
           ;; create a new change log that only has the subset of migrations we want to run.
@@ -139,7 +148,7 @@
       ;; add the relevant migrations (change sets) to our subset change log
       (doseq [^ChangeSet change-set (.getChangeSets change-log)
               :let                  [id (.getId change-set)]
-              :when                 (migration-id-in-range? start-id id end-id)]
+              :when                 (migration-id-in-range? start-id id end-id range-options)]
         (.addChangeSet subset-change-log change-set))
       ;; now create a new instance of Liquibase that will run just the subset change log
       (let [subset-liquibase (Liquibase. subset-change-log (.getResourceAccessor liquibase) (.getDatabase liquibase))]
@@ -159,7 +168,7 @@
           (assert (zero? (count tables))
                   (str "'Empty' application DB is not actually empty. Found tables:\n"
                        (u/pprint-to-str tables))))))
-    (run-migrations-in-range! conn [1 (dec start-id)])
+    (run-migrations-in-range! conn [1 start-id] {:inclusive-end? false})
     (f #(run-migrations-in-range! conn [start-id end-id])))
   (log/debug (u/format-color 'green "Done testing migrations for driver %s." driver)))
 
@@ -171,7 +180,7 @@
   (let [[start-id end-id] (if (sequential? migration-range)
                             migration-range
                             [migration-range migration-range])]
-    (testing (format "Migrations %d-%d" start-id end-id)
+    (testing (format "Migrations %s thru %s" start-id end-id)
       (mt/test-drivers #{:h2 :mysql :postgres}
         (test-migrations-for-driver driver/*driver* [start-id end-id] f)))))
 

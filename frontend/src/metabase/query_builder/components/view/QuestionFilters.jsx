@@ -50,6 +50,7 @@ export default function QuestionFilters({
                 ? `View Mode; Header Filters Collapse Click`
                 : `View Mode; Header Filters Expand Click`
             }
+            data-testid="filters-visibility-control"
           >
             {expanded ? null : filters.length}
           </FilterPill>
