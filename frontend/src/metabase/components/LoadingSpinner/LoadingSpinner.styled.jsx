@@ -40,8 +40,4 @@ export const SpinnerIcon = styled.div`
     top: ${props => `-${props.borderWidth}px`};
     left: ${props => `-${props.borderWidth}px`};
   }
-
-  @media (prefers-reduced-motion) {
-    animation: none;
-  }
 `;
