@@ -35,8 +35,8 @@ describe("SyncSnackbarSwitch", () => {
       getDatabase({ id: 2, name: "DB2", initial_sync: true }),
     ];
 
-    render(<SyncSnackbarSwitch databases={databases1} />);
-    render(<SyncSnackbarSwitch databases={databases2} />);
+    const { rerender } = render(<SyncSnackbarSwitch databases={databases1} />);
+    rerender(<SyncSnackbarSwitch databases={databases2} />);
 
     expect(screen.getByText("DB1")).toBeInTheDocument();
     expect(screen.getByLabelText("check icon")).toBeInTheDocument();
