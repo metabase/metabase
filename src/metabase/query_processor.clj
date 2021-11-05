@@ -171,9 +171,11 @@
   "Return the fully preprocessed form for `query`, the way it would look immediately before `mbql->native` is called.
   Especially helpful for debugging or testing driver QP implementations."
   [query]
-  (preprocess-query query {:preprocessedf
-                           (fn [query context]
-                             (context/raisef (qp.reducible/quit query) context))}))
+  ;; Make sure the caching middleware doesn't try to return any cached results. That will totally break things
+  (preprocess-query (assoc-in query [:middleware :ignore-cached-results?] true)
+                    {:preprocessedf
+                     (fn [query context]
+                       (context/raisef (qp.reducible/quit query) context))}))
 
 (defn query->expected-cols
   "Return the `:cols` you would normally see in MBQL query results by preprocessing the query and calling `annotate` on
