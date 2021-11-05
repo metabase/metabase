@@ -97,7 +97,11 @@ export default class PreferencesStep extends Component {
 
             <div className="Form-field mr4">
               <div
-                style={{ borderWidth: "2px" }}
+                style={{
+                  borderWidth: "2px",
+                  flexWrap: "wrap",
+                  justifyContent: "center",
+                }}
                 className="flex align-center bordered rounded p2"
               >
                 <Toggle
@@ -106,7 +110,11 @@ export default class PreferencesStep extends Component {
                   className="inline-block"
                   aria-labelledby="anonymous-usage-events-label"
                 />
-                <span className="ml1" id="anonymous-usage-events-label">
+                <span
+                  style={{ textAlign: "center" }}
+                  className="ml1"
+                  id="anonymous-usage-events-label"
+                >
                   {t`Allow Metabase to anonymously collect usage events`}
                 </span>
               </div>

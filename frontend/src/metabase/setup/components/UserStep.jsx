@@ -97,7 +97,7 @@ export default class UserStep extends Component {
           >
             {({ Form, FormField, FormFooter }) => (
               <Form>
-                <Flex align="center">
+                <Flex align="center" flexWrap="wrap">
                   <FormField name="first_name" className="flex-full mr1" />
                   <FormField name="last_name" className="flex-full" />
                 </Flex>
