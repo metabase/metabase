@@ -12,7 +12,6 @@
             [metabase.models.table :refer [Table]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.add-implicit-joins :as joins]
-            [metabase.test :as mt]
             [metabase.test-runner.init :as test-runner.init]
             [metabase.test.data :as data]
             [metabase.test.data.env :as tx.env]
@@ -24,7 +23,7 @@
 
 ;;; ---------------------------------------------- Helper Fns + Macros -----------------------------------------------
 
-;; Non-"normal" drivers are tested in `timeseries-query-processor-test` and elsewhere
+;; Non-"normal" drivers are tested in [[metabase.timeseries-query-processor-test]] and elsewhere
 (def ^:private abnormal-drivers
   "Drivers that are so weird that we can't run the normal driver tests against them."
   #{:druid :googleanalytics})
@@ -35,10 +34,10 @@
   (set/difference (tx.env/test-drivers) abnormal-drivers))
 
 (defn normal-drivers-with-feature
-  "Set of engines that support a given `feature`. If additional features are given, it will ensure all features are
+  "Set of drivers that support a given `feature`. If additional features are given, it will ensure all features are
   supported."
   [feature & more-features]
-  ;; Can't use `normal-drivers-with-feature` during test initialization, because it means we end up having to load
+  ;; Can't use [[normal-drivers-with-feature]] during test initialization, because it means we end up having to load
   ;; plugins and a bunch of other nonsense.
   (test-runner.init/assert-tests-are-not-initializing (pr-str (list* 'normal-drivers-with-feature feature more-features)))
   (let [features (set (cons feature more-features))]
@@ -451,18 +450,18 @@
   (testing "`query->preprocessed` should work the same even if query has cached results (#18579)"
     ;; make a copy of the `test-data` DB so there will be no cache entries from previous test runs possibly affecting
     ;; this test.
-    (mt/with-temp-copy-of-db
-      (mt/with-temporary-setting-values [enable-query-caching  true
+    (data/with-temp-copy-of-db
+      (tu/with-temporary-setting-values [enable-query-caching  true
                                          query-caching-min-ttl 0]
-        (let [query            (assoc (mt/mbql-query venues {:order-by [[:asc $id]], :limit 5})
+        (let [query            (assoc (data/mbql-query venues {:order-by [[:asc $id]], :limit 5})
                                       :cache-ttl 10)
               run-query        (fn []
                                  (let [results (qp/process-query query)]
                                    {:cached?  (boolean (:cached results))
-                                    :num-rows (count (mt/rows results))}))
+                                    :num-rows (count (rows results))}))
               expected-results (qp/query->preprocessed query)]
           (testing "Check query->preprocessed before caching to make sure results make sense"
-            (is (schema= {:database (s/eq (mt/id))
+            (is (schema= {:database (s/eq (data/id))
                           s/Keyword s/Any}
                          expected-results)))
           (testing "Run the query a few of times so we know it's cached"
