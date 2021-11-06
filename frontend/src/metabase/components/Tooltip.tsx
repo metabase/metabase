@@ -77,7 +77,7 @@ function Tooltip({
       </Tippy>
     );
   } else {
-    return children;
+    return children == null ? null : children;
   }
 }
 
