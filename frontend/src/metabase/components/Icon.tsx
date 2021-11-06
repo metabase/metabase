@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import React, { Component } from "react";
+import React, { Component, forwardRef } from "react";
 import styled from "styled-components";
 import { color, space, hover } from "styled-system";
 import cx from "classnames";
@@ -139,14 +139,17 @@ const StyledIcon = forwardRefToInnerRef<IconProps>(styled(BaseIconWithRef)`
   flex-shrink: 0
 `);
 
-function Icon({ tooltip, ...props }: IconProps) {
+const Icon = forwardRef(function Icon(
+  { tooltip, ...props }: IconProps,
+  ref?: React.Ref<any>,
+) {
   return tooltip ? (
     <Tooltip tooltip={tooltip}>
       <StyledIcon {...props} />
     </Tooltip>
   ) : (
-    <StyledIcon {...props} />
+    <StyledIcon ref={ref} {...props} />
   );
-}
+});
 
 export default Icon;
