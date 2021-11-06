@@ -56,7 +56,7 @@ export default class ChartTooltip extends Component {
     if (hasTargetElement) {
       target = hovered.element;
     } else if (hasTargetEvent) {
-      target = getEventTarget();
+      target = getEventTarget(hovered.event);
     }
 
     return target ? (
@@ -106,15 +106,15 @@ export function formatValueForTooltip({ value, column, settings }) {
   });
 }
 
-function getEventTarget() {
+function getEventTarget(event) {
   let target = document.getElementById("popover-event-target");
   if (!target) {
     target = document.createElement("div");
     target.id = "popover-event-target";
     document.body.appendChild(target);
   }
-  target.style.left = this.props.targetEvent.clientX - 3 + "px";
-  target.style.top = this.props.targetEvent.clientY - 3 + "px";
+  target.style.left = event.clientX - 3 + "px";
+  target.style.top = event.clientY - 3 + "px";
 
   return target;
 }
