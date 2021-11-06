@@ -1,10 +1,7 @@
-import Base from "./Base";
-
+import _ from "underscore";
 import moment from "moment";
 
 import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
-
-import Dimension from "../Dimension";
 
 import { formatField, stripId } from "metabase/lib/formatting";
 import { getFieldValues } from "metabase/lib/query/field";
@@ -33,6 +30,9 @@ import {
   getIconForField,
   getFilterOperators,
 } from "metabase/lib/schema_metadata";
+
+import Base from "./Base";
+import Dimension from "../Dimension";
 
 /**
  * @typedef { import("./metadata").FieldValues } FieldValues
@@ -167,6 +167,10 @@ export default class Field extends Base {
    */
   fieldValues() {
     return getFieldValues(this._plainObject);
+  }
+
+  hasFieldValues() {
+    return !_.isEmpty(this.fieldValues());
   }
 
   icon() {
