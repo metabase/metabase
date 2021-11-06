@@ -12,8 +12,28 @@ Tooltip.propTypes = {
   maxWidth: PropTypes.number,
 };
 
-function isReactDOMTypeElement(element) {
+type TooltipProps = {
+  tooltip?: React.ReactNode;
+  children?: JSX.Element;
+  reference?: Element;
+  isEnabled?: boolean;
+  isOpen?: boolean;
+  maxWidth?: string | number | undefined;
+};
+
+// specifically, checking for React elements like <div> that support refs
+function isReactDOMTypeElement(element: any): element is JSX.Element {
   return ReactIs.isElement(element) && typeof element.type === "string";
+}
+
+// Tippy relies on child nodes forwarding refs, so when `children` is neither
+// a DOM element or a forwardRef, we need to wrap it in a span.
+function getSafeChildren(children: React.ReactNode) {
+  if (isReactDOMTypeElement(children) || ReactIs.isForwardRef(children)) {
+    return children;
+  } else {
+    return <span>{children}</span>;
+  }
 }
 
 function Tooltip({
@@ -21,10 +41,9 @@ function Tooltip({
   children,
   reference,
   isEnabled,
-
   isOpen,
   maxWidth = 200,
-}) {
+}: TooltipProps) {
   let visible;
   if (isEnabled === false) {
     visible = false;
@@ -32,14 +51,7 @@ function Tooltip({
     visible = isOpen;
   }
 
-  // Tippy relies on child nodes forwarding refs, so when `children` is neither
-  // a DOM element or a forwardRef, we need to wrap it in a span.
-  let safeChildren;
-  if (isReactDOMTypeElement(children) || ReactIs.isForwardRef(children)) {
-    safeChildren = children;
-  } else {
-    safeChildren = <span>{children}</span>;
-  }
+  const safeChildren = getSafeChildren(children);
 
   if (tooltip && reference) {
     return (
@@ -65,7 +77,7 @@ function Tooltip({
       </Tippy>
     );
   } else {
-    return children ?? null;
+    return children;
   }
 }
 
