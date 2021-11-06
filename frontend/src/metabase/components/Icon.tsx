@@ -1,14 +1,14 @@
-import React, { Component } from "react";
 import PropTypes from "prop-types";
+import React, { Component } from "react";
 import styled from "styled-components";
 import { color, space, hover } from "styled-system";
 import cx from "classnames";
-import { color as c } from "metabase/lib/colors";
 
+import { color as c } from "metabase/lib/colors";
 import { loadIcon } from "metabase/icon_paths";
 import { stripLayoutProps } from "metabase/lib/utils";
-
-import Tooltipify from "metabase/hoc/Tooltipify";
+import Tooltip from "metabase/components/Tooltip";
+import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 
 const MISSING_ICON_NAME = "unknown";
 
@@ -122,11 +122,21 @@ class BaseIcon extends Component<IconProps> {
   }
 }
 
-const Icon = styled(BaseIcon)`
+const StyledIcon = forwardRefToInnerRef<IconProps>(styled(BaseIcon)`
   ${space}
   ${color}
   ${hover}
   flex-shrink: 0
-`;
+`);
 
-export default Tooltipify(Icon);
+function Icon({ tooltip, ...props }: IconProps) {
+  return tooltip ? (
+    <Tooltip tooltip={tooltip}>
+      <StyledIcon {...props} />
+    </Tooltip>
+  ) : (
+    <StyledIcon {...props} />
+  );
+}
+
+export default Icon;
