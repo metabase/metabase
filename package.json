@@ -226,7 +226,6 @@
     "webpack-cli": "^4.7.0",
     "webpack-dev-server": "^3.11.2",
     "webpack-notifier": "^1.8.0",
-    "webpack-postcss-tools": "^1.1.3",
     "xhr-mock": "^2.4.1",
     "xlsx": "^0.17.0",
     "yaml-lint": "^1.2.4"
