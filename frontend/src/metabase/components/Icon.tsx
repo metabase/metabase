@@ -57,6 +57,7 @@ export const iconPropTypes = {
   scale: stringOrNumberPropType,
   tooltip: PropTypes.string,
   className: PropTypes.string,
+  innerRef: PropTypes.func.isRequired,
 };
 
 type IconProps = PropTypes.InferProps<typeof iconPropTypes>;
@@ -65,12 +66,12 @@ class BaseIcon extends Component<IconProps> {
   static propTypes = iconPropTypes;
 
   render() {
-    const { name, className, ...rest } = this.props;
+    const { name, className, innerRef, ...rest } = this.props;
 
     const icon = loadIcon(name) || loadIcon(MISSING_ICON_NAME);
     if (!icon) {
       console.warn(`Icon "${name}" does not exist.`);
-      return <span />;
+      return <span ref={innerRef} />;
     }
 
     const props = {
@@ -99,6 +100,7 @@ class BaseIcon extends Component<IconProps> {
       const { _role, ...rest } = props;
       return (
         <img
+          ref={innerRef}
           src={icon.img}
           srcSet={`
           ${icon.img}    1x,
@@ -108,21 +110,29 @@ class BaseIcon extends Component<IconProps> {
         />
       );
     } else if (icon.svg) {
-      return <svg {...props} dangerouslySetInnerHTML={{ __html: icon.svg }} />;
+      return (
+        <svg
+          {...props}
+          dangerouslySetInnerHTML={{ __html: icon.svg }}
+          ref={innerRef}
+        />
+      );
     } else if (icon.path) {
       return (
-        <svg {...props}>
+        <svg {...props} ref={innerRef}>
           <path d={icon.path} />
         </svg>
       );
     } else {
       console.warn(`Icon "${name}" must have an img, svg, or path`);
-      return <span />;
+      return <span ref={innerRef} />;
     }
   }
 }
 
-const StyledIcon = forwardRefToInnerRef<IconProps>(styled(BaseIcon)`
+const BaseIconWithRef = forwardRefToInnerRef<IconProps>(BaseIcon);
+
+const StyledIcon = forwardRefToInnerRef<IconProps>(styled(BaseIconWithRef)`
   ${space}
   ${color}
   ${hover}
