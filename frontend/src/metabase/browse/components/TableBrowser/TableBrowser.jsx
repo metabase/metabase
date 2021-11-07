@@ -5,14 +5,12 @@ import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
 import Database from "metabase/entities/databases";
-import Card from "metabase/components/Card";
 import EntityItem from "metabase/components/EntityItem";
 import Icon from "metabase/components/Icon";
-import Link from "metabase/components/Link";
 import { Grid, GridItem } from "metabase/components/Grid";
 import { ANALYTICS_CONTEXT, ITEM_WIDTHS } from "../../constants";
 import BrowseHeader from "../BrowseHeader";
-import { LinkIcon } from "./TableBrowser.styled";
+import { TableCard, TableItemLink, TableLink } from "./TableBrowser.styled";
 
 const propTypes = {
   tables: PropTypes.array.isRequired,
@@ -43,8 +41,8 @@ const TableBrowser = ({
       <Grid>
         {tables.map(table => (
           <GridItem key={table.id} width={ITEM_WIDTHS}>
-            <Card hoverable={table.initial_sync}>
-              <Link
+            <TableCard hoverable={table.initial_sync}>
+              <TableLink
                 to={getTableUrl && table.initial_sync ? getTableUrl(table) : ""}
                 data-metabase-event={`${ANALYTICS_CONTEXT};Table Click`}
               >
@@ -53,8 +51,8 @@ const TableBrowser = ({
                   databaseId={databaseId}
                   xraysEnabled={xraysEnabled}
                 />
-              </Link>
-            </Card>
+              </TableLink>
+            </TableCard>
           </GridItem>
         ))}
       </Grid>
@@ -104,7 +102,7 @@ const TableBrowserItemButtons = ({ tableId, databaseId, xraysEnabled }) => {
   return (
     <Fragment>
       {xraysEnabled && (
-        <LinkIcon
+        <TableItemLink
           to={`/auto/dashboard/table/${tableId}`}
           data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;X-ray Click`}
         >
@@ -114,9 +112,9 @@ const TableBrowserItemButtons = ({ tableId, databaseId, xraysEnabled }) => {
             tooltip={t`X-ray this table`}
             color={color("warning")}
           />
-        </LinkIcon>
+        </TableItemLink>
       )}
-      <LinkIcon
+      <TableItemLink
         to={`/reference/databases/${databaseId}/tables/${tableId}`}
         data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;Reference Click`}
       >
@@ -125,7 +123,7 @@ const TableBrowserItemButtons = ({ tableId, databaseId, xraysEnabled }) => {
           tooltip={t`Learn about this table`}
           color={color("text-medium")}
         />
-      </LinkIcon>
+      </TableItemLink>
     </Fragment>
   );
 };
