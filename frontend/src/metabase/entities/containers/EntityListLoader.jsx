@@ -93,9 +93,7 @@ const getMemoizedEntityQuery = createMemoizedSelector(
   if (typeof pageSize === "number" && typeof page === "number") {
     entityQuery = { limit: pageSize, offset: pageSize * page, ...entityQuery };
   }
-  if (entityQuery != null) {
-    entityQuery = getMemoizedEntityQuery(state, { entityQuery });
-  }
+  entityQuery = getMemoizedEntityQuery(state, { entityQuery });
 
   const list = entityDef.selectors[selectorName](state, { entityQuery });
   if (typeof reloadInterval === "function") {
