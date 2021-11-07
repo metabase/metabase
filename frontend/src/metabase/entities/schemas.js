@@ -6,14 +6,16 @@ import {
   getCollectionVirtualSchemaId,
   getQuestionVirtualTableId,
 } from "metabase/lib/saved-questions";
+import { generateSchemaId, parseSchemaId } from "metabase/lib/schema";
 
-import { SchemaSchema, generateSchemaId, parseSchemaId } from "metabase/schema";
+import { SchemaSchema } from "metabase/schema";
 import Questions from "metabase/entities/questions";
 
 // This is a weird entity because we don't have actual schema objects
 
 const listDatabaseSchemas = GET("/api/database/:dbId/schemas");
 const getSchemaTables = GET("/api/database/:dbId/schema/:schemaName");
+const getVirtualDatasetTables = GET("/api/database/:dbId/datasets/:schemaName");
 
 export default createEntity({
   name: "schemas",
@@ -32,11 +34,13 @@ export default createEntity({
       }));
     },
     get: async ({ id }) => {
-      const [dbId, schemaName] = parseSchemaId(id);
+      const [dbId, schemaName, opts] = parseSchemaId(id);
       if (!dbId || schemaName === undefined) {
         throw new Error("Schemas ID is of the form dbId:schemaName");
       }
-      const tables = await getSchemaTables({ dbId, schemaName });
+      const tables = opts?.isDatasets
+        ? await getVirtualDatasetTables({ dbId, schemaName })
+        : await getSchemaTables({ dbId, schemaName });
       return {
         id,
         name: schemaName,

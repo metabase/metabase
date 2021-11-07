@@ -73,13 +73,21 @@
      {:name \"H\"}]"
   [namespace]
   {namespace (s/maybe su/NonBlankString)}
-  (collection/collections->tree
-   (db/select Collection
-     {:where [:and
-              [:= :namespace namespace]
-              (collection/visible-collection-ids->honeysql-filter-clause
-               :id
-               (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})))
+  (let [coll-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as x}]
+                                (update acc (if dataset :dataset :card) conj collection_id))
+                              {:dataset #{}
+                               :card #{}}
+                              (db/reducible-query {:select [:collection_id :dataset]
+                                                   :modifiers [:distinct]
+                                                   :from [:report_card]}))]
+    (collection/collections->tree
+     coll-type-ids
+     (db/select Collection
+                {:where [:and
+                         [:= :namespace namespace]
+                         (collection/visible-collection-ids->honeysql-filter-clause
+                          :id
+                          (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]}))))
 
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------

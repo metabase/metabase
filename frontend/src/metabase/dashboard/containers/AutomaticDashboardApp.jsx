@@ -19,7 +19,7 @@ import Link from "metabase/components/Link";
 import Tooltip from "metabase/components/Tooltip";
 
 import { Dashboard } from "metabase/dashboard/containers/Dashboard";
-import Parameters from "metabase/parameters/components/Parameters/Parameters";
+import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 
 import { getMetadata } from "metabase/selectors/metadata";
 
@@ -96,7 +96,6 @@ class AutomaticDashboardApp extends React.Component {
       parameters,
       parameterValues,
       setParameterValue,
-      location,
     } = this.props;
     const { savedDashboardId } = this.state;
     // pull out "more" related items for displaying as a button at the bottom of the dashboard
@@ -144,15 +143,13 @@ class AutomaticDashboardApp extends React.Component {
           <div className="wrapper pb4">
             {parameters && parameters.length > 0 && (
               <div className="px1 pt1">
-                <Parameters
+                <SyncedParametersList
+                  className="mt1"
                   parameters={getValuePopulatedParameters(
                     parameters,
                     parameterValues,
                   )}
-                  query={location.query}
                   setParameterValue={setParameterValue}
-                  syncQueryString
-                  isQB
                 />
               </div>
             )}

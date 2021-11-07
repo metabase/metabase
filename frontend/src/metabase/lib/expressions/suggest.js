@@ -36,7 +36,7 @@ export function suggest({
     if (functionDisplayName) {
       const helpText = getHelpText(getMBQLName(functionDisplayName));
       if (helpText) {
-        return { helpText };
+        return { suggestions, helpText };
       }
     }
     return { suggestions };

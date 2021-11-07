@@ -7,6 +7,7 @@
             [metabase.models.pulse-card :refer [PulseCard]]
             [metabase.models.pulse-channel :refer [PulseChannel]]
             [metabase.models.query-execution :refer [QueryExecution]]
+            [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
             [metabase.util.stats :as stats-util :refer :all]
@@ -68,18 +69,19 @@
 (deftest anonymous-usage-stats-test
   (with-redefs [email/email-configured? (constantly false)
                 slack/slack-configured? (constantly false)]
-    (let [stats (anonymous-usage-stats)]
-      (doseq [[k expected] {:running_on        :unknown
-                            :check_for_updates true
-                            :site_name         true
-                            :friendly_names    false
-                            :email_configured  false
-                            :slack_configured  false
-                            :sso_configured    false
-                            :has_sample_data   false}]
-        (testing k
-          (is (= expected
-                 (get stats k))))))))
+    (mt/with-temporary-setting-values [site-name "Test"]
+      (let [stats (anonymous-usage-stats)]
+        (doseq [[k expected] {:running_on        :unknown
+                              :check_for_updates true
+                              :site_name         true
+                              :friendly_names    false
+                              :email_configured  false
+                              :slack_configured  false
+                              :sso_configured    false
+                              :has_sample_data   false}]
+          (testing k
+            (is (= expected
+                   (get stats k)))))))))
 
 (deftest conversion-test
   (is (= #{true}
@@ -139,7 +141,7 @@
                   PulseCard    [_ {:pulse_id (u/the-id p3), :card_id (u/the-id c), :include_csv true, :include_xls true}]
                   ;; ---------- Alerts ----------
                   Pulse        [a1 {:alert_condition "rows", :alert_first_only false}]
-                  Pulse        [a2 {:alert_condition "rows", :alert_first_only true }]
+                  Pulse        [a2 {:alert_condition "rows", :alert_first_only true}]
                   Pulse        [a3 {:alert_condition "goal", :alert_first_only false}]
                   Pulse        [a4 {:alert_condition "goal", :alert_first_only false, :alert_above_goal true}]
                   ;; Alert 1 is Email, Alert 2 is Email & Slack, Alert 3 is Slack-only

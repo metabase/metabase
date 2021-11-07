@@ -18,7 +18,7 @@
               :region_name              (s/maybe s/Str)
               (s/optional-key :builtin) s/Bool}})
 
-(def ^:private ^:const builtin-geojson
+(def ^:private builtin-geojson
   {:us_states       {:name        "United States"
                      :url         "app/assets/geojson/us-states.json"
                      :region_key  "STATE"
@@ -83,9 +83,11 @@
   :default {}
   :getter  (fn [] (merge (setting/get-json :custom-geojson) builtin-geojson))
   :setter  (fn [new-value]
-             (when new-value
-               (validate-geojson new-value))
-             (setting/set-json! :custom-geojson new-value))
+             ;; remove the built-in keys you can't override them and we don't want those to be subject to validation.
+             (let [new-value (not-empty (reduce dissoc new-value (keys builtin-geojson)))]
+               (when new-value
+                 (validate-geojson new-value))
+               (setting/set-json! :custom-geojson new-value)))
   :visibility :public)
 
 (api/defendpoint-async GET "/:key"
