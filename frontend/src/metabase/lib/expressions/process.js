@@ -4,15 +4,10 @@ export function processSource(options) {
   // https://github.com/metabase/metabase/issues/13472
   const parse = require("./parser").parse;
   const compile = require("./compile").compile;
-  const suggest = require("./suggest").suggest;
-  const syntax = require("./syntax").syntax;
 
-  const { source, targetOffset } = options;
+  const { source } = options;
 
   let expression;
-  let suggestions = [];
-  let helpText;
-  let syntaxTree;
   let compileError;
 
   // PARSE
@@ -33,32 +28,9 @@ export function processSource(options) {
     }
   }
 
-  // SUGGEST
-  if (targetOffset != null) {
-    try {
-      ({ suggestions = [], helpText } = suggest({
-        cst,
-        tokenVector,
-        ...options,
-      }));
-    } catch (e) {
-      console.warn("suggest error", e);
-    }
-  }
-
-  // SYNTAX
-  try {
-    syntaxTree = syntax({ cst, tokenVector, ...options });
-  } catch (e) {
-    console.warn("syntax error", e);
-  }
-
   return {
     source,
     expression,
-    helpText,
-    suggestions,
-    syntaxTree,
     compileError,
   };
 }

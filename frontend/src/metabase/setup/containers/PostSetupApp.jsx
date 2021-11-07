@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import { Link } from "react-router";
 import cx from "classnames";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
 import fitViewport from "metabase/hoc/FitViewPort";
 
@@ -74,12 +74,14 @@ export default class PostSetupApp extends Component {
                 );
               }
               return (
-                <Card px={3} py={1}>
+                <Card p={3}>
                   <ExplorePane
                     candidates={candidates}
                     description={
                       isSample
-                        ? t`Once you connect your own data, I can show you some automatic explorations called x-rays. Here are some examples with sample data.`
+                        ? jt`While we’re syncing your data, you can check out these explorations of our ${(
+                            <strong>{t`Sample Dataset`}</strong>
+                          )}. Hope you like them!`
                         : t`I took a look at the data you just connected, and I have some explorations of interesting things I found. Hope you like them!`
                     }
                   />

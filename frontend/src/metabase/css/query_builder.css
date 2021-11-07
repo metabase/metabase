@@ -542,6 +542,14 @@
   opacity: 0;
 }
 
+@media (prefers-reduced-motion) {
+  .RunButton,
+  .RunButton.RunButton--compact,
+  .RunButton.RunButton--hidden {
+    transition-duration: 10ms;
+  }
+}
+
 /* DATA REFERENCE */
 
 .SideDrawer {

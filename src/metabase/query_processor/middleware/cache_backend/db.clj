@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.cache-backend.db
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [java-time :as t]
             [metabase.models.query-cache :refer [QueryCache]]
@@ -7,11 +8,7 @@
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db])
-  (:import [java.sql Connection PreparedStatement ResultSet Types]
-           javax.sql.DataSource))
-
-(defn- ^DataSource datasource []
-  (:datasource (toucan.db/connection)))
+  (:import [java.sql Connection PreparedStatement ResultSet Types]))
 
 (defn- seconds-ago [n]
   (let [[unit n] (if-not (integer? n)
@@ -47,7 +44,7 @@
         (throw e)))))
 
 (defn- cached-results [query-hash max-age-seconds respond]
-  (with-open [conn (.getConnection (datasource))
+  (with-open [conn (jdbc/get-connection (db/connection))
               stmt (prepare-statement conn query-hash max-age-seconds)
               rs   (.executeQuery stmt)]
     ;; VERY IMPORTANT! Bind `*db-connection*` so it will get reused elsewhere for the duration of results reduction,

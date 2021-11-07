@@ -96,11 +96,10 @@
     (compare (:row dashcard-1) (:row dashcard-2))
     (compare (:col dashcard-1) (:col dashcard-2))))
 
-(defn execute-dashboard
+(defn- execute-dashboard
   "Fetch all the dashcards in a dashboard for a Pulse, and execute non-text cards"
-  [{pulse-creator-id :creator_id, :as pulse} dashboard-or-id & {:as options}]
-  (let [dashboard-id      (u/the-id dashboard-or-id)
-        dashboard         (Dashboard :id dashboard-id)
+  [{pulse-creator-id :creator_id, :as pulse} dashboard & {:as options}]
+  (let [dashboard-id      (u/the-id dashboard)
         dashcards         (db/select DashboardCard :dashboard_id dashboard-id)
         ordered-dashcards (sort dashcard-comparator dashcards)]
     (for [dashcard ordered-dashcards]
@@ -367,11 +366,11 @@
 
 (defn- pulse->notifications
   "Execute the underlying queries for a sequence of Pulses and return the results as 'notification' maps."
-  [{:keys [cards dashboard_id], pulse-id :id, :as pulse}]
+  [{:keys [cards], pulse-id :id, :as pulse} dashboard]
   (results->notifications pulse
-                          (if dashboard_id
+                          (if dashboard
                             ;; send the dashboard
-                            (execute-dashboard pulse dashboard_id)
+                            (execute-dashboard pulse dashboard)
                             ;; send the cards instead
                             (for [card  cards
                                   ;; Pulse ID may be `nil` if the Pulse isn't saved yet
@@ -423,12 +422,14 @@
    Example:
        (send-pulse! pulse)                       Send to all Channels
        (send-pulse! pulse :channel-ids [312])    Send only to Channel with :id = 312"
-  [{:keys [cards], :as pulse} & {:keys [channel-ids]}]
+  [{:keys [cards dashboard_id], :as pulse} & {:keys [channel-ids]}]
   {:pre [(map? pulse) (integer? (:creator_id pulse))]}
-  (let [pulse (-> pulse
-                  pulse/map->PulseInstance
-                  ;; This is usually already done by this step, in the `send-pulses` task which uses `retrieve-pulse`
-                  ;; to fetch the Pulse.
-                  pulse/hydrate-notification
-                  (merge (when channel-ids {:channel-ids channel-ids})))]
-    (send-notifications! (pulse->notifications pulse))))
+  (let [dashboard (Dashboard :id dashboard_id)
+        pulse     (-> pulse
+                      pulse/map->PulseInstance
+                      ;; This is usually already done by this step, in the `send-pulses` task which uses `retrieve-pulse`
+                      ;; to fetch the Pulse.
+                      pulse/hydrate-notification
+                      (merge (when channel-ids {:channel-ids channel-ids})))]
+    (when (not (:archived dashboard))
+      (send-notifications! (pulse->notifications pulse dashboard)))))

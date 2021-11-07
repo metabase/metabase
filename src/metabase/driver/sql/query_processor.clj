@@ -287,6 +287,11 @@
   schema + Table name. Used to implement things like joined `:field`s."
   nil)
 
+(def ^:dynamic *source-query*
+  "The source-query in effect.  Used when the query processor might need to distinguish between the type of the source
+  query (ex: to provide different behavior depending on whether the source query is from a table versus a subquery)."
+  nil)
+
 (defmethod ->honeysql [:sql nil]    [_ _]    nil)
 (defmethod ->honeysql [:sql Object] [_ this] this)
 
@@ -1003,7 +1008,8 @@
   "Bind `*table-alias*` which will cause `field` and the like to be compiled to SQL that is qualified by that alias
   rather than their normal table."
   [driver honeysql-form {:keys [source-query], :as inner-query}]
-  (binding [*table-alias* source-query-alias]
+  (binding [*table-alias*  source-query-alias
+            *source-query* source-query]
     (apply-top-level-clauses driver honeysql-form (dissoc inner-query :source-query))))
 
 

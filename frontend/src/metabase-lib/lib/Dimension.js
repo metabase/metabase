@@ -4,6 +4,7 @@ import _ from "underscore";
 import { stripId, FK_SYMBOL } from "metabase/lib/formatting";
 import { TYPE } from "metabase/lib/types";
 
+import { TemplateTagVariable } from "./Variable";
 import Field from "./metadata/Field";
 import type {
   AggregationOperator,
@@ -545,14 +546,33 @@ export class FieldDimension extends Dimension {
 
   field(): {} {
     if (this.isIntegerFieldId()) {
-      return (
-        (this._metadata && this._metadata.field(this.fieldIdOrName())) ||
-        new Field({
-          id: this._fieldIdOrName,
-          metadata: this._metadata,
-          query: this._query,
-        })
-      );
+      const field = this._metadata?.field(this.fieldIdOrName());
+      if (field) {
+        return field;
+      }
+
+      // if the field isn't in metadata, there _might_ be a card tied to this Dimension
+      // if so, check the card's result_metadata
+      const question = this.query()?.question();
+      if (question != null) {
+        const field = _.findWhere(question.getResultMetadata(), {
+          id: this.fieldIdOrName(),
+        });
+
+        if (field) {
+          return new Field({
+            ...field,
+            metadata: this._metadata,
+            query: this._query,
+          });
+        }
+      }
+
+      return new Field({
+        id: this._fieldIdOrName,
+        metadata: this._metadata,
+        query: this._query,
+      });
     }
 
     // look for a "virtual" field on the query's table or question
@@ -596,6 +616,10 @@ export class FieldDimension extends Dimension {
       query: this._query,
       metadata: this._metadata,
     });
+  }
+
+  tableId() {
+    return this.field()?.table?.id;
   }
 
   /**
@@ -1206,31 +1230,49 @@ export class TemplateTagDimension extends FieldDimension {
     return Array.isArray(clause) && clause[0] === "template-tag";
   }
 
+  isDimensionType() {
+    const maybeTag = this.tag();
+    return maybeTag?.type === "dimension";
+  }
+
+  isVariableType() {
+    const maybeTag = this.tag();
+    return ["text", "number", "date"].includes(maybeTag?.type);
+  }
+
   dimension() {
-    if (this._query) {
+    if (this.isDimensionType()) {
       const tag = this.tag();
-      if (tag && tag.type === "dimension") {
-        return Dimension.parseMBQL(tag.dimension, this._metadata, this._query);
-      }
+      return Dimension.parseMBQL(tag.dimension, this._metadata, this._query);
     }
+
+    return null;
+  }
+
+  variable() {
+    if (this.isVariableType()) {
+      const tag = this.tag();
+      return new TemplateTagVariable([tag.name], this._metadata, this._query);
+    }
+
     return null;
   }
 
   tag() {
-    return this._query.templateTagsMap()[this.tagName()];
+    const templateTagMap = this._query?.templateTagsMap() ?? {};
+    return templateTagMap[this.tagName()];
   }
 
   field() {
-    const dimension = this.dimension();
-    return dimension ? dimension.field() : super.field();
-  }
+    if (this.isDimensionType()) {
+      return this.dimension().field();
+    }
 
-  tableId() {
-    return this.field()?.table?.id;
+    return null;
   }
 
   name() {
-    return this.field().name;
+    return this.isDimensionType() ? this.field().name : this.tagName();
   }
 
   tagName() {
@@ -1244,6 +1286,16 @@ export class TemplateTagDimension extends FieldDimension {
 
   mbql() {
     return ["template-tag", this.tagName()];
+  }
+
+  icon() {
+    if (this.isDimensionType()) {
+      return this.dimension().icon();
+    } else if (this.isVariableType()) {
+      return this.variable().icon();
+    }
+
+    return "label";
   }
 }
 

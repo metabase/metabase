@@ -597,13 +597,18 @@
     (with-temporal-type (hx/identifier :field table-name field-name) (temporal-type field))))
 
 (defn- maybe-source-query-alias
-  "Returns an Identifer instance if the QP table alias is in effect, and the breakout is for a field alias. This is
-  neccessary in order to properly qualify the GROUP BY or ORDER BY field (a regular :field-alias identifier will only
-  use the final alias portion, not including the table alias in effect."
+  "Returns an Identifer instance if the QP table alias is in effect, and the breakout is for a field alias, and the
+  source query is on a table (as opposed to being another query). This is neccessary in order to properly qualify the
+  GROUP BY or ORDER BY field (a regular :field-alias identifier will only use the final alias portion, not including
+  the table alias in effect.
+
+  If the source query is NOT a table (and is, in fact, another query), then this shouldn't be returned.  In that case,
+  BQ will fail if the name is qualified by \"table\" here (see #18742)."
   [breakout]
   (when (and (vector? breakout) (some? sql.qp/*table-alias*))
-    (let [[_ f & _] breakout]
-      (when (string? f)
+    (let [source-query sql.qp/*source-query*
+          [_ f & _]    breakout]
+      (when (and (string? f) (:source-table source-query))
         (hx/identifier :field sql.qp/*table-alias* f)))))
 
 (defmethod sql.qp/apply-top-level-clause [:bigquery-cloud-sdk :breakout]

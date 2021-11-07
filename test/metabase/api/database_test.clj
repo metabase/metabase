@@ -828,7 +828,6 @@
         (let [schemas (set (mt/user-http-request :lucky :get 200 (format "database/%d/schemas" mbql.s/saved-questions-virtual-database-id)))]
           (is (contains? schemas "Everything else"))
           (is (contains? schemas "My Collection")))))
-
     (testing "null and empty schemas should both come back as blank strings"
       (mt/with-temp* [Database [{db-id :id}]
                       Table    [_ {:db_id db-id, :schema ""}]
@@ -956,6 +955,51 @@
         (testing "Should be able to get saved questions in the root collection"
           (let [response (mt/user-http-request :lucky :get 200
                                                (format "database/%d/schema/%s" mbql.s/saved-questions-virtual-database-id (table-api/root-collection-schema-name)))]
+            (is (schema= [{:id               #"^card__\d+$"
+                           :db_id            s/Int
+                           :display_name     s/Str
+                           :moderated_status (s/enum nil "verified")
+                           :schema           (s/eq (table-api/root-collection-schema-name))
+                           :description      (s/maybe s/Str)}]
+                         response))
+            (is (contains? (set response)
+                           {:id               (format "card__%d" (:id card-2))
+                            :db_id            (mt/id)
+                            :display_name     "Card 2"
+                            :moderated_status nil
+                            :schema           (table-api/root-collection-schema-name)
+                            :description      nil}))))
+
+        (testing "Should throw 404 if the schema/Collection doesn't exist"
+          (is (= "Not found."
+                 (mt/user-http-request :lucky :get 404
+                                       (format "database/%d/schema/Coin Collection" mbql.s/saved-questions-virtual-database-id)))))))
+    (testing "should work for the datasets in the 'virtual' database"
+      (mt/with-temp* [Collection [coll   {:name "My Collection"}]
+                      Card       [card-1 (assoc (card-with-native-query "Card 1")
+                                                :collection_id (:id coll)
+                                                :dataset true)]
+                      Card       [card-2 (assoc (card-with-native-query "Card 2")
+                                                :dataset true)]
+                      Card       [card-3 (assoc (card-with-native-query "error")
+                                                ;; regular saved question should not be in the results
+                                                :dataset false)]]
+        ;; run the cards to populate their result_metadata columns
+        (doseq [card [card-1 card-2]]
+          (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card))))
+        (testing "Should be able to get datasets in a specific collection"
+          (is (= [{:id               (format "card__%d" (:id card-1))
+                   :db_id            (mt/id)
+                   :moderated_status nil
+                   :display_name     "Card 1"
+                   :schema           "My Collection"
+                   :description      nil}]
+                 (mt/user-http-request :lucky :get 200
+                                       (format "database/%d/datasets/My Collection" mbql.s/saved-questions-virtual-database-id)))))
+
+        (testing "Should be able to get datasets in the root collection"
+          (let [response (mt/user-http-request :lucky :get 200
+                                               (format "database/%d/datasets/%s" mbql.s/saved-questions-virtual-database-id (table-api/root-collection-schema-name)))]
             (is (schema= [{:id               #"^card__\d+$"
                            :db_id            s/Int
                            :display_name     s/Str
