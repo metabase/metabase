@@ -6,7 +6,7 @@ const SyncModalSwitch = () => <div>SyncModalSwitch</div>;
 const SyncSnackbarSwitch = () => <div>SyncSnackbarSwitch</div>;
 
 jest.mock("../../components/SyncModal", () => SyncModalSwitch);
-jest.mock("../../components/SyncSnackbarSwitch", () => SyncSnackbarSwitch);
+jest.mock("../../components/SyncSnackbar", () => SyncSnackbarSwitch);
 
 describe("SyncDatabaseApp", () => {
   it("should display syncing indicators for an dmin user", () => {

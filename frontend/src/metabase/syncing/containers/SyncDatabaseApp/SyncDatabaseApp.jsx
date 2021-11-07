@@ -3,8 +3,8 @@ import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import _ from "underscore";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import SyncModalSwitch from "../../components/SyncModal";
-import SyncSnackbarSwitch from "../../components/SyncSnackbarSwitch";
+import SyncModal from "../../components/SyncModal";
+import SyncSnackbar from "../../components/SyncSnackbar";
 
 const propTypes = {
   isAdmin: PropTypes.bool,
@@ -14,8 +14,8 @@ export const SyncDatabaseApp = ({ isAdmin }) => {
   return (
     isAdmin && (
       <Fragment>
-        <SyncModalSwitch />
-        <SyncSnackbarSwitch />
+        <SyncModal />
+        <SyncSnackbar />
       </Fragment>
     )
   );
