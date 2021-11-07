@@ -35,7 +35,7 @@ const DatabaseEditAppSidebar = ({
           <ol>
             {!database.initial_sync && (
               <li>
-                <Button disabled>{t`Syncing database...`}</Button>
+                <Button disabled>{t`Syncing database…`}</Button>
               </li>
             )}
             {database.initial_sync && (
