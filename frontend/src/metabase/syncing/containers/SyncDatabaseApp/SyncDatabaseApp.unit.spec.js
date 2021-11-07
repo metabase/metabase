@@ -5,7 +5,7 @@ import { SyncDatabaseApp } from "./SyncDatabaseApp";
 const SyncModalSwitch = () => <div>SyncModalSwitch</div>;
 const SyncSnackbarSwitch = () => <div>SyncSnackbarSwitch</div>;
 
-jest.mock("../../components/SyncModalSwitch", () => SyncModalSwitch);
+jest.mock("../../components/SyncModal", () => SyncModalSwitch);
 jest.mock("../../components/SyncSnackbarSwitch", () => SyncSnackbarSwitch);
 
 describe("SyncDatabaseApp", () => {

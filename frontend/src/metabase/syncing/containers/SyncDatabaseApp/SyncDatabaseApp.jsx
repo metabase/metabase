@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import _ from "underscore";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import SyncModalSwitch from "../../components/SyncModalSwitch";
+import SyncModalSwitch from "../../components/SyncModal";
 import SyncSnackbarSwitch from "../../components/SyncSnackbarSwitch";
 
 const propTypes = {
