@@ -9,12 +9,12 @@ Tooltip.propTypes = {
   reference: PropTypes.element,
   isEnabled: PropTypes.bool,
   isOpen: PropTypes.bool,
-  maxWidth: PropTypes.number,
+  maxWidth: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
 };
 
 type TooltipProps = {
   tooltip?: React.ReactNode;
-  children?: JSX.Element;
+  children?: React.ReactNode;
   reference?: Element;
   isEnabled?: boolean;
   isOpen?: boolean;
@@ -22,7 +22,7 @@ type TooltipProps = {
 };
 
 // specifically, checking for React elements like <div> that support refs
-function isReactDOMTypeElement(element: any): element is JSX.Element {
+function isReactDOMTypeElement(element: any): element is React.ReactElement {
   return ReactIs.isElement(element) && typeof element.type === "string";
 }
 
@@ -77,7 +77,7 @@ function Tooltip({
       </Tippy>
     );
   } else {
-    return children == null ? null : children;
+    return <React.Fragment>{children}</React.Fragment>;
   }
 }
 
