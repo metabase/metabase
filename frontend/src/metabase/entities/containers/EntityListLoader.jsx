@@ -90,13 +90,17 @@ const getMemoizedEntityQuery = createMemoizedSelector(
   if (typeof entityQuery === "function") {
     entityQuery = entityQuery(state, props);
   }
-  if (typeof reloadInterval === "function") {
-    reloadInterval = reloadInterval(state, props);
-  }
   if (typeof pageSize === "number" && typeof page === "number") {
     entityQuery = { limit: pageSize, offset: pageSize * page, ...entityQuery };
   }
-  entityQuery = getMemoizedEntityQuery(state, { entityQuery });
+  if (entityQuery != null) {
+    entityQuery = getMemoizedEntityQuery(state, { entityQuery });
+  }
+
+  const list = entityDef.selectors[selectorName](state, { entityQuery });
+  if (typeof reloadInterval === "function") {
+    reloadInterval = reloadInterval(state, props, list);
+  }
 
   const loading = entityDef.selectors.getLoading(state, { entityQuery });
   const loaded = entityDef.selectors.getLoaded(state, { entityQuery });
@@ -105,9 +109,9 @@ const getMemoizedEntityQuery = createMemoizedSelector(
   const metadata = entityDef.selectors.getListMetadata(state, { entityQuery });
 
   return {
+    list,
     entityQuery,
     reloadInterval,
-    list: entityDef.selectors[selectorName](state, { entityQuery }),
     metadata,
     loading,
     loaded,
