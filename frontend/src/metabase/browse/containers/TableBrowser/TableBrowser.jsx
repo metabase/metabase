@@ -25,6 +25,11 @@ const getReloadInterval = ({ list = [] }) => {
   return list.some(t => !t.initial_sync) ? RELOAD_INTERVAL : 0;
 };
 
+const getTableUrl = (table, metadata) => {
+  const metadataTable = metadata?.table(table.id);
+  return metadataTable?.newQuestion().getUrl({ clean: false });
+};
+
 export default _.compose(
   Table.loadList({
     query: (state, props) => ({
@@ -38,5 +43,6 @@ export default _.compose(
     schemaName: getSchemaName(props),
     metadata: getMetadata(state),
     xraysEnabled: getXraysEnabled(state),
+    getTableUrl,
   })),
 )(TableBrowser);

@@ -14,20 +14,22 @@ import { TableActionLink, TableCard, TableLink } from "./TableBrowser.styled";
 
 const propTypes = {
   tables: PropTypes.array.isRequired,
+  getTableUrl: PropTypes.func.isRequired,
+  metadata: PropTypes.object,
   dbId: PropTypes.number,
   schemaName: PropTypes.string,
   xraysEnabled: PropTypes.bool,
   showSchemaInHeader: PropTypes.bool,
-  getTableUrl: PropTypes.func,
 };
 
 const TableBrowser = ({
   tables,
+  getTableUrl,
+  metadata,
   dbId,
   schemaName,
   xraysEnabled,
   showSchemaInHeader = true,
-  getTableUrl,
 }) => {
   return (
     <div>
@@ -43,7 +45,7 @@ const TableBrowser = ({
           <GridItem key={table.id} width={ITEM_WIDTHS}>
             <TableCard hoverable={table.initial_sync}>
               <TableLink
-                to={getTableUrl && table.initial_sync ? getTableUrl(table) : ""}
+                to={table.initial_sync ? getTableUrl(table, metadata) : ""}
                 data-metabase-event={`${ANALYTICS_CONTEXT};Table Click`}
               >
                 <TableBrowserItem
