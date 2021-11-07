@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 import Databases from "metabase/entities/databases";
 import Modal from "metabase/components/Modal";
-import SyncModal from "../SyncModal";
+import SyncModal from "../SyncModalContent";
 import { disableSyncingModal } from "../../actions";
 import { isSyncingModalRequired } from "../../selectors";
 

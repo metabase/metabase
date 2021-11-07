@@ -1,13 +1,9 @@
 import React from "react";
-import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import { jt, t } from "ttag";
-import _ from "underscore";
-import Databases from "metabase/entities/databases";
 import Button from "metabase/components/Button";
 import Link from "metabase/components/Link";
 import ModalContent from "metabase/components/ModalContent";
-import { getSampleDatabase, xraysEnabled } from "../../selectors";
 
 const propTypes = {
   sampleDatabase: PropTypes.object,
@@ -15,7 +11,7 @@ const propTypes = {
   onClose: PropTypes.func,
 };
 
-export const SyncModal = ({ sampleDatabase, xraysEnabled, onClose }) => {
+export const SyncModalContent = ({ sampleDatabase, xraysEnabled, onClose }) => {
   return (
     <ModalContent
       title={t`Great, we're taking a look at your database!`}
@@ -52,14 +48,6 @@ export const SyncModal = ({ sampleDatabase, xraysEnabled, onClose }) => {
   );
 };
 
-SyncModal.propTypes = propTypes;
+SyncModalContent.propTypes = propTypes;
 
-export default _.compose(
-  Databases.loadList({
-    query: { include: "tables" },
-  }),
-  connect(state => ({
-    sampleDatabase: getSampleDatabase(state),
-    xraysEnabled: xraysEnabled(state),
-  })),
-)(SyncModal);
+export default SyncModalContent;
