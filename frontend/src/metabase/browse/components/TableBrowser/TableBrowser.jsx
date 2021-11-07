@@ -14,7 +14,7 @@ import { TableCard, TableItemLink, TableLink } from "./TableBrowser.styled";
 
 const propTypes = {
   tables: PropTypes.array.isRequired,
-  databaseId: PropTypes.number,
+  dbId: PropTypes.number,
   schemaName: PropTypes.string,
   xraysEnabled: PropTypes.bool,
   showSchemaInHeader: PropTypes.bool,
@@ -23,7 +23,7 @@ const propTypes = {
 
 const TableBrowser = ({
   tables,
-  databaseId,
+  dbId,
   schemaName,
   xraysEnabled,
   showSchemaInHeader = true,
@@ -34,7 +34,7 @@ const TableBrowser = ({
       <BrowseHeader
         crumbs={[
           { title: t`Our data`, to: "/browse" },
-          getDatabaseCrumbs(databaseId),
+          getDatabaseCrumbs(dbId),
           showSchemaInHeader && { title: schemaName },
         ]}
       />
@@ -48,7 +48,7 @@ const TableBrowser = ({
               >
                 <TableBrowserItem
                   table={table}
-                  databaseId={databaseId}
+                  dbId={dbId}
                   xraysEnabled={xraysEnabled}
                 />
               </TableLink>
@@ -64,11 +64,11 @@ TableBrowser.propTypes = propTypes;
 
 const itemPropTypes = {
   table: PropTypes.object.isRequired,
-  databaseId: PropTypes.number,
+  dbId: PropTypes.number,
   xraysEnabled: PropTypes.bool,
 };
 
-const TableBrowserItem = ({ table, databaseId, xraysEnabled }) => {
+const TableBrowserItem = ({ table, dbId, xraysEnabled }) => {
   return (
     <EntityItem
       item={table}
@@ -81,7 +81,7 @@ const TableBrowserItem = ({ table, databaseId, xraysEnabled }) => {
         table.initial_sync && (
           <TableBrowserItemButtons
             tableId={table.id}
-            databaseId={databaseId}
+            dbId={dbId}
             xraysEnabled={xraysEnabled}
           />
         )
@@ -94,11 +94,11 @@ TableBrowserItem.propTypes = itemPropTypes;
 
 const itemButtonsPropTypes = {
   tableId: PropTypes.number,
-  databaseId: PropTypes.number,
+  dbId: PropTypes.number,
   xraysEnabled: PropTypes.bool,
 };
 
-const TableBrowserItemButtons = ({ tableId, databaseId, xraysEnabled }) => {
+const TableBrowserItemButtons = ({ tableId, dbId, xraysEnabled }) => {
   return (
     <Fragment>
       {xraysEnabled && (
@@ -115,7 +115,7 @@ const TableBrowserItemButtons = ({ tableId, databaseId, xraysEnabled }) => {
         </TableItemLink>
       )}
       <TableItemLink
-        to={`/reference/databases/${databaseId}/tables/${tableId}`}
+        to={`/reference/databases/${dbId}/tables/${tableId}`}
         data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;Reference Click`}
       >
         <Icon
