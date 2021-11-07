@@ -10,7 +10,7 @@ import Icon from "metabase/components/Icon";
 import { Grid, GridItem } from "metabase/components/Grid";
 import { ANALYTICS_CONTEXT, ITEM_WIDTHS } from "../../constants";
 import BrowseHeader from "../BrowseHeader";
-import { TableCard, TableItemLink, TableLink } from "./TableBrowser.styled";
+import { TableActionLink, TableCard, TableLink } from "./TableBrowser.styled";
 
 const propTypes = {
   tables: PropTypes.array.isRequired,
@@ -102,7 +102,7 @@ const TableBrowserItemButtons = ({ tableId, dbId, xraysEnabled }) => {
   return (
     <Fragment>
       {xraysEnabled && (
-        <TableItemLink
+        <TableActionLink
           to={`/auto/dashboard/table/${tableId}`}
           data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;X-ray Click`}
         >
@@ -112,9 +112,9 @@ const TableBrowserItemButtons = ({ tableId, dbId, xraysEnabled }) => {
             tooltip={t`X-ray this table`}
             color={color("warning")}
           />
-        </TableItemLink>
+        </TableActionLink>
       )}
-      <TableItemLink
+      <TableActionLink
         to={`/reference/databases/${dbId}/tables/${tableId}`}
         data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;Reference Click`}
       >
@@ -123,7 +123,7 @@ const TableBrowserItemButtons = ({ tableId, dbId, xraysEnabled }) => {
           tooltip={t`Learn about this table`}
           color={color("text-medium")}
         />
-      </TableItemLink>
+      </TableActionLink>
     </Fragment>
   );
 };
