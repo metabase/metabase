@@ -2,7 +2,7 @@ import React from "react";
 import { render, act, screen } from "@testing-library/react";
 import SyncSnackbar from "./SyncSnackbar";
 
-describe("SyncSnackbarSwitch", () => {
+describe("SyncSnackbar", () => {
   beforeEach(() => {
     jest.useFakeTimers("modern");
   });

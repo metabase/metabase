@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import Modal from "metabase/components/Modal";
-import SyncModalContent from "../SyncModalContent";
+import SyncModalContent from "../../containers/SyncModalContent";
 
 const propTypes = {
   isRequired: PropTypes.bool,

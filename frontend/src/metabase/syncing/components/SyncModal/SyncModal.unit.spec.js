@@ -1,12 +1,12 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import { SyncModal } from "./SyncModal";
+import SyncModal from "./SyncModal";
 
-const SyncModalMock = () => <div>SyncModal</div>;
+const SyncModalMock = () => <div>SyncModalContent</div>;
 
-jest.mock("../SyncModalContent", () => SyncModalMock);
+jest.mock("../../containers/SyncModalContent", () => SyncModalMock);
 
-describe("SyncModalSwitch", () => {
+describe("SyncModal", () => {
   it("should not open the modal initially by default", () => {
     const onOpen = jest.fn();
 
@@ -26,12 +26,9 @@ describe("SyncModalSwitch", () => {
   });
 
   it("should remain open if opened and no longer required", () => {
-    const onOpen = jest.fn();
-
-    render(<SyncModal isRequired={true} onOpen={onOpen} />);
-    render(<SyncModal isRequired={false} onOpen={onOpen} />);
+    const { rerender } = render(<SyncModal isRequired={true} />);
+    rerender(<SyncModal isRequired={false} />);
 
     expect(screen.getByText("SyncModalContent")).toBeInTheDocument();
-    expect(onOpen).toHaveBeenCalled();
   });
 });
