@@ -209,6 +209,73 @@ export default function StaticVizPage() {
             }}
           />
         </Box>
+        <Box py={3}>
+          <Subhead>Progress bar</Subhead>
+          <StaticChart
+            type="progress"
+            options={{
+              data: {
+                value: 0,
+                goal: 100000,
+              },
+              format: {
+                number_style: "currency",
+                currency: "USD",
+                currency_style: "symbol",
+                decimals: 0,
+              },
+              color: "#84BB4C",
+            }}
+          />
+          <StaticChart
+            type="progress"
+            options={{
+              data: {
+                value: 30000,
+                goal: 100000,
+              },
+              format: {
+                number_style: "currency",
+                currency: "USD",
+                currency_style: "symbol",
+                decimals: 0,
+              },
+              color: "#84BB4C",
+            }}
+          />
+          <StaticChart
+            type="progress"
+            options={{
+              data: {
+                value: 100000,
+                goal: 100000,
+              },
+              format: {
+                number_style: "currency",
+                currency: "USD",
+                currency_style: "symbol",
+                decimals: 0,
+              },
+              color: "#84BB4C",
+            }}
+          />
+          <StaticChart
+            type="progress"
+            options={{
+              data: {
+                value: 135000,
+                goal: 100000,
+              },
+              format: {
+                number_style: "currency",
+                currency: "USD",
+                currency_style: "symbol",
+                decimals: 0,
+              },
+              color: "#84BB4C",
+            }}
+          />
+        </Box>
       </Box>
     </Box>
   );

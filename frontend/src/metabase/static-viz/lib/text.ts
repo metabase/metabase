@@ -1,11 +1,11 @@
 const CHAR_WIDTH = 6;
 const CHAR_ELLIPSES = "…";
 
-export const measureText = text => {
+export const measureText = (text: string) => {
   return text.length * CHAR_WIDTH;
 };
 
-export const truncateText = (text, width) => {
+export const truncateText = (text: string, width: number) => {
   if (measureText(text) <= width) {
     return text;
   }
