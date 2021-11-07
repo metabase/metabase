@@ -33,12 +33,12 @@ const DatabaseEditAppSidebar = ({
         <div className="Actions-group">
           <label className="Actions-groupLabel block text-bold">{t`Actions`}</label>
           <ol>
-            {!database.active && (
+            {!database.initial_sync && (
               <li>
                 <Button disabled>{t`Syncing database...`}</Button>
               </li>
             )}
-            {database.active && (
+            {database.initial_sync && (
               <li>
                 <ActionButton
                   actionFn={() => syncDatabaseSchema(database.id)}
@@ -50,7 +50,7 @@ const DatabaseEditAppSidebar = ({
                 />
               </li>
             )}
-            {database.active && (
+            {database.initial_sync && (
               <li className="mt2">
                 <ActionButton
                   actionFn={() => rescanDatabaseFields(database.id)}
@@ -68,7 +68,7 @@ const DatabaseEditAppSidebar = ({
         <div className="Actions-group">
           <label className="Actions-groupLabel block text-bold">{t`Danger Zone`}</label>
           <ol>
-            {database.active && (
+            {database.initial_sync && (
               <li>
                 <ModalWithTrigger
                   ref={discardSavedFieldValuesModal}

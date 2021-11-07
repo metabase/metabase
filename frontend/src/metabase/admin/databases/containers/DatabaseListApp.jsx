@@ -123,7 +123,7 @@ export default class DatabaseList extends Component {
                       >
                         <td>
                           <TableCellContent>
-                            {!database.active && (
+                            {!database.initial_sync && (
                               <TableCellSpinner size={16} borderWidth={2} />
                             )}
                             <Link

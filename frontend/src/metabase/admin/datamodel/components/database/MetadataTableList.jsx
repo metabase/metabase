@@ -175,12 +175,12 @@ function TableRow({
       <a
         className={cx(
           "AdminList-item flex align-center no-decoration text-wrap justify-between",
-          { selected, disabled: !table.active },
+          { selected, disabled: !table.initial_sync },
         )}
         onClick={() => selectTable(table)}
       >
         {table.display_name}
-        {table.active && (
+        {table.initial_sync && (
           <div className="hover-child float-right">
             <ToggleHiddenButton
               tables={[table]}
