@@ -21,8 +21,8 @@ const getSchemaName = props => {
   return props.schemaName || props.params.schemaName;
 };
 
-const getReloadInterval = ({ list = [] }) => {
-  return list.some(t => !t.initial_sync) ? RELOAD_INTERVAL : 0;
+const getReloadInterval = (state, props, tables = []) => {
+  return tables.some(t => !t.initial_sync) ? RELOAD_INTERVAL : 0;
 };
 
 const getTableUrl = (table, metadata) => {
