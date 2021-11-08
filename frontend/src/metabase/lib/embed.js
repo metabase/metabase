@@ -3,7 +3,6 @@ import { push } from "react-router-redux";
 import _ from "underscore";
 
 import { IFRAMED, IFRAMED_IN_SELF } from "metabase/lib/dom";
-import MetabaseSettings from "metabase/lib/settings";
 
 import { isFitViewportMode } from "metabase/hoc/FitViewPort";
 
