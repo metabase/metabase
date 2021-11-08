@@ -54,7 +54,7 @@ describe("scenarios > admin > databases > add", () => {
       .click();
 
     cy.wait("@createDatabase");
-    cy.url().should("match", /\/admin\/databases\?created=42$/);
+    cy.url().should("match", /\/admin\/databases$/);
   });
 
   it("should trim fields needed to connect to the database", () => {
@@ -130,8 +130,7 @@ describe("scenarios > admin > databases > add", () => {
       expect(request.body.details.user).to.equal("uberadmin");
     });
 
-    cy.url().should("match", /\/admin\/databases\?created=42$/);
-    cy.findByText("Your database has been added!");
+    cy.url().should("match", /admin\/databases$/);
   });
 
   it("should show error correctly on server error", () => {
@@ -213,7 +212,6 @@ describe("scenarios > admin > databases > add", () => {
     isSyncOptionSelected("Never, I'll do this manually if I need to");
 
     cy.button("Save").click();
-    cy.findByText("I'm good thanks").click();
 
     cy.findByText(databaseName).click();
     cy.findByText("Scheduling").click();

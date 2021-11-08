@@ -12,7 +12,6 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import FormMessage from "metabase/components/form/FormMessage";
 
-import CreatedDatabaseModal from "../components/CreatedDatabaseModal";
 import DeleteDatabaseModal from "../components/DeleteDatabaseModal";
 
 import Database from "metabase/entities/databases";
@@ -53,7 +52,6 @@ export default class DatabaseList extends Component {
   constructor(props) {
     super(props);
 
-    this.createdDatabaseModal = React.createRef();
     props.databases.map(database => {
       this["deleteDatabaseModal_" + database.id] = React.createRef();
     });
@@ -67,19 +65,12 @@ export default class DatabaseList extends Component {
     deletionError: PropTypes.object,
   };
 
-  componentDidUpdate(oldProps) {
-    if (!oldProps.created && this.props.created) {
-      this.createdDatabaseModal.current.open();
-    }
-  }
-
   render() {
     const {
       databases,
       hasSampleDataset,
       isAddingSampleDataset,
       addSampleDatasetError,
-      created,
       engines,
       deletionError,
     } = this.props;
@@ -193,16 +184,6 @@ export default class DatabaseList extends Component {
             </div>
           ) : null}
         </section>
-        <ModalWithTrigger
-          ref={this.createdDatabaseModal}
-          isInitiallyOpen={created}
-        >
-          <CreatedDatabaseModal
-            databaseId={parseInt(created)}
-            onDone={() => this.createdDatabaseModal.current.toggle()}
-            onClose={() => this.createdDatabaseModal.current.toggle()}
-          />
-        </ModalWithTrigger>
       </div>
     );
   }
