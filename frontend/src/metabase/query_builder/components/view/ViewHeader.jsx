@@ -244,7 +244,7 @@ function AhHocQuestionLeftSide(props) {
   } = props;
   return (
     <div>
-      <ViewHeaderMainLeftContentContainer align="baseline">
+      <ViewHeaderMainLeftContentContainer>
         <AdHocViewHeading>
           {isNative ? (
             t`New question`
@@ -257,7 +257,7 @@ function AhHocQuestionLeftSide(props) {
         </AdHocViewHeading>
         {showFiltersInHeading && QuestionFilters.shouldRender(props) && (
           <QuestionFilters
-            className="mr2 mb1"
+            className="mr2"
             question={question}
             expanded={areFiltersExpanded}
             onExpand={onExpandFilters}
@@ -266,7 +266,6 @@ function AhHocQuestionLeftSide(props) {
         )}
         {QuestionLineage.shouldRender(props) && (
           <QuestionLineage
-            className="mr2 mb1"
             question={question}
             originalQuestion={originalQuestion}
           />
@@ -284,7 +283,7 @@ function AhHocQuestionLeftSide(props) {
         )}
         {!showFiltersInHeading && QuestionFilters.shouldRender(props) && (
           <QuestionFilters
-            className="mb1"
+            className="mb1 mt1"
             question={question}
             expanded={areFiltersExpanded}
             onExpand={onExpandFilters}
