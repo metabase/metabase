@@ -33,7 +33,7 @@ import ReactDOM from "react-dom";
 import { Provider } from "react-redux";
 import { ThemeProvider } from "styled-components";
 
-import { trackPageView, createTracker } from "metabase/lib/analytics";
+import { createTracker } from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
 import api from "metabase/lib/api";
@@ -84,8 +84,6 @@ function _init(reducers, getRoutes, callback) {
   );
 
   createTracker(store);
-  trackPageView(location.pathname);
-  history.listen(location => trackPageView(location.pathname));
 
   registerVisualizations();
 
