@@ -146,6 +146,8 @@ describe("scenarios > question > new", () => {
         cy.findAllByText("Orders")
           .closest("li")
           .findByText("Table in")
+          .parent()
+          .findByTestId("search-result-item-name")
           .click();
 
         visualize();
