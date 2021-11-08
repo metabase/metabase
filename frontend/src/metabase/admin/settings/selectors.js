@@ -19,6 +19,7 @@ import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdate
 import SettingsEmailForm from "./components/SettingsEmailForm";
 import SettingsSetupList from "./components/SettingsSetupList";
 import SettingsSlackForm from "./components/SettingsSlackForm";
+import { trackTrackingPermissionChanged } from "./tracking";
 
 import { UtilApi } from "metabase/services";
 import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
@@ -85,6 +86,9 @@ const SECTIONS = updateSectionsWithPlugins({
         key: "anon-tracking-enabled",
         display_name: t`Anonymous Tracking`,
         type: "boolean",
+        onChanged: (oldValue, newValue) => {
+          trackTrackingPermissionChanged(newValue);
+        },
       },
       {
         key: "humanization-strategy",
