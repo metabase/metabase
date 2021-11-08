@@ -15,6 +15,8 @@ export const Button = styled(DefaultButton)`
   font-weight: 700;
   border: none;
 
+  position: relative;
+  right: 8px;
 `;
 
 Button.defaultProps = {
