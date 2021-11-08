@@ -89,6 +89,9 @@ const SECTIONS = updateSectionsWithPlugins({
         onChanged: (oldValue, newValue) => {
           trackTrackingPermissionChanged(newValue);
         },
+        onBeforeChanged: (oldValue, newValue) => {
+          trackTrackingPermissionChanged(newValue);
+        },
       },
       {
         key: "humanization-strategy",
