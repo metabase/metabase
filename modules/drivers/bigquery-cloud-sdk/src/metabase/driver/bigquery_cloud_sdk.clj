@@ -17,13 +17,11 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db])
+            [schema.core :as s])
   (:import com.google.auth.oauth2.ServiceAccountCredentials
            [com.google.cloud.bigquery BigQuery BigQuery$DatasetOption BigQuery$JobOption BigQuery$TableListOption
                                       BigQuery$TableOption BigQueryException BigQueryOptions DatasetId Field Field$Mode FieldValue
                                       FieldValueList QueryJobConfiguration Schema Table TableId TableResult]
-           java.io.ByteArrayInputStream
            java.util.Collections))
 
 (driver/register! :bigquery-cloud-sdk, :parent :sql)
