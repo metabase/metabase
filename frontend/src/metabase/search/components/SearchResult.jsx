@@ -111,7 +111,7 @@ export default function SearchResult({
         <ItemIcon item={result} type={result.model} />
         <Box>
           <TitleWrapper>
-            <Title>{result.name}</Title>
+            <Title data-testid="search-result-item-name">{result.name}</Title>
             <PLUGIN_MODERATION.ModerationStatusIcon
               status={result.moderated_status}
               size={12}
