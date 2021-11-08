@@ -5,9 +5,14 @@ import { iconPropTypes } from "metabase/components/Icon";
 
 import { BadgeIcon, MaybeLink } from "./Badge.styled";
 
+const iconProp = PropTypes.oneOfType([
+  PropTypes.string,
+  PropTypes.shape(iconPropTypes),
+]);
+
 const propTypes = {
   to: PropTypes.string,
-  icon: PropTypes.shape(iconPropTypes),
+  icon: iconProp,
   activeColor: PropTypes.string,
   onClick: PropTypes.func,
   children: PropTypes.node,
@@ -15,16 +20,21 @@ const propTypes = {
 
 const DEFAULT_ICON_SIZE = 12;
 
-function Badge({ icon, activeColor = "brand", children, ...props }) {
-  const extraIconProps = {};
-  if (icon && !icon.size && !icon.width && !icon.height) {
-    extraIconProps.size = DEFAULT_ICON_SIZE;
+function getIconProps(iconProp) {
+  if (!iconProp) {
+    return;
   }
+  const props = typeof iconProp === "string" ? { name: iconProp } : iconProp;
+  if (!props.size && !props.width && !props.height) {
+    props.size = DEFAULT_ICON_SIZE;
+  }
+  return props;
+}
+
+function Badge({ icon, activeColor = "brand", children, ...props }) {
   return (
     <MaybeLink activeColor={activeColor} {...props}>
-      {icon && (
-        <BadgeIcon {...icon} {...extraIconProps} hasMargin={!!children} />
-      )}
+      {icon && <BadgeIcon {...getIconProps(icon)} hasMargin={!!children} />}
       {children && <span className="text-wrap">{children}</span>}
     </MaybeLink>
   );
