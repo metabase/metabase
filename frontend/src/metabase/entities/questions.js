@@ -69,11 +69,7 @@ const Questions = createEntity({
     getColor: () => color("text-medium"),
     getCollection: question =>
       question && normalizedCollection(question.collection),
-    getIcon: question => ({
-      name:
-        (require("metabase/visualizations").default.get(question.display) || {})
-          .iconName || "beaker",
-    }),
+    getIcon,
   },
 
   reducer: (state = {}, { type, payload, error }) => {
@@ -89,6 +85,7 @@ const Questions = createEntity({
   writableProperties: [
     "name",
     "cache_ttl",
+    "dataset",
     "dataset_query",
     "display",
     "description",
@@ -109,5 +106,17 @@ const Questions = createEntity({
 
   forms,
 });
+
+function getIcon(question) {
+  if (question.dataset || question.model === "dataset") {
+    return { name: "dataset" };
+  }
+  const visualization = require("metabase/visualizations").default.get(
+    question.display,
+  );
+  return {
+    name: visualization?.iconName ?? "beaker",
+  };
+}
 
 export default Questions;

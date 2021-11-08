@@ -5,6 +5,7 @@ declare var ace: any;
 import { createAction } from "redux-actions";
 import _ from "underscore";
 import { getIn, assocIn, updateIn } from "icepick";
+import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
 
@@ -12,6 +13,7 @@ import { createThunkAction } from "metabase/lib/redux";
 import { push, replace } from "react-router-redux";
 import { setErrorPage } from "metabase/redux/app";
 import { loadMetadataForQuery } from "metabase/redux/metadata";
+import { addUndo } from "metabase/redux/undo";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { startTimer } from "metabase/lib/performance";
@@ -29,11 +31,9 @@ import Utils from "metabase/lib/utils";
 import { defer } from "metabase/lib/promise";
 import Question from "metabase-lib/lib/Question";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
-import {
-  cardIsEquivalent,
-  cardQueryIsEquivalent,
-  getValueAndFieldIdPopulatedParametersFromCard,
-} from "metabase/meta/Card";
+import { cardIsEquivalent, cardQueryIsEquivalent } from "metabase/meta/Card";
+import { getValueAndFieldIdPopulatedParametersFromCard } from "metabase/parameters/utils/cards";
+
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import { normalize } from "cljs/metabase.mbql.js";
 
@@ -1408,3 +1408,24 @@ export const revertToRevision = createThunkAction(
     };
   },
 );
+
+export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
+  const question = getQuestion(getState());
+  const dataset = question.setDataset(true);
+  await dispatch(apiUpdateQuestion(dataset));
+
+  // When a question is turned into a dataset,
+  // its visualization is changed to a table
+  // In order for that transition not to look like something just broke,
+  // we rerun the query
+  if (question.display() !== "table") {
+    dispatch(runQuestionQuery());
+  }
+
+  dispatch(
+    addUndo({
+      message: t`This is a dataset now.`,
+      actions: [apiUpdateQuestion(question)],
+    }),
+  );
+};

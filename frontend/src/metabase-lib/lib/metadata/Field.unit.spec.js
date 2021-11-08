@@ -360,4 +360,35 @@ describe("Field", () => {
       expect(field.isSearchable()).toBe(false);
     });
   });
+
+  describe("fieldValues", () => {
+    it("should return the values on a field instance", () => {
+      const values = [[1], [2]];
+      const field = new Field({
+        values,
+      });
+
+      expect(field.fieldValues()).toEqual(values);
+    });
+
+    it("should wrap raw values in arrays to match the format of remapped values", () => {
+      const values = [1, 2];
+      const field = new Field({
+        values,
+      });
+
+      expect(field.fieldValues()).toEqual([[1], [2]]);
+    });
+  });
+
+  describe("hasFieldValues", () => {
+    it("should be true when a field has values", () => {
+      expect(new Field({ values: [1] }).hasFieldValues()).toBe(true);
+    });
+
+    it("should be false when a field has no values", () => {
+      expect(new Field({ values: [] }).hasFieldValues()).toBe(false);
+      expect(new Field({ values: undefined }).hasFieldValues()).toBe(false);
+    });
+  });
 });

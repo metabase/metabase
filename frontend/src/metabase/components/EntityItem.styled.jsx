@@ -1,7 +1,7 @@
 import styled from "styled-components";
 import { Flex } from "grid-styled";
 
-import { color, lighten } from "metabase/lib/colors";
+import { alpha, color, lighten } from "metabase/lib/colors";
 
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 
@@ -16,10 +16,16 @@ function getPinnedForeground(model) {
 }
 
 function getBackground(model) {
+  if (model === "dataset") {
+    return alpha(color("accent2"), 0.08);
+  }
   return model === "dashboard" ? color("brand") : color("brand-light");
 }
 
 function getForeground(model) {
+  if (model === "dataset") {
+    return color("accent2");
+  }
   return model === "dashboard" ? color("white") : color("brand");
 }
 
