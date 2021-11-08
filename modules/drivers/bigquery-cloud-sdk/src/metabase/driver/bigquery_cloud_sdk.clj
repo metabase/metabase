@@ -39,15 +39,9 @@
   Unclear if this can be sourced from the `com.google.cloud.bigquery` package directly."
   "https://www.googleapis.com/auth/bigquery")
 
-(defn- database-details->service-account-credential
-  "Returns a `ServiceAccountCredentials` (not scoped) for the given database details, from its service account JSON."
-  ^ServiceAccountCredentials [{:keys [^String service-account-json] :as db-details}]
-  {:pre [(map? db-details) (seq service-account-json)]}
-  (ServiceAccountCredentials/fromStream (ByteArrayInputStream. (.getBytes service-account-json))))
-
 (defn- ^BigQuery database->client
   [database]
-  (let [creds   (database-details->service-account-credential (:details database))
+  (let [creds   (bigquery.common/database-details->service-account-credential (:details database))
         bq-bldr (doto (BigQueryOptions/newBuilder)
                   (.setCredentials (.createScoped creds (Collections/singletonList bigquery-scope))))]
     (.. bq-bldr build getService)))
@@ -302,23 +296,7 @@
   [_]
   :sunday)
 
-(defn- populate-project-id-from-credentials
-  [{:keys [details] :as database}]
-  ;; update the details blob to include the credentials' project-id as a separate entry
-  ;; this is basically an inferred/calculated key (not something the user will ever set directly), since it's simply
-  ;; part of the service account JSON, which is a field they provide
-  ;; it would be a lot of extra computation/invocation of the Google SDK to recalculate this on every query (since
-  ;; it will involve parsing this JSON repeatedly), and even using something like qp.store/cached functionality would
-  ;; still require recomputing it on every query execution
-  ;; since this will only ever change if/when the details change (i.e. the service account), just calculate it once
-  ;; when the DB is updated and store it back to the app DB
-  (println "populate-project-id-from-credentials")
-  (db/update! Database
-    (u/the-id database)
-    :details
-    (assoc details :project-id-from-credentials (-> (database-details->service-account-credential details)
-                                                    (.getProjectId)))))
 
 (defmethod driver/notify-database-updated :bigquery-cloud-sdk
   [_ database]
-  (populate-project-id-from-credentials database))
+  (bigquery.common/populate-project-id-from-credentials! database))

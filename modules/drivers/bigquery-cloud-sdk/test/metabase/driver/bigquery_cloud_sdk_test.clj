@@ -272,7 +272,9 @@
                    (mt/first-row
                      (mt/run-mbql-query taxi_trips
                        {:filter [:= [:field (mt/id :taxi_trips :unique_key) nil]
-                                    "67794e631648a002f88d4b7f3ab0bcb6a9ed306a"]}))))))))))
+                                    "67794e631648a002f88d4b7f3ab0bcb6a9ed306a"]})))))
+          (testing " has project-id-from-credentials set correctly"
+            (is (= "metabase-bigquery-driver" (get-in temp-db [:details :project-id-from-credentials])))))))))
 
 (deftest bigquery-specific-types-test
   (testing "Table with decimal types"
@@ -394,13 +396,6 @@
                 (mt/with-db (Database db-id)
                   ;; having only changed the driver old->new, the existing card query should produce the same results
                   (check-card-query-res temp-card)
-                  ;; TODO: figure out how to make this pass!  the driver/notify-database-updated :bigquery-cloud-sdk
-                  ;; method always runs AFTER everything I try to do here!
-                  ;; things I have tried:
-                  ;; opening a separate core.async channel, and using events/subscribe-to-topics! to decide when to
-                  ;; check this assertion
-                  ;; creating a delay, future, or promise, with this function, and derefing it after the mt/with-db
-                  ;; in all cases, the driver/notify-database-updated :bigquery-cloud-sdk method always runs later!
                   (is (= "metabase-bigquery-driver" (get-in (Database db-id)
                                                             [:details :project-id-from-credentials]))))))))))))
 
