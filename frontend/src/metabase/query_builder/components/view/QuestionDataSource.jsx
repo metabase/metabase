@@ -4,7 +4,7 @@ import React from "react";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { browseDatabase, browseSchema } from "metabase/lib/urls";
 
-import { HeadBreadcrumbs, SubHeadBreadcrumbs } from "./HeaderBreadcrumbs";
+import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 
 const QuestionDataSource = ({
   question,
@@ -19,10 +19,12 @@ const QuestionDataSource = ({
     noLink,
     isObjectDetail,
   });
-  return subHead ? (
-    <SubHeadBreadcrumbs parts={parts} {...props} />
-  ) : (
-    <HeadBreadcrumbs parts={parts} {...props} />
+  return (
+    <HeadBreadcrumbs
+      parts={parts}
+      variant={subHead ? "subhead" : "head"}
+      {...props}
+    />
   );
 };
 

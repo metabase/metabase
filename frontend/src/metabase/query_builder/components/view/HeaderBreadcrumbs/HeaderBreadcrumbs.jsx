@@ -1,12 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
-import {
-  Container,
-  Divider,
-  TitleOrLink,
-  SubHeadContainer,
-  SubHeadBadge,
-} from "./HeaderBreadcrumbs.styled";
+import { Container, Divider, HeaderBadge } from "./HeaderBreadcrumbs.styled";
 
 const crumbShape = PropTypes.shape({
   name: PropTypes.string.isRequired,
@@ -15,36 +9,27 @@ const crumbShape = PropTypes.shape({
 });
 
 HeadBreadcrumbs.propTypes = {
+  variant: PropTypes.oneOf(["head", "subhead"]),
   parts: PropTypes.arrayOf(crumbShape).isRequired,
 };
 
-export function HeadBreadcrumbs({ parts, ...props }) {
+export function HeadBreadcrumbs({ variant = "head", parts, ...props }) {
   return (
-    <Container {...props}>
-      {parts.map(({ name, href }, index) => (
-        <React.Fragment key={index}>
-          <TitleOrLink to={href}>{name}</TitleOrLink>
-          {index < parts.length - 1 && <Divider />}
-        </React.Fragment>
-      ))}
+    <Container {...props} variant={variant}>
+      {parts.map((part, index) => {
+        const { name, icon, href } = part;
+        const isLast = index === parts.length - 1;
+        const inactiveColor =
+          isLast && variant === "head" ? "text-dark" : "text-light";
+        return (
+          <React.Fragment key={index}>
+            <HeaderBadge to={href} icon={icon} inactiveColor={inactiveColor}>
+              {name}
+            </HeaderBadge>
+            {!isLast && <Divider />}
+          </React.Fragment>
+        );
+      })}
     </Container>
-  );
-}
-
-SubHeadBreadcrumbs.propTypes = {
-  parts: PropTypes.arrayOf(crumbShape).isRequired,
-};
-
-export function SubHeadBreadcrumbs({ parts, ...props }) {
-  return (
-    <span {...props}>
-      <SubHeadContainer>
-        {parts.map(({ name, icon, href }, index) => (
-          <SubHeadBadge key={index} icon={{ name: icon }} to={href}>
-            {name}
-          </SubHeadBadge>
-        ))}
-      </SubHeadContainer>
-    </span>
   );
 }
