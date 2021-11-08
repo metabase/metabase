@@ -143,7 +143,14 @@
   (let [id-or-name' (int-or-string id-or-name)]
     [:field id-or-name' (when (string? id-or-name') {:base-type :type/Float})]))
 
-(defn query->tiles-query [query {:keys [zoom x y lat-field lon-field]}]
+(defn query->tiles-query
+  "Transform a card's query into a query finding coordinates in a particular region.
+
+  - transform native queries into nested mbql queries from that native query
+  - add [:inside lat lon bounding-region coordings] filter
+  - limit query results to `tile-coordinate-limit` number of results
+  - only select lat and lon fields rather than entire query's fields"
+  [query {:keys [zoom x y lat-field lon-field]}]
   (let [lat-ref (field-ref lat-field)
         lon-ref (field-ref lon-field)]
     (-> query
