@@ -303,6 +303,14 @@ const TITLE_LOCALES_BN = {
   'admin.dashboard.census.student.preprimary.gender': {
     'en': 'Statistics of Enrollment of Students',
     'bn': ' ছাত্রছাত্রীর এনরোলমেন্ট পরিসংখ্যান'
+  },
+  'admin.dashboard.nsa.gpa.gender': {
+    'en': 'Statistics of Students from GPA 4.0 to 5.0',
+    'bn': 'জিপিএ ৪.০ থেকে ৫.০ প্রাপ্ত ছাত্রছাত্রীর পরিসংখ্যান'
+  },
+  'admin.dashboard.nsa.gpa.year.gender': {
+    'en': 'Students\' Assessment Information',
+    'bn': 'শিক্ষার্থীদের মূল্যায়ন তথ্য'
   }
   
 }
