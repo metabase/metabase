@@ -120,6 +120,8 @@ describe("scenarios > question > new", () => {
         cy.findAllByText("Orders")
           .closest("li")
           .findByText("Table in")
+          .parent()
+          .findByTestId("search-result-item-name")
           .click();
         cy.url().should("include", "question#");
         cy.findByText("Sample Dataset");
@@ -144,6 +146,8 @@ describe("scenarios > question > new", () => {
         cy.findAllByText("Orders")
           .closest("li")
           .findByText("Table in")
+          .parent()
+          .findByTestId("search-result-item-name")
           .click();
 
         visualize();

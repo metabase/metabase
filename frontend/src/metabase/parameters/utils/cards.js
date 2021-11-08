@@ -1,5 +1,3 @@
-import { assoc } from "icepick";
-
 import Question from "metabase-lib/lib/Question";
 
 import { areFieldFilterOperatorsEnabled } from "./feature-flag";
@@ -77,13 +75,12 @@ export function getValueAndFieldIdPopulatedParametersFromCard(
   const question = new Question(card, metadata);
 
   return valuePopulatedParameters.map(parameter => {
-    // if we have a field id for this parameter, set "field_id"
     const field = getParameterTargetField(parameter.target, metadata, question);
-    if (field != null) {
-      parameter = assoc(parameter, "fields", [field]);
-      parameter = assoc(parameter, "field_id", field.id);
-    }
-    parameter = assoc(parameter, "hasOnlyFieldTargets", field != null);
-    return parameter;
+    return {
+      ...parameter,
+      fields: field == null ? [] : [field],
+      field_id: field?.id,
+      hasOnlyFieldTargets: field != null,
+    };
   });
 }

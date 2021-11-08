@@ -1,16 +1,16 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 import { Box } from "grid-styled";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 import Toggle from "metabase/components/Toggle";
+import ExternalLink from "metabase/components/ExternalLink";
 
 import StepTitle from "./StepTitle";
 import CollapsedStep from "./CollapsedStep";
-
-import ExternalLink from "metabase/components/ExternalLink";
+import { trackTrackingPermissionChanged } from "../tracking";
 
 export default class PreferencesStep extends Component {
   state = { errorMessage: null };
@@ -28,8 +28,9 @@ export default class PreferencesStep extends Component {
 
   toggleTracking() {
     const { allowTracking } = this.props;
-
-    this.props.setAllowTracking(!allowTracking);
+    const newAllowTracking = !allowTracking;
+    this.props.setAllowTracking(newAllowTracking);
+    trackTrackingPermissionChanged(newAllowTracking);
   }
 
   async formSubmitted(e) {
