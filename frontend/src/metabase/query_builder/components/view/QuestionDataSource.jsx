@@ -6,8 +6,19 @@ import { browseDatabase, browseSchema } from "metabase/lib/urls";
 
 import { HeadBreadcrumbs, SubHeadBreadcrumbs } from "./HeaderBreadcrumbs";
 
-const QuestionDataSource = ({ question, subHead, noLink, ...props }) => {
-  const parts = getDataSourceParts({ question, subHead, noLink });
+const QuestionDataSource = ({
+  question,
+  subHead,
+  noLink,
+  isObjectDetail,
+  ...props
+}) => {
+  const parts = getDataSourceParts({
+    question,
+    subHead,
+    noLink,
+    isObjectDetail,
+  });
   return subHead ? (
     <SubHeadBreadcrumbs parts={parts} {...props} />
   ) : (
