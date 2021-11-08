@@ -180,6 +180,9 @@ const config = (module.exports = {
         "/*\n* This file is subject to the terms and conditions defined in\n * file 'LICENSE.txt', which is part of this source code package.\n */\n",
     }),
     new NodePolyfillPlugin(), // for crypto, among others
+    new webpack.EnvironmentPlugin({
+      NODE_ENV: "development",
+    }),
   ],
 });
 
@@ -269,10 +272,11 @@ if (NODE_ENV !== "production") {
     }),
   );
 } else {
-
   // Don't bother with ESLint for CI/production (we catch linting errors with another CI run)
   config.module.rules = config.module.rules.filter(rule => {
-    return Array.isArray(rule.use) ? rule.use[0].loader != "eslint-loader" : true
+    return Array.isArray(rule.use)
+      ? rule.use[0].loader != "eslint-loader"
+      : true;
   });
 
   config.plugins.push(
