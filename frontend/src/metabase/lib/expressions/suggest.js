@@ -48,7 +48,7 @@ export function suggest({
       name: "case",
       text: "case(",
       index: targetOffset,
-      icon: "sum", // FIXME
+      icon: "function",
     });
     suggestions.push(
       ...Array.from(EXPRESSION_FUNCTIONS)
@@ -58,7 +58,7 @@ export function suggest({
           name: func.displayName,
           text: func.displayName + "(",
           index: targetOffset,
-          icon: "sum", // FIXME
+          icon: "function",
         })),
     );
     if (startRule === "aggregation") {
@@ -70,7 +70,7 @@ export function suggest({
             name: func.displayName,
             text: func.displayName + "(",
             index: targetOffset,
-            icon: "sum", // FIXME
+            icon: "function",
           })),
       );
     }
