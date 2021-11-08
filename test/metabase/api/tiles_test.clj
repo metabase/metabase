@@ -48,7 +48,7 @@
                                       [:field 574 nil] ; lat
                                       [:field 576 nil] ; lon
                                       ]
-                             :limit 2000}
+                             :limit 50000}
                      :type :query}]
           (is (= {:database 19
                   :query {:source-table 88
@@ -65,7 +65,7 @@
     (testing "native"
       (testing "nests the query, selects fields"
         (let [query {:type :native
-                     :native {:query "select name, latitude, longitude from zomato limit 2000;"
+                     :native {:query "select name, latitude, longitude from zomato limit 5000;"
                               :template-tags {}}
                      :database 19}]
           (is (= {:database 19
@@ -74,7 +74,8 @@
                                    [:field "longitude" {:base-type :type/Float}]]
                           :filter [:inside
                                    [:field "latitude" {:base-type :type/Float}]
-                                   [:field "longitude" {:base-type :type/Float}]]}
+                                   [:field "longitude" {:base-type :type/Float}]]
+                          :limit  2000}
                   :type :query
                   :async? false}
                  (clean (tiles/query->tiles-query query

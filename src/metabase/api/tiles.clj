@@ -23,6 +23,9 @@
 (def ^:private ^:const pin-size              6)
 (def ^:private ^:const pixels-per-lon-degree (float (/ tile-size 360)))
 (def ^:private ^:const pixels-per-lon-radian (float (/ tile-size (* 2 Math/PI))))
+(def ^:private ^:const tile-coordinate-limit
+  "Limit for number of pins to query for per tile."
+  2000)
 
 
 ;;; ---------------------------------------------------- UTIL FNS ----------------------------------------------------
@@ -149,6 +152,7 @@
                 lat-ref lon-ref
                 x y zoom)
         (assoc-in [:query :fields] [lat-ref lon-ref])
+        (assoc-in [:query :limit] tile-coordinate-limit)
         (assoc :async? false))))
 
 ;; TODO - this can be reworked to be `defendpoint-async` instead
