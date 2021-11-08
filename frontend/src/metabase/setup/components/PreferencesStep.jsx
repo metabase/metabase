@@ -28,8 +28,9 @@ export default class PreferencesStep extends Component {
 
   toggleTracking() {
     const { allowTracking } = this.props;
-    this.props.setAllowTracking(!allowTracking);
-    trackTrackingPermissionChanged(allowTracking);
+    const newAllowTracking = !allowTracking;
+    this.props.setAllowTracking(newAllowTracking);
+    trackTrackingPermissionChanged(newAllowTracking);
   }
 
   async formSubmitted(e) {
