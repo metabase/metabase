@@ -40,7 +40,13 @@ init(reducers, getRoutes, store => {
 
   // received a 403 response
   api.on("403", url => {
-    if (NOT_AUTHORIZED_TRIGGERS.some(regex => regex.test(url))) {
+    const isPrimaryRequest = window.location.pathname.includes(
+      url.replace(/^\/api/, ""),
+    );
+    if (
+      isPrimaryRequest &&
+      NOT_AUTHORIZED_TRIGGERS.some(regex => regex.test(url))
+    ) {
       return store.dispatch(setErrorPage({ status: 403 }));
     }
   });
