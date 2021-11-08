@@ -129,8 +129,10 @@
   "Parse a string into an integer if it can be otherwise return the string. Intended to determine whether something is a
   field id or a field name."
   [x]
-  (try (Integer/parseInt x)
-       (catch NumberFormatException _ x)))
+  (if (re-matches #"\d+" x)
+    (Integer/parseInt x)
+    x))
+
 
 ;; TODO - this can be reworked to be `defendpoint-async` instead
 ;;
