@@ -14,6 +14,8 @@
            [org.apache.http.impl.client CloseableHttpClient HttpClientBuilder HttpClients]
            org.apache.http.impl.conn.PoolingHttpClientConnectionManager))
 
+(set! *warn-on-reflection* true)
+
 (defsetting snowplow-url
   (deferred-tru "The URL of the Snowplow collector to send analytics events to")
   :default (if config/is-prod?
@@ -25,19 +27,17 @@
 (def ^:private ^Emitter emitter
   "An instance of a Snowplow emitter"
   (delay
-   (let [^PoolingHttpClientConnectionManager manager (new PoolingHttpClientConnectionManager)
-         ^HttpClientBuilder client-builder (. ^HttpClients HttpClients custom)
-         ^HttpClient client (-> client-builder
-                                (.setConnectionManager manager)
-                                (.build))
-         ^ApacheHttpClientAdapter$Builder adapter-builder (-> (. ^ApacheHttpClientAdapter ApacheHttpClientAdapter builder)
-                                                              (.httpClient ^CloseableHttpClient client)
-                                                              (.url (snowplow-url)))
-         ^ApacheHttpClientAdapter adapter (.build adapter-builder)
-         ^BatchEmitter$Builder batch-emitter-builder (-> (. ^BatchEmitter BatchEmitter builder)
-                                                         (.bufferSize 1)
-                                                         (.httpClientAdapter adapter))]
-     (.build batch-emitter-builder))))
+    (let [client (-> (HttpClients/custom)
+                     (.setConnectionManager (PoolingHttpClientConnectionManager.))
+                     (.build))
+          builder (-> (ApacheHttpClientAdapter/builder)
+                      (.httpClient client)
+                      (.url (snowplow-url)))
+          adapter (.build ^ApacheHttpClientAdapter$Builder builder)
+          batch-emitter-builder (-> (BatchEmitter/builder)
+                                    (.bufferSize 1)
+                                    (.httpClientAdapter adapter))]
+      (.build ^BatchEmitter$Builder batch-emitter-builder))))
 
 (def ^:private ^Tracker tracker
   "An instance of a Snowplow tracker"
