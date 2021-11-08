@@ -16,12 +16,11 @@
 ;; CSRF as it is not a session cookie.
 ;; However, we do need to make sure it's persisted/sent as much as possible to prevent superfluous login notification
 ;; emails when used with full-app embedding, which means setting SameSite=None when possible (over HTTPS) and
-;; SameSite=Lax otherwise. (See metabases#18553)
+;; SameSite=Lax otherwise. (See #18553)
 (defn- cookie-options
   [request]
   (merge {:http-only true
           :path      "/"
-          :same-site :lax
           ;; Set the cookie to expire 20 years from now. That should be sufficient
           :expires   (t/format :rfc-1123-date-time (t/plus (t/zoned-date-time) (t/years 20)))}
          (if (request.u/https? request)
