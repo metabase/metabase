@@ -80,8 +80,9 @@
     (let [conn-props                 (conn-props-fn (driver.u/database->driver database))
           possible-secret-prop-names (keys (conn-props->secret-props-by-name conn-props))]
       (doseq [secret-id (reduce (fn [acc prop-name]
-                                  (when-let [secret-id (get details (keyword (str prop-name "-id")))]
-                                    (conj acc secret-id)))
+                                  (if-let [secret-id (get details (keyword (str prop-name "-id")))]
+                                    (conj acc secret-id)
+                                    acc))
                                 []
                                 possible-secret-prop-names)]
         (log/info (trs "Deleting secret ID {0} from app DB because the owning database ({1}) is being deleted"
