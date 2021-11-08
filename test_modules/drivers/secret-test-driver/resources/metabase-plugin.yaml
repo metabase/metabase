@@ -16,4 +16,14 @@ driver:
       type: secret
       secret-kind: password
       placeholder: foo
-      required: true
+      required: false
+    - name: keystore-password
+      display-name: Keystore Password
+      type: secret
+      secret-kind: password
+      required: false
+    - name: keystore
+      display-name: Keystore
+      type: secret
+      secret-kind: keystore
+      required: false
