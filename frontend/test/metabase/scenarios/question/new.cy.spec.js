@@ -477,9 +477,9 @@ describe("scenarios > question > new", () => {
         "**The point of failure for ANY non-numeric value reported in v0.36.4**",
       );
       // the default type for "Reviewer" is "No semantic type"
-      cy.findByText("Fields")
-        .parent()
-        .contains("Reviewer");
+      popover().within(() => {
+        cy.contains("Reviewer");
+      });
     });
 
     it.skip("summarizing by distinct datetime should allow granular selection (metabase#13098)", () => {

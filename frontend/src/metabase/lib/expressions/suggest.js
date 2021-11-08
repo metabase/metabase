@@ -48,6 +48,7 @@ export function suggest({
       name: "case",
       text: "case(",
       index: targetOffset,
+      icon: "sum", // FIXME
     });
     suggestions.push(
       ...Array.from(EXPRESSION_FUNCTIONS)
@@ -57,6 +58,7 @@ export function suggest({
           name: func.displayName,
           text: func.displayName + "(",
           index: targetOffset,
+          icon: "sum", // FIXME
         })),
     );
     if (startRule === "aggregation") {
@@ -68,6 +70,7 @@ export function suggest({
             name: func.displayName,
             text: func.displayName + "(",
             index: targetOffset,
+            icon: "sum", // FIXME
           })),
       );
     }
@@ -86,6 +89,7 @@ export function suggest({
             getDimensionName(dimension, symbol),
           ),
           index: targetOffset,
+          icon: dimension.icon(),
         })),
     );
     suggestions.push(
@@ -94,6 +98,7 @@ export function suggest({
         name: segment.name,
         text: formatSegmentName(segment),
         index: targetOffset,
+        icon: "segment",
       })),
     );
     if (startRule === "aggregation") {
@@ -103,6 +108,7 @@ export function suggest({
           name: metric.name,
           text: formatMetricName(metric),
           index: targetOffset,
+          icon: "insight",
         })),
       );
     }

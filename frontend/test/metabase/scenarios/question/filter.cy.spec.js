@@ -375,7 +375,7 @@ describe("scenarios > question > filter", () => {
     cy.log("Popover should display all custom expression options");
     // Popover shows up even without explicitly clicking the contenteditable field
     popover().within(() => {
-      cy.findAllByRole("listitem").contains(/functions/i);
+      cy.findAllByRole("listitem").contains(/concat/i);
     });
 
     cy.log("Should not display error prematurely");

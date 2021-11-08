@@ -897,9 +897,7 @@ function addSimpleCustomColumn(name) {
   cy.get("[contenteditable='true']")
     .click()
     .type("C");
-  popover()
-    .findByText("ategory")
-    .click();
+  cy.findByText("Category").click();
   cy.findByPlaceholderText("Something nice and descriptive")
     .click()
     .type(name);
