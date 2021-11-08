@@ -4,25 +4,10 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 
 import Question from "metabase-lib/lib/Question";
-import Icon from "metabase/components/Icon";
 
 import { turnDatasetIntoQuestion } from "metabase/query_builder/actions";
 
 import { Button, SectionTitle } from "./DatasetManagementSection.styled";
-
-ActionItem.propTypes = {
-  icon: PropTypes.string.isRequired,
-  children: PropTypes.node.isRequired,
-};
-
-function ActionItem({ icon, children, ...props }) {
-  return (
-    <Button {...props}>
-      <Icon name={icon} size={16} />
-      {children}
-    </Button>
-  );
-}
 
 const mapDispatchToProps = {
   turnDatasetIntoQuestion,
@@ -37,10 +22,10 @@ function DatasetManagementSection({ turnDatasetIntoQuestion }) {
   return (
     <div>
       <SectionTitle>{t`Dataset management`}</SectionTitle>
-      <ActionItem
+      <Button
         icon="dataset_framed"
         onClick={turnDatasetIntoQuestion}
-      >{t`Turn back into a saved question`}</ActionItem>
+      >{t`Turn back into a saved question`}</Button>
     </div>
   );
 }
