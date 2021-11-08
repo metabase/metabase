@@ -12,7 +12,7 @@ export const ViewHeaderContainer = styled(ViewSection)`
 
 export const ViewHeaderMainLeftContentContainer = styled.div`
   display: flex;
-  align-items: "center";
+  align-items: center;
   flex-wrap: wrap;
 `;
 
