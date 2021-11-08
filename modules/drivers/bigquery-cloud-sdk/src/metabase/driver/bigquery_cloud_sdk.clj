@@ -8,7 +8,6 @@
             [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
             [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
             [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
-            [metabase.models :refer [Database]]
             [metabase.query-processor.context :as context]
             [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.store :as qp.store]
@@ -18,8 +17,7 @@
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s])
-  (:import com.google.auth.oauth2.ServiceAccountCredentials
-           [com.google.cloud.bigquery BigQuery BigQuery$DatasetOption BigQuery$JobOption BigQuery$TableListOption
+  (:import [com.google.cloud.bigquery BigQuery BigQuery$DatasetOption BigQuery$JobOption BigQuery$TableListOption
                                       BigQuery$TableOption BigQueryException BigQueryOptions DatasetId Field Field$Mode FieldValue
                                       FieldValueList QueryJobConfiguration Schema Table TableId TableResult]
            java.util.Collections))
