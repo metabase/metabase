@@ -7,6 +7,7 @@ import CategoricalLineChart from "../../components/CategoricalLineChart";
 import TimeSeriesAreaChart from "../../components/TimeSeriesAreaChart";
 import TimeSeriesBarChart from "../../components/TimeSeriesBarChart";
 import TimeSeriesLineChart from "../../components/TimeSeriesLineChart";
+import ProgressBar from "../../components/ProgressBar";
 
 const propTypes = {
   type: PropTypes.oneOf([
@@ -17,6 +18,7 @@ const propTypes = {
     "timeseries/area",
     "timeseries/bar",
     "timeseries/line",
+    "progress",
   ]).isRequired,
   options: PropTypes.object.isRequired,
 };
@@ -37,6 +39,8 @@ const StaticChart = ({ type, options }) => {
       return <TimeSeriesBarChart {...options} />;
     case "timeseries/line":
       return <TimeSeriesLineChart {...options} />;
+    case "progress":
+      return <ProgressBar {...options} />;
   }
 };
 

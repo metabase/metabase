@@ -3273,6 +3273,14 @@
     classnames "^2.2.5"
     prop-types "^15.6.0"
 
+"@visx/clip-path@^2.1.0":
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/@visx/clip-path/-/clip-path-2.1.0.tgz#5730ebda167493a56d033c454453900ed0b4904b"
+  integrity sha512-g8OC8M4H+AunfT2taKyy++X7muMrhlqITNDan25gVopGuHxydiDYatu4qdZIGbYjAoiI0KHEB07/HV8iePcTdQ==
+  dependencies:
+    "@types/react" "*"
+    prop-types "^15.5.10"
+
 "@visx/curve@1.7.0":
   version "1.7.0"
   resolved "https://registry.yarnpkg.com/@visx/curve/-/curve-1.7.0.tgz#b8c8ae902de469ae43014c78ed9bfda8aed8137c"
