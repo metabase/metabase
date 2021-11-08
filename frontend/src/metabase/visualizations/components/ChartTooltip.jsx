@@ -78,7 +78,7 @@ export default class ChartTooltip extends Component {
             </tbody>
           </table>
         }
-        maxWidth={null}
+        maxWidth="unset"
       />
     ) : null;
   }
