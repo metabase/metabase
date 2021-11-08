@@ -231,6 +231,7 @@
 (s/defmethod render :table :- common/RenderedPulseCard
   [_ render-type timezone-id :- (s/maybe s/Str) card {:keys [cols rows] :as data}]
   (let [table-body [:div
+                    (when (= render-type :attachment {:style (style/style {:zoom "0.5"})}))
                     (table/render-table
                      (color/make-color-selector data (:visualization_settings card))
                      (mapv :name (:cols data))
