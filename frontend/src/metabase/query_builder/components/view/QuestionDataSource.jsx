@@ -44,7 +44,6 @@ function getDataSourceParts({ question, noLink, subHead, isObjectDetail }) {
   const table = query.table();
   if (table && table.hasSchema()) {
     parts.push({
-      icon: "folder",
       name: table.schema_name,
       href: !noLink && database.id >= 0 && browseSchema(table),
     });
@@ -63,7 +62,6 @@ function getDataSourceParts({ question, noLink, subHead, isObjectDetail }) {
       }, name);
     }
     parts.push({
-      icon: "table_spaced",
       name: name,
       href:
         !noLink && (subHead || isObjectDetail) && table.newQuestion().getUrl(),
