@@ -79,6 +79,15 @@ export default class SettingsEditorApp extends Component {
     // TODO: mutation bad!
     setting.value = newValue;
     try {
+      if (setting.onBeforeChanged) {
+        await setting.onBeforeChanged(
+          oldValue,
+          newValue,
+          settingValues,
+          this.handleChangeSetting,
+        );
+      }
+
       await updateSetting(setting);
 
       if (setting.onChanged) {
