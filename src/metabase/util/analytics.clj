@@ -14,8 +14,6 @@
            [org.apache.http.impl.client CloseableHttpClient HttpClientBuilder HttpClients]
            org.apache.http.impl.conn.PoolingHttpClientConnectionManager))
 
-(set! *warn-on-reflection* true)
-
 (defsetting snowplow-url
   (deferred-tru "The URL of the Snowplow collector to send analytics events to")
   :default (if config/is-prod?
