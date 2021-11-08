@@ -1,6 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 
+import { BaseSelectListItem } from "./BaseSelectListItem";
 import { SelectListItem } from "./SelectListItem";
 
 const propTypes = {
@@ -18,4 +19,5 @@ export function SelectList({ children, className }) {
 
 SelectList.propTypes = propTypes;
 
+SelectList.BaseItem = BaseSelectListItem;
 SelectList.Item = SelectListItem;

@@ -83,6 +83,7 @@
 }
 
 :local .text-card-markdown a {
+  display: inline-block;
   font-weight: bold;
   cursor: pointer;
   text-decoration: none;
