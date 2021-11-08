@@ -16,6 +16,22 @@ if [ ! -z "$JAVA_TIMEZONE" ]; then
     JAVA_OPTS="${JAVA_OPTS} -Duser.timezone=${JAVA_TIMEZONE}"
 fi
 
+# check for docker secrets file
+if [[ -n "${MB_DB_USER_FILE}" ]]; then
+  export MB_DB_USER=$(cat ${MB_DB_USER_FILE})
+  echo "metabase db username set from secrets file ${MB_DB_USER_FILE}"
+fi
+
+if [[  -n "${MB_DB_PASS_FILE}" ]]; then
+    export MB_DB_PASS=$(cat ${MB_DB_PASS_FILE})
+  echo "metabase db password set from secrets file ${MB_DB_PASS_FILE}"
+fi
+
+if [[  -n "${MB_DB_DBNAME_FILE}" ]]; then
+    export MB_DB_DBNAME=$(cat ${MB_DB_DBNAME_FILE})
+  echo "metabase db name set from secrets file ${MB_DB_DBNAME_FILE}"
+fi
+
 # detect if the container is started as root or not
 # if non-root, it's likely we run in a k8s environment with well maintained permissions
 # if root, we need to check some permissions in order to exec metabase with a non-root user
