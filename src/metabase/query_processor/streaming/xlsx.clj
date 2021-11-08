@@ -394,7 +394,7 @@
             parsed-value (if (and *parse-temporal-string-values* (string? value))
                            (try (u.date/parse value)
                                 ;; Fallback to plain string value if it couldn't be parsed
-                                (catch java.time.format.DateTimeParseException _ value))
+                                (catch Exception _ value))
                            scaled-val)]
         (set-cell! (.createCell ^SXSSFRow row ^Integer index) parsed-value id-or-name)))
     row))
