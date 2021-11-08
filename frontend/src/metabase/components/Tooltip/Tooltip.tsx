@@ -6,7 +6,7 @@ import * as ReactIs from "react-is";
 Tooltip.propTypes = {
   tooltip: PropTypes.node,
   children: PropTypes.node,
-  reference: PropTypes.element,
+  reference: PropTypes.instanceOf(Element),
   isEnabled: PropTypes.bool,
   isOpen: PropTypes.bool,
   maxWidth: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
@@ -32,7 +32,7 @@ function getSafeChildren(children: React.ReactNode) {
   if (isReactDOMTypeElement(children) || ReactIs.isForwardRef(children)) {
     return children;
   } else {
-    return <span>{children}</span>;
+    return <span data-testid="tooltip-component-wrapper">{children}</span>;
   }
 }
 
@@ -64,7 +64,7 @@ function Tooltip({
         reference={reference}
       />
     );
-  } else if (tooltip && safeChildren) {
+  } else if (tooltip && children != null) {
     return (
       <Tippy
         theme="tooltip"
