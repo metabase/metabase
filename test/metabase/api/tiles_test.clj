@@ -1,7 +1,9 @@
 (ns metabase.api.tiles-test
   "Tests for `/api/tiles` endpoints."
   (:require [cheshire.core :as json]
+            [clojure.set :as set]
             [clojure.test :refer :all]
+            [metabase.api.tiles :as tiles]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
             [schema.core :as s]))
@@ -33,6 +35,52 @@
                            {:database (mt/id)
                             :type :native
                             :native native-query}))))))))
+
+(deftest query->tiles-query-test
+  (letfn [(clean [q]
+            (-> q
+                (update-in [:query :filter] #(take 3 %))))]
+    (testing "mbql"
+      (testing "adds the inside filter and only selects the lat/lon fields"
+        (let [query {:database 19
+                     :query {:source-table 88
+                             :fields [[:field 562 nil]
+                                      [:field 574 nil] ; lat
+                                      [:field 576 nil] ; lon
+                                      ]
+                             :limit 2000}
+                     :type :query}]
+          (is (= {:database 19
+                  :query {:source-table 88
+                          :fields [[:field 574 nil]
+                                   [:field 576 nil]]
+                          :limit 2000
+                          :filter [:inside [:field 574 nil] [:field 576 nil]]}
+                  :type :query
+                  :async? false}
+                 (clean (tiles/query->tiles-query query
+                                                  {:zoom 2 :x 3 :y 1
+                                                   :lat-field "574"
+                                                   :lon-field "576"})))))))
+    (testing "native"
+      (testing "nests the query, selects fields"
+        (let [query {:type :native
+                     :native {:query "select name, latitude, longitude from zomato limit 2000;"
+                              :template-tags {}}
+                     :database 19}]
+          (is (= {:database 19
+                  :query {:source-query (-> query :native (set/rename-keys {:query :native}))
+                          :fields [[:field "latitude" {:base-type :type/Float}]
+                                   [:field "longitude" {:base-type :type/Float}]]
+                          :filter [:inside
+                                   [:field "latitude" {:base-type :type/Float}]
+                                   [:field "longitude" {:base-type :type/Float}]]}
+                  :type :query
+                  :async? false}
+                 (clean (tiles/query->tiles-query query
+                                                  {:zoom 2 :x 2 :y 1
+                                                   :lat-field "latitude"
+                                                   :lon-field "longitude"})))))))))
 
 (deftest failure-test
   (testing "if the query fails, don't attempt to generate a map without any points -- the endpoint should return a 400"

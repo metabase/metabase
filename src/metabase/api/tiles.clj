@@ -55,8 +55,8 @@
   (let [top-left      (x+y+zoom->lat-lon      x       y  zoom)
         bottom-right  (x+y+zoom->lat-lon (inc x) (inc y) zoom)
         inside-filter [:inside
-                       [:field lat-field (when (string? lat-field) {:base-type :type/Float})]
-                       [:field lon-field (when (string? lon-field) {:base-type :type/Float})]
+                       lat-field
+                       lon-field
                        (top-left :lat)
                        (top-left :lon)
                        (bottom-right :lat)
@@ -133,61 +133,62 @@
     (Integer/parseInt x)
     x))
 
+(defn- field-ref
+  "Makes a field reference for `id-or-name`. If id, the type information can be determined, if a string, must be
+  provided. Since we deal exclusively with lat/long fields, assumed to be a float."
+  [id-or-name]
+  (let [id-or-name' (int-or-string id-or-name)]
+    [:field id-or-name' (when (string? id-or-name') {:base-type :type/Float})]))
+
+(defn query->tiles-query [query {:keys [zoom x y lat-field lon-field]}]
+  (let [lat-ref (field-ref lat-field)
+        lon-ref (field-ref lon-field)]
+    (-> query
+        native->source-query
+        (update :query query-with-inside-filter
+                lat-ref lon-ref
+                x y zoom)
+        (assoc-in [:query :fields] [lat-ref lon-ref])
+        (assoc :async? false))))
 
 ;; TODO - this can be reworked to be `defendpoint-async` instead
 ;;
 ;; TODO - this should reduce results from the QP in a streaming fashion instead of requiring them all to be in memory
 ;; at the same time
-(api/defendpoint GET "/:zoom/:x/:y/:lat-field/:lon-field/:lat-col-idx/:lon-col-idx/"
+(api/defendpoint GET "/:zoom/:x/:y/:lat-field/:lon-field"
   "This endpoints provides an image with the appropriate pins rendered given a MBQL `query` (passed as a GET query
   string param). We evaluate the query and find the set of lat/lon pairs which are relevant and then render the
   appropriate ones. It's expected that to render a full map view several calls will be made to this endpoint in
   parallel."
-  [zoom x y lat-field lon-field lat-col-idx lon-col-idx query]
+  [zoom x y lat-field lon-field query]
   {zoom        su/IntString
    x           su/IntString
    y           su/IntString
    lat-field   s/Str
    lon-field   s/Str
-   lat-col-idx su/IntString
-   lon-col-idx su/IntString
    query       su/JSONString}
   (let [zoom        (Integer/parseInt zoom)
         x           (Integer/parseInt x)
         y           (Integer/parseInt y)
-        lat-col-idx (Integer/parseInt lat-col-idx)
-        lon-col-idx (Integer/parseInt lon-col-idx)
 
         query
         (normalize/normalize (json/parse-string query keyword))
 
-        updated-query
-        (-> query
-            native->source-query
-            (update :query query-with-inside-filter
-                    (int-or-string lat-field)
-                    (int-or-string lon-field) x y zoom)
-            (assoc :async? false))
+        updated-query (query->tiles-query query {:zoom zoom :x x :y y
+                                                 :lat-field lat-field
+                                                 :lon-field lon-field})
 
         {:keys [status], {:keys [rows]} :data, :as result}
         (qp/process-query-and-save-execution! updated-query
                                               {:executed-by api/*current-user-id*
-                                               :context     :map-tiles})
-
-        ;; make sure query completed successfully, or API endpoint should return 400
-        _
-        (when-not (= status :completed)
-          (throw (ex-info (tru "Query failed")
-                   ;; `result` might be a `core.async` channel or something we're not expecting
-                   (assoc (when (map? result) result) :status-code 400))))
-
-        points
-        (for [row rows]
-          [(nth row lat-col-idx) (nth row lon-col-idx)])]
+                                               :context     :map-tiles})]
     ;; manual ring response here.  we simply create an inputstream from the byte[] of our image
-    {:status  200
-     :headers {"Content-Type" "image/png"}
-     :body    (ByteArrayInputStream. (tile->byte-array (create-tile zoom points)))}))
-
+    (if (= status :completed)
+      {:status  200
+       :headers {"Content-Type" "image/png"}
+       :body    (ByteArrayInputStream. (tile->byte-array (create-tile zoom rows)))}
+      (throw (ex-info (tru "Query failed")
+                      ;; `result` might be a `core.async` channel or something we're not expecting
+                      (assoc (when (map? result) result) :status-code 400))))))
 
 (api/define-routes)
