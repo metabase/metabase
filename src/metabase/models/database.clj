@@ -10,7 +10,7 @@
             [metabase.models.interface :as i]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perm-group]
-            [metabase.models.secret :as secret]
+            [metabase.models.secret :as secret :refer [Secret]]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
@@ -61,12 +61,41 @@
           (driver/normalize-db-details driver db*)
           db*))))
 
-(defn- pre-delete [{id :id, driver :engine, :as database}]
+(defn- conn-props->secret-props-by-name
+  "For the given `conn-props` (output of `driver/connection-properties`), return a map of all secret type properties,
+  keyed by property name."
+  [conn-props]
+  (->> (filter #(= "secret" (:type %)) conn-props)
+    (reduce (fn [acc prop] (assoc acc (:name prop) prop)) {})))
+
+(defn- delete-orphaned-secrets!
+  "Delete Secret instances from the app DB, that will become orphaned when `database` is deleted. For now, this will
+  simply delete any Secret whose ID appears in the details blob, since every Secret instance that is currently created
+  is exclusively associated with a single Database.
+
+  In the future, if/when we allow arbitrary association of secret instances to database instances, this will need to
+  change and become more complicated (likely by consulting a many-to-many join table)."
+  [{:keys [id details] :as database}]
+  (when-let [conn-props-fn (get-method driver/connection-properties (driver.u/database->driver database))]
+    (let [conn-props                 (conn-props-fn (driver.u/database->driver database))
+          possible-secret-prop-names (keys (conn-props->secret-props-by-name conn-props))]
+      (doseq [secret-id (reduce (fn [acc prop-name]
+                                  (when-let [secret-id (get details (keyword (str prop-name "-id")))]
+                                    (conj acc secret-id)))
+                                []
+                                possible-secret-prop-names)]
+        (log/info (trs "Deleting secret ID {0} from app DB because the owning database ({1}) is being deleted"
+                       secret-id
+                       id))
+        (db/delete! Secret :id secret-id)))))
+
+(defn- pre-delete [{id :id, driver :engine, details :details :as database}]
   (unschedule-tasks! database)
   (db/execute! {:delete-from (db/resolve-model 'Permissions)
                 :where       [:or
                               [:like :object (str (perms/data-perms-path id) "%")]
                               [:= :object (perms/database-block-perms-path id)]]})
+  (delete-orphaned-secrets! database)
   (try
     (driver/notify-database-updated driver database)
     (catch Throwable e
@@ -120,10 +149,8 @@
 
           details ; we have details populated in this Database instance, so handle them
           (let [conn-props            (conn-props-fn (driver.u/database->driver database))
-                conn-secrets-by-name  (->> (filter #(= "secret" (:type %)) conn-props)
-                                           (reduce (fn [acc prop] (assoc acc (:name prop) prop)) {}))
-                ;; saved-details         (db/select-field :details Database id)
-                 updated-details      (reduce-kv (partial handle-db-details-secret-prop! database)
+                conn-secrets-by-name  (conn-props->secret-props-by-name conn-props)
+                updated-details       (reduce-kv (partial handle-db-details-secret-prop! database)
                                                  details
                                                  conn-secrets-by-name)]
            (assoc database :details updated-details))

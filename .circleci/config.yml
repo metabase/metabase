@@ -535,8 +535,15 @@ jobs:
           name: Save last git commit message to .COMMIT
           command: git log -1 > .COMMIT
       - run:
-          name: Remove .git directory (not needed for tests)
-          command: rm -rf /home/circleci/metabase/metabase/.git
+          name: Determine what to do to .git directory
+          command: |
+            if [[ $CIRCLE_BRANCH == release* ]]; then
+              echo 'This is a release branch; preserving .git directory to determine version'
+            else
+              echo 'This is not a release branch; removing .git directory (not needed for tests)'
+              rm -rf /home/circleci/metabase/metabase/.git
+            fi
+
       - run:
           name: Remove ./OSX directory (not needed for tests)
           command: rm -rf /home/circleci/metabase/metabase/OSX

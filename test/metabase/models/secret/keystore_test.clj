@@ -20,17 +20,17 @@
   `ks-password` (a bad idea in production, but fine for tests)."
   {:added "0.41.0"}
   ^KeyStore [^String ks-password entries]
-  (let [pw         (.toCharArray ks-password)
-        protection (KeyStore$PasswordProtection. pw)]
-    (let [^KeyStore key-store (doto (KeyStore/getInstance "PKCS12")
-                                    (.load nil pw))]
-      (doseq [[^String alias ^String value] entries]
-        (.setEntry key-store
-                   alias
-                   (-> (SecretKeySpec. (.getBytes value StandardCharsets/UTF_8) "AES")
-                       (KeyStore$SecretKeyEntry.))
-                   protection))
-      key-store)))
+  (let [pw                  (.toCharArray ks-password)
+        protection          (KeyStore$PasswordProtection. pw)
+        ^KeyStore key-store (doto (KeyStore/getInstance "PKCS12")
+                                  (.load nil pw))]
+    (doseq [[^String alias ^String value] entries]
+      (.setEntry key-store
+                 alias
+                 (-> (SecretKeySpec. (.getBytes value StandardCharsets/UTF_8) "AES")
+                     (KeyStore$SecretKeyEntry.))
+                 protection))
+    key-store))
 
 (defn bytes->keystore
   "Initializes and returns a `KeyStore` instance from the given `ks-bytes` (keystore contents) and `ks-password`."

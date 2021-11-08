@@ -487,6 +487,13 @@ When set to `true`, will enable HTTPS with the options configured in the `MB_JET
 
 Also see the [Customizing Jetty web server](customizing-jetty-webserver.md) documentation page.
 
+#### `MB_JETTY_SSL_CLIENT_AUTH`
+
+Type: boolean<br>
+Default: `null`
+
+Configure Java SSL client authentication. When set to `true`, client certificates are required and verified by the certificate authority in the TrustStore.
+
 #### `MB_JETTY_SSL_KEYSTORE`
 
 Type: string<br>

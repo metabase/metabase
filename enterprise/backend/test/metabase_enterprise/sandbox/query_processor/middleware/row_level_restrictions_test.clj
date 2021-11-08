@@ -950,3 +950,31 @@
                        :breakout    [&P.people.source
                                      $product_id->products.category]
                        :limit       5}))))))))))
+
+(deftest caching-test
+  (testing "Make sure Sandboxing works in combination with caching (#18579)"
+    (mt/with-gtaps {:gtaps {:venues {:query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 5})}}}
+      (let [card-id   (db/select-one-field :card_id GroupTableAccessPolicy :group_id (u/the-id &group))
+            _         (is (integer? card-id))
+            query     (db/select-one-field :dataset_query Card :id card-id)
+            run-query (fn []
+                        (let [results (qp/process-query (assoc query :cache-ttl 100))]
+                          {:cached?  (boolean (:cached results))
+                           :num-rows (count (mt/rows results))}))]
+        (mt/with-temporary-setting-values [enable-query-caching  true
+                                           query-caching-min-ttl 0]          #_(db/update! Card card-id :cache_ttl 100)
+          (testing "Make sure the underlying card for the GTAP returns cached results without sandboxing"
+            (mt/with-current-user nil
+              (testing "First run -- should not be cached"
+                (is (= {:cached? false, :num-rows 5}
+                       (run-query))))
+              ;; run a few more times to make sure the cache had time to populate
+              (run-query)
+              (run-query)
+              (testing "Should be cached by now"
+                (is (= {:cached? true, :num-rows 5}
+                       (run-query))))))
+          (testing "Ok, now try to access the Table that is sandboxed by the cached Card"
+            ;; this should *NOT* be cached because we're generating a nested query with sandboxing in play.
+            (is (= {:cached? false, :num-rows 5}
+                   (run-query)))))))))

@@ -291,7 +291,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Add filter").click();
 
     cy.log("Reported failing on v0.36.4 and v0.36.5.1");
-    cy.get(".LoadingSpinner").should("not.exist");
+    cy.findByTestId("loading-spinner").should("not.exist");
     cy.findAllByText("148.23"); // one of the subtotals for this product
     cy.findAllByText("Fantastic Wool Shirt").should("not.exist");
   });
@@ -369,6 +369,7 @@ describe("scenarios > question > filter", () => {
     openProductsTable();
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
+    typeInExpressionEditor("c");
 
     // This issue has two problematic parts. We're testing for both:
     cy.log("Popover should display all custom expression options");
@@ -380,7 +381,7 @@ describe("scenarios > question > filter", () => {
     cy.log("Should not display error prematurely");
     cy.get("[contenteditable='true']")
       .click()
-      .type("contains(");
+      .type("ontains(");
     cy.findByText(/Checks to see if string1 contains string2 within it./i);
     cy.button("Done").should("not.be.disabled");
     cy.get(".text-error").should("not.exist");
@@ -473,9 +474,10 @@ describe("scenarios > question > filter", () => {
   it("should offer case expression in the auto-complete suggestions", () => {
     openExpressionEditorFromFreshlyLoadedPage();
 
+    typeInExpressionEditor("c");
     popover().contains(/case/i);
 
-    typeInExpressionEditor("c");
+    typeInExpressionEditor("a");
 
     // "case" is still there after typing a bit
     popover().contains(/case/i);

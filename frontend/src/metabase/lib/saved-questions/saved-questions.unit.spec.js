@@ -7,9 +7,17 @@ import {
 } from "./saved-questions";
 
 describe("saved question helpers", () => {
+  function getEncodedPayload(object) {
+    const json = JSON.stringify(object);
+    return encodeURIComponent(json);
+  }
+
   describe("getCollectionVirtualSchemaName", () => {
     it("should return 'Everything else' for root collection", () => {
       expect(getCollectionVirtualSchemaName({ id: null })).toBe(
+        "Everything else",
+      );
+      expect(getCollectionVirtualSchemaName({ id: "root" })).toBe(
         "Everything else",
       );
     });
@@ -23,12 +31,33 @@ describe("saved question helpers", () => {
         getCollectionVirtualSchemaName({ id: 23, name: "Important questions" }),
       ).toBe("Important questions");
     });
+
+    it("should prefer collection's schema name over just name", () => {
+      const collection = {
+        id: 5,
+        name: "Your personal collection",
+        schemaName: "John Doe's Personal collection",
+      };
+      expect(getCollectionVirtualSchemaName(collection)).toBe(
+        collection.schemaName,
+      );
+    });
   });
 
   describe("getCollectionVirtualSchemaId", () => {
     [
-      { collection: undefined, expectedName: "Everything else" },
-      { collection: { id: null }, expectedName: "Everything else" },
+      {
+        collection: undefined,
+        expectedName: encodeURIComponent("Everything else"),
+      },
+      {
+        collection: { id: null },
+        expectedName: encodeURIComponent("Everything else"),
+      },
+      {
+        collection: { id: "root" },
+        expectedName: encodeURIComponent("Everything else"),
+      },
       { collection: { id: 3, name: "Marketing" }, expectedName: "Marketing" },
     ].forEach(({ collection, expectedName }) => {
       it("returns name prefixed with virtual saved question DB ID", () => {
@@ -36,6 +65,16 @@ describe("saved question helpers", () => {
           `${SAVED_QUESTIONS_VIRTUAL_DB_ID}:${expectedName}`,
         );
       });
+    });
+
+    it("should return correct schema for collection datasets", () => {
+      const collection = { id: 1, name: "Marketing" };
+      const payload = getEncodedPayload({ isDatasets: true });
+      const expectedId = `${SAVED_QUESTIONS_VIRTUAL_DB_ID}:Marketing:${payload}`;
+
+      expect(
+        getCollectionVirtualSchemaId(collection, { isDatasets: true }),
+      ).toBe(expectedId);
     });
   });
 
@@ -88,7 +127,9 @@ describe("saved question helpers", () => {
         description: question.description,
         moderated_status: question.moderated_status,
         db_id: question.dataset_query.database,
-        schema: `${SAVED_QUESTIONS_VIRTUAL_DB_ID}:Everything else`,
+        schema: `${SAVED_QUESTIONS_VIRTUAL_DB_ID}:${encodeURIComponent(
+          "Everything else",
+        )}`,
         schema_name: "Everything else",
       });
     });

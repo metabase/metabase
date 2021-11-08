@@ -547,7 +547,7 @@ function getDimensionDisplayName(dimension) {
   if (!dimension) {
     return t`Pick a column...`;
   }
-  if (dimension.temporalUnit()) {
+  if (isDateTimeField(dimension.mbql())) {
     return `${dimension.displayName()}: ${dimension.subDisplayName()}`;
   }
   return dimension.displayName();
@@ -629,6 +629,7 @@ class JoinDimensionPicker extends React.Component {
               onClose();
             }}
             enableSubDimensions
+            preventNumberSubDimensions
             data-testid={`${testID}-picker`}
           />
         )}

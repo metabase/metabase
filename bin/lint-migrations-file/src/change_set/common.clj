@@ -2,16 +2,25 @@
   (:require [clojure.spec.alpha :as s]
             [clojure.string :as str]))
 
+;; See PR #18821 for more info on the new migration ID format adopted in 0.42.0+
+
+(s/def ::legacy-id
+  ;; some legacy IDs are integers and some are strings. so handle either case.
+  (s/or
+   :int    (s/and int?
+                  #(<= 1 % 382))
+   :string (s/and string?
+                  #(re-matches #"^\d+$" %)
+                  #(<= 1 (Integer/parseUnsignedInt %) 382))))
+
+(s/def ::new-style-id
+  (s/and string?
+         #(re-matches #"^v\d{2,}\.\d{2}-\d{3}$" %)))
+
 (s/def ::id
   (s/or
-   :int int?
-   :int-string (s/and
-                string?
-                (fn [^String s]
-                  (try
-                    (Integer/parseInt s)
-                    (catch Throwable _
-                      false))))))
+   :legacy-id    ::legacy-id
+   :new-style-id ::new-style-id))
 
 (s/def ::author string?)
 

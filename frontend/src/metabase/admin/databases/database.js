@@ -199,8 +199,7 @@ export const createDatabase = function(database) {
   return async function(dispatch, getState) {
     try {
       dispatch.action(CREATE_DATABASE_STARTED, {});
-      const action = await dispatch(Databases.actions.create(database));
-      const createdDatabase = Databases.HACK_getObjectFromAction(action);
+      await dispatch(Databases.actions.create(database));
       MetabaseAnalytics.trackStructEvent(
         "Databases",
         "Create",
@@ -208,7 +207,7 @@ export const createDatabase = function(database) {
       );
 
       dispatch.action(CREATE_DATABASE);
-      dispatch(push("/admin/databases?created=" + createdDatabase.id));
+      dispatch(push("/admin/databases"));
     } catch (error) {
       console.error("error creating a database", error);
       MetabaseAnalytics.trackStructEvent(
