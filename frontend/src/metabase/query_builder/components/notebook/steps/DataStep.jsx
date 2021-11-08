@@ -3,7 +3,7 @@ import React from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
+import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import { getDatabasesList } from "metabase/query_builder/selectors";
 
 import { NotebookCell, NotebookCellItem } from "../NotebookCell";
@@ -36,7 +36,7 @@ function DataStep({ color, query, updateQuery }) {
         rightContainerStyle={FIELDS_PICKER_STYLES.notebookRightItemContainer}
         data-testid="data-step-cell"
       >
-        <DatabaseSchemaAndTableDataSelector
+        <DataSourceSelector
           hasTableSearch
           databaseQuery={{ saved: true }}
           selectedDatabaseId={query.databaseId()}
