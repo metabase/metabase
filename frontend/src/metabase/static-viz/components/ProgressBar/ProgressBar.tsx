@@ -6,16 +6,21 @@ import { formatNumber } from "../../lib/numbers";
 import { Text } from "../Text";
 import { Pointer } from "./Pointer";
 import { CheckMarkIcon } from "./CheckMarkIcon";
-import { createPalette, getBarText, getColors } from "./utils";
+import {
+  createPalette,
+  getBarText,
+  getColors,
+  calculatePointerLabelShift,
+} from "./utils";
 import { ProgressBarData } from "./types";
 
 const layout = {
-  width: 400,
+  width: 440,
   height: 110,
   margin: {
     top: 40,
-    right: 100,
-    left: 20,
+    right: 40,
+    left: 40,
   },
   barHeight: 40,
   borderRadius: 5,
@@ -29,11 +34,16 @@ const layout = {
 
 interface ProgressBarProps {
   data: ProgressBarData;
-  color: string;
-  format: any;
+  settings: {
+    color: string;
+    format: any;
+  };
 }
 
-const ProgressBar = ({ data, color, format }: ProgressBarProps) => {
+const ProgressBar = ({
+  data,
+  settings: { color, format },
+}: ProgressBarProps) => {
   const palette = createPalette(color);
   const colors = getColors(data, palette);
   const barWidth = layout.width - layout.margin.left - layout.margin.right;
@@ -51,9 +61,19 @@ const ProgressBar = ({ data, color, format }: ProgressBarProps) => {
   const currentX = xScale(Math.min(data.goal, data.value));
 
   const pointerY = layout.margin.top - layout.pointer.height * 1.5;
-  const pointerX = xMin + xScale(data.value);
+  const pointerX = xMin + Math.max(xScale(data.value), 0);
 
   const barText = getBarText(data);
+
+  const valueText = formatNumber(data.value, format);
+
+  const valueTextShift = calculatePointerLabelShift(
+    valueText,
+    pointerX,
+    xMin,
+    xMax,
+    layout.pointer.width,
+  );
 
   return (
     <svg width={layout.width} height={layout.height}>
@@ -97,8 +117,8 @@ const ProgressBar = ({ data, color, format }: ProgressBarProps) => {
         )}
       </Group>
       <Group left={pointerX} top={pointerY}>
-        <Text textAnchor="middle" dy="-0.4em">
-          {formatNumber(data.value, format)}
+        <Text textAnchor={"middle"} dy="-0.4em" dx={valueTextShift}>
+          {valueText}
         </Text>
         <Pointer
           width={layout.pointer.width}

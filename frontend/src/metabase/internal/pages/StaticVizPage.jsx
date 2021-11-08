@@ -218,13 +218,15 @@ export default function StaticVizPage() {
                 value: 0,
                 goal: 100000,
               },
-              format: {
-                number_style: "currency",
-                currency: "USD",
-                currency_style: "symbol",
-                decimals: 0,
+              settings: {
+                format: {
+                  number_style: "currency",
+                  currency: "USD",
+                  currency_style: "symbol",
+                  decimals: 0,
+                },
+                color: "#84BB4C",
               },
-              color: "#84BB4C",
             }}
           />
           <StaticChart
@@ -234,13 +236,15 @@ export default function StaticVizPage() {
                 value: 30000,
                 goal: 100000,
               },
-              format: {
-                number_style: "currency",
-                currency: "USD",
-                currency_style: "symbol",
-                decimals: 0,
+              settings: {
+                format: {
+                  number_style: "currency",
+                  currency: "USD",
+                  currency_style: "symbol",
+                  decimals: 0,
+                },
+                color: "#84BB4C",
               },
-              color: "#84BB4C",
             }}
           />
           <StaticChart
@@ -250,13 +254,15 @@ export default function StaticVizPage() {
                 value: 100000,
                 goal: 100000,
               },
-              format: {
-                number_style: "currency",
-                currency: "USD",
-                currency_style: "symbol",
-                decimals: 0,
+              settings: {
+                format: {
+                  number_style: "currency",
+                  currency: "USD",
+                  currency_style: "symbol",
+                  decimals: 0,
+                },
+                color: "#84BB4C",
               },
-              color: "#84BB4C",
             }}
           />
           <StaticChart
@@ -266,13 +272,15 @@ export default function StaticVizPage() {
                 value: 135000,
                 goal: 100000,
               },
-              format: {
-                number_style: "currency",
-                currency: "USD",
-                currency_style: "symbol",
-                decimals: 0,
+              settings: {
+                format: {
+                  number_style: "currency",
+                  currency: "USD",
+                  currency_style: "symbol",
+                  decimals: 0,
+                },
+                color: "#84BB4C",
               },
-              color: "#84BB4C",
             }}
           />
         </Box>
