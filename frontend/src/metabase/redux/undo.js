@@ -1,7 +1,7 @@
 import _ from "underscore";
 
 import { createAction, createThunkAction } from "metabase/lib/redux";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 const ADD_UNDO = "metabase/questions/ADD_UNDO";
 const DISMISS_UNDO = "metabase/questions/DISMISS_UNDO";
@@ -21,7 +21,7 @@ export const dismissUndo = createAction(
   DISMISS_UNDO,
   (undoId, track = true) => {
     if (track) {
-      MetabaseAnalytics.trackEvent("Undo", "Dismiss Undo");
+      MetabaseAnalytics.trackStructEvent("Undo", "Dismiss Undo");
     }
     return undoId;
   },
@@ -29,7 +29,7 @@ export const dismissUndo = createAction(
 
 export const performUndo = createThunkAction(PERFORM_UNDO, undoId => {
   return (dispatch, getState) => {
-    MetabaseAnalytics.trackEvent("Undo", "Perform Undo");
+    MetabaseAnalytics.trackStructEvent("Undo", "Perform Undo");
     const undo = _.findWhere(getState().undo, { id: undoId });
     if (undo) {
       undo.actions.map(action => dispatch(action));

@@ -10,7 +10,7 @@ import Tooltip from "metabase/components/Tooltip";
 
 import "./ChartClickActions.css";
 
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import { performAction } from "metabase/visualizations/lib/action";
 
@@ -104,7 +104,7 @@ export default class ChartClickActions extends Component {
   handleClickAction = (action: ClickAction) => {
     const { dispatch, onChangeCardAndRun } = this.props;
     if (action.popover) {
-      MetabaseAnalytics.trackEvent(
+      MetabaseAnalytics.trackStructEvent(
         "Actions",
         "Open Click Action Popover",
         getGALabelForAction(action),
@@ -116,7 +116,7 @@ export default class ChartClickActions extends Component {
         onChangeCardAndRun,
       });
       if (didPerform) {
-        MetabaseAnalytics.trackEvent(
+        MetabaseAnalytics.trackStructEvent(
           "Actions",
           "Executed Click Action",
           getGALabelForAction(action),
@@ -143,7 +143,7 @@ export default class ChartClickActions extends Component {
         <PopoverContent
           onChangeCardAndRun={({ nextCard }) => {
             if (popoverAction) {
-              MetabaseAnalytics.trackEvent(
+              MetabaseAnalytics.trackStructEvent(
                 "Action",
                 "Executed Click Action",
                 getGALabelForAction(popoverAction),
@@ -152,7 +152,7 @@ export default class ChartClickActions extends Component {
             onChangeCardAndRun({ nextCard });
           }}
           onClose={() => {
-            MetabaseAnalytics.trackEvent(
+            MetabaseAnalytics.trackStructEvent(
               "Action",
               "Dismissed Click Action Menu",
               getGALabelForAction(popoverAction),
@@ -194,7 +194,10 @@ export default class ChartClickActions extends Component {
         target={clicked.element}
         targetEvent={clicked.event}
         onClose={() => {
-          MetabaseAnalytics.trackEvent("Action", "Dismissed Click Action Menu");
+          MetabaseAnalytics.trackStructEvent(
+            "Action",
+            "Dismissed Click Action Menu",
+          );
           this.close();
         }}
         verticalAttachments={["top", "bottom"]}
@@ -310,7 +313,7 @@ export const ChartClickAction = ({
           to={action.url()}
           className={className}
           onClick={() =>
-            MetabaseAnalytics.trackEvent(
+            MetabaseAnalytics.trackStructEvent(
               "Actions",
               "Executed Click Action",
               getGALabelForAction(action),

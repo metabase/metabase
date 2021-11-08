@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
 import AddDatabaseHelpCard from "metabase/components/AddDatabaseHelpCard";
@@ -48,7 +48,7 @@ export default class Setup extends Component {
 
   completeWelcome() {
     this.props.setActiveStep(LANGUAGE_STEP_NUMBER);
-    MetabaseAnalytics.trackEvent("Setup", "Welcome");
+    MetabaseAnalytics.trackStructEvent("Setup", "Welcome");
   }
 
   componentDidMount() {
@@ -84,11 +84,11 @@ export default class Setup extends Component {
     );
   }
 
-  UNSAFE_componentWillReceiveProps(nextProps) {
+  componentDidUpdate(prevProps) {
     // If we are entering the scheduling step, we need to scroll to the top of scheduling step container
     if (
-      this.props.activeStep !== nextProps.activeStep &&
-      nextProps.activeStep === 3
+      prevProps.activeStep !== this.props.activeStep &&
+      this.props.activeStep === DATABASE_CONNECTION_STEP_NUMBER
     ) {
       setTimeout(() => {
         if (this.databaseSchedulingStepContainer.current) {
@@ -98,8 +98,8 @@ export default class Setup extends Component {
       }, 10);
     }
 
-    if (!this.props.setupComplete && nextProps.setupComplete) {
-      MetabaseAnalytics.trackEvent("Setup", "Complete");
+    if (!prevProps.setupComplete && this.props.setupComplete) {
+      MetabaseAnalytics.trackStructEvent("Setup", "Complete");
     }
   }
 

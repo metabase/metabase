@@ -6,7 +6,7 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 
 import title from "metabase/hoc/Title";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 import AdminLayout from "metabase/components/AdminLayout";
 import { NotFound } from "metabase/containers/ErrorPages";
@@ -94,7 +94,7 @@ export default class SettingsEditorApp extends Component {
 
       const value = prepareAnalyticsValue(setting);
 
-      MetabaseAnalytics.trackEvent(
+      MetabaseAnalytics.trackStructEvent(
         "General Settings",
         setting.display_name || setting.key,
         value,
@@ -105,7 +105,7 @@ export default class SettingsEditorApp extends Component {
       const message =
         error && (error.message || (error.data && error.data.message));
       this.saveStatusRef.current.setSaveError(message);
-      MetabaseAnalytics.trackEvent(
+      MetabaseAnalytics.trackStructEvent(
         "General Settings",
         setting.display_name,
         "error",

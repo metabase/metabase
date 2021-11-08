@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
 
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseUtils from "metabase/lib/utils";
 import SettingsSetting from "./SettingsSetting";
 import { updateSlackSettings } from "../settings";
@@ -125,7 +125,11 @@ export default class SettingsSlackForm extends Component {
     });
 
     if (element.key === "metabot-enabled") {
-      MetabaseAnalytics.trackEvent("Slack Settings", "Toggle Metabot", value);
+      MetabaseAnalytics.trackStructEvent(
+        "Slack Settings",
+        "Toggle Metabot",
+        value,
+      );
     }
   }
 
@@ -162,7 +166,11 @@ export default class SettingsSlackForm extends Component {
             submitting: "success",
           });
 
-          MetabaseAnalytics.trackEvent("Slack Settings", "Update", "success");
+          MetabaseAnalytics.trackStructEvent(
+            "Slack Settings",
+            "Update",
+            "success",
+          );
 
           // show a confirmation for 3 seconds, then return to normal
           setTimeout(() => this.setState({ submitting: "default" }), 3000);
@@ -173,7 +181,11 @@ export default class SettingsSlackForm extends Component {
             formErrors: this.handleFormErrors(error),
           });
 
-          MetabaseAnalytics.trackEvent("Slack Settings", "Update", "error");
+          MetabaseAnalytics.trackStructEvent(
+            "Slack Settings",
+            "Update",
+            "error",
+          );
         },
       );
     }

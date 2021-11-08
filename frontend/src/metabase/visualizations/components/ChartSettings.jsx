@@ -13,7 +13,7 @@ import Visualization from "metabase/visualizations/components/Visualization";
 import ChartSettingsWidget from "./ChartSettingsWidget";
 
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   getVisualizationTransformed,
   extractRemappings,
@@ -92,7 +92,7 @@ class ChartSettings extends Component {
   };
 
   handleResetSettings = () => {
-    MetabaseAnalytics.trackEvent("Chart Settings", "Reset Settings");
+    MetabaseAnalytics.trackStructEvent("Chart Settings", "Reset Settings");
 
     const settings = getClickBehaviorSettings(this._getSettings());
     this.props.onChange(settings);

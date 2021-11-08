@@ -8,7 +8,7 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import EmbedModalContent from "metabase/public/components/widgets/EmbedModalContent";
 
 import * as Urls from "metabase/lib/urls";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import {
   createPublicLink,
@@ -60,7 +60,7 @@ class DashboardSharingEmbeddingModal extends Component {
             aria-disabled={!isLinkEnabled}
             onClick={() => {
               if (isLinkEnabled) {
-                MetabaseAnalytics.trackEvent(
+                MetabaseAnalytics.trackStructEvent(
                   "Sharing / Embedding",
                   "dashboard",
                   "Sharing Link Clicked",
