@@ -26,6 +26,12 @@ import {
 } from "../selectors";
 import { deleteDatabase, addSampleDataset } from "../database";
 
+const RELOAD_INTERVAL = 2000;
+
+const getReloadInterval = (state, props, databases = []) => {
+  return databases.some(d => !d.initial_sync) ? RELOAD_INTERVAL : 0;
+};
+
 const mapStateToProps = (state, props) => ({
   hasSampleDataset: Database.selectors.getHasSampleDataset(state),
   isAddingSampleDataset: getIsAddingSampleDataset(state),
@@ -45,7 +51,9 @@ const mapDispatchToProps = {
   addSampleDataset: addSampleDataset,
 };
 
-@Database.loadList()
+@Database.loadList({
+  reloadInterval: getReloadInterval,
+})
 @connect(
   mapStateToProps,
   mapDispatchToProps,
