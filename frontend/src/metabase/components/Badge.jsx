@@ -13,6 +13,7 @@ const iconProp = PropTypes.oneOfType([
 const propTypes = {
   to: PropTypes.string,
   icon: iconProp,
+  inactiveColor: PropTypes.string,
   activeColor: PropTypes.string,
   onClick: PropTypes.func,
   children: PropTypes.node,
@@ -31,9 +32,19 @@ function getIconProps(iconProp) {
   return props;
 }
 
-function Badge({ icon, activeColor = "brand", children, ...props }) {
+function Badge({
+  icon,
+  inactiveColor = "text-medium",
+  activeColor = "brand",
+  children,
+  ...props
+}) {
   return (
-    <MaybeLink activeColor={activeColor} {...props}>
+    <MaybeLink
+      inactiveColor={inactiveColor}
+      activeColor={activeColor}
+      {...props}
+    >
       {icon && <BadgeIcon {...getIconProps(icon)} hasMargin={!!children} />}
       {children && <span className="text-wrap">{children}</span>}
     </MaybeLink>
