@@ -15,10 +15,10 @@
             [metabase.driver :as driver]
             [metabase.models :refer [Database Field Table]]
             [metabase.models.user :refer [User]]
+            [metabase.test :as mt]
             [metabase.test.util :as tu]
             [metabase.util :as u]
-            [toucan.db :as db]
-            [metabase.test :as mt])
+            [toucan.db :as db])
   (:import java.sql.Connection
            java.util.UUID))
 
