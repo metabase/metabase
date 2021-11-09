@@ -19,9 +19,9 @@
                                  :fields [[:field (mt/id :venues :name) nil]
                                           [:field (mt/id :venues :latitude) nil]
                                           [:field (mt/id :venues :longitude) nil]]}}]
-    (testing "GET /api/tiles/:zoom/:x/:y/:lat-field-id/:lon-field-id/:lat-col-idx/:lon-col-idx/"
+    (testing "GET /api/tiles/:zoom/:x/:y/:lat-field-id/:lon-field-id/"
       (is (png? (mt/user-http-request
-                 :rasta :get 200 (format "tiles/1/1/1/%d/%d/1/2/"
+                 :rasta :get 200 (format "tiles/1/1/1/%d/%d/"
                                          (mt/id :venues :latitude)
                                          (mt/id :venues :longitude))
                  :query (json/generate-string venues-query)))))
@@ -29,7 +29,7 @@
       (let [native-query {:query (:query (qp/query->native venues-query))
                           :template-tags {}}]
         (is (png? (mt/user-http-request
-                   :rasta :get 200 (format "tiles/1/1/1/%s/%s/1/2/"
+                   :rasta :get 200 (format "tiles/1/1/1/%s/%s/"
                                            "LATITUDE" "LONGITUDE")
                    :query (json/generate-string
                            {:database (mt/id)
@@ -88,7 +88,7 @@
     (is (schema= {:status   (s/eq "failed")
                   s/Keyword s/Any}
                  (mt/user-http-request
-                  :rasta :get 400 (format "tiles/1/1/1/%d/%d/1/1/"
+                  :rasta :get 400 (format "tiles/1/1/1/%d/%d/"
                                           (mt/id :venues :latitude)
                                           (mt/id :venues :longitude))
                   :query "{}")))))
@@ -96,7 +96,7 @@
 (deftest always-run-sync-test
   (testing "even if the original query was saved as `:async?` we shouldn't run the query as async"
     (is (png? (mt/user-http-request
-               :rasta :get 200 (format "tiles/1/1/1/%d/%d/1/1/"
+               :rasta :get 200 (format "tiles/1/1/1/%d/%d/"
                                        (mt/id :venues :latitude)
                                        (mt/id :venues :longitude))
                :query (json/generate-string
