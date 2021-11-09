@@ -102,7 +102,7 @@ export default class ExpressionEditorSuggestions extends React.Component {
                   <Icon
                     name={icon}
                     color={isHighlighted ? highlighted : normal}
-                    size="10"
+                    size="14"
                     className="mr1"
                   />
                   <SuggestionSpan
