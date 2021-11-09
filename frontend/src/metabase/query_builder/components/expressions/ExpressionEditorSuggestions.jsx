@@ -16,7 +16,7 @@ const SuggestionSpan = ({ suggestion, isHighlighted }) => {
   });
 
   return !isHighlighted && suggestion.range ? (
-    <span>
+    <span className="text-medium">
       {suggestion.name.slice(0, suggestion.range[0])}
       <span className={className}>
         {suggestion.name.slice(suggestion.range[0], suggestion.range[1])}
