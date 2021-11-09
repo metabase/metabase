@@ -85,7 +85,7 @@ export default class ExpressionEditorSuggestions extends React.Component {
         }}
         sizeToFit
       >
-        <UlStyled>
+        <UlStyled data-testid="expression-suggestions-list">
           {suggestions.map((suggestion, i) => {
             const shouldRenderSectionTitle =
               i === 0 || suggestion.type !== suggestions[i - 1].type;
