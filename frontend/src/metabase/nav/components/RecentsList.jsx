@@ -25,7 +25,6 @@ import {
 
 const LOADER_THRESHOLD = 100;
 const RELOAD_INTERVAL = 2000;
-const RELOAD_MODELS = ["table", "database"];
 
 const propTypes = {
   list: PropTypes.arrayOf(
