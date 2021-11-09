@@ -4,6 +4,7 @@
   cookie is deleted, it's fine; the user will just get an email saying they logged in from a new device next time
   they log in."
   (:require [java-time :as t]
+            [metabase.server.request.util :as request.u]
             [metabase.util.schema :as su]
             [ring.util.response :as resp]
             [schema.core :as s])
@@ -11,16 +12,23 @@
 
 (def ^:private browser-id-cookie-name "metabase.DEVICE")
 
-;; This cookie doesn't need to be secure, because it's only used for notification purposes
-(def ^:private cookie-options
-  {:http-only true
-   :path      "/"
-   :same-site :lax
-   ;; Set the cookie to expire 20 years from now. That should be sufficient
-   :expires   (t/format :rfc-1123-date-time (t/plus (t/zoned-date-time) (t/years 20)))})
+;; This cookie doesn't need to be secure, because it's only used for notification purposes and cannot be used for
+;; CSRF as it is not a session cookie.
+;; However, we do need to make sure it's persisted/sent as much as possible to prevent superfluous login notification
+;; emails when used with full-app embedding, which means setting SameSite=None when possible (over HTTPS) and
+;; SameSite=Lax otherwise. (See #18553)
+(defn- cookie-options
+  [request]
+  (merge {:http-only true
+          :path      "/"
+          ;; Set the cookie to expire 20 years from now. That should be sufficient
+          :expires   (t/format :rfc-1123-date-time (t/plus (t/zoned-date-time) (t/years 20)))}
+         (if (request.u/https? request)
+           {:same-site :none, :secure true}
+           {:same-site :lax})))
 
-(s/defn ^:private add-browser-id-cookie [response browser-id :- su/NonBlankString]
-  (resp/set-cookie response browser-id-cookie-name browser-id cookie-options))
+(s/defn ^:private add-browser-id-cookie [request response browser-id :- su/NonBlankString]
+  (resp/set-cookie response browser-id-cookie-name browser-id (cookie-options request)))
 
 (defn ensure-browser-id-cookie
   "Set a permanent browser identifier cookie if one is not already set."
@@ -32,5 +40,5 @@
         (handler
          (assoc request :browser-id browser-id)
          (fn [response]
-           (respond (add-browser-id-cookie response browser-id)))
+           (respond (add-browser-id-cookie request response browser-id)))
          raise)))))
