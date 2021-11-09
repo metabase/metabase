@@ -1,12 +1,9 @@
-import * as Snowplow from "@snowplow/browser-tracker";
 import Settings from "metabase/lib/settings";
 import { isProduction } from "metabase/env";
-import { getUserId } from "metabase/selectors/user";
 
-export const createTracker = store => {
+export const createTracker = () => {
   if (isTrackingEnabled()) {
     createGoogleAnalyticsTracker();
-    createSnowplowTracker(store);
     document.body.addEventListener("click", handleStructEventClick, true);
   }
 };
@@ -14,7 +11,6 @@ export const createTracker = store => {
 export const trackPageView = url => {
   if (isTrackingEnabled() && url) {
     trackGoogleAnalyticsPageView(url);
-    trackSnowplowPageView(url);
   }
 };
 
@@ -24,10 +20,8 @@ export const trackStructEvent = (category, action, label, value) => {
   }
 };
 
-export const trackSchemaEvent = (schema, version, data) => {
-  if (isTrackingEnabled() && schema) {
-    trackSnowplowSchemaEvent(schema, version, data);
-  }
+export const trackSchemaEvent = () => {
+  // intentionally blank
 };
 
 const isTrackingEnabled = () => {
@@ -54,63 +48,6 @@ const trackGoogleAnalyticsStructEvent = (category, action, label, value) => {
   const version = Settings.get("version", {});
   window.ga?.("set", "dimension1", version.tag);
   window.ga?.("send", "event", category, action, label, value);
-};
-
-const createSnowplowTracker = store => {
-  Snowplow.newTracker("sp", "https://sp.metabase.com", {
-    appId: "metabase",
-    platform: "web",
-    eventMethod: "post",
-    discoverRootDomain: true,
-    contexts: { webPage: true },
-    anonymousTracking: { withServerAnonymisation: true },
-    stateStorageStrategy: "none",
-    plugins: [createSnowplowPlugin(store)],
-  });
-};
-
-const createSnowplowPlugin = store => {
-  return {
-    beforeTrack: () => {
-      const userId = getUserId(store.getState());
-      userId && Snowplow.setUserId(String(userId));
-    },
-    contexts: () => {
-      const id = Settings.get("analytics-uuid");
-      const version = Settings.get("version", {});
-      const createdAt = Settings.get("instance-creation");
-      const tokenFeatures = Settings.get("token-features");
-
-      return [
-        {
-          schema: "iglu:com.metabase/instance/jsonschema/1-1-0",
-          data: {
-            id,
-            version: {
-              tag: version.tag,
-            },
-            created_at: createdAt,
-            token_features: tokenFeatures,
-          },
-        },
-      ];
-    },
-  };
-};
-
-const trackSnowplowPageView = url => {
-  Snowplow.setReferrerUrl("#");
-  Snowplow.setCustomUrl(url);
-  Snowplow.trackPageView();
-};
-
-const trackSnowplowSchemaEvent = (schema, version, data) => {
-  Snowplow.trackSelfDescribingEvent({
-    event: {
-      schema: `iglu:com.metabase/${schema}/jsonschema/${version}`,
-      data,
-    },
-  });
 };
 
 const handleStructEventClick = event => {
