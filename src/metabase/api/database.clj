@@ -27,6 +27,7 @@
             [metabase.sync.schedules :as sync.schedules]
             [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.util :as u]
+            [metabase.util.analytics :as analytics]
             [metabase.util.cron :as cron-util]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
             [metabase.util.schema :as su]
@@ -500,10 +501,15 @@
                                       (sync.schedules/default-schedule)))
                                   (when (some? auto_run_queries)
                                     {:auto_run_queries auto_run_queries}))))
-        (events/publish-event! :database-create <>))
+        (events/publish-event! :database-create <>)
+        (analytics/track-event :database_connection_successful @api/*current-user-id* {:database engine
+                                                                                       :database_id (u/the-id <>)
+                                                                                       :source :admin}))
       ;; failed to connect, return error
-      {:status 400
-       :body   details-or-error})))
+      (do
+        (analytics/track-event :database_connection_failed @api/*current-user-id* {:database engine, :source :setup})
+        {:status 400
+         :body   details-or-error}))))
 
 (api/defendpoint POST "/validate"
   "Validate that we can connect to a database given a set of details."

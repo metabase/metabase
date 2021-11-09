@@ -23,6 +23,7 @@
             [metabase.setup :as setup]
             [metabase.sync.schedules :as sync.schedules]
             [metabase.util :as u]
+            [metabase.util.analytics :as analytics]
             [metabase.util.i18n :as i18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -118,10 +119,15 @@
                 ;; endpoint (such as clearing the setup token) are reverted. We can't use `dosync` here to accomplish
                 ;; this because there is `io!` in this block
                 (setting.cache/restore-cache!)
+                (analytics/track-event :database_connection_failed nil {:database engine, :source :setup})
                 (throw e))))]
     (let [{:keys [user-id session-id database session]} (create!)]
       (events/publish-event! :database-create database)
       (events/publish-event! :user-login {:user_id user-id, :session_id session-id, :first_login true})
+      (analytics/track-event :new_user_created user-id)
+      (if database (analytics/track-event :database_connection_successful user-id {:database engine
+                                                                                   :database_id (u/the-id database)
+                                                                                   :source :setup}))
       ;; return response with session ID and set the cookie as well
       (mw.session/set-session-cookie request {:id session-id} session))))
 
@@ -134,7 +140,9 @@
         invalid-response (fn [field m] {:status 400, :body (if (#{:dbname :port :host} field)
                                                              {:errors {field m}}
                                                              {:message m})})]
-    (database-api/test-database-connection engine details :invalid-response-handler invalid-response)))
+    (let [error-or-nil (database-api/test-database-connection engine details :invalid-response-handler invalid-response)]
+      (when error-or-nil (analytics/track-event :database_connection_failed nil {:database engine, :source :setup}))
+      error-or-nil)))
 
 
 ;;; Admin Checklist
