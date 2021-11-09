@@ -12,13 +12,14 @@ module.exports = {
     "postcss-url": {},
     "postcss-preset-env": {
       stage: 2,
-      importFrom: [CSS_SRC],
-    },
-    "postcss-color-mod-function": {
-      importFrom: [`${SRC_PATH}/css/core/colors.css`],
-    },
-    "postcss-custom-media": {
-      importFrom: [`${SRC_PATH}/css/core/breakpoints.css`],
+      importFrom: CSS_SRC,
+      features: {
+        "custom-media-queries": true,
+        "custom-properties": {
+          preserve: false,
+        },
+        "color-mod-function": true,
+      },
     },
   },
 };
