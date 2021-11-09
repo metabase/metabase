@@ -1,5 +1,6 @@
 (ns metabase.driver.util-test
   (:require [clojure.test :refer :all]
+            [flatland.ordered.map :as ordered-map]
             [metabase.driver.util :as driver.u]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.test :as mt]

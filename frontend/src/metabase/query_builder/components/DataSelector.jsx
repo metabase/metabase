@@ -57,6 +57,15 @@ const TABLE_STEP = "TABLE";
 // chooses a table field (table has already been selected)
 const FIELD_STEP = "FIELD";
 
+export const DataSourceSelector = props => (
+  <DataSelector
+    steps={[DATA_BUCKET_STEP, DATABASE_STEP, SCHEMA_STEP, TABLE_STEP]}
+    combineDatabaseSchemaSteps
+    getTriggerElementContent={TableTriggerContent}
+    {...props}
+  />
+);
+
 export const DatabaseDataSelector = props => (
   <DataSelector
     steps={[DATABASE_STEP]}
@@ -67,7 +76,7 @@ export const DatabaseDataSelector = props => (
 
 export const DatabaseSchemaAndTableDataSelector = props => (
   <DataSelector
-    steps={[DATA_BUCKET_STEP, DATABASE_STEP, SCHEMA_STEP, TABLE_STEP]}
+    steps={[DATABASE_STEP, SCHEMA_STEP, TABLE_STEP]}
     combineDatabaseSchemaSteps
     getTriggerElementContent={TableTriggerContent}
     {...props}

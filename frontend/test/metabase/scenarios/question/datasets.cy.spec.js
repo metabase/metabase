@@ -8,7 +8,10 @@ describe("scenarios > datasets", () => {
 
   it("allows to turn a question into a dataset", () => {
     cy.visit("/question/1");
+
     turnIntoDataset();
+    assertIsDataset();
+
     cy.findByText("Our analytics").click();
     getCollectionItemRow("Orders").within(() => {
       cy.icon("dataset");
@@ -36,7 +39,24 @@ describe("scenarios > datasets", () => {
     cy.findByText("Undo").click();
 
     cy.get(".LineAreaBarChart");
-    cy.icon("dataset");
+    assertIsQuestion();
+  });
+
+  it("allows to turn a dataset back into a saved question", () => {
+    cy.request("PUT", "/api/card/1", { dataset: true });
+    cy.intercept("PUT", "/api/card/1").as("cardUpdate");
+    cy.visit("/question/1");
+
+    openDetailsSidebar();
+    cy.findByText("Turn back into a saved question").click();
+    cy.wait("@cardUpdate");
+
+    cy.findByText("This is a question now.");
+    assertIsQuestion();
+
+    cy.findByText("Undo").click();
+    cy.wait("@cardUpdate");
+    assertIsDataset();
   });
 
   describe("data picker", () => {
@@ -133,9 +153,35 @@ describe("scenarios > datasets", () => {
   });
 });
 
-function turnIntoDataset() {
+function openDetailsSidebar() {
   cy.findByTestId("saved-question-header-button").click();
-  cy.icon("dataset").click();
+}
+
+function getDetailsSidebarActions(iconName) {
+  return cy.findByTestId("question-action-buttons");
+}
+
+// Requires dataset details sidebar to be open
+function assertIsDataset() {
+  getDetailsSidebarActions().within(() => {
+    cy.icon("dataset").should("not.exist");
+  });
+  cy.findByText("Dataset management");
+}
+
+// Requires question details sidebar to be open
+function assertIsQuestion() {
+  getDetailsSidebarActions().within(() => {
+    cy.icon("dataset");
+  });
+  cy.findByText("Dataset management").should("not.exist");
+}
+
+function turnIntoDataset() {
+  openDetailsSidebar();
+  getDetailsSidebarActions().within(() => {
+    cy.icon("dataset").click();
+  });
   modal().within(() => {
     cy.button("Turn this into a dataset").click();
   });

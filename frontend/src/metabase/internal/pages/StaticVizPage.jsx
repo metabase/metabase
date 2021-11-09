@@ -209,6 +209,135 @@ export default function StaticVizPage() {
             }}
           />
         </Box>
+        <Box py={3}>
+          <Subhead>Progress bar</Subhead>
+          <StaticChart
+            type="progress"
+            options={{
+              data: {
+                value: 0,
+                goal: 100000,
+              },
+              settings: {
+                format: {
+                  number_style: "currency",
+                  currency: "USD",
+                  currency_style: "symbol",
+                  decimals: 0,
+                },
+                color: "#84BB4C",
+              },
+            }}
+          />
+          <StaticChart
+            type="progress"
+            options={{
+              data: {
+                value: 30000,
+                goal: 100000,
+              },
+              settings: {
+                format: {
+                  number_style: "currency",
+                  currency: "USD",
+                  currency_style: "symbol",
+                  decimals: 0,
+                },
+                color: "#84BB4C",
+              },
+            }}
+          />
+          <StaticChart
+            type="progress"
+            options={{
+              data: {
+                value: 100000,
+                goal: 100000,
+              },
+              settings: {
+                format: {
+                  number_style: "currency",
+                  currency: "USD",
+                  currency_style: "symbol",
+                  decimals: 0,
+                },
+                color: "#84BB4C",
+              },
+            }}
+          />
+          <StaticChart
+            type="progress"
+            options={{
+              data: {
+                value: 135000,
+                goal: 100000,
+              },
+              settings: {
+                format: {
+                  number_style: "currency",
+                  currency: "USD",
+                  currency_style: "symbol",
+                  decimals: 0,
+                },
+                color: "#84BB4C",
+              },
+            }}
+          />
+        </Box>
+        <Box>
+          <Subhead>Waterfall chart with timeseries data</Subhead>
+          <StaticChart
+            type="timeseries/waterfall"
+            options={{
+              data: [
+                ["2020-10-20", 20],
+                ["2020-10-21", 20],
+                ["2020-10-22", 100],
+                ["2020-10-23", -10],
+                ["2020-10-24", 20],
+                ["2020-10-25", -30],
+                ["2020-10-26", -10],
+                ["2020-10-27", 20],
+              ],
+              accessors: {
+                x: row => new Date(row[0]).valueOf(),
+                y: row => row[1],
+              },
+              labels: {
+                left: "Count",
+                bottom: "Created At",
+              },
+            }}
+          />
+        </Box>
+        <Box py={3}>
+          <Subhead>Waterfall chart with categorical data</Subhead>
+          <StaticChart
+            type="categorical/waterfall"
+            options={{
+              data: [
+                ["Stage 1", 800],
+                ["Stage 2", 400],
+                ["Stage 3", -300],
+                ["Stage 4", -100],
+                ["Stage 5", -50],
+                ["Stage 6", 200],
+                ["Stage 7", -100],
+                ["Stage 8", 300],
+                ["Stage 9", 100],
+                ["Stage 10", -300],
+              ],
+              accessors: {
+                x: row => row[0],
+                y: row => row[1],
+              },
+              labels: {
+                left: "Count",
+                bottom: "Created At",
+              },
+            }}
+          />
+        </Box>
       </Box>
     </Box>
   );

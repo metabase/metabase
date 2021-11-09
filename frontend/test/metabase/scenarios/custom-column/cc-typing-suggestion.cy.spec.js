@@ -11,7 +11,7 @@ describe("scenarios > question > custom column > typing suggestion", () => {
 
   it("should not suggest arithmetic operators", () => {
     cy.get("[contenteditable='true']").type("[Price] ");
-    cy.contains("/").should("not.exist");
+    cy.findByTestId("expression-suggestions-list").should("not.exist");
   });
 
   it("should correctly accept the chosen field suggestion", () => {
