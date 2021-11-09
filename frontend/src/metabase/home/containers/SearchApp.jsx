@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import PropTypes from "prop-types";
 
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 import Link from "metabase/components/Link";
 
 import { Box, Flex } from "grid-styled";
@@ -98,7 +98,11 @@ export default function SearchApp({ location }) {
         </Flex>
       )}
       <Box>
-        <Search.ListLoader query={query} wrapped>
+        <Search.ListLoader
+          query={query}
+          wrapped
+          reloadInterval={getReloadInterval}
+        >
           {({ list, metadata }) => {
             if (list.length === 0) {
               return (
@@ -198,4 +202,13 @@ const SearchResultSection = ({ items }) => (
 
 SearchResultSection.propTypes = {
   items: PropTypes.array,
+};
+
+const RELOAD_MODELS = ["table", "database"];
+const RELOAD_INTERVAL = 2000;
+
+const getReloadInterval = (state, props, items = []) => {
+  return items.some(i => RELOAD_MODELS.include(i.model) && !i.initial_sync)
+    ? RELOAD_INTERVAL
+    : 0;
 };
