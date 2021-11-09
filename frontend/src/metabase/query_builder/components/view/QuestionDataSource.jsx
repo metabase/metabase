@@ -1,9 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { browseDatabase, browseSchema } from "metabase/lib/urls";
-
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 
 const QuestionDataSource = ({
@@ -39,7 +36,7 @@ function getDataSourceParts({ question, noLink, subHead, isObjectDetail }) {
   const parts = [];
 
   let query = question.query();
-  const isStructuredQuery = query instanceof StructuredQuery;
+  const isStructuredQuery = question.isStructured();
 
   if (isStructuredQuery) {
     query = query.rootQuery();
