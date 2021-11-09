@@ -170,7 +170,7 @@ describe("binning related reproductions", () => {
     cy.findByText("CREATED_AT");
   });
 
-  it("should render binning options when joining on the saved native question (metabase#18646)", () => {
+  it("should render binning and temporal unit options when joining on the saved native question (metabase#18646)", () => {
     cy.createNativeQuestion(
       {
         name: "18646",
