@@ -366,6 +366,7 @@
                                    (tru "N/A")
                                    (format-percentage (/ value total)))]))}))
 
+
 (s/defmethod render :categorical/donut :- common/RenderedPulseCard
   [_ render-type _timezone-id :- (s/maybe s/Str) card {:keys [rows] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
@@ -492,6 +493,35 @@
         [:td {:style (style/style {:color     style/color-gray-3
                                    :font-size :16px})}
          (second labels)]]]]}))
+
+(s/defmethod render :waterfall :- common/RenderedPulseCard
+  [_ render-type timezone-id card {:keys [rows cols viz-settings] :as data}]
+  (let [[x-axis-rowfn
+         y-axis-rowfn] (common/graphing-column-row-fns card data)
+        [x-col y-col]  ((juxt x-axis-rowfn y-axis-rowfn) cols)
+        last-rows      (reverse (take-last 2 rows))
+        values         (for [row last-rows]
+                         (some-> row y-axis-rowfn common/format-number))
+        labels         (datetime/format-temporal-string-pair timezone-id
+                                                             (map x-axis-rowfn last-rows)
+                                                             (x-axis-rowfn cols))
+        render-fn      (if (isa? (-> cols x-axis-rowfn :effective_type) :type/Temporal)
+                         js-svg/timelineseries-waterfall
+                         js-svg/categorical-waterfall)
+        image-bundle   (image-bundle/make-image-bundle
+                        render-type
+                        (render-fn (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)
+                                   (x-and-y-axis-label-info x-col y-col viz-settings)
+                                   (->js-viz x-col y-col viz-settings)))]
+    {:attachments
+     (when image-bundle
+       (image-bundle/image-bundle->attachment image-bundle))
+
+     :content
+     [:div
+      [:img {:style (style/style {:display :block :width :100%})
+             :src   (:image-src image-bundle)}]]}))
+
 
 (s/defmethod render :empty :- common/RenderedPulseCard
   [_ render-type _ _ _]
