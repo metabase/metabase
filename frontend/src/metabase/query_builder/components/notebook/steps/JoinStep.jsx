@@ -461,9 +461,10 @@ function JoinTypePicker({ join, color, updateQuery }) {
           <JoinStrategyIcon
             tooltip={t`Change join type`}
             name={strategyOption.icon}
+            data-testid="join-strategy-control"
           />
         ) : (
-          <NotebookCellItem color={color}>
+          <NotebookCellItem color={color} data-testid="join-strategy-control">
             {`Choose a join type`}
           </NotebookCellItem>
         )

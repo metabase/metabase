@@ -6,6 +6,7 @@ import {
   visitQuestionAdhoc,
   changeBinningForDimension,
   getBinningButtonForDimension,
+  getNotebookStep,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
@@ -191,9 +192,7 @@ describe("binning related reproductions", () => {
       cy.findByText("18646").click();
     });
 
-    popover()
-      .findByText("Product ID")
-      .click();
+    selectFromDropdown("Created At");
 
     popover().within(() => {
       cy.findByText("CREATED_AT")
@@ -201,6 +200,18 @@ describe("binning related reproductions", () => {
         .findByText("by month")
         .click({ force: true });
     });
+
+    cy.findByText("Day").click();
+
+    // Joining on ID too to speed up query
+    getNotebookStep("join").within(() => {
+      cy.icon("add").click();
+    });
+    selectFromDropdown("Product ID");
+    selectFromDropdown("ID");
+
+    cy.findByTestId("join-strategy-control").click();
+    selectFromDropdown("Inner join");
 
     cy.findByText("Pick the metric you want to see").click();
     cy.findByText("Count of rows").click();
@@ -213,6 +224,9 @@ describe("binning related reproductions", () => {
         .closest(".List-item")
         .findByText("by month");
     });
+
+    visualize();
+    cy.get(".ScalarValue").contains("16");
   });
 
   describe("binning should work on nested question based on question that has aggregation (metabase#16379)", () => {
@@ -333,4 +347,10 @@ function openSummarizeOptions(questionType) {
   cy.findByText("Saved Questions").click();
   cy.findByText("16379").click();
   cy.findByText("Summarize").click();
+}
+
+function selectFromDropdown(optionName) {
+  popover()
+    .findByText(optionName)
+    .click();
 }
