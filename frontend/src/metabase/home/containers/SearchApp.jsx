@@ -20,8 +20,8 @@ import PaginationControls from "metabase/components/PaginationControls";
 import { usePagination } from "metabase/hooks/use-pagination";
 
 const PAGE_PADDING = [1, 2, 4];
-
 const PAGE_SIZE = 50;
+const RELOAD_INTERVAL = 2000;
 
 const SEARCH_FILTERS = [
   {
@@ -204,11 +204,16 @@ SearchResultSection.propTypes = {
   items: PropTypes.array,
 };
 
-const RELOAD_MODELS = ["table", "database"];
-const RELOAD_INTERVAL = 2000;
+const isItemLoading = ({ model, initial_sync }) => {
+  switch (model) {
+    case "database":
+    case "table":
+      return !initial_sync;
+    default:
+      return false;
+  }
+};
 
 const getReloadInterval = (state, props, items = []) => {
-  return items.some(i => RELOAD_MODELS.includes(i.model) && !i.initial_sync)
-    ? RELOAD_INTERVAL
-    : 0;
+  return items.some(isItemLoading) ? RELOAD_INTERVAL : 0;
 };

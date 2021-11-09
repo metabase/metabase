@@ -24,6 +24,8 @@ import {
 } from "./RecentsList.styled";
 
 const LOADER_THRESHOLD = 100;
+const RELOAD_INTERVAL = 2000;
+const RELOAD_MODELS = ["table", "database"];
 
 const propTypes = {
   list: PropTypes.arrayOf(
@@ -136,10 +138,15 @@ const isItemLoading = ({ model, model_object }) => {
   }
 };
 
+const getReloadInterval = (state, props, items = []) => {
+  return items.some(isItemLoading) ? RELOAD_INTERVAL : 0;
+};
+
 export default _.compose(
   Recents.loadList({
     wrapped: true,
     reload: true,
     loadingAndErrorWrapper: false,
+    reloadInterval: getReloadInterval,
   }),
 )(RecentsList);
