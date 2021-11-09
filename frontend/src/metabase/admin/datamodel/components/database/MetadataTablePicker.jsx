@@ -9,11 +9,16 @@ import Tables from "metabase/entities/tables";
 
 import _ from "underscore";
 
+const RELOAD_INTERVAL = 2000;
+
 @Tables.loadList({
   query: (state, { databaseId }) => ({
     dbId: databaseId,
     include_hidden: true,
   }),
+  reloadInterval: (state, props, tables = []) => {
+    return tables.some(t => !t.initial_sync) ? RELOAD_INTERVAL : 0;
+  },
   selectorName: "getListUnfiltered",
 })
 export default class MetadataTablePicker extends Component {
