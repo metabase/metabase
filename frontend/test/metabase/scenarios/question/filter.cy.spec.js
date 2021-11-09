@@ -490,19 +490,19 @@ describe("scenarios > question > filter", () => {
 
     typeInExpressionEditor("c");
 
-    cy.contains("Created At")
+    cy.contains("case")
       .closest("li")
       .should("have.css", "background-color")
       .and("not.eq", transparent);
 
     typeInExpressionEditor("{downarrow}");
 
-    cy.contains("Created At")
+    cy.contains("case")
       .closest("li")
       .should("have.css", "background-color")
       .and("eq", transparent);
 
-    cy.contains("Product → Category")
+    cy.contains("ceil")
       .closest("li")
       .should("have.css", "background-color")
       .and("not.eq", transparent);

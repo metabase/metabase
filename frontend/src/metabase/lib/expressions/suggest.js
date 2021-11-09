@@ -49,6 +49,7 @@ export function suggest({
       text: "case(",
       index: targetOffset,
       icon: "function",
+      order: 1,
     });
     suggestions.push(
       ...Array.from(EXPRESSION_FUNCTIONS)
@@ -59,6 +60,7 @@ export function suggest({
           text: func.displayName + "(",
           index: targetOffset,
           icon: "function",
+          order: 1,
         })),
     );
     if (startRule === "aggregation") {
@@ -71,6 +73,7 @@ export function suggest({
             text: func.displayName + "(",
             index: targetOffset,
             icon: "function",
+            order: 1,
           })),
       );
     }
@@ -90,6 +93,7 @@ export function suggest({
           ),
           index: targetOffset,
           icon: dimension.icon(),
+          order: 2,
         })),
     );
     suggestions.push(
@@ -99,6 +103,7 @@ export function suggest({
         text: formatSegmentName(segment),
         index: targetOffset,
         icon: "segment",
+        order: 3,
       })),
     );
     if (startRule === "aggregation") {
@@ -109,6 +114,7 @@ export function suggest({
           text: formatMetricName(metric),
           index: targetOffset,
           icon: "insight",
+          order: 4,
         })),
       );
     }
@@ -144,7 +150,7 @@ export function suggest({
     suggestions: _.chain(suggestions)
       .uniq(suggestion => suggestion.text)
       .sortBy("text")
-      .sortBy("type")
+      .sortBy("order")
       .value(),
   };
 }
