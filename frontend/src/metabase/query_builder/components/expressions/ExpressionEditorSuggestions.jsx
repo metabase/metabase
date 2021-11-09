@@ -40,7 +40,7 @@ function colorForIcon(icon) {
     case "insight":
       return { normal: color("accent1"), highlighted: color("brand-white") };
     case "function":
-      return { normal: color("accent3"), highlighted: color("brand-white") };
+      return { normal: color("brand"), highlighted: color("brand-white") };
     default:
       return { normal: color("text-dark"), highlighted: color("brand-white") };
   }
