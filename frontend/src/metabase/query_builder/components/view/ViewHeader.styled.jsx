@@ -23,7 +23,6 @@ export const ViewHeaderLeftSubHeading = styled(ViewSubHeading)`
 
   &:not(:empty) {
     margin-top: ${space(0)};
-    margin-bottom: ${space(1)};
   }
 `;
 

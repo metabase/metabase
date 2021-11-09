@@ -192,10 +192,13 @@ function SavedQuestionLeftSide(props) {
         )}
       </ViewHeaderMainLeftContentContainer>
       <ViewHeaderLeftSubHeading>
-        <CollectionBadge collectionId={question.collectionId()} />
+        <CollectionBadge
+          collectionId={question.collectionId()}
+          className="mb1"
+        />
         {QuestionDataSource.shouldRender(props) && (
           <QuestionDataSource
-            className="ml3"
+            className="ml3 mb1 pr2"
             question={question}
             isObjectDetail={isObjectDetail}
             subHead
@@ -203,6 +206,7 @@ function SavedQuestionLeftSide(props) {
         )}
         {QuestionFilters.shouldRender(props) && (
           <QuestionFilters
+            className="mb1"
             question={question}
             expanded={areFiltersExpanded}
             onExpand={onExpandFilters}
@@ -270,6 +274,7 @@ function AhHocQuestionLeftSide(props) {
       <ViewHeaderLeftSubHeading>
         {isSummarized && (
           <QuestionDataSource
+            className="mb1"
             question={question}
             isObjectDetail={isObjectDetail}
             subHead
@@ -278,7 +283,7 @@ function AhHocQuestionLeftSide(props) {
         )}
         {!showFiltersInHeading && QuestionFilters.shouldRender(props) && (
           <QuestionFilters
-            className={cx({ ml2: isSummarized })}
+            className={cx("mb1", { ml2: isSummarized })}
             question={question}
             expanded={areFiltersExpanded}
             onExpand={onExpandFilters}
