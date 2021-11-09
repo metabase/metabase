@@ -499,6 +499,8 @@
   (let [[x-axis-rowfn
          y-axis-rowfn] (common/graphing-column-row-fns card data)
         [x-col y-col]  ((juxt x-axis-rowfn y-axis-rowfn) cols)
+        rows           (map (juxt x-axis-rowfn y-axis-rowfn)
+                            (common/non-nil-rows x-axis-rowfn y-axis-rowfn rows))
         last-rows      (reverse (take-last 2 rows))
         values         (for [row last-rows]
                          (some-> row y-axis-rowfn common/format-number))
