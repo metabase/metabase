@@ -13,7 +13,7 @@
             [metabase.models.secret :as secret :refer [Secret]]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs tru]]
+            [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]
             [toucan.models :as models]))
 
