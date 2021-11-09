@@ -11,12 +11,11 @@
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perm-group]
             [metabase.models.secret :as secret :refer [Secret]]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.util :as u]
+            [metabase.plugins.classloader :as classloader]))
+a            [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [toucan.db :as db]
-            [toucan.models :as models]))
+            [toucan.models :as models]
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
