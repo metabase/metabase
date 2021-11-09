@@ -840,7 +840,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest update-qbnewb-test
-  (testing "PUT /api/user/:id/qbnewb"
+  (testing "PUT /api/user/:id/modal/qbnewb"
     (testing "Test that we can set the QB newb status of ourselves"
       (mt/with-temp User [{:keys [id]} {:first_name (mt/random-name)
                                         :last_name  (mt/random-name)
@@ -850,14 +850,14 @@
                      :password "def123"}]
           (testing "response"
             (is (= {:success true}
-                   (mt/client creds :put 200 (format "user/%d/qbnewb" id)))))
+                   (mt/client creds :put 200 (format "user/%d/modal/qbnewb" id)))))
           (testing "newb?"
             (is (= false
                    (db/select-one-field :is_qbnewb User, :id id)))))))
 
     (testing "shouldn't be allowed to set someone else's QB newb status"
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :put 403 (format "user/%d/qbnewb" (mt/user->id :trashbird))))))))
+             (mt/user-http-request :rasta :put 403 (format "user/%d/modal/qbnewb" (mt/user->id :trashbird))))))))
 
 (deftest send-invite-test
   (testing "POST /api/user/:id/send_invite"

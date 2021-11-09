@@ -302,11 +302,15 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; TODO - This could be handled by PUT /api/user/:id, we don't need a separate endpoint
-(api/defendpoint PUT "/:id/qbnewb"
+(api/defendpoint PUT "/:id/modal/:modal"
   "Indicate that a user has been informed about the vast intricacies of 'the' Query Builder."
-  [id]
+  [id modal]
   (check-self-or-superuser id)
-  (api/check-500 (db/update! User id, :is_qbnewb false))
+  (let [k (or (get {"qbnewb" :is_qbnewb} modal)
+              (throw (ex-info (tru "Unrecognized modal: {0}" modal)
+                              {:modal modal
+                               :allowable-modals #{"qbnewb"}})))]
+    (api/check-500 (db/update! User id, k false)))
   {:success true})
 
 (api/defendpoint POST "/:id/send_invite"
