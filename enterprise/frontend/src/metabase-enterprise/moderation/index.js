@@ -12,7 +12,6 @@ import {
 
 if (hasPremiumFeature("content_management")) {
   Object.assign(PLUGIN_MODERATION, {
-    hasPlugin: () => true,
     QuestionModerationSection,
     ModerationStatusIcon,
     getStatusIconForQuestion,

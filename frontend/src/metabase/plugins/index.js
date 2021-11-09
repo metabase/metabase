@@ -86,7 +86,6 @@ export const PLUGIN_COLLECTION_COMPONENTS = {
 };
 
 export const PLUGIN_MODERATION = {
-  hasPlugin: () => false,
   QuestionModerationSection: PluginPlaceholder,
   ModerationStatusIcon: PluginPlaceholder,
   getStatusIconForQuestion: object,

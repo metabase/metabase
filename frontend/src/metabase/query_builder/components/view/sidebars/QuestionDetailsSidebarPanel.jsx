@@ -30,8 +30,6 @@ function QuestionDetailsSidebarPanel({ question, onOpenModal }) {
       }
     : undefined;
 
-  const hasSections = isDataset || PLUGIN_MODERATION.hasPlugin();
-
   return (
     <Container>
       <SidebarPaddedContent>
@@ -45,14 +43,12 @@ function QuestionDetailsSidebarPanel({ question, onOpenModal }) {
           description={description}
           onEdit={onDescriptionEdit}
         />
-        {hasSections && (
-          <BorderedSectionContainer>
-            {isDataset && canWrite && (
-              <DatasetManagementSection dataset={question} />
-            )}
-            <PLUGIN_MODERATION.QuestionModerationSection question={question} />
-          </BorderedSectionContainer>
-        )}
+        <BorderedSectionContainer>
+          {isDataset && canWrite && (
+            <DatasetManagementSection dataset={question} />
+          )}
+          <PLUGIN_MODERATION.QuestionModerationSection question={question} />
+        </BorderedSectionContainer>
       </SidebarPaddedContent>
       <QuestionActivityTimeline question={question} />
     </Container>
