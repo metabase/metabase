@@ -94,25 +94,24 @@ export default function SearchResult({
   hasDescription,
   onClick,
 }) {
-  const linkProps = {};
-
-  if (typeof onClick === "function") {
-    linkProps.onClick = () => onClick(result);
-  } else {
-    linkProps.to = result.getUrl();
-  }
+  const active = isItemActive(result);
+  const loading = isItemLoading(result);
 
   return (
     <ResultLink
-      {...linkProps}
+      active={active}
       compact={compact}
+      to={onClick ? undefined : result.getUrl()}
+      onClick={onClick ? () => onClick(result) : undefined}
       data-testid="search-result-item"
     >
       <Flex align="start">
         <ItemIcon item={result} type={result.model} active={active} />
         <Box>
           <TitleWrapper>
-            <Title data-testid="search-result-item-name">{result.name}</Title>
+            <Title active={active} data-testid="search-result-item-name">
+              {result.name}
+            </Title>
             <PLUGIN_MODERATION.ModerationStatusIcon
               status={result.moderated_status}
               size={12}
@@ -136,7 +135,7 @@ export default function SearchResult({
 const isItemActive = result => {
   switch (result.model) {
     case "table":
-      return result.active;
+      return result.initial_sync;
     default:
       return true;
   }
@@ -146,7 +145,7 @@ const isItemLoading = result => {
   switch (result.model) {
     case "database":
     case "table":
-      return !result.active;
+      return !result.initial_sync;
     default:
       return false;
   }
