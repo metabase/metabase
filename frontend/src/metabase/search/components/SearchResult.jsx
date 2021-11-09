@@ -101,7 +101,7 @@ export default function SearchResult({
     <ResultLink
       active={active}
       compact={compact}
-      to={onClick ? undefined : result.getUrl()}
+      to={!onClick ? result.getUrl() : ""}
       onClick={onClick ? () => onClick(result) : undefined}
       data-testid="search-result-item"
     >
