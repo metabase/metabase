@@ -1035,7 +1035,7 @@ export class FieldDimension extends Dimension {
   }
 
   _dimensionForOption(option): FieldDimension {
-    const dimension = option.mbql
+    let dimension = option.mbql
       ? FieldDimension.parseMBQLOrWarn(option.mbql, this._metadata, this._query)
       : this;
 
@@ -1046,6 +1046,15 @@ export class FieldDimension extends Dimension {
         option,
       );
       return null;
+    }
+
+    // Field literal's sub-dimensions sometimes don't have a specified base-type
+    // This can break a query, so here we need to ensure it mirrors the parent dimension
+    if (this.getOption("base-type") && !dimension.getOption("base-type")) {
+      dimension = dimension.withOption(
+        "base-type",
+        this.getOption("base-type"),
+      );
     }
 
     const additionalProperties = {

@@ -146,7 +146,14 @@ describe("binning related reproductions", () => {
       cy.findByText("CREATED_AT")
         .closest(".List-item")
         .findByText("by month");
+
+      cy.findByText("CREATED_AT").click();
     });
+
+    cy.findByText("Question 4 → Created At: Month");
+
+    visualize();
+    cy.get("circle");
   });
 
   it("should display date granularity on Summarize when opened from saved question (metabase#11439)", () => {
