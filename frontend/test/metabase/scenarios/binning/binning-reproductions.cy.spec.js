@@ -195,6 +195,14 @@ describe("binning related reproductions", () => {
     selectFromDropdown("Created At");
 
     popover().within(() => {
+      // Ensure binning options are hidden
+      // https://github.com/metabase/metabase/pull/18800
+      cy.findByText("PRICE")
+        .closest(".List-item")
+        .within(() => {
+          cy.findByTestId("dimension-list-item-binning").should("not.exist");
+        });
+
       cy.findByText("CREATED_AT")
         .closest(".List-item")
         .findByText("by month")
@@ -220,6 +228,14 @@ describe("binning related reproductions", () => {
     cy.findByText(/Question \d/).click();
 
     popover().within(() => {
+      cy.findByText("PRICE")
+        .closest(".List-item")
+        .within(() => {
+          cy.findByTestId("dimension-list-item-binning").findByText(
+            "Auto binned",
+          );
+        });
+
       cy.findByText("CREATED_AT")
         .closest(".List-item")
         .findByText("by month");
