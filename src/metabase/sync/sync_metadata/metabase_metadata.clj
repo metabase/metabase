@@ -9,6 +9,7 @@
             [clojure.tools.logging :as log]
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
+            [metabase.models.database :refer [Database]]
             [metabase.models.field :refer [Field]]
             [metabase.models.table :refer [Table]]
             [metabase.sync.fetch-metadata :as fetch-metadata]
@@ -96,4 +97,7 @@
     (doseq [table (:tables (fetch-metadata/db-metadata database))]
       (when (is-metabase-metadata-table? table)
         (sync-metabase-metadata-table! (driver.u/database->driver database) database table)))
+    ;; Mark initial sync as complete for this database so that it will become usable in the UI
+    (when (= (:initial_sync_complete database) "incomplete")
+      (db/update! Database (u/the-id database) :nitial_sync_complete "complete"))
     {}))

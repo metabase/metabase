@@ -488,12 +488,14 @@
       ;; Throw a 500 if nothing is inserted
       (u/prog1 (api/check-500 (db/insert! Database
                                 (merge
-                                  {:name         name
-                                   :engine       engine
-                                   :details      details-or-error
-                                   :is_full_sync is-full-sync?
-                                   :is_on_demand (boolean is_on_demand)
-                                   :cache_ttl    cache_ttl}
+                                  {:name                name
+                                   :engine              engine
+                                   :details             details-or-error
+                                   :is_full_sync        is-full-sync?
+                                   :is_on_demand        (boolean is_on_demand)
+                                   :cache_ttl           cache_ttl
+                                   :creator_id          api/*current-user-id*
+                                   :initial_sync_status "incomplete"}
                                   (sync.schedules/schedule-map->cron-strings
                                     (if (:let-user-control-scheduling details)
                                       (sync.schedules/scheduling schedules)

@@ -63,13 +63,16 @@
    (sync-fks-for-table! (table/database table) table))
   ([database :- i/DatabaseInstance, table :- i/TableInstance]
    (sync-util/with-error-handling (format "Error syncing FKs for %s" (sync-util/name-for-logging table))
-     (let [fks-to-update (fetch-metadata/fk-metadata database table)]
-       {:total-fks   (count fks-to-update)
-        :updated-fks (sync-util/sum-numbers (fn [fk]
-                                              (if (mark-fk! database table fk)
-                                                1
-                                                0))
-                                            fks-to-update)}))))
+     (let [fks-to-update (fetch-metadata/fk-metadata database table)
+           results       {:total-fks   (count fks-to-update)
+                          :updated-fks (sync-util/sum-numbers (fn [fk]
+                                                                (if (mark-fk! database table fk)
+                                                                  1
+                                                                  0))
+                                                              fks-to-update)}]
+       ;; Mark initial sync as complete for this table so that it will become usable in the UI
+       (when (= (:initial_sync_status table "incomplete"))
+         (db/update! Table (u/the-id table) :initial_sync_status "complete"))))))
 
 (s/defn sync-fks!
   "Sync the foreign keys in a DATABASE. This sets appropriate values for relevant Fields in the Metabase application DB
