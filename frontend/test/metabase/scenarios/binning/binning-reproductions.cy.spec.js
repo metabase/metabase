@@ -199,7 +199,7 @@ describe("binning related reproductions", () => {
       cy.findByText("CREATED_AT")
         .closest(".List-item")
         .findByText("by month")
-        .click();
+        .click({ force: true });
     });
 
     cy.findByText("Pick the metric you want to see").click();
