@@ -120,7 +120,7 @@ const getItemName = ({ model_object }) => {
 const isItemActive = ({ model, model_object }) => {
   switch (model) {
     case "table":
-      return model_object.active;
+      return model_object.initial_sync;
     default:
       return false;
   }
@@ -130,7 +130,7 @@ const isItemLoading = ({ model, model_object }) => {
   switch (model) {
     case "database":
     case "table":
-      return !model_object.active;
+      return !model_object.initial_sync;
     default:
       return false;
   }
