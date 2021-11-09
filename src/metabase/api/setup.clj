@@ -125,9 +125,9 @@
       (events/publish-event! :database-create database)
       (events/publish-event! :user-login {:user_id user-id, :session_id session-id, :first_login true})
       (analytics/track-event :new_user_created user-id)
-      (if database (analytics/track-event :database_connection_successful user-id {:database engine
-                                                                                   :database_id (u/the-id database)
-                                                                                   :source :setup}))
+      (when database (analytics/track-event :database_connection_successful user-id {:database engine
+                                                                                     :database_id (u/the-id database)
+                                                                                     :source :setup}))
       ;; return response with session ID and set the cookie as well
       (mw.session/set-session-cookie request {:id session-id} session))))
 
