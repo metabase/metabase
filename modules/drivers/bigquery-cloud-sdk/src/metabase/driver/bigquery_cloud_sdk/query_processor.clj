@@ -8,6 +8,7 @@
             [honeysql.helpers :as h]
             [java-time :as t]
             [metabase.driver :as driver]
+            [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql :as sql]
             [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
@@ -54,10 +55,24 @@
   (s/pred valid-dataset-identifier? "Valid BigQuery dataset-id"))
 
 (s/defn ^:private project-id-for-current-query :- ProjectIdentifierString
-  "Fetch the project-id for the current database associated with this query, if defined.."
+  "Fetch the project-id for the current database associated with this query, if defined AND different from the
+  project ID associated with the service account credentials."
   []
   (when (qp.store/initialized?)
-    (some-> (qp.store/database) :details :project-id)))
+    (when-let [{:keys [details] :as database} (qp.store/database)]
+      (let [project-id-override (:project-id details)
+            project-id-creds    (:project-id-from-credentials details)
+            ret-fn              (fn [proj-id-1 proj-id-2]
+                                  (when (and (some? proj-id-1) (not= proj-id-1 proj-id-2))
+                                    proj-id-1))]
+        (if (nil? project-id-creds)
+          (do
+            (log/tracef (str "project-id-from-credentials was not defined in DB %d details; calculating now and"
+                             " storing the result back in the app DB")
+                        (u/the-id database))
+            (->> (bigquery.common/populate-project-id-from-credentials! database)
+                 (ret-fn project-id-override)))
+          (ret-fn project-id-override project-id-creds))))))
 
 (s/defn ^:private dataset-id-for-current-query :- DatasetIdentifierString
   "Fetch the dataset-id for the database associated with this query, needed because BigQuery requires you to qualify
