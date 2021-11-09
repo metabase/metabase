@@ -2,7 +2,7 @@
 # STAGE 1: builder
 ###################
 
-FROM --platform=linux/amd64 eclipse-temurin:11.0.12_7-jdk-focal as builder
+FROM --platform=linux/amd64 eclipse-temurin:11.0.13_8-jdk-focal as builder
 
 ARG MB_EDITION=oss CI=true 
 
@@ -27,7 +27,7 @@ RUN INTERACTIVE=false CI=$CI MB_EDITION=$MB_EDITION bin/build
 # # STAGE 2: runner
 # ###################
 
-FROM eclipse-temurin:11.0.12_7-jre-focal as runner
+FROM eclipse-temurin:11.0.13_8-jre-focal as runner
 
 ENV FC_LANG en-US LC_CTYPE en_US.UTF-8
 
