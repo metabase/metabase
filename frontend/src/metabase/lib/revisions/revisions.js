@@ -94,6 +94,12 @@ const CHANGE_DESCRIPTIONS = {
   },
 
   // Questions
+  dataset: {
+    [CHANGE_TYPE.UPDATE]: (wasDataset, isDataset) =>
+      isDataset
+        ? t`turned this into a dataset`
+        : t`reverted this from a dataset to a saved question`,
+  },
   dataset_query: {
     [CHANGE_TYPE.ADD]: t`edited the question`,
     [CHANGE_TYPE.UPDATE]: t`edited the question`,

@@ -24,6 +24,3 @@ Currently in beta.  We've run Metabase on Heroku and it works just fine, but it'
 
 #### [Running on Debian as a service](running-metabase-on-debian.md)
 Community support only at this time, but learn how to deploy Metabase as a service on Debian (and Debian-based) systems. Simple, guided, step-by-step approach that will work on any VPS.
-
-#### [Running on Kubernetes](running-metabase-on-kubernetes.md)
-Community Helm chart for running Metabase on Kubernetes.

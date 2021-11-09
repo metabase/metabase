@@ -4,13 +4,10 @@ export function processSource(options) {
   // https://github.com/metabase/metabase/issues/13472
   const parse = require("./parser").parse;
   const compile = require("./compile").compile;
-  const suggest = require("./suggest").suggest;
 
-  const { source, targetOffset } = options;
+  const { source } = options;
 
   let expression;
-  let suggestions = [];
-  let helpText;
   let compileError;
 
   // PARSE
@@ -31,24 +28,9 @@ export function processSource(options) {
     }
   }
 
-  // SUGGEST
-  if (targetOffset != null) {
-    try {
-      ({ suggestions = [], helpText } = suggest({
-        cst,
-        tokenVector,
-        ...options,
-      }));
-    } catch (e) {
-      console.warn("suggest error", e);
-    }
-  }
-
   return {
     source,
     expression,
-    helpText,
-    suggestions,
     compileError,
   };
 }
