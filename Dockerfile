@@ -18,7 +18,7 @@ RUN INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION bin/build
 ## Remember that this runner image needs to be the same as bin/docker/Dockerfile with the exception that this one grabs the
 ## jar from the previous stage rather than the local build
 
-FROM adoptopenjdk/openjdk11:alpine-jre as runner
+FROM eclipse-temurin:11.0.13_8-jre-alpine as runner
 
 ENV FC_LANG en-US LC_CTYPE en_US.UTF-8
 
