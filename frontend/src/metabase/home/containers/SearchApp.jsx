@@ -208,7 +208,7 @@ const RELOAD_MODELS = ["table", "database"];
 const RELOAD_INTERVAL = 2000;
 
 const getReloadInterval = (state, props, items = []) => {
-  return items.some(i => RELOAD_MODELS.include(i.model) && !i.initial_sync)
+  return items.some(i => RELOAD_MODELS.includes(i.model) && !i.initial_sync)
     ? RELOAD_INTERVAL
     : 0;
 };
