@@ -42,7 +42,10 @@ function colorForIcon(icon) {
     case "function":
       return { normal: color("brand"), highlighted: color("brand-white") };
     default:
-      return { normal: color("text-dark"), highlighted: color("brand-white") };
+      return {
+        normal: color("text-medium"),
+        highlighted: color("brand-white"),
+      };
   }
 }
 export default class ExpressionEditorSuggestions extends React.Component {
@@ -98,6 +101,7 @@ export default class ExpressionEditorSuggestions extends React.Component {
                 <ListItemStyled
                   onMouseDownCapture={e => this.onSuggestionMouseDown(e, i)}
                   isHighlighted={isHighlighted}
+                  className="flex align-center"
                 >
                   <Icon
                     name={icon}
