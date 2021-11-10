@@ -382,7 +382,9 @@ const forms = {
           name: "cloud.firewall_connection",
           type: "empty",
           title: t`Connecting from behind a firewall`,
-          description: t`In order to make sure Metabase can access your database, configure your firewall to allow connections from these IP addresses: 12.34.567.891, 12.34.567.891, 12.34.567.891.`,
+          description: t`In order to make sure Metabase can access your database,
+              configure your firewall to allow connections from these IP addresses:
+              ${MetabaseSettings.get("cloud-gateway-ips")?.join(", ")}.`,
           hidden:
             !engine ||
             !getEngineSupportsFirewall(engine) ||
