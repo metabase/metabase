@@ -43,7 +43,7 @@ const layout = {
   width: 540,
   height: 300,
   margin: {
-    top: 10,
+    top: 0,
     left: 55,
     right: 40,
     bottom: 40,
@@ -113,7 +113,7 @@ const CategoricalWaterfallChart = ({ data, accessors, settings, labels }) => {
     const textWidth = isVertical ? xTickWidth : xScale.bandwidth();
     const truncatedText = truncateText(formattedValue, textWidth);
     const transform = isVertical
-      ? `rotate(45, ${x} ${y}) translate(${textBaseline} 0)`
+      ? `rotate(45, ${x} ${y}) translate(-${textBaseline} 0)`
       : undefined;
 
     return { ...props, x, y, transform, children: truncatedText };
@@ -156,18 +156,6 @@ const CategoricalWaterfallChart = ({ data, accessors, settings, labels }) => {
         tickComponent={props => <Text {...getXTickProps(props)} />}
         tickLabelProps={() => getXTickLabelProps(layout, isVertical)}
       />
-      {/* <AxisBottom
-        scale={xScale}
-        left={xMin}
-        top={yMax + layout.margin.top}
-        label={bottomLabel}
-        numTicks={entries.length}
-        stroke={palette.textLight}
-        tickStroke={palette.textLight}
-        labelProps={getLabelProps(layout)}
-        tickComponent={props => <Text {...getXTickProps(props)} />}
-        tickLabelProps={() => getXTickLabelProps(layout)}
-      /> */}
     </svg>
   );
 };

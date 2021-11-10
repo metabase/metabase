@@ -27,7 +27,7 @@ export default QuestionActionButtons;
 
 function QuestionActionButtons({ canWrite, isDataset, onOpenModal }) {
   return (
-    <Container>
+    <Container data-testid="question-action-buttons">
       {canWrite && (
         <Tooltip tooltip={t`Edit details`}>
           <Button
