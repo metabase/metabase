@@ -149,7 +149,7 @@ class Settings {
   }
 
   cloudGatewayIps(): string[] {
-    return this.get("cloud-gateway-ips") ?? [];
+    return this.get("cloud-gateway-ips") || [];
   }
 
   googleAuthEnabled() {
