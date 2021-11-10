@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { browseDatabase, browseSchema } from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 
 const QuestionDataSource = ({
@@ -45,7 +45,7 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
     parts.push({
       icon: "database",
       name: database.displayName(),
-      href: database.id >= 0 && browseDatabase(database),
+      href: database.id >= 0 && Urls.browseDatabase(database),
     });
   }
 
@@ -53,7 +53,7 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
   if (table && table.hasSchema()) {
     parts.push({
       name: table.schema_name,
-      href: database.id >= 0 && browseSchema(table),
+      href: database.id >= 0 && Urls.browseSchema(table),
     });
   }
 
