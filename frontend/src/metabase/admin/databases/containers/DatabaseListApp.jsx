@@ -13,6 +13,7 @@ import LoadingSpinner from "metabase/components/LoadingSpinner";
 import FormMessage from "metabase/components/form/FormMessage";
 
 import DeleteDatabaseModal from "../components/DeleteDatabaseModal";
+import { TableCellContent, TableCellSpinner } from "./DatabaseListApp.styled";
 
 import Database from "metabase/entities/databases";
 
@@ -23,6 +24,12 @@ import {
   getAddSampleDatasetError,
 } from "../selectors";
 import { deleteDatabase, addSampleDataset } from "../database";
+
+const RELOAD_INTERVAL = 2000;
+
+const getReloadInterval = (state, props, databases = []) => {
+  return databases.some(d => !d.initial_sync) ? RELOAD_INTERVAL : 0;
+};
 
 const mapStateToProps = (state, props) => ({
   hasSampleDataset: Database.selectors.getHasSampleDataset(state),
@@ -43,7 +50,9 @@ const mapDispatchToProps = {
   addSampleDataset: addSampleDataset,
 };
 
-@Database.loadList()
+@Database.loadList({
+  reloadInterval: getReloadInterval,
+})
 @connect(
   mapStateToProps,
   mapDispatchToProps,
@@ -112,12 +121,17 @@ export default class DatabaseList extends Component {
                         className={cx({ disabled: isDeleting })}
                       >
                         <td>
-                          <Link
-                            to={"/admin/databases/" + database.id}
-                            className="text-bold link"
-                          >
-                            {database.name}
-                          </Link>
+                          <TableCellContent>
+                            {!database.initial_sync && (
+                              <TableCellSpinner size={16} borderWidth={2} />
+                            )}
+                            <Link
+                              to={"/admin/databases/" + database.id}
+                              className="text-bold link"
+                            >
+                              {database.name}
+                            </Link>
+                          </TableCellContent>
                         </td>
                         <td>
                           {engines && engines[database.engine]

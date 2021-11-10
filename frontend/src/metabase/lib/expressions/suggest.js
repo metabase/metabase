@@ -48,6 +48,8 @@ export function suggest({
       name: "case",
       text: "case(",
       index: targetOffset,
+      icon: "function",
+      order: 1,
     });
     suggestions.push(
       ...Array.from(EXPRESSION_FUNCTIONS)
@@ -57,6 +59,8 @@ export function suggest({
           name: func.displayName,
           text: func.displayName + "(",
           index: targetOffset,
+          icon: "function",
+          order: 1,
         })),
     );
     if (startRule === "aggregation") {
@@ -68,6 +72,8 @@ export function suggest({
             name: func.displayName,
             text: func.displayName + "(",
             index: targetOffset,
+            icon: "function",
+            order: 1,
           })),
       );
     }
@@ -86,6 +92,8 @@ export function suggest({
             getDimensionName(dimension, symbol),
           ),
           index: targetOffset,
+          icon: dimension.icon(),
+          order: 2,
         })),
     );
     suggestions.push(
@@ -94,6 +102,8 @@ export function suggest({
         name: segment.name,
         text: formatSegmentName(segment),
         index: targetOffset,
+        icon: "segment",
+        order: 3,
       })),
     );
     if (startRule === "aggregation") {
@@ -103,6 +113,8 @@ export function suggest({
           name: metric.name,
           text: formatMetricName(metric),
           index: targetOffset,
+          icon: "insight",
+          order: 4,
         })),
       );
     }
@@ -138,7 +150,7 @@ export function suggest({
     suggestions: _.chain(suggestions)
       .uniq(suggestion => suggestion.text)
       .sortBy("text")
-      .sortBy("type")
+      .sortBy("order")
       .value(),
   };
 }

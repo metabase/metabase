@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
-import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
+import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import FieldList from "metabase/query_builder/components/FieldList";
 import Join from "metabase-lib/lib/queries/structured/Join";
 import { isDateTimeField } from "metabase/lib/query/field_ref";
@@ -417,7 +417,7 @@ function JoinTablePicker({
       containerStyle={FIELDS_PICKER_STYLES.notebookItemContainer}
       rightContainerStyle={FIELDS_PICKER_STYLES.notebookRightItemContainer}
     >
-      <DatabaseSchemaAndTableDataSelector
+      <DataSourceSelector
         hasTableSearch
         canChangeDatabase={false}
         databases={databases}

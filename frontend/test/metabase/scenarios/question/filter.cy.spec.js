@@ -375,7 +375,7 @@ describe("scenarios > question > filter", () => {
     cy.log("Popover should display all custom expression options");
     // Popover shows up even without explicitly clicking the contenteditable field
     popover().within(() => {
-      cy.findAllByRole("listitem").contains(/functions/i);
+      cy.findAllByRole("listitem").contains(/concat/i);
     });
 
     cy.log("Should not display error prematurely");
@@ -490,19 +490,19 @@ describe("scenarios > question > filter", () => {
 
     typeInExpressionEditor("c");
 
-    cy.contains("Created At")
+    cy.contains("case")
       .closest("li")
       .should("have.css", "background-color")
       .and("not.eq", transparent);
 
     typeInExpressionEditor("{downarrow}");
 
-    cy.contains("Created At")
+    cy.contains("case")
       .closest("li")
       .should("have.css", "background-color")
       .and("eq", transparent);
 
-    cy.contains("Product → Category")
+    cy.contains("ceil")
       .closest("li")
       .should("have.css", "background-color")
       .and("not.eq", transparent);
