@@ -87,10 +87,23 @@ function Context({ context }) {
   );
 }
 
-export default function SearchResult({ result, compact }) {
+export default function SearchResult({
+  result,
+  compact,
+  hasDescription,
+  onClick,
+}) {
+  const linkProps = {};
+
+  if (typeof onClick === "function") {
+    linkProps.onClick = () => onClick(result);
+  } else {
+    linkProps.to = result.getUrl();
+  }
+
   return (
     <ResultLink
-      to={result.getUrl()}
+      {...linkProps}
       compact={compact}
       data-testid="search-result-item"
     >
@@ -98,7 +111,7 @@ export default function SearchResult({ result, compact }) {
         <ItemIcon item={result} type={result.model} />
         <Box>
           <TitleWrapper>
-            <Title>{result.name}</Title>
+            <Title data-testid="search-result-item-name">{result.name}</Title>
             <PLUGIN_MODERATION.ModerationStatusIcon
               status={result.moderated_status}
               size={12}
@@ -107,7 +120,7 @@ export default function SearchResult({ result, compact }) {
           <Text>
             <InfoText result={result} />
           </Text>
-          {result.description && (
+          {hasDescription && result.description && (
             <Description>{result.description}</Description>
           )}
           <Score scores={result.scores} />

@@ -419,7 +419,13 @@
                (second (xlsx-export [{:id 0, :name "Col"}] {} [[#t "10:12:06Z-03:21"]])))))
       (testing "ZonedDateTime"
         (is (= [#inst "2020-03-28T10:12:06.000-00:00"]
-               (second (xlsx-export [{:id 0, :name "Col"}] {} [[#t "2020-03-28T10:12:06Z"]]))))))))
+               (second (xlsx-export [{:id 0, :name "Col"}] {} [[#t "2020-03-28T10:12:06Z"]])))))))
+  (testing "Strings representing country names/codes don't error when *parse-temporal-string-values* is true (#18724)"
+    (binding [xlsx/*parse-temporal-string-values* true]
+      (is (= ["GB"]
+             (second (xlsx-export [{:id 0, :name "Col"}] {} [["GB"]]))))
+      (is (= ["Portugal"]
+             (second (xlsx-export [{:id 0, :name "Col"}] {} [["Portugal"]])))))))
 
 (defrecord ^:private SampleNastyClass [^String v])
 

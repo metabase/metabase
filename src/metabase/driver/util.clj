@@ -5,12 +5,14 @@
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.models.setting :refer [defsetting]]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db])
   (:import java.io.ByteArrayInputStream
            [java.security.cert CertificateFactory X509Certificate]
            java.security.KeyStore
+           java.util.Base64
            javax.net.SocketFactory
            [javax.net.ssl SSLContext TrustManagerFactory X509TrustManager]))
 
@@ -97,13 +99,92 @@
              :when  (driver/available? driver)]
          driver)))
 
+(defn- expand-secret-conn-prop [{prop-name :name, visible-if :visible-if, :as conn-prop}]
+  (case (:secret-kind conn-prop)
+    "password" [(-> conn-prop
+                    (assoc :type "password")
+                    (assoc :name (str prop-name "-value"))
+                    (dissoc :secret-kind))]
+    "keystore" (if (premium-features/is-hosted?)
+                 [(-> (assoc conn-prop
+                        :name (str prop-name "-value")
+                        :type "textFile"
+                        :treat-before-posting "base64")
+                      (dissoc :secret-kind))]
+                 [(cond-> {:name (str prop-name "-options")
+                           :type "select"
+                           :options [{:name "Local file path"
+                                      :value "local"}
+                                     {:name "Uploaded file path"
+                                      :value "uploaded"}]
+                           :default "local"}
+                    visible-if (assoc :visible-if visible-if))
+                  (-> (assoc conn-prop
+                        :name (str prop-name "-value")
+                        :type "textFile"
+                        :treat-before-posting "base64"
+                        :visible-if {(keyword (str prop-name "-options")) "uploaded"})
+                      (dissoc :secret-kind))
+                  {:name (str prop-name "-path")
+                   :type "string"
+                   :placeholder (:placeholder conn-prop)
+                   :visible-if {(keyword (str prop-name "-options")) "local"}}])
+    [conn-prop]))
+
+(defn connection-props-server->client
+  "Transforms connection-properties from their server side definition into a client side definition.
+
+  Currently, this just transforms :type :secret properties from the server side definition into other types for client
+  display/editing. For example, a :secret-kind :keystore turns into a bunch of different properties, to encapsulate
+  all the different options that might be available on the client side for populating the value."
+  {:added "0.42.0"}
+  [conn-props]
+  (reduce (fn [acc conn-prop]
+            (if (= "secret" (:type conn-prop))
+              (concat acc (expand-secret-conn-prop conn-prop))
+              (concat acc [conn-prop]))) [] conn-props))
+
+(defn db-details-client->server
+  "Currently, this transforms client side values for the various back into :type :secret for storage on the server.
+  Sort of the opposite of `connection-props-server->client`, except that it operates on DB details key/values populated
+  by the client, not on connection detail maps created on the server."
+  {:added "0.42.0"}
+  [driver db-details]
+  (when db-details
+    (assert (some? driver))
+    (let [secret-names->props (reduce (fn [acc prop]
+                                        (if (= "secret" (:type prop))
+                                          (assoc acc (:name prop) prop)
+                                          acc))
+                                      {}
+                                      (driver/connection-properties driver))]
+      (reduce-kv (fn [acc prop-name prop]
+                   (let [subprop (fn [suffix]
+                                   (keyword (str prop-name suffix)))
+                         path-kw (subprop "-path")
+                         val-kw  (subprop "-value")
+                         path    (path-kw acc)
+                         treat   (:treat-before-posting prop)
+                         value   (let [^String v (val-kw acc)]
+                                   (case treat
+                                     "base64" (.decode (Base64/getDecoder) v)
+                                     v))]
+                     (cond-> (assoc acc val-kw value)
+                       path  (dissoc val-kw) ; local path specified; remove the -value entry, if it exists
+                       value (dissoc path-kw) ; value specified; remove the -path entry, if it exists
+                       true  (dissoc (subprop "-options")))))
+                 db-details
+                 secret-names->props))))
+
 (defn available-drivers-info
   "Return info about all currently available drivers, including their connection properties fields and supported
-  features."
+  features. The output of `driver/connection-properties` is passed through `connection-props-server->client` before
+  being returned, to handle any transformation between the server side and client side representation."
   []
   (into {} (for [driver (available-drivers)
                  :let   [props (try
-                                 (driver/connection-properties driver)
+                                 (-> (driver/connection-properties driver)
+                                     connection-props-server->client)
                                  (catch Throwable e
                                    (log/error e (trs "Unable to determine connection properties for driver {0}" driver))))]
                  :when  props]

@@ -558,7 +558,8 @@
   (api/check-superuser)
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
   (api/let-404 [existing-database (Database id)]
-    (let [details    (upsert-sensitive-fields existing-database details)
+    (let [details    (driver.u/db-details-client->server engine details)
+          details    (upsert-sensitive-fields existing-database details)
           conn-error (when (some? details)
                        (assert (some? engine))
                        (test-database-connection engine details))
