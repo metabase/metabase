@@ -408,7 +408,7 @@ const RemoveButton = ({ onRemove }) => (
     onClick={onRemove}
     style={HEADER_ACTION_STYLE}
   >
-    <Icon name="close" size={HEADER_ICON_SIZE} />
+    <Icon name="close" size={14} />
   </a>
 );
 

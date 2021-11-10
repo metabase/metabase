@@ -32,7 +32,12 @@ const BrowserCrumbs = ({ crumbs, analyticsContext }) => (
             <Crumb>{crumb.title}</Crumb>
           )}
           {index < crumbs.length - 1 ? (
-            <Icon name="chevronright" color={color("text-light")} mx={1} />
+            <Icon
+              size={12}
+              name="chevronright"
+              color={color("text-light")}
+              mx={1}
+            />
           ) : null}
         </Flex>
       ))}

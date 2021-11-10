@@ -35,7 +35,7 @@ export default function SidebarHeader({
           className="flex-align-right text-medium text-brand-hover no-decoration"
           onClick={onClose}
         >
-          <Icon name="close" size={18} />
+          <Icon name="close" size={14} />
         </a>
       )}
     </div>
