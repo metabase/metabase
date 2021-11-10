@@ -38,16 +38,15 @@ export const EngineBannerRoot = styled.div`
   display: flex;
   align-items: center;
   color: ${color("white")};
-  padding: 0.75rem;
-  border-radius: 0.25rem;
-  border: 1px solid ${color("brand")};
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
   background-color: ${color("brand")};
 `;
 
 export const EngineBannerTitle = styled.div`
   flex: 1 0 auto;
-  font-size: 1rem;
   font-weight: bold;
+  line-height: 1.5rem;
 `;
 
 export const EngineBannerIcon = styled(Icon)`
