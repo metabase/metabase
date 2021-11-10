@@ -452,15 +452,15 @@
 (def ^:private fetch-cloud-gateway-ips-fn
   (memoize/ttl
    (fn []
-     (when (premium-features/is-hosted?)
-       (try
-         (-> (http/get (cloud-gateway-ips-url))
-             :body
-             (json/parse-string keyword)
-             :ip_addresses)
-         (catch clojure.lang.ExceptionInfo e
-           (log/error e (trs "Error fetching Metabase Cloud gateway IP addresses:")
-                 :ttl/threshold (* 1000 60 5))))))))
+       (when (premium-features/is-hosted?)
+         (try
+           (-> (http/get (cloud-gateway-ips-url))
+               :body
+               (json/parse-string keyword)
+               :ip_addresses)
+           (catch clojure.lang.ExceptionInfo e
+             (log/error e (trs "Error fetching Metabase Cloud gateway IP addresses:"))))))
+   :ttl/threshold (* 1000 60 5)))
 
 (defsetting cloud-gateway-ips
   (deferred-tru "Metabase Cloud gateway IP addresses, to configure connections to DBs behind firewalls")
