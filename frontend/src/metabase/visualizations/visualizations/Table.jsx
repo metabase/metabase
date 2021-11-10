@@ -227,12 +227,12 @@ export default class Table extends Component {
       },
       readDependencies: ["table.column_formatting", "table.pivot"],
     },
-    "table.pivot_cohort": {
-      section: t`Columns`,
-      title: t`Cohort`,
-      widget: "toggle",
-      default: false,
-    },
+    // "table.pivot_cohort": {
+    //   section: t`Columns`,
+    //   title: t`Cohort`,
+    //   widget: "toggle",
+    //   default: false,
+    // },
   };
 
   static columnSettings = column => {
@@ -460,7 +460,7 @@ function PrepareCohortData() {
       let rowindex = cells.item(i).dataset.rowindex;
       let columnindex = cells.item(i).dataset.columnindex;
       let div = cells.item(i).getElementsByTagName("div");
-      if(columnindex != 0) {
+      if (columnindex != 0) {
         console.log(
           "[" + rowindex + "] [" + columnindex + "]: " + div[0].innerHTML,
         );
@@ -480,8 +480,13 @@ function PrepareCohortData() {
           div[0].dataset.originalValue = div[0].innerHTML
             ? div[0].innerHTML
             : "";
-          if(columnindex != 0) {
-            console.log("cohortValue: " + cohortValue + " originalValue: " + div[0].innerHTML);
+          if (columnindex != 0) {
+            console.log(
+              "cohortValue: " +
+                cohortValue +
+                " originalValue: " +
+                div[0].innerHTML,
+            );
           }
         }
       }
