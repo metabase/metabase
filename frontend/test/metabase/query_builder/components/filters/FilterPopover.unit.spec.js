@@ -1,4 +1,4 @@
-import "__support__/mocks";
+import "__support__/ui-mocks";
 import React from "react";
 
 import { fireEvent, render, screen } from "@testing-library/react";

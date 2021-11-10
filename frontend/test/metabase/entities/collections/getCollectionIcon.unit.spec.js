@@ -1,4 +1,4 @@
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { setupEnterpriseTest } from "__support__/enterprise";
 import {
   getCollectionIcon,
   ROOT_COLLECTION,
@@ -6,10 +6,6 @@ import {
 } from "metabase/entities/collections";
 
 describe("getCollectionIcon", () => {
-  const ORIGINAL_AUTHORITY_LEVELS = {
-    ...PLUGIN_COLLECTIONS.AUTHORITY_LEVEL,
-  };
-
   function collection({
     id = 10,
     personal_owner_id = null,
@@ -78,21 +74,7 @@ describe("getCollectionIcon", () => {
 
   describe("EE", () => {
     beforeEach(() => {
-      PLUGIN_COLLECTIONS.AUTHORITY_LEVEL = {
-        ...ORIGINAL_AUTHORITY_LEVELS,
-        official: {
-          type: "official",
-          icon: "badge",
-          color: "yellow",
-          tooltips: {
-            default: "Official Collection",
-          },
-        },
-      };
-    });
-
-    afterEach(() => {
-      PLUGIN_COLLECTIONS.AUTHORITY_LEVEL = ORIGINAL_AUTHORITY_LEVELS;
+      setupEnterpriseTest();
     });
 
     testCasesEE.forEach(testCase => {

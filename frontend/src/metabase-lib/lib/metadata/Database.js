@@ -2,9 +2,8 @@ import Question from "../Question";
 
 import Base from "./Base";
 
+import { generateSchemaId } from "metabase/lib/schema";
 import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
-
-import { generateSchemaId } from "metabase/schema";
 
 /**
  * @typedef { import("./metadata").SchemaName } SchemaName

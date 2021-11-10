@@ -5,6 +5,7 @@ import {
   remapDisplayValueToFK,
   visitQuestionAdhoc,
   visualize,
+  getDimensionByName,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
@@ -422,13 +423,11 @@ describe("scenarios > question > nested", () => {
      *  Extract it if we have the need for it anywhere else
      */
     function isSelected(text) {
-      cy.findByText(text)
-        .closest(".List-item")
-        .should($el => {
-          const className = $el[0].className;
-
-          expect(className).to.contain("selected");
-        });
+      getDimensionByName({ name: text }).should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
     }
   });
 
@@ -590,7 +589,7 @@ describe("scenarios > question > nested", () => {
       cy.findAllByRole("button")
         .contains("Summarize")
         .click();
-      cy.findByText("Add a metric").click();
+      cy.findByTestId("add-aggregation-button").click();
       cy.findByText(/^Sum of/).click();
       popover()
         .findByText("VAL")

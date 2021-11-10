@@ -13,7 +13,7 @@ import {
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import Pulses from "metabase/entities/pulses";
 import User from "metabase/entities/users";
-import { normalizeParameterValue } from "metabase/meta/Parameter";
+import { normalizeParameterValue } from "metabase/parameters/utils/parameter-values";
 
 import { connect } from "react-redux";
 

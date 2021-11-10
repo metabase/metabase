@@ -5,6 +5,7 @@ import {
   visualize,
   openOrdersTable,
   openReviewsTable,
+  getBinningButtonForDimension,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
@@ -107,7 +108,7 @@ describe("scenarios > question > new", () => {
     describe("on a (simple) question page", () => {
       beforeEach(() => {
         cy.findByText("Simple question").click();
-        cy.findByPlaceholderText("Search for a table...").type("Ord");
+        cy.findByPlaceholderText("Search for a table…").type("Ord");
       });
 
       it("should allow to search saved questions", () => {
@@ -119,6 +120,8 @@ describe("scenarios > question > new", () => {
         cy.findAllByText("Orders")
           .closest("li")
           .findByText("Table in")
+          .parent()
+          .findByTestId("search-result-item-name")
           .click();
         cy.url().should("include", "question#");
         cy.findByText("Sample Dataset");
@@ -129,7 +132,7 @@ describe("scenarios > question > new", () => {
     describe("on a (custom) question page", () => {
       beforeEach(() => {
         cy.findByText("Custom question").click();
-        cy.findByPlaceholderText("Search for a table...").type("Ord");
+        cy.findByPlaceholderText("Search for a table…").type("Ord");
       });
 
       it("should allow to search saved questions", () => {
@@ -143,6 +146,8 @@ describe("scenarios > question > new", () => {
         cy.findAllByText("Orders")
           .closest("li")
           .findByText("Table in")
+          .parent()
+          .findByTestId("search-result-item-name")
           .click();
 
         visualize();
@@ -158,7 +163,7 @@ describe("scenarios > question > new", () => {
         expect("Unexpected call to /api/search").to.be.false;
       });
       cy.findByText("Custom question").click();
-      cy.findByPlaceholderText("Search for a table...").type("  ");
+      cy.findByPlaceholderText("Search for a table…").type("  ");
     });
   });
 
@@ -186,7 +191,7 @@ describe("scenarios > question > new", () => {
       });
 
       it("should perform a search scoped to saved questions", () => {
-        cy.findByPlaceholderText("Search for a question").type("Grouped");
+        cy.findByPlaceholderText("Search for a question…").type("Grouped");
         cy.findByText("Orders, Count, Grouped by Created At (year)").click();
         cy.findByText("1,994");
       });
@@ -229,7 +234,7 @@ describe("scenarios > question > new", () => {
       });
 
       it("should perform a search scoped to saved questions", () => {
-        cy.findByPlaceholderText("Search for a question").type("Grouped");
+        cy.findByPlaceholderText("Search for a question…").type("Grouped");
         cy.findByText("Orders, Count, Grouped by Created At (year)").click();
 
         visualize();
@@ -378,9 +383,10 @@ describe("scenarios > question > new", () => {
           cy.log(
             "**Marked as regression of [#10441](https://github.com/metabase/metabase/issues/10441)**",
           );
-          cy.findByText("Created At")
-            .closest(".List-item")
-            .contains("by month")
+          getBinningButtonForDimension({
+            name: "Created At",
+          })
+            .should("have.text", "by month")
             .click();
         });
       // this step is maybe redundant since it fails to even find "by month"
@@ -460,7 +466,7 @@ describe("scenarios > question > new", () => {
       });
     });
 
-    it.skip("distinct inside custom expression should suggest non-numeric types (metabase#13469)", () => {
+    it("distinct inside custom expression should suggest non-numeric types (metabase#13469)", () => {
       openReviewsTable({ mode: "notebook" });
       cy.findByText("Summarize").click();
       popover()
@@ -475,9 +481,9 @@ describe("scenarios > question > new", () => {
         "**The point of failure for ANY non-numeric value reported in v0.36.4**",
       );
       // the default type for "Reviewer" is "No semantic type"
-      cy.findByText("Fields")
-        .parent()
-        .contains("Reviewer");
+      popover().within(() => {
+        cy.contains("Reviewer");
+      });
     });
 
     it.skip("summarizing by distinct datetime should allow granular selection (metabase#13098)", () => {

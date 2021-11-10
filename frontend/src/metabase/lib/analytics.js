@@ -24,9 +24,9 @@ export const trackStructEvent = (category, action, label, value) => {
   }
 };
 
-export const trackSchemaEvent = (schema, data) => {
+export const trackSchemaEvent = (schema, version, data) => {
   if (isTrackingEnabled() && schema) {
-    trackSnowplowSchemaEvent(schema, data);
+    trackSnowplowSchemaEvent(schema, version, data);
   }
 };
 
@@ -60,11 +60,11 @@ const createSnowplowTracker = store => {
   Snowplow.newTracker("sp", "https://sp.metabase.com", {
     appId: "metabase",
     platform: "web",
-    cookieSameSite: "Lax",
+    eventMethod: "post",
     discoverRootDomain: true,
-    contexts: {
-      webPage: true,
-    },
+    contexts: { webPage: true },
+    anonymousTracking: { withServerAnonymisation: true },
+    stateStorageStrategy: "none",
     plugins: [createSnowplowPlugin(store)],
   });
 };
@@ -78,17 +78,19 @@ const createSnowplowPlugin = store => {
     contexts: () => {
       const id = Settings.get("analytics-uuid");
       const version = Settings.get("version", {});
-      const features = Settings.get("premium-features");
+      const createdAt = Settings.get("instance-creation");
+      const tokenFeatures = Settings.get("token-features");
 
       return [
         {
-          schema: "iglu:com.metabase/instance/jsonschema/1-0-0",
+          schema: "iglu:com.metabase/instance/jsonschema/1-1-0",
           data: {
             id,
             version: {
               tag: version.tag,
             },
-            token_features: features,
+            created_at: createdAt,
+            token_features: tokenFeatures,
           },
         },
       ];

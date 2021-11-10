@@ -82,6 +82,26 @@
   :setter     :none
   :getter     #(uuid-nonce :analytics-uuid))
 
+(defn- first-user-creation
+  "Returns the timestamp at which the first user was created."
+  []
+  (:min (db/select-one ['User [:%min.date_joined :min]])))
+
+(defsetting instance-creation
+  (deferred-tru "The approximate timestamp at which this instance of Metabase was created, for inclusion in analytics.")
+  :visibility :public
+  :type       :timestamp
+  :setter     :none
+  :getter     (fn []
+                (if-let [value (setting/get-timestamp :instance-creation)]
+                  value
+                  ;; For instances that were started before this setting was added (in 0.41.3), use the creation
+                  ;; timestamp of the first user. For all new instances, use the timestamp at which this setting
+                  ;; is first read.
+                  (do (setting/set-timestamp! :instance-creation (or (first-user-creation)
+                                                                     (java-time/offset-date-time)))
+                      (setting/get-timestamp :instance-creation)))))
+
 (defn- normalize-site-url [^String s]
   (let [ ;; remove trailing slashes
         s (str/replace s #"/$" "")
@@ -379,8 +399,8 @@
   :setter     :none
   :getter     (constantly config/mb-version-info))
 
-(defsetting premium-features
-  "Premium  features enabled for this instance."
+(defsetting token-features
+  "Features registered for this instance's token"
   :visibility :public
   :setter     :none
   :getter     (fn [] {:embedding            (premium-features/hide-embed-branding?)
@@ -390,7 +410,8 @@
                       :sso                  (premium-features/enable-sso?)
                       :advanced_config      (premium-features/enable-advanced-config?)
                       :advanced_permissions (premium-features/enable-advanced-permissions?)
-                      :content_management   (premium-features/enable-content-management?)}))
+                      :content_management   (premium-features/enable-content-management?)
+                      :hosting              (premium-features/is-hosted?)}))
 
 (defsetting redirect-all-requests-to-https
   (deferred-tru "Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS")

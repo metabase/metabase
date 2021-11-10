@@ -2,48 +2,39 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import cx from "classnames";
-
 import "ace/ace";
 import "ace/ext-language_tools";
-
 import "ace/mode-sql";
 import "ace/mode-mysql";
 import "ace/mode-pgsql";
 import "ace/mode-sqlserver";
 import "ace/mode-json";
-
 import "ace/snippets/text";
 import "ace/snippets/sql";
 import "ace/snippets/mysql";
 import "ace/snippets/pgsql";
 import "ace/snippets/sqlserver";
 import "ace/snippets/json";
-
-import { t } from "ttag";
 import _ from "underscore";
-
 import { ResizableBox } from "react-resizable";
-
-import "./NativeQueryEditor.css";
 
 import { isEventOverElement } from "metabase/lib/dom";
 import { delay } from "metabase/lib/promise";
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 import ExplicitSize from "metabase/components/ExplicitSize";
+
 import Snippets from "metabase/entities/snippets";
 import SnippetCollections from "metabase/entities/snippet-collections";
-import Parameters from "metabase/parameters/components/Parameters/Parameters";
+import SnippetModal from "metabase/query_builder/components/template_tags/SnippetModal";
+import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import Question from "metabase-lib/lib/Question";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import {
-  DatabaseDataSelector,
-  SchemaAndTableDataSelector,
-} from "metabase/query_builder/components/DataSelector";
-import SnippetModal from "metabase/query_builder/components/template_tags/SnippetModal";
-
-import VisibilityToggler from "./NativeQueryEditor/VisibilityToggler";
 import NativeQueryEditorSidebar from "./NativeQueryEditor/NativeQueryEditorSidebar";
+import VisibilityToggler from "./NativeQueryEditor/VisibilityToggler";
 import RightClickPopover from "./NativeQueryEditor/RightClickPopover";
+import DataSourceSelectors from "./NativeQueryEditor/DataSourceSelectors";
+
+import "./NativeQueryEditor.css";
 
 import type { DatasetQuery } from "metabase-types/types/Card";
 import type { DatabaseId } from "metabase-types/types/Database";
@@ -473,67 +464,12 @@ export default class NativeQueryEditor extends Component {
     const {
       query,
       setParameterValue,
-      location,
       readOnly,
       isNativeEditorOpen,
       openSnippetModalWithSelectedText,
     } = this.props;
 
-    const database = query.database();
-    const databases = query.metadata().databasesList({ savedQuestions: false });
     const parameters = query.question().parameters();
-
-    let dataSelectors = [];
-    if (isNativeEditorOpen && databases.length > 0) {
-      // we only render a db selector if there are actually multiple to choose from
-      if (
-        database == null ||
-        (databases.length > 1 && databases.some(db => db.id === database.id))
-      ) {
-        dataSelectors.push(
-          <div
-            key="db_selector"
-            className="GuiBuilder-section GuiBuilder-data flex align-center ml2"
-          >
-            <DatabaseDataSelector
-              databases={databases}
-              selectedDatabaseId={database?.id}
-              setDatabaseFn={this.setDatabaseId}
-              isInitiallyOpen={database == null}
-              readOnly={this.props.readOnly}
-            />
-          </div>,
-        );
-      } else if (database) {
-        dataSelectors.push(
-          <span key="db" className="p2 text-bold text-grey">
-            {database.name}
-          </span>,
-        );
-      }
-      if (query.requiresTable()) {
-        const selectedTable = query.table();
-        dataSelectors.push(
-          <div
-            key="table_selector"
-            className="GuiBuilder-section GuiBuilder-data flex align-center ml2"
-          >
-            <SchemaAndTableDataSelector
-              selectedTableId={selectedTable?.id || null}
-              selectedDatabaseId={database?.id}
-              databases={[database]}
-              setSourceTableFn={this.setTableId}
-              isInitiallyOpen={false}
-              readOnly={this.props.readOnly}
-            />
-          </div>,
-        );
-      }
-    } else {
-      dataSelectors = (
-        <span className="ml2 p2 text-medium">{t`This question is written in ${query.nativeQueryLanguage()}.`}</span>
-      );
-    }
 
     const dragHandle = (
       <div className="NativeQueryEditorDragHandleWrapper">
@@ -544,15 +480,19 @@ export default class NativeQueryEditor extends Component {
     return (
       <div className="NativeQueryEditor bg-light full">
         <div className="flex align-center" style={{ minHeight: 55 }}>
-          {dataSelectors}
-          <Parameters
+          <DataSourceSelectors
+            isNativeEditorOpen={isNativeEditorOpen}
+            query={query}
+            readOnly={readOnly}
+            setDatabaseId={this.setDatabaseId}
+            setTableId={this.setTableId}
+          />
+          <SyncedParametersList
+            className="mt1"
             parameters={parameters}
-            query={location.query}
             setParameterValue={setParameterValue}
             setParameterIndex={this.setParameterIndex}
-            syncQueryString
             isEditing
-            isQB
             commitImmediately
           />
           {query.hasWritePermission() && (

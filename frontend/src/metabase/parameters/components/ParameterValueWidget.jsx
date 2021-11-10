@@ -1,5 +1,3 @@
-/* eslint "react/prop-types": "warn" */
-
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
@@ -18,14 +16,12 @@ import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldW
 import Tooltip from "metabase/components/Tooltip";
 
 import { fetchField, fetchFieldValues } from "metabase/redux/metadata";
-import {
-  getMetadata,
-  makeGetMergedParameterFieldValues,
-} from "metabase/selectors/metadata";
+import { getMetadata } from "metabase/selectors/metadata";
 
-import { getParameterIconName } from "metabase/meta/Parameter";
+import { getParameterIconName } from "metabase/parameters/utils/ui";
 import { deriveFieldOperatorFromParameter } from "metabase/parameters/utils/operators";
-import { isDashboardParameterWithoutMapping } from "metabase/meta/Dashboard";
+import { isDashboardParameterWithoutMapping } from "metabase/parameters/utils/dashboards";
+import { hasFieldValues } from "metabase/parameters/utils/fields";
 
 import S from "./ParameterWidget.css";
 
@@ -42,10 +38,8 @@ const DATE_WIDGETS = {
 };
 
 const makeMapStateToProps = () => {
-  const getMergedParameterFieldValues = makeGetMergedParameterFieldValues();
   const mapStateToProps = (state, props) => ({
     metadata: getMetadata(state),
-    values: getMergedParameterFieldValues(state, props),
   });
   return mapStateToProps;
 };
@@ -75,13 +69,10 @@ export default class ParameterValueWidget extends Component {
     parameters: PropTypes.array,
     dashboard: PropTypes.object,
 
-    // provided by @connect
-    values: PropTypes.array,
     metadata: PropTypes.object.isRequired,
   };
 
   static defaultProps = {
-    values: [],
     isEditing: false,
     noReset: false,
     commitImmediately: false,
@@ -95,7 +86,7 @@ export default class ParameterValueWidget extends Component {
 
     // In public dashboards we receive field values before mounting this component and
     // without need to call `fetchFieldValues` separately
-    if (_.isEmpty(this.props.values)) {
+    if (!hasFieldValues(this.props.parameter)) {
       this.updateFieldValues(this.props);
     }
 
@@ -272,7 +263,6 @@ function Widget({
   parameter,
   metadata,
   value,
-  values,
   setValue,
   onPopoverClose,
   className,

@@ -13,8 +13,8 @@ import {
   getVisualizationTransformed,
 } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import { getValueAndFieldIdPopulatedParametersFromCard } from "metabase/meta/Card";
-import { normalizeParameterValue } from "metabase/meta/Parameter";
+import { getValueAndFieldIdPopulatedParametersFromCard } from "metabase/parameters/utils/cards";
+import { normalizeParameterValue } from "metabase/parameters/utils/parameter-values";
 
 import Utils from "metabase/lib/utils";
 

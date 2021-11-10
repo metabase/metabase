@@ -258,12 +258,14 @@ export default class TagEditorParam extends Component {
               parameter={
                 tag.type === "dimension"
                   ? parameter || {
+                      fields: [],
                       ...tag,
                       type:
                         tag["widget-type"] ||
                         (tag.type === "date" ? "date/single" : null),
                     }
                   : {
+                      fields: [],
                       type:
                         tag["widget-type"] ||
                         (tag.type === "date" ? "date/single" : null),

@@ -3,9 +3,8 @@ import _ from "underscore";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import userEvent from "@testing-library/user-event";
 import xhrMock from "xhr-mock";
+import { setupEnterpriseTest } from "__support__/enterprise";
 import MetabaseSettings from "metabase/lib/settings";
-import { PLUGIN_CACHING, PLUGIN_FORM_WIDGETS } from "metabase/plugins";
-import NumericFormField from "metabase/components/form/widgets/FormNumericInputWidget";
 import DashboardDetailsModal from "./DashboardDetailsModal";
 
 const DASHBOARD = {
@@ -19,11 +18,14 @@ const DASHBOARD = {
 };
 
 function mockCachingEnabled(enabled = true) {
-  const original = MetabaseSettings.get;
+  const original = MetabaseSettings.get.bind(MetabaseSettings);
   const spy = jest.spyOn(MetabaseSettings, "get");
   spy.mockImplementation(key => {
     if (key === "enable-query-caching") {
       return enabled;
+    }
+    if (key === "application-name") {
+      return "Test Metabase";
     }
     return original(key);
   });
@@ -93,7 +95,7 @@ function fillForm({ name, description, cache_ttl } = {}) {
     nextDashboardState.description = description;
   }
   if (cache_ttl) {
-    const input = screen.getByLabelText("Cache TTL");
+    const input = screen.getByTestId("cache-ttl-input");
     userEvent.clear(input);
     userEvent.type(input, String(cache_ttl));
     input.blur();
@@ -182,16 +184,7 @@ describe("DashboardDetailsModal", () => {
 
     describe("EE", () => {
       beforeEach(() => {
-        PLUGIN_CACHING.cacheTTLFormField = {
-          name: "cache_ttl",
-          title: "Cache TTL",
-        };
-        PLUGIN_FORM_WIDGETS.dashboardCacheTTL = NumericFormField;
-      });
-
-      afterEach(() => {
-        PLUGIN_CACHING.cacheTTLFormField = null;
-        PLUGIN_FORM_WIDGETS.dashboardCacheTTL = null;
+        setupEnterpriseTest();
       });
 
       describe("caching enabled", () => {
@@ -202,7 +195,7 @@ describe("DashboardDetailsModal", () => {
         it("is shown", () => {
           setup();
           fireEvent.click(screen.queryByText("More options"));
-          expect(screen.queryByLabelText("Cache TTL")).toHaveValue("0");
+          expect(screen.queryByTestId("cache-ttl-input")).toHaveValue("0");
         });
 
         it("can be changed", done => {
@@ -220,8 +213,11 @@ describe("DashboardDetailsModal", () => {
       });
 
       describe("caching disabled", () => {
-        it("is not shown if caching is disabled", () => {
+        beforeEach(() => {
           mockCachingEnabled(false);
+        });
+
+        it("is not shown if caching is disabled", () => {
           setup();
           expect(screen.queryByText("More options")).not.toBeInTheDocument();
           expect(

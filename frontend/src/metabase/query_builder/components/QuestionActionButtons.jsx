@@ -11,6 +11,7 @@ import { Container } from "./QuestionActionButtons.styled";
 export const EDIT_TESTID = "edit-details-button";
 export const ADD_TO_DASH_TESTID = "add-to-dashboard-button";
 export const MOVE_TESTID = "move-button";
+export const TURN_INTO_DATASET_TESTID = "turn-into-dataset";
 export const CLONE_TESTID = "clone-button";
 export const ARCHIVE_TESTID = "archive-button";
 
@@ -18,14 +19,15 @@ const ICON_SIZE = 18;
 
 QuestionActionButtons.propTypes = {
   canWrite: PropTypes.bool.isRequired,
+  isDataset: PropTypes.bool.isRequired,
   onOpenModal: PropTypes.func.isRequired,
 };
 
 export default QuestionActionButtons;
 
-function QuestionActionButtons({ canWrite, onOpenModal }) {
+function QuestionActionButtons({ canWrite, isDataset, onOpenModal }) {
   return (
-    <Container>
+    <Container data-testid="question-action-buttons">
       {canWrite && (
         <Tooltip tooltip={t`Edit details`}>
           <Button
@@ -54,6 +56,17 @@ function QuestionActionButtons({ canWrite, onOpenModal }) {
             iconSize={ICON_SIZE}
             onClick={() => onOpenModal(MODAL_TYPES.MOVE)}
             data-testid={MOVE_TESTID}
+          />
+        </Tooltip>
+      )}
+      {canWrite && !isDataset && (
+        <Tooltip tooltip={t`Turn this into a dataset`}>
+          <Button
+            onlyIcon
+            icon="dataset"
+            iconSize={ICON_SIZE}
+            onClick={() => onOpenModal(MODAL_TYPES.TURN_INTO_DATASET)}
+            data-testid={TURN_INTO_DATASET_TESTID}
           />
         </Tooltip>
       )}

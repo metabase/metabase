@@ -5,6 +5,7 @@ import { GridRows } from "@visx/grid";
 import { AxisBottom, AxisLeft } from "@visx/axis";
 import { AreaClosed, LinePath } from "@visx/shape";
 import {
+  getLabelProps,
   getXTickLabelProps,
   getYTickLabelProps,
   getYTickWidth,
@@ -50,6 +51,7 @@ const layout = {
   },
   numTicks: 5,
   strokeWidth: 2,
+  labelFontWeight: 700,
   labelPadding: 12,
   areaOpacity: 0.2,
   strokeDasharray: "4",
@@ -111,6 +113,7 @@ const TimeSeriesAreaChart = ({ data, accessors, settings, labels }) => {
         labelOffset={yLabelOffset}
         hideTicks
         hideAxisLine
+        labelProps={getLabelProps(layout)}
         tickFormat={value => formatNumber(value, settings?.y)}
         tickLabelProps={() => getYTickLabelProps(layout)}
       />
@@ -121,6 +124,7 @@ const TimeSeriesAreaChart = ({ data, accessors, settings, labels }) => {
         numTicks={layout.numTicks}
         stroke={palette.textLight}
         tickStroke={palette.textLight}
+        labelProps={getLabelProps(layout)}
         tickFormat={value => formatDate(value, settings?.x)}
         tickLabelProps={() => getXTickLabelProps(layout)}
       />
