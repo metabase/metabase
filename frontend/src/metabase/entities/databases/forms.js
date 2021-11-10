@@ -384,11 +384,12 @@ const forms = {
           title: t`Connecting from behind a firewall`,
           description: t`In order to make sure Metabase can access your database,
               configure your firewall to allow connections from these IP addresses:
-              ${MetabaseSettings.get("cloud-gateway-ips")?.join(", ")}.`,
+              ${MetabaseSettings.cloudGatewayIps().join(", ")}.`,
           hidden:
             !engine ||
             !getEngineSupportsFirewall(engine) ||
-            !MetabaseSettings.isHosted(),
+            !MetabaseSettings.isHosted() ||
+            !MetabaseSettings.cloudGatewayIps().length,
         },
       ].filter(Boolean),
     normalize: function(database) {
