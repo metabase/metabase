@@ -9,6 +9,7 @@ import getFieldsForMongo from "./mongo-fields";
 
 import MetadataSyncScheduleWidget from "metabase/admin/databases/components/widgets/MetadataSyncScheduleWidget";
 import CacheFieldValuesScheduleWidget from "metabase/admin/databases/components/widgets/CacheFieldValuesScheduleWidget";
+import EngineWidget from "metabase/admin/databases/components/widgets/EngineWidget";
 
 const DATABASE_DETAIL_OVERRIDES = {
   "tunnel-enabled": () => ({
@@ -324,7 +325,7 @@ const forms = {
         {
           name: "engine",
           title: t`Database type`,
-          type: "select",
+          type: EngineWidget,
           options: getEngineOptions(engine),
           placeholder: t`Select a database`,
         },

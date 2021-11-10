@@ -1,14 +1,23 @@
 import React, { useCallback } from "react";
 import PropTypes from "prop-types";
 import {
-  EngineCardIcon,
+  EngineCardLogo,
   EngineCardRoot,
   EngineCardTitle,
   EngineListRoot,
 } from "./EngineWidget.styled";
 
 const EngineWidget = () => {
-  return null;
+  return (
+    <EngineList
+      engines={[
+        { name: "MySQL", logo: "/app/assets/img/databases/mysql.svg" },
+        { name: "MySQL", logo: "/app/assets/img/databases/mysql.svg" },
+        { name: "MySQL", logo: "/app/assets/img/databases/mysql.svg" },
+        { name: "MySQL", logo: "/app/assets/img/databases/mysql.svg" },
+      ]}
+    />
+  );
 };
 
 const listPropTypes = {
@@ -40,10 +49,12 @@ const EngineCard = ({ engine, onChange }) => {
 
   return (
     <EngineCardRoot onClick={handleClick}>
-      <EngineCardIcon src={engine.icon} />
+      <EngineCardLogo src={engine.logo} />
       <EngineCardTitle>{engine.name}</EngineCardTitle>
     </EngineCardRoot>
   );
 };
 
 EngineCard.propTypes = cardPropTypes;
+
+export default EngineWidget;
