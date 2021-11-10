@@ -7,7 +7,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import {
   getMappingsByParameter as _getMappingsByParameter,
   getDashboardParametersWithFieldMetadata,
-} from "metabase/meta/Dashboard";
+} from "metabase/parameters/utils/dashboards";
 import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";

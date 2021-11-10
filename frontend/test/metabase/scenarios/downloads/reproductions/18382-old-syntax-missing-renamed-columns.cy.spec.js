@@ -1,9 +1,17 @@
-import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
+import {
+  restore,
+  visitQuestionAdhoc,
+  downloadAndAssert,
+} from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
-const xlsx = require("xlsx");
-
 const { REVIEWS, REVIEWS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
+
+/**
+ * This question might seem a bit overwhelming at the first sight.
+ * The whole point of this repro was to try to cover as much of the old syntax as possible.
+ * We want to make sure it still works when loaded into a new(er) Metabase version.
+ */
 
 const questionDetails = {
   dataset_query: {
@@ -33,75 +41,74 @@ const questionDetails = {
   },
   display: "table",
   visualization_settings: {
-    column_settings: renameColumns(),
+    /**
+     * Rename columns
+     *
+     * Please note: it is currently not possible to use the old syntax for columns rename.
+     * That results in `500` error, and backend doesn't handle it at all.
+     * Once some kind of mechanism is put in place to prevent the app from breaking in such cases,
+     * change the following syntax to the old style `["field-id", ${COLUMN_ID}]`
+     */
+
+    column_settings: {
+      [`["ref",["field",${REVIEWS.ID},null]]`]: {
+        column_title: "MOD:ID",
+      },
+      [`["ref",["field",${REVIEWS.REVIEWER},null]]`]: {
+        column_title: "MOD:Reviewer",
+      },
+      [`["ref",["field",${PRODUCTS.TITLE},null]]`]: {
+        column_title: "MOD:Title",
+      },
+    },
+    // Reorder columns
+    "table.columns": [
+      {
+        name: "TITLE",
+        fieldRef: ["joined-field", "Products", ["field-id", PRODUCTS.TITLE]],
+        enabled: true,
+      },
+      {
+        name: "ID",
+        fieldRef: ["field-id", REVIEWS.ID],
+        enabled: true,
+      },
+      {
+        name: "REVIEWER",
+        fieldRef: ["field-id", REVIEWS.REVIEWER],
+        enabled: true,
+      },
+    ],
   },
 };
 
-const testCases = [
-  { type: "csv", sheetName: "Sheet1" },
-  { type: "xlsx", sheetName: "Query result" },
-];
+const testCases = ["csv", "xlsx"];
 
-describe.skip("issue 18382", () => {
-  beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
+testCases.forEach(fileType => {
+  describe("issue 18382", () => {
+    beforeEach(() => {
+      // TODO: Please remove this line when issue gets fixed
+      cy.skipOn(fileType === "csv");
 
-    restore();
-    cy.signInAsAdmin();
-  });
+      cy.intercept("POST", "/api/dataset").as("dataset");
 
-  it("should handle the old syntax in downloads (metabase#18382)", () => {
-    visitQuestionAdhoc(questionDetails);
-    cy.wait("@dataset");
+      restore();
+      cy.signInAsAdmin();
 
-    cy.icon("download").click();
+      visitQuestionAdhoc(questionDetails);
+      cy.wait("@dataset");
+    });
 
-    cy.wrap(testCases).each(({ type, sheetName }) => {
-      const downloadClassName = `.Icon-${type}`;
-      const endpoint = `/api/dataset/${type}`;
-
-      cy.log(`downloading a ${type} file`);
-
-      cy.get(downloadClassName)
-        .parent()
-        .parent()
-        .get('input[name="query"]')
-        .invoke("val")
-        .then(download_query_params => {
-          cy.request({
-            url: endpoint,
-            method: "POST",
-            form: true,
-            body: { query: download_query_params },
-            encoding: "binary",
-          }).then(resp => {
-            const workbook = xlsx.read(resp.body, {
-              type: "binary",
-            });
-
-            expect(workbook.Sheets[sheetName]["A1"].v).to.eq("MOD:ID");
-            expect(workbook.Sheets[sheetName]["B1"].v).to.eq("MOD:Reviewer");
-            expect(workbook.Sheets[sheetName]["C1"].v).to.eq("MOD:Title");
-
-            expect(workbook.Sheets[sheetName]["C2"].v).to.eq(
-              "Aerodynamic Concrete Bench",
-            );
-          });
-        });
+    it(`should handle the old syntax in downloads for ${fileType} (metabase#18382)`, () => {
+      downloadAndAssert({ fileType }, assertion);
     });
   });
 });
 
-function renameColumns() {
-  return {
-    [`["ref",["field",${REVIEWS.ID},null]]`]: {
-      column_title: "MOD:ID",
-    },
-    [`["ref",["field",${REVIEWS.REVIEWER},null]]`]: {
-      column_title: "MOD:Reviewer",
-    },
-    [`["ref",["field",${PRODUCTS.TITLE},null]]`]: {
-      column_title: "MOD:Title",
-    },
-  };
+function assertion(sheet) {
+  expect(sheet["A1"].v).to.eq("MOD:Title");
+  expect(sheet["B1"].v).to.eq("MOD:ID");
+  expect(sheet["C1"].v).to.eq("MOD:Reviewer");
+
+  expect(sheet["A2"].v).to.eq("Aerodynamic Concrete Bench");
 }

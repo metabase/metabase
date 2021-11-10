@@ -74,6 +74,7 @@
 (s/defmethod set-session-cookie :normal
   [request response {session-uuid :id} :- {:id (s/cond-pre UUID u/uuid-regex), s/Keyword s/Any}]
   (let [response       (wrap-body-if-needed response)
+        is-https?      (request.u/https? request)
         cookie-options (merge
                         {:same-site config/mb-session-cookie-samesite
                          :http-only true
@@ -89,14 +90,13 @@
                           {:max-age (* 60 (config/config-int :max-session-age))})
                         ;; If the authentication request request was made over HTTPS (hopefully always except for
                         ;; local dev instances) add `Secure` attribute so the cookie is only sent over HTTPS.
-                        (when (request.u/https? request)
-                          {:secure true})
-                        (when (= config/mb-session-cookie-samesite :none)
-                          (log/warn
-                           (str (deferred-trs "Session cookie's SameSite is configured to \"None\", but site is")
-                                (deferred-trs "served over an insecure connection. Some browsers will reject ")
-                                (deferred-trs "cookies under these conditions. ")
-                                (deferred-trs "https://www.chromestatus.com/feature/5633521622188032")))))]
+                        (when is-https?
+                          {:secure true}))]
+    (when (and (= config/mb-session-cookie-samesite :none) (not is-https?))
+      (log/warn
+       (str (deferred-trs "Session cookie's SameSite is configured to \"None\", but site is served over an insecure connection. Some browsers will reject cookies under these conditions.")
+            " "
+            "https://www.chromestatus.com/feature/5633521622188032")))
     (resp/set-cookie response metabase-session-cookie (str session-uuid) cookie-options)))
 
 (s/defmethod set-session-cookie :full-app-embed
@@ -107,7 +107,12 @@
                         {:http-only true
                          :path      "/"}
                         (when (request.u/https? request)
-                          {:secure true}))]
+                          ;; SameSite=None is required for cross-domain full-app embedding. This is safe because
+                          ;; security is provided via anti-CSRF token. Note that most browsers will only accept
+                          ;; SameSite=None with secure cookies, thus we are setting it only over HTTPS to prevent
+                          ;; the cookie from being rejected in case of same-domain embedding.
+                          {:same-site :none
+                           :secure    true}))]
     (-> response
         (resp/set-cookie metabase-embedded-session-cookie (str session-uuid) cookie-options)
         (assoc-in [:headers anti-csrf-token-header] anti-csrf-token))))
