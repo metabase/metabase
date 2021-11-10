@@ -366,7 +366,6 @@
                                    (tru "N/A")
                                    (format-percentage (/ value total)))]))}))
 
-
 (s/defmethod render :categorical/donut :- common/RenderedPulseCard
   [_ render-type _timezone-id :- (s/maybe s/Str) card {:keys [rows] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
