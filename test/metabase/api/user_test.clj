@@ -839,25 +839,31 @@
 ;;; |                  Other Endpoints -- PUT /api/user/:id/qpnewb, POST /api/user/:id/send_invite                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest update-qbnewb-test
-  (testing "PUT /api/user/:id/modal/qbnewb"
-    (testing "Test that we can set the QB newb status of ourselves"
-      (mt/with-temp User [{:keys [id]} {:first_name (mt/random-name)
-                                        :last_name  (mt/random-name)
-                                        :email      "def@metabase.com"
-                                        :password   "def123"}]
-        (let [creds {:username "def@metabase.com"
-                     :password "def123"}]
-          (testing "response"
-            (is (= {:success true}
-                   (mt/client creds :put 200 (format "user/%d/modal/qbnewb" id)))))
-          (testing "newb?"
-            (is (= false
-                   (db/select-one-field :is_qbnewb User, :id id)))))))
+(deftest update-user-modal-test
+  (doseq [[endpoint property] [["qbnewb" :is_qbnewb]
+                               ["datasetnewb" :is_datasetnewb]]]
+    (testing (str "PUT /api/user/:id/modal/" endpoint)
+      (testing "Test that we can set the QB newb status of ourselves"
+        (mt/with-temp User [{:keys [id]} {:first_name (mt/random-name)
+                                          :last_name  (mt/random-name)
+                                          :email      "def@metabase.com"
+                                          :password   "def123"}]
+          (let [creds {:username "def@metabase.com"
+                       :password "def123"}]
+            (testing "defaults to true"
+              (is (true? (db/select-one-field property User, :id id))))
+            (testing "response"
+              (is (= {:success true}
+                     (mt/client creds :put 200 (format "user/%d/modal/%s" id endpoint)))))
+            (testing (str endpoint "?")
+              (is (false? (db/select-one-field property User, :id id)))))))
 
-    (testing "shouldn't be allowed to set someone else's QB newb status"
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :put 403 (format "user/%d/modal/qbnewb" (mt/user->id :trashbird))))))))
+      (testing "shouldn't be allowed to set someone else's status"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :put 403
+                                     (format "user/%d/modal/endpoint"
+                                             (mt/user->id :trashbird)
+                                             endpoint))))))))
 
 (deftest send-invite-test
   (testing "POST /api/user/:id/send_invite"

@@ -9748,6 +9748,22 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+  - changeSet:
+      id: v42.00-065
+      author: dpsutton
+      comment: >-
+        Added 0.42.0 - Another modal dismissed state on user. Retaining the same suffix and boolean style to ease an
+        eventual migration.
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: is_datasetnewb
+                  type: boolean
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
 
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<

@@ -306,10 +306,12 @@
   "Indicate that a user has been informed about the vast intricacies of 'the' Query Builder."
   [id modal]
   (check-self-or-superuser id)
-  (let [k (or (get {"qbnewb" :is_qbnewb} modal)
+  (let [k (or (get {"qbnewb"      :is_qbnewb
+                    "datasetnewb" :is_datasetnewb}
+                   modal)
               (throw (ex-info (tru "Unrecognized modal: {0}" modal)
                               {:modal modal
-                               :allowable-modals #{"qbnewb"}})))]
+                               :allowable-modals #{"qbnewb" "datasetnewb"}})))]
     (api/check-500 (db/update! User id, k false)))
   {:success true})
 
