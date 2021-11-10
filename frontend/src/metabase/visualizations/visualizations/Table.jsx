@@ -227,12 +227,12 @@ export default class Table extends Component {
       },
       readDependencies: ["table.column_formatting", "table.pivot"],
     },
-    // "table.pivot_cohort": {
-    //   section: t`Columns`,
-    //   title: t`Cohort`,
-    //   widget: "toggle",
-    //   default: false,
-    // },
+    "table.pivot_cohort": {
+      section: t`Columns`,
+      title: t`Cohort`,
+      widget: "toggle",
+      default: false,
+    },
   };
 
   static columnSettings = column => {
