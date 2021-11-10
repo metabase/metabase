@@ -400,14 +400,20 @@
 
 (s/defmethod render :progress :- common/RenderedPulseCard
   [_ render-type _ card {:keys [cols rows viz-settings] :as data}]
-  (let [value (get-in rows [0 0])
-        goal  (:progress.goal viz-settings)
-        image-bundle                (image-bundle/make-image-bundle
-                                     render-type
-                                     (js-svg/progress value goal))]
+  (let [value        (get-in rows [0 0])
+        goal         (:progress.goal viz-settings)
+        settings     (->js-viz (first cols) (first cols) viz-settings)
+        image-bundle (image-bundle/make-image-bundle
+                      render-type
+                      (js-svg/progress value goal settings))]
     {:attachments
      (when image-bundle
-       (image-bundle/image-bundle->attachment image-bundle))}))
+       (image-bundle/image-bundle->attachment image-bundle))
+
+     :content
+     [:div
+      [:img {:style (style/style {:display :block :width :100%})
+             :src   (:image-src image-bundle)}]]}))
 
 (s/defmethod render :scalar :- common/RenderedPulseCard
   [_ _ timezone-id _card {:keys [cols rows viz-settings] :as data}]
