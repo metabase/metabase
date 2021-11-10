@@ -146,10 +146,10 @@
 (defn progress
   "Clojure entrypoint to render a progress bar. Returns a byte array of a png file"
   [value goal settings]
-  (let [svg-string (.asString (js/execute-fn-name @context
-                                                  "progress"
-                                                  {:value value :goal goal}
-                                                  (json/generate-string settings)))]
+  (let [js-res (js/execute-fn-name @context "progress"
+                                   (json/generate-string {:value value :goal goal})
+                                   (json/generate-string settings))
+        svg-string (.asString js-res)]
     (svg-string->bytes svg-string)))
 
 (def ^:private icon-paths

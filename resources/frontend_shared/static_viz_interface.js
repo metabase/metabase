@@ -75,7 +75,7 @@ function categorical_donut(rows, colors) {
 
 function progress(data, settings) {
   return StaticViz.RenderChart("progress", {
-    data: toJSMap(data),
+    data: JSON.parse(data),
     settings: JSON.parse(settings),
   });
 }
