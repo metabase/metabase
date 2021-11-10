@@ -1,5 +1,6 @@
 (ns metabase.public-settings-test
-  (:require [clojure.core.memoize :as memoize]
+  (:require [clj-http.fake :as http-fake]
+            [clojure.core.memoize :as memoize]
             [clojure.test :refer :all]
             [metabase.models.setting :as setting :refer [Setting]]
             [metabase.models.user :refer [User]]
