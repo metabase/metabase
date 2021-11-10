@@ -252,13 +252,9 @@ export default class Navbar extends Component {
                 to="browse"
                 className="flex align-center rounded transition-background"
                 data-metabase-event={`NavBar;Data Browse`}
+                tooltip={t`Browse data`}
               >
-                <Icon
-                  name="table_spaced"
-                  size={14}
-                  p={"11px"}
-                  tooltip={t`Browse data`}
-                />
+                <Icon name="table_spaced" size={14} p={"11px"} />
               </Link>
             </IconWrapper>
           )}
@@ -291,8 +287,9 @@ export default class Navbar extends Component {
                 to={this.props.plainNativeQuery.question().getUrl()}
                 className="flex align-center"
                 data-metabase-event={`NavBar;SQL`}
+                tooltip={t`Write SQL`}
               >
-                <Icon size={18} p={"11px"} name="sql" tooltip={t`Write SQL`} />
+                <Icon size={18} p={"11px"} name="sql" />
               </Link>
             </IconWrapper>
           )}
