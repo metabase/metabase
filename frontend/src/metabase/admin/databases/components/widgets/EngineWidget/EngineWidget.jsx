@@ -1,6 +1,9 @@
 import React, { useCallback } from "react";
 import PropTypes from "prop-types";
 import {
+  EngineBannerIcon,
+  EngineBannerRoot,
+  EngineBannerTitle,
   EngineCardLogo,
   EngineCardRoot,
   EngineCardTitle,
@@ -9,13 +12,8 @@ import {
 
 const EngineWidget = () => {
   return (
-    <EngineList
-      engines={[
-        { name: "MySQL", logo: "/app/assets/img/databases/mysql.svg" },
-        { name: "MySQL", logo: "/app/assets/img/databases/mysql.svg" },
-        { name: "MySQL", logo: "/app/assets/img/databases/mysql.svg" },
-        { name: "MySQL", logo: "/app/assets/img/databases/mysql.svg" },
-      ]}
+    <EngineBanner
+      engine={{ name: "MySQL", logo: "/app/assets/img/databases/mysql.svg" }}
     />
   );
 };
@@ -56,5 +54,25 @@ const EngineCard = ({ engine, onChange }) => {
 };
 
 EngineCard.propTypes = cardPropTypes;
+
+const bannerPropTypes = {
+  engine: PropTypes.object.isRequired,
+  onChange: PropTypes.func,
+};
+
+const EngineBanner = ({ engine, onChange }) => {
+  const handleRemoveClick = useCallback(() => {
+    onChange && onChange(null);
+  }, [onChange]);
+
+  return (
+    <EngineBannerRoot>
+      <EngineBannerTitle>{engine.name}</EngineBannerTitle>
+      <EngineBannerIcon name="close" onClick={handleRemoveClick} />
+    </EngineBannerRoot>
+  );
+};
+
+EngineBanner.propTypes = bannerPropTypes;
 
 export default EngineWidget;

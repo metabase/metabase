@@ -1,6 +1,7 @@
 import styled from "styled-components";
-import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { color, lighten } from "metabase/lib/colors";
+import Icon from "metabase/components/Icon";
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 
 export const EngineListRoot = styled.div`
   display: grid;
@@ -31,4 +32,24 @@ export const EngineCardLogo = styled.img`
   display: block;
   width: 2rem;
   height: 2rem;
+`;
+
+export const EngineBannerRoot = styled.div`
+  display: flex;
+  align-items: center;
+  color: ${color("white")};
+  padding: 0.75rem;
+  border-radius: 0.25rem;
+  border: 1px solid ${color("brand")};
+  background-color: ${color("brand")};
+`;
+
+export const EngineBannerTitle = styled.div`
+  flex: 1 0 auto;
+  font-size: 1rem;
+  font-weight: bold;
+`;
+
+export const EngineBannerIcon = styled(Icon)`
+  cursor: pointer;
 `;
