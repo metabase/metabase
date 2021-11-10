@@ -402,7 +402,10 @@
   [_ render-type _ card {:keys [cols rows viz-settings] :as data}]
   (let [value        (get-in rows [0 0])
         goal         (:progress.goal viz-settings)
-        settings     (->js-viz (first cols) (first cols) viz-settings)
+        color        (or (:progress.color viz-settings) (first colors))
+        settings     (assoc
+                       (->js-viz (first cols) (first cols) viz-settings)
+                       :color color)
         image-bundle (image-bundle/make-image-bundle
                       render-type
                       (js-svg/progress value goal settings))]
