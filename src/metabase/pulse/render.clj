@@ -80,8 +80,11 @@
             (= [[nil]] (-> data :rows)))
         (chart-type :empty "there are no rows in results")
 
-        (#{:pin_map :state :country :waterfall} display-type)
+        (#{:pin_map :state :country} display-type)
         (chart-type nil "display-type is %s" display-type)
+
+        (#{:waterfall} display-type)
+        (chart-type display-type "display-type is %s" display-type)
 
         (= @col-sample-count @row-sample-count 1)
         (chart-type :scalar "result has one row and one column")

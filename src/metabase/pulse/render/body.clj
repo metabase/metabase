@@ -504,16 +504,14 @@
         last-rows      (reverse (take-last 2 rows))
         values         (for [row last-rows]
                          (some-> row y-axis-rowfn common/format-number))
-        labels         (datetime/format-temporal-string-pair timezone-id
-                                                             (map x-axis-rowfn last-rows)
-                                                             (x-axis-rowfn cols))
+        labels         (x-and-y-axis-label-info x-col y-col viz-settings)
         render-fn      (if (isa? (-> cols x-axis-rowfn :effective_type) :type/Temporal)
                          js-svg/timelineseries-waterfall
                          js-svg/categorical-waterfall)
         image-bundle   (image-bundle/make-image-bundle
                         render-type
-                        (render-fn (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)
-                                   (x-and-y-axis-label-info x-col y-col viz-settings)
+                        (render-fn rows
+                                   labels
                                    (->js-viz x-col y-col viz-settings)))]
     {:attachments
      (when image-bundle
