@@ -229,7 +229,7 @@ export default class Table extends Component {
     },
     "table.pivot_cohort": {
       section: t`Columns`,
-      title: t`Cohort`,
+      title: t`Show cohort`,
       widget: "toggle",
       default: false,
     },
