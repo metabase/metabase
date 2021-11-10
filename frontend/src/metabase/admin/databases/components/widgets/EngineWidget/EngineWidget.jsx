@@ -1,78 +1,85 @@
-import React, { useCallback } from "react";
+import React, { useState } from "react";
 import PropTypes from "prop-types";
+import { t } from "ttag";
+import Button from "metabase/components/Button";
+import TextInput from "metabase/components/TextInput";
 import {
-  EngineBannerIcon,
-  EngineBannerRoot,
-  EngineBannerTitle,
+  EngineCard,
   EngineCardLogo,
-  EngineCardRoot,
   EngineCardTitle,
-  EngineListRoot,
+  EngineList,
 } from "./EngineWidget.styled";
 
-const EngineWidget = () => {
+const galleryPropTypes = {
+  elevatedEngines: PropTypes.array.isRequired,
+  nonElevatedEngines: PropTypes.array.isRequired,
+  onEngineChange: PropTypes.func,
+};
+
+const EngineGallery = ({
+  elevatedEngines,
+  nonElevatedEngines,
+  onEngineChange,
+}) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const isSearching = searchText.length > 0;
+
+  const visibleEngines = getVisibleEngines({
+    elevatedEngines,
+    nonElevatedEngines,
+    isExpanded,
+    isSearching,
+    searchText,
+  });
+
   return (
-    <EngineBanner
-      engine={{ name: "MySQL", logo: "/app/assets/img/databases/mysql.svg" }}
-    />
+    <div>
+      <EngineList>
+        <TextInput
+          value={searchText}
+          placeholder={t`Search for a database...`}
+          onChange={setSearchText}
+        />
+        {visibleEngines.map(engine => (
+          <EngineCard
+            key={engine.value}
+            onClick={() => onEngineChange(engine.value)}
+          >
+            <EngineCardLogo src={engine.logo} />
+            <EngineCardTitle>{engine.name}</EngineCardTitle>
+          </EngineCard>
+        ))}
+      </EngineList>
+      {!isSearching && (
+        <Button onClick={() => setIsExpanded(!isExpanded)}>
+          {isExpanded ? t`Show more options` : t`Show less options`}
+        </Button>
+      )}
+    </div>
   );
 };
 
-const listPropTypes = {
-  engines: PropTypes.array.isRequired,
-  onChange: PropTypes.func,
+EngineGallery.propTypes = galleryPropTypes;
+
+const getVisibleEngines = ({
+  elevatedEngines,
+  nonElevatedEngines,
+  isExpanded,
+  isSearching,
+  searchText,
+}) => {
+  const allEngines = elevatedEngines.concat(nonElevatedEngines);
+
+  if (isSearching) {
+    return allEngines.filter(e => includesIgnoreCase(e.name, searchText));
+  } else if (isExpanded) {
+    return allEngines;
+  } else {
+    return elevatedEngines;
+  }
 };
 
-const EngineList = ({ engines, onChange }) => {
-  return (
-    <EngineListRoot>
-      {engines.map(engine => (
-        <EngineCard key={engine.name} engine={engine} onChange={onChange} />
-      ))}
-    </EngineListRoot>
-  );
+const includesIgnoreCase = (sourceText, searchText) => {
+  return sourceText.toLowerCase().includes(searchText.toLowerCase());
 };
-
-EngineList.propTypes = listPropTypes;
-
-const cardPropTypes = {
-  engine: PropTypes.object.isRequired,
-  onChange: PropTypes.func,
-};
-
-const EngineCard = ({ engine, onChange }) => {
-  const handleClick = useCallback(() => {
-    onChange && onChange(engine);
-  }, [engine, onChange]);
-
-  return (
-    <EngineCardRoot onClick={handleClick}>
-      <EngineCardLogo src={engine.logo} />
-      <EngineCardTitle>{engine.name}</EngineCardTitle>
-    </EngineCardRoot>
-  );
-};
-
-EngineCard.propTypes = cardPropTypes;
-
-const bannerPropTypes = {
-  engine: PropTypes.object.isRequired,
-  onChange: PropTypes.func,
-};
-
-const EngineBanner = ({ engine, onChange }) => {
-  const handleRemoveClick = useCallback(() => {
-    onChange && onChange(null);
-  }, [onChange]);
-
-  return (
-    <EngineBannerRoot>
-      <EngineBannerTitle>{engine.name}</EngineBannerTitle>
-      <EngineBannerIcon name="close" onClick={handleRemoveClick} />
-    </EngineBannerRoot>
-  );
-};
-
-EngineBanner.propTypes = bannerPropTypes;
-
-export default EngineWidget;

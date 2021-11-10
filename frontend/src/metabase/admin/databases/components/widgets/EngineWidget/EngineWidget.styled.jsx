@@ -3,13 +3,13 @@ import { color, lighten } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 
-export const EngineListRoot = styled.div`
+export const EngineList = styled.div`
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 1.5rem;
 `;
 
-export const EngineCardRoot = styled(IconButtonWrapper)`
+export const EngineCard = styled(IconButtonWrapper)`
   flex: 1 1 auto;
   flex-direction: column;
   height: 5.375rem;
