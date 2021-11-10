@@ -493,6 +493,10 @@
                                    :font-size :16px})}
          (second labels)]]]]}))
 
+(s/defmethod render :progress :- common/RenderedPulseCard
+  [_ render-type _ card data]
+  (println data))
+
 (s/defmethod render :empty :- common/RenderedPulseCard
   [_ render-type _ _ _]
   (let [image-bundle (image-bundle/no-results-image-bundle render-type)]
