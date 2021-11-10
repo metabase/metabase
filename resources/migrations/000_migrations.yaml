@@ -9761,6 +9761,7 @@ databaseChangeLog:
               - column:
                   name: is_datasetnewb
                   type: boolean
+                  remarks: "Boolean flag to indicate if the dataset info modal has been dismissed."
                   defaultValueBoolean: true
                   constraints:
                     nullable: false
