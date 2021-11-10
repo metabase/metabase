@@ -328,7 +328,7 @@ describe("scenarios > question > notebook", () => {
       cy.icon("add_data").click();
       popover().within(() => {
         cy.get("[contenteditable='true']").type(
-          "[Question 5 → sum] / [Sum of Rating]",
+          "[Question 5 → Sum of Rating] / [Sum of Rating]",
         );
         cy.findByPlaceholderText("Something nice and descriptive")
           .click()
