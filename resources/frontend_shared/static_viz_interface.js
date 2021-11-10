@@ -72,3 +72,10 @@ function categorical_donut(rows, colors) {
     accessors: dimension_accessors,
   });
 }
+
+function progress(data, settings) {
+  return StaticViz.RenderChart("progress", {
+    data: toJSMap(data),
+    settings: JSON.parse(settings),
+  });
+}
