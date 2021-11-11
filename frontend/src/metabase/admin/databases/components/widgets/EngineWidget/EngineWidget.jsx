@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import Button from "metabase/components/Button";
 import TextInput from "metabase/components/TextInput";
 import {
   EngineCard,
@@ -10,6 +9,7 @@ import {
   EngineEmptyIcon,
   EngineEmptyState,
   EngineEmptyText,
+  EngineExpandButton,
   EngineGalleryRoot,
   EngineList,
 } from "./EngineWidget.styled";
@@ -68,9 +68,9 @@ const EngineGallery = ({ field, options }) => {
         </EngineEmptyState>
       )}
       {!isSearching && (
-        <Button primary onClick={() => setIsExpanded(!isExpanded)}>
-          {isExpanded ? t`Show more options` : t`Show less options`}
-        </Button>
+        <EngineExpandButton primary onClick={() => setIsExpanded(!isExpanded)}>
+          {isExpanded ? t`Show less options` : t`Show more options`}
+        </EngineExpandButton>
       )}
     </EngineGalleryRoot>
   );

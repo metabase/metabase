@@ -369,6 +369,12 @@
   :setter     :none
   :getter     driver.u/available-drivers-info)
 
+(defsetting elevated-engines
+  "Elevated database engines"
+  :visibility :public
+  :setter     :none
+  :getter     (fn [] ["mysql"]))
+
 (defsetting has-sample-dataset?
   "Whether this instance has a Sample Dataset database"
   :visibility :authenticated

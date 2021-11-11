@@ -2,6 +2,7 @@ import styled from "styled-components";
 import { color, lighten } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import Button from "metabase/components/Button";
 
 export const EngineGalleryRoot = styled.div`
   display: block;
@@ -11,6 +12,7 @@ export const EngineList = styled.div`
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 1.5rem;
+  margin: 1.5rem 0;
 `;
 
 export const EngineCard = styled(IconButtonWrapper)`
@@ -23,7 +25,7 @@ export const EngineCard = styled(IconButtonWrapper)`
 
   &:hover {
     border-color: ${color("brand")};
-    background-color: ${lighten("brand", 0.1)};
+    background-color: ${lighten("brand", 0.9)};
   }
 `;
 
@@ -34,8 +36,9 @@ export const EngineCardTitle = styled.div`
 
 export const EngineCardIcon = styled(Icon)`
   color: ${color("text-medium")};
-  width: 2rem;
-  height: 2rem;
+  width: ${props => (props.img ? "2rem" : "1rem")};
+  height: ${props => (props.img ? "2rem" : "1rem")};
+  padding: ${props => (props.img ? "" : "0.5rem")};
 `;
 
 export const EngineEmptyState = styled.div`
@@ -43,7 +46,7 @@ export const EngineEmptyState = styled.div`
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  min-height: 10rem;
+  min-height: 12.25rem;
 `;
 
 export const EngineEmptyIcon = styled(Icon)`
@@ -53,7 +56,9 @@ export const EngineEmptyIcon = styled(Icon)`
 
 export const EngineEmptyText = styled.div`
   color: ${color("text-light")};
-  font-size: 0.75rem;
-  line-height: 1.5rem;
   font-weight: bold;
+`;
+
+export const EngineExpandButton = styled(Button)`
+  width: 100%;
 `;
