@@ -11,6 +11,9 @@ import {
   EngineEmptyText,
   EngineExpandButton,
   EngineGalleryRoot,
+  EngineInfoIcon,
+  EngineInfoRoot,
+  EngineInfoTitle,
   EngineList,
 } from "./EngineWidget.styled";
 
@@ -20,10 +23,32 @@ const propTypes = {
 };
 
 const EngineWidget = ({ field, options }) => {
-  return <EngineGallery field={field} options={options} />;
+  if (field.value) {
+    return <EngineInfo field={field} options={options} />;
+  } else {
+    return <EngineGallery field={field} options={options} />;
+  }
 };
 
 EngineWidget.propTypes = propTypes;
+
+const infoPropTypes = {
+  field: PropTypes.object.isRequired,
+  options: PropTypes.array.isRequired,
+};
+
+const EngineInfo = ({ field, options }) => {
+  const option = options.find(option => option.value === field.value);
+
+  return (
+    <EngineInfoRoot>
+      {option && <EngineInfoTitle>{option.name}</EngineInfoTitle>}
+      <EngineInfoIcon name="close" size={12} onClick={() => field.onChange()} />
+    </EngineInfoRoot>
+  );
+};
+
+EngineInfo.propTypes = infoPropTypes;
 
 const galleryPropTypes = {
   field: PropTypes.object.isRequired,

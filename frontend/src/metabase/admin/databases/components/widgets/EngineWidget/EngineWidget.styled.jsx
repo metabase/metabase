@@ -47,6 +47,7 @@ export const EngineEmptyState = styled.div`
   justify-content: center;
   align-items: center;
   min-height: 12.25rem;
+  margin: 1.5rem 0;
 `;
 
 export const EngineEmptyIcon = styled(Icon)`
@@ -61,4 +62,24 @@ export const EngineEmptyText = styled.div`
 
 export const EngineExpandButton = styled(Button)`
   width: 100%;
+`;
+
+export const EngineInfoRoot = styled.div`
+  display: flex;
+  align-items: center;
+  color: ${color("white")};
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid ${color("brand")};
+  background-color: ${color("brand")};
+`;
+
+export const EngineInfoTitle = styled.div`
+  flex: 1 0 auto;
+  font-size: 1rem;
+  font-weight: bold;
+`;
+
+export const EngineInfoIcon = styled(Icon)`
+  cursor: pointer;
 `;

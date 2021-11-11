@@ -146,7 +146,7 @@ export default class DatabaseConnectionStep extends Component {
           <StepTitle title={stepText} circleText={String(stepNumber)} />
 
           <div className="Form-field">
-            {t`You’ll need some info about your database, like the username and password. If you don’t have that right now, Metabase also comes with a sample dataset you can get started with.`}
+            {t`Connecting to your own database will let you get the most out of Metabase. But if you're not ready to do that right now, you can skip this and check out the included sample database instead.`}
           </div>
 
           <Databases.Form

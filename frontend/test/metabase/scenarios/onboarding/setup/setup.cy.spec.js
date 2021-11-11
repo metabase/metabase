@@ -85,9 +85,12 @@ describe("scenarios > setup", () => {
       // ========
 
       // The database step should be open
-      cy.findByText("You’ll need some info about your database", {
-        exact: false,
-      });
+      cy.findByText(
+        "Connecting to your own database will let you get the most out of Metabase.",
+        {
+          exact: false,
+        },
+      );
 
       // test database setup help card is NOT displayed before DB is selected
       cy.findByTestId("database-setup-help-card").should("not.be.visible");
@@ -103,10 +106,7 @@ describe("scenarios > setup", () => {
       cy.findByText("Next").click();
 
       // check database setup card changes copy
-      cy.get("#formField-engine .AdminSelect").click();
-      popover()
-        .findByText("MySQL")
-        .click();
+      cy.findByText("MySQL").click();
       cy.findByTestId("database-setup-help-card").within(() => {
         cy.findByText("Need help setting up MySQL?");
         cy.findByRole("link", { name: /Our docs can help/i });
