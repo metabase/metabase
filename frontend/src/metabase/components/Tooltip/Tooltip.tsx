@@ -39,18 +39,6 @@ function getSafeChildren(children: React.ReactNode) {
   }
 }
 
-// a return value of `undefined` represents uncontrolled behavior
-function determineVisibility(
-  isEnabled: boolean | undefined,
-  isOpen: boolean | undefined,
-): boolean | undefined {
-  if (isEnabled === false) {
-    return false;
-  } else if (isOpen != null) {
-    return isOpen;
-  }
-}
-
 function Tooltip({
   tooltip,
   children,
@@ -59,7 +47,7 @@ function Tooltip({
   isOpen,
   maxWidth = 200,
 }: TooltipProps) {
-  const visible = determineVisibility(isEnabled, isOpen);
+  const visible = isOpen != null ? isOpen : undefined;
   const safeChildren = getSafeChildren(children);
   const animationDuration = isReducedMotionPreferred() ? 0 : undefined;
 
@@ -70,6 +58,7 @@ function Tooltip({
         appendTo={() => document.body}
         content={tooltip}
         visible={visible}
+        disabled={isEnabled === false}
         maxWidth={maxWidth}
         reference={reference}
         duration={animationDuration}
@@ -82,6 +71,7 @@ function Tooltip({
         appendTo={() => document.body}
         content={tooltip}
         visible={visible}
+        disabled={isEnabled === false}
         maxWidth={maxWidth}
         duration={animationDuration}
       >
