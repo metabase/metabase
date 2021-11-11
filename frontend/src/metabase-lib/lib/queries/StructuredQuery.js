@@ -316,7 +316,19 @@ export default class StructuredQuery extends AtomicQuery {
         metrics: [],
       });
     } else {
-      return this.metadata().table(this.sourceTableId());
+      const metadata = this.metadata();
+      const table = metadata.table(this.sourceTableId());
+      return new Table({
+        ...table,
+        db: table.db,
+        fields: table.fields.map(
+          field =>
+            new Field({
+              ...metadata.field(field.id),
+              query: this,
+            }),
+        ),
+      });
     }
   }
 

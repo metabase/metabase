@@ -604,17 +604,6 @@ export class FieldDimension extends Dimension {
       }
     }
 
-    let fieldMetadata = {};
-
-    // If a field dimension isn't associated with a query,
-    // there is a chance it's stored in fields metadata
-    if (this.isStringFieldName()) {
-      // As field literal's IDs are not numeric like in field references,
-      // in metadata.fields their IDs are stringified MBQL objects
-      const metadataFieldLiteralId = String(this.mbql());
-      fieldMetadata = this._metadata?.field(metadataFieldLiteralId) || {};
-    }
-
     // despite being unable to find a field, we _might_ still have enough data to know a few things about it
     // for example, if we have an mbql field reference, it might contain a `base-type`
     return new Field({
@@ -626,7 +615,6 @@ export class FieldDimension extends Dimension {
       base_type: this.getOption("base-type"),
       query: this._query,
       metadata: this._metadata,
-      ...fieldMetadata,
     });
   }
 
