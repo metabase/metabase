@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 
 import DatePicker from "../filters/pickers/DatePicker";
 import TimePicker from "../filters/pickers/TimePicker";
+import BooleanPicker from "../filters/pickers/BooleanPicker";
 import DefaultPicker from "../filters/pickers/DefaultPicker";
 
 export default class FilterPopoverPicker extends React.Component {
@@ -59,6 +60,12 @@ export default class FilterPopoverPicker extends React.Component {
         minWidth={minWidth}
         maxWidth={maxWidth}
         isSidebar={isSidebar}
+      />
+    ) : field.isBoolean() ? (
+      <BooleanPicker
+        className={className}
+        filter={filter}
+        onFilterChange={onFilterChange}
       />
     ) : (
       <DefaultPicker

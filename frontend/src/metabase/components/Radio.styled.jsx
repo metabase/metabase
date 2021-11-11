@@ -7,9 +7,15 @@ import { color, lighten } from "metabase/lib/colors";
 const COLOR_SCHEMES = {
   admin: {
     main: () => color("accent7"),
+    button: () => color("brand"),
+  },
+  accent7: {
+    main: () => color("accent7"),
+    button: () => color("accent7"),
   },
   default: {
     main: () => color("brand"),
+    button: () => color("brand"),
   },
 };
 
@@ -37,8 +43,15 @@ export const RadioButton = styled.div`
   border: 2px solid white;
   box-shadow: 0 0 0 2px ${color("shadow")};
   border-radius: 12px;
-  background-color: ${props =>
-    props.checked ? color("brand") : "transparent"};
+  background-color: ${props => {
+    if (props.checked) {
+      return props.colorScheme
+        ? COLOR_SCHEMES[props.colorScheme].button()
+        : color("brand");
+    } else {
+      return "transparent";
+    }
+  }};
 `;
 
 // BASE
@@ -59,7 +72,7 @@ const BaseItem = styled.label.attrs({
   :hover {
     color: ${props =>
       !props.showButtons && !props.selected
-        ? COLOR_SCHEMES[props.colorScheme].main()
+        ? COLOR_SCHEMES[props.colorSceme].main()
         : null};
   }
 `;
