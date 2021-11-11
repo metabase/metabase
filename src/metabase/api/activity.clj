@@ -1,6 +1,7 @@
 (ns metabase.api.activity
   (:require [clojure.set :as set]
             [compojure.core :refer [GET]]
+            [medley.core :as m]
             [metabase.api.common :refer [*current-user-id* defendpoint define-routes]]
             [metabase.models.activity :refer [Activity]]
             [metabase.models.card :refer [Card]]
@@ -66,14 +67,24 @@
                            (hydrate :user :table :database)
                            add-model-exists-info)))
 
-(defn- view-log-entry->matching-object [{:keys [model model_id]}]
-  (when (contains? #{"card" "dashboard" "table"} model)
-    (db/select-one
-        (case model
-          "card"      [Card      :id :name :collection_id :description :display :dataset_query]
-          "dashboard" [Dashboard :id :name :collection_id :description]
-          "table"     [Table     :id :name :db_id :display_name])
-        :id model_id)))
+(defn- models-for-views
+  "Returns a map of {model {id instance}} for activity views suitable for looking up by model and id to get a model."
+  [views]
+  (letfn [(select-items! [model ids]
+            (when (seq ids)
+              (db/select
+               (case model
+                 "card"      [Card      :id :name :collection_id :description :display :dataset_query]
+                 "dashboard" [Dashboard :id :name :collection_id :description]
+                 "table"     [Table     :id :name :db_id :display_name])
+               {:where [:in :id ids]})))
+          (by-id [models] (m/index-by :id models))]
+    (into {} (map (fn [[model models]]
+                    [model (->> models
+                                (map :model_id)
+                                (select-items! model)
+                                (by-id))]))
+          (group-by :model views))))
 
 (defendpoint GET "/recent_views"
   "Get the list of 10 things the current user has been viewing most recently."
@@ -81,15 +92,18 @@
   ;; expected output of the query is a single row per unique model viewed by the current user
   ;; including a `:max_ts` which has the most recent view timestamp of the item and `:cnt` which has total views
   ;; and we order the results by most recently viewed then hydrate the basic details of the model
-  (for [view-log (db/select [ViewLog :user_id :model :model_id [:%count.* :cnt] [:%max.timestamp :max_ts]]
-                   :user_id *current-user-id*
-                   {:group-by [:user_id :model :model_id]
-                    :order-by [[:max_ts :desc]]
-                    :limit    5})
-        :let     [model-object (view-log-entry->matching-object view-log)]
-        :when    (and model-object
-                      (mi/can-read? model-object))]
-    (assoc view-log :model_object (dissoc model-object :dataset_query))))
-
+  (let [views (db/select [ViewLog :user_id :model :model_id
+                          [:%count.* :cnt] [:%max.timestamp :max_ts]]
+                         {:group-by [:user_id :model :model_id]
+                          :where [:and
+                                  [:= :user_id *current-user-id*]
+                                  [:in :model #{"card" "dashboard" "table"}]]
+                          :order-by [[:max_ts :desc]]
+                          :limit    5})
+        model->id->items (models-for-views views)]
+    (for [{:keys [model model_id] :as view-log} views
+          :let [model-object (get-in model->id->items [model model_id])]
+          :when (and model-object (mi/can-read? model-object))]
+      (assoc view-log :model_object (dissoc model-object :dataset_query)))))
 
 (define-routes)
