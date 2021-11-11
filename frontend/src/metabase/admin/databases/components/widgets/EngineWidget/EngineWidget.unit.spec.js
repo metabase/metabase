@@ -62,6 +62,7 @@ describe("EngineWidget", () => {
     userEvent.type(screen.getByRole("textbox"), "not found");
 
     expect(screen.getByText(/Don’t see your database/)).toBeInTheDocument();
+    expect(screen.getByText(/Community Drivers/)).toBeInTheDocument();
   });
 });
 
