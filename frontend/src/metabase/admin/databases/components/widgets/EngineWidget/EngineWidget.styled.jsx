@@ -32,8 +32,8 @@ export const EngineCardTitle = styled.div`
   margin-top: 0.5rem;
 `;
 
-export const EngineCardIcon = styled.img`
-  display: block;
+export const EngineCardIcon = styled(Icon)`
+  color: ${color("text-medium")};
   width: 2rem;
   height: 2rem;
 `;

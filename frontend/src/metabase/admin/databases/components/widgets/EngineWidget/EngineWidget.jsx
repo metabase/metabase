@@ -56,7 +56,7 @@ const EngineGallery = ({ field, options }) => {
               key={engine.value}
               onClick={() => field.onChange(engine.value)}
             >
-              <EngineCardIcon src={engine.icon} />
+              <EngineCardIcon name="database" img={engine.icon} />
               <EngineCardTitle>{engine.name}</EngineCardTitle>
             </EngineCard>
           ))}
