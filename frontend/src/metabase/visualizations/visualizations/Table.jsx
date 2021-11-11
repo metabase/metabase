@@ -461,11 +461,6 @@ function PrepareCohortData() {
       let columnindex = cells.item(i).dataset.columnindex;
       let div = cells.item(i).getElementsByTagName("div");
       if (columnindex != 0) {
-        console.log(
-          "[" + rowindex + "] [" + columnindex + "]: " + div[0].innerHTML,
-        );
-      }
-      if (columnindex != 0) {
         if (columnindex == 1) {
           defaultValue[rowindex] = div[0].innerHTML ? div[0].innerHTML : 1;
         } else if (typeof div[0].dataset.cohortValue == "undefined") {
@@ -491,6 +486,7 @@ function PrepareCohortData() {
         }
       }
     }
+    console.log (defaultValue);
   }
 }
 
