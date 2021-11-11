@@ -9,8 +9,8 @@ describe("EngineWidget", () => {
     const options = getOptions();
 
     render(<EngineWidget field={field} options={options} />);
-
     userEvent.click(screen.getByText("PostgreSQL"));
+
     expect(field.onChange).toHaveBeenCalledWith("postgres");
   });
 
@@ -19,8 +19,8 @@ describe("EngineWidget", () => {
     const options = getOptions();
 
     render(<EngineWidget field={field} options={options} />);
-
     userEvent.click(screen.getByLabelText("Remove database"));
+
     expect(field.onChange).toHaveBeenCalledWith(undefined);
   });
 
