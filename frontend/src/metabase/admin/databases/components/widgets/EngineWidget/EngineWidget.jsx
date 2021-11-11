@@ -14,24 +14,29 @@ import {
   EngineList,
 } from "./EngineWidget.styled";
 
-const galleryPropTypes = {
-  elevatedEngines: PropTypes.array.isRequired,
-  nonElevatedEngines: PropTypes.array.isRequired,
-  onEngineChange: PropTypes.func,
+const propTypes = {
+  field: PropTypes.object.isRequired,
+  options: PropTypes.array.isRequired,
 };
 
-const EngineGallery = ({
-  elevatedEngines,
-  nonElevatedEngines,
-  onEngineChange,
-}) => {
+const EngineWidget = ({ field, options }) => {
+  return <EngineGallery field={field} options={options} />;
+};
+
+EngineWidget.propTypes = propTypes;
+
+const galleryPropTypes = {
+  field: PropTypes.object.isRequired,
+  options: PropTypes.array.isRequired,
+};
+
+const EngineGallery = ({ field, options }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [searchText, setSearchText] = useState("");
   const isSearching = searchText.length > 0;
 
-  const visibleEngines = getVisibleEngines({
-    elevatedEngines,
-    nonElevatedEngines,
+  const visibleOptions = getVisibleOptions({
+    options,
     isExpanded,
     isSearching,
     searchText,
@@ -44,12 +49,12 @@ const EngineGallery = ({
         placeholder={t`Search for a database...`}
         onChange={setSearchText}
       />
-      {visibleEngines.length ? (
+      {visibleOptions.length ? (
         <EngineList>
-          {visibleEngines.map(engine => (
+          {visibleOptions.map(engine => (
             <EngineCard
               key={engine.value}
-              onClick={() => onEngineChange(engine.value)}
+              onClick={() => field.onChange(engine.value)}
             >
               <EngineCardIcon src={engine.icon} />
               <EngineCardTitle>{engine.name}</EngineCardTitle>
@@ -73,24 +78,23 @@ const EngineGallery = ({
 
 EngineGallery.propTypes = galleryPropTypes;
 
-const getVisibleEngines = ({
-  elevatedEngines,
-  nonElevatedEngines,
+const getVisibleOptions = ({
+  options,
   isExpanded,
   isSearching,
   searchText,
 }) => {
-  const allEngines = elevatedEngines.concat(nonElevatedEngines);
-
   if (isSearching) {
-    return allEngines.filter(e => includesIgnoreCase(e.name, searchText));
+    return options.filter(e => includesIgnoreCase(e.name, searchText));
   } else if (isExpanded) {
-    return allEngines;
+    return options;
   } else {
-    return elevatedEngines;
+    return options.filter(e => e.elevated);
   }
 };
 
 const includesIgnoreCase = (sourceText, searchText) => {
   return sourceText.toLowerCase().includes(searchText.toLowerCase());
 };
+
+export default EngineWidget;
