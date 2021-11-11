@@ -267,10 +267,14 @@ function getEngineFormFields(engine, details, id) {
 }
 
 const ENGINES = MetabaseSettings.get("engines", {});
+const ELEVATED_ENGINES = MetabaseSettings.get("elevated-engines", []);
+
 const ENGINE_OPTIONS = Object.entries(ENGINES)
   .map(([engine, info]) => ({
-    name: info["driver-name"],
     value: engine,
+    name: info["driver-name"],
+    icon: info["driver-icon"],
+    elevated: ELEVATED_ENGINES.includes(engine),
   }))
   .sort((a, b) => a.name.localeCompare(b.name));
 
