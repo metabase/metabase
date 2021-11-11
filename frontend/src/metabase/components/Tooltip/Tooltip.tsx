@@ -3,6 +3,8 @@ import PropTypes from "prop-types";
 import Tippy from "@tippyjs/react";
 import * as ReactIs from "react-is";
 
+import { isReducedMotionPreferred } from "metabase/lib/dom";
+
 Tooltip.propTypes = {
   tooltip: PropTypes.node,
   children: PropTypes.node,
@@ -21,7 +23,8 @@ type TooltipProps = {
   maxWidth?: string | number | undefined;
 };
 
-// specifically, checking for React elements like <div> that support refs
+// checking to see if the `element` is in JSX.IntrinisicElements since they support refs
+// tippy's `children` prop seems to complain about anything more specific that React.ReactElement, unfortunately
 function isReactDOMTypeElement(element: any): element is React.ReactElement {
   return ReactIs.isElement(element) && typeof element.type === "string";
 }
@@ -36,6 +39,18 @@ function getSafeChildren(children: React.ReactNode) {
   }
 }
 
+// a return value of `undefined` represents uncontrolled behavior
+function determineVisibility(
+  isEnabled: boolean | undefined,
+  isOpen: boolean | undefined,
+): boolean | undefined {
+  if (isEnabled === false) {
+    return false;
+  } else if (isOpen != null) {
+    return isOpen;
+  }
+}
+
 function Tooltip({
   tooltip,
   children,
@@ -44,14 +59,9 @@ function Tooltip({
   isOpen,
   maxWidth = 200,
 }: TooltipProps) {
-  let visible;
-  if (isEnabled === false) {
-    visible = false;
-  } else if (isOpen != null) {
-    visible = isOpen;
-  }
-
+  const visible = determineVisibility(isEnabled, isOpen);
   const safeChildren = getSafeChildren(children);
+  const animationDuration = isReducedMotionPreferred() ? 0 : undefined;
 
   if (tooltip && reference) {
     return (
@@ -62,6 +72,7 @@ function Tooltip({
         visible={visible}
         maxWidth={maxWidth}
         reference={reference}
+        duration={animationDuration}
       />
     );
   } else if (tooltip && children != null) {
@@ -72,6 +83,7 @@ function Tooltip({
         content={tooltip}
         visible={visible}
         maxWidth={maxWidth}
+        duration={animationDuration}
       >
         {safeChildren}
       </Tippy>
