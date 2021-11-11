@@ -3,36 +3,30 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import TextInput from "metabase/components/TextInput";
 import {
-  EngineCard,
   EngineCardIcon,
+  EngineCardImage,
+  EngineCardRoot,
   EngineCardTitle,
   EngineEmptyIcon,
   EngineEmptyState,
   EngineEmptyText,
   EngineExpandButton,
-  EngineGalleryRoot,
   EngineInfoIcon,
   EngineInfoRoot,
   EngineInfoTitle,
   EngineList,
+  EngineSearchRoot,
 } from "./EngineWidget.styled";
-
-const propTypes = {
-  field: PropTypes.object.isRequired,
-  options: PropTypes.array.isRequired,
-};
 
 const EngineWidget = ({ field, options }) => {
   if (field.value) {
     return <EngineInfo field={field} options={options} />;
   } else {
-    return <EngineGallery field={field} options={options} />;
+    return <EngineSearch field={field} options={options} />;
   }
 };
 
-EngineWidget.propTypes = propTypes;
-
-const infoPropTypes = {
+EngineWidget.propTypes = {
   field: PropTypes.object.isRequired,
   options: PropTypes.array.isRequired,
 };
@@ -48,29 +42,27 @@ const EngineInfo = ({ field, options }) => {
   );
 };
 
-EngineInfo.propTypes = infoPropTypes;
-
-const galleryPropTypes = {
+EngineInfo.propTypes = {
   field: PropTypes.object.isRequired,
   options: PropTypes.array.isRequired,
 };
 
-const EngineGallery = ({ field, options }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+const EngineSearch = ({ field, options }) => {
   const [searchText, setSearchText] = useState("");
-
+  const [isExpanded, setIsExpanded] = useState(false);
   const isSearching = searchText.length > 0;
-  const sortedOptions = useMemo(() => getSortedOptions(options), [options]);
 
-  const visibleOptions = getVisibleOptions(
-    sortedOptions,
-    isExpanded,
-    isSearching,
-    searchText,
+  const sortedOptions = useMemo(() => {
+    return getSortedOptions(options);
+  }, [options]);
+
+  const visibleOptions = useMemo(
+    () => getVisibleOptions(sortedOptions, isExpanded, isSearching, searchText),
+    [sortedOptions, isExpanded, isSearching, searchText],
   );
 
   return (
-    <EngineGalleryRoot>
+    <EngineSearchRoot>
       <TextInput
         value={searchText}
         placeholder={t`Search for a database...`}
@@ -78,14 +70,20 @@ const EngineGallery = ({ field, options }) => {
       />
       {visibleOptions.length ? (
         <EngineList>
-          {visibleOptions.map(engine => (
-            <EngineCard
-              key={engine.value}
-              onClick={() => field.onChange(engine.value)}
+          {visibleOptions.map(option => (
+            <EngineCardRoot
+              key={option.value}
+              onClick={() => field.onChange(option.value)}
             >
-              <EngineCardIcon name="database" img={engine.icon} />
-              <EngineCardTitle>{engine.name}</EngineCardTitle>
-            </EngineCard>
+              {option.official ? (
+                <EngineCardImage
+                  src={`/app/assets/img/drivers/${option.value}.svg`}
+                />
+              ) : (
+                <EngineCardIcon name="database" />
+              )}
+              <EngineCardTitle>{option.name}</EngineCardTitle>
+            </EngineCardRoot>
           ))}
         </EngineList>
       ) : (
@@ -103,11 +101,14 @@ const EngineGallery = ({ field, options }) => {
           {isExpanded ? t`Show less options` : t`Show more options`}
         </EngineExpandButton>
       )}
-    </EngineGalleryRoot>
+    </EngineSearchRoot>
   );
 };
 
-EngineGallery.propTypes = galleryPropTypes;
+EngineSearch.propTypes = {
+  field: PropTypes.object.isRequired,
+  options: PropTypes.array.isRequired,
+};
 
 const getSortedOptions = options => {
   return options.sort((a, b) => {

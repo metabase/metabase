@@ -4,7 +4,7 @@ import Icon from "metabase/components/Icon";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import Button from "metabase/components/Button";
 
-export const EngineGalleryRoot = styled.div`
+export const EngineSearchRoot = styled.div`
   display: block;
 `;
 
@@ -15,7 +15,7 @@ export const EngineList = styled.div`
   margin: 1.5rem 0;
 `;
 
-export const EngineCard = styled(IconButtonWrapper)`
+export const EngineCardRoot = styled(IconButtonWrapper)`
   flex: 1 1 auto;
   flex-direction: column;
   height: 5.375rem;
@@ -36,9 +36,14 @@ export const EngineCardTitle = styled.div`
 
 export const EngineCardIcon = styled(Icon)`
   color: ${color("text-medium")};
-  width: ${props => (props.img ? "2rem" : "1rem")};
-  height: ${props => (props.img ? "2rem" : "1rem")};
-  padding: ${props => (props.img ? "" : "0.5rem")};
+  width: 1rem;
+  height: 1rem;
+  padding: 0.5rem;
+`;
+
+export const EngineCardImage = styled.img`
+  width: 2rem;
+  height: 2rem;
 `;
 
 export const EngineEmptyState = styled.div`
