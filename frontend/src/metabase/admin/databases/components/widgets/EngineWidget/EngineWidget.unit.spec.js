@@ -53,6 +53,16 @@ describe("EngineWidget", () => {
     expect(screen.queryByText("PostgreSQL")).not.toBeInTheDocument();
     expect(screen.queryByText("Show more options")).not.toBeInTheDocument();
   });
+
+  it("should display an empty state when no database found", () => {
+    const field = getField();
+    const options = getOptions();
+
+    render(<EngineWidget field={field} options={options} />);
+    userEvent.type(screen.getByRole("textbox"), "not found");
+
+    expect(screen.getByText(/Don’t see your database/)).toBeInTheDocument();
+  });
 });
 
 const getField = value => ({

@@ -109,6 +109,10 @@ describe("scenarios > setup", () => {
         cy.findByRole("link", { name: /Our docs can help/i });
       });
 
+      // remove and select database again
+      cy.findByLabelText("close icon").click();
+      cy.findByText("MySQL").click();
+
       cy.get("#formField-engine .AdminSelect").click();
       popover()
         .findByText("SQLite")
