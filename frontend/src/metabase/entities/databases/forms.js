@@ -273,8 +273,8 @@ const ENGINE_OPTIONS = Object.entries(ENGINES)
   .map(([engine, info]) => ({
     value: engine,
     name: info["driver-name"],
+    official: info["official"] ?? true, // TODO remove default
     index: ELEVATED_ENGINES.indexOf(engine),
-    official: true,
   }))
   .sort((a, b) => a.name.localeCompare(b.name));
 
