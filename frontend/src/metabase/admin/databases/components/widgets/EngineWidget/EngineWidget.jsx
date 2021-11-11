@@ -41,7 +41,7 @@ const EngineInfo = ({ field, options }) => {
 
   return (
     <EngineInfoRoot>
-      {option && <EngineInfoTitle>{option.name}</EngineInfoTitle>}
+      <EngineInfoTitle>{option.name ?? field.value}</EngineInfoTitle>
       <EngineInfoIcon
         name="close"
         size={18}
