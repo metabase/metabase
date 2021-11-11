@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState } from "react";
 import PropTypes from "prop-types";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 import TextInput from "metabase/components/TextInput";
 import {
   EngineCardIcon,
@@ -17,6 +17,7 @@ import {
   EngineListRoot,
   EngineSearchRoot,
 } from "./EngineWidget.styled";
+import ExternalLink from "metabase/components/ExternalLink";
 
 const EngineWidget = ({ field, options }) => {
   if (field.value) {
@@ -129,7 +130,11 @@ const EngineEmptyState = () => {
   return (
     <EngineEmptyStateRoot>
       <EngineEmptyIcon name="search" size={32} />
-      <EngineEmptyText>{t`Didn't find anything`}</EngineEmptyText>
+      <EngineEmptyText>{jt`Don’t see your database? Check out our ${(
+        <ExternalLink href="https://www.metabase.com/docs/latest/developers-guide-drivers.html">
+          {t`Community Drivers`}
+        </ExternalLink>
+      )} page to see if it’s available for self-hosting.`}</EngineEmptyText>
     </EngineEmptyStateRoot>
   );
 };

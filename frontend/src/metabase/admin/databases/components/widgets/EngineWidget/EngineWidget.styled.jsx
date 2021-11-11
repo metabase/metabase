@@ -63,6 +63,7 @@ export const EngineEmptyIcon = styled(Icon)`
 export const EngineEmptyText = styled.div`
   color: ${color("text-light")};
   font-weight: bold;
+  line-height: 1.5rem;
 `;
 
 export const EngineExpandButton = styled(Button)`
