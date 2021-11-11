@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { jt, t } from "ttag";
 import TextInput from "metabase/components/TextInput";
+import ExternalLink from "metabase/components/ExternalLink";
 import {
   EngineCardIcon,
   EngineCardImage,
@@ -17,7 +18,6 @@ import {
   EngineListRoot,
   EngineSearchRoot,
 } from "./EngineWidget.styled";
-import ExternalLink from "metabase/components/ExternalLink";
 
 const EngineWidget = ({ field, options }) => {
   if (field.value) {
