@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import TextInput from "metabase/components/TextInput";
@@ -8,13 +8,13 @@ import {
   EngineCardRoot,
   EngineCardTitle,
   EngineEmptyIcon,
-  EngineEmptyState,
+  EngineEmptyStateRoot,
   EngineEmptyText,
   EngineExpandButton,
   EngineInfoIcon,
   EngineInfoRoot,
   EngineInfoTitle,
-  EngineList,
+  EngineListRoot,
   EngineSearchRoot,
 } from "./EngineWidget.styled";
 
@@ -69,37 +69,15 @@ const EngineSearch = ({ field, options }) => {
         onChange={setSearchText}
       />
       {visibleOptions.length ? (
-        <EngineList>
-          {visibleOptions.map(option => (
-            <EngineCardRoot
-              key={option.value}
-              onClick={() => field.onChange(option.value)}
-            >
-              {option.official ? (
-                <EngineCardImage
-                  src={`/app/assets/img/drivers/${option.value}.svg`}
-                />
-              ) : (
-                <EngineCardIcon name="database" />
-              )}
-              <EngineCardTitle>{option.name}</EngineCardTitle>
-            </EngineCardRoot>
-          ))}
-        </EngineList>
+        <EngineList field={field} options={visibleOptions} />
       ) : (
-        <EngineEmptyState>
-          <EngineEmptyIcon name="search" size={32} />
-          <EngineEmptyText>{t`Didn't find anything`}</EngineEmptyText>
-        </EngineEmptyState>
+        <EngineEmptyState />
       )}
       {!isSearching && (
-        <EngineExpandButton
-          primary
-          icon={isExpanded ? "chevronup" : "chevrondown"}
-          onClick={() => setIsExpanded(!isExpanded)}
-        >
-          {isExpanded ? t`Show less options` : t`Show more options`}
-        </EngineExpandButton>
+        <EngineToggle
+          isExpanded={EngineToggle}
+          onExpandedChange={setIsExpanded}
+        />
       )}
     </EngineSearchRoot>
   );
@@ -108,6 +86,73 @@ const EngineSearch = ({ field, options }) => {
 EngineSearch.propTypes = {
   field: PropTypes.object.isRequired,
   options: PropTypes.array.isRequired,
+};
+
+const EngineList = ({ field, options }) => {
+  return (
+    <EngineListRoot>
+      {options.map(option => (
+        <EngineCard key={option.value} field={field} option={option} />
+      ))}
+    </EngineListRoot>
+  );
+};
+
+EngineList.propTypes = {
+  field: PropTypes.object,
+  options: PropTypes.array,
+};
+
+const EngineCard = ({ field, option }) => {
+  const handleClick = useCallback(() => {
+    field.onChange(option.value);
+  }, [field, option]);
+
+  return (
+    <EngineCardRoot key={option.value} onClick={handleClick}>
+      {option.official ? (
+        <EngineCardImage src={`/app/assets/img/drivers/${option.value}.svg`} />
+      ) : (
+        <EngineCardIcon name="database" />
+      )}
+      <EngineCardTitle>{option.name}</EngineCardTitle>
+    </EngineCardRoot>
+  );
+};
+
+EngineCard.propTypes = {
+  field: PropTypes.object,
+  option: PropTypes.object,
+};
+
+const EngineEmptyState = () => {
+  return (
+    <EngineEmptyStateRoot>
+      <EngineEmptyIcon name="search" size={32} />
+      <EngineEmptyText>{t`Didn't find anything`}</EngineEmptyText>
+    </EngineEmptyStateRoot>
+  );
+};
+
+const EngineToggle = ({ isExpanded, onExpandedChange }) => {
+  const handleClick = useCallback(() => {
+    onExpandedChange(!isExpanded);
+  }, [isExpanded, onExpandedChange]);
+
+  return (
+    <EngineExpandButton
+      primary
+      icon={isExpanded ? "chevronup" : "chevrondown"}
+      onClick={handleClick}
+    >
+      {isExpanded ? t`Show less options` : t`Show more options`}
+    </EngineExpandButton>
+  );
+};
+
+EngineToggle.propTypes = {
+  isExpanded: PropTypes.bool,
+  onExpandedChange: PropTypes.func,
 };
 
 const getSortedOptions = options => {

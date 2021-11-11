@@ -8,7 +8,7 @@ export const EngineSearchRoot = styled.div`
   display: block;
 `;
 
-export const EngineList = styled.div`
+export const EngineListRoot = styled.div`
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 1.5rem;
@@ -46,7 +46,7 @@ export const EngineCardImage = styled.img`
   height: 2rem;
 `;
 
-export const EngineEmptyState = styled.div`
+export const EngineEmptyStateRoot = styled.div`
   display: flex;
   flex-direction: column;
   justify-content: center;
