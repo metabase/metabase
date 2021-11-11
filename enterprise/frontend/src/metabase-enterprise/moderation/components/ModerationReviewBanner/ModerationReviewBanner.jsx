@@ -71,10 +71,7 @@ export function ModerationReviewBanner({
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
     >
-      <Tooltip
-        targetOffsetX={TOOLTIP_X_OFFSET}
-        tooltip={onRemove && tooltipText}
-      >
+      <Tooltip tooltip={onRemove && tooltipText}>
         {onRemove ? (
           <IconButton
             data-testid="moderation-remove-review-action"
