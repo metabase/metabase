@@ -25,7 +25,7 @@ export const EngineCard = styled(IconButtonWrapper)`
 
   &:hover {
     border-color: ${color("brand")};
-    background-color: ${lighten("brand", 0.9)};
+    background-color: ${lighten("brand", 0.6)};
   }
 `;
 
