@@ -109,20 +109,16 @@ describe("scenarios > setup", () => {
         cy.findByRole("link", { name: /Our docs can help/i });
       });
 
-      // remove and select database again
-      cy.findByLabelText("close icon").click();
-      cy.findByText("MySQL").click();
-
-      cy.get("#formField-engine .AdminSelect").click();
-      popover()
-        .findByText("SQLite")
-        .click();
+      cy.findByLabelText("Remove database").click();
+      cy.findByPlaceholderText("Search for a database…").type("SQL");
+      cy.findByText("SQLite").click();
       cy.findByTestId("database-setup-help-card").findByText(
         "Need help setting up your database?",
       );
 
       // add h2 database
-      cy.get("#formField-engine .AdminSelect").click();
+      cy.findByLabelText("Remove database").click();
+      cy.findByText("Show more options").click();
       cy.findByText("H2").click();
       cy.findByLabelText("Name").type("Metabase H2");
       cy.findByText("Next")

@@ -75,7 +75,7 @@ const EngineSearch = ({ field, options }) => {
     <EngineSearchRoot>
       <TextInput
         value={searchText}
-        placeholder={t`Search for a database...`}
+        placeholder={t`Search for a database…`}
         onChange={setSearchText}
       />
       {visibleOptions.length ? (
