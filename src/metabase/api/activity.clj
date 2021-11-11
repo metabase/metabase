@@ -74,7 +74,8 @@
             (when (seq ids)
               (db/select
                (case model
-                 "card"      [Card      :id :name :collection_id :description :display :dataset_query]
+                 "card"      [Card      :id :name :collection_id :description :display
+                                        :dataset_query :dataset]
                  "dashboard" [Dashboard :id :name :collection_id :description]
                  "table"     [Table     :id :name :db_id :display_name])
                {:where [:in :id ids]})))
@@ -95,15 +96,16 @@
   (let [views (db/select [ViewLog :user_id :model :model_id
                           [:%count.* :cnt] [:%max.timestamp :max_ts]]
                          {:group-by [:user_id :model :model_id]
-                          :where [:and
-                                  [:= :user_id *current-user-id*]
-                                  [:in :model #{"card" "dashboard" "table"}]]
+                          :where    [:and
+                                     [:= :user_id *current-user-id*]
+                                     [:in :model #{"card" "dashboard" "table"}]]
                           :order-by [[:max_ts :desc]]
                           :limit    5})
         model->id->items (models-for-views views)]
     (for [{:keys [model model_id] :as view-log} views
           :let [model-object (get-in model->id->items [model model_id])]
           :when (and model-object (mi/can-read? model-object))]
-      (assoc view-log :model_object (dissoc model-object :dataset_query)))))
+      (cond-> (assoc view-log :model_object (dissoc model-object :dataset_query))
+        (:dataset model-object) (assoc :model "dataset")))))
 
 (define-routes)

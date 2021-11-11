@@ -108,11 +108,12 @@
                                     :description "rand-name"
                                     :creator_id  (mt/user->id :crowberto)}]
                   Table     [table1 {:name        "rand-name"}]
-                  Card      [card2 {:name                   "rand-name"
-                                    :creator_id             (mt/user->id :crowberto)
-                                    :display                "table"
-                                    :visualization_settings {}}]]
-    (create-view! (mt/user->id :crowberto) "card"      (:id card2))
+                  Card      [dataset {:name                   "rand-name"
+                                      :dataset                true
+                                      :creator_id             (mt/user->id :crowberto)
+                                      :display                "table"
+                                      :visualization_settings {}}]]
+    (create-view! (mt/user->id :crowberto) "card"      (:id dataset))
     (create-view! (mt/user->id :crowberto) "dashboard" (:id dash1))
     (create-view! (mt/user->id :crowberto) "card"      (:id card1))
     (create-view! (mt/user->id :crowberto) "card"      36478)
@@ -133,6 +134,7 @@
              :model_object {:id            (:id card1)
                             :name          (:name card1)
                             :collection_id nil
+                            :dataset       false
                             :description   (:description card1)
                             :display       (name (:display card1))}}
             {:cnt          1
@@ -145,13 +147,14 @@
                             :description   (:description dash1)}}
             {:cnt          1
              :user_id      (mt/user->id :crowberto)
-             :model        "card"
-             :model_id     (:id card2)
-             :model_object {:id            (:id card2)
-                            :name          (:name card2)
+             :model        "dataset"
+             :model_id     (:id dataset)
+             :model_object {:id            (:id dataset)
+                            :name          (:name dataset)
+                            :dataset       true
                             :collection_id nil
-                            :description   (:description card2)
-                            :display       (name (:display card2))}}]
+                            :description   (:description dataset)
+                            :display       (name (:display dataset))}}]
            (for [recent-view (mt/user-http-request :crowberto :get 200 "activity/recent_views")]
              (dissoc recent-view :max_ts))))))
 
