@@ -43,7 +43,7 @@ const EngineInfo = ({ field, options }) => {
   return (
     <EngineInfoRoot>
       {option && <EngineInfoTitle>{option.name}</EngineInfoTitle>}
-      <EngineInfoIcon name="close" size={12} onClick={() => field.onChange()} />
+      <EngineInfoIcon name="close" size={18} onClick={() => field.onChange()} />
     </EngineInfoRoot>
   );
 };
