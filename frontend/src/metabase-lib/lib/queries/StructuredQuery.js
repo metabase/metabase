@@ -315,21 +315,23 @@ export default class StructuredQuery extends AtomicQuery {
         segments: [],
         metrics: [],
       });
-    } else {
-      const metadata = this.metadata();
-      const table = metadata.table(this.sourceTableId());
-      return new Table({
-        ...table,
-        db: table.db,
-        fields: table.fields.map(
-          field =>
-            new Field({
-              ...metadata.field(field.id),
-              query: this,
-            }),
-        ),
-      });
     }
+    const metadata = this.metadata();
+    const table = metadata.table(this.sourceTableId());
+    if (!table) {
+      return null;
+    }
+    return new Table({
+      ...table,
+      db: table.db,
+      fields: table.fields.map(
+        field =>
+          new Field({
+            ...metadata.field(field.id),
+            query: this,
+          }),
+      ),
+    });
   }
 
   /**
