@@ -85,12 +85,9 @@ describe("scenarios > setup", () => {
       // ========
 
       // The database step should be open
-      cy.findByText(
-        "Connecting to your own database will let you get the most out of Metabase.",
-        {
-          exact: false,
-        },
-      );
+      cy.findByText("Connecting to your own database", {
+        exact: false,
+      });
 
       // test database setup help card is NOT displayed before DB is selected
       cy.findByTestId("database-setup-help-card").should("not.be.visible");
