@@ -70,7 +70,11 @@ const EngineGallery = ({ field, options }) => {
         </EngineEmptyState>
       )}
       {!isSearching && (
-        <EngineExpandButton primary onClick={() => setIsExpanded(!isExpanded)}>
+        <EngineExpandButton
+          primary
+          icon={isExpanded ? "chevronup" : "chevrondown"}
+          onClick={() => setIsExpanded(!isExpanded)}
+        >
           {isExpanded ? t`Show less options` : t`Show more options`}
         </EngineExpandButton>
       )}
