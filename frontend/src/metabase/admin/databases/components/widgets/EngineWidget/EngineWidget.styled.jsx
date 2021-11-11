@@ -3,6 +3,10 @@ import { color, lighten } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 
+export const EngineGalleryRoot = styled.div`
+  display: block;
+`;
+
 export const EngineList = styled.div`
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -28,27 +32,28 @@ export const EngineCardTitle = styled.div`
   margin-top: 0.5rem;
 `;
 
-export const EngineCardLogo = styled.img`
+export const EngineCardIcon = styled.img`
   display: block;
   width: 2rem;
   height: 2rem;
 `;
 
-export const EngineBannerRoot = styled.div`
+export const EngineEmptyState = styled.div`
   display: flex;
+  flex-direction: column;
+  justify-content: center;
   align-items: center;
-  color: ${color("white")};
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.5rem;
-  background-color: ${color("brand")};
+  min-height: 10rem;
 `;
 
-export const EngineBannerTitle = styled.div`
-  flex: 1 0 auto;
-  font-weight: bold;
+export const EngineEmptyIcon = styled(Icon)`
+  color: ${color("text-medium")};
+  margin-bottom: 0.5rem;
+`;
+
+export const EngineEmptyText = styled.div`
+  color: ${color("text-light")};
+  font-size: 0.75rem;
   line-height: 1.5rem;
-`;
-
-export const EngineBannerIcon = styled(Icon)`
-  cursor: pointer;
+  font-weight: bold;
 `;

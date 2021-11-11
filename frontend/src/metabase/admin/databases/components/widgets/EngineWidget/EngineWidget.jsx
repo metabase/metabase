@@ -5,8 +5,12 @@ import Button from "metabase/components/Button";
 import TextInput from "metabase/components/TextInput";
 import {
   EngineCard,
-  EngineCardLogo,
+  EngineCardIcon,
   EngineCardTitle,
+  EngineEmptyIcon,
+  EngineEmptyState,
+  EngineEmptyText,
+  EngineGalleryRoot,
   EngineList,
 } from "./EngineWidget.styled";
 
@@ -34,29 +38,36 @@ const EngineGallery = ({
   });
 
   return (
-    <div>
-      <EngineList>
-        <TextInput
-          value={searchText}
-          placeholder={t`Search for a database...`}
-          onChange={setSearchText}
-        />
-        {visibleEngines.map(engine => (
-          <EngineCard
-            key={engine.value}
-            onClick={() => onEngineChange(engine.value)}
-          >
-            <EngineCardLogo src={engine.logo} />
-            <EngineCardTitle>{engine.name}</EngineCardTitle>
-          </EngineCard>
-        ))}
-      </EngineList>
+    <EngineGalleryRoot>
+      <TextInput
+        value={searchText}
+        placeholder={t`Search for a database...`}
+        onChange={setSearchText}
+      />
+      {visibleEngines.length ? (
+        <EngineList>
+          {visibleEngines.map(engine => (
+            <EngineCard
+              key={engine.value}
+              onClick={() => onEngineChange(engine.value)}
+            >
+              <EngineCardIcon src={engine.icon} />
+              <EngineCardTitle>{engine.name}</EngineCardTitle>
+            </EngineCard>
+          ))}
+        </EngineList>
+      ) : (
+        <EngineEmptyState>
+          <EngineEmptyIcon name="search" size={32} />
+          <EngineEmptyText>{t`Didn't find anything`}</EngineEmptyText>
+        </EngineEmptyState>
+      )}
       {!isSearching && (
-        <Button onClick={() => setIsExpanded(!isExpanded)}>
+        <Button primary onClick={() => setIsExpanded(!isExpanded)}>
           {isExpanded ? t`Show more options` : t`Show less options`}
         </Button>
       )}
-    </div>
+    </EngineGalleryRoot>
   );
 };
 
