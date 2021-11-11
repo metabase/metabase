@@ -74,8 +74,19 @@ export function setLocalization(translationsObject) {
   // eslint-disable-next-line react-hooks/rules-of-hooks
   useLocale(locale);
 
-  moment.locale(locale);
+  moment.locale(mapToMomentLocale(locale));
   updateMomentStartOfWeek(locale);
+}
+
+function mapToMomentLocale(locale) {
+  switch (locale) {
+    case "zh-Hans":
+      return "zh-cn";
+    case "zh-TW":
+      return "zh-tw";
+    default:
+      return locale;
+  }
 }
 
 // Format a fixed timestamp in local time to see if the current locale defaults
