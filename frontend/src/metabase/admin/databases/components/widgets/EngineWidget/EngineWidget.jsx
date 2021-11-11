@@ -35,10 +35,19 @@ EngineWidget.propTypes = {
 const EngineInfo = ({ field, options }) => {
   const option = options.find(option => option.value === field.value);
 
+  const handleClick = useCallback(() => {
+    field.onChange(undefined);
+  }, [field]);
+
   return (
     <EngineInfoRoot>
       {option && <EngineInfoTitle>{option.name}</EngineInfoTitle>}
-      <EngineInfoIcon name="close" size={18} onClick={() => field.onChange()} />
+      <EngineInfoIcon
+        name="close"
+        size={18}
+        aria-label={t`Remove database`}
+        onClick={handleClick}
+      />
     </EngineInfoRoot>
   );
 };
@@ -76,7 +85,7 @@ const EngineSearch = ({ field, options }) => {
       )}
       {!isSearching && (
         <EngineToggle
-          isExpanded={EngineToggle}
+          isExpanded={isExpanded}
           onExpandedChange={setIsExpanded}
         />
       )}
