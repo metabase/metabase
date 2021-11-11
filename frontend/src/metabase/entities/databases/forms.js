@@ -329,7 +329,7 @@ const forms = {
         {
           name: "engine",
           title: t`Database type`,
-          type: EngineWidget,
+          type: "select",
           options: getEngineOptions(engine),
           placeholder: t`Select a database`,
         },
@@ -403,6 +403,7 @@ forms.connection = {
   fields: (...args) =>
     forms.details.fields(...args).map(field => ({
       ...field,
+      type: field.name === "engine" ? EngineWidget : field.type,
       hidden: field.hidden || SCHEDULING_FIELDS.has(field.name),
     })),
 };
