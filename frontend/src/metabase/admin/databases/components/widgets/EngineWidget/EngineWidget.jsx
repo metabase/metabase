@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import TextInput from "metabase/components/TextInput";
@@ -33,14 +33,16 @@ const galleryPropTypes = {
 const EngineGallery = ({ field, options }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [searchText, setSearchText] = useState("");
-  const isSearching = searchText.length > 0;
 
-  const visibleOptions = getVisibleOptions({
-    options,
+  const isSearching = searchText.length > 0;
+  const sortedOptions = useMemo(() => getSortedOptions(options), [options]);
+
+  const visibleOptions = getVisibleOptions(
+    sortedOptions,
     isExpanded,
     isSearching,
     searchText,
-  });
+  );
 
   return (
     <EngineGalleryRoot>
@@ -78,18 +80,25 @@ const EngineGallery = ({ field, options }) => {
 
 EngineGallery.propTypes = galleryPropTypes;
 
-const getVisibleOptions = ({
-  options,
-  isExpanded,
-  isSearching,
-  searchText,
-}) => {
+const getSortedOptions = options => {
+  return options.sort((a, b) => {
+    if (a.index >= 0 && b.index >= 0) {
+      return a.index - b.index;
+    } else if (a.index >= 0) {
+      return -1;
+    } else {
+      return a.name.localeCompare(b.name);
+    }
+  });
+};
+
+const getVisibleOptions = (options, isExpanded, isSearching, searchText) => {
   if (isSearching) {
     return options.filter(e => includesIgnoreCase(e.name, searchText));
   } else if (isExpanded) {
     return options;
   } else {
-    return options.filter(e => e.elevated);
+    return options.filter(e => e.index >= 0);
   }
 };
 

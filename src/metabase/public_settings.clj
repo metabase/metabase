@@ -373,7 +373,7 @@
   "Elevated database engines"
   :visibility :public
   :setter     :none
-  :getter     (fn [] ["mysql"]))
+  :getter     (fn [] ["mysql", "postgres", "sqlserver", "redshift", "bigquery", "snowflake"]))
 
 (defsetting has-sample-dataset?
   "Whether this instance has a Sample Dataset database"

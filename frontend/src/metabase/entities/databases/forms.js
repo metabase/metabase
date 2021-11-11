@@ -274,7 +274,7 @@ const ENGINE_OPTIONS = Object.entries(ENGINES)
     value: engine,
     name: info["driver-name"],
     icon: info["driver-icon"],
-    elevated: ELEVATED_ENGINES.includes(engine),
+    index: ELEVATED_ENGINES.indexOf(engine),
   }))
   .sort((a, b) => a.name.localeCompare(b.name));
 
