@@ -6,6 +6,7 @@ import Icon from "metabase/components/Icon";
 import { SelectList } from "metabase/components/select-list";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 export const DataBucketIcon = styled(Icon)`
   margin-top: 2px;
@@ -15,6 +16,14 @@ export const DataBucketIcon = styled(Icon)`
 export const DataBucketDescription = styled.span`
   font-weight: bold;
   font-size: 12px;
+`;
+
+export const PickerSpinner = styled(LoadingSpinner)`
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  margin-left: auto;
+  color: ${color("brand")};
 `;
 
 const BackButtonContainer = styled.div`

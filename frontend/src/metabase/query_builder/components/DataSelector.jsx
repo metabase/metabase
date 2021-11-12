@@ -34,6 +34,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import {
   DataBucketList,
   DataBucketListItem,
+  PickerSpinner,
   RawDataBackButton,
 } from "./DataSelector.styled";
 import "./DataSelector.css";
@@ -1132,6 +1133,7 @@ const DatabaseSchemaPicker = ({
       selectedDatabase.id === database.id &&
       database.schemas.length === 0 &&
       isLoading,
+    active: database.initial_sync,
   }));
 
   if (hasBackButton) {
@@ -1180,6 +1182,9 @@ const DatabaseSchemaPicker = ({
         item.icon && (
           <Icon className="Icon text-default" name={item.icon} size={18} />
         )
+      }
+      renderSectionExtra={item =>
+        !item.active && <PickerSpinner size={14} borderWidth={2} />
       }
       renderItemIcon={() => <Icon name="folder" size={16} />}
       initiallyOpenSection={openSection}
@@ -1261,7 +1266,7 @@ const TablePicker = ({
               ? item.table.id === selectedTable.id
               : false
           }
-          itemIsClickable={item => item.table}
+          itemIsClickable={item => item.table && item.table.initial_sync}
           renderItemIcon={item =>
             item.table ? <Icon name="table2" size={18} /> : null
           }
