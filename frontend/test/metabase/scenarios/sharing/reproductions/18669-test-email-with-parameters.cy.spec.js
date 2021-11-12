@@ -20,8 +20,6 @@ describeWithToken("issue 18669", () => {
     cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: card }) => {
         cy.editDashboardCard(card, getFilterMapping(card));
-
-        cy.intercept("POST", `/api/card/${card.id}/query`).as("cardQuery");
         cy.visit(`/dashboard/${card.dashboard_id}`);
       },
     );
