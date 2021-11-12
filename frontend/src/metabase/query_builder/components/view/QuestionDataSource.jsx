@@ -1,7 +1,13 @@
-/* eslint-disable react/prop-types */
 import React from "react";
+import PropTypes from "prop-types";
 import * as Urls from "metabase/lib/urls";
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
+
+QuestionDataSource.propTypes = {
+  question: PropTypes.object,
+  subHead: PropTypes.bool,
+  isObjectDetail: PropTypes.bool,
+};
 
 function QuestionDataSource({ question, subHead, isObjectDetail, ...props }) {
   const parts = getDataSourceParts({
