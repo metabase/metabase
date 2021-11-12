@@ -21,7 +21,6 @@ import { usePagination } from "metabase/hooks/use-pagination";
 
 const PAGE_PADDING = [1, 2, 4];
 const PAGE_SIZE = 50;
-const RELOAD_INTERVAL = 2000;
 
 const SEARCH_FILTERS = [
   {
@@ -98,11 +97,7 @@ export default function SearchApp({ location }) {
         </Flex>
       )}
       <Box>
-        <Search.ListLoader
-          query={query}
-          wrapped
-          reloadInterval={getReloadInterval}
-        >
+        <Search.ListLoader query={query} wrapped>
           {({ list, metadata }) => {
             if (list.length === 0) {
               return (
@@ -202,18 +197,4 @@ const SearchResultSection = ({ items }) => (
 
 SearchResultSection.propTypes = {
   items: PropTypes.array,
-};
-
-const isItemLoading = ({ model, initial_sync }) => {
-  switch (model) {
-    case "database":
-    case "table":
-      return !initial_sync;
-    default:
-      return false;
-  }
-};
-
-const getReloadInterval = (state, props, items = []) => {
-  return items.some(isItemLoading) ? RELOAD_INTERVAL : 0;
 };
