@@ -1184,7 +1184,7 @@ const DatabaseSchemaPicker = ({
         )
       }
       renderSectionExtra={item =>
-        !item.active && <PickerSpinner size={14} borderWidth={2} />
+        !item.active && <PickerSpinner size={16} borderWidth={2} />
       }
       renderItemIcon={() => <Icon name="folder" size={16} />}
       initiallyOpenSection={openSection}
