@@ -22,8 +22,6 @@ describe("metabase/lib/expressions/completer", () => {
       expect(partialMatch("X OR")).toEqual(null);
       expect(partialMatch("42 +")).toEqual(null);
       expect(partialMatch("3.14")).toEqual(null);
-      expect(partialMatch('"Hello')).toEqual(null);
-      expect(partialMatch("'world")).toEqual(null);
     });
 
     it("should handle empty input", () => {
