@@ -12,8 +12,8 @@
             [metabase.sync.sync-metadata.metabase-metadata :as metabase-metadata]
             [metabase.sync.sync-metadata.sync-timezone :as sync-tz]
             [metabase.sync.sync-metadata.tables :as sync-tables]
-            [metabase.util :as u]
             [metabase.sync.util :as sync-util]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s]))
 

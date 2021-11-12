@@ -10,8 +10,8 @@
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
             [metabase.events :as events]
-            [metabase.models.table :refer [Table]]
             [metabase.models.database :refer [Database]]
+            [metabase.models.table :refer [Table]]
             [metabase.models.task-history :refer [TaskHistory]]
             [metabase.query-processor.interface :as qpi]
             [metabase.sync.interface :as i]
@@ -261,20 +261,20 @@
 ;; added the database, and enables individual tables when they become usable for queries.
 
 (defn set-initial-table-sync-complete!
-  [table]
   "Marks initial sync as complete for this table so that it becomes usable in the UI, if not already set"
+  [table]
   (when (not= (:initial_sync_status table) "complete")
     (db/update! Table (u/the-id table) :initial_sync_status "complete")))
 
 (defn set-initial-database-sync-complete!
-  [database]
   "Marks initial sync as complete for this database so that this is reflected in the UI, if not already set"
+  [database]
   (when (not= (:initial_sync_status database) "complete")
     (db/update! Database (u/the-id database) :initial_sync_status "complete")))
 
 (defn set-initial-database-sync-aborted!
-  [database]
   "Marks initial sync as aborted for this database so that an error can be displayed on the UI"
+  [database]
   (when (not= (:initial_sync_status database) "complete")
     (db/update! Database (u/the-id database) :initial_sync_status "aborted")))
 
@@ -470,7 +470,7 @@
 (defn abandon-sync?
   "Given the results of a sync step, returns true if a non-recoverable exception occurred"
   [step-results]
-  (if (contains? step-results :throwable)
+  (when (contains? step-results :throwable)
     (let [caught-exception (:throwable step-results)
           exception-classes (u/full-exception-chain caught-exception)]
       (some true? (for [ex      exception-classes
