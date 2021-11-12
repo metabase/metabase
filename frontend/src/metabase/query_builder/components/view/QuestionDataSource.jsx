@@ -119,6 +119,7 @@ function QuestionTableBadges({ tables, subHead, hasLink }) {
       parts={parts}
       variant={subHead ? "subhead" : "head"}
       divider={<TablesDivider>+</TablesDivider>}
+      data-testid="question-table-badges"
     />
   );
 }
