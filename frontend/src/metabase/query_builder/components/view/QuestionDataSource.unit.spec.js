@@ -137,7 +137,8 @@ function getSavedNativeQuestion(overrides) {
 }
 
 class ErrorBoundary extends React.Component {
-  componentDidCatch() {
+  componentDidCatch(...args) {
+    console.error(...args);
     this.props.onError();
   }
 
