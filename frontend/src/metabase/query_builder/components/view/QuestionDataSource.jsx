@@ -1,20 +1,27 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-
-import Badge, { MaybeLink } from "metabase/components/Badge";
-
 import { browseDatabase, browseSchema } from "metabase/lib/urls";
+import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-
-import cx from "classnames";
-
-const QuestionDataSource = ({ question, subHead, noLink, ...props }) => {
-  const parts = getDataSourceParts({ question, subHead, noLink });
-  return subHead ? (
-    <SubHeadBreadcrumbs parts={parts} {...props} />
-  ) : (
-    <HeadBreadcrumbs parts={parts} {...props} />
+const QuestionDataSource = ({
+  question,
+  subHead,
+  noLink,
+  isObjectDetail,
+  ...props
+}) => {
+  const parts = getDataSourceParts({
+    question,
+    subHead,
+    noLink,
+    isObjectDetail,
+  });
+  return (
+    <HeadBreadcrumbs
+      parts={parts}
+      variant={subHead ? "subhead" : "head"}
+      {...props}
+    />
   );
 };
 
@@ -29,7 +36,9 @@ function getDataSourceParts({ question, noLink, subHead, isObjectDetail }) {
   const parts = [];
 
   let query = question.query();
-  if (query instanceof StructuredQuery) {
+  const isStructuredQuery = question.isStructured();
+
+  if (isStructuredQuery) {
     query = query.rootQuery();
   }
 
@@ -45,7 +54,6 @@ function getDataSourceParts({ question, noLink, subHead, isObjectDetail }) {
   const table = query.table();
   if (table && table.hasSchema()) {
     parts.push({
-      icon: "folder",
       name: table.schema_name,
       href: !noLink && database.id >= 0 && browseSchema(table),
     });
@@ -53,7 +61,7 @@ function getDataSourceParts({ question, noLink, subHead, isObjectDetail }) {
 
   if (table) {
     let name = table.displayName();
-    if (query instanceof StructuredQuery) {
+    if (isStructuredQuery) {
       name = query.joins().reduce((name, join) => {
         const joinedTable = join.joinedTable();
         if (joinedTable) {
@@ -64,7 +72,6 @@ function getDataSourceParts({ question, noLink, subHead, isObjectDetail }) {
       }, name);
     }
     parts.push({
-      icon: "table_spaced",
       name: name,
       href:
         !noLink && (subHead || isObjectDetail) && table.newQuestion().getUrl(),
@@ -81,34 +88,3 @@ function getDataSourceParts({ question, noLink, subHead, isObjectDetail }) {
 }
 
 export default QuestionDataSource;
-
-const SubHeadBreadcrumbs = ({ parts, className, ...props }) => (
-  <span {...props} className={className}>
-    <span className="flex align-center flex-wrap mbn1">
-      {parts.map(({ name, icon, href }, index) => (
-        <Badge key={index} className="mr2 mb1" icon={{ name: icon }} to={href}>
-          {name}
-        </Badge>
-      ))}
-    </span>
-  </span>
-);
-
-const HeadBreadcrumbs = ({ parts, ...props }) => (
-  <span {...props} className="flex align-center flex-wrap">
-    {parts.map(({ name, icon, href }, index) => [
-      <MaybeLink
-        key={index}
-        to={href}
-        className={cx("flex align-center", href ? "text-medium" : "text-dark")}
-      >
-        {name}
-      </MaybeLink>,
-      index < parts.length - 1 ? (
-        <span key={index + "-divider"} className="mx1 text-light text-smaller">
-          •
-        </span>
-      ) : null,
-    ])}
-  </span>
-);

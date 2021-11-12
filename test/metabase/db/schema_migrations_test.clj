@@ -15,6 +15,7 @@
             [metabase.driver :as driver]
             [metabase.models :refer [Database Field Table]]
             [metabase.models.user :refer [User]]
+            [metabase.test :as mt]
             [metabase.test.util :as tu]
             [metabase.util :as u]
             [toucan.db :as db])
@@ -164,8 +165,8 @@
                       (db/select Field :table_id table-id)))))))))
 
 (defn app-db-column-types
-  "Returns a map of all column names to their respective type names, for the given `table-name`, from the currently
-  bound app DB connection."
+  "Returns a map of all column names to their respective type names, for the given `table-name`, by using the JDBC
+  .getMetaData method of the given `conn` (which is presumed to be an app DB connection)."
   [^Connection conn table-name]
   (with-open [rset (.getColumns (.getMetaData conn) nil nil table-name nil)]
     (into {} (take-while some?)
@@ -258,3 +259,33 @@
                               col-nm
                               exp-type
                               (get tbl-cols col-nm))))))))))))
+
+(deftest convert-query-cache-result-to-blob-test
+  (testing "the query_cache.results column was changed to"
+    (mt/with-log-level :trace
+      (impl/test-migrations ["v42.00-064"] [migrate!]
+        (with-open [conn (jdbc/get-connection (db/connection))]
+          (when (= :mysql driver/*driver*)
+            ;; simulate the broken app DB state that existed prior to the fix from #16095
+            (with-open [stmt (.prepareStatement conn "ALTER TABLE query_cache MODIFY results BLOB NULL;")]
+              (.execute stmt)))
+          (migrate!) ; run migrations, then check the new type
+          (let [^String exp-type (case driver/*driver*
+                                   :mysql    "longblob"
+                                   :h2       "BLOB"
+                                   :postgres "bytea")
+                name-fn          (case driver/*driver*
+                                   :h2 str/upper-case
+                                   identity)
+                tbl-nm           "query_cache"
+                col-nm           "results"
+                tbl-cols         (app-db-column-types conn (name-fn tbl-nm))]
+              (testing (format " %s in %s" exp-type driver/*driver*)
+                ;; just get the first/only scalar value from the results (which is a vec of maps)
+                (is (.equalsIgnoreCase exp-type (get tbl-cols (name-fn col-nm)))
+                  (format "Using %s, type for %s.%s was supposed to be %s, but was %s"
+                          driver/*driver*
+                          tbl-nm
+                          col-nm
+                          exp-type
+                          (get tbl-cols col-nm))))))))))

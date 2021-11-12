@@ -8,6 +8,7 @@ import SyncModal from "../../components/SyncModal";
 export default _.compose(
   Databases.loadList({
     query: { include: "tables" },
+    loadingAndErrorWrapper: false,
   }),
   connect(
     state => ({
