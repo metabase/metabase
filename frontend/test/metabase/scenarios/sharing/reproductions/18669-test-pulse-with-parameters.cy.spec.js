@@ -1,6 +1,8 @@
-import { restore, setupSMTP } from "__support__/e2e/cypress";
+import { popover, restore, setupSMTP } from "__support__/e2e/cypress";
+import { USERS } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
+const { admin } = USERS;
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATASET;
 
 describe("issue 18669", () => {
@@ -18,6 +20,25 @@ describe("issue 18669", () => {
         cy.wait("@cardQuery");
       },
     );
+  });
+
+  it("should send a test email with non-default parameters (metabase#18669)", () => {
+    cy.icon("share").click();
+    cy.findByText("Dashboard subscriptions").click();
+    cy.findByText("Email it").click();
+
+    cy.findByPlaceholderText("Enter user names or email addresses")
+      .click()
+      .type(`${admin.first_name} ${admin.last_name}{enter}`)
+      .blur();
+
+    popover().within(() => {
+      cy.findByText("Gizmo").click();
+      cy.findByText("Update filter").click();
+    });
+
+    cy.findByText("Send email now").click();
+    cy.findByText("Email sent");
   });
 });
 
