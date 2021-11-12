@@ -1,4 +1,5 @@
 import React from "react";
+import PropTypes from "prop-types";
 import styled, { css } from "styled-components";
 import Badge from "metabase/components/Badge";
 import { color } from "metabase/lib/colors";
@@ -34,6 +35,10 @@ const DividerSpan = styled.span`
   user-select: none;
 `;
 
-export function Divider() {
-  return <DividerSpan>/</DividerSpan>;
+Divider.propTypes = {
+  char: PropTypes.string,
+};
+
+export function Divider({ char = "/" }) {
+  return <DividerSpan>{char}</DividerSpan>;
 }

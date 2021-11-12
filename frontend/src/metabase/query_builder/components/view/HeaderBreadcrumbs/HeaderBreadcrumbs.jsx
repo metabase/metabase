@@ -13,9 +13,15 @@ const partPropType = PropTypes.oneOfType([crumbShape, PropTypes.node]);
 HeadBreadcrumbs.propTypes = {
   variant: PropTypes.oneOf(["head", "subhead"]),
   parts: PropTypes.arrayOf(partPropType).isRequired,
+  divider: PropTypes.oneOfType([PropTypes.string, PropTypes.node]),
 };
 
-export function HeadBreadcrumbs({ variant = "head", parts, ...props }) {
+export function HeadBreadcrumbs({
+  variant = "head",
+  parts,
+  divider,
+  ...props
+}) {
   return (
     <Container {...props} variant={variant}>
       {parts.map((part, index) => {
@@ -35,7 +41,12 @@ export function HeadBreadcrumbs({ variant = "head", parts, ...props }) {
                 {part.name}
               </HeaderBadge>
             )}
-            {!isLast && <Divider />}
+            {!isLast &&
+              (React.isValidElement(divider) ? (
+                divider
+              ) : (
+                <Divider char={divider} />
+              ))}
           </React.Fragment>
         );
       })}
