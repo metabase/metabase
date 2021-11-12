@@ -220,7 +220,11 @@ function shouldShowEngineProvidedField(field, details) {
       detailAndValueRequiredToShowField,
     )[0];
 
-    return details[detail] === expectedDetailValue;
+    if (Array.isArray(expectedDetailValue)) {
+      return expectedDetailValue.includes(details[detail]);
+    } else {
+      return details[detail] === expectedDetailValue;
+    }
   }
 
   return true;

@@ -99,36 +99,52 @@
              :when  (driver/available? driver)]
          driver)))
 
+(defn- file-upload-props [{prop-name :name, visible-if :visible-if, disp-nm :display-name, :as conn-prop}]
+  (if (premium-features/is-hosted?)
+    [(-> (assoc conn-prop
+           :name (str prop-name "-value")
+           :type "textFile"
+           :treat-before-posting "base64")
+         (dissoc :secret-kind))]
+    [(cond-> {:name (str prop-name "-options")
+              :display-name disp-nm
+              :type "select"
+              :options [{:name "Local file path"
+                         :value "local"}
+                        {:name "Uploaded file path"
+                         :value "uploaded"}]
+              :default "local"}
+             visible-if (assoc :visible-if visible-if))
+     (-> {:name (str prop-name "-value")
+          :type "textFile"
+          :treat-before-posting "base64"
+          :visible-if {(keyword (str prop-name "-options")) "uploaded"}}
+       (dissoc :secret-kind))
+     {:name (str prop-name "-path")
+      :type "string"
+      :display-name "File path"
+      :placeholder (:placeholder conn-prop)
+      :visible-if {(keyword (str prop-name "-options")) "local"}}]))
+
+(defn- ->str
+  "Turns `x` into a String. If `x` a keyword, then `name` is used. Otherwise, `str` is called on it."
+  [k]
+  (if (keyword? k)
+    (name k)
+    (str k)))
+
 (defn- expand-secret-conn-prop [{prop-name :name, visible-if :visible-if, :as conn-prop}]
-  (case (:secret-kind conn-prop)
-    "password" [(-> conn-prop
-                    (assoc :type "password")
-                    (assoc :name (str prop-name "-value"))
-                    (dissoc :secret-kind))]
-    "keystore" (if (premium-features/is-hosted?)
-                 [(-> (assoc conn-prop
-                        :name (str prop-name "-value")
-                        :type "textFile"
-                        :treat-before-posting "base64")
-                      (dissoc :secret-kind))]
-                 [(cond-> {:name (str prop-name "-options")
-                           :type "select"
-                           :options [{:name "Local file path"
-                                      :value "local"}
-                                     {:name "Uploaded file path"
-                                      :value "uploaded"}]
-                           :default "local"}
-                    visible-if (assoc :visible-if visible-if))
-                  (-> (assoc conn-prop
-                        :name (str prop-name "-value")
-                        :type "textFile"
-                        :treat-before-posting "base64"
-                        :visible-if {(keyword (str prop-name "-options")) "uploaded"})
-                      (dissoc :secret-kind))
-                  {:name (str prop-name "-path")
-                   :type "string"
-                   :placeholder (:placeholder conn-prop)
-                   :visible-if {(keyword (str prop-name "-options")) "local"}}])
+  (case (->str (:secret-kind conn-prop))
+    "password"    [(-> conn-prop
+                       (assoc :type "password")
+                       (assoc :name (str prop-name "-value"))
+                       (dissoc :secret-kind))]
+    "keystore"    (file-upload-props conn-prop)
+    ;; this may not necessarily be a keystore (could be a standalone PKCS-8 or PKCS-12 file)
+    "binary-blob" (file-upload-props conn-prop)
+    ;; PEM is a plaintext format
+    ;; TODO: do we need to also allow a textarea type paste for this?  would require another special case
+    "pem-cert"    (file-upload-props conn-prop)
     [conn-prop]))
 
 (defn connection-props-server->client
@@ -140,7 +156,7 @@
   {:added "0.42.0"}
   [conn-props]
   (reduce (fn [acc conn-prop]
-            (if (= "secret" (:type conn-prop))
+            (if (= "secret" (->str (:type conn-prop)))
               (concat acc (expand-secret-conn-prop conn-prop))
               (concat acc [conn-prop]))) [] conn-props))
 
@@ -246,6 +262,6 @@
   [driver]
   (if-some [conn-prop-fn (get-method driver/connection-properties driver)]
     (let [all-fields      (conn-prop-fn driver)
-          password-fields (filter #(= (get % :type) :password) all-fields)]
+          password-fields (filter #(contains? #{:password :secret} (get % :type)) all-fields)]
       (into default-sensitive-fields (map (comp keyword :name) password-fields)))
     default-sensitive-fields))
