@@ -7,13 +7,15 @@ import Text from "metabase/components/type/Text";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 function getColorForIconWrapper(props) {
-  return !props.active
-    ? color("text-medium")
-    : props.item.collection_position
-    ? color("saturated-yellow")
-    : props.type === "collection"
-    ? lighten("brand", 0.35)
-    : color("brand");
+  if (!props.active) {
+    return color("text-medium");
+  } else if (props.item.collection_position) {
+    return color("saturated-yellow");
+  } else if (props.type === "collection") {
+    return lighten("brand", 0.35);
+  } else {
+    return color("brand");
+  }
 }
 
 export const IconWrapper = styled.div`
