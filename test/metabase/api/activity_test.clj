@@ -207,24 +207,20 @@
                                                                           {:card_id 0}]}}])))))
 
 (deftest activity-visibility-test
-  ;; clear out all existing Activity entries
-  ;;
-  ;; TODO -- this is a bad pattern -- test shouldn't wipe out a bunch of other stuff like this. Just fetch all the
-  ;; activities and look for the presence of this specific one.
-  (db/delete! Activity)
   (mt/with-temp Activity [activity {:topic     "user-joined"
                                     :details   {}
-                                    :timestamp #t "2019-02-15T11:55:00.000Z"}]
-    (letfn [(user-can-see-user-joined-activity? [user]
-              (seq (mt/user-http-request user :get 200 "activity")))]
+                                    :timestamp (java.time.ZonedDateTime/now)}]
+    (letfn [(activity-topics [user]
+              (into #{} (map :topic)
+                    (mt/user-http-request user :get 200 "activity")))]
       (testing "Only admins should get to see user-joined activities"
         (testing "admin should see `:user-joined` activities"
           (testing "Sanity check: admin should be able to read the activity"
             (mt/with-test-user :crowberto
               (is (models/can-read? activity))))
-          (is (user-can-see-user-joined-activity? :crowberto)))
+          (is (contains? (activity-topics :crowberto) "user-joined")))
         (testing "non-admin should *not* see `:user-joined` activities"
           (testing "Sanity check: non-admin should *not* be able to read the activity"
             (mt/with-test-user :rasta
               (is (not (models/can-read? activity)))))
-          (is (not (user-can-see-user-joined-activity? :rasta))))))))
+          (is (not (contains? (activity-topics :rasta) "user-joined"))))))))
