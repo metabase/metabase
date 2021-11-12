@@ -151,7 +151,7 @@ export default class DatabaseConnectionStep extends Component {
 
           <Databases.Form
             formName={formName}
-            form={Databases.forms.connection}
+            form={Databases.forms.setup}
             database={databaseDetails}
             onSubmit={this.handleSubmit}
           >

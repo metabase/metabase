@@ -397,14 +397,23 @@ const forms = {
   },
 };
 
-// partial forms for tabbed view:
-forms.connection = {
+forms.setup = {
   ...forms.details,
   fields: (...args) =>
     forms.details.fields(...args).map(field => ({
       ...field,
       type: field.name === "engine" ? EngineWidget : field.type,
       title: field.name === "engine" ? null : field.title,
+      hidden: field.hidden || SCHEDULING_FIELDS.has(field.name),
+    })),
+};
+
+// partial forms for tabbed view:
+forms.connection = {
+  ...forms.details,
+  fields: (...args) =>
+    forms.details.fields(...args).map(field => ({
+      ...field,
       hidden: field.hidden || SCHEDULING_FIELDS.has(field.name),
     })),
 };
