@@ -26,18 +26,12 @@ export function HeadBreadcrumbs({
     <Container {...props} variant={variant}>
       {parts.map((part, index) => {
         const isLast = index === parts.length - 1;
-        const inactiveColor =
-          isLast && variant === "head" ? "text-dark" : "text-light";
         return (
           <React.Fragment key={index}>
             {React.isValidElement(part) ? (
               part
             ) : (
-              <HeaderBadge
-                to={part.href}
-                icon={part.icon}
-                inactiveColor={inactiveColor}
-              >
+              <HeaderBadge to={part.href} icon={part.icon}>
                 {part.name}
               </HeaderBadge>
             )}

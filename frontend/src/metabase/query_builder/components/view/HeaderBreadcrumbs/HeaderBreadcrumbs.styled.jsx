@@ -18,10 +18,24 @@ export const Container = styled.span`
   flex-wrap: wrap;
 
   ${HeaderBadge} {
+    color: ${color("text-light")};
+
+    :hover {
+      color: ${color("brand")};
+    }
+
     ${props =>
       props.variant === "head" &&
       css`
         font-size: 1.25rem;
+      `}
+  }
+
+  ${HeaderBadge} :last-child {
+    ${props =>
+      props.variant === "head" &&
+      css`
+        color: ${color("text-dark")};
       `}
   }
 `;
