@@ -57,18 +57,17 @@
                                       :type         "password",
                                       :required     false,
                                       :visible-if   {:use-keystore true}}
-                                     {:name       "keystore-options"
-                                      :options    [{:name  "Local file path"
-                                                    :value "local"}
-                                                   {:name  "Uploaded file path"
-                                                    :value "uploaded"}]
-                                      :type       "select"
-                                      :default    "local"
-                                      :visible-if {:use-keystore true}}
+                                     {:name         "keystore-options"
+                                      :display-name "Keystore"
+                                      :options      [{:name  "Local file path"
+                                                      :value "local"}
+                                                     {:name  "Uploaded file path"
+                                                      :value "uploaded"}]
+                                      :type         "select"
+                                      :default      "local"
+                                      :visible-if   {:use-keystore true}}
                                      {:name                 "keystore-value"
-                                      :display-name         "Keystore"
                                       :type                 "textFile"
-                                      :required             false
                                       :treat-before-posting "base64"
                                       :visible-if           {:keystore-options "uploaded"}}
                                      {:name        "keystore-path"
@@ -87,9 +86,7 @@
                                       :required     false
                                       :visible-if   {:use-keystore true}}
                                      {:name                 "keystore-value"
-                                      :display-name         "Keystore"
                                       :type                 "textFile"
-                                      :required             false
                                       :treat-before-posting "base64"
                                       :visible-if           {:use-keystore true}}]
                                     true]]]
