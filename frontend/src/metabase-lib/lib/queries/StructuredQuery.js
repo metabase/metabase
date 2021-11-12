@@ -294,7 +294,7 @@ export default class StructuredQuery extends AtomicQuery {
    * @returns the table object, if a table is selected and loaded.
    */
   @memoize
-  table(): Table {
+  table(boundQuery = this): Table {
     const sourceQuery = this.sourceQuery();
     if (sourceQuery) {
       return new Table({
@@ -328,7 +328,11 @@ export default class StructuredQuery extends AtomicQuery {
         field =>
           new Field({
             ...metadata.field(field.id),
-            query: this,
+            // Need to pass the query here, so some fields can access their metadata from `results_metadata`
+            // (see FieldDimension.prototype.field implementation)
+            // Usually it would just pass `this`, but when accessing joined query / table,
+            // we want to bind the fields to the top-level query to preserve join aliases
+            query: boundQuery,
           }),
       ),
     });

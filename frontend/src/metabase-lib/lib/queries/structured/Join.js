@@ -504,7 +504,7 @@ export default class Join extends MBQLObjectClause {
   }
   joinedTable() {
     const joinedQuery = this.joinedQuery();
-    return joinedQuery && joinedQuery.table();
+    return joinedQuery && joinedQuery.table(this.query());
   }
   parentQuery() {
     return this.query();
