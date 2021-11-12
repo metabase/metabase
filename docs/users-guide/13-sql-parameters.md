@@ -65,10 +65,10 @@ There are four types of variables:
 
 - **Text**: a plain input box.
 - **Number**: a plain input box.
-- **Date**: a simple date picker. If you want a more expressive date picker, like specifying a range, you'll want to use a field filter.
+- **Date**: a simple date picker. If you want a more expressive date picker, like specifying a range, you'll want to use a Field Filter.
 - **[Field Filter](#the-field-filter-variable-type)**: different filter widgets, depending on the mapped field.
 
-That last variable type, [Field Filter](#the-field-filter-variable-type), is special; it lets you create "smart" filter widgets, like a search box, or a dropdown menu of values, or a dynamic date picker that can allow you to specify a date range.
+That last variable type, [Field Filter](#the-field-filter-variable-type), is special; it lets you create "smart" filter widgets, like a search box, or a dropdown menu of values, or a dynamic date picker that allows you to specify a date range.
 
 You can include multiple variables in the query, and Metabase will add multiple filter widgets to the question. When you have multiple filter widgets, you can click on a filter widget and drag it around to rearrange the order.
 
@@ -113,15 +113,29 @@ If you're using MongoDB, you can make an clause optional like so:
 {% endraw %}
 ```
 
+Or with multiple optional filters:
+
+```
+{% raw %}
+[
+    [[{ $match: {{cat}} },]]
+    [[{ $match: { price: { "$gt": {{minprice}} } } },]]
+    {
+        $count: "Total"
+    }
+]
+{% endraw %}
+```
+
 ## Setting a default value in the filter widget
 
-In the variables sidebar, you can set a default value for your variable. This value will be inserted into filter widget by default (even if the filter widget is empty). You'll need to insert a new value into the filter widget to override the default. 
+In the variables sidebar, you can set a default value for your variable. This value will be inserted into the corresponding filter widget by default (even if the filter widget is empty). You'll need to insert a new value into the filter widget to override the default. 
 
 ## Setting complex default values in the query
 
-You can also define default values directly in your query, which is useful when defining complex default values (e.g., using a function to generate a value).
+You can also define default values directly in your query, which is useful when defining complex default values (for example, using a function to generate a value).
 
-Here's an example that sets the default value of a Date filter to the current date:
+Here's an example that sets the default value of a Date filter to the current date using `CURRENT_DATE()`:
 
 ```
 SELECT *
@@ -135,11 +149,11 @@ Note that the hash (`#`) used to comment the text might need to be replaced by t
 
 Setting a variable to the "Field Filter" type allows you to map the variable to a field in any table in the current database, and lets you create a "smart" filter widget that makes sense for that field.
 
-Field filter variables should be used inside of a `WHERE` clause in SQL, or a `$match` clause in MongoDB.
+Field Filter variables should be used inside of a `WHERE` clause in SQL, or a `$match` clause in MongoDB.
 
-### Field filter compatible types
+### Field Filter compatible types
 
-Field filters ONLY work with the following field types:
+Field Filters ONLY work with the following field types:
 
 - Category
 - Entity Name
@@ -157,9 +171,9 @@ If you're not seeing the option to display a filter widget, make sure the mapped
 
 If you want to map a Field Filter to a field that isn't one of the compatible types listed above, you'll need an Admin to change the [field type for that column][column-types].
 
-## Field filter syntax
+## Field Filter syntax
 
-Let's say you want to create a field filter that filters the `People` table by state, and you want people to be able to select multiple states at a time. Here's the query:
+Let's say you want to create a Field Filter that filters the `People` table by state, and you want people to be able to select multiple states at a time. Here's the query:
 
 The syntax for Field Filters differs from a Text, Number, or Date variable.
 
@@ -171,7 +185,7 @@ WHERE {%raw%}{{state}}{%endraw%}
 
 Then, in the side panel, select the "Field Filter" variable type, and choose which field to map your variable to (in this case, `State`).
 
-Note the lack of the column and operator (eg. `=`). The reason you need to structure field filters this way is to handle cases where Metabase generates the code for you. For example, for handling situations where someone selects multiple values in the filter widget, or a range of dates. It is not possible to control the generated SQL, so if you need greater control, then you will need to use simpler variable types.
+Note the lack of the column and operator (like `=`). The reason you need to structure Field Filters this way is to handle cases where Metabase generates the code for you. For example, for handling cases where someone selects multiple values in the filter widget, or a range of dates. With Field Filters, you can't control the generated SQL, so if you need greater control, you should use one (or more) Text, Number, or Date variables.
 
 A MongoDB native query example might look like this:
 
@@ -215,17 +229,17 @@ To create a dropdown menu with search and a list of all values, you need to:
 
 If the field you want to create a dropdown for is not set to the type "Category" with **Filtering on this field** set to "A list of all values", an Admin will need to update the settings for that field. For example, if you want to create a dropdown menu for an incompatible field type like an Email field, an admin will need to change that field type to "Category", set the **Filtering on this field** option to **A list of all values**, then re-scan the values for that field.
 
-If however, there are too many different values in that column to display in a dropdown menu, Metabase will simply display a search box instead. So if you have a lot of email addresses, you may just get a search box anyway. The dropdown menu widgets work better when there's a small set of values to choose from (like the fifty U.S. States).
+If however, there are too many different values in that column to display in a dropdown menu, Metabase will simply display a search box instead. So if you have a lot of email addresses, you may just get a search box anyway. The dropdown menu widgets work better when there's a small set of values to choose from (like the fifty U.S. states).
 
 ## Field filter gotchas
 
-Some things that could trip you up when trying to set up a Field filter variable:
+Some things that could trip you up when trying to set up a Field Filter variable:
 
 ### Field filters don't work with table aliases
 
 Table aliases are not supported. The reason is that field filters generate SQL based on the mapped field; Metabase doesn't parse the SQL, so it can't tell what an alias refers to.
 
-The workaround is to either avoid aliases and use full table names, or instead use a subquery, e.g., a query nested inside a SELECT statement. Alternatively, you could create a view in your database that shows the results of a complicated query, and then query that view.
+The workaround is to either avoid aliases and use full table names, or instead use a subquery, for example, a query nested inside a SELECT statement. Alternatively, you could create a view in your database that shows the results of a complicated query, and then query that view.
 
 ### Some databases require the schema in the FROM clause
 
@@ -237,9 +251,9 @@ For **Oracle** it would be `FROM "schema"."table"`.
 
 In order for a saved SQL/native question to be usable with a dashboard filter, the question must contain at least one variable.
 
-The kind of dashboard filter that can be used with the SQL question depends on the field. For example, if you have a field filter called `{% raw %}{{var}}{% endraw %}` and you map it to a State field, you can map a Location dashboard filter to your SQL question. In this example, you'd create a new dashboard (or go to an existing dashboard), click the "Edit" button, add the SQL question that contains your State field filter variable, add a new dashboard filter (or edit an existing Location filter), then click the dropdown on the SQL question card to see the State field filter.
+The kind of dashboard filter that can be used with the SQL question depends on the field. For example, if you have a field filter called `{% raw %}{{var}}{% endraw %}` and you map it to a State field, you can map a Location dashboard filter to your SQL question. In this example, you'd create a new dashboard (or go to an existing dashboard), click the __Pencil icon__ to enter __Dashboard edit mode__, add the SQL question that contains your State Field Filter variable, add a new dashboard filter (or edit an existing Location filter), then click the dropdown on the SQL question card to see the State Field Filter.
 
-If you have added a **Date** variable to the question, then it's only possible to use the dashboard filter option **Single Date**. So if you are trying to use one of the other Time options on the dashboard, then a [Field Filter](#the-field-filter-variable-type) variable needs to be used.
+If you add a **Date** variable to the question, then it's only possible to use the dashboard filter option **Single Date**. So if you are trying to use one of the other Time options on the dashboard, you'll need to change the variable to a [Field Filter](#the-field-filter-variable-type) variable and map it to a date column.
 
 ![Field filter](images/sql-parameters/state-field-filter.png)
 
