@@ -3,12 +3,7 @@ import React from "react";
 import * as Urls from "metabase/lib/urls";
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 
-const QuestionDataSource = ({
-  question,
-  subHead,
-  isObjectDetail,
-  ...props
-}) => {
+function QuestionDataSource({ question, subHead, isObjectDetail, ...props }) {
   const parts = getDataSourceParts({
     question,
     subHead,
@@ -21,7 +16,7 @@ const QuestionDataSource = ({
       {...props}
     />
   );
-};
+}
 
 QuestionDataSource.shouldRender = ({ question, isObjectDetail }) =>
   getDataSourceParts({ question, isObjectDetail }).length > 0;
