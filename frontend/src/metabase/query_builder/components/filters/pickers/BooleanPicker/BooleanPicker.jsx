@@ -5,7 +5,6 @@ import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
-import Icon from "metabase/components/Icon";
 
 import { Container, Toggle, FilterRadio } from "./BooleanPicker.styled";
 
