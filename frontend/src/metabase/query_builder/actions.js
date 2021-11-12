@@ -837,11 +837,11 @@ export const navigateToNewCardInsideQB = createThunkAction(
   NAVIGATE_TO_NEW_CARD,
   ({ nextCard, previousCard }) => {
     return async (dispatch, getState) => {
-      if (cardIsEquivalent(previousCard, nextCard)) {
+      if (previousCard === nextCard) {
+        // Do not reload questions with breakouts when clicked on a legend item
+      } else if (cardIsEquivalent(previousCard, nextCard)) {
         // This is mainly a fallback for scenarios where a visualization legend is clicked inside QB
-        if (nextCard.id) {
-          dispatch(setCardAndRun(await loadCard(nextCard.id)));
-        }
+        dispatch(setCardAndRun(await loadCard(nextCard.id)));
       } else {
         const card = getCardAfterVisualizationClick(nextCard, previousCard);
         const url = Urls.question(null, card);
