@@ -34,12 +34,10 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
 
   const parts = [];
 
-  let query = question.query();
   const isStructuredQuery = question.isStructured();
-
-  if (isStructuredQuery) {
-    query = query.rootQuery();
-  }
+  const query = isStructuredQuery
+    ? question.query().rootQuery()
+    : question.query();
 
   const database = query.database();
   if (database) {
