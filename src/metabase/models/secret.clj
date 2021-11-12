@@ -66,8 +66,58 @@
                            (.deleteOnExit))]
       (log/tracef "Creating temp file for secret %s value at %s" (or id "") (.getAbsolutePath tmp-file))
       (with-open [out (io/output-stream tmp-file)]
-        (.write out value))
+        (let [^bytes v (cond
+                         (string? value)
+                         (.getBytes ^String value "UTF-8")
+
+                         (bytes? value)
+                         ^bytes value)]
+          (.write out v)))
       tmp-file)))
+
+(defn db-details-prop->secret-map
+  "Returns a map containing `:value` and `:source` for the given `conn-prop-nm`. `conn-prop-nm` is expected to be the
+  name of a connection property having `:type` `:secret`, and the relevant sub-properties (ex: -value, -path, etc.) will
+  be resolved in order to calculate the returned map.
+
+  This returned map represents a partial Secret model instance (having some of the required properties set), but also
+  represents a discrete property that can be used in connection testing (even without the Secret needing to be
+  persisted). In addition to possibly having `:value` and `:source` populated (if the secret value can be resolved), its
+  keys will always include:
+
+  `:connection-property-name` - the `conn-prop-nm` that was initially passed in, for use later in error handling.
+  `:subprops` - a sequence of subproperties (keywords) that represent all secret related subproperties that might
+                exist and be manipulated by the secret handling code (which are used to ensure all these internal and
+                intermediate subproperties are removed from the connection-properties before building the JDBC spec)."
+  {:added "0.42.0"}
+  [details conn-prop-nm]
+  (let [sub-prop   (fn [suffix]
+                     (keyword (str conn-prop-nm suffix)))
+        path-kw    (sub-prop "-path")
+        value-kw   (sub-prop "-value")
+        options-kw (sub-prop "-value")
+        id-kw      (sub-prop "-id")
+        value      (if-let [v (value-kw details)]     ; the -value suffix was specified; use that
+                     v
+                     (if-let [path (path-kw details)] ; the -path suffix was specified; this is actually a :file-path
+                       (do
+                         (when (premium-features/is-hosted?)
+                           (throw (ex-info
+                                    (tru "{0} (a local file path) cannot be used in Metabase hosted environment" path-kw)
+                                    {:invalid-db-details-entry (select-keys details [path-kw])})))
+                         path)
+                       (when-let [id (id-kw details)]
+                         (:value (Secret id)))))
+        source     (cond
+                     ;; set the :source due to the -path suffix (see above))
+                     (and (= "uploaded" (options-kw details)) (path-kw details))
+                     :file-path
+
+                     (id-kw details)
+                     (:source (Secret (id-kw details))))]
+    (cond-> {:connection-property-name conn-prop-nm, :subprops [path-kw value-kw id-kw]}
+      value
+      (assoc :value value, :source source))))
 
 (def
   ^{:doc "The attributes of a secret which, if changed, will result in a version bump" :private true}
@@ -108,40 +158,6 @@
                                  :name nm)
         (insert-new (u/the-id latest-version) (inc (:version latest-version))))
       (insert-new nil 1))))
-
-(defn db-details-prop->secret-map
-  "Returns a map containing `:value` and `:source` for the given `conn-prop-nm`. `conn-prop-nm` is expected to be the
-  name of a connection property having `:type` `:secret`, and the relevant sub-properties (ex: -value, -path, etc.) will
-  be resolved in order to calculate the returned map.
-
-  This returned map represents a partial Secret model instance
-  (having some of the required properties set), but also represents a discrete property that can be used in connection
-  testing (even without the Secret needing to be persisted)."
-  {:added "0.42.0"}
-  [details conn-prop-nm]
-  (let [sub-prop  (fn [suffix]
-                    (keyword (str conn-prop-nm suffix)))
-        path-kw   (sub-prop "-path")
-        value-kw  (sub-prop "-value")
-        id-kw     (sub-prop "-id")
-        value     (if-let [v (value-kw details)]     ; the -value suffix was specified; use that
-                    v
-                    (if-let [path (path-kw details)] ; the -path suffix was specified; this is actually a :file-path
-                      (do
-                        (when (premium-features/is-hosted?)
-                          (throw (ex-info
-                                   (tru "{0} (a local file path) cannot be used in Metabase hosted environment" path-kw)
-                                   {:invalid-db-details-entry (select-keys details [path-kw])})))
-                        path)
-                      (when-let [id (id-kw details)]
-                        (:value (Secret id)))))
-        source    (cond
-                    (path-kw details) ; set the :source due to the -path suffix (see above))
-                    :file-path
-
-                    (id-kw details)
-                    (:source (Secret (id-kw details))))]
-    {:value value :source source}))
 
 ;;; -------------------------------------------------- JSON Encoder --------------------------------------------------
 
