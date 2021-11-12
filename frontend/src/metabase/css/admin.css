@@ -1,7 +1,7 @@
 :root {
   --admin-nav-bg-color: var(--color-bg-dark);
   --admin-nav-bg-color-tint: var(--color-bg-dark);
-  --admin-nav-item-text-color: color(var(--color-text-white) alpha(-37%));
+  --admin-nav-item-text-color: color-mod(var(--color-text-white) alpha(-37%));
   --admin-nav-item-text-active-color: var(--color-text-white);
   --page-header-padding: 2.375rem;
 }
@@ -13,7 +13,7 @@
 }
 
 .AdminNav .NavItem {
-  color: color(var(--color-text-white) alpha(-37%));
+  color: color-mod(var(--color-text-white) alpha(-37%));
 }
 
 .AdminNav .NavItem:hover,
@@ -101,7 +101,7 @@
 
 /* TODO: remove this and apply AdminHoverItem to content rows */
 .ContentTable tbody tr:hover {
-  background-color: color(var(--color-brand) alpha(-96%));
+  background-color: color-mod(var(--color-brand) alpha(-96%));
 }
 
 .ContentTable tr:hover .Table-actions {
@@ -203,7 +203,7 @@
 }
 
 .AdminSelect:hover {
-  border-color: color(var(--color-border) blackness(+10%));
+  border-color: color-mod(var(--color-border) blackness(10%));
 }
 
 .AdminSelectBorderless {
