@@ -97,7 +97,4 @@
     (doseq [table (:tables (fetch-metadata/db-metadata database))]
       (when (is-metabase-metadata-table? table)
         (sync-metabase-metadata-table! (driver.u/database->driver database) database table)))
-    ;; Mark initial sync as complete for this database so that it will become usable in the UI
-    (when (= (:initial_sync_complete database) "incomplete")
-      (db/update! Database (u/the-id database) :nitial_sync_complete "complete"))
     {}))

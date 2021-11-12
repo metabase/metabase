@@ -9841,7 +9841,6 @@ databaseChangeLog:
             constraintName: fk_database_creator_id
             onDelete: SET NULL
 
-
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

@@ -63,16 +63,13 @@
    (sync-fks-for-table! (table/database table) table))
   ([database :- i/DatabaseInstance, table :- i/TableInstance]
    (sync-util/with-error-handling (format "Error syncing FKs for %s" (sync-util/name-for-logging table))
-     (let [fks-to-update (fetch-metadata/fk-metadata database table)
-           results       {:total-fks   (count fks-to-update)
-                          :updated-fks (sync-util/sum-numbers (fn [fk]
-                                                                (if (mark-fk! database table fk)
-                                                                  1
-                                                                  0))
-                                                              fks-to-update)}]
-       ;; Mark initial sync as complete for this table so that it will become usable in the UI
-       (when (= (:initial_sync_status table "incomplete"))
-         (db/update! Table (u/the-id table) :initial_sync_status "complete"))))))
+     (let [fks-to-update (fetch-metadata/fk-metadata database table)]
+       {:total-fks   (count fks-to-update)
+        :updated-fks (sync-util/sum-numbers (fn [fk]
+                                              (if (mark-fk! database table fk)
+                                                1
+                                                0))
+                                            fks-to-update)}))))
 
 (s/defn sync-fks!
   "Sync the foreign keys in a DATABASE. This sets appropriate values for relevant Fields in the Metabase application DB
@@ -80,6 +77,9 @@
   [database :- i/DatabaseInstance]
   (reduce (fn [update-info table]
             (let [table-fk-info (sync-fks-for-table! database table)]
+              ;; Mark the table as done with its initial sync once this step is done even if it failed, because only
+              ;; sync-aborting errors should be surfaced to the UI (see [[sync-util/exception-classes-not-to-retry]]).
+              (sync-util/set-initial-table-sync-complete! table)
               (if (instance? Exception table-fk-info)
                 (update update-info :total-failed inc)
                 (merge-with + update-info table-fk-info))))
