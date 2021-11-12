@@ -4,10 +4,10 @@ import PropTypes from "prop-types";
 import Dimension from "metabase-lib/lib/Dimension";
 
 import {
-  Container,
+  LabelContainer,
   Label,
-  PaddedInvertedColorIcon,
-} from "./DimensionLabel.styled";
+  InvertedColorRelativeSizeIcon,
+} from "../MetadataInfo.styled";
 
 DimensionLabel.propTypes = {
   className: PropTypes.string,
@@ -16,9 +16,9 @@ DimensionLabel.propTypes = {
 
 export default function DimensionLabel({ className, dimension }) {
   return (
-    <Container className={className}>
-      <PaddedInvertedColorIcon name={dimension.icon()} />
+    <LabelContainer className={className}>
+      <InvertedColorRelativeSizeIcon name={dimension.icon()} />
       <Label>{dimension.displayName()}</Label>
-    </Container>
+    </LabelContainer>
   );
 }
