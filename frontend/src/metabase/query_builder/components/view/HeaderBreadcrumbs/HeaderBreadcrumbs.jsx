@@ -8,24 +8,33 @@ const crumbShape = PropTypes.shape({
   href: PropTypes.string,
 });
 
+const partPropType = PropTypes.oneOfType([crumbShape, PropTypes.node]);
+
 HeadBreadcrumbs.propTypes = {
   variant: PropTypes.oneOf(["head", "subhead"]),
-  parts: PropTypes.arrayOf(crumbShape).isRequired,
+  parts: PropTypes.arrayOf(partPropType).isRequired,
 };
 
 export function HeadBreadcrumbs({ variant = "head", parts, ...props }) {
   return (
     <Container {...props} variant={variant}>
       {parts.map((part, index) => {
-        const { name, icon, href } = part;
         const isLast = index === parts.length - 1;
         const inactiveColor =
           isLast && variant === "head" ? "text-dark" : "text-light";
         return (
           <React.Fragment key={index}>
-            <HeaderBadge to={href} icon={icon} inactiveColor={inactiveColor}>
-              {name}
-            </HeaderBadge>
+            {React.isValidElement(part) ? (
+              part
+            ) : (
+              <HeaderBadge
+                to={part.href}
+                icon={part.icon}
+                inactiveColor={inactiveColor}
+              >
+                {part.name}
+              </HeaderBadge>
+            )}
             {!isLast && <Divider />}
           </React.Fragment>
         );
@@ -33,3 +42,5 @@ export function HeadBreadcrumbs({ variant = "head", parts, ...props }) {
     </Container>
   );
 }
+
+HeadBreadcrumbs.Badge = HeaderBadge;
