@@ -458,9 +458,9 @@
                :body
                (json/parse-string keyword)
                :ip_addresses)
-           (catch clojure.lang.ExceptionInfo e
+           (catch Exception e
              (log/error e (trs "Error fetching Metabase Cloud gateway IP addresses:"))))))
-   :ttl/threshold (* 1000 60 5)))
+   :ttl/threshold (* 1000 60 60 24)))
 
 (defsetting cloud-gateway-ips
   (deferred-tru "Metabase Cloud gateway IP addresses, to configure connections to DBs behind firewalls")
