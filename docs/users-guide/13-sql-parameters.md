@@ -8,7 +8,9 @@ You can create SQL templates by adding variables to your SQL queries in the [Nat
 
 Typing `{% raw %}{{variable_name}}{% endraw %}` in your native query creates a variable called `variable_name`.
 
-This example defines a Text variable called `cat`:
+Field Filter, a special type of filter, have a [slightly different syntax](#field-filter-syntax).
+
+This example defines a **Text** variable called `cat`:
 
 ```
 SELECT count(*)
@@ -16,12 +18,12 @@ FROM products
 WHERE category = {% raw %}{{cat}}{% endraw %}
 ```
 
-Metabase will read the variable and attach a filter widget to the query, which people can use to change the value inserted into the `cat` variable. So if someone entered "Gizmo" into the filter widget, the query Metabase would run would be:
+Metabase will read the variable and attach a filter widget to the query, which people can use to change the value inserted into the `cat` variable with quotes. So if someone entered "Gizmo" into the filter widget, the query Metabase would run would be:
 
 ```
 SELECT count(*)
 FROM products
-WHERE category = "Gizmo"
+WHERE category = 'Gizmo'
 ```
 
 If you're writing a native MongoDB query, your query would look more like this, with the `cat` variable being defined inside of the `match` clause.
@@ -30,7 +32,6 @@ If you're writing a native MongoDB query, your query would look more like this, 
 {% raw %}[{ $match: { category: {{cat}} } }]{% endraw %}
 ```
 
-Field filters, a special type of filter, have a [slightly different syntax](#field-filter-syntax).
 
 ## Setting SQL variables
 
@@ -48,30 +49,32 @@ To add a value to the URL, follow this syntax:
 For example, to set the `{% raw %}{{cat}}{%endraw%}` variable on a question to the value "Gizmo", your URL would look something like:
 
 ```
-https://www.yourmb.com/question/42-eg-question?cat=Gizmo
+https://metabase.example.com/question/42-eg-question?cat=Gizmo
 ```
 
 To set multiple variables, separate parameters with an ampersand (`&`):
 
 ```
-https://www.yourmb.com/question/42-eg-question?cat=Gizmo&maxprice=50
+https://metabase.example.com/question/42-eg-question?cat=Gizmo&maxprice=50
 ```
 
 ## Setting a default value
 
-If you input a default value for your variable, this value will be inserted into filter widget by default. If you clear the filter widget, no value will be passed (i.e., not even the default value).
+If you set a default value for your variable, this value will be inserted into filter widget by default, and will also be used, when the filter widget is empty.
 
 
 ### Default value in the query
 
-You can also define default values directly in your query, which are useful when defining complex default values. Note that the hash (`#`) might need to be replaced by the comment syntax of the database you're using. Some databases use double-dashes (`--`) as comment syntax.
+You can also define default values directly in your query, which are useful when defining complex default values.
+
+Note that the hash (`#`) might need to be replaced by the comment syntax of the database you're using. Some databases use double-dashes (`--`) as comment syntax.
 
 Here's an example that sets the default value of a Date filter to the current date:
 
 ```
 SELECT *
 FROM products
-WHERE created_at = [[ {% raw %}{{dateOfCreation}}{% endraw %} #]]CURRENT_DATE()
+WHERE DATE(created_at) = [[ {% raw %}{{dateOfCreation}}{% endraw %} #]]CURRENT_DATE()
 ```
 
 ## SQL variable types
@@ -95,7 +98,7 @@ You can make a clause optional in a query. For example, you can create an option
 
 To make a clause optional in your native query, type `[[brackets around a {% raw %}{{variable}}{% endraw %}]]`. If you input a value in the filter widget for the `variable`, then the entire clause is placed into the template; otherwise Metabase will ignore the clause.
 
-In this example, if no value is given to `cat` (either from its filter widget or parameters in the URL), then the query will just select all the rows from the `products` table. But if `cat` does have a value, like `Widget`, then the query will only grab the products with a category type of `Widget`:
+In this example, if no value is given to `cat`, then the query will just select all the rows from the `products` table. But if `cat` does have a value, like "Widget", then the query will only grab the products with a category type of Widget:
 
 ```
 SELECT count(*)
@@ -149,20 +152,16 @@ Field filter variables should be used inside of a `WHERE` clause in SQL, or a `$
 Field filters ONLY work with the following field types:
 
 - Category
-- City
-- Entity Key
 - Entity Name
+- Entity Key
 - Foreign Key
+- City
 - State
-- UNIX Timestamp (Seconds)
-- UNIX Timestamp (Milliseconds)
 - ZIP or Postal Code
 
-The field can also be a datetime, which can be left as "No semantic type" in the data model.
+The field can also be a date or timestamp, which can be left as "No semantic type" in the data model.
 
 When you set the __Variable type__ to "Field Filter", Metabase will present an option to set the __Field to map to__, as well as the __Filter widget type__. The options available for the Filter widget type depend on the field's type. For example, if you map to a field of type Category, you'll see options for either "Category" or None. If you map to a Date Field, you'll see options for None, Month and year, Quarter and year, Single date, Date range, or Date filter.
-
-If you don't want a widget on the question at all, which you might do, for example, if you just want to allow this question to be mapped to a dashboard filter (see more on that below), you can set the __Filter widget type__ to "None".
 
 If you're not seeing the option to display a filter widget, make sure the mapped field is set to one of the above types, and then try manually syncing your database from the "Databases" section of the Admin Panel to force Metabase to scan and cache the field's values.
 
@@ -170,7 +169,7 @@ If you want to map a Field Filter to a field that isn't one of the compatible ty
 
 ## Field filter syntax
 
-The syntax for Field Filters differs from a Text, Number, or Date SQL variable.
+The syntax for Field Filters differs from a Text, Number, or Date variable.
 
 ```
 SELECT count(*)
@@ -178,7 +177,7 @@ FROM products
 WHERE {% raw %}{{date_var}}{% endraw %}
 ```
 
-Note the lack of an `=`. The reason you need to structure field filters this way is to handle cases where Metabase generates the code for you. For example, for handling situations where someone selects multiple values in the filter widget, or a range of dates.
+Note the lack of the column and operator (eg. `=`). The reason you need to structure field filters this way is to handle cases where Metabase generates the code for you. For example, for handling situations where someone selects multiple values in the filter widget, or a range of dates. It is not possible to control the generated SQL, so if you need greater control, then you will need to use simpler variable types.
 
 
 A MongoDB native query example might look like this:
@@ -265,15 +264,15 @@ The workaround is to either avoid aliases and use full table names, or instead u
 
 ### Some databases require the schema in the FROM clause
 
-An example for Oracle would be `FROM "schema"."table"`. In BigQuery, back ticks are needed, like `` FROM `dataset_name.table` ``.
+An example for **BigQuery**, back ticks are needed, like `` FROM `dataset.table` ``. If "Project ID (override)" is used in the connection settings, then it should be `` FROM `project.dataset.table` ``.
+
+For **Oracle** it would be `FROM "schema"."table"`.
 
 ## Connecting a SQL question to a dashboard filter
 
 In order for a saved SQL/native question to be usable with a dashboard filter, the question must contain at least one variable.
 
 The kind of dashboard filter that can be used with the SQL question depends on the field. For example, if you have a field filter called `{% raw %}{{var}}{% endraw %}` and you map it to a State field, you can map a Location dashboard filter to your SQL question. In this example, you'd create a new dashboard (or go to an existing dashboard), click the "Edit" button, add the SQL question that contains your State field filter variable, add a new dashboard filter (or edit an existing Location filter), then click the dropdown on the SQL question card to see the State field filter.
-
-**Note that the SQL variable's default value for a question has no effect on the behavior of your SQL question when viewed in a dashboard.**
 
 ![Field filter](images/sql-parameters/state-field-filter.png)
 
