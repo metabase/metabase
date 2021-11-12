@@ -74,8 +74,15 @@ export function setLocalization(translationsObject) {
   // eslint-disable-next-line react-hooks/rules-of-hooks
   useLocale(locale);
 
-  moment.locale(mapToMomentLocale(locale));
+  updateMomentLocale(locale);
   updateMomentStartOfWeek(locale);
+}
+
+function updateMomentLocale(locale) {
+  const momentLocale = mapToMomentLocale(locale);
+  require("moment/locale/" + momentLocale);
+
+  moment.locale(mapToMomentLocale(momentLocale));
 }
 
 function mapToMomentLocale(locale) {

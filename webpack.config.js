@@ -131,7 +131,6 @@ const config = (module.exports = {
         process.env.MB_EDITION === "ee"
           ? ENTERPRISE_SRC_PATH + "/plugins"
           : SRC_PATH + "/lib/noop",
-      moment: __dirname + "/node_modules/moment/min/moment-with-locales.js",
     },
   },
 
