@@ -327,10 +327,22 @@ describe("QuestionDataSource", () => {
       const { question, questionType } = testCase;
 
       describe(questionType, () => {
-        it("displays 2 joined tables", () => {
-          setup({ question });
-          expect(screen.queryByText(/Orders/)).toBeInTheDocument();
-          expect(screen.queryByText(/Products/)).toBeInTheDocument();
+        it("displays 2 joined tables (metabase#17961)", () => {
+          setup({ question, subHead: true });
+
+          const orders = screen.queryByText(/Orders/);
+          const products = screen.queryByText(/Products/);
+
+          expect(orders).toBeInTheDocument();
+          expect(orders.closest("a")).toHaveAttribute(
+            "href",
+            ORDERS.newQuestion().getUrl(),
+          );
+          expect(products).toBeInTheDocument();
+          expect(products.closest("a")).toHaveAttribute(
+            "href",
+            PRODUCTS.newQuestion().getUrl(),
+          );
         });
       });
     });
@@ -342,11 +354,28 @@ describe("QuestionDataSource", () => {
       const { question, questionType } = testCase;
 
       describe(questionType, () => {
-        it("displays > 2 joined tables", () => {
-          setup({ question });
-          expect(screen.queryByText(/Orders/)).toBeInTheDocument();
-          expect(screen.queryByText(/Products/)).toBeInTheDocument();
-          expect(screen.queryByText(/People/)).toBeInTheDocument();
+        it("displays > 2 joined tables (metabase#17961)", () => {
+          setup({ question, subHead: true });
+
+          const orders = screen.queryByText(/Orders/);
+          const products = screen.queryByText(/Products/);
+          const people = screen.queryByText(/People/);
+
+          expect(orders).toBeInTheDocument();
+          expect(orders.closest("a")).toHaveAttribute(
+            "href",
+            ORDERS.newQuestion().getUrl(),
+          );
+          expect(products).toBeInTheDocument();
+          expect(products.closest("a")).toHaveAttribute(
+            "href",
+            PRODUCTS.newQuestion().getUrl(),
+          );
+          expect(people).toBeInTheDocument();
+          expect(people.closest("a")).toHaveAttribute(
+            "href",
+            PEOPLE.newQuestion().getUrl(),
+          );
         });
       });
     });
