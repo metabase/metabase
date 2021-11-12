@@ -55,10 +55,13 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
 
   const table = query.table();
   if (table && table.hasSchema()) {
-    parts.push({
-      name: table.schema_name,
-      href: database.id >= 0 && Urls.browseSchema(table),
-    });
+    const isBasedOnSavedQuestion = isVirtualCardId(table.id);
+    if (!isBasedOnSavedQuestion) {
+      parts.push({
+        name: table.schema_name,
+        href: database.id >= 0 && Urls.browseSchema(table),
+      });
+    }
   }
 
   if (table) {
