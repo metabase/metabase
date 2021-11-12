@@ -1,11 +1,17 @@
-import { popover, restore, setupSMTP } from "__support__/e2e/cypress";
+import {
+  describeWithToken,
+  popover,
+  restore,
+  setupSMTP,
+  sidebar,
+} from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { admin } = USERS;
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATASET;
 
-describe("issue 18669", () => {
+describeWithToken("issue 18669", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -17,7 +23,6 @@ describe("issue 18669", () => {
 
         cy.intercept("POST", `/api/card/${card.id}/query`).as("cardQuery");
         cy.visit(`/dashboard/${card.dashboard_id}`);
-        cy.wait("@cardQuery");
       },
     );
   });
@@ -31,6 +36,10 @@ describe("issue 18669", () => {
       .click()
       .type(`${admin.first_name} ${admin.last_name}{enter}`)
       .blur();
+
+    sidebar().within(() => {
+      cy.findByText("Doohickey").click();
+    });
 
     popover().within(() => {
       cy.findByText("Gizmo").click();
