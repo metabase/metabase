@@ -2,6 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import * as Urls from "metabase/lib/urls";
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
+import { TablesDivider } from "./QuestionDataSource.styled";
 
 QuestionDataSource.propTypes = {
   question: PropTypes.object,
@@ -57,21 +58,26 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
   }
 
   if (table) {
-    let name = table.displayName();
-    if (isStructuredQuery) {
-      name = query.joins().reduce((name, join) => {
-        const joinedTable = join.joinedTable();
-        if (joinedTable) {
-          return name + " + " + joinedTable.displayName();
-        } else {
-          return name;
-        }
-      }, name);
+    const hasTableLink = subHead || isObjectDetail;
+    if (!isStructuredQuery) {
+      return {
+        name: table.displayName(),
+        link: hasTableLink ? table.newQuestion().getUrl() : "",
+      };
     }
-    parts.push({
-      name: name,
-      href: (subHead || isObjectDetail) && table.newQuestion().getUrl(),
-    });
+
+    const allTables = [
+      table,
+      ...query.joins().map(j => j.joinedTable()),
+    ].filter(Boolean);
+
+    parts.push(
+      <QuestionTableBadges
+        tables={allTables}
+        subHead={subHead}
+        hasLink={hasTableLink}
+      />,
+    );
   }
 
   if (isObjectDetail) {
@@ -80,7 +86,34 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
     });
   }
 
-  return parts.filter(({ name, icon }) => name || icon);
+  return parts.filter(
+    part => React.isValidElement(part) || part.name || part.icon,
+  );
+}
+
+QuestionTableBadges.propTypes = {
+  tables: PropTypes.arrayOf(PropTypes.object).isRequired,
+  hasLink: PropTypes.bool,
+  subHead: PropTypes.bool,
+};
+
+function QuestionTableBadges({ tables, subHead, hasLink }) {
+  const parts = tables.map(table => (
+    <HeadBreadcrumbs.Badge
+      key={table.id}
+      to={hasLink ? table.newQuestion().getUrl() : ""}
+    >
+      {table.displayName()}
+    </HeadBreadcrumbs.Badge>
+  ));
+
+  return (
+    <HeadBreadcrumbs
+      parts={parts}
+      variant={subHead ? "subhead" : "head"}
+      divider={<TablesDivider>+</TablesDivider>}
+    />
+  );
 }
 
 export default QuestionDataSource;
