@@ -1,5 +1,9 @@
 import React from "react";
 import PropTypes from "prop-types";
+import {
+  isVirtualCardId,
+  getQuestionIdFromVirtualTableId,
+} from "metabase/lib/saved-questions";
 import * as Urls from "metabase/lib/urls";
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 import { TablesDivider } from "./QuestionDataSource.styled";
@@ -62,7 +66,7 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
     if (!isStructuredQuery) {
       return {
         name: table.displayName(),
-        link: hasTableLink ? table.newQuestion().getUrl() : "",
+        link: hasTableLink ? getTableURL() : "",
       };
     }
 
@@ -101,7 +105,7 @@ function QuestionTableBadges({ tables, subHead, hasLink }) {
   const parts = tables.map(table => (
     <HeadBreadcrumbs.Badge
       key={table.id}
-      to={hasLink ? table.newQuestion().getUrl() : ""}
+      to={hasLink ? getTableURL(table) : ""}
     >
       {table.displayName()}
     </HeadBreadcrumbs.Badge>
@@ -114,6 +118,14 @@ function QuestionTableBadges({ tables, subHead, hasLink }) {
       divider={<TablesDivider>+</TablesDivider>}
     />
   );
+}
+
+function getTableURL(table) {
+  if (isVirtualCardId(table.id)) {
+    const cardId = getQuestionIdFromVirtualTableId(table.id);
+    return Urls.question({ id: cardId, name: table.displayName() });
+  }
+  return table.newQuestion().getUrl();
 }
 
 export default QuestionDataSource;
