@@ -184,27 +184,32 @@
 
 (deftest referenced-objects->existing-objects-test
   (mt/with-temp Dashboard [{dashboard-id :id}]
-    (is (= {"dashboard" #{dashboard-id}, "card" nil}
+    (is (= {"dashboard" #{dashboard-id}}
            (#'activity-api/referenced-objects->existing-objects {"dashboard" #{dashboard-id 0}
                                                                  "card"      #{0}})))))
 (deftest add-model-exists-info-test
   (mt/with-temp* [Dashboard [{dashboard-id :id}]
-                  Card      [{card-id :id}]]
+                  Card      [{card-id :id}]
+                  Card      [{dataset-id :id} {:dataset true}]]
     (is (= [{:model "dashboard", :model_id dashboard-id, :model_exists true}
             {:model "card", :model_id 0, :model_exists false}
+            {:model "dataset", :model_id dataset-id, :model_exists true}
             {:model        "dashboard"
              :model_id     0
              :model_exists false
              :topic        :dashboard-remove-cards
              :details      {:dashcards [{:card_id card-id, :exists true}
-                                        {:card_id 0, :exists false}]}}]
+                                        {:card_id 0, :exists false}
+                                        {:card_id dataset-id, :exists true}]}}]
            (#'activity-api/add-model-exists-info [{:model "dashboard", :model_id dashboard-id}
                                                   {:model "card", :model_id 0}
+                                                  {:model "card", :model_id dataset-id}
                                                   {:model    "dashboard"
                                                    :model_id 0
                                                    :topic    :dashboard-remove-cards
                                                    :details  {:dashcards [{:card_id card-id}
-                                                                          {:card_id 0}]}}])))))
+                                                                          {:card_id 0}
+                                                                          {:card_id dataset-id}]}}])))))
 
 (deftest activity-visibility-test
   (mt/with-temp Activity [activity {:topic     "user-joined"

@@ -37,28 +37,47 @@
      (referenced-objects->existing-objects {\"dashboard\" #{41 42 43}, \"card\" #{100 101}, ...})
      ;; -> {\"dashboard\" #{41 43}, \"card\" #{101}, ...}"
   [referenced-objects]
-  (into {} (for [[model ids] referenced-objects
-                 :when       (seq ids)]
-             {model (case model
-                      "card"      (db/select-ids 'Card,      :id [:in ids])
-                      "dashboard" (db/select-ids 'Dashboard, :id [:in ids])
-                      "metric"    (db/select-ids 'Metric,    :id [:in ids], :archived false)
-                      "pulse"     (db/select-ids 'Pulse,     :id [:in ids])
-                      "segment"   (db/select-ids 'Segment,   :id [:in ids], :archived false)
-                      nil)}))) ; don't care about other models
+  (merge
+   (when-let [card-ids (get referenced-objects "card")]
+     (let [id->dataset?                       (db/select-id->field :dataset Card
+                                                                   :id [:in card-ids])
+           {dataset-ids true card-ids' false} (group-by (comp boolean id->dataset?)
+                                                        ;; only existing ids go back
+                                                        (keys id->dataset?))]
+       (cond-> {}
+         (seq dataset-ids) (assoc "dataset" (set dataset-ids))
+         (seq card-ids')   (assoc "card" (set card-ids')))))
+   (into {} (for [[model ids] (dissoc referenced-objects "card")
+                  :when       (seq ids)]
+              {model (case model
+                       "dashboard" (db/select-ids 'Dashboard, :id [:in ids])
+                       "metric"    (db/select-ids 'Metric,    :id [:in ids], :archived false)
+                       "pulse"     (db/select-ids 'Pulse,     :id [:in ids])
+                       "segment"   (db/select-ids 'Segment,   :id [:in ids], :archived false)
+                       nil)})))) ; don't care about other models
 
 (defn- add-model-exists-info
   "Add `:model_exists` keys to `activities`, and `:exists` keys to nested dashcards where appropriate."
   [activities]
-  (let [existing-objects (-> activities activities->referenced-objects referenced-objects->existing-objects)]
-    (for [{:keys [model model_id], :as activity} activities]
-      (let [activity (assoc activity :model_exists (contains? (get existing-objects model) model_id))]
-        (if-not (dashcard-activity? activity)
-          activity
-          (update-in activity [:details :dashcards] (fn [dashcards]
-                                                      (for [dashcard dashcards]
-                                                        (assoc dashcard :exists (contains? (get existing-objects "card")
-                                                                                           (:card_id dashcard)))))))))))
+  (let [existing-objects (-> activities activities->referenced-objects referenced-objects->existing-objects)
+        existing-dataset? (fn [card-id]
+                            (contains? (get existing-objects "dataset") card-id))]
+    (for [{:keys [model_id], :as activity} activities]
+      (let [model (if (and (= (:model activity) "card")
+                           (existing-dataset? (:model_id activity)))
+                    "dataset"
+                    (:model activity))]
+        (cond-> (assoc activity
+                       :model_exists (contains? (get existing-objects model) model_id)
+                       :model model)
+          (dashcard-activity? activity)
+          (update-in [:details :dashcards]
+                     (fn [dashcards]
+                       (for [dashcard dashcards]
+                         (assoc dashcard :exists
+                                (or (existing-dataset? (:card_id dashcard))
+                                    (contains? (get existing-objects "card")
+                                               (:card_id dashcard))))))))))))
 
 (defendpoint GET "/"
   "Get recent activity."
