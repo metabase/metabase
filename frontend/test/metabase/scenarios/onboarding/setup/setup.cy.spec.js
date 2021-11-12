@@ -1,4 +1,4 @@
-import { popover, restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/cypress";
 
 // we're testing for one known (en) and one unknown (xx) locale
 const locales = ["en", "xx"];
