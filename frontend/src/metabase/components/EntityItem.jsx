@@ -10,7 +10,11 @@ import CheckBox from "metabase/components/CheckBox";
 import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 
-import { EntityIconWrapper, EntityItemWrapper } from "./EntityItem.styled";
+import {
+  EntityIconWrapper,
+  EntityItemSpinner,
+  EntityItemWrapper,
+} from "./EntityItem.styled";
 
 function EntityIconCheckBox({
   item,
@@ -19,6 +23,7 @@ function EntityIconCheckBox({
   pinned,
   selectable,
   selected,
+  disabled,
   onToggleSelected,
   ...props
 }) {
@@ -34,6 +39,7 @@ function EntityIconCheckBox({
       model={item.model}
       onClick={selectable ? handleClick : null}
       circle
+      disabled={disabled}
       {...props}
     >
       {selectable ? (
@@ -140,6 +146,8 @@ const EntityItem = ({
   buttons,
   extraInfo,
   pinned,
+  loading,
+  disabled,
 }) => {
   const spacing = ENTITY_ITEM_SPACING[variant] || { py: 2 };
 
@@ -149,6 +157,7 @@ const EntityItem = ({
       className={cx("hover-parent hover--visibility", {
         "bg-light-hover": variant === "list",
       })}
+      disabled={disabled}
     >
       <EntityIconCheckBox
         item={item}
@@ -157,6 +166,7 @@ const EntityItem = ({
         pinned={pinned}
         selectable={selectable}
         selected={selected}
+        disabled={disabled}
         onToggleSelected={onToggleSelected}
         style={{
           marginRight: "16px",
@@ -170,13 +180,14 @@ const EntityItem = ({
 
       <Flex ml="auto" pr={1} align="center" onClick={e => e.preventDefault()}>
         {buttons}
-        {item.description && (
+        {!loading && item.description && (
           <Icon
             tooltip={item.description}
             name="info"
             className="ml1 text-medium"
           />
         )}
+        {loading && <EntityItemSpinner size={24} borderWidth={3} />}
         <EntityItemMenu
           item={item}
           onPin={onPin}

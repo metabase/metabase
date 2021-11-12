@@ -1,5 +1,5 @@
 :root {
-  --form-field-border-color: color(var(--color-border) blackness(+10%));
+  --form-field-border-color: color-mod(var(--color-border) blackness(10%));
 }
 ::-webkit-input-placeholder {
   color: var(--color-text-light);
@@ -55,7 +55,7 @@
 }
 .Form-file-input::before {
   background: transparent;
-  border: 1px solid color(var(--color-border) blackness(+ 5%));
+  border: 1px solid color-mod(var(--color-border) blackness(5%));
   border-radius: 6px;
   box-sizing: border-box;
   color: var(--color-text-dark);

@@ -111,7 +111,30 @@
                  (assoc :info {:card-id (u/the-id card-2)}))
              (resolve-card-id-source-tables
               (wrap-inner-query
-               {:source-table (str "card__" (u/the-id card-2)), :limit 25})))))))
+               {:source-table (str "card__" (u/the-id card-2)), :limit 25}))))))
+  (testing "Marks datasets as from a dataset"
+    (testing "top level dataset queries are marked as such"
+      (mt/with-temp* [Card [card {:dataset_query (mt/mbql-query venues {:limit 100})
+                                  :dataset       true}]]
+        (let [results (qp/process-query {:type     :query
+                                         :query    {:source-table (str "card__" (u/the-id card))
+                                                    :limit        1}
+                                         :database mbql.s/saved-questions-virtual-database-id})]
+          (is (= {:dataset true :rows 1}
+                 (-> results :data (select-keys [:dataset :rows]) (update :rows count)))))))
+    (testing "But not when the dataset is lower than top level"
+      (mt/with-temp* [Card [dataset {:dataset_query (mt/mbql-query venues {:limit 100})
+                                     :dataset       true}]
+                      Card [card    {:dataset_query {:database mbql.s/saved-questions-virtual-database-id
+                                                     :type     :query
+                                                     :query    {:source-table (str "card__" (u/the-id dataset))}}}]]
+        (let [results (qp/process-query {:type     :query
+                                         :query    {:source-table (str "card__" (u/the-id card))
+                                                    :limit        1}
+                                         :database mbql.s/saved-questions-virtual-database-id})]
+          (is (= {:rows 1}
+                 (-> results :data (select-keys [:dataset :rows]) (update :rows count)))))))))
+
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

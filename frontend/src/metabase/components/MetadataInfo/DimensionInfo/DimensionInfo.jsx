@@ -3,13 +3,13 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import Dimension from "metabase-lib/lib/Dimension";
-import DimensionLabel from "metabase/components/DimensionLabel";
+import DimensionLabel from "metabase/components/MetadataInfo/DimensionLabel";
 
 import {
-  Container,
+  InfoContainer,
   Description,
   EmptyDescription,
-} from "./DimensionInfo.styled";
+} from "../MetadataInfo.styled";
 
 DimensionInfo.propTypes = {
   className: PropTypes.string,
@@ -20,14 +20,14 @@ function DimensionInfo({ className, dimension }) {
   const field = dimension.field();
   const description = field?.description;
   return (
-    <Container className={className}>
+    <InfoContainer className={className}>
       {description ? (
         <Description>{description}</Description>
       ) : (
         <EmptyDescription>{t`No description`}</EmptyDescription>
       )}
       <DimensionLabel dimension={dimension} />
-    </Container>
+    </InfoContainer>
   );
 }
 
