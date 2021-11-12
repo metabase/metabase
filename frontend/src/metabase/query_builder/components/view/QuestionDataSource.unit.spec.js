@@ -110,6 +110,13 @@ const ORDER_DETAIL_QUERY = {
   },
 };
 
+// Nested query
+
+const SOURCE_QUESTION_ID = 305;
+const SOURCE_QUESTION_VIRTUAL_ID = `card__${SOURCE_QUESTION_ID}`;
+const SOURCE_QUESTION_NAME = "Another saved question";
+const SOURCE_QUESTION_COLLECTION_SCHEMA_NAME = "Everything else";
+
 // Factories
 
 function getQuestion(card) {
@@ -134,6 +141,63 @@ function getSavedNativeQuestion(overrides) {
     ...SAVED_QUESTION,
     ...overrides,
   });
+}
+
+function getNestedQuestionTableMock(isMultiSchemaDB) {
+  const db = isMultiSchemaDB ? MULTI_SCHEMA_DATABASE : SAMPLE_DATASET;
+  return {
+    id: SOURCE_QUESTION_VIRTUAL_ID,
+    db,
+    db_id: db.id,
+    display_name: SOURCE_QUESTION_NAME,
+    schema_name: SOURCE_QUESTION_COLLECTION_SCHEMA_NAME,
+    schema: {
+      id: `-1337:${SOURCE_QUESTION_COLLECTION_SCHEMA_NAME}`,
+      name: SOURCE_QUESTION_COLLECTION_SCHEMA_NAME,
+      database: {
+        id: -1337,
+        initial_sync: true,
+        is_saved_questions: true,
+      },
+    },
+    initial_sync: true,
+    displayName: () => SOURCE_QUESTION_NAME,
+    hasSchema: () => isMultiSchemaDB,
+  };
+}
+
+function getAdHocNestedQuestion({ isMultiSchemaDB } = {}) {
+  const db = isMultiSchemaDB ? MULTI_SCHEMA_DATABASE : SAMPLE_DATASET;
+  const question = getAdHocQuestion({
+    dataset_query: {
+      type: "query",
+      database: db.id,
+      query: {
+        "source-table": SOURCE_QUESTION_VIRTUAL_ID,
+      },
+    },
+  });
+
+  question.query().table = () => getNestedQuestionTableMock(isMultiSchemaDB);
+
+  return question;
+}
+
+function getSavedNestedQuestion({ isMultiSchemaDB } = {}) {
+  const db = isMultiSchemaDB ? MULTI_SCHEMA_DATABASE : SAMPLE_DATASET;
+  const question = getSavedGUIQuestion({
+    dataset_query: {
+      type: "query",
+      database: db.id,
+      query: {
+        "source-table": SOURCE_QUESTION_VIRTUAL_ID,
+      },
+    },
+  });
+
+  question.query().table = () => getNestedQuestionTableMock(isMultiSchemaDB);
+
+  return question;
 }
 
 class ErrorBoundary extends React.Component {
@@ -218,8 +282,29 @@ describe("QuestionDataSource", () => {
   };
 
   const GUI_TEST_CASES = Object.values(GUI_TEST_CASE);
+
+  const NESTED_TEST_CASES = {
+    SAVED: {
+      question: getSavedNestedQuestion({ isMultiSchemaDB: false }),
+      questionType: "saved nested question",
+    },
+    SAVED_MULTI_SCHEMA: {
+      question: getSavedNestedQuestion({ isMultiSchemaDB: true }),
+      questionType: "saved nested question using multi-schema DB",
+    },
+    AD_HOC: {
+      question: getAdHocNestedQuestion({ isMultiSchemaDB: false }),
+      questionType: "ad-hoc nested question",
+    },
+    AD_HOC_MULTI_SCHEMA: {
+      question: getAdHocNestedQuestion({ isMultiSchemaDB: true }),
+      questionType: "ad-hoc nested question using multi-schema DB",
+    },
+  };
+
   const ALL_TEST_CASES = [
     ...GUI_TEST_CASES,
+    ...Object.values(NESTED_TEST_CASES),
     {
       question: getNativeQuestion(),
       questionType: "not saved native question",
@@ -376,6 +461,35 @@ describe("QuestionDataSource", () => {
             "href",
             PEOPLE.newQuestion().getUrl(),
           );
+        });
+      });
+    });
+  });
+
+  describe("Nested", () => {
+    Object.values(NESTED_TEST_CASES).forEach(testCase => {
+      const { question, questionType } = testCase;
+
+      describe(questionType, () => {
+        it("displays source question (metabase#12616)", () => {
+          setup({ question, subHead: true });
+          const node = screen.queryByText(SOURCE_QUESTION_NAME);
+          expect(node).toBeInTheDocument();
+          expect(node.closest("a")).toHaveAttribute(
+            "href",
+            Urls.question({
+              id: SOURCE_QUESTION_ID,
+              name: SOURCE_QUESTION_NAME,
+            }),
+          );
+        });
+
+        it("does not display virtual schema (metabase#12616)", () => {
+          setup({ question, subHead: true });
+          const node = screen.queryByText(
+            SOURCE_QUESTION_COLLECTION_SCHEMA_NAME,
+          );
+          expect(node).not.toBeInTheDocument();
         });
       });
     });
