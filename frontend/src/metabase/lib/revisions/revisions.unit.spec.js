@@ -254,6 +254,28 @@ describe("getRevisionDescription | questions", () => {
       "changed the visualization settings",
     );
   });
+
+  it("handles turning a question into a dataset", () => {
+    const revision = getSimpleRevision({
+      field: "dataset",
+      before: false,
+      after: true,
+    });
+
+    expect(getRevisionDescription(revision)).toBe("turned this into a dataset");
+  });
+
+  it("handles turning a dataset back into a saved question", () => {
+    const revision = getSimpleRevision({
+      field: "dataset",
+      before: true,
+      after: false,
+    });
+
+    expect(getRevisionDescription(revision)).toBe(
+      "reverted this from a dataset to a saved question",
+    );
+  });
 });
 
 describe("getRevisionDescription | dashboards", () => {

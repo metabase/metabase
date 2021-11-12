@@ -9,6 +9,10 @@ const spinnerAnimation = keyframes`
   }
 `;
 
+export const SpinnerRoot = styled.div`
+  font-size: 0;
+`;
+
 export const SpinnerIcon = styled.div`
   display: inline-block;
   box-sizing: border-box;
@@ -35,9 +39,5 @@ export const SpinnerIcon = styled.div`
     position: relative;
     top: ${props => `-${props.borderWidth}px`};
     left: ${props => `-${props.borderWidth}px`};
-  }
-
-  @media (prefers-reduced-motion) {
-    animation: none;
   }
 `;

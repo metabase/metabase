@@ -9,14 +9,9 @@ import {
   SortableElement,
   SortableHandle,
 } from "metabase/components/sortable";
-import { getVisibleParameters } from "metabase/meta/Parameter";
-import { getValuePopulatedParameters } from "metabase/parameters/utils/parameter-values";
+import { getVisibleParameters } from "metabase/parameters/utils/ui";
 
-import type {
-  ParameterId,
-  Parameter,
-  ParameterValues,
-} from "metabase-types/types/Parameter";
+import type { ParameterId, Parameter } from "metabase-types/types/Parameter";
 import type { DashboardWithCards } from "metabase-types/types/Dashboard";
 
 type Props = {
@@ -25,13 +20,11 @@ type Props = {
   parameters: Parameter[],
   dashboard?: DashboardWithCards,
   editingParameter?: ?Parameter,
-  parameterValues?: ParameterValues,
 
   isFullscreen?: boolean,
   isNightMode?: boolean,
   hideParameters?: ?string, // comma separated list of slugs
   isEditing?: boolean,
-  isQB?: boolean,
   vertical?: boolean,
   commitImmediately?: boolean,
 
@@ -65,13 +58,11 @@ function ParametersList({
   parameters,
   dashboard,
   editingParameter,
-  parameterValues,
 
   isFullscreen,
   isNightMode,
   hideParameters,
   isEditing,
-  isQB,
   vertical,
   commitImmediately,
 
@@ -97,13 +88,8 @@ function ParametersList({
     }
   };
 
-  const valuePopulatedParameters = getValuePopulatedParameters(
-    parameters,
-    parameterValues,
-  );
-
   const visibleValuePopulatedParameters = getVisibleParameters(
-    valuePopulatedParameters,
+    parameters,
     hideParameters,
   );
 
@@ -117,13 +103,12 @@ function ParametersList({
     ParameterWidgetList = StaticParameterWidgetList;
   }
 
-  return (
+  return visibleValuePopulatedParameters.length > 0 ? (
     <ParameterWidgetList
       className={cx(
         className,
         "flex align-end flex-wrap",
         vertical ? "flex-column" : "flex-row",
-        { mt1: isQB },
       )}
       axis="x"
       distance={9}
@@ -138,7 +123,7 @@ function ParametersList({
           isFullscreen={isFullscreen}
           isNightMode={isNightMode}
           parameter={valuePopulatedParameter}
-          parameters={valuePopulatedParameters}
+          parameters={parameters}
           dashboard={dashboard}
           editingParameter={editingParameter}
           setEditingParameter={setEditingParameter}
@@ -154,7 +139,7 @@ function ParametersList({
         />
       ))}
     </ParameterWidgetList>
-  );
+  ) : null;
 }
 
 ParametersList.defaultProps = {

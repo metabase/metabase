@@ -52,12 +52,12 @@
 }
 
 .Dashboard.Dashboard--night.Dashboard--fullscreen .fullscreen-night-text {
-  color: color(var(--color-text-white) alpha(-14%));
+  color: color-mod(var(--color-text-white) alpha(-14%));
   transition: color 1s linear;
 }
 
 .Dashboard.Dashboard--night .DashCard .Card svg text {
-  fill: color(var(--color-text-white) alpha(-14%)) !important;
+  fill: color-mod(var(--color-text-white) alpha(-14%)) !important;
 }
 
 .Dashboard.Dashboard--night .DashCard .Card {
@@ -159,6 +159,13 @@
   box-shadow: 0px 1px 3px var(--color-shadow);
   border-color: transparent;
   border-radius: 8px;
+}
+
+@media (prefers-reduced-motion) {
+  /* short duration (instead of none) to still trigger transition events */
+  .DashCard {
+    transition-duration: 10ms !important;
+  }
 }
 
 .Dash--editing .DashCard.react-draggable-dragging .Card {
@@ -323,7 +330,7 @@
 
 /* when in night mode code snippets should have a more readable background-color */
 .Dashboard--night pre code {
-  background-color: color(var(--color-bg-white) alpha(-86%));
+  background-color: color-mod(var(--color-bg-white) alpha(-86%));
 }
 
 .Dashboard--night text.value-label-outline {

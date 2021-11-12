@@ -26,6 +26,7 @@ import {
 import { buildCollectionTree, findCollectionByName } from "./utils";
 
 const propTypes = {
+  isDatasets: PropTypes.bool,
   onSelect: PropTypes.func.isRequired,
   onBack: PropTypes.func.isRequired,
   collections: PropTypes.array.isRequired,
@@ -46,6 +47,7 @@ const ALL_PERSONAL_COLLECTIONS_ROOT = {
 };
 
 function SavedQuestionPicker({
+  isDatasets,
   onBack,
   onSelect,
   collections,
@@ -110,7 +112,7 @@ function SavedQuestionPicker({
       <CollectionsContainer>
         <BackButton onClick={onBack}>
           <Icon name="chevronleft" className="mr1" />
-          {t`Saved Questions`}
+          {isDatasets ? t`Datasets` : t`Saved Questions`}
         </BackButton>
         <Box my={1}>
           <Tree
@@ -121,6 +123,7 @@ function SavedQuestionPicker({
         </Box>
       </CollectionsContainer>
       <SavedQuestionList
+        isDatasets={isDatasets}
         collection={selectedCollection}
         selectedId={tableId}
         databaseId={databaseId}

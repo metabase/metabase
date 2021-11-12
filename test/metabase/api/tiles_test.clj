@@ -1,7 +1,10 @@
 (ns metabase.api.tiles-test
   "Tests for `/api/tiles` endpoints."
   (:require [cheshire.core :as json]
+            [clojure.set :as set]
             [clojure.test :refer :all]
+            [metabase.api.tiles :as tiles]
+            [metabase.query-processor :as qp]
             [metabase.test :as mt]
             [schema.core :as s]))
 
@@ -10,22 +13,82 @@
      (drop 1 (take 4 s))))
 
 (deftest basic-test
-  (testing "GET /api/tiles/:zoom/:x/:y/:lat-field-id/:lon-field-id/:lat-col-idx/:lon-col-idx/"
-    (is (png? (mt/user-http-request
-               :rasta :get 200 (format "tiles/1/1/1/%d/%d/1/1/"
-                                       (mt/id :venues :latitude)
-                                       (mt/id :venues :longitude))
-               :query (json/generate-string
-                       {:database (mt/id)
-                        :type     :query
-                        :query    {:source-table (mt/id :venues)}}))))))
+  (let [venues-query {:database (mt/id)
+                      :type     :query
+                      :query    {:source-table (mt/id :venues)
+                                 :fields [[:field (mt/id :venues :name) nil]
+                                          [:field (mt/id :venues :latitude) nil]
+                                          [:field (mt/id :venues :longitude) nil]]}}]
+    (testing "GET /api/tiles/:zoom/:x/:y/:lat-field-id/:lon-field-id"
+      (is (png? (mt/user-http-request
+                 :rasta :get 200 (format "tiles/1/1/1/%d/%d"
+                                         (mt/id :venues :latitude)
+                                         (mt/id :venues :longitude))
+                 :query (json/generate-string venues-query)))))
+    (testing "Works on native queries"
+      (let [native-query {:query (:query (qp/query->native venues-query))
+                          :template-tags {}}]
+        (is (png? (mt/user-http-request
+                   :rasta :get 200 (format "tiles/1/1/1/%s/%s"
+                                           "LATITUDE" "LONGITUDE")
+                   :query (json/generate-string
+                           {:database (mt/id)
+                            :type :native
+                            :native native-query}))))))))
+
+(deftest query->tiles-query-test
+  (letfn [(clean [q]
+            (-> q
+                (update-in [:query :filter] #(take 3 %))))]
+    (testing "mbql"
+      (testing "adds the inside filter and only selects the lat/lon fields"
+        (let [query {:database 19
+                     :query {:source-table 88
+                             :fields [[:field 562 nil]
+                                      [:field 574 nil] ; lat
+                                      [:field 576 nil] ; lon
+                                      ]
+                             :limit 50000}
+                     :type :query}]
+          (is (= {:database 19
+                  :query {:source-table 88
+                          :fields [[:field 574 nil]
+                                   [:field 576 nil]]
+                          :limit 2000
+                          :filter [:inside [:field 574 nil] [:field 576 nil]]}
+                  :type :query
+                  :async? false}
+                 (clean (tiles/query->tiles-query query
+                                                  {:zoom 2 :x 3 :y 1
+                                                   :lat-field "574"
+                                                   :lon-field "576"})))))))
+    (testing "native"
+      (testing "nests the query, selects fields"
+        (let [query {:type :native
+                     :native {:query "select name, latitude, longitude from zomato limit 5000;"
+                              :template-tags {}}
+                     :database 19}]
+          (is (= {:database 19
+                  :query {:source-query (-> query :native (set/rename-keys {:query :native}))
+                          :fields [[:field "latitude" {:base-type :type/Float}]
+                                   [:field "longitude" {:base-type :type/Float}]]
+                          :filter [:inside
+                                   [:field "latitude" {:base-type :type/Float}]
+                                   [:field "longitude" {:base-type :type/Float}]]
+                          :limit  2000}
+                  :type :query
+                  :async? false}
+                 (clean (tiles/query->tiles-query query
+                                                  {:zoom 2 :x 2 :y 1
+                                                   :lat-field "latitude"
+                                                   :lon-field "longitude"})))))))))
 
 (deftest failure-test
   (testing "if the query fails, don't attempt to generate a map without any points -- the endpoint should return a 400"
     (is (schema= {:status   (s/eq "failed")
                   s/Keyword s/Any}
                  (mt/user-http-request
-                  :rasta :get 400 (format "tiles/1/1/1/%d/%d/1/1/"
+                  :rasta :get 400 (format "tiles/1/1/1/%d/%d"
                                           (mt/id :venues :latitude)
                                           (mt/id :venues :longitude))
                   :query "{}")))))
@@ -33,7 +96,7 @@
 (deftest always-run-sync-test
   (testing "even if the original query was saved as `:async?` we shouldn't run the query as async"
     (is (png? (mt/user-http-request
-               :rasta :get 200 (format "tiles/1/1/1/%d/%d/1/1/"
+               :rasta :get 200 (format "tiles/1/1/1/%d/%d"
                                        (mt/id :venues :latitude)
                                        (mt/id :venues :longitude))
                :query (json/generate-string

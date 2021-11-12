@@ -57,7 +57,7 @@ describe("QuestionActionButtons", () => {
 
     it("should show all buttons", () => {
       const buttons = screen.getAllByRole("button");
-      expect(buttons.length).toBe(5);
+      expect(buttons.length).toBe(6);
     });
 
     it("should pass the correct action to the `onOpenModal`", () => {

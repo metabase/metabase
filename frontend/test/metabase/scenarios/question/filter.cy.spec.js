@@ -369,18 +369,19 @@ describe("scenarios > question > filter", () => {
     openProductsTable();
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
+    typeInExpressionEditor("c");
 
     // This issue has two problematic parts. We're testing for both:
     cy.log("Popover should display all custom expression options");
     // Popover shows up even without explicitly clicking the contenteditable field
     popover().within(() => {
-      cy.findAllByRole("listitem").contains(/functions/i);
+      cy.findAllByRole("listitem").contains(/concat/i);
     });
 
     cy.log("Should not display error prematurely");
     cy.get("[contenteditable='true']")
       .click()
-      .type("contains(");
+      .type("ontains(");
     cy.findByText(/Checks to see if string1 contains string2 within it./i);
     cy.button("Done").should("not.be.disabled");
     cy.get(".text-error").should("not.exist");
@@ -473,9 +474,10 @@ describe("scenarios > question > filter", () => {
   it("should offer case expression in the auto-complete suggestions", () => {
     openExpressionEditorFromFreshlyLoadedPage();
 
+    typeInExpressionEditor("c");
     popover().contains(/case/i);
 
-    typeInExpressionEditor("c");
+    typeInExpressionEditor("a");
 
     // "case" is still there after typing a bit
     popover().contains(/case/i);
@@ -488,19 +490,19 @@ describe("scenarios > question > filter", () => {
 
     typeInExpressionEditor("c");
 
-    cy.contains("Created At")
+    cy.contains("case")
       .closest("li")
       .should("have.css", "background-color")
       .and("not.eq", transparent);
 
     typeInExpressionEditor("{downarrow}");
 
-    cy.contains("Created At")
+    cy.contains("case")
       .closest("li")
       .should("have.css", "background-color")
       .and("eq", transparent);
 
-    cy.contains("Product → Category")
+    cy.contains("ceil")
       .closest("li")
       .should("have.css", "background-color")
       .and("not.eq", transparent);

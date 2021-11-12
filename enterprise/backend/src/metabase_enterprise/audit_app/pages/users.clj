@@ -6,8 +6,6 @@
             [ring.util.codec :as codec]
             [schema.core :as s]))
 
-(def ^:private ^:const date-cardinality-limit 25000)
-
 ;; DEPRECATED Query that returns data for a two-series timeseries: the number of DAU (a User is considered active for
 ;; purposes of this query if they ran at least one query that day), and total number of queries ran. Broken out by
 ;; day.
@@ -42,15 +40,13 @@
                                  {:select   [[(common/grouped-datetime datetime-unit :started_at) :date]
                                              [:%distinct-count.executor_id :count]]
                                   :from     [:query_execution]
-                                  :group-by [(common/grouped-datetime datetime-unit :started_at)]
-                                  :limit    date-cardinality-limit})
+                                  :group-by [(common/grouped-datetime datetime-unit :started_at)]})
                    date->active (zipmap (map :date active) (map :count active))
                    new          (common/query
                                  {:select   [[(common/grouped-datetime datetime-unit :date_joined) :date]
                                              [:%count.* :count]]
                                   :from     [:core_user]
-                                  :group-by [(common/grouped-datetime datetime-unit :date_joined)]
-                                  :limit    date-cardinality-limit})
+                                  :group-by [(common/grouped-datetime datetime-unit :date_joined)]})
                    date->new    (zipmap (map :date new) (map :count new))
                    all-dates    (sort (keep identity (distinct (concat (keys date->active)
                                                                        (keys date->new)))))]

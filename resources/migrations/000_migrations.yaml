@@ -19,6 +19,15 @@ databaseChangeLog:
       name: timestamp_type
       value: timestamp(6)
       dbms: mysql,mariadb
+  # In MySQL, use LONGTEXT instead of TEXT (#7006)
+  - property:
+      name: text.type
+      value: text
+      dbms: postgresql,h2
+  - property:
+      name: text.type
+      value: longtext
+      dbms: mysql,mariadb
 
   - changeSet:
       id: '1'
@@ -2372,6 +2381,7 @@ databaseChangeLog:
             columnName: visibility_type
             defaultNullValue: unset
             tableName: metabase_field
+
   - changeSet:
       id: 31
       author: agilliland
@@ -8625,18 +8635,158 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: 317
+      id: 381
       author: camsaul
-      comment: Added 0.42.0 Remove unused column
+      comment: Added 0.41.2 Add index to QueryExecution card_id to fix performance issues (#18759)
+      changes:
+        - createIndex:
+            tableName: query_execution
+            indexName: idx_query_execution_card_id
+            columns:
+              - column:
+                  name: card_id
+
+  - changeSet:
+      id: 382
+      author: camsaul
+      comment: Added 0.41.2 Add index to ModerationReview moderated_item_type + moderated_item_id to fix performance issues (#18759)
+      changes:
+        - createIndex:
+            tableName: moderation_review
+            indexName: idx_moderation_review_item_type_item_id
+            columns:
+              - column:
+                  name: moderated_item_type
+              - column:
+                  name: moderated_item_id
+
+  - changeSet:
+      id: v42.00-000
+      author: camsaul
+      comment: Added 0.42.0 Remove unused column (#5240)
+      # this migration was previously numbered 317 and merged into master before we adopted the 0.42.0+ migration ID
+      # numbering scheme. See #18821 for more info.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = '317';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = '317';
+
       changes:
         - dropColumn:
             tableName: metabase_table
             columnName: entity_name
 
+
   - changeSet:
-      id: 320
+      id: v42.00-001
+      author: camsaul
+      comment: Added 0.42.0 Attempt to add Card.database_id (by parsing query) to rows that are missing it (#5999)
+      # If this migration fails for any reason continue with the next migration; do not fail the entire process if this one fails
+      failOnError: false
+      # Don't run for H2 -- the version of H2 we're using doesn't support JSON stuff.
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: postgresql,mysql,mariadb
+      # The basic idea below is to parse the `database_id` from the JSON string query dictionary and use it to set the
+      # database_id column as needed. We do an INNER JOIN against the Database table to make sure that Database
+      # actually exists (so we don't attempt to set an invalid database_id)
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              WITH c2 AS (
+                SELECT *, (dataset_query::json->>'database')::integer AS query_database_id
+                FROM report_card
+              )
+              UPDATE report_card c
+              SET database_id = c2.query_database_id
+              FROM c2
+              INNER JOIN metabase_database db
+                ON db.id = c2.query_database_id
+              WHERE c.database_id IS NULL
+                AND c.id = c2.id
+                AND c2.query_database_id IS NOT NULL;
+        # MySQL and MariaDB are exactly the same other than different function names: json_value (for MariaDB) vs
+        # json_extract (for MySQL)
+        - sql:
+            dbms: mariadb
+            sql: >-
+              UPDATE report_card c
+              JOIN (
+                SELECT *, cast(json_value(dataset_query, '$.database') AS signed) AS query_database_id
+                FROM report_card
+                ) c2
+                ON c.id = c2.id
+              INNER JOIN metabase_database db ON c2.query_database_id = db.id
+              SET c.database_id = c2.query_database_id
+              WHERE c.database_id IS NULL
+                AND c2.query_database_id IS NOT NULL;
+        - sql:
+            dbms: mysql
+            sql: >-
+              UPDATE report_card c
+              JOIN (
+                SELECT *, cast(json_extract(dataset_query, '$.database') AS signed) AS query_database_id
+                FROM report_card
+                ) c2
+                ON c.id = c2.id
+              INNER JOIN metabase_database db ON c2.query_database_id = db.id
+              SET c.database_id = c2.query_database_id
+              WHERE c.database_id IS NULL
+                AND c2.query_database_id IS NOT NULL;
+
+  - changeSet:
+      id: v42.00-002
+      author: camsaul
+      comment: Added 0.42.0 Added constraint we should have had all along (#5999)
+      preConditions:
+        - onFail: MARK_RAN
+        # If we're dumping the migration as a SQL file or trying to force-migrate we can't check the preconditions
+        # so just go ahead and skip the entire thing. This is a non-critical migration
+        - onUpdateSQL: IGNORE
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT count(*) FROM report_card WHERE database_id IS NULL
+      changes:
+        - addNotNullConstraint:
+            columnDataType: int
+            tableName: report_card
+            columnName: database_id
+
+  - changeSet:
+      id: v42.00-003
       author: dpsutton
       comment: Added 0.42.0 Initial support for datasets based on questions
+      # this migration was previously numbered 320 and merged into master before we adopted the 0.42.0+ migration ID
+      # numbering scheme. See #18821 for more info.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = '320';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = '320';
       changes:
         - addColumn:
             tableName: report_card
@@ -8648,6 +8798,987 @@ databaseChangeLog:
                   constraints:
                     nullable: false
                   defaultValue: false
+
+  - changeSet:    # this one is run unconditionally so unify the type to ${text.type} across ALL dbs
+      id: v42.00-004 # this differentiation was first done under changeSet 13 above
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of activity.details from text to ${text.type}
+      changes:
+        - modifyDataType:
+            tableName: activity
+            columnName: details
+            newDataType: ${text.type}
+
+  - changeSet:
+      id: v42.00-005
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of collection.description from text to ${text.type}
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: collection
+            columnName: description
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-006
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of collection.name from text to ${text.type}
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: collection
+            columnName: name
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-007
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of computation_job.context from text to ${text.type}
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: computation_job
+            columnName: context
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-008
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of computation_job_result.payload from text
+        to ${text.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: computation_job_result
+            columnName: payload
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-009
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of core_session.anti_csrf_token from text
+        to ${text.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: core_session
+            columnName: anti_csrf_token
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-010
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of core_user.login_attributes from text to
+        ${text.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: core_user
+            columnName: login_attributes
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-011
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of group_table_access_policy.attribute_remappings
+        from text to ${text.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: group_table_access_policy
+            columnName: attribute_remappings
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-012
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of login_history.device_description from text
+        to ${text.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: login_history
+            columnName: device_description
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-013
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of login_history.ip_address from text to ${text.type}
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: login_history
+            columnName: ip_address
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-014
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of metabase_database.caveats from text to
+        ${text.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_database
+            columnName: caveats
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-015
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of metabase_database.description from text
+        to ${text.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_database
+            columnName: description
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-016
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of metabase_database.details from text to
+        ${text.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_database
+            columnName: details
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-017
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of metabase_database.options from text to
+        ${text.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_database
+            columnName: options
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-018
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of metabase_database.points_of_interest from
+        text to ${text.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_database
+            columnName: points_of_interest
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-019
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of metabase_field.caveats from text to ${text.type}
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_field
+            columnName: caveats
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-020
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of metabase_field.database_type from text
+        to ${text.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_field
+            columnName: database_type
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-021
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of metabase_field.description from text to
+        ${text.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_field
+            columnName: description
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-022
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of metabase_field.fingerprint from text to
+        ${text.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_field
+            columnName: fingerprint
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-023
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of metabase_field.has_field_values from text
+        to ${text.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_field
+            columnName: has_field_values
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-024
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of metabase_field.points_of_interest from
+        text to ${text.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_field
+            columnName: points_of_interest
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-025
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of metabase_field.settings from text to ${text.type}
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_field
+            columnName: settings
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-026
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of metabase_fieldvalues.human_readable_values
+        from text to ${text.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_fieldvalues
+            columnName: human_readable_values
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-027
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of metabase_fieldvalues.values from text to
+        ${text.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_fieldvalues
+            columnName: values
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-028
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of metabase_table.caveats from text to ${text.type}
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_table
+            columnName: caveats
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-029
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of metabase_table.description from text to
+        ${text.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_table
+            columnName: description
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-030
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of metabase_table.points_of_interest from
+        text to ${text.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_table
+            columnName: points_of_interest
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-031
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of metric.caveats from text to ${text.type}
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metric
+            columnName: caveats
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-032
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of metric.definition from text to ${text.type}
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metric
+            columnName: definition
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-033
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of metric.description from text to ${text.type}
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metric
+            columnName: description
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-034
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of metric.how_is_this_calculated from text
+        to ${text.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metric
+            columnName: how_is_this_calculated
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-035
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of metric.points_of_interest from text to
+        ${text.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metric
+            columnName: points_of_interest
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-036
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of moderation_review.text from text to ${text.type}
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: moderation_review
+            columnName: text
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-037
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of native_query_snippet.content from text
+        to ${text.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: native_query_snippet
+            columnName: content
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-038
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of native_query_snippet.description from text
+        to ${text.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: native_query_snippet
+            columnName: description
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-039
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of pulse.parameters from text to ${text.type}
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: pulse
+            columnName: parameters
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-040
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of pulse_channel.details from text to ${text.type}
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: pulse_channel
+            columnName: details
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-041
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of query.query from text to ${text.type} on
+        mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: query
+            columnName: query
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-042
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of query_execution.error from text to ${text.type}
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: query_execution
+            columnName: error
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-043
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of report_card.dataset_query from text to
+        ${text.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: report_card
+            columnName: dataset_query
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-044
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of report_card.description from text to ${text.type}
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: report_card
+            columnName: description
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-045
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of report_card.embedding_params from text
+        to ${text.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: report_card
+            columnName: embedding_params
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-046
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of report_card.result_metadata from text to
+        ${text.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: report_card
+            columnName: result_metadata
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-047
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of report_card.visualization_settings from
+        text to ${text.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: report_card
+            columnName: visualization_settings
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-048
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of report_dashboard.caveats from text to ${text.type}
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: report_dashboard
+            columnName: caveats
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-049
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of report_dashboard.description from text
+        to ${text.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: report_dashboard
+            columnName: description
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-050
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of report_dashboard.embedding_params from
+        text to ${text.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: report_dashboard
+            columnName: embedding_params
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-051
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of report_dashboard.parameters from text to
+        ${text.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: report_dashboard
+            columnName: parameters
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-052
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of report_dashboard.points_of_interest from
+        text to ${text.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: report_dashboard
+            columnName: points_of_interest
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-053
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of report_dashboardcard.parameter_mappings
+        from text to ${text.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: report_dashboardcard
+            columnName: parameter_mappings
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-054
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of report_dashboardcard.visualization_settings
+        from text to ${text.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: report_dashboardcard
+            columnName: visualization_settings
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-055
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of revision.message from text to ${text.type}
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: revision
+            columnName: message
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:    # this one is run unconditionally so unify the type to ${text.type} across ALL dbs
+      id: v42.00-056 # this differentiation was first done under changeSet 10 above
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of revision.object from text to ${text.type}
+      changes:
+        - modifyDataType:
+            tableName: revision
+            columnName: object
+            newDataType: ${text.type}
+
+  - changeSet:
+      id: v42.00-057
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of segment.caveats from text to ${text.type}
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: segment
+            columnName: caveats
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-058
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of segment.definition from text to ${text.type}
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: segment
+            columnName: definition
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-059
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of segment.description from text to ${text.type}
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: segment
+            columnName: description
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-060
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of segment.points_of_interest from text to
+        ${text.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: segment
+            columnName: points_of_interest
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-061
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of setting.value from text to ${text.type}
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: setting
+            columnName: value
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-062
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of task_history.task_details from text to
+        ${text.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: task_history
+            columnName: task_details
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-063
+      author: jeff303
+      comment: >-
+        Added 0.42.0 - modify type of view_log.metadata from text to ${text.type}
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: view_log
+            columnName: metadata
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+  - changeSet:
+      id: v42.00-065
+      author: dpsutton
+      comment: >-
+        Added 0.42.0 - Another modal dismissed state on user. Retaining the same suffix and boolean style to ease an
+        eventual migration.
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: is_datasetnewb
+                  type: boolean
+                  remarks: "Boolean flag to indicate if the dataset info modal has been dismissed."
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v42.00-064
+      author: jeff303
+      comment: "Added 0.42.0 - fix type of query_cache.results on upgrade (in case changeSet 97 was run before #16095)"
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: query_cache
+            columnName: results
+            newDataType: longblob
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
@@ -8661,6 +9792,38 @@ databaseChangeLog:
 #
 # 2) Please post a message in the Metabase Slack #migrations channel to let others know you are creating a new
 #    migration so someone else doesn't steal your ID number
+#
+# 3) Migrations IDs should follow the format
+#
+#    vMM.mm-NNN
+#
+#    where
+#
+#    M = major version
+#    m = minor version
+#    N = migration number relative to that major+minor version
+#
+#   e.g. the first migration added to 0.42.0 should be numbered v42.00-000 and the second migration should be numbered
+#   v42.00-001. The first migration for 0.42.1 should be numbered v42.01-000, and so forth.
+#
+#   This numbering scheme was adopted beginning with version 0.42.0 so that we could go back and add migrations to patch
+#   releases without the ID sequence getting wildly out of order. See PR #18821 for more information.
+#
+# 3) Migrations IDs should follow the format
+#
+#    vMM.mm-NNN
+#
+#    where
+#
+#    M = major version
+#    m = minor version
+#    N = migration number relative to that major+minor version
+#
+#   e.g. the first migration added to 0.42.0 should be numbered v42.00-000 and the second migration should be numbered
+#   v42.00-001. The first migration for 0.42.1 should be numbered v42.01-000, and so forth.
+#
+#   This numbering scheme was adopted beginning with version 0.42.0 so that we could go back and add migrations to patch
+#   releases without the ID sequence getting wildly out of order. See PR #18821 for more information.
 #
 # PLEASE KEEP THIS MESSAGE AT THE BOTTOM OF THIS FILE!!!!! Add new migrations above the message.
 #
