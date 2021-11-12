@@ -34,11 +34,11 @@ describe("issue 18669", () => {
 
     popover().within(() => {
       cy.findByText("Gizmo").click();
-      cy.findByText("Update filter").click();
+      cy.button("Update filter").click();
     });
 
-    cy.findByText("Send email now").click();
-    cy.findByText("Email sent");
+    cy.button("Send email now").click();
+    cy.findByText("Email sent", { timeout: 10000 });
   });
 });
 
