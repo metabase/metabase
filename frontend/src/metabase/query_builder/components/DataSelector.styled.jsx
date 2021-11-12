@@ -4,9 +4,9 @@ import { t } from "ttag";
 import styled from "styled-components";
 import Icon from "metabase/components/Icon";
 import { SelectList } from "metabase/components/select-list";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 export const DataBucketIcon = styled(Icon)`
   margin-top: 2px;
