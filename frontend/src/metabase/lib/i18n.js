@@ -80,9 +80,11 @@ export function setLocalization(translationsObject) {
 
 function updateMomentLocale(locale) {
   const momentLocale = mapToMomentLocale(locale);
-  require("moment/locale/" + momentLocale);
+  if (momentLocale !== "en") {
+    require("moment/locale/" + momentLocale);
+  }
 
-  moment.locale(mapToMomentLocale(momentLocale));
+  moment.locale(momentLocale);
 }
 
 function mapToMomentLocale(locale) {
