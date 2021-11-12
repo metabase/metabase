@@ -5,6 +5,7 @@
             [java-time :as t]
             [metabase.driver :as driver]
             [metabase.models.database :as mdb :refer [Database]]
+            [metabase.models.table :refer [Table]]
             [metabase.models.task-history :refer [TaskHistory]]
             [metabase.sync :as sync]
             [metabase.sync.util :as sync-util :refer :all]
@@ -245,3 +246,25 @@
         (let [[step-name result] (second (:steps actual))]
           (is (= "should-continue" step-name))
           (is (= {:log-summary-fn nil} (dissoc result :start-time :end-time))))))))
+
+(deftest initial-sync-status-test
+  (mt/dataset sample-dataset
+   (testing "If `initial-sync-status` on a DB is `incomplete`, it is marked as `complete` when sync-metadata has finished"
+      (let [_  (db/update! Database (:id (mt/db)) :initial_sync_status "incomplete")
+            db (Database (:id (mt/db)))]
+        (sync/sync-database! db)
+        (is (= "complete" (db/select-one-field :initial_sync_status Database :id (:id db))))))
+
+   (testing "If `initial-sync-status` on a DB is `complete`, it remains `complete` when sync is run again"
+      (let [_  (db/update! Database (:id (mt/db)) :initial_sync_status "complete")
+            db (Database (:id (mt/db)))]
+        (sync/sync-database! db)
+        (is (= "complete" (db/select-one-field :initial_sync_status Database :id (:id db))))))
+
+   (testing "If `initial-sync-status` on a table is `incomplete`, it is marked as `complete` after the sync-fks step
+            has finished"
+      (let [table-id (db/select-one-field :id Table :db_id (:id (mt/db)))
+            _        (db/update! Table table-id :initial_sync_status "incomplete")
+            table    (Table table-id)]
+        (sync/sync-database! (mt/db))
+        (is (= "complete" (db/select-one-field :initial_sync_status Table :id table-id)))))))
