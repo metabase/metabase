@@ -72,7 +72,7 @@ const BaseItem = styled.label.attrs({
   :hover {
     color: ${props =>
       !props.showButtons && !props.selected
-        ? COLOR_SCHEMES[props.colorSceme].main()
+        ? COLOR_SCHEMES[props.colorScheme].main()
         : null};
   }
 `;
