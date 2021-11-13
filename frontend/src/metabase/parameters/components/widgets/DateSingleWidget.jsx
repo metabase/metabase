@@ -3,8 +3,12 @@ import PropTypes from "prop-types";
 import moment from "moment";
 import { t } from "ttag";
 
-import SpecificDatePicker from "metabase/query_builder/components/filters/pickers/SpecificDatePicker";
-import { Container, Footer, UpdateButton } from "./DateWidget.styled";
+import {
+  Container,
+  Footer,
+  UpdateButton,
+  PaddedSpecificDatePicker,
+} from "./DateWidget.styled";
 
 DateSingleWidget.propTypes = {
   value: PropTypes.any,
@@ -21,7 +25,7 @@ function DateSingleWidget({ value, setValue, onClose }) {
 
   return (
     <Container>
-      <SpecificDatePicker
+      <PaddedSpecificDatePicker
         value={internalValue}
         onChange={setInternalValue}
         calendar
