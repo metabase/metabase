@@ -15,6 +15,7 @@ import type {
   FieldFilter,
   LocalFieldReference,
 } from "metabase-types/types/Query";
+import { Container, Footer, UpdateButton } from "./DateWidget.styled";
 
 type UrlEncoded = string;
 
@@ -124,7 +125,7 @@ export default class DateAllOptionsWidget extends Component {
   render() {
     const { filter } = this.state;
     return (
-      <div style={{ minWidth: "300px" }}>
+      <Container>
         <DatePicker
           className="m2"
           filter={this.state.filter}
@@ -132,22 +133,22 @@ export default class DateAllOptionsWidget extends Component {
           hideEmptinessOperators
           hideTimeSelectors
         />
-        <div className="FilterPopover-footer border-top flex align-center p2">
+        <Footer>
           <FilterOptions
             filter={filter}
             onFilterChange={this.setFilter}
             operator={getOperator(filter)}
           />
-          <button
-            className={cx("Button Button--purple ml-auto", {
+          <UpdateButton
+            className={cx({
               disabled: !this.isValid(),
             })}
             onClick={this.commitAndClose}
           >
             {t`Update filter`}
-          </button>
-        </div>
-      </div>
+          </UpdateButton>
+        </Footer>
+      </Container>
     );
   }
 }
