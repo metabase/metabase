@@ -29,6 +29,11 @@ const ChevrondownIcon = styled(Icon).attrs({
 const ToggleButton = styled(Button)`
   color: ${color("text-medium")};
   border: none;
+  background-color: transparent;
+
+  &:hover {
+    background-color: transparent;
+  }
 `;
 
 Toggle.propTypes = {
