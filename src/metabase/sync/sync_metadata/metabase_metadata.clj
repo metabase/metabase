@@ -9,7 +9,6 @@
             [clojure.tools.logging :as log]
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
-            [metabase.models.database :refer [Database]]
             [metabase.models.field :refer [Field]]
             [metabase.models.table :refer [Table]]
             [metabase.sync.fetch-metadata :as fetch-metadata]

@@ -63,7 +63,7 @@
         (throw (ex-info msg {:errors {:database {:engine msg}}, :status-code 400}))))
     (db/insert! Database
       (merge
-       {:name name, :engine driver, :details details, :creator_id creator-id, :initial_sync_status "incomplete"}
+       {:name name, :engine driver, :details details, :creator_id creator-id}
        (u/select-non-nil-keys database #{:is_on_demand :is_full_sync :auto_run_queries})
        (when schedules
          (sync.schedules/schedule-map->cron-strings schedules))))))

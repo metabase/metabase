@@ -148,7 +148,8 @@
                      :details    (s/eq {:db "my_db"})
                      :updated_at java.time.temporal.Temporal
                      :name       su/NonBlankString
-                     :features   (s/eq (driver.u/features ::test-driver (mt/db)))})
+                     :features   (s/eq (driver.u/features ::test-driver (mt/db)))
+                     :creator_id (s/eq (mt/user->id :crowberto))})
                    (create-db-via-api!))))
 
     (testing "can we set `is_full_sync` to `false` when we create the Database?"
