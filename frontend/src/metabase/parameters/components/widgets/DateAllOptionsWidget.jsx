@@ -77,6 +77,7 @@ function getFilterTitle(filter) {
 type Props = {
   setValue: (value: ?string) => void,
   onClose: () => void,
+  disableOperatorSelection: boolean,
 };
 
 type State = { filter: FieldFilter };
@@ -124,6 +125,7 @@ export default class DateAllOptionsWidget extends Component {
 
   render() {
     const { filter } = this.state;
+    const { disableOperatorSelection } = this.props;
     return (
       <Container>
         <DatePicker
@@ -132,6 +134,7 @@ export default class DateAllOptionsWidget extends Component {
           onFilterChange={this.setFilter}
           hideEmptinessOperators
           hideTimeSelectors
+          disableOperatorSelection={disableOperatorSelection}
         />
         <Footer>
           <FilterOptions

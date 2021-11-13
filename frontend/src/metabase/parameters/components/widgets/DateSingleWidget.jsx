@@ -1,40 +1,22 @@
-import React, { useState } from "react";
+import React from "react";
 import PropTypes from "prop-types";
+import DateAllOptionsWidget from "./DateAllOptionsWidget";
 import moment from "moment";
-import { t } from "ttag";
-
-import {
-  Container,
-  Footer,
-  UpdateButton,
-  PaddedSpecificDatePicker,
-} from "./DateWidget.styled";
 
 DateSingleWidget.propTypes = {
-  value: PropTypes.any,
+  value: PropTypes.string,
   setValue: PropTypes.func.isRequired,
   onClose: PropTypes.func.isRequired,
 };
 
-function DateSingleWidget({ value, setValue, onClose }) {
-  const [internalValue, setInternalValue] = useState(value);
-  const commitAndClose = () => {
-    setValue(internalValue);
-    onClose();
-  };
-
+function DateSingleWidget({ value, ...props }) {
+  const defaultedValue = value == null ? moment().format("YYYY-MM-DD") : value;
   return (
-    <Container>
-      <PaddedSpecificDatePicker
-        value={internalValue}
-        onChange={setInternalValue}
-        calendar
-        hideTimeSelectors
-      />
-      <Footer>
-        <UpdateButton onClick={commitAndClose}>{t`Update filter`}</UpdateButton>
-      </Footer>
-    </Container>
+    <DateAllOptionsWidget
+      {...props}
+      value={defaultedValue}
+      disableOperatorSelection
+    />
   );
 }
 

@@ -339,6 +339,7 @@ type Props = {
   hideTimeSelectors?: boolean,
   includeAllTime?: boolean,
   operators?: Operator[],
+  disableOperatorSelection: boolean,
 };
 
 type State = {
@@ -380,6 +381,7 @@ export default class DatePicker extends Component {
       onFilterChange,
       includeAllTime,
       isSidebar,
+      disableOperatorSelection,
     } = this.props;
 
     let { operators } = this.state;
@@ -400,15 +402,17 @@ export default class DatePicker extends Component {
         })}
         style={{ minWidth: 300 }}
       >
-        <DateOperatorSelector
-          className={cx({
-            mr2: Widget && Widget.horizontalLayout,
-            mb2: Widget && !Widget.horizontalLayout,
-          })}
-          operator={operator && operator.name}
-          operators={operators}
-          onOperatorChange={operator => onFilterChange(operator.init(filter))}
-        />
+        {disableOperatorSelection !== true && (
+          <DateOperatorSelector
+            className={cx({
+              mr2: Widget && Widget.horizontalLayout,
+              mb2: Widget && !Widget.horizontalLayout,
+            })}
+            operator={operator && operator.name}
+            operators={operators}
+            onOperatorChange={operator => onFilterChange(operator.init(filter))}
+          />
+        )}
         {Widget && (
           <Widget
             {...this.props}
