@@ -19,7 +19,7 @@ describe("metabase/lib/expressions/parser", () => {
 fuzz("FUZZING metabase/lib/expressions/parser", () => {
   for (let seed = 1; seed < 1e4; ++seed) {
     it("should parse generated expression from seed " + seed, () => {
-      const { expression } = generateExpression(seed, "expression");
+      const { expression } = generateExpression(seed);
       expect(() => handle(expression)).not.toThrow();
     });
   }
