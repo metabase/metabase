@@ -173,36 +173,6 @@ export function generateExpression(seed, type) {
     };
     const expression = () => (depth <= 0 ? literal() : primary());
 
-    const format = node => {
-      const spaces = () => listOf(1, [space, () => ""])().join("");
-      const blank = ch => spaces() + ch + spaces();
-      let str = null;
-      const { type, value, op, left, right, child, params } = node;
-      switch (type) {
-        case NODE.Field:
-        case NODE.Literal:
-          str = value;
-          break;
-        case NODE.Unary:
-          str = blank(op) + format(child);
-          break;
-        case NODE.Binary:
-          str = format(left) + blank(op) + format(right);
-          break;
-        case NODE.FunctionCall:
-          str = value + blank("(") + params.map(format).join(", ") + blank(")");
-          break;
-        case NODE.Group:
-          str = blank("(") + format(child) + blank(")");
-          break;
-      }
-
-      if (str === null) {
-        throw new Error(`Unknown AST node ${type}`);
-      }
-      return String(str);
-    };
-
     let depth = 17;
 
     const tree = expression();
