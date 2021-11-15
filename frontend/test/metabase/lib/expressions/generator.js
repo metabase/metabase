@@ -48,6 +48,12 @@ export function generateExpression(seed, depth = 13) {
     Group: 6,
   };
 
+  const randomizeCase = str =>
+    str
+      .split("")
+      .map(ch => (randomInt(10) < 3 ? ch.toUpperCase() : ch))
+      .join("");
+
   const format = node => {
     const spaces = () => listOf(1, [space, () => ""])().join("");
     const blank = ch => spaces() + ch + spaces();
@@ -65,7 +71,11 @@ export function generateExpression(seed, depth = 13) {
         str = format(left) + blank(op) + format(right);
         break;
       case NODE.FunctionCall:
-        str = value + blank("(") + params.map(format).join(", ") + blank(")");
+        str =
+          randomizeCase(value) +
+          blank("(") +
+          params.map(format).join(", ") +
+          blank(")");
         break;
       case NODE.Group:
         str = blank("(") + format(child) + blank(")");
