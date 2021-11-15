@@ -263,6 +263,7 @@ function AhHocQuestionLeftSide(props) {
           ) : (
             <QuestionDescription
               question={question}
+              originalQuestion={originalQuestion}
               isObjectDetail={isObjectDetail}
             />
           )}
