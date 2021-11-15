@@ -102,6 +102,7 @@ export function ViewTitleHeader(props) {
   const isStructured = question.isStructured();
   const isNative = question.isNative();
   const isSaved = question.isSaved();
+  const isDataset = question.isDataset();
 
   const isSummarized =
     isStructured &&
@@ -136,6 +137,7 @@ export function ViewTitleHeader(props) {
       <ViewTitleHeaderRightSide
         {...props}
         isSaved={isSaved}
+        isDataset={isDataset}
         isNative={isNative}
         isSummarized={isSummarized}
       />
@@ -299,6 +301,7 @@ ViewTitleHeaderRightSide.propTypes = {
   question: PropTypes.object.isRequired,
   result: PropTypes.object,
   queryBuilderMode: PropTypes.oneOf(["view", "notebook"]),
+  isDataset: PropTypes.bool,
   isSaved: PropTypes.bool,
   isNative: PropTypes.bool,
   isRunnable: PropTypes.bool,
@@ -325,6 +328,7 @@ function ViewTitleHeaderRightSide(props) {
     result,
     queryBuilderMode,
     isSaved,
+    isDataset,
     isNative,
     isRunnable,
     isRunning,
@@ -347,7 +351,7 @@ function ViewTitleHeaderRightSide(props) {
 
   return (
     <div className="ml-auto flex align-center">
-      {!!isDirty && (
+      {!!isDirty && !isDataset && (
         <SaveButton
           disabled={!question.canRun()}
           data-metabase-event={
