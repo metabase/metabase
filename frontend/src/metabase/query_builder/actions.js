@@ -883,6 +883,16 @@ export const updateQuestion = (
       newQuestion.isSaved()
     ) {
       newQuestion = newQuestion.withoutNameAndId();
+      if (oldQuestion.isDataset()) {
+        const nextQuery = {
+          ...newQuestion.datasetQuery(),
+          query: {
+            ...newQuestion.datasetQuery().query,
+            "source-table": `card__${oldQuestion.id()}`,
+          },
+        };
+        newQuestion = newQuestion.setDatasetQuery(nextQuery).setDataset(false);
+      }
     }
 
     const queryResult = getFirstQueryResult(getState());
