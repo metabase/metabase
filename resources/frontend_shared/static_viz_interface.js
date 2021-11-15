@@ -47,6 +47,15 @@ function timeseries_bar(data, labels, settings) {
   });
 }
 
+function timeseries_multi(data, labels, settings) {
+  return StaticViz.RenderChart("timeseries/multi", {
+    data: toJSArray(data),
+    labels: toJSMap(labels),
+    accessors: date_accessors,
+    settings: JSON.parse(settings),
+  });
+}
+
 function timeseries_waterfall(data, labels, settings) {
   return StaticViz.RenderChart("timeseries/waterfall", {
     data: toJSArray(data),
