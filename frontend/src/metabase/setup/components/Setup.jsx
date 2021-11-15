@@ -43,6 +43,7 @@ export default class Setup extends Component {
     databaseFormName: PropTypes.string.isRequired,
     databaseDetails: PropTypes.object,
     selectedDatabaseEngine: PropTypes.string,
+    setDatabaseEngine: PropTypes.func,
   };
 
   constructor(props) {
