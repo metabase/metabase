@@ -387,7 +387,7 @@
             (is (= [nil nil 3 7562] (last rows)))))))))
 
 (deftest pivot-parameter-dataset-test
-  (mt/test-drivers (disj (pivots/applicable-drivers) :redshift) ; disable on Redshift until #18834 is fixed
+  (mt/test-drivers (pivots/applicable-drivers)
     (mt/dataset sample-dataset
       (testing "POST /api/dataset/pivot"
         (testing "Run a pivot table"

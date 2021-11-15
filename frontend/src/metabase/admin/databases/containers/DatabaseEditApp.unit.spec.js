@@ -45,6 +45,9 @@ function mockSettings({ cachingEnabled = false }) {
     if (key === "is-hosted?") {
       return false;
     }
+    if (key === "cloud-gateway-ips") {
+      return [];
+    }
     return original(key);
   });
 }
