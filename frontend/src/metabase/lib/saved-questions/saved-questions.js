@@ -29,6 +29,18 @@ export function getQuestionVirtualTableId(card) {
   return `card__${card.id}`;
 }
 
+export function isVirtualCardId(tableId) {
+  return typeof tableId === "string" && tableId.startsWith("card__");
+}
+
+export function getQuestionIdFromVirtualTableId(tableId) {
+  if (typeof tableId !== "string") {
+    return null;
+  }
+  const id = parseInt(tableId.replace("card__", ""));
+  return Number.isSafeInteger(id) ? id : null;
+}
+
 export function convertSavedQuestionToVirtualTable(card) {
   return {
     id: getQuestionVirtualTableId(card),

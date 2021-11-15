@@ -28,8 +28,50 @@ export function getEngineNativeAceMode(engine) {
   }
 }
 
+export function getEngineLogo(engine) {
+  const path = `/app/assets/img/drivers`;
+
+  switch (engine) {
+    case "bigquery":
+    case "druid":
+    case "googleanalytics":
+    case "h2":
+    case "mongo":
+    case "mysql":
+    case "oracle":
+    case "postgres":
+    case "presto":
+    case "redshift":
+    case "snowflake":
+    case "sparksql":
+    case "sqlite":
+    case "sqlserver":
+    case "vertica":
+      return `${path}/${engine}.svg`;
+    case "bigquery-cloud-sdk":
+      return `${path}/bigquery.svg`;
+    case "presto-jdbc":
+      return `${path}/presto.svg`;
+  }
+}
+
+export function getElevatedEngines() {
+  return [
+    "mysql",
+    "postgres",
+    "sqlserver",
+    "redshift",
+    "bigquery",
+    "snowflake",
+  ];
+}
+
 export function getEngineNativeRequiresTable(engine) {
   return engine === "mongo";
+}
+
+export function getEngineSupportsFirewall(engine) {
+  return engine !== "googleanalytics";
 }
 
 export function formatJsonQuery(query, engine) {

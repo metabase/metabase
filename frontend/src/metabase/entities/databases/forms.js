@@ -2,13 +2,18 @@ import React from "react";
 import { t, jt } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
+import {
+  getElevatedEngines,
+  getEngineSupportsFirewall,
+} from "metabase/lib/engine";
 import ExternalLink from "metabase/components/ExternalLink";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import getFieldsForBigQuery from "./big-query-fields";
-import getFieldsForMongo from "./mongo-fields";
 
+import getFieldsForMongo from "./mongo-fields";
 import MetadataSyncScheduleWidget from "metabase/admin/databases/components/widgets/MetadataSyncScheduleWidget";
 import CacheFieldValuesScheduleWidget from "metabase/admin/databases/components/widgets/CacheFieldValuesScheduleWidget";
+import EngineWidget from "metabase/admin/databases/components/widgets/EngineWidget";
 
 const DATABASE_DETAIL_OVERRIDES = {
   "tunnel-enabled": () => ({
@@ -266,10 +271,14 @@ function getEngineFormFields(engine, details, id) {
 }
 
 const ENGINES = MetabaseSettings.get("engines", {});
+const ELEVATED_ENGINES = getElevatedEngines();
+
 const ENGINE_OPTIONS = Object.entries(ENGINES)
   .map(([engine, info]) => ({
-    name: info["driver-name"],
     value: engine,
+    name: info["driver-name"],
+    official: info["official"] ?? true, // TODO remove default
+    index: ELEVATED_ENGINES.indexOf(engine),
   }))
   .sort((a, b) => a.name.localeCompare(b.name));
 
@@ -327,6 +336,7 @@ const forms = {
           type: "select",
           options: getEngineOptions(engine),
           placeholder: t`Select a database`,
+          isHosted: MetabaseSettings.isHosted(),
         },
         {
           name: "name",
@@ -377,6 +387,19 @@ const forms = {
             t`When should Metabase automatically scan and cache field values?`,
           hidden: !engine || !details["let-user-control-scheduling"],
         },
+        {
+          name: "cloud.firewall_connection",
+          type: "empty",
+          title: t`Connecting from behind a firewall`,
+          description: t`In order to make sure Metabase can access your database,
+              configure your firewall to allow connections from these IP addresses:
+              ${MetabaseSettings.cloudGatewayIps().join(", ")}.`,
+          hidden:
+            !engine ||
+            !getEngineSupportsFirewall(engine) ||
+            !MetabaseSettings.isHosted() ||
+            !MetabaseSettings.cloudGatewayIps().length,
+        },
       ].filter(Boolean),
     normalize: function(database) {
       if (!database.details["let-user-control-scheduling"]) {
@@ -390,6 +413,17 @@ const forms = {
       }
     },
   },
+};
+
+forms.setup = {
+  ...forms.details,
+  fields: (...args) =>
+    forms.details.fields(...args).map(field => ({
+      ...field,
+      type: field.name === "engine" ? EngineWidget : field.type,
+      title: field.name === "engine" ? null : field.title,
+      hidden: field.hidden || SCHEDULING_FIELDS.has(field.name),
+    })),
 };
 
 // partial forms for tabbed view:

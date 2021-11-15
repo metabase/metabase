@@ -5,23 +5,26 @@ import fitViewport from "metabase/hoc/FitViewPort";
 
 import Setup from "../components/Setup";
 
-import { DATABASE_FORM_NAME, setupSelectors } from "../selectors";
+import { setupSelectors } from "../selectors";
 import {
   setUserDetails,
   validatePassword,
   setActiveStep,
   validateDatabase,
+  setDatabaseEngine,
   setDatabaseDetails,
   setLanguageDetails,
   setAllowTracking,
   submitSetup,
 } from "../actions";
+import { DATABASE_FORM_NAME } from "metabase/setup/constants";
 
 const mapStateToProps = setupSelectors;
 
 const mapDispatchToProps = {
   setLanguageDetails,
   setUserDetails,
+  setDatabaseEngine,
   setDatabaseDetails,
   validatePassword,
   setActiveStep,
