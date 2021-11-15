@@ -98,12 +98,9 @@ export function newQuestion({ mode, ...options } = {}) {
   }
 }
 
-export function dashboard(dashboard, { addCardWithId, editingMode } = {}) {
+export function dashboard(dashboard, { addCardWithId, editMode } = {}) {
   const path = appendSlug(dashboard.id, slugg(dashboard.name));
-  const options = stringifyHashOptions({
-    add: addCardWithId,
-    edit: editingMode,
-  });
+  const options = stringifyHashOptions({ add: addCardWithId, edit: editMode });
   return options ? `/dashboard/${path}#${options}` : `/dashboard/${path}`;
 }
 

@@ -34,7 +34,7 @@ export default class CreateDashboardModal extends Component {
 
   onSaved = dashboard => {
     const { onClose, onChangeLocation } = this.props;
-    onChangeLocation(Urls.dashboard(dashboard, { editingMode: true }));
+    onChangeLocation(Urls.dashboard(dashboard, { editMode: true }));
     if (onClose) {
       onClose();
     }

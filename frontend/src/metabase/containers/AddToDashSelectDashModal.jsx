@@ -39,7 +39,7 @@ export default class AddToDashSelectDashModal extends Component {
 
     onChangeLocation(
       Urls.dashboard(dashboard, {
-        editingMode: true,
+        editMode: true,
         addCardWithId: card.id,
       }),
     );

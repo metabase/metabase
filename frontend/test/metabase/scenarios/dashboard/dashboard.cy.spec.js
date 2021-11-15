@@ -32,6 +32,7 @@ describe("scenarios > dashboard", () => {
     cy.findByLabelText("Description").type("Desc");
     cy.findByText("Create").click();
     cy.findByText("This dashboard is looking empty.");
+    cy.findByText("You're editing this dashboard.");
 
     // See it as a listed dashboard
     cy.visit("/collection/root?type=dashboard");
@@ -74,7 +75,7 @@ describe("scenarios > dashboard", () => {
     cy.findByText("Orders, Count");
   });
 
-  it("should link filters to custom question with filtered aggregate data (metabase#11007)", () => {
+  it.only("should link filters to custom question with filtered aggregate data (metabase#11007)", () => {
     // programatically create and save a question as per repro instructions in #11007
     cy.request("POST", "/api/card", {
       name: "11007",
