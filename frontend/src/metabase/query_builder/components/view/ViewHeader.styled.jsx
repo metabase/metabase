@@ -48,3 +48,8 @@ export const SavedQuestionHeaderButtonContainer = styled.div`
   position: relative;
   right: 0.38rem;
 `;
+
+export const DatasetHeaderButtonContainer = styled.div`
+  position: relative;
+  right: 0.3rem;
+`;
