@@ -17,6 +17,7 @@ import {
   Description,
   ContextText,
   ContextContainer,
+  ResultSpinner,
 } from "./SearchResult.styled";
 import { InfoText } from "./InfoText";
 
@@ -47,10 +48,10 @@ function DefaultIcon({ item }) {
   return <Icon {...item.getIcon()} size={DEFAULT_ICON_SIZE} />;
 }
 
-export function ItemIcon({ item, type }) {
+export function ItemIcon({ item, type, active }) {
   const IconComponent = ModelIconComponentMap[type] || DefaultIcon;
   return (
-    <IconWrapper item={item} type={type}>
+    <IconWrapper item={item} type={type} active={active}>
       <IconComponent item={item} />
     </IconWrapper>
   );
@@ -93,25 +94,24 @@ export default function SearchResult({
   hasDescription,
   onClick,
 }) {
-  const linkProps = {};
-
-  if (typeof onClick === "function") {
-    linkProps.onClick = () => onClick(result);
-  } else {
-    linkProps.to = result.getUrl();
-  }
+  const active = isItemActive(result);
+  const loading = isItemLoading(result);
 
   return (
     <ResultLink
-      {...linkProps}
+      active={active}
       compact={compact}
+      to={!onClick ? result.getUrl() : ""}
+      onClick={onClick ? () => onClick(result) : undefined}
       data-testid="search-result-item"
     >
       <Flex align="start">
-        <ItemIcon item={result} type={result.model} />
+        <ItemIcon item={result} type={result.model} active={active} />
         <Box>
           <TitleWrapper>
-            <Title data-testid="search-result-item-name">{result.name}</Title>
+            <Title active={active} data-testid="search-result-item-name">
+              {result.name}
+            </Title>
             <PLUGIN_MODERATION.ModerationStatusIcon
               status={result.moderated_status}
               size={12}
@@ -125,8 +125,28 @@ export default function SearchResult({
           )}
           <Score scores={result.scores} />
         </Box>
+        {loading && <ResultSpinner size={24} borderWidth={3} />}
       </Flex>
       {compact || <Context context={result.context} />}
     </ResultLink>
   );
 }
+
+const isItemActive = result => {
+  switch (result.model) {
+    case "table":
+      return result.initial_sync;
+    default:
+      return true;
+  }
+};
+
+const isItemLoading = result => {
+  switch (result.model) {
+    case "database":
+    case "table":
+      return !result.initial_sync;
+    default:
+      return false;
+  }
+};

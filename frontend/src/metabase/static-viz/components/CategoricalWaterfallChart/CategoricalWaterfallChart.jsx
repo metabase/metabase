@@ -32,6 +32,7 @@ const propTypes = {
     x: PropTypes.object,
     y: PropTypes.object,
     colors: PropTypes.object,
+    showTotal: PropTypes.bool,
   }),
   labels: PropTypes.shape({
     left: PropTypes.string,
@@ -60,7 +61,6 @@ const layout = {
     waterfallPositive: "#88BF4D",
     waterfallNegative: "#EF8C8C",
   },
-  numTicks: 5,
   barPadding: 0.2,
   labelFontWeight: 700,
   labelPadding: 12,
@@ -69,7 +69,11 @@ const layout = {
 };
 
 const CategoricalWaterfallChart = ({ data, accessors, settings, labels }) => {
-  const entries = calculateWaterfallEntries(data, accessors);
+  const entries = calculateWaterfallEntries(
+    data,
+    accessors,
+    settings?.showTotal,
+  );
   const colors = settings?.colors;
   const isVertical = entries.length > 10;
   const xTickWidth = getXTickWidth(data, accessors, layout.maxTickWidth);

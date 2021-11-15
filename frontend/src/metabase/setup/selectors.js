@@ -1,7 +1,6 @@
 import { createSelector } from "reselect";
 import { getValues } from "redux-form";
-
-export const DATABASE_FORM_NAME = "database";
+import { DATABASE_FORM_NAME } from "./constants";
 
 const activeStepSelector = state => state.setup.activeStep;
 const userDetailsSelector = state => state.setup.userDetails;

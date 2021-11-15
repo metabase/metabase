@@ -115,10 +115,6 @@ describe("scenarios > question > native", () => {
     cy.findByText("This has a value");
 
     FILTERS.forEach(filter => {
-      // Clicking on a question's name in UI resets previously applied filters
-      // We can ask variations of that question "on the fly"
-      cy.findByText(QUESTION).click();
-
       cy.log("Apply a filter");
       cy.findAllByText("Filter")
         .first()
@@ -148,6 +144,13 @@ describe("scenarios > question > native", () => {
         .click();
       cy.findByText("Done").click();
       cy.get(".ScalarValue").contains("1");
+
+      cy.icon("close").click();
+      cy.findAllByText("Summarize")
+        .first()
+        .click();
+      cy.icon("close").click();
+      cy.findByText("Done").click();
     });
   });
 

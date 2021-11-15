@@ -47,7 +47,7 @@ describe("metabase-smoketest > admin", () => {
       cy.findByText("Add your data");
       cy.findByText("I'll add my data later");
 
-      cy.findByText("Select a database").click();
+      cy.findByText("Show more options").click();
       cy.findByText("H2").click();
       cy.findByLabelText("Name").type("Metabase H2");
 
