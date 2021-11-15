@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { jt, t } from "ttag";
+import { getEngineLogo } from "metabase/lib/engine";
 import TextInput from "metabase/components/TextInput";
 import ExternalLink from "metabase/components/ExternalLink";
 import {
@@ -114,14 +115,16 @@ EngineList.propTypes = {
 };
 
 const EngineCard = ({ field, option }) => {
+  const logo = getEngineLogo(option.value);
+
   const handleClick = useCallback(() => {
     field.onChange(option.value);
   }, [field, option]);
 
   return (
     <EngineCardRoot key={option.value} onClick={handleClick}>
-      {option.official ? (
-        <EngineCardImage src={`/app/assets/img/drivers/${option.value}.svg`} />
+      {logo ? (
+        <EngineCardImage src={logo} />
       ) : (
         <EngineCardIcon name="database" />
       )}

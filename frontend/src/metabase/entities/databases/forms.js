@@ -2,6 +2,7 @@ import React from "react";
 import { t, jt } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
+import { getElevatedEngines } from "metabase/lib/engine";
 import ExternalLink from "metabase/components/ExternalLink";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import getFieldsForBigQuery from "./big-query-fields";
@@ -267,7 +268,7 @@ function getEngineFormFields(engine, details, id) {
 }
 
 const ENGINES = MetabaseSettings.get("engines", {});
-const ELEVATED_ENGINES = MetabaseSettings.get("elevated-engines", []);
+const ELEVATED_ENGINES = getElevatedEngines();
 
 const ENGINE_OPTIONS = Object.entries(ENGINES)
   .map(([engine, info]) => ({
