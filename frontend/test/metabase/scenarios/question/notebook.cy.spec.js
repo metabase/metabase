@@ -232,7 +232,11 @@ describe("scenarios > question > notebook", () => {
 
       visualize();
 
-      cy.contains("Orders + Reviews");
+      cy.findByTestId("question-table-badges").within(() => {
+        cy.findByText("Orders");
+        cy.findByText("Reviews");
+      });
+
       cy.contains("3");
     });
 
@@ -246,7 +250,11 @@ describe("scenarios > question > notebook", () => {
       cy.log("Join to People table using default settings");
       cy.icon("join_left_outer ").click();
       cy.contains("People").click();
-      cy.contains("Orders + People");
+
+      cy.findByTestId("question-table-badges").within(() => {
+        cy.findByText("Orders");
+        cy.findByText("People");
+      });
 
       visualize();
 
@@ -305,7 +313,11 @@ describe("scenarios > question > notebook", () => {
       visualize();
 
       // check that query worked
-      cy.findByText("question a + question b");
+
+      cy.findByTestId("question-table-badges").within(() => {
+        cy.findByText("question a");
+        cy.findByText("question b");
+      });
       cy.findByText("A_COLUMN");
       cy.findByText("Question 5 → B Column");
       cy.findByText("Showing 1 row");
@@ -462,7 +474,11 @@ describe("scenarios > question > notebook", () => {
 
       cy.log("Reported failing in v1.35.4.1 and `master` on July, 16 2020");
 
-      cy.findByText("12928_Q1 + 12928_Q2");
+      cy.findByTestId("question-table-badges").within(() => {
+        cy.findByText("12928_Q1");
+        cy.findByText("12928_Q2");
+      });
+
       cy.findAllByText(/Products? → Category/).should("have.length", 2);
     });
 
