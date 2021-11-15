@@ -1055,7 +1055,7 @@
   (str "public/pivot/dashboard/" (:public_uuid dash) "/card/" (u/the-id card)))
 
 (deftest pivot-public-dashcard-test
-  (mt/test-drivers (disj (pivots/applicable-drivers) :redshift) ; disable on Redshift until #18834 is fixed
+  (mt/test-drivers (pivots/applicable-drivers)
     (mt/dataset sample-dataset
       (let [dashboard-defaults {:parameters [{:id      "_STATE_"
                                               :name    "State"

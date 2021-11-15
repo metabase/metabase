@@ -131,6 +131,7 @@ function _AddEditEmailSidebar({
         <div className="pt2 pb1">
           <SendTestPulse
             channel={channel}
+            channelSpecs={formInput.channels}
             pulse={pulse}
             testPulse={testPulse}
             normalText={t`Send email now`}
@@ -329,6 +330,7 @@ function _AddEditSlackSidebar({
         <div className="pt2 pb1">
           <SendTestPulse
             channel={channel}
+            channelSpecs={formInput.channels}
             pulse={pulse}
             testPulse={testPulse}
             normalText={t`Send to Slack now`}

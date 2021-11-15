@@ -9748,6 +9748,21 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-064
+      author: jeff303
+      comment: "Added 0.42.0 - fix type of query_cache.results on upgrade (in case changeSet 97 was run before #16095)"
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: query_cache
+            columnName: results
+            newDataType: longblob
+
   - changeSet:
       id: v42.00-065
       author: dpsutton
@@ -9765,20 +9780,6 @@ databaseChangeLog:
                   defaultValueBoolean: true
                   constraints:
                     nullable: false
-
-  - changeSet:
-      id: v42.00-064
-      author: jeff303
-      comment: "Added 0.42.0 - fix type of query_cache.results on upgrade (in case changeSet 97 was run before #16095)"
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
-      changes:
-        - modifyDataType:
-            tableName: query_cache
-            columnName: results
-            newDataType: longblob
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
