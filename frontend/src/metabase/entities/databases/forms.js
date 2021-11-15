@@ -2,7 +2,10 @@ import React from "react";
 import { t, jt } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
-import { getElevatedEngines, getEngineSupportsFirewall } from "metabase/lib/engine";
+import {
+  getElevatedEngines,
+  getEngineSupportsFirewall,
+} from "metabase/lib/engine";
 import ExternalLink from "metabase/components/ExternalLink";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import getFieldsForBigQuery from "./big-query-fields";
