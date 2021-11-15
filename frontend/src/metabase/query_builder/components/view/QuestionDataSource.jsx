@@ -27,11 +27,7 @@ function QuestionDataSource({ question, subHead, ...props }) {
 
   const variant = subHead ? "subhead" : "head";
 
-  if (
-    !subHead ||
-    !question.isStructured() ||
-    !isMaybeBasedOnDataset(question)
-  ) {
+  if (!question.isStructured() || !isMaybeBasedOnDataset(question)) {
     return (
       <DataSourceCrumbs question={question} variant={variant} {...props} />
     );
