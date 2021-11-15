@@ -109,11 +109,11 @@
   (let [process-name (tu/random-name)
         step-1-name  (tu/random-name)
         step-2-name  (tu/random-name)
-        sync-steps   [(create-sync-step step-1-name (fn [_] (Thread/sleep 10) {:foo "bar"}))
-                      (create-sync-step step-2-name (fn [_] (Thread/sleep 10)))]
+        sync-steps   [(sync-util/create-sync-step step-1-name (fn [_] (Thread/sleep 10) {:foo "bar"}))
+                      (sync-util/create-sync-step step-2-name (fn [_] (Thread/sleep 10)))]
         mock-db      (mdb/map->DatabaseInstance {:name "test", :id 1, :engine :h2})
         [results]    (:operation-results
-                      (call-with-operation-info #(run-sync-operation process-name mock-db sync-steps)))]
+                      (call-with-operation-info #(sync-util/run-sync-operation process-name mock-db sync-steps)))]
     (testing "valid operation metadata?"
       (is (= true
              (validate-times results))))
