@@ -20,17 +20,18 @@ import {
   EngineSearchRoot,
 } from "./EngineWidget.styled";
 
-const EngineWidget = ({ field, options }) => {
+const EngineWidget = ({ field, options, isHosted }) => {
   if (field.value) {
     return <EngineInfo field={field} options={options} />;
   } else {
-    return <EngineSearch field={field} options={options} />;
+    return <EngineSearch field={field} options={options} isHosted={isHosted} />;
   }
 };
 
 EngineWidget.propTypes = {
   field: PropTypes.object.isRequired,
   options: PropTypes.array.isRequired,
+  isHosted: PropTypes.bool,
 };
 
 const EngineInfo = ({ field, options }) => {
@@ -58,7 +59,7 @@ EngineInfo.propTypes = {
   options: PropTypes.array.isRequired,
 };
 
-const EngineSearch = ({ field, options }) => {
+const EngineSearch = ({ field, options, isHosted }) => {
   const [searchText, setSearchText] = useState("");
   const [isExpanded, setIsExpanded] = useState(false);
   const isSearching = searchText.length > 0;
@@ -82,7 +83,7 @@ const EngineSearch = ({ field, options }) => {
       {visibleOptions.length ? (
         <EngineList field={field} options={visibleOptions} />
       ) : (
-        <EngineEmptyState />
+        <EngineEmptyState isHosted={isHosted} />
       )}
       {!isSearching && (
         <EngineToggle
@@ -97,6 +98,7 @@ const EngineSearch = ({ field, options }) => {
 EngineSearch.propTypes = {
   field: PropTypes.object.isRequired,
   options: PropTypes.array.isRequired,
+  isHosted: PropTypes.bool,
 };
 
 const EngineList = ({ field, options }) => {
@@ -138,17 +140,25 @@ EngineCard.propTypes = {
   option: PropTypes.object,
 };
 
-const EngineEmptyState = () => {
+const EngineEmptyState = ({ isHosted }) => {
   return (
     <EngineEmptyStateRoot>
       <EngineEmptyIcon name="search" size={32} />
-      <EngineEmptyText>{jt`Don’t see your database? Check out our ${(
-        <ExternalLink href="https://www.metabase.com/docs/latest/developers-guide-drivers.html">
-          {t`Community Drivers`}
-        </ExternalLink>
-      )} page to see if it’s available for self-hosting.`}</EngineEmptyText>
+      {isHosted ? (
+        <EngineEmptyText>{t`Didn’t find anything`}</EngineEmptyText>
+      ) : (
+        <EngineEmptyText>{jt`Don’t see your database? Check out our ${(
+          <ExternalLink href="https://www.metabase.com/docs/latest/developers-guide-drivers.html">
+            {t`Community Drivers`}
+          </ExternalLink>
+        )} page to see if it’s available for self-hosting.`}</EngineEmptyText>
+      )}
     </EngineEmptyStateRoot>
   );
+};
+
+EngineEmptyState.propTypes = {
+  isHosted: PropTypes.bool,
 };
 
 const EngineToggle = ({ isExpanded, onExpandedChange }) => {

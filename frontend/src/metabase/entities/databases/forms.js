@@ -336,6 +336,7 @@ const forms = {
           type: "select",
           options: getEngineOptions(engine),
           placeholder: t`Select a database`,
+          isHosted: MetabaseSettings.isHosted(),
         },
         {
           name: "name",
