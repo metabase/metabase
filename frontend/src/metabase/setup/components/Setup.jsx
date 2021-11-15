@@ -143,6 +143,7 @@ export default class Setup extends Component {
       databaseFormName,
       databaseDetails,
       selectedDatabaseEngine,
+      setDatabaseEngine,
       userDetails,
     } = this.props;
 
@@ -253,6 +254,7 @@ export default class Setup extends Component {
             <DriverWarning
               engine={selectedDatabaseEngine}
               ml={26}
+              onChangeEngine={setDatabaseEngine}
               data-testid="database-setup-driver-warning"
             />
           </AddDatabaseHelpCardHolder>

@@ -15,3 +15,4 @@ export const STEPS = {
   [PREFERENCES_STEP_NUMBER]: "data_usage",
   [COMPLETED_STEP_NUMBER]: "completed",
 };
+export const DATABASE_FORM_NAME = "database";
