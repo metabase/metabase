@@ -285,7 +285,7 @@ export default function StaticVizPage() {
           />
         </Box>
         <Box>
-          <Subhead>Waterfall chart with timeseries data</Subhead>
+          <Subhead>Waterfall chart with timeseries data and no total</Subhead>
           <StaticChart
             type="timeseries/waterfall"
             options={{
@@ -298,6 +298,7 @@ export default function StaticVizPage() {
                 ["2020-10-25", -30],
                 ["2020-10-26", -10],
                 ["2020-10-27", 20],
+                ["2020-10-28", -15],
               ],
               accessors: {
                 x: row => new Date(row[0]).valueOf(),
@@ -311,7 +312,7 @@ export default function StaticVizPage() {
           />
         </Box>
         <Box py={3}>
-          <Subhead>Waterfall chart with categorical data</Subhead>
+          <Subhead>Waterfall chart with categorical data and total</Subhead>
           <StaticChart
             type="categorical/waterfall"
             options={{
@@ -330,6 +331,9 @@ export default function StaticVizPage() {
               accessors: {
                 x: row => row[0],
                 y: row => row[1],
+              },
+              settings: {
+                showTotal: true,
               },
               labels: {
                 left: "Count",
