@@ -9830,9 +9830,16 @@ databaseChangeLog:
               - column:
                   name: creator_id
                   type: int
-                  remarks: "ID of the admin user who added the database"
+                  remarks: "ID of the admin who added the database"
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v42.00-069
+      author: noahmoss
+      comment: >-
+        Added 0.42.0 - adds FK constraint for creator_id column, containing the ID of the admin who added a database.
+      changes:
         - addForeignKeyConstraint:
             baseTableName: metabase_database
             baseColumnNames: creator_id
