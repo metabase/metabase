@@ -2,7 +2,10 @@ import React from "react";
 import { t, jt } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
-import { getEngineSupportsFirewall } from "metabase/lib/engine";
+import {
+  getElevatedEngines,
+  getEngineSupportsFirewall,
+} from "metabase/lib/engine";
 import ExternalLink from "metabase/components/ExternalLink";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import getFieldsForBigQuery from "./big-query-fields";
@@ -10,6 +13,7 @@ import getFieldsForBigQuery from "./big-query-fields";
 import getFieldsForMongo from "./mongo-fields";
 import MetadataSyncScheduleWidget from "metabase/admin/databases/components/widgets/MetadataSyncScheduleWidget";
 import CacheFieldValuesScheduleWidget from "metabase/admin/databases/components/widgets/CacheFieldValuesScheduleWidget";
+import EngineWidget from "metabase/admin/databases/components/widgets/EngineWidget";
 
 const DATABASE_DETAIL_OVERRIDES = {
   "tunnel-enabled": () => ({
@@ -267,10 +271,14 @@ function getEngineFormFields(engine, details, id) {
 }
 
 const ENGINES = MetabaseSettings.get("engines", {});
+const ELEVATED_ENGINES = getElevatedEngines();
+
 const ENGINE_OPTIONS = Object.entries(ENGINES)
   .map(([engine, info]) => ({
-    name: info["driver-name"],
     value: engine,
+    name: info["driver-name"],
+    official: info["official"] ?? true, // TODO remove default
+    index: ELEVATED_ENGINES.indexOf(engine),
   }))
   .sort((a, b) => a.name.localeCompare(b.name));
 
@@ -328,6 +336,7 @@ const forms = {
           type: "select",
           options: getEngineOptions(engine),
           placeholder: t`Select a database`,
+          isHosted: MetabaseSettings.isHosted(),
         },
         {
           name: "name",
@@ -404,6 +413,17 @@ const forms = {
       }
     },
   },
+};
+
+forms.setup = {
+  ...forms.details,
+  fields: (...args) =>
+    forms.details.fields(...args).map(field => ({
+      ...field,
+      type: field.name === "engine" ? EngineWidget : field.type,
+      title: field.name === "engine" ? null : field.title,
+      hidden: field.hidden || SCHEDULING_FIELDS.has(field.name),
+    })),
 };
 
 // partial forms for tabbed view:
