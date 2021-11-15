@@ -22,8 +22,7 @@
    :email-smtp-security (setting/get :email-smtp-security)
    :email-smtp-username (setting/get :email-smtp-username)
    :email-smtp-password (setting/get :email-smtp-password)
-   :email-from-address  (setting/get :email-from-address)
-   :email-pulse-url     (setting/get :email-pulse-url)})
+   :email-from-address  (setting/get :email-from-address)})
 
 (def ^:private default-email-settings
   {:email-smtp-host     "foobar"
@@ -31,8 +30,7 @@
    :email-smtp-security :tls
    :email-smtp-username "munchkin"
    :email-smtp-password "gobble gobble"
-   :email-from-address  "eating@hungry.com"
-   :email-pulse-url     "https://my.app.url"})
+   :email-from-address  "eating@hungry.com"})
 
 (deftest test-email-settings-test
   (testing "POST /api/email/test -- send a test email"
@@ -68,7 +66,7 @@
                                   (with-redefs [email/retry-delay-ms 0]
                                     (thunk)))}]
       (tu/discard-setting-changes [email-smtp-host email-smtp-port email-smtp-security email-smtp-username
-                                   email-smtp-password email-from-address email-pulse-url]
+                                   email-smtp-password email-from-address]
         (testing (format "SMTP connection is valid? %b\n" success?)
           (f (fn []
                (testing "API request"
@@ -90,7 +88,7 @@
 (deftest clear-email-settings-test
   (testing "DELETE /api/email"
     (tu/discard-setting-changes [email-smtp-host email-smtp-port email-smtp-security email-smtp-username
-                                 email-smtp-password email-from-address email-pulse-url]
+                                 email-smtp-password email-from-address]
       (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
         (is (= (-> default-email-settings
                    (assoc :with-corrections {})
@@ -105,6 +103,5 @@
                   :email-smtp-security :none
                   :email-smtp-username nil
                   :email-smtp-password nil
-                  :email-from-address  "notifications@metabase.com"
-                  :email-pulse-url     nil}
+                  :email-from-address  "notifications@metabase.com"}
                  (email-settings))))))))

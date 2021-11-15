@@ -17,7 +17,6 @@ export function setupSMTP() {
     "email-smtp-password": "admin",
     "email-smtp-security": "none",
     "email-from-address": "mailer@metabase.test",
-    "email-pulse-url": "https://my.app.url",
   });
 
   // We must always clear Webmail's inbox before each test

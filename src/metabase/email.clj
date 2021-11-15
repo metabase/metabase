@@ -71,11 +71,10 @@
      {})))
 
 (defn- smtp-settings []
-  (-> {:host      (email-smtp-host)
-       :pulse-url (email-pulse-url)
-       :user      (email-smtp-username)
-       :pass      (email-smtp-password)
-       :port      (email-smtp-port)}
+  (-> {:host (email-smtp-host)
+       :user (email-smtp-username)
+       :pass (email-smtp-password)
+       :port (email-smtp-port)}
       (add-ssl-settings (email-smtp-security))))
 
 (def ^:private EmailMessage
@@ -138,11 +137,10 @@
   {:host                      su/NonBlankString
    :port                      su/IntGreaterThanZero
    ;; TODO -- not sure which of these other ones are actually required or not, and which are optional.
-   (s/optional-key :user)      (s/maybe s/Str)
-   (s/optional-key :security)  (s/maybe (s/enum :tls :ssl :none :starttls))
-   (s/optional-key :pass)      (s/maybe s/Str)
-   (s/optional-key :sender)    (s/maybe s/Str)
-   (s/optional-key :pulse-url) (s/maybe s/Str)})
+   (s/optional-key :user)     (s/maybe s/Str)
+   (s/optional-key :security) (s/maybe (s/enum :tls :ssl :none :starttls))
+   (s/optional-key :pass)     (s/maybe s/Str)
+   (s/optional-key :sender)   (s/maybe s/Str)})
 
 (s/defn ^:private test-smtp-settings :- SMTPStatus
   "Tests an SMTP configuration by attempting to connect and authenticate if an authenticated method is passed

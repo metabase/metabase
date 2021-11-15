@@ -23,9 +23,6 @@ describe("scenarios > admin > settings > email settings", () => {
     cy.findByLabelText("From Address")
       .type("mailer@metabase.test")
       .blur();
-    cy.findByLabelText("Pulse URL")
-      .type("https://my.app.url")
-      .blur();
     cy.findByText("Save changes").click();
 
     cy.findByText("Changes saved!", { timeout: 10000 });
@@ -35,7 +32,6 @@ describe("scenarios > admin > settings > email settings", () => {
     cy.findByDisplayValue("25");
     cy.findAllByDisplayValue("admin");
     cy.findByDisplayValue("mailer@metabase.test");
-    cy.findByDisplayValue("https://my.app.url");
   });
 
   it("should show an error if test email fails", () => {
@@ -47,7 +43,6 @@ describe("scenarios > admin > settings > email settings", () => {
       "email-smtp-port": "1234",
       "email-smtp-security": "none",
       "email-smtp-username": null,
-      "email-pulse-url": null,
     });
     cy.visit("/admin/settings/email");
     cy.findByText("Send test email").click();
