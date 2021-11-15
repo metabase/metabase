@@ -17,6 +17,12 @@
 
 (def parse-svg #'js-svg/parse-svg-string)
 
+(use-fixtures :each
+  (fn warn-possible-rebuild
+    [thunk]
+    (testing "[PRO TIP] If this test fails, you may need to rebuild the bundle with `yarn build-static-viz`\n"
+      (thunk))))
+
 (deftest post-process-test
   (let [svg   "<svg ><g><line/></g><g><rect/></g><g><circle/></g></svg>"
         nodes (atom [])]
