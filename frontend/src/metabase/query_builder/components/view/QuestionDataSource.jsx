@@ -11,6 +11,7 @@ import { TablesDivider } from "./QuestionDataSource.styled";
 
 QuestionDataSource.propTypes = {
   question: PropTypes.object,
+  originalQuestion: PropTypes.object,
   subHead: PropTypes.bool,
   isObjectDetail: PropTypes.bool,
 };
@@ -20,7 +21,7 @@ function isMaybeBasedOnDataset(question) {
   return isVirtualCardId(tableId);
 }
 
-function QuestionDataSource({ question, subHead, ...props }) {
+function QuestionDataSource({ question, originalQuestion, subHead, ...props }) {
   if (!question) {
     return null;
   }
@@ -35,6 +36,16 @@ function QuestionDataSource({ question, subHead, ...props }) {
 
   const sourceTable = question.query().sourceTableId();
   const sourceQuestionId = getQuestionIdFromVirtualTableId(sourceTable);
+
+  if (originalQuestion?.id() === sourceQuestionId) {
+    return (
+      <SourceDatasetBreadcrumbs
+        dataset={originalQuestion.card()}
+        variant={variant}
+        {...props}
+      />
+    );
+  }
 
   return (
     <Questions.Loader id={sourceQuestionId} loadingAndErrorWrapper={false}>
