@@ -3,6 +3,8 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
 
+import * as Urls from "metabase/lib/urls";
+
 import ButtonBar from "metabase/components/ButtonBar";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
@@ -16,6 +18,7 @@ import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQu
 
 import RunButtonWithTooltip from "../RunButtonWithTooltip";
 
+import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 import QuestionDataSource from "./QuestionDataSource";
 import QuestionDescription from "./QuestionDescription";
 import QuestionLineage from "./QuestionLineage";
@@ -27,6 +30,7 @@ import NativeQueryButton from "./NativeQueryButton";
 import ViewSection from "./ViewSection";
 import {
   AdHocViewHeading,
+  DatasetHeaderButtonContainer,
   SaveButton,
   SavedQuestionHeaderButtonContainer,
   ViewHeaderMainLeftContentContainer,
@@ -115,7 +119,14 @@ export function ViewTitleHeader(props) {
 
   return (
     <ViewHeaderContainer className={className} style={style}>
-      {isSaved ? (
+      {isDataset ? (
+        <DatasetLeftSide
+          {...props}
+          areFiltersExpanded={areFiltersExpanded}
+          onExpandFilters={expandFilters}
+          onCollapseFilters={collapseFilters}
+        />
+      ) : isSaved ? (
         <SavedQuestionLeftSide
           {...props}
           lastEditInfo={lastEditInfo}
@@ -294,6 +305,88 @@ function AhHocQuestionLeftSide(props) {
         )}
       </ViewHeaderLeftSubHeading>
     </div>
+  );
+}
+
+DatasetLeftSide.propTypes = {
+  question: PropTypes.object.isRequired,
+  areFiltersExpanded: PropTypes.bool.isRequired,
+  showFiltersInHeading: PropTypes.bool.isRequired,
+  isShowingQuestionDetailsSidebar: PropTypes.bool,
+  onExpandFilters: PropTypes.func.isRequired,
+  onCollapseFilters: PropTypes.func.isRequired,
+  onOpenQuestionDetails: PropTypes.func.isRequired,
+  onCloseQuestionDetails: PropTypes.func.isRequired,
+};
+
+function DatasetLeftSide(props) {
+  const {
+    question,
+    areFiltersExpanded,
+    isShowingQuestionDetailsSidebar,
+    showFiltersInHeading,
+    onOpenQuestionDetails,
+    onCloseQuestionDetails,
+    onExpandFilters,
+    onCollapseFilters,
+  } = props;
+  return (
+    <div>
+      <ViewHeaderMainLeftContentContainer>
+        <AdHocViewHeading>
+          <HeadBreadcrumbs
+            divider="/"
+            parts={[
+              <DatasetCollectionBadge key="collection" dataset={question} />,
+              <DatasetHeaderButtonContainer key="dataset-header-button">
+                <SavedQuestionHeaderButton
+                  question={question}
+                  isActive={isShowingQuestionDetailsSidebar}
+                  onClick={
+                    isShowingQuestionDetailsSidebar
+                      ? onCloseQuestionDetails
+                      : onOpenQuestionDetails
+                  }
+                />
+              </DatasetHeaderButtonContainer>,
+            ]}
+          />
+        </AdHocViewHeading>
+        {showFiltersInHeading && QuestionFilters.shouldRender(props) && (
+          <QuestionFilters
+            className="mr2"
+            question={question}
+            expanded={areFiltersExpanded}
+            onExpand={onExpandFilters}
+            onCollapse={onCollapseFilters}
+          />
+        )}
+      </ViewHeaderMainLeftContentContainer>
+      <ViewHeaderLeftSubHeading>
+        {!showFiltersInHeading && QuestionFilters.shouldRender(props) && (
+          <QuestionFilters
+            className="mb1"
+            question={question}
+            expanded={areFiltersExpanded}
+            onExpand={onExpandFilters}
+            onCollapse={onCollapseFilters}
+          />
+        )}
+      </ViewHeaderLeftSubHeading>
+    </div>
+  );
+}
+
+DatasetCollectionBadge.propTypes = {
+  dataset: PropTypes.object.isRequired,
+};
+
+function DatasetCollectionBadge({ dataset }) {
+  const { collection } = dataset.card();
+  return (
+    <HeadBreadcrumbs.Badge to={Urls.collection(collection)} icon="dataset">
+      {collection?.name || "Our analytics"}
+    </HeadBreadcrumbs.Badge>
   );
 }
 

@@ -49,6 +49,11 @@ export const SavedQuestionHeaderButtonContainer = styled.div`
   right: 0.38rem;
 `;
 
+export const DatasetHeaderButtonContainer = styled.div`
+  position: relative;
+  right: 0.3rem;
+`;
+
 export const ViewSQLButtonContainer = styled.div`
   margin-left: ${space(2)};
   padding: ${space(1)};
