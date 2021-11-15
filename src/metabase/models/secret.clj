@@ -95,7 +95,7 @@
                      (keyword (str conn-prop-nm suffix)))
         path-kw    (sub-prop "-path")
         value-kw   (sub-prop "-value")
-        options-kw (sub-prop "-value")
+        options-kw (sub-prop "-options")
         id-kw      (sub-prop "-id")
         value      (if-let [v (value-kw details)]     ; the -value suffix was specified; use that
                      v
@@ -110,7 +110,7 @@
                          (:value (Secret id)))))
         source     (cond
                      ;; set the :source due to the -path suffix (see above))
-                     (and (= "uploaded" (options-kw details)) (path-kw details))
+                     (and (not= "uploaded" (options-kw details)) (path-kw details))
                      :file-path
 
                      (id-kw details)
