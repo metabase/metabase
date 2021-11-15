@@ -88,10 +88,15 @@ function SourceDatasetBreadcrumbs({ dataset, ...props }) {
           key="dataset-collection"
           to={Urls.collection(collection)}
           icon="dataset"
+          inactiveColor="text-light"
         >
           {collection?.name || "Our analytics"}
         </HeadBreadcrumbs.Badge>,
-        <HeadBreadcrumbs.Badge key="dataset-name" to={Urls.question(dataset)}>
+        <HeadBreadcrumbs.Badge
+          key="dataset-name"
+          to={Urls.question(dataset)}
+          inactiveColor="text-light"
+        >
           {dataset.name}
         </HeadBreadcrumbs.Badge>,
       ]}
