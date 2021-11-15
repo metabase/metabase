@@ -134,7 +134,20 @@
                        :http-only true
                        :path      "/"}}
             :headers {anti-csrf-token-header test-anti-csrf-token}}
-           (mw.session/set-session-cookie {} {} test-full-app-embed-session)))))
+           (mw.session/set-session-cookie {} {} test-full-app-embed-session))))
+  (testing "test that we can set a full-app-embedding session cookie with SameSite=None over HTTPS"
+    (is (= {:body    {}
+            :status  200
+            :cookies {embedded-session-cookie
+                      {:value     "092797dd-a82a-4748-b393-697d7bb9ab65"
+                       :http-only true
+                       :path      "/"
+                       :same-site :none
+                       :secure    true}}
+            :headers {anti-csrf-token-header test-anti-csrf-token}}
+           (mw.session/set-session-cookie {:headers {"x-forwarded-protocol" "https"}}
+                                          {}
+                                          test-full-app-embed-session)))))
 
 
 ;;; ---------------------------------------- TEST wrap-session-id middleware -----------------------------------------

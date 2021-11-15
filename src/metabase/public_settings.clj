@@ -1,5 +1,8 @@
 (ns metabase.public-settings
-  (:require [clojure.string :as str]
+  (:require [cheshire.core :as json]
+            [clj-http.client :as http]
+            [clojure.core.memoize :as memoize]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [java-time :as t]
             [metabase.config :as config]
@@ -81,6 +84,26 @@
   :visibility :public
   :setter     :none
   :getter     #(uuid-nonce :analytics-uuid))
+
+(defn- first-user-creation
+  "Returns the timestamp at which the first user was created."
+  []
+  (:min (db/select-one ['User [:%min.date_joined :min]])))
+
+(defsetting instance-creation
+  (deferred-tru "The approximate timestamp at which this instance of Metabase was created, for inclusion in analytics.")
+  :visibility :public
+  :type       :timestamp
+  :setter     :none
+  :getter     (fn []
+                (if-let [value (setting/get-timestamp :instance-creation)]
+                  value
+                  ;; For instances that were started before this setting was added (in 0.41.3), use the creation
+                  ;; timestamp of the first user. For all new instances, use the timestamp at which this setting
+                  ;; is first read.
+                  (do (setting/set-timestamp! :instance-creation (or (first-user-creation)
+                                                                     (java-time/offset-date-time)))
+                      (setting/get-timestamp :instance-creation)))))
 
 (defn- normalize-site-url [^String s]
   (let [ ;; remove trailing slashes
@@ -419,3 +442,29 @@
   :visibility :public
   :type       :integer
   :default    180)
+
+(defsetting cloud-gateway-ips-url
+  "Store URL for fetching the list of Cloud gateway IP addresses"
+  :visibility :internal
+  :setter     :none
+  :default    (str premium-features/store-url "/static/cloud_gateways.json"))
+
+(def ^:private fetch-cloud-gateway-ips-fn
+  (memoize/ttl
+   (fn []
+       (when (premium-features/is-hosted?)
+         (try
+           (-> (http/get (cloud-gateway-ips-url))
+               :body
+               (json/parse-string keyword)
+               :ip_addresses)
+           (catch Exception e
+             (log/error e (trs "Error fetching Metabase Cloud gateway IP addresses:"))))))
+   :ttl/threshold (* 1000 60 60 24)))
+
+(defsetting cloud-gateway-ips
+  (deferred-tru "Metabase Cloud gateway IP addresses, to configure connections to DBs behind firewalls")
+  :visibility :public
+  :type       :json
+  :setter     :none
+  :getter     fetch-cloud-gateway-ips-fn)

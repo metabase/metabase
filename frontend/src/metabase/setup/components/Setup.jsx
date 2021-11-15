@@ -6,7 +6,6 @@ import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 import { trackStructEvent } from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
-import { b64hash_to_utf8 } from "metabase/lib/encoding";
 
 import AddDatabaseHelpCard from "metabase/components/AddDatabaseHelpCard";
 import DriverWarning from "metabase/components/DriverWarning";
@@ -21,6 +20,9 @@ import UserStep from "./UserStep";
 import DatabaseConnectionStep from "./DatabaseConnectionStep";
 import PreferencesStep from "./PreferencesStep";
 import { AddDatabaseHelpCardHolder } from "./Setup.styled";
+
+import { SetupApi } from "metabase/services";
+
 import {
   COMPLETED_STEP_NUMBER,
   DATABASE_CONNECTION_STEP_NUMBER,
@@ -43,6 +45,7 @@ export default class Setup extends Component {
     databaseFormName: PropTypes.string.isRequired,
     databaseDetails: PropTypes.object,
     selectedDatabaseEngine: PropTypes.string,
+    setDatabaseEngine: PropTypes.func,
   };
 
   constructor(props) {
@@ -56,10 +59,10 @@ export default class Setup extends Component {
     trackStructEvent("Setup", "Welcome");
   }
 
-  componentDidMount() {
-    this.setDefaultLanguage();
-    this.setDefaultDetails();
+  async componentDidMount() {
     this.trackStepSeen();
+    this.setDefaultLanguage();
+    await this.setDefaultDetails();
   }
 
   setDefaultLanguage() {
@@ -81,14 +84,11 @@ export default class Setup extends Component {
     }
   }
 
-  setDefaultDetails() {
-    const { hash } = this.props.location;
-
-    try {
-      const userDetails = hash && JSON.parse(b64hash_to_utf8(hash));
+  async setDefaultDetails() {
+    const token = this.props.location.hash.replace(/^#/, "");
+    if (token) {
+      const userDetails = await SetupApi.user_defaults({ token });
       this.setState({ defaultDetails: userDetails });
-    } catch (e) {
-      this.setState({ defaultDetails: undefined });
     }
   }
 
@@ -143,6 +143,7 @@ export default class Setup extends Component {
       databaseFormName,
       databaseDetails,
       selectedDatabaseEngine,
+      setDatabaseEngine,
       userDetails,
     } = this.props;
 
@@ -253,6 +254,7 @@ export default class Setup extends Component {
             <DriverWarning
               engine={selectedDatabaseEngine}
               ml={26}
+              onChangeEngine={setDatabaseEngine}
               data-testid="database-setup-driver-warning"
             />
           </AddDatabaseHelpCardHolder>

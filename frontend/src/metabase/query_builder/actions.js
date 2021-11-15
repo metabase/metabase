@@ -5,6 +5,7 @@ declare var ace: any;
 import { createAction } from "redux-actions";
 import _ from "underscore";
 import { getIn, assocIn, updateIn } from "icepick";
+import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
 
@@ -12,6 +13,7 @@ import { createThunkAction } from "metabase/lib/redux";
 import { push, replace } from "react-router-redux";
 import { setErrorPage } from "metabase/redux/app";
 import { loadMetadataForQuery } from "metabase/redux/metadata";
+import { addUndo } from "metabase/redux/undo";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { startTimer } from "metabase/lib/performance";
@@ -835,7 +837,9 @@ export const navigateToNewCardInsideQB = createThunkAction(
   NAVIGATE_TO_NEW_CARD,
   ({ nextCard, previousCard }) => {
     return async (dispatch, getState) => {
-      if (cardIsEquivalent(previousCard, nextCard)) {
+      if (previousCard === nextCard) {
+        // Do not reload questions with breakouts when clicked on a legend item
+      } else if (cardIsEquivalent(previousCard, nextCard)) {
         // This is mainly a fallback for scenarios where a visualization legend is clicked inside QB
         dispatch(setCardAndRun(await loadCard(nextCard.id)));
       } else {
@@ -1419,4 +1423,24 @@ export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
   if (question.display() !== "table") {
     dispatch(runQuestionQuery());
   }
+
+  dispatch(
+    addUndo({
+      message: t`This is a dataset now.`,
+      actions: [apiUpdateQuestion(question)],
+    }),
+  );
+};
+
+export const turnDatasetIntoQuestion = () => async (dispatch, getState) => {
+  const dataset = getQuestion(getState());
+  const question = dataset.setDataset(false);
+  await dispatch(apiUpdateQuestion(question));
+
+  dispatch(
+    addUndo({
+      message: t`This is a question now.`,
+      actions: [apiUpdateQuestion(dataset)],
+    }),
+  );
 };

@@ -13,14 +13,12 @@ import {
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import Pulses from "metabase/entities/pulses";
 import User from "metabase/entities/users";
-import { normalizeParameterValue } from "metabase/parameters/utils/parameter-values";
 
 import { connect } from "react-redux";
 
 import {
   cleanPulse,
   createChannel,
-  getPulseParameters,
   NEW_PULSE_TEMPLATE,
 } from "metabase/lib/pulse";
 
@@ -207,27 +205,6 @@ class SharingSidebar extends React.Component {
 
     const cleanedPulse = cleanPulse(pulse, formInput.channels);
     cleanedPulse.name = dashboard.name;
-    cleanedPulse.parameters = getPulseParameters(cleanedPulse).map(
-      parameter => {
-        const {
-          default: defaultValue,
-          name,
-          slug,
-          type,
-          value,
-          id,
-        } = parameter;
-        const normalizedValue = normalizeParameterValue(type, value);
-        return {
-          default: defaultValue,
-          id,
-          name,
-          slug,
-          type,
-          value: normalizedValue,
-        };
-      },
-    );
 
     try {
       this.setState({ isSaving: true });

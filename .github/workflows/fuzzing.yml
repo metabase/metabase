@@ -8,12 +8,13 @@ on:
     - 'frontend/**'
     - 'shared/**'
     - 'enterprise/frontend/**'
-    - 'docs/**'
     - '**/package.json'
     - '**/yarn.lock'
     - '**/.eslintrc'
     - '.github/workflows/**'
   pull_request:
+    paths-ignore:
+    - 'docs/**'
 
 jobs:
 

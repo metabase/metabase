@@ -363,3 +363,19 @@
               :tasks (for [task tasks]
                        (-> (select-keys task [:title :completed :triggered :is_next_step])
                            (update :title str)))})))))
+
+(deftest user-defaults-test
+  (testing "with no user defaults configured"
+    (mt/with-temp-env-var-value [mb-user-defaults nil]
+      (is (= "Not found." (http/client :get "setup/user_defaults")))))
+
+  (testing "with defaults containing no token"
+    (mt/with-temp-env-var-value [mb-user-defaults "{}"]
+      (is (= "Not found." (http/client :get "setup/user_defaults")))))
+
+  (testing "with valid configuration"
+    (mt/with-temp-env-var-value [mb-user-defaults "{\"token\":\"123456\",\"email\":\"john.doe@example.com\"}"]
+      (testing "with mismatched token"
+        (is (= "You don't have permissions to do that." (http/client :get "setup/user_defaults?token=987654"))))
+      (testing "with valid token"
+        (is (= {:email "john.doe@example.com"} (http/client :get "setup/user_defaults?token=123456")))))))

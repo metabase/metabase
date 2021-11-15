@@ -25,7 +25,7 @@ export const MaybeLink = styled(RawMaybeLink)`
   align-items: center;
   font-size: 0.875em;
   font-weight: bold;
-  color: ${color("text-medium")};
+  color: ${props => color(props.inactiveColor)};
 
   :hover {
     ${props => (props.to || props.onClick) && hoverStyle}

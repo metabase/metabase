@@ -1,21 +1,24 @@
 import { createAction } from "redux-actions";
+import { change } from "redux-form";
 import { createThunkAction } from "metabase/lib/redux";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
 import { SetupApi, UtilApi } from "metabase/services";
+import { DATABASE_FORM_NAME } from "metabase/setup/constants";
 
 // action constants
-export const SET_ACTIVE_STEP = "SET_ACTIVE_STEP";
-export const SET_LANGUAGE_DETAILS = "SET_LANGUAGE_DETAILS";
-export const SET_USER_DETAILS = "SET_USER_DETAILS";
-export const SET_DATABASE_DETAILS = "SET_DATABASE_DETAILS";
-export const SET_ALLOW_TRACKING = "SET_ALLOW_TRACKING";
-export const VALIDATE_DATABASE = "VALIDATE_DATABASE";
-export const VALIDATE_PASSWORD = "VALIDATE_PASSWORD";
-export const SUBMIT_SETUP = "SUBMIT_SETUP";
-export const COMPLETE_SETUP = "COMPLETE_SETUP";
+export const SET_ACTIVE_STEP = "metabase/setup/SET_ACTIVE_STEP";
+export const SET_LANGUAGE_DETAILS = "metabase/setup/SET_LANGUAGE_DETAILS";
+export const SET_USER_DETAILS = "metabase/setup/SET_USER_DETAILS";
+export const SET_DATABASE_ENGINE = "metabase/setup/SET_DATABASE_ENGINE";
+export const SET_DATABASE_DETAILS = "metabase/setup/SET_DATABASE_DETAILS";
+export const SET_ALLOW_TRACKING = "metabase/setup/SET_ALLOW_TRACKING";
+export const VALIDATE_DATABASE = "metabase/setup/VALIDATE_DATABASE";
+export const VALIDATE_PASSWORD = "metabase/setup/VALIDATE_PASSWORD";
+export const SUBMIT_SETUP = "metabase/setup/SUBMIT_SETUP";
+export const COMPLETE_SETUP = "metabase/setup/COMPLETE_SETUP";
 
 // action creators
 export const setActiveStep = createAction(SET_ACTIVE_STEP);
@@ -23,6 +26,15 @@ export const setLanguageDetails = createAction(SET_LANGUAGE_DETAILS);
 export const setUserDetails = createAction(SET_USER_DETAILS);
 export const setDatabaseDetails = createAction(SET_DATABASE_DETAILS);
 export const setAllowTracking = createAction(SET_ALLOW_TRACKING);
+
+export const setDatabaseEngine = createThunkAction(
+  SET_DATABASE_ENGINE,
+  function(engine) {
+    return function(dispatch) {
+      return dispatch(change(DATABASE_FORM_NAME, "engine", engine));
+    };
+  },
+);
 
 export const validateDatabase = createThunkAction(VALIDATE_DATABASE, function(
   database,

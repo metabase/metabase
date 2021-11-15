@@ -1,4 +1,4 @@
-import { restore, modal, typeAndBlurUsingLabel } from "__support__/e2e/cypress";
+import { restore, typeAndBlurUsingLabel } from "__support__/e2e/cypress";
 
 describe("admin > database > add > external databases", () => {
   beforeEach(() => {
@@ -30,11 +30,8 @@ describe("admin > database > add > external databases", () => {
 
     cy.wait("@createDatabase");
 
-    cy.url().should("match", /\/admin\/databases\?created=\d+$/);
-    cy.findByText("Your database has been added!");
-    modal()
-      .contains("I'm good thanks")
-      .click();
+    cy.url().should("match", /\/admin\/databases$/);
+    cy.findByText("QA Postgres12");
   });
 
   it("should add Mongo database and redirect to listing", () => {
@@ -60,11 +57,8 @@ describe("admin > database > add > external databases", () => {
 
     cy.wait("@createDatabase");
 
-    cy.url().should("match", /\/admin\/databases\?created=\d+$/);
-    cy.findByText("Your database has been added!");
-    modal()
-      .contains("I'm good thanks")
-      .click();
+    cy.url().should("match", /\/admin\/databases$/);
+    cy.findByText("QA Mongo4");
   });
 
   it("should add MySQL database and redirect to listing", () => {
@@ -96,10 +90,7 @@ describe("admin > database > add > external databases", () => {
 
     cy.wait("@createDatabase");
 
-    cy.url().should("match", /\/admin\/databases\?created=\d+$/);
-    cy.contains("Your database has been added!");
-    modal()
-      .contains("I'm good thanks")
-      .click();
+    cy.url().should("match", /\/admin\/databases$/);
+    cy.findByText("QA MySQL8");
   });
 });
