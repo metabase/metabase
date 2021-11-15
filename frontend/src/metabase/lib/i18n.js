@@ -87,7 +87,7 @@ function updateMomentLocale(locale) {
   moment.locale(momentLocale);
 }
 
-function mapToMomentLocale(locale) {
+function mapToMomentLocale(locale = "") {
   switch (locale) {
     case "zh-Hans":
       return "zh-cn";
