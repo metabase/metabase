@@ -248,10 +248,6 @@
           (is (= "should-continue" step-name))
           (is (= {:log-summary-fn nil} (dissoc result :start-time :end-time))))))))
 
-(defn- erroring-sync-step
-  [database]
-  (throw (java.net.ConnectException.)))
-
 (deftest initial-sync-status-test
   (mt/dataset sample-dataset
    (testing "If `initial-sync-status` on a DB is `incomplete`, it is marked as `complete` when sync-metadata has finished"
@@ -277,6 +273,15 @@
    (testing "If a non-recoverable error occurs during sync, `initial-sync-status` on the database is set to `aborted`"
       (let [_  (db/update! Database (:id (mt/db)) :initial_sync_status "complete")
             db (Database (:id (mt/db)))]
-        (with-redefs [sync-metadata/sync-steps [(sync-util/create-sync-step "fake-step" erroring-sync-step)]]
+        (with-redefs [sync-metadata/sync-steps [(sync-util/create-sync-step
+                                                 "fake-step"
+                                                 (fn [_] (throw (java.net.ConnectException.))))]]
           (sync/sync-database! db)
-          (is (= "aborted" (db/select-one-field :initial_sync_status Database :id (:id db)))))))))
+          (is (= "aborted" (db/select-one-field :initial_sync_status Database :id (:id db)))))))
+
+   (testing "If `initial-sync-status` is `aborted` for a database, it is set to `complete` the next time sync finishes
+           without error"
+      (let [_  (db/update! Database (:id (mt/db)) :initial_sync_status "complete")
+            db (Database (:id (mt/db)))]
+        (sync/sync-database! db)
+        (is (= "complete" (db/select-one-field :initial_sync_status Database :id (:id db))))))))
