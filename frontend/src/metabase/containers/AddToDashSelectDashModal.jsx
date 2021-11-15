@@ -35,8 +35,13 @@ export default class AddToDashSelectDashModal extends Component {
   };
 
   navigateToDashboard = dashboard => {
-    this.props.onChangeLocation(
-      Urls.dashboard(dashboard, { addCardWithId: this.props.card.id }),
+    const { card, onChangeLocation } = this.props;
+
+    onChangeLocation(
+      Urls.dashboard(dashboard, {
+        editingMode: true,
+        addCardWithId: card.id,
+      }),
     );
   };
 

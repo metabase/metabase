@@ -3,6 +3,7 @@ import { serializeCardForUrl } from "metabase/lib/card";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
 import MetabaseSettings from "metabase/lib/settings";
 import Question from "metabase-lib/lib/Question";
+import { stringifyHashOptions } from "metabase/lib/browser";
 
 function appendSlug(path, slug) {
   return slug ? `${path}-${slug}` : path;
@@ -97,13 +98,13 @@ export function newQuestion({ mode, ...options } = {}) {
   }
 }
 
-export function dashboard(dashboard, { addCardWithId } = {}) {
+export function dashboard(dashboard, { addCardWithId, editingMode } = {}) {
   const path = appendSlug(dashboard.id, slugg(dashboard.name));
-  return addCardWithId != null
-    ? // NOTE: no-color-literals rule thinks #add is a color, oops
-      // eslint-disable-next-line no-color-literals
-      `/dashboard/${path}#add=${addCardWithId}`
-    : `/dashboard/${path}`;
+  const options = stringifyHashOptions({
+    add: addCardWithId,
+    edit: editingMode,
+  });
+  return options ? `/dashboard/${path}#${options}` : `/dashboard/${path}`;
 }
 
 function prepareModel(item) {

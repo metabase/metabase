@@ -114,10 +114,12 @@ export default (ComposedComponent: React.Class) =>
 
         delete options.night; // DEPRECATED: options.night
 
-        // Delete the "add card to dashboard" parameter if it's present because we don't
-        // want to add the card again on page refresh. The `add` parameter is already handled in
-        // DashboardApp before this method is called.
+        // Delete the "add card to dashboard" and "editing mode" parameters
+        // if they are present because we do not want to add the card again on
+        // page refresh. The parameters are already handled in DashboardApp
+        // before this method is called.
         delete options.add;
+        delete options.edit;
 
         let hash = stringifyHashOptions(options);
         hash = hash ? "#" + hash : "";
