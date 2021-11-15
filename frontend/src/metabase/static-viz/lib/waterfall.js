@@ -3,7 +3,7 @@ import { formatDate } from "./dates";
 
 const WATERFALL_TOTAL = "Total";
 
-export const calculateWaterfallEntries = (data, accessors) => {
+export const calculateWaterfallEntries = (data, accessors, showTotal) => {
   let total = 0;
 
   const entries = data.map(datum => {
@@ -21,13 +21,15 @@ export const calculateWaterfallEntries = (data, accessors) => {
     };
   });
 
-  entries.push({
-    x: WATERFALL_TOTAL,
-    y: total,
-    start: 0,
-    end: total,
-    isTotal: true,
-  });
+  if (showTotal) {
+    entries.push({
+      x: WATERFALL_TOTAL,
+      y: total,
+      start: 0,
+      end: total,
+      isTotal: true,
+    });
+  }
 
   return entries;
 };

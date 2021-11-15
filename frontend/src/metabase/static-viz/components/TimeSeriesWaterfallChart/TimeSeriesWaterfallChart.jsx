@@ -29,6 +29,7 @@ const propTypes = {
     x: PropTypes.object,
     y: PropTypes.object,
     colors: PropTypes.object,
+    showTotal: PropTypes.bool,
   }),
   labels: PropTypes.shape({
     left: PropTypes.string,
@@ -76,7 +77,11 @@ const TimeSeriesWaterfallChart = ({ data, accessors, settings, labels }) => {
   const bottomLabel = labels?.bottom;
   const palette = { ...layout.colors, ...colors };
 
-  const entries = calculateWaterfallEntries(data, accessors);
+  const entries = calculateWaterfallEntries(
+    data,
+    accessors,
+    settings?.showTotal,
+  );
 
   const xScale = scaleBand({
     domain: entries.map(entry => entry.x),
