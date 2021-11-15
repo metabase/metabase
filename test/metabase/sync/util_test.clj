@@ -8,7 +8,8 @@
             [metabase.models.table :refer [Table]]
             [metabase.models.task-history :refer [TaskHistory]]
             [metabase.sync :as sync]
-            [metabase.sync.util :as sync-util :refer :all]
+            [metabase.sync.sync-metadata :as sync-metadata]
+            [metabase.sync.util :as sync-util]
             [metabase.test :as mt]
             [metabase.test.util :as tu]
             [toucan.db :as db]
@@ -247,6 +248,10 @@
           (is (= "should-continue" step-name))
           (is (= {:log-summary-fn nil} (dissoc result :start-time :end-time))))))))
 
+(defn- erroring-sync-step
+  [database]
+  (throw (java.net.ConnectException.)))
+
 (deftest initial-sync-status-test
   (mt/dataset sample-dataset
    (testing "If `initial-sync-status` on a DB is `incomplete`, it is marked as `complete` when sync-metadata has finished"
@@ -267,4 +272,11 @@
             _        (db/update! Table table-id :initial_sync_status "incomplete")
             table    (Table table-id)]
         (sync/sync-database! (mt/db))
-        (is (= "complete" (db/select-one-field :initial_sync_status Table :id table-id)))))))
+        (is (= "complete" (db/select-one-field :initial_sync_status Table :id table-id)))))
+
+   (testing "If a non-recoverable error occurs during sync, `initial-sync-status` on the database is set to `aborted`"
+      (let [_  (db/update! Database (:id (mt/db)) :initial_sync_status "complete")
+            db (Database (:id (mt/db)))]
+        (with-redefs [sync-metadata/sync-steps [(sync-util/create-sync-step "fake-step" erroring-sync-step)]]
+          (sync/sync-database! db)
+          (is (= "aborted" (db/select-one-field :initial_sync_status Database :id (:id db)))))))))

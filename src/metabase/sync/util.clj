@@ -375,7 +375,7 @@
                       (comp str log-summary-fn))}))
 
 (s/defn run-step-with-metadata :- StepNameWithMetadata
-  "Runs `step` on `database returning metadata from the run"
+  "Runs `step` on `database` returning metadata from the run"
   [database :- i/DatabaseInstance
    {:keys [step-name sync-fn log-summary-fn] :as step} :- StepDefinition]
   (let [start-time (t/zoned-date-time)
