@@ -1141,6 +1141,7 @@ const DatabaseSchemaPicker = ({
   if (hasBackButton) {
     sections.unshift({
       name: <RawDataBackButton />,
+      active: true,
     });
   }
 
