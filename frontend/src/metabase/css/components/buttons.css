@@ -8,7 +8,7 @@
   text-decoration: none;
   padding: 0.5rem 0.75rem;
   background: transparent;
-  border: 1px solid color(var(--color-border) blackness(+ 5%));
+  border: 1px solid color-mod(var(--color-border) blackness(5%));
   color: var(--color-text-dark);
   cursor: pointer;
   text-decoration: none;
@@ -19,7 +19,7 @@
 
 .Button:hover {
   color: var(--color-brand);
-  border-color: color(var(--color-border) blackness(+ 12%));
+  border-color: color-mod(var(--color-border) blackness(12%));
   background: var(--color-bg-light);
   transition: all 200ms linear;
 }
@@ -61,7 +61,7 @@
 .Button--primary:hover {
   color: var(--color-text-white);
   border-color: var(--color-brand);
-  background-color: color(var(--color-brand) alpha(-12%));
+  background-color: color-mod(var(--color-brand) alpha(-12%));
 }
 
 .Button--warning {
@@ -94,8 +94,8 @@
 
 .Button--purple:hover {
   color: white;
-  background-color: color(var(--color-accent7) alpha(-12%));
-  border-color: color(var(--color-accent7) alpha(-12%));
+  background-color: color-mod(var(--color-accent7) alpha(-12%));
+  border-color: color-mod(var(--color-accent7) alpha(-12%));
 }
 
 .Button--borderless {
