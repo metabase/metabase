@@ -2,11 +2,13 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
+import { cleanPulse } from "metabase/lib/pulse";
 import ActionButton from "metabase/components/ActionButton";
 
 export default class SendTestPulse extends Component {
   static propTypes = {
     channel: PropTypes.object.isRequired,
+    channelSpecs: PropTypes.object.isRequired,
     pulse: PropTypes.object.isRequired,
     testPulse: PropTypes.func.isRequired,
     disabled: PropTypes.bool.isRequired,
@@ -16,8 +18,11 @@ export default class SendTestPulse extends Component {
   static defaultProps = {};
 
   onTestPulseChannel = () => {
-    const { pulse, channel, testPulse } = this.props;
-    return testPulse({ ...pulse, channels: [channel] });
+    const { pulse, channel, channelSpecs, testPulse } = this.props;
+    const channelPulse = { ...pulse, channels: [channel] };
+    const cleanedPulse = cleanPulse(channelPulse, channelSpecs);
+
+    return testPulse(cleanedPulse);
   };
 
   render() {
