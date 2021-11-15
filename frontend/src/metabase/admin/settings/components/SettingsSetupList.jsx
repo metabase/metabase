@@ -85,7 +85,7 @@ export default class SettingsSetupList extends Component {
   async componentDidMount() {
     try {
       const tasks = await SetupApi.admin_checklist();
-      this.setState({ tasks: tasks });
+      this.setState({ tasks });
     } catch (e) {
       this.setState({ error: e });
     }
