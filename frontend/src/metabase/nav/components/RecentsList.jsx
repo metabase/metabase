@@ -122,7 +122,7 @@ const isItemActive = ({ model, model_object }) => {
     case "table":
       return model_object.initial_sync;
     default:
-      return false;
+      return true;
   }
 };
 
