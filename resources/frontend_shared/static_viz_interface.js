@@ -47,9 +47,9 @@ function timeseries_bar(data, labels, settings) {
   });
 }
 
-function timeseries_multi(data, labels, settings) {
-  return StaticViz.RenderChart("timeseries/multi", {
-    data: toJSArray(data),
+function timeseries_multiple(series, labels, settings) {
+  return StaticViz.RenderChart("timeseries/multiple", {
+    series: toJSArray(series).map(toJSMap),
     labels: toJSMap(labels),
     accessors: date_accessors,
     settings: JSON.parse(settings),
