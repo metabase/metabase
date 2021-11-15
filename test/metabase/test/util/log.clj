@@ -94,7 +94,6 @@
 
 (s/defn ^:private log-level->keyword :- LogLevelKeyword
   [level :- Level]
-  (println "level:" level) ; NOCOMMIT
   (some (fn [[k a-level]]
           (when (= a-level level)
             k))
