@@ -83,6 +83,7 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
         tables={allTables}
         subHead={subHead}
         hasLink={hasTableLink}
+        isLast={!isObjectDetail}
       />,
     );
   }
@@ -102,13 +103,17 @@ QuestionTableBadges.propTypes = {
   tables: PropTypes.arrayOf(PropTypes.object).isRequired,
   hasLink: PropTypes.bool,
   subHead: PropTypes.bool,
+  isLast: PropTypes.bool,
 };
 
-function QuestionTableBadges({ tables, subHead, hasLink }) {
+function QuestionTableBadges({ tables, subHead, hasLink, isLast }) {
+  const badgeInactiveColor = isLast && !subHead ? "text-dark" : "text-light";
+
   const parts = tables.map(table => (
     <HeadBreadcrumbs.Badge
       key={table.id}
       to={hasLink ? getTableURL(table) : ""}
+      inactiveColor={badgeInactiveColor}
     >
       {table.displayName()}
     </HeadBreadcrumbs.Badge>
