@@ -304,13 +304,25 @@ const TITLE_LOCALES_BN = {
     'en': 'Statistics of Enrollment of Students',
     'bn': ' ছাত্রছাত্রীর এনরোলমেন্ট পরিসংখ্যান'
   },
-  'admin.dashboard.nsa.gpa.gender': {
-    'en': 'Statistics of Students from GPA 4.0 to 5.0',
-    'bn': 'জিপিএ ৪.০ থেকে ৫.০ প্রাপ্ত ছাত্রছাত্রীর পরিসংখ্যান'
+  'admin.dashboard.pece.result.gender': {
+    'en': 'Statistics of result of PECE/EECE (GPA 4.0 to 5.0)',
+    'bn': 'পিইসিই/ইইসিই পরীক্ষার রেসাল্টের পরিসংখ্যান (জিপিএ ৪.০ থেকে ৫.০)'
   },
-  'admin.dashboard.nsa.gpa.year.gender': {
-    'en': 'Students\' Assessment Information',
-    'bn': 'শিক্ষার্থীদের মূল্যায়ন তথ্য'
+  'admin.dashboard.pece.result.details': {
+    'en': 'Students\' Result in PECE/EECE',
+    'bn': 'পিইসিই/ইইসিই পরীক্ষায় শিক্ষার্থীদের রেসাল্ট'
+  },
+  'admin.dashboard.nsa.scale.scores': {
+    'en': 'Statistics of Scale Scores of NSA',
+    'bn': 'এনএসএ এর স্কেল স্কোরের পরিসংখ্যান'
+  },
+  'admin.dashboard.nsa.scale.scores.details': {
+    'en': 'Scale Scores by Grade, Year and Subject',
+    'bn': 'গ্রেড, বছর এবং বিষয় অনুসারে স্কেল স্কোর'
+  },
+  'admin.dashboard.nsa.student.performance.level.details': {
+    'en': 'Students\' Performance level by Test, Grade and Year',
+    'bn': 'পরীক্ষা, গ্রেড এবং বছর অনুসারে শিক্ষার্থীদের পারফরম্যান্সের লেভেল'
   }
   
 }
