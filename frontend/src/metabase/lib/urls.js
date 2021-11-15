@@ -97,6 +97,10 @@ export function newQuestion({ mode, ...options } = {}) {
   }
 }
 
+export function dataset(...args) {
+  return question(...args);
+}
+
 export function dashboard(dashboard, { addCardWithId } = {}) {
   const path = appendSlug(dashboard.id, slugg(dashboard.name));
   return addCardWithId != null
