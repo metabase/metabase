@@ -81,7 +81,8 @@ export type SettingName =
   | "version-info-last-checked"
   | "version-info"
   | "version"
-  | "subscription-allowed-domains";
+  | "subscription-allowed-domains"
+  | "cloud-gateway-ips";
 
 type SettingsMap = Record<SettingName, any>; // provides access to Metabase application settings
 
@@ -126,6 +127,7 @@ class Settings {
 
   on(key: SettingName, callback: SettingListener) {
     this._listeners[key] = this._listeners[key] || [];
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     this._listeners[key]!.push(callback);
   }
 
@@ -142,8 +144,12 @@ class Settings {
     return this.get("email-configured?");
   }
 
-  isHosted() {
+  isHosted(): boolean {
     return this.get("is-hosted?");
+  }
+
+  cloudGatewayIps(): string[] {
+    return this.get("cloud-gateway-ips") || [];
   }
 
   googleAuthEnabled() {
@@ -191,7 +197,7 @@ class Settings {
 
   docsUrl(page = "", anchor = "") {
     let { tag } = this.get("version", {});
-    const matches = tag.match(/v[01]\.(\d+)(?:\.\d+)?(-.*)?/);
+    const matches = tag && tag.match(/v[01]\.(\d+)(?:\.\d+)?(-.*)?/);
 
     if (matches) {
       if (

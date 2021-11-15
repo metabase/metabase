@@ -83,6 +83,7 @@
 }
 
 :local .text-card-markdown a {
+  display: inline-block;
   font-weight: bold;
   cursor: pointer;
   text-decoration: none;
@@ -112,15 +113,15 @@
   text-align: left;
 }
 :local .text-card-markdown tr {
-  border-bottom: 1px solid color(var(--color-border) alpha(-70%));
+  border-bottom: 1px solid color-mod(var(--color-border) alpha(-70%));
 }
 :local .text-card-markdown tr:nth-child(even) {
-  background-color: color(var(--color-bg-black) alpha(-98%));
+  background-color: color-mod(var(--color-bg-black) alpha(-98%));
 }
 :local .text-card-markdown th,
 :local .text-card-markdown td {
   padding: 0.75em;
-  border: 1px solid color(var(--color-border) alpha(-70%));
+  border: 1px solid color-mod(var(--color-border) alpha(-70%));
 }
 
 :local .text-card-markdown code {

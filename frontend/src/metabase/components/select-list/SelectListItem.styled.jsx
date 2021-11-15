@@ -28,10 +28,8 @@ const VERTICAL_PADDING_BY_SIZE = {
   medium: "0.75rem",
 };
 
-export const ItemRoot = styled.li`
+export const BaseItemRoot = styled.li`
   display: grid;
-  grid-template-columns: min-content 1fr min-content;
-  gap: 0.5rem;
   align-items: center;
   cursor: pointer;
   padding: ${props => VERTICAL_PADDING_BY_SIZE[props.size]} 0.5rem;
@@ -47,4 +45,10 @@ export const ItemRoot = styled.li`
   &:hover {
     ${activeItemCss}
   }
+`;
+
+export const ItemRoot = styled(BaseItemRoot)`
+  display: grid;
+  grid-template-columns: min-content 1fr min-content;
+  gap: 0.5rem;
 `;

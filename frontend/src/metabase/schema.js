@@ -1,6 +1,7 @@
 // normalizr schema for use in actions/reducers
 
 import { schema } from "normalizr";
+import { generateSchemaId, entityTypeForObject } from "metabase/lib/schema";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
 
 export const QuestionSchema = new schema.Entity("questions");
@@ -8,7 +9,18 @@ export const DashboardSchema = new schema.Entity("dashboards");
 export const PulseSchema = new schema.Entity("pulses");
 export const CollectionSchema = new schema.Entity("collections");
 
-export const DatabaseSchema = new schema.Entity("databases");
+export const DatabaseSchema = new schema.Entity(
+  "databases",
+  {},
+  {
+    processStrategy: database => {
+      // TODO Alexander Polyankin 11/05/21
+      // Until BE returns databases before the initial sync, set it to true to unblock FE changes
+      database.initial_sync = true;
+      return database;
+    },
+  },
+);
 export const SchemaSchema = new schema.Entity("schemas");
 export const TableSchema = new schema.Entity(
   "tables",
@@ -35,6 +47,11 @@ export const TableSchema = new schema.Entity(
           },
         };
       }
+
+      // TODO Alexander Polyankin 11/05/21
+      // Until BE returns tables before the initial sync, set it to true to unblock FE changes
+      table.initial_sync = true;
+
       return table;
     },
   },
@@ -80,13 +97,6 @@ MetricSchema.define({
   table: TableSchema,
 });
 
-// backend returns model = "card" instead of "question"
-export const entityTypeForModel = model =>
-  model === "card" || model === "dataset" ? "questions" : `${model}s`;
-
-export const entityTypeForObject = object =>
-  object && entityTypeForModel(object.model);
-
 export const ENTITIES_SCHEMA_MAP = {
   questions: QuestionSchema,
   dashboards: DashboardSchema,
@@ -107,20 +117,17 @@ CollectionSchema.define({
   items: [ObjectUnionSchema],
 });
 
-export const getSchemaName = id => parseSchemaId(id)[1];
-export const parseSchemaId = id => {
-  const schemaId = String(id || "");
-  const firstColonIndex = schemaId.indexOf(":");
-  const dbId = schemaId.substring(0, firstColonIndex);
-  const schemaName = schemaId.substring(firstColonIndex + 1);
-
-  return [dbId, schemaName];
-};
-export const generateSchemaId = (dbId, schemaName) =>
-  `${dbId}:${schemaName || ""}`;
-
 export const RecentsSchema = new schema.Entity("recents", undefined, {
   idAttribute: ({ model, model_id }) => `${model}:${model_id}`,
+  processStrategy(item) {
+    // TODO Alexander Polyankin 11/05/21
+    // Until BE returns tables before the initial sync, set it to true to unblock FE changes
+    if (item.model_object) {
+      item.model_object.initial_sync = true;
+    }
+
+    return item;
+  },
 });
 
 export const LoginHistorySchema = new schema.Entity("loginHistory", undefined, {

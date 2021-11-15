@@ -80,11 +80,70 @@
   [[conn-binding db-type] & body]
   `(do-with-temp-empty-app-db ~db-type (fn [~(vary-meta conn-binding assoc :tag 'java.sql.Connection)] ~@body)))
 
+;; all legacy (numeric) IDs should come before all `v___` IDs so just convert them to prefixed strings so we can do
+;; string comparison.
+(defn- migration-id->str [id]
+  (cond
+    (and (string? id)
+         (re-matches #"^\d+$" id))
+    (recur (Integer/parseUnsignedInt id))
+
+    (integer? id)
+    (format "legacy-%03d" id)
+
+    (string? id)
+    id))
+
+(defn- migration-id-in-range?
+  "Whether `id` should be considered to be between `start-id` and `end-id`, inclusive. Handles both legacy plain-integer
+  and new-style `vMM.mm-NNN` style IDs."
+  [start-id id end-id & [{:keys [inclusive-end?]
+                          :or   {inclusive-end? true}}]]
+  (let [start-id (migration-id->str start-id)
+        end-id   (migration-id->str end-id)
+        id       (migration-id->str id)]
+    ;; end-id can be nil (meaning, unbounded), and sort will put nils first by default
+    ;; simply remove nils from both vectors when comparing to concisely deal with that
+    (and (= (sort (filter some? [start-id id end-id]))
+            (filter some? [start-id id end-id]))
+         (or inclusive-end?
+             (not= id end-id)))))
+
+(deftest migration-id-in-range?-test
+  (testing "legacy IDs"
+    (is (migration-id-in-range? 1 2 3))
+    (is (migration-id-in-range? 1 2 3 {:inclusive-end? false}))
+    (is (migration-id-in-range? 1 1 3))
+    (is (migration-id-in-range? 1 3 3))
+    (is (migration-id-in-range? 100 100 nil))
+    (is (not (migration-id-in-range? 1 3 3 {:inclusive-end? false})))
+    (is (not (migration-id-in-range? 2 1 3)))
+    (is (not (migration-id-in-range? 2 4 3)))
+    (testing "strings"
+      (is (migration-id-in-range? 1 "1" 3))
+      (is (not (migration-id-in-range? 1 "13" 3)))))
+  (testing "new-style IDs"
+    (is (migration-id-in-range? "v42.00-001" "v42.00-002" "v42.00-003"))
+    (is (migration-id-in-range? "v42.00-001" "v42.00-002" "v42.00-002"))
+    (is (not (migration-id-in-range? "v42.00-001" "v42.00-002" "v42.00-002" {:inclusive-end? false})))
+    (is (not (migration-id-in-range? "v42.00-001" "v42.00-004" "v42.00-003")))
+    (is (not (migration-id-in-range? "v42.00-002" "v42.00-001" "v42.00-003")))
+    ;; this case is invoked when the test-migrations macro is only given one item in the range list
+    (is (migration-id-in-range? "v42.00-064" "v42.00-064" nil)))
+  (testing "mixed"
+    (is (migration-id-in-range? 1 3 "v42.00-001"))
+    (is (migration-id-in-range? 1 "v42.00-001" "v42.00-002"))
+    (is (not (migration-id-in-range? "v42.00-002" 1000 "v42.00-003")))
+    (is (not (migration-id-in-range? "v42.00-002" 1000 "v42.00-003" {:inclusive-end? false})))
+    (is (not (migration-id-in-range? 1 "v42.00-001" 1000)))
+    (is (not (migration-id-in-range? 1 "v42.00-001" 1000)))))
+
 (defn run-migrations-in-range!
   "Run Liquibase migrations from our migrations YAML file in the range of `start-id` -> `end-id` (inclusive) against a
   DB with `jdbc-spec`."
-  {:added "0.41.0"}
-  [^java.sql.Connection conn [start-id end-id]]
+  {:added "0.41.0", :arglists '([conn [start-id end-id]]
+                                [conn [start-id end-id] {:keys [inclusive-end?], :or {inclusive-end? true}}])}
+  [^java.sql.Connection conn [start-id end-id] & [range-options]]
   (liquibase/with-liquibase [liquibase conn]
     (let [change-log        (.getDatabaseChangeLog liquibase)
           ;; create a new change log that only has the subset of migrations we want to run.
@@ -93,8 +152,8 @@
                               (.setPhysicalFilePath (.getPhysicalFilePath change-log)))]
       ;; add the relevant migrations (change sets) to our subset change log
       (doseq [^ChangeSet change-set (.getChangeSets change-log)
-              :let                  [id (Integer/parseUnsignedInt (.getId change-set))]
-              :when                 (<= start-id id end-id)]
+              :let                  [id (.getId change-set)]
+              :when                 (migration-id-in-range? start-id id end-id range-options)]
         (.addChangeSet subset-change-log change-set))
       ;; now create a new instance of Liquibase that will run just the subset change log
       (let [subset-liquibase (Liquibase. subset-change-log (.getResourceAccessor liquibase) (.getDatabase liquibase))]
@@ -114,11 +173,11 @@
           (assert (zero? (count tables))
                   (str "'Empty' application DB is not actually empty. Found tables:\n"
                        (u/pprint-to-str tables))))))
-    (run-migrations-in-range! conn [1 (dec start-id)])
+    (run-migrations-in-range! conn [1 start-id] {:inclusive-end? false})
     (f #(run-migrations-in-range! conn [start-id end-id])))
   (log/debug (u/format-color 'green "Done testing migrations for driver %s." driver)))
 
-(defn test-migrations*
+(defn do-test-migrations
   [migration-range f]
   ;; make sure the normal Metabase application DB is set up before running the tests so things don't get confused and
   ;; try to initialize it while the mock DB is bound
@@ -126,7 +185,7 @@
   (let [[start-id end-id] (if (sequential? migration-range)
                             migration-range
                             [migration-range migration-range])]
-    (testing (format "Migrations %d-%d" start-id end-id)
+    (testing (format "Migrations %s thru %s" start-id end-id)
       (mt/test-drivers #{:h2 :mysql :postgres}
         (test-migrations-for-driver driver/*driver* [start-id end-id] f)))))
 
@@ -136,9 +195,9 @@
   Before invoking body, migrations up to `start-id` are automatically ran. In body, you should do the following in
   this order:
 
-  1. Load data and check any preconditions before running migrations you're testing. Prefer `toucan.db/simple-insert!`
-     or plain SQL for loading data to avoid dependencies on the current state of the schema that may be present in
-     Toucan `pre-insert` functions and the like.
+  1. Load data and check any preconditions before running migrations you're testing.
+     Prefer [[toucan.db/simple-insert!]] or plain SQL for loading data to avoid dependencies on the current state of
+     the schema that may be present in Toucan `pre-insert` functions and the like.
 
   2. Call `(migrate!)` to run migrations in range of `start-id` -> `end-id` (inclusive)
 
@@ -160,10 +219,10 @@
   single migration ID (e.g. `100`).
 
   These run against the current set of test `DRIVERS` (by default H2), so if you want to run against more than H2
-  either set the `DRIVERS` env var or use `mt/set-test-drivers!` from the REPL."
+  either set the `DRIVERS` env var or use [[mt/set-test-drivers!]] from the REPL."
   {:style/indent 2}
   [migration-range [migrate!-binding] & body]
-  `(test-migrations*
+  `(do-test-migrations
     ~migration-range
     (fn [~migrate!-binding]
       ~@body)))

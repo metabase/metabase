@@ -1,12 +1,9 @@
 import { createEntity } from "metabase/lib/entities";
 
 import { GET } from "metabase/lib/api";
+import { entityTypeForObject } from "metabase/lib/schema";
 
-import {
-  ObjectUnionSchema,
-  ENTITIES_SCHEMA_MAP,
-  entityTypeForObject,
-} from "metabase/schema";
+import { ObjectUnionSchema, ENTITIES_SCHEMA_MAP } from "metabase/schema";
 
 import { canonicalCollectionId } from "metabase/entities/collections";
 
@@ -64,7 +61,14 @@ export default createEntity({
             : [],
         };
       } else {
-        return searchList(query);
+        const { data, ...rest } = await searchList(query);
+
+        return {
+          ...rest,
+          // TODO Alexander Polyankin 11/09/21
+          // Until BE returns databases and tables before the initial sync, set it to true to unblock FE changes
+          data: data?.map(item => ({ ...item, initial_sync: true })),
+        };
       }
     },
   },

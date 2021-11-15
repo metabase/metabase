@@ -12,8 +12,9 @@
             [metabase.models.permissions-group :as perm-group]
             [metabase.models.secret :as secret :refer [Secret]]
             [metabase.plugins.classloader :as classloader]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
+            [metabase.util.i18n :refer [trs tru]]
             [toucan.db :as db]
             [toucan.models :as models]))
 
@@ -79,8 +80,9 @@
     (let [conn-props                 (conn-props-fn (driver.u/database->driver database))
           possible-secret-prop-names (keys (conn-props->secret-props-by-name conn-props))]
       (doseq [secret-id (reduce (fn [acc prop-name]
-                                  (when-let [secret-id (get details (keyword (str prop-name "-id")))]
-                                    (conj acc secret-id)))
+                                  (if-let [secret-id (get details (keyword (str prop-name "-id")))]
+                                    (conj acc secret-id)
+                                    acc))
                                 []
                                 possible-secret-prop-names)]
         (log/info (trs "Deleting secret ID {0} from app DB because the owning database ({1}) is being deleted"
@@ -117,6 +119,10 @@
         value     (if-let [v (value-kw details)]     ; the -value suffix was specified; use that
                     v
                     (when-let [path (path-kw details)] ; the -path suffix was specified; this is actually a :file-path
+                      (when (premium-features/is-hosted?)
+                        (throw (ex-info
+                                (tru "{0} (a local file path) cannot be used in Metabase hosted environment" path-kw)
+                                {:invalid-db-details-entry (select-keys details [path-kw])})))
                       path))
         kind      (:secret-kind conn-prop)
         source    (when (path-kw details)

@@ -17,11 +17,9 @@
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s])
-  (:import com.google.auth.oauth2.ServiceAccountCredentials
-           [com.google.cloud.bigquery BigQuery BigQuery$DatasetOption BigQuery$JobOption BigQuery$TableListOption
+  (:import [com.google.cloud.bigquery BigQuery BigQuery$DatasetOption BigQuery$JobOption BigQuery$TableListOption
                                       BigQuery$TableOption BigQueryException BigQueryOptions DatasetId Field Field$Mode FieldValue
                                       FieldValueList QueryJobConfiguration Schema Table TableId TableResult]
-           java.io.ByteArrayInputStream
            java.util.Collections))
 
 (driver/register! :bigquery-cloud-sdk, :parent :sql)
@@ -37,15 +35,9 @@
   Unclear if this can be sourced from the `com.google.cloud.bigquery` package directly."
   "https://www.googleapis.com/auth/bigquery")
 
-(defn- database->service-account-credential
-  "Returns a `ServiceAccountCredentials` (not scoped) for the given DB, from its service account JSON."
-  ^ServiceAccountCredentials [{{:keys [^String service-account-json]} :details, :as db}]
-  {:pre [(map? db) (seq service-account-json)]}
-  (ServiceAccountCredentials/fromStream (ByteArrayInputStream. (.getBytes service-account-json))))
-
 (defn- ^BigQuery database->client
   [database]
-  (let [creds   (database->service-account-credential database)
+  (let [creds   (bigquery.common/database-details->service-account-credential (:details database))
         bq-bldr (doto (BigQueryOptions/newBuilder)
                   (.setCredentials (.createScoped creds (Collections/singletonList bigquery-scope))))]
     (.. bq-bldr build getService)))
@@ -299,3 +291,8 @@
 (defmethod driver/db-start-of-week :bigquery-cloud-sdk
   [_]
   :sunday)
+
+
+(defmethod driver/notify-database-updated :bigquery-cloud-sdk
+  [_ database]
+  (bigquery.common/populate-project-id-from-credentials! database))

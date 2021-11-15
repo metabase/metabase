@@ -192,7 +192,6 @@ TokenizedInput.propTypes = {
   onClick: PropTypes.func,
   onFocus: PropTypes.func,
   onKeyDown: PropTypes.func,
-  parserOptions: PropTypes.object,
   style: PropTypes.object,
   tokenizedEditing: PropTypes.bool,
   value: PropTypes.string,

@@ -152,15 +152,19 @@ _Important note:_ If you change any of these settings, either during initial set
 
 This setting allows you to assign users to Metabase groups based on an attribute of your users in your IdP. Please note that this may not correlate to group functionality provided by your IdP — you may need to create a separate attribute on your users to set their Metabase group, like `metabaseGroups`.
 
-#### Configuring the group schema in your IdP
+First, you will need to create a SAML user attribute that you will use to indicate which Metabase groups the user should be a part of. This created user attribute can be a XML string or a list of XML strings. Different IdPs have different ways of handling this, but you will likely need to edit your user profiles or find a way to map a user's groups to a list of Metabase group names.
 
-First, you will need to create a user attribute that you will use to indicate which Metabase groups the user should be a part of. Different IdPs have different ways of handling this, but you will likely need to edit your user profiles. For the rest of this example, let's say that you named your attribute `metabaseGroups`.
+#### Okta: example of mapping a single group to Metabase
 
-Once you've created your `metabaseGroups` attribute, you will need to update it for each user you would like to be automatically added to a Metabase group. For ease of use, we recommend using the same name for the groups you would use in Metabase.
+As an example of mapping a single Metabase group per Okta user,  let's say that you created a User Profile attribute named `metabaseGroups`. Once you've created your `metabaseGroups` attribute, you will need to update it for each user you would like to be automatically added to a Metabase group. For ease of use, we recommend using the same name for the groups you would use in Metabase.
 
 After that, you will need to add an additional SAML attribute to the ones we added above. The screenshot below is for Okta, but may vary depending on your SAML provider.
 
 ![Group attribute](images/saml-group-attribute.png)
+
+#### Okta: example of mapping a multiple groups to Metabase
+
+If your IdP is Okta, and you would like to leverage Okta User Groups, you can create an `Attribute Statement` with the `Name` of `metabaseGroups` and the `Value` of an Okta Language Expression such as `getFilteredGroups({"groupId1", "groupId2"}, "group.name", 100)`. This expression will return a list of strings containing User Group names that the user logging in is part of. The Group IDs in `{"groupId1", "groupId2"}` are the groups that you would like to map to in Metabase.
 
 #### Configuring the group schema in Metabase
 
