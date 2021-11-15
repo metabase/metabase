@@ -59,9 +59,9 @@ export default class Setup extends Component {
   }
 
   async componentDidMount() {
+    this.trackStepSeen();
     this.setDefaultLanguage();
     await this.setDefaultDetails();
-    this.trackStepSeen();
   }
 
   setDefaultLanguage() {
@@ -85,7 +85,7 @@ export default class Setup extends Component {
 
   async setDefaultDetails() {
     const token = this.props.location.hash.replace(/^#/, "");
-    if (0 < token.length) {
+    if (token) {
       const userDetails = await SetupApi.user_defaults({ token });
       this.setState({ defaultDetails: userDetails });
     }
