@@ -6,7 +6,10 @@ import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
+import {
+  isVirtualCardId,
+  SAVED_QUESTIONS_VIRTUAL_DB_ID,
+} from "metabase/lib/saved-questions";
 
 import ListSearchField from "metabase/components/ListSearchField";
 import ExternalLink from "metabase/components/ExternalLink";
@@ -25,7 +28,6 @@ import Search from "metabase/entities/search";
 import {
   SearchResults,
   convertSearchResultToTableLikeItem,
-  isSavedQuestion,
 } from "./data-search";
 import SavedQuestionPicker from "./saved-question-picker/SavedQuestionPicker";
 
@@ -429,7 +431,7 @@ export class UnconnectedDataSelector extends Component {
     const invalidTable =
       selectedSchema &&
       selectedTable &&
-      !isSavedQuestion(selectedTable.id) &&
+      !isVirtualCardId(selectedTable.id) &&
       selectedTable.schema.id !== selectedSchema.id;
     const invalidField =
       selectedTable &&
@@ -832,7 +834,7 @@ export class UnconnectedDataSelector extends Component {
     return null;
   }
 
-  isSavedQuestionSelected = () => isSavedQuestion(this.props.selectedTableId);
+  isSavedQuestionSelected = () => isVirtualCardId(this.props.selectedTableId);
 
   handleSavedQuestionSelect = async table => {
     if (this.props.setSourceTableFn) {
