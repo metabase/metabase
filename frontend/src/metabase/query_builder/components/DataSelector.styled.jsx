@@ -22,8 +22,8 @@ export const PickerSpinner = styled(LoadingSpinner)`
   display: flex;
   flex-direction: column;
   justify-content: center;
-  margin-left: auto;
   color: ${color("brand")};
+  margin-left: 0.5rem;
 `;
 
 const BackButtonContainer = styled.div`
