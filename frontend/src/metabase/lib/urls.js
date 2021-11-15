@@ -100,7 +100,10 @@ export function newQuestion({ mode, ...options } = {}) {
 
 export function dashboard(dashboard, { addCardWithId, editMode } = {}) {
   const path = appendSlug(dashboard.id, slugg(dashboard.name));
-  const options = stringifyHashOptions({ add: addCardWithId, edit: editMode });
+  const options = stringifyHashOptions({
+    ...(addCardWithId ? { add: addCardWithId } : {}),
+    ...(editMode ? { edit: editMode } : {}),
+  });
   return options ? `/dashboard/${path}#${options}` : `/dashboard/${path}`;
 }
 

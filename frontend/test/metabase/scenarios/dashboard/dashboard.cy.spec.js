@@ -75,7 +75,7 @@ describe("scenarios > dashboard", () => {
     cy.findByText("Orders, Count");
   });
 
-  it.only("should link filters to custom question with filtered aggregate data (metabase#11007)", () => {
+  it("should link filters to custom question with filtered aggregate data (metabase#11007)", () => {
     // programatically create and save a question as per repro instructions in #11007
     cy.request("POST", "/api/card", {
       name: "11007",
