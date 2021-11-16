@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
-import { isSyncCompleted } from "metabase/lib/syncing";
+import { isSyncInProgress } from "metabase/lib/syncing";
 import SyncSnackbarContent from "../SyncSnackbarContent";
 
 const REMOVE_DELAY = 6000;
@@ -23,7 +23,7 @@ const SyncSnackbar = ({ databases }) => {
 SyncSnackbar.propTypes = propTypes;
 
 const useVisibleDatabases = databases => {
-  const syncingIds = databases.filter(d => !isSyncCompleted(d)).map(d => d.id);
+  const syncingIds = databases.filter(d => isSyncInProgress(d)).map(d => d.id);
   const delayedIds = useDelayedValue(syncingIds, REMOVE_DELAY);
   const visibleIds = _.uniq([...syncingIds, ...delayedIds]);
   const databaseById = Object.fromEntries(databases.map(d => [d.id, d]));
