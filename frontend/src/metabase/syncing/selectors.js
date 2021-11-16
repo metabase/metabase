@@ -1,4 +1,6 @@
 import { createSelector } from "reselect";
+import { isSyncCompleted } from "metabase/lib/syncing";
+import { getUserId } from "metabase/selectors/user";
 
 export const RELOAD_INTERVAL = 2000;
 
@@ -12,14 +14,19 @@ export const getSampleDatabase = createSelector(
   databases => databases.find(d => d.is_sample),
 );
 
-export const getUserDatabases = createSelector(
+export const getCustomDatabases = createSelector(
   [getAllDatabases],
   databases => databases.filter(d => !d.is_sample && d.tables != null),
 );
 
+export const getUserDatabases = createSelector(
+  [getCustomDatabases, getUserId],
+  (databases, userId) => databases.filter(d => d.creator_id === userId),
+);
+
 export const getSyncingDatabases = createSelector(
   [getUserDatabases],
-  databases => databases.filter(d => !d.initial_sync),
+  databases => databases.filter(d => !isSyncCompleted(d)),
 );
 
 export const hasSyncingDatabases = createSelector(

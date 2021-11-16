@@ -4,6 +4,11 @@ import { t } from "ttag";
 import Icon from "metabase/components/Icon";
 import Ellipsified from "metabase/components/Ellipsified";
 import {
+  isSyncAborted,
+  isSyncCompleted,
+  isSyncInProgress,
+} from "metabase/lib/syncing";
+import {
   DatabaseCard,
   DatabaseContent,
   DatabaseDescription,
@@ -49,12 +54,18 @@ const SyncSnackbarContent = ({ databases }) => {
                   {getDescriptionMessage(database)}
                 </DatabaseDescription>
               </DatabaseContent>
-              {database.initial_sync ? (
+              {isSyncInProgress(database) && (
+                <DatabaseSpinner size={24} borderWidth={3} />
+              )}
+              {isSyncCompleted(database) && (
                 <DatabaseIconContainer>
                   <Icon name="check" size={12} />
                 </DatabaseIconContainer>
-              ) : (
-                <DatabaseSpinner size={24} borderWidth={3} />
+              )}
+              {isSyncAborted(database) && (
+                <DatabaseIconContainer isError={true}>
+                  <Icon name="warning" size={12} />
+                </DatabaseIconContainer>
               )}
             </DatabaseCard>
           ))}
@@ -67,11 +78,11 @@ const SyncSnackbarContent = ({ databases }) => {
 SyncSnackbarContent.propTypes = propTypes;
 
 const getTitleMessage = (databases, isOpened) => {
-  const tables = databases.filter(d => !d.initial_sync).flatMap(d => d.tables);
+  const tables = databases.flatMap(d => d.tables);
   const totalCount = tables.length;
 
-  const done = databases.every(d => d.initial_sync);
-  const doneCount = tables.filter(t => t.initial_sync).length;
+  const done = databases.every(d => isSyncCompleted(d));
+  const doneCount = tables.filter(t => isSyncCompleted(t)).length;
   const donePercentage = Math.floor((doneCount / totalCount) * 100);
 
   return done
@@ -82,7 +93,7 @@ const getTitleMessage = (databases, isOpened) => {
 };
 
 const getDescriptionMessage = database => {
-  const doneCount = database.tables.filter(t => t.initial_sync).length;
+  const doneCount = database.tables.filter(t => isSyncCompleted(t)).length;
   const totalCount = database.tables.length;
 
   return t`${doneCount} of ${totalCount} done`;
