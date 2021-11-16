@@ -845,7 +845,7 @@ export const navigateToNewCardInsideQB = createThunkAction(
       } else {
         const card = getCardAfterVisualizationClick(nextCard, previousCard);
         const url = Urls.question(null, card);
-        if (shouldOpenInBlankWindow(url, { blankOnMetaKey: true })) {
+        if (shouldOpenInBlankWindow(url, { blankOnMetaOrCtrlKey: true })) {
           open(url);
         } else {
           dispatch(onCloseSidebars());

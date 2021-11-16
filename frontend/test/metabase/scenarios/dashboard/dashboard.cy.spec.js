@@ -32,6 +32,7 @@ describe("scenarios > dashboard", () => {
     cy.findByLabelText("Description").type("Desc");
     cy.findByText("Create").click();
     cy.findByText("This dashboard is looking empty.");
+    cy.findByText("You're editing this dashboard.");
 
     // See it as a listed dashboard
     cy.visit("/collection/root?type=dashboard");

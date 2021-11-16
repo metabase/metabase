@@ -265,13 +265,15 @@ export function moveToFront(element) {
   }
 }
 
-// need to keep track of the latest click's metaKey state because sometimes
+// need to keep track of the latest click's state because sometimes
 // `open` is called asynchronously, thus window.event isn't the click event
 let metaKey;
+let ctrlKey;
 window.addEventListener(
   "mouseup",
   e => {
     metaKey = e.metaKey;
+    ctrlKey = e.ctrlKey;
   },
   true,
 );
@@ -320,17 +322,17 @@ export function shouldOpenInBlankWindow(
     // always open in new window
     blank = false,
     // open in new window if command-click
-    blankOnMetaKey = true,
+    blankOnMetaOrCtrlKey = true,
     // open in new window for different origin
     blankOnDifferentOrigin = true,
   } = {},
 ) {
+  const isMetaKey = event && event.metaKey != null ? event.metaKey : metaKey;
+  const isCtrlKey = event && event.ctrlKey != null ? event.ctrlKey : ctrlKey;
+
   if (blank) {
     return true;
-  } else if (
-    blankOnMetaKey &&
-    (event && event.metaKey != null ? event.metaKey : metaKey)
-  ) {
+  } else if (blankOnMetaOrCtrlKey && (isMetaKey || isCtrlKey)) {
     return true;
   } else if (blankOnDifferentOrigin && !isSameOrigin(url)) {
     return true;
