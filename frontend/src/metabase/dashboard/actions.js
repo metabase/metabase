@@ -606,8 +606,9 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
       );
     } else {
       result = await fetchDataOrError(
-        maybeUsePivotEndpoint(CardApi.query, card)(
+        maybeUsePivotEndpoint(DashboardApi.cardQuery, card)(
           {
+            dashboardId: dashcard.dashboard_id,
             cardId: card.id,
             parameters: datasetQuery.parameters,
             ignore_cache: ignoreCache,
