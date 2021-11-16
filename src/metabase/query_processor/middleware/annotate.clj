@@ -133,7 +133,8 @@
     (col-info-for-field-clause {} expression)
 
     (mbql.u/is-clause? :coalesce expression)
-    (infer-expression-type (second expression))
+    (select-keys (infer-expression-type (second expression))
+                 [:base_type :effective_type :coercion_strategy :semantic_type])
 
     (mbql.u/is-clause? :length expression)
     {:base_type :type/BigInteger}
