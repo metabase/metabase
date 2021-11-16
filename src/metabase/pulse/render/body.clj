@@ -398,9 +398,9 @@
                [:span {:style (style/style {:margin-left "6px"})}
                 (percentages label)]]))]}))
 
-(s/defmethod render :multiple :- common/RenderedPulseCard
+(s/defmethod render :multiple
   [_ render-type timezone-id card {:keys [cols rows viz-settings] :as data}]
-  (println render-type timezone-id card data)
+  (println render-type timezone-id data)
   {:attachments nil :content nil})
 
 (s/defmethod render :scalar :- common/RenderedPulseCard
