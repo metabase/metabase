@@ -3,6 +3,7 @@
             [clojure.set :as set]
             [clojure.string :as str]
             [honeysql.format :as hformat]
+            [medley.core :as m]
             [metabase.db :as mdb]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -40,15 +41,12 @@
                   :user     (tx/db-test-env-var-or-throw :oracle :user)
                   :password (tx/db-test-env-var-or-throw :oracle :password)
                   :sid      (tx/db-test-env-var-or-throw :oracle :sid)
-                  :ssl      (tx/db-test-env-var :oracle :ssl false)}]
-    (loop [details details*
-           props [:ssl-use-truststore :ssl-truststore-path :ssl-truststore-value :ssl-truststore-password-value
+                  :ssl      (tx/db-test-env-var :oracle :ssl false)}
+        ssl-keys [:ssl-use-truststore :ssl-truststore-path :ssl-truststore-value :ssl-truststore-password-value
                   :ssl-use-keystore :ssl-keystore-path :ssl-keystore-value :ssl-keystore-password-value]]
-      (if-let [prop (first props)]
-        (if-let [prop-val (tx/db-test-env-var :oracle prop nil)]
-          (recur (assoc details prop prop-val) (rest props))
-          (recur details (rest props)))
-        details))))
+    (merge details*
+           (m/filter-vals some?
+                          (zipmap ssl-keys (map #(tx/db-test-env-var :oracle % nil) ssl-keys))))))
 
 (defmethod tx/dbdef->connection-details :oracle [& _]
   (connection-details))
@@ -93,8 +91,22 @@
 
 (defn- destroy-test-database-if-created-in-different-session
   "For Oracle, we have a randomly selected `session-schema`, in order to allow different test runs to proceed
-  independently. If we happen to have a test-database already in our app DB, that was created under a different session,
-  then we should just destroy it, since we won't be able to resync it anyway."
+  independently. This is basically `PREFIX_N` where `PREFIX` is a fixed prefix, and `N` is a random number.
+
+  Within any given schema, the same `test-data` tables are created, synced, queried in an identical manner, etc.
+  However, if we happen to have a `test-data` `DatabaseInstance` already in our app DB, that was created under a
+  different session, then we should just destroy it so that it can be recreated. That is because the `session-schema`
+  that was in play, when it was created, in all likelihood, does NOT match the current `session-schema` (from this
+  REPL/Metabase instance).
+
+  We won't reliably be able to resync it into the current session, since we didn't control its creation and lifecycle
+  (in fact, some other process may be cleaning it up at the same instant that our tests are running in this instance).
+  Because of this, we should just delete any existing `test-data` instance we find so that our current session can
+  recreate it in a sane and predictable manner.
+
+  Note this does problem not (currently) come into play in the CI environment, since the H2 app DB is created fresh on
+  every driver test run. In that situation, there is no existing `test-data` `DatabaseInstance` in the app DB, because
+  there are NO rows in the app DB at all. So this logic is only to make local REPL testing work properly."
   [database-name]
   (when-not (contains? @oracle-test-dbs-created-by-this-instance database-name)
     (locking oracle-test-dbs-created-by-this-instance
