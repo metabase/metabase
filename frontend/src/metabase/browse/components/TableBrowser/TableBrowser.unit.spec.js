@@ -8,7 +8,9 @@ jest.mock("metabase/entities/databases", () => ({ Link: DatabaseLink }));
 
 describe("TableBrowser", () => {
   it("should render synced tables", () => {
-    const tables = [getTable({ id: 1, name: "Orders", initial_sync: true })];
+    const tables = [
+      getTable({ id: 1, name: "Orders", initial_sync_status: "complete" }),
+    ];
 
     render(
       <TableBrowser
@@ -24,7 +26,27 @@ describe("TableBrowser", () => {
   });
 
   it("should render syncing tables", () => {
-    const tables = [getTable({ id: 1, name: "Orders", initial_sync: false })];
+    const tables = [
+      getTable({ id: 1, name: "Orders", initial_sync_status: "incomplete" }),
+    ];
+
+    render(
+      <TableBrowser
+        tables={tables}
+        getTableUrl={getTableUrl}
+        xraysEnabled={true}
+      />,
+    );
+
+    expect(screen.getByText("Orders")).toBeInTheDocument();
+    expect(screen.queryByLabelText("bolt icon")).not.toBeInTheDocument();
+    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
+  });
+
+  it("should render tables with a sync error", () => {
+    const tables = [
+      getTable({ id: 1, name: "Orders", initial_sync_status: "aborted" }),
+    ];
 
     render(
       <TableBrowser
@@ -40,10 +62,10 @@ describe("TableBrowser", () => {
   });
 });
 
-const getTable = ({ id, name, initial_sync }) => ({
+const getTable = ({ id, name, initial_sync_status }) => ({
   id,
   name,
-  initial_sync,
+  initial_sync_status,
 });
 
 const getTableUrl = table => {
