@@ -114,8 +114,7 @@
         :display_name        (humanization/name->human-readable-name table-name)
         :active              true
         :visibility_type     (when (is-crufty-table? table)
-                               :cruft)
-        :initial_sync_status "incomplete"))))
+                               :cruft)))))
 
 
 (s/defn ^:private retire-tables!

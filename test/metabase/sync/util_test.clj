@@ -270,8 +270,18 @@
         (sync/sync-database! (mt/db))
         (is (= "complete" (db/select-one-field :initial_sync_status Table :id table-id)))))
 
+   (testing "Database and table syncs are marked as complete even if the initial scan is :schema only"
+      (let [_        (db/update! Database (:id (mt/db)) :initial_sync_status "incomplete")
+            db       (Database (:id (mt/db)))
+            table-id (db/select-one-field :id Table :db_id (:id (mt/db)))
+            _        (db/update! Table table-id :initial_sync_status "incomplete")
+            table    (Table table-id)]
+        (sync/sync-database! db {:scan :schema})
+        (is (= "complete" (db/select-one-field :initial_sync_status Database :id (:id db))))
+        (is (= "complete" (db/select-one-field :initial_sync_status Table :id table-id)))))
+
    (testing "If a non-recoverable error occurs during sync, `initial-sync-status` on the database is set to `aborted`"
-      (let [_  (db/update! Database (:id (mt/db)) :initial_sync_status "complete")
+      (let [_  (db/update! Database (:id (mt/db)) :initial_sync_status "incomplete")
             db (Database (:id (mt/db)))]
         (with-redefs [sync-metadata/sync-steps [(sync-util/create-sync-step
                                                  "fake-step"
