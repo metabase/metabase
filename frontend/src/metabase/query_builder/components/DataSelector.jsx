@@ -20,6 +20,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import MetabaseSettings from "metabase/lib/settings";
 import { getSchemaName } from "metabase/lib/schema";
+import { isSyncCompleted } from "metabase/lib/syncing";
 
 import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
@@ -1135,7 +1136,7 @@ const DatabaseSchemaPicker = ({
       selectedDatabase.id === database.id &&
       database.schemas.length === 0 &&
       isLoading,
-    active: database.initial_sync,
+    active: isSyncCompleted(database),
   }));
 
   if (hasBackButton) {
@@ -1269,7 +1270,7 @@ const TablePicker = ({
               ? item.table.id === selectedTable.id
               : false
           }
-          itemIsClickable={item => item.table && item.table.initial_sync}
+          itemIsClickable={item => item.table && isSyncCompleted(item.table)}
           renderItemIcon={item =>
             item.table ? <Icon name="table2" size={18} /> : null
           }
