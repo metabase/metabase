@@ -1,4 +1,11 @@
-import { restore, modal, popover, visualize } from "__support__/e2e/cypress";
+import {
+  restore,
+  modal,
+  popover,
+  getNotebookStep,
+  openNewCollectionItemFlowFor,
+  visualize,
+} from "__support__/e2e/cypress";
 
 describe("scenarios > datasets", () => {
   beforeEach(() => {
@@ -149,6 +156,83 @@ describe("scenarios > datasets", () => {
       });
 
       cy.url().should("match", /\/question\/\d+-[a-z0-9-]*$/);
+    });
+  });
+
+  describe("adding a question to collection from its page", () => {
+    it("should offer to pick one of the collection's datasets by default", () => {
+      cy.request("PUT", "/api/card/1", { dataset: true });
+      cy.request("PUT", "/api/card/2", { dataset: true });
+
+      cy.visit("/collection/root");
+      openNewCollectionItemFlowFor("question");
+
+      cy.findByText("Orders");
+      cy.findByText("Orders, Count");
+      cy.findByText("All data");
+
+      cy.findByText("Datasets").should("not.exist");
+      cy.findByText("Raw Data").should("not.exist");
+      cy.findByText("Saved Questions").should("not.exist");
+      cy.findByText("Sample Dataset").should("not.exist");
+
+      cy.findByText("Orders").click();
+
+      getNotebookStep("data").within(() => {
+        cy.findByText("Orders");
+      });
+
+      cy.button("Visualize");
+    });
+
+    it("should open the default picker after clicking 'All data'", () => {
+      cy.request("PUT", "/api/card/1", { dataset: true });
+      cy.request("PUT", "/api/card/2", { dataset: true });
+
+      cy.visit("/collection/root");
+      openNewCollectionItemFlowFor("question");
+
+      cy.findByText("All data").click();
+
+      cy.findByText("Datasets");
+      cy.findByText("Raw Data");
+      cy.findByText("Saved Questions");
+    });
+
+    it("should automatically use the only collection dataset as a data source", () => {
+      cy.request("PUT", "/api/card/2", { dataset: true });
+
+      cy.visit("/collection/root");
+      openNewCollectionItemFlowFor("question");
+
+      getNotebookStep("data").within(() => {
+        cy.findByText("Orders, Count");
+      });
+      cy.button("Visualize");
+    });
+
+    it("should use correct picker if collection has no datasets", () => {
+      cy.request("PUT", "/api/card/1", { dataset: true });
+
+      cy.visit("/collection/9");
+      openNewCollectionItemFlowFor("question");
+
+      cy.findByText("All data").should("not.exist");
+      cy.findByText("Datasets");
+      cy.findByText("Raw Data");
+      cy.findByText("Saved Questions");
+    });
+
+    it("should use correct picker if there are datasets at all", () => {
+      cy.visit("/collection/root");
+      openNewCollectionItemFlowFor("question");
+
+      cy.findByText("All data").should("not.exist");
+      cy.findByText("Datasets").should("not.exist");
+      cy.findByText("Raw Data").should("not.exist");
+
+      cy.findByText("Saved Questions");
+      cy.findByText("Sample Dataset");
     });
   });
 });
