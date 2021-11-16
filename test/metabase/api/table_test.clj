@@ -32,7 +32,7 @@
 
 (defn- db-details []
   (merge
-   (select-keys (mt/db) [:id :created_at :updated_at :timezone :creator_id])
+   (select-keys (mt/db) [:id :created_at :updated_at :timezone :creator_id :initial_sync_status])
    {:engine                      "h2"
     :name                        "test-data"
     :is_sample                   false
@@ -47,8 +47,7 @@
     :options                     nil
     :refingerprint               nil
     :auto_run_queries            true
-    :cache_ttl                   nil
-    :initial_sync_status         "complete"}))
+    :cache_ttl                   nil}))
 
 (defn- table-defaults []
   (merge

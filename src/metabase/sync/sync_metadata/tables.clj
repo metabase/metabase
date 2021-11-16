@@ -108,13 +108,13 @@
         :active true)
       ;; otherwise create a new Table
       (db/insert! Table
-        :db_id               (u/the-id database)
-        :schema              schema
-        :name                table-name
-        :display_name        (humanization/name->human-readable-name table-name)
-        :active              true
-        :visibility_type     (when (is-crufty-table? table)
-                               :cruft)))))
+        :db_id           (u/the-id database)
+        :schema          schema
+        :name            table-name
+        :display_name    (humanization/name->human-readable-name table-name)
+        :active          true
+        :visibility_type (when (is-crufty-table? table)
+                           :cruft)))))
 
 
 (s/defn ^:private retire-tables!
