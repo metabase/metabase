@@ -5,13 +5,20 @@
 
    Functions for generating URLs not related to Metabase *objects* generally do not belong here, unless they are used in many places in the
    codebase; one-off URL-generation functions should go in the same namespaces or modules where they are used."
-  (:require [metabase.email :as email]
-            [metabase.public-settings :as public-settings]))
+  (:require [metabase.plugins.classloader :as classloader]
+            [metabase.public-settings :as public-settings]
+            [metabase.util :as u]))
+
+;; we want to load this at the top level so the Setting the namespace defines gets loaded
+(def ^:private site-url*
+  (or (u/ignore-exceptions
+        (classloader/require 'metabase-enterprise.advanced-config.util.urls)
+        (resolve 'metabase-enterprise.advanced-config.util.urls/site-url))
+      (constantly nil)))
 
 (defn site-url
-  "Return the Pulse URL if set, or Site URL."
   []
-  (or (email/email-pulse-url) (public-settings/site-url)))
+  (or (site-url*) (public-settings/site-url)))
 
 (defn pulse-url
   "Return an appropriate URL for a `Pulse` with ID.

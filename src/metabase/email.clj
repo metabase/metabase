@@ -19,10 +19,6 @@
   (deferred-tru "Email address you want to use as the sender of Metabase.")
   :default "notifications@metabase.com")
 
-(defsetting email-pulse-url
-  (deferred-tru "By default \"Site Url\" is used in notification links, but can be overridden.")
-  :visibility :public)
-
 (defsetting email-smtp-host
   (deferred-tru "The address of the SMTP server that handles your emails."))
 
