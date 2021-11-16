@@ -398,6 +398,11 @@
                [:span {:style (style/style {:margin-left "6px"})}
                 (percentages label)]]))]}))
 
+(s/defmethod render :multiple :- common/RenderedPulseCard
+  [_ render-type timezone-id card {:keys [cols rows viz-settings] :as data}]
+  (println render-type timezone-id card data)
+  {:attachments nil :content nil})
+
 (s/defmethod render :scalar :- common/RenderedPulseCard
   [_ _ timezone-id _card {:keys [cols rows viz-settings] :as data}]
   (let [col             (first cols)
