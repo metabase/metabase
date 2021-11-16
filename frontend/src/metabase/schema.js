@@ -9,18 +9,7 @@ export const DashboardSchema = new schema.Entity("dashboards");
 export const PulseSchema = new schema.Entity("pulses");
 export const CollectionSchema = new schema.Entity("collections");
 
-export const DatabaseSchema = new schema.Entity(
-  "databases",
-  {},
-  {
-    processStrategy: database => {
-      // TODO Alexander Polyankin 11/05/21
-      // Until BE returns databases before the initial sync, set it to true to unblock FE changes
-      database.initial_sync_status = "aborted";
-      return database;
-    },
-  },
-);
+export const DatabaseSchema = new schema.Entity("databases");
 export const SchemaSchema = new schema.Entity("schemas");
 export const TableSchema = new schema.Entity(
   "tables",
