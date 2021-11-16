@@ -1,5 +1,5 @@
 import { createSelector } from "reselect";
-import { isSyncCompleted } from "metabase/lib/syncing";
+import { isSyncInProgress } from "metabase/lib/syncing";
 import { getUserId } from "metabase/selectors/user";
 
 export const RELOAD_INTERVAL = 2000;
@@ -26,7 +26,7 @@ export const getUserDatabases = createSelector(
 
 export const getSyncingDatabases = createSelector(
   [getUserDatabases],
-  databases => databases.filter(d => !isSyncCompleted(d)),
+  databases => databases.filter(d => isSyncInProgress(d)),
 );
 
 export const hasSyncingDatabases = createSelector(
