@@ -21,7 +21,7 @@
 (defn- db-details []
   (merge
    (select-keys (mt/db) [:id :timezone :initial_sync_status])
-   (dissoc (mt/object-defaults Database) :details)
+   (dissoc (mt/object-defaults Database) :details :initial_sync_status)
    {:engine        "h2"
     :name          "test-data"
     :features      (mapv u/qualified-name (driver.u/features :h2 (mt/db)))
