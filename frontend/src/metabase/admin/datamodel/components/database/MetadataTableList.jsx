@@ -14,6 +14,7 @@ import cx from "classnames";
 
 import { regexpEscape } from "metabase/lib/string";
 import { color } from "metabase/lib/colors";
+import { isSyncCompleted } from "metabase/lib/syncing";
 
 @connect(
   null,
@@ -175,12 +176,12 @@ function TableRow({
       <a
         className={cx(
           "AdminList-item flex align-center no-decoration text-wrap justify-between",
-          { selected, disabled: !table.initial_sync },
+          { selected, disabled: !isSyncCompleted(table) },
         )}
         onClick={() => selectTable(table)}
       >
         {table.display_name}
-        {table.initial_sync && (
+        {isSyncCompleted(table) && (
           <div className="hover-child float-right">
             <ToggleHiddenButton
               tables={[table]}
