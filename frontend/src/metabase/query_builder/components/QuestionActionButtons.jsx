@@ -74,7 +74,7 @@ function QuestionActionButtons({ canWrite, isDataset, onOpenModal }) {
         <Tooltip tooltip={t`Duplicate this question`}>
           <Button
             onlyIcon
-            icon="segment"
+            icon="clone"
             iconSize={ICON_SIZE}
             onClick={() => onOpenModal(MODAL_TYPES.CLONE)}
             data-testid={CLONE_TESTID}
