@@ -9,6 +9,10 @@ module.exports = {
   mode: "production",
   context: SRC_PATH,
 
+  performance: {
+    hints: false,
+  },
+
   entry: {
     "lib-static-viz": {
       import: "./static-viz/index.js",

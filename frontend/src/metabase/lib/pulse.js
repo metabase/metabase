@@ -4,6 +4,7 @@ import MetabaseUtils from "metabase/lib/utils";
 import {
   hasDefaultParameterValue,
   hasParameterValue,
+  normalizeParameterValue,
 } from "metabase/parameters/utils/parameter-values";
 
 export const NEW_PULSE_TEMPLATE = {
@@ -119,10 +120,31 @@ export function emailIsEnabled(pulse) {
 export function cleanPulse(pulse, channelSpecs) {
   return {
     ...pulse,
-    channels: pulse.channels.filter(c =>
-      channelIsValid(c, channelSpecs && channelSpecs[c.channel_type]),
-    ),
+    channels: cleanPulseChannels(pulse.channels, channelSpecs),
+    parameters: cleanPulseParameters(getPulseParameters(pulse)),
   };
+}
+
+function cleanPulseChannels(channels, channelSpecs) {
+  return channels.filter(c =>
+    channelIsValid(c, channelSpecs && channelSpecs[c.channel_type]),
+  );
+}
+
+function cleanPulseParameters(parameters) {
+  return parameters.map(parameter => {
+    const { default: defaultValue, name, slug, type, value, id } = parameter;
+    const normalizedValue = normalizeParameterValue(type, value);
+
+    return {
+      default: defaultValue,
+      id,
+      name,
+      slug,
+      type,
+      value: normalizedValue,
+    };
+  });
 }
 
 export function getDefaultChannel(channelSpecs) {

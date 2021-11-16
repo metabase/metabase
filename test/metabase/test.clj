@@ -205,6 +205,8 @@
   with-open-channels]
 
  [tu.log
+  ns-log-level
+  set-ns-log-level!
   suppress-output
   with-log-messages
   with-log-messages-for-level

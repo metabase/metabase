@@ -393,6 +393,7 @@ export const SetupApi = {
   create: POST("/api/setup"),
   validate_db: POST("/api/setup/validate"),
   admin_checklist: GET("/api/setup/admin_checklist"),
+  user_defaults: GET("/api/setup/user_defaults"),
 };
 
 export const UserApi = {

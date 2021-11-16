@@ -91,15 +91,25 @@ export default class DashboardApp extends Component {
 
   UNSAFE_componentWillMount() {
     const options = parseHashOptions(window.location.hash);
-    if (options.add) {
-      this.setState({ addCardOnLoad: parseInt(options.add) });
+
+    if (options) {
+      this.setState({
+        editingOnLoad: options.edit,
+        addCardOnLoad: options.add && parseInt(options.add),
+      });
     }
   }
 
   render() {
+    const { editingOnLoad, addCardOnLoad } = this.state;
+
     return (
       <div className="shrink-below-content-size full-height">
-        <Dashboard addCardOnLoad={this.state.addCardOnLoad} {...this.props} />
+        <Dashboard
+          editingOnLoad={editingOnLoad}
+          addCardOnLoad={addCardOnLoad}
+          {...this.props}
+        />
         {/* For rendering modal urls */}
         {this.props.children}
       </div>

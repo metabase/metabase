@@ -6,7 +6,10 @@ import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
+import {
+  isVirtualCardId,
+  SAVED_QUESTIONS_VIRTUAL_DB_ID,
+} from "metabase/lib/saved-questions";
 
 import ListSearchField from "metabase/components/ListSearchField";
 import ExternalLink from "metabase/components/ExternalLink";
@@ -25,7 +28,6 @@ import Search from "metabase/entities/search";
 import {
   SearchResults,
   convertSearchResultToTableLikeItem,
-  isSavedQuestion,
 } from "./data-search";
 import SavedQuestionPicker from "./saved-question-picker/SavedQuestionPicker";
 
@@ -34,6 +36,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import {
   DataBucketList,
   DataBucketListItem,
+  PickerSpinner,
   RawDataBackButton,
 } from "./DataSelector.styled";
 import "./DataSelector.css";
@@ -429,7 +432,7 @@ export class UnconnectedDataSelector extends Component {
     const invalidTable =
       selectedSchema &&
       selectedTable &&
-      !isSavedQuestion(selectedTable.id) &&
+      !isVirtualCardId(selectedTable.id) &&
       selectedTable.schema.id !== selectedSchema.id;
     const invalidField =
       selectedTable &&
@@ -832,7 +835,7 @@ export class UnconnectedDataSelector extends Component {
     return null;
   }
 
-  isSavedQuestionSelected = () => isSavedQuestion(this.props.selectedTableId);
+  isSavedQuestionSelected = () => isVirtualCardId(this.props.selectedTableId);
 
   handleSavedQuestionSelect = async table => {
     if (this.props.setSourceTableFn) {
@@ -1132,11 +1135,13 @@ const DatabaseSchemaPicker = ({
       selectedDatabase.id === database.id &&
       database.schemas.length === 0 &&
       isLoading,
+    active: database.initial_sync,
   }));
 
   if (hasBackButton) {
     sections.unshift({
       name: <RawDataBackButton />,
+      active: true,
     });
   }
 
@@ -1180,6 +1185,9 @@ const DatabaseSchemaPicker = ({
         item.icon && (
           <Icon className="Icon text-default" name={item.icon} size={18} />
         )
+      }
+      renderSectionExtra={item =>
+        !item.active && <PickerSpinner size={16} borderWidth={2} />
       }
       renderItemIcon={() => <Icon name="folder" size={16} />}
       initiallyOpenSection={openSection}
@@ -1261,7 +1269,7 @@ const TablePicker = ({
               ? item.table.id === selectedTable.id
               : false
           }
-          itemIsClickable={item => item.table}
+          itemIsClickable={item => item.table && item.table.initial_sync}
           renderItemIcon={item =>
             item.table ? <Icon name="table2" size={18} /> : null
           }
