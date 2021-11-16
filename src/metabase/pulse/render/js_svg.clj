@@ -119,10 +119,21 @@
     (svg-string->bytes svg-string)))
 
 (defn timelineseries-bar
-  "Clojure entrypoint to render a timeseries bar char. Rows should be tuples of [datetime numeric-value]. Labels is a
+  "Clojure entrypoint to render a timeseries bar chart. Rows should be tuples of [datetime numeric-value]. Labels is a
   map of {:left \"left-label\" :botton \"bottom-label\"}. Returns a byte array of a png file."
   [rows labels settings]
   (let [svg-string (.asString (js/execute-fn-name @context "timeseries_bar" rows
+                                                  (map (fn [[k v]] [(name k) v]) labels)
+                                                  (json/generate-string settings)))]
+    (svg-string->bytes svg-string)))
+
+(defn timelineseries-multiple
+  "Clojure entrypoint to render a timeseries multiple chart.
+  Series should be list of dicts of {rows: rows, cols: cols, type: type}, where types is 'line' or 'bar'.
+  Rows should be tuples of [datetime numeric-value]. Labels is a
+  map of {:left \"left-label\" :botton \"bottom-label\"}. Returns a byte array of a png file."
+  [series labels settings]
+  (let [svg-string (.asString (js/execute-fn-name @context "timeseries_multiple" series
                                                   (map (fn [[k v]] [(name k) v]) labels)
                                                   (json/generate-string settings)))]
     (svg-string->bytes svg-string)))
