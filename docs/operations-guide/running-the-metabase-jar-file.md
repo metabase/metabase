@@ -8,7 +8,11 @@ We recommend the latest LTS version of JRE from [AdoptOpenJDK](https://adoptopen
 
 ## Download Metabase
 
-Go to the [Metabase download page](https://metabase.com/start/jar.html) and download the latest release. Place the downloaded JAR file into a newly created directory (as it will create some files when it is run).
+Go to the [Metabase download page](https://metabase.com/start/jar.html) and download the latest release. 
+
+## Create a new directory and move the JAR into it
+
+The JAR file will create some new files when it is run, so it's important to have a dedicated directory for it. Don't just leave it in your Downloads directory.
 
 ## Launching Metabase
 
