@@ -20,7 +20,7 @@
 
 (defn- db-details []
   (merge
-   (select-keys (mt/db) [:id :timezone])
+   (select-keys (mt/db) [:id :timezone :initial_sync_status])
    (dissoc (mt/object-defaults Database) :details)
    {:engine        "h2"
     :name          "test-data"
