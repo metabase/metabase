@@ -3,6 +3,7 @@ import React from "react";
 import { Box, Flex } from "grid-styled";
 
 import { color } from "metabase/lib/colors";
+import { isSyncCompleted } from "metabase/lib/syncing";
 
 import Icon from "metabase/components/Icon";
 import Text from "metabase/components/type/Text";
@@ -135,7 +136,7 @@ export default function SearchResult({
 const isItemActive = result => {
   switch (result.model) {
     case "table":
-      return result.initial_sync;
+      return isSyncCompleted(result);
     default:
       return true;
   }
@@ -145,7 +146,7 @@ const isItemLoading = result => {
   switch (result.model) {
     case "database":
     case "table":
-      return !result.initial_sync;
+      return !isSyncCompleted(result);
     default:
       return false;
   }
