@@ -9,8 +9,8 @@ import Tooltip from "metabase/components/Tooltip";
 import { Container } from "./QuestionActionButtons.styled";
 
 export const EDIT_TESTID = "edit-details-button";
-export const ADD_TO_DASH_TESTID = "add-to-dashboard-button";
 export const MOVE_TESTID = "move-button";
+export const ADD_TO_DASH_TESTID = "add-to-dashboard-button";
 export const TURN_INTO_DATASET_TESTID = "turn-into-dataset";
 export const CLONE_TESTID = "clone-button";
 export const ARCHIVE_TESTID = "archive-button";
@@ -52,7 +52,7 @@ function QuestionActionButtons({ canWrite, isDataset, onOpenModal }) {
         <Tooltip tooltip={t`Move`}>
           <Button
             onlyIcon
-            icon="move"
+            icon="arrow_right"
             iconSize={ICON_SIZE}
             onClick={() => onOpenModal(MODAL_TYPES.MOVE)}
             data-testid={MOVE_TESTID}
