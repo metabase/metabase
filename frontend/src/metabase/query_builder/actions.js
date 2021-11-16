@@ -56,6 +56,7 @@ import {
   getSnippetCollectionId,
   getQueryResults,
 } from "./selectors";
+import { trackNewQuestionSaved } from "./tracking";
 
 import { MetabaseApi, CardApi, UserApi } from "metabase/services";
 
@@ -1030,6 +1031,11 @@ export const apiCreateQuestion = question => {
       "QueryBuilder",
       "Create Card",
       createdQuestion.query().datasetQuery().type,
+    );
+    trackNewQuestionSaved(
+      question,
+      createdQuestion,
+      getOriginalQuestion(getState()),
     );
 
     // Saving a card, locks in the current display as though it had been

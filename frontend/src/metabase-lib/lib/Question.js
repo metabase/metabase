@@ -440,6 +440,10 @@ export default class Question {
     return this.datasetQuery().type;
   }
 
+  creationType(): string {
+    return this.card().creationType;
+  }
+
   isEmpty(): boolean {
     return this.query().isEmpty();
   }
@@ -829,11 +833,13 @@ export default class Question {
     clean = true,
     query,
     includeDisplayIsLocked,
+    creationType,
   }: {
     originalQuestion?: Question,
     clean?: boolean,
     query?: { [string]: any },
     includeDisplayIsLocked?: boolean,
+    creationType: string,
   } = {}): string {
     if (
       !this.id() ||
@@ -841,7 +847,7 @@ export default class Question {
     ) {
       return Urls.question(
         null,
-        this._serializeForUrl({ clean, includeDisplayIsLocked }),
+        this._serializeForUrl({ clean, includeDisplayIsLocked, creationType }),
         query,
       );
     } else {
@@ -1060,6 +1066,7 @@ export default class Question {
     includeOriginalCardId = true,
     clean = true,
     includeDisplayIsLocked = false,
+    creationType,
   } = {}) {
     const query = clean ? this.query().clean() : this.query();
 
@@ -1081,6 +1088,7 @@ export default class Question {
             displayIsLocked: this._card.displayIsLocked,
           }
         : {}),
+      ...(creationType ? { creationType } : {}),
     };
 
     return utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));

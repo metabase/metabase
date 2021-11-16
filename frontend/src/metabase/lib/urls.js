@@ -88,8 +88,8 @@ const flattenParam = ([key, value]) => {
   return [[key, value]];
 };
 
-export function newQuestion({ mode, ...options } = {}) {
-  const url = Question.create(options).getUrl();
+export function newQuestion({ mode, creationType, ...options } = {}) {
+  const url = Question.create(options).getUrl({ creationType });
   if (mode) {
     return url.replace(/^\/question/, `/question\/${mode}`);
   } else {
