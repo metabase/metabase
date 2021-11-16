@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import styled from "styled-components";
 import Icon from "metabase/components/Icon";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { SelectList } from "metabase/components/select-list";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
@@ -15,6 +16,14 @@ export const DataBucketIcon = styled(Icon)`
 export const DataBucketDescription = styled.span`
   font-weight: bold;
   font-size: 12px;
+`;
+
+export const PickerSpinner = styled(LoadingSpinner)`
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  color: ${color("brand")};
+  margin-left: 0.5rem;
 `;
 
 const BackButtonContainer = styled.div`
