@@ -9,7 +9,9 @@ import Icon, { IconWrapper } from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import PageHeading from "metabase/components/type/PageHeading";
 import Tooltip from "metabase/components/Tooltip";
+
 import CollectionEditMenu from "metabase/collections/components/CollectionEditMenu";
+import NewCollectionItemMenu from "metabase/collections/components/NewCollectionItemMenu";
 
 import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 
@@ -83,30 +85,12 @@ function EditMenu({
   ) : null;
 }
 
-function CreateCollectionLink({
-  collection,
-  collectionId,
-  hasWritePermission,
-}) {
-  const tooltip = t`New collection`;
-  const link = Urls.newCollection(collectionId);
-
-  return hasWritePermission ? (
-    <Tooltip tooltip={tooltip}>
-      <Link to={link}>
-        <IconWrapper>
-          <Icon name="new_folder" />
-        </IconWrapper>
-      </Link>
-    </Tooltip>
-  ) : null;
-}
-
 function Menu(props) {
+  const { hasWritePermission } = props;
   return (
-    <MenuContainer>
+    <MenuContainer data-testid="collection-menu">
+      {hasWritePermission && <NewCollectionItemMenu {...props} />}
       <EditMenu {...props} />
-      <CreateCollectionLink {...props} />
       <PermissionsLink {...props} />
     </MenuContainer>
   );
