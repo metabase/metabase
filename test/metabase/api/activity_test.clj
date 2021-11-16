@@ -126,7 +126,7 @@
                             :id                  (:id table1),
                             :name                (:name table1)
                             :display_name        (:display_name table1)
-                            :initial_sync_status "complete"},
+                            :initial_sync_status "incomplete"},
              :user_id      (mt/user->id :crowberto)}
             {:cnt          1
              :user_id      (mt/user->id :crowberto)

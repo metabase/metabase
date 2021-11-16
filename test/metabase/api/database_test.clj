@@ -238,7 +238,7 @@
 (deftest fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
     (is (= (merge (dissoc (mt/object-defaults Database) :details)
-                  (select-keys (mt/db) [:created_at :id :updated_at :timezone])
+                  (select-keys (mt/db) [:created_at :id :updated_at :timezone :initial_sync_status])
                   {:engine        "h2"
                    :name          "test-data"
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))

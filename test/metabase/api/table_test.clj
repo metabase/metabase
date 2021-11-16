@@ -109,7 +109,7 @@
   (testing "GET /api/table/:id"
     (is (= (merge
             (dissoc (table-defaults) :segments :field_values :metrics)
-            (db/select-one [Table :created_at :updated_at] :id (mt/id :venues))
+            (db/select-one [Table :created_at :updated_at :initial_sync_status] :id (mt/id :venues))
             {:schema       "PUBLIC"
              :name         "VENUES"
              :display_name "Venues"
@@ -141,7 +141,7 @@
     (testing "Sensitive fields are included"
       (is (= (merge
               (query-metadata-defaults)
-              (db/select-one [Table :created_at :updated_at] :id (mt/id :users))
+              (db/select-one [Table :created_at :updated_at :initial_sync_status] :id (mt/id :users))
               {:schema       "PUBLIC"
                :name         "USERS"
                :display_name "Users"
@@ -204,7 +204,7 @@
     (testing "Sensitive fields should not be included"
       (is (= (merge
               (query-metadata-defaults)
-              (db/select-one [Table :created_at :updated_at] :id (mt/id :users))
+              (db/select-one [Table :created_at :updated_at :initial_sync_status] :id (mt/id :users))
               {:schema       "PUBLIC"
                :name         "USERS"
                :display_name "Users"
@@ -277,7 +277,7 @@
               (-> (table-defaults)
                   (dissoc :segments :field_values :metrics :updated_at)
                   (assoc-in [:db :details] (:details (mt/db))))
-              (db/select-one [Table :id :schema :name :created_at] :id (u/the-id table))
+              (db/select-one [Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table))
               {:description     "What a nice table!"
                :entity_type     nil
                :visibility_type "hidden"
@@ -363,7 +363,7 @@
                                             :position          2
                                             :table         (merge
                                                             (dissoc (table-defaults) :segments :field_values :metrics)
-                                                            (db/select-one [Table :id :created_at :updated_at]
+                                                            (db/select-one [Table :id :created_at :updated_at :initial_sync_status]
                                                               :id (mt/id :checkins))
                                                             {:schema       "PUBLIC"
                                                              :name         "CHECKINS"
@@ -380,7 +380,7 @@
                                             :semantic_type  "type/PK"
                                             :table         (merge
                                                             (dissoc (table-defaults) :db :segments :field_values :metrics)
-                                                            (db/select-one [Table :id :created_at :updated_at]
+                                                            (db/select-one [Table :id :created_at :updated_at :initial_sync_status]
                                                               :id (mt/id :users))
                                                             {:schema       "PUBLIC"
                                                              :name         "USERS"
@@ -396,7 +396,7 @@
   (testing "GET /api/table/:id/query_metadata"
     (is (= (merge
             (query-metadata-defaults)
-            (db/select-one [Table :created_at :updated_at] :id (mt/id :categories))
+            (db/select-one [Table :created_at :updated_at :initial_sync_status] :id (mt/id :categories))
             {:schema       "PUBLIC"
              :name         "CATEGORIES"
              :display_name "Categories"
