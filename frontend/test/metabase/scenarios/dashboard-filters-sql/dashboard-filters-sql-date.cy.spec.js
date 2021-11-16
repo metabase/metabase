@@ -28,7 +28,10 @@ Object.entries(DASHBOARD_SQL_DATE_FILTERS).forEach(
 
         cy.createNativeQuestionAndDashboard({ questionDetails }).then(
           ({ body: { id, card_id, dashboard_id } }) => {
-            cy.intercept("POST", `/api/card/${card_id}/query`).as("cardQuery");
+            cy.intercept(
+              "POST",
+              `/api/dashboard/${dashboard_id}/card/${card_id}/query`,
+            ).as("cardQuery");
             cy.visit(`/question/${card_id}`);
 
             // Wait for `result_metadata` to load
