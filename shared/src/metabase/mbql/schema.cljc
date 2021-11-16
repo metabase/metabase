@@ -1053,7 +1053,11 @@
 
 (def ^:private Parameter
   "Schema for a valid, normalized query parameter."
-  s/Any) ; s/Any for now until we move over the stuff from the parameters middleware
+  ;; [[s/Any]] for now until we move over the stuff from the parameters middleware
+  ;;
+  ;; TODO -- I think this is actually supposed to be [[metabase.driver.common.parameters/ParamValue]]. But it's
+  ;; probably also supposed to have `:id` as a required key -- need to verify this.
+  s/Any)
 
 
 ;;; ---------------------------------------------------- Options -----------------------------------------------------

@@ -1,25 +1,27 @@
 (ns metabase.api.dashboard-test
   "Tests for /api/dashboard endpoints."
   (:require [clojure.string :as str]
+            [cheshire.core :as json]
             [clojure.test :refer :all]
             [clojure.walk :as walk]
             [medley.core :as m]
             [metabase.api.card-test :as card-api-test]
             [metabase.api.dashboard :as dashboard-api]
             [metabase.http-client :as http]
-            [metabase.models
-             :refer
-             [Card Collection Dashboard DashboardCard DashboardCardSeries Field FieldValues Pulse Revision Table User]]
+            [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Field FieldValues
+                                     Pulse Revision Table User]]
             [metabase.models.dashboard-card :as dashboard-card]
             [metabase.models.dashboard-test :as dashboard-test]
             [metabase.models.params.chain-filter-test :as chain-filter-test]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
             [metabase.models.revision :as revision]
+            [metabase.query-processor.streaming.test-util :as streaming.test-util]
             [metabase.server.middleware.util :as middleware.u]
             [metabase.test :as mt]
             [metabase.util :as u]
             [ring.util.codec :as codec]
+            [schema.core :as s]
             [toucan.db :as db])
   (:import java.util.UUID))
 
@@ -1481,3 +1483,134 @@
             (perms/revoke-data-perms! (group/all-users) (mt/id))
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :get 403 (mt/$ids (url [%venues.price] [%categories.name])))))))))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                             POST /api/dashboard/:dashboard-id/card/:card-id/query                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- dashboard-card-query-url [dashboard-id card-id]
+  (format "dashboard/%d/card/%d/query" dashboard-id card-id))
+
+(defn- dashboard-card-query-expected-results-schema [& {:keys [row-count], :or {row-count 100}}]
+  {:database_id (s/eq (mt/id))
+   :row_count   (s/eq row-count)
+   :data        {:rows     s/Any
+                 s/Keyword s/Any}
+   s/Keyword    s/Any})
+
+(deftest dashboard-card-query-test
+  (testing "POST /api/dashboard/:dashboard-id/card/:card-id/query"
+    (mt/with-temp-copy-of-db
+      (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard, {card-id :id} :card}]
+        (letfn [(url [& {:keys [dashboard-id card-id]
+                         :or   {dashboard-id dashboard-id
+                                card-id      card-id}}]
+                  (format "dashboard/%d/card/%d/query" dashboard-id card-id))
+                (dashboard-card-query-expected-results-schema [& {:keys [row-count], :or {row-count 100}}]
+                  {:database_id (s/eq (mt/id))
+                   :row_count   (s/eq row-count)
+                   :data        {:rows     s/Any
+                                 s/Keyword s/Any}
+                   s/Keyword    s/Any})]
+          (testing "Should return Card results"
+            (is (schema= (dashboard-card-query-expected-results-schema)
+                         (mt/user-http-request :rasta :post 202 (url))))
+            (testing "Should *not* require data perms"
+              (perms/revoke-data-perms! (group/all-users) (mt/id))
+              (is (schema= (dashboard-card-query-expected-results-schema)
+                           (mt/user-http-request :rasta :post 202 (url))))))
+
+          (testing "Validation"
+            (testing "404s"
+              (testing "Should return 404 if Dashboard doesn't exist"
+                (is (= "Not found."
+                       (mt/user-http-request :rasta :post 404 (url :dashboard-id Integer/MAX_VALUE)))))
+              (testing "Should return 404 if Card doesn't exist"
+                (is (= "Not found."
+                       (mt/user-http-request :rasta :post 404 (url :card-id Integer/MAX_VALUE))))))
+
+            (testing "perms"
+              (mt/with-temp Collection [{collection-id :id}]
+                (perms/revoke-collection-permissions! (group/all-users) collection-id)
+                (testing "Should return error if current User doesn't have read perms for the Dashboard"
+                  (mt/with-temp-vals-in-db Dashboard dashboard-id {:collection_id collection-id}
+                    (is (= "You don't have permissions to do that."
+                           (mt/user-http-request :rasta :post 403 (url))))))
+                (testing "Should return error if current User doesn't have query perms for the Card"
+                  (mt/with-temp-vals-in-db Card card-id {:collection_id collection-id}
+                    (is (= "You don't have permissions to do that."
+                           (mt/user-http-request :rasta :post 403 (url))))))))))))))
+
+(deftest dashboard-card-query-parameters-test
+  (testing "POST /api/dashboard/:dashboard-id/card/:card-id/query"
+    (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard, {card-id :id} :card, {dashcard-id :id} :dashcard}]
+      (let [url (dashboard-card-query-url dashboard-id card-id)]
+        (testing "parameters"
+          (testing "Should respect valid parameters"
+            (is (schema= (dashboard-card-query-expected-results-schema :row-count 6)
+                         (mt/user-http-request :rasta :post 202 url
+                                               {:parameters [{:id    "_PRICE_"
+                                                              :value 4}]})))
+            (testing "New parameter types"
+              (testing :number/=
+                (is (schema= (dashboard-card-query-expected-results-schema :row-count 94)
+                             (mt/user-http-request :rasta :post 202 url
+                                                   {:parameters [{:id    "_PRICE_"
+                                                                  :type  :number/=
+                                                                  :value [1 2 3]}]}))))
+              (testing :number/<=
+                (is (schema= (dashboard-card-query-expected-results-schema :row-count 94)
+                             (mt/user-http-request :rasta :post 202 url
+                                                   {:parameters [{:id    "_PRICE_"
+                                                                  :type  :number/<=
+                                                                  :value [3]}]}))))))
+          (testing "Should return error if parameter doesn't exist"
+            (is (= "Dashboard does not have a parameter with ID \"_THIS_PARAMETER_DOES_NOT_EXIST_\"."
+                   (mt/user-http-request :rasta :post 400 url
+                                         {:parameters [{:id    "_THIS_PARAMETER_DOES_NOT_EXIST_"
+                                                        :value 3}]}))))
+          (testing "Should return sensible error message for invalid parameter input"
+            (is (= {:errors {:parameters (str "value may be nil, or if non-nil, value must be an array. "
+                                              "Each value must be a parameter map with an 'id' key")}}
+                   (mt/user-http-request :rasta :post 400 url
+                                         {:parameters {"_PRICE_" 3}}))))
+          (testing "Should ignore parameters that are valid for the Dashboard but not part of this Card (no mapping)"
+            (testing "Sanity check"
+              (is (schema= (dashboard-card-query-expected-results-schema :row-count 6)
+                           (mt/user-http-request :rasta :post 202 url
+                                                 {:parameters [{:id    "_PRICE_"
+                                                                :value 4}]}))))
+            (mt/with-temp-vals-in-db DashboardCard dashcard-id {:parameter_mappings []}
+              (is (schema= (dashboard-card-query-expected-results-schema :row-count 100)
+                           (mt/user-http-request :rasta :post 202 url
+                                                 {:parameters [{:id    "_PRICE_"
+                                                                :value 4}]})))))
+
+          ;; don't let people try to be sneaky and get around our validation by passing in a different `:target`
+          (testing "Should ignore incorrect `:target` passed in to API endpoint"
+            (is (schema= (dashboard-card-query-expected-results-schema :row-count 6)
+                         (mt/user-http-request :rasta :post 202 url
+                                               {:parameters [{:id     "_PRICE_"
+                                                              :target [:dimension [:field (mt/id :venues :id) nil]]
+                                                              :value  4}]})))))))))
+
+(defn- parse-export-format-results [^bytes results export-format]
+  (with-open [is (java.io.ByteArrayInputStream. results)]
+    (streaming.test-util/parse-result export-format is)))
+
+(deftest dashboard-card-query-export-format-test
+  (testing "POST /api/dashboard/:dashboard-id/card/:card-id/query/:export-format"
+    (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard, {card-id :id} :card, {dashcard-id :id} :dashcard}]
+      (doseq [export-format [:csv :json :xlsx]]
+        (testing (format "Export format = %s" export-format)
+          (let [url (format "%s/%s" (dashboard-card-query-url dashboard-id card-id) (name export-format))]
+            (is (= (streaming.test-util/process-query-basic-streaming
+                    export-format
+                    (mt/mbql-query venues {:filter [:= $price 4]}))
+                   (parse-export-format-results
+                    (mt/user-http-request :rasta :post 200 url
+                                          {:request-options {:as :byte-array}}
+                                          :parameters (json/generate-string [{:id    "_PRICE_"
+                                                                              :value 4}]))
+                    export-format)))))))))

@@ -698,9 +698,14 @@
     (assoc query :cache-ttl ttl-secs)))
 
 (defn run-query-for-card-async
-  "Run the query for Card with `parameters` and `constraints`, and return results in a `StreamingResponse` that should
-  be returned as the result of an API endpoint fn. Will throw an Exception if preconditions (such as read perms) are
-  not met before returning the `StreamingResponse`."
+  "Run the query for Card with `parameters` and `constraints`, and return results in a
+  `metabase.async.streaming_response.StreamingResponse` (see [[metabase.async.streaming-response]]) that should be
+  returned as the result of an API endpoint fn. Will throw an Exception if preconditions (such as read perms) are not
+  met before returning the `StreamingResponse`.
+
+  `context` is a keyword describing the situation in which this query is being ran, e.g. `:question` (from a Saved
+  Question) or `:dashboard` (from a Saved Question in a Dashboard). See [[metabase.mbql.schema/Context]] for all valid
+  options."
   [card-id export-format
    & {:keys [parameters constraints context dashboard-id middleware qp-runner run ignore_cache]
       :or   {constraints constraints/default-query-constraints
@@ -733,16 +738,23 @@
   [card-id :as {{:keys [parameters ignore_cache dashboard_id], :or {ignore_cache false dashboard_id nil}} :body}]
   {ignore_cache (s/maybe s/Bool)
    dashboard_id (s/maybe su/IntGreaterThanZero)}
+  ;; TODO -- we should probably warn if you pass `dashboard_id`, and tell you to use the new
+  ;;
+  ;;    POST /api/dashboard/:dashboard-id/card/:card-id/query
+  ;;
+  ;; endpoint instead. Or error in that situtation? We're not even validating that you have access to this Dashboard.
   (run-query-for-card-async
    card-id :api
-   :parameters parameters,
+   :parameters   parameters
    :ignore_cache ignore_cache
    :dashboard-id dashboard_id
-   :middleware {:process-viz-settings? false}))
+   :middleware   {:process-viz-settings? false}))
 
 (api/defendpoint ^:streaming POST "/:card-id/query/:export-format"
-  "Run the query associated with a Card, and return its results as a file in the specified format. Note that this
-  expects the parameters as serialized JSON in the 'parameters' parameter"
+  "Run the query associated with a Card, and return its results as a file in the specified format.
+
+  `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
+  is normally used to power 'Download Results' buttons that use HTML `form` actions)."
   [card-id export-format :as {{:keys [parameters]} :params}]
   {parameters    (s/maybe su/JSONString)
    export-format dataset-api/ExportFormat}
