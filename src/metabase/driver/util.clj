@@ -1,11 +1,13 @@
 (ns metabase.driver.util
   "Utility functions for common operations on drivers."
   (:require [clojure.core.memoize :as memoize]
+            [clojure.set :as set]
             [clojure.tools.logging :as log]
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.models.setting :refer [defsetting]]
             [metabase.public-settings.premium-features :as premium-features]
+            [metabase.query-processor.error-type :as error-type]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db])
@@ -148,17 +150,50 @@
     [conn-prop]))
 
 (defn connection-props-server->client
-  "Transforms connection-properties from their server side definition into a client side definition.
+  "Transforms `conn-props` for the given `driver` from their server side definition into a client side definition.
 
   Currently, this just transforms :type :secret properties from the server side definition into other types for client
   display/editing. For example, a :secret-kind :keystore turns into a bunch of different properties, to encapsulate
   all the different options that might be available on the client side for populating the value."
   {:added "0.42.0"}
-  [conn-props]
-  (reduce (fn [acc conn-prop]
-            (if (= "secret" (->str (:type conn-prop)))
-              (concat acc (expand-secret-conn-prop conn-prop))
-              (concat acc [conn-prop]))) [] conn-props))
+  [driver conn-props]
+  (let [res (reduce (fn [acc conn-prop]
+                      ;; TODO: change this to expanded- and use that as the basis for all calcs below (not conn-prop)
+                      (let [expanded-props (if (= "secret" (->str (:type conn-prop)))
+                                               (expand-secret-conn-prop conn-prop)
+                                               [conn-prop])]
+                        (-> (update acc ::final-props concat expanded-props)
+                            (update ::props-by-name merge (into {} (map (fn [p]
+                                                                          [(:name p) p])) expanded-props)))))
+                    {::final-props [] ::props-by-name {}}
+                    conn-props)
+        {:keys [::final-props ::props-by-name]} res]
+    ;; now, traverse the visible-if-edges and update all visible-if entries with their full set of "transitive"
+    ;; dependencies (if property x depends on y having a value, but y itself depends on z having a value, then x
+    ;; should be hidden if y is)
+    (mapv (fn [prop]
+            (let [v-ifs* (loop [props* [prop]
+                                acc    {}]
+                           (if (seq props*)
+                             (let [all-visible-ifs  (apply merge (map :visible-if props*))
+                                   transitive-props (map (comp (partial get props-by-name) ->str)
+                                                         (keys all-visible-ifs))
+                                   next-acc         (merge all-visible-ifs acc)
+                                   cyclic-props     (set/intersection (into #{} (keys all-visible-ifs))
+                                                                      (into #{} (keys acc)))]
+                               (if (empty? cyclic-props)
+                                 (recur transitive-props next-acc)
+                                 (-> "Cycle detected resolving dependent visible-if properties for driver {0}: {1}"
+                                     (trs driver cyclic-props)
+                                     (ex-info {:type               error-type/driver
+                                               :driver             driver
+                                               :cyclic-visible-ifs cyclic-props})
+                                     throw)))
+                             acc))]
+              (cond-> prop
+                (seq v-ifs*)
+                (assoc :visible-if v-ifs*))))
+         final-props)))
 
 (defn db-details-client->server
   "Currently, this transforms client side values for the various back into :type :secret for storage on the server.
@@ -199,8 +234,8 @@
   []
   (into {} (for [driver (available-drivers)
                  :let   [props (try
-                                 (-> (driver/connection-properties driver)
-                                     connection-props-server->client)
+                                 (->> (driver/connection-properties driver)
+                                      (connection-props-server->client driver))
                                  (catch Throwable e
                                    (log/error e (trs "Unable to determine connection properties for driver {0}" driver))))]
                  :when  props]

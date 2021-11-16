@@ -51,12 +51,16 @@
                                       :type        "password"
                                       :placeholder "foo"
                                       :required    false}
-                                     {:name "use-keystore"}
+                                     {:name "ssl"}
+                                     {:name "use-keystore"
+                                      :visible-if  {:ssl true}}
                                      {:name         "keystore-password-value"
                                       :display-name "Keystore Password",
                                       :type         "password",
                                       :required     false,
-                                      :visible-if   {:use-keystore true}}
+                                      :visible-if   {:use-keystore true
+                                                     ;; this should have been filled in as a transitive dependency
+                                                     :ssl          true}}
                                      {:name         "keystore-options"
                                       :display-name "Keystore"
                                       :options      [{:name  "Local file path"
@@ -65,21 +69,26 @@
                                                       :value "uploaded"}]
                                       :type         "select"
                                       :default      "local"
-                                      :visible-if   {:use-keystore true}}
+                                      :visible-if   {:use-keystore true
+                                                     :ssl          true}}
                                      {:name                 "keystore-value"
                                       :type                 "textFile"
                                       :treat-before-posting "base64"
                                       :visible-if           {:keystore-options "uploaded"}}
                                      {:name        "keystore-path"
                                       :type        "string"
-                                      :visible-if  {:keystore-options "local"}}]
+                                      :visible-if  {:keystore-options "local"
+                                                    :use-keystore true
+                                                    :ssl          true}}]
                                     false]
                                    [[{:name "host"}
                                      {:name        "password-value"
                                       :type        "password"
                                       :placeholder "foo"
                                       :required    false}
-                                     {:name "use-keystore"}
+                                     {:name "ssl"}
+                                     {:name "use-keystore"
+                                      :visible-if  {:ssl true}}
                                      {:name         "keystore-password-value"
                                       :display-name "Keystore Password"
                                       :type         "password"
@@ -90,13 +99,21 @@
                                       :treat-before-posting "base64"
                                       :visible-if           {:use-keystore true}}]
                                     true]]]
-      (testing (str "with is-hosted? " is-hosted?)
+      (testing (str " with is-hosted? " is-hosted?)
         ;; TODO: create capability to temporarily override token-features for testing
         (with-redefs [premium-features/is-hosted? (constantly is-hosted?)]
           (let [client-conn-props (-> (driver.u/available-drivers-info) ; this calls connection-props-server->client
                                       :secret-test-driver
                                       :details-fields)]
-            (is (= expected (mt/select-keys-sequentially expected client-conn-props)))))))))
+            (is (= expected (mt/select-keys-sequentially expected client-conn-props))))))))
+  (testing "connection-props-server->client detects cycles in visible-if dependencies"
+    (let [fake-props [{:name "prop-a", :visible-if {:prop-c "something"}}
+                      {:name "prop-b", :visible-if {:prop-a "something else"}}
+                      {:name "prop-c", :visible-if {:prop-b "something else entirely"}}]]
+      (is (thrown-with-msg?
+            clojure.lang.ExceptionInfo
+            #"Cycle detected"
+            (driver.u/connection-props-server->client :fake-cyclic-driver fake-props))))))
 
 (deftest connection-details-client->server-test
   (testing "db-details-client->server works as expected"
