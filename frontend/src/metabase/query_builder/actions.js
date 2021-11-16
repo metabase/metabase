@@ -29,6 +29,8 @@ import { open, shouldOpenInBlankWindow } from "metabase/lib/dom";
 import * as Q_DEPRECATED from "metabase/lib/query";
 import Utils from "metabase/lib/utils";
 import { defer } from "metabase/lib/promise";
+import { getQuestionVirtualTableId } from "metabase/lib/saved-questions";
+
 import Question from "metabase-lib/lib/Question";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
 import { cardIsEquivalent, cardQueryIsEquivalent } from "metabase/meta/Card";
@@ -890,7 +892,7 @@ export const updateQuestion = (
           ...newQuestion.datasetQuery(),
           query: {
             ...newQuestion.datasetQuery().query,
-            "source-table": `card__${oldQuestion.id()}`,
+            "source-table": getQuestionVirtualTableId(oldQuestion.card()),
           },
         };
         newQuestion = newQuestion.setDatasetQuery(nextQuery).setDataset(false);
