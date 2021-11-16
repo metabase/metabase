@@ -420,6 +420,11 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
 
+(s/defmethod render :multiple :- common/RenderedPulseCard
+  [_ render-type timezone-id card {:keys [cols rows viz-settings] :as data}]
+  (println render-type timezone-id card data)
+  {:attachments nil :content nil})
+
 (s/defmethod render :scalar :- common/RenderedPulseCard
   [_ _ timezone-id _card {:keys [cols rows viz-settings] :as data}]
   (let [col             (first cols)
