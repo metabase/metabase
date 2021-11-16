@@ -139,6 +139,7 @@ export default class Question {
   static create({
     databaseId,
     tableId,
+    collectionId,
     metadata,
     parameterValues,
     type = "query",
@@ -161,6 +162,7 @@ export default class Question {
   } = {}) {
     let card: CardObject = {
       name,
+      collection_id: collectionId,
       display,
       visualization_settings,
       dataset_query,
@@ -1066,6 +1068,7 @@ export default class Question {
     const cardCopy = {
       name: this._card.name,
       description: this._card.description,
+      collection_id: this._card.collection_id,
       dataset_query: query.datasetQuery(),
       display: this._card.display,
       parameters: this._card.parameters,
