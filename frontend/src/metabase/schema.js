@@ -48,10 +48,6 @@ export const TableSchema = new schema.Entity(
         };
       }
 
-      // TODO Alexander Polyankin 11/05/21
-      // Until BE returns tables before the initial sync, set it to true to unblock FE changes
-      table.initial_sync = true;
-
       return table;
     },
   },
@@ -119,15 +115,6 @@ CollectionSchema.define({
 
 export const RecentsSchema = new schema.Entity("recents", undefined, {
   idAttribute: ({ model, model_id }) => `${model}:${model_id}`,
-  processStrategy(item) {
-    // TODO Alexander Polyankin 11/05/21
-    // Until BE returns tables before the initial sync, set it to true to unblock FE changes
-    if (item.model_object) {
-      item.model_object.initial_sync = true;
-    }
-
-    return item;
-  },
 });
 
 export const LoginHistorySchema = new schema.Entity("loginHistory", undefined, {

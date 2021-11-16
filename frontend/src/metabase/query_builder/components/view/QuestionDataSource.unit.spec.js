@@ -156,11 +156,9 @@ function getNestedQuestionTableMock(isMultiSchemaDB) {
       name: SOURCE_QUESTION_COLLECTION_SCHEMA_NAME,
       database: {
         id: -1337,
-        initial_sync: true,
         is_saved_questions: true,
       },
     },
-    initial_sync: true,
     displayName: () => SOURCE_QUESTION_NAME,
     hasSchema: () => isMultiSchemaDB,
   };

@@ -13,8 +13,8 @@ describe("SyncSnackbar", () => {
 
   it("should initially display syncing databases only", () => {
     const databases = [
-      getDatabase({ id: 1, name: "DB1", initial_sync: false }),
-      getDatabase({ id: 2, name: "DB2", initial_sync: true }),
+      getDatabase({ id: 1, name: "DB1", initial_sync_status: "incomplete" }),
+      getDatabase({ id: 2, name: "DB2", initial_sync_status: "complete" }),
     ];
 
     render(<SyncSnackbar databases={databases} />);
@@ -26,13 +26,13 @@ describe("SyncSnackbar", () => {
 
   it("should display synced databases for a short time", () => {
     const databases1 = [
-      getDatabase({ id: 1, name: "DB1", initial_sync: false }),
-      getDatabase({ id: 2, name: "DB2", initial_sync: true }),
+      getDatabase({ id: 1, name: "DB1", initial_sync_status: "incomplete" }),
+      getDatabase({ id: 2, name: "DB2", initial_sync_status: "complete" }),
     ];
 
     const databases2 = [
-      getDatabase({ id: 1, name: "DB1", initial_sync: true }),
-      getDatabase({ id: 2, name: "DB2", initial_sync: true }),
+      getDatabase({ id: 1, name: "DB1", initial_sync_status: "complete" }),
+      getDatabase({ id: 2, name: "DB2", initial_sync_status: "complete" }),
     ];
 
     const { rerender } = render(<SyncSnackbar databases={databases1} />);
@@ -46,9 +46,9 @@ describe("SyncSnackbar", () => {
   });
 });
 
-const getDatabase = ({ id, name, initial_sync, tables = [] }) => ({
+const getDatabase = ({ id, name, initial_sync_status, tables = [] }) => ({
   id,
   name,
-  initial_sync,
+  initial_sync_status,
   tables,
 });
