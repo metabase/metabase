@@ -56,7 +56,7 @@
           ^File existing-file (File. secret-val)]
       (if (.exists existing-file)
         existing-file
-        (throw (ex-info (tru "Secret {0} points to non-existent file: {1}" (if id id "") secret-val)
+        (throw (ex-info (tru "Secret {0} points to non-existent file: {1}" (or id "") secret-val)
                  {:secret-id id
                   :file-path secret-val}))))
     (let [^File tmp-file (doto (File/createTempFile "metabase-secret_" nil)
@@ -64,7 +64,7 @@
                            (.setReadable false false)
                            (.setReadable true true)
                            (.deleteOnExit))]
-      (log/tracef "Creating temp file for secret %s value at %s" (if id id "") (.getAbsolutePath tmp-file))
+      (log/tracef "Creating temp file for secret %s value at %s" (or id "") (.getAbsolutePath tmp-file))
       (with-open [out (io/output-stream tmp-file)]
         (.write out value))
       tmp-file)))

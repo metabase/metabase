@@ -204,8 +204,7 @@
       (str/replace #"-" "_")
       (->>
         (take-last 30)
-        (apply str)))
-  #_(apply str (take-last 30 (str/replace (str/lower-case (str (or *database-name-override* database-name) \_ table-name)) #"-" "_"))))
+        (apply str))))
 
 (defn single-db-qualified-name-components
   "Implementation of `qualified-name-components` for drivers like Oracle and Redshift that must use a single existing
