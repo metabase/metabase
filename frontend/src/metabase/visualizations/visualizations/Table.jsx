@@ -462,9 +462,9 @@ function PrepareCohortData() {
       let div = cells.item(i).getElementsByTagName("div");
       if (columnindex != 0) {
         if (columnindex == 1) {
-          defaultValue[rowindex] = div[0].innerHTML ? div[0].innerHTML : 1;
+          defaultValue[rowindex] = div[0].innerHTML ? div[0].innerHTML.replace(/\D/g,'') : 1;
         } else if (typeof div[0].dataset.cohortValue == "undefined") {
-          let cellVal = parseFloat(div[0].innerHTML);
+          let cellVal = parseFloat(div[0].innerHTML.replace(/\D/g,''));
           if (defaultValue[rowindex] && cellVal) {
             cohortValue =
               Math.round((cellVal / defaultValue[rowindex]) * 100 * 100) / 100;
@@ -486,7 +486,7 @@ function PrepareCohortData() {
         }
       }
     }
-    console.log (defaultValue);
+    console.log(defaultValue);
   }
 }
 
