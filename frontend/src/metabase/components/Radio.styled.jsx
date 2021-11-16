@@ -5,10 +5,6 @@ import { space } from "styled-system";
 import { color, lighten } from "metabase/lib/colors";
 
 const COLOR_SCHEMES = {
-  admin: {
-    main: () => color("accent7"),
-    button: () => color("brand"),
-  },
   accent7: {
     main: () => color("accent7"),
     button: () => color("accent7"),

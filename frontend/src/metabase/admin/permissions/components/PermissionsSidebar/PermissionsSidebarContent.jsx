@@ -90,7 +90,7 @@ export const PermissionsSidebarContent = memo(
             <Box mb={2}>
               <Radio
                 variant="bubble"
-                colorScheme="admin"
+                colorScheme="accent7"
                 options={entitySwitch.options}
                 value={entitySwitch.value}
                 onChange={onEntityChange}
