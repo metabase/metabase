@@ -78,25 +78,35 @@ const SyncSnackbarContent = ({ databases }) => {
 SyncSnackbarContent.propTypes = propTypes;
 
 const getTitleMessage = (databases, isOpened) => {
+  const isDone = databases.every(d => isSyncCompleted(d));
+  const isError = databases.some(d => isSyncAborted(d));
+
   const tables = databases.flatMap(d => d.tables);
   const totalCount = tables.length;
-
-  const done = databases.every(d => isSyncCompleted(d));
   const doneCount = tables.filter(t => isSyncCompleted(t)).length;
   const donePercentage = Math.floor((doneCount / totalCount) * 100);
 
-  return done
-    ? t`Done!`
-    : !isOpened && totalCount
-    ? t`Syncing… (${donePercentage}%)`
-    : t`Syncing…`;
+  if (isError) {
+    return t`Error syncing`;
+  } else if (isDone) {
+    return t`Done!`;
+  } else if (!isOpened && totalCount) {
+    return t`Syncing… (${donePercentage}%)`;
+  } else {
+    return t`Syncing…`;
+  }
 };
 
 const getDescriptionMessage = database => {
+  const isError = isSyncAborted(database);
   const doneCount = database.tables.filter(t => isSyncCompleted(t)).length;
   const totalCount = database.tables.length;
 
-  return t`${doneCount} of ${totalCount} done`;
+  if (isError) {
+    return t`Sync failed`;
+  } else {
+    return t`${doneCount} of ${totalCount} done`;
+  }
 };
 
 export default SyncSnackbarContent;

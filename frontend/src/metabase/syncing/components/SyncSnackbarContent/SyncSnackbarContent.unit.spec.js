@@ -8,10 +8,10 @@ describe("SyncSnackbarContent", () => {
       getDatabase({
         id: 1,
         name: "DB1",
-        initial_sync: false,
+        initial_sync_status: "incomplete",
         tables: [
-          getTable({ initial_sync: false }),
-          getTable({ initial_sync: true }),
+          getTable({ initial_sync_status: "incomplete" }),
+          getTable({ initial_sync_status: "complete" }),
         ],
       }),
     ];
@@ -28,10 +28,10 @@ describe("SyncSnackbarContent", () => {
       getDatabase({
         id: 1,
         name: "DB1",
-        initial_sync: true,
+        initial_sync_status: "complete",
         tables: [
-          getTable({ initial_sync: true }),
-          getTable({ initial_sync: true }),
+          getTable({ initial_sync_status: "complete" }),
+          getTable({ initial_sync_status: "complete" }),
         ],
       }),
     ];
@@ -43,26 +43,46 @@ describe("SyncSnackbarContent", () => {
     expect(screen.getByLabelText("check icon")).toBeInTheDocument();
   });
 
+  it("should render a database with a sync error", () => {
+    const databases = [
+      getDatabase({
+        id: 1,
+        name: "DB1",
+        initial_sync_status: "aborted",
+        tables: [
+          getTable({ initial_sync_status: "incomplete" }),
+          getTable({ initial_sync_status: "incomplete" }),
+        ],
+      }),
+    ];
+
+    render(<SyncSnackbarContent databases={databases} />);
+
+    expect(screen.getByText("Error syncing")).toBeInTheDocument();
+    expect(screen.getByText("Sync failed")).toBeInTheDocument();
+    expect(screen.getByLabelText("warning icon")).toBeInTheDocument();
+  });
+
   it("should render multiple databases", () => {
     const databases = [
       getDatabase({
         id: 1,
         name: "DB1",
-        initial_sync: false,
+        initial_sync_status: "incomplete",
         tables: [
-          getTable({ initial_sync: false }),
-          getTable({ initial_sync: false }),
-          getTable({ initial_sync: true }),
-          getTable({ initial_sync: false }),
+          getTable({ initial_sync_status: "incomplete" }),
+          getTable({ initial_sync_status: "incomplete" }),
+          getTable({ initial_sync_status: "complete" }),
+          getTable({ initial_sync_status: "incomplete" }),
         ],
       }),
       getDatabase({
         id: 2,
         name: "DB2",
-        initial_sync: true,
+        initial_sync_status: "complete",
         tables: [
-          getTable({ initial_sync: true }),
-          getTable({ initial_sync: true }),
+          getTable({ initial_sync_status: "complete" }),
+          getTable({ initial_sync_status: "complete" }),
         ],
       }),
     ];
@@ -70,7 +90,7 @@ describe("SyncSnackbarContent", () => {
     render(<SyncSnackbarContent databases={databases} />);
 
     fireEvent.click(screen.getByLabelText("chevrondown icon"));
-    expect(screen.getByText("Syncing… (25%)"));
+    expect(screen.getByText("Syncing… (50%)"));
 
     fireEvent.click(screen.getByLabelText("chevronup icon"));
     expect(screen.getByText("Syncing…"));
@@ -80,16 +100,16 @@ describe("SyncSnackbarContent", () => {
 const getDatabase = ({
   id = 1,
   name = "Database",
-  initial_sync = false,
+  initial_sync_status,
   tables = [],
 }) => ({
   id,
   name,
-  initial_sync,
+  initial_sync_status,
   tables,
 });
 
-const getTable = ({ id = 1, initial_sync = false }) => ({
+const getTable = ({ id = 1, initial_sync_status }) => ({
   id,
-  initial_sync,
+  initial_sync_status,
 });
