@@ -385,7 +385,7 @@ function DatasetCollectionBadge({ dataset }) {
   const { collection } = dataset.card();
   return (
     <HeadBreadcrumbs.Badge to={Urls.collection(collection)} icon="dataset">
-      {collection?.name || "Our analytics"}
+      {collection?.name || t`Our analytics`}
     </HeadBreadcrumbs.Badge>
   );
 }

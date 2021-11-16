@@ -1,4 +1,5 @@
 import React from "react";
+import { t } from "ttag";
 import PropTypes from "prop-types";
 import {
   isVirtualCardId,
@@ -101,7 +102,7 @@ function SourceDatasetBreadcrumbs({ dataset, ...props }) {
           icon="dataset"
           inactiveColor="text-light"
         >
-          {collection?.name || "Our analytics"}
+          {collection?.name || t`Our analytics`}
         </HeadBreadcrumbs.Badge>,
         <HeadBreadcrumbs.Badge
           key="dataset-name"
