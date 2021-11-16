@@ -34,6 +34,12 @@
   [{:keys [id]}]
   (db/count 'DashboardCard, :card_id id))
 
+(defn multi-dashboard-card
+  "Return the dashboard cards which this one has as multi member
+  God, this is a terrible name"
+  {:hydrate :multi_dashboard_cards}
+  (comment "some shit here"))
+
 (defn average-query-time
   "Average query time of card, taken by query executions which didn't hit cache.
   If it's nil we don't have any query executions on file"
