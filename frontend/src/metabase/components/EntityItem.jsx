@@ -88,7 +88,7 @@ function EntityItemMenu({
         },
         onMove && {
           title: t`Move this item`,
-          icon: "move",
+          icon: "arrow_right",
           action: onMove,
           event: `${analyticsContext};Entity Item;Move Item;${item.model}`,
         },

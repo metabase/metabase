@@ -52,7 +52,7 @@ function QuestionActionButtons({ canWrite, isDataset, onOpenModal }) {
         <Tooltip tooltip={t`Move`}>
           <Button
             onlyIcon
-            icon="move"
+            icon="arrow_right"
             iconSize={ICON_SIZE}
             onClick={() => onOpenModal(MODAL_TYPES.MOVE)}
             data-testid={MOVE_TESTID}
