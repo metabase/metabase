@@ -670,9 +670,9 @@
   ;; find information about this dashboard parameter by its parameter `:id`. If no parameter with this ID
   ;; exists, it is an error.
   (let [matching-param (or (get param-id->param param-id)
-                           (throw (ex-info (throw (ex-info (tru "Dashboard does not have a parameter with ID {0}." (pr-str param-id))
-                                                           {:type        qp.error-type/invalid-parameter
-                                                            :status-code 400})))))]
+                           (throw (ex-info (tru "Dashboard does not have a parameter with ID {0}." (pr-str param-id))
+                                           {:type        qp.error-type/invalid-parameter
+                                            :status-code 400})))]
     (log/tracef "Found matching Dashboard parameter\n%s" (u/pprint-to-str matching-param))
     ;; now find the mapping for this specific card. If there is no mapping, we can just ignore this parameter.
     (when-let [matching-mapping (or (some (fn [mapping]
