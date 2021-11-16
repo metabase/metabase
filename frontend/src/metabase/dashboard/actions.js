@@ -202,6 +202,15 @@ export const setMultipleDashCardAttributes = createAction(
   SET_MULTIPLE_DASHCARD_ATTRIBUTES,
 );
 
+function generateTemporaryDashcardId() {
+  return Math.random();
+}
+
+// real dashcard ids are integers >= 1
+function isNewDashcard(dashcard) {
+  return dashcard.id < 1 && dashcard.id >= 0;
+}
+
 export const addCardToDashboard = ({
   dashId,
   cardId,
@@ -219,7 +228,7 @@ export const addCardToDashboard = ({
     .map(id => dashcards[id])
     .filter(dc => !dc.isRemoved);
   const dashcard: DashCard = {
-    id: Math.random(), // temporary id
+    id: generateTemporaryDashcardId(),
     dashboard_id: dashId,
     card_id: card.id,
     card: card,
@@ -248,7 +257,7 @@ export const addDashCardToDashboard = function({
       .map(id => dashcards[id])
       .filter(dc => !dc.isRemoved);
     const dashcard: DashCard = {
-      id: Math.random(), // temporary id
+      id: generateTemporaryDashcardId(),
       card_id: null,
       card: null,
       dashboard_id: dashId,
@@ -605,8 +614,13 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
         ),
       );
     } else {
+      // new cards aren't yet saved to the dashboard, so they need to be run using the card query endpoint
+      const endpoint = isNewDashcard(dashcard)
+        ? CardApi.query
+        : DashboardApi.cardQuery;
+
       result = await fetchDataOrError(
-        maybeUsePivotEndpoint(DashboardApi.cardQuery, card)(
+        maybeUsePivotEndpoint(endpoint, card)(
           {
             dashboardId: dashcard.dashboard_id,
             cardId: card.id,
