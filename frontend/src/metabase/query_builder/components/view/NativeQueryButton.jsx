@@ -4,7 +4,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Modal from "metabase/components/Modal";
-import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Tooltip from "metabase/components/Tooltip";
