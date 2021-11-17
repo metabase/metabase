@@ -133,7 +133,9 @@ const config = (module.exports = {
           : SRC_PATH + "/lib/noop",
     },
   },
-
+  cache: {
+    type: "filesystem",
+  },
   optimization: {
     splitChunks: {
       cacheGroups: {
