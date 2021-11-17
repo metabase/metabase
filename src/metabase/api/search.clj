@@ -319,7 +319,7 @@
            {:select (:select base-query)
             :from   [[(merge
                        base-query
-                       {:select [:id :schema :db_id :name :description :display_name :updated_at
+                       {:select [:id :schema :db_id :name :description :display_name :updated_at :initial_sync_status
                                  [(hx/concat (hx/literal "/db/")
                                              :db_id
                                              (hx/literal "/schema/")
