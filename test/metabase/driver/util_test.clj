@@ -1,6 +1,5 @@
 (ns metabase.driver.util-test
   (:require [clojure.test :refer :all]
-            [flatland.ordered.map :as ordered-map]
             [metabase.driver.util :as driver.u]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.test :as mt]
@@ -45,45 +44,54 @@
     (is (instance? javax.net.ssl.SSLSocketFactory
                    (driver.u/socket-factory-for-cert (slurp "./test_resources/ssl/ca.pem"))))))
 
-;; simply to save a lot of characters below
-(def ^:private om ordered-map/ordered-map)
-
 (deftest translate-conn-props-server->client-test
   (testing "connection-props-server->client works as expected"
-    (doseq [[expected is-hosted?] [[[(om :name "host", :display-name "Host", :placeholder "localhost")
-                                     (om :name "password-value", :display-name "Password", :type "password",
-                                         :placeholder "foo", :required false)
-                                     (om :name "use-keystore", :type "boolean", :display-name "Use Keystore?")
-                                     (om :name "keystore-password-value", :display-name "Keystore Password",
-                                         :type "password", :required false, :visible-if (om :use-keystore true))
-                                     ;; not an ordered-map because this property was added
-                                     {:default "local"
-                                      :name    "keystore-options"
-                                      :options [{:name  "Local file path"
-                                                 :value "local"}
-                                                {:name  "Uploaded file path"
-                                                 :value "uploaded"}]
-                                      :type    "select"
+    (doseq [[expected is-hosted?] [[[{:name "host"}
+                                     {:name        "password-value"
+                                      :type        "password"
+                                      :placeholder "foo"
+                                      :required    false}
+                                     {:name "use-keystore"}
+                                     {:name         "keystore-password-value"
+                                      :display-name "Keystore Password",
+                                      :type         "password",
+                                      :required     false,
+                                      :visible-if   {:use-keystore true}}
+                                     {:name       "keystore-options"
+                                      :options    [{:name  "Local file path"
+                                                    :value "local"}
+                                                   {:name  "Uploaded file path"
+                                                    :value "uploaded"}]
+                                      :type       "select"
+                                      :default    "local"
                                       :visible-if {:use-keystore true}}
-                                     ;; keystore-value
-                                     (om :name "keystore-value", :display-name "Keystore", :type "textFile",
-                                         :required false,
-                                         :treat-before-posting "base64", :visible-if {:keystore-options "uploaded"})
+                                     {:name                 "keystore-value"
+                                      :display-name         "Keystore"
+                                      :type                 "textFile"
+                                      :required             false
+                                      :treat-before-posting "base64"
+                                      :visible-if           {:keystore-options "uploaded"}}
                                      {:name        "keystore-path"
-                                      :placeholder nil
                                       :type        "string"
                                       :visible-if  {:keystore-options "local"}}]
                                     false]
-                                   [[(om :name "host", :display-name "Host", :placeholder "localhost")
-                                     (om :name "password-value", :display-name "Password", :type "password",
-                                         :placeholder "foo", :required false)
-                                     (om :name "use-keystore", :type "boolean", :display-name "Use Keystore?")
-                                     (om :name "keystore-password-value", :display-name "Keystore Password",
-                                         :type "password", :required false,
-                                         :visible-if (om :use-keystore true))
-                                     (om :name "keystore-value", :display-name "Keystore", :type "textFile",
-                                         :required false, :treat-before-posting "base64",
-                                         :visible-if (om :use-keystore true))]
+                                   [[{:name "host"}
+                                     {:name        "password-value"
+                                      :type        "password"
+                                      :placeholder "foo"
+                                      :required    false}
+                                     {:name "use-keystore"}
+                                     {:name         "keystore-password-value"
+                                      :display-name "Keystore Password"
+                                      :type         "password"
+                                      :required     false
+                                      :visible-if   {:use-keystore true}}
+                                     {:name                 "keystore-value"
+                                      :display-name         "Keystore"
+                                      :type                 "textFile"
+                                      :required             false
+                                      :treat-before-posting "base64"
+                                      :visible-if           {:use-keystore true}}]
                                     true]]]
       (testing (str "with is-hosted? " is-hosted?)
         ;; TODO: create capability to temporarily override token-features for testing
@@ -91,7 +99,7 @@
           (let [client-conn-props (-> (driver.u/available-drivers-info) ; this calls connection-props-server->client
                                       :secret-test-driver
                                       :details-fields)]
-            (is (= expected client-conn-props))))))))
+            (is (= expected (mt/select-keys-sequentially expected client-conn-props)))))))))
 
 (deftest connection-details-client->server-test
   (testing "db-details-client->server works as expected"
