@@ -443,7 +443,10 @@ function ViewTitleHeaderRightSide(props) {
   const isShowingNotebook = queryBuilderMode === "notebook";
 
   return (
-    <div className="ml-auto flex align-center">
+    <div
+      className="ml-auto flex align-center"
+      data-testid="qb-header-action-panel"
+    >
       {!!isDirty && !isDataset && (
         <SaveButton
           disabled={!question.canRun()}
