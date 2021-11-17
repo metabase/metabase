@@ -1,12 +1,13 @@
 import { createSelector } from "reselect";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import { getUserId } from "metabase/selectors/user";
+import { getMetadata } from "metabase/selectors/metadata";
 
 export const RELOAD_INTERVAL = 2000;
 
 export const getAllDatabases = createSelector(
-  state => state.entities.databases,
-  databases => Object.values(databases),
+  [getMetadata],
+  metadata => metadata.databasesList(),
 );
 
 export const getSampleDatabase = createSelector(
@@ -16,7 +17,7 @@ export const getSampleDatabase = createSelector(
 
 export const getCustomDatabases = createSelector(
   [getAllDatabases],
-  databases => databases.filter(d => !d.is_sample && d.tables != null),
+  databases => databases.filter(d => !d.is_sample),
 );
 
 export const getUserDatabases = createSelector(

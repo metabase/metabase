@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import PropTypes from "prop-types";
-import _ from "underscore";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import SyncSnackbarContent from "../SyncSnackbarContent";
 
@@ -24,22 +23,36 @@ SyncSnackbar.propTypes = propTypes;
 
 const useVisibleDatabases = databases => {
   const syncingIds = databases.filter(d => isSyncInProgress(d)).map(d => d.id);
-  const delayedIds = useDelayedValue(syncingIds, REMOVE_DELAY);
-  const visibleIds = _.uniq([...syncingIds, ...delayedIds]);
+  const visibleIds = useListWithRemoveDelay(syncingIds, REMOVE_DELAY);
   const databaseById = Object.fromEntries(databases.map(d => [d.id, d]));
 
   return visibleIds.map(id => databaseById[id]).filter(d => d != null);
 };
 
-const useDelayedValue = (value, delay) => {
-  const [delayedValue, setDelayedValue] = useState(value);
+const useListWithRemoveDelay = (list, delay) => {
+  const { current: map } = useRef(new Map());
+  const [_, rerender] = useState();
+
+  list.forEach(item => {
+    map.set(item, null);
+  });
+
+  map.forEach((timeout, item) => {
+    if (!list.includes(item) && !timeout) {
+      const handler = () => {
+        map.delete(item);
+        rerender({});
+      };
+
+      map.set(item, setTimeout(handler, delay));
+    }
+  });
 
   useEffect(() => {
-    const timeoutId = setTimeout(() => setDelayedValue(value), delay);
-    return () => clearTimeout(timeoutId);
-  }, [value, delay]);
+    return () => map.forEach(timeout => clearTimeout(timeout));
+  }, [map]);
 
-  return delayedValue;
+  return Array.from(map.keys());
 };
 
 export default SyncSnackbar;
