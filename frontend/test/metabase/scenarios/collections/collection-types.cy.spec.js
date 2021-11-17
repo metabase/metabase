@@ -156,7 +156,7 @@ describeWithoutToken("collection types", () => {
   it("should not be able to manage collection's authority level", () => {
     cy.visit("/collection/root");
 
-    openNewCollectionModal();
+    openNewCollectionItemFlowFor("collection");
     modal().within(() => {
       assertNoCollectionTypeInput();
       cy.icon("close").click();
