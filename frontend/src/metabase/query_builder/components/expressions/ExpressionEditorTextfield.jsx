@@ -311,6 +311,7 @@ export default class ExpressionEditorTextfield extends React.Component {
           wrapEnabled={true}
           fontSize={16}
           setOptions={{
+            indentedSoftWrap: false,
             minLines: 1,
             maxLines: 9,
             showLineNumbers: false,
