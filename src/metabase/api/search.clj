@@ -89,7 +89,9 @@
    :database_id         :integer
    :table_schema        :text
    :table_name          :text
-   :table_description   :text))
+   :table_description   :text
+   ;; returned for Database and Table
+   :initial_sync_status :text))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Shared Query Logic                                               |
@@ -438,7 +440,7 @@
    models :-          (s/maybe models-schema)
    limit :-           (s/maybe su/IntGreaterThanZero)
    offset :-          (s/maybe su/IntGreaterThanOrEqualToZero)]
-  (cond-> {:search-string     search-string
+  (cond-> {:search-string      search-string
            :archived?          (Boolean/parseBoolean archived-string)
            :current-user-perms @api/*current-user-permissions-set*}
     (some? table-db-id) (assoc :table-db-id table-db-id)
