@@ -93,17 +93,54 @@
       (zipmap (map str regex-seq)
               (map #(boolean (re-find % content)) regex-seq)))))
 
+(defn- regex-email-bodies*
+  [regexes emails]
+  (let [email-body->regex-boolean (create-email-body->regex-fn regexes)]
+    (->> emails
+         (m/map-vals (fn [emails-for-recipient]
+                       (for [{:keys [body] :as email} emails-for-recipient
+                             :let [matches (-> body first email-body->regex-boolean)]
+                             :when (some true? (vals matches))]
+                         (-> email
+                             (update :to set)
+                             (assoc :body matches)))))
+         (m/filter-vals seq))))
+
 (defn regex-email-bodies
   "Return messages in the fake inbox whose body matches the regex(es). The body will be replaced by a map with the
   stringified regex as it's key and a boolean indicated that the regex returned results."
   [& regexes]
-  (let [email-body->regex-boolean (create-email-body->regex-fn regexes)]
-    (m/map-vals (fn [emails-for-recipient]
-                  (for [email emails-for-recipient]
-                    (-> email
-                        (update :to set)
-                        (update :body (comp email-body->regex-boolean first)))))
-                @inbox)))
+  (regex-email-bodies* regexes @inbox))
+
+(deftest regex-email-bodies-test
+  (letfn [(email [body] {:to #{"mail"}
+                         :body [{:content body}]})
+          (clean [emails] (m/map-vals #(map :body %) emails))]
+    (testing "marks emails with regex match"
+      (let [emails {"bob@metabase.com" [(email "foo bar baz")
+                                        (email "other keyword")]
+                    "sue@metabase.com" [(email "foo bar baz")]}]
+        (is (= {"bob@metabase.com" [{"foo" true "keyword" false} {"foo" false "keyword" true}]
+                "sue@metabase.com" [{"foo" true "keyword" false}]}
+               (clean (regex-email-bodies* [#"foo" #"keyword"] emails))))))
+    (testing "Returns only emails with at least one match"
+      ;; drops the email that isn't matched by any regex
+      (testing "Drops the email that doesn't match"
+        (is (= {"bob@metabase.com" [{"foo" true "keyword" false}]}
+               (clean (regex-email-bodies* [#"foo" #"keyword"]
+                                           {"bob@metabase.com" [(email "foo")
+                                                                (email "no-match")]})))))
+      (testing "Drops the entry for the other person with no matching emails"
+        (is (= {"bob@metabase.com" [{"foo" true "keyword" false}]}
+               (clean (regex-email-bodies* [#"foo" #"keyword"]
+                                           {"bob@metabase.com" [(email "foo")
+                                                                (email "no-match")]
+                                            "sue@metabase.com" [(email "no-match")]}))))
+        (is (= {}
+               (clean (regex-email-bodies* [#"foo" #"keyword"]
+                                           {"bob@metabase.com" [(email "no-match")
+                                                                (email "no-match")]
+                                            "sue@metabase.com" [(email "no-match")]}))))))))
 
 (defn- mime-type [mime-type-str]
   (-> mime-type-str
