@@ -31,7 +31,7 @@ const useVisibleDatabases = databases => {
 
 const useListWithRemoveDelay = (list, delay) => {
   const { current: map } = useRef(new Map());
-  const [_, rerender] = useState();
+  const [, rerender] = useState();
 
   list.forEach(item => {
     map.set(item, null);
