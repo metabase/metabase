@@ -12,7 +12,7 @@ executors:
     docker:
       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
       - image: node
-        entrypoint: npx maildev -s 25 -w 80
+        entrypoint: npx maildev -y -s 25 -w 80
       - image: metabase/qa-databases:postgres-sample-12
       - image: metabase/qa-databases:mongo-sample-4.0
       - image: metabase/qa-databases:mysql-sample-8
