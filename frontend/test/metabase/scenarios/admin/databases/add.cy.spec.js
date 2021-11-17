@@ -365,7 +365,7 @@ describe("scenarios > admin > databases > add", () => {
     });
   });
 
-  it.only("should show the various Postgres SSL options correctly", () => {
+  it("should show the various Postgres SSL options correctly", () => {
     const confirmSSLFields = (visible, hidden) => {
       visible.forEach(field => cy.findByText(field));
       hidden.forEach(field => cy.findByText(field).should("not.exist"));
