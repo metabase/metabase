@@ -153,7 +153,7 @@ export default class Activity extends Component {
           description.summary = (
             <span>
               {item.model === "dataset"
-                ? t`saved a dataset about `
+                ? t`saved a dataset based on `
                 : t`saved a question about `}
               <Link
                 to={Urls.tableRowsQuery(item.database_id, item.table_id)}
