@@ -55,6 +55,7 @@
     "prop-types": "^15.5.7",
     "re-reselect": "^3.4.0",
     "react": "~16.14.0",
+    "react-ace": "^9.5.0",
     "react-ansi-style": "^1.0.0",
     "react-collapse": "^4.0.3",
     "react-color": "^2.14.1",
