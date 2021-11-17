@@ -5,6 +5,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
+import AceEditor from "react-ace";
 
 import { format } from "metabase/lib/expressions/format";
 import { suggest } from "metabase/lib/expressions/suggest";
@@ -14,8 +15,6 @@ import { tokenize } from "metabase/lib/expressions/tokenizer";
 
 import MetabaseSettings from "metabase/lib/settings";
 import colors from "metabase/lib/colors";
-
-import { setCaretPosition, getSelectionPosition } from "metabase/lib/dom";
 
 import {
   KEYCODE_TAB,
@@ -31,8 +30,6 @@ import ExternalLink from "metabase/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
 import ExplicitSize from "metabase/components/ExplicitSize";
-
-import TokenizedInput from "./TokenizedInput";
 
 import { isExpression } from "metabase/lib/expressions";
 
@@ -272,79 +269,56 @@ export default class ExpressionEditorTextfield extends React.Component {
   };
 
   _setCaretPosition = (position, autosuggest) => {
-    setCaretPosition(this.input.current, position);
+    // FIXME setCaretPosition(this.input.current, position);
     if (autosuggest) {
       setTimeout(() => this._triggerAutosuggest());
     }
   };
 
   onExpressionChange(source) {
-    const inputElement = this.input.current;
-    if (!inputElement) {
-      return;
-    }
-
     this.setState({ source });
-    this.clearSuggestions();
+  }
 
-    const [selectionStart, selectionEnd] = getSelectionPosition(inputElement);
-    const hasSelection = selectionStart !== selectionEnd;
-    const targetOffset = !hasSelection ? selectionEnd : null;
+  onCursorChange(selection) {
+    const range = selection.getRange();
+    const cursor = selection.getCursor();
 
     const { query, startRule } = this.props;
+    const { source } = this.state;
     const { suggestions, helpText } = suggest({
       query,
       startRule,
       source,
-      targetOffset,
+      targetOffset: cursor.column,
     });
-    this.setState({ suggestions, helpText });
 
-    if (this.props.onBlankChange) {
-      this.props.onBlankChange(source.length === 0);
-    }
-
-    this.setState({ suggestions: hasSelection ? [] : suggestions });
+    this.setState({
+      suggestions: range.isEmpty() ? suggestions : [],
+      helpText,
+    });
   }
 
   render() {
-    const { placeholder } = this.props;
     const { source, suggestions, errorMessage } = this.state;
-
-    const inputClassName = cx("input text-bold text-monospace", {
-      "text-dark": source,
-      "text-light": !source,
-    });
-    const inputStyle = { fontSize: 12 };
 
     return (
       <div className={cx("relative my1")}>
-        <div
-          className={cx(inputClassName, "absolute top left")}
-          style={{
-            ...inputStyle,
-            pointerEvents: "none",
-            borderColor: "transparent",
-          }}
-        >
-          {"= "}
-        </div>
-        <TokenizedInput
+        <AceEditor
           ref={this.input}
-          type="text"
-          className={cx(inputClassName, {
-            "border-error": errorMessage,
-          })}
-          style={{ ...inputStyle, paddingLeft: 26, whiteSpace: "pre-wrap" }}
-          placeholder={placeholder}
           value={source}
-          startRule={this.props.startRule}
-          onChange={e => this.onExpressionChange(e.target.value)}
-          onKeyDown={this.onInputKeyDown}
-          onBlur={this.onInputBlur}
-          onFocus={e => this._triggerAutosuggest()}
-          onClick={this.onInputClick}
-          autoFocus
+          focus={true}
+          wrapEnabled={true}
+          fontSize={16}
+          setOptions={{
+            minLines: 1,
+            maxLines: 9,
+            showLineNumbers: false,
+            showGutter: false,
+            showFoldWidgets: false,
+            showPrintMargin: false,
+          }}
+          onChange={source => this.onExpressionChange(source)}
+          onCursorChange={selection => this.onCursorChange(selection)}
         />
         <ErrorMessage error={errorMessage} />
         <HelpText helpText={this.state.helpText} width={this.props.width} />
