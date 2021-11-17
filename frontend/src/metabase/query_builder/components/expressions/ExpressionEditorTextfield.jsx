@@ -307,9 +307,11 @@ export default class ExpressionEditorTextfield extends React.Component {
           ref={this.input}
           value={source}
           focus={true}
+          highlightActiveLine={false}
           wrapEnabled={true}
           fontSize={16}
           setOptions={{
+            indentedSoftWrap: false,
             minLines: 1,
             maxLines: 9,
             showLineNumbers: false,
@@ -319,6 +321,7 @@ export default class ExpressionEditorTextfield extends React.Component {
           }}
           onChange={source => this.onExpressionChange(source)}
           onCursorChange={selection => this.onCursorChange(selection)}
+          width="100%"
         />
         <ErrorMessage error={errorMessage} />
         <HelpText helpText={this.state.helpText} width={this.props.width} />
