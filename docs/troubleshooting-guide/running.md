@@ -1,8 +1,7 @@
 # Running Metabase
 
 <div class='doc-toc' markdown=1>
-
-- [WARNING: sun.reflect.Reflection.getCallerClass is not supported.](#warning-sunreflectreflectiongetcallerclass-is-not-supported)
+- [WARNING: sun.reflect.Reflection.getCallerClass is not supported](#warning-sunreflectreflectiongetcallerclass-is-not-supported)
 - [Metabase fails to start due to Heap Space OutOfMemoryErrors](#heap-space-outofmemoryerrors)
 - [Diagnosing memory issues causing OutOfMemoryErrors](#diagnosing-outofmemoryerrors)
 - [Metabase cannot read or write from a file or folder (IOError)](#cannot-read-write-ioerror)
