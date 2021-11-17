@@ -17,8 +17,6 @@ import {
   Unauthorized,
 } from "metabase/containers/ErrorPages";
 
-// comment
-
 const mapStateToProps = (state, props) => ({
   errorPage: state.app.errorPage,
   currentUser: state.currentUser,

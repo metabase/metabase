@@ -33,7 +33,7 @@ type Props = {
 };
 
 const mapStateToProps = state => ({
-  hasDataAccess: getHasDataAccess(state),
+  // hasDataAccess: getHasDataAccess(state),
   hasNativeWrite: getHasNativeWrite(state),
 });
 
