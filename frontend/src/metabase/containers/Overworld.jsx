@@ -74,7 +74,10 @@ class Overworld extends React.Component {
     return (
       <Box>
         <Flex px={PAGE_PADDING} pt={3} pb={1} align="center">
-          <Tooltip tooltip={t`Don't tell anyone, but you're my favorite.`}>
+          <Tooltip
+            tooltip={t`Don't tell anyone, but you're my favorite.`}
+            placement="bottom"
+          >
             <MetabotLogo />
           </Tooltip>
           <Box ml={2}>
