@@ -517,7 +517,7 @@ describe("scenarios > question > filter", () => {
 
     typeInExpressionEditor("p");
 
-    // only the latter "P" (of Products etc) should be highlighted, and not "Pr"
+    // only "P" (of Products etc) should be highlighted, and not "Pr"
     popover()
       .get("span.text-dark")
       .contains("Pr")
