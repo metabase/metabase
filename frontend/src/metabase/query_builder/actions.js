@@ -55,6 +55,7 @@ import {
   getNativeEditorSelectedText,
   getSnippetCollectionId,
   getQueryResults,
+  isBasedOnExistingQuestion,
 } from "./selectors";
 import { trackNewQuestionSaved } from "./tracking";
 
@@ -1035,7 +1036,7 @@ export const apiCreateQuestion = question => {
     trackNewQuestionSaved(
       question,
       createdQuestion,
-      getOriginalQuestion(getState()),
+      isBasedOnExistingQuestion(getState()),
     );
 
     // Saving a card, locks in the current display as though it had been
