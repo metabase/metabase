@@ -3,6 +3,7 @@
             [clojure.java.io :as io]
             [clojure.tools.logging :as log]
             [metabase.api.common :as api]
+            [metabase.driver :as driver]
             [metabase.models.interface :as i]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
@@ -42,23 +43,44 @@
         (bytes? value)
         (String. ^bytes value StandardCharsets/UTF_8)))
 
-(defn value->file!
-  "Returns the value of the given `secret` in the form of a file.  `secret` can be a Secret model object, or a
-  secret-map (i.e. return value from `db-details-prop->secret-map`).
-
-  In any case, if the `:source` is `:file-path`, then the value will be returned unchanged (since it is ostensibly
-  already a file).  Otherwise, a temp file will be created and the secret value will be written to it, and the path to
-  that temp file will be returned."
+(defn conn-props->secret-props-by-name
+  "For the given `conn-props` (output of `driver/connection-properties`), return a map of all `:type` `:secret`
+  properties, keyed by property name."
   {:added "0.42.0"}
-  [{:keys [id ^bytes value] :as secret}]
+  [conn-props]
+  (->> (filter #(= :secret (keyword (:type %))) conn-props)
+    (reduce (fn [acc prop] (assoc acc (:name prop) prop)) {})))
+
+(defn value->file!
+  "Returns the value of the given `secret` instance in the form of a file. If the given instance has a `:file-path` as
+  its source, a `File` referring to that is returned. Otherwise, the `:value` is written to a temporary file, which is
+  then returned.
+
+  `driver?` is an optional argument that is only used if an ostensibly existing file value (i.e. `:file-path`) can't be
+  resolved, in order to render a more user-friendly error message (by looking up the display names of the connection
+  properties involved)."
+  {:added "0.42.0"}
+  [{:keys [connection-property-name id value] :as secret} driver?]
   (if (= :file-path (:source secret))
     (let [secret-val          (value->string secret)
           ^File existing-file (File. secret-val)]
       (if (.exists existing-file)
         existing-file
-        (throw (ex-info (tru "Secret {0} points to non-existent file: {1}" (or id "") secret-val)
-                 {:secret-id id
-                  :file-path secret-val}))))
+        (let [error-source (cond
+                             id
+                             (tru "Secret ID {0}" id)
+
+                             (and connection-property-name driver?)
+                             (let [secret-props (-> (driver/connection-properties driver?)
+                                                    conn-props->secret-props-by-name)]
+                               (tru "File path for {0}" (-> (get secret-props connection-property-name)
+                                                          :display-name)))
+
+                             true
+                             (tru "Path"))]
+          (throw (ex-info (tru "{0} points to non-existent file: {1}" error-source secret-val)
+                   {:file-path secret-val
+                    :secret    secret})))))
     (let [^File tmp-file (doto (File/createTempFile "metabase-secret_" nil)
                            ;; make the file only readable by owner
                            (.setReadable false false)
