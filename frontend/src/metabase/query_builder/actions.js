@@ -29,7 +29,6 @@ import { open, shouldOpenInBlankWindow } from "metabase/lib/dom";
 import * as Q_DEPRECATED from "metabase/lib/query";
 import Utils from "metabase/lib/utils";
 import { defer } from "metabase/lib/promise";
-import { getQuestionVirtualTableId } from "metabase/lib/saved-questions";
 
 import Question from "metabase-lib/lib/Question";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
@@ -80,6 +79,12 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { setRequestUnloaded } from "metabase/redux/requests";
 
 import type { Card } from "metabase-types/types/Card";
+
+import {
+  isAdHocDatasetQuestion,
+  toAdHocDatasetQuestionCard,
+  toAdHocDatasetQuestion,
+} from "./utils";
 
 type UiControls = {
   isEditing?: boolean,
@@ -494,6 +499,10 @@ export const initializeQB = (location, params, queryParams) => {
       );
     }
 
+    if (originalCard?.dataset && card.dataset_query.type === "query") {
+      card = toAdHocDatasetQuestionCard(card, originalCard);
+    }
+
     /**** All actions are dispatched here ****/
 
     // Fetch alerts for the current question if the question is saved
@@ -816,6 +825,10 @@ export const setCardAndRun = (nextCard, shouldUpdateUrl = true) => {
       ? card
       : null;
 
+    if (card.dataset) {
+      card.dataset = false;
+    }
+
     // Update the card and originalCard before running the actual query
     dispatch.action(SET_CARD_AND_RUN, { card, originalCard });
     dispatch(runQuestionQuery({ shouldUpdateUrl }));
@@ -887,15 +900,8 @@ export const updateQuestion = (
       newQuestion.isSaved()
     ) {
       newQuestion = newQuestion.withoutNameAndId();
-      if (oldQuestion.isDataset()) {
-        const nextQuery = {
-          ...newQuestion.datasetQuery(),
-          query: {
-            ...newQuestion.datasetQuery().query,
-            "source-table": getQuestionVirtualTableId(oldQuestion.card()),
-          },
-        };
-        newQuestion = newQuestion.setDatasetQuery(nextQuery).setDataset(false);
+      if (newQuestion.isDataset()) {
+        newQuestion = newQuestion.setDataset(false);
       }
     }
 
@@ -1062,7 +1068,10 @@ export const apiCreateQuestion = question => {
 export const API_UPDATE_QUESTION = "metabase/qb/API_UPDATE_QUESTION";
 export const apiUpdateQuestion = question => {
   return async (dispatch, getState) => {
+    const originalQuestion = getOriginalQuestion(getState());
     question = question || getQuestion(getState());
+
+    const isAdHocDataset = isAdHocDatasetQuestion(question, originalQuestion);
 
     // Needed for persisting visualization columns for pulses/alerts, see #6749
     const series = getTransformedSeries(getState());
@@ -1071,10 +1080,10 @@ export const apiUpdateQuestion = question => {
       : question;
 
     const resultsMetadata = getResultsMetadata(getState());
-    const updatedQuestion = await questionWithVizSettings
+    let updatedQuestion = await questionWithVizSettings
       .setQuery(question.query().clean())
       .setResultsMetadata(resultsMetadata)
-      .reduxUpdate(dispatch);
+      .reduxUpdate(dispatch, { excludeDatasetQuery: isAdHocDataset });
 
     // reload the question alerts for the current question
     // (some of the old alerts might be removed during update)
@@ -1090,6 +1099,13 @@ export const apiUpdateQuestion = question => {
       "Update Card",
       updatedQuestion.query().datasetQuery().type,
     );
+
+    if (isAdHocDataset) {
+      updatedQuestion = toAdHocDatasetQuestion(
+        updatedQuestion,
+        originalQuestion,
+      );
+    }
 
     dispatch.action(API_UPDATE_QUESTION, updatedQuestion.card());
   };
@@ -1432,8 +1448,12 @@ export const revertToRevision = createThunkAction(
 
 export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
   const question = getQuestion(getState());
-  const dataset = question.setDataset(true);
+  let dataset = question.setDataset(true);
+  if (dataset.isStructured()) {
+    dataset = dataset.composeDataset();
+  }
   await dispatch(apiUpdateQuestion(dataset));
+  await dispatch(loadMetadataForCard(dataset.card()));
 
   // When a question is turned into a dataset,
   // its visualization is changed to a table
@@ -1453,13 +1473,21 @@ export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
 
 export const turnDatasetIntoQuestion = () => async (dispatch, getState) => {
   const dataset = getQuestion(getState());
-  const question = dataset.setDataset(false);
+  let question = dataset.setDataset(false);
+  if (question.isStructured()) {
+    const originalQuestion = getOriginalQuestion(getState());
+    question = question.setDatasetQuery(originalQuestion.datasetQuery());
+  }
   await dispatch(apiUpdateQuestion(question));
 
   dispatch(
     addUndo({
       message: t`This is a question now.`,
-      actions: [apiUpdateQuestion(dataset)],
+      actions: [
+        apiUpdateQuestion(
+          dataset.isStructured() ? dataset.composeDataset() : dataset,
+        ),
+      ],
     }),
   );
 };

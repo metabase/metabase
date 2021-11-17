@@ -552,6 +552,19 @@ export default class Question {
     }
   }
 
+  composeDataset() {
+    if (!this.isStructured() || !this.isDataset()) {
+      return this;
+    }
+    return this.setDatasetQuery({
+      type: "query",
+      database: this.databaseId(),
+      query: {
+        "source-table": "card__" + this.id(),
+      },
+    });
+  }
+
   drillPK(field: Field, value: Value): ?Question {
     const query = this.query();
 
@@ -1013,9 +1026,13 @@ export default class Question {
     return this.setCard(Questions.HACK_getObjectFromAction(action));
   }
 
-  async reduxUpdate(dispatch) {
+  async reduxUpdate(dispatch, { excludeDatasetQuery = false } = {}) {
+    const fullCard = this.card();
+    const card = excludeDatasetQuery
+      ? _.omit(fullCard, "dataset_query")
+      : fullCard;
     const action = await dispatch(
-      Questions.actions.update({ id: this.id() }, this.card()),
+      Questions.actions.update({ id: this.id() }, card),
     );
     return this.setCard(Questions.HACK_getObjectFromAction(action));
   }
