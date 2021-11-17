@@ -132,6 +132,11 @@ const Tables = createEntity({
     if (type === Questions.actionTypes.CREATE) {
       const card = payload.question;
       const virtualQuestionTable = convertSavedQuestionToVirtualTable(card);
+
+      if (state[virtualQuestionTable.id]) {
+        return state;
+      }
+
       return {
         ...state,
         [virtualQuestionTable.id]: virtualQuestionTable,
@@ -144,6 +149,10 @@ const Tables = createEntity({
 
       if (card.archived && state[virtualQuestionId]) {
         delete state[virtualQuestionId];
+        return state;
+      }
+
+      if (state[virtualQuestionId]) {
         return state;
       }
 
