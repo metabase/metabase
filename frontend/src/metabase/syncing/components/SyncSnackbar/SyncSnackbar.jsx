@@ -34,6 +34,8 @@ const useListWithRemoveDelay = (list, delay) => {
   const [, rerender] = useState();
 
   list.forEach(item => {
+    const timeout = map.get(item);
+    timeout && clearTimeout(timeout);
     map.set(item, null);
   });
 
