@@ -499,6 +499,9 @@ export const initializeQB = (location, params, queryParams) => {
       );
     }
 
+    // When opening a dataset, we swap it's `dataset_query`
+    // with clean query using the dataset as a source table,
+    // to enable "simple mode" like features
     if (originalCard?.dataset && card.dataset_query.type === "query") {
       card = toAdHocDatasetQuestionCard(card, originalCard);
     }
@@ -825,6 +828,8 @@ export const setCardAndRun = (nextCard, shouldUpdateUrl = true) => {
       ? card
       : null;
 
+    // When the dataset query changes, we should loose the dataset flag,
+    // to start building a new ad-hoc question based on a dataset
     if (card.dataset) {
       card.dataset = false;
     }
@@ -900,6 +905,9 @@ export const updateQuestion = (
       newQuestion.isSaved()
     ) {
       newQuestion = newQuestion.withoutNameAndId();
+
+      // When the dataset query changes, we should loose the dataset flag,
+      // to start building a new ad-hoc question based on a dataset
       if (newQuestion.isDataset()) {
         newQuestion = newQuestion.setDataset(false);
       }
@@ -1083,6 +1091,9 @@ export const apiUpdateQuestion = question => {
     let updatedQuestion = await questionWithVizSettings
       .setQuery(question.query().clean())
       .setResultsMetadata(resultsMetadata)
+      // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
+      // (it's necessary for datasets to behave like tables opened in simple mode)
+      // When doing updates like changing name, description, etc., we need to omit the dataset_query in the request body
       .reduxUpdate(dispatch, { excludeDatasetQuery: isAdHocDataset });
 
     // reload the question alerts for the current question
@@ -1101,6 +1112,9 @@ export const apiUpdateQuestion = question => {
     );
 
     if (isAdHocDataset) {
+      // After updatedQuestion.reduxUpdate is called, updatedQuestion replaces its card with the one received from the server
+      // For datasets, it has the original `dataset_query`
+      // Here we swap it with a clean query using the dataset as a source table to enable "simple mode" like features
       updatedQuestion = toAdHocDatasetQuestion(
         updatedQuestion,
         originalQuestion,
@@ -1450,6 +1464,9 @@ export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
   const question = getQuestion(getState());
   let dataset = question.setDataset(true);
   if (dataset.isStructured()) {
+    // Need to swap dataset's original `dataset_query`
+    // with a clean query using the dataset as a source table
+    // to enable "simple mode" like features
     dataset = dataset.composeDataset();
   }
   await dispatch(apiUpdateQuestion(dataset));
@@ -1475,6 +1492,10 @@ export const turnDatasetIntoQuestion = () => async (dispatch, getState) => {
   const dataset = getQuestion(getState());
   let question = dataset.setDataset(false);
   if (question.isStructured()) {
+    // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
+    // (it's necessary for datasets to behave like tables opened in simple mode)
+    // So, when a dataset is turned back into a saved question,
+    // we also need to replace the "nested" dataset_query with the real one
     const originalQuestion = getOriginalQuestion(getState());
     question = question.setDatasetQuery(originalQuestion.datasetQuery());
   }
