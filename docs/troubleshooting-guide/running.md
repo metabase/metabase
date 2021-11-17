@@ -2,10 +2,8 @@
 
 <div class='doc-toc' markdown=1>
 
+- [Running Metabase](#running-metabase)
   - [WARNING: sun.reflect.Reflection.getCallerClass is not supported.](#warning-sunreflectreflectiongetcallerclass-is-not-supported)
-- [Metabase fails to start due to Heap Space OutOfMemoryErrors](#heap-space-outofmemoryerrors)
-- [Diagnosing memory issues causing OutOfMemoryErrors](#diagnosing-outofmemoryerrors)
-- [Metabase cannot read or write from a file or folder (IOError)](#cannot-read-write-ioerror)
 </div>
 
 Metabase runs on the Java Virtual Machine (JVM), and depending on how it's configured, it may use the server's filesystem to store some information. Problems with either the JVM or the filesystem can therefore prevent Metabase from running.
@@ -18,7 +16,7 @@ Don't worry about it.
 WARNING: sun.reflect.Reflection.getCallerClass is not supported. This will impact performance.
 ```
 
-If you see the above error, ignore it. It doesn't mean anything. Your Metabase is perfectly healthy and performing as it should.
+If you see the above error, ignore it. Your Metabase is perfectly healthy and performing as it should.
 
 <h2 id="heap-space-outofmemoryerrors">Metabase fails to start due to Heap Space OutOfMemoryErrors</h2>
 
