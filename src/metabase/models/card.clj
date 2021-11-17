@@ -34,11 +34,11 @@
   [{:keys [id]}]
   (db/count 'DashboardCard, :card_id id))
 
-(defn multi-dashboard-card
-  "Return the dashboard cards which this one has as multi member
-  God, this is a terrible name"
-  {:hydrate :multi_dashboard_cards}
-  (comment "some shit here"))
+(defn dashboard-cards
+  "Return the corresponding dashboards for this Card"
+  {:hydrate :dashboard_cards}
+  [{:keys [id]}]
+  (db/select 'DashboardCard, :card_id id))
 
 (defn average-query-time
   "Average query time of card, taken by query executions which didn't hit cache.
