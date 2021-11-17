@@ -493,11 +493,15 @@ function cohortswitch(cohortSwitch) {
       cells.item(i).dataset.columnindex != 1
     ) {
       let div = cells.item(i).getElementsByTagName("div");
-      if(cells.item(i).dataset.columnindex == 2 && cells.item(i).dataset.rowindex == 0) { //find problem with cell[0,2]
-      console.log(cells.item(i)); 
-      console.log(div); 
-      }
       if (div[0].dataset.cohortValue && div[0].dataset.originalValue) {
+        if (
+          cells.item(i).dataset.columnindex == 2 &&
+          cells.item(i).dataset.rowindex == 0
+        ) {
+          //find problem with cell[0,2]
+          console.log('cohortSwitch: ' + cohortSwitch);
+          console.log(div[0]);
+        }
         if (cohortSwitch) {
           div[0].innerHTML = div[0].dataset.cohortValue;
         } else {
