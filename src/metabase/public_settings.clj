@@ -468,3 +468,11 @@
   :type       :json
   :setter     :none
   :getter     fetch-cloud-gateway-ips-fn)
+
+(defsetting enable-database-syncing-modal
+  (str (deferred-tru "Whether an introductory modal should be shown after the next database connection is added.")
+       " "
+       (deferred-tru "Defaults to true if no non-sample database connections exist yet for this instance."))
+  :visibility :admin
+  :type       :boolean
+  :default    (not (db/exists? 'Database :is_sample false)))
