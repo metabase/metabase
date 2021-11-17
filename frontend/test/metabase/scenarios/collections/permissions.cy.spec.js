@@ -49,7 +49,9 @@ describe("collection permissions", () => {
                     displaySidebarChildOf("First collection");
                     displaySidebarChildOf("Second collection");
                   });
-                  cy.icon("add").click();
+                  cy.get(".Nav").within(() => {
+                    cy.icon("add").click();
+                  });
                   cy.findByText("New dashboard").click();
                   cy.get(".AdminSelect").findByText("Second collection");
                 });
