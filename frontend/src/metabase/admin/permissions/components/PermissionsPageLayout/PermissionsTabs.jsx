@@ -12,7 +12,7 @@ const propTypes = {
 export const PermissionsTabs = ({ tab, onChangeTab }) => (
   <div className="px3 mt1">
     <Radio
-      colorScheme="admin"
+      colorScheme="accent7"
       value={tab}
       options={[
         { name: t`Data permissions`, value: `data` },

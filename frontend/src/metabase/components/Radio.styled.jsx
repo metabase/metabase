@@ -5,11 +5,13 @@ import { space } from "styled-system";
 import { color, lighten } from "metabase/lib/colors";
 
 const COLOR_SCHEMES = {
-  admin: {
+  accent7: {
     main: () => color("accent7"),
+    button: () => color("accent7"),
   },
   default: {
     main: () => color("brand"),
+    button: () => color("brand"),
   },
 };
 
@@ -37,8 +39,15 @@ export const RadioButton = styled.div`
   border: 2px solid white;
   box-shadow: 0 0 0 2px ${color("shadow")};
   border-radius: 12px;
-  background-color: ${props =>
-    props.checked ? color("brand") : "transparent"};
+  background-color: ${props => {
+    if (props.checked) {
+      return props.colorScheme
+        ? COLOR_SCHEMES[props.colorScheme].button()
+        : color("brand");
+    } else {
+      return "transparent";
+    }
+  }};
 `;
 
 // BASE

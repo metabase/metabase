@@ -984,9 +984,9 @@ describe("scenarios > question > filter", () => {
           // Not sure exactly what this popover will look like when this issue is fixed.
           // In one of the previous versions it said "Update filter" instead of "Add filter".
           // If that's the case after the fix, this part of the test might need to be updated accordingly.
-          cy.button(regexCondition)
-            .click()
-            .should("have.class", "bg-purple");
+          cy.findByLabelText(regexCondition)
+            .check({ force: true }) // the radio input is hidden
+            .should("be.checked");
           cy.button("Update filter").click();
         });
 
@@ -1023,9 +1023,9 @@ describe("scenarios > question > filter", () => {
 
       function addBooleanFilter() {
         // This is really inconvenient way to ensure that the element is selected, but it's the only one currently
-        cy.button(regexCondition)
-          .click()
-          .should("have.class", "bg-purple");
+        cy.findByLabelText(regexCondition)
+          .check({ force: true })
+          .should("be.checked");
         cy.button("Add filter").click();
       }
 
