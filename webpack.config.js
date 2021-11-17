@@ -136,6 +136,10 @@ const config = (module.exports = {
   cache: devMode
     ? {
         type: "filesystem",
+        buildDependencies: {
+          // invalidates the cache on configuration change
+          config: [__filename],
+        },
       }
     : false,
   optimization: {
