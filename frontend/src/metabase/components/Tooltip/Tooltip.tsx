@@ -1,27 +1,32 @@
 import React from "react";
 import PropTypes from "prop-types";
-import Tippy from "@tippyjs/react";
+import * as Tippy from "@tippyjs/react";
 import * as ReactIs from "react-is";
 
 import { isReducedMotionPreferred } from "metabase/lib/dom";
+
+const TippyComponent = Tippy.default;
 
 Tooltip.propTypes = {
   tooltip: PropTypes.node,
   children: PropTypes.node,
   reference: PropTypes.instanceOf(Element),
+  placement: PropTypes.string,
   isEnabled: PropTypes.bool,
   isOpen: PropTypes.bool,
   maxWidth: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
 };
 
-type TooltipProps = {
+interface TooltipProps
+  extends Partial<
+    Pick<Tippy.TippyProps, "reference" | "placement" | "maxWidth">
+  > {
   tooltip?: React.ReactNode;
   children?: React.ReactNode;
-  reference?: Element;
   isEnabled?: boolean;
   isOpen?: boolean;
   maxWidth?: string | number | undefined;
-};
+}
 
 // checking to see if the `element` is in JSX.IntrinisicElements since they support refs
 // tippy's `children` prop seems to complain about anything more specific that React.ReactElement, unfortunately
@@ -39,44 +44,45 @@ function getSafeChildren(children: React.ReactNode) {
   }
 }
 
+function getTargetProps(
+  reference?: Element | React.RefObject<Element> | null,
+  children?: React.ReactNode,
+) {
+  if (reference) {
+    return { reference };
+  } else if (children != null) {
+    return { children: getSafeChildren(children) };
+  }
+}
+
 function Tooltip({
   tooltip,
   children,
   reference,
+  placement,
   isEnabled,
   isOpen,
   maxWidth = 200,
 }: TooltipProps) {
   const visible = isOpen != null ? isOpen : undefined;
-  const safeChildren = getSafeChildren(children);
   const animationDuration = isReducedMotionPreferred() ? 0 : undefined;
+  const disabled = isEnabled === false;
+  const targetProps = getTargetProps(reference, children);
 
-  if (tooltip && reference) {
+  if (tooltip && targetProps) {
     return (
-      <Tippy
+      <TippyComponent
         theme="tooltip"
         appendTo={() => document.body}
         content={tooltip}
         visible={visible}
-        disabled={isEnabled === false}
+        disabled={disabled}
         maxWidth={maxWidth}
         reference={reference}
         duration={animationDuration}
+        placement={placement}
+        {...targetProps}
       />
-    );
-  } else if (tooltip && children != null) {
-    return (
-      <Tippy
-        theme="tooltip"
-        appendTo={() => document.body}
-        content={tooltip}
-        visible={visible}
-        disabled={isEnabled === false}
-        maxWidth={maxWidth}
-        duration={animationDuration}
-      >
-        {safeChildren}
-      </Tippy>
     );
   } else {
     return <React.Fragment>{children}</React.Fragment>;
